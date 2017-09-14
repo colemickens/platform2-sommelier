@@ -327,7 +327,7 @@ TEST_F(TestService, Login) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
-  EXPECT_CALL(session_, WaitForPrivateObjects()).Times(AnyNumber());
+  EXPECT_CALL(session_, IsPrivateLoaded()).WillRepeatedly(Return(true));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->Login(ic_, 1, CKU_USER, NULL));
   string bad_pin("1234");
@@ -336,6 +336,14 @@ TEST_F(TestService, Login) {
   EXPECT_EQ(CKR_PIN_INCORRECT, service_->Login(ic_, 1, CKU_USER, &bad_pin));
   EXPECT_EQ(CKR_OK, service_->Login(ic_, 1, CKU_USER, &good_pin));
   EXPECT_EQ(CKR_OK, service_->Login(ic_, 1, CKU_USER, NULL));
+}
+
+TEST_F(TestService, LoginNoPrivate) {
+  EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsPrivateLoaded()).WillRepeatedly(Return(false));
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            service_->Login(ic_, 1, CKU_USER, NULL));
 }
 
 TEST_F(TestService, Logout) {

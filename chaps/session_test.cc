@@ -1010,6 +1010,83 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   RSA_free(rsa);
 }
 
+TEST_F(TestSession, CreateObjectsNoPrivate) {
+  EXPECT_CALL(token_pool_, Insert(_))
+      .WillRepeatedly(Return(ObjectPool::Result::WaitForPrivateObjects));
+
+  int handle = 0;
+  int size = 2048;
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+
+  CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
+  CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->CreateObject(attr, 1, &handle));
+
+  CK_ATTRIBUTE key_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_SIGN, &yes, sizeof(yes)},
+    {CKA_VERIFY, &yes, sizeof(yes)},
+    {CKA_VALUE_LEN, &size, sizeof(size)}
+  };
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->GenerateKey(CKM_GENERIC_SECRET_KEY_GEN,
+                                  "", key_attr, 4, &handle));
+
+  CK_BYTE pubexp[] = {1, 0, 1};
+  CK_ATTRIBUTE pub_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_ENCRYPT, &no, sizeof(no)},
+    {CKA_VERIFY, &yes, sizeof(yes)},
+    {CKA_PUBLIC_EXPONENT, pubexp, 3},
+    {CKA_MODULUS_BITS, &size, sizeof(size)}
+  };
+  CK_ATTRIBUTE priv_attr[] = {
+    {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+    {CKA_DECRYPT, &no, sizeof(no)},
+    {CKA_SIGN, &yes, sizeof(yes)}
+  };
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
+                                      pub_attr, 5, priv_attr, 3,
+                                      &handle, &handle));
+}
+
+TEST_F(TestSession, FindObjectsNoPrivate) {
+  EXPECT_CALL(token_pool_, Find(_, _))
+      .WillRepeatedly(Return(ObjectPool::Result::WaitForPrivateObjects));
+
+  CK_OBJECT_CLASS oc = CKO_PRIVATE_KEY;
+  CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->FindObjectsInit(attr, 1));
+}
+
+TEST_F(TestSession, DestroyObjectsNoPrivate) {
+  EXPECT_CALL(token_pool_, Delete(_))
+      .WillRepeatedly(Return(ObjectPool::Result::WaitForPrivateObjects));
+
+  int handle = 0;
+
+  CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
+  CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
+  ASSERT_EQ(CKR_OK,
+            session_->CreateObject(attr, 1, &handle));
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->DestroyObject(handle));
+}
+
+TEST_F(TestSession, FlushObjectsNoPrivate) {
+  EXPECT_CALL(token_pool_, Flush(_))
+      .WillRepeatedly(Return(ObjectPool::Result::WaitForPrivateObjects));
+
+  ObjectMock token_object;
+  EXPECT_CALL(token_object, IsTokenObject()).WillRepeatedly(Return(true));
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
+            session_->FlushModifiableObject(&token_object));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

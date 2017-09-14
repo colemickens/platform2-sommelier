@@ -36,6 +36,25 @@ using std::set;
 using std::string;
 using std::vector;
 
+namespace {
+
+CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
+  switch (result) {
+    case chaps::ObjectPool::Result::Success:
+      return CKR_OK;
+    case chaps::ObjectPool::Result::Failure:
+      return fail_rv;
+    case chaps::ObjectPool::Result::WaitForPrivateObjects:
+      return CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS;
+  }
+}
+
+bool IsSuccess(chaps::ObjectPool::Result result) {
+  return result == chaps::ObjectPool::Result::Success;
+}
+
+}  // namespace
+
 namespace chaps {
 
 static const int kDefaultAuthDataBytes = 20;
@@ -119,9 +138,7 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
   CHECK(object);
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  if (pool->Delete(object) != ObjectPool::Result::Success)
-    return CKR_GENERAL_ERROR;
-  return CKR_OK;
+  return ResultToRV(pool->Delete(object), CKR_GENERAL_ERROR);
 }
 
 bool SessionImpl::GetObject(int object_handle, const Object** object) {
@@ -148,8 +165,7 @@ CK_RV SessionImpl::FlushModifiableObject(Object* object) {
   CHECK(object);
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  return pool->Flush(object) == ObjectPool::Result::Success ?
-      CKR_OK : CKR_FUNCTION_FAILED;
+  return ResultToRV(pool->Flush(object), CKR_FUNCTION_FAILED);
 }
 
 CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
@@ -162,15 +178,15 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
   vector<const Object*> objects;
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       search_template->IsTokenObject()) {
-    if (token_object_pool_->Find(search_template.get(), &objects) !=
-        ObjectPool::Result::Success)
-      return CKR_GENERAL_ERROR;
+    auto res = token_object_pool_->Find(search_template.get(), &objects);
+    if (!IsSuccess(res))
+      return ResultToRV(res, CKR_GENERAL_ERROR);
   }
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       !search_template->IsTokenObject()) {
-    if (session_object_pool_->Find(search_template.get(), &objects) !=
-        ObjectPool::Result::Success)
-      return CKR_GENERAL_ERROR;
+    auto res = session_object_pool_->Find(search_template.get(), &objects);
+    if (!IsSuccess(res))
+      return ResultToRV(res, CKR_GENERAL_ERROR);
   }
   find_results_.clear();
   find_results_offset_ = 0;
@@ -539,8 +555,9 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
     return result;
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  if (pool->Insert(object.get()) != ObjectPool::Result::Success)
-    return CKR_FUNCTION_FAILED;
+  auto pool_res = pool->Insert(object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
   *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
@@ -631,12 +648,13 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   result = private_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
-  if (public_pool->Insert(public_object.get()) != ObjectPool::Result::Success)
-    return CKR_FUNCTION_FAILED;
-  if (private_pool->Insert(private_object.get()) !=
-      ObjectPool::Result::Success) {
+  auto pool_res = public_pool->Insert(public_object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  pool_res = private_pool->Insert(private_object.get());
+  if (!IsSuccess(pool_res)) {
     public_pool->Delete(public_object.release());
-    return CKR_FUNCTION_FAILED;
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
   }
   *new_public_key_handle = public_object.release()->handle();
   *new_private_key_handle = private_object.release()->handle();
@@ -653,12 +671,8 @@ CK_RV SessionImpl::GenerateRandom(int num_bytes, string* random_data) {
   return CKR_OK;
 }
 
-void SessionImpl::WaitForPrivateObjects() {
-  std::unique_ptr<Object> all_private(factory_->CreateObject());
-  CHECK(all_private.get());
-  all_private->SetAttributeBool(CKA_PRIVATE, true);
-  vector<const Object*> found;
-  token_object_pool_->Find(all_private.get(), &found);
+bool SessionImpl::IsPrivateLoaded() {
+  return token_object_pool_->IsPrivateLoaded();
 }
 
 bool SessionImpl::IsValidKeyType(OperationType operation,
@@ -874,8 +888,9 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   } else {
     pool = session_object_pool_.get();
   }
-  if (pool->Insert(object.get()) != ObjectPool::Result::Success)
-    return CKR_GENERAL_ERROR;
+  auto pool_res = pool->Insert(object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_GENERAL_ERROR);
   *new_object_handle = object.release()->handle();
   return CKR_OK;
 }

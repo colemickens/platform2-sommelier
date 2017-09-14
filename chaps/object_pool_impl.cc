@@ -42,7 +42,6 @@ ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
       store_(store),
       importer_(importer),
       is_private_loaded_(false),
-      private_loaded_event_(true, false),  // Manual reset, not signaled.
       finish_import_required_(false) {}
 
 ObjectPoolImpl::~ObjectPoolImpl() {}
@@ -66,7 +65,6 @@ bool ObjectPoolImpl::Init() {
   } else {
     // There are no objects to load.
     is_private_loaded_ = true;
-    private_loaded_event_.Signal();
   }
   return true;
 }
@@ -105,7 +103,6 @@ bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
   }
   // Signal any callers waiting for private objects that they're ready.
   is_private_loaded_ = true;
-  private_loaded_event_.Signal();
   return true;
 }
 
@@ -113,8 +110,7 @@ Result ObjectPoolImpl::Insert(Object* object) {
   // If it's a private object we need to wait until private objects have been
   // loaded.
   if (object->IsPrivate() && !is_private_loaded_) {
-    AutoLock lock(lock_);
-    WaitForPrivateObjects();
+    return Result::WaitForPrivateObjects;
   }
   return Import(object);
 }
@@ -151,7 +147,7 @@ Result ObjectPoolImpl::Delete(const Object* object) {
     // If it's a private object we need to wait until private objects have been
     // loaded.
     if (object->IsPrivate() && !is_private_loaded_)
-      WaitForPrivateObjects();
+      return Result::WaitForPrivateObjects;
     if (!store_->DeleteObjectBlob(object->store_id()))
       return Result::Failure;
   }
@@ -179,7 +175,7 @@ Result ObjectPoolImpl::Find(const Object* search_template,
       (search_template->IsAttributePresent(CKA_CLASS) &&
       search_template->GetObjectClass() == CKO_PRIVATE_KEY)) &&
       !is_private_loaded_)
-    WaitForPrivateObjects();
+    return Result::WaitForPrivateObjects;
   for (ObjectSet::iterator it = objects_.begin(); it != objects_.end(); ++it) {
     if (Matches(search_template, *it))
       matching_objects->push_back(*it);
@@ -212,11 +208,15 @@ Result ObjectPoolImpl::Flush(const Object* object) {
     // If it's a private object we need to wait until private objects have been
     // loaded.
     if (object->IsPrivate() && !is_private_loaded_)
-      WaitForPrivateObjects();
+      return Result::WaitForPrivateObjects;
     if (!store_->UpdateObjectBlob(object->store_id(), serialized))
       return Result::Failure;
   }
   return Result::Success;
+}
+
+bool ObjectPoolImpl::IsPrivateLoaded() {
+  return is_private_loaded_;
 }
 
 bool ObjectPoolImpl::Matches(const Object* object_template,
@@ -311,13 +311,6 @@ bool ObjectPoolImpl::LoadPrivateObjects() {
   if (!store_->LoadPrivateObjectBlobs(&object_blobs))
     return false;
   return LoadBlobs(object_blobs);
-}
-
-void ObjectPoolImpl::WaitForPrivateObjects() {
-  AutoUnlock unlock(lock_);
-  LOG(INFO) << "Waiting for private objects to be loaded.";
-  private_loaded_event_.Wait();
-  LOG(INFO) << "Done waiting for private objects.";
 }
 
 }  // namespace chaps

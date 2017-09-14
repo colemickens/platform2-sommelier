@@ -54,6 +54,7 @@ class ObjectPoolImpl : public ObjectPool {
   virtual Result FindByHandle(int handle, const Object** object);
   virtual Object* GetModifiableObject(const Object* object);
   virtual Result Flush(const Object* object);
+  virtual bool IsPrivateLoaded();
 
  private:
   // An object matches a template when it holds values for all template
@@ -65,7 +66,6 @@ class ObjectPoolImpl : public ObjectPool {
   bool LoadBlobs(const std::map<int, ObjectBlob>& object_blobs);
   bool LoadPublicObjects();
   bool LoadPrivateObjects();
-  void WaitForPrivateObjects();
 
   // Allows us to quickly check whether an object exists in the pool.
   ObjectSet objects_;
@@ -76,7 +76,6 @@ class ObjectPoolImpl : public ObjectPool {
   std::unique_ptr<ObjectImporter> importer_;
   bool is_private_loaded_;
   base::Lock lock_;
-  base::WaitableEvent private_loaded_event_;
   bool finish_import_required_;
 
   DISALLOW_COPY_AND_ASSIGN(ObjectPoolImpl);

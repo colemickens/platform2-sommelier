@@ -42,6 +42,9 @@ class ObjectPool {
   enum class Result {
     Success = 0,
     Failure,
+    // Operation would have to block waiting for private objects, can be
+    // repeated again after they are loaded.
+    WaitForPrivateObjects,
   };
 
   virtual ~ObjectPool() {}
@@ -80,6 +83,9 @@ class ObjectPool {
   virtual Object* GetModifiableObject(const Object* object) = 0;
   // Flushes a modified object to persistent storage.
   virtual Result Flush(const Object* object) = 0;
+  // Returns true if private objects are loaded and the pool is ready for
+  // operations with them without blocking.
+  virtual bool IsPrivateLoaded() = 0;
 };
 
 }  // namespace chaps

@@ -277,9 +277,11 @@ uint32_t ChapsServiceImpl::Login(const SecureBlob& isolate_credential,
   // operation (i.e. a null pin).
   const string legacy_pin("111111");
   LOG_CK_RV_AND_RETURN_IF(pin && *pin != legacy_pin, CKR_PIN_INCORRECT);
-  // After calling C_Login, applications will expect private objects to be
-  // available for queries. Wait for them to become available before returning.
-  session->WaitForPrivateObjects();
+  // After successful C_Login, applications will expect private objects to be
+  // available for queries. Don't block waiting for them to become available,
+  // return the appropriate error immediately instead.
+  LOG_CK_RV_AND_RETURN_IF(!session->IsPrivateLoaded(),
+                          CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS);
   // We could use CKR_USER_ALREADY_LOGGED_IN but that will cause some
   // applications to close all sessions and start from scratch which is
   // unnecessary.

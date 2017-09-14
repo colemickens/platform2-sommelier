@@ -36,6 +36,7 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(FindByHandle, ObjectPool::Result(int, const Object**));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
   MOCK_METHOD1(Flush, ObjectPool::Result(const Object*));
+  MOCK_METHOD0(IsPrivateLoaded, bool());
   void SetupFake(int handle_base) {
     last_handle_ = handle_base;
     ON_CALL(*this, Insert(testing::_))
@@ -49,6 +50,8 @@ class ObjectPoolMock : public ObjectPool {
     ON_CALL(*this, FindByHandle(testing::_, testing::_))
         .WillByDefault(testing::Invoke(this,
                                        &ObjectPoolMock::FakeFindByHandle));
+    ON_CALL(*this, IsPrivateLoaded())
+        .WillByDefault(testing::Return(true));
   }
 
  private:

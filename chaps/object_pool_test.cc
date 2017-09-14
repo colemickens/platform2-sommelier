@@ -100,8 +100,10 @@ class TestObjectPool : public ::testing::Test {
 
     EXPECT_TRUE(pool_->Init());
     EXPECT_TRUE(pool_->SetEncryptionKey(SecureBlob()));
+    EXPECT_TRUE(pool_->IsPrivateLoaded());
 
     EXPECT_TRUE(pool2_->Init());
+    EXPECT_TRUE(pool2_->IsPrivateLoaded());
 
     testing::Mock::VerifyAndClearExpectations(store_);
     testing::Mock::VerifyAndClearExpectations(importer_);
@@ -156,10 +158,12 @@ TEST_F(TestObjectPool, Init) {
   EXPECT_TRUE(pool_->Init());
   EXPECT_TRUE(pool_->Init());
   // Loading of private objects happens when the encryption key is set.
+  EXPECT_FALSE(pool_->IsPrivateLoaded());
   EXPECT_TRUE(pool2_->SetEncryptionKey(key));
   EXPECT_FALSE(pool_->SetEncryptionKey(key));
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
+  EXPECT_TRUE(pool_->IsPrivateLoaded());
   vector<const Object*> v;
   std::unique_ptr<Object> find_all(CreateObjectMock());
   EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
@@ -305,6 +309,39 @@ TEST_F(TestObjectPool, DeleteAll) {
   v.clear();
   EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
+}
+
+// Test pool with unloaded private objects
+TEST_F(TestObjectPool, UnloadedPrivateObjects) {
+  EXPECT_FALSE(pool_->IsPrivateLoaded());
+
+  // ObjectPool::Find behavior.
+  std::unique_ptr<Object> public_template(CreateObjectMock());
+  public_template->SetAttributeBool(CKA_PRIVATE, false);
+  std::unique_ptr<Object> private_template(CreateObjectMock());
+  private_template->SetAttributeBool(CKA_PRIVATE, true);
+  std::unique_ptr<Object> private_keys_template(CreateObjectMock());
+  private_keys_template->SetAttributeInt(CKA_CLASS, CKO_PRIVATE_KEY);
+
+  vector<const Object*> v;
+  EXPECT_EQ(Result::WaitForPrivateObjects,
+            pool_->Find(private_template.get(), &v));
+  EXPECT_EQ(Result::WaitForPrivateObjects,
+            pool_->Find(private_keys_template.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(public_template.get(), &v));
+
+  // ObjectPool::Insert behavior.
+  std::unique_ptr<Object> default_obj(CreateObjectMock());
+  std::unique_ptr<Object> private_obj(CreateObjectMock());
+  private_obj->SetAttributeBool(CKA_PRIVATE, true);
+  EXPECT_EQ(Result::WaitForPrivateObjects, pool_->Insert(private_obj.get()));
+  EXPECT_EQ(Result::WaitForPrivateObjects, pool_->Insert(default_obj.get()));
+
+  Object* public_obj = CreateObjectMock();
+  public_obj->SetAttributeBool(CKA_PRIVATE, false);
+  EXPECT_CALL(*store_, InsertObjectBlob(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(117), Return(true)));
+  EXPECT_EQ(Result::Success, pool_->Insert(public_obj));
 }
 
 }  // namespace chaps

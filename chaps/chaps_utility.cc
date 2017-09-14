@@ -216,6 +216,8 @@ const char* CK_RVToString(CK_RV value) {
       return "CKR_MUTEX_NOT_LOCKED";
     case CKR_VENDOR_DEFINED:
       return "CKR_VENDOR_DEFINED";
+    case CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS:
+      return "CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS";
   }
   return "Unknown";
 }
