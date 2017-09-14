@@ -35,48 +35,34 @@ bool DeviceTracker::InitDeviceTracker() {
 }
 
 void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {
-  // Get info of new Device
-  struct MidisDeviceInfo new_dev;
-  FillMidisDeviceInfo(dev.get(), &new_dev);
-
   uint32_t device_id = GenerateDeviceId(dev->GetCard(), dev->GetDeviceNum());
   devices_.emplace(device_id, std::move(dev));
-  NotifyObserversDeviceAddedOrRemoved(&new_dev, true);
+  NotifyObserversDeviceAddedOrRemoved(*devices_.at(device_id), true);
 }
 
 void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
   auto it = devices_.find(GenerateDeviceId(sys_num, dev_num));
   if (it != devices_.end()) {
-    struct MidisDeviceInfo removed_dev;
-    FillMidisDeviceInfo(it->second.get(), &removed_dev);
+    NotifyObserversDeviceAddedOrRemoved(*it->second, false);
     devices_.erase(it);
-    NotifyObserversDeviceAddedOrRemoved(&removed_dev, false);
     LOG(INFO) << "Device: " << sys_num << "," << dev_num << " removed.";
   } else {
     LOG(ERROR) << "Device: " << sys_num << "," << dev_num << " not listed.";
   }
 }
 
-void DeviceTracker::ListDevices(std::vector<MidisDeviceInfo>* list) {
-  for (auto& id_device_pair : devices_) {
-    list->emplace_back();
-    FillMidisDeviceInfo(id_device_pair.second.get(), &list->back());
+void DeviceTracker::ListDevices(
+    mojo::Array<arc::mojom::MidisDeviceInfoPtr>* list) {
+  for (const auto& dev : devices_) {
+    arc::mojom::MidisDeviceInfoPtr dev_info =
+        arc::mojom::MidisDeviceInfo::New();
+    dev_info->card = dev.second->GetCard();
+    dev_info->device_num = dev.second->GetDeviceNum();
+    dev_info->num_subdevices = dev.second->GetNumSubdevices();
+    dev_info->name = dev.second->GetName();
+    dev_info->manufacturer = dev.second->GetManufacturer();
+    list->push_back(std::move(dev_info));
   }
-}
-
-void DeviceTracker::FillMidisDeviceInfo(const Device* dev,
-                                        struct MidisDeviceInfo* dev_info) {
-  memset(dev_info, 0, sizeof(struct MidisDeviceInfo));
-  strncpy(reinterpret_cast<char*>(dev_info->name),
-          dev->GetName().c_str(),
-          kMidisStringSize);
-  strncpy(reinterpret_cast<char*>(dev_info->manufacturer),
-          dev->GetManufacturer().c_str(),
-          kMidisStringSize);
-  dev_info->card = dev->GetCard();
-  dev_info->device_num = dev->GetDeviceNum();
-  dev_info->num_subdevices = dev->GetNumSubdevices();
-  dev_info->flags = dev->GetFlags();
 }
 
 void DeviceTracker::AddDeviceObserver(Observer* obs) {
@@ -87,10 +73,10 @@ void DeviceTracker::RemoveDeviceObserver(Observer* obs) {
   observer_list_.RemoveObserver(obs);
 }
 
-void DeviceTracker::NotifyObserversDeviceAddedOrRemoved(
-    struct MidisDeviceInfo* dev_info, bool added) {
+void DeviceTracker::NotifyObserversDeviceAddedOrRemoved(const Device& dev,
+                                                        bool added) {
   FOR_EACH_OBSERVER(
-      Observer, observer_list_, OnDeviceAddedOrRemoved(dev_info, added));
+      Observer, observer_list_, OnDeviceAddedOrRemoved(dev, added));
 }
 
 base::ScopedFD DeviceTracker::AddClientToReadSubdevice(uint32_t sys_num,

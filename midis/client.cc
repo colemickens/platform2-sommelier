@@ -69,74 +69,12 @@ std::unique_ptr<Client> Client::CreateMojo(
   return cli;
 }
 
-void Client::SendDevicesList() {
-  uint8_t payload_buf[kMaxBufSize];
-  struct MidisMessageHeader header;
-
-  uint32_t payload_size = PrepareDeviceListPayload(payload_buf, kMaxBufSize);
-
-  header.type = LIST_DEVICES_RESPONSE;
-  header.payload_size = payload_size;
-
-  int ret = HANDLE_EINTR(
-      write(client_fd_.get(), &header, sizeof(struct MidisMessageHeader)));
-  if (ret < 0) {
-    PLOG(ERROR) << "SendDevicesList() header: write to client_fd_failed.";
-    TriggerClientDeletion();
-    return;
-  }
-
-  ret = HANDLE_EINTR(write(client_fd_.get(), payload_buf, payload_size));
-  if (ret < 0) {
-    PLOG(ERROR) << "SendDevicesList() payload: write to client_fd_failed.";
-    TriggerClientDeletion();
-  }
-}
-
 void Client::TriggerClientDeletion() {
   brillo::MessageLoop::TaskId ret_id = brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::Bind(del_cb_, client_id_));
   if (ret_id == brillo::MessageLoop::kTaskIdNull) {
     LOG(ERROR) << "Couldn't schedule the client deletion callback!";
   }
-}
-
-uint32_t Client::PrepareDeviceListPayload(uint8_t* payload_buf,
-                                          size_t buf_len) {
-  std::vector<MidisDeviceInfo> list;
-  if (!device_tracker_) {
-    LOG(FATAL) << "Device tracker ptr is nullptr; something bad happened.";
-    return 0;
-  }
-  device_tracker_->ListDevices(&list);
-  memset(payload_buf, 0, buf_len);
-  // We'll fill num of devices once we are done.
-  uint8_t* payload_buf_ptr = &payload_buf[1];
-
-  uint8_t count = 0;
-  size_t bytes_written = 1;
-  // Prepare the payload to send back.
-  for (const auto& device : list) {
-    if (count == kMidisMaxDevices) {
-      LOG(WARNING) << "Number of devices exceeds max limit!.";
-      break;
-    }
-
-    // Make sure we avoid buffer overflows.
-    if (bytes_written + sizeof(struct MidisDeviceInfo) > buf_len) {
-      LOG(WARNING) << "Payload buffer can't accomodate more device entries.";
-      break;
-    }
-    count++;
-    bytes_written += sizeof(struct MidisDeviceInfo);
-
-    memcpy(payload_buf_ptr, &device, sizeof(struct MidisDeviceInfo));
-    payload_buf_ptr += sizeof(struct MidisDeviceInfo);
-  }
-
-  payload_buf[0] = count;
-
-  return bytes_written;
 }
 
 void Client::AddClientToPort() {
@@ -206,9 +144,6 @@ void Client::HandleClientMessages() {
       read(client_fd_.get(), &header, sizeof(struct MidisMessageHeader)));
   if (bytes > 0) {
     switch (header.type) {
-      case REQUEST_LIST_DEVICES:
-        SendDevicesList();
-        break;
       case REQUEST_PORT:
         AddClientToPort();
         break;
@@ -240,27 +175,17 @@ void Client::StopMonitoring() {
   msg_taskid_ = brillo::MessageLoop::kTaskIdNull;
 }
 
-void Client::OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
-                                    bool added) {
-  // Prepare the payload.
-  struct MidisMessageHeader header;
-  header.type = added ? DEVICE_ADDED : DEVICE_REMOVED;
-  header.payload_size = sizeof(MidisDeviceInfo);
-
-  int ret = HANDLE_EINTR(
-      write(client_fd_.get(), &header, sizeof(struct MidisMessageHeader)));
-  if (ret < 0) {
-    PLOG(ERROR)
-        << "NotifyDeviceAddedOrRemoved() header: write to client_fd failed.";
-    TriggerClientDeletion();
-    return;
-  }
-
-  ret = HANDLE_EINTR(
-      write(client_fd_.get(), dev_info, sizeof(struct MidisDeviceInfo)));
-  if (ret < 0) {
-    PLOG(ERROR) << "NotifyDeviceAdded() payload: write to client_fd_failed.";
-    TriggerClientDeletion();
+void Client::OnDeviceAddedOrRemoved(const Device& dev, bool added) {
+  arc::mojom::MidisDeviceInfoPtr dev_info = arc::mojom::MidisDeviceInfo::New();
+  dev_info->card = dev.GetCard();
+  dev_info->device_num = dev.GetDeviceNum();
+  dev_info->num_subdevices = dev.GetNumSubdevices();
+  dev_info->name = dev.GetName();
+  dev_info->manufacturer = dev.GetManufacturer();
+  if (added) {
+    client_ptr_->DeviceAdded(std::move(dev_info));
+  } else {
+    client_ptr_->DeviceRemoved(std::move(dev_info));
   }
 }
 
@@ -276,6 +201,13 @@ void Client::HandleCloseDeviceMessage() {
 
   device_tracker_->RemoveClientFromDevice(
       client_id_, port_msg.card, port_msg.device_num);
+}
+
+void Client::ListDevices(const ListDevicesCallback& callback) {
+  // Get all the device information from device_tracker.
+  mojo::Array<arc::mojom::MidisDeviceInfoPtr> device_list;
+  device_tracker_->ListDevices(&device_list);
+  callback.Run(std::move(device_list));
 }
 
 }  // namespace midis

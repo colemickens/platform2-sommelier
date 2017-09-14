@@ -43,7 +43,7 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
       arc::mojom::MidisServerRequest request,
       arc::mojom::MidisClientPtr client_ptr);
 
-  void NotifyDeviceAddedOrRemoved(struct MidisDeviceInfo* dev_info, bool added);
+  void NotifyDeviceAddedOrRemoved(const Device& dev, bool added);
 
  private:
   Client(base::ScopedFD fd,
@@ -64,21 +64,8 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
   // |  message type   |  size of payload    |      message payload        |
   void HandleClientMessages();
 
-  // Return the list of all devices available to the client.
-  // The message format will be the same as that used by Client messages.
-  void SendDevicesList();
-
-  // Prepare the payload for devices information.
-  // Payload structure:
-  //
-  // |<-- 1 byte -->|<-- sizeof(struct MidisDeviceInfo) bytes -->|....
-  // |  num entries |             device1_info                   |  device2_info
-  // |....
-  uint32_t PrepareDeviceListPayload(uint8_t* payload_buf, size_t buf_len);
-
   // This function is a DeviceTracker::Observer override.
-  void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
-                              bool added) override;
+  void OnDeviceAddedOrRemoved(const Device& dev, bool added) override;
 
   void HandleCloseDeviceMessage();
 
@@ -95,6 +82,9 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
   void AddClientToPort();
 
   void TriggerClientDeletion();
+
+  // arc::mojom::MidisServer
+  void ListDevices(const ListDevicesCallback& callback) override;
 
   base::ScopedFD client_fd_;
   brillo::MessageLoop::TaskId msg_taskid_;

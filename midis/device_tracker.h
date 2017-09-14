@@ -18,6 +18,7 @@
 #include "midis/device.h"
 #include "midis/libmidis/clientlib.h"
 #include "midis/seq_handler_interface.h"
+#include "mojo/midis.mojom.h"
 
 namespace midis {
 
@@ -29,7 +30,7 @@ class DeviceTracker {
   void AddDevice(std::unique_ptr<Device> dev);
   void RemoveDevice(uint32_t sys_num, uint32_t dev_num);
   bool InitDeviceTracker();
-  void ListDevices(std::vector<MidisDeviceInfo>* list);
+  void ListDevices(mojo::Array<arc::mojom::MidisDeviceInfoPtr>* list);
 
   class Observer {
    public:
@@ -41,8 +42,7 @@ class DeviceTracker {
     //
     // The 'added' argument is set to true if the device was added, and false
     // otherwise.
-    virtual void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
-                                        bool added) = 0;
+    virtual void OnDeviceAddedOrRemoved(const Device& dev, bool added) = 0;
   };
 
   void AddDeviceObserver(Observer* obs);
@@ -93,9 +93,7 @@ class DeviceTracker {
   FRIEND_TEST(DeviceTrackerTest, Add2DevicesPositive);
   FRIEND_TEST(DeviceTrackerTest, AddRemoveDevicePositive);
   FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);
-  void FillMidisDeviceInfo(const Device* dev, struct MidisDeviceInfo* dev_info);
-  void NotifyObserversDeviceAddedOrRemoved(struct MidisDeviceInfo* dev_info,
-                                           bool added);
+  void NotifyObserversDeviceAddedOrRemoved(const Device& dev, bool added);
 
   std::map<uint32_t, std::unique_ptr<Device>> devices_;
   std::unique_ptr<SeqHandlerInterface> seq_handler_;

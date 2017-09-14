@@ -7,17 +7,29 @@
 
 module arc.mojom;
 
+struct MidisDeviceInfo {
+  uint32 card;
+  uint32 device_num;
+  uint32 num_subdevices;
+  uint32 flags;
+  string name;
+  string manufacturer;
+};
+
 // This interface is used by the server to send device and other information
 // to the client. It should be implemented by the client, and a handle to it
 // should be passed to the server.
-// Next Method ID: 0
+// Next Method ID: 2
 interface MidisClient {
+  DeviceAdded@0(MidisDeviceInfo device);
+  DeviceRemoved@1(MidisDeviceInfo device);
 };
 
 // This interface is used by the client to send messages / requests to the
 // daemon. This should be implemented by midis.
 // Next Method ID: 0
 interface MidisServer {
+  ListDevices@0() => (array<MidisDeviceInfo> devices);
 };
 
 // This interface is needed to get the midis server interface handle.
