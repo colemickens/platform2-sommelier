@@ -25,9 +25,6 @@
     {
       'target_name': 'libcontainer',
       'type': 'shared_library',
-      'cflags': [
-        '-fvisibility=default',
-      ],
       'sources': [
         'container_cgroup.cc',
         'libcontainer.cc',
