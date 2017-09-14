@@ -3,8 +3,6 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE /* For asprintf */
-
 #include <errno.h>
 #include <fcntl.h>
 #if USE_device_mapper
@@ -185,12 +183,13 @@ struct container_config {
 
 struct container_config *container_config_create()
 {
-	return calloc(1, sizeof(struct container_config));
+	return reinterpret_cast<struct container_config *>(
+	    calloc(1, sizeof(struct container_config)));
 }
 
 static void container_free_program_args(struct container_config *c)
 {
-	int i;
+	unsigned int i;
 
 	if (!c->program_argv)
 		return;
@@ -308,7 +307,8 @@ int container_config_program_argv(struct container_config *c,
 
 	container_free_program_args(c);
 	c->num_args = num_args;
-	c->program_argv = calloc(num_args + 1, sizeof(char *));
+	c->program_argv =
+	    reinterpret_cast<char **>(calloc(num_args + 1, sizeof(char *)));
 	if (!c->program_argv)
 		return -ENOMEM;
 	for (i = 0; i < num_args; ++i) {
@@ -407,8 +407,8 @@ int container_config_add_mount(struct container_config *c,
 	    destination == NULL || type == NULL)
 		return -EINVAL;
 
-	mount_ptr = realloc(c->mounts,
-			    sizeof(c->mounts[0]) * (c->num_mounts + 1));
+	mount_ptr = reinterpret_cast<struct container_mount *>(
+	    realloc(c->mounts, sizeof(c->mounts[0]) * (c->num_mounts + 1)));
 	if (!mount_ptr)
 		return -ENOMEM;
 	c->mounts = mount_ptr;
@@ -454,9 +454,9 @@ int container_config_add_cgroup_device(struct container_config *c,
 	struct container_cgroup_device *dev_ptr;
 	struct container_cgroup_device *current_dev;
 
-	dev_ptr = realloc(c->cgroup_devices,
-			  sizeof(c->cgroup_devices[0]) *
-					(c->num_cgroup_devices + 1));
+	dev_ptr = reinterpret_cast<struct container_cgroup_device *>(
+	    realloc(c->cgroup_devices, sizeof(c->cgroup_devices[0]) *
+					   (c->num_cgroup_devices + 1)));
 	if (!dev_ptr)
 		return -ENOMEM;
 	c->cgroup_devices = dev_ptr;
@@ -497,8 +497,8 @@ int container_config_add_device(struct container_config *c,
 	if (copy_minor && (minor != -1))
 		return -EINVAL;
 
-	dev_ptr = realloc(c->devices,
-			  sizeof(c->devices[0]) * (c->num_devices + 1));
+	dev_ptr = reinterpret_cast<struct container_device *>(
+	    realloc(c->devices, sizeof(c->devices[0]) * (c->num_devices + 1)));
 	if (!dev_ptr)
 		return -ENOMEM;
 	c->devices = dev_ptr;
@@ -689,7 +689,8 @@ int container_config_inherit_fds(struct container_config *c,
 {
 	if (c->inherited_fds)
 		return -EINVAL;
-	c->inherited_fds = calloc(inherited_fd_count, sizeof(int));
+	c->inherited_fds =
+	    reinterpret_cast<int *>(calloc(inherited_fd_count, sizeof(int)));
 	if (!c->inherited_fds)
 		return -ENOMEM;
 	memcpy(c->inherited_fds, inherited_fds,
@@ -724,7 +725,7 @@ struct container *container_new(const char *name,
 {
 	struct container *c;
 
-	c = calloc(1, sizeof(*c));
+	c = reinterpret_cast<struct container *>(calloc(1, sizeof(*c)));
 	if (!c)
 		return NULL;
 	c->rundir = strdup(rundir);
@@ -992,6 +993,7 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 	char *verity = NULL;
 	struct dm_task *dmt = NULL;
 	uint32_t cookie = 0;
+	size_t source_len = 0;
 
 	/* Normalize the name into something unique-esque. */
 	if (asprintf(&dm_name, "cros-containers-%s", source) < 0)
@@ -1005,8 +1007,9 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 		goto error;
 
 	/* Insert the source path in the verity command line. */
-	size_t source_len = strlen(source);
-	verity = malloc(strlen(verity_cmdline) + source_len * 2 + 1);
+	source_len = strlen(source);
+	verity = reinterpret_cast<char *>(
+	    malloc(strlen(verity_cmdline) + source_len * 2 + 1));
 	strcpy(verity, verity_cmdline);
 	while ((p = strstr(verity, "@DEV@")) != NULL) {
 		memmove(p + source_len, p + 5, strlen(p + 5) + 1);
@@ -1205,7 +1208,7 @@ static int do_container_mount(struct container *c,
 	}
 	if (mnt->verity) {
 		/* Set this device up via dm-verity. */
-		char *dm_name;
+		char *dm_name = NULL;
 		dm_source = source;
 		source = NULL;
 		rc = dm_setup(&source, &dm_name, dm_source, mnt->verity);
@@ -1262,13 +1265,16 @@ static int do_container_mounts(struct container *c,
 	 * Allocate space to track anything we mount in our mount namespace.
 	 * This over-allocates as it has space for all mounts.
 	 */
-	c->ext_mounts = calloc(config->num_mounts, sizeof(*c->ext_mounts));
+	c->ext_mounts = reinterpret_cast<char **>(
+	    calloc(config->num_mounts, sizeof(*c->ext_mounts)));
 	if (!c->ext_mounts)
 		return -errno;
-	c->loopdevs = calloc(config->num_mounts, sizeof(*c->loopdevs));
+	c->loopdevs = reinterpret_cast<char **>(
+	    calloc(config->num_mounts, sizeof(*c->loopdevs)));
 	if (!c->loopdevs)
 		return -errno;
-	c->device_mappers = calloc(config->num_mounts, sizeof(*c->device_mappers));
+	c->device_mappers = reinterpret_cast<char **>(
+	    calloc(config->num_mounts, sizeof(*c->device_mappers)));
 	if (!c->device_mappers)
 		return -errno;
 
@@ -1546,7 +1552,8 @@ int container_start(struct container *c, const struct container_config *config)
 	}
 
 	/* Potentailly run setfiles on mounts configured outside of the jail */
-	destinations = calloc(config->num_mounts, sizeof(char *));
+	destinations = reinterpret_cast<char **>(
+	    calloc(config->num_mounts, sizeof(char *)));
 	num_destinations = 0;
 	for (i = 0; i < config->num_mounts; i++) {
 		const struct container_mount *mnt = &config->mounts[i];
@@ -1673,7 +1680,7 @@ int container_start(struct container *c, const struct container_config *config)
 	if (config->alt_syscall_table)
 		minijail_use_alt_syscall(c->jail, config->alt_syscall_table);
 
-	for (i = 0; i < config->num_rlimits; i++) {
+	for (i = 0; i < static_cast<unsigned int>(config->num_rlimits); i++) {
 		const struct container_rlimit *lim = &config->rlimits[i];
 		rc = minijail_rlimit(c->jail, lim->type, lim->cur,
 				     lim->max);

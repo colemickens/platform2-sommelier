@@ -29,8 +29,8 @@
         '-fvisibility=default',
       ],
       'sources': [
-        'container_cgroup.c',
-        'libcontainer.c',
+        'container_cgroup.cc',
+        'libcontainer.cc',
       ],
     },
   ],
@@ -41,16 +41,16 @@
           'target_name': 'libcontainer_unittest',
           'type': 'executable',
           'sources': [
-            'libcontainer.c',
-            'libcontainer_unittest.c',
+            'libcontainer.cc',
+            'libcontainer_unittest.cc',
           ],
         },
         {
           'target_name': 'container_cgroup_unittest',
           'type': 'executable',
           'sources': [
-            'container_cgroup.c',
-            'container_cgroup_unittest.c',
+            'container_cgroup.cc',
+            'container_cgroup_unittest.cc',
           ],
         },
       ]},

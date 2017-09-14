@@ -3,8 +3,6 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE /* For asprintf */
-
 #include <errno.h>
 #include <signal.h>
 #include <sys/mount.h>
@@ -176,7 +174,7 @@ TEST(premounted_runfs)
 {
 	char premounted_runfs[] = "/tmp/cgtest_run/root";
 	struct container_config *config = container_config_create();
-	ASSERT_NE(NULL, config);
+	ASSERT_NE(nullptr, config);
 
 	container_config_premounted_runfs(config, premounted_runfs);
 	const char *result = container_config_get_premounted_runfs(config);
@@ -189,7 +187,7 @@ TEST(pid_file_path)
 {
 	char pid_file_path[] = "/tmp/cgtest_run/root/container.pid";
 	struct container_config *config = container_config_create();
-	ASSERT_NE(NULL, config);
+	ASSERT_NE(nullptr, config);
 
 	container_config_pid_file(config, pid_file_path);
 	const char *result = container_config_get_pid_file(config);
@@ -307,7 +305,7 @@ FIXTURE_SETUP(container_test)
 
 	rundir = mkdtemp(rundir_template);
 	self->container = container_new("containerUT", rundir);
-	ASSERT_NE(NULL, self->container);
+	ASSERT_NE(nullptr, self->container);
 }
 
 FIXTURE_TEARDOWN(container_test)
@@ -341,8 +339,9 @@ TEST_F(container_test, test_mount_tmp_start)
 	free(path);
 	EXPECT_EQ(0, strcmp(mount_call_args[1].filesystemtype,
 			    "tmpfs"));
-	EXPECT_EQ(mount_call_args[1].mountflags, self->mount_flags);
-	EXPECT_EQ(mount_call_args[1].data, NULL);
+	EXPECT_EQ(mount_call_args[1].mountflags,
+		  static_cast<unsigned long>(self->mount_flags));
+	EXPECT_EQ(mount_call_args[1].data, nullptr);
 
 	EXPECT_EQ(1, minijail_ipc_called);
 	EXPECT_EQ(1, minijail_vfs_called);
@@ -371,7 +370,8 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_LT(0, asprintf(&path, "%s/root/dev/null", mkdtemp_root));
 	EXPECT_EQ(0, strcmp(mknod_call_args.pathname, path));
 	free(path);
-	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
+	EXPECT_EQ(mknod_call_args.mode,
+		  static_cast<mode_t>(S_IRWXU | S_IRWXG | S_IFCHR));
 	EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
 
 	EXPECT_EQ(1, gmcg.set_cpu_shares_count);
@@ -388,7 +388,7 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(0, gmcg.set_cpu_rt_period_count);
 	EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config));
 
-	ASSERT_NE(NULL, minijail_alt_syscall_table);
+	ASSERT_NE(nullptr, minijail_alt_syscall_table);
 	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,
 			    "testsyscalltable"));
 
@@ -407,6 +407,8 @@ TEST_F(container_test, test_kill_container)
 }
 
 /* libc stubs so the UT doesn't need root to call mount, etc. */
+extern "C" {
+
 int mount(const char *source, const char *target,
 	  const char *filesystemtype, unsigned long mountflags,
 	  const void *data)
@@ -428,11 +430,20 @@ int umount(const char *target)
 	return 0;
 }
 
+#ifdef __USE_EXTERN_INLINES
+/* Some environments use an inline version of mknod. */
+int __xmknod(int ver, const char *pathname, __mode_t mode, __dev_t *dev)
+#else
 int mknod(const char *pathname, mode_t mode, dev_t dev)
+#endif
 {
 	mknod_call_args.pathname = strdup(pathname);
 	mknod_call_args.mode = mode;
+#ifdef __USE_EXTERN_INLINES
+	mknod_call_args.dev = *dev;
+#else
 	mknod_call_args.dev = dev;
+#endif
 	return 0;
 }
 
@@ -448,7 +459,12 @@ int kill(pid_t pid, int sig)
 	return 0;
 }
 
+#ifdef __USE_EXTERN_INLINES
+/* Some environments use an inline version of stat. */
+int __xstat(int ver, const char *path, struct stat *buf)
+#else
 int stat(const char *path, struct stat *buf)
+#endif
 {
 	buf->st_rdev = stat_rdev_ret;
 	return 0;
@@ -459,10 +475,10 @@ int chmod(const char *path, mode_t mode)
 	return 0;
 }
 
-char *mkdtemp(char *template)
+char *mkdtemp(char *template_string)
 {
-	mkdtemp_root = strdup(template);
-	return template;
+	mkdtemp_root = strdup(template_string);
+	return template_string;
 }
 
 int mkdir(const char *pathname, mode_t mode)
@@ -580,5 +596,7 @@ void minijail_reset_signal_mask(struct minijail *j)
 void minijail_skip_remount_private(struct minijail *j)
 {
 }
+
+}   // extern "C"
 
 TEST_HARNESS_MAIN

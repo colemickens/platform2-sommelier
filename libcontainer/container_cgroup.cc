@@ -3,8 +3,6 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE /* For asprintf */
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -49,7 +47,7 @@ static int write_cgroup_file(const char *cgroup_path, const char *name,
 		return fd;
 	const char *buffer = str;
 	size_t len = strlen(str);
-	if (write(fd, buffer, len) != len)
+	if (write(fd, buffer, len) != static_cast<ssize_t>(len))
 		rc = -errno;
 	close(fd);
 	return rc;
@@ -300,7 +298,8 @@ struct container_cgroup *container_cgroup_new(const char *name,
 	int rc;
 
 	struct container_cgroup *cg;
-	cg = calloc(1, sizeof(*cg));
+	cg =
+	    reinterpret_cast<struct container_cgroup *>(calloc(1, sizeof(*cg)));
 	if (!cg)
 		return NULL;
 
