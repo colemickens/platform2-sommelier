@@ -83,6 +83,30 @@ class TestObjectPool : public ::testing::Test {
     pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, NULL, NULL));
   }
 
+  // Initialize and load private objects.
+  void PreparePools() {
+    EXPECT_CALL(*store_, SetEncryptionKey(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*store_, SetInternalBlob(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*importer_, FinishImportAsync(pool_.get()))
+        .WillRepeatedly(Return(true));
+
+    EXPECT_TRUE(pool_->Init());
+    EXPECT_TRUE(pool_->SetEncryptionKey(SecureBlob()));
+
+    EXPECT_TRUE(pool2_->Init());
+
+    testing::Mock::VerifyAndClearExpectations(store_);
+    testing::Mock::VerifyAndClearExpectations(importer_);
+  }
+
   ChapsFactoryMock factory_;
   ObjectStoreMock* store_;
   ObjectImporterMock* importer_;
@@ -175,6 +199,7 @@ TEST_F(TestObjectPool, StorePassThrough) {
 
 // Test basic object management operations.
 TEST_F(TestObjectPool, InsertFindUpdateDelete) {
+  PreparePools();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
@@ -219,6 +244,7 @@ TEST_F(TestObjectPool, InsertFindUpdateDelete) {
 
 // Test handling of an invalid object pointer.
 TEST_F(TestObjectPool, UnknownObject) {
+  PreparePools();
   std::unique_ptr<Object> o(CreateObjectMock());
   EXPECT_NE(Result::Success, pool_->Flush(o.get()));
   EXPECT_NE(Result::Success, pool_->Delete(o.get()));
@@ -228,6 +254,7 @@ TEST_F(TestObjectPool, UnknownObject) {
 
 // Test multiple insertion of the same object pointer.
 TEST_F(TestObjectPool, DuplicateObject) {
+  PreparePools();
   Object* o = CreateObjectMock();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
@@ -239,6 +266,7 @@ TEST_F(TestObjectPool, DuplicateObject) {
 }
 
 TEST_F(TestObjectPool, DeleteAll) {
+  PreparePools();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
   EXPECT_CALL(*store_, DeleteAllObjectBlobs())

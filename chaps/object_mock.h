@@ -54,6 +54,8 @@ class ObjectMock : public Object {
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeGetObjectClass));
     ON_CALL(*this, IsTokenObject())
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeIsTokenObject));
+    ON_CALL(*this, IsPrivate())
+        .WillByDefault(testing::Invoke(this, &ObjectMock::FakeIsPrivate));
     ON_CALL(*this, SetAttributes(testing::_, testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeSetAttributes));
     ON_CALL(*this, IsAttributePresent(testing::_))
@@ -102,6 +104,9 @@ class ObjectMock : public Object {
   }
   bool FakeIsTokenObject() {
     return FakeGetAttributeBool(CKA_TOKEN, true);
+  }
+  bool FakeIsPrivate() {
+    return FakeGetAttributeBool(CKA_PRIVATE, true);
   }
   bool FakeIsAttributePresent(CK_ATTRIBUTE_TYPE type) {
     return (attributes_.find(type) != attributes_.end());
