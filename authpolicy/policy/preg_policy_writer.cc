@@ -9,13 +9,13 @@
 #include <base/files/file_util.h>
 #include <base/strings/string16.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <components/policy/core/common/preg_parser.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
 
 namespace {
 
-const char kRecommendedKey[] = "\\Recommended";
 const char kActionTriggerDelVals[] = "**delvals";
 
 // Constants for PReg file delimiters.
@@ -34,13 +34,11 @@ const uint32_t kRegDwordLittleEndian = 4;
 
 namespace policy {
 
-PRegPolicyWriter::PRegPolicyWriter(const std::string& registry_key)
-    : mandatory_key_(registry_key),
-      recommended_key_(mandatory_key_ + kRecommendedKey) {
-  DCHECK(!mandatory_key_.empty());
-  buffer_.append(
-      preg_parser::kPRegFileHeader,
-      preg_parser::kPRegFileHeader + arraysize(preg_parser::kPRegFileHeader));
+PRegPolicyWriter::PRegPolicyWriter(const std::string& mandatory_key,
+                                   const std::string& recommended_key)
+    : PRegPolicyWriter() {
+  SetMandatoryKey(mandatory_key);
+  SetRecommendedKey(recommended_key);
 }
 
 PRegPolicyWriter::~PRegPolicyWriter() {
@@ -105,6 +103,12 @@ bool PRegPolicyWriter::WriteToFile(const base::FilePath& path) {
   return base::WriteFile(path, buffer_.data(), size) == size;
 }
 
+PRegPolicyWriter::PRegPolicyWriter() {
+  buffer_.append(
+      preg_parser::kPRegFileHeader,
+      preg_parser::kPRegFileHeader + arraysize(preg_parser::kPRegFileHeader));
+}
+
 void PRegPolicyWriter::StartEntry(const std::string& key_name,
                                   const std::string& value_name,
                                   uint32_t data_type,
@@ -151,7 +155,27 @@ void PRegPolicyWriter::AppendChar16(base::char16 ch) {
 }
 
 const std::string& PRegPolicyWriter::GetKey(PolicyLevel level) {
+  DCHECK(!recommended_key_.empty() && !mandatory_key_.empty());
   return level == POLICY_LEVEL_RECOMMENDED ? recommended_key_ : mandatory_key_;
+}
+
+PRegUserDevicePolicyWriter::PRegUserDevicePolicyWriter() {
+  SetMandatoryKey(policy::kKeyUserDevice);
+  SetRecommendedKey(
+      base::StringPrintf("%s\\%s", policy::kKeyUserDevice, kKeyRecommended));
+}
+
+PRegExtensionPolicyWriter::PRegExtensionPolicyWriter(
+    const std::string& extension_id) {
+  SetExtensionId(extension_id);
+}
+
+void PRegExtensionPolicyWriter::SetExtensionId(
+    const std::string& extension_id) {
+  std::string base_key = base::StringPrintf(
+      "%s\\%s\\", policy::kKeyExtensions, extension_id.c_str());
+  SetMandatoryKey(base_key + kKeyMandatoryExtension);
+  SetRecommendedKey(base_key + kKeyRecommended);
 }
 
 }  // namespace policy

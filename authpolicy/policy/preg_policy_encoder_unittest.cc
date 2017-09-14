@@ -7,12 +7,14 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
 #include "authpolicy/policy/preg_policy_writer.h"
+#include "bindings/authpolicy_containers.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 #include "bindings/policy_constants.h"
@@ -21,19 +23,27 @@ namespace em = enterprise_management;
 
 namespace {
 
-const char kPreg1Filename[] = "registry1.pol";
-const char kPreg2Filename[] = "registry2.pol";
+constexpr char kPreg1Filename[] = "registry1.pol";
+constexpr char kPreg2Filename[] = "registry2.pol";
 
 // Some constants for policy testing.
 const bool kPolicyBool = true;
-const int kPolicyInt = 321;
 const bool kOtherPolicyBool = false;
+
+const int kPolicyInt = 321;
 const int kOtherPolicyInt = 234;
 
-const char kHomepageUrl[] = "www.example.com";
-const char kAltHomepageUrl[] = "www.exemplum.com";
-const char kTimezone[] = "Sankt Aldegund Central Time";
-const char kAltTimezone[] = "Bremm Prehistoric Time";
+constexpr char kPolicyStr[] = "Str";
+constexpr char kOtherPolicyStr[] = "OtherStr";
+
+constexpr char kExtensionId[] = "abcdeFGHabcdefghAbcdefGhabcdEfgh";
+constexpr char kOtherExtensionId[] = "ababababcdcdcdcdefefefefghghghgh";
+constexpr char kInvalidExtensionId[] = "abcdeFGHabcdefgh";
+
+constexpr char kExtensionPolicy1[] = "Policy1";
+constexpr char kExtensionPolicy2[] = "Policy2";
+constexpr char kExtensionPolicy3[] = "Policy3";
+constexpr char kExtensionPolicy4[] = "Policy4";
 
 }  // namespace
 
@@ -69,20 +79,20 @@ class PregPolicyEncoderTest : public ::testing::Test {
                                   PolicyLevel level2,
                                   WhoWins who_wins) {
     // Write file 1 with some interesting data. Set policy level to level1.
-    PRegPolicyWriter writer1(GetRegistryKey());
+    PRegUserDevicePolicyWriter writer1;
     writer1.AppendBoolean(key::kSearchSuggestEnabled, kOtherPolicyBool, level1);
     writer1.AppendInteger(key::kPolicyRefreshRate, kPolicyInt, level1);
-    writer1.AppendString(key::kHomepageLocation, kHomepageUrl, level1);
+    writer1.AppendString(key::kHomepageLocation, kPolicyStr, level1);
     const std::vector<std::string> apps1 = {"App1", "App2", "App3"};
     writer1.AppendStringList(key::kPinnedLauncherApps, apps1, level1);
     writer1.WriteToFile(preg_1_path_);
 
     // Write file 2 with the same policies, but different values. Set policy
     // level to level2.
-    PRegPolicyWriter writer2(GetRegistryKey());
+    PRegUserDevicePolicyWriter writer2;
     writer2.AppendBoolean(key::kSearchSuggestEnabled, kPolicyBool, level2);
     writer2.AppendInteger(key::kPolicyRefreshRate, kOtherPolicyInt, level2);
-    writer2.AppendString(key::kHomepageLocation, kAltHomepageUrl, level2);
+    writer2.AppendString(key::kHomepageLocation, kOtherPolicyStr, level2);
     const std::vector<std::string> apps2 = {"App4", "App5"};
     writer2.AppendStringList(key::kPinnedLauncherApps, apps2, level2);
     writer2.WriteToFile(preg_2_path_);
@@ -95,7 +105,7 @@ class PregPolicyEncoderTest : public ::testing::Test {
     bool win_bool = (who_wins == FIRST_WINS ? kOtherPolicyBool : kPolicyBool);
     int win_int = (who_wins == FIRST_WINS ? kPolicyInt : kOtherPolicyInt);
     const std::string& win_string =
-        (who_wins == FIRST_WINS ? kHomepageUrl : kAltHomepageUrl);
+        (who_wins == FIRST_WINS ? kPolicyStr : kOtherPolicyStr);
     const auto& win_string_list = (who_wins == FIRST_WINS ? apps1 : apps2);
     PolicyLevel win_level = (who_wins == FIRST_WINS ? level1 : level2);
     em::PolicyOptions::PolicyMode win_mode =
@@ -139,10 +149,10 @@ class PregPolicyEncoderTest : public ::testing::Test {
 // Encodes user policies of different types.
 TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
   // Create a preg file with some interesting data.
-  PRegPolicyWriter writer(GetRegistryKey());
+  PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(key::kSearchSuggestEnabled, kPolicyBool);
   writer.AppendInteger(key::kPolicyRefreshRate, kPolicyInt);
-  writer.AppendString(key::kHomepageLocation, kHomepageUrl);
+  writer.AppendString(key::kHomepageLocation, kPolicyStr);
   const std::vector<std::string> apps = {"App1", "App2"};
   writer.AppendStringList(key::kPinnedLauncherApps, apps);
   writer.WriteToFile(preg_1_path_);
@@ -155,7 +165,7 @@ TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.searchsuggestenabled().value());
   EXPECT_EQ(kPolicyInt, policy.policyrefreshrate().value());
-  EXPECT_EQ(kHomepageUrl, policy.homepagelocation().value());
+  EXPECT_EQ(kPolicyStr, policy.homepagelocation().value());
   const em::StringList& apps_proto = policy.pinnedlauncherapps().value();
   EXPECT_EQ(apps_proto.entries_size(), static_cast<int>(apps.size()));
   for (int n = 0; n < apps_proto.entries_size(); ++n)
@@ -191,10 +201,10 @@ TEST_F(PregPolicyEncoderTest, UserPolicyMandatoryOverridesRecommended) {
 // Encodes device policies of different types.
 TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   // Create a preg file with some interesting data.
-  PRegPolicyWriter writer(GetRegistryKey());
+  PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
-  writer.AppendString(key::kSystemTimezone, kTimezone);
+  writer.AppendString(key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> flags = {"flag1", "flag2"};
   writer.AppendStringList(key::kDeviceStartUpFlags, flags);
   writer.WriteToFile(preg_1_path_);
@@ -207,7 +217,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
   EXPECT_EQ(kPolicyInt, policy.device_local_accounts().auto_login_delay());
-  EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
+  EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
   const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
   EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
   for (int n = 0; n < flags_proto.flags_size(); ++n)
@@ -218,20 +228,20 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
 TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   // Write file 1 with some interesting data. Note that device policy doesn't
   // support mandatory/recommended policies.
-  PRegPolicyWriter writer1(GetRegistryKey());
+  PRegUserDevicePolicyWriter writer1;
   writer1.AppendBoolean(key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
-  writer1.AppendString(key::kSystemTimezone, kTimezone);
+  writer1.AppendString(key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
   writer1.AppendStringList(key::kDeviceStartUpFlags, flags1);
   writer1.WriteToFile(preg_1_path_);
 
   // Write file 2 with the same policies, but different values.
-  PRegPolicyWriter writer2(GetRegistryKey());
+  PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay,
                         kOtherPolicyInt);
-  writer2.AppendString(key::kSystemTimezone, kAltTimezone);
+  writer2.AppendString(key::kSystemTimezone, kOtherPolicyStr);
   const std::vector<std::string> flags2 = {"flag4", "flag5"};
   writer2.AppendStringList(key::kDeviceStartUpFlags, flags2);
   writer2.WriteToFile(preg_2_path_);
@@ -244,11 +254,104 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   // Check that the values from file 2 prevailed.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
   EXPECT_EQ(kOtherPolicyInt, policy.device_local_accounts().auto_login_delay());
-  EXPECT_EQ(kAltTimezone, policy.system_timezone().timezone());
+  EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
   const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
   EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));
   for (int n = 0; n < flags_proto.flags_size(); ++n)
     EXPECT_EQ(flags_proto.flags(n), flags2.at(n));
+}
+
+// Encodes extension policies of different types.
+TEST_F(PregPolicyEncoderTest, ExtensionPolicyEncodingWorks) {
+  // Create a preg file with some interesting data.
+  PRegExtensionPolicyWriter writer(kExtensionId);
+  writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
+  writer.AppendInteger(kExtensionPolicy2, kPolicyInt);
+  writer.AppendString(kExtensionPolicy3, kPolicyStr);
+  const std::vector<std::string> str_list = {"str1", "str2"};
+  writer.AppendStringList(kExtensionPolicy4, str_list);
+  writer.WriteToFile(preg_1_path_);
+
+  // Encode preg file into policy.
+  ExtensionPolicies policies;
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
+      {preg_1_path_}, &policies, false /* log_policy_values */));
+
+  const std::string expected_json = base::StringPrintf(
+      "{\"%s\":{\"%s\":1,\"%s\":%i,\"%s\":"
+      "\"%s\",\"%s\":{\"1\":\"%s\",\"2\":\"%s\"}}}",
+      kKeyMandatoryExtension,
+      kExtensionPolicy1,
+      kExtensionPolicy2,
+      kPolicyInt,
+      kExtensionPolicy3,
+      kPolicyStr,
+      kExtensionPolicy4,
+      str_list[0].c_str(),
+      str_list[1].c_str());
+
+  // Check that policy has the same values as we wrote to the file.
+  ASSERT_EQ(1, policies.size());
+  EXPECT_EQ(kExtensionId, policies[0].id());
+  EXPECT_EQ(expected_json, policies[0].json_data());
+}
+
+// Make sure invalid extension IDs are ignored.
+TEST_F(PregPolicyEncoderTest, ExtensionPolicyIgnoresInvalidIds) {
+  // Create a preg file with several valid and invalid extension ids.
+  PRegExtensionPolicyWriter writer(kExtensionId);
+  writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
+  writer.SetExtensionId(kInvalidExtensionId);
+  writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
+  writer.SetExtensionId(kOtherExtensionId);
+  writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
+  writer.WriteToFile(preg_1_path_);
+
+  // Encode preg file into policy.
+  ExtensionPolicies policies;
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
+      {preg_1_path_}, &policies, false /* log_policy_values */));
+
+  // Extensions with IDs kExtensionId and kOtherExtensionId should be in the
+  // output, kInvalidExtensionId shouldn't.
+  const std::string expected_json_0 = base::StringPrintf(
+      "{\"%s\":{\"%s\":1}}", kKeyMandatoryExtension, kExtensionPolicy1);
+  const std::string expected_json_1 = base::StringPrintf(
+      "{\"%s\":{\"%s\":1}}", kKeyMandatoryExtension, kExtensionPolicy1);
+
+  ASSERT_EQ(2, policies.size());
+  EXPECT_EQ(kOtherExtensionId, policies[0].id());
+  EXPECT_EQ(expected_json_0, policies[0].json_data());
+  EXPECT_EQ(kExtensionId, policies[1].id());
+  EXPECT_EQ(expected_json_1, policies[1].json_data());
+}
+
+// Verify that recommended and mandatory policies get encoded separately.
+TEST_F(PregPolicyEncoderTest, ExtensionPolicyRecommendedAndMandatory) {
+  // Create a preg file with several valid and invalid extension ids.
+  PRegExtensionPolicyWriter writer(kExtensionId);
+  writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
+  writer.AppendInteger(kExtensionPolicy2, kPolicyInt, POLICY_LEVEL_RECOMMENDED);
+  writer.WriteToFile(preg_1_path_);
+
+  // Encode preg file into policy.
+  ExtensionPolicies policies;
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
+      {preg_1_path_}, &policies, false /* log_policy_values */));
+
+  // Extensions with IDs kExtensionId and kOtherExtensionId should be in the
+  // output, kInvalidExtensionId shouldn't.
+  const std::string expected_json =
+      base::StringPrintf("{\"%s\":{\"%s\":1},\"%s\":{\"%s\":%i}}",
+                         kKeyMandatoryExtension,
+                         kExtensionPolicy1,
+                         kKeyRecommended,
+                         kExtensionPolicy2,
+                         kPolicyInt);
+
+  ASSERT_EQ(1, policies.size());
+  EXPECT_EQ(kExtensionId, policies[0].id());
+  EXPECT_EQ(expected_json, policies[0].json_data());
 }
 
 }  // namespace policy

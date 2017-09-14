@@ -18,9 +18,6 @@
 namespace policy {
 namespace {
 
-// Registry key for Chrome branded builds.
-const char kRegistryKey[] = "Software\\Policies\\Google\\ChromeOS";
-
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
 const char* const kTypeNames[] = {"null",
@@ -42,11 +39,15 @@ const char* GetValueTypeName(const base::Value* value) {
 
 }  // namespace
 
-std::string GetRegistryKey() {
-  return kRegistryKey;
-}
+constexpr char kKeyUserDevice[] = "Software\\Policies\\Google\\ChromeOS";
+constexpr char kKeyExtensions[] =
+    "Software\\Policies\\Google\\Chrome\\3rdparty\\Extensions";
+constexpr char kKeyRecommended[] = "Recommended";
+constexpr char kKeyMandatoryExtension[] = "Policy";
 
-bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
+bool LoadPRegFile(const base::FilePath& preg_file,
+                  const char* registry_key,
+                  RegistryDict* dict) {
   if (!base::PathExists(preg_file)) {
     LOG(ERROR) << "PReg file '" << preg_file.value() << "' does not exist";
     return false;
@@ -58,8 +59,8 @@ bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
   // the load status into authpolicy, but that would require a lot of plumbing
   // since this code usually runs in a sandboxed process.
   PolicyLoadStatusSampler status;
-  const base::string16 registry_key = base::ASCIIToUTF16(GetRegistryKey());
-  if (!preg_parser::ReadFile(preg_file, registry_key, dict, &status)) {
+  const base::string16 registry_key_utf16 = base::ASCIIToUTF16(registry_key);
+  if (!preg_parser::ReadFile(preg_file, registry_key_utf16, dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
     return false;
   }

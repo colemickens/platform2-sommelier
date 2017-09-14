@@ -410,8 +410,9 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
       // Parse files into a user policy proto.
       em::CloudPolicySettings policy;
       if (!policy::ParsePRegFilesIntoUserPolicy(
-              gpo_file_paths, &policy, flags.log_policy_values()))
+              gpo_file_paths, &policy, flags.log_policy_values())) {
         return EXIT_CODE_PARSE_INPUT_FAILED;
+      }
 
       // Serialize user policy proto to string.
       if (!policy.SerializeToString(&policy_blob))
@@ -422,8 +423,9 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
       // Parse files into a device policy proto.
       em::ChromeDeviceSettingsProto policy;
       if (!policy::ParsePRegFilesIntoDevicePolicy(
-              gpo_file_paths, &policy, flags.log_policy_values()))
+              gpo_file_paths, &policy, flags.log_policy_values())) {
         return EXIT_CODE_PARSE_INPUT_FAILED;
+      }
 
       // Serialize policy proto to string.
       if (!policy.SerializeToString(&policy_blob))
@@ -433,8 +435,28 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
     default: { LOG(FATAL) << "invalid scope"; }
   }
 
-  // Print the serialized policy proto to stdout.
-  return OutputForCaller(policy_blob);
+  // Parse GPOs again for extension policy. Note that it might be contained in
+  // both scopes (USER and MACHINE). Note that this is slightly inefficient as
+  // it loads and parses each GPO file a second time. It would be better if
+  // preg_parser accepted multiple keys.
+  policy::ExtensionPolicies extension_policies;
+  if (!policy::ParsePRegFilesIntoExtensionPolicy(
+          gpo_file_paths, &extension_policies, flags.log_policy_values())) {
+    return EXIT_CODE_PARSE_INPUT_FAILED;
+  }
+
+  // Store policy blob and extension policy in a GpoPolicyData struct.
+  protos::GpoPolicyData data;
+  data.set_user_or_device_policy(policy_blob);
+  for (protos::ExtensionPolicy& proto : extension_policies)
+    *data.add_extension_policies() = std::move(proto);
+
+  std::string data_blob;
+  if (!data.SerializeToString(&data_blob))
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
+
+  // Print the serialized policy data to stdout.
+  return OutputForCaller(data_blob);
 }
 
 // Parses the validity and renewal lifetimes of a TGT from the output of klist.

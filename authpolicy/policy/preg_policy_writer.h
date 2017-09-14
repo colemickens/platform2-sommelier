@@ -20,10 +20,21 @@ namespace policy {
 // description of the file format.
 class PRegPolicyWriter {
  public:
-  // Creates a new writer using |registry_key| as key for mandatory policies.
-  // Recommended policies are written under |registry_key| + "\Recommended".
-  explicit PRegPolicyWriter(const std::string& registry_key);
+  // Creates a new writer using |mandatory_key| as registry key for mandatory
+  // policies and |recommended_key| for recommended policies.
+  PRegPolicyWriter(const std::string& mandatory_key,
+                   const std::string& recommended_key);
   ~PRegPolicyWriter();
+
+  // Sets the registry key used for mandatory policies.
+  void SetMandatoryKey(const std::string& mandatory_key) {
+    mandatory_key_ = mandatory_key;
+  }
+
+  // Sets the registry key used for recommended policies.
+  void SetRecommendedKey(const std::string& recommended_key) {
+    recommended_key_ = recommended_key;
+  }
 
   // Appends a boolean policy value.
   void AppendBoolean(const char* policy_name,
@@ -47,6 +58,10 @@ class PRegPolicyWriter {
 
   // Writes the policy data to a file. Returns true on success.
   bool WriteToFile(const base::FilePath& path);
+
+ protected:
+  // Constructor for derived classes that set custom registry keys.
+  PRegPolicyWriter();
 
  private:
   // Starts a policy entry. Entries have the shape '[key;value;type;size;data]'.
@@ -76,8 +91,24 @@ class PRegPolicyWriter {
   std::string mandatory_key_;
   std::string recommended_key_;
   std::string buffer_;
-  bool entry_started_ =
-      false;  // Safety check that every StartEntry() is followed by EndEntry().
+
+  // Safety check that every StartEntry() is followed by EndEntry().
+  bool entry_started_ = false;
+};
+
+// Sets the proper keys for writing user and device policy.
+class PRegUserDevicePolicyWriter : public PRegPolicyWriter {
+ public:
+  PRegUserDevicePolicyWriter();
+};
+
+// Sets the proper keys for writing policy for extensions.
+class PRegExtensionPolicyWriter : public PRegPolicyWriter {
+ public:
+  explicit PRegExtensionPolicyWriter(const std::string& extension_id);
+
+  // Updates registry keys for subsequent Append* calls to use |extension_id|.
+  void SetExtensionId(const std::string& extension_id);
 };
 
 }  // namespace policy

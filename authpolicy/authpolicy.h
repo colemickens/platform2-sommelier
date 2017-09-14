@@ -100,9 +100,10 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // UserKerberosFilesChanged signal.
   void OnUserKerberosFilesChanged();
 
-  // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
-  // if |account_id_key| is not nullptr, otherwise assumes it's device policy.
-  void StorePolicy(const std::string& policy_blob,
+  // Sends policy to SessionManager. Assumes |gpo_policy_data| contains user
+  // policy if |account_id_key| is not nullptr, otherwise assumes it's device
+  // policy.
+  void StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
                    const std::string* account_id_key,
                    std::unique_ptr<ScopedTimerReporter> timer,
                    PolicyResponseCallback callback);

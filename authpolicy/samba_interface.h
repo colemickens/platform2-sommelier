@@ -88,21 +88,20 @@ class SambaInterface {
                         const std::string& user_principal_name,
                         int password_fd);
 
-  // Downloads user policy from the Active Directory server and stores it in a
-  // serialized user policy protobuf string (see |CloudPolicySettings|).
-  // |account_id_key| is the unique user GUID returned from |AuthenticateUser|
-  // in |account_info|, prefixed by "a-". The user's Kerberos authentication
-  // ticket must still be valid. If this operation fails, call
-  // |AuthenticateUser| and try again.
+  // Downloads user and extension policy from the Active Directory server and
+  // stores it in |gpo_policy_data|. |account_id_key| is the unique user GUID
+  // returned from |AuthenticateUser| in |account_info|, prefixed by "a-". The
+  // user's Kerberos authentication ticket must still be valid. If this
+  // operation fails, call |AuthenticateUser| and try again.
   ErrorType FetchUserGpos(const std::string& account_id_key,
-                          std::string* policy_blob);
+                          protos::GpoPolicyData* gpo_policy_data);
 
-  // Downloads device policy from the Active Directory server and stores it in a
-  // serialized device policy protobuf string (see |ChromeDeviceSettingsProto|).
-  // The device must be joined to the Active Directory domain already (see
-  // |JoinMachine|). During join, a machine password is stored in a keytab file,
-  // which is used for authentication for policy fetch.
-  ErrorType FetchDeviceGpos(std::string* policy_blob);
+  // Downloads device and extension policy from the Active Directory server and
+  // stores it in |gpo_policy_data|. The device must be joined to the Active
+  // Directory domain already (see |JoinMachine|). During join, a machine
+  // password is stored in a keytab file, which is used for authentication for
+  // policy fetch.
+  ErrorType FetchDeviceGpos(protos::GpoPolicyData* gpo_policy_data);
 
   // Sets the default log level, see AuthPolicyFlags::DefaultLevel for details.
   // The level persists between restarts of authpolicyd, but gets reset on

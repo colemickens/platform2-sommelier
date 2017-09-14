@@ -5,6 +5,8 @@
 #ifndef AUTHPOLICY_POLICY_PREG_POLICY_ENCODER_H_
 #define AUTHPOLICY_POLICY_PREG_POLICY_ENCODER_H_
 
+#include <memory>
+#include <string>
 #include <vector>
 
 namespace base {
@@ -16,7 +18,15 @@ class CloudPolicySettings;
 class ChromeDeviceSettingsProto;
 }  // namespace enterprise_management
 
+namespace authpolicy {
+namespace protos {
+class ExtensionPolicy;
+}
+}  // namespace authpolicy
+
 namespace policy {
+
+using ExtensionPolicies = std::vector<authpolicy::protos::ExtensionPolicy>;
 
 // Loads the given set of |preg_files| and encodes all user policies into the
 // given |policy| blob. Note that user policy can contain mandatory and
@@ -41,6 +51,16 @@ bool ParsePRegFilesIntoUserPolicy(
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
     enterprise_management::ChromeDeviceSettingsProto* policy,
+    bool log_policy_values);
+
+// Loads the given set of |preg_files| and encodes all extension policies into
+// the given |policies| vector. If multiple files f1,...,fN are passed in,
+// policies are merged with following rule:
+// - Policies in fn overwrite policies in fm if n > m.
+// |log_policy_values| toggles debug logging of policy values.
+bool ParsePRegFilesIntoExtensionPolicy(
+    const std::vector<base::FilePath>& preg_files,
+    ExtensionPolicies* policies,
     bool log_policy_values);
 
 }  // namespace policy

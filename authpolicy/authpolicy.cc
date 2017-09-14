@@ -177,8 +177,8 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   auto timer = base::MakeUnique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
-  std::string policy_blob;
-  ErrorType error = samba_.FetchUserGpos(account_id_key, &policy_blob);
+  protos::GpoPolicyData gpo_policy_data;
+  ErrorType error = samba_.FetchUserGpos(account_id_key, &gpo_policy_data);
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -190,7 +190,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 
   // Send policy to Session Manager.
   StorePolicy(
-      policy_blob, &account_id_key, std::move(timer), std::move(callback));
+      gpo_policy_data, &account_id_key, std::move(timer), std::move(callback));
 }
 
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
@@ -199,8 +199,8 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
       base::MakeUnique<ScopedTimerReporter>(TIMER_REFRESH_DEVICE_POLICY);
 
   // Fetch GPOs for the device.
-  std::string policy_blob;
-  ErrorType error = samba_.FetchDeviceGpos(&policy_blob);
+  protos::GpoPolicyData gpo_policy_data;
+  ErrorType error = samba_.FetchDeviceGpos(&gpo_policy_data);
   PrintError("Device policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -211,7 +211,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   }
 
   // Send policy to Session Manager.
-  StorePolicy(policy_blob, nullptr, std::move(timer), std::move(callback));
+  StorePolicy(gpo_policy_data, nullptr, std::move(timer), std::move(callback));
 }
 
 std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
@@ -233,7 +233,7 @@ void AuthPolicy::OnUserKerberosFilesChanged() {
   SendUserKerberosFilesChangedSignal();
 }
 
-void AuthPolicy::StorePolicy(const std::string& policy_blob,
+void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
                              const std::string* account_id_key,
                              std::unique_ptr<ScopedTimerReporter> timer,
                              PolicyResponseCallback callback) {
@@ -243,15 +243,16 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
   const char* const policy_type =
       is_user_policy ? kChromeUserPolicyType : kChromeDevicePolicyType;
 
-  em::PolicyData policy_data;
-  policy_data.set_policy_value(policy_blob);
-  policy_data.set_policy_type(policy_type);
-  policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+  em::PolicyData em_policy_data;
+  em_policy_data.set_policy_value(gpo_policy_data.user_or_device_policy());
+  em_policy_data.set_policy_type(policy_type);
+  em_policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
   // Note: No signature required here, Active Directory policy is unsigned!
 
   em::PolicyFetchResponse policy_response;
   std::string response_blob;
-  if (!policy_data.SerializeToString(policy_response.mutable_policy_data()) ||
+  if (!em_policy_data.SerializeToString(
+          policy_response.mutable_policy_data()) ||
       !policy_response.SerializeToString(&response_blob)) {
     LOG(ERROR) << "Failed to serialize policy data";
     const DBusCallType call_type = GetPolicyDBusCallType(is_user_policy);

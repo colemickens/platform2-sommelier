@@ -78,3 +78,23 @@ message DebugFlags {
   // as well.
   optional string net_log_level = 10 [default = "0"];
 }
+
+// Container for policy for extensions.
+message ExtensionPolicy {
+  // Extension ID, e.g. gihmafigllmhbppdfjnfecimiohcljba.
+  optional string id = 1;
+
+  // Extension policy json data.
+  optional string json_data = 2;
+}
+
+// Policy loaded and parsed from GPO.
+message GpoPolicyData {
+  // User or device policy, depending on which GPOs were loaded. User and device
+  // GPOs are serialized CloudPolicySettings and ChromeDeviceSettingsProto
+  // protos, respectively.
+  optional string user_or_device_policy = 1;
+
+  // Extension policy can be both in user and device GPOs.
+  repeated ExtensionPolicy extension_policies = 2;
+}

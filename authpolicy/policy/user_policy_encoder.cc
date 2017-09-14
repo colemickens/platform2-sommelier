@@ -24,6 +24,10 @@ UserPolicyEncoder::UserPolicyEncoder(const RegistryDict* dict,
     : dict_(dict), level_(level) {}
 
 void UserPolicyEncoder::EncodePolicy(em::CloudPolicySettings* policy) const {
+  LOG_IF(INFO, log_policy_values_)
+      << "User policy ("
+      << (level_ == POLICY_LEVEL_RECOMMENDED ? "recommended" : "mandatory")
+      << ")";
   EncodeList(policy, kBooleanPolicyAccess, &UserPolicyEncoder::EncodeBoolean);
   EncodeList(policy, kIntegerPolicyAccess, &UserPolicyEncoder::EncodeInteger);
   EncodeList(policy, kStringPolicyAccess, &UserPolicyEncoder::EncodeString);
@@ -36,10 +40,6 @@ void UserPolicyEncoder::SetPolicyOptions(em::PolicyOptions* options) const {
   options->set_mode(level_ == POLICY_LEVEL_RECOMMENDED
                         ? em::PolicyOptions_PolicyMode_RECOMMENDED
                         : em::PolicyOptions_PolicyMode_MANDATORY);
-}
-
-const char* UserPolicyEncoder::GetLevelStr() const {
-  return level_ == POLICY_LEVEL_RECOMMENDED ? "Recommended" : "Mandatory";
 }
 
 void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
@@ -57,8 +57,8 @@ void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_) << GetLevelStr() << " bool " << policy_name
-                                   << " = " << (bool_value ? "true" : "false");
+  LOG_IF(INFO, log_policy_values_)
+      << "  " << policy_name << " = " << (bool_value ? "true" : "false");
 
   // Create proto and set value.
   em::BooleanPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -82,8 +82,7 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_)
-      << GetLevelStr() << " int " << policy_name << " = " << int_value;
+  LOG_IF(INFO, log_policy_values_) << "  " << policy_name << " = " << int_value;
 
   // Create proto and set value.
   em::IntegerPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -108,7 +107,7 @@ void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
   }
 
   LOG_IF(INFO, log_policy_values_)
-      << GetLevelStr() << " str " << policy_name << " = " << string_value;
+      << "  " << policy_name << " = " << string_value;
 
   // Create proto and set value.
   em::StringPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -144,9 +143,9 @@ void UserPolicyEncoder::EncodeStringList(
   }
 
   if (log_policy_values_ && LOG_IS_ON(INFO)) {
-    LOG(INFO) << GetLevelStr() << " strlist " << policy_name;
+    LOG(INFO) << "  " << policy_name << " = ";
     for (const std::string& value : string_values)
-      LOG(INFO) << "  " << value;
+      LOG(INFO) << "    " << value;
   }
 
   // Create proto and set value.

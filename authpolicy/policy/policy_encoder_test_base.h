@@ -30,6 +30,9 @@ class PolicyEncoderTestBase : public ::testing::Test {
   ~PolicyEncoderTestBase() override {}
 
  protected:
+  // Set registry key base path at which values are set (for extension policy).
+  void SetPath(std::initializer_list<const char*> path) { path_ = path; }
+
   // Clears |policy|, encodes |value| as value for the boolean policy |key| and
   // marks |key| as handled.
   void EncodeBoolean(T_POLICY* policy, const char* key, bool value) {
@@ -60,9 +63,10 @@ class PolicyEncoderTestBase : public ::testing::Test {
       value_dict->SetValue(base::IntToString(n + 1),
                            base::MakeUnique<base::StringValue>(value[n]));
     }
-    RegistryDict root_dict;
-    root_dict.SetKey(key, std::move(value_dict));
-    EncodeDict(policy, &root_dict);
+    std::unique_ptr<RegistryDict> root_dict;
+    RegistryDict* dict = MakeRegistryDictTree(&root_dict);
+    dict->SetKey(key, std::move(value_dict));
+    EncodeDict(policy, root_dict.get());
     MarkHandled(key);
   }
 
@@ -74,16 +78,34 @@ class PolicyEncoderTestBase : public ::testing::Test {
   virtual void EncodeDict(T_POLICY* policy, const RegistryDict* dict) = 0;
 
  private:
+  // Creates a RegistryDict sequence along |path_| with |root_dict| at the root
+  // and the return value at the leaf.
+  RegistryDict* MakeRegistryDictTree(std::unique_ptr<RegistryDict>* root_dict) {
+    *root_dict = base::MakeUnique<RegistryDict>();
+    RegistryDict* curr_dict = root_dict->get();
+    for (const char* subkey : path_) {
+      curr_dict->SetKey(subkey, base::MakeUnique<RegistryDict>());
+      curr_dict = curr_dict->GetKey(subkey);
+    }
+    return curr_dict;
+  }
+
   // Clears |policy|, encodes |value| as value for the given |key| and marks
   // |key| as handled.
   void EncodeValue(T_POLICY* policy,
                    const char* key,
                    std::unique_ptr<base::Value> value) {
-    RegistryDict dict;
-    dict.SetValue(key, std::move(value));
-    EncodeDict(policy, &dict);
+    std::unique_ptr<RegistryDict> root_dict;
+    RegistryDict* dict = MakeRegistryDictTree(&root_dict);
+    dict->SetValue(key, std::move(value));
+    EncodeDict(policy, root_dict.get());
     MarkHandled(key);
   }
+
+  // Registry key path at which values are set, e.g.
+  //   {"gihmafigllmhbppdfjnfecimiohcljba", "Policy"}
+  // for extension policy.
+  std::vector<const char*> path_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyEncoderTestBase);
 };

@@ -143,6 +143,7 @@ bool EncodeDeviceOffHoursIntervalProto(const base::Value& value,
 
 void DevicePolicyEncoder::EncodePolicy(
     em::ChromeDeviceSettingsProto* policy) const {
+  LOG_IF(INFO, log_policy_values_) << "Device policy";
   EncodeLoginPolicies(policy);
   EncodeNetworkPolicies(policy);
   EncodeReportingPolicies(policy);
@@ -639,7 +640,7 @@ void DevicePolicyEncoder::EncodeBoolean(
   }
 
   LOG_IF(INFO, log_policy_values_)
-      << " bool " << policy_name << " = " << (bool_value ? "true" : "false");
+      << "  " << policy_name << " = " << (bool_value ? "true" : "false");
 
   // Create proto and set value.
   set_policy(bool_value);
@@ -659,8 +660,7 @@ void DevicePolicyEncoder::EncodeInteger(
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_)
-      << " int " << policy_name << " = " << int_value;
+  LOG_IF(INFO, log_policy_values_) << "  " << policy_name << " = " << int_value;
 
   // Create proto and set value.
   set_policy(int_value);
@@ -681,7 +681,7 @@ void DevicePolicyEncoder::EncodeString(
   }
 
   LOG_IF(INFO, log_policy_values_)
-      << " str " << policy_name << " = " << string_value;
+      << "  " << policy_name << " = " << string_value;
 
   // Create proto and set value.
   set_policy(string_value);
@@ -712,9 +712,9 @@ void DevicePolicyEncoder::EncodeStringList(
   }
 
   if (log_policy_values_ && LOG_IS_ON(INFO)) {
-    LOG(INFO) << " strlist " << policy_name;
+    LOG(INFO) << "  " << policy_name;
     for (const std::string& value : string_values)
-      LOG(INFO) << "  " << value;
+      LOG(INFO) << "    " << value;
   }
 
   // Create proto and set values.
@@ -728,7 +728,7 @@ void DevicePolicyEncoder::HandleUnsupported(const char* policy_name) const {
     return;
 
   LOG_IF(INFO, log_policy_values_)
-      << "Ignoring unsupported policy '" << policy_name << "'.";
+      << "  Ignoring unsupported policy '" << policy_name << "'.";
 }
 
 }  // namespace policy

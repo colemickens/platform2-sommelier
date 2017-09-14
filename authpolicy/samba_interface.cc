@@ -251,6 +251,17 @@ bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
   return true;
 }
 
+// Parses |gpo_policy_data| from |gpo_policy_data_blob|. Returns ERROR_NONE on
+// success. Returns ERROR_PARSE_FAILED and prints an error on failure.
+ErrorType ParsePolicyData(const std::string& gpo_policy_data_blob,
+                          protos::GpoPolicyData* gpo_policy_data) {
+  if (!gpo_policy_data->ParseFromString(gpo_policy_data_blob)) {
+    LOG(ERROR) << "Failed to parse policy data from string";
+    return ERROR_PARSE_FAILED;
+  }
+  return ERROR_NONE;
+}
+
 }  // namespace
 
 SambaInterface::SambaInterface(
@@ -520,8 +531,8 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
-                                        std::string* policy_blob) {
+ErrorType SambaInterface::FetchUserGpos(
+    const std::string& account_id_key, protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
   SetUser(account_id_key);
 
@@ -558,15 +569,18 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
   if (error != ERROR_NONE)
     return error;
 
-  // Parse GPOs and store them in a user policy protobuf.
-  error = ParseGposIntoProtobuf(gpo_file_paths, kCmdParseUserPreg, policy_blob);
+  // Parse GPOs and store them in a user+extension policy protobuf.
+  std::string gpo_policy_data_blob;
+  error = ParseGposIntoProtobuf(
+      gpo_file_paths, kCmdParseUserPreg, &gpo_policy_data_blob);
   if (error != ERROR_NONE)
     return error;
 
-  return ERROR_NONE;
+  return ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
 }
 
-ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
+ErrorType SambaInterface::FetchDeviceGpos(
+    protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
 
   // Write Samba configuration file.
@@ -609,13 +623,14 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
   if (error != ERROR_NONE)
     return error;
 
-  // Parse GPOs and store them in a device policy protobuf.
-  error =
-      ParseGposIntoProtobuf(gpo_file_paths, kCmdParseDevicePreg, policy_blob);
+  // Parse GPOs and store them in a device+extension policy protobuf.
+  std::string gpo_policy_data_blob;
+  error = ParseGposIntoProtobuf(
+      gpo_file_paths, kCmdParseDevicePreg, &gpo_policy_data_blob);
   if (error != ERROR_NONE)
     return error;
 
-  return ERROR_NONE;
+  return ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
 }
 
 void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {

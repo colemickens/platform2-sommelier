@@ -17,12 +17,24 @@ namespace policy {
 
 class RegistryDict;
 
-// Gets the Chrome OS or the Chromium OS registry key, depending on the branding
-// of the build.
-std::string GetRegistryKey();
+// Registry key path for user/device policy.
+extern const char kKeyUserDevice[];
 
-// Checks a PReg file for existence and loads it into |dict|.
-bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict);
+// Registry key path for Chrome extension policy.
+extern const char kKeyExtensions[];
+
+// Registry key for recommended user and extension policy.
+extern const char kKeyRecommended[];
+
+// Registry key for mandatory extension policy. Note that mandatory user
+// policy doesn't get any extension.
+extern const char kKeyMandatoryExtension[];
+
+// Checks a PReg file for existence and loads all entries in the branch with
+// root |registry_key| into |dict|.
+bool LoadPRegFile(const base::FilePath& preg_file,
+                  const char* registry_key,
+                  RegistryDict* dict);
 
 // Similar to base::Value::GetAsBoolean(), but in addition it converts int
 // values of 0 or 1 to bool. Returns true on success and stores the output in
