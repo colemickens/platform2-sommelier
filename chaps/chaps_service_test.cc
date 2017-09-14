@@ -467,8 +467,8 @@ TEST_F(TestService, SetAttributeValue) {
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, FlushModifiableObject(_))
-    .WillOnce(Return(false))
-    .WillRepeatedly(Return(true));
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(object_, SetAttributes(_, 1))
     .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
     .WillRepeatedly(Return(CKR_OK));

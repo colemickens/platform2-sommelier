@@ -418,8 +418,8 @@ uint32_t ChapsServiceImpl::SetAttributeValue(
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = object->SetAttributes(tmp.attributes(), tmp.num_attributes());
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  LOG_CK_RV_AND_RETURN_IF(!session->FlushModifiableObject(object),
-                          CKR_FUNCTION_FAILED);
+  result = session->FlushModifiableObject(object);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 

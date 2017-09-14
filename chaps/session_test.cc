@@ -779,9 +779,9 @@ TEST_F(TestSession, Flush) {
   EXPECT_CALL(token_pool_, Flush(_))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_FALSE(session_->FlushModifiableObject(&token_object));
-  EXPECT_TRUE(session_->FlushModifiableObject(&token_object));
-  EXPECT_TRUE(session_->FlushModifiableObject(&session_object));
+  EXPECT_NE(session_->FlushModifiableObject(&token_object), CKR_OK);
+  EXPECT_EQ(session_->FlushModifiableObject(&token_object), CKR_OK);
+  EXPECT_EQ(session_->FlushModifiableObject(&session_object), CKR_OK);
 }
 
 TEST_F(TestSession, GenerateRSAWithTPM) {

@@ -142,11 +142,11 @@ bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
   return true;
 }
 
-bool SessionImpl::FlushModifiableObject(Object* object) {
+CK_RV SessionImpl::FlushModifiableObject(Object* object) {
   CHECK(object);
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  return pool->Flush(object);
+  return pool->Flush(object) ? CKR_OK : CKR_FUNCTION_FAILED;
 }
 
 CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
