@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
@@ -36,6 +37,9 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
   bool GetString(const std::string& path,
                  const std::string& prop,
                  std::string* val_out) override;
+
+  // CrosConfigInterface:
+  std::vector<std::string> GetModelNames() const override;
 
  private:
   using PathProp = std::pair<std::string, std::string>;

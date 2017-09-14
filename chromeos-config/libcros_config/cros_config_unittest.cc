@@ -21,26 +21,35 @@ class CrosConfigTest : public testing::Test {
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath("invalid-file");
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyro"));
+  ASSERT_FALSE(cros_config_.InitForHost(filepath, "pyro"));
 }
 
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyro"));
+  ASSERT_FALSE(cros_config_.InitForHost(filepath, "pyro"));
 }
 
 TEST_F(CrosConfigTest, CheckBadStruct) {
   base::FilePath filepath("test_bad_struct.dtb");
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto"));
+  ASSERT_FALSE(cros_config_.InitForHost(filepath, "pyto"));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath("test.dtb");
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model"));
+  ASSERT_FALSE(cros_config_.InitForHost(filepath, "no-model"));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
   std::string val;
   ASSERT_FALSE(cros_config_.GetString("/", "wallpaper", &val));
+}
+
+TEST_F(CrosConfigTest, CheckModelNamesNoInit) {
+  std::string val;
+  ASSERT_EQ(cros_config_.GetModelNames().size(), 0);
 }
 
 TEST_F(CrosConfigTest, CheckWrongPath) {
@@ -60,6 +69,14 @@ TEST_F(CrosConfigTest, CheckCorrectModel) {
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("default", val);
+}
+
+TEST_F(CrosConfigTest, CheckGetModelNames) {
+  InitConfig();
+  std::vector<std::string> models = cros_config_.GetModelNames();
+  ASSERT_EQ(models.size(), 2);
+  ASSERT_EQ(models[0], "pyro");
+  ASSERT_EQ(models[1], "reef");
 }
 
 int main(int argc, char **argv) {

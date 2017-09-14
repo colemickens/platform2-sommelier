@@ -32,10 +32,22 @@ CrosConfig::CrosConfig() {}
 CrosConfig::~CrosConfig() {}
 
 bool CrosConfig::Init() {
+  return InitModel();
+}
+
+bool CrosConfig::InitModel() {
   const base::FilePath::CharType* const argv[] = {"mosys", "platform", "model"};
   base::CommandLine cmdline(arraysize(argv), argv);
 
   return InitCommon(base::FilePath(kConfigDtbPath), cmdline);
+}
+
+bool CrosConfig::InitForHost(const base::FilePath& filepath,
+                             const std::string& model) {
+  const base::FilePath::CharType* const argv[] = {"echo", model.c_str()};
+  base::CommandLine cmdline(arraysize(argv), argv);
+
+  return InitCommon(filepath, cmdline);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
@@ -48,8 +60,12 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
 
 bool CrosConfig::GetString(const std::string &path, const std::string &prop,
                            std::string* val) {
-  if (!inited_) {
-    LOG(ERROR) << "Init() must be called before accessing configuration";
+  if (!InitCheck()) {
+    return false;
+  }
+
+  if (model_offset_ < 0) {
+    LOG(ERROR) << "Please specify the model to access.";
     return false;
   }
 
@@ -82,6 +98,23 @@ bool CrosConfig::GetString(const std::string &path, const std::string &prop,
   return true;
 }
 
+std::vector<std::string> CrosConfig::GetModelNames() const {
+  std::vector<std::string> models;
+
+  if (!InitCheck()) {
+    return models;
+  }
+
+  const void* blob = blob_.c_str();
+
+  int model_node;
+  fdt_for_each_subnode(model_node, blob, models_offset_) {
+    models.push_back(fdt_get_name(blob, model_node, NULL));
+  }
+
+  return models;
+}
+
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
   // Many systems will not have a config database (yet), so just skip all the
@@ -109,21 +142,31 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
-  int node = fdt_path_offset(blob, kModelNodePath);
-  if (node < 0) {
+  models_offset_ = fdt_path_offset(blob, kModelNodePath);
+  if (models_offset_ < 0) {
     LOG(ERROR) << "Cannot find " << kModelNodePath << " node: "
-               << fdt_strerror(node);
+               << fdt_strerror(models_offset_);
     return false;
   }
-  node = fdt_subnode_offset(blob, node, model_.c_str());
-  if (node < 0) {
-    LOG(ERROR) << "Cannot find " << model_ << " node: " << fdt_strerror(node);
-    return false;
+  if (!model_.empty()) {
+    int node = fdt_subnode_offset(blob, models_offset_, model_.c_str());
+    if (node < 0) {
+      LOG(ERROR) << "Cannot find " << model_ << " node: " << fdt_strerror(node);
+      return false;
+    }
+    model_offset_ = node;
+    LOG(INFO) << "Using master configuration for model " << model_;
   }
-  model_offset_ = node;
   inited_ = true;
-  LOG(INFO) << "Using master configuration for model " << model_;
 
+  return true;
+}
+
+bool CrosConfig::InitCheck() const {
+  if (!inited_) {
+    LOG(ERROR) << "Init*() must be called before accessing configuration";
+    return false;
+  }
   return true;
 }
 

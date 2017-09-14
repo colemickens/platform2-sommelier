@@ -6,6 +6,7 @@
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_INTERFACE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
@@ -18,7 +19,9 @@ class CrosConfigInterface {
   virtual ~CrosConfigInterface() {}
 
   // Obtain a config property.
-  // This returns a property for the current board model.
+  // This returns a property for the current board model. This can only be
+  // called if Init*() was called, and either InitModel was called OR InitHost
+  // was called with a valid model name.
   // @path: Path to property ("/" for a property at the top of the model
   // hierarchy). The path specifies the node that contains the property to be
   // accessed.
@@ -32,6 +35,12 @@ class CrosConfigInterface {
   virtual bool GetString(const std::string& path,
                          const std::string& prop,
                          std::string* val_out) = 0;
+
+  // Obtain a list of all model names
+  // This will return a list of all model names in a config, or an empty vector.
+  // This much be called after Init*().
+  // @return A list of all models in a config
+  virtual std::vector<std::string> GetModelNames() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosConfigInterface);
