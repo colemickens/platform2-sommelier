@@ -10,4 +10,26 @@
 
 INSTALL_ROOT=$(dirname "$0")
 
-${INSTALL_ROOT}/usr/bin/cros_installer postinst "${INSTALL_ROOT}" $@
+# Set up the mount points userland needs/expects.
+MOUNTS="/proc /dev /sys /tmp /run"
+
+cleanup() {
+  local d
+  for d in ${MOUNTS}; do
+    umount -lf "./${d}" || :
+  done
+}
+
+main() {
+  cd "${INSTALL_ROOT}" || exit 1
+
+  trap cleanup EXIT
+
+  local d
+  for d in ${MOUNTS}; do
+    mount -n --bind "${d}" "./${d}"
+  done
+
+  chroot . /usr/bin/cros_installer postinst "/" "$@"
+}
+main "$@"
