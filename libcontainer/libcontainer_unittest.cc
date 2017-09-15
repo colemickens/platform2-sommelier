@@ -26,6 +26,7 @@ struct mount_args {
   char* filesystemtype;
   unsigned long mountflags;
   const void* data;
+  bool outside_mount;
 };
 static struct mount_args mount_call_args[5];
 static int mount_called;
@@ -36,6 +37,7 @@ struct mknod_args {
   dev_t dev;
 };
 static struct mknod_args mknod_call_args;
+static bool mknod_called;
 static dev_t stat_rdev_ret;
 
 static int kill_called;
@@ -47,6 +49,7 @@ static int minijail_net_called;
 static int minijail_pids_called;
 static int minijail_run_as_init_called;
 static int minijail_user_called;
+static int minijail_cgroups_called;
 static int minijail_wait_called;
 static int minijail_reset_signal_mask_called;
 static int mount_ret;
@@ -211,6 +214,7 @@ FIXTURE_SETUP(container_test) {
   memset(&mount_call_args, 0, sizeof(mount_call_args));
   mount_called = 0;
   memset(&mknod_call_args, 0, sizeof(mknod_call_args));
+  mknod_called = false;
   mkdtemp_root = nullptr;
 
   memset(&gmcg, 0, sizeof(gmcg));
@@ -237,6 +241,7 @@ FIXTURE_SETUP(container_test) {
   minijail_pids_called = 0;
   minijail_run_as_init_called = 0;
   minijail_user_called = 0;
+  minijail_cgroups_called = 0;
   minijail_wait_called = 0;
   minijail_reset_signal_mask_called = 0;
   mount_ret = 0;
@@ -247,6 +252,8 @@ FIXTURE_SETUP(container_test) {
   self->mount_flags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
   self->config = container_config_create();
+  container_config_uid_map(self->config, "0 0 4294967295");
+  container_config_gid_map(self->config, "0 0 4294967295");
   container_config_rootfs(self->config, self->rootfs);
   container_config_program_argv(self->config, pargs, 1);
   container_config_alt_syscall_table(self->config, "testsyscalltable");
@@ -263,7 +270,7 @@ FIXTURE_SETUP(container_test) {
                              1000,
                              0x666,
                              0,
-                             1);
+                             0);
   container_config_add_device(self->config,
                               'c',
                               "/dev/foo",
@@ -322,25 +329,26 @@ FIXTURE_TEARDOWN(container_test) {
 TEST_F(container_test, test_mount_tmp_start) {
   char* path;
 
-  EXPECT_EQ(0, container_start(self->container, self->config));
-  EXPECT_EQ(2, mount_called);
-  EXPECT_EQ(0, strcmp(mount_call_args[1].source, "tmpfs"));
-  EXPECT_LT(0, asprintf(&path, "%s/root/tmp", mkdtemp_root));
-  EXPECT_EQ(0, strcmp(mount_call_args[1].target, path));
-  free(path);
-  EXPECT_EQ(0, strcmp(mount_call_args[1].filesystemtype, "tmpfs"));
+  ASSERT_EQ(0, container_start(self->container, self->config));
+  ASSERT_EQ(2, mount_called);
+  EXPECT_EQ(false, mount_call_args[1].outside_mount);
+  EXPECT_STREQ("tmpfs", mount_call_args[1].source);
+  EXPECT_STREQ("/tmp", mount_call_args[1].target);
+  EXPECT_STREQ("tmpfs", mount_call_args[1].filesystemtype);
   EXPECT_EQ(mount_call_args[1].mountflags,
             static_cast<unsigned long>(self->mount_flags));
-  EXPECT_EQ(mount_call_args[1].data, nullptr);
+  EXPECT_EQ(nullptr, mount_call_args[1].data);
 
   EXPECT_EQ(1, minijail_ipc_called);
   EXPECT_EQ(1, minijail_vfs_called);
   EXPECT_EQ(1, minijail_net_called);
   EXPECT_EQ(1, minijail_pids_called);
   EXPECT_EQ(1, minijail_user_called);
+  EXPECT_EQ(1, minijail_cgroups_called);
   EXPECT_EQ(1, minijail_run_as_init_called);
   EXPECT_EQ(1, gmcg.deny_all_devs_called_count);
 
+  ASSERT_EQ(2, gmcg.add_dev_called_count);
   EXPECT_EQ(1, gmcg.add_dev_allow[0]);
   EXPECT_EQ(245, gmcg.add_dev_major[0]);
   EXPECT_EQ(2, gmcg.add_dev_minor[0]);
@@ -351,14 +359,15 @@ TEST_F(container_test, test_mount_tmp_start) {
 
   EXPECT_EQ(1, gmcg.add_dev_allow[1]);
   EXPECT_EQ(1, gmcg.add_dev_major[1]);
-  EXPECT_EQ(3, gmcg.add_dev_minor[1]);
+  EXPECT_EQ(-1, gmcg.add_dev_minor[1]);
   EXPECT_EQ(1, gmcg.add_dev_read[1]);
   EXPECT_EQ(1, gmcg.add_dev_write[1]);
   EXPECT_EQ(0, gmcg.add_dev_modify[1]);
   EXPECT_EQ('c', gmcg.add_dev_type[1]);
 
+  ASSERT_EQ(true, mknod_called);
   EXPECT_LT(0, asprintf(&path, "%s/root/dev/null", mkdtemp_root));
-  EXPECT_EQ(0, strcmp(mknod_call_args.pathname, path));
+  EXPECT_STREQ(path, mknod_call_args.pathname);
   free(path);
   EXPECT_EQ(mknod_call_args.mode,
             static_cast<mode_t>(S_IRWXU | S_IRWXG | S_IFCHR));
@@ -376,7 +385,7 @@ TEST_F(container_test, test_mount_tmp_start) {
   EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config));
 
   ASSERT_NE(nullptr, minijail_alt_syscall_table);
-  EXPECT_EQ(0, strcmp(minijail_alt_syscall_table, "testsyscalltable"));
+  EXPECT_STREQ("testsyscalltable", minijail_alt_syscall_table);
 
   EXPECT_EQ(0, container_wait(self->container));
   EXPECT_EQ(1, minijail_wait_called);
@@ -384,7 +393,7 @@ TEST_F(container_test, test_mount_tmp_start) {
 }
 
 TEST_F(container_test, test_kill_container) {
-  EXPECT_EQ(0, container_start(self->container, self->config));
+  ASSERT_EQ(0, container_start(self->container, self->config));
   EXPECT_EQ(0, container_kill(self->container));
   EXPECT_EQ(1, kill_called);
   EXPECT_EQ(SIGKILL, kill_sig);
@@ -407,11 +416,16 @@ int mount(const char* source,
   mount_call_args[mount_called].filesystemtype = strdup(filesystemtype);
   mount_call_args[mount_called].mountflags = mountflags;
   mount_call_args[mount_called].data = data;
+  mount_call_args[mount_called].outside_mount = true;
   ++mount_called;
   return 0;
 }
 
 int umount(const char* target) {
+  return 0;
+}
+
+int umount2(const char* target, int flags) {
   return 0;
 }
 
@@ -429,6 +443,7 @@ int mknod(const char* pathname, mode_t mode, dev_t dev)
 #else
   mknod_call_args.dev = dev;
 #endif
+  mknod_called = true;
   return 0;
 }
 
@@ -474,6 +489,10 @@ int unlink(const char* pathname) {
   return 0;
 }
 
+uid_t getuid(void) {
+  return 0;
+}
+
 /* Minijail stubs */
 struct minijail* minijail_new(void) {
   return (struct minijail*)0x55;
@@ -481,11 +500,26 @@ struct minijail* minijail_new(void) {
 
 void minijail_destroy(struct minijail* j) {}
 
-int minijail_mount(struct minijail* j,
-                   const char* src,
-                   const char* dest,
-                   const char* type,
-                   unsigned long flags) {
+int minijail_mount_with_data(struct minijail* j,
+                             const char* source,
+                             const char* target,
+                             const char* filesystemtype,
+                             unsigned long mountflags,
+                             const char* data) {
+  if (mount_called >= 5)
+    return 0;
+
+  mount_call_args[mount_called].source = strdup(source);
+  mount_call_args[mount_called].target = strdup(target);
+  mount_call_args[mount_called].filesystemtype = strdup(filesystemtype);
+  mount_call_args[mount_called].mountflags = mountflags;
+  mount_call_args[mount_called].data = data;
+  mount_call_args[mount_called].outside_mount = false;
+  ++mount_called;
+  return 0;
+}
+
+int minijail_namespace_user_disable_setgroups(struct minijail* j) {
   return 0;
 }
 
@@ -507,6 +541,10 @@ void minijail_namespace_pids(struct minijail* j) {
 
 void minijail_namespace_user(struct minijail* j) {
   ++minijail_user_called;
+}
+
+void minijail_namespace_cgroups(struct minijail* j) {
+  ++minijail_cgroups_called;
 }
 
 int minijail_uidmap(struct minijail* j, const char* uidmap) {
@@ -559,6 +597,8 @@ void minijail_reset_signal_mask(struct minijail* j) {
 }
 
 void minijail_skip_remount_private(struct minijail* j) {}
+
+void minijail_close_open_fds(struct minijail* j) {}
 
 }  // extern "C"
 

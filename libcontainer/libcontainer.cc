@@ -708,9 +708,12 @@ void container_destroy(struct container* c) {
  */
 static int get_userns_outside_id(const char* map, int id) {
   char *map_copy, *mapping, *saveptr1, *saveptr2;
-  int inside, outside, length;
+  long inside, outside, length;
   int result = 0;
   errno = 0;
+
+  if (!map)
+    return id;
 
   if (asprintf(&map_copy, "%s", map) < 0)
     return -ENOMEM;
