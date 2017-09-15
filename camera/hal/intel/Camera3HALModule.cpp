@@ -147,8 +147,10 @@ static int hal_dev_close(hw_device_t* device)
     PERFORMANCE_HAL_ATRACE();
     HAL_TRACE_CALL(1);
 
-    if (!device)
+    if (!device || sInstanceCount == 0) {
+        LOGW("hal close, instance count %d", sInstanceCount);
         return -EINVAL;
+    }
 
     camera3_device_t *camera3_dev = (struct camera3_device *)device;
     Camera3HAL* camera_priv = (Camera3HAL*)(camera3_dev->priv);
