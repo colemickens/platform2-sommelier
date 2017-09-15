@@ -37,7 +37,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool Init();
 
   // Prepares the configuration system for use accessing a given model (used by
-  // the host build system).
+  // the host build system). Note that - can be used to read from stdin.
   // @filepath: Path to configuration .dtb file.
   // @model: Model name (e.g. 'reef') or empty string.
   // @return true if OK, false on error.

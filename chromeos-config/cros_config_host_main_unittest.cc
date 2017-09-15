@@ -42,6 +42,13 @@ TEST(CrosConfigTest, MissingKey) {
   EXPECT_FALSE(success);
 }
 
+TEST(CrosConfigTest, FileDoesntExist) {
+  std::string output;
+  bool success = base::GetAppOutput(
+      {base_command, "--config_file=nope.dtb", "--list_models"}, &output);
+  EXPECT_FALSE(success);
+}
+
 TEST(CrosConfigTest, GetString) {
   std::string output;
   bool success = base::GetAppOutput(
@@ -56,6 +63,24 @@ TEST(CrosConfigTest, ListModels) {
       {base_command, "--model=pyro", "--list_models", "test.dtb"}, &output);
   EXPECT_TRUE(success);
   EXPECT_EQ("pyro\nreef\n", output);
+}
+
+TEST(CrosConfigTest, StdinGetString) {
+  std::string command = "cat test.dtb | " + std::string(base_command) +
+    " --model=pyro - / wallpaper";
+  std::string output;
+  bool success = base::GetAppOutput({"/bin/bash", "-c", command}, &output);
+  EXPECT_EQ("default", output);
+  EXPECT_TRUE(success);
+}
+
+TEST(CrosConfigTest, StdinListModels) {
+  std::string command = "cat test.dtb | " + std::string(base_command) +
+    " --list_models -";
+  std::string output;
+  bool success = base::GetAppOutput({"/bin/bash", "-c", command}, &output);
+  EXPECT_EQ("pyro\nreef\n", output);
+  EXPECT_TRUE(success);
 }
 
 int main(int argc, char** argv) {

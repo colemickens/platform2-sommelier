@@ -10,6 +10,8 @@
 
 #include "base/command_line.h"
 #include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/logging.h"
 #include "brillo/flag_helper.h"
 #include "chromeos-config/libcros_config/cros_config.h"
 
@@ -18,7 +20,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(model, "", "Optionally specifies which model name to use.")
 
   std::string usage = "Chrome OS Model Configuration for Host\n\nUsage: " +
-      std::string(argv[0]) + " [flags] config_filepath [path] [key]";
+      std::string(argv[0]) + " [flags] config_filepath [path] [key]\n" +
+      "Use - for config_filepath to read from stdin.";
   brillo::FlagHelper::Init(argc, argv, usage);
 
   brillo::CrosConfig cros_config;
@@ -41,6 +44,11 @@ int main(int argc, char* argv[]) {
   }
 
   base::FilePath config_filepath = base::FilePath(args[0]);
+  if (config_filepath.value() != "-" && !base::PathExists(config_filepath)) {
+    LOG(ERROR) << "File doesn't exist: " << args[0];
+    return 1;
+  }
+
   if (!cros_config.InitForHost(base::FilePath(config_filepath), FLAGS_model)) {
     return 1;
   }

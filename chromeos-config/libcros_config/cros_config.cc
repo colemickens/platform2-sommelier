@@ -11,6 +11,8 @@ extern "C" {
 #include <libfdt.h>
 };
 
+#include <iostream>
+#include <sstream>
 #include <string>
 
 #include <base/command_line.h>
@@ -117,10 +119,25 @@ std::vector<std::string> CrosConfig::GetModelNames() const {
 
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
-  // Many systems will not have a config database (yet), so just skip all the
-  // setup without any errors if the config file doesn't exist.
-  if (!base::PathExists(filepath)) {
-    return false;
+  // Check if filepath is - for stdin support, otherwise load from file
+  if (filepath.value() == "-") {
+    std::stringstream ss;
+    std::string line;
+    while (std::getline(std::cin, line)) {
+      ss << line << std::endl;
+    }
+    blob_ = ss.str();
+  } else {
+    // Many systems will not have a config database (yet), so just skip all the
+    // setup without any errors if the config file doesn't exist.
+    if (!base::PathExists(filepath)) {
+      return false;
+    }
+
+    if (!base::ReadFileToString(filepath, &blob_)) {
+      LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
+      return false;
+    }
   }
 
   std::string output;
@@ -130,10 +147,6 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
   base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &model_);
 
-  if (!base::ReadFileToString(filepath, &blob_)) {
-    LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
-    return false;
-  }
 
   const void* blob = blob_.c_str();
   int ret = fdt_check_header(blob);
