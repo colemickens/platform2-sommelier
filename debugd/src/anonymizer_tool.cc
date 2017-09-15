@@ -43,10 +43,20 @@ const char* const kCustomPatterns[] = {
   "(?-s)(\\[SSID=)(.+?)(\\])",  // shill
 };
 
+const char* const kNonAnonymizedMacAddresses[] = {
+  "00:00:00:00:00:00",
+  "ff:ff:ff:ff:ff:ff",
+};
+
 }  // namespace
 
 AnonymizerTool::AnonymizerTool()
-    : custom_patterns_(arraysize(kCustomPatterns)) {}
+    : custom_patterns_(arraysize(kCustomPatterns)) {
+  // Identity-map these, so we don't mangle them.
+  for (const char* mac : kNonAnonymizedMacAddresses) {
+    mac_addresses_[mac] = mac;
+  }
+}
 
 string AnonymizerTool::Anonymize(const string& input) {
   string anonymized = AnonymizeMACAddresses(input);
@@ -84,7 +94,8 @@ string AnonymizerTool::AnonymizeMACAddresses(const string& input) {
     if (replacement_mac.empty()) {
       // If not found, build up a replacement MAC address by generating a new
       // NIC part.
-      int mac_id = mac_addresses_.size();
+      int mac_id = mac_addresses_.size() -
+                   arraysize(kNonAnonymizedMacAddresses);
       replacement_mac = base::StringPrintf("%s:%02x:%02x:%02x",
                                            oui.c_str(),
                                            (mac_id & 0x00ff0000) >> 16,

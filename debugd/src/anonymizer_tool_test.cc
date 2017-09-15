@@ -46,6 +46,8 @@ TEST_F(AnonymizerToolTest, AnonymizeMACAddresses) {
   EXPECT_EQ("foo\nbar\n", AnonymizeMACAddresses("foo\nbar\n"));
   EXPECT_EQ("11:22:33:44:55", AnonymizeMACAddresses("11:22:33:44:55"));
   EXPECT_EQ("aa:bb:cc:00:00:01", AnonymizeMACAddresses("aa:bb:cc:dd:ee:ff"));
+  EXPECT_EQ("00:00:00:00:00:00", AnonymizeMACAddresses("00:00:00:00:00:00"));
+  EXPECT_EQ("ff:ff:ff:ff:ff:ff", AnonymizeMACAddresses("ff:ff:ff:ff:ff:ff"));
   EXPECT_EQ("BSSID: aa:bb:cc:00:00:01 in the middle\n"
             "bb:cc:dd:00:00:02 start of line\n"
             "end of line aa:bb:cc:00:00:01\n"
