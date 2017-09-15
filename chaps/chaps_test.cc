@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "chaps/attributes.h"
-#include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
 using std::string;
@@ -876,6 +875,23 @@ TEST(TestLogin, LoginFail) {
   EXPECT_CALL(proxy, Login(_, 1, CKU_USER, _))
       .WillOnce(Return(CKR_PIN_INVALID));
   EXPECT_EQ(CKR_PIN_INVALID, C_Login(1, CKU_USER, NULL, 0));
+}
+
+TEST(TestLogin, LoginNoPrivateWait) {
+  ChapsProxyMock proxy(true);
+  SetRetryTimeParameters(10 /* timeout_ms */, 0 /* delay_ms */);
+  EXPECT_CALL(proxy, Login(_, _, _, _))
+      .WillOnce(Return(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS))
+      .WillRepeatedly(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_Login(1, CKU_USER, NULL, 0));
+}
+
+TEST(TestLogin, LoginNoPrivateTimeout) {
+  ChapsProxyMock proxy(true);
+  SetRetryTimeParameters(5 /* timeout_ms */, 0 /* delay_ms */);
+  EXPECT_CALL(proxy, Login(_, _, _, _))
+      .WillRepeatedly(Return(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS));
+  EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS, C_Login(1, CKU_USER, NULL, 0));
 }
 
 // Logout Tests

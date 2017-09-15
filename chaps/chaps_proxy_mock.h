@@ -23,6 +23,8 @@ extern void EnableMockProxy(ChapsInterface* proxy,
                             brillo::SecureBlob* isolate_credential,
                             bool is_initialized);
 extern void DisableMockProxy();
+extern void SetRetryTimeParameters(uint32_t timeout_ms,
+                                   uint32_t delay_ms);
 
 // ChapsProxyMock is a mock of ChapsInterface.
 class ChapsProxyMock : public ChapsInterface {
