@@ -171,7 +171,7 @@
  * E.g., #define TH_LOG_ENABLED 1
  * If no definition is provided, logging is enabled by default.
  */
-#define TH_LOG  TEST_API(TH_LOG)
+#define TH_LOG TEST_API(TH_LOG)
 
 /*
  * Internal implementation.
@@ -180,140 +180,123 @@
 
 /* Utilities exposed to the test definitions */
 #ifndef TH_LOG_STREAM
-#  define TH_LOG_STREAM stderr
+#define TH_LOG_STREAM stderr
 #endif
 
 #ifndef TH_LOG_ENABLED
-#  define TH_LOG_ENABLED 1
+#define TH_LOG_ENABLED 1
 #endif
 
-#define _TH_LOG(fmt, ...) do { \
-  if (TH_LOG_ENABLED) \
-    __TH_LOG(fmt, ##__VA_ARGS__); \
-} while (0)
+#define _TH_LOG(fmt, ...)           \
+  do {                              \
+    if (TH_LOG_ENABLED)             \
+      __TH_LOG(fmt, ##__VA_ARGS__); \
+  } while (0)
 
 /* Unconditional logger for internal use. */
-#define __TH_LOG(fmt, ...) \
-    fprintf(TH_LOG_STREAM, "%s:%d:%s:" fmt "\n", \
-            __FILE__, __LINE__, _metadata->name, ##__VA_ARGS__)
+#define __TH_LOG(fmt, ...)      \
+  fprintf(TH_LOG_STREAM,        \
+          "%s:%d:%s:" fmt "\n", \
+          __FILE__,             \
+          __LINE__,             \
+          _metadata->name,      \
+          ##__VA_ARGS__)
 
 /* Defines the test function and creates the registration stub. */
-#define _TEST(test_name) \
-  static void test_name(struct __test_metadata *_metadata); \
-  static struct __test_metadata _##test_name##_object = \
-    { .name = "global." #test_name, .fn = &test_name }; \
+#define _TEST(test_name)                                                 \
+  static void test_name(struct __test_metadata* _metadata);              \
+  static struct __test_metadata _##test_name##_object = {                \
+      .name = "global." #test_name, .fn = &test_name};                   \
   static void __attribute__((constructor)) _register_##test_name(void) { \
-    __register_test(&_##test_name##_object); \
-  } \
-  static void test_name( \
-    struct __test_metadata __attribute__((unused)) *_metadata)
+    __register_test(&_##test_name##_object);                             \
+  }                                                                      \
+  static void test_name(struct __test_metadata __attribute__((unused)) * \
+                        _metadata)
 
 /* Wraps the struct name so we have one less argument to pass around. */
 #define _FIXTURE_DATA(fixture_name) struct _test_data_##fixture_name
 
 /* Called once per fixture to setup the data and register. */
-#define _FIXTURE(fixture_name) \
-  static void __attribute__((constructor)) \
+#define _FIXTURE(fixture_name)                \
+  static void __attribute__((constructor))    \
       _register_##fixture_name##_data(void) { \
-    __fixture_count++; \
-  } \
+    __fixture_count++;                        \
+  }                                           \
   _FIXTURE_DATA(fixture_name)
 
 /* Prepares the setup function for the fixture.  |_metadata| is included
  * so that ASSERT_* work as a convenience.
  */
-#define _FIXTURE_SETUP(fixture_name) \
-  void fixture_name##_setup( \
-    struct __test_metadata __attribute__((unused)) *_metadata, \
-    _FIXTURE_DATA(fixture_name) __attribute__((unused)) *self)
-#define _FIXTURE_TEARDOWN(fixture_name) \
-  void fixture_name##_teardown( \
-    struct __test_metadata __attribute__((unused)) *_metadata, \
-    _FIXTURE_DATA(fixture_name) __attribute__((unused)) *self)
+#define _FIXTURE_SETUP(fixture_name)                              \
+  void fixture_name##_setup(                                      \
+      struct __test_metadata __attribute__((unused)) * _metadata, \
+      _FIXTURE_DATA(fixture_name) __attribute__((unused)) * self)
+#define _FIXTURE_TEARDOWN(fixture_name)                           \
+  void fixture_name##_teardown(                                   \
+      struct __test_metadata __attribute__((unused)) * _metadata, \
+      _FIXTURE_DATA(fixture_name) __attribute__((unused)) * self)
 
 /* Emits test registration and helpers for fixture-based test
  * cases.
  * TODO(wad) register fixtures on dedicated test lists.
  */
-#define _TEST_F(fixture_name, test_name) \
-  static void fixture_name##_##test_name( \
-    struct __test_metadata *_metadata, \
-    _FIXTURE_DATA(fixture_name) *self); \
-  static inline void wrapper_##fixture_name##_##test_name( \
-    struct __test_metadata *_metadata) { \
-    /* fixture data is allocated, setup, and torn down per call. */ \
-    _FIXTURE_DATA(fixture_name) self; \
-    memset(&self, 0, sizeof(_FIXTURE_DATA(fixture_name))); \
-    fixture_name##_setup(_metadata, &self); \
-    /* Let setup failure terminate early. */ \
-    if (!_metadata->passed) return; \
-    fixture_name##_##test_name(_metadata, &self); \
-    fixture_name##_teardown(_metadata, &self); \
-  } \
-  static struct __test_metadata _##fixture_name##_##test_name##_object = { \
-    .name = #fixture_name "." #test_name, \
-    .fn = &wrapper_##fixture_name##_##test_name, \
-  }; \
-  static void __attribute__((constructor)) \
-      _register_##fixture_name##_##test_name(void) { \
-    __register_test(&_##fixture_name##_##test_name##_object); \
-  } \
-  static void fixture_name##_##test_name( \
-    struct __test_metadata __attribute__((unused)) *_metadata, \
-    _FIXTURE_DATA(fixture_name) __attribute__((unused)) *self)
+#define _TEST_F(fixture_name, test_name)                                      \
+  static void fixture_name##_##test_name(struct __test_metadata* _metadata,   \
+                                         _FIXTURE_DATA(fixture_name) * self); \
+  static inline void wrapper_##fixture_name##_##test_name(                    \
+      struct __test_metadata* _metadata) {                                    \
+    /* fixture data is allocated, setup, and torn down per call. */           \
+    _FIXTURE_DATA(fixture_name) self;                                         \
+    memset(&self, 0, sizeof(_FIXTURE_DATA(fixture_name)));                    \
+    fixture_name##_setup(_metadata, &self);                                   \
+    /* Let setup failure terminate early. */                                  \
+    if (!_metadata->passed)                                                   \
+      return;                                                                 \
+    fixture_name##_##test_name(_metadata, &self);                             \
+    fixture_name##_teardown(_metadata, &self);                                \
+  }                                                                           \
+  static struct __test_metadata _##fixture_name##_##test_name##_object = {    \
+      .name = #fixture_name "." #test_name,                                   \
+      .fn = &wrapper_##fixture_name##_##test_name,                            \
+  };                                                                          \
+  static void __attribute__((constructor))                                    \
+      _register_##fixture_name##_##test_name(void) {                          \
+    __register_test(&_##fixture_name##_##test_name##_object);                 \
+  }                                                                           \
+  static void fixture_name##_##test_name(                                     \
+      struct __test_metadata __attribute__((unused)) * _metadata,             \
+      _FIXTURE_DATA(fixture_name) __attribute__((unused)) * self)
 
 /* Exports a simple wrapper to run the test harness. */
 #define _TEST_HARNESS_MAIN \
-  int main(int argc, char **argv) { return test_harness_run(argc, argv); }
+  int main(int argc, char** argv) { return test_harness_run(argc, argv); }
 
-#define _ASSERT_EQ(_expected, _seen) \
-  __EXPECT(_expected, _seen, ==, 1)
-#define _ASSERT_NE(_expected, _seen) \
-  __EXPECT(_expected, _seen, !=, 1)
-#define _ASSERT_LT(_expected, _seen) \
-  __EXPECT(_expected, _seen, <, 1)
-#define _ASSERT_LE(_expected, _seen) \
-  __EXPECT(_expected, _seen, <=, 1)
-#define _ASSERT_GT(_expected, _seen) \
-  __EXPECT(_expected, _seen, >, 1)
-#define _ASSERT_GE(_expected, _seen) \
-  __EXPECT(_expected, _seen, >=, 1)
-#define _ASSERT_NULL(_seen) \
-  __EXPECT(nullptr, _seen, ==, 1)
+#define _ASSERT_EQ(_expected, _seen) __EXPECT(_expected, _seen, ==, 1)
+#define _ASSERT_NE(_expected, _seen) __EXPECT(_expected, _seen, !=, 1)
+#define _ASSERT_LT(_expected, _seen) __EXPECT(_expected, _seen, <, 1)
+#define _ASSERT_LE(_expected, _seen) __EXPECT(_expected, _seen, <=, 1)
+#define _ASSERT_GT(_expected, _seen) __EXPECT(_expected, _seen, >, 1)
+#define _ASSERT_GE(_expected, _seen) __EXPECT(_expected, _seen, >=, 1)
+#define _ASSERT_NULL(_seen) __EXPECT(nullptr, _seen, ==, 1)
 
-#define _ASSERT_TRUE(_seen) \
-  _ASSERT_NE(0, _seen)
-#define _ASSERT_FALSE(_seen) \
-  _ASSERT_EQ(0, _seen)
-#define _ASSERT_STREQ(_expected, _seen) \
-  __EXPECT_STR(_expected, _seen, ==, 1)
-#define _ASSERT_STRNE(_expected, _seen) \
-  __EXPECT_STR(_expected, _seen, !=, 1)
+#define _ASSERT_TRUE(_seen) _ASSERT_NE(0, _seen)
+#define _ASSERT_FALSE(_seen) _ASSERT_EQ(0, _seen)
+#define _ASSERT_STREQ(_expected, _seen) __EXPECT_STR(_expected, _seen, ==, 1)
+#define _ASSERT_STRNE(_expected, _seen) __EXPECT_STR(_expected, _seen, !=, 1)
 
-#define _EXPECT_EQ(_expected, _seen) \
-  __EXPECT(_expected, _seen, ==, 0)
-#define _EXPECT_NE(_expected, _seen) \
-  __EXPECT(_expected, _seen, !=, 0)
-#define _EXPECT_LT(_expected, _seen) \
-  __EXPECT(_expected, _seen, <, 0)
-#define _EXPECT_LE(_expected, _seen) \
-  __EXPECT(_expected, _seen, <=, 0)
-#define _EXPECT_GT(_expected, _seen) \
-  __EXPECT(_expected, _seen, >, 0)
-#define _EXPECT_GE(_expected, _seen) \
-  __EXPECT(_expected, _seen, >=, 0)
+#define _EXPECT_EQ(_expected, _seen) __EXPECT(_expected, _seen, ==, 0)
+#define _EXPECT_NE(_expected, _seen) __EXPECT(_expected, _seen, !=, 0)
+#define _EXPECT_LT(_expected, _seen) __EXPECT(_expected, _seen, <, 0)
+#define _EXPECT_LE(_expected, _seen) __EXPECT(_expected, _seen, <=, 0)
+#define _EXPECT_GT(_expected, _seen) __EXPECT(_expected, _seen, >, 0)
+#define _EXPECT_GE(_expected, _seen) __EXPECT(_expected, _seen, >=, 0)
 
-#define _EXPECT_NULL(_seen) \
-  __EXPECT(nullptr, _seen, ==, 0)
-#define _EXPECT_TRUE(_seen) \
-  _EXPECT_NE(0, _seen)
-#define _EXPECT_FALSE(_seen) \
-  _EXPECT_EQ(0, _seen)
+#define _EXPECT_NULL(_seen) __EXPECT(nullptr, _seen, ==, 0)
+#define _EXPECT_TRUE(_seen) _EXPECT_NE(0, _seen)
+#define _EXPECT_FALSE(_seen) _EXPECT_EQ(0, _seen)
 
-#define _EXPECT_STREQ(_expected, _seen) \
-  __EXPECT_STR(_expected, _seen, ==, 0)
-#define _EXPECT_STRNE(_expected, _seen) \
-  __EXPECT_STR(_expected, _seen, !=, 0)
+#define _EXPECT_STREQ(_expected, _seen) __EXPECT_STR(_expected, _seen, ==, 0)
+#define _EXPECT_STRNE(_expected, _seen) __EXPECT_STR(_expected, _seen, !=, 0)
 
 /* Support an optional handler after and ASSERT_* or EXPECT_*.  The approach is
  * not thread-safe, but it should be fine in most sane test scenarios.
@@ -322,52 +305,59 @@
  * return while still providing an optional block to the API consumer.
  */
 #define OPTIONAL_HANDLER(_assert) \
-  for (; _metadata->trigger;  _metadata->trigger = __bail(_assert))
+  for (; _metadata->trigger; _metadata->trigger = __bail(_assert))
 
-#define __EXPECT(_expected, _seen, _t, _assert) do { \
-  /* Avoid multiple evaluation of the cases */ \
-  __typeof__(_expected) __exp = (_expected); \
-  __typeof__(_seen) __seen = (_seen); \
-  if (!(__exp _t __seen)) { \
-    unsigned long long __exp_print = 0; \
-    unsigned long long __seen_print = 0; \
-    /* Avoid casting complaints the scariest way we can. */ \
-    memcpy(&__exp_print, &__exp, sizeof(__exp)); \
-    memcpy(&__seen_print, &__seen, sizeof(__seen)); \
-    __TH_LOG("Expected %s (%llu) %s %s (%llu)", \
-            #_expected, __exp_print, #_t, \
-            #_seen, __seen_print); \
-    _metadata->passed = 0; \
-    /* Ensure the optional handler is triggered */ \
-    _metadata->trigger = 1; \
-  } \
-} while (0); OPTIONAL_HANDLER(_assert)
+#define __EXPECT(_expected, _seen, _t, _assert)               \
+  do {                                                        \
+    /* Avoid multiple evaluation of the cases */              \
+    __typeof__(_expected) __exp = (_expected);                \
+    __typeof__(_seen) __seen = (_seen);                       \
+    if (!(__exp _t __seen)) {                                 \
+      unsigned long long __exp_print = 0;                     \
+      unsigned long long __seen_print = 0;                    \
+      /* Avoid casting complaints the scariest way we can. */ \
+      memcpy(&__exp_print, &__exp, sizeof(__exp));            \
+      memcpy(&__seen_print, &__seen, sizeof(__seen));         \
+      __TH_LOG("Expected %s (%llu) %s %s (%llu)",             \
+               #_expected,                                    \
+               __exp_print,                                   \
+               #_t,                                           \
+               #_seen,                                        \
+               __seen_print);                                 \
+      _metadata->passed = 0;                                  \
+      /* Ensure the optional handler is triggered */          \
+      _metadata->trigger = 1;                                 \
+    }                                                         \
+  } while (0);                                                \
+  OPTIONAL_HANDLER(_assert)
 
-#define __EXPECT_STR(_expected, _seen, _t, _assert) do { \
-  const char *__exp = (_expected); \
-  const char *__seen = (_seen); \
-  if (!(strcmp(__exp, __seen) _t 0))  { \
-    __TH_LOG("Expected '%s' %s '%s'.", __exp, #_t, __seen); \
-    _metadata->passed = 0; \
-    _metadata->trigger = 1; \
-  } \
-} while (0); OPTIONAL_HANDLER(_assert)
+#define __EXPECT_STR(_expected, _seen, _t, _assert)           \
+  do {                                                        \
+    const char* __exp = (_expected);                          \
+    const char* __seen = (_seen);                             \
+    if (!(strcmp(__exp, __seen) _t 0)) {                      \
+      __TH_LOG("Expected '%s' %s '%s'.", __exp, #_t, __seen); \
+      _metadata->passed = 0;                                  \
+      _metadata->trigger = 1;                                 \
+    }                                                         \
+  } while (0);                                                \
+  OPTIONAL_HANDLER(_assert)
 
 /* Contains all the information for test execution and status checking. */
 struct __test_metadata {
-  const char *name;
-  void (*fn)(struct __test_metadata *);
+  const char* name;
+  void (*fn)(struct __test_metadata*);
   int passed;
   int trigger; /* extra handler after the evaluation */
   struct __test_metadata *prev, *next;
 };
 
 /* Storage for the (global) tests to be run. */
-static struct __test_metadata *__test_list = nullptr;
+static struct __test_metadata* __test_list = nullptr;
 static unsigned int __test_count = 0;
 static unsigned int __fixture_count = 0;
 
-static inline void __register_test(struct __test_metadata *t) {
+static inline void __register_test(struct __test_metadata* t) {
   __test_count++;
   /* Circular linked list where only prev is circular. */
   if (__test_list == nullptr) {
@@ -389,14 +379,15 @@ static inline int __bail(int for_realz) {
 }
 
 static int test_harness_run(int __attribute__((unused)) argc,
-                            char __attribute__((unused)) **argv) {
-  struct __test_metadata *t;
+                            char __attribute__((unused)) * *argv) {
+  struct __test_metadata* t;
   int ret = 0;
   unsigned int count = 0;
 
   /* TODO(wad) add optional arguments similar to gtest. */
   printf("[==========] Running %u tests from %u test cases.\n",
-          __test_count, __fixture_count + 1);
+         __test_count,
+         __fixture_count + 1);
   for (t = __test_list; t; t = t->next) {
     pid_t child_pid;
     int status;
@@ -420,8 +411,8 @@ static int test_harness_run(int __attribute__((unused)) argc,
         t->passed = 0;
         fprintf(TH_LOG_STREAM,
                 "%s: Test terminated unexpectedly by signal %d\n",
-               t->name,
-               WTERMSIG(status));
+                t->name,
+                WTERMSIG(status));
       }
     }
     printf("[     %4s ] %s\n", (t->passed ? "OK" : "FAIL"), t->name);

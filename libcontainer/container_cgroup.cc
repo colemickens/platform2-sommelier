@@ -15,340 +15,353 @@
 
 #include "libcontainer/container_cgroup.h"
 
-static const char *cgroup_names[NUM_CGROUP_TYPES] = {
-	"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"
-};
+static const char* cgroup_names[NUM_CGROUP_TYPES] = {
+    "cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"};
 
-static int open_cgroup_file(const char *cgroup_path, const char *name,
-			    bool write) {
-	int fd;
-	int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
-	char *path = nullptr;
+static int open_cgroup_file(const char* cgroup_path,
+                            const char* name,
+                            bool write) {
+  int fd;
+  int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
+  char* path = nullptr;
 
-	if (asprintf(&path, "%s/%s", cgroup_path, name) < 0)
-		return -errno;
+  if (asprintf(&path, "%s/%s", cgroup_path, name) < 0)
+    return -errno;
 
-	fd = open(path, flags, 0664);
-	if (fd == -1)
-		fd = -errno;
-	free(path);
-	return fd;
+  fd = open(path, flags, 0664);
+  if (fd == -1)
+    fd = -errno;
+  free(path);
+  return fd;
 }
 
-static int write_cgroup_file(const char *cgroup_path, const char *name,
-			     const char *str) {
-	int fd;
-	int rc = 0;
+static int write_cgroup_file(const char* cgroup_path,
+                             const char* name,
+                             const char* str) {
+  int fd;
+  int rc = 0;
 
-	fd = open_cgroup_file(cgroup_path, name, true);
-	if (fd < 0)
-		return fd;
-	const char *buffer = str;
-	size_t len = strlen(str);
-	if (write(fd, buffer, len) != static_cast<ssize_t>(len))
-		rc = -errno;
-	close(fd);
-	return rc;
+  fd = open_cgroup_file(cgroup_path, name, true);
+  if (fd < 0)
+    return fd;
+  const char* buffer = str;
+  size_t len = strlen(str);
+  if (write(fd, buffer, len) != static_cast<ssize_t>(len))
+    rc = -errno;
+  close(fd);
+  return rc;
 }
 
-static int write_cgroup_file_int(const char *cgroup_path, const char *name,
-				 const int value) {
-	char *str = nullptr;
-	int rc;
+static int write_cgroup_file_int(const char* cgroup_path,
+                                 const char* name,
+                                 const int value) {
+  char* str = nullptr;
+  int rc;
 
-	if (asprintf(&str, "%d", value) < 0)
-		return -errno;
+  if (asprintf(&str, "%d", value) < 0)
+    return -errno;
 
-	rc = write_cgroup_file(cgroup_path, name, str);
-	free(str);
-	return rc;
+  rc = write_cgroup_file(cgroup_path, name, str);
+  free(str);
+  return rc;
 }
 
-static int copy_cgroup_parent(const char *cgroup_path, const char *name) {
-	char *parent_path = nullptr;
-	int rc = 0;
-	int src, dst;
-	int len;
-	char buf[256];
+static int copy_cgroup_parent(const char* cgroup_path, const char* name) {
+  char* parent_path = nullptr;
+  int rc = 0;
+  int src, dst;
+  int len;
+  char buf[256];
 
-	if (asprintf(&parent_path, "%s/..", cgroup_path) < 0)
-		return -errno;
+  if (asprintf(&parent_path, "%s/..", cgroup_path) < 0)
+    return -errno;
 
-	src = open_cgroup_file(parent_path, name, false);
-	if (src < 0) {
-		rc = src;
-		goto out_free_parent_path;
-	}
+  src = open_cgroup_file(parent_path, name, false);
+  if (src < 0) {
+    rc = src;
+    goto out_free_parent_path;
+  }
 
-	dst = open_cgroup_file(cgroup_path, name, true);
-	if (dst < 0) {
-		rc = dst;
-		goto out_close_src;
-	}
+  dst = open_cgroup_file(cgroup_path, name, true);
+  if (dst < 0) {
+    rc = dst;
+    goto out_close_src;
+  }
 
-	while (1) {
-		len = read(src, buf, sizeof(buf));
-		if (len <= 0) {
-			if (len < 0)
-				rc = -errno;
-			break;
-		}
+  while (1) {
+    len = read(src, buf, sizeof(buf));
+    if (len <= 0) {
+      if (len < 0)
+        rc = -errno;
+      break;
+    }
 
-		len = write(dst, buf, len);
-		if (len <= 0) {
-			rc = len < 0 ? -errno : -EIO;
-			break;
-		}
-	}
+    len = write(dst, buf, len);
+    if (len <= 0) {
+      rc = len < 0 ? -errno : -EIO;
+      break;
+    }
+  }
 
-	close(dst);
+  close(dst);
 out_close_src:
-	close(src);
+  close(src);
 out_free_parent_path:
-	free(parent_path);
-	return rc;
+  free(parent_path);
+  return rc;
 }
 
-static int freeze(const struct container_cgroup *cg) {
-	return write_cgroup_file(cg->cgroup_paths[CGROUP_FREEZER],
-				 "freezer.state", "FROZEN\n");
+static int freeze(const struct container_cgroup* cg) {
+  return write_cgroup_file(
+      cg->cgroup_paths[CGROUP_FREEZER], "freezer.state", "FROZEN\n");
 }
 
-static int thaw(const struct container_cgroup *cg) {
-	return write_cgroup_file(cg->cgroup_paths[CGROUP_FREEZER],
-				 "freezer.state", "THAWED\n");
+static int thaw(const struct container_cgroup* cg) {
+  return write_cgroup_file(
+      cg->cgroup_paths[CGROUP_FREEZER], "freezer.state", "THAWED\n");
 }
 
-static int deny_all_devices(const struct container_cgroup *cg) {
-	return write_cgroup_file(cg->cgroup_paths[CGROUP_DEVICES],
-				 "devices.deny", "a\n");
+static int deny_all_devices(const struct container_cgroup* cg) {
+  return write_cgroup_file(
+      cg->cgroup_paths[CGROUP_DEVICES], "devices.deny", "a\n");
 }
 
-static char *get_device_string(const int major, const int minor) {
-	char *string_out = nullptr;
-	int rc = 0;
-	if (major >= 0 && minor >= 0)
-		rc = asprintf(&string_out, "%d:%d", major, minor);
-	else if (major >= 0)
-		rc = asprintf(&string_out, "%d:*", major);
-	else if (minor >= 0)
-		rc = asprintf(&string_out, "*:%d", minor);
-	else
-		rc = asprintf(&string_out, "*:*");
-	if (rc < 0)
-		return nullptr;
-	return string_out;
+static char* get_device_string(const int major, const int minor) {
+  char* string_out = nullptr;
+  int rc = 0;
+  if (major >= 0 && minor >= 0)
+    rc = asprintf(&string_out, "%d:%d", major, minor);
+  else if (major >= 0)
+    rc = asprintf(&string_out, "%d:*", major);
+  else if (minor >= 0)
+    rc = asprintf(&string_out, "*:%d", minor);
+  else
+    rc = asprintf(&string_out, "*:*");
+  if (rc < 0)
+    return nullptr;
+  return string_out;
 }
 
-static int add_device(const struct container_cgroup *cg, int allow, int major,
-		      int minor, int read, int write, int modify, char type) {
-	char *device_string = nullptr;
-	char *perm_string = nullptr;
-	int rc;
+static int add_device(const struct container_cgroup* cg,
+                      int allow,
+                      int major,
+                      int minor,
+                      int read,
+                      int write,
+                      int modify,
+                      char type) {
+  char* device_string = nullptr;
+  char* perm_string = nullptr;
+  int rc;
 
-	if (type != 'b' && type != 'c' && type != 'a')
-		return -EINVAL;
-	if (!read && !write && !modify)
-		return -EINVAL;
+  if (type != 'b' && type != 'c' && type != 'a')
+    return -EINVAL;
+  if (!read && !write && !modify)
+    return -EINVAL;
 
-	device_string = get_device_string(major, minor);
-	if (!device_string)
-		return -errno;
+  device_string = get_device_string(major, minor);
+  if (!device_string)
+    return -errno;
 
-	/*
-	 * The device file format is:
-	 * <type, c, b, or a> major:minor rmw
-	 */
-	if (asprintf(&perm_string, "%c %s %s%s%s\n",
-		     type, device_string,
-		     read ? "r" : "",
-		     write ? "w" : "",
-		     modify ? "m" : "") < 0) {
-		rc = -errno;
-		goto error_out;
-	}
-	rc = write_cgroup_file(cg->cgroup_paths[CGROUP_DEVICES],
-			       allow ? "devices.allow" : "devices.deny",
-			       perm_string);
+  /*
+   * The device file format is:
+   * <type, c, b, or a> major:minor rmw
+   */
+  if (asprintf(&perm_string,
+               "%c %s %s%s%s\n",
+               type,
+               device_string,
+               read ? "r" : "",
+               write ? "w" : "",
+               modify ? "m" : "") < 0) {
+    rc = -errno;
+    goto error_out;
+  }
+  rc = write_cgroup_file(cg->cgroup_paths[CGROUP_DEVICES],
+                         allow ? "devices.allow" : "devices.deny",
+                         perm_string);
 error_out:
-	free(device_string);
-	free(perm_string);
-	return rc;
+  free(device_string);
+  free(perm_string);
+  return rc;
 }
 
-static int set_cpu_shares(const struct container_cgroup *cg, int shares) {
-	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
-				     "cpu.shares", shares);
+static int set_cpu_shares(const struct container_cgroup* cg, int shares) {
+  return write_cgroup_file_int(
+      cg->cgroup_paths[CGROUP_CPU], "cpu.shares", shares);
 }
 
-static int set_cpu_quota(const struct container_cgroup *cg, int quota) {
-	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
-				     "cpu.cfs_quota_us", quota);
+static int set_cpu_quota(const struct container_cgroup* cg, int quota) {
+  return write_cgroup_file_int(
+      cg->cgroup_paths[CGROUP_CPU], "cpu.cfs_quota_us", quota);
 }
 
-static int set_cpu_period(const struct container_cgroup *cg, int period) {
-	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
-				     "cpu.cfs_period_us", period);
+static int set_cpu_period(const struct container_cgroup* cg, int period) {
+  return write_cgroup_file_int(
+      cg->cgroup_paths[CGROUP_CPU], "cpu.cfs_period_us", period);
 }
 
-static int set_cpu_rt_runtime(const struct container_cgroup *cg,
-			      int rt_runtime) {
-	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
-				     "cpu.rt_runtime_us", rt_runtime);
+static int set_cpu_rt_runtime(const struct container_cgroup* cg,
+                              int rt_runtime) {
+  return write_cgroup_file_int(
+      cg->cgroup_paths[CGROUP_CPU], "cpu.rt_runtime_us", rt_runtime);
 }
 
-static int set_cpu_rt_period(const struct container_cgroup *cg, int rt_period) {
-	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
-				     "cpu.rt_period_us", rt_period);
+static int set_cpu_rt_period(const struct container_cgroup* cg, int rt_period) {
+  return write_cgroup_file_int(
+      cg->cgroup_paths[CGROUP_CPU], "cpu.rt_period_us", rt_period);
 }
 
 static const struct cgroup_ops cgroup_ops = {
-	.freeze = freeze,
-	.thaw = thaw,
-	.deny_all_devices = deny_all_devices,
-	.add_device = add_device,
-	.set_cpu_shares = set_cpu_shares,
-	.set_cpu_quota = set_cpu_quota,
-	.set_cpu_period = set_cpu_period,
-	.set_cpu_rt_runtime = set_cpu_rt_runtime,
-	.set_cpu_rt_period = set_cpu_rt_period,
+    .freeze = freeze,
+    .thaw = thaw,
+    .deny_all_devices = deny_all_devices,
+    .add_device = add_device,
+    .set_cpu_shares = set_cpu_shares,
+    .set_cpu_quota = set_cpu_quota,
+    .set_cpu_period = set_cpu_period,
+    .set_cpu_rt_runtime = set_cpu_rt_runtime,
+    .set_cpu_rt_period = set_cpu_rt_period,
 };
 
-static int create_cgroup_as_owner(const char *cgroup_path, uid_t cgroup_owner,
-				  gid_t cgroup_group) {
-	int error = 0;
+static int create_cgroup_as_owner(const char* cgroup_path,
+                                  uid_t cgroup_owner,
+                                  gid_t cgroup_group) {
+  int error = 0;
 
-	/*
-	 * If running as root and the cgroup owner is a user, create the cgroup
-	 * as that user.
-	 */
-	if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
-		if (setegid(cgroup_group))
-			return -errno;
+  /*
+   * If running as root and the cgroup owner is a user, create the cgroup
+   * as that user.
+   */
+  if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
+    if (setegid(cgroup_group))
+      return -errno;
 
-		if (seteuid(cgroup_owner))
-			error = -errno;
+    if (seteuid(cgroup_owner))
+      error = -errno;
 
-		/*
-		 * CAUTION: Make sure that no return path forgets to set the
-		 * user back to root from here.
-		 */
+    /*
+     * CAUTION: Make sure that no return path forgets to set the
+     * user back to root from here.
+     */
 
-		if (!error &&
-		    mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 &&
-		    errno != EEXIST) {
-			error = -errno;
-		}
+    if (!error && mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 &&
+        errno != EEXIST) {
+      error = -errno;
+    }
 
-		if (seteuid(0) && !error)
-			error = -errno;
+    if (seteuid(0) && !error)
+      error = -errno;
 
-		if (setegid(0) && !error)
-			error = -errno;
+    if (setegid(0) && !error)
+      error = -errno;
 
-	} else {
-		if (mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 &&
-		    errno != EEXIST) {
-			error = -errno;
-		}
-	}
+  } else {
+    if (mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 && errno != EEXIST) {
+      error = -errno;
+    }
+  }
 
-	return error;
+  return error;
 }
 
-static int check_cgroup_available(const char *cgroup_root,
-				  const char *cgroup_name) {
-	char *path;
-	int rc;
+static int check_cgroup_available(const char* cgroup_root,
+                                  const char* cgroup_name) {
+  char* path;
+  int rc;
 
-	rc = asprintf(&path, "%s/%s", cgroup_root, cgroup_name);
-	if (rc < 0)
-		return -ENOMEM;
+  rc = asprintf(&path, "%s/%s", cgroup_root, cgroup_name);
+  if (rc < 0)
+    return -ENOMEM;
 
-	rc = access(path, F_OK);
-	if (rc < 0)
-		rc = -errno;
+  rc = access(path, F_OK);
+  if (rc < 0)
+    rc = -errno;
 
-	free(path);
-	return rc;
+  free(path);
+  return rc;
 }
 
-struct container_cgroup *container_cgroup_new(const char *name,
-					      const char *cgroup_root,
-					      const char *cgroup_parent,
-					      uid_t cgroup_owner,
-					      gid_t cgroup_group) {
-	int i;
-	int rc;
+struct container_cgroup* container_cgroup_new(const char* name,
+                                              const char* cgroup_root,
+                                              const char* cgroup_parent,
+                                              uid_t cgroup_owner,
+                                              gid_t cgroup_group) {
+  int i;
+  int rc;
 
-	struct container_cgroup *cg;
-	cg =
-	    reinterpret_cast<struct container_cgroup *>(calloc(1, sizeof(*cg)));
-	if (!cg)
-		return nullptr;
+  struct container_cgroup* cg;
+  cg = reinterpret_cast<struct container_cgroup*>(calloc(1, sizeof(*cg)));
+  if (!cg)
+    return nullptr;
 
-	for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
-		rc = check_cgroup_available(cgroup_root, cgroup_names[i]);
-		if (rc < 0) {
-			if (rc == -ENOENT)
-				continue;
-			goto error_free_cg;
-		}
+  for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
+    rc = check_cgroup_available(cgroup_root, cgroup_names[i]);
+    if (rc < 0) {
+      if (rc == -ENOENT)
+        continue;
+      goto error_free_cg;
+    }
 
-		if (cgroup_parent) {
-			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s/%s",
-				     cgroup_root, cgroup_names[i],
-				     cgroup_parent, name) < 0)
-				goto error_free_cg;
-		} else {
-			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s",
-				     cgroup_root, cgroup_names[i], name) < 0)
-				goto error_free_cg;
-		}
+    if (cgroup_parent) {
+      if (asprintf(&cg->cgroup_paths[i],
+                   "%s/%s/%s/%s",
+                   cgroup_root,
+                   cgroup_names[i],
+                   cgroup_parent,
+                   name) < 0)
+        goto error_free_cg;
+    } else {
+      if (asprintf(&cg->cgroup_paths[i],
+                   "%s/%s/%s",
+                   cgroup_root,
+                   cgroup_names[i],
+                   name) < 0)
+        goto error_free_cg;
+    }
 
-		if (create_cgroup_as_owner(cg->cgroup_paths[i],
-					   cgroup_owner, cgroup_group))
-			goto error_free_cg;
+    if (create_cgroup_as_owner(cg->cgroup_paths[i], cgroup_owner, cgroup_group))
+      goto error_free_cg;
 
-		if (asprintf(&cg->cgroup_tasks_paths[i], "%s/tasks",
-			     cg->cgroup_paths[i]) < 0)
-			goto error_free_cg;
+    if (asprintf(&cg->cgroup_tasks_paths[i], "%s/tasks", cg->cgroup_paths[i]) <
+        0)
+      goto error_free_cg;
 
-		/*
-		 * cpuset is special: we need to copy parent's cpus or mems,
-		 * other wise we'll start with "empty" cpuset and nothing can
-		 * run in it/be moved into it.
-		 */
-		if (i == CGROUP_CPUSET) {
-			if (copy_cgroup_parent(cg->cgroup_paths[i], "cpus") < 0)
-				goto error_free_cg;
-			if (copy_cgroup_parent(cg->cgroup_paths[i], "mems") < 0)
-				goto error_free_cg;
-		}
-	}
+    /*
+     * cpuset is special: we need to copy parent's cpus or mems,
+     * other wise we'll start with "empty" cpuset and nothing can
+     * run in it/be moved into it.
+     */
+    if (i == CGROUP_CPUSET) {
+      if (copy_cgroup_parent(cg->cgroup_paths[i], "cpus") < 0)
+        goto error_free_cg;
+      if (copy_cgroup_parent(cg->cgroup_paths[i], "mems") < 0)
+        goto error_free_cg;
+    }
+  }
 
-	cg->name = strdup(name);
-	if (!cg->name)
-		goto error_free_cg;
-	cg->ops = &cgroup_ops;
+  cg->name = strdup(name);
+  if (!cg->name)
+    goto error_free_cg;
+  cg->ops = &cgroup_ops;
 
-	return cg;
+  return cg;
 
 error_free_cg:
-	container_cgroup_destroy(cg);
-	return nullptr;
+  container_cgroup_destroy(cg);
+  return nullptr;
 }
 
-void container_cgroup_destroy(struct container_cgroup *cg) {
-	int i;
+void container_cgroup_destroy(struct container_cgroup* cg) {
+  int i;
 
-	free(cg->name);
-	for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
-		if (!cg->cgroup_paths[i])
-			continue;
-		rmdir(cg->cgroup_paths[i]);
-		free(cg->cgroup_paths[i]);
-		free(cg->cgroup_tasks_paths[i]);
-	}
-	free(cg);
+  free(cg->name);
+  for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
+    if (!cg->cgroup_paths[i])
+      continue;
+    rmdir(cg->cgroup_paths[i]);
+    free(cg->cgroup_paths[i]);
+    free(cg->cgroup_tasks_paths[i]);
+  }
+  free(cg);
 }
