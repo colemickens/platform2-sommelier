@@ -23,7 +23,7 @@ namespace {
 const int kBurningBlockSize = 4 * 1024;  // 4 KiB
 
 const char* kFilePathPatterns[] =
-    { "/dev/sd[a-z]+$", "/dev/mmcblk[0-9]+$" };
+    { "^/dev/sd[a-z]+$", "^/dev/mmcblk[0-9]+$" };
 const int kFilePathPatternCount = 2;
 
 const char kMediaDirectory[] = "/media";

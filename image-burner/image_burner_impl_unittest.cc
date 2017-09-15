@@ -160,6 +160,18 @@ TEST_F(ImageBurnerImplTest, TargetNotAParent3) {
             imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
 }
 
+TEST_F(ImageBurnerImplTest, InvalidTargetPathWithValidSufix) {
+  SetFinishedSignalExpectation("/foo/bar/dev/sdb", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/foo/bar/dev/sdb"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
+}
+
+TEST_F(ImageBurnerImplTest, InvalidTargetPathWithValidSufixMMC) {
+  SetFinishedSignalExpectation("/foo/bar/dev/mmcblk1", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/foo/bar/dev/mmcblk1"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
+}
+
 TEST_F(ImageBurnerImplTest, TargetEqualsPrefix1) {
   SetFinishedSignalExpectation("/dev/sd", false);
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sd"),
@@ -176,6 +188,12 @@ TEST_F(ImageBurnerImplTest, TargetPathEqualsRootPath) {
   SetFinishedSignalExpectation("/dev/sda", false);
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sda"),
             imageburn::IMAGEBURN_ERROR_TARGET_PATH_ON_ROOT);
+}
+
+TEST_F(ImageBurnerImplTest, TargetPathPrefixesRootPath) {
+  SetFinishedSignalExpectation("/./dev/sda", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/./dev/sda"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
 }
 
 TEST_F(ImageBurnerImplTest, TargetPathIsOnTheRootPath) {
