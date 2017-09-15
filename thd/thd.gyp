@@ -38,7 +38,7 @@
             'mechanism/file_write_mechanism_unittest.cc',
             'source/file_source_unittest.cc',
             'test_runner.cc',
-         ],
+          ],
         },
       ],
     }],
