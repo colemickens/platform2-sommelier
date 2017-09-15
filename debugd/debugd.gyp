@@ -194,9 +194,9 @@
       'dependencies': [
         'libdebugd',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lvboot_host',
+      'variables': {
+        'deps': [
+          'vboot_host',
         ],
       },
       'sources': [

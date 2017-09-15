@@ -230,7 +230,6 @@
           '-lpolicy-<(libbase_ver)',
           '-lpthread',
           '-lscrypt',
-          '-lvboot_host',
         ],
       },
       'variables': {
@@ -245,6 +244,7 @@
           'libmetrics-<(libbase_ver)',
           'openssl',
           'protobuf',
+          'vboot_host',
         ],
       },
       'sources': [
@@ -283,7 +283,6 @@
           '-lpolicy-<(libbase_ver)',
           '-lpthread',
           '-lscrypt',
-          '-lvboot_host',
         ],
       },
       'variables': {
@@ -302,6 +301,7 @@
           # order.
           'system_api',
           'protobuf',
+          'vboot_host',
         ],
       },
       'sources': [
@@ -319,7 +319,6 @@
         'libraries': [
           '-lkeyutils',
           '-lsecure_erase_file',
-          '-lvboot_host',
         ],
       },
       'variables': {
@@ -329,6 +328,7 @@
           'libecryptfs',
           'libmetrics-<(libbase_ver)',
           'openssl',
+          'vboot_host',
         ],
       },
       'sources': [
@@ -344,15 +344,11 @@
     {
       'target_name': 'mount-encrypted',
       'type': 'executable',
-      'link_settings': {
-        'libraries': [
-          '-lvboot_host',
-        ],
-      },
       'variables': {
         'deps': [
           'glib-2.0',
           'openssl',
+          'vboot_host',
         ],
       },
       'sources': [
@@ -402,7 +398,11 @@
             'libraries': [
               '-lchaps',
               '-lscrypt',
-              '-lvboot_host',
+            ],
+          },
+          'variables': {
+            'deps': [
+              'vboot_host',
             ],
           },
         }],
@@ -514,7 +514,6 @@
               '-lpolicy-<(libbase_ver)',
               '-lpthread',
               '-lscrypt',
-              '-lvboot_host',
             ],
           },
           'variables': {
@@ -531,6 +530,7 @@
               'libmetrics-<(libbase_ver)',
               'openssl',
               'protobuf',
+              'vboot_host',
             ],
           },
           'sources': [

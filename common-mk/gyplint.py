@@ -154,6 +154,7 @@ KNOWN_PC_FILES = {
     '-ludev': 'libudev',
     '-lusb-1.0': 'libusb-1.0',
     '-luuid': 'uuid',
+    '-lvboot_host': 'vboot_host',
     '-lz': 'zlib',
 }
 KNOWN_PC_LIBS = frozenset(KNOWN_PC_FILES.keys())

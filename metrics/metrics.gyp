@@ -50,14 +50,10 @@
         'metrics_proto',
         '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lvboot_host',
-        ],
-      },
       'variables': {
         'exported_deps': [
           'protobuf-lite',
+          'vboot_host',
         ],
         'deps': [
           '<@(exported_deps)',

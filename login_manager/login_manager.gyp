@@ -22,11 +22,7 @@
         # order.
         'system_api',
         'protobuf-lite',
-      ],
-    },
-    'link_settings': {
-      'libraries': [
-        '-lvboot_host',
+        'vboot_host',
       ],
     },
   },
