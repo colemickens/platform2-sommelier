@@ -205,7 +205,7 @@ FIXTURE_SETUP(container_test) {
 	memset(&mount_call_args, 0, sizeof(mount_call_args));
 	mount_called = 0;
 	memset(&mknod_call_args, 0, sizeof(mknod_call_args));
-	mkdtemp_root = NULL;
+	mkdtemp_root = nullptr;
 
 	memset(&gmcg, 0, sizeof(gmcg));
 	static const struct cgroup_ops cgops = {
@@ -224,7 +224,7 @@ FIXTURE_SETUP(container_test) {
 	self->rootfs = strdup(mkdtemp(temp_template));
 
 	kill_called = 0;
-	minijail_alt_syscall_table = NULL;
+	minijail_alt_syscall_table = nullptr;
 	minijail_ipc_called = 0;
 	minijail_vfs_called = 0;
 	minijail_net_called = 0;
@@ -249,8 +249,8 @@ FIXTURE_SETUP(container_test) {
 				   "tmpfs",
 				   "/tmp",
 				   "tmpfs",
-				   NULL,
-				   NULL,
+				   nullptr,
+				   nullptr,
 				   self->mount_flags,
 				   0,
 				   1000,

@@ -34,12 +34,12 @@ static void create_file_with_content(const char *name, const char *content) {
 }
 
 static void create_file(const char *name) {
-	create_file_with_content(name, NULL);
+	create_file_with_content(name, nullptr);
 }
 
 static int string_in_file(const char *path, const char *str) {
 	FILE *fp = fopen(path, "r");
-	char *buf = NULL;
+	char *buf = nullptr;
 	size_t len;
 
 	if (!fp)
@@ -59,7 +59,7 @@ static int string_in_file(const char *path, const char *str) {
 
 static int file_has_line(const char *path, const char *line) {
 	FILE *fp;
-	char *buf = NULL;
+	char *buf = nullptr;
 	size_t len;
 	int found;
 
@@ -81,9 +81,9 @@ done_ret:
 }
 
 TEST(cgroup_new_with_parent) {
-	struct container_cgroup *ccg = NULL;
+	struct container_cgroup *ccg = nullptr;
 
-	char *cgroup_root = NULL;
+	char *cgroup_root = nullptr;
 	const char *cgroup_parent_name;
 	const char *cgroup_name;
 	char cpu_cg[256];
@@ -216,7 +216,7 @@ FIXTURE_SETUP(basic_manipulation) {
 	snprintf(path, sizeof(path), "%s/cpuset/mems", self->cgroup_root);
 	create_file_with_content(path, "0");
 
-	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL, 0, 0);
+	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, nullptr, 0, 0);
 	ASSERT_NE(nullptr, self->ccg);
 
 	self->cgroup_name = CGNAME;

@@ -14,7 +14,7 @@
  *        TH_LOG("expectation failed with state: %s", state.msg);
  *     }
  *     more_stuff;
- *     ASSERT_NE(some_stuff, NULL) TH_LOG("how did it happen?!");
+ *     ASSERT_NE(some_stuff, nullptr) TH_LOG("how did it happen?!");
  *     last_stuff;
  *     EXPECT_EQ(0, last_stuff);
  *   }
@@ -25,7 +25,7 @@
  *   };
  *   FIXTURE_SETUP(my_fixture) {
  *     self->data = mytype_new();
- *     ASSERT_NE(NULL, self->data);
+ *     ASSERT_NE(nullptr, self->data);
  *   }
  *   FIXTURE_TEARDOWN(my_fixture) {
  *     mytype_free(self->data);
@@ -132,7 +132,7 @@
 #define ASSERT_GT TEST_API(ASSERT_GT)
 /* ASSERT_GE(expected, measured): expected >= measured */
 #define ASSERT_GE TEST_API(ASSERT_GE)
-/* ASSERT_NULL(measured): NULL == measured */
+/* ASSERT_NULL(measured): nullptr == measured */
 #define ASSERT_NULL TEST_API(ASSERT_NULL)
 /* ASSERT_TRUE(measured): measured != 0 */
 #define ASSERT_TRUE TEST_API(ASSERT_TRUE)
@@ -154,7 +154,7 @@
 #define EXPECT_GT TEST_API(EXPECT_GT)
 /* EXPECT_GE(expected, measured): expected >= measured */
 #define EXPECT_GE TEST_API(EXPECT_GE)
-/* EXPECT_NULL(measured): NULL == measured */
+/* EXPECT_NULL(measured): nullptr == measured */
 #define EXPECT_NULL TEST_API(EXPECT_NULL)
 /* EXPECT_TRUE(measured): 0 != measured */
 #define EXPECT_TRUE TEST_API(EXPECT_TRUE)
@@ -279,7 +279,7 @@
 #define _ASSERT_GE(_expected, _seen) \
   __EXPECT(_expected, _seen, >=, 1)
 #define _ASSERT_NULL(_seen) \
-  __EXPECT(NULL, _seen, ==, 1)
+  __EXPECT(nullptr, _seen, ==, 1)
 
 #define _ASSERT_TRUE(_seen) \
   _ASSERT_NE(0, _seen)
@@ -304,7 +304,7 @@
   __EXPECT(_expected, _seen, >=, 0)
 
 #define _EXPECT_NULL(_seen) \
-  __EXPECT(NULL, _seen, ==, 0)
+  __EXPECT(nullptr, _seen, ==, 0)
 #define _EXPECT_TRUE(_seen) \
   _EXPECT_NE(0, _seen)
 #define _EXPECT_FALSE(_seen) \
@@ -363,20 +363,20 @@ struct __test_metadata {
 };
 
 /* Storage for the (global) tests to be run. */
-static struct __test_metadata *__test_list = NULL;
+static struct __test_metadata *__test_list = nullptr;
 static unsigned int __test_count = 0;
 static unsigned int __fixture_count = 0;
 
 static inline void __register_test(struct __test_metadata *t) {
   __test_count++;
   /* Circular linked list where only prev is circular. */
-  if (__test_list == NULL) {
+  if (__test_list == nullptr) {
     __test_list = t;
-    t->next = NULL;
+    t->next = nullptr;
     t->prev = t;
     return;
   }
-  t->next = NULL;
+  t->next = nullptr;
   t->prev = __test_list->prev;
   t->prev->next = t;
   __test_list->prev = t;

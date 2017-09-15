@@ -30,7 +30,7 @@
 #define FREE_AND_NULL(ptr) \
 do { \
 	free(ptr); \
-	ptr = NULL; \
+	ptr = nullptr; \
 } while (0)
 
 #define MAX_NUM_SETFILES_ARGS 128
@@ -118,7 +118,7 @@ struct container_rlimit {
  * uid_map - Mapping of UIDs in the container, e.g. "0 100000 1024"
  * gid - The gid the container will run as.
  * gid_map - Mapping of GIDs in the container, e.g. "0 100000 1024"
- * alt_syscall_table - Syscall table to use or NULL if none.
+ * alt_syscall_table - Syscall table to use or nullptr if none.
  * mounts - Filesystems to mount in the new namespace.
  * num_mounts - Number of above.
  * devices - Device nodes to create.
@@ -211,7 +211,7 @@ static void container_config_free_device(struct container_device *device) {
 void container_config_destroy(struct container_config *c) {
 	size_t i;
 
-	if (c == NULL)
+	if (c == nullptr)
 		return;
 	FREE_AND_NULL(c->rootfs);
 	container_free_program_args(c);
@@ -300,7 +300,7 @@ int container_config_program_argv(struct container_config *c, const char **argv,
 		if (strdup_and_free(&c->program_argv[i], argv[i]))
 			goto error_free_return;
 	}
-	c->program_argv[num_args] = NULL;
+	c->program_argv[num_args] = nullptr;
 	return 0;
 
 error_free_return:
@@ -315,7 +315,7 @@ size_t container_config_get_num_program_args(const struct container_config *c) {
 const char *container_config_get_program_arg(const struct container_config *c,
 					     size_t index) {
 	if (index >= c->num_args)
-		return NULL;
+		return nullptr;
 	return c->program_argv[index];
 }
 
@@ -369,8 +369,8 @@ int container_config_add_mount(struct container_config *c, const char *name,
 	struct container_mount *mount_ptr;
 	struct container_mount *current_mount;
 
-	if (name == NULL || source == NULL ||
-	    destination == NULL || type == NULL)
+	if (name == nullptr || source == nullptr ||
+	    destination == nullptr || type == nullptr)
 		return -EINVAL;
 
 	mount_ptr = reinterpret_cast<struct container_mount *>(
@@ -443,7 +443,7 @@ int container_config_add_device(struct container_config *c, char type,
 	struct container_device *dev_ptr;
 	struct container_device *current_dev;
 
-	if (path == NULL)
+	if (path == nullptr)
 		return -EINVAL;
 	/* If using a dynamic minor number, ensure that minor is -1. */
 	if (copy_minor && (minor != -1))
@@ -652,12 +652,12 @@ struct container *container_new(const char *name, const char *rundir) {
 
 	c = reinterpret_cast<struct container *>(calloc(1, sizeof(*c)));
 	if (!c)
-		return NULL;
+		return nullptr;
 	c->rundir = strdup(rundir);
 	c->name = strdup(name);
 	if (!c->rundir || !c->name) {
 		container_destroy(c);
-		return NULL;
+		return nullptr;
 	}
 	return c;
 }
@@ -689,9 +689,9 @@ static int get_userns_outside_id(const char *map, int id) {
 
 	mapping = strtok_r(map_copy, ",", &saveptr1);
 	while (mapping) {
-		inside = strtol(strtok_r(mapping, " ", &saveptr2), NULL, 10);
-		outside = strtol(strtok_r(NULL, " ", &saveptr2), NULL, 10);
-		length = strtol(strtok_r(NULL, "\0", &saveptr2), NULL, 10);
+		inside = strtol(strtok_r(mapping, " ", &saveptr2), nullptr, 10);
+		outside = strtol(strtok_r(nullptr, " ", &saveptr2), nullptr, 10);
+		length = strtol(strtok_r(nullptr, "\0", &saveptr2), nullptr, 10);
 		if (errno) {
 			goto error_free_return;
 		} else if (inside < 0 || outside < 0 || length < 0) {
@@ -704,7 +704,7 @@ static int get_userns_outside_id(const char *map, int id) {
 			goto exit;
 		}
 
-		mapping = strtok_r(NULL, ",", &saveptr1);
+		mapping = strtok_r(nullptr, ",", &saveptr1);
 	}
 	errno = EINVAL;
 
@@ -792,7 +792,7 @@ static int run_setfiles_command(const struct container *c,
 		size_t arg_index = 0;
 		const char *argv[MAX_NUM_SETFILES_ARGS];
 		const char *env[] = {
-			NULL,
+			nullptr,
 		};
 
 		argv[arg_index++] = config->run_setfiles;
@@ -804,7 +804,7 @@ static int run_setfiles_command(const struct container *c,
 		for (i = 0; i < num_destinations; ++i) {
 			argv[arg_index++] = destinations[i];
 		}
-		argv[arg_index] = NULL;
+		argv[arg_index] = nullptr;
 
 		execve(argv[0], (char *const*)argv, (char *const*)env);
 
@@ -828,7 +828,7 @@ static int loopdev_setup(char **loopdev_ret, const char *source) {
 	int source_fd = -1;
 	int control_fd = -1;
 	int loop_fd = -1;
-	char *loopdev = NULL;
+	char *loopdev = nullptr;
 
 	source_fd = open(source, O_RDONLY|O_CLOEXEC);
 	if (source_fd < 0)
@@ -904,10 +904,10 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 	int ret = 0;
 #if USE_device_mapper
 	char *p;
-	char *dm_path = NULL;
-	char *dm_name = NULL;
-	char *verity = NULL;
-	struct dm_task *dmt = NULL;
+	char *dm_path = nullptr;
+	char *dm_name = nullptr;
+	char *verity = nullptr;
+	struct dm_task *dmt = nullptr;
 	uint32_t cookie = 0;
 	size_t source_len = 0;
 
@@ -915,7 +915,7 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 	if (asprintf(&dm_name, "cros-containers-%s", source) < 0)
 		goto error;
 	p = dm_name;
-	while ((p = strchr(p, '/')) != NULL)
+	while ((p = strchr(p, '/')) != nullptr)
 		*p++ = '_';
 
 	/* Get the /dev path for the higher levels to mount. */
@@ -927,7 +927,7 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 	verity = reinterpret_cast<char *>(
 	    malloc(strlen(verity_cmdline) + source_len * 2 + 1));
 	memcpy(verity, verity_cmdline, strlen(verity_cmdline) + 1);
-	while ((p = strstr(verity, "@DEV@")) != NULL) {
+	while ((p = strstr(verity, "@DEV@")) != nullptr) {
 		memmove(p + source_len, p + 5, strlen(p + 5) + 1);
 		memcpy(p, source, source_len);
 	}
@@ -941,7 +941,7 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 
 	/* Finally create the device mapper. */
 	dmt = dm_task_create(DM_DEVICE_CREATE);
-	if (dmt == NULL)
+	if (dmt == nullptr)
 		goto error;
 
 	if (!dm_task_set_name(dmt, dm_name))
@@ -985,7 +985,7 @@ static int dm_detach(const char *dm_name) {
 	struct dm_task *dmt;
 
 	dmt = dm_task_create(DM_DEVICE_REMOVE);
-	if (dmt == NULL)
+	if (dmt == nullptr)
 		goto error;
 
 	if (!dm_task_set_name(dmt, dm_name))
@@ -1063,7 +1063,7 @@ static int mount_external(const char *src, const char *dest, const char *type,
 
 	if (remount_ro) {
 		flags |= MS_RDONLY;
-		if (mount(src, dest, NULL, flags | MS_REMOUNT, data) == -1)
+		if (mount(src, dest, nullptr, flags | MS_REMOUNT, data) == -1)
 			return -1;
 	}
 
@@ -1073,10 +1073,10 @@ static int mount_external(const char *src, const char *dest, const char *type,
 static int do_container_mount(struct container *c,
 			      const struct container_config *config,
 			      const struct container_mount *mnt) {
-	char *dm_source = NULL;
-	char *loop_source = NULL;
-	char *source = NULL;
-	char *dest = NULL;
+	char *dm_source = nullptr;
+	char *loop_source = nullptr;
+	char *source = nullptr;
+	char *dest = nullptr;
 	int rc = 0;
 
 	if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
@@ -1107,7 +1107,7 @@ static int do_container_mount(struct container *c,
 	if (mnt->loopback) {
 		/* Record this loopback file for cleanup later. */
 		loop_source = source;
-		source = NULL;
+		source = nullptr;
 		rc = loopdev_setup(&source, loop_source);
 		if (rc)
 			goto error_free_return;
@@ -1120,9 +1120,9 @@ static int do_container_mount(struct container *c,
 	}
 	if (mnt->verity) {
 		/* Set this device up via dm-verity. */
-		char *dm_name = NULL;
+		char *dm_name = nullptr;
 		dm_source = source;
-		source = NULL;
+		source = nullptr;
 		rc = dm_setup(&source, &dm_name, dm_source, mnt->verity);
 		if (rc)
 			goto error_free_return;
@@ -1206,7 +1206,7 @@ static int container_create_device(const struct container *c,
 				   const struct container_config *config,
 				   const struct container_device *dev,
 				   int minor) {
-	char *path = NULL;
+	char *path = nullptr;
 	int rc = 0;
 	int mode;
 	int uid_userns, gid_userns;
@@ -1252,7 +1252,7 @@ static int mount_runfs(struct container *c,
 		       const struct container_config *config) {
 	static const mode_t root_dir_mode = 0660;
 	const char *rootfs = config->rootfs;
-	char *runfs_template = NULL;
+	char *runfs_template = nullptr;
 	int uid_userns, gid_userns;
 
 	if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
@@ -1286,7 +1286,7 @@ static int mount_runfs(struct container *c,
 		return -errno;
 
 	if (mount(rootfs, c->runfsroot, "",
-	          MS_BIND | (config->rootfs_mount_flags & MS_REC), NULL)) {
+	          MS_BIND | (config->rootfs_mount_flags & MS_REC), nullptr)) {
 		return -errno;
 	}
 
@@ -1295,7 +1295,7 @@ static int mount_runfs(struct container *c,
 	 */
 	if (config->rootfs_mount_flags &&
 	    mount(rootfs, c->runfsroot, "",
-	          (config->rootfs_mount_flags & ~MS_REC), NULL)) {
+	          (config->rootfs_mount_flags & ~MS_REC), nullptr)) {
 		return -errno;
 	}
 
@@ -1411,7 +1411,7 @@ int container_start(struct container *c,
 		}
 	}
 	if (config->premounted_runfs) {
-		c->runfs = NULL;
+		c->runfs = nullptr;
 		c->runfsroot = strdup(config->premounted_runfs);
 		if (!c->runfsroot) {
 			rc = -ENOMEM;
@@ -1641,8 +1641,8 @@ int container_start(struct container *c,
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],
 					       config->program_argv,
-					       &c->init_pid, NULL, NULL,
-					       NULL);
+					       &c->init_pid, nullptr, nullptr,
+					       nullptr);
 	if (rc)
 		goto error_rmdir;
 	return 0;

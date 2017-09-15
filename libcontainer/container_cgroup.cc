@@ -23,7 +23,7 @@ static int open_cgroup_file(const char *cgroup_path, const char *name,
 			    bool write) {
 	int fd;
 	int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
-	char *path = NULL;
+	char *path = nullptr;
 
 	if (asprintf(&path, "%s/%s", cgroup_path, name) < 0)
 		return -errno;
@@ -53,7 +53,7 @@ static int write_cgroup_file(const char *cgroup_path, const char *name,
 
 static int write_cgroup_file_int(const char *cgroup_path, const char *name,
 				 const int value) {
-	char *str = NULL;
+	char *str = nullptr;
 	int rc;
 
 	if (asprintf(&str, "%d", value) < 0)
@@ -65,7 +65,7 @@ static int write_cgroup_file_int(const char *cgroup_path, const char *name,
 }
 
 static int copy_cgroup_parent(const char *cgroup_path, const char *name) {
-	char *parent_path = NULL;
+	char *parent_path = nullptr;
 	int rc = 0;
 	int src, dst;
 	int len;
@@ -125,7 +125,7 @@ static int deny_all_devices(const struct container_cgroup *cg) {
 }
 
 static char *get_device_string(const int major, const int minor) {
-	char *string_out = NULL;
+	char *string_out = nullptr;
 	int rc = 0;
 	if (major >= 0 && minor >= 0)
 		rc = asprintf(&string_out, "%d:%d", major, minor);
@@ -136,14 +136,14 @@ static char *get_device_string(const int major, const int minor) {
 	else
 		rc = asprintf(&string_out, "*:*");
 	if (rc < 0)
-		return NULL;
+		return nullptr;
 	return string_out;
 }
 
 static int add_device(const struct container_cgroup *cg, int allow, int major,
 		      int minor, int read, int write, int modify, char type) {
-	char *device_string = NULL;
-	char *perm_string = NULL;
+	char *device_string = nullptr;
+	char *perm_string = nullptr;
 	int rc;
 
 	if (type != 'b' && type != 'c' && type != 'a')
@@ -285,7 +285,7 @@ struct container_cgroup *container_cgroup_new(const char *name,
 	cg =
 	    reinterpret_cast<struct container_cgroup *>(calloc(1, sizeof(*cg)));
 	if (!cg)
-		return NULL;
+		return nullptr;
 
 	for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
 		rc = check_cgroup_available(cgroup_root, cgroup_names[i]);
@@ -336,7 +336,7 @@ struct container_cgroup *container_cgroup_new(const char *name,
 
 error_free_cg:
 	container_cgroup_destroy(cg);
-	return NULL;
+	return nullptr;
 }
 
 void container_cgroup_destroy(struct container_cgroup *cg) {
