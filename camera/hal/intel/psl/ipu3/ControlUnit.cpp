@@ -1039,8 +1039,7 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
     params->external_histograms = nullptr;
     params->num_external_histograms = 0;
 
-    // TODO: use frame idx for algo after stats rate meet out request
-    settingsInEffect = findSettingsInEffect(s.id);
+    settingsInEffect = findSettingsInEffect(params->frame_id);
     if (settingsInEffect.get()) {
         params->frame_ae_parameters = &settingsInEffect->aiqResults.aeResults;
         params->frame_af_parameters = &settingsInEffect->aiqResults.afResults;

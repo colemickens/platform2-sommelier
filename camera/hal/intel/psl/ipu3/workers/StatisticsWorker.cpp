@@ -165,7 +165,7 @@ status_t StatisticsWorker::run()
     stats->aiqStatsInputParams.depth_grids  = nullptr;
     stats->aiqStatsInputParams.num_depth_grids = 0;
 
-    stats->aiqStatsInputParams.frame_id = buf.vbuffer.sequence;
+    stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence;
     stats->aiqStatsInputParams.frame_timestamp
         = (buf.vbuffer.timestamp.tv_sec * 1000000) + buf.vbuffer.timestamp.tv_usec;
 
@@ -174,7 +174,7 @@ status_t StatisticsWorker::run()
 
     outMsg.data.event.stats = stats;
 
-    if (0 == (buf.vbuffer.sequence % DUMP_INTERVAL)) {
+    if (0 == (stats->aiqStatsInputParams.frame_id % DUMP_INTERVAL)) {
         if (gRgbsGridDump) {
             std::string filename = CAMERA_OPERATION_FOLDER;
             filename += "rgbs_grid";

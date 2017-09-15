@@ -536,8 +536,7 @@ status_t SyncManager::handleMessageSOF(Message &msg)
          * for stats.
          * Then remove it from the Q.
          */
-        // TODO: use frame idx for algo after stats rate meet out request
-        mQueuedSettings[0]->inEffectFrom = mQueuedSettings[0]->aiqResults.requestId;
+        mQueuedSettings[0]->inEffectFrom = msg.data.frameEvent.exp_id + mExposureDelay;
         mQueuedSettings.erase(mQueuedSettings.begin());
     }
 
