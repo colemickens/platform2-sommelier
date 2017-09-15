@@ -65,6 +65,9 @@ class IPU3CameraHw: public ICameraHw {
     status_t  initStaticMetadata();
     status_t checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams);
 
+    bool requireStreamWithLargeSize(Camera3Request* request) const;
+    status_t reconfigureStreams(bool configLargeSizeStream, uint32_t operation_mode);
+
  private:  //members
     int mCameraId;
     CameraMetadata* mStaticMeta;
@@ -81,6 +84,14 @@ class IPU3CameraHw: public ICameraHw {
 
     std::shared_ptr<MediaController> mMediaCtl;
     std::shared_ptr<MediaController> mImguMediaCtl;
+
+    // Configuring ISP with large size will lead to low fps.
+    // So ignore stream with large size if requests don't require its output.
+    // The bool flag records if those streams are configured.
+    bool mStreamsConfiguredWithLargeSize;
+    std::vector<camera3_stream_t*> mStreamsAll;
+    std::vector<camera3_stream_t*> mStreamsWithSmallSize;
+    uint32_t mOperationMode;
 };
 
 } /* namespace camera2 */

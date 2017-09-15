@@ -41,6 +41,8 @@ void __attribute__ ((destructor(200))) disconnectFrom3aServer();
 namespace android {
 namespace camera2 {
 
+#define CONFIGURE_LARGE_SIZE (1920*1080)
+
 // Camera factory
 ICameraHw *CreatePSLCamera(int cameraId) {
     return new IPU3CameraHw(cameraId);
@@ -53,7 +55,9 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mImguUnit(nullptr),
         mControlUnit(nullptr),
         mCaptureUnit(nullptr),
-        mGCM(cameraId)
+        mGCM(cameraId),
+        mStreamsConfiguredWithLargeSize(false),
+        mOperationMode(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
@@ -224,7 +228,10 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     uint32_t maxBufs, usage;
     status_t status = NO_ERROR;
     bool configChanged = true;
-    std::vector<camera3_stream_t*> tmpStreams;
+
+    mOperationMode = operation_mode;
+    mStreamsAll.clear();
+    mStreamsWithSmallSize.clear();
 
     if (checkStreamSizes(activeStreams) != OK)
         return BAD_VALUE;
@@ -244,8 +251,14 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     for (unsigned int i = 0; i < activeStreams.size(); i++) {
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
-        tmpStreams.push_back(activeStreams[i]);
+        mStreamsAll.push_back(activeStreams[i]);
+
+        if (activeStreams[i]->width * activeStreams[i]->height <= CONFIGURE_LARGE_SIZE) {
+            mStreamsWithSmallSize.push_back(activeStreams[i]);
+        }
     }
+    mStreamsConfiguredWithLargeSize = (mStreamsAll.size() > mStreamsWithSmallSize.size());
+
 
     /* Flush to make sure we return all graph config objects to the pool before
        next stream config. */
@@ -253,7 +266,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     mImguUnit->flush();
     mControlUnit->flush();
 
-    status = mGCM.configStreams(tmpStreams, operation_mode);
+    status = mGCM.configStreams(mStreamsAll, operation_mode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;
@@ -304,9 +317,70 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
         return RequestThread::REQBLK_WAIT_ONE_REQUEST_COMPLETED;
     }
 
-    mControlUnit->processRequest(request,
-                                 mGCM.getGraphConfig(*request));
-    return NO_ERROR;
+    status_t status = NO_ERROR;
+    // Check reconfiguration
+    bool hasLargeSize = requireStreamWithLargeSize(request);
+    if (hasLargeSize != mStreamsConfiguredWithLargeSize) {
+        LOG1("%s: request %d need reconfigure, infilght %d", __FUNCTION__,
+                request->getId(), inFlightCount);
+        if (inFlightCount > 1) {
+            return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
+        }
+
+        status = reconfigureStreams(hasLargeSize, mOperationMode);
+    }
+
+    if (status == NO_ERROR) {
+        mControlUnit->processRequest(request,
+                                     mGCM.getGraphConfig(*request));
+    }
+    return status;
+}
+
+bool IPU3CameraHw::requireStreamWithLargeSize(Camera3Request* request) const
+{
+    const std::vector<camera3_stream_buffer>* buffers = request->getOutputBuffers();
+    for (const auto & buf : *buffers) {
+        if (buf.stream->width * buf.stream->height > CONFIGURE_LARGE_SIZE) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+status_t IPU3CameraHw::reconfigureStreams(bool configLargeSizeStream, uint32_t operation_mode)
+{
+    LOG1("%s: config streams with large size? %d", __FUNCTION__, configLargeSizeStream);
+    mStreamsConfiguredWithLargeSize = configLargeSizeStream;
+    std::vector<camera3_stream_t*>& streams = configLargeSizeStream ?
+                                              mStreamsAll : mStreamsWithSmallSize;
+
+    /* Flush to make sure we return all graph config objects to the pool before
+       next stream config. */
+    mCaptureUnit->flush();
+    mImguUnit->flush();
+    mControlUnit->flush();
+
+    status_t status = mGCM.configStreams(streams, operation_mode);
+    if (status != NO_ERROR) {
+        LOGE("Unable to configure stream: No matching graph config found! BUG");
+        return status;
+    }
+
+    status = mCaptureUnit->configStreams(streams, true);
+    if (status != NO_ERROR) {
+        LOGE("Unable to configure stream");
+        return status;
+    }
+
+    status = mImguUnit->configStreams(streams);
+    if (status != NO_ERROR) {
+        LOGE("Unable to configure stream for ImguUnit");
+        return status;
+    }
+
+    return mControlUnit->configStreamsDone(true);
 }
 
 status_t
