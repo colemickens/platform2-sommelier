@@ -31,10 +31,8 @@ std::vector<base::FilePath> GetMountpointsUnder(
   while (getmntent_r(mountinfo.get(), &mount_entry, buffer, sizeof(buffer))) {
     // Only return paths that are under |root|.
     const std::string mountpoint = mount_entry.mnt_dir;
-    if (!std::equal(
-            root.value().begin(), root.value().end(), mountpoint.begin())) {
+    if (mountpoint.compare(0, root.value().size(), root.value()) != 0)
       continue;
-    }
     mountpoints.emplace_back(mountpoint);
   }
 
