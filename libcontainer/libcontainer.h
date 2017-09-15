@@ -19,7 +19,7 @@ extern "C" {
 struct container_config;
 
 /* Create a container config. */
-BRILLO_EXPORT struct container_config* container_config_create();
+BRILLO_EXPORT struct container_config* container_config_create(void);
 
 /* Destroy a config create with container_config_create. */
 BRILLO_EXPORT void container_config_destroy(struct container_config* c);
