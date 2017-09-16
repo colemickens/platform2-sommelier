@@ -105,7 +105,7 @@
       '<@(external_cflags)',
     ],
     'cflags_cc': [
-      '-std=gnu++11',
+      '-std=gnu++14',
       '<@(external_cppflags)',
       '<@(external_cxxflags)',
     ],
