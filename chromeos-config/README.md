@@ -170,6 +170,22 @@ chromeos {
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
             };
+            pinned_version: sand {
+                bcs-overlay = "overlay-reef-private";
+                build-targets {
+                    coreboot = "reef";
+                    ec = "reef";
+                    depthcharge = "reef";
+                    libpayload = "reef";
+                };
+                main-image = "bcs://Reef.9041.50.0.tbz2";
+                ec-image = "bcs://Reef-EC.9041.43.0.tbz2";
+                stable-main-version = "Google-Reef.9041.43.0";
+                stable-ec-version = "reef-v1.1.5840-f0d7761";
+                extra = "${FILESDIR}/extra",
+                    "${SYSROOT}/usr/sbin/ectool",
+                    "bcs://Reef.something.tbz";
+            };
         };
     };
 
@@ -225,6 +241,58 @@ chromeos {
                 key-id = "basking";
             };
         };
+
+        sand {
+            powerd-prefs = "reef";
+            wallpaper = "coffee";
+            firmware {
+                shares = <&pinned_version>;
+                key-id = "sand";
+            };
+        };
+
+        electro {
+            powerd-prefs = "reef";
+            wallpaper = "coffee";
+            firmware {
+                shares = <&pinned_version>;
+                key-id = "electro";
+            };
+        };
     };
 };
 ```
+## Usage Instructions
+
+### Pinning Firmware Versions for Specific Models
+
+In order to pin firmware versions for specific models, create a new
+firmware instance pointing to the pinned rev and then update the
+repective model's shares phandle to point to the pinned revision.
+
+In the example above, this is shown using sand (a model) referencing
+the pinned firmware.
+
+This pinned firmware can then be shared as normal (e.g. electro in
+the example).
+
+This will cause the different version to get installed under a
+different models sub-directory in the shellball.
+Which achieves the same effect of having 2 separate revisions
+(in a slightly round about way) installed in the shellball.
+
+The shellball generated will contain the following (based on
+the example above) for the firmware pinning case:
+* models/
+ * reef/
+   * bios.bin
+   * ec.bin
+   * setvars.sh
+ * basking/
+  * setvars.sh (points to models/reef/...)
+ * sand/
+  * bios.bin (a different version)
+  * ec.bin (a different version)
+  * setvars.sh
+ * electro/
+  * setvars.sh (points to models/sand/...)
