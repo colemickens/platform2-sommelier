@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/files/file_path.h>
+
 #include "libcontainer/test_harness.h"
 
 #include "libcontainer/container_cgroup.h"
@@ -32,7 +34,7 @@ static struct mount_args mount_call_args[5];
 static int mount_called;
 
 struct mknod_args {
-  char* pathname;
+  base::FilePath pathname;
   mode_t mode;
   dev_t dev;
 };
@@ -53,7 +55,7 @@ static int minijail_cgroups_called;
 static int minijail_wait_called;
 static int minijail_reset_signal_mask_called;
 static int mount_ret;
-static char* mkdtemp_root;
+static base::FilePath mkdtemp_root;
 
 /* global mock cgroup. */
 #define MAX_ADD_DEVICE_CALLS 2
@@ -213,9 +215,7 @@ FIXTURE_SETUP(container_test) {
 
   memset(&mount_call_args, 0, sizeof(mount_call_args));
   mount_called = 0;
-  memset(&mknod_call_args, 0, sizeof(mknod_call_args));
   mknod_called = false;
-  mkdtemp_root = nullptr;
 
   memset(&gmcg, 0, sizeof(gmcg));
   static const struct cgroup_ops cgops = {
@@ -322,13 +322,9 @@ FIXTURE_TEARDOWN(container_test) {
     free(mount_call_args[i].target);
     free(mount_call_args[i].filesystemtype);
   }
-  free(mknod_call_args.pathname);
-  free(mkdtemp_root);
 }
 
 TEST_F(container_test, test_mount_tmp_start) {
-  char* path;
-
   ASSERT_EQ(0, container_start(self->container, self->config));
   ASSERT_EQ(2, mount_called);
   EXPECT_EQ(false, mount_call_args[1].outside_mount);
@@ -366,9 +362,7 @@ TEST_F(container_test, test_mount_tmp_start) {
   EXPECT_EQ('c', gmcg.add_dev_type[1]);
 
   ASSERT_EQ(true, mknod_called);
-  EXPECT_LT(0, asprintf(&path, "%s/root/dev/null", mkdtemp_root));
-  EXPECT_STREQ(path, mknod_call_args.pathname);
-  free(path);
+  EXPECT_EQ(mkdtemp_root.Append("root/dev/null"), mknod_call_args.pathname);
   EXPECT_EQ(mknod_call_args.mode,
             static_cast<mode_t>(S_IRWXU | S_IRWXG | S_IFCHR));
   EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
@@ -436,7 +430,7 @@ int __xmknod(int ver, const char* pathname, __mode_t mode, __dev_t* dev)
 int mknod(const char* pathname, mode_t mode, dev_t dev)
 #endif
 {
-  mknod_call_args.pathname = strdup(pathname);
+  mknod_call_args.pathname = base::FilePath(pathname);
   mknod_call_args.mode = mode;
 #ifdef __USE_EXTERN_INLINES
   mknod_call_args.dev = *dev;
@@ -473,7 +467,7 @@ int chmod(const char* path, mode_t mode) {
 }
 
 char* mkdtemp(char* template_string) {
-  mkdtemp_root = strdup(template_string);
+  mkdtemp_root = base::FilePath(template_string);
   return template_string;
 }
 

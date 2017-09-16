@@ -3,6 +3,7 @@
     'variables': {
       'deps': [
         'libminijail',
+        'libchrome-<(libbase_ver)',
       ],
     },
     'defines': [
