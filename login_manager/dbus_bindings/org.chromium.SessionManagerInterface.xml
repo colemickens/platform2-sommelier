@@ -100,6 +100,78 @@
     </signal>
 
     <!--
+        StorePolicyEx:
+        @descriptor_blob: Serialized PolicyDescriptor protobuf containing
+            metadata about the policy (e.g. user policy, account id).
+        @policy_blob: Serialized PolicyFetchResponse protobuf which wraps the
+            actual policy data along with an SHA1-RSA signature over the policy
+            data. The policy data is opaque to Session Manager, the exact
+            definition is only relevant to client code in Chrome.
+
+        Verifies the signature in @policy_blob and persists the blob to disk.
+
+        Device policy is stored in a root-owned location outside of any user's
+        cryptohome. It is verified with the device-wide policy key.
+
+        User policy is stored in a root-owned location within the user's
+        cryptohome (for privacy reasons). The first attempt to store policy also
+        installs the signing key for user policy. This key is used later to
+        verify policy updates pushed by Chrome.
+
+        User policy for users without session is rejected by this method.
+
+        Policy for device local accounts is stored in the root-owned
+        /var/lib/device_local_accounts directory in the stateful partition.
+        Signatures are checked against the owner key, key rotation is not
+        allowed.
+
+        Extension policy is rejected by the implementation at this point since
+        it is stored by Chrome directly.
+    -->
+    <method name="StorePolicyEx">
+      <arg type="ay" name="descriptor_blob" direction="in" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        StoreUnsignedPolicyEx:
+        @descriptor_blob: Serialized PolicyDescriptor protobuf containing
+            metadata about the policy (user, device or extension policy).
+        @policy_blob: Serialized PolicyFetchResponse protobuf containing user,
+            device or extension policy, but no signature.
+
+        Similar to StorePolicyEx, but stores policy without signature
+        verification for AD managed devices. Locked down through busconfig to be
+        only callable by authpolicyd and exits with an error if install
+        attributes are not locked to enterprise_ad device mode.
+    -->
+    <method name="StoreUnsignedPolicyEx">
+      <arg type="ay" name="descriptor_blob" direction="in" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        RetrievePolicyEx:
+        @descriptor_blob: Serialized PolicyDescriptor protobuf containing
+            metadata about the policy (user vs device policy).
+        @policy_blob: Serialized PolicyFetchResponse protobuf containing the
+            requested user or device policy and a signature over that policy.
+
+        Retrieve policy stored by StorePolicy.
+
+        Can retrieve user policy for users without a user session. This is
+        useful if we need to access user policy before actually starting the
+        session. The user home must have been mounted as hidden user home with
+        cryptohome.
+    -->
+    <method name="RetrievePolicyEx">
+      <arg type="ay" name="descriptor_blob" direction="in" />
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+
+    <!--
         StorePolicy:
         @policy_blob: Serialized protobuf containing a device policy and a
                       signature over that policy.

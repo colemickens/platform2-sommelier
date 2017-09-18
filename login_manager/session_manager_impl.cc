@@ -57,6 +57,7 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/arc.pb.h"
+#include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/termina_manager_interface.h"
@@ -119,6 +120,9 @@ constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
     base::TimeDelta::FromSeconds(USE_ANDROID_MASTER_CONTAINER ? 3 : 1);
 
 namespace {
+
+// Error message emitted when parsing a PolicyDescriptor proto fails.
+constexpr char kDescriptorParsingFailed[] = "PolicyDescriptor parsing failed.";
 
 // Constants used in email validation.
 const char kEmailSeparator = '@';
@@ -763,6 +767,60 @@ bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
   }
 
   return true;
+}
+
+void SessionManagerImpl::StorePolicyEx(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::vector<uint8_t>& in_descriptor_blob,
+    const std::vector<uint8_t>& in_policy_blob) {
+  StorePolicyInternalEx(in_descriptor_blob, in_policy_blob,
+                        SignatureCheck::kEnabled, std::move(response));
+}
+
+void SessionManagerImpl::StoreUnsignedPolicyEx(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::vector<uint8_t>& in_descriptor_blob,
+    const std::vector<uint8_t>& in_policy_blob) {
+  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
+  if (error) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  StorePolicyInternalEx(in_descriptor_blob, in_policy_blob,
+                        SignatureCheck::kDisabled, std::move(response));
+}
+
+bool SessionManagerImpl::RetrievePolicyEx(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_descriptor_blob,
+    std::vector<uint8_t>* out_policy_blob) {
+  PolicyDescriptor descriptor;
+  if (!descriptor.ParseFromArray(in_descriptor_blob.data(),
+                                 in_descriptor_blob.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    return false;
+  }
+
+  // TODO(crbug.com/765644): Refactor error handling in Retrieve* methods to get
+  // rid of duplicate code.
+  switch (descriptor.type()) {
+    case PolicyDescriptor::USER_POLICY:
+      return RetrievePolicyForUser(error, descriptor.account_id(),
+                                   out_policy_blob);
+    case PolicyDescriptor::SESSIONLESS_USER_POLICY:
+      return RetrievePolicyForUserWithoutSession(error, descriptor.account_id(),
+                                                 out_policy_blob);
+    case PolicyDescriptor::DEVICE_LOCAL_ACCOUNT_POLICY:
+      return RetrieveDeviceLocalAccountPolicy(error, descriptor.account_id(),
+                                              out_policy_blob);
+    case PolicyDescriptor::DEVICE_POLICY:
+      return RetrievePolicy(error, out_policy_blob);
+    case PolicyDescriptor::EXTENSION_POLICY:
+      // TODO(crbug.com/735100)
+      *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                           "EXTENSION_POLICY not implemented yet");
+      return false;
+  }
 }
 
 std::string SessionManagerImpl::RetrieveSessionState() {
@@ -1500,6 +1558,55 @@ void SessionManagerImpl::StorePolicyForUserInternal(
           std::move(response)));
 }
 
+void SessionManagerImpl::StorePolicyInternalEx(
+    const std::vector<uint8_t>& descriptor_blob,
+    const std::vector<uint8_t>& policy_blob,
+    SignatureCheck signature_check,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  PolicyDescriptor descriptor;
+  if (!descriptor.ParseFromArray(descriptor_blob.data(),
+                                 descriptor_blob.size())) {
+    brillo::ErrorPtr error =
+        CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // TODO(crbug.com/765644): Refactor Store* methods to get rid of duplicate
+  // code, e.g. by selecting the store by descriptor (requires deriving
+  // DeviceLocalAccountPolicyService from PolicyService like the others).
+  switch (descriptor.type()) {
+    case PolicyDescriptor::USER_POLICY: {
+      StorePolicyForUserInternal(descriptor.account_id(), policy_blob,
+                                 signature_check, std::move(response));
+      break;
+    }
+    case PolicyDescriptor::SESSIONLESS_USER_POLICY: {
+      brillo::ErrorPtr error = CreateError(
+          DBUS_ERROR_INVALID_ARGS,
+          "SESSIONLESS_USER_POLICY only allowed for policy retrieval.");
+      response->ReplyWithError(error.get());
+      break;
+    }
+    case PolicyDescriptor::DEVICE_LOCAL_ACCOUNT_POLICY: {
+      StoreDeviceLocalAccountPolicy(std::move(response),
+                                    descriptor.account_id(), policy_blob);
+      break;
+    }
+    case PolicyDescriptor::DEVICE_POLICY: {
+      StorePolicyInternal(policy_blob, signature_check, std::move(response));
+      break;
+    }
+    case PolicyDescriptor::EXTENSION_POLICY: {
+      // TODO(crbug.com/735100)
+      brillo::ErrorPtr error = CreateError(
+          DBUS_ERROR_INVALID_ARGS, "EXTENSION_POLICY not implemented yet");
+      response->ReplyWithError(error.get());
+      break;
+    }
+  }
+}
+
 void SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated(
     const std::string& update_mode,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
@@ -1599,8 +1706,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
 
     // To boot or continue booting ARC instance, certain amount of disk space is
     // needed under the home. We first check it.
-    // Note that this check is unnecessary for login screen case, because
-    // it runs on tmpfs.
+    // Note that this check is unnecessary for login screen case, because it
+    // runs on tmpfs.
     if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
         kArcCriticalDiskFreeBytes) {
       constexpr char kMessage[] = "Low free disk under /home";

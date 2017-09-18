@@ -68,6 +68,7 @@
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
 #include "login_manager/proto_bindings/arc.pb.h"
+#include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/system_utils_impl.h"
 
 using ::testing::AnyNumber;
@@ -192,6 +193,8 @@ enum class OldDataDirType {
 };
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
+constexpr char kEmptyAccountId[] = "";
+constexpr char kEmptyComponentId[] = "";
 
 StartArcInstanceRequest CreateStartArcInstanceRequestForUser() {
   StartArcInstanceRequest request;
@@ -254,7 +257,18 @@ class ResponseCapturer {
   DISALLOW_COPY_AND_ASSIGN(ResponseCapturer);
 };
 
-}  // anonymous namespace
+std::vector<uint8_t> MakePolicyDescriptor(
+    PolicyDescriptor::PolicyType type,
+    const std::string& account_id,
+    const std::string& component_id) {
+  PolicyDescriptor descriptor;
+  descriptor.set_type(type);
+  descriptor.set_account_id(account_id);
+  descriptor.set_component_id(component_id);
+  return StringToBlob(descriptor.SerializeAsString());
+}
+
+}  // namespace
 
 class SessionManagerImplTest : public ::testing::Test,
                                public SessionManagerImpl::Delegate {
@@ -884,6 +898,18 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   impl_->StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
+TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
+                    SignatureCheck::kEnabled);
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
+      policy_blob);
+}
+
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
@@ -894,12 +920,38 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   impl_->StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
+TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  ExpectStorePolicy(device_policy_service_, policy_blob,
+                    PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
+      policy_blob);
+}
+
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectNoStorePolicy(device_policy_service_);
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  ExpectNoStorePolicy(device_policy_service_);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
+      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
@@ -909,6 +961,19 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  SetDeviceMode("enterprise");
+  ExpectNoStorePolicy(device_policy_service_);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
+      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
@@ -921,6 +986,20 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
   impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
+TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  SetDeviceMode("enterprise_ad");
+  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
+                    SignatureCheck::kDisabled);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
+      policy_blob);
+}
+
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
@@ -928,6 +1007,20 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicy(&error, &out_blob));
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(policy_blob, out_blob);
+}
+
+TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*device_policy_service_, Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RetrievePolicyEx(
+      &error, MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
+                                   kEmptyAccountId, kEmptyComponentId),
+      &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -999,7 +1092,20 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   ResponseCapturer capturer;
   impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(), kSaneEmail,
                             policy_blob);
+  ASSERT_TRUE(capturer.response());
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist,
+            capturer.response()->GetErrorName());
+}
 
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      policy_blob);
   ASSERT_TRUE(capturer.response());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist,
             capturer.response()->GetErrorName());
@@ -1017,6 +1123,23 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   ResponseCapturer capturer;
   impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(), kSaneEmail,
                             policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Store(policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled, _))
+      .WillOnce(Return(true));
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
@@ -1067,6 +1190,63 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
 
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
+  ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
+
+  // Store policy for the signed-in user.
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Store(policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled, _))
+      .WillOnce(Return(true));
+
+  {
+    ResponseCapturer capturer;
+    impl_->StorePolicyEx(
+        capturer.CreateMethodResponse<>(),
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                             kEmptyComponentId),
+        policy_blob);
+    Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
+  }
+
+  // Storing policy for another username fails before their session starts.
+  constexpr char kEmail2[] = "user2@somewhere.com";
+  {
+    ResponseCapturer capturer;
+    impl_->StorePolicyEx(
+        capturer.CreateMethodResponse<>(),
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
+                             kEmptyComponentId),
+        policy_blob);
+    ASSERT_TRUE(capturer.response());
+    EXPECT_EQ(dbus_error::kSessionDoesNotExist,
+              capturer.response()->GetErrorName());
+  }
+
+  // Now start another session for the 2nd user.
+  ExpectAndRunStartSession(kEmail2);
+  ASSERT_TRUE(user_policy_services_[kEmail2]);
+
+  // Storing policy for that user now succeeds.
+  EXPECT_CALL(*user_policy_services_[kEmail2],
+              Store(policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled, _))
+      .WillOnce(Return(true));
+  {
+    ResponseCapturer capturer;
+    impl_->StorePolicyEx(
+        capturer.CreateMethodResponse<>(),
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
+                             kEmptyComponentId),
+        policy_blob);
+  }
+  Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
+}
+
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
@@ -1075,6 +1255,19 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
                                     kSaneEmail, policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
@@ -1086,6 +1279,20 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
                                     kSaneEmail, policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  SetDeviceMode("enterprise");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
@@ -1103,10 +1310,40 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
                                     kSaneEmail, policy_blob);
 }
 
+TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterpriseAD) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  SetDeviceMode("enterprise_ad");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Store(policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kDisabled, _))
+      .WillOnce(Return(true));
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      policy_blob);
+}
+
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+}
+
+TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->RetrievePolicyEx(
+      &error,
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      &out_blob));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
@@ -1120,6 +1357,23 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(policy_blob, out_blob);
+}
+
+TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SessionStarted) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RetrievePolicyEx(
+      &error,
+      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                           kEmptyComponentId),
+      &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -1168,6 +1422,62 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   }
 }
 
+TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
+  ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
+
+  // Retrieve policy for the signed-in user.
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+  {
+    std::vector<uint8_t> out_blob;
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->RetrievePolicyEx(
+        &error,
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
+                             kEmptyComponentId),
+        &out_blob));
+    EXPECT_FALSE(error.get());
+    Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
+    EXPECT_EQ(policy_blob, out_blob);
+  }
+
+  // Retrieving policy for another username fails before their session starts.
+  constexpr char kEmail2[] = "user2@somewhere.com";
+  {
+    std::vector<uint8_t> out_blob;
+    brillo::ErrorPtr error;
+    EXPECT_FALSE(impl_->RetrievePolicyEx(
+        &error,
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
+                             kEmptyComponentId),
+        &out_blob));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+  }
+
+  // Now start another session for the 2nd user.
+  ExpectAndRunStartSession(kEmail2);
+  ASSERT_TRUE(user_policy_services_[kEmail2]);
+
+  // Retrieving policy for that user now succeeds.
+  EXPECT_CALL(*user_policy_services_[kEmail2], Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+  {
+    std::vector<uint8_t> out_blob;
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->RetrievePolicyEx(
+        &error,
+        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
+                             kEmptyComponentId),
+        &out_blob));
+    EXPECT_FALSE(error.get());
+    Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
+    EXPECT_EQ(policy_blob, out_blob);
+  }
+}
+
 TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
   ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
 
@@ -1186,6 +1496,35 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyForUserWithoutSession(&error, kSaneEmail,
                                                          &out_blob));
+  Mock::VerifyAndClearExpectations(policy_service);
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(policy_blob, out_blob);
+  // Retrieval of policy without user session should not create a persistent
+  // PolicyService.
+  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
+}
+
+TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
+  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
+
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+
+  // Set up what MockUserPolicyServiceFactory will return.
+  hidden_user_home_expected_username_ = kSaneEmail;
+  hidden_user_home_policy_service_ = base::MakeUnique<MockPolicyService>();
+  MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
+
+  EXPECT_CALL(*policy_service, Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+
+  // Retrieve policy for a user who does not have a session.
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RetrievePolicyEx(
+      &error,
+      MakePolicyDescriptor(PolicyDescriptor::SESSIONLESS_USER_POLICY,
+                           kSaneEmail, kEmptyComponentId),
+      &out_blob));
   Mock::VerifyAndClearExpectations(policy_service);
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
