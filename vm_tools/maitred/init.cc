@@ -931,6 +931,57 @@ bool Init::Setup() {
     return false;
   }
 
+  // Applications that should be started for every VM.
+  struct {
+    const char* doc;
+    std::vector<string> argv;
+    std::map<string, string> env;
+    bool respawn;
+    bool use_console;
+    bool wait_for_exit;
+  } startup_applications[] = {
+      {
+          .doc = "system log collector",
+          .argv = {"vm_syslog"},
+          .env = {},
+          .respawn = true,
+          .use_console = false,
+          .wait_for_exit = false,
+      },
+  };
+
+  // Spawn all the startup applications.
+  for (auto& app : startup_applications) {
+    CHECK(!app.argv.empty());
+
+    LOG(INFO) << "Starting " << app.doc;
+
+    ProcessLaunchInfo info;
+    if (!Spawn(std::move(app.argv), std::move(app.env), app.respawn,
+               app.use_console, app.wait_for_exit, &info)) {
+      LOG(ERROR) << "Unable to launch " << app.doc;
+      continue;
+    }
+
+    switch (info.status) {
+      case ProcessStatus::UNKNOWN:
+        LOG(WARNING) << app.doc << " has unknown status";
+        break;
+      case ProcessStatus::EXITED:
+        LOG(INFO) << app.doc << " exited with status " << info.code;
+        break;
+      case ProcessStatus::SIGNALED:
+        LOG(INFO) << app.doc << " killed by signal " << info.code;
+        break;
+      case ProcessStatus::LAUNCHED:
+        LOG(INFO) << app.doc << " started";
+        break;
+      case ProcessStatus::FAILED:
+        LOG(ERROR) << "Failed to start " << app.doc;
+        break;
+    }
+  }
+
   return true;
 }
 
