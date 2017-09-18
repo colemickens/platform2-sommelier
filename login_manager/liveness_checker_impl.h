@@ -55,7 +55,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   void HandleAck(dbus::Response* response);
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
-  dbus::ObjectProxy* chrome_dbus_proxy_;  // Owned by the caller.
+  dbus::ObjectProxy* chrome_dbus_proxy_;     // Owned by the caller.
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;

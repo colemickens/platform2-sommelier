@@ -27,13 +27,12 @@ const char KeyGenerator::kTemporaryKeyFilename[] = "key.pub";
 
 KeyGenerator::Delegate::~Delegate() {}
 
-KeyGenerator::KeyGenerator(uid_t uid, SystemUtils *utils)
+KeyGenerator::KeyGenerator(uid_t uid, SystemUtils* utils)
     : uid_(uid),
       utils_(utils),
       delegate_(NULL),
       factory_(new GeneratorJob::Factory),
-      generating_(false) {
-}
+      generating_(false) {}
 
 KeyGenerator::~KeyGenerator() {}
 
@@ -48,8 +47,8 @@ bool KeyGenerator::Start(const string& username) {
   }
   key_owner_username_ = username;
   temporary_key_filename_ = temporary_key_path.value();
-  keygen_job_ = factory_->Create(temporary_key_filename_, user_path,
-                                 uid_, utils_);
+  keygen_job_ =
+      factory_->Create(temporary_key_filename_, user_path, uid_, utils_);
   if (!keygen_job_->RunInBackground())
     return false;
   pid_t pid = keygen_job_->CurrentPid();
@@ -63,8 +62,7 @@ bool KeyGenerator::Start(const string& username) {
 }
 
 bool KeyGenerator::IsManagedJob(pid_t pid) {
-  return (keygen_job_ &&
-          keygen_job_->CurrentPid() > 0 &&
+  return (keygen_job_ && keygen_job_->CurrentPid() > 0 &&
           keygen_job_->CurrentPid() == pid);
 }
 

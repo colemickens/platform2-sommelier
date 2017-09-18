@@ -193,55 +193,47 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // ownership-related state will live. Yes, it should be owned by root. The
   // permissions are set such that the chronos user can see the content of known
   // files inside whitelist, but not anything else.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/lib/whitelist"), kRootUid, gid, 0710));
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/lib/whitelist"), kRootUid,
+                              gid, 0710));
 
   // Create the directory where policies for extensions installed in
   // device-local accounts are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_local_account_component_policy"),
-      uid,
-      gid,
-      0700));
+      base::FilePath("/var/cache/device_local_account_component_policy"), uid,
+      gid, 0700));
 
   // Create the directory where external data referenced by policies is cached
   // for device-local accounts. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_external_policy_data"),
-      uid,
-      gid,
-      0700));
+      uid, gid, 0700));
 
   // Create the directory where the AppPack extensions are cached.
   // These extensions are read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/app_pack"), uid, gid, 0700));
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/app_pack"), uid, gid,
+                              0700));
 
   // Create the directory where extensions for device-local accounts are cached.
   // These extensions are read and written by chronos.
   CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_local_account_extensions"),
-      uid,
-      gid,
+      base::FilePath("/var/cache/device_local_account_extensions"), uid, gid,
       0700));
 
   // Create the directory where the Quirks Client can store downloaded
   // icc and other display profiles.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/display_profiles"), uid, gid, 0700));
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/display_profiles"),
+                              uid, gid, 0700));
 
   // Create the directory for shared installed extensions.
   // Shared extensions are validated at runtime by the browser.
   // These extensions are read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/shared_extensions"), uid, gid, 0700));
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/shared_extensions"),
+                              uid, gid, 0700));
 
   // Create the directory where policies for extensions installed in the
   // sign-in profile are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/signin_profile_component_policy"),
-      uid,
-      gid,
+      base::FilePath("/var/cache/signin_profile_component_policy"), uid, gid,
       0700));
 
   // Tell Chrome where to write logging messages before the user logs in.
@@ -268,13 +260,13 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
     // user chronos and group arc-camera with 0770 permission.
     gid_t arc_camera_gid;
     CHECK(brillo::userdb::GetGroupInfo("arc-camera", &arc_camera_gid));
-    CHECK(EnsureDirectoryExists(
-        base::FilePath("/run/camera"), uid, arc_camera_gid, 0770));
+    CHECK(EnsureDirectoryExists(base::FilePath("/run/camera"), uid,
+                                arc_camera_gid, 0770));
     // The /var/cache/camera folder is used to store camera-related configs and
     // settings that are either extracted from Android container, or generated
     // by the camera HAL at runtime.
-    CHECK(EnsureDirectoryExists(
-        base::FilePath("/var/cache/camera"), uid, arc_camera_gid, 0770));
+    CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/camera"), uid,
+                                arc_camera_gid, 0770));
   }
 }
 

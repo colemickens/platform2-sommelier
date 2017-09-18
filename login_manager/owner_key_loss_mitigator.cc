@@ -6,7 +6,8 @@
 
 namespace login_manager {
 
-const char OwnerKeyLossMitigator::kMitigateMsg[] = "Owner private key lost. "
+const char OwnerKeyLossMitigator::kMitigateMsg[] =
+    "Owner private key lost. "
     "Check for TPM issues or disk corruption.";
 
 OwnerKeyLossMitigator::OwnerKeyLossMitigator() {}

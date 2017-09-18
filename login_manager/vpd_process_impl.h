@@ -19,9 +19,7 @@
 
 namespace login_manager {
 
-class VpdProcessImpl
-    : public VpdProcess,
-      public JobManagerInterface {
+class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
  public:
   explicit VpdProcessImpl(SystemUtils* system_utils);
 

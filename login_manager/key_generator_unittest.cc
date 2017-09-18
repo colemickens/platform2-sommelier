@@ -31,13 +31,15 @@
 #include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
-using brillo::cryptohome::home::GetUserPathPrefix;
-using brillo::cryptohome::home::SetUserHomePrefix;
-using brillo::cryptohome::home::SetSystemSalt;
+
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::_;
+
+using brillo::cryptohome::home::GetUserPathPrefix;
+using brillo::cryptohome::home::SetSystemSalt;
+using brillo::cryptohome::home::SetUserHomePrefix;
 
 class KeyGeneratorTest : public ::testing::Test {
  public:

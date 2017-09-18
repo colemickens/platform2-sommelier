@@ -24,8 +24,7 @@ class GeneratorJobInterface : public ChildJobInterface {
 
   // Overridden from ChildJobInterface
   virtual bool RunInBackground() = 0;
-  virtual void KillEverything(int signal,
-                              const std::string& message) = 0;
+  virtual void KillEverything(int signal, const std::string& message) = 0;
   virtual void Kill(int signal, const std::string& message) = 0;
   virtual void WaitAndAbort(base::TimeDelta timeout) = 0;
   virtual const std::string GetName() const = 0;
@@ -53,6 +52,7 @@ class GeneratorJob : public GeneratorJobInterface {
         const base::FilePath& user_path,
         uid_t desired_uid,
         SystemUtils* utils) override;
+
    private:
     DISALLOW_COPY_AND_ASSIGN(Factory);
   };
@@ -86,7 +86,6 @@ class GeneratorJob : public GeneratorJobInterface {
 
   DISALLOW_COPY_AND_ASSIGN(GeneratorJob);
 };
-
 
 }  // namespace login_manager
 

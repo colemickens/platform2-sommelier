@@ -34,17 +34,15 @@ int GenerateKey(const base::FilePath& file_path,
   if (key.IsPopulated())
     LOG(FATAL) << "Existing owner key at " << file_path.value();
   base::FilePath nssdb = user_homedir.Append(nss->GetNssdbSubpath());
-  PLOG_IF(FATAL, !base::PathExists(nssdb)) << nssdb.value()
-                                           << " does not exist!";
-  if (!base::VerifyPathControlledByUser(file_path.DirName(),
-                                        nssdb,
-                                        getuid(),
+  PLOG_IF(FATAL, !base::PathExists(nssdb))
+      << nssdb.value() << " does not exist!";
+  if (!base::VerifyPathControlledByUser(file_path.DirName(), nssdb, getuid(),
                                         std::set<gid_t>())) {
     PLOG(FATAL) << nssdb.value() << " cannot be used by the user!";
   }
   crypto::ScopedPK11Slot slot(nss->OpenUserDB(user_homedir));
   PLOG_IF(FATAL, !slot) << "Could not open/create user NSS DB at "
-                          << nssdb.value();
+                        << nssdb.value();
   LOG(INFO) << "Generating Owner key.";
 
   std::unique_ptr<crypto::RSAPrivateKey> pair(

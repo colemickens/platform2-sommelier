@@ -34,10 +34,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
     fake_loop_.SetAsCurrent();
     manager_.reset(new StrictMock<MockProcessManagerService>);
     object_proxy_ = new MockObjectProxy;
-    checker_.reset(new LivenessCheckerImpl(manager_.get(),
-                                           object_proxy_.get(),
-                                           true,
-                                           TimeDelta::FromSeconds(10)));
+    checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
+                                           true, TimeDelta::FromSeconds(10)));
   }
 
   void ExpectUnAckedLivenessPing() {
@@ -59,9 +57,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
     EXPECT_CALL(*object_proxy_.get(), CallMethod(_, _, _))
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return())
-        .WillOnce(
-            InvokeWithoutArgs(brillo::MessageLoop::current(),
-                              &brillo::MessageLoop::BreakLoop));
+        .WillOnce(InvokeWithoutArgs(brillo::MessageLoop::current(),
+                                    &brillo::MessageLoop::BreakLoop));
   }
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
@@ -95,8 +92,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
-  checker_.reset(new LivenessCheckerImpl(manager_.get(),
-                                         object_proxy_.get(),
+  checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                          false,  // Disable aborting
                                          TimeDelta::FromSeconds(10)));
   ExpectPingResponsePingCheckPingAndQuit();

@@ -200,10 +200,8 @@ bool IsInsideVm(SystemUtils* system) {
 // deleted.
 class SessionManagerImpl::DBusService {
  public:
-  explicit DBusService(
-      org::chromium::SessionManagerInterfaceAdaptor* adaptor)
-      : adaptor_(adaptor),
-        weak_ptr_factory_(this) {}
+  explicit DBusService(org::chromium::SessionManagerInterfaceAdaptor* adaptor)
+      : adaptor_(adaptor), weak_ptr_factory_(this) {}
   ~DBusService() = default;
 
   bool Start(const scoped_refptr<dbus::Bus>& bus) {
@@ -224,23 +222,19 @@ class SessionManagerImpl::DBusService {
   }
 
   // Adaptor from DBusMethodResponse to PolicyService::Completion callback.
-  PolicyService::Completion
-  CreatePolicyServiceCompletionCallback(
+  PolicyService::Completion CreatePolicyServiceCompletionCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-    return base::Bind(
-        &DBusService::HandlePolicyServiceCompletion,
-        weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+    return base::Bind(&DBusService::HandlePolicyServiceCompletion,
+                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
   }
 
   // Adaptor from DBusMethodResponse to
   // ServerBackedStateKeyGenerator::StateKeyCallback callback.
-  ServerBackedStateKeyGenerator::StateKeyCallback
-  CreateStateKeyCallback(
+  ServerBackedStateKeyGenerator::StateKeyCallback CreateStateKeyCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-      std::vector<std::vector<uint8_t>>>> response) {
-    return base::Bind(
-        &DBusService::HandleStateKeyCallback,
-        weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+          std::vector<std::vector<uint8_t>>>> response) {
+    return base::Bind(&DBusService::HandleStateKeyCallback,
+                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
   }
 
  private:
@@ -449,9 +443,9 @@ bool SessionManagerImpl::Initialize() {
                  weak_ptr_factory_.GetWeakPtr()));
 
   if (!device_policy_) {
-    device_policy_ = DevicePolicyService::Create(
-        owner_key_, login_metrics_, &mitigator_, nss_, crossystem_,
-        vpd_process_);
+    device_policy_ =
+        DevicePolicyService::Create(owner_key_, login_metrics_, &mitigator_,
+                                    nss_, crossystem_, vpd_process_);
     device_policy_->set_delegate(this);
 
     user_policy_factory_.reset(
@@ -517,9 +511,8 @@ bool SessionManagerImpl::EnableChromeTesting(
   if (!already_enabled) {
     base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
     if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
-      *error = CreateError(
-          dbus_error::kTestingChannelError,
-          "Could not create testing channel filename.");
+      *error = CreateError(dbus_error::kTestingChannelError,
+                           "Could not create testing channel filename.");
       return false;
     }
     chrome_testing_path_ = temp_file_path;
@@ -559,8 +552,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
   // Create a UserSession object for this user.
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
-  auto user_session =
-      CreateUserSession(actual_account_id, is_incognito, error);
+  auto user_session = CreateUserSession(actual_account_id, is_incognito, error);
   if (!user_session) {
     DCHECK(*error);
     return false;
@@ -569,9 +561,9 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   // Check whether the current user is the owner, and if so make sure they are
   // whitelisted and have an owner key.
   bool user_is_owner = false;
-  if (!device_policy_->CheckAndHandleOwnerLogin(
-          user_session->username, user_session->slot.get(), &user_is_owner,
-          error)) {
+  if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
+                                                user_session->slot.get(),
+                                                &user_is_owner, error)) {
     DCHECK(*error);
     return false;
   }
@@ -631,8 +623,8 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
 void SessionManagerImpl::StorePolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyInternal(
-      in_policy_blob, SignatureCheck::kEnabled, std::move(response));
+  StorePolicyInternal(in_policy_blob, SignatureCheck::kEnabled,
+                      std::move(response));
 }
 
 void SessionManagerImpl::StoreUnsignedPolicy(
@@ -644,13 +636,12 @@ void SessionManagerImpl::StoreUnsignedPolicy(
     return;
   }
 
-  StorePolicyInternal(
-      in_policy_blob, SignatureCheck::kDisabled, std::move(response));
+  StorePolicyInternal(in_policy_blob, SignatureCheck::kDisabled,
+                      std::move(response));
 }
 
-bool SessionManagerImpl::RetrievePolicy(
-    brillo::ErrorPtr* error,
-    std::vector<uint8_t>* out_policy_blob) {
+bool SessionManagerImpl::RetrievePolicy(brillo::ErrorPtr* error,
+                                        std::vector<uint8_t>* out_policy_blob) {
   if (!device_policy_->Retrieve(out_policy_blob)) {
     constexpr char kMessage[] = "Failed to retrieve policy data.";
     LOG(ERROR) << kMessage;
@@ -665,9 +656,8 @@ void SessionManagerImpl::StorePolicyForUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyForUserInternal(
-      in_account_id, in_policy_blob, SignatureCheck::kEnabled,
-      std::move(response));
+  StorePolicyForUserInternal(in_account_id, in_policy_blob,
+                             SignatureCheck::kEnabled, std::move(response));
 }
 
 void SessionManagerImpl::StoreUnsignedPolicyForUser(
@@ -680,9 +670,8 @@ void SessionManagerImpl::StoreUnsignedPolicyForUser(
     return;
   }
 
-  StorePolicyForUserInternal(
-      in_account_id, in_policy_blob, SignatureCheck::kDisabled,
-      std::move(response));
+  StorePolicyForUserInternal(in_account_id, in_policy_blob,
+                             SignatureCheck::kDisabled, std::move(response));
 }
 
 bool SessionManagerImpl::RetrievePolicyForUser(
@@ -741,11 +730,10 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
 }
 
 bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
-      brillo::ErrorPtr* error,
-      const std::string& in_account_id,
-      std::vector<uint8_t>* out_policy_blob) {
-  if (!device_local_account_policy_->Retrieve(
-          in_account_id, out_policy_blob)) {
+    brillo::ErrorPtr* error,
+    const std::string& in_account_id,
+    std::vector<uint8_t>* out_policy_blob) {
+  if (!device_local_account_policy_->Retrieve(in_account_id, out_policy_blob)) {
     constexpr char kMessage[] = "Failed to retrieve policy data.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
@@ -821,9 +809,8 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
                                     const std::vector<std::string>& in_argv) {
   struct ucred ucred = {0};
   socklen_t len = sizeof(struct ucred);
-  if (!in_cred_fd.is_valid() ||
-      getsockopt(
-          in_cred_fd.value(), SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.value(), SOL_SOCKET,
+                                           SO_PEERCRED, &ucred, &len) == -1) {
     PLOG(ERROR) << "Can't get peer creds";
     *error = CreateError("GetPeerCredsFailed", strerror(errno));
     return false;
@@ -922,11 +909,9 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
   }
 
   // Trigger VPD key update.
-  auto completion =
-      base::Bind(&SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated,
-                 weak_ptr_factory_.GetWeakPtr(),
-                 update_mode,
-                 base::Passed(&response));
+  auto completion = base::Bind(
+      &SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated,
+      weak_ptr_factory_.GetWeakPtr(), update_mode, base::Passed(&response));
   if (!vpd_process_->RunInBackground(
           {{kTPMFirmwareUpdateParamsVPDKey, vpd_params}}, true, completion)) {
     // Make sure to send a response.
@@ -977,8 +962,9 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
     LOG(ERROR) << system_clock::kSystemClockInterface << "."
                << system_clock::kSystemLastSyncInfo << " request failed.";
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
-                              weak_ptr_factory_.GetWeakPtr()),
+        FROM_HERE,
+        base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                   weak_ptr_factory_.GetWeakPtr()),
         system_clock_last_sync_info_retry_delay_);
     return;
   }
@@ -999,8 +985,9 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
     pending_state_key_callbacks_.clear();
   } else {
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
-                              weak_ptr_factory_.GetWeakPtr()),
+        FROM_HERE,
+        base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                   weak_ptr_factory_.GetWeakPtr()),
         system_clock_last_sync_info_retry_delay_);
   }
 }
@@ -1009,14 +996,13 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
                                          const std::string& in_data) {
   std::map<std::string, std::string> params;
   if (!ServerBackedStateKeyGenerator::ParseMachineInfo(in_data, &params)) {
-    *error = CreateError(
-        dbus_error::kInitMachineInfoFail, "Parse failure.");
+    *error = CreateError(dbus_error::kInitMachineInfoFail, "Parse failure.");
     return false;
   }
 
   if (!state_key_generator_->InitMachineInfo(params)) {
-    *error = CreateError(
-        dbus_error::kInitMachineInfoFail, "Missing parameters.");
+    *error =
+        CreateError(dbus_error::kInitMachineInfoFail, "Missing parameters.");
     return false;
   }
   return true;
@@ -1037,15 +1023,14 @@ bool SessionManagerImpl::StartArcInstance(
     // Stop the existing instance if it fails to continue to boot an exsiting
     // container. Using Unretained() is okay because the closure will be called
     // when exiting this function.
-    scoped_runner.Reset(
-        base::Bind(&SessionManagerImpl::OnContinueArcBootFailed,
-                   base::Unretained(this)));
+    scoped_runner.Reset(base::Bind(&SessionManagerImpl::OnContinueArcBootFailed,
+                                   base::Unretained(this)));
   }
 
   StartArcInstanceRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
-    *error = CreateError(
-        DBUS_ERROR_INVALID_ARGS, "StartArcInstanceRequest parsing failed.");
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                         "StartArcInstanceRequest parsing failed.");
     return false;
   }
   if (!ValidateStartArcInstanceRequest(request, error)) {
@@ -1069,8 +1054,8 @@ bool SessionManagerImpl::StartArcInstance(
   }
   server_socket.CheckValidity();
 
-  if (!StartArcInstanceInternal(
-          error, request, pid, out_container_instance_id)) {
+  if (!StartArcInstanceInternal(error, request, pid,
+                                out_container_instance_id)) {
     DCHECK(*error);
     return false;
   }
@@ -1197,8 +1182,8 @@ bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
 #if USE_CHEETS
   pid_t pid = 0;
   if (android_container_->GetContainerPID(&pid)) {
-    *error = CreateError(
-        dbus_error::kArcInstanceRunning, "ARC is currently running.");
+    *error = CreateError(dbus_error::kArcInstanceRunning,
+                         "ARC is currently running.");
     return false;
   }
 
@@ -1387,9 +1372,9 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  return base::MakeUnique<UserSession>(
-      username, SanitizeUserName(username), is_incognito, std::move(slot),
-      std::move(user_policy));
+  return base::MakeUnique<UserSession>(username, SanitizeUserName(username),
+                                       is_incognito, std::move(slot),
+                                       std::move(user_policy));
 }
 
 brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
@@ -1397,8 +1382,7 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
   const std::string& mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
   if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    constexpr char kMessage[] =
-        "Device mode doesn't permit unsigned policy.";
+    constexpr char kMessage[] = "Device mode doesn't permit unsigned policy.";
     LOG(ERROR) << kMessage;
     return CreateError(dbus_error::kPolicySignatureRequired, kMessage);
   }
@@ -1420,10 +1404,9 @@ void SessionManagerImpl::StorePolicyInternal(
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(
-      policy_blob, flags, signature_check,
-      dbus_service_->CreatePolicyServiceCompletionCallback(
-          std::move(response)));
+  device_policy_->Store(policy_blob, flags, signature_check,
+                        dbus_service_->CreatePolicyServiceCompletionCallback(
+                            std::move(response)));
 }
 
 void SessionManagerImpl::StorePolicyForUserInternal(
@@ -1507,16 +1490,16 @@ bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
     return false;
   }
 
-  if (!system_->ChangeOwner(
-          base::FilePath(kArcBridgeSocketPath), -1, arc_bridge_gid)) {
+  if (!system_->ChangeOwner(base::FilePath(kArcBridgeSocketPath), -1,
+                            arc_bridge_gid)) {
     constexpr char kMessage[] = "Failed to change group of the socket";
     PLOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
     return false;
   }
 
-  if (!system_->SetPosixFilePermissions(
-          base::FilePath(kArcBridgeSocketPath), 0660)) {
+  if (!system_->SetPosixFilePermissions(base::FilePath(kArcBridgeSocketPath),
+                                        0660)) {
     constexpr char kMessage[] = "Failed to change permissions of the socket";
     PLOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
@@ -1541,8 +1524,9 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   };
 
   const bool continue_boot = container_pid > 0;
-  android_container_->SetStatefulMode(in_request.for_login_screen() ?
-                        StatefulMode::STATELESS : StatefulMode::STATEFUL);
+  android_container_->SetStatefulMode(in_request.for_login_screen()
+                                          ? StatefulMode::STATELESS
+                                          : StatefulMode::STATEFUL);
   if (!in_request.for_login_screen()) {
     arc_start_time_ = base::TimeTicks::Now();
 
@@ -1590,8 +1574,9 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   std::string container_instance_id;
   if (!continue_boot) {
     // Start the container.
-    const char* init_signal = in_request.for_login_screen() ?
-        kStartArcInstanceForLoginScreenImpulse : kStartArcInstanceImpulse;
+    const char* init_signal = in_request.for_login_screen()
+                                  ? kStartArcInstanceForLoginScreenImpulse
+                                  : kStartArcInstanceImpulse;
     container_instance_id = StartArcContainer(init_signal, keyvals, error);
     if (container_instance_id.empty()) {
       DCHECK(*error);
@@ -1631,10 +1616,8 @@ std::string SessionManagerImpl::StartArcContainer(
     brillo::ErrorPtr* error_out) {
 #if !USE_ANDROID_MASTER_CONTAINER
   if (!init_controller_->TriggerImpulse(
-          init_signal, init_keyvals,
-          InitDaemonController::TriggerMode::SYNC)) {
-    const std::string message =
-        "Emitting " + init_signal + " impulse failed.";
+          init_signal, init_keyvals, InitDaemonController::TriggerMode::SYNC)) {
+    const std::string message = "Emitting " + init_signal + " impulse failed.";
     LOG(ERROR) << message;
     *error_out = CreateError(dbus_error::kEmitFailed, message);
     return std::string();
@@ -1707,7 +1690,9 @@ void SessionManagerImpl::OnContinueArcBootFailed() {
 }
 
 void SessionManagerImpl::OnAndroidContainerStopped(
-    const std::string& container_instance_id, pid_t pid, bool clean) {
+    const std::string& container_instance_id,
+    pid_t pid,
+    bool clean) {
   if (clean) {
     LOG(INFO) << "Android Container with pid " << pid << " stopped";
   } else {

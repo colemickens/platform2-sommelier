@@ -48,8 +48,8 @@ bool DeviceLocalAccountPolicyService::Store(
     const PolicyService::Completion& completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
-    completion.Run(CreateError(
-        dbus_error::kInvalidAccount, "Invalid device-local account"));
+    completion.Run(CreateError(dbus_error::kInvalidAccount,
+                               "Invalid device-local account"));
     return false;
   }
 
@@ -76,8 +76,7 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   const DeviceLocalAccountList& list(
       device_settings.device_local_accounts().account());
   for (DeviceLocalAccountList::const_iterator account(list.begin());
-       account != list.end();
-       ++account) {
+       account != list.end(); ++account) {
     std::string account_key;
     if (account->has_account_id()) {
       account_key = GetAccountKey(account->account_id());
@@ -94,8 +93,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   MigrateUppercaseDirs();
 
   // Purge all existing on-disk accounts that are no longer defined.
-  base::FileEnumerator enumerator(
-      device_local_account_dir_, false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator enumerator(device_local_account_dir_, false,
+                                  base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
   while (!(subdir = enumerator.Next()).empty()) {
     if (IsValidAccountKey(subdir.BaseName().value()) &&
@@ -108,8 +107,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
 }
 
 bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
-  base::FileEnumerator enumerator(
-      device_local_account_dir_, false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator enumerator(device_local_account_dir_, false,
+                                  base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
 
   while (!(subdir = enumerator.Next()).empty()) {
@@ -136,10 +135,9 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
   // Lazily create and initialize the policy service instance.
   if (!entry->second) {
     const base::FilePath policy_path =
-        device_local_account_dir_
-        .AppendASCII(key)
-        .Append(kPolicyDir)
-        .Append(kPolicyFileName);
+        device_local_account_dir_.AppendASCII(key)
+            .Append(kPolicyDir)
+            .Append(kPolicyFileName);
     if (!base::CreateDirectory(policy_path.DirName())) {
       LOG(ERROR) << "Failed to create directory for " << policy_path.value();
       return NULL;

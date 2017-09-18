@@ -29,14 +29,12 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-PolicyService::PolicyService(
-    std::unique_ptr<PolicyStore> policy_store,
-    PolicyKey* policy_key)
+PolicyService::PolicyService(std::unique_ptr<PolicyStore> policy_store,
+                             PolicyKey* policy_key)
     : policy_store_(std::move(policy_store)),
       policy_key_(policy_key),
       delegate_(NULL),
-      weak_ptr_factory_(this) {
-}
+      weak_ptr_factory_(this) {}
 
 PolicyService::~PolicyService() = default;
 
@@ -75,10 +73,8 @@ void PolicyService::PostPersistKeyTask() {
 
 void PolicyService::PostPersistPolicyTask(const Completion& completion) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&PolicyService::PersistPolicy,
-                 weak_ptr_factory_.GetWeakPtr(),
-                 completion));
+      FROM_HERE, base::Bind(&PolicyService::PersistPolicy,
+                            weak_ptr_factory_.GetWeakPtr(), completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
@@ -101,8 +97,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
       if (policy.has_new_public_key_signature() && (key_flags & KEY_ROTATE)) {
         // Graceful key rotation.
         LOG(INFO) << "Attempting policy key rotation.";
-        installed = key()->Rotate(
-            der, StringToBlob(policy.new_public_key_signature()));
+        installed =
+            key()->Rotate(der, StringToBlob(policy.new_public_key_signature()));
       }
     } else if (key_flags & KEY_INSTALL_NEW) {
       LOG(INFO) << "Attempting to install new policy key.";

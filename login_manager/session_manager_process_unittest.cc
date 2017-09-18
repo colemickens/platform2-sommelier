@@ -40,7 +40,6 @@ using ::testing::Return;
 using ::testing::Sequence;
 using ::testing::_;
 
-
 namespace login_manager {
 
 // Used as a fixture for the tests in this file.
@@ -51,8 +50,7 @@ class SessionManagerProcessTest : public ::testing::Test {
       : manager_(NULL),
         liveness_checker_(new MockLivenessChecker),
         session_manager_impl_(new MockSessionManager),
-        must_destroy_mocks_(true) {
-  }
+        must_destroy_mocks_(true) {}
 
   ~SessionManagerProcessTest() override {
     if (must_destroy_mocks_) {
@@ -80,15 +78,12 @@ class SessionManagerProcessTest : public ::testing::Test {
   static const pid_t kDummyPid;
   static const int kExit;
 
-  void MockUtils() {
-    manager_->test_api().set_systemutils(&utils_);
-  }
+  void MockUtils() { manager_->test_api().set_systemutils(&utils_); }
 
   void ExpectShutdown() {
     EXPECT_CALL(*session_manager_impl_, AnnounceSessionStoppingIfNeeded())
         .Times(1);
-    EXPECT_CALL(*session_manager_impl_, AnnounceSessionStopped())
-        .Times(1);
+    EXPECT_CALL(*session_manager_impl_, AnnounceSessionStopped()).Times(1);
   }
 
   void ExpectLivenessChecking() {
@@ -109,13 +104,8 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void InitManager(std::unique_ptr<BrowserJobInterface> job) {
-    manager_ = new SessionManagerService(std::move(job),
-                                         getuid(),
-                                         3,
-                                         false,
-                                         base::TimeDelta(),
-                                         &metrics_,
-                                         &utils_);
+    manager_ = new SessionManagerService(std::move(job), getuid(), 3, false,
+                                         base::TimeDelta(), &metrics_, &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
     manager_->test_api().set_aborted_browser_pid_path(
@@ -128,9 +118,7 @@ class SessionManagerProcessTest : public ::testing::Test {
     fake_loop_.Run();
   }
 
-  void ForceRunLoop() {
-    fake_loop_.Run();
-  }
+  void ForceRunLoop() { fake_loop_.Run(); }
 
   FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
     FakeBrowserJob* job = new FakeBrowserJob("FakeBrowserJob", schedule_exit);
@@ -173,14 +161,12 @@ class HandleSuspendReadinessMethodMatcher
     : public ::testing::MatcherInterface<dbus::MethodCall*> {
  public:
   HandleSuspendReadinessMethodMatcher(int delay_id, int suspend_id)
-      : delay_id_(delay_id),
-        suspend_id_(suspend_id) {}
+      : delay_id_(delay_id), suspend_id_(suspend_id) {}
 
   virtual bool MatchAndExplain(dbus::MethodCall* method_call,
                                ::testing::MatchResultListener* listener) const {
     // Make sure we've got the right kind of method call.
-    if (method_call->GetInterface() !=
-        power_manager::kPowerManagerInterface) {
+    if (method_call->GetInterface() != power_manager::kPowerManagerInterface) {
       *listener << "interface was " << method_call->GetInterface();
       return false;
     }
@@ -208,8 +194,8 @@ class HandleSuspendReadinessMethodMatcher
   }
 
   virtual void DescribeTo(::std::ostream* os) const {
-    *os << "HandleSuspendReadiness method call with delay ID "
-        << delay_id_ << " and suspend ID " << suspend_id_;
+    *os << "HandleSuspendReadiness method call with delay ID " << delay_id_
+        << " and suspend ID " << suspend_id_;
   }
 
   virtual void DescribeNegationTo(::std::ostream* os) const {
@@ -217,6 +203,7 @@ class HandleSuspendReadinessMethodMatcher
         << "not with delay ID " << delay_id_ << " and suspend ID "
         << suspend_id_;
   }
+
  private:
   const int delay_id_;
   const int suspend_id_;
@@ -251,13 +238,11 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
 
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::RunBrowser,
-                 manager_.get()));
+      base::Bind(&SessionManagerService::RunBrowser, manager_.get()));
 
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::ScheduleShutdown,
-                 manager_.get()));
+      base::Bind(&SessionManagerService::ScheduleShutdown, manager_.get()));
 
   ForceRunLoop();
 }

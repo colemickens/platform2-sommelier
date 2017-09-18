@@ -23,8 +23,8 @@ using ::testing::DoAll;
 using ::testing::Ge;
 using ::testing::Invoke;
 using ::testing::Ne;
-using ::testing::SetArgPointee;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 using ::testing::_;
 
 namespace login_manager {
@@ -233,11 +233,10 @@ TEST_F(AndroidOciWrapperTest, StartContainerChildProcess) {
       .WillOnce(Return(0));
 
   base::FilePath proc_fd_path(AndroidOciWrapper::kProcFdPath);
-  std::vector<base::FilePath> fds = {proc_fd_path.Append("0"),
-                                     proc_fd_path.Append("1"),
-                                     proc_fd_path.Append("2"),
-                                     proc_fd_path.Append("5"),
-                                     proc_fd_path.Append("13")};
+  std::vector<base::FilePath> fds = {
+      proc_fd_path.Append("0"), proc_fd_path.Append("1"),
+      proc_fd_path.Append("2"), proc_fd_path.Append("5"),
+      proc_fd_path.Append("13")};
   EXPECT_CALL(system_utils_,
               EnumerateFiles(proc_fd_path, base::FileEnumerator::FILES, _))
       .WillOnce(DoAll(SetArgPointee<2>(fds), Return(true)));

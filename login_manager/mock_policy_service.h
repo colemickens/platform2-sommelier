@@ -25,8 +25,11 @@ class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
   ~MockPolicyService() override;
-  MOCK_METHOD4(Store, bool(const std::vector<uint8_t>&, int, SignatureCheck,
-                           const Completion&));
+  MOCK_METHOD4(Store,
+               bool(const std::vector<uint8_t>&,
+                    int,
+                    SignatureCheck,
+                    const Completion&));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
 
   static Completion CreateDoNothing() {
@@ -63,12 +66,13 @@ class MockPolicyService : public PolicyService {
     virtual ~ExpectingErrorHandler() = default;
 
     // Proxy to HandleInternal() to support a passed-by-value move-only-type
-    // param.
-    // cf) https://github.com/google/googlemock/blob/master/googlemock/docs/CookBook.md#mocking-methods-that-use-move-only-types
+    // param. See also
+    // https://github.com/google/googlemock/blob/master/googlemock/docs/CookBook.md#mocking-methods-that-use-move-only-types
     void HandleError(brillo::ErrorPtr error) {
       HandleErrorInternal(error.get());
     }
     MOCK_METHOD1(HandleErrorInternal, void(brillo::Error* error));
+
    private:
     DISALLOW_COPY_AND_ASSIGN(ExpectingErrorHandler);
   };

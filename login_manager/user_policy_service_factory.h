@@ -23,10 +23,7 @@ class SystemUtils;
 // in the root-owned part of the user's cryptohome.
 class UserPolicyServiceFactory {
  public:
-  UserPolicyServiceFactory(
-      uid_t uid,
-      NssUtil* nss,
-      SystemUtils* system_utils);
+  UserPolicyServiceFactory(uid_t uid, NssUtil* nss, SystemUtils* system_utils);
   virtual ~UserPolicyServiceFactory();
 
   // Creates a new user policy service instance.

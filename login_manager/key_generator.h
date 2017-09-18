@@ -58,7 +58,7 @@ class KeyGenerator : public JobManagerInterface {
   void Reset();
 
   uid_t uid_;
-  SystemUtils *utils_;
+  SystemUtils* utils_;
   Delegate* delegate_;
 
   std::unique_ptr<GeneratorJobFactoryInterface> factory_;

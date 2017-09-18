@@ -9,8 +9,7 @@
 namespace login_manager {
 
 RegenMitigator::RegenMitigator(KeyGenerator* generator)
-    : generator_(generator),
-      mitigating_(false) {
+    : generator_(generator), mitigating_(false) {
   DCHECK(generator_);
 }
 

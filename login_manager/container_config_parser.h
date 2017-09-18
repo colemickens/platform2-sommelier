@@ -8,14 +8,14 @@
 #include <memory>
 #include <string>
 
-#include <libcontainer/libcontainer.h>
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libcontainer/libcontainer.h>
 
 namespace login_manager {
 
-using ContainerConfigPtr = std::unique_ptr<container_config,
-                                           decltype(&container_config_destroy)>;
+using ContainerConfigPtr =
+    std::unique_ptr<container_config, decltype(&container_config_destroy)>;
 
 // Parses container configuration from the config.json and runtime.json data as
 // specified in https://github.com/opencontainers/runtime-spec/tree/v0.2.0

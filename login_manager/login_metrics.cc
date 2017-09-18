@@ -40,9 +40,9 @@ const char kArcCumulativeUseTimeMetric[] = "Arc.CumulativeUseTime";
 
 // static
 int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
-  return (status.owner_key_file_state * 16      /* 4^2 */ +
-          status.policy_file_state * 4          /* 4^1 */ +
-          status.defunct_prefs_file_state * 1   /* 4^0 */);
+  return (status.owner_key_file_state * 16 /*    4^2 */ +
+          status.policy_file_state * 4 /*        4^1 */ +
+          status.defunct_prefs_file_state * 1 /* 4^0 */);
 }
 
 LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
@@ -51,9 +51,7 @@ LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
 
   if (metrics_lib_.AreMetricsEnabled()) {
     arc_cumulative_use_time_.reset(new CumulativeUseTimeMetric(
-        kArcCumulativeUseTimeMetric,
-        &metrics_lib_,
-        base::FilePath(kMetricsDir),
+        kArcCumulativeUseTimeMetric, &metrics_lib_, base::FilePath(kMetricsDir),
         base::MakeUnique<base::DefaultClock>(),
         base::MakeUnique<base::DefaultTickClock>()));
     std::string version;
@@ -69,7 +67,8 @@ void LoginMetrics::SendConsumerAllowsNewUsers(bool allowed) {
   metrics_lib_.SendEnumToUMA(kLoginConsumerAllowsNewUsersMetric, uma_code, 1);
 }
 
-void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
+void LoginMetrics::SendLoginUserType(bool dev_mode,
+                                     bool incognito,
                                      bool owner) {
   int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
   metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES - 1);

@@ -97,8 +97,8 @@ class CumulativeUseTimeMetric::AccumulatedActiveTime {
 };
 
 CumulativeUseTimeMetric::AccumulatedActiveTime::AccumulatedActiveTime(
-    const base::FilePath& metrics_file) : metrics_file_(metrics_file) {
-}
+    const base::FilePath& metrics_file)
+    : metrics_file_(metrics_file) {}
 
 void CumulativeUseTimeMetric::AccumulatedActiveTime::Init(int os_version_hash) {
   // Read persisted metric data and then compare read OS version hash to
@@ -126,7 +126,8 @@ void CumulativeUseTimeMetric::AccumulatedActiveTime::AddTime(
 }
 
 void CumulativeUseTimeMetric::AccumulatedActiveTime::Reset(
-    const base::TimeDelta& remaining_time, int day) {
+    const base::TimeDelta& remaining_time,
+    int day) {
   accumulated_time_ = remaining_time;
   start_day_ = day;
   WriteMetricsFile();
@@ -194,7 +195,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
 
   int data_size = data_json.size();
   if (base::WriteFile(metrics_file_, data_json.data(), data_size) !=
-          data_size) {
+      data_size) {
     LOG(ERROR) << "Failed to write metric data to " << metrics_file_.value();
     return false;
   }
@@ -211,12 +212,10 @@ CumulativeUseTimeMetric::CumulativeUseTimeMetric(
     : metrics_lib_(metrics_lib),
       metric_name_(metric_name),
       accumulated_active_time_(
-          new AccumulatedActiveTime(
-              metrics_files_dir.AppendASCII(metric_name_)
-                               .AddExtension(kMetricFileExtension))),
+          new AccumulatedActiveTime(metrics_files_dir.AppendASCII(metric_name_)
+                                        .AddExtension(kMetricFileExtension))),
       time_clock_(std::move(time_clock)),
-      time_tick_clock_(std::move(time_tick_clock)) {
-}
+      time_tick_clock_(std::move(time_tick_clock)) {}
 
 CumulativeUseTimeMetric::~CumulativeUseTimeMetric() {}
 
@@ -238,8 +237,7 @@ void CumulativeUseTimeMetric::Start() {
 
   // Timer will be stopped when this goes out of scope, so Unretained is safe.
   update_stats_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromSeconds(kMetricsUpdateIntervalSeconds),
+      FROM_HERE, base::TimeDelta::FromSeconds(kMetricsUpdateIntervalSeconds),
       base::Bind(&CumulativeUseTimeMetric::UpdateStats,
                  base::Unretained(this)));
 }
@@ -286,7 +284,7 @@ void CumulativeUseTimeMetric::IncreaseActiveTimeAndSendUmaIfNeeded(
   // If metric has not previously been set, do it now, and make sure initial
   // update is not sent to UMA.
   if (accumulated_active_time_->start_day() == 0 &&
-          accumulated_active_time_->accumulated_time().is_zero()) {
+      accumulated_active_time_->accumulated_time().is_zero()) {
     accumulated_active_time_->Reset(additional_time, day);
     return;
   }
@@ -297,11 +295,9 @@ void CumulativeUseTimeMetric::IncreaseActiveTimeAndSendUmaIfNeeded(
 
   // Avoid sending 0 values to UMA.
   if (seconds_to_send != 0) {
-    metrics_lib_->SendToUMA(metric_name_,
-                            seconds_to_send,
-                            kAccumulatedActiveTimeMin,
-                            kAccumulatedActiveTimeMax,
-                            kAccumulatedActiveTimeBucketCount);
+    metrics_lib_->SendToUMA(
+        metric_name_, seconds_to_send, kAccumulatedActiveTimeMin,
+        kAccumulatedActiveTimeMax, kAccumulatedActiveTimeBucketCount);
   }
 
   // Keep any data unreported due to rounding time to seconds, and set the time

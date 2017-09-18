@@ -35,9 +35,8 @@ bool IsOriginalRootfsReadOnly(const std::string& mountinfo_data,
   const size_t kMountinfoMinNumberOfTokens =
       std::max(kMountinfoMountPointIndex, kMountinfoMountOptionsIndex) + 1;
 
-  std::vector<std::string> lines =
-      base::SplitString(mountinfo_data, "\n", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY);
+  std::vector<std::string> lines = base::SplitString(
+      mountinfo_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   for (const auto& line : lines) {
     std::vector<std::string> tokens =
@@ -264,21 +263,11 @@ bool ParseRuntimeMount(const base::DictionaryValue& runtime_mounts_dict,
     }
   }
 
-  if (container_config_add_mount(config_out->get(),
-                                 mount_name.c_str(),
-                                 source_path.value().c_str(),
-                                 destination_path.value().c_str(),
-                                 type.c_str(),
-                                 option_string.length() ? option_string.c_str()
-                                     : NULL,
-                                 NULL,
-                                 flags,
-                                 uid,
-                                 gid,
-                                 0,
-                                 mount_in_ns,
-                                 create_mount_point,
-                                 0)) {
+  if (container_config_add_mount(
+          config_out->get(), mount_name.c_str(), source_path.value().c_str(),
+          destination_path.value().c_str(), type.c_str(),
+          option_string.length() ? option_string.c_str() : NULL, NULL, flags,
+          uid, gid, 0, mount_in_ns, create_mount_point, 0)) {
     LOG(ERROR) << "Failed to add mount " << mount_name << " to config";
     return false;
   }
@@ -407,17 +396,9 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       return false;
     }
 
-    container_config_add_device(config_out->get(),
-                                type,
-                                path.c_str(),
-                                fs_permissions,
-                                major,
-                                minor,
-                                copy_minor,
-                                dev_uid,
-                                dev_gid,
-                                read_allowed,
-                                write_allowed,
+    container_config_add_device(config_out->get(), type, path.c_str(),
+                                fs_permissions, major, minor, copy_minor,
+                                dev_uid, dev_gid, read_allowed, write_allowed,
                                 modify_allowed);
   }
 
@@ -446,8 +427,7 @@ bool ParseCpuDict(const base::DictionaryValue& linux_dict,
   int rt_runtime, rt_period;
   if (cpu_dict->GetInteger("realtimeRuntime", &rt_runtime) &&
       cpu_dict->GetInteger("realtimePeriod", &rt_period)) {
-    container_config_set_cpu_rt_params(config_out->get(),
-                                       rt_runtime,
+    container_config_set_cpu_rt_params(config_out->get(), rt_runtime,
                                        rt_period);
   }
 
@@ -510,8 +490,8 @@ bool ParseConfigDicts(const base::DictionaryValue& config_root_dict,
                       const std::string& mountinfo_data,
                       ContainerConfigPtr* config_out) {
   // Root fs info
-  if (!ParseRootFileSystemConfig(config_root_dict, named_path,
-                                 mountinfo_data, config_out)) {
+  if (!ParseRootFileSystemConfig(config_root_dict, named_path, mountinfo_data,
+                                 config_out)) {
     return false;
   }
 
@@ -523,8 +503,8 @@ bool ParseConfigDicts(const base::DictionaryValue& config_root_dict,
 
   // Get a list of mount points and mounts from the config dictionary.
   // The details are filled in while parsing the runtime dictionary.
-  if (!ParseMounts(config_root_dict, runtime_root_dict, named_path,
-                   uid, gid, config_out)) {
+  if (!ParseMounts(config_root_dict, runtime_root_dict, named_path, uid, gid,
+                   config_out)) {
     LOG(ERROR) << "Failed to parse mounts of " << named_path.value();
     return false;
   }
@@ -591,8 +571,7 @@ bool ParseContainerConfig(const std::string& config_json_data,
   // Hack for android containers that need selinux commands run.
   if (container_name.find("android") != std::string::npos) {
     if (container_config_run_setfiles(config_out->get(), "/sbin/setfiles")) {
-      LOG(ERROR) << "Fail to set setfiles for "
-                 << container_name;
+      LOG(ERROR) << "Fail to set setfiles for " << container_name;
       return false;
     }
   }

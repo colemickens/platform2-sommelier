@@ -9,10 +9,7 @@ namespace login_manager {
 FakeChildProcess::FakeChildProcess(pid_t pid,
                                    int status,
                                    SessionManagerService::TestApi api)
-    : pid_(pid),
-      exit_status_(status),
-      test_api_(api) {
-}
+    : pid_(pid), exit_status_(status), test_api_(api) {}
 
 FakeChildProcess::~FakeChildProcess() {}
 

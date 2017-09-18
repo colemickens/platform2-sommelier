@@ -40,8 +40,7 @@ class RegenMitigatorTest : public ::testing::Test {
 TEST_F(RegenMitigatorTest, Mitigate) {
   MockKeyGenerator gen;
   std::string fake_ownername("user");
-  EXPECT_CALL(gen, Start(StrEq(fake_ownername)))
-      .WillOnce(Return(true));
+  EXPECT_CALL(gen, Start(StrEq(fake_ownername))).WillOnce(Return(true));
   RegenMitigator mitigator(&gen);
   EXPECT_TRUE(mitigator.Mitigate(fake_ownername));
 }

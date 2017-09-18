@@ -41,11 +41,9 @@ namespace login_manager {
 
 SystemUtilsImpl::SystemUtilsImpl()
     : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN),
-      vm_state_(VmState::UNKNOWN) {
-}
+      vm_state_(VmState::UNKNOWN) {}
 
-SystemUtilsImpl::~SystemUtilsImpl() {
-}
+SystemUtilsImpl::~SystemUtilsImpl() {}
 
 DevModeState SystemUtilsImpl::GetDevModeState() {
   // Return the cached result when possible. There is no reason to run
@@ -130,8 +128,7 @@ pid_t SystemUtilsImpl::setsid() {
 int SystemUtilsImpl::execve(const base::FilePath& exec_file,
                             const char* const argv[],
                             const char* const envp[]) {
-  return ::execve(exec_file.value().c_str(),
-                  const_cast<char* const*>(argv),
+  return ::execve(exec_file.value().c_str(), const_cast<char* const*>(argv),
                   const_cast<char* const*>(envp));
 }
 
@@ -277,11 +274,10 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                       const std::string& data) {
   const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
-  return (
-      base::ImportantFileWriter::WriteFileAtomically(
-          filename_in_base_dir, data) &&
-      base::SetPosixFilePermissions(
-          filename_in_base_dir, (S_IRUSR | S_IWUSR | S_IROTH)));
+  return (base::ImportantFileWriter::WriteFileAtomically(filename_in_base_dir,
+                                                         data) &&
+          base::SetPosixFilePermissions(filename_in_base_dir,
+                                        (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
 bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {
@@ -290,8 +286,8 @@ bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {
 
 bool SystemUtilsImpl::CreateTemporaryDirIn(const base::FilePath& parent_dir,
                                            base::FilePath* out_dir) {
-  return base::CreateTemporaryDirInDir(
-      PutInsideBaseDir(parent_dir), "temp", out_dir);
+  return base::CreateTemporaryDirInDir(PutInsideBaseDir(parent_dir), "temp",
+                                       out_dir);
 }
 
 bool SystemUtilsImpl::RenameDir(const base::FilePath& source,
@@ -299,8 +295,8 @@ bool SystemUtilsImpl::RenameDir(const base::FilePath& source,
   const base::FilePath source_in_base_dir = PutInsideBaseDir(source);
   if (!base::DirectoryExists(source_in_base_dir))
     return false;
-  return base::ReplaceFile(
-      source_in_base_dir, PutInsideBaseDir(target), nullptr);
+  return base::ReplaceFile(source_in_base_dir, PutInsideBaseDir(target),
+                           nullptr);
 }
 
 bool SystemUtilsImpl::CreateDir(const base::FilePath& dir) {
@@ -328,7 +324,7 @@ bool SystemUtilsImpl::EnumerateFiles(const base::FilePath& root_path,
 bool SystemUtilsImpl::IsDirectoryEmpty(const base::FilePath& dir) {
   const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
   return !base::DirectoryExists(dir_in_base_dir) ||
-      base::IsDirectoryEmpty(dir_in_base_dir);
+         base::IsDirectoryEmpty(dir_in_base_dir);
 }
 
 int64_t SystemUtilsImpl::AmountOfFreeDiskSpace(const base::FilePath& path) {
@@ -363,8 +359,8 @@ bool SystemUtilsImpl::GetGroupInfo(const std::string& group_name,
 bool SystemUtilsImpl::ChangeOwner(const base::FilePath& filename,
                                   pid_t pid,
                                   gid_t gid) {
-  if (HANDLE_EINTR(chown(
-          PutInsideBaseDir(filename).value().c_str(), pid, gid)) < 0) {
+  if (HANDLE_EINTR(
+          chown(PutInsideBaseDir(filename).value().c_str(), pid, gid)) < 0) {
     PLOG(ERROR) << "Failed to change owner: " << filename.value();
     return false;
   }
@@ -378,8 +374,8 @@ bool SystemUtilsImpl::SetPosixFilePermissions(const base::FilePath& filename,
 
 ScopedPlatformHandle SystemUtilsImpl::CreateServerHandle(
     const NamedPlatformHandle& named_handle) {
-  const base::FilePath filename_in_base_dir = PutInsideBaseDir(
-      base::FilePath(named_handle.name));
+  const base::FilePath filename_in_base_dir =
+      PutInsideBaseDir(base::FilePath(named_handle.name));
   NamedPlatformHandle named_handle_in_base_dir(filename_in_base_dir.value());
   // TODO(yusukes): Once libmojo is updated to >=r415560, call
   // mojo::edk::CreateServerHandle() instead.

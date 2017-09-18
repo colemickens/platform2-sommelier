@@ -23,11 +23,9 @@ PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
       have_checked_disk_(false),
       have_replaced_(false),
       nss_(nss),
-      utils_(new SystemUtilsImpl) {
-}
+      utils_(new SystemUtilsImpl) {}
 
-PolicyKey::~PolicyKey() {
-}
+PolicyKey::~PolicyKey() {}
 
 bool PolicyKey::Equals(const std::string& key_der) const {
   return VEquals(std::vector<uint8_t>(key_der.c_str(),
@@ -61,8 +59,8 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
   }
 
   std::vector<uint8_t> buffer(safe_file_size, 0);
-  int data_read = base::ReadFile(
-      key_file_, reinterpret_cast<char*>(&buffer[0]), safe_file_size);
+  int data_read = base::ReadFile(key_file_, reinterpret_cast<char*>(&buffer[0]),
+                                 safe_file_size);
   if (data_read != safe_file_size) {
     PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
     return false;

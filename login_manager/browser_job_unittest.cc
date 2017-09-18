@@ -57,16 +57,15 @@ class BrowserJobTest : public ::testing::Test {
                                   const char value[]) {
     std::vector<std::string>::const_iterator user_flag = std::find(
         argv.begin(), argv.end(), base::StringPrintf("%s%s", name, value));
-    EXPECT_EQ(user_flag, argv.end()) << "argv shouldn't contain " << name
-                                     << value;
+    EXPECT_EQ(user_flag, argv.end())
+        << "argv shouldn't contain " << name << value;
   }
 
   void ExpectArgsToContainAll(const std::vector<std::string>& argv,
                               const std::vector<std::string>& contained) {
     std::set<std::string> argv_set(argv.begin(), argv.end());
     for (std::vector<std::string>::const_iterator it = contained.begin();
-         it != contained.end();
-         ++it) {
+         it != contained.end(); ++it) {
       EXPECT_EQ(argv_set.count(*it), 1) << "argv should contain " << *it;
     }
   }
@@ -179,12 +178,12 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
   EXPECT_CALL(metrics_, RecordStats(StrEq(("chrome-exec")))).Times(2);
 
   ASSERT_TRUE(job_->RunInBackground());
-  ExpectArgsToContainFlag(
-      job_->ExportArgv(), BrowserJob::kFirstExecAfterBootFlag, "");
+  ExpectArgsToContainFlag(job_->ExportArgv(),
+                          BrowserJob::kFirstExecAfterBootFlag, "");
 
   ASSERT_TRUE(job_->RunInBackground());
-  ExpectArgsNotToContainFlag(
-      job_->ExportArgv(), BrowserJob::kFirstExecAfterBootFlag, "");
+  ExpectArgsNotToContainFlag(job_->ExportArgv(),
+                             BrowserJob::kFirstExecAfterBootFlag, "");
 }
 
 TEST_F(BrowserJobTest, RunBrowserTermMessage) {
@@ -316,9 +315,8 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     const char* kVmodule2 = "--vmodule=file3=3,file4=4,file5=5";
     const char* kVmodule3 = "--vmodule=file6=6";
 
-    const char* kMultipleVmoduleArgs[] = {
-      kArg1, kVmodule1, kArg2, kArg3, kVmodule2, kVmodule3, kArg4
-    };
+    const char* kMultipleVmoduleArgs[] = {kArg1,     kVmodule1, kArg2, kArg3,
+                                          kVmodule2, kVmodule3, kArg4};
 
     std::vector<std::string> argv(
         kMultipleVmoduleArgs,
@@ -339,11 +337,9 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
 
   {
     // A testcase with no --vmodule flag.
-    const char* kNoVmoduleArgs[] = {
-      kArg1, kArg2, kArg3, kArg4
-    };
-    std::vector<std::string> argv(
-        kNoVmoduleArgs, kNoVmoduleArgs + arraysize(kNoVmoduleArgs));
+    const char* kNoVmoduleArgs[] = {kArg1, kArg2, kArg3, kArg4};
+    std::vector<std::string> argv(kNoVmoduleArgs,
+                                  kNoVmoduleArgs + arraysize(kNoVmoduleArgs));
 
     BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
 

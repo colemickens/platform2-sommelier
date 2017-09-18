@@ -21,10 +21,7 @@ namespace login_manager {
 FakeGeneratorJob::Factory::Factory(pid_t pid,
                                    const std::string& name,
                                    const std::string& key_contents)
-    : pid_(pid),
-      name_(name),
-      key_contents_(key_contents) {
-}
+    : pid_(pid), name_(name), key_contents_(key_contents) {}
 FakeGeneratorJob::Factory::~Factory() {}
 
 std::unique_ptr<GeneratorJobInterface> FakeGeneratorJob::Factory::Create(
@@ -43,8 +40,7 @@ FakeGeneratorJob::FakeGeneratorJob(pid_t pid,
     : pid_(pid),
       name_(name),
       key_contents_(key_contents),
-      filename_(filename) {
-}
+      filename_(filename) {}
 FakeGeneratorJob::~FakeGeneratorJob() {}
 
 bool FakeGeneratorJob::RunInBackground() {
@@ -53,9 +49,8 @@ bool FakeGeneratorJob::RunInBackground() {
     PLOG(ERROR) << "Could not create directory " << full_path.DirName().value();
     return false;
   }
-  size_t bytes_written = base::WriteFile(full_path,
-                                         key_contents_.c_str(),
-                                         key_contents_.size());
+  size_t bytes_written =
+      base::WriteFile(full_path, key_contents_.c_str(), key_contents_.size());
   if (bytes_written == key_contents_.size())
     return true;
   PLOG(ERROR) << "Could not write " << filename_;

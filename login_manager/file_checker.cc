@@ -10,8 +10,7 @@
 namespace login_manager {
 
 FileChecker::FileChecker(const base::FilePath& filename)
-    : filename_(filename) {
-}
+    : filename_(filename) {}
 
 FileChecker::~FileChecker() {}
 

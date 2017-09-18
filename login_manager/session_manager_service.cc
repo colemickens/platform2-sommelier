@@ -64,8 +64,7 @@ const char kContainerInstallDirectory[] = "/opt/google/containers";
 const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
-void DoNothing(int signal) {
-}
+void DoNothing(int signal) {}
 
 }  // anonymous namespace
 
@@ -89,9 +88,8 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
     info.si_status = WTERMSIG(status);
   }
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(
-          &SessionManagerService::HandleExit, session_manager_service_, info));
+      FROM_HERE, base::Bind(&SessionManagerService::HandleExit,
+                            session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
@@ -118,7 +116,8 @@ SessionManagerService::SessionManagerService(
       vpd_process_(utils),
 #if USE_ANDROID_MASTER_CONTAINER
       android_container_(base::MakeUnique<AndroidOciWrapper>(
-          utils, base::FilePath(kContainerInstallDirectory))),
+          utils,
+          base::FilePath(kContainerInstallDirectory))),
 #else   // USE_ANDROID_MASTER_CONTAINER
       android_container_(base::MakeUnique<AndroidContainerManagerImpl>(
           utils,
@@ -164,8 +163,7 @@ bool SessionManagerService::Initialize() {
       bus_->GetObjectProxy(InitDaemonControllerImpl::kServiceName,
                            dbus::ObjectPath(InitDaemonControllerImpl::kPath));
 
-  liveness_checker_.reset(new LivenessCheckerImpl(this,
-                                                  chrome_dbus_proxy_,
+  liveness_checker_.reset(new LivenessCheckerImpl(this, chrome_dbus_proxy_,
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
@@ -173,19 +171,11 @@ bool SessionManagerService::Initialize() {
   // appropriately below.
   impl_ = base::MakeUnique<SessionManagerImpl>(
       this /* delegate */,
-      base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy),
-      bus_,
-      &key_gen_,
-      &state_key_generator_,
-      this /* manager, i.e. ProcessManagerServiceInterface */,
-      login_metrics_,
-      nss_.get(),
-      system_,
-      &crossystem_,
-      &vpd_process_,
-      &owner_key_,
-      android_container_.get(),
-      &install_attributes_reader_,
+      base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
+      &key_gen_, &state_key_generator_,
+      this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
+      nss_.get(), system_, &crossystem_, &vpd_process_, &owner_key_,
+      android_container_.get(), &install_attributes_reader_,
       system_clock_proxy);
   if (!InitializeImpl())
     return false;
@@ -207,8 +197,7 @@ void SessionManagerService::Finalize() {
 void SessionManagerService::LockScreen() {
   dbus::MethodCall call(chromeos::kLibCrosServiceInterface,
                         chromeos::kLockScreen);
-  chrome_dbus_proxy_->CallMethod(&call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+  chrome_dbus_proxy_->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                                  dbus::ObjectProxy::EmptyResponseCallback());
 }
 
@@ -237,21 +226,20 @@ void SessionManagerService::RunBrowser() {
 void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
   std::string pid_string = base::IntToString(browser_->CurrentPid());
-  base::WriteFile(aborted_browser_pid_path_,
-                  pid_string.c_str(),
+  base::WriteFile(aborted_browser_pid_path_, pid_string.c_str(),
                   pid_string.size());
 
   // Change the file to be owned by the user and group of the containing
   // directory. crash_reporter, which reads this file, is run by chrome using
   // the chronos user.
   struct stat stat_buf;
-  if (stat(aborted_browser_pid_path_.DirName().value().c_str(),
-           &stat_buf) < 0) {
+  if (stat(aborted_browser_pid_path_.DirName().value().c_str(), &stat_buf) <
+      0) {
     PLOG(ERROR) << "Could not stat: "
                 << aborted_browser_pid_path_.DirName().value();
   } else {
-    if (chown(aborted_browser_pid_path_.value().c_str(),
-              stat_buf.st_uid, stat_buf.st_gid) < 0) {
+    if (chown(aborted_browser_pid_path_.value().c_str(), stat_buf.st_uid,
+              stat_buf.st_gid) < 0) {
       PLOG(ERROR) << "Could not chown: " << aborted_browser_pid_path_.value();
     }
   }
@@ -289,8 +277,7 @@ void SessionManagerService::SetFlagsForUser(
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
-  return (browser_->CurrentPid() > 0 &&
-          pid == browser_->CurrentPid());
+  return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
 
 bool SessionManagerService::IsManagedJob(pid_t pid) {
@@ -347,22 +334,20 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
   SessionManagerService* service = static_cast<SessionManagerService*>(data);
-  if (::dbus_message_is_method_call(
-          message, kSessionManagerInterface, kSessionManagerRestartJob)) {
+  if (::dbus_message_is_method_call(message, kSessionManagerInterface,
+                                    kSessionManagerRestartJob)) {
     const char* sender = ::dbus_message_get_sender(message);
     if (!sender) {
       LOG(ERROR) << "Call to RestartJob has no sender";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     LOG(INFO) << "Received RestartJob from " << sender;
-    DBusMessage* get_pid =
-        ::dbus_message_new_method_call("org.freedesktop.DBus",
-                                       "/org/freedesktop/DBus",
-                                       "org.freedesktop.DBus",
-                                       "GetConnectionUnixProcessID");
+    DBusMessage* get_pid = ::dbus_message_new_method_call(
+        "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+        "GetConnectionUnixProcessID");
     CHECK(get_pid);
-    ::dbus_message_append_args(
-        get_pid, DBUS_TYPE_STRING, &sender, DBUS_TYPE_INVALID);
+    ::dbus_message_append_args(get_pid, DBUS_TYPE_STRING, &sender,
+                               DBUS_TYPE_INVALID);
     DBusMessage* got_pid =
         ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, NULL);
     ::dbus_message_unref(get_pid);
@@ -371,8 +356,8 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     uint32_t pid;
-    if (!::dbus_message_get_args(
-            got_pid, NULL, DBUS_TYPE_UINT32, &pid, DBUS_TYPE_INVALID)) {
+    if (!::dbus_message_get_args(got_pid, NULL, DBUS_TYPE_UINT32, &pid,
+                                 DBUS_TYPE_INVALID)) {
       ::dbus_message_unref(got_pid);
       LOG(ERROR) << "Could not extract pid of sender of RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
@@ -380,9 +365,8 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
     ::dbus_message_unref(got_pid);
     if (!service->IsBrowser(pid)) {
       LOG(WARNING) << "Sender of RestartJob is no child of mine!";
-      DBusMessage* denial = dbus_message_new_error(message,
-                                                   DBUS_ERROR_ACCESS_DENIED,
-                                                   "Sender is not browser.");
+      DBusMessage* denial = dbus_message_new_error(
+          message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
       if (!denial || !::dbus_connection_send(conn, denial, NULL))
         LOG(ERROR) << "Could not create error response to RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
@@ -411,9 +395,8 @@ void SessionManagerService::SetUpHandlers() {
   child_exit_handler_.Init(&signal_handler_, job_managers);
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
-        kSignals[i],
-        base::Bind(&SessionManagerService::OnTerminationSignal,
-                   base::Unretained(this)));
+        kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
+                                base::Unretained(this)));
   }
 }
 
@@ -492,9 +475,8 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   impl_->AnnounceSessionStopped();
 
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&brillo::MessageLoop::BreakLoop,
-                 base::Unretained(brillo::MessageLoop::current())));
+      FROM_HERE, base::Bind(&brillo::MessageLoop::BreakLoop,
+                            base::Unretained(brillo::MessageLoop::current())));
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
 

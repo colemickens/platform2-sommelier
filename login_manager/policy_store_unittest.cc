@@ -28,8 +28,7 @@ class PolicyStoreTest : public ::testing::Test {
     ASSERT_TRUE(base::DeleteFile(tmpfile_, false));
   }
 
-  virtual void TearDown() {
-  }
+  virtual void TearDown() {}
 
   void CheckExpectedPolicy(PolicyStore* store,
                            const em::PolicyFetchResponse& policy) {

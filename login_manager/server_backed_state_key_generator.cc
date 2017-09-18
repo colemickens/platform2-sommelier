@@ -69,11 +69,9 @@ ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
     LoginMetrics* metrics)
     : system_utils_(system_utils),
       metrics_(metrics),
-      machine_info_available_(false) {
-}
+      machine_info_available_(false) {}
 
-ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {
-}
+ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {}
 
 // static
 bool ServerBackedStateKeyGenerator::ParseMachineInfo(
@@ -88,8 +86,7 @@ bool ServerBackedStateKeyGenerator::ParseMachineInfo(
   base::SplitStringIntoKeyValuePairs(data, '=', '\n', &pairs);
 
   for (base::StringPairs::const_iterator pair(pairs.begin());
-       pair != pairs.end();
-       ++pair) {
+       pair != pairs.end(); ++pair) {
     std::string name;
     base::TrimString(pair->first, kTrimChars, &name);
     if (name.empty())
@@ -136,10 +133,9 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
   ComputeKeys(&state_keys);
   std::vector<StateKeyCallback> callbacks;
   callbacks.swap(pending_callbacks_);
-  for (
-      std::vector<StateKeyCallback>::const_iterator callback(callbacks.begin());
-      callback != callbacks.end();
-      ++callback) {
+  for (std::vector<StateKeyCallback>::const_iterator callback(
+           callbacks.begin());
+       callback != callbacks.end(); ++callback) {
     callback->Run(state_keys);
   }
 

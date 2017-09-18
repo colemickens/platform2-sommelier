@@ -30,7 +30,7 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      const CompletionCallback& completion) {
   subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
 
-  std::vector<std::string> argv = { "/usr/sbin/update_rw_vpd" };
+  std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
   for (const auto& entry : updates) {
     argv.push_back(entry.first);
     argv.push_back(entry.second);

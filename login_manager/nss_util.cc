@@ -31,8 +31,8 @@
 using crypto::RSAPrivateKey;
 using crypto::ScopedPK11Slot;
 using crypto::ScopedSECItem;
-using crypto::ScopedSECKEYPublicKey;
 using crypto::ScopedSECKEYPrivateKey;
+using crypto::ScopedSECKEYPublicKey;
 
 namespace {
 // This should match the same constant in Chrome tree:
@@ -122,8 +122,7 @@ ScopedPK11Slot NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
   base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
   const std::string modspec =
       base::StringPrintf("configDir='sql:%s' tokenDescription='%s'",
-                         db_path.value().c_str(),
-                         user_homedir.value().c_str());
+                         db_path.value().c_str(), user_homedir.value().c_str());
   ScopedPK11Slot db_slot(SECMOD_OpenUserDB(modspec.c_str()));
   if (!db_slot.get()) {
     LOG(ERROR) << "Error opening persistent database (" << modspec
@@ -196,13 +195,9 @@ std::unique_ptr<RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
   param.keySizeInBits = kKeySizeInBits;
   param.pe = 65537L;
   SECKEYPublicKey* public_key_ptr = nullptr;
-  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(user_slot,
-                                                  CKM_RSA_PKCS_KEY_PAIR_GEN,
-                                                  &param,
-                                                  &public_key_ptr,
-                                                  PR_TRUE /* permanent */,
-                                                  PR_TRUE /* sensitive */,
-                                                  nullptr));
+  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(
+      user_slot, CKM_RSA_PKCS_KEY_PAIR_GEN, &param, &public_key_ptr,
+      PR_TRUE /* permanent */, PR_TRUE /* sensitive */, nullptr));
   ScopedSECKEYPublicKey public_key(public_key_ptr);
   if (!key)
     return nullptr;

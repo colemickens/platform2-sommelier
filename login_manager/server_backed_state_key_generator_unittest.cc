@@ -138,7 +138,7 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
 
   // All state keys are different.
   std::set<std::vector<uint8_t>> state_key_set(state_keys_.begin(),
-                                                state_keys_.end());
+                                               state_keys_.end());
   EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_key_set.size());
 
@@ -160,8 +160,7 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
   EXPECT_TRUE(std::equal(initial_state_keys.begin() + 2,
-                         initial_state_keys.end(),
-                         state_keys_.begin()));
+                         initial_state_keys.end(), state_keys_.begin()));
 }
 
 TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfo) {

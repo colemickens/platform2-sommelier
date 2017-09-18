@@ -70,14 +70,14 @@ void ChildExitHandler::Dispatch(const siginfo_t& info) {
     ++job_manager;
   }
   if (job_manager == managers_.end()) {
-    DLOG(INFO) << info.si_pid <<  " is not a managed job.";
+    DLOG(INFO) << info.si_pid << " is not a managed job.";
     return;
   }
 
   LOG(INFO) << "Handling " << info.si_pid << " exit.";
   if (info.si_code == CLD_EXITED) {
-    LOG_IF(ERROR, info.si_status != 0) << "  Exited with exit code "
-                                       << info.si_status;
+    LOG_IF(ERROR, info.si_status != 0)
+        << "  Exited with exit code " << info.si_status;
     CHECK(info.si_status != ChildJobInterface::kCantSetUid);
     CHECK(info.si_status != ChildJobInterface::kCantSetEnv);
     CHECK(info.si_status != ChildJobInterface::kCantExec);

@@ -48,8 +48,7 @@ GeneratorJob::GeneratorJob(const std::string& filename,
     : filename_(filename),
       user_path_(user_path.value()),
       system_(utils),
-      subprocess_(desired_uid, system_) {
-}
+      subprocess_(desired_uid, system_) {}
 
 GeneratorJob::~GeneratorJob() {}
 

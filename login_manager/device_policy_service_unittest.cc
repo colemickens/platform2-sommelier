@@ -109,14 +109,9 @@ class DevicePolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>();
     metrics_ = base::MakeUnique<MockMetrics>();
     mitigator_ = base::MakeUnique<StrictMock<MockMitigator>>();
-    service_.reset(new DevicePolicyService(base::WrapUnique(store_),
-                                           &key_,
-                                           install_attributes_file_,
-                                           metrics_.get(),
-                                           mitigator_.get(),
-                                           nss,
-                                           &crossystem_,
-                                           &vpd_process_));
+    service_.reset(new DevicePolicyService(
+        base::WrapUnique(store_), &key_, install_attributes_file_,
+        metrics_.get(), mitigator_.get(), nss, &crossystem_, &vpd_process_));
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
@@ -127,8 +122,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
     crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
 
-    EXPECT_CALL(key_, IsPopulated())
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
 
     auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
     proto->mutable_system_settings()->set_block_devmode(false);
@@ -179,8 +173,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     Expectation sign =
         EXPECT_CALL(*nss, Sign(_, _, _))
             .After(get_policy)
-            .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
-                            Return(true)));
+            .WillOnce(
+                DoAll(WithArg<2>(AssignVector(new_fake_sig_)), Return(true)));
     Expectation set_policy =
         EXPECT_CALL(*store_, Set(_))
             .InSequence(sequence)
@@ -196,8 +190,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     Expectation sign =
         EXPECT_CALL(*nss, Sign(_, _, _))
             .After(get_policy)
-            .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
-                            Return(false)));
+            .WillOnce(
+                DoAll(WithArg<2>(AssignVector(new_fake_sig_)), Return(false)));
   }
 
   void ExpectPersistKeyAndPolicy(bool is_populated) {
@@ -277,8 +271,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   const std::string owner_ = "user@somewhere";
   const std::vector<uint8_t> fake_sig_ = StringToBlob("fake_signature");
   const std::vector<uint8_t> fake_key_ = StringToBlob("fake_key");
-  const std::vector<uint8_t> new_fake_sig_ =
-      StringToBlob("new_fake_signature");
+  const std::vector<uint8_t> new_fake_sig_ = StringToBlob("new_fake_signature");
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
 
@@ -312,8 +305,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+                                                 &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -350,8 +343,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
   brillo::ErrorPtr error;
   bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+                                                 &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -363,15 +356,16 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
-      Return(true));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+      .InSequence(s)
+      .WillOnce(Return(true));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+                                                 &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -384,15 +378,16 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
-      Return(true));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+      .InSequence(s)
+      .WillOnce(Return(true));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+                                                 &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -424,15 +419,16 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
-      Return(false));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+      .InSequence(s)
+      .WillOnce(Return(false));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+                                                  &is_owner, &error));
   EXPECT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());
 }
@@ -640,9 +636,8 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
-  MockDevicePolicyService service(
-    std::unique_ptr<MockPolicyStore>(store),
-    &key);
+  MockDevicePolicyService service(std::unique_ptr<MockPolicyStore>(store),
+                                  &key);
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
@@ -677,9 +672,8 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
-  MockDevicePolicyService service(
-    std::unique_ptr<MockPolicyStore>(store),
-    &key);
+  MockDevicePolicyService service(std::unique_ptr<MockPolicyStore>(store),
+                                  &key);
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
@@ -906,8 +900,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   MockNssUtil nss;
   InitService(&nss);
 
-  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(false));
   EXPECT_CALL(key_, PopulateFromBuffer(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, ClobberCompromisedKey(_)).WillRepeatedly(Return(true));
@@ -945,11 +938,9 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_),
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateDoNothing()));
+  EXPECT_TRUE(service_->Store(
+      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
+      SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
   fake_loop_.Run();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
@@ -975,11 +966,9 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_),
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateDoNothing()));
+  EXPECT_TRUE(service_->Store(
+      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
+      SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
   fake_loop_.Run();
 
   std::vector<std::string> flags = service_->GetStartUpFlags();

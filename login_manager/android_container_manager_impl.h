@@ -20,8 +20,8 @@ class SystemUtils;
 class AndroidContainerManagerImpl : public ContainerManagerImpl {
  public:
   AndroidContainerManagerImpl(SystemUtils* system_utils,
-                          const base::FilePath& containers_directory,
-                          const std::string& name);
+                              const base::FilePath& containers_directory,
+                              const std::string& name);
   ~AndroidContainerManagerImpl() override = default;
 
  protected:

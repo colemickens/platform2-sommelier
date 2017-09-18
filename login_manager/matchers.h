@@ -20,20 +20,17 @@ MATCHER_P(CastEq, str, "") {
 
 MATCHER_P(VectorEq, str, "") {
   return str.size() == arg.size() &&
-      std::equal(str.begin(), str.end(), arg.begin());
+         std::equal(str.begin(), str.end(), arg.begin());
 }
 
 // Compares protobuf message by serialization.
 MATCHER_P(ProtoEq, proto, "") {
   // Make sure given proto types are same.
-  using ArgType =
-      typename std::remove_cv<
-        typename std::remove_reference<decltype(arg)>::type>::type;
-  using ProtoType =
-      typename std::remove_cv<
-        typename std::remove_reference<decltype(proto)>::type>::type;
-  static_assert(
-      std::is_same<ArgType, ProtoType>::value, "Proto type mismatch");
+  using ArgType = typename std::remove_cv<
+      typename std::remove_reference<decltype(arg)>::type>::type;
+  using ProtoType = typename std::remove_cv<
+      typename std::remove_reference<decltype(proto)>::type>::type;
+  static_assert(std::is_same<ArgType, ProtoType>::value, "Proto type mismatch");
 
   return arg.SerializeAsString() == proto.SerializeAsString();
 }

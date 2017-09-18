@@ -63,8 +63,8 @@ void AndroidOciWrapper::RequestJobExit() {
   if (stateful_mode_ != StatefulMode::STATELESS && RequestTermination())
     return;
 
-  std::vector<std::string> argv = {
-      kRunOciPath, kRunOciKillSignal, kRunOciKillCommand, kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciKillSignal,
+                                   kRunOciKillCommand, kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
@@ -212,8 +212,8 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer() {
 
 bool AndroidOciWrapper::RequestTermination() {
   // Use run_oci to perform graceful shutdown.
-  std::vector<std::string> argv = {
-      kRunOciPath, kRunOciKillCommand, kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciKillCommand,
+                                   kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
@@ -236,8 +236,8 @@ void AndroidOciWrapper::CleanUpContainer() {
   // Save temporary values until everything is cleaned up.
   ExitCallback old_callback;
 
-  std::vector<std::string> argv = {
-      kRunOciPath, kRunOciDestroyCommand, kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
+                                   kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
@@ -257,8 +257,8 @@ void AndroidOciWrapper::CleanUpContainer() {
 
 bool AndroidOciWrapper::CloseOpenedFiles() {
   std::vector<base::FilePath> files;
-  if (!system_utils_->EnumerateFiles(
-          base::FilePath(kProcFdPath), base::FileEnumerator::FILES, &files)) {
+  if (!system_utils_->EnumerateFiles(base::FilePath(kProcFdPath),
+                                     base::FileEnumerator::FILES, &files)) {
     LOG(ERROR) << "Failed to enumerate files in " << kProcFdPath;
     return false;
   }

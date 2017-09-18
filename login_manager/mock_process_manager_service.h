@@ -24,12 +24,13 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   MOCK_METHOD0(ShouldRunBrowser, bool());
   MOCK_METHOD0(RunBrowser, void());
   MOCK_METHOD2(AbortBrowser, void(int, const std::string&));
-  MOCK_METHOD2(RestartBrowserWithArgs, void(const std::vector<std::string>&,
-                                            bool));
-  MOCK_METHOD2(SetBrowserSessionForUser, void(const std::string&,
-                                              const std::string&));
-  MOCK_METHOD2(SetFlagsForUser, void(const std::string& username,
-                                     const std::vector<std::string>& flags));
+  MOCK_METHOD2(RestartBrowserWithArgs,
+               void(const std::vector<std::string>&, bool));
+  MOCK_METHOD2(SetBrowserSessionForUser,
+               void(const std::string&, const std::string&));
+  MOCK_METHOD2(SetFlagsForUser,
+               void(const std::string& username,
+                    const std::vector<std::string>& flags));
   MOCK_METHOD1(IsBrowser, bool(pid_t));
   MOCK_METHOD1(IsManagedProcess, bool(pid_t));
 };

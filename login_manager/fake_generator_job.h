@@ -30,6 +30,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
         const base::FilePath& user_path,
         uid_t desired_uid,
         SystemUtils* utils) override;
+
    private:
     pid_t pid_;
     const std::string name_;

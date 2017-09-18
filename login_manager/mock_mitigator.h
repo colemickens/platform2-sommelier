@@ -22,6 +22,7 @@ class MockMitigator : public OwnerKeyLossMitigator {
 
   MOCK_METHOD1(Mitigate, bool(const std::string&));
   MOCK_METHOD0(Mitigating, bool());
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMitigator);
 };

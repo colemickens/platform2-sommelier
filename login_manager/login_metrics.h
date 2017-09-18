@@ -17,10 +17,7 @@ class CumulativeUseTimeMetric;
 
 class LoginMetrics {
  public:
-  enum AllowedUsersState {
-    ANY_USER_ALLOWED = 0,
-    ONLY_WHITELISTED_ALLOWED = 1
-  };
+  enum AllowedUsersState { ANY_USER_ALLOWED = 0, ONLY_WHITELISTED_ALLOWED = 1 };
   enum PolicyFileState {
     GOOD = 0,
     MALFORMED = 1,
@@ -68,8 +65,7 @@ class LoginMetrics {
     PolicyFilesStatus()
         : owner_key_file_state(NOT_PRESENT),
           policy_file_state(NOT_PRESENT),
-          defunct_prefs_file_state(NOT_PRESENT) {
-    }
+          defunct_prefs_file_state(NOT_PRESENT) {}
     virtual ~PolicyFilesStatus() {}
 
     PolicyFileState owner_key_file_state;
@@ -94,8 +90,7 @@ class LoginMetrics {
   virtual bool SendPolicyFilesStatus(const PolicyFilesStatus& status);
 
   // Writes a histogram indicating the state key generation method used.
-  virtual void SendStateKeyGenerationStatus(
-      StateKeyGenerationStatus status);
+  virtual void SendStateKeyGenerationStatus(StateKeyGenerationStatus status);
 
   // Record a stat called |tag| via the bootstat library.
   virtual void RecordStats(const char* tag);

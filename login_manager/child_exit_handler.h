@@ -31,6 +31,7 @@ class ChildExitHandler {
   void Init(brillo::AsynchronousSignalHandler* signal_handler,
             const std::vector<JobManagerInterface*>& managers);
   void Reset();
+
  private:
   // Called by the |AsynchronousSignalHandler| when a new SIGCHLD is received.
   bool OnSigChld(const struct signalfd_siginfo& info);

@@ -24,15 +24,14 @@ constexpr char UpstartSignalEmitter::kServiceName[] = "com.ubuntu.Upstart";
 constexpr char UpstartSignalEmitter::kPath[] = "/com/ubuntu/Upstart";
 
 UpstartSignalEmitter::UpstartSignalEmitter(dbus::ObjectProxy* proxy)
-    : upstart_dbus_proxy_(proxy) {
-}
+    : upstart_dbus_proxy_(proxy) {}
 
 UpstartSignalEmitter::~UpstartSignalEmitter() = default;
 
 std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
-      const std::string& name,
-      const std::vector<std::string>& args_keyvals,
-      TriggerMode mode) {
+    const std::string& name,
+    const std::vector<std::string>& args_keyvals,
+    TriggerMode mode) {
   DLOG(INFO) << "Emitting " << name << " Upstart signal";
 
   dbus::MethodCall method_call(kInterface, kMethodName);

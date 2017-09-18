@@ -95,12 +95,10 @@ static void HandleVpdUpdateCompletion(
     return;
   }
 
-  LOG(ERROR) << "The device failed to update VPD: "
-             << board_name
-             << ", full board name: "
-             << base::SysInfo::GetLsbReleaseBoard();
-  completion.Run(CreateError(
-      dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
+  LOG(ERROR) << "The device failed to update VPD: " << board_name
+             << ", full board name: " << base::SysInfo::GetLsbReleaseBoard();
+  completion.Run(
+      CreateError(dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
 }
 
 const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
@@ -127,14 +125,9 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
   return base::WrapUnique(new DevicePolicyService(
-      base::MakeUnique<PolicyStore>(base::FilePath(kPolicyPath)),
-      owner_key,
-      base::FilePath(kInstallAttributesPath),
-      metrics,
-      mitigator,
-      nss,
-      crossystem,
-      vpd_process));
+      base::MakeUnique<PolicyStore>(base::FilePath(kPolicyPath)), owner_key,
+      base::FilePath(kInstallAttributesPath), metrics, mitigator, nss,
+      crossystem, vpd_process));
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -170,7 +163,6 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
     const std::vector<uint8_t>& pub_key,
     PK11SlotInfo* slot) {
-
   std::unique_ptr<RSAPrivateKey> signing_key =
       GetOwnerKeyForGivenUser(pub_key, slot, nullptr);
   if (!signing_key.get())
@@ -217,8 +209,7 @@ DevicePolicyService::DevicePolicyService(
       mitigator_(mitigator),
       nss_(nss),
       crossystem_(crossystem),
-      vpd_process_(vpd_process) {
-}
+      vpd_process_(vpd_process) {}
 
 bool DevicePolicyService::KeyMissing() {
   return key()->HaveCheckedDisk() && !key()->IsPopulated();
@@ -253,8 +244,8 @@ bool DevicePolicyService::Store(const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
                                 SignatureCheck signature_check,
                                 const Completion& completion) {
-  bool result = PolicyService::Store(
-      policy_blob, key_flags, signature_check, completion);
+  bool result =
+      PolicyService::Store(policy_blob, key_flags, signature_check, completion);
 
   if (result) {
     // Flush the settings cache, the next read will decode the new settings.
@@ -307,8 +298,7 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     policy_args.push_back(
         std::string("--").append(chromeos::switches::kPolicySwitchesBegin));
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
-         it != flags.end();
-         ++it) {
+         it != flags.end(); ++it) {
       std::string flag(*it);
       // Ignore empty flags.
       if (flag.empty() || flag == "-" || flag == "--")
@@ -408,15 +398,13 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   const RepeatedPtrField<std::string>& whitelist =
       whitelist_proto->user_whitelist();
   for (RepeatedPtrField<std::string>::const_iterator it = whitelist.begin();
-       it != whitelist.end();
-       ++it) {
+       it != whitelist.end(); ++it) {
     if (current_user == *it) {
       on_list = true;
       break;
     }
   }
-  if (poldata.has_username() && poldata.username() == current_user &&
-      on_list &&
+  if (poldata.has_username() && poldata.username() == current_user && on_list &&
       key()->Equals(policy.new_public_key())) {
     return true;  // No changes are needed.
   }
@@ -521,8 +509,7 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
   return true;
 }
 
-bool DevicePolicyService::UpdateSystemSettings(
-    const Completion& completion) {
+bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   const int block_devmode_setting =
       GetSettings().system_settings().block_devmode();
   int block_devmode_value =
@@ -551,8 +538,8 @@ bool DevicePolicyService::UpdateSystemSettings(
       LOG(ERROR) << "Failed to read nvram_cleared flag!";
     }
     if (nvram_cleared_value != 0) {
-      if (crossystem_->VbSetSystemPropertyInt(
-          Crossystem::kNvramCleared, 0) != 0) {
+      if (crossystem_->VbSetSystemPropertyInt(Crossystem::kNvramCleared, 0) !=
+          0) {
         LOG(ERROR) << "Failed to clear nvram_cleared flag!";
       }
     }
@@ -571,8 +558,7 @@ bool DevicePolicyService::UpdateSystemSettings(
                                    std::to_string(is_enrolled)));
 
   return vpd_process_->RunInBackground(
-      updates,
-      false,
+      updates, false,
       base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
 }
 

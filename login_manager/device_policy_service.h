@@ -29,7 +29,7 @@ class RSAPrivateKey;
 namespace enterprise_management {
 class ChromeDeviceSettingsProto;
 class PolicyFetchResponse;
-}
+}  // namespace enterprise_management
 
 namespace login_manager {
 class KeyGenerator;
@@ -179,8 +179,8 @@ class DevicePolicyService : public PolicyService {
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
-  Crossystem* crossystem_;     // Owned by the caller.
-  VpdProcess* vpd_process_;    // Owned by the caller.
+  Crossystem* crossystem_;   // Owned by the caller.
+  VpdProcess* vpd_process_;  // Owned by the caller.
 
   // Cached copy of the decoded device settings. Decoding happens on first
   // access, the cache is cleared whenever a new policy gets installed via

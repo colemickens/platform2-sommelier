@@ -52,26 +52,22 @@ class ChromeSetupTest : public ::testing::Test {
   // Get the name of the wallpaper flag for the given flag type and size.
   std::string GetFlagName(const std::string& flag_type,
                           const std::string& size) {
-    return base::StringPrintf(
-        "--%s-wallpaper-%s", flag_type.c_str(), size.c_str());
+    return base::StringPrintf("--%s-wallpaper-%s", flag_type.c_str(),
+                              size.c_str());
   }
 
   // Get the expected pathname for the given base name and size.
   std::string GetPath(const std::string& base, const std::string& size) {
     return base::StringPrintf("/usr/share/chromeos-assets/wallpaper/%s_%s.jpg",
-                              base.c_str(),
-                              size.c_str());
+                              base.c_str(), size.c_str());
   }
 
   ChromiumCommandBuilder builder_;
   // Set of paths to report as existing.
   std::set<std::string> paths_{
-      GetPath("default", "small"),
-      GetPath("default", "large"),
-      GetPath("child", "small"),
-      GetPath("child", "large"),
-      GetPath("guest", "small"),
-      GetPath("guest", "large"),
+      GetPath("default", "small"), GetPath("default", "large"),
+      GetPath("child", "small"),   GetPath("child", "large"),
+      GetPath("guest", "small"),   GetPath("guest", "large"),
   };
   brillo::FakeCrosConfig cros_config_;
 };
@@ -109,8 +105,8 @@ TEST_F(ChromeSetupTest, TestDefault) {
 
 TEST_F(ChromeSetupTest, TestModelDoesNotExist) {
   cros_config_.SetString("/", login_manager::kWallpaperProperty, kModel);
-  login_manager::SetUpWallpaperFlags(
-      &builder_, &cros_config_, kPathInSetCallback);
+  login_manager::SetUpWallpaperFlags(&builder_, &cros_config_,
+                                     kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
   ASSERT_EQ(6, argv.size());
   for (std::string size : kSizes) {
@@ -128,8 +124,8 @@ TEST_F(ChromeSetupTest, TestModelExists) {
   cros_config_.SetString("/", login_manager::kWallpaperProperty, kModel);
   paths_.insert(GetPath(kModel, "large"));
   paths_.insert(GetPath(kModel, "small"));
-  login_manager::SetUpWallpaperFlags(
-      &builder_, &cros_config_, kPathInSetCallback);
+  login_manager::SetUpWallpaperFlags(&builder_, &cros_config_,
+                                     kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
   ASSERT_EQ(6, argv.size());
   for (std::string size : kSizes) {

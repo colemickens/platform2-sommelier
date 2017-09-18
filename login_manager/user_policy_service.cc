@@ -25,16 +25,14 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-UserPolicyService::UserPolicyService(
-    std::unique_ptr<PolicyStore> policy_store,
-    std::unique_ptr<PolicyKey> policy_key,
-    const base::FilePath& key_copy_path,
-    SystemUtils* system_utils)
+UserPolicyService::UserPolicyService(std::unique_ptr<PolicyStore> policy_store,
+                                     std::unique_ptr<PolicyKey> policy_key,
+                                     const base::FilePath& key_copy_path,
+                                     SystemUtils* system_utils)
     : PolicyService(std::move(policy_store), policy_key.get()),
       scoped_policy_key_(std::move(policy_key)),
       key_copy_path_(key_copy_path),
-      system_utils_(system_utils) {
-}
+      system_utils_(system_utils) {}
 
 UserPolicyService::~UserPolicyService() = default;
 
@@ -88,8 +86,8 @@ bool UserPolicyService::Store(const std::vector<uint8_t>& policy_blob,
     return true;
   }
 
-  return PolicyService::StorePolicy(
-      policy, key_flags, signature_check, completion);
+  return PolicyService::StorePolicy(policy, key_flags, signature_check,
+                                    completion);
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {

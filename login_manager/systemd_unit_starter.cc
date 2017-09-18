@@ -30,8 +30,8 @@ std::unique_ptr<dbus::Response> CallEnvironmentMethod(
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfStrings(args_keyvals);
 
-  return proxy->CallMethodAndBlock(
-             &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  return proxy->CallMethodAndBlock(&method_call,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 std::unique_ptr<dbus::Response> SetEnvironment(
@@ -41,16 +41,16 @@ std::unique_ptr<dbus::Response> SetEnvironment(
 }
 
 std::unique_ptr<dbus::Response> UnsetEnvironment(
-     dbus::ObjectProxy* proxy,
-     const std::vector<std::string>& args_keyvals) {
+    dbus::ObjectProxy* proxy,
+    const std::vector<std::string>& args_keyvals) {
   std::vector<std::string> env_vars;
   env_vars.reserve(args_keyvals.size());
 
   // Keep only the keys from environment array
   for (const auto& keyval : args_keyvals) {
     size_t i = keyval.find('=');
-    env_vars.emplace_back(
-        i == std::string::npos ? keyval : keyval.substr(0, i));
+    env_vars.emplace_back(i == std::string::npos ? keyval
+                                                 : keyval.substr(0, i));
   }
 
   return CallEnvironmentMethod(proxy, kUnsetEnvironmentMethodName, env_vars);
@@ -64,8 +64,7 @@ constexpr char SystemdUnitStarter::kServiceName[] = "org.freedesktop.systemd1";
 constexpr char SystemdUnitStarter::kPath[] = "/org/freedesktop/systemd1";
 
 SystemdUnitStarter::SystemdUnitStarter(dbus::ObjectProxy* proxy)
-    : systemd_dbus_proxy_(proxy) {
-}
+    : systemd_dbus_proxy_(proxy) {}
 
 SystemdUnitStarter::~SystemdUnitStarter() = default;
 

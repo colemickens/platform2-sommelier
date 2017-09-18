@@ -111,9 +111,8 @@ bool BootDeviceIsRotationalDisk() {
   CHECK(base::StartsWith(full_rootdev_path, "/dev/",
                          base::CompareCase::SENSITIVE));
   string device_only(full_rootdev_path + 5, PATH_MAX - 5);
-  base::FilePath sysfs_path(
-      base::StringPrintf("/sys/block/%s/queue/rotational",
-                         device_only.c_str()));
+  base::FilePath sysfs_path(base::StringPrintf("/sys/block/%s/queue/rotational",
+                                               device_only.c_str()));
   string rotational_contents;
   if (!base::ReadFileToString(sysfs_path, &rotational_contents))
     PLOG(WARNING) << "Couldn't read from " << sysfs_path.value();
@@ -153,8 +152,8 @@ int main(int argc, char* argv[]) {
   map<string, string> env_vars;
   vector<string> args;
   uid_t uid = 0;
-  PerformChromeSetup(
-      cros_config.get(), &is_developer_end_user, &env_vars, &args, &uid);
+  PerformChromeSetup(cros_config.get(), &is_developer_end_user, &env_vars,
+                     &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
 
   // Shim that wraps system calls, file system ops, etc.
@@ -196,8 +195,8 @@ int main(int argc, char* argv[]) {
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
-  auto browser_job = base::MakeUnique<BrowserJob>(
-      command, env_vars, uid, &checker, &metrics, &system);
+  auto browser_job = base::MakeUnique<BrowserJob>(command, env_vars, uid,
+                                                  &checker, &metrics, &system);
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::MessageLoopForIO message_loop;
@@ -205,13 +204,8 @@ int main(int argc, char* argv[]) {
   brillo_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
-      std::move(browser_job),
-      uid,
-      kill_timeout,
-      enable_hang_detection,
-      base::TimeDelta::FromSeconds(hang_detection_interval),
-      &metrics,
-      &system);
+      std::move(browser_job), uid, kill_timeout, enable_hang_detection,
+      base::TimeDelta::FromSeconds(hang_detection_interval), &metrics, &system);
 
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.

@@ -52,17 +52,12 @@ const base::FilePath::CharType kPolicyKeyCopyFile[] =
 
 }  // namespace
 
-UserPolicyServiceFactory::UserPolicyServiceFactory(
-    uid_t uid,
-    NssUtil* nss,
-    SystemUtils* system_utils)
-    : uid_(uid),
-      nss_(nss),
-      system_utils_(system_utils) {
-}
+UserPolicyServiceFactory::UserPolicyServiceFactory(uid_t uid,
+                                                   NssUtil* nss,
+                                                   SystemUtils* system_utils)
+    : uid_(uid), nss_(nss), system_utils_(system_utils) {}
 
-UserPolicyServiceFactory::~UserPolicyServiceFactory() {
-}
+UserPolicyServiceFactory::~UserPolicyServiceFactory() {}
 
 std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
     const std::string& username) {
@@ -104,16 +99,12 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
 
   using brillo::cryptohome::home::SanitizeUserName;
   const std::string sanitized(SanitizeUserName(username));
-  const base::FilePath key_copy_file(base::StringPrintf("%s/%s/%s",
-                                                  kPolicyKeyCopyDir,
-                                                  sanitized.c_str(),
-                                                  kPolicyKeyCopyFile));
+  const base::FilePath key_copy_file(base::StringPrintf(
+      "%s/%s/%s", kPolicyKeyCopyDir, sanitized.c_str(), kPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
-      base::MakeUnique<UserPolicyService>(std::move(store),
-                                          std::move(key),
-                                          key_copy_file,
-                                          system_utils_);
+      base::MakeUnique<UserPolicyService>(std::move(store), std::move(key),
+                                          key_copy_file, system_utils_);
   service->PersistKeyCopy();
   return service;
 }

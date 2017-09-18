@@ -16,8 +16,8 @@
 #include <base/single_thread_task_runner.h>
 #include <base/test/simple_test_clock.h>
 #include <base/test/simple_test_tick_clock.h>
-#include <base/time/time.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 
@@ -51,14 +51,11 @@ base::TimeTicks GetReferenceTimeTicks() {
 // ctor. Not expected to be used after reference clock is gone.
 class TestClockCopy : public base::Clock {
  public:
-  explicit TestClockCopy(base::SimpleTestClock* clock) : clock_(clock) {
-  }
+  explicit TestClockCopy(base::SimpleTestClock* clock) : clock_(clock) {}
 
   ~TestClockCopy() override = default;
 
-  base::Time Now() override {
-    return clock_->Now();
-  }
+  base::Time Now() override { return clock_->Now(); }
 
  private:
   base::SimpleTestClock* clock_;
@@ -71,13 +68,10 @@ class TestClockCopy : public base::Clock {
 class TestTickClockCopy : public base::TickClock {
  public:
   explicit TestTickClockCopy(base::SimpleTestTickClock* tick_clock)
-      : tick_clock_(tick_clock) {
-  }
+      : tick_clock_(tick_clock) {}
   ~TestTickClockCopy() override = default;
 
-  base::TimeTicks NowTicks() override {
-    return tick_clock_->NowTicks();
-  }
+  base::TimeTicks NowTicks() override { return tick_clock_->NowTicks(); }
 
  private:
   base::SimpleTestTickClock* tick_clock_;
@@ -94,8 +88,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
  public:
   FakeSingleThreadTaskRunner(base::SimpleTestClock* clock,
                              base::SimpleTestTickClock* tick_clock)
-      : clock_(clock), tick_clock_(tick_clock) {
-  }
+      : clock_(clock), tick_clock_(tick_clock) {}
 
   ~FakeSingleThreadTaskRunner() override = default;
 
@@ -159,8 +152,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
 class TestMetricsLibrary : public MetricsLibraryInterface {
  public:
   explicit TestMetricsLibrary(const std::string& expected_use_time_metric)
-      : expected_use_time_metric_name_(expected_use_time_metric) {
-  }
+      : expected_use_time_metric_name_(expected_use_time_metric) {}
 
   ~TestMetricsLibrary() override = default;
 
@@ -182,9 +174,7 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
 
   void Init() override {}
 
-  bool AreMetricsEnabled() override {
-    return true;
-  }
+  bool AreMetricsEnabled() override { return true; }
 
   bool SendEnumToUMA(const std::string& name, int sample, int max) override {
     ADD_FAILURE() << "Should not be reached";
@@ -206,8 +196,11 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
-  bool SendToUMA(const std::string& name, int sample, int min, int max,
-      int nbuckets) override {
+  bool SendToUMA(const std::string& name,
+                 int sample,
+                 int min,
+                 int max,
+                 int nbuckets) override {
     if (name != expected_use_time_metric_name_) {
       ADD_FAILURE() << "Unexpected metric name: '" << name << "', expected: '"
                     << expected_use_time_metric_name_ << "'.";
@@ -235,8 +228,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
  public:
   CumulativeUseTimeMetricTest()
       : task_runner_(new FakeSingleThreadTaskRunner(&clock_, &tick_clock_)),
-        task_runner_handle_(task_runner_.get()) {
-  }
+        task_runner_handle_(task_runner_.get()) {}
   ~CumulativeUseTimeMetricTest() override = default;
 
   void SetUp() override {
@@ -253,9 +245,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
     ASSERT_GT(UploadCycle(), 3 * UpdateCycle());
   }
 
-  void TearDown() override {
-    cumulative_use_time_metric_.reset();
-  }
+  void TearDown() override { cumulative_use_time_metric_.reset(); }
 
   base::TimeDelta UpdateCycle() const {
     return cumulative_use_time_metric_->GetMetricsUpdateCycle();
@@ -269,9 +259,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   // the time is in line with current test state.
   void ResetCumulativeUseTimeMetric() {
     cumulative_use_time_metric_.reset(new CumulativeUseTimeMetric(
-        kTestMetricName,
-        &metrics_library_,
-        temp_dir_.path(),
+        kTestMetricName, &metrics_library_, temp_dir_.path(),
         base::MakeUnique<TestClockCopy>(&clock_),
         base::MakeUnique<TestTickClockCopy>(&tick_clock_)));
   }
@@ -279,9 +267,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   // Advances time in UpdateCycle chunks, running message loop on each
   // interval. The goal is to simulate running delayed cumulative_use_metric
   // tasks for updating the metric state.
-  void AdvanceTime(base::TimeDelta delta) {
-    task_runner_->AdvanceTime(delta);
-  }
+  void AdvanceTime(base::TimeDelta delta) { task_runner_->AdvanceTime(delta); }
 
   // Advances time enough to ensure that any remaining usage data is sent to
   // UMA. It will ensure that the metric tracking is stopped before advancing
@@ -295,14 +281,12 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   }
 
   // Used to simulate backing file corruption.
-  bool DeleteTestDir() {
-    return temp_dir_.Delete();
-  }
+  bool DeleteTestDir() { return temp_dir_.Delete(); }
 
   bool WriteGarbageToMetricsFile(const std::string& data) {
-    int written = base::WriteFile(
-        cumulative_use_time_metric_->GetMetricsFileForTest(), data.data(),
-        data.size());
+    int written =
+        base::WriteFile(cumulative_use_time_metric_->GetMetricsFileForTest(),
+                        data.data(), data.size());
     return written == static_cast<int>(data.size());
   }
 
@@ -543,7 +527,7 @@ TEST_F(CumulativeUseTimeMetricTest, HandleGarbageInMetricsFileOnStart_NotJSON) {
 }
 
 TEST_F(CumulativeUseTimeMetricTest,
-    HandleGarbageInMetricsFileOnStart_UnexpectedJSON) {
+       HandleGarbageInMetricsFileOnStart_UnexpectedJSON) {
   cumulative_use_time_metric_->Init("53.0.3.0");
 
   cumulative_use_time_metric_->Start();

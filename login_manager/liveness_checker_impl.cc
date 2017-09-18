@@ -33,8 +33,7 @@ LivenessCheckerImpl::LivenessCheckerImpl(
       enable_aborting_(enable_aborting),
       interval_(interval),
       last_ping_acked_(true),
-      weak_ptr_factory_(this) {
-}
+      weak_ptr_factory_(this) {}
 
 LivenessCheckerImpl::~LivenessCheckerImpl() {
   Stop();
@@ -45,12 +44,9 @@ void LivenessCheckerImpl::Start() {
   last_ping_acked_ = true;
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
-                 weak_ptr_factory_.GetWeakPtr(),
-                 interval_));
+                 weak_ptr_factory_.GetWeakPtr(), interval_));
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE,
-      liveness_check_.callback(),
-      interval_);
+      FROM_HERE, liveness_check_.callback(), interval_);
 }
 
 void LivenessCheckerImpl::Stop() {
@@ -82,8 +78,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   last_ping_acked_ = false;
   dbus::MethodCall ping(chromeos::kLibCrosServiceInterface,
                         chromeos::kCheckLiveness);
-  chrome_dbus_proxy_->CallMethod(&ping,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+  chrome_dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                                  base::Bind(&LivenessCheckerImpl::HandleAck,
                                             weak_ptr_factory_.GetWeakPtr()));
 
@@ -92,9 +87,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(), interval));
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE,
-      liveness_check_.callback(),
-      interval);
+      FROM_HERE, liveness_check_.callback(), interval);
 }
 
 void LivenessCheckerImpl::HandleAck(dbus::Response* response) {

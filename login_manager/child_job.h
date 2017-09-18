@@ -30,9 +30,8 @@ class ChildJobInterface {
 
     // fork(), export |environment_variables|, and exec(argv, env_vars).
     // Returns false if fork() fails, true otherwise.
-    bool ForkAndExec(
-        const std::vector<std::string>& args,
-        const std::vector<std::string>& env_vars);
+    bool ForkAndExec(const std::vector<std::string>& args,
+                     const std::vector<std::string>& env_vars);
 
     // Sends signal to pid_. No-op if there is no subprocess running.
     void Kill(int signal);

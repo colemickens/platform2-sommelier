@@ -13,8 +13,8 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>  // For exit code defines (EX__MAX, etc).
 #include <sys/types.h>
+#include <sysexits.h>  // For exit code defines (EX__MAX, etc).
 #include <unistd.h>
 
 #include <base/logging.h>
@@ -102,10 +102,7 @@ const int ChildJobInterface::kCantExec = EX_OSERR;
 
 ChildJobInterface::Subprocess::Subprocess(uid_t desired_uid,
                                           SystemUtils* system)
-    : pid_(-1),
-      desired_uid_(desired_uid),
-      system_(system) {
-}
+    : pid_(-1), desired_uid_(desired_uid), system_(system) {}
 
 ChildJobInterface::Subprocess::~Subprocess() {}
 
@@ -126,12 +123,12 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
     return false;
   }
 
-  std::unique_ptr<char const* []> argv(new char const* [args.size() + 1]);
+  std::unique_ptr<char const* []> argv(new char const*[args.size() + 1]);
   for (size_t i = 0; i < args.size(); ++i)
     argv[i] = args[i].c_str();
   argv[args.size()] = 0;
 
-  std::unique_ptr<char const* []> envp(new char const* [env_vars.size() + 1]);
+  std::unique_ptr<char const* []> envp(new char const*[env_vars.size() + 1]);
   for (size_t i = 0; i < env_vars.size(); ++i)
     envp[i] = env_vars[i].c_str();
   envp[env_vars.size()] = 0;
@@ -176,8 +173,7 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
     }
     base::CloseSuperfluousFds(saved_fds);
 
-    execve(argv[0],
-           const_cast<char* const*>(argv.get()),
+    execve(argv[0], const_cast<char* const*>(argv.get()),
            const_cast<char* const*>(envp.get()));
 
     // Should never get here, unless we couldn't exec the command.

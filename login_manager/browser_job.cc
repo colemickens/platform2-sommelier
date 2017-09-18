@@ -106,8 +106,7 @@ BrowserJob::BrowserJob(
   }
 }
 
-BrowserJob::~BrowserJob() {
-}
+BrowserJob::~BrowserJob() {}
 
 bool BrowserJob::ShouldRunBrowser() {
   return !file_checker_ || !file_checker_->exists();
@@ -226,14 +225,13 @@ void BrowserJob::ClearPid() {
 
 std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
-  to_return.insert(
-      to_return.end(), login_arguments_.begin(), login_arguments_.end());
-  to_return.insert(
-      to_return.end(), extra_arguments_.begin(), extra_arguments_.end());
+  to_return.insert(to_return.end(), login_arguments_.begin(),
+                   login_arguments_.end());
+  to_return.insert(to_return.end(), extra_arguments_.begin(),
+                   extra_arguments_.end());
 
   if (!extra_one_time_arguments_.empty()) {
-    to_return.insert(to_return.end(),
-                     extra_one_time_arguments_.begin(),
+    to_return.insert(to_return.end(), extra_one_time_arguments_.begin(),
                      extra_one_time_arguments_.end());
   }
   CombineVModuleArgs(&to_return);
