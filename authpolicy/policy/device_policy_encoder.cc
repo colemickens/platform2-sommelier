@@ -82,20 +82,21 @@ std::unique_ptr<base::DictionaryValue> JsonToDictionary(const std::string& json,
   return dict_value;
 }
 
-#define CONVERT_WEEKDAY(weekday)        \
-  if (str == #weekday) {                \
-    *wd = em::WeeklyTimeProto::weekday; \
-    return true;                        \
+#define CONVERT_DAY_OF_WEEK(day_of_week)    \
+  if (str == #day_of_week) {                \
+    *wd = em::WeeklyTimeProto::day_of_week; \
+    return true;                            \
   }
 
-bool StringToWeekday(const std::string& str, em::WeeklyTimeProto::Weekday* wd) {
-  CONVERT_WEEKDAY(MONDAY);
-  CONVERT_WEEKDAY(TUESDAY);
-  CONVERT_WEEKDAY(WEDNESDAY);
-  CONVERT_WEEKDAY(THURSDAY);
-  CONVERT_WEEKDAY(FRIDAY);
-  CONVERT_WEEKDAY(SATURDAY);
-  CONVERT_WEEKDAY(SUNDAY);
+bool StringToDayOfWeek(const std::string& str,
+                       em::WeeklyTimeProto::DayOfWeek* wd) {
+  CONVERT_DAY_OF_WEEK(MONDAY);
+  CONVERT_DAY_OF_WEEK(TUESDAY);
+  CONVERT_DAY_OF_WEEK(WEDNESDAY);
+  CONVERT_DAY_OF_WEEK(THURSDAY);
+  CONVERT_DAY_OF_WEEK(FRIDAY);
+  CONVERT_DAY_OF_WEEK(SATURDAY);
+  CONVERT_DAY_OF_WEEK(SUNDAY);
   return false;
 }
 
@@ -104,16 +105,16 @@ bool StringToWeekday(const std::string& str, em::WeeklyTimeProto::Weekday* wd) {
 // Converts a dictionary |value| to a WeeklyTimeProto |proto|.
 bool EncodeWeeklyTimeProto(const base::DictionaryValue& value,
                            em::WeeklyTimeProto* proto) {
-  std::string weekday_str;
-  em::WeeklyTimeProto::Weekday weekday = em::WeeklyTimeProto::MONDAY;
+  std::string day_of_week_str;
+  em::WeeklyTimeProto::DayOfWeek day_of_week = em::WeeklyTimeProto::MONDAY;
   int time = 0;
-  if (!value.GetString("weekday", &weekday_str) ||
-      !StringToWeekday(weekday_str, &weekday) ||
+  if (!value.GetString("day_of_week", &day_of_week_str) ||
+      !StringToDayOfWeek(day_of_week_str, &day_of_week) ||
       !value.GetInteger("time", &time)) {
     return false;
   }
 
-  proto->set_weekday(weekday);
+  proto->set_day_of_week(day_of_week);
   proto->set_time(time);
   return true;
 }
@@ -544,21 +545,21 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     const base::ListValue* intervals = nullptr;
     const base::ListValue* ignored_policies = nullptr;
     std::string timezone;
-    bool is_error = !dict_value ||
-                    !dict_value->GetList("interval", &intervals) ||
-                    !dict_value->GetList("ignored_policy", &ignored_policies) ||
-                    !dict_value->GetString("timezone", &timezone);
+    bool is_error =
+        !dict_value || !dict_value->GetList("intervals", &intervals) ||
+        !dict_value->GetList("ignored_policies", &ignored_policies) ||
+        !dict_value->GetString("timezone", &timezone);
     auto proto = base::MakeUnique<em::DeviceOffHoursProto>();
     if (!is_error) {
       proto->set_timezone(timezone);
 
       for (const base::Value* entry : *intervals) {
         is_error |=
-            !EncodeDeviceOffHoursIntervalProto(*entry, proto->add_interval());
+            !EncodeDeviceOffHoursIntervalProto(*entry, proto->add_intervals());
       }
 
       for (const base::Value* entry : *ignored_policies) {
-        is_error |= !entry->GetAsString(proto->add_ignored_policy());
+        is_error |= !entry->GetAsString(proto->add_ignored_policies());
       }
     }
 
@@ -575,6 +576,30 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeString(key::kCastReceiverName, [policy](const std::string& value) {
     policy->mutable_cast_receiver_name()->set_name(value);
   });
+
+  EncodeString(key::kDeviceNativePrinters, [policy](const std::string& value) {
+    policy->mutable_native_device_printers()->set_external_policy(value);
+  });
+  EncodeInteger(key::kDeviceNativePrintersAccessMode, [policy](int value) {
+    policy->mutable_native_device_printers_access_mode()->set_access_mode(
+        static_cast<em::DeviceNativePrintersAccessModeProto_AccessMode>(value));
+  });
+  EncodeStringList(key::kDeviceNativePrintersBlacklist,
+                   [policy](const std::vector<std::string>& values) {
+                     auto list =
+                         policy->mutable_native_device_printers_blacklist();
+                     list->clear_blacklist();
+                     for (const std::string& value : values)
+                       list->add_blacklist(value);
+                   });
+  EncodeStringList(key::kDeviceNativePrintersWhitelist,
+                   [policy](const std::vector<std::string>& values) {
+                     auto list =
+                         policy->mutable_native_device_printers_whitelist();
+                     list->clear_whitelist();
+                     for (const std::string& value : values)
+                       list->add_whitelist(value);
+                   });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

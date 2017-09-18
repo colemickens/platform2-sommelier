@@ -374,50 +374,65 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                key::kDeviceOffHours,
                R"!!!(
                {
-                 "interval":
+                 "intervals":
                  [
                    {
                      "start": {
-                       "weekday": "MONDAY",
+                       "day_of_week": "MONDAY",
                        "time": 12840000
                      },
                      "end": {
-                       "weekday": "MONDAY",
+                       "day_of_week": "MONDAY",
                        "time": 21720000
                      }
                    },
                    {
                      "start": {
-                       "weekday": "FRIDAY",
+                       "day_of_week": "FRIDAY",
                        "time": 38640000
                      },
                      "end": {
-                       "weekday": "FRIDAY",
+                       "day_of_week": "FRIDAY",
                        "time": 57600000
                      }
                    }
                  ],
                  "timezone": "GMT",
-                 "ignored_policy": ["policy1", "policy2"]
+                 "ignored_policies": ["policy1", "policy2"]
                })!!!");
   const auto& device_off_hours_proto = policy.device_off_hours();
-  EXPECT_EQ(2, device_off_hours_proto.interval_size());
-  const auto& interval1 = device_off_hours_proto.interval().Get(0);
-  const auto& interval2 = device_off_hours_proto.interval().Get(1);
-  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().weekday());
-  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().weekday());
+  EXPECT_EQ(2, device_off_hours_proto.intervals_size());
+  const auto& interval1 = device_off_hours_proto.intervals().Get(0);
+  const auto& interval2 = device_off_hours_proto.intervals().Get(1);
+  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().day_of_week());
+  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().day_of_week());
   EXPECT_EQ(12840000, interval1.start().time());
   EXPECT_EQ(21720000, interval1.end().time());
-  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().weekday());
-  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().weekday());
+  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().day_of_week());
+  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().day_of_week());
   EXPECT_EQ(38640000, interval2.start().time());
   EXPECT_EQ(57600000, interval2.end().time());
   EXPECT_EQ("GMT", device_off_hours_proto.timezone());
-  EXPECT_EQ("policy1", device_off_hours_proto.ignored_policy().Get(0));
-  EXPECT_EQ("policy2", device_off_hours_proto.ignored_policy().Get(1));
+  EXPECT_EQ("policy1", device_off_hours_proto.ignored_policies().Get(0));
+  EXPECT_EQ("policy2", device_off_hours_proto.ignored_policies().Get(1));
 
   EncodeString(&policy, key::kCastReceiverName, kString);
   EXPECT_EQ(kString, policy.cast_receiver_name().name());
+
+  // The encoder of this policy converts ints to AccessMode enums.
+  EncodeString(&policy, key::kDeviceNativePrinters, kString);
+  EXPECT_EQ(kString, policy.native_device_printers().external_policy());
+  EncodeInteger(&policy,
+                key::kDeviceNativePrintersAccessMode,
+                em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST);
+  EXPECT_EQ(em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST,
+            policy.native_device_printers_access_mode().access_mode());
+  EncodeStringList(&policy, key::kDeviceNativePrintersWhitelist, kStringList);
+  EXPECT_EQ(kStringList,
+            ToVector(policy.native_device_printers_whitelist().whitelist()));
+  EncodeStringList(&policy, key::kDeviceNativePrintersBlacklist, kStringList);
+  EXPECT_EQ(kStringList,
+            ToVector(policy.native_device_printers_blacklist().blacklist()));
 
   //
   // Check whether all device policies have been handled.
