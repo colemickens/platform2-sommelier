@@ -30,7 +30,7 @@ class UserCollectorBase : public CrashCollector {
  protected:
   // Enumeration to pass to GetIdFromStatus.  Must match the order
   // that the kernel lists IDs in the status file.
-  enum IdKind {
+  enum IdKind : int {
     kIdReal = 0,  // uid and gid
     kIdEffective = 1,  // euid and egid
     kIdSet = 2,  // suid and sgid
