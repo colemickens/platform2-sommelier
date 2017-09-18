@@ -12,7 +12,6 @@
 #include <malloc.h>
 #include <signal.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
@@ -33,18 +32,15 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "libcontainer/container_cgroup.h"
 #include "libcontainer/libcontainer.h"
-
-#define FREE_AND_NULL(ptr) \
-  do {                     \
-    free(ptr);             \
-    ptr = nullptr;         \
-  } while (0)
 
 #define MAX_NUM_SETFILES_ARGS 128
 #define MAX_RLIMITS 32  // Linux defines 15 at the time of writing.
@@ -68,17 +64,7 @@ base::FilePath GetPathInOuterNamespace(
 
 }  // namespace
 
-static int container_teardown(struct container* c);
-
-static int strdup_and_free(char** dest, const char* src) {
-  char* copy = strdup(src);
-  if (!copy)
-    return -ENOMEM;
-  if (*dest)
-    free(*dest);
-  *dest = copy;
-  return 0;
-}
+static int ContainerTeardown(struct container* c);
 
 struct Mount {
   std::string name;
@@ -358,9 +344,8 @@ int container_config_add_rlimit(struct container_config* c,
                                 int type,
                                 uint32_t cur,
                                 uint32_t max) {
-  if (c->num_rlimits >= MAX_RLIMITS) {
+  if (c->num_rlimits >= MAX_RLIMITS)
     return -ENOMEM;
-  }
   c->rlimits[c->num_rlimits].type = type;
   c->rlimits[c->num_rlimits].cur = cur;
   c->rlimits[c->num_rlimits].max = max;
@@ -604,46 +589,36 @@ int container_config_inherit_fds(struct container_config* c,
   return 0;
 }
 
-/*
- * Container manipulation
- */
+// Container manipulation
 struct container {
   struct container_cgroup* cgroup;
-  struct minijail* jail;
+  ScopedMinijail jail;
   pid_t init_pid;
   base::FilePath config_root;
   base::FilePath runfs;
-  char* rundir;
+  base::FilePath rundir;
   base::FilePath runfsroot;
-  char* pid_file_path;
-  char** ext_mounts; /* Mounts made outside of the minijail */
-  size_t num_ext_mounts;
+  base::FilePath pid_file_path;
+
+  // Mounts made outside of the minijail.
+  std::vector<base::FilePath> ext_mounts;
   std::vector<base::FilePath> loopdev_paths;
-  char** device_mappers;
-  size_t num_device_mappers;
-  char* name;
+  std::vector<std::string> device_mappers;
+  std::string name;
 };
 
 struct container* container_new(const char* name, const char* rundir) {
   struct container* c = new (std::nothrow) container();
   if (!c)
     return nullptr;
-  c->rundir = strdup(rundir);
-  c->name = strdup(name);
-  if (!c->rundir || !c->name) {
-    container_destroy(c);
-    return nullptr;
-  }
+  c->rundir = base::FilePath(rundir);
+  c->name = name;
   return c;
 }
 
 void container_destroy(struct container* c) {
   if (c->cgroup)
     container_cgroup_destroy(c->cgroup);
-  if (c->jail)
-    minijail_destroy(c->jail);
-  FREE_AND_NULL(c->name);
-  FREE_AND_NULL(c->rundir);
   delete c;
 }
 
@@ -653,64 +628,50 @@ void container_destroy(struct container* c) {
  * return < 0 on error.
  */
 static int GetUsernsOutsideId(const std::string& map, int id) {
-  char *map_copy, *mapping, *saveptr1, *saveptr2;
-  long inside, outside, length;
-  int result = 0;
-  errno = 0;
-
   if (map.empty())
     return id;
 
-  if (asprintf(&map_copy, "%s", map.c_str()) < 0)
-    return -ENOMEM;
+  std::string map_copy = map;
+  base::StringPiece map_piece(map_copy);
 
-  mapping = strtok_r(map_copy, ",", &saveptr1);
-  while (mapping) {
-    inside = strtol(strtok_r(mapping, " ", &saveptr2), nullptr, 10);
-    outside = strtol(strtok_r(nullptr, " ", &saveptr2), nullptr, 10);
-    length = strtol(strtok_r(nullptr, "\0", &saveptr2), nullptr, 10);
-    if (errno) {
-      goto error_free_return;
-    } else if (inside < 0 || outside < 0 || length < 0) {
-      errno = EINVAL;
-      goto error_free_return;
+  for (const auto& mapping : base::SplitStringPiece(
+           map_piece, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
+    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
+        mapping, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+    if (tokens.size() != 3)
+      return -EINVAL;
+
+    uint32_t inside, outside, length;
+    if (!base::StringToUint(tokens[0], &inside) ||
+        !base::StringToUint(tokens[1], &outside) ||
+        !base::StringToUint(tokens[2], &length)) {
+      return -EINVAL;
     }
 
     if (id >= inside && id <= (inside + length)) {
-      result = (id - inside) + outside;
-      goto exit;
+      return (id - inside) + outside;
     }
-
-    mapping = strtok_r(nullptr, ",", &saveptr1);
   }
-  errno = EINVAL;
 
-error_free_return:
-  result = -errno;
-exit:
-  free(map_copy);
-  return result;
+  return -EINVAL;
 }
 
-static int make_dir(const char* path, int uid, int gid, int mode) {
-  if (mkdir(path, mode))
+static int MakeDir(const base::FilePath& path, int uid, int gid, int mode) {
+  if (mkdir(path.value().c_str(), mode))
     return -errno;
-  if (chmod(path, mode))
+  if (chmod(path.value().c_str(), mode))
     return -errno;
-  if (chown(path, uid, gid))
+  if (chown(path.value().c_str(), uid, gid))
     return -errno;
   return 0;
 }
 
-static int touch_file(const char* path, int uid, int gid, int mode) {
-  int rc;
-  int fd = open(path, O_RDWR | O_CREAT, mode);
-  if (fd < 0)
+static int TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
+  base::ScopedFD fd(open(path.value().c_str(), O_RDWR | O_CREAT, mode));
+  if (!fd.is_valid())
     return -errno;
-  rc = fchown(fd, uid, gid);
-  close(fd);
-
-  if (rc)
+  if (fchown(fd.get(), uid, gid))
     return -errno;
   return 0;
 }
@@ -718,33 +679,33 @@ static int touch_file(const char* path, int uid, int gid, int mode) {
 /* Make sure the mount target exists in the new rootfs. Create if needed and
  * possible.
  */
-static int setup_mount_destination(const struct container_config* config,
-                                   const Mount* mnt,
-                                   const char* source,
-                                   const char* dest) {
-  int uid_userns, gid_userns;
+static int SetupMountDestination(const struct container_config* config,
+                                 const Mount& mount,
+                                 const base::FilePath& source,
+                                 const base::FilePath& dest) {
   int rc;
+
   struct stat st_buf;
-
-  rc = stat(dest, &st_buf);
-  if (rc == 0) /* destination exists */
+  rc = stat(dest.value().c_str(), &st_buf);
+  if (rc == 0) {
+    // destination exists.
     return 0;
+  }
 
-  /* Try to create the destination. Either make directory or touch a file
-   * depending on the source type.
-   */
-  uid_userns = GetUsernsOutsideId(config->uid_map, mnt->uid);
+  // Try to create the destination. Either make directory or touch a file
+  // depending on the source type.
+  int uid_userns = GetUsernsOutsideId(config->uid_map, mount.uid);
   if (uid_userns < 0)
     return uid_userns;
-  gid_userns = GetUsernsOutsideId(config->gid_map, mnt->gid);
+  int gid_userns = GetUsernsOutsideId(config->gid_map, mount.gid);
   if (gid_userns < 0)
     return gid_userns;
 
-  rc = stat(source, &st_buf);
+  rc = stat(source.value().c_str(), &st_buf);
   if (rc || S_ISDIR(st_buf.st_mode) || S_ISBLK(st_buf.st_mode))
-    return make_dir(dest, uid_userns, gid_userns, mnt->mode);
+    return MakeDir(dest, uid_userns, gid_userns, mount.mode);
 
-  return touch_file(dest, uid_userns, gid_userns, mnt->mode);
+  return TouchFile(dest, uid_userns, gid_userns, mount.mode);
 }
 
 /* Fork and exec the setfiles command to configure the selinux policy. */
@@ -898,63 +859,52 @@ static int DeviceMapperSetup(const base::FilePath& source,
   return 0;
 }
 
-/* Tear down the device mapper target. */
-static int dm_detach(const char* dm_name) {
-  int ret = 0;
+// Tear down the device mapper target.
+static int DeviceMapperDetach(const std::string& dm_name) {
 #if USE_device_mapper
-  struct dm_task* dmt;
-
-  dmt = dm_task_create(DM_DEVICE_REMOVE);
+  struct dm_task* dmt = dm_task_create(DM_DEVICE_REMOVE);
   if (dmt == nullptr)
-    goto error;
+    return -errno;
 
-  if (!dm_task_set_name(dmt, dm_name))
-    goto error;
+  base::ScopedClosureRunner teardown(
+      base::Bind(base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
+
+  if (!dm_task_set_name(dmt, dm_name.c_str()))
+    return -errno;
 
   if (!dm_task_run(dmt))
-    goto error;
-
-  goto exit;
-
-error:
-  ret = -errno;
-exit:
-  dm_task_destroy(dmt);
+    return -errno;
 #endif
-  return ret;
+  return 0;
 }
 
 /*
  * Unmounts anything we mounted in this mount namespace in the opposite order
  * that they were mounted.
  */
-static int unmount_external_mounts(struct container* c) {
+static int UnmountExternalMounts(struct container* c) {
   int ret = 0;
 
-  while (c->num_ext_mounts) {
-    c->num_ext_mounts--;
-    if (!c->ext_mounts[c->num_ext_mounts])
-      continue;
-    if (umount(c->ext_mounts[c->num_ext_mounts]))
+  for (auto it = c->ext_mounts.rbegin(); it != c->ext_mounts.rend(); ++it) {
+    if (umount(it->value().c_str()))
       ret = -errno;
-    FREE_AND_NULL(c->ext_mounts[c->num_ext_mounts]);
   }
-  FREE_AND_NULL(c->ext_mounts);
+  c->ext_mounts.clear();
 
-  for (const auto& loopdev_path : c->loopdev_paths) {
-    int rc = LoopdevDetach(loopdev_path);
+  for (auto it = c->loopdev_paths.rbegin(); it != c->loopdev_paths.rend();
+       ++it) {
+    int rc = LoopdevDetach(*it);
     if (rc)
       ret = rc;
   }
   c->loopdev_paths.clear();
 
-  while (c->num_device_mappers) {
-    c->num_device_mappers--;
-    if (dm_detach(c->device_mappers[c->num_device_mappers]))
+  for (auto it = c->device_mappers.rbegin(); it != c->device_mappers.rend();
+       ++it) {
+    if (DeviceMapperDetach(*it))
       ret = -errno;
-    FREE_AND_NULL(c->device_mappers[c->num_device_mappers]);
   }
-  FREE_AND_NULL(c->device_mappers);
+  c->device_mappers.clear();
 
   return ret;
 }
@@ -963,12 +913,12 @@ static int unmount_external_mounts(struct container* c) {
  * Match mount_one in minijail, mount one mountpoint with
  * consideration for combination of MS_BIND/MS_RDONLY flag.
  */
-static int mount_external(const char* src,
-                          const char* dest,
-                          const char* type,
-                          unsigned long flags,
-                          const void* data) {
-  int remount_ro = 0;
+static int MountExternal(const std::string& src,
+                         const std::string& dest,
+                         const std::string& type,
+                         unsigned long flags,
+                         const std::string& data) {
+  bool remount_ro = false;
 
   /*
    * R/O bind mounts have to be remounted since 'bind' and 'ro'
@@ -976,52 +926,62 @@ static int mount_external(const char* src,
    * Remount R/O after the initial mount.
    */
   if ((flags & MS_BIND) && (flags & MS_RDONLY)) {
-    remount_ro = 1;
+    remount_ro = true;
     flags &= ~MS_RDONLY;
   }
 
-  if (mount(src, dest, type, flags, data) == -1)
-    return -1;
+  if (mount(src.c_str(),
+            dest.c_str(),
+            type.c_str(),
+            flags,
+            data.empty() ? nullptr : data.c_str()) == -1) {
+    return -errno;
+  }
 
   if (remount_ro) {
     flags |= MS_RDONLY;
-    if (mount(src, dest, nullptr, flags | MS_REMOUNT, data) == -1)
-      return -1;
+    if (mount(src.c_str(),
+              dest.c_str(),
+              nullptr,
+              flags | MS_REMOUNT,
+              data.empty() ? nullptr : data.c_str()) == -1) {
+      return -errno;
+    }
   }
 
   return 0;
 }
 
-static int do_container_mount(struct container* c,
-                              const struct container_config* config,
-                              const Mount* mnt) {
+static int DoContainerMount(struct container* c,
+                            const struct container_config* config,
+                            const Mount& mount) {
   int rc = 0;
 
-  base::FilePath dest = GetPathInOuterNamespace(c->runfsroot, mnt->destination);
+  base::FilePath dest =
+      GetPathInOuterNamespace(c->runfsroot, mount.destination);
 
   /*
    * If it's a bind mount relative to rootfs, append source to
    * rootfs path, otherwise source path is absolute.
    */
   base::FilePath source;
-  if ((mnt->flags & MS_BIND) && !mnt->source.IsAbsolute()) {
-    source = GetPathInOuterNamespace(c->runfsroot, mnt->source);
-  } else if (mnt->loopback && !mnt->source.IsAbsolute() &&
+  if ((mount.flags & MS_BIND) && !mount.source.IsAbsolute()) {
+    source = GetPathInOuterNamespace(c->runfsroot, mount.source);
+  } else if (mount.loopback && !mount.source.IsAbsolute() &&
              !c->config_root.empty()) {
-    source = GetPathInOuterNamespace(c->config_root, mnt->source);
+    source = GetPathInOuterNamespace(c->config_root, mount.source);
   } else {
-    source = mnt->source;
+    source = mount.source;
   }
 
   // Only create the destinations for external mounts, minijail will take
   // care of those mounted in the new namespace.
-  if (mnt->create && !mnt->mount_in_ns) {
-    rc = setup_mount_destination(
-        config, mnt, source.value().c_str(), dest.value().c_str());
+  if (mount.create && !mount.mount_in_ns) {
+    rc = SetupMountDestination(config, mount, source, dest);
     if (rc)
       return rc;
   }
-  if (mnt->loopback) {
+  if (mount.loopback) {
     /* Record this loopback file for cleanup later. */
     base::FilePath loop_source = source;
     rc = LoopdevSetup(loop_source, &source);
@@ -1031,82 +991,62 @@ static int do_container_mount(struct container* c,
     /* Save this to cleanup when shutting down. */
     c->loopdev_paths.push_back(source);
   }
-  if (!mnt->verity.empty()) {
+  if (!mount.verity.empty()) {
     /* Set this device up via dm-verity. */
     std::string dm_name;
     base::FilePath dm_source = source;
-    rc = DeviceMapperSetup(dm_source, mnt->verity, &source, &dm_name);
+    rc = DeviceMapperSetup(dm_source, mount.verity, &source, &dm_name);
     if (rc)
       return rc;
 
-    /* Save this to cleanup when shutting down. */
-    rc = strdup_and_free(&c->device_mappers[c->num_device_mappers],
-                         dm_name.c_str());
-    if (rc)
-      return rc;
-    c->num_device_mappers++;
+    // Save this to cleanup when shutting down.
+    c->device_mappers.push_back(dm_name);
   }
-  if (mnt->mount_in_ns) {
+  if (mount.mount_in_ns) {
     /* We can mount this with minijail. */
     rc = minijail_mount_with_data(
-        c->jail,
+        c->jail.get(),
         source.value().c_str(),
-        mnt->destination.value().c_str(),
-        mnt->type.c_str(),
-        mnt->flags,
-        mnt->data.empty() ? nullptr : mnt->data.c_str());
+        mount.destination.value().c_str(),
+        mount.type.c_str(),
+        mount.flags,
+        mount.data.empty() ? nullptr : mount.data.c_str());
     if (rc)
       return rc;
   } else {
     /* Mount this externally and unmount it on exit. */
-    if (mount_external(source.value().c_str(),
-                       dest.value().c_str(),
-                       mnt->type.c_str(),
-                       mnt->flags,
-                       mnt->data.empty() ? nullptr : mnt->data.c_str())) {
-      return -errno;
-    }
-    /* Save this to unmount when shutting down. */
-    rc = strdup_and_free(&c->ext_mounts[c->num_ext_mounts],
-                         dest.value().c_str());
+    rc = MountExternal(source.value(),
+                       dest.value(),
+                       mount.type,
+                       mount.flags,
+                       mount.data);
     if (rc)
       return rc;
-    c->num_ext_mounts++;
+    // Save this to unmount when shutting down.
+    c->ext_mounts.push_back(dest);
   }
 
   return 0;
 }
 
-static int do_container_mounts(struct container* c,
-                               const struct container_config* config) {
-  unsigned int i;
-  int rc = 0;
+static int DoContainerMounts(struct container* c,
+                             const struct container_config* config) {
+  UnmountExternalMounts(c);
 
-  unmount_external_mounts(c);
-  /*
-   * Allocate space to track anything we mount in our mount namespace.
-   * This over-allocates as it has space for all mounts.
-   */
-  c->ext_mounts = reinterpret_cast<char**>(
-      calloc(config->mounts.size(), sizeof(*c->ext_mounts)));
-  if (!c->ext_mounts)
-    return -errno;
-  c->device_mappers = reinterpret_cast<char**>(
-      calloc(config->mounts.size(), sizeof(*c->device_mappers)));
-  if (!c->device_mappers)
-    return -errno;
+  // This will run in all the error cases.
+  base::ScopedClosureRunner teardown(base::Bind(
+      base::IgnoreResult(&UnmountExternalMounts), base::Unretained(c)));
 
-  for (i = 0; i < config->mounts.size(); ++i) {
-    rc = do_container_mount(c, config, &config->mounts[i]);
+  for (const auto& mount : config->mounts) {
+    int rc = DoContainerMount(c, config, mount);
     if (rc)
-      goto error_free_return;
+      return rc;
   }
 
-  return 0;
+  // The mounts have been done successfully, no need to tear them down anymore.
+  ignore_result(teardown.Release());
 
-error_free_return:
-  unmount_external_mounts(c);
-  return rc;
+  return 0;
 }
 
 static int ContainerCreateDevice(const struct container* c,
@@ -1145,27 +1085,22 @@ static int ContainerCreateDevice(const struct container* c,
   return 0;
 }
 
-static int mount_runfs(struct container* c,
-                       const struct container_config* config) {
-  static const mode_t root_dir_mode = 0660;
-  char* runfs_template = nullptr;
-  int uid_userns, gid_userns;
-
-  if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
-    return -ENOMEM;
-
-  char* runfs_path = mkdtemp(runfs_template);
-  if (!runfs_path) {
-    free(runfs_template);
-    return -errno;
+static int MountRunfs(struct container* c,
+                      const struct container_config* config) {
+  {
+    std::string runfs_template = base::StringPrintf(
+        "%s/%s_XXXXXX", c->rundir.value().c_str(), c->name.c_str());
+    // TODO(lhchavez): Replace this with base::CreateTemporaryDirInDir().
+    char* runfs_path = mkdtemp(const_cast<char*>(runfs_template.c_str()));
+    if (!runfs_path)
+      return -errno;
+    c->runfs = base::FilePath(runfs_path);
   }
-  c->runfs = base::FilePath(runfs_path);
-  free(runfs_template);
 
-  uid_userns = GetUsernsOutsideId(config->uid_map, config->uid);
+  int uid_userns = GetUsernsOutsideId(config->uid_map, config->uid);
   if (uid_userns < 0)
     return uid_userns;
-  gid_userns = GetUsernsOutsideId(config->gid_map, config->gid);
+  int gid_userns = GetUsernsOutsideId(config->gid_map, config->gid);
   if (gid_userns < 0)
     return gid_userns;
 
@@ -1177,9 +1112,10 @@ static int mount_runfs(struct container* c,
 
   c->runfsroot = c->runfs.Append("root");
 
-  if (mkdir(c->runfsroot.value().c_str(), root_dir_mode))
+  constexpr mode_t kRootDirMode = 0660;
+  if (mkdir(c->runfsroot.value().c_str(), kRootDirMode))
     return -errno;
-  if (chmod(c->runfsroot.value().c_str(), root_dir_mode))
+  if (chmod(c->runfsroot.value().c_str(), kRootDirMode))
     return -errno;
 
   if (mount(config->rootfs.value().c_str(),
@@ -1205,8 +1141,8 @@ static int mount_runfs(struct container* c,
   return 0;
 }
 
-static int device_setup(struct container* c,
-                        const struct container_config* config) {
+static int DeviceSetup(struct container* c,
+                       const struct container_config* config) {
   int rc;
 
   c->cgroup->ops->deny_all_devices(c->cgroup);
@@ -1255,34 +1191,26 @@ static int device_setup(struct container* c,
   return 0;
 }
 
-static int setexeccon(void* payload) {
+static int Setexeccon(void* payload) {
   char* init_domain = reinterpret_cast<char*>(payload);
-  char* exec_path;
   pid_t tid = syscall(SYS_gettid);
-  int fd;
-  int rc = 0;
 
-  if (tid == -1) {
+  if (tid == -1)
     return -errno;
-  }
 
-  if (asprintf(&exec_path, "/proc/self/task/%d/attr/exec", tid) < 0) {
+  std::string exec_path =
+      base::StringPrintf("/proc/self/task/%d/attr/exec", tid);
+
+  base::ScopedFD fd(open(exec_path.c_str(), O_WRONLY | O_CLOEXEC));
+  if (!fd.is_valid())
     return -errno;
-  }
 
-  fd = open(exec_path, O_WRONLY | O_CLOEXEC);
-  free(exec_path);
-  if (fd == -1) {
-    return -errno;
-  }
-
-  if (write(fd, init_domain, strlen(init_domain)) !=
+  if (write(fd.get(), init_domain, strlen(init_domain)) !=
       (ssize_t)strlen(init_domain)) {
-    rc = -errno;
+    return -errno;
   }
 
-  close(fd);
-  return rc;
+  return 0;
 }
 
 int container_start(struct container* c,
@@ -1298,7 +1226,7 @@ int container_start(struct container* c,
 
   // This will run in all the error cases.
   base::ScopedClosureRunner teardown(
-      base::Bind(base::IgnoreResult(&container_teardown), base::Unretained(c)));
+      base::Bind(base::IgnoreResult(&ContainerTeardown), base::Unretained(c)));
 
   if (!config->config_root.empty())
     c->config_root = config->config_root;
@@ -1306,16 +1234,16 @@ int container_start(struct container* c,
     c->runfs.clear();
     c->runfsroot = config->premounted_runfs;
   } else {
-    rc = mount_runfs(c, config);
+    rc = MountRunfs(c, config);
     if (rc)
       return rc;
   }
 
-  c->jail = minijail_new();
+  c->jail.reset(minijail_new());
   if (!c->jail)
     return -ENOMEM;
 
-  rc = do_container_mounts(c, config);
+  rc = DoContainerMounts(c, config);
   if (rc)
     return rc;
 
@@ -1326,7 +1254,7 @@ int container_start(struct container* c,
   if (cgroup_gid < 0)
     return cgroup_gid;
 
-  c->cgroup = container_cgroup_new(c->name,
+  c->cgroup = container_cgroup_new(c->name.c_str(),
                                    "/sys/fs/cgroup",
                                    config->cgroup_parent.value().c_str(),
                                    cgroup_uid,
@@ -1336,7 +1264,7 @@ int container_start(struct container* c,
 
   /* Must be root to modify device cgroup or mknod */
   if (getuid() == 0) {
-    rc = device_setup(c, config);
+    rc = DeviceSetup(c, config);
     if (rc)
       return rc;
   }
@@ -1390,35 +1318,29 @@ int container_start(struct container* c,
   }
 
   /* Setup and start the container with libminijail. */
-  if (!config->pid_file_path.empty()) {
-    c->pid_file_path = strdup(config->pid_file_path.value().c_str());
-    if (!c->pid_file_path)
-      return -ENOMEM;
-  } else if (!c->runfs.empty()) {
-    if (asprintf(&c->pid_file_path,
-                 "%s/container.pid",
-                 c->runfs.value().c_str()) < 0)
-      return -ENOMEM;
-  }
+  if (!config->pid_file_path.empty())
+    c->pid_file_path = config->pid_file_path;
+  else if (!c->runfs.empty())
+    c->pid_file_path = c->runfs.Append("container.pid");
 
-  if (c->pid_file_path)
-    minijail_write_pid_file(c->jail, c->pid_file_path);
-  minijail_reset_signal_mask(c->jail);
+  if (!c->pid_file_path.empty())
+    minijail_write_pid_file(c->jail.get(), c->pid_file_path.value().c_str());
+  minijail_reset_signal_mask(c->jail.get());
 
   /* Setup container namespaces. */
-  minijail_namespace_ipc(c->jail);
-  minijail_namespace_vfs(c->jail);
+  minijail_namespace_ipc(c->jail.get());
+  minijail_namespace_vfs(c->jail.get());
   if (!config->share_host_netns)
-    minijail_namespace_net(c->jail);
-  minijail_namespace_pids(c->jail);
-  minijail_namespace_user(c->jail);
+    minijail_namespace_net(c->jail.get());
+  minijail_namespace_pids(c->jail.get());
+  minijail_namespace_user(c->jail.get());
   if (getuid() != 0)
-    minijail_namespace_user_disable_setgroups(c->jail);
-  minijail_namespace_cgroups(c->jail);
-  rc = minijail_uidmap(c->jail, config->uid_map.c_str());
+    minijail_namespace_user_disable_setgroups(c->jail.get());
+  minijail_namespace_cgroups(c->jail.get());
+  rc = minijail_uidmap(c->jail.get(), config->uid_map.c_str());
   if (rc)
     return rc;
-  rc = minijail_gidmap(c->jail, config->gid_map.c_str());
+  rc = minijail_gidmap(c->jail.get(), config->gid_map.c_str());
   if (rc)
     return rc;
 
@@ -1427,39 +1349,40 @@ int container_start(struct container* c,
   if (rc < 0)
     return rc;
   else if (config->uid > 0)
-    minijail_change_uid(c->jail, config->uid);
+    minijail_change_uid(c->jail.get(), config->uid);
   rc = GetUsernsOutsideId(config->gid_map, config->gid);
   if (rc < 0)
     return rc;
   else if (config->gid > 0)
-    minijail_change_gid(c->jail, config->gid);
+    minijail_change_gid(c->jail.get(), config->gid);
 
-  rc = minijail_enter_pivot_root(c->jail, c->runfsroot.value().c_str());
+  rc = minijail_enter_pivot_root(c->jail.get(), c->runfsroot.value().c_str());
   if (rc)
     return rc;
 
   /* Add the cgroups configured above. */
   for (int i = 0; i < NUM_CGROUP_TYPES; i++) {
     if (c->cgroup->cgroup_tasks_paths[i]) {
-      rc = minijail_add_to_cgroup(c->jail, c->cgroup->cgroup_tasks_paths[i]);
+      rc = minijail_add_to_cgroup(c->jail.get(),
+                                  c->cgroup->cgroup_tasks_paths[i]);
       if (rc)
         return rc;
     }
   }
 
   if (!config->alt_syscall_table.empty())
-    minijail_use_alt_syscall(c->jail, config->alt_syscall_table.c_str());
+    minijail_use_alt_syscall(c->jail.get(), config->alt_syscall_table.c_str());
 
   for (int i = 0; i < config->num_rlimits; i++) {
     const Rlimit& lim = config->rlimits[i];
-    rc = minijail_rlimit(c->jail, lim.type, lim.cur, lim.max);
+    rc = minijail_rlimit(c->jail.get(), lim.type, lim.cur, lim.max);
     if (rc)
       return rc;
   }
 
   if (!config->selinux_context.empty()) {
-    rc = minijail_add_hook(c->jail,
-                           &setexeccon,
+    rc = minijail_add_hook(c->jail.get(),
+                           &Setexeccon,
                            const_cast<char*>(config->selinux_context.c_str()),
                            MINIJAIL_HOOK_EVENT_PRE_EXECVE);
     if (rc)
@@ -1467,7 +1390,7 @@ int container_start(struct container* c,
   }
 
   if (config->pre_start_hook) {
-    rc = minijail_add_hook(c->jail,
+    rc = minijail_add_hook(c->jail.get(),
                            config->pre_start_hook,
                            config->pre_start_hook_payload,
                            MINIJAIL_HOOK_EVENT_PRE_EXECVE);
@@ -1476,29 +1399,30 @@ int container_start(struct container* c,
   }
 
   for (int fd : config->inherited_fds) {
-    rc = minijail_preserve_fd(c->jail, fd, fd);
+    rc = minijail_preserve_fd(c->jail.get(), fd, fd);
     if (rc)
       return rc;
   }
 
   /* TODO(dgreid) - remove this once shared mounts are cleaned up. */
-  minijail_skip_remount_private(c->jail);
+  minijail_skip_remount_private(c->jail.get());
 
   if (!config->keep_fds_open)
-    minijail_close_open_fds(c->jail);
+    minijail_close_open_fds(c->jail.get());
 
   if (config->use_capmask) {
-    minijail_use_caps(c->jail, config->capmask);
+    minijail_use_caps(c->jail.get(), config->capmask);
     if (config->use_capmask_ambient) {
-      minijail_set_ambient_caps(c->jail);
+      minijail_set_ambient_caps(c->jail.get());
     }
     if (config->securebits_skip_mask) {
-      minijail_skip_setting_securebits(c->jail, config->securebits_skip_mask);
+      minijail_skip_setting_securebits(c->jail.get(),
+                                       config->securebits_skip_mask);
     }
   }
 
   if (!config->do_init)
-    minijail_run_as_init(c->jail);
+    minijail_run_as_init(c->jail.get());
 
   std::vector<char*> argv_cstr;
   argv_cstr.reserve(config->program_argv.size() + 1);
@@ -1506,7 +1430,7 @@ int container_start(struct container* c,
     argv_cstr.emplace_back(const_cast<char*>(arg.c_str()));
   argv_cstr.emplace_back(nullptr);
 
-  rc = minijail_run_pid_pipes_no_preload(c->jail,
+  rc = minijail_run_pid_pipes_no_preload(c->jail.get(),
                                          argv_cstr[0],
                                          argv_cstr.data(),
                                          &c->init_pid,
@@ -1529,10 +1453,10 @@ int container_pid(struct container* c) {
   return c->init_pid;
 }
 
-static int container_teardown(struct container* c) {
+static int ContainerTeardown(struct container* c) {
   int ret = 0;
 
-  unmount_external_mounts(c);
+  UnmountExternalMounts(c);
   if (!c->runfsroot.empty() && !c->runfs.empty()) {
     /* |c->runfsroot| may have been mounted recursively. Thus use
      * MNT_DETACH to "immediately disconnect the filesystem and all
@@ -1546,12 +1470,11 @@ static int container_teardown(struct container* c) {
     if (rmdir(c->runfsroot.value().c_str()))
       ret = -errno;
   }
-  if (c->pid_file_path) {
-    if (unlink(c->pid_file_path))
+  if (!c->pid_file_path.empty()) {
+    if (unlink(c->pid_file_path.value().c_str()))
       ret = -errno;
-    FREE_AND_NULL(c->pid_file_path);
   }
-  if (c->runfs.empty()) {
+  if (!c->runfs.empty()) {
     if (rmdir(c->runfs.value().c_str()))
       ret = -errno;
   }
@@ -1562,12 +1485,12 @@ int container_wait(struct container* c) {
   int rc;
 
   do {
-    rc = minijail_wait(c->jail);
+    rc = minijail_wait(c->jail.get());
   } while (rc == -EINTR);
 
   // If the process had already been reaped, still perform teardown.
   if (rc == -ECHILD || rc >= 0) {
-    rc = container_teardown(c);
+    rc = ContainerTeardown(c);
   }
   return rc;
 }
