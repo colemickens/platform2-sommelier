@@ -102,28 +102,34 @@ struct Mount {
   bool loopback;
 };
 
-struct container_device {
-  char type; /* 'c' or 'b' for char or block */
-  char* path;
+struct Device {
+  // 'c' or 'b' for char or block
+  char type;
+  base::FilePath path;
   int fs_permissions;
   int major;
   int minor;
-  int copy_minor; /* Copy the minor from existing node, ignores |minor| */
+
+  // Copy the minor from existing node, ignores |minor|.
+  bool copy_minor;
   int uid;
   int gid;
 };
 
-struct container_cgroup_device {
-  int allow;
+struct CgroupDevice {
+  bool allow;
   char type;
-  int major; /* -1 means all */
-  int minor; /* -1 means all */
-  int read;
-  int write;
-  int modify;
+
+  // -1 for either major or minor means all.
+  int major;
+  int minor;
+
+  bool read;
+  bool write;
+  bool modify;
 };
 
-struct container_cpu_cgroup {
+struct CpuCgroup {
   int shares;
   int quota;
   int period;
@@ -131,7 +137,7 @@ struct container_cpu_cgroup {
   int rt_period;
 };
 
-struct container_rlimit {
+struct Rlimit {
   int type;
   uint32_t cur;
   uint32_t max;
@@ -186,18 +192,16 @@ struct container_config {
   char* gid_map;
   char* alt_syscall_table;
   std::vector<Mount> mounts;
-  struct container_device* devices;
-  size_t num_devices;
-  struct container_cgroup_device* cgroup_devices;
-  size_t num_cgroup_devices;
+  std::vector<Device> devices;
+  std::vector<CgroupDevice> cgroup_devices;
   char* run_setfiles;
-  struct container_cpu_cgroup cpu_cgparams;
+  CpuCgroup cpu_cgparams;
   char* cgroup_parent;
   uid_t cgroup_owner;
   gid_t cgroup_group;
   int share_host_netns;
   int keep_fds_open;
-  struct container_rlimit rlimits[MAX_RLIMITS];
+  Rlimit rlimits[MAX_RLIMITS];
   int num_rlimits;
   int use_capmask;
   int use_capmask_ambient;
@@ -226,13 +230,7 @@ static void container_free_program_args(struct container_config* c) {
   FREE_AND_NULL(c->program_argv);
 }
 
-static void container_config_free_device(struct container_device* device) {
-  FREE_AND_NULL(device->path);
-}
-
 void container_config_destroy(struct container_config* c) {
-  size_t i;
-
   if (c == nullptr)
     return;
   FREE_AND_NULL(c->rootfs);
@@ -242,11 +240,6 @@ void container_config_destroy(struct container_config* c) {
   FREE_AND_NULL(c->uid_map);
   FREE_AND_NULL(c->gid_map);
   FREE_AND_NULL(c->alt_syscall_table);
-  for (i = 0; i < c->num_devices; ++i) {
-    container_config_free_device(&c->devices[i]);
-  }
-  FREE_AND_NULL(c->devices);
-  FREE_AND_NULL(c->cgroup_devices);
   FREE_AND_NULL(c->run_setfiles);
   FREE_AND_NULL(c->cgroup_parent);
   FREE_AND_NULL(c->selinux_context);
@@ -424,26 +417,8 @@ int container_config_add_cgroup_device(struct container_config* c,
                                        int read,
                                        int write,
                                        int modify) {
-  struct container_cgroup_device* dev_ptr;
-  struct container_cgroup_device* current_dev;
-
-  dev_ptr = reinterpret_cast<struct container_cgroup_device*>(
-      realloc(c->cgroup_devices,
-              sizeof(c->cgroup_devices[0]) * (c->num_cgroup_devices + 1)));
-  if (!dev_ptr)
-    return -ENOMEM;
-  c->cgroup_devices = dev_ptr;
-
-  current_dev = &c->cgroup_devices[c->num_cgroup_devices];
-  memset(current_dev, 0, sizeof(struct container_cgroup_device));
-  current_dev->allow = allow;
-  current_dev->type = type;
-  current_dev->major = major;
-  current_dev->minor = minor;
-  current_dev->read = read;
-  current_dev->write = write;
-  current_dev->modify = modify;
-  ++c->num_cgroup_devices;
+  c->cgroup_devices.emplace_back(CgroupDevice{
+      allow != 0, type, major, minor, read != 0, write != 0, modify != 0});
 
   return 0;
 }
@@ -460,32 +435,12 @@ int container_config_add_device(struct container_config* c,
                                 int read_allowed,
                                 int write_allowed,
                                 int modify_allowed) {
-  struct container_device* dev_ptr;
-  struct container_device* current_dev;
-
   if (path == nullptr)
     return -EINVAL;
   /* If using a dynamic minor number, ensure that minor is -1. */
   if (copy_minor && (minor != -1))
     return -EINVAL;
 
-  dev_ptr = reinterpret_cast<struct container_device*>(
-      realloc(c->devices, sizeof(c->devices[0]) * (c->num_devices + 1)));
-  if (!dev_ptr)
-    return -ENOMEM;
-  c->devices = dev_ptr;
-  current_dev = &c->devices[c->num_devices];
-  memset(current_dev, 0, sizeof(struct container_device));
-
-  current_dev->type = type;
-  if (strdup_and_free(&current_dev->path, path))
-    goto error_free_return;
-  current_dev->fs_permissions = fs_permissions;
-  current_dev->major = major;
-  current_dev->minor = minor;
-  current_dev->copy_minor = copy_minor;
-  current_dev->uid = uid;
-  current_dev->gid = gid;
   if (read_allowed || write_allowed || modify_allowed) {
     if (container_config_add_cgroup_device(c,
                                            1,
@@ -494,15 +449,23 @@ int container_config_add_device(struct container_config* c,
                                            minor,
                                            read_allowed,
                                            write_allowed,
-                                           modify_allowed))
-      goto error_free_return;
+                                           modify_allowed)) {
+      return -ENOMEM;
+    }
   }
-  ++c->num_devices;
-  return 0;
 
-error_free_return:
-  container_config_free_device(current_dev);
-  return -ENOMEM;
+  c->devices.emplace_back(Device{
+      type,
+      base::FilePath(path),
+      fs_permissions,
+      major,
+      minor,
+      copy_minor != 0,
+      uid,
+      gid,
+  });
+
+  return 0;
 }
 
 int container_config_run_setfiles(struct container_config* c,
@@ -1158,10 +1121,10 @@ error_free_return:
 
 static int ContainerCreateDevice(const struct container* c,
                                  const struct container_config* config,
-                                 const struct container_device* dev,
+                                 const Device& dev,
                                  int minor) {
-  mode_t mode = dev->fs_permissions;
-  switch (dev->type) {
+  mode_t mode = dev.fs_permissions;
+  switch (dev.type) {
     case 'b':
       mode |= S_IFBLK;
       break;
@@ -1172,22 +1135,21 @@ static int ContainerCreateDevice(const struct container* c,
       return -EINVAL;
   }
 
-  int uid_userns = get_userns_outside_id(config->uid_map, dev->uid);
+  int uid_userns = get_userns_outside_id(config->uid_map, dev.uid);
   if (uid_userns < 0)
     return uid_userns;
-  int gid_userns = get_userns_outside_id(config->gid_map, dev->gid);
+  int gid_userns = get_userns_outside_id(config->gid_map, dev.gid);
   if (gid_userns < 0)
     return gid_userns;
 
-  base::FilePath path =
-      GetPathInOuterNamespace(c->runfsroot, base::FilePath(dev->path));
-  if (mknod(path.value().c_str(), mode, makedev(dev->major, minor)) &&
+  base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
+  if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) &&
       errno != EEXIST) {
     return -errno;
   }
   if (chown(path.value().c_str(), uid_userns, gid_userns))
     return -errno;
-  if (chmod(path.value().c_str(), dev->fs_permissions))
+  if (chmod(path.value().c_str(), dev.fs_permissions))
     return -errno;
 
   return 0;
@@ -1257,31 +1219,28 @@ static int mount_runfs(struct container* c,
 static int device_setup(struct container* c,
                         const struct container_config* config) {
   int rc;
-  size_t i;
 
   c->cgroup->ops->deny_all_devices(c->cgroup);
 
-  for (i = 0; i < config->num_cgroup_devices; i++) {
-    const struct container_cgroup_device* dev = &config->cgroup_devices[i];
+  for (const auto& dev : config->cgroup_devices) {
     rc = c->cgroup->ops->add_device(c->cgroup,
-                                    dev->allow,
-                                    dev->major,
-                                    dev->minor,
-                                    dev->read,
-                                    dev->write,
-                                    dev->modify,
-                                    dev->type);
+                                    dev.allow,
+                                    dev.major,
+                                    dev.minor,
+                                    dev.read,
+                                    dev.write,
+                                    dev.modify,
+                                    dev.type);
     if (rc)
       return rc;
   }
 
-  for (i = 0; i < config->num_devices; i++) {
-    const struct container_device* dev = &config->devices[i];
-    int minor = dev->minor;
+  for (const auto& dev : config->devices) {
+    int minor = dev.minor;
 
-    if (dev->copy_minor) {
+    if (dev.copy_minor) {
       struct stat st_buff;
-      if (stat(dev->path, &st_buff) < 0)
+      if (stat(dev.path.value().c_str(), &st_buff) < 0)
         continue;
       minor = minor(st_buff.st_rdev);
     }
@@ -1500,8 +1459,8 @@ int container_start(struct container* c,
     minijail_use_alt_syscall(c->jail, config->alt_syscall_table);
 
   for (int i = 0; i < config->num_rlimits; i++) {
-    const struct container_rlimit* lim = &config->rlimits[i];
-    rc = minijail_rlimit(c->jail, lim->type, lim->cur, lim->max);
+    const Rlimit& lim = config->rlimits[i];
+    rc = minijail_rlimit(c->jail, lim.type, lim.cur, lim.max);
     if (rc)
       return rc;
   }
