@@ -284,15 +284,15 @@ Which achieves the same effect of having 2 separate revisions
 The shellball generated will contain the following (based on
 the example above) for the firmware pinning case:
 * models/
- * reef/
-   * bios.bin
-   * ec.bin
-   * setvars.sh
- * basking/
-  * setvars.sh (points to models/reef/...)
- * sand/
-  * bios.bin (a different version)
-  * ec.bin (a different version)
-  * setvars.sh
- * electro/
-  * setvars.sh (points to models/sand/...)
+  * reef/
+    * bios.bin
+    * ec.bin
+    * setvars.sh
+  * basking/
+    * setvars.sh (points to models/reef/...)
+  * sand/
+    * bios.bin (a different version)
+    * ec.bin (a different version)
+    * setvars.sh
+  * electro/
+    * setvars.sh (points to models/sand/...)
