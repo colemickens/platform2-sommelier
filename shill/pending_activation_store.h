@@ -35,7 +35,7 @@ class StoreInterface;
 // from the profile and the cellular service is marked as activated.
 class PendingActivationStore {
  public:
-  enum State {
+  enum State : int {
     // This state indicates that information for a particular SIM was never
     // stored in this database.
     kStateUnknown,
