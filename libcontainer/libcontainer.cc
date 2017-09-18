@@ -143,125 +143,125 @@ struct Rlimit {
   uint32_t max;
 };
 
-/*
- * Structure that configures how the container is run.
- *
- * config_root - Path to the root of the container itself.
- * rootfs - Path to the root of the container's filesystem.
- * rootfs_mount_flags - Flags that will be passed to mount() for the rootfs.
- * premounted_runfs - Path to where the container will be run.
- * pid_file_path - Path to the file where the pid should be written.
- * program_argv - The program to run and args, e.g. "/sbin/init".
- * num_args - Number of args in program_argv.
- * uid - The uid the container will run as.
- * uid_map - Mapping of UIDs in the container, e.g. "0 100000 1024"
- * gid - The gid the container will run as.
- * gid_map - Mapping of GIDs in the container, e.g. "0 100000 1024"
- * alt_syscall_table - Syscall table to use or nullptr if none.
- * mounts - Filesystems to mount in the new namespace.
- * devices - Device nodes to create.
- * num_devices - Number of above.
- * cgroup_devices - Device node cgroup permissions.
- * num_cgroup_devices - Number of above.
- * run_setfiles - Should run setfiles on mounts to enable selinux.
- * cpu_cgparams - CPU cgroup params.
- * cgroup_parent - Parent dir for cgroup creation
- * cgroup_owner - uid to own the created cgroups
- * cgroup_group - gid to own the created cgroups
- * share_host_netns - Enable sharing of the host network namespace.
- * keep_fds_open - Allow the child process to keep open FDs (for stdin/out/err).
- * rlimits - Array of rlimits for the contained process.
- * num_rlimits - The number of elements in `rlimits`.
- * securebits_skip_mask - The mask of securebits to skip when restricting caps.
- * do_init - Whether the container needs an extra process to be run as init.
- * selinux_context - The SELinux context name the container will run under.
- * pre_start_hook - A function pointer to be called prior to calling execve(2).
- * pre_start_hook_payload - Parameter that will be passed to pre_start_hook().
- */
+// Structure that configures how the container is run.
 struct container_config {
-  char* config_root;
-  char* rootfs;
+  // Path to the root of the container itself.
+  base::FilePath config_root;
+
+  // Path to the root of the container's filesystem.
+  base::FilePath rootfs;
+
+  // Flags that will be passed to mount() for the rootfs.
   unsigned long rootfs_mount_flags;
-  char* premounted_runfs;
-  char* pid_file_path;
-  char** program_argv;
-  size_t num_args;
+
+  // Path to where the container will be run.
+  base::FilePath premounted_runfs;
+
+  // Path to the file where the pid should be written.
+  base::FilePath pid_file_path;
+
+  // The program to run and args, e.g. "/sbin/init".
+  std::vector<std::string> program_argv;
+
+  // The uid the container will run as.
   uid_t uid;
-  char* uid_map;
+
+  // Mapping of UIDs in the container, e.g. "0 100000 1024"
+  std::string uid_map;
+
+  // The gid the container will run as.
   gid_t gid;
-  char* gid_map;
-  char* alt_syscall_table;
+
+  // Mapping of GIDs in the container, e.g. "0 100000 1024"
+  std::string gid_map;
+
+  // Syscall table to use or nullptr if none.
+  std::string alt_syscall_table;
+
+  // Filesystems to mount in the new namespace.
   std::vector<Mount> mounts;
+
+  // Device nodes to create.
   std::vector<Device> devices;
+
+  // Device node cgroup permissions.
   std::vector<CgroupDevice> cgroup_devices;
-  char* run_setfiles;
+
+  // Should run setfiles on mounts to enable selinux.
+  std::string run_setfiles;
+
+  // CPU cgroup params.
   CpuCgroup cpu_cgparams;
-  char* cgroup_parent;
+
+  // Parent dir for cgroup creation
+  base::FilePath cgroup_parent;
+
+  // uid to own the created cgroups
   uid_t cgroup_owner;
+
+  // gid to own the created cgroups
   gid_t cgroup_group;
+
+  // Enable sharing of the host network namespace.
   int share_host_netns;
+
+  // Allow the child process to keep open FDs (for stdin/out/err).
   int keep_fds_open;
+
+  // Array of rlimits for the contained process.
   Rlimit rlimits[MAX_RLIMITS];
+
+  // The number of elements in `rlimits`.
   int num_rlimits;
   int use_capmask;
   int use_capmask_ambient;
   uint64_t capmask;
+
+  // The mask of securebits to skip when restricting caps.
   uint64_t securebits_skip_mask;
+
+  // Whether the container needs an extra process to be run as init.
   int do_init;
-  char* selinux_context;
+
+  // The SELinux context name the container will run under.
+  std::string selinux_context;
+
+  // A function pointer to be called prior to calling execve(2).
   minijail_hook_t pre_start_hook;
+
+  // Parameter that will be passed to pre_start_hook().
   void* pre_start_hook_payload;
-  int* inherited_fds;
-  size_t inherited_fd_count;
+
+  std::vector<int> inherited_fds;
 };
 
 struct container_config* container_config_create() {
   return new (std::nothrow) struct container_config();
 }
 
-static void container_free_program_args(struct container_config* c) {
-  unsigned int i;
-
-  if (!c->program_argv)
-    return;
-  for (i = 0; i < c->num_args; ++i) {
-    FREE_AND_NULL(c->program_argv[i]);
-  }
-  FREE_AND_NULL(c->program_argv);
-}
-
 void container_config_destroy(struct container_config* c) {
   if (c == nullptr)
     return;
-  FREE_AND_NULL(c->rootfs);
-  container_free_program_args(c);
-  FREE_AND_NULL(c->premounted_runfs);
-  FREE_AND_NULL(c->pid_file_path);
-  FREE_AND_NULL(c->uid_map);
-  FREE_AND_NULL(c->gid_map);
-  FREE_AND_NULL(c->alt_syscall_table);
-  FREE_AND_NULL(c->run_setfiles);
-  FREE_AND_NULL(c->cgroup_parent);
-  FREE_AND_NULL(c->selinux_context);
-  FREE_AND_NULL(c->inherited_fds);
   delete c;
 }
 
 int container_config_config_root(struct container_config* c,
                                  const char* config_root) {
-  return strdup_and_free(&c->config_root, config_root);
+  c->config_root = base::FilePath(config_root);
+  return 0;
 }
 
 const char* container_config_get_config_root(const struct container_config* c) {
-  return c->config_root;
+  return c->config_root.value().c_str();
 }
 
 int container_config_rootfs(struct container_config* c, const char* rootfs) {
-  return strdup_and_free(&c->rootfs, rootfs);
+  c->rootfs = base::FilePath(rootfs);
+  return 0;
 }
 
 const char* container_config_get_rootfs(const struct container_config* c) {
-  return c->rootfs;
+  return c->rootfs.value().c_str();
 }
 
 void container_config_rootfs_mount_flags(struct container_config* c,
@@ -281,54 +281,45 @@ unsigned long container_config_get_rootfs_mount_flags(
 
 int container_config_premounted_runfs(struct container_config* c,
                                       const char* runfs) {
-  return strdup_and_free(&c->premounted_runfs, runfs);
+  c->premounted_runfs = base::FilePath(runfs);
+  return 0;
 }
 
 const char* container_config_get_premounted_runfs(
     const struct container_config* c) {
-  return c->premounted_runfs;
+  return c->premounted_runfs.value().c_str();
 }
 
 int container_config_pid_file(struct container_config* c, const char* path) {
-  return strdup_and_free(&c->pid_file_path, path);
+  c->pid_file_path = base::FilePath(path);
+  return 0;
 }
 
 const char* container_config_get_pid_file(const struct container_config* c) {
-  return c->pid_file_path;
+  return c->pid_file_path.value().c_str();
 }
 
 int container_config_program_argv(struct container_config* c,
                                   const char** argv,
                                   size_t num_args) {
-  size_t i;
-
-  container_free_program_args(c);
-  c->num_args = num_args;
-  c->program_argv =
-      reinterpret_cast<char**>(calloc(num_args + 1, sizeof(char*)));
-  if (!c->program_argv)
-    return -ENOMEM;
-  for (i = 0; i < num_args; ++i) {
-    if (strdup_and_free(&c->program_argv[i], argv[i]))
-      goto error_free_return;
-  }
-  c->program_argv[num_args] = nullptr;
+  if (num_args < 1)
+    return -EINVAL;
+  c->program_argv.clear();
+  c->program_argv.reserve(num_args);
+  for (size_t i = 0; i < num_args; ++i)
+    c->program_argv.emplace_back(argv[i]);
   return 0;
-
-error_free_return:
-  container_free_program_args(c);
-  return -ENOMEM;
 }
 
 size_t container_config_get_num_program_args(const struct container_config* c) {
-  return c->num_args;
+  return c->program_argv.size();
 }
 
 const char* container_config_get_program_arg(const struct container_config* c,
                                              size_t index) {
-  if (index >= c->num_args)
+  if (index >= c->program_argv.size())
     return nullptr;
-  return c->program_argv[index];
+  return c->program_argv[index].c_str();
 }
 
 void container_config_uid(struct container_config* c, uid_t uid) {
@@ -340,7 +331,8 @@ uid_t container_config_get_uid(const struct container_config* c) {
 }
 
 int container_config_uid_map(struct container_config* c, const char* uid_map) {
-  return strdup_and_free(&c->uid_map, uid_map);
+  c->uid_map = uid_map;
+  return 0;
 }
 
 void container_config_gid(struct container_config* c, gid_t gid) {
@@ -352,12 +344,14 @@ gid_t container_config_get_gid(const struct container_config* c) {
 }
 
 int container_config_gid_map(struct container_config* c, const char* gid_map) {
-  return strdup_and_free(&c->gid_map, gid_map);
+  c->gid_map = gid_map;
+  return 0;
 }
 
 int container_config_alt_syscall_table(struct container_config* c,
                                        const char* alt_syscall_table) {
-  return strdup_and_free(&c->alt_syscall_table, alt_syscall_table);
+  c->alt_syscall_table = alt_syscall_table;
+  return 0;
 }
 
 int container_config_add_rlimit(struct container_config* c,
@@ -470,12 +464,13 @@ int container_config_add_device(struct container_config* c,
 
 int container_config_run_setfiles(struct container_config* c,
                                   const char* setfiles_cmd) {
-  return strdup_and_free(&c->run_setfiles, setfiles_cmd);
+  c->run_setfiles = setfiles_cmd;
+  return 0;
 }
 
 const char* container_config_get_run_setfiles(
     const struct container_config* c) {
-  return c->run_setfiles;
+  return c->run_setfiles.c_str();
 }
 
 int container_config_set_cpu_shares(struct container_config* c, int shares) {
@@ -546,11 +541,12 @@ int container_config_set_cgroup_parent(struct container_config* c,
                                        gid_t cgroup_group) {
   c->cgroup_owner = cgroup_owner;
   c->cgroup_group = cgroup_group;
-  return strdup_and_free(&c->cgroup_parent, parent);
+  c->cgroup_parent = base::FilePath(parent);
+  return 0;
 }
 
 const char* container_config_get_cgroup_parent(struct container_config* c) {
-  return c->cgroup_parent;
+  return c->cgroup_parent.value().c_str();
 }
 
 void container_config_share_host_netns(struct container_config* c) {
@@ -587,9 +583,7 @@ int container_config_set_selinux_context(struct container_config* c,
                                          const char* context) {
   if (!context)
     return -EINVAL;
-  c->selinux_context = strdup(context);
-  if (c->selinux_context)
-    return -ENOMEM;
+  c->selinux_context = context;
   return 0;
 }
 
@@ -603,14 +597,10 @@ void container_config_set_pre_execve_hook(struct container_config* c,
 int container_config_inherit_fds(struct container_config* c,
                                  int* inherited_fds,
                                  size_t inherited_fd_count) {
-  if (c->inherited_fds)
+  if (!c->inherited_fds.empty())
     return -EINVAL;
-  c->inherited_fds =
-      reinterpret_cast<int*>(calloc(inherited_fd_count, sizeof(int)));
-  if (!c->inherited_fds)
-    return -ENOMEM;
-  memcpy(c->inherited_fds, inherited_fds, inherited_fd_count * sizeof(int));
-  c->inherited_fd_count = inherited_fd_count;
+  for (size_t i = 0; i < inherited_fd_count; ++i)
+    c->inherited_fds.emplace_back(inherited_fds[i]);
   return 0;
 }
 
@@ -662,16 +652,16 @@ void container_destroy(struct container* c) {
  * inside of the user namespace, return the equivalent outside id, or
  * return < 0 on error.
  */
-static int get_userns_outside_id(const char* map, int id) {
+static int GetUsernsOutsideId(const std::string& map, int id) {
   char *map_copy, *mapping, *saveptr1, *saveptr2;
   long inside, outside, length;
   int result = 0;
   errno = 0;
 
-  if (!map)
+  if (map.empty())
     return id;
 
-  if (asprintf(&map_copy, "%s", map) < 0)
+  if (asprintf(&map_copy, "%s", map.c_str()) < 0)
     return -ENOMEM;
 
   mapping = strtok_r(map_copy, ",", &saveptr1);
@@ -743,10 +733,10 @@ static int setup_mount_destination(const struct container_config* config,
   /* Try to create the destination. Either make directory or touch a file
    * depending on the source type.
    */
-  uid_userns = get_userns_outside_id(config->uid_map, mnt->uid);
+  uid_userns = GetUsernsOutsideId(config->uid_map, mnt->uid);
   if (uid_userns < 0)
     return uid_userns;
-  gid_userns = get_userns_outside_id(config->gid_map, mnt->gid);
+  gid_userns = GetUsernsOutsideId(config->gid_map, mnt->gid);
   if (gid_userns < 0)
     return gid_userns;
 
@@ -761,7 +751,7 @@ static int setup_mount_destination(const struct container_config* config,
 static int RunSetfilesCommand(const struct container* c,
                               const struct container_config* config,
                               const std::vector<base::FilePath>& destinations) {
-  if (!config->run_setfiles)
+  if (config->run_setfiles.empty())
     return 0;
 
   int pid = fork();
@@ -774,7 +764,7 @@ static int RunSetfilesCommand(const struct container* c,
 
     base::FilePath context_path = c->runfsroot.Append("file_contexts");
 
-    argv[arg_index++] = config->run_setfiles;
+    argv[arg_index++] = config->run_setfiles.c_str();
     argv[arg_index++] = "-r";
     argv[arg_index++] = c->runfsroot.value().c_str();
     argv[arg_index++] = context_path.value().c_str();
@@ -1135,10 +1125,10 @@ static int ContainerCreateDevice(const struct container* c,
       return -EINVAL;
   }
 
-  int uid_userns = get_userns_outside_id(config->uid_map, dev.uid);
+  int uid_userns = GetUsernsOutsideId(config->uid_map, dev.uid);
   if (uid_userns < 0)
     return uid_userns;
-  int gid_userns = get_userns_outside_id(config->gid_map, dev.gid);
+  int gid_userns = GetUsernsOutsideId(config->gid_map, dev.gid);
   if (gid_userns < 0)
     return gid_userns;
 
@@ -1158,7 +1148,6 @@ static int ContainerCreateDevice(const struct container* c,
 static int mount_runfs(struct container* c,
                        const struct container_config* config) {
   static const mode_t root_dir_mode = 0660;
-  const char* rootfs = config->rootfs;
   char* runfs_template = nullptr;
   int uid_userns, gid_userns;
 
@@ -1173,10 +1162,10 @@ static int mount_runfs(struct container* c,
   c->runfs = base::FilePath(runfs_path);
   free(runfs_template);
 
-  uid_userns = get_userns_outside_id(config->uid_map, config->uid);
+  uid_userns = GetUsernsOutsideId(config->uid_map, config->uid);
   if (uid_userns < 0)
     return uid_userns;
-  gid_userns = get_userns_outside_id(config->gid_map, config->gid);
+  gid_userns = GetUsernsOutsideId(config->gid_map, config->gid);
   if (gid_userns < 0)
     return gid_userns;
 
@@ -1193,7 +1182,7 @@ static int mount_runfs(struct container* c,
   if (chmod(c->runfsroot.value().c_str(), root_dir_mode))
     return -errno;
 
-  if (mount(rootfs,
+  if (mount(config->rootfs.value().c_str(),
             c->runfsroot.value().c_str(),
             "",
             MS_BIND | (config->rootfs_mount_flags & MS_REC),
@@ -1205,7 +1194,7 @@ static int mount_runfs(struct container* c,
    * second call to mount() to actually set them.
    */
   if (config->rootfs_mount_flags &&
-      mount(rootfs,
+      mount(config->rootfs.value().c_str(),
             c->runfsroot.value().c_str(),
             "",
             (config->rootfs_mount_flags & ~MS_REC),
@@ -1304,18 +1293,18 @@ int container_start(struct container* c,
     return -EINVAL;
   if (!config)
     return -EINVAL;
-  if (!config->program_argv || !config->program_argv[0])
+  if (config->program_argv.empty())
     return -EINVAL;
 
   // This will run in all the error cases.
   base::ScopedClosureRunner teardown(
       base::Bind(base::IgnoreResult(&container_teardown), base::Unretained(c)));
 
-  if (config->config_root)
-    c->config_root = base::FilePath(config->config_root);
-  if (config->premounted_runfs) {
+  if (!config->config_root.empty())
+    c->config_root = config->config_root;
+  if (!config->premounted_runfs.empty()) {
     c->runfs.clear();
-    c->runfsroot = base::FilePath(config->premounted_runfs);
+    c->runfsroot = config->premounted_runfs;
   } else {
     rc = mount_runfs(c, config);
     if (rc)
@@ -1330,15 +1319,18 @@ int container_start(struct container* c,
   if (rc)
     return rc;
 
-  int cgroup_uid = get_userns_outside_id(config->uid_map, config->cgroup_owner);
+  int cgroup_uid = GetUsernsOutsideId(config->uid_map, config->cgroup_owner);
   if (cgroup_uid < 0)
     return cgroup_uid;
-  int cgroup_gid = get_userns_outside_id(config->gid_map, config->cgroup_group);
+  int cgroup_gid = GetUsernsOutsideId(config->gid_map, config->cgroup_group);
   if (cgroup_gid < 0)
     return cgroup_gid;
 
-  c->cgroup = container_cgroup_new(
-      c->name, "/sys/fs/cgroup", config->cgroup_parent, cgroup_uid, cgroup_gid);
+  c->cgroup = container_cgroup_new(c->name,
+                                   "/sys/fs/cgroup",
+                                   config->cgroup_parent.value().c_str(),
+                                   cgroup_uid,
+                                   cgroup_gid);
   if (!c->cgroup)
     return -errno;
 
@@ -1398,8 +1390,8 @@ int container_start(struct container* c,
   }
 
   /* Setup and start the container with libminijail. */
-  if (config->pid_file_path) {
-    c->pid_file_path = strdup(config->pid_file_path);
+  if (!config->pid_file_path.empty()) {
+    c->pid_file_path = strdup(config->pid_file_path.value().c_str());
     if (!c->pid_file_path)
       return -ENOMEM;
   } else if (!c->runfs.empty()) {
@@ -1423,20 +1415,20 @@ int container_start(struct container* c,
   if (getuid() != 0)
     minijail_namespace_user_disable_setgroups(c->jail);
   minijail_namespace_cgroups(c->jail);
-  rc = minijail_uidmap(c->jail, config->uid_map);
+  rc = minijail_uidmap(c->jail, config->uid_map.c_str());
   if (rc)
     return rc;
-  rc = minijail_gidmap(c->jail, config->gid_map);
+  rc = minijail_gidmap(c->jail, config->gid_map.c_str());
   if (rc)
     return rc;
 
   /* Set the UID/GID inside the container if not 0. */
-  rc = get_userns_outside_id(config->uid_map, config->uid);
+  rc = GetUsernsOutsideId(config->uid_map, config->uid);
   if (rc < 0)
     return rc;
   else if (config->uid > 0)
     minijail_change_uid(c->jail, config->uid);
-  rc = get_userns_outside_id(config->gid_map, config->gid);
+  rc = GetUsernsOutsideId(config->gid_map, config->gid);
   if (rc < 0)
     return rc;
   else if (config->gid > 0)
@@ -1455,8 +1447,8 @@ int container_start(struct container* c,
     }
   }
 
-  if (config->alt_syscall_table)
-    minijail_use_alt_syscall(c->jail, config->alt_syscall_table);
+  if (!config->alt_syscall_table.empty())
+    minijail_use_alt_syscall(c->jail, config->alt_syscall_table.c_str());
 
   for (int i = 0; i < config->num_rlimits; i++) {
     const Rlimit& lim = config->rlimits[i];
@@ -1465,10 +1457,10 @@ int container_start(struct container* c,
       return rc;
   }
 
-  if (config->selinux_context) {
+  if (!config->selinux_context.empty()) {
     rc = minijail_add_hook(c->jail,
                            &setexeccon,
-                           config->selinux_context,
+                           const_cast<char*>(config->selinux_context.c_str()),
                            MINIJAIL_HOOK_EVENT_PRE_EXECVE);
     if (rc)
       return rc;
@@ -1483,9 +1475,8 @@ int container_start(struct container* c,
       return rc;
   }
 
-  for (int i = 0; i < config->inherited_fd_count; i++) {
-    rc = minijail_preserve_fd(
-        c->jail, config->inherited_fds[i], config->inherited_fds[i]);
+  for (int fd : config->inherited_fds) {
+    rc = minijail_preserve_fd(c->jail, fd, fd);
     if (rc)
       return rc;
   }
@@ -1509,9 +1500,15 @@ int container_start(struct container* c,
   if (!config->do_init)
     minijail_run_as_init(c->jail);
 
+  std::vector<char*> argv_cstr;
+  argv_cstr.reserve(config->program_argv.size() + 1);
+  for (const auto& arg : config->program_argv)
+    argv_cstr.emplace_back(const_cast<char*>(arg.c_str()));
+  argv_cstr.emplace_back(nullptr);
+
   rc = minijail_run_pid_pipes_no_preload(c->jail,
-                                         config->program_argv[0],
-                                         config->program_argv,
+                                         argv_cstr[0],
+                                         argv_cstr.data(),
                                          &c->init_pid,
                                          nullptr,
                                          nullptr,
