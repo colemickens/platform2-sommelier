@@ -209,9 +209,7 @@ status_t AAARunner::run2A(RequestCtrlState &reqState)
             return UNKNOWN_ERROR;
         }
     } else {
-        memcpy(&reqState.captureSettings->aiqResults.awbResults,
-               &mLatestResults.awbResults,
-               sizeof(ia_aiq_awb_results));
+        reqState.captureSettings->aiqResults.awbResults = mLatestResults.awbResults;
     }
     Intel3aHelper::dumpAwbResult(&reqState.captureSettings->aiqResults.awbResults);
     /*
@@ -697,9 +695,10 @@ status_t AAARunner::processAwbResults(RequestCtrlState &reqState)
          * and color conversion matrix
          */
         paResults.color_gains = reqState.aiqInputParams.manualColorGains;
-        memcpy(paResults.color_conversion_matrix,
-               reqState.aiqInputParams.manualColorTransform,
-               sizeof(paResults.color_conversion_matrix));
+        MEMCPY_S(paResults.color_conversion_matrix,
+            sizeof(paResults.color_conversion_matrix),
+            reqState.aiqInputParams.manualColorTransform,
+            sizeof(reqState.aiqInputParams.manualColorTransform));
         paResults.preferred_acm = nullptr;
 
     }
@@ -833,8 +832,10 @@ status_t AAARunner::applyTonemaps(RequestCtrlState &reqState)
     }
 
     // make all luts the same with memcpy, hw only really supports one
-    memcpy(results.b_gamma_lut, results.g_gamma_lut, lutSize * sizeof(float));
-    memcpy(results.r_gamma_lut, results.g_gamma_lut, lutSize * sizeof(float));
+    MEMCPY_S(results.b_gamma_lut, lutSize * sizeof(float),
+        results.g_gamma_lut, lutSize * sizeof(float));
+    MEMCPY_S(results.r_gamma_lut, lutSize * sizeof(float),
+        results.g_gamma_lut, lutSize * sizeof(float));
 
     return status;
 }

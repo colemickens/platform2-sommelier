@@ -40,42 +40,42 @@ void IPU3ISPPipe::SetPipeConfig(const aic_output_t pipe_config)
     mAicOutput = pipe_config;
 
     if (mAicOutput.lin_2500_config)
-        memcpy(&mAicConfig.lin_2500_config, mAicOutput.lin_2500_config, sizeof(ia_css_2500_lin_kernel_config));
+        mAicConfig.lin_2500_config = *mAicOutput.lin_2500_config;
     if (mAicOutput.obgrid_2500_config)
-        memcpy(&mAicConfig.obgrid_2500_config, mAicOutput.obgrid_2500_config, sizeof(ia_css_2500_obgrid_kernel_config));
+        mAicConfig.obgrid_2500_config = *mAicOutput.obgrid_2500_config;
     if (mAicOutput.bnr_2500_config)
-        memcpy(&mAicConfig.bnr_2500_config, mAicOutput.bnr_2500_config, sizeof(ia_css_2500_bnr_kernel_config));
+        mAicConfig.bnr_2500_config = *mAicOutput.bnr_2500_config;
     if (mAicOutput.shd_2500_config)
-        memcpy(&mAicConfig.shd_2500_config, mAicOutput.shd_2500_config, sizeof(ia_css_2500_shd_kernel_config));
+        mAicConfig.shd_2500_config = *mAicOutput.shd_2500_config;
     if (mAicOutput.dm_2500_config)
-        memcpy(&mAicConfig.dm_2500_config, mAicOutput.dm_2500_config, sizeof(ia_css_2500_dm_kernel_config));
+        mAicConfig.dm_2500_config = *mAicOutput.dm_2500_config;
     if (mAicOutput.rgbpp_2500_config)
-        memcpy(&mAicConfig.rgbpp_2500_config, mAicOutput.rgbpp_2500_config, sizeof(ia_css_2500_rgbpp_kernel_config));
+        mAicConfig.rgbpp_2500_config = *mAicOutput.rgbpp_2500_config;
     if (mAicOutput.yuvp1_2500_config)
-        memcpy(&mAicConfig.yuvp1_2500_config, mAicOutput.yuvp1_2500_config, sizeof(ia_css_2500_yuvp1_b0_kernel_config));
+        mAicConfig.yuvp1_2500_config = *mAicOutput.yuvp1_2500_config;
     if (mAicOutput.yuvp1_c0_2500_config)
-        memcpy(&mAicConfig.yuvp1_c0_2500_config, mAicOutput.yuvp1_c0_2500_config, sizeof(ia_css_2500_yuvp1_c0_kernel_config));
+        mAicConfig.yuvp1_c0_2500_config = *mAicOutput.yuvp1_c0_2500_config;
     if (mAicOutput.yuvp2_2500_config)
-        memcpy(&mAicConfig.yuvp2_2500_config, mAicOutput.yuvp2_2500_config, sizeof(ia_css_2500_yuvp2_kernel_config));
+        mAicConfig.yuvp2_2500_config = *mAicOutput.yuvp2_2500_config;
     if (mAicOutput.tnr3_2500_config)
-        memcpy(&mAicConfig.tnr3_2500_config, mAicOutput.tnr3_2500_config, sizeof(ia_css_tnr3_kernel_config));
+        mAicConfig.tnr3_2500_config = *mAicOutput.tnr3_2500_config;
     if (mAicOutput.dpc_2500_config)
-        memcpy(&mAicConfig.dpc_2500_config, mAicOutput.dpc_2500_config, sizeof(ia_css_2500_dpc_kernel_config));
+        mAicConfig.dpc_2500_config = *mAicOutput.dpc_2500_config;
     if (mAicOutput.awb_2500_config)
-        memcpy(&mAicConfig.awb_2500_config, mAicOutput.awb_2500_config, sizeof(ia_css_2500_awb_kernel_config));
+        mAicConfig.awb_2500_config = *mAicOutput.awb_2500_config;
     if (mAicOutput.awb_fr_2500_config)
-        memcpy(&mAicConfig.awb_fr_2500_config, mAicOutput.awb_fr_2500_config, sizeof(ia_css_2500_awb_fr_kernel_config));
+        mAicConfig.awb_fr_2500_config = *mAicOutput.awb_fr_2500_config;
     if (mAicOutput.anr_2500_config)
-        memcpy(&mAicConfig.anr_2500_config, mAicOutput.anr_2500_config, sizeof(ia_css_2500_anr_kernel_config));
+        mAicConfig.anr_2500_config = *mAicOutput.anr_2500_config;
     if (mAicOutput.af_2500_config)
-        memcpy(&mAicConfig.af_2500_config, mAicOutput.af_2500_config, sizeof(ia_css_2500_af_kernel_config));
+        mAicConfig.af_2500_config = *mAicOutput.af_2500_config;
     if (mAicOutput.ae_2500_config)
-        memcpy(&mAicConfig.ae_2500_config, mAicOutput.ae_2500_config, sizeof(ia_css_2500_ae_kernel_config));
+        mAicConfig.ae_2500_config = *mAicOutput.ae_2500_config;
     if (mAicOutput.xnr_2500_config)
-        memcpy(&mAicConfig.xnr_2500_config, mAicOutput.xnr_2500_config, sizeof(ia_css_xnr3_config));
+        mAicConfig.xnr_2500_config = *mAicOutput.xnr_2500_config;
 
     if (mAicOutput.rgbir_2500_config)
-        memcpy(&mAicConfig.rgbir_2500_config, mAicOutput.rgbir_2500_config, sizeof(ia_css_2500_rgbir_kernel_config));
+        mAicConfig.rgbir_2500_config = *mAicOutput.rgbir_2500_config;
 }
 
 void IPU3ISPPipe::dump()

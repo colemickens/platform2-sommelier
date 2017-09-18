@@ -613,16 +613,16 @@ bool IPCAiq::flattenAeResults(const ia_aiq_ae_results& aeResults, ae_run_params_
             unsigned int gridElements =
                 aeResults.weight_grid->width * aeResults.weight_grid->height;
             gridElements = CLIP(gridElements, MAX_SIZE_WEIGHT_GRID, 1);
-            memcpy(res->weights, aeResults.weight_grid->weights,
-               gridElements * sizeof(unsigned char));
+            MEMCPY_S(res->weights, sizeof(res->weights),
+                aeResults.weight_grid->weights, gridElements * sizeof(unsigned char));
         }
     }
 
     if (base->flashes) {
         // Valgrind will give warning from here in the first round. It should be fine.
         if (aeResults.num_flashes > 0) {
-            memcpy(res->flashes, aeResults.flashes,
-               MAX_NUM_FLASHES * sizeof(ia_aiq_flash_parameters));
+            MEMCPY_S(res->flashes, sizeof(res->flashes),
+                aeResults.flashes, MAX_NUM_FLASHES * sizeof(ia_aiq_flash_parameters));
         }
     }
 

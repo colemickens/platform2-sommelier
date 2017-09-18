@@ -118,7 +118,7 @@ status_t StatisticsWorker::run()
     CLEAR(out);
     CLEAR(in);
 
-    memcpy(&in, mCameraBuffers[0]->data(), sizeof(imgu_abi_stats_3a));
+    MEMCPY_S(&in, sizeof(in), mCameraBuffers[0]->data(), sizeof(imgu_abi_stats_3a));
 
     ipu3_stats_get_3a(&out, &in);
 

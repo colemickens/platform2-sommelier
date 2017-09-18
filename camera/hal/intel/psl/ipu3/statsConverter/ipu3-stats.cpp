@@ -433,7 +433,7 @@ struct stats_4a_private_raw_buffer {
 
 static void mmgr_load(void *src, void *dst, int len)
 {
-    memcpy(dst, src, len);
+    MEMCPY_S(dst, len, src, len);
 }
 
 static void ia_css_awb_grid_config_ddr_decode(struct awb_public_config_grid_config *to,

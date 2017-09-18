@@ -40,32 +40,43 @@ RuntimeParamsHelper::copyPaResults(IPU3AICRuntimeParams &to, ia_aiq_pa_results &
     pa_results = (ia_aiq_pa_results*) to.pa_results;
     pa_results->black_level = from.black_level;
     pa_results->brightness_level = from.brightness_level;
-    memcpy(pa_results->color_conversion_matrix, from.color_conversion_matrix,
-           sizeof(pa_results->color_conversion_matrix));
+    MEMCPY_S(pa_results->color_conversion_matrix, sizeof(pa_results->color_conversion_matrix),
+        from.color_conversion_matrix, sizeof(from.color_conversion_matrix));
     pa_results->color_gains = from.color_gains;
     if (from.ir_weight && pa_results->ir_weight) {
         int size = pa_results->ir_weight->height * pa_results->ir_weight->width;
-        memcpy(pa_results->ir_weight->ir_weight_grid_B, from.ir_weight->ir_weight_grid_B,
-                sizeof(*pa_results->ir_weight->ir_weight_grid_B)*size);
-        memcpy(pa_results->ir_weight->ir_weight_grid_G, from.ir_weight->ir_weight_grid_G,
-                sizeof(*pa_results->ir_weight->ir_weight_grid_G)*size);
-        memcpy(pa_results->ir_weight->ir_weight_grid_R, from.ir_weight->ir_weight_grid_R,
-                sizeof(*pa_results->ir_weight->ir_weight_grid_R)*size);
+        MEMCPY_S(pa_results->ir_weight->ir_weight_grid_B,
+            sizeof(*pa_results->ir_weight->ir_weight_grid_B)*size,
+            from.ir_weight->ir_weight_grid_B,
+            sizeof(*from.ir_weight->ir_weight_grid_B)*size);
+        MEMCPY_S(pa_results->ir_weight->ir_weight_grid_G,
+            sizeof(*pa_results->ir_weight->ir_weight_grid_G)*size,
+            from.ir_weight->ir_weight_grid_G,
+            sizeof(*from.ir_weight->ir_weight_grid_G)*size);
+        MEMCPY_S(pa_results->ir_weight->ir_weight_grid_R,
+            sizeof(pa_results->ir_weight->ir_weight_grid_R)*size,
+            from.ir_weight->ir_weight_grid_R,
+            sizeof(*from.ir_weight->ir_weight_grid_R)*size);
     }
-    memcpy(pa_results->linearization.b, from.linearization.b,
-            sizeof(*pa_results->linearization.b) * pa_results->linearization.size);
-    memcpy(pa_results->linearization.gb, from.linearization.gb,
-            sizeof(*pa_results->linearization.gb) * pa_results->linearization.size);
-    memcpy(pa_results->linearization.gr, from.linearization.gr,
-            sizeof(*pa_results->linearization.gr) * pa_results->linearization.size);
-    memcpy(pa_results->linearization.r, from.linearization.r,
-            sizeof(*pa_results->linearization.r) * pa_results->linearization.size);
+    int size = pa_results->linearization.size;
+    MEMCPY_S(pa_results->linearization.b, sizeof(*pa_results->linearization.b)*size,
+        from.linearization.b, sizeof(*from.linearization.b) * size);
+    MEMCPY_S(pa_results->linearization.gb, sizeof(*pa_results->linearization.gb) * size,
+        from.linearization.gb, sizeof(*from.linearization.gb) * size);
+    MEMCPY_S(pa_results->linearization.gr, sizeof(*pa_results->linearization.gr) * size,
+        from.linearization.gr, sizeof(*from.linearization.gr) * size);
+    MEMCPY_S(pa_results->linearization.r, sizeof(*pa_results->linearization.r) * size,
+        from.linearization.r, sizeof(*from.linearization.r) * size);
     if (from.preferred_acm && pa_results->preferred_acm) {
-        memcpy(pa_results->preferred_acm->advanced_color_conversion_matrices, from.preferred_acm->advanced_color_conversion_matrices,
-               sizeof(*pa_results->preferred_acm->advanced_color_conversion_matrices) * from.preferred_acm->sector_count);
-        memcpy(pa_results->preferred_acm->hue_of_sectors, from.preferred_acm->hue_of_sectors,
-                sizeof(*pa_results->preferred_acm->hue_of_sectors) * pa_results->preferred_acm->sector_count);
         pa_results->preferred_acm->sector_count = from.preferred_acm->sector_count;
+        MEMCPY_S(pa_results->preferred_acm->advanced_color_conversion_matrices,
+            sizeof(*pa_results->preferred_acm->advanced_color_conversion_matrices) * pa_results->preferred_acm->sector_count,
+            from.preferred_acm->advanced_color_conversion_matrices,
+            sizeof(*pa_results->preferred_acm->advanced_color_conversion_matrices) * from.preferred_acm->sector_count);
+        MEMCPY_S(pa_results->preferred_acm->hue_of_sectors,
+            sizeof(*pa_results->preferred_acm->hue_of_sectors) * pa_results->preferred_acm->sector_count,
+            from.preferred_acm->hue_of_sectors,
+            sizeof(*from.preferred_acm->hue_of_sectors) * from.preferred_acm->sector_count);
     }
     pa_results->saturation_factor = from.saturation_factor;
 }
@@ -76,19 +87,19 @@ RuntimeParamsHelper::copySaResults(IPU3AICRuntimeParams &to, ia_aiq_sa_results &
     ia_aiq_sa_results *sa_results;
     sa_results = (ia_aiq_sa_results*) to.sa_results;
     int size = from.width * from.height;
-    memcpy(sa_results->channel_b, from.channel_b,
-            sizeof(*sa_results->channel_b) * size);
-    memcpy(sa_results->channel_gb, from.channel_gb,
-            sizeof(*sa_results->channel_gb) * size);
-    memcpy(sa_results->channel_gr, from.channel_gr,
-            sizeof(*sa_results->channel_gr) * size);
-    memcpy(sa_results->channel_r, from.channel_r,
-            sizeof(*sa_results->channel_r) * size);
+    MEMCPY_S(sa_results->channel_b, sizeof(*sa_results->channel_b) * size,
+        from.channel_b, sizeof(*from.channel_b) * size);
+    MEMCPY_S(sa_results->channel_gb, sizeof(*sa_results->channel_gb) * size,
+        from.channel_gb, sizeof(*from.channel_gb) * size);
+    MEMCPY_S(sa_results->channel_gr, sizeof(*sa_results->channel_gr) * size,
+        from.channel_gr, sizeof(*from.channel_gr) * size);
+    MEMCPY_S(sa_results->channel_r, sizeof(*sa_results->channel_r) * size,
+        from.channel_r, sizeof(*from.channel_r) * size);
     sa_results->covered_area = from.covered_area;
     sa_results->frame_params = from.frame_params;
     sa_results->height = from.height;
-    memcpy(sa_results->light_source, from.light_source,
-           sizeof(sa_results->light_source));
+    MEMCPY_S(sa_results->light_source, sizeof(sa_results->light_source),
+        from.light_source, sizeof(from.light_source));
     sa_results->lsc_update = from.lsc_update;
     sa_results->num_patches = from.num_patches;
     sa_results->scene_difficulty = from.scene_difficulty;
@@ -103,7 +114,7 @@ RuntimeParamsHelper::copyWeightGrid(IPU3AICRuntimeParams &to, ia_aiq_hist_weight
     weight_grid->height = from->height;
     weight_grid->width = from->width;
     size_t size = weight_grid->height * weight_grid->width * sizeof(*weight_grid->weights);
-    memcpy(weight_grid->weights, from->weights, size);
+    MEMCPY_S(weight_grid->weights, size, from->weights, size);
 }
 
 status_t

@@ -292,7 +292,10 @@ ispAeEncode(aic_config *config, ipu3_uapi_params *params)
     params->acc_param.ae.ae_ccm.gain_b = config->ae_2500_config.ae.ae_ccm.wb_coeffs.gain_B;
     params->acc_param.ae.ae_ccm.gain_gb = config->ae_2500_config.ae.ae_ccm.wb_coeffs.gain_GB;
 
-    memcpy(params->acc_param.ae.ae_ccm.mat, config->ae_2500_config.ae.ae_ccm.mat_coeffs.coeffs, sizeof(params->acc_param.ae.ae_ccm.mat));
+    MEMCPY_S(params->acc_param.ae.ae_ccm.mat,
+        sizeof(params->acc_param.ae.ae_ccm.mat),
+        config->ae_2500_config.ae.ae_ccm.mat_coeffs.coeffs,
+        sizeof(config->ae_2500_config.ae.ae_ccm.mat_coeffs.coeffs));
 
     params->use.acc_ae = 1;
 }
@@ -318,7 +321,8 @@ void
 ispGammaCtrlEncode(aic_config *config, ipu3_uapi_params *params)
 {
     params->acc_param.gamma.gc_ctrl.enable = config->rgbpp_2500_config.gamma.enable;
-    memcpy(params->acc_param.gamma.gc_lut.lut, config->rgbpp_2500_config.gamma.lut_entries, sizeof(params->acc_param.gamma.gc_lut.lut));
+    MEMCPY_S(params->acc_param.gamma.gc_lut.lut, sizeof(params->acc_param.gamma.gc_lut.lut),
+        config->rgbpp_2500_config.gamma.lut_entries, sizeof(config->rgbpp_2500_config.gamma.lut_entries));
     params->use.acc_gamma = 1;
 }
 
@@ -719,7 +723,8 @@ ispYEeNrEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispYTmLutEncode(aic_config *config, ipu3_uapi_params *params)
 {
-    memcpy(params->acc_param.ytm.entries, config->yuvp2_2500_config.ytm.entries, sizeof(params->acc_param.ytm.entries));
+    MEMCPY_S(params->acc_param.ytm.entries, sizeof(params->acc_param.ytm.entries),
+        config->yuvp2_2500_config.ytm.entries, sizeof(config->yuvp2_2500_config.ytm.entries));
 
 /* Y_TM disable in HW for C0 */
 #if !defined(HAS_Y_TM)
@@ -740,17 +745,25 @@ ispTccEncode(aic_config *config, ipu3_uapi_params *params)
     params->acc_param.tcc.gen_control.gamma = config->yuvp2_2500_config.tcc.gen_control.gamma;
     params->acc_param.tcc.gen_control.gain_according_to_y_only = config->yuvp2_2500_config.tcc.gen_control.gain_according_to_y_only;
 
-    memcpy(params->acc_param.tcc.macc_table.entries, config->yuvp2_2500_config.tcc.macc_table.entries,
-           sizeof(params->acc_param.tcc.macc_table.entries));
+    MEMCPY_S(params->acc_param.tcc.macc_table.entries,
+        sizeof(params->acc_param.tcc.macc_table.entries),
+        config->yuvp2_2500_config.tcc.macc_table.entries,
+        sizeof(config->yuvp2_2500_config.tcc.macc_table.entries));
 
-    memcpy(params->acc_param.tcc.inv_y_lut.entries, config->yuvp2_2500_config.tcc.inv_y_lut.entries,
-            sizeof(params->acc_param.tcc.inv_y_lut.entries));
+    MEMCPY_S(params->acc_param.tcc.inv_y_lut.entries,
+        sizeof(params->acc_param.tcc.inv_y_lut.entries),
+        config->yuvp2_2500_config.tcc.inv_y_lut.entries,
+        sizeof(config->yuvp2_2500_config.tcc.inv_y_lut.entries));
 
-    memcpy(params->acc_param.tcc.gain_pcwl.entries, config->yuvp2_2500_config.tcc.gain_pcwl.entries,
-            sizeof(params->acc_param.tcc.gain_pcwl.entries));
+    MEMCPY_S(params->acc_param.tcc.gain_pcwl.entries,
+        sizeof(params->acc_param.tcc.gain_pcwl.entries),
+        config->yuvp2_2500_config.tcc.gain_pcwl.entries,
+        sizeof(config->yuvp2_2500_config.tcc.gain_pcwl.entries));
 
-    memcpy(params->acc_param.tcc.r_sqr_lut.entries, config->yuvp2_2500_config.tcc.r_sqr_lut.entries,
-            sizeof(params->acc_param.tcc.r_sqr_lut.entries));
+    MEMCPY_S(params->acc_param.tcc.r_sqr_lut.entries,
+        sizeof(params->acc_param.tcc.r_sqr_lut.entries),
+        config->yuvp2_2500_config.tcc.r_sqr_lut.entries,
+        sizeof(config->yuvp2_2500_config.tcc.r_sqr_lut.entries));
 
     params->use.acc_tcc = 1;
 }
@@ -816,8 +829,10 @@ ispBdsVerEncode(aic_config *config, ipu3_uapi_params *params)
     params->acc_param.bds.ver.ver_ctrl0.max_clip_val = BDS_MAX_CLIP_VAL;
     params->acc_param.bds.ver.ver_ctrl0.min_clip_val = BDS_MIN_CLIP_VAL;
 
-    memcpy(params->acc_param.bds.ver.ver_ptrn_arr.elems, config->bds_2500_config.bds.sequence_pat,
-            sizeof(params->acc_param.bds.ver.ver_ptrn_arr.elems));
+    MEMCPY_S(params->acc_param.bds.ver.ver_ptrn_arr.elems,
+        sizeof(params->acc_param.bds.ver.ver_ptrn_arr.elems),
+        config->bds_2500_config.bds.sequence_pat,
+        sizeof(config->bds_2500_config.bds.sequence_pat));
 
     for (i = 0; i < config->bds_2500_config.bds.phase_count; i++) {
         index = i / 2;
@@ -1043,7 +1058,10 @@ ispBnrEncode(aic_config *config, ipu3_uapi_params *params)
     params->acc_param.bnr.opt_center_sqr.x_sqr_reset = config->bnr_2500_config.bnr.opt_center.x_sqr_reset;
     params->acc_param.bnr.opt_center_sqr.y_sqr_reset = config->bnr_2500_config.bnr.opt_center.y_sqr_reset;
 
-    memcpy(params->acc_param.bnr.lut.values, config->bnr_2500_config.bnr.lut.values, sizeof(params->acc_param.bnr.lut.values));
+    MEMCPY_S(params->acc_param.bnr.lut.values,
+        sizeof(params->acc_param.bnr.lut.values),
+        config->bnr_2500_config.bnr.lut.values,
+        sizeof(config->bnr_2500_config.bnr.lut.values));
 
     params->acc_param.bnr.bp_ctrl.bp_thr_gain = config->bnr_2500_config.bnr.bp_ctrl.bp_thr_gain;
     params->acc_param.bnr.bp_ctrl.defect_mode = config->bnr_2500_config.bnr.bp_ctrl.defect_mode;

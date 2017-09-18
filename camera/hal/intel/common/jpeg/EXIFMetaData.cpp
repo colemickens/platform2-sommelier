@@ -55,7 +55,7 @@ status_t ExifMetaData::saveAeConfig(SensorAeConfig& config)
     if (mAeConfig == nullptr) {
         mAeConfig = new SensorAeConfig();
     }
-    memcpy(mAeConfig, &config, sizeof(SensorAeConfig));
+    *mAeConfig = config;
 
     return NO_ERROR;
 }
@@ -69,7 +69,7 @@ status_t ExifMetaData::saveIspMkNote(MakernoteType& mkNote)
     if (mIspMkNote == nullptr) {
         mIspMkNote = new MakernoteType();
     }
-    memcpy(mIspMkNote, &mkNote, sizeof(MakernoteType));
+    *mIspMkNote = mkNote;
 
     return NO_ERROR;
 }
@@ -99,7 +99,7 @@ status_t ExifMetaData::saveIa3AMkNote(const ia_binary_data& mkNote)
     }
 
     mIa3AMkNote->size = newSize;
-    memcpy(mIa3AMkNote->data, mkNote.data, newSize);
+    MEMCPY_S(mIa3AMkNote->data, mIa3AMkNote->size, mkNote.data, newSize);
 
     return NO_ERROR;
 }
