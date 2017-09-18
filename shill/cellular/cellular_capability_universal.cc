@@ -1226,6 +1226,9 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (properties.ContainsString(MM_MODEM_PROPERTY_REVISION)) {
     OnModemRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_REVISION));
   }
+  if (properties.ContainsString(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
+    OnModemHardwareRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_HARDWAREREVISION));
+  }
   // not needed: MM_MODEM_PROPERTY_DEVICEIDENTIFIER
   // not needed: MM_MODEM_PROPERTY_DEVICE
   // not needed: MM_MODEM_PROPERTY_DRIVER
@@ -1402,6 +1405,11 @@ void CellularCapabilityUniversal::OnMdnChanged(
 void CellularCapabilityUniversal::OnModemRevisionChanged(
     const string& revision) {
   cellular()->set_firmware_revision(revision);
+}
+
+void CellularCapabilityUniversal::OnModemHardwareRevisionChanged(
+    const string& hardware_revision) {
+  cellular()->set_hardware_revision(hardware_revision);
 }
 
 void CellularCapabilityUniversal::OnModemStateChanged(
