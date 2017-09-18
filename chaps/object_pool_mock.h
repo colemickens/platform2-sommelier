@@ -25,10 +25,8 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(GetInternalBlob, bool(int, std::string*));
   MOCK_METHOD2(SetInternalBlob, bool(int, const std::string&));
   MOCK_METHOD1(SetEncryptionKey, bool(const brillo::SecureBlob&));
-  MOCK_METHOD1(Insert,
-               ObjectPool::Result(Object*));  // NOLINT(readability/function)
-  MOCK_METHOD1(Import,
-               ObjectPool::Result(Object*));  // NOLINT(readability/function)
+  MOCK_METHOD1(Insert, ObjectPool::Result(Object*));
+  MOCK_METHOD1(Import, ObjectPool::Result(Object*));
   MOCK_METHOD1(Delete, ObjectPool::Result(const Object*));
   MOCK_METHOD0(DeleteAll, ObjectPool::Result());
   MOCK_METHOD2(Find,
