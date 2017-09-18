@@ -26,6 +26,7 @@
       'sources': [
         'container_cgroup.cc',
         'libcontainer.cc',
+        'libcontainer_util.cc',
       ],
     },
   ],
@@ -38,6 +39,7 @@
           'sources': [
             'libcontainer.cc',
             'libcontainer_unittest.cc',
+            'libcontainer_util.cc',
           ],
         },
         {

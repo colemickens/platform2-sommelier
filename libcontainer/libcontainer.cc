@@ -1,15 +1,9 @@
-/* Copyright 2016 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <errno.h>
 #include <fcntl.h>
-#if USE_device_mapper
-#include <libdevmapper.h>
-#endif
-#include <linux/loop.h>
-#include <malloc.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -32,8 +26,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
@@ -41,30 +33,21 @@
 
 #include "libcontainer/container_cgroup.h"
 #include "libcontainer/libcontainer.h"
-
-#define MAX_NUM_SETFILES_ARGS 128
-#define MAX_RLIMITS 32  // Linux defines 15 at the time of writing.
+#include "libcontainer/libcontainer_util.h"
 
 namespace {
 
-constexpr base::FilePath::CharType kLoopdevCtlPath[] =
-    FILE_PATH_LITERAL("/dev/loop-control");
-#if USE_device_mapper
-constexpr base::FilePath::CharType kDevMapperPath[] =
-    FILE_PATH_LITERAL("/dev/mapper/");
-#endif
+using libcontainer::DeviceMapperDetach;
+using libcontainer::DeviceMapperSetup;
+using libcontainer::GetUsernsOutsideId;
+using libcontainer::LoopdevDetach;
+using libcontainer::LoopdevSetup;
+using libcontainer::MakeDir;
+using libcontainer::MountExternal;
+using libcontainer::TouchFile;
 
-// Returns the path for |path_in_container| in the outer namespace.
-base::FilePath GetPathInOuterNamespace(
-    const base::FilePath& root, const base::FilePath& path_in_container) {
-  if (path_in_container.IsAbsolute())
-    return base::FilePath(root.value() + path_in_container.value());
-  return root.Append(path_in_container);
-}
-
-}  // namespace
-
-static int ContainerTeardown(struct container* c);
+constexpr size_t kMaxNumSetfilesArgs = 128;
+constexpr size_t kMaxRlimits = 32;  // Linux defines 15 at the time of writing.
 
 struct Mount {
   std::string name;
@@ -128,6 +111,8 @@ struct Rlimit {
   uint32_t cur;
   uint32_t max;
 };
+
+}  // namespace
 
 // Structure that configures how the container is run.
 struct container_config {
@@ -195,7 +180,7 @@ struct container_config {
   int keep_fds_open;
 
   // Array of rlimits for the contained process.
-  Rlimit rlimits[MAX_RLIMITS];
+  Rlimit rlimits[kMaxRlimits];
 
   // The number of elements in `rlimits`.
   int num_rlimits;
@@ -220,6 +205,427 @@ struct container_config {
 
   std::vector<int> inherited_fds;
 };
+
+// Container manipulation
+struct container {
+  struct container_cgroup* cgroup;
+  ScopedMinijail jail;
+  pid_t init_pid;
+  base::FilePath config_root;
+  base::FilePath runfs;
+  base::FilePath rundir;
+  base::FilePath runfsroot;
+  base::FilePath pid_file_path;
+
+  // Mounts made outside of the minijail.
+  std::vector<base::FilePath> ext_mounts;
+  std::vector<base::FilePath> loopdev_paths;
+  std::vector<std::string> device_mappers;
+  std::string name;
+};
+
+namespace {
+
+// Returns the path for |path_in_container| in the outer namespace.
+base::FilePath GetPathInOuterNamespace(
+    const base::FilePath& root, const base::FilePath& path_in_container) {
+  if (path_in_container.IsAbsolute())
+    return base::FilePath(root.value() + path_in_container.value());
+  return root.Append(path_in_container);
+}
+
+// Make sure the mount target exists in the new rootfs. Create if needed and
+// possible.
+int SetupMountDestination(const struct container_config* config,
+                          const Mount& mount,
+                          const base::FilePath& source,
+                          const base::FilePath& dest) {
+  int rc;
+
+  struct stat st_buf;
+  rc = stat(dest.value().c_str(), &st_buf);
+  if (rc == 0) {
+    // destination exists.
+    return 0;
+  }
+
+  // Try to create the destination. Either make directory or touch a file
+  // depending on the source type.
+  int uid_userns = GetUsernsOutsideId(config->uid_map, mount.uid);
+  if (uid_userns < 0)
+    return uid_userns;
+  int gid_userns = GetUsernsOutsideId(config->gid_map, mount.gid);
+  if (gid_userns < 0)
+    return gid_userns;
+
+  rc = stat(source.value().c_str(), &st_buf);
+  if (rc || S_ISDIR(st_buf.st_mode) || S_ISBLK(st_buf.st_mode))
+    return MakeDir(dest, uid_userns, gid_userns, mount.mode);
+
+  return TouchFile(dest, uid_userns, gid_userns, mount.mode);
+}
+
+// Fork and exec the setfiles command to configure the selinux policy.
+int RunSetfilesCommand(const struct container* c,
+                       const struct container_config* config,
+                       const std::vector<base::FilePath>& destinations) {
+  if (config->run_setfiles.empty())
+    return 0;
+
+  int pid = fork();
+  if (pid == 0) {
+    size_t arg_index = 0;
+    const char* argv[kMaxNumSetfilesArgs];
+    const char* env[] = {
+        nullptr,
+    };
+
+    base::FilePath context_path = c->runfsroot.Append("file_contexts");
+
+    argv[arg_index++] = config->run_setfiles.c_str();
+    argv[arg_index++] = "-r";
+    argv[arg_index++] = c->runfsroot.value().c_str();
+    argv[arg_index++] = context_path.value().c_str();
+    if (arg_index + destinations.size() >= kMaxNumSetfilesArgs)
+      _exit(-E2BIG);
+    for (const auto& destination : destinations)
+      argv[arg_index++] = destination.value().c_str();
+    argv[arg_index] = nullptr;
+
+    execve(
+        argv[0], const_cast<char* const*>(argv), const_cast<char* const*>(env));
+
+    /* Command failed to exec if execve returns. */
+    _exit(-errno);
+  }
+  if (pid < 0)
+    return -errno;
+
+  int rc;
+  int status;
+  do {
+    rc = waitpid(pid, &status, 0);
+  } while (rc == -1 && errno == EINTR);
+  if (rc < 0)
+    return -errno;
+  return status;
+}
+
+// Unmounts anything we mounted in this mount namespace in the opposite order
+// that they were mounted.
+int UnmountExternalMounts(struct container* c) {
+  int ret = 0;
+
+  for (auto it = c->ext_mounts.rbegin(); it != c->ext_mounts.rend(); ++it) {
+    if (umount(it->value().c_str()))
+      ret = -errno;
+  }
+  c->ext_mounts.clear();
+
+  for (auto it = c->loopdev_paths.rbegin(); it != c->loopdev_paths.rend();
+       ++it) {
+    int rc = LoopdevDetach(*it);
+    if (rc)
+      ret = rc;
+  }
+  c->loopdev_paths.clear();
+
+  for (auto it = c->device_mappers.rbegin(); it != c->device_mappers.rend();
+       ++it) {
+    if (DeviceMapperDetach(*it))
+      ret = -errno;
+  }
+  c->device_mappers.clear();
+
+  return ret;
+}
+
+int DoContainerMount(struct container* c,
+                     const struct container_config* config,
+                     const Mount& mount) {
+  int rc = 0;
+
+  base::FilePath dest =
+      GetPathInOuterNamespace(c->runfsroot, mount.destination);
+
+  // If it's a bind mount relative to rootfs, append source to
+  // rootfs path, otherwise source path is absolute.
+  base::FilePath source;
+  if ((mount.flags & MS_BIND) && !mount.source.IsAbsolute()) {
+    source = GetPathInOuterNamespace(c->runfsroot, mount.source);
+  } else if (mount.loopback && !mount.source.IsAbsolute() &&
+             !c->config_root.empty()) {
+    source = GetPathInOuterNamespace(c->config_root, mount.source);
+  } else {
+    source = mount.source;
+  }
+
+  // Only create the destinations for external mounts, minijail will take
+  // care of those mounted in the new namespace.
+  if (mount.create && !mount.mount_in_ns) {
+    rc = SetupMountDestination(config, mount, source, dest);
+    if (rc)
+      return rc;
+  }
+  if (mount.loopback) {
+    // Record this loopback file for cleanup later.
+    base::FilePath loop_source = source;
+    rc = LoopdevSetup(loop_source, &source);
+    if (rc)
+      return rc;
+
+    // Save this to cleanup when shutting down.
+    c->loopdev_paths.push_back(source);
+  }
+  if (!mount.verity.empty()) {
+    // Set this device up via dm-verity.
+    std::string dm_name;
+    base::FilePath dm_source = source;
+    rc = DeviceMapperSetup(dm_source, mount.verity, &source, &dm_name);
+    if (rc)
+      return rc;
+
+    // Save this to cleanup when shutting down.
+    c->device_mappers.push_back(dm_name);
+  }
+  if (mount.mount_in_ns) {
+    // We can mount this with minijail.
+    rc = minijail_mount_with_data(
+        c->jail.get(),
+        source.value().c_str(),
+        mount.destination.value().c_str(),
+        mount.type.c_str(),
+        mount.flags,
+        mount.data.empty() ? nullptr : mount.data.c_str());
+    if (rc)
+      return rc;
+  } else {
+    // Mount this externally and unmount it on exit.
+    rc = MountExternal(source.value(),
+                       dest.value(),
+                       mount.type,
+                       mount.flags,
+                       mount.data);
+    if (rc)
+      return rc;
+    // Save this to unmount when shutting down.
+    c->ext_mounts.push_back(dest);
+  }
+
+  return 0;
+}
+
+int DoContainerMounts(struct container* c,
+                      const struct container_config* config) {
+  UnmountExternalMounts(c);
+
+  // This will run in all the error cases.
+  base::ScopedClosureRunner teardown(base::Bind(
+      base::IgnoreResult(&UnmountExternalMounts), base::Unretained(c)));
+
+  for (const auto& mount : config->mounts) {
+    int rc = DoContainerMount(c, config, mount);
+    if (rc)
+      return rc;
+  }
+
+  // The mounts have been done successfully, no need to tear them down anymore.
+  ignore_result(teardown.Release());
+
+  return 0;
+}
+
+int ContainerCreateDevice(const struct container* c,
+                          const struct container_config* config,
+                          const Device& dev,
+                          int minor) {
+  mode_t mode = dev.fs_permissions;
+  switch (dev.type) {
+    case 'b':
+      mode |= S_IFBLK;
+      break;
+    case 'c':
+      mode |= S_IFCHR;
+      break;
+    default:
+      return -EINVAL;
+  }
+
+  int uid_userns = GetUsernsOutsideId(config->uid_map, dev.uid);
+  if (uid_userns < 0)
+    return uid_userns;
+  int gid_userns = GetUsernsOutsideId(config->gid_map, dev.gid);
+  if (gid_userns < 0)
+    return gid_userns;
+
+  base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
+  if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) &&
+      errno != EEXIST) {
+    return -errno;
+  }
+  if (chown(path.value().c_str(), uid_userns, gid_userns))
+    return -errno;
+  if (chmod(path.value().c_str(), dev.fs_permissions))
+    return -errno;
+
+  return 0;
+}
+
+int MountRunfs(struct container* c, const struct container_config* config) {
+  {
+    std::string runfs_template = base::StringPrintf(
+        "%s/%s_XXXXXX", c->rundir.value().c_str(), c->name.c_str());
+    // TODO(lhchavez): Replace this with base::CreateTemporaryDirInDir().
+    char* runfs_path = mkdtemp(const_cast<char*>(runfs_template.c_str()));
+    if (!runfs_path)
+      return -errno;
+    c->runfs = base::FilePath(runfs_path);
+  }
+
+  int uid_userns = GetUsernsOutsideId(config->uid_map, config->uid);
+  if (uid_userns < 0)
+    return uid_userns;
+  int gid_userns = GetUsernsOutsideId(config->gid_map, config->gid);
+  if (gid_userns < 0)
+    return gid_userns;
+
+  // Make sure the container uid can access the rootfs.
+  if (chmod(c->runfs.value().c_str(), 0700))
+    return -errno;
+  if (chown(c->runfs.value().c_str(), uid_userns, gid_userns))
+    return -errno;
+
+  c->runfsroot = c->runfs.Append("root");
+
+  constexpr mode_t kRootDirMode = 0660;
+  if (mkdir(c->runfsroot.value().c_str(), kRootDirMode))
+    return -errno;
+  if (chmod(c->runfsroot.value().c_str(), kRootDirMode))
+    return -errno;
+
+  if (mount(config->rootfs.value().c_str(),
+            c->runfsroot.value().c_str(),
+            "",
+            MS_BIND | (config->rootfs_mount_flags & MS_REC),
+            nullptr)) {
+    return -errno;
+  }
+
+  // MS_BIND ignores any flags passed to it (except MS_REC). We need a
+  // second call to mount() to actually set them.
+  if (config->rootfs_mount_flags &&
+      mount(config->rootfs.value().c_str(),
+            c->runfsroot.value().c_str(),
+            "",
+            (config->rootfs_mount_flags & ~MS_REC),
+            nullptr)) {
+    return -errno;
+  }
+
+  return 0;
+}
+
+int DeviceSetup(struct container* c, const struct container_config* config) {
+  int rc;
+
+  c->cgroup->ops->deny_all_devices(c->cgroup);
+
+  for (const auto& dev : config->cgroup_devices) {
+    rc = c->cgroup->ops->add_device(c->cgroup,
+                                    dev.allow,
+                                    dev.major,
+                                    dev.minor,
+                                    dev.read,
+                                    dev.write,
+                                    dev.modify,
+                                    dev.type);
+    if (rc)
+      return rc;
+  }
+
+  for (const auto& dev : config->devices) {
+    int minor = dev.minor;
+
+    if (dev.copy_minor) {
+      struct stat st_buff;
+      if (stat(dev.path.value().c_str(), &st_buff) < 0)
+        continue;
+      minor = minor(st_buff.st_rdev);
+    }
+    if (minor >= 0) {
+      rc = ContainerCreateDevice(c, config, dev, minor);
+      if (rc)
+        return rc;
+    }
+  }
+
+  for (const auto& loopdev_path : c->loopdev_paths) {
+    struct stat st;
+
+    rc = stat(loopdev_path.value().c_str(), &st);
+    if (rc < 0)
+      return -errno;
+    rc = c->cgroup->ops->add_device(
+        c->cgroup, 1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0, 'b');
+    if (rc)
+      return rc;
+  }
+
+  return 0;
+}
+
+int Setexeccon(void* payload) {
+  char* init_domain = reinterpret_cast<char*>(payload);
+  pid_t tid = syscall(SYS_gettid);
+
+  if (tid == -1)
+    return -errno;
+
+  std::string exec_path =
+      base::StringPrintf("/proc/self/task/%d/attr/exec", tid);
+
+  base::ScopedFD fd(open(exec_path.c_str(), O_WRONLY | O_CLOEXEC));
+  if (!fd.is_valid())
+    return -errno;
+
+  if (write(fd.get(), init_domain, strlen(init_domain)) !=
+      (ssize_t)strlen(init_domain)) {
+    return -errno;
+  }
+
+  return 0;
+}
+
+int ContainerTeardown(struct container* c) {
+  int ret = 0;
+
+  UnmountExternalMounts(c);
+  if (!c->runfsroot.empty() && !c->runfs.empty()) {
+    /* |c->runfsroot| may have been mounted recursively. Thus use
+     * MNT_DETACH to "immediately disconnect the filesystem and all
+     * filesystems mounted below it from each other and from the
+     * mount table". Otherwise one would need to unmount every
+     * single dependent mount before unmounting |c->runfsroot|
+     * itself.
+     */
+    if (umount2(c->runfsroot.value().c_str(), MNT_DETACH))
+      ret = -errno;
+    if (rmdir(c->runfsroot.value().c_str()))
+      ret = -errno;
+  }
+  if (!c->pid_file_path.empty()) {
+    if (unlink(c->pid_file_path.value().c_str()))
+      ret = -errno;
+  }
+  if (!c->runfs.empty()) {
+    if (rmdir(c->runfs.value().c_str()))
+      ret = -errno;
+  }
+  return ret;
+}
+
+
+}  // namespace
 
 struct container_config* container_config_create() {
   return new (std::nothrow) struct container_config();
@@ -344,7 +750,7 @@ int container_config_add_rlimit(struct container_config* c,
                                 int type,
                                 uint32_t cur,
                                 uint32_t max) {
-  if (c->num_rlimits >= MAX_RLIMITS)
+  if (c->num_rlimits >= kMaxRlimits)
     return -ENOMEM;
   c->rlimits[c->num_rlimits].type = type;
   c->rlimits[c->num_rlimits].cur = cur;
@@ -589,24 +995,6 @@ int container_config_inherit_fds(struct container_config* c,
   return 0;
 }
 
-// Container manipulation
-struct container {
-  struct container_cgroup* cgroup;
-  ScopedMinijail jail;
-  pid_t init_pid;
-  base::FilePath config_root;
-  base::FilePath runfs;
-  base::FilePath rundir;
-  base::FilePath runfsroot;
-  base::FilePath pid_file_path;
-
-  // Mounts made outside of the minijail.
-  std::vector<base::FilePath> ext_mounts;
-  std::vector<base::FilePath> loopdev_paths;
-  std::vector<std::string> device_mappers;
-  std::string name;
-};
-
 struct container* container_new(const char* name, const char* rundir) {
   struct container* c = new (std::nothrow) container();
   if (!c)
@@ -620,597 +1008,6 @@ void container_destroy(struct container* c) {
   if (c->cgroup)
     container_cgroup_destroy(c->cgroup);
   delete c;
-}
-
-/*
- * Given a uid/gid map of "inside1 outside1 length1, ...", and an id
- * inside of the user namespace, return the equivalent outside id, or
- * return < 0 on error.
- */
-static int GetUsernsOutsideId(const std::string& map, int id) {
-  if (map.empty())
-    return id;
-
-  std::string map_copy = map;
-  base::StringPiece map_piece(map_copy);
-
-  for (const auto& mapping : base::SplitStringPiece(
-           map_piece, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
-    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
-        mapping, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-    if (tokens.size() != 3)
-      return -EINVAL;
-
-    uint32_t inside, outside, length;
-    if (!base::StringToUint(tokens[0], &inside) ||
-        !base::StringToUint(tokens[1], &outside) ||
-        !base::StringToUint(tokens[2], &length)) {
-      return -EINVAL;
-    }
-
-    if (id >= inside && id <= (inside + length)) {
-      return (id - inside) + outside;
-    }
-  }
-
-  return -EINVAL;
-}
-
-static int MakeDir(const base::FilePath& path, int uid, int gid, int mode) {
-  if (mkdir(path.value().c_str(), mode))
-    return -errno;
-  if (chmod(path.value().c_str(), mode))
-    return -errno;
-  if (chown(path.value().c_str(), uid, gid))
-    return -errno;
-  return 0;
-}
-
-static int TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
-  base::ScopedFD fd(open(path.value().c_str(), O_RDWR | O_CREAT, mode));
-  if (!fd.is_valid())
-    return -errno;
-  if (fchown(fd.get(), uid, gid))
-    return -errno;
-  return 0;
-}
-
-/* Make sure the mount target exists in the new rootfs. Create if needed and
- * possible.
- */
-static int SetupMountDestination(const struct container_config* config,
-                                 const Mount& mount,
-                                 const base::FilePath& source,
-                                 const base::FilePath& dest) {
-  int rc;
-
-  struct stat st_buf;
-  rc = stat(dest.value().c_str(), &st_buf);
-  if (rc == 0) {
-    // destination exists.
-    return 0;
-  }
-
-  // Try to create the destination. Either make directory or touch a file
-  // depending on the source type.
-  int uid_userns = GetUsernsOutsideId(config->uid_map, mount.uid);
-  if (uid_userns < 0)
-    return uid_userns;
-  int gid_userns = GetUsernsOutsideId(config->gid_map, mount.gid);
-  if (gid_userns < 0)
-    return gid_userns;
-
-  rc = stat(source.value().c_str(), &st_buf);
-  if (rc || S_ISDIR(st_buf.st_mode) || S_ISBLK(st_buf.st_mode))
-    return MakeDir(dest, uid_userns, gid_userns, mount.mode);
-
-  return TouchFile(dest, uid_userns, gid_userns, mount.mode);
-}
-
-/* Fork and exec the setfiles command to configure the selinux policy. */
-static int RunSetfilesCommand(const struct container* c,
-                              const struct container_config* config,
-                              const std::vector<base::FilePath>& destinations) {
-  if (config->run_setfiles.empty())
-    return 0;
-
-  int pid = fork();
-  if (pid == 0) {
-    size_t arg_index = 0;
-    const char* argv[MAX_NUM_SETFILES_ARGS];
-    const char* env[] = {
-        nullptr,
-    };
-
-    base::FilePath context_path = c->runfsroot.Append("file_contexts");
-
-    argv[arg_index++] = config->run_setfiles.c_str();
-    argv[arg_index++] = "-r";
-    argv[arg_index++] = c->runfsroot.value().c_str();
-    argv[arg_index++] = context_path.value().c_str();
-    if (arg_index + destinations.size() >= MAX_NUM_SETFILES_ARGS)
-      _exit(-E2BIG);
-    for (const auto& destination : destinations)
-      argv[arg_index++] = destination.value().c_str();
-    argv[arg_index] = nullptr;
-
-    execve(
-        argv[0], const_cast<char* const*>(argv), const_cast<char* const*>(env));
-
-    /* Command failed to exec if execve returns. */
-    _exit(-errno);
-  }
-  if (pid < 0)
-    return -errno;
-
-  int rc;
-  int status;
-  do {
-    rc = waitpid(pid, &status, 0);
-  } while (rc == -1 && errno == EINTR);
-  if (rc < 0)
-    return -errno;
-  return status;
-}
-
-/* Find a free loop device and attach it. */
-static int LoopdevSetup(const base::FilePath& source,
-                        base::FilePath* loopdev_path_out) {
-  base::ScopedFD source_fd(open(source.value().c_str(), O_RDONLY | O_CLOEXEC));
-  if (!source_fd.is_valid())
-    return -errno;
-
-  base::ScopedFD control_fd(
-      open(kLoopdevCtlPath, O_RDWR | O_NOFOLLOW | O_CLOEXEC));
-  if (!control_fd.is_valid())
-    return -errno;
-
-  while (true) {
-    int num = ioctl(control_fd.get(), LOOP_CTL_GET_FREE);
-    if (num < 0)
-      return -errno;
-
-    base::FilePath loopdev_path(base::StringPrintf("/dev/loop%i", num));
-    base::ScopedFD loop_fd(
-        open(loopdev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
-    if (!loop_fd.is_valid())
-      return -errno;
-
-    if (ioctl(loop_fd.get(), LOOP_SET_FD, source_fd.get()) == 0) {
-      *loopdev_path_out = loopdev_path;
-      break;
-    }
-
-    if (errno != EBUSY)
-      return -errno;
-  }
-
-  return 0;
-}
-
-/* Detach the specified loop device. */
-static int LoopdevDetach(const base::FilePath& loopdev) {
-  base::ScopedFD fd(
-      open(loopdev.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
-  if (!fd.is_valid())
-    return -errno;
-  if (ioctl(fd.get(), LOOP_CLR_FD) < 0)
-    return -errno;
-
-  return 0;
-}
-
-/* Create a new device mapper target for the source. */
-static int DeviceMapperSetup(const base::FilePath& source,
-                             const std::string& verity_cmdline,
-                             base::FilePath* dm_path_out,
-                             std::string* dm_name_out) {
-#if USE_device_mapper
-  // Normalize the name into something unique-esque.
-  std::string dm_name =
-      base::StringPrintf("cros-containers-%s", source.value().c_str());
-  base::ReplaceChars(dm_name, "/", "_", &dm_name);
-
-  // Get the /dev path for the higher levels to mount.
-  base::FilePath dm_path = base::FilePath(kDevMapperPath).Append(dm_name);
-
-  // Insert the source path in the verity command line.
-  std::string verity = verity_cmdline;
-  base::ReplaceSubstringsAfterOffset(&verity, 0, "@DEV@", source.value());
-
-  // Extract the first three parameters for dm-verity settings.
-  char ttype[20];
-  unsigned long long start, size;
-  int n;
-  if (sscanf(verity.c_str(), "%llu %llu %10s %n", &start, &size, ttype, &n) !=
-      3) {
-    return -errno;
-  }
-
-  /* Finally create the device mapper. */
-  std::unique_ptr<struct dm_task, decltype(&dm_task_destroy)> dmt(
-      dm_task_create(DM_DEVICE_CREATE), &dm_task_destroy);
-  if (dmt == nullptr)
-    return -errno;
-
-  if (!dm_task_set_name(dmt.get(), dm_name.c_str()))
-    return -errno;
-
-  if (!dm_task_set_ro(dmt.get()))
-    return -errno;
-
-  if (!dm_task_add_target(dmt.get(), start, size, ttype, verity.c_str() + n))
-    return -errno;
-
-  uint32_t cookie = 0;
-  if (!dm_task_set_cookie(dmt.get(), &cookie, 0))
-    return -errno;
-
-  if (!dm_task_run(dmt.get()))
-    return -errno;
-
-  /* Make sure the node exists before we continue. */
-  dm_udev_wait(cookie);
-
-  *dm_path_out = dm_path;
-  *dm_name_out = dm_name;
-#endif
-  return 0;
-}
-
-// Tear down the device mapper target.
-static int DeviceMapperDetach(const std::string& dm_name) {
-#if USE_device_mapper
-  struct dm_task* dmt = dm_task_create(DM_DEVICE_REMOVE);
-  if (dmt == nullptr)
-    return -errno;
-
-  base::ScopedClosureRunner teardown(
-      base::Bind(base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
-
-  if (!dm_task_set_name(dmt, dm_name.c_str()))
-    return -errno;
-
-  if (!dm_task_run(dmt))
-    return -errno;
-#endif
-  return 0;
-}
-
-/*
- * Unmounts anything we mounted in this mount namespace in the opposite order
- * that they were mounted.
- */
-static int UnmountExternalMounts(struct container* c) {
-  int ret = 0;
-
-  for (auto it = c->ext_mounts.rbegin(); it != c->ext_mounts.rend(); ++it) {
-    if (umount(it->value().c_str()))
-      ret = -errno;
-  }
-  c->ext_mounts.clear();
-
-  for (auto it = c->loopdev_paths.rbegin(); it != c->loopdev_paths.rend();
-       ++it) {
-    int rc = LoopdevDetach(*it);
-    if (rc)
-      ret = rc;
-  }
-  c->loopdev_paths.clear();
-
-  for (auto it = c->device_mappers.rbegin(); it != c->device_mappers.rend();
-       ++it) {
-    if (DeviceMapperDetach(*it))
-      ret = -errno;
-  }
-  c->device_mappers.clear();
-
-  return ret;
-}
-
-/*
- * Match mount_one in minijail, mount one mountpoint with
- * consideration for combination of MS_BIND/MS_RDONLY flag.
- */
-static int MountExternal(const std::string& src,
-                         const std::string& dest,
-                         const std::string& type,
-                         unsigned long flags,
-                         const std::string& data) {
-  bool remount_ro = false;
-
-  /*
-   * R/O bind mounts have to be remounted since 'bind' and 'ro'
-   * can't both be specified in the original bind mount.
-   * Remount R/O after the initial mount.
-   */
-  if ((flags & MS_BIND) && (flags & MS_RDONLY)) {
-    remount_ro = true;
-    flags &= ~MS_RDONLY;
-  }
-
-  if (mount(src.c_str(),
-            dest.c_str(),
-            type.c_str(),
-            flags,
-            data.empty() ? nullptr : data.c_str()) == -1) {
-    return -errno;
-  }
-
-  if (remount_ro) {
-    flags |= MS_RDONLY;
-    if (mount(src.c_str(),
-              dest.c_str(),
-              nullptr,
-              flags | MS_REMOUNT,
-              data.empty() ? nullptr : data.c_str()) == -1) {
-      return -errno;
-    }
-  }
-
-  return 0;
-}
-
-static int DoContainerMount(struct container* c,
-                            const struct container_config* config,
-                            const Mount& mount) {
-  int rc = 0;
-
-  base::FilePath dest =
-      GetPathInOuterNamespace(c->runfsroot, mount.destination);
-
-  /*
-   * If it's a bind mount relative to rootfs, append source to
-   * rootfs path, otherwise source path is absolute.
-   */
-  base::FilePath source;
-  if ((mount.flags & MS_BIND) && !mount.source.IsAbsolute()) {
-    source = GetPathInOuterNamespace(c->runfsroot, mount.source);
-  } else if (mount.loopback && !mount.source.IsAbsolute() &&
-             !c->config_root.empty()) {
-    source = GetPathInOuterNamespace(c->config_root, mount.source);
-  } else {
-    source = mount.source;
-  }
-
-  // Only create the destinations for external mounts, minijail will take
-  // care of those mounted in the new namespace.
-  if (mount.create && !mount.mount_in_ns) {
-    rc = SetupMountDestination(config, mount, source, dest);
-    if (rc)
-      return rc;
-  }
-  if (mount.loopback) {
-    /* Record this loopback file for cleanup later. */
-    base::FilePath loop_source = source;
-    rc = LoopdevSetup(loop_source, &source);
-    if (rc)
-      return rc;
-
-    /* Save this to cleanup when shutting down. */
-    c->loopdev_paths.push_back(source);
-  }
-  if (!mount.verity.empty()) {
-    /* Set this device up via dm-verity. */
-    std::string dm_name;
-    base::FilePath dm_source = source;
-    rc = DeviceMapperSetup(dm_source, mount.verity, &source, &dm_name);
-    if (rc)
-      return rc;
-
-    // Save this to cleanup when shutting down.
-    c->device_mappers.push_back(dm_name);
-  }
-  if (mount.mount_in_ns) {
-    /* We can mount this with minijail. */
-    rc = minijail_mount_with_data(
-        c->jail.get(),
-        source.value().c_str(),
-        mount.destination.value().c_str(),
-        mount.type.c_str(),
-        mount.flags,
-        mount.data.empty() ? nullptr : mount.data.c_str());
-    if (rc)
-      return rc;
-  } else {
-    /* Mount this externally and unmount it on exit. */
-    rc = MountExternal(source.value(),
-                       dest.value(),
-                       mount.type,
-                       mount.flags,
-                       mount.data);
-    if (rc)
-      return rc;
-    // Save this to unmount when shutting down.
-    c->ext_mounts.push_back(dest);
-  }
-
-  return 0;
-}
-
-static int DoContainerMounts(struct container* c,
-                             const struct container_config* config) {
-  UnmountExternalMounts(c);
-
-  // This will run in all the error cases.
-  base::ScopedClosureRunner teardown(base::Bind(
-      base::IgnoreResult(&UnmountExternalMounts), base::Unretained(c)));
-
-  for (const auto& mount : config->mounts) {
-    int rc = DoContainerMount(c, config, mount);
-    if (rc)
-      return rc;
-  }
-
-  // The mounts have been done successfully, no need to tear them down anymore.
-  ignore_result(teardown.Release());
-
-  return 0;
-}
-
-static int ContainerCreateDevice(const struct container* c,
-                                 const struct container_config* config,
-                                 const Device& dev,
-                                 int minor) {
-  mode_t mode = dev.fs_permissions;
-  switch (dev.type) {
-    case 'b':
-      mode |= S_IFBLK;
-      break;
-    case 'c':
-      mode |= S_IFCHR;
-      break;
-    default:
-      return -EINVAL;
-  }
-
-  int uid_userns = GetUsernsOutsideId(config->uid_map, dev.uid);
-  if (uid_userns < 0)
-    return uid_userns;
-  int gid_userns = GetUsernsOutsideId(config->gid_map, dev.gid);
-  if (gid_userns < 0)
-    return gid_userns;
-
-  base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
-  if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) &&
-      errno != EEXIST) {
-    return -errno;
-  }
-  if (chown(path.value().c_str(), uid_userns, gid_userns))
-    return -errno;
-  if (chmod(path.value().c_str(), dev.fs_permissions))
-    return -errno;
-
-  return 0;
-}
-
-static int MountRunfs(struct container* c,
-                      const struct container_config* config) {
-  {
-    std::string runfs_template = base::StringPrintf(
-        "%s/%s_XXXXXX", c->rundir.value().c_str(), c->name.c_str());
-    // TODO(lhchavez): Replace this with base::CreateTemporaryDirInDir().
-    char* runfs_path = mkdtemp(const_cast<char*>(runfs_template.c_str()));
-    if (!runfs_path)
-      return -errno;
-    c->runfs = base::FilePath(runfs_path);
-  }
-
-  int uid_userns = GetUsernsOutsideId(config->uid_map, config->uid);
-  if (uid_userns < 0)
-    return uid_userns;
-  int gid_userns = GetUsernsOutsideId(config->gid_map, config->gid);
-  if (gid_userns < 0)
-    return gid_userns;
-
-  /* Make sure the container uid can access the rootfs. */
-  if (chmod(c->runfs.value().c_str(), 0700))
-    return -errno;
-  if (chown(c->runfs.value().c_str(), uid_userns, gid_userns))
-    return -errno;
-
-  c->runfsroot = c->runfs.Append("root");
-
-  constexpr mode_t kRootDirMode = 0660;
-  if (mkdir(c->runfsroot.value().c_str(), kRootDirMode))
-    return -errno;
-  if (chmod(c->runfsroot.value().c_str(), kRootDirMode))
-    return -errno;
-
-  if (mount(config->rootfs.value().c_str(),
-            c->runfsroot.value().c_str(),
-            "",
-            MS_BIND | (config->rootfs_mount_flags & MS_REC),
-            nullptr)) {
-    return -errno;
-  }
-
-  /* MS_BIND ignores any flags passed to it (except MS_REC). We need a
-   * second call to mount() to actually set them.
-   */
-  if (config->rootfs_mount_flags &&
-      mount(config->rootfs.value().c_str(),
-            c->runfsroot.value().c_str(),
-            "",
-            (config->rootfs_mount_flags & ~MS_REC),
-            nullptr)) {
-    return -errno;
-  }
-
-  return 0;
-}
-
-static int DeviceSetup(struct container* c,
-                       const struct container_config* config) {
-  int rc;
-
-  c->cgroup->ops->deny_all_devices(c->cgroup);
-
-  for (const auto& dev : config->cgroup_devices) {
-    rc = c->cgroup->ops->add_device(c->cgroup,
-                                    dev.allow,
-                                    dev.major,
-                                    dev.minor,
-                                    dev.read,
-                                    dev.write,
-                                    dev.modify,
-                                    dev.type);
-    if (rc)
-      return rc;
-  }
-
-  for (const auto& dev : config->devices) {
-    int minor = dev.minor;
-
-    if (dev.copy_minor) {
-      struct stat st_buff;
-      if (stat(dev.path.value().c_str(), &st_buff) < 0)
-        continue;
-      minor = minor(st_buff.st_rdev);
-    }
-    if (minor >= 0) {
-      rc = ContainerCreateDevice(c, config, dev, minor);
-      if (rc)
-        return rc;
-    }
-  }
-
-  for (const auto& loopdev_path : c->loopdev_paths) {
-    struct stat st;
-
-    rc = stat(loopdev_path.value().c_str(), &st);
-    if (rc < 0)
-      return -errno;
-    rc = c->cgroup->ops->add_device(
-        c->cgroup, 1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0, 'b');
-    if (rc)
-      return rc;
-  }
-
-  return 0;
-}
-
-static int Setexeccon(void* payload) {
-  char* init_domain = reinterpret_cast<char*>(payload);
-  pid_t tid = syscall(SYS_gettid);
-
-  if (tid == -1)
-    return -errno;
-
-  std::string exec_path =
-      base::StringPrintf("/proc/self/task/%d/attr/exec", tid);
-
-  base::ScopedFD fd(open(exec_path.c_str(), O_WRONLY | O_CLOEXEC));
-  if (!fd.is_valid())
-    return -errno;
-
-  if (write(fd.get(), init_domain, strlen(init_domain)) !=
-      (ssize_t)strlen(init_domain)) {
-    return -errno;
-  }
-
-  return 0;
 }
 
 int container_start(struct container* c,
@@ -1451,34 +1248,6 @@ const char* container_root(struct container* c) {
 
 int container_pid(struct container* c) {
   return c->init_pid;
-}
-
-static int ContainerTeardown(struct container* c) {
-  int ret = 0;
-
-  UnmountExternalMounts(c);
-  if (!c->runfsroot.empty() && !c->runfs.empty()) {
-    /* |c->runfsroot| may have been mounted recursively. Thus use
-     * MNT_DETACH to "immediately disconnect the filesystem and all
-     * filesystems mounted below it from each other and from the
-     * mount table". Otherwise one would need to unmount every
-     * single dependent mount before unmounting |c->runfsroot|
-     * itself.
-     */
-    if (umount2(c->runfsroot.value().c_str(), MNT_DETACH))
-      ret = -errno;
-    if (rmdir(c->runfsroot.value().c_str()))
-      ret = -errno;
-  }
-  if (!c->pid_file_path.empty()) {
-    if (unlink(c->pid_file_path.value().c_str()))
-      ret = -errno;
-  }
-  if (!c->runfs.empty()) {
-    if (rmdir(c->runfs.value().c_str()))
-      ret = -errno;
-  }
-  return ret;
 }
 
 int container_wait(struct container* c) {
