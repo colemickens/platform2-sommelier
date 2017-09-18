@@ -244,7 +244,18 @@ cmd_help() (
       local usage="$(expand_var "USAGE_${cmd}")"
       local help="$(expand_var "HELP_${cmd}")"
 
-      printf '%s %s  %s\n\n' "${cmd}" "${usage}" "${help}"
+      if [ -n "${usage}" ]; then
+        printf '%s %s' "${cmd}" "${usage}"
+      fi
+
+      if [ -n "${help}" ]; then
+        printf '  %s\n\n' "${help}"
+      fi
+
+      # If the command has a custom help func, call it.
+      if registered_crosh_command_help "${cmd}"; then
+        "help_${cmd}"
+      fi
     fi
     ;;
   *)
@@ -474,34 +485,25 @@ HELP_bt_console='
   capability of a pairing agent the console will provide; see the Bluetooth
   Core specification for valid options.
 '
+EXEC_bt_console='/usr/bin/bluetoothctl'
 cmd_bt_console() (
-  if [ -x /usr/bin/bluetoothctl ]; then
-    /usr/bin/bluetoothctl "${1:+--agent=$1}"
-  else
-    echo "Bluetooth console not available"
-  fi
+  "${EXEC_bt_console}" "${1:+--agent=$1}"
 )
 
-USAGE_ff_debug='[<tag_expr>] [--list_valid_tags] [--reset]'
-HELP_ff_debug='
-  Add and remove flimflam debugging tags.  "ff_debug help" for more details.
-'
+EXEC_ff_debug='/usr/bin/ff_debug'
 cmd_ff_debug() (
-  if [ "$1" = "help" ]; then
-    set -- --help
-  fi
-  /usr/bin/ff_debug "$@"
+  "${EXEC_ff_debug}" "$@"
+)
+help_ff_debug() (
+  cmd_ff_debug --help
 )
 
-USAGE_wpa_debug='[<debug_level>] [--list_valid_level] [--reset]'
-HELP_wpa_debug='
-  Set wpa_supplicant debugging level.  "wpa_debug help" for more details.
-'
+EXEC_wpa_debug='/usr/bin/wpa_debug'
 cmd_wpa_debug() (
-  if [ "$1" = "help" ]; then
-    set -- --help
-  fi
-  /usr/bin/wpa_debug "$@"
+  "${EXEC_wpa_debug}" "$@"
+)
+help_wpa_debug() (
+  cmd_wpa_debug --help
 )
 
 USAGE_authpolicy_debug='<level>'
@@ -650,14 +652,12 @@ cmd_network_logging() (
   fi
 )
 
-USAGE_network_diag="[--date] [--flimflam] [--link] [--show-macs] [--wifi] \
-[--wifi-mon] <host>"
-HELP_network_diag='
-  A function that performs a suite of network diagnostics.  Saves a copy
-  of the output to your Downloads directory.
-'
+EXEC_network_diag='/usr/bin/network_diag'
 cmd_network_diag() (
-  /usr/bin/network_diag "$@"
+  "${EXEC_network_diag}" "$@"
+)
+help_network_diag() (
+  cmd_network_diag --help
 )
 
 USAGE_u2f_flags='<u2f | g2f>[,verbose]'
@@ -1594,11 +1594,22 @@ substr() {
   printf '%s' "${str}" | cut -c${start}-${end}
 }
 
+# Return true if the arg is a shell function.
+is_shell_function() {
+  local func="$1"
+  type "${func}" 2>/dev/null | head -1 | grep -q 'function'
+}
+
 # Return true if the first arg is a valid crosh command.
 registered_crosh_command() {
   local command="$1"
+  is_shell_function "cmd_${command}"
+}
 
-  type "cmd_${command}" 2>/dev/null | head -1 | grep -q "function"
+# Return true if the specified command has a custom help function.
+registered_crosh_command_help() {
+  local command="$1"
+  is_shell_function "help_${command}"
 }
 
 # Return true if the first arg is a command available on

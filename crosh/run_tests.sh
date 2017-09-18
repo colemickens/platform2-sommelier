@@ -39,13 +39,15 @@ for s in crosh {dev,extra,removable}.d/[0-9][0-9]-*.sh; do
   #
   commands=$(grep -o '^cmd_[^(]*' "${s}" | sed 's:^cmd_::' | sort)
   for command in ${commands}; do
-    if ! grep -q "^USAGE_${command}=" "${s}"; then
-      echo "ERROR: ${command} is not documented (missing USAGE_${command})"
-      ret=1
-    fi
-    if ! grep -q "^HELP_${command}=" "${s}"; then
-      echo "ERROR: ${command} is not documented (missing HELP_${command})"
-      ret=1
+    if ! grep -q "^help_${command}()" "${s}"; then
+      if ! grep -q "^USAGE_${command}=" "${s}"; then
+        echo "ERROR: ${command} is not documented (missing USAGE_${command})"
+        ret=1
+      fi
+      if ! grep -q "^HELP_${command}=" "${s}"; then
+        echo "ERROR: ${command} is not documented (missing HELP_${command})"
+        ret=1
+      fi
     fi
   done
   # Every HELP_xxx needs a cmd_xxx (catch typos).
@@ -64,13 +66,21 @@ for s in crosh {dev,extra,removable}.d/[0-9][0-9]-*.sh; do
       ret=1
     fi
   done
+  # Same for help_xxx.
+  commands=$(grep -o '^help_[^(]*' "${s}" | sed 's:^help_::' | sort)
+  for command in ${commands}; do
+    if ! grep -q "^cmd_${command}()" "${s}"; then
+      echo "ERROR: stray help_${command} var (typo?)"
+      ret=1
+    fi
+  done
 
   #
-  # Make sure cmd_* use () for function bodies.
+  # Make sure cmd_* and help_* use () for function bodies.
   # People often forget to use `local` in their functions and end up polluting
   # the environment.  Forcing all commands into a subshell prevents that.
   #
-  if grep -hn '^cmd_.*() *{' ${s}; then
+  if grep -Ehn '^(cmd|help)_.*\(\) *\{' "${s}"; then
     cat <<EOF
 ERROR: The above commands need to use () for their bodies, not {}:
  cmd_foo() (
