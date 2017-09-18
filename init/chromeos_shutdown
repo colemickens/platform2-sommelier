@@ -52,6 +52,9 @@ if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
   fi
 fi
 
+# Flush buffers to disk to be safe in case there is a problem with umount.
+sync
+
 # Measure shutdown time up to this point.
 bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 
