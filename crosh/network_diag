@@ -1105,6 +1105,17 @@ diag_gateway_latency () {
   fi
 }
 
+valid_host () {
+  local host="$1"
+
+  # Allow things that look like valid IPv4/IPv6/DNS.  This doesn't deal with
+  # fully validating the forms, just reject grossly invalid ones.  We'll still
+  # rely on the network to do the final resolution.
+  # Note: This probably doesn't support IDN, so people will have to handle the
+  # punycode transformations themselves.
+  echo "${host}" | grep -q -E '^[-A-Za-z0-9.:]+$'
+}
+
 usage () {
   echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
   echo "           --wifi-mon] [host]"
@@ -1178,6 +1189,10 @@ main () {
         option=${rest[0]}
       else
         test_host=${rest[0]}
+        if ! valid_host "${test_host}"; then
+          echo "Invalid host: ${test_host}"
+          exit 1
+        fi
         diag_run "${test_host}" "${proxy}"
         return
       fi
@@ -1185,6 +1200,10 @@ main () {
     2)
       option=${rest[0]}
       test_host=${rest[1]}
+      if ! valid_host "${test_host}"; then
+        echo "Invalid host: ${test_host}"
+        exit 1
+      fi
       option_and_arg_provided=yes
       ;;
     *)
