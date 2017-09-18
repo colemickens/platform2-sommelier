@@ -37,6 +37,8 @@ to Google's servers.
 Additionally, `vm_syslog` reads kernel logs from `/dev/kmsg` (inside the VM)
 and forwards those to the logging service running on the host.
 
+See [docs/logging.md](docs/logging.md) for more details on log handling.
+
 ## crash_collector
 
 `crash_collector` is responsible for collecting crash reports of applications
@@ -57,17 +59,17 @@ instance listens on a known port in the vsock namespace (port 8888).
 `vm_launcher` instances allocate a port number via a shared pool and communicate
 that port number to the VM via the linux kernel command line.
 
+See [docs/vsock.md](docs/vsock.md) for more details about vsock.
+
 ### Authentication
 
-Since each `maitred` instance listens on a known port number and vsock is a
-global namespace it would be possible for a malicious application in one VM to
-talk to the `maitred` instance in another VM and attempt to exploit it.  To deal
-with this maitred authenticates every call it receives to make sure that it is
-coming from a trusted source.  `vm_launcher` generates an access token and
-forwards it to maitred on the VM kernel command line.  Only requests that include
-this access token are accepted and processed by `maitred`.  TODO(chirantan): Work
-with chromeos-security to flesh out the details so everyone is happy with this
-solution.
+Since each `maitred` instance listens on a known port number, it is possible for
+an application inside a VM to send a message to `maitred` over a loopback
+interface.  To prevent this we block all loopback connections over vsock.
+
+It is not possible for processes in different VMs to send messages to each other
+over vsock.  This is blocked by the host kernel driver that manages data
+transfer.
 
 ### Wire format
 
