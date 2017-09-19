@@ -156,12 +156,6 @@ chromeos {
             script = "updater4.sh";
             shared: reef {
                 bcs-overlay = "overlay-reef-private";
-                build-targets {
-                    coreboot = "reef";
-                    ec = "reef";
-                    depthcharge = "reef";
-                    libpayload = "reef";
-                };
                 main-image = "bcs://Reef.9042.50.0.tbz2";
                 ec-image = "bcs://Reef-EC.9042.43.0.tbz2";
                 stable-main-version = "Google-Reef.9042.43.0";
@@ -169,15 +163,15 @@ chromeos {
                 extra = "${FILESDIR}/extra",
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
-            };
-            pinned_version: sand {
-                bcs-overlay = "overlay-reef-private";
                 build-targets {
                     coreboot = "reef";
                     ec = "reef";
                     depthcharge = "reef";
                     libpayload = "reef";
                 };
+            };
+            pinned_version: sand {
+                bcs-overlay = "overlay-reef-private";
                 main-image = "bcs://Reef.9041.50.0.tbz2";
                 ec-image = "bcs://Reef-EC.9041.43.0.tbz2";
                 stable-main-version = "Google-Reef.9041.43.0";
@@ -185,6 +179,12 @@ chromeos {
                 extra = "${FILESDIR}/extra",
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
+                build-targets {
+                    coreboot = "reef";
+                    ec = "reef";
+                    depthcharge = "reef";
+                    libpayload = "reef";
+                };
             };
         };
     };
@@ -196,7 +196,7 @@ chromeos {
             firmware {
                 shares = <&shared>;
                 key-id = "reef";
-            }
+            };
         };
 
         pyro {
@@ -204,15 +204,15 @@ chromeos {
             wallpaper = "alien_invasion";
             firmware {
                 bcs-overlay = "overlay-pyro-private";
+                main-image = "bcs://Pyro.9042.41.0.tbz2";
+                ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
+                key-id = "pyro";
                 build-targets {
                     coreboot = "pyro";
                     ec = "pyro";
                     depthcharge = "pyro";
                     libpayload = "reef";
                 };
-                main-image = "bcs://Pyro.9042.41.0.tbz2";
-                ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
-                key-id = "pyro";
             };
         };
 
@@ -221,15 +221,15 @@ chromeos {
             wallpaper = "chocolate";
             firmware {
                 bcs-overlay = "overlay-snappy-private";
+                main-image = "bcs://Snappy.9042.43.0.tbz2";
+                ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
+                key-id = "snappy";
                 build-targets {
                     coreboot = "snappy";
                     ec = "snappy";
                     depthcharge = "snappy";
                     libpayload = "reef";
                 };
-                main-image = "bcs://Snappy.9042.43.0.tbz2";
-                ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
-                key-id = "snappy";
             };
         };
 
