@@ -12,8 +12,11 @@ CHROMEOS_PRODUCT=ChromeOS
 # Crash sender lock in case the sender is already running.
 CRASH_SENDER_LOCK="/run/lock/crash_sender"
 
+# The base directory where we keep various state flags.
+CRASH_RUN_STATE_DIR="/run/crash_reporter"
+
 # Path to file that indicates a crash test is currently running.
-CRASH_TEST_IN_PROGRESS_FILE="/tmp/crash-test-in-progress"
+CRASH_TEST_IN_PROGRESS_FILE="${CRASH_RUN_STATE_DIR}/crash-test-in-progress"
 
 # Path to find which is required for computing the crash rate.
 FIND="/usr/bin/find"
@@ -39,7 +42,7 @@ METRICS_CLIENT="/usr/bin/metrics_client"
 
 # File whose existence mocks crash sending.  If empty we pretend the
 # crash sending was successful, otherwise unsuccessful.
-MOCK_CRASH_SENDING="/tmp/mock-crash-sending"
+MOCK_CRASH_SENDING="${CRASH_RUN_STATE_DIR}/mock-crash-sending"
 
 # Set this to 1 in the environment to pretend to have booted in developer
 # mode.  This is used by autotests.

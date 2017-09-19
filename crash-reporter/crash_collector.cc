@@ -33,13 +33,14 @@ namespace {
 
 const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
-const char kCrashTestInProgressPath[] = "/tmp/crash-test-in-progress";
+const char kCrashTestInProgressPath[] = "crash-test-in-progress";
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kLeaveCoreFile[] = "/root/.leave_core";
 const char kLsbRelease[] = "/etc/lsb-release";
 const char kShellPath[] = "/bin/sh";
 const char kSystemCrashPath[] = "/var/spool/crash";
+const char kSystemRunStatePath[] = "/run/crash_reporter";
 const char kUploadVarPrefix[] = "upload_var_";
 const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
@@ -64,6 +65,10 @@ const mode_t kUserCrashPathMode = 0755;
 
 // Directory mode of the system crash spool directory.
 const mode_t kSystemCrashPathMode = 01755;
+
+// Directory mode of the run time state directory.
+// Since we place flag files in here for checking by tests, we make it readable.
+constexpr mode_t kSystemRunStatePathMode = 0755;
 
 const uid_t kRootGroup = 0;
 
@@ -665,7 +670,8 @@ void CrashCollector::WriteCrashMetaData(const FilePath &meta_path,
 }
 
 bool CrashCollector::IsCrashTestInProgress() {
-  return base::PathExists(FilePath(kCrashTestInProgressPath));
+  return base::PathExists(
+      FilePath(kSystemRunStatePath).Append(kCrashTestInProgressPath));
 }
 
 bool CrashCollector::IsDeveloperImage() {
@@ -721,6 +727,11 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
 bool CrashCollector::InitializeSystemCrashDirectories() {
   if (!CreateDirectoryWithSettings(
       FilePath(kSystemCrashPath), kSystemCrashPathMode, kRootUid, kRootGroup))
+    return false;
+
+  if (!CreateDirectoryWithSettings(
+      FilePath(kSystemRunStatePath), kSystemRunStatePathMode, kRootUid,
+      kRootGroup))
     return false;
 
   return true;
