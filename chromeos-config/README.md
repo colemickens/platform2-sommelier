@@ -266,9 +266,13 @@ chromeos {
 
 ### Pinning Firmware Versions for Specific Models
 
-In order to pin firmware versions for specific models, create a new
-firmware instance pointing to the pinned rev and then update the
-repective model's shares phandle to point to the pinned revision.
+In order to pin firmware for a single model, change the main-image and
+ec-image properties in that image. See `snappy` above as an example.
+
+In order to pin firmware versions for several models and avoid entering the
+same information twice, create a new firmware instance pointing to the pinned
+rev and then update the repective model's shares phandle to point to the
+pinned revision.
 
 In the example above, this is shown using sand (a model) referencing
 the pinned firmware.
