@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/files/file_path.h>
 
 #include "libcontainer/test_harness.h"
@@ -17,6 +19,8 @@
 #include "libcontainer/container_cgroup.h"
 #include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
+#include "libcontainer/container.h"
+#include "libcontainer/config.h"
 
 static const pid_t INIT_TEST_PID = 5555;
 static const int TEST_CPU_SHARES = 200;
@@ -205,8 +209,8 @@ TEST(plog_preserve) {
 
 /* Start of tests. */
 FIXTURE(container_test) {
-  struct container_config* config;
-  struct container* container;
+  std::unique_ptr<libcontainer::Config> config;
+  std::unique_ptr<libcontainer::Container> container;
   int mount_flags;
   char* rootfs;
 };
@@ -258,13 +262,13 @@ FIXTURE_SETUP(container_test) {
 
   self->mount_flags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
-  self->config = container_config_create();
-  container_config_uid_map(self->config, "0 0 4294967295");
-  container_config_gid_map(self->config, "0 0 4294967295");
-  container_config_rootfs(self->config, self->rootfs);
-  container_config_program_argv(self->config, pargs, 1);
-  container_config_alt_syscall_table(self->config, "testsyscalltable");
-  container_config_add_mount(self->config,
+  self->config.reset(new libcontainer::Config());
+  container_config_uid_map(self->config->get(), "0 0 4294967295");
+  container_config_gid_map(self->config->get(), "0 0 4294967295");
+  container_config_rootfs(self->config->get(), self->rootfs);
+  container_config_program_argv(self->config->get(), pargs, 1);
+  container_config_alt_syscall_table(self->config->get(), "testsyscalltable");
+  container_config_add_mount(self->config->get(),
                              "testtmpfs",
                              "tmpfs",
                              "/tmp",
@@ -278,7 +282,7 @@ FIXTURE_SETUP(container_test) {
                              0x666,
                              0,
                              0);
-  container_config_add_device(self->config,
+  container_config_add_device(self->config->get(),
                               'c',
                               "/dev/foo",
                               S_IRWXU | S_IRWXG,
@@ -291,7 +295,7 @@ FIXTURE_SETUP(container_test) {
                               1,
                               0);
   /* test dynamic minor on /dev/null */
-  container_config_add_device(self->config,
+  container_config_add_device(self->config->get(),
                               'c',
                               "/dev/null",
                               S_IRWXU | S_IRWXG,
@@ -304,22 +308,24 @@ FIXTURE_SETUP(container_test) {
                               1,
                               0);
 
-  container_config_set_cpu_shares(self->config, TEST_CPU_SHARES);
+  container_config_set_cpu_shares(self->config->get(), TEST_CPU_SHARES);
   container_config_set_cpu_cfs_params(
-      self->config, TEST_CPU_QUOTA, TEST_CPU_PERIOD);
+      self->config->get(), TEST_CPU_QUOTA, TEST_CPU_PERIOD);
   /* Invalid params, so this won't be applied. */
-  container_config_set_cpu_rt_params(self->config, 20000, 20000);
+  container_config_set_cpu_rt_params(self->config->get(), 20000, 20000);
 
   rundir = mkdtemp(rundir_template);
-  self->container = container_new("containerUT", rundir);
-  ASSERT_NE(nullptr, self->container);
+  self->container.reset(
+      new libcontainer::Container("containerUT", base::FilePath(rundir)));
+  ASSERT_NE(nullptr, self->container->get());
 }
 
 FIXTURE_TEARDOWN(container_test) {
   char path[256];
   int i;
 
-  container_destroy(self->container);
+  self->container.reset();
+  self->config.reset();
   snprintf(path, sizeof(path), "rm -rf %s", self->rootfs);
   EXPECT_EQ(0, system(path));
   free(self->rootfs);
@@ -332,7 +338,7 @@ FIXTURE_TEARDOWN(container_test) {
 }
 
 TEST_F(container_test, test_mount_tmp_start) {
-  ASSERT_EQ(0, container_start(self->container, self->config));
+  ASSERT_EQ(0, container_start(self->container->get(), self->config->get()));
   ASSERT_EQ(2, mount_called);
   EXPECT_EQ(false, mount_call_args[1].outside_mount);
   EXPECT_STREQ("tmpfs", mount_call_args[1].source);
@@ -377,27 +383,30 @@ TEST_F(container_test, test_mount_tmp_start) {
   EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
 
   EXPECT_EQ(1, gmcg.set_cpu_shares_count);
-  EXPECT_EQ(TEST_CPU_SHARES, container_config_get_cpu_shares(self->config));
+  EXPECT_EQ(TEST_CPU_SHARES,
+            container_config_get_cpu_shares(self->config->get()));
   EXPECT_EQ(1, gmcg.set_cpu_quota_count);
-  EXPECT_EQ(TEST_CPU_QUOTA, container_config_get_cpu_quota(self->config));
+  EXPECT_EQ(TEST_CPU_QUOTA,
+            container_config_get_cpu_quota(self->config->get()));
   EXPECT_EQ(1, gmcg.set_cpu_period_count);
-  EXPECT_EQ(TEST_CPU_PERIOD, container_config_get_cpu_period(self->config));
+  EXPECT_EQ(TEST_CPU_PERIOD,
+            container_config_get_cpu_period(self->config->get()));
   EXPECT_EQ(0, gmcg.set_cpu_rt_runtime_count);
-  EXPECT_EQ(0, container_config_get_cpu_rt_runtime(self->config));
+  EXPECT_EQ(0, container_config_get_cpu_rt_runtime(self->config->get()));
   EXPECT_EQ(0, gmcg.set_cpu_rt_period_count);
-  EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config));
+  EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config->get()));
 
   ASSERT_NE(nullptr, minijail_alt_syscall_table);
   EXPECT_STREQ("testsyscalltable", minijail_alt_syscall_table);
 
-  EXPECT_EQ(0, container_wait(self->container));
+  EXPECT_EQ(0, container_wait(self->container->get()));
   EXPECT_EQ(1, minijail_wait_called);
   EXPECT_EQ(1, minijail_reset_signal_mask_called);
 }
 
 TEST_F(container_test, test_kill_container) {
-  ASSERT_EQ(0, container_start(self->container, self->config));
-  EXPECT_EQ(0, container_kill(self->container));
+  ASSERT_EQ(0, container_start(self->container->get(), self->config->get()));
+  EXPECT_EQ(0, container_kill(self->container->get()));
   EXPECT_EQ(1, kill_called);
   EXPECT_EQ(SIGKILL, kill_sig);
   EXPECT_EQ(1, minijail_wait_called);
@@ -522,9 +531,7 @@ int minijail_mount_with_data(struct minijail* j,
   return 0;
 }
 
-int minijail_namespace_user_disable_setgroups(struct minijail* j) {
-  return 0;
-}
+void minijail_namespace_user_disable_setgroups(struct minijail* j) {}
 
 void minijail_namespace_vfs(struct minijail* j) {
   ++minijail_vfs_called;

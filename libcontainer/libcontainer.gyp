@@ -24,6 +24,8 @@
       'target_name': 'libcontainer',
       'type': 'shared_library',
       'sources': [
+        'config.cc',
+        'container.cc',
         'container_cgroup.cc',
         'libcontainer.cc',
         'libcontainer_util.cc',
@@ -37,6 +39,8 @@
           'target_name': 'libcontainer_unittest',
           'type': 'executable',
           'sources': [
+            'config.cc',
+            'container.cc',
             'libcontainer.cc',
             'libcontainer_unittest.cc',
             'libcontainer_util.cc',
@@ -48,6 +52,7 @@
           'sources': [
             'container_cgroup.cc',
             'container_cgroup_unittest.cc',
+            'libcontainer_util.cc',
           ],
         },
       ]},
