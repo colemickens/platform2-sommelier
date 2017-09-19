@@ -270,6 +270,11 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
     CHECK(brillo::userdb::GetGroupInfo("arc-camera", &arc_camera_gid));
     CHECK(EnsureDirectoryExists(
         base::FilePath("/run/camera"), uid, arc_camera_gid, 0770));
+    // The /var/cache/camera folder is used to store camera-related configs and
+    // settings that are either extracted from Android container, or generated
+    // by the camera HAL at runtime.
+    CHECK(EnsureDirectoryExists(
+        base::FilePath("/var/cache/camera"), uid, arc_camera_gid, 0770));
   }
 }
 
