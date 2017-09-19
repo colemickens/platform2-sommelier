@@ -20,6 +20,7 @@
 #include <base/bind_helpers.h>
 #include <base/callback_helpers.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -38,6 +39,12 @@ constexpr base::FilePath::CharType kDevMapperPath[] =
 
 }  // namespace
 
+SaveErrno::SaveErrno() : saved_errno_(errno) {}
+
+SaveErrno::~SaveErrno() {
+  errno = saved_errno_;
+}
+
 int GetUsernsOutsideId(const std::string& map, int id) {
   if (map.empty())
     return id;
@@ -50,13 +57,16 @@ int GetUsernsOutsideId(const std::string& map, int id) {
     std::vector<base::StringPiece> tokens = base::SplitStringPiece(
         mapping, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-    if (tokens.size() != 3)
+    if (tokens.size() != 3) {
+      LOG(ERROR) << "Malformed ugid mapping: '" << mapping << "'";
       return -EINVAL;
+    }
 
     uint32_t inside, outside, length;
     if (!base::StringToUint(tokens[0], &inside) ||
         !base::StringToUint(tokens[1], &outside) ||
         !base::StringToUint(tokens[2], &length)) {
+      LOG(ERROR) << "Malformed ugid mapping: '" << mapping << "'";
       return -EINVAL;
     }
 
@@ -64,58 +74,80 @@ int GetUsernsOutsideId(const std::string& map, int id) {
       return (id - inside) + outside;
     }
   }
+  VLOG(1) << "ugid " << id << " not found in mapping";
 
   return -EINVAL;
 }
 
 int MakeDir(const base::FilePath& path, int uid, int gid, int mode) {
-  if (mkdir(path.value().c_str(), mode))
+  if (mkdir(path.value().c_str(), mode)) {
+    PLOG_PRESERVE(ERROR) << "Failed to mkdir " << path.value();
     return -errno;
-  if (chmod(path.value().c_str(), mode))
+  }
+  if (chmod(path.value().c_str(), mode)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chmod " << path.value();
     return -errno;
-  if (chown(path.value().c_str(), uid, gid))
+  }
+  if (chown(path.value().c_str(), uid, gid)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chown " << path.value();
     return -errno;
+  }
   return 0;
 }
 
 int TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
   base::ScopedFD fd(open(path.value().c_str(), O_RDWR | O_CREAT, mode));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
+    PLOG_PRESERVE(ERROR) << "Failed to create " << path.value();
     return -errno;
-  if (fchown(fd.get(), uid, gid))
+  }
+  if (fchown(fd.get(), uid, gid)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chown " << path.value();
     return -errno;
+  }
   return 0;
 }
 
 int LoopdevSetup(const base::FilePath& source,
                  base::FilePath* loopdev_path_out) {
   base::ScopedFD source_fd(open(source.value().c_str(), O_RDONLY | O_CLOEXEC));
-  if (!source_fd.is_valid())
+  if (!source_fd.is_valid()) {
+    PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
     return -errno;
+  }
 
   base::ScopedFD control_fd(
       open(kLoopdevCtlPath, O_RDWR | O_NOFOLLOW | O_CLOEXEC));
-  if (!control_fd.is_valid())
+  if (!control_fd.is_valid()) {
+    PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
     return -errno;
+  }
 
   while (true) {
     int num = ioctl(control_fd.get(), LOOP_CTL_GET_FREE);
-    if (num < 0)
+    if (num < 0) {
+      PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
       return -errno;
+    }
 
     base::FilePath loopdev_path(base::StringPrintf("/dev/loop%i", num));
     base::ScopedFD loop_fd(
         open(loopdev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
-    if (!loop_fd.is_valid())
+    if (!loop_fd.is_valid()) {
+      PLOG_PRESERVE(ERROR) << "Failed to open " << loopdev_path.value();
       return -errno;
+    }
 
     if (ioctl(loop_fd.get(), LOOP_SET_FD, source_fd.get()) == 0) {
       *loopdev_path_out = loopdev_path;
       break;
     }
 
-    if (errno != EBUSY)
+    if (errno != EBUSY) {
+      PLOG_PRESERVE(ERROR) << "Failed to ioctl(LOOP_SET_FD) "
+                           << loopdev_path.value();
       return -errno;
+    }
   }
 
   return 0;
@@ -124,10 +156,15 @@ int LoopdevSetup(const base::FilePath& source,
 int LoopdevDetach(const base::FilePath& loopdev) {
   base::ScopedFD fd(
       open(loopdev.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
+    PLOG_PRESERVE(ERROR) << "Failed to open " << loopdev.value();
     return -errno;
-  if (ioctl(fd.get(), LOOP_CLR_FD) < 0)
+  }
+  if (ioctl(fd.get(), LOOP_CLR_FD) < 0) {
+    PLOG_PRESERVE(ERROR) << "Failed to ioctl(LOOP_CLR_FD) for "
+                         << loopdev.value();
     return -errno;
+  }
 
   return 0;
 }
@@ -155,30 +192,46 @@ int DeviceMapperSetup(const base::FilePath& source,
   int n;
   if (sscanf(verity.c_str(), "%llu %llu %10s %n", &start, &size, ttype, &n) !=
       3) {
+    PLOG_PRESERVE(ERROR) << "Malformed verity string " << verity;
     return -errno;
   }
 
   /* Finally create the device mapper. */
   std::unique_ptr<struct dm_task, decltype(&dm_task_destroy)> dmt(
       dm_task_create(DM_DEVICE_CREATE), &dm_task_destroy);
-  if (dmt == nullptr)
+  if (dmt == nullptr) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_create() for " << source.value();
     return -errno;
+  }
 
-  if (!dm_task_set_name(dmt.get(), dm_name.c_str()))
+  if (!dm_task_set_name(dmt.get(), dm_name.c_str())) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_name() for "
+                         << source.value();
     return -errno;
+  }
 
-  if (!dm_task_set_ro(dmt.get()))
+  if (!dm_task_set_ro(dmt.get())) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_ro() for " << source.value();
     return -errno;
+  }
 
-  if (!dm_task_add_target(dmt.get(), start, size, ttype, verity.c_str() + n))
+  if (!dm_task_add_target(dmt.get(), start, size, ttype, verity.c_str() + n)) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_add_target() for "
+                         << source.value();
     return -errno;
+  }
 
   uint32_t cookie = 0;
-  if (!dm_task_set_cookie(dmt.get(), &cookie, 0))
+  if (!dm_task_set_cookie(dmt.get(), &cookie, 0)) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_cookie() for "
+                         << source.value();
     return -errno;
+  }
 
-  if (!dm_task_run(dmt.get()))
+  if (!dm_task_run(dmt.get())) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << source.value();
     return -errno;
+  }
 
   /* Make sure the node exists before we continue. */
   dm_udev_wait(cookie);
@@ -193,17 +246,23 @@ int DeviceMapperSetup(const base::FilePath& source,
 int DeviceMapperDetach(const std::string& dm_name) {
 #if USE_device_mapper
   struct dm_task* dmt = dm_task_create(DM_DEVICE_REMOVE);
-  if (dmt == nullptr)
+  if (dmt == nullptr) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << dm_name;
     return -errno;
+  }
 
   base::ScopedClosureRunner teardown(
       base::Bind(base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
 
-  if (!dm_task_set_name(dmt, dm_name.c_str()))
+  if (!dm_task_set_name(dmt, dm_name.c_str())) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_name() for " << dm_name;
     return -errno;
+  }
 
-  if (!dm_task_run(dmt))
+  if (!dm_task_run(dmt)) {
+    PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << dm_name;
     return -errno;
+  }
 #endif
   return 0;
 }
@@ -227,6 +286,7 @@ int MountExternal(const std::string& src,
             type.c_str(),
             flags,
             data.empty() ? nullptr : data.c_str()) == -1) {
+    PLOG_PRESERVE(ERROR) << "Failed to mount " << src << " to " << dest;
     return -errno;
   }
 
@@ -237,6 +297,7 @@ int MountExternal(const std::string& src,
               nullptr,
               flags | MS_REMOUNT,
               data.empty() ? nullptr : data.c_str()) == -1) {
+      PLOG_PRESERVE(ERROR) << "Failed to remount " << src << " to " << dest;
       return -errno;
     }
   }

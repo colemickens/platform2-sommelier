@@ -16,6 +16,7 @@
 
 #include "libcontainer/container_cgroup.h"
 #include "libcontainer/libcontainer.h"
+#include "libcontainer/libcontainer_util.h"
 
 static const pid_t INIT_TEST_PID = 5555;
 static const int TEST_CPU_SHARES = 200;
@@ -194,6 +195,12 @@ TEST(pid_file_path) {
   ASSERT_EQ(0, strcmp(result, pid_file_path));
 
   container_config_destroy(config);
+}
+
+TEST(plog_preserve) {
+  errno = EPERM;
+  PLOG_PRESERVE(ERROR) << "This is an expected error log";
+  ASSERT_EQ(EPERM, errno);
 }
 
 /* Start of tests. */

@@ -8,8 +8,27 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/macros.h>
 
 namespace libcontainer {
+
+// Simple class that saves errno.
+class SaveErrno {
+ public:
+  SaveErrno();
+  ~SaveErrno();
+
+ private:
+  const int saved_errno_;
+
+  DISALLOW_COPY_AND_ASSIGN(SaveErrno);
+};
+
+// The comma operator will discard the SaveErrno instance, but will keep it
+// alive until after the whole expression has been evaluated.
+#define PLOG_PRESERVE(verbose_level) \
+  ::libcontainer::SaveErrno(), PLOG(verbose_level)
 
 // Given a uid/gid map of "inside1 outside1 length1, ...", and an id inside of
 // the user namespace, return the equivalent outside id, or return < 0 on error.

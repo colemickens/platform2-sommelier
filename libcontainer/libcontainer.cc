@@ -25,6 +25,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -298,16 +299,20 @@ int RunSetfilesCommand(const struct container* c,
     /* Command failed to exec if execve returns. */
     _exit(-errno);
   }
-  if (pid < 0)
+  if (pid < 0) {
+    PLOG_PRESERVE(ERROR) << "Failed to fork to run setfiles";
     return -errno;
+  }
 
   int rc;
   int status;
   do {
     rc = waitpid(pid, &status, 0);
   } while (rc == -1 && errno == EINTR);
-  if (rc < 0)
+  if (rc < 0) {
+    PLOG_PRESERVE(ERROR) << "Failed to wait for setfiles";
     return -errno;
+  }
   return status;
 }
 
@@ -317,8 +322,10 @@ int UnmountExternalMounts(struct container* c) {
   int ret = 0;
 
   for (auto it = c->ext_mounts.rbegin(); it != c->ext_mounts.rend(); ++it) {
-    if (umount(it->value().c_str()))
+    if (umount(it->value().c_str())) {
+      PLOG_PRESERVE(ERROR) << "Failed to unmount " << it->value();
       ret = -errno;
+    }
   }
   c->ext_mounts.clear();
 
@@ -461,12 +468,17 @@ int ContainerCreateDevice(const struct container* c,
   base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
   if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) &&
       errno != EEXIST) {
+    PLOG_PRESERVE(ERROR) << "Failed to mknod " << path.value();
     return -errno;
   }
-  if (chown(path.value().c_str(), uid_userns, gid_userns))
+  if (chown(path.value().c_str(), uid_userns, gid_userns)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chown " << path.value();
     return -errno;
-  if (chmod(path.value().c_str(), dev.fs_permissions))
+  }
+  if (chmod(path.value().c_str(), dev.fs_permissions)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chmod " << path.value();
     return -errno;
+  }
 
   return 0;
 }
@@ -477,8 +489,10 @@ int MountRunfs(struct container* c, const struct container_config* config) {
         "%s/%s_XXXXXX", c->rundir.value().c_str(), c->name.c_str());
     // TODO(lhchavez): Replace this with base::CreateTemporaryDirInDir().
     char* runfs_path = mkdtemp(const_cast<char*>(runfs_template.c_str()));
-    if (!runfs_path)
+    if (!runfs_path) {
+      PLOG_PRESERVE(ERROR) << "Failed to mkdtemp in " << c->rundir.value();
       return -errno;
+    }
     c->runfs = base::FilePath(runfs_path);
   }
 
@@ -490,24 +504,33 @@ int MountRunfs(struct container* c, const struct container_config* config) {
     return gid_userns;
 
   // Make sure the container uid can access the rootfs.
-  if (chmod(c->runfs.value().c_str(), 0700))
+  if (chmod(c->runfs.value().c_str(), 0700)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chmod " << c->runfs.value();
     return -errno;
-  if (chown(c->runfs.value().c_str(), uid_userns, gid_userns))
+  }
+  if (chown(c->runfs.value().c_str(), uid_userns, gid_userns)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chown " << c->runfs.value();
     return -errno;
+  }
 
   c->runfsroot = c->runfs.Append("root");
 
   constexpr mode_t kRootDirMode = 0660;
-  if (mkdir(c->runfsroot.value().c_str(), kRootDirMode))
+  if (mkdir(c->runfsroot.value().c_str(), kRootDirMode)) {
+    PLOG_PRESERVE(ERROR) << "Failed to mkdir " << c->runfsroot.value();
     return -errno;
-  if (chmod(c->runfsroot.value().c_str(), kRootDirMode))
+  }
+  if (chmod(c->runfsroot.value().c_str(), kRootDirMode)) {
+    PLOG_PRESERVE(ERROR) << "Failed to chmod " << c->runfsroot.value();
     return -errno;
+  }
 
   if (mount(config->rootfs.value().c_str(),
             c->runfsroot.value().c_str(),
             "",
             MS_BIND | (config->rootfs_mount_flags & MS_REC),
             nullptr)) {
+    PLOG_PRESERVE(ERROR) << "Failed to bind-mount " << config->rootfs.value();
     return -errno;
   }
 
@@ -519,6 +542,7 @@ int MountRunfs(struct container* c, const struct container_config* config) {
             "",
             (config->rootfs_mount_flags & ~MS_REC),
             nullptr)) {
+    PLOG_PRESERVE(ERROR) << "Failed to remount " << c->runfsroot.value();
     return -errno;
   }
 
@@ -563,8 +587,10 @@ int DeviceSetup(struct container* c, const struct container_config* config) {
     struct stat st;
 
     rc = stat(loopdev_path.value().c_str(), &st);
-    if (rc < 0)
+    if (rc < 0) {
+      PLOG_PRESERVE(ERROR) << "Failed to stat " << loopdev_path.value();
       return -errno;
+    }
     rc = c->cgroup->ops->add_device(
         c->cgroup, 1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0, 'b');
     if (rc)
@@ -578,18 +604,24 @@ int Setexeccon(void* payload) {
   char* init_domain = reinterpret_cast<char*>(payload);
   pid_t tid = syscall(SYS_gettid);
 
-  if (tid == -1)
+  if (tid == -1) {
+    PLOG_PRESERVE(ERROR) << "Failed to gettid";
     return -errno;
+  }
 
   std::string exec_path =
       base::StringPrintf("/proc/self/task/%d/attr/exec", tid);
 
   base::ScopedFD fd(open(exec_path.c_str(), O_WRONLY | O_CLOEXEC));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
+    PLOG_PRESERVE(ERROR) << "Failed to open " << exec_path;
     return -errno;
+  }
 
   if (write(fd.get(), init_domain, strlen(init_domain)) !=
       (ssize_t)strlen(init_domain)) {
+    PLOG_PRESERVE(ERROR) << "Failed to write the SELinux label to "
+                         << exec_path;
     return -errno;
   }
 
@@ -608,18 +640,26 @@ int ContainerTeardown(struct container* c) {
      * single dependent mount before unmounting |c->runfsroot|
      * itself.
      */
-    if (umount2(c->runfsroot.value().c_str(), MNT_DETACH))
+    if (umount2(c->runfsroot.value().c_str(), MNT_DETACH)) {
+      PLOG_PRESERVE(ERROR) << "Failed to detach " << c->runfsroot.value();
       ret = -errno;
-    if (rmdir(c->runfsroot.value().c_str()))
+    }
+    if (rmdir(c->runfsroot.value().c_str())) {
+      PLOG_PRESERVE(ERROR) << "Failed to rmdir " << c->runfsroot.value();
       ret = -errno;
+    }
   }
   if (!c->pid_file_path.empty()) {
-    if (unlink(c->pid_file_path.value().c_str()))
+    if (unlink(c->pid_file_path.value().c_str())) {
+      PLOG_PRESERVE(ERROR) << "Failed to unlink " << c->pid_file_path.value();
       ret = -errno;
+    }
   }
   if (!c->runfs.empty()) {
-    if (rmdir(c->runfs.value().c_str()))
+    if (rmdir(c->runfs.value().c_str())) {
+      PLOG_PRESERVE(ERROR) << "Failed to rmdir " << c->runfs.value();
       ret = -errno;
+    }
   }
   return ret;
 }
@@ -1265,7 +1305,9 @@ int container_wait(struct container* c) {
 }
 
 int container_kill(struct container* c) {
-  if (kill(c->init_pid, SIGKILL) && errno != ESRCH)
+  if (kill(c->init_pid, SIGKILL) && errno != ESRCH) {
+    PLOG_PRESERVE(ERROR) << "Failed to kill " << c->init_pid;
     return -errno;
+  }
   return container_wait(c);
 }
