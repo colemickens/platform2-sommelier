@@ -226,6 +226,10 @@ bool UserCollectorBase::ClobberContainerDirectory(
   return true;
 }
 
+const FilePath UserCollectorBase::GetCrashProcessingDir() {
+  return FilePath("/tmp/crash_reporter");
+}
+
 UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     pid_t pid, const std::string &exec, uid_t supplied_ruid,
     bool *out_of_capacity) {
@@ -238,7 +242,8 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
 
   // Directory like /tmp/crash_reporter/1234 which contains the
   // procfs entries and other temporary files used during conversion.
-  FilePath container_dir(StringPrintf("/tmp/crash_reporter/%d", pid));
+  const FilePath container_dir =
+      GetCrashProcessingDir().Append(StringPrintf("%d", pid));
   if (!ClobberContainerDirectory(container_dir))
     return kErrorSystemIssue;
 

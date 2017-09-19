@@ -89,6 +89,9 @@ class UserCollectorBase : public CrashCollector {
   // on failure or if the process is a zombie. Virtual for testing.
   virtual std::vector<std::string> GetCommandLine(pid_t pid) const;
 
+  // Path under which all temporary crash processing occurs.
+  const base::FilePath GetCrashProcessingDir();
+
   bool initialized_ = false;
 
   static const char *kUserId;

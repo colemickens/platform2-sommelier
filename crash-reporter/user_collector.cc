@@ -117,6 +117,22 @@ bool UserCollector::SetUpInternal(bool enabled) {
     PLOG(ERROR) << "Unable to write " << core_pattern_file_;
     return false;
   }
+
+  // Set up the base crash processing dir for future users.
+  const FilePath dir = GetCrashProcessingDir();
+
+  // First nuke all existing content.  This will take care of deleting any
+  // existing paths (files, symlinks, dirs, etc...) for us.
+  if (!base::DeleteFile(dir, true))
+    PLOG(WARNING) << "Cleanup of directory failed: " << dir.value();
+
+  // This will create the directory with 0700 mode.  Since init is run as root,
+  // root will own these too.
+  if (!base::CreateDirectory(dir)) {
+    PLOG(ERROR) << "Creating directory failed: " << dir.value();
+    return false;
+  }
+
   return true;
 }
 
