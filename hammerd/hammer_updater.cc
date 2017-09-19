@@ -244,22 +244,12 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 
 HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   LOG(INFO) << "Start the post-RW process.";
+  HammerUpdater::RunStatus ret;
 
-  // RO section should be unlocked on dogfood devices -- no need to first run
-  // UnLockSection.
-  // TODO(kitching): Consider adding a UI warning to make sure a dogfood user
-  // does not detach the base at the wrong time, as that could brick it.
-  if (fw_updater_->IsSectionLocked(SectionName::RO)) {
-    LOG(INFO) << "RO section is locked. Update infeasible.";
-  } else if (!fw_updater_->VersionMismatch(SectionName::RO)) {
-    LOG(INFO) << "RO section is unlocked, but update not needed.";
-  } else {
-    LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
-    bool ret = fw_updater_->TransferImage(SectionName::RO);
-    LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
-    // In the case that the update failed, a reset will either brick the device,
-    // or get it back into a normal state.
-    return HammerUpdater::RunStatus::kNeedReset;
+  // Update RO section.
+  ret = UpdateRO();
+  if (ret != HammerUpdater::RunStatus::kNoUpdate) {
+    return ret;
   }
 
   // Trigger the retry if update fails.
@@ -271,15 +261,36 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Pair with hammer.
-  HammerUpdater::RunStatus ret = Pair();
+  ret = Pair();
   if (ret != HammerUpdater::RunStatus::kNoUpdate) {
     return ret;
   }
 
   // TODO(akahuang): Rollback increment.
-
   // All process are done.
   return HammerUpdater::RunStatus::kNoUpdate;
+}
+
+HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
+  // RO section should be unlocked on dogfood devices -- no need to first run
+  // UnLockSection.
+  // TODO(kitching): Consider adding a UI warning to make sure a dogfood user
+  // does not detach the base at the wrong time, as that could brick it.
+  if (fw_updater_->IsSectionLocked(SectionName::RO)) {
+    LOG(INFO) << "RO section is locked. Update infeasible.";
+    return HammerUpdater::RunStatus::kNoUpdate;
+  }
+  if (!fw_updater_->VersionMismatch(SectionName::RO)) {
+    LOG(INFO) << "RO section is unlocked, but update not needed.";
+    return HammerUpdater::RunStatus::kNoUpdate;
+  }
+  LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
+  NotifyUpdateStarted();
+  bool ret = fw_updater_->TransferImage(SectionName::RO);
+  LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
+  // In the case that the update failed, a reset will either brick the device,
+  // or get it back into a normal state.
+  return HammerUpdater::RunStatus::kNeedReset;
 }
 
 HammerUpdater::RunStatus HammerUpdater::Pair() {

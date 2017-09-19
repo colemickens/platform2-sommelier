@@ -49,9 +49,13 @@ class HammerUpdater {
   // |post_rw_jump| indicates whether we jumped to RW section last round.
   virtual RunStatus RunOnce(const bool post_rw_jump,
                             const bool need_inject_entropy);
-  virtual RunStatus PostRWProcess();
-  virtual RunStatus Pair();
 
+  // The post processing after the RW section is up to date.
+  virtual RunStatus PostRWProcess();
+  // Update RO section if the device is in dogfood mode.
+  virtual RunStatus UpdateRO();
+  // Pair with the hammer device.
+  virtual RunStatus Pair();
   // Update the touchpad firmware via the virtual address.
   virtual RunStatus RunTouchpadUpdater();
 
