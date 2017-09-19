@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -262,7 +263,9 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Trigger the retry if update fails.
-  if (RunTouchpadUpdater() != RunStatus::kTouchpadUpdated) {
+  if (RunTouchpadUpdater() == RunStatus::kTouchpadUpdated) {
+    LOG(INFO) << "Touchpad update succeeded.";
+  } else {
     LOG(INFO) << "Touchpad update failure.";
     return RunStatus::kNeedReset;
   }
@@ -374,22 +377,45 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
       LOG(ERROR) << "Not able to get touchpad info from base.";
       return RunStatus::kNeedReset;
   }
-  LOG(INFO) << "vendor: " << std::hex << "0x" << response.vendor;
-  LOG(INFO) << "fw_address: " << std::hex << "0x" << response.fw_address;
-  LOG(INFO) << "fw_size: " << std::hex << "0x" << response.fw_size;
-  LOG(INFO) << "id: " << std::hex << "0x" << response.elan.id;
-  LOG(INFO) << "fw_version: " << std::hex << "0x" << response.elan.fw_version;
-  LOG(INFO) << "fw_checksum: " << std::hex << "0x" << response.elan.fw_checksum;
+  LOG(INFO) << "status: 0x" << std::hex << static_cast<int>(response.status);
+  LOG(INFO) << "vendor: 0x" << std::hex << response.vendor;
+  LOG(INFO) << "fw_address: 0x" << std::hex << response.fw_address;
+  LOG(INFO) << "fw_size: 0x" << std::hex << response.fw_size;
+  LOG(INFO) << "allowed_fw_hash: 0x" <<
+      base::HexEncode(response.allowed_fw_hash, SHA256_DIGEST_LENGTH);
+  LOG(INFO) << "id: 0x" << std::hex << response.elan.id;
+  LOG(INFO) << "fw_version: 0x" << std::hex << response.elan.fw_version;
+  LOG(INFO) << "fw_checksum: 0x" << std::hex << response.elan.fw_checksum;
+
+  // Check if the image size matches IC size.
+  if (touchpad_image_.size() != response.fw_size) {
+    LOG(ERROR) << "Local touchpad binary doesn't match remote IC size.";
+    LOG(ERROR) << "Local=" << touchpad_image_.size() << " bytes."
+               << "Remote=" << response.fw_size << " bytes.";
+    return HammerUpdater::RunStatus::kFatalError;
+  }
+
+  // Check if the SHA value of the touchpad firmware (entire file) has same
+  // hash as the record in RW firmware. We check this prior to update
+  // because if an individual chunk verification fail, the touchpad might
+  // get into a weird state (only part of the flash is updated).
+  uint8_t digest[SHA256_DIGEST_LENGTH];
+
+  SHA256(reinterpret_cast<const uint8_t*>(touchpad_image_.data()),
+         response.fw_size, reinterpret_cast<unsigned char *>(&digest));
+  LOG(INFO) << "Computed local touchpad firmware hash: 0x"
+            << base::HexEncode(digest, SHA256_DIGEST_LENGTH);
+  if (std::memcmp(digest, response.allowed_fw_hash, SHA256_DIGEST_LENGTH)) {
+    LOG(ERROR) << "Touchpad firmware mismatches hash in RW EC.";
+    return HammerUpdater::RunStatus::kFatalError;
+  }
 
   // TODO(b/65534217): Check if our binary is identical to
   //                   that of hammer by filename.
-  bool ret = fw_updater_->TransferTouchpadFirmware(
-      response.fw_address, response.fw_size);
-  if (ret) {
-    LOG(INFO) << "Touchpad update succeeded.";
+  if (fw_updater_->TransferTouchpadFirmware(
+      response.fw_address, response.fw_size)) {
     return HammerUpdater::RunStatus::kTouchpadUpdated;
   } else {
-    LOG(ERROR) << "Touchpad update failed.";
     return HammerUpdater::RunStatus::kFatalError;
   }
 }

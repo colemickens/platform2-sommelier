@@ -7,7 +7,6 @@
 #include <fmap.h>
 
 #include <algorithm>
-#include <iomanip>
 #include <utility>
 
 #include <base/logging.h>
@@ -360,18 +359,11 @@ bool FirmwareUpdater::TransferImage(SectionName section_name) {
 
 bool FirmwareUpdater::TransferTouchpadFirmware(
     uint32_t section_addr, size_t data_len) {
-  const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(
-      touchpad_image_.data());
-
-  if (touchpad_image_.size() != data_len) {
-    LOG(ERROR) << "Local touchpad binary doesn't match remote IC size.";
-    LOG(ERROR) << "Local=" << touchpad_image_.size() << " bytes."
-               << "Remote=" << data_len << " bytes.";
-    return false;
-  }
-
-  return TransferSection(image_ptr, section_addr, data_len, false);
+  return TransferSection(
+      reinterpret_cast<const uint8_t*>(touchpad_image_.data()),
+      section_addr, data_len, false);
 }
+
 
 bool FirmwareUpdater::InjectEntropy() {
   constexpr int kDataSize = 32;

@@ -27,7 +27,9 @@
 //                    described in b/65773038.
 //
 // - HammerUpdaterRunTouchpadUpdaterTest:
-//  - Test the return value if we can't get touchpad infomation
+//  - Test the return value if we can't get touchpad infomation.
+//  - Test logic of IC size matches with local firmware binary blob.
+//  - Test logic of entire firmware blob hash matches one accepted in RW EC.
 //  - Test the return value if update is failed during process.
 
 #include <utility>
@@ -152,7 +154,22 @@ class HammerUpdaterPostRWTest
     : public HammerUpdaterTest<MockRunTouchpadUpdater> {};
 // Mock nothing to test HammerUpdaterRunTouchpadUpdaterTest
 class HammerUpdaterRunTouchpadUpdaterTest
-    : public HammerUpdaterTest<MockNothing> {};
+    : public HammerUpdaterTest<MockNothing> {
+ public:
+  void SetUp() override {
+    HammerUpdaterTest::SetUp();
+    // Create a nice response for important fields.
+    response.fw_size = touchpad_image_.size();
+    std::memcpy(response.allowed_fw_hash, SHA256(
+        reinterpret_cast<const uint8_t*>(touchpad_image_.data()),
+        response.fw_size, reinterpret_cast<unsigned char *>(&digest)),
+            SHA256_DIGEST_LENGTH);
+  }
+
+ protected:
+  TouchpadInfo response;
+  uint8_t digest[SHA256_DIGEST_LENGTH];
+};
 
 // Failed to load EC_image.
 TEST_F(HammerUpdaterFlowTest, Run_LoadECImageFailed) {
@@ -807,7 +824,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
   ASSERT_EQ(hammer_updater_->Run(), true);
 }
 
-// Test the return value if we can't get touchpad infomation
+// Test the return value if we can't get touchpad infomation.
 TEST_F(HammerUpdaterRunTouchpadUpdaterTest, Run_FailToGetTouchpadInfo) {
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
       .WillOnce(Return(true));
@@ -819,19 +836,46 @@ TEST_F(HammerUpdaterRunTouchpadUpdaterTest, Run_FailToGetTouchpadInfo) {
             HammerUpdater::RunStatus::kNeedReset);
 }
 
-// Test the return value if update is failed during process.
+// Test logic of IC size matches with local firmware binary blob.
+TEST_F(HammerUpdaterRunTouchpadUpdaterTest, Run_ICSizeMismatchAndStop) {
+  // Make a mismatch response by setting a different firmware size.
+  response.fw_size += 9487;
+  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, SendSubcommandReceiveResponse(
+      UpdateExtraCommand::kTouchpadInfo, "", _, sizeof(TouchpadInfo)))
+          .WillOnce(WriteResponse(reinterpret_cast<void *>(&response)));
+
+  ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
+            HammerUpdater::RunStatus::kFatalError);
+}
+
+// Test logic of entire firmware blob hash matches one accepted in RW EC.
+TEST_F(HammerUpdaterRunTouchpadUpdaterTest, Run_HashMismatchAndStop) {
+  // Make a mismatch response by setting a different allowed_fw_hash.
+  memset(response.allowed_fw_hash, response.allowed_fw_hash[0] + 0x5F,
+         SHA256_DIGEST_LENGTH);
+  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, SendSubcommandReceiveResponse(
+      UpdateExtraCommand::kTouchpadInfo, "", _, sizeof(TouchpadInfo)))
+          .WillOnce(WriteResponse(static_cast<void *>(&response)));
+
+  ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
+            HammerUpdater::RunStatus::kFatalError);
+}
+
+// Test the return value if TransferTouchpadFirmware is failed.
 TEST_F(HammerUpdaterRunTouchpadUpdaterTest, Run_FailToTransferFirmware) {
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
       .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_, SendSubcommandReceiveResponse(
-      UpdateExtraCommand::kTouchpadInfo, "", _,
-      sizeof(TouchpadInfo))).WillOnce(Return(true));
+      UpdateExtraCommand::kTouchpadInfo, "", _, sizeof(TouchpadInfo)))
+          .WillOnce(WriteResponse(static_cast<void *>(&response)));
   EXPECT_CALL(*fw_updater_, TransferTouchpadFirmware(_, _))
       .WillOnce(Return(false));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
             HammerUpdater::RunStatus::kFatalError);
 }
-
-
 }  // namespace hammerd

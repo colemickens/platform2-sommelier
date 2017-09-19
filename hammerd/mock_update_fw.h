@@ -13,6 +13,14 @@
 
 namespace hammerd {
 
+// Since SendSubcommandReceiveResponse is using a void* pointer that can't
+// be natively addressed by gMock, we defined a marco that makes side effect
+// (the void *resp) be the one we desired.
+ACTION_P(WriteResponse, ptr) {
+  std::memcpy(arg2, ptr, arg3);
+  return true;
+}
+
 class MockFirmwareUpdater : public FirmwareUpdaterInterface {
  public:
   MockFirmwareUpdater() = default;

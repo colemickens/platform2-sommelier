@@ -35,6 +35,7 @@
 
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
+#include <openssl/sha.h>
 
 #include "hammerd/fmap_utils.h"
 #include "hammerd/usb_utils.h"
@@ -149,11 +150,13 @@ SectionName OtherSection(SectionName name);
 
 // Below is the touchpad_info struct from src/platform/ec/include/update_fw.h.
 struct __attribute__((packed)) TouchpadInfo {
-  uint8_t status;        // Indicate if we get info from touchpad
-  uint8_t reserved;      // Reserved for padding
-  uint16_t vendor;       // Vendor USB id
-  uint32_t fw_address;   // Virtual address that points to touchpad firmware
-  uint32_t fw_size;      // Size of the touchpad firmware
+  uint8_t status;       // Indicate if we get info from touchpad
+  uint8_t reserved;     // Reserved for padding
+  uint16_t vendor;      // Vendor USB id
+  uint32_t fw_address;  // Virtual address to touchpad firmware
+  uint32_t fw_size;     // Size of the touchpad firmware
+  // Checksum of the entire touchpad firmware accepted by the EC image
+  uint8_t allowed_fw_hash[SHA256_DIGEST_LENGTH];
   struct {
     uint16_t id;
     uint16_t fw_version;
