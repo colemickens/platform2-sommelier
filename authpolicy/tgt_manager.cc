@@ -160,13 +160,13 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
   // password-workflow would otherwise be interpreted as 'password expired'.
   if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
       Contains(kinit_err, kCannotReadPasswordStderr)) {
-    LOG(ERROR) << "kinit failed - password expired";
-    return ERROR_PASSWORD_EXPIRED;
-  }
-  if (Contains(kinit_out, kKeyPasswordRejectedStdout) &&
-      Contains(kinit_err, kCannotReadPasswordStderr)) {
-    LOG(ERROR) << "kinit failed - password rejected";
-    return ERROR_PASSWORD_REJECTED;
+    if (Contains(kinit_out, kKeyPasswordRejectedStdout)) {
+      LOG(ERROR) << "kinit failed - password rejected";
+      return ERROR_PASSWORD_REJECTED;
+    } else {
+      LOG(ERROR) << "kinit failed - password expired";
+      return ERROR_PASSWORD_EXPIRED;
+    }
   }
   if (Contains(kinit_err, kKeyCannotResolve)) {
     LOG(ERROR) << "kinit failed - cannot resolve KDC realm";

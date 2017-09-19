@@ -31,6 +31,10 @@ const char kWrongPasswordError[] =
 const char kPasswordExpiredStdout[] =
     "Password expired.  You must change it now.";
 const char kPasswordRejectedStdout[] =
+    "Password for user@realm:"
+    "Password expired.  You must change it now.\n"
+    "Enter new password:\n"
+    "Enter it again:\n"
     "Password change rejected: The password must include numbers or symbols.  "
     "Don't include any part of your name in the password.  The password must "
     "contain at least 7 characters.  The password must be different from the "
