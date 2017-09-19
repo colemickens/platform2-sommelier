@@ -119,6 +119,9 @@ properties.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
+        *   `brand-code`: (optional): Brand code of the model (also called RLZ
+            code). See [list](go/chromeos-rlz) and
+            [one-pager](gi/chromeos-rlz-onepager).
         *   `thermal`(optional): Contains information about thermel properties
             and settings.
             *   `dptf-dv': Filename of the .dv file containing DPTF (Dynamic
@@ -198,6 +201,7 @@ chromeos {
         reef {
             powerd-prefs = "reef";
             wallpaper = "seaside_life";
+            brand-code = "ABCD";
             firmware {
                 shares = <&shared>;
                 key-id = "reef";
@@ -210,6 +214,7 @@ chromeos {
         pyro {
             powerd-prefs = "pyro_snappy";
             wallpaper = "alien_invasion";
+            brand-code = "ABCE";
             firmware {
                 bcs-overlay = "overlay-pyro-private";
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
@@ -230,6 +235,7 @@ chromeos {
         snappy {
             powerd-prefs = "pyro_snappy";
             wallpaper = "chocolate";
+            brand-code = "ABCF";
             firmware {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
@@ -247,6 +253,7 @@ chromeos {
         basking {
             powerd-prefs = "reef";
             wallpaper = "coffee";
+            brand-code = "ABCG";
             firmware {
                 shares = <&shared>;
                 key-id = "basking";
@@ -256,6 +263,7 @@ chromeos {
         sand {
             powerd-prefs = "reef";
             wallpaper = "coffee";
+            brand-code = "ABCH";
             firmware {
                 shares = <&pinned_version>;
                 key-id = "sand";
@@ -265,6 +273,7 @@ chromeos {
         electro {
             powerd-prefs = "reef";
             wallpaper = "coffee";
+            brand-code = "ABCI";
             firmware {
                 shares = <&pinned_version>;
                 key-id = "electro";
