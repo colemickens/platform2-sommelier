@@ -147,7 +147,7 @@ TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
   WriteStringToFile(kcrash_file(), "====1.1\nsomething");
   ASSERT_TRUE(collector_.Collect());
-  ASSERT_TRUE(FindLog("Unable to create appropriate crash directory"))
+  ASSERT_TRUE(FindLog("Unable to create crash directory"))
       << "Did not find expected error string in log: {\n"
       << GetLog() << "}";
   ASSERT_EQ(1, s_crashes);

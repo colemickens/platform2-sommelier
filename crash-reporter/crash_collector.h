@@ -42,6 +42,9 @@ class CrashCollector {
   void Initialize(CountCrashFunction count_crash,
                   IsFeedbackAllowedFunction is_metrics_allowed);
 
+  // Initialize the system crash paths.
+  static bool InitializeSystemCrashDirectories();
+
  protected:
   friend class CrashCollectorTest;
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);

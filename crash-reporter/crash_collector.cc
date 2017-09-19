@@ -91,6 +91,40 @@ const uid_t CrashCollector::kRootUid = 0;
 using base::FilePath;
 using base::StringPrintf;
 
+namespace {
+
+// Create a directory using the specified mode/user/group, and make sure it
+// is actually a directory with the specified permissions.
+bool CreateDirectoryWithSettings(const FilePath& dir, mode_t mode, uid_t owner,
+                                 gid_t group) {
+  // If it's not a directory, nuke it.
+  if (!base::DirectoryExists(dir)) {
+    if (!base::DeleteFile(dir, false)) {
+      PLOG(ERROR) << "Unable to cleanup crash directory: " << dir.value();
+      return false;
+    }
+  }
+
+  // Create the directory.  This will use a default mode of 0700 and current
+  // user/group for ownership (which we'll adjust below).
+  if (!base::CreateDirectory(dir)) {
+    PLOG(ERROR) << "Unable to create crash directory: " << dir.value();
+    return false;
+  }
+
+  // Make sure the permissions are sane in case they got reset somewhere.
+  if (chown(dir.value().c_str(), owner, group) < 0 ||
+      chmod(dir.value().c_str(), mode) < 0) {
+    PLOG(ERROR) << "Unable to set ownership/mode on crash directory: "
+                << dir.value();
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
 CrashCollector::CrashCollector()
     : CrashCollector(false) {
 }
@@ -364,23 +398,8 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
                             &directory_owner,
                             &directory_group);
 
-  if (!base::PathExists(*crash_directory)) {
-    // Create the spool directory with the appropriate mode (regardless of
-    // umask) and ownership.
-    mode_t old_mask = umask(0);
-    if (mkdir(crash_directory->value().c_str(), directory_mode) < 0 ||
-        chown(crash_directory->value().c_str(),
-              directory_owner,
-              directory_group) < 0) {
-      LOG(ERROR) << "Unable to create appropriate crash directory";
-      return false;
-    }
-    umask(old_mask);
-  }
-
-  if (!base::PathExists(*crash_directory)) {
-    LOG(ERROR) << "Unable to create crash directory "
-               << crash_directory->value().c_str();
+  if (!CreateDirectoryWithSettings(*crash_directory, directory_mode,
+                                   directory_owner, directory_group)) {
     return false;
   }
 
@@ -679,4 +698,12 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
   for (auto c : input)
     hash = hash * 16127 + c;
   return hash;
+}
+
+bool CrashCollector::InitializeSystemCrashDirectories() {
+  if (!CreateDirectoryWithSettings(
+      FilePath(kSystemCrashPath), kSystemCrashPathMode, kRootUid, kRootGroup))
+    return false;
+
+  return true;
 }

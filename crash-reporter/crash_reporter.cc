@@ -119,8 +119,13 @@ void CountChromeCrash() {
 
 int Initialize(UserCollector *user_collector,
                UdevCollector *udev_collector) {
+  // Set up all the common crash state directories first.
+  if (!CrashCollector::InitializeSystemCrashDirectories())
+    return 1;
+
   user_collector->Enable();
   udev_collector->Enable();
+
   return 0;
 }
 
