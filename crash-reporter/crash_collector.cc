@@ -246,8 +246,10 @@ void CrashCollector::SetUpDBus() {
 int CrashCollector::WriteNewFile(const FilePath& filename,
                                  const char* data,
                                  int size) {
-  int fd = HANDLE_EINTR(open(filename.value().c_str(),
-                             O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666));
+  // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
+  int fd = HANDLE_EINTR(open(
+      filename.value().c_str(),
+      O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
   if (fd < 0) {
     return -1;
   }
@@ -826,7 +828,7 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
   // do not want to write with root access to a symlink that an attacker
   // might have created.
   if (WriteNewFile(meta_path, meta_data.c_str(), meta_data.size()) < 0) {
-    LOG(ERROR) << "Unable to write " << meta_path.value();
+    PLOG(ERROR) << "Unable to write " << meta_path.value();
   }
 }
 
