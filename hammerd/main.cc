@@ -22,30 +22,21 @@
 namespace {
 // The lock file used to prevent multiple hammerd be invoked at the same time.
 constexpr char kLockFile[] = "/run/lock/hammerd.lock";
-// Use Google as the default USB vendor ID.
-constexpr uint16_t kDefaultUsbVendorId = 0x18d1;
-// TODO(kitching): Remove these defaults after merging new udev rules.
-constexpr char kDefaultECImagePath[] = "/lib/firmware/hammer.fw";
-constexpr uint16_t kDefaultUsbProductId = 0x5022;
-constexpr int kDefaultUsbBus = 1;
-constexpr int kDefaultUsbPort = 2;
-constexpr int kDefaultAutosuspendDelayMs = -1;
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-  DEFINE_string(ec_image_path, kDefaultECImagePath,
-                "Path to the EC firmware image file");
+  // hammerd should be triggered by upstart job.
+  // The default value of arguments are stored in `/etc/init/hammerd.conf`, and
+  // each board should override values in `/etc/init/hammerd.override`.
+  DEFINE_string(ec_image_path, "", "Path to the EC firmware image file");
   DEFINE_string(touchpad_image_path, "", "Path to the touchpad image file");
   // TODO(b/65534217): Define a flag about touchpad version that is expected
   //                   to be computed by init script.
-  DEFINE_int32(vendor_id, kDefaultUsbVendorId,
-               "USB vendor ID of the device");
-  DEFINE_int32(product_id, kDefaultUsbProductId,
-               "USB product ID of the device");
-  DEFINE_int32(usb_bus, kDefaultUsbBus, "USB bus to search");
-  DEFINE_int32(usb_port, kDefaultUsbPort, "USB port to search");
-  DEFINE_int32(autosuspend_delay_ms, kDefaultAutosuspendDelayMs,
-               "USB autosuspend delay time (ms)");
+  DEFINE_int32(vendor_id, -1, "USB vendor ID of the device");
+  DEFINE_int32(product_id, -1, "USB product ID of the device");
+  DEFINE_int32(usb_bus, -1, "USB bus to search");
+  DEFINE_int32(usb_port, -1, "USB port to search");
+  DEFINE_int32(autosuspend_delay_ms, -1, "USB autosuspend delay time (ms)");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
@@ -55,6 +46,12 @@ int main(int argc, const char* argv[]) {
   if (!lock.Acquire()) {
     LOG(INFO) << "Other hammerd process is running, exit.";
     return EXIT_SUCCESS;
+  }
+
+  if (FLAGS_vendor_id < 0 || FLAGS_product_id < 0 ||
+      FLAGS_usb_bus < 0 || FLAGS_usb_port < 0) {
+    LOG(ERROR) << "Must specify USB vendor/product ID and bus/port number.";
+    return EXIT_FAILURE;
   }
 
   std::string ec_image;
@@ -72,11 +69,6 @@ int main(int argc, const char* argv[]) {
                                      &touchpad_image)) {
     LOG(ERROR) << "Touchpad image is not found with path ["
                << FLAGS_touchpad_image_path << "]. Abort.";
-    return EXIT_FAILURE;
-  }
-
-  if (FLAGS_vendor_id < 0 || FLAGS_product_id < 0) {
-    LOG(ERROR) << "Must specify USB vendor ID and product ID.";
     return EXIT_FAILURE;
   }
 
