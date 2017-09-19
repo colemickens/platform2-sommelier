@@ -257,8 +257,11 @@ void AndroidOciWrapper::CleanUpContainer() {
 
 bool AndroidOciWrapper::CloseOpenedFiles() {
   std::vector<base::FilePath> files;
-  DCHECK(system_utils_->EnumerateFiles(
-      base::FilePath(kProcFdPath), base::FileEnumerator::FILES, &files));
+  if (!system_utils_->EnumerateFiles(
+          base::FilePath(kProcFdPath), base::FileEnumerator::FILES, &files)) {
+    LOG(ERROR) << "Failed to enumerate files in " << kProcFdPath;
+    return false;
+  }
 
   for (const base::FilePath& file : files) {
     std::string name = file.BaseName().MaybeAsASCII();
