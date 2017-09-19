@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -62,6 +63,10 @@ ProcessImpl::~ProcessImpl() {
 
 void ProcessImpl::AddArg(const std::string& arg) {
   arguments_.push_back(arg);
+}
+
+void ProcessImpl::RedirectInput(const std::string& input_file) {
+  input_file_ = input_file;
 }
 
 void ProcessImpl::RedirectOutput(const std::string& output_file) {
@@ -257,6 +262,28 @@ bool ProcessImpl::Start() {
         continue;
       IGNORE_EINTR(close(i->second.child_fd_));
     }
+
+    if (!input_file_.empty()) {
+      int input_handle =
+          HANDLE_EINTR(open(input_file_.c_str(),
+                            O_RDONLY | O_NOFOLLOW | O_NOCTTY));
+      if (input_handle < 0) {
+        PLOG(ERROR) << "Could not open " << input_file_;
+        // Avoid exit() to avoid atexit handlers from parent.
+        _exit(kErrorExitStatus);
+      }
+
+      // It's possible input_handle is already stdin. But if not, we need
+      // to dup into that file descriptor and close the original.
+      if (input_handle != STDIN_FILENO) {
+        if (HANDLE_EINTR(dup2(input_handle, STDIN_FILENO)) < 0) {
+          PLOG(ERROR) << "Could not dup fd to stdin for " << input_file_;
+          _exit(kErrorExitStatus);
+        }
+        IGNORE_EINTR(close(input_handle));
+      }
+    }
+
     if (!output_file_.empty()) {
       int output_handle = HANDLE_EINTR(open(
           output_file_.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW,

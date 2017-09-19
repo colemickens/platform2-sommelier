@@ -157,6 +157,18 @@ TEST_F(ProcessTest, NonZeroReturnValue) {
   EXPECT_EQ("", GetLog());
 }
 
+TEST_F(ProcessTest, RedirectInputDevNull) {
+  process_.AddArg(kBinCat);
+  process_.RedirectInput("/dev/null");
+  EXPECT_EQ(0, process_.Run());
+}
+
+TEST_F(ProcessTest, BadInputFile) {
+  process_.AddArg(kBinCat);
+  process_.RedirectInput("/bad/path");
+  EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
+}
+
 TEST_F(ProcessTest, BadOutputFile) {
   process_.AddArg(kBinEcho);
   process_.RedirectOutput("/bad/path");
