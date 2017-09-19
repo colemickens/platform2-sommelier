@@ -26,11 +26,14 @@
 #include "crash-reporter/unclean_shutdown_collector.h"
 #include "crash-reporter/user_collector.h"
 
-static const char kUserCrashSignal[] =
-    "org.chromium.CrashReporter.UserCrash";
-static const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
-static const char kUncleanShutdownDetected[] =
-    "/run/unclean-shutdown-detected";
+using base::FilePath;
+using base::StringPrintf;
+
+namespace {
+
+const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
+const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
+const char kUncleanShutdownDetected[] = "/run/unclean-shutdown-detected";
 
 // Enumeration of kinds of crashes to be used in the CrashCounter histogram.
 enum CrashKinds {
@@ -44,49 +47,46 @@ enum CrashKinds {
   kCrashKindMax
 };
 
-static MetricsLibrary s_metrics_lib;
+MetricsLibrary s_metrics_lib;
 
-using base::FilePath;
-using base::StringPrintf;
-
-static bool IsFeedbackAllowed() {
+bool IsFeedbackAllowed() {
   return s_metrics_lib.AreMetricsEnabled();
 }
 
-static bool TouchFile(const FilePath &file_path) {
+bool TouchFile(const FilePath &file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
 }
 
-static void SendCrashMetrics(CrashKinds type, const char* name) {
+void SendCrashMetrics(CrashKinds type, const char* name) {
   // TODO(ddavenport): Remove this stub and the rest of the code around
   // Logging.CrashCounter once we're certain no one is using it (crbug/754850).
 }
 
-static void CountECCrash() {
+void CountECCrash() {
   SendCrashMetrics(kCrashKindEC, "ec");
 }
 
-static void CountKernelCrash() {
+void CountKernelCrash() {
   SendCrashMetrics(kCrashKindKernel, "kernel");
 }
 
-static void CountUdevCrash() {
+void CountUdevCrash() {
   SendCrashMetrics(kCrashKindUdev, "udevcrash");
 }
 
-static void CountKernelWarning() {
+void CountKernelWarning() {
   SendCrashMetrics(kCrashKindKernelWarning, "kernel-warning");
 }
 
-static void CountServiceFailure() {
+void CountServiceFailure() {
   SendCrashMetrics(kCrashKindServiceFailure, "service-failure");
 }
 
-static void CountUncleanShutdown() {
+void CountUncleanShutdown() {
   SendCrashMetrics(kCrashKindUncleanShutdown, "uncleanshutdown");
 }
 
-static void CountUserCrash() {
+void CountUserCrash() {
   SendCrashMetrics(kCrashKindUser, "user");
   std::string command = StringPrintf(
       "/usr/bin/dbus-send --type=signal --system / \"%s\" &",
@@ -111,23 +111,22 @@ static void CountUserCrash() {
   LOG_IF(WARNING, status != 0) << "dbus-send running failed";
 }
 
-static void CountChromeCrash() {
+void CountChromeCrash() {
   // For now, consider chrome crashes the same as user crashes for reporting
   // purposes.
   CountUserCrash();
 }
 
-
-static int Initialize(UserCollector *user_collector,
-                      UdevCollector *udev_collector) {
+int Initialize(UserCollector *user_collector,
+               UdevCollector *udev_collector) {
   user_collector->Enable();
   udev_collector->Enable();
   return 0;
 }
 
-static int BootCollect(KernelCollector *kernel_collector,
-                       ECCollector *ec_collector,
-                       UncleanShutdownCollector *unclean_shutdown_collector) {
+int BootCollect(KernelCollector *kernel_collector,
+                ECCollector *ec_collector,
+                UncleanShutdownCollector *unclean_shutdown_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
 
@@ -164,8 +163,8 @@ static int BootCollect(KernelCollector *kernel_collector,
   return 0;
 }
 
-static int HandleUserCrash(UserCollector *user_collector,
-                           const std::string& user, const bool crash_test) {
+int HandleUserCrash(UserCollector *user_collector,
+                    const std::string& user, const bool crash_test) {
   // Handle a specific user space crash.
   CHECK(!user.empty()) << "--user= must be set";
 
@@ -187,8 +186,8 @@ static int HandleUserCrash(UserCollector *user_collector,
 }
 
 #if USE_CHEETS
-static int HandleArcCrash(ArcCollector *arc_collector,
-                          const std::string& user) {
+int HandleArcCrash(ArcCollector *arc_collector,
+                   const std::string& user) {
   brillo::LogToString(true);
   bool handled = arc_collector->HandleCrash(user, nullptr);
   brillo::LogToString(false);
@@ -197,11 +196,11 @@ static int HandleArcCrash(ArcCollector *arc_collector,
   return 0;
 }
 
-static int HandleArcJavaCrash(ArcCollector *arc_collector,
-                              const std::string& crash_type,
-                              const std::string& device,
-                              const std::string& board,
-                              const std::string& cpu_abi) {
+int HandleArcJavaCrash(ArcCollector *arc_collector,
+                       const std::string& crash_type,
+                       const std::string& device,
+                       const std::string& board,
+                       const std::string& cpu_abi) {
   brillo::LogToString(true);
   bool handled = arc_collector->HandleJavaCrash(
       crash_type, device, board, cpu_abi);
@@ -212,11 +211,11 @@ static int HandleArcJavaCrash(ArcCollector *arc_collector,
 }
 #endif
 
-static int HandleChromeCrash(ChromeCollector *chrome_collector,
-                             const std::string& chrome_dump_file,
-                             const std::string& pid,
-                             const std::string& uid,
-                             const std::string& exe) {
+int HandleChromeCrash(ChromeCollector *chrome_collector,
+                      const std::string& chrome_dump_file,
+                      const std::string& pid,
+                      const std::string& uid,
+                      const std::string& exe) {
   CHECK(!chrome_dump_file.empty()) << "--chrome= must be set";
   CHECK(!pid.empty()) << "--pid= must be set";
   CHECK(!uid.empty()) << "--uid= must be set";
@@ -231,8 +230,8 @@ static int HandleChromeCrash(ChromeCollector *chrome_collector,
   return 0;
 }
 
-static int HandleUdevCrash(UdevCollector *udev_collector,
-                           const std::string& udev_event) {
+int HandleUdevCrash(UdevCollector *udev_collector,
+                    const std::string& udev_event) {
   // Handle a crash indicated by a udev event.
   CHECK(!udev_event.empty()) << "--udev= must be set";
 
@@ -245,8 +244,7 @@ static int HandleUdevCrash(UdevCollector *udev_collector,
   return 0;
 }
 
-static int HandleKernelWarning(KernelWarningCollector
-                               *kernel_warning_collector) {
+int HandleKernelWarning(KernelWarningCollector *kernel_warning_collector) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
   bool handled = kernel_warning_collector->Collect();
@@ -256,8 +254,7 @@ static int HandleKernelWarning(KernelWarningCollector
   return 0;
 }
 
-static int HandleServiceFailure(ServiceFailureCollector
-                               *service_failure_collector) {
+int HandleServiceFailure(ServiceFailureCollector *service_failure_collector) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
   bool handled = service_failure_collector->Collect();
@@ -268,8 +265,8 @@ static int HandleServiceFailure(ServiceFailureCollector
 }
 
 // Interactive/diagnostics mode for generating kernel crash signatures.
-static int GenerateKernelSignature(KernelCollector *kernel_collector,
-                                   const std::string& kernel_signature_file) {
+int GenerateKernelSignature(KernelCollector *kernel_collector,
+                            const std::string& kernel_signature_file) {
   std::string kcrash_contents;
   std::string signature;
   if (!base::ReadFileToString(FilePath(kernel_signature_file),
@@ -294,7 +291,7 @@ static int GenerateKernelSignature(KernelCollector *kernel_collector,
 // crash_reporter is run by the kernel coredump pipe handler (via
 // kthread_create/kernel_execve), it will not have file table entries
 // 1 and 2 (stdout and stderr) populated.  We populate them here.
-static void OpenStandardFileDescriptors() {
+void OpenStandardFileDescriptors() {
   int new_fd = -1;
   // We open /dev/null to fill in any of the standard [0, 2] file
   // descriptors.  We leave these open for the duration of the
@@ -306,6 +303,8 @@ static void OpenStandardFileDescriptors() {
   } while (new_fd >= 0 && new_fd <= 2);
   close(new_fd);
 }
+
+}  // namespace
 
 int main(int argc, char *argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
