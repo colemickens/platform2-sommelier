@@ -58,22 +58,24 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
     int memType = mNode->getMemoryType();
-    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.index;
+    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.index();
 
-    if (memType == V4L2_MEMORY_USERPTR)
-        mBuffers[index].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
-    else if (memType == V4L2_MEMORY_DMABUF) {
-        mBuffers[index].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
-        CheckError((mBuffers[index].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
-            __func__, mBuffers[index].m.fd);
+    if (memType == V4L2_MEMORY_USERPTR) {
+        unsigned long userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
+        mBuffers[index].userptr(userptr);
+    } else if (memType == V4L2_MEMORY_DMABUF) {
+        int fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
+        mBuffers[index].setFd(fd, 0);
+        CheckError((mBuffers[index].fd() < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
+            __func__, mBuffers[index].fd());
     } else {
         LOGE("@%s unsupported memory type %d.", __func__, memType);
         return BAD_VALUE;
     }
-    status |= mNode->putFrame(&mBuffers[index]);
+    status |= mNode->putFrame(mBuffers[index]);
 
-    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
-    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
+    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence());
+    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence());
 
     return status;
 }
@@ -87,8 +89,7 @@ status_t InputFrameWorker::run()
 status_t InputFrameWorker::postRun()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    v4l2_buffer_info outBuf;
-    CLEAR(outBuf);
+    V4L2BufferInfo outBuf;
     status_t status = OK;
     status = mNode->grabFrame(&outBuf);
 

@@ -32,6 +32,360 @@
 #define MAX_CAMERA_BUFFERS_NUM  32  //MAX_CAMERA_BUFFERS_NUM
 
 NAMESPACE_DECLARATION {
+
+V4L2Buffer::V4L2Buffer()
+{
+    LOG1("@%s", __FUNCTION__);
+    CLEAR(vbuf);
+}
+
+V4L2Buffer::V4L2Buffer(const struct v4l2_buffer &buf)
+{
+    LOG1("@%s", __FUNCTION__);
+    memset(&vbuf, 0, sizeof(vbuf));
+}
+
+void V4L2Buffer::setType(uint32_t type)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, type);
+
+    vbuf.type = type;
+    if (V4L2_TYPE_IS_MULTIPLANAR(vbuf.type)) {
+        /* Init fields required by multi-planar buffers */
+        setNumPlanes(1);
+    }
+}
+
+uint32_t V4L2Buffer::offset(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), 0,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    return mp ? vbuf.m.planes[plane].m.mem_offset : vbuf.m.offset;
+}
+
+void V4L2Buffer::setOffset(uint32_t offset, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), VOID_VALUE,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    if (mp)
+        vbuf.m.planes[plane].m.mem_offset = offset;
+    else
+        vbuf.m.offset = offset;
+}
+
+unsigned long V4L2Buffer::userptr(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), 0,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    return mp ? vbuf.m.planes[plane].m.userptr : vbuf.m.userptr;
+}
+
+void V4L2Buffer::setUserptr(unsigned long userptr, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), VOID_VALUE,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    if (mp)
+        vbuf.m.planes[plane].m.userptr = userptr;
+    else
+        vbuf.m.userptr = userptr;
+}
+
+int V4L2Buffer::fd(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), -1,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    return mp ? vbuf.m.planes[plane].m.fd : vbuf.m.fd;
+}
+
+void V4L2Buffer::setFd(int fd, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), VOID_VALUE,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    if (mp)
+        vbuf.m.planes[plane].m.fd = fd;
+    else
+        vbuf.m.fd = fd;
+}
+
+uint32_t V4L2Buffer::bytesused(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), 0,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    return mp ? vbuf.m.planes[plane].bytesused : vbuf.bytesused;
+}
+
+void V4L2Buffer::setBytesused(uint32_t bytesused, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), VOID_VALUE,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    if (mp)
+        vbuf.m.planes[plane].bytesused = bytesused;
+    else
+        vbuf.bytesused = bytesused;
+}
+
+uint32_t V4L2Buffer::length(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), 0,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    return mp ? vbuf.m.planes[plane].length : vbuf.length;
+}
+
+void V4L2Buffer::setLength(uint32_t length, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vbuf.type);
+    CheckError(((!mp && plane) || (mp && plane >= planes.size())), VOID_VALUE,
+               "@%s: invalid plane %d", __FUNCTION__, plane);
+
+    if (mp)
+        vbuf.m.planes[plane].length = length;
+    else
+        vbuf.length = length;
+}
+
+uint32_t V4L2Buffer::getNumPlanes()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vbuf.type))
+        return planes.size();
+    else
+        return 1;
+}
+
+void V4L2Buffer::setNumPlanes(int numPlanes)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vbuf.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vbuf.type);
+
+    CheckError(!V4L2_TYPE_IS_MULTIPLANAR(vbuf.type), VOID_VALUE,
+               "@%s: setting plane number for single plane buffer is not allowed", __FUNCTION__);
+
+    if (numPlanes != planes.size()) {
+        planes.clear();
+        for (int i = 0; i < numPlanes; i++) {
+            struct v4l2_plane plane;
+            CLEAR(plane);
+            planes.push_back(plane);
+        }
+    }
+    vbuf.m.planes = planes.data();
+    vbuf.length = numPlanes;
+}
+
+const V4L2Buffer &V4L2Buffer::operator=(const V4L2Buffer &buf)
+{
+    vbuf = buf.vbuf;
+    if (V4L2_TYPE_IS_MULTIPLANAR(vbuf.type)) {
+        planes = buf.planes;
+        vbuf.m.planes = planes.data();
+    }
+    return *this;
+}
+
+void V4L2Format::setType(uint32_t type)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, type);
+
+    vfmt.type = type;
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.num_planes = 1;
+}
+
+uint32_t V4L2Format::width()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.width : vfmt.fmt.pix.width;
+}
+
+void V4L2Format::setWidth(uint32_t width)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.width = width;
+    else
+        vfmt.fmt.pix.width = width;
+}
+
+uint32_t V4L2Format::height()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.height : vfmt.fmt.pix.height;
+}
+
+void V4L2Format::setHeight(uint32_t height)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.height = height;
+    else
+        vfmt.fmt.pix.height = height;
+}
+
+uint32_t V4L2Format::pixelformat()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ?
+        vfmt.fmt.pix_mp.pixelformat : vfmt.fmt.pix.pixelformat;
+}
+
+void V4L2Format::setPixelformat(uint32_t format)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.pixelformat = format;
+    else
+        vfmt.fmt.pix.pixelformat = format;
+}
+
+uint32_t V4L2Format::field()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.field : vfmt.fmt.pix.field;
+}
+
+void V4L2Format::setField(uint32_t field)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.field = field;
+    else
+        vfmt.fmt.pix.field = field;
+}
+
+uint32_t V4L2Format::bytesperline(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vfmt.type);
+
+    if ((!mp && plane) ||
+        (mp && plane >= vfmt.fmt.pix_mp.num_planes)) {
+        LOGE("@%s: invalid plane %d", __FUNCTION__, plane);
+        plane = 0;
+    }
+
+    return mp ? vfmt.fmt.pix_mp.plane_fmt[plane].bytesperline : vfmt.fmt.pix.bytesperline;
+}
+
+void V4L2Format::setBytesperline(uint32_t bytesperline, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.plane_fmt[plane].bytesperline = bytesperline;
+    else
+        vfmt.fmt.pix.bytesperline = bytesperline;
+}
+
+uint32_t V4L2Format::sizeimage(int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    bool mp = V4L2_TYPE_IS_MULTIPLANAR(vfmt.type);
+
+    if ((!mp && plane) ||
+        (mp && plane && plane >= vfmt.fmt.pix_mp.num_planes)) {
+        LOGE("@%s: invalid plane %d", __FUNCTION__, plane);
+        plane = 0;
+    }
+
+    return mp ? vfmt.fmt.pix_mp.plane_fmt[plane].sizeimage : vfmt.fmt.pix.sizeimage;
+}
+
+void V4L2Format::setSizeimage(uint32_t size, int plane)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        vfmt.fmt.pix_mp.plane_fmt[plane].sizeimage = size;
+    else
+        vfmt.fmt.pix.sizeimage = size;
+}
+
+const V4L2Format &V4L2Format::operator=(const V4L2Format &fmt)
+{
+    vfmt = fmt.vfmt;
+    return *this;
+}
+
+V4L2BufferInfo::V4L2BufferInfo():
+    data(NULL),
+    length(0),
+    width(0),
+    height(0),
+    format(0),
+    cache_flags(0)
+{
+}
+
 V4L2VideoNode::V4L2VideoNode(const char *name):
                              V4L2DeviceBase(name),
                              mState(DEVICE_CLOSED),
@@ -328,8 +682,7 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
     int ret(0);
-    struct v4l2_format v4l2_fmt;
-    CLEAR(v4l2_fmt);
+    struct V4L2Format v4l2_fmt;
 
     if ((mState != DEVICE_OPEN) &&
         (mState != DEVICE_CONFIGURED) &&
@@ -339,20 +692,19 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
     }
 
     LOG1("VIDIOC_G_FMT");
-    ret = pioctl (mFd, VIDIOC_G_FMT, &v4l2_fmt, mName.c_str());
+    v4l2_fmt.setType(mBufType);
+    ret = pioctl (mFd, VIDIOC_G_FMT, v4l2_fmt.get(), mName.c_str());
     if (ret < 0) {
         LOGE("VIDIOC_G_FMT failed: %s", strerror(errno));
         return UNKNOWN_ERROR;
     }
 
-    v4l2_fmt.type = mBufType;
-
-    v4l2_fmt.fmt.pix.width = aConfig.width;
-    v4l2_fmt.fmt.pix.height = aConfig.height;
-    v4l2_fmt.fmt.pix.pixelformat = aConfig.format;
-    v4l2_fmt.fmt.pix.bytesperline = pixelsToBytes(aConfig.format, aConfig.stride);
-    v4l2_fmt.fmt.pix.sizeimage = 0;
-    v4l2_fmt.fmt.pix.field = aConfig.field;
+    v4l2_fmt.setWidth(aConfig.width);
+    v4l2_fmt.setHeight(aConfig.height);
+    v4l2_fmt.setPixelformat(aConfig.format);
+    v4l2_fmt.setBytesperline(pixelsToBytes(aConfig.format, aConfig.stride));
+    v4l2_fmt.setSizeimage(0);
+    v4l2_fmt.setField(aConfig.field);
 
     // Update current configuration with the new one
     ret = setFormat(v4l2_fmt);
@@ -384,13 +736,13 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
  * It updates the internal configuration used to check for discrepancies between
  * configuration and buffer pool properties
  *
- * \param aFormat:[IN] reference to the new v4l2_format .
+ * \param aFormat:[IN] reference to the new v4l2 format .
  *
  *  \return NO_ERROR if everything went well
  *          INVALID_OPERATION if device is not in correct state (open)
  *          UNKNOW_ERROR if we get an error from the v4l2 ioctl's
  */
-status_t V4L2VideoNode::setFormat(struct v4l2_format &aFormat)
+status_t V4L2VideoNode::setFormat(V4L2Format &aFormat)
 {
 
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
@@ -399,20 +751,20 @@ status_t V4L2VideoNode::setFormat(struct v4l2_format &aFormat)
     if ((mState != DEVICE_OPEN) &&
         (mState != DEVICE_CONFIGURED) &&
         (mState != DEVICE_PREPARED) ){
-        LOGE("%s invalid device state %d",__FUNCTION__, mState);
+        LOGE("%s invalid device state %d", __FUNCTION__, mState);
         return INVALID_OPERATION;
     }
 
-
+    aFormat.setType(mBufType);
     LOG1("VIDIOC_S_FMT: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
          mName.c_str(),
-         aFormat.fmt.pix.width,
-         aFormat.fmt.pix.height,
-         aFormat.fmt.pix.bytesperline,
-         v4l2Fmt2Str(aFormat.fmt.pix.pixelformat),
-         aFormat.fmt.pix.field);
+         aFormat.width(),
+         aFormat.height(),
+         aFormat.bytesperline(),
+         v4l2Fmt2Str(aFormat.pixelformat()),
+         aFormat.field());
 
-    ret = pioctl(mFd, VIDIOC_S_FMT, &aFormat, mName.c_str());
+    ret = pioctl(mFd, VIDIOC_S_FMT, aFormat.get(), mName.c_str());
     if (ret < 0) {
         LOGE("VIDIOC_S_FMT failed: %s", strerror(errno));
         return UNKNOWN_ERROR;
@@ -420,17 +772,17 @@ status_t V4L2VideoNode::setFormat(struct v4l2_format &aFormat)
 
     LOG2("after VIDIOC_S_FMT: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
          mName.c_str(),
-         aFormat.fmt.pix.width,
-         aFormat.fmt.pix.height,
-         aFormat.fmt.pix.bytesperline,
-         v4l2Fmt2Str(aFormat.fmt.pix.pixelformat),
-         aFormat.fmt.pix.field);
+         aFormat.width(),
+         aFormat.height(),
+         aFormat.bytesperline(),
+         v4l2Fmt2Str(aFormat.pixelformat()),
+         aFormat.field());
 
     // Update current configuration with the new one
-    mConfig.format = aFormat.fmt.pix.pixelformat;
-    mConfig.width = aFormat.fmt.pix.width;
-    mConfig.height = aFormat.fmt.pix.height;
-    mConfig.stride = bytesToPixels(mConfig.format,aFormat.fmt.pix.bytesperline);
+    mConfig.format = aFormat.pixelformat();
+    mConfig.width = aFormat.width();
+    mConfig.height = aFormat.height();
+    mConfig.stride = bytesToPixels(mConfig.format, aFormat.bytesperline());
     mConfig.size = frameSize(mConfig.format, mConfig.stride, mConfig.height);
 
     if (mConfig.stride != mConfig.width)
@@ -444,6 +796,7 @@ status_t V4L2VideoNode::setFormat(struct v4l2_format &aFormat)
 status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
+    struct v4l2_selection *sel = const_cast<struct v4l2_selection *>(&aSelection);
     int ret = 0;
 
     if ((mState != DEVICE_OPEN) &&
@@ -452,6 +805,7 @@ status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
         return INVALID_OPERATION;
     }
 
+    sel->type = mBufType;
     LOG2("VIDIOC_S_SELECTION name %s type: %u, target: 0x%x, flags: 0x%x, rect left: %d, rect top: %d, width: %d, height: %d",
         mName.c_str(),
         aSelection.type,
@@ -462,7 +816,7 @@ status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
         aSelection.r.width,
         aSelection.r.height);
 
-    ret = pbxioctl(VIDIOC_S_SELECTION, const_cast<v4l2_selection*>(&aSelection));
+    ret = pbxioctl(VIDIOC_S_SELECTION, sel);
     if (ret < 0) {
         LOGE("VIDIOC_S_SELECTION failed: %s", strerror(errno));
         return UNKNOWN_ERROR;
@@ -471,7 +825,7 @@ status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
 }
 
 
-int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
+int V4L2VideoNode::grabFrame(V4L2BufferInfo *buf)
 {
     int ret(0);
 
@@ -491,23 +845,21 @@ int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
     mFrameCounter &= INT_MAX;
 
     printBufferInfo(__FUNCTION__, buf->vbuffer);
-    return buf->vbuffer.index;
+    return buf->vbuffer.index();
 }
 
 /*
  * In some cases like in timeout situation there is no need to add buffer to
  * traced buffers list because it is already there.
  */
-status_t V4L2VideoNode::putFrame(struct v4l2_buffer const *buf)
+status_t V4L2VideoNode::putFrame(const V4L2Buffer &buf)
 {
-    unsigned int index = buf->index;
+    unsigned int index = buf.index();
 
     CheckError((index >= mBufferPool.size()), BAD_INDEX, "@%s %s Invalid index %d pool size %zu",
         __FUNCTION__, mName.c_str(), index, mBufferPool.size());
 
-    mBufferPool.at(index).vbuffer.m = buf->m;
-    mBufferPool.at(index).cache_flags = buf->flags;
-    mBufferPool.at(index).vbuffer.reserved = buf->reserved;
+    mBufferPool.at(index).vbuffer = buf;
     if (putFrame(index) < 0)
         return UNKNOWN_ERROR;
 
@@ -525,7 +877,7 @@ int V4L2VideoNode::putFrame(unsigned int index)
     LOG2("@%s %s enter", __FUNCTION__, mName.c_str());
     CheckError((index >= mBufferPool.size()), BAD_INDEX, "@%s %s Invalid index %d pool size %zu",
         __FUNCTION__, mName.c_str(), index, mBufferPool.size());
-    struct v4l2_buffer_info vbuf = mBufferPool.at(index);
+    V4L2BufferInfo vbuf = mBufferPool.at(index);
     ret = qbuf(&vbuf);
     printBufferInfo(__FUNCTION__, vbuf.vbuffer);
 
@@ -547,10 +899,10 @@ int V4L2VideoNode::exportFrame(unsigned int index)
         return BAD_INDEX;
     }
 
-    struct v4l2_buffer_info vbuf = mBufferPool.at(index);
+    V4L2BufferInfo vbuf = mBufferPool.at(index);
     struct v4l2_exportbuffer ebuf;
     CLEAR(ebuf);
-    ebuf.type = vbuf.vbuffer.type;
+    ebuf.type = vbuf.vbuffer.type();
     ebuf.index = index;
     ret = pioctl(mFd, VIDIOC_EXPBUF, &ebuf, mName.c_str());
     if (ret < 0) {
@@ -752,8 +1104,7 @@ status_t V4L2VideoNode::setBufferPool(void **pool, unsigned int poolSize,
                                      FrameInfo *aFrameInfo, bool cached)
 {
     LOG1("@%s: device = %s", __FUNCTION__, mName.c_str());
-    struct v4l2_buffer_info vinfo;
-    CLEAR(vinfo);
+    V4L2BufferInfo vinfo;
     uint32_t cacheflags = V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
                           V4L2_BUF_FLAG_NO_CACHE_CLEAN;
 
@@ -830,12 +1181,11 @@ status_t V4L2VideoNode::setBufferPool(void **pool, unsigned int poolSize,
  *\return  UNKNOWN_ERROR if any of the v4l2 commands fails
  *\return  NO_ERROR if everything went AOK
  */
-status_t V4L2VideoNode::setBufferPool(std::vector<struct v4l2_buffer> &pool,
+status_t V4L2VideoNode::setBufferPool(std::vector<V4L2Buffer> &pool,
                                       bool cached, int memType)
 {
     LOG1("@%s: device = %s memType = %d", __FUNCTION__, mName.c_str(), memType);
-    struct v4l2_buffer_info vinfo;
-    CLEAR(vinfo);
+    V4L2BufferInfo vinfo;
     int ret;
     uint32_t cacheflags = V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
                          V4L2_BUF_FLAG_NO_CACHE_CLEAN;
@@ -866,7 +1216,7 @@ status_t V4L2VideoNode::setBufferPool(std::vector<struct v4l2_buffer> &pool,
 
         vinfo.vbuffer = pool.at(i);
         if (memType == V4L2_MEMORY_USERPTR) {
-            vinfo.data = (void*)(pool[i].m.userptr);
+            vinfo.data = (void*)(pool[i].userptr());
         }
 
         ret = newBuffer(i, vinfo, memType);
@@ -989,17 +1339,17 @@ int V4L2VideoNode::requestBuffers(size_t num_buffers, int memType)
     return req_buf.count;
 }
 
-void V4L2VideoNode::printBufferInfo(const char *func, const struct v4l2_buffer &buf)
+void V4L2VideoNode::printBufferInfo(const char *func, V4L2Buffer &buf)
 {
     switch (mMemoryType) {
     case V4L2_MEMORY_USERPTR:
-        LOG2("@%s %s idx:%d addr:%p", func, mName.c_str(), buf.index, (void *)buf.m.userptr);
+        LOG2("@%s %s idx:%d addr:%p", func, mName.c_str(), buf.index(), (void *)buf.userptr());
         break;
     case V4L2_MEMORY_MMAP:
-        LOG2("@%s %s idx:%d offset:0x%x", func, mName.c_str(), buf.index, buf.m.offset);
+        LOG2("@%s %s idx:%d offset:0x%x", func, mName.c_str(), buf.index(), buf.offset());
         break;
     case V4L2_MEMORY_DMABUF:
-        LOG2("@%s %s idx:%d fd:%d", func, mName.c_str(), buf.index, buf.m.fd);
+        LOG2("@%s %s idx:%d fd:%d", func, mName.c_str(), buf.index(), buf.fd());
         break;
     default:
         LOG2("@%s %s unknown memory type %d", func, mName.c_str(), mMemoryType);
@@ -1007,14 +1357,15 @@ void V4L2VideoNode::printBufferInfo(const char *func, const struct v4l2_buffer &
     }
 }
 
-int V4L2VideoNode::qbuf(struct v4l2_buffer_info *buf)
+int V4L2VideoNode::qbuf(V4L2BufferInfo *buf)
 {
     LOG2("@%s %s", __FUNCTION__, mName.c_str());
-    struct v4l2_buffer *v4l2_buf = &buf->vbuffer;
     int ret = 0;
 
-    v4l2_buf->flags = buf->cache_flags;
-    ret = pioctl(mFd, VIDIOC_QBUF, v4l2_buf, mName.c_str());
+    buf->vbuffer.setFlags(buf->cache_flags);
+    buf->vbuffer.setMemory(mMemoryType);
+    buf->vbuffer.setType(mBufType);
+    ret = pioctl(mFd, VIDIOC_QBUF, buf->vbuffer.get(), mName.c_str());
     if (ret < 0) {
         LOGE("VIDIOC_QBUF on %s failed: %s", mName.c_str(), strerror(errno));
         return ret;
@@ -1023,16 +1374,16 @@ int V4L2VideoNode::qbuf(struct v4l2_buffer_info *buf)
     return ret;
 }
 
-int V4L2VideoNode::dqbuf(struct v4l2_buffer_info *buf)
+int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
 {
     LOG2("@%s %s", __FUNCTION__, mName.c_str());
-    struct v4l2_buffer *v4l2_buf = &buf->vbuffer;
+    V4L2Buffer &v4l2_buf = buf->vbuffer;
     int ret = 0;
 
-    v4l2_buf->memory = V4L2_MEMORY_USERPTR;
-    v4l2_buf->type = mBufType;
+    v4l2_buf.setMemory(mMemoryType);
+    v4l2_buf.setType(mBufType);
 
-    ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf, mName.c_str());
+    ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf.get(), mName.c_str());
     if (ret < 0) {
         LOGE("VIDIOC_DQBUF failed: %s", strerror(errno));
         return ret;
@@ -1096,17 +1447,17 @@ error:
 }
 
 
-int V4L2VideoNode::newBuffer(int index, struct v4l2_buffer_info &buf, int memType)
+int V4L2VideoNode::newBuffer(int index, V4L2BufferInfo &buf, int memType)
 {
     LOG1("@%s", __FUNCTION__);
     int ret;
-    struct v4l2_buffer *vbuf = &buf.vbuffer;
+    V4L2Buffer &vbuf = buf.vbuffer;
 
-    vbuf->flags = 0x0;
-    vbuf->memory = memType;
-    vbuf->type = mBufType;
-    vbuf->index = index;
-    ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf, mName.c_str());
+    vbuf.setFlags(0x0);
+    vbuf.setMemory(memType);
+    vbuf.setType(mBufType);
+    vbuf.setIndex(index);
+    ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf.get(), mName.c_str());
 
     if (ret < 0) {
         LOGE("VIDIOC_QUERYBUF failed: %s", strerror(errno));
@@ -1114,24 +1465,24 @@ int V4L2VideoNode::newBuffer(int index, struct v4l2_buffer_info &buf, int memTyp
     }
 
     if (memType == V4L2_MEMORY_USERPTR) {
-        vbuf->m.userptr = (unsigned long)(buf.data);
+        vbuf.userptr((unsigned long)(buf.data));
     } // For MMAP memory the user will do the mmap to get the ptr
 
-    buf.length = vbuf->length;
-    LOG1("index %u", vbuf->index);
-    LOG1("type %d", vbuf->type);
-    LOG1("bytesused %u", vbuf->bytesused);
-    LOG1("flags %08x", vbuf->flags);
+    buf.length = vbuf.length();
+    LOG1("index %u", vbuf.index());
+    LOG1("type %d", vbuf.type());
+    LOG1("bytesused %u", vbuf.bytesused());
+    LOG1("flags %08x", vbuf.flags());
     if (memType == V4L2_MEMORY_MMAP) {
-        LOG1("memory MMAP: offset 0x%X", vbuf->m.offset);
+        LOG1("memory MMAP: offset 0x%X", vbuf.offset());
     } else if (memType == V4L2_MEMORY_USERPTR) {
-        LOG1("memory USRPTR:  %p", (void*)vbuf->m.userptr);
+        LOG1("memory USRPTR:  %p", (void*)vbuf.userptr());
     }
-    LOG1("length %u", vbuf->length);
+    LOG1("length %u", vbuf.length());
     return ret;
 }
 
-int V4L2VideoNode::freeBuffer(struct v4l2_buffer_info *buf_info)
+int V4L2VideoNode::freeBuffer(V4L2BufferInfo *buf_info)
 {
     /**
      * For devices using usr ptr as data this method is a no-op
@@ -1140,7 +1491,7 @@ int V4L2VideoNode::freeBuffer(struct v4l2_buffer_info *buf_info)
     return 0;
 }
 
-status_t V4L2VideoNode::getFormat(struct v4l2_format &aFormat)
+status_t V4L2VideoNode::getFormat(V4L2Format &aFormat)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
     int ret = 0;
@@ -1151,8 +1502,8 @@ status_t V4L2VideoNode::getFormat(struct v4l2_format &aFormat)
         return INVALID_OPERATION;
     }
 
-    aFormat.type = mBufType;
-    ret = pioctl(mFd, VIDIOC_G_FMT, &aFormat, mName.c_str());
+    aFormat.setType(mBufType);
+    ret = pioctl(mFd, VIDIOC_G_FMT, aFormat.get(), mName.c_str());
 
     if (ret < 0) {
         LOGE("VIDIOC_G_FMT failed: %s", strerror(errno));
@@ -1161,11 +1512,11 @@ status_t V4L2VideoNode::getFormat(struct v4l2_format &aFormat)
 
     LOG1("VIDIOC_G_FMT: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
              mName.c_str(),
-             aFormat.fmt.pix.width,
-             aFormat.fmt.pix.height,
-             aFormat.fmt.pix.bytesperline,
-             v4l2Fmt2Str(aFormat.fmt.pix.pixelformat),
-             aFormat.fmt.pix.field);
+             aFormat.width(),
+             aFormat.height(),
+             aFormat.bytesperline(),
+             v4l2Fmt2Str(aFormat.pixelformat()),
+             aFormat.field());
 
     return NO_ERROR;
 }

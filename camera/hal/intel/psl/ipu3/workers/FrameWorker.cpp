@@ -32,7 +32,6 @@ FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node,
         mPipelineDepth(pipelineDepth)
 {
     LOG1("%s handling node %s", name.c_str(), mNode->name());
-    CLEAR(mFormat);
 }
 
 FrameWorker::~FrameWorker()
@@ -64,21 +63,22 @@ status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    CLEAR(mFormat);
-
-    mFormat.fmt.pix.width = frame.width;
-    mFormat.fmt.pix.height = frame.height;
+    mFormat.setWidth(frame.width);
+    mFormat.setHeight(frame.height);
+    uint32_t bpl;
     if (frame.format == V4L2_PIX_FMT_YUYV) {
-        mFormat.fmt.pix.bytesperline = frame.stride ? frame.stride * 2: frame.width * 2;
+        bpl = frame.stride ? frame.stride * 2: frame.width * 2;
+        mFormat.setBytesperline(bpl);
     } else if (frame.format == V4L2_PIX_FMT_NV12 ||
             frame.format == V4L2_PIX_FMT_NV21 ||
             frame.format == V4L2_META_FMT_IPU3_PARAMS) {
-        mFormat.fmt.pix.bytesperline = frame.stride ? frame.stride: frame.width;
+        bpl = frame.stride ? frame.stride: frame.width;
+        mFormat.setBytesperline(bpl);
     } else {
         LOGE("Unsupported format: %d", frame.format);
         return UNKNOWN_ERROR;
     }
-    mFormat.fmt.pix.pixelformat = frame.format;
+    mFormat.setPixelformat(frame.format);
 
     status_t ret = mNode->setFormat(mFormat);
     if (ret != OK) {
@@ -91,8 +91,7 @@ status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
 status_t FrameWorker::setWorkerDeviceBuffers(int memType)
 {
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
-        v4l2_buffer buffer;
-        CLEAR(buffer);
+        V4L2Buffer buffer;
         mBuffers.push_back(buffer);
     }
     status_t ret = mNode->setBufferPool(mBuffers, true, memType);
@@ -108,37 +107,39 @@ status_t FrameWorker::allocateWorkerBuffers()
 {
     int memType = mNode->getMemoryType();
     int dmaBufFd;
+    unsigned long userptr;
     std::shared_ptr<CameraBuffer> buf = nullptr;
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
-        LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
-                mFormat.fmt.pix.sizeimage,
-                mFormat.fmt.pix.width,
-                mFormat.fmt.pix.height,
-                mFormat.fmt.pix.bytesperline);
+        LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
+                mFormat.sizeimage(),
+                mFormat.width(),
+                mFormat.height(),
+                mFormat.bytesperline());
         switch (memType) {
         case V4L2_MEMORY_USERPTR:
-            buf = MemoryUtils::allocateHeapBuffer(mFormat.fmt.pix.width,
-                mFormat.fmt.pix.height,
-                mFormat.fmt.pix.bytesperline,
-                mFormat.fmt.pix.pixelformat,
+            buf = MemoryUtils::allocateHeapBuffer(mFormat.width(),
+                mFormat.height(),
+                mFormat.bytesperline(),
+                mFormat.pixelformat(),
                 mCameraId,
-                PAGE_ALIGN(mFormat.fmt.pix.sizeimage));
+                PAGE_ALIGN(mFormat.sizeimage()));
             if (buf.get() == nullptr)
                 return NO_MEMORY;
-            mBuffers[i].m.userptr = reinterpret_cast<unsigned long>(buf->data());
+            userptr = reinterpret_cast<unsigned long>(buf->data());
+            mBuffers[i].setUserptr(userptr);
             memset(buf->data(), 0, buf->size());
-            LOG2("mBuffers[%d].m.userptr: 0x%lx", i , mBuffers[i].m.userptr);
+            LOG2("mBuffers[%d].userptr: 0x%lx", i , mBuffers[i].userptr());
             break;
         case V4L2_MEMORY_MMAP:
             dmaBufFd = mNode->exportFrame(i);
-            buf = std::make_shared<CameraBuffer>(mFormat.fmt.pix.width,
-                mFormat.fmt.pix.height,
-                mFormat.fmt.pix.bytesperline,
+            buf = std::make_shared<CameraBuffer>(mFormat.width(),
+                mFormat.height(),
+                mFormat.bytesperline(),
                 mNode->getFd(),
                 dmaBufFd,
-                mBuffers[i].length,
-                mFormat.fmt.pix.pixelformat,
-                mBuffers[i].m.offset, PROT_READ | PROT_WRITE, MAP_SHARED);
+                mBuffers[i].length(),
+                mFormat.pixelformat(),
+                mBuffers[i].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
             if (buf.get() == nullptr)
                 return BAD_VALUE;
             break;
@@ -147,7 +148,7 @@ status_t FrameWorker::allocateWorkerBuffers()
             return BAD_VALUE;
         }
 
-        mBuffers[i].bytesused = mFormat.fmt.pix.sizeimage;
+        mBuffers[i].setBytesused(mFormat.sizeimage());
         mCameraBuffers.push_back(buf);
     }
 

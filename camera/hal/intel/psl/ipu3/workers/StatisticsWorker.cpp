@@ -63,7 +63,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    if (mCameraBuffers[0]->size() < mFormat.fmt.pix.sizeimage) {
+    if (mCameraBuffers[0]->size() < mFormat.sizeimage()) {
         LOGE("Stats buffer is not big enough");
         return UNKNOWN_ERROR;
     }
@@ -80,7 +80,7 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
     status_t status = OK;
 
-    status |= mNode->putFrame(&mBuffers[mIndex]);
+    status |= mNode->putFrame(mBuffers[mIndex]);
 
     if (status != OK) {
         LOGE("Failed to queue buffer to statistics device");
@@ -103,8 +103,7 @@ status_t StatisticsWorker::run()
     #define DUMP_INTERVAL 10
     status_t status = OK;
 
-    v4l2_buffer_info buf;
-    CLEAR(buf);
+    V4L2BufferInfo buf;
 
     status = mNode->grabFrame(&buf);
 
@@ -165,11 +164,11 @@ status_t StatisticsWorker::run()
     stats->aiqStatsInputParams.depth_grids  = nullptr;
     stats->aiqStatsInputParams.num_depth_grids = 0;
 
-    stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence;
+    stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence();
     stats->aiqStatsInputParams.frame_timestamp
-        = (buf.vbuffer.timestamp.tv_sec * 1000000) + buf.vbuffer.timestamp.tv_usec;
+        = (buf.vbuffer.timestamp().tv_sec * 1000000) + buf.vbuffer.timestamp().tv_usec;
 
-    stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence;
+    stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence();
     LOG2("sensor frame sequence %u", stats->frameSequence);
 
     outMsg.data.event.stats = stats;
@@ -178,13 +177,13 @@ status_t StatisticsWorker::run()
         if (gRgbsGridDump) {
             std::string filename = CAMERA_OPERATION_FOLDER;
             filename += "rgbs_grid";
-            writeRgbsGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence);
+            writeRgbsGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence());
         }
 
         if (gAfGridDump) {
             std::string filename = CAMERA_OPERATION_FOLDER;
             filename += "af_grid";
-            writeAfGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence);
+            writeAfGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence());
         }
     }
 

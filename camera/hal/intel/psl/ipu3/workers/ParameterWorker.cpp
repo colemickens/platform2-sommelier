@@ -239,7 +239,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[mIndex]->data();
     IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
-    status_t status = mNode->putFrame(&mBuffers[mIndex]);
+    status_t status = mNode->putFrame(mBuffers[mIndex]);
     if (status != OK) {
         LOGE("putFrame failed");
         return UNKNOWN_ERROR;
@@ -254,8 +254,7 @@ status_t ParameterWorker::run()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    v4l2_buffer_info outBuf;
-    CLEAR(outBuf);
+    V4L2BufferInfo outBuf;
 
     status_t status = mNode->grabFrame(&outBuf);
     if (status < 0) {

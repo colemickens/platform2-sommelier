@@ -316,7 +316,7 @@ status_t InputSystem::handleMessageIsStarted(Message &msg)
 }
 
 status_t InputSystem::putFrame(IPU3NodeNames isysNodeName,
-                               const struct v4l2_buffer *buf, int32_t reqId)
+                               const V4L2Buffer *buf, int32_t reqId)
 {
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
@@ -340,7 +340,7 @@ status_t InputSystem::handleMessagePutFrame(Message &msg)
     status_t status = NO_ERROR;
     bool newReq = false;
     IPU3NodeNames isysNodeName = msg.data.frame.isysNodeName;
-    const struct v4l2_buffer *buf = msg.data.frame.buf;
+    const V4L2Buffer *buf = msg.data.frame.buf;
     const int32_t reqId = msg.data.frame.reqId;
 
     /* first checking if existing mediaRequest created */
@@ -375,7 +375,7 @@ status_t InputSystem::handleMessagePutFrame(Message &msg)
         return BAD_VALUE;
     }
     std::shared_ptr<V4L2VideoNode> videoNode = it->second;
-    int ret = videoNode->putFrame(buf);
+    int ret = videoNode->putFrame(*buf);
     if (ret < 0) {
         LOGE("isys putframe failed for dev: %s", videoNode->name());
         return UNKNOWN_ERROR;
@@ -392,7 +392,7 @@ status_t InputSystem::handleMessagePutFrame(Message &msg)
     return NO_ERROR;
 }
 
-status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, struct v4l2_buffer_info *buf)
+status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf)
 {
     LOG2("@%s", __FUNCTION__);
     ConfiguredNodesPerName::iterator it =
@@ -411,7 +411,7 @@ status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, struct v4l2_buffer_i
 }
 
 status_t InputSystem::setBufferPool(IPU3NodeNames isysNodeName,
-                                    std::vector<struct v4l2_buffer> &pool,
+                                    std::vector<V4L2Buffer> &pool,
                                     bool cached)
 {
     LOG2("@%s", __FUNCTION__);
@@ -433,7 +433,7 @@ status_t InputSystem::handleMessageSetBufferPool(Message &msg)
     status_t status = NO_ERROR;
 
     IPU3NodeNames isysNodeName = msg.data.bufferPool.isysNodeName;
-    std::vector<struct v4l2_buffer> *pool = msg.data.bufferPool.pool;
+    std::vector<V4L2Buffer> *pool = msg.data.bufferPool.pool;
     bool cached = msg.data.bufferPool.cached;
     std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
 
@@ -732,14 +732,13 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
 {
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
-    struct v4l2_buffer_info outBuf;
+    V4L2BufferInfo outBuf;
     std::shared_ptr<V4L2VideoNode> *activeNodes;
     IPU3NodeNames isysNodeName = IMGU_NODE_NULL;
     uint8_t nodeCount = mCaptureInProgress->numNodesForRequest;
     int activeNodecount = 0;
     int requestId = -999;
 
-    CLEAR(outBuf);
     activeNodes = msg.data.pollEvent.activeDevices;
     activeNodecount = msg.data.pollEvent.numDevices;
     requestId = msg.data.pollEvent.requestId;
@@ -798,13 +797,13 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
         // store the sequence number. All buffers should
         // have the same sequence number.
         if (mBufferSeqNbr == 0) {
-            mBufferSeqNbr = outBuf.vbuffer.sequence;
-        } else if (mBufferSeqNbr != outBuf.vbuffer.sequence) {
+            mBufferSeqNbr = outBuf.vbuffer.sequence();
+        } else if (mBufferSeqNbr != outBuf.vbuffer.sequence()) {
             LOGW("Sequence number mismatch, expecting %d but received %d",
-                  mBufferSeqNbr, outBuf.vbuffer.sequence);
-            mBufferSeqNbr = outBuf.vbuffer.sequence;
+                  mBufferSeqNbr, outBuf.vbuffer.sequence());
+            mBufferSeqNbr = outBuf.vbuffer.sequence();
         }
-        LOG2("input system outBuf.vbuffer.sequence %u", outBuf.vbuffer.sequence);
+        LOG2("input system outBuf.vbuffer.sequence %u", outBuf.vbuffer.sequence());
         mBuffersReceived++;
 
         // Notify observer

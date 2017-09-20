@@ -57,10 +57,10 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    LOG1("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
-            mFormat.fmt.pix.sizeimage,
-            mFormat.fmt.pix.width,
-            mFormat.fmt.pix.height);
+    LOG1("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
+            mFormat.sizeimage(),
+            mFormat.width(),
+            mFormat.height());
 
     mPostProcessType = PROCESS_NONE;
     if (mStream) {
@@ -73,14 +73,14 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             mPostProcessType |= PROCESS_JPEG_ENCODING;
         }
         if ((!(mPostProcessType & PROCESS_JPEG_ENCODING)
-             && mFormat.fmt.pix.width * mFormat.fmt.pix.height
+             && mFormat.width() * mFormat.height()
                  > mStream->width * mStream->height)
-            || mFormat.fmt.pix.width * mFormat.fmt.pix.height
+            || mFormat.width() * mFormat.height()
                 < mStream->width * mStream->height) {
             // Down-scaling only for non-jpeg encoding since encoder can support this
             // Up-scaling for ISP output resolution is smaller than required in stream
             LOG2("need scaling: %dx%d -> %dx%d",
-                    mFormat.fmt.pix.width, mFormat.fmt.pix.height,
+                    mFormat.width(), mFormat.height(),
                     mStream->width, mStream->height);
             mPostProcessType |= PROCESS_SCALING;
         }
@@ -98,13 +98,13 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 
     // Allocate internal buffer.
     if (mPostProcessType != PROCESS_NONE) {
-        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.fmt.pix.width,
-                mFormat.fmt.pix.height,
-                mFormat.fmt.pix.bytesperline,
+        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.width(),
+                mFormat.height(),
+                mFormat.bytesperline(),
                 mNode->getFd(), -1, // dmabuf fd is not required.
-                mBuffers[0].length,
-                mFormat.fmt.pix.pixelformat,
-                mBuffers[0].m.offset, PROT_READ | PROT_WRITE, MAP_SHARED);
+                mBuffers[0].length(),
+                mFormat.pixelformat(),
+                mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
         CheckError((mWorkingBuffer.get() == nullptr), NO_MEMORY,
             "@%s failed to allocate internal buffer.", __FUNCTION__);
     }
@@ -206,20 +206,22 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
             if (mPostProcessType == PROCESS_NONE) {
                 // Use stream buffer for zero-copy
-                mBuffers[mIndex].bytesused = mFormat.fmt.pix.sizeimage;
+                mBuffers[mIndex].bytesused(mFormat.sizeimage());
+                unsigned long userptr;
                 switch (mNode->getMemoryType()) {
                 case V4L2_MEMORY_USERPTR:
-                    mBuffers[mIndex].m.userptr = reinterpret_cast<unsigned long>(buffer->data());
-                    LOG2("%s mBuffers[%d].m.userptr: 0x%lx",
-                        __FUNCTION__, mIndex, mBuffers[mIndex].m.userptr);
+                    userptr = reinterpret_cast<unsigned long>(buffer->data());
+                    mBuffers[mIndex].userptr(userptr);
+                    LOG2("%s mBuffers[%d].userptr: 0x%lx",
+                        __FUNCTION__, mIndex, mBuffers[mIndex].userptr());
                     break;
                 case V4L2_MEMORY_DMABUF:
-                    mBuffers[mIndex].m.fd = buffer->dmaBufFd();
-                    LOG2("%s mBuffers[%d].m.fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].m.fd);
+                    mBuffers[mIndex].setFd(buffer->dmaBufFd(), 0);
+                    LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].fd());
                     break;
                 case V4L2_MEMORY_MMAP:
-                    LOG2("%s mBuffers[%d].m.offset: 0x%x",
-                        __FUNCTION__, mIndex, mBuffers[mIndex].m.offset);
+                    LOG2("%s mBuffers[%d].offset: 0x%x",
+                        __FUNCTION__, mIndex, mBuffers[mIndex].offset());
                     break;
                 default:
                     LOGE("%s unsupported memory type.", __FUNCTION__);
@@ -227,7 +229,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
                 }
                 mWorkingBuffer = buffer;
             }
-            status |= mNode->putFrame(&mBuffers[mIndex]);
+            status |= mNode->putFrame(mBuffers[mIndex]);
 
             notFound = false;
             break;
@@ -268,8 +270,7 @@ status_t OutputFrameWorker::run()
         return BAD_TYPE;
     }
 
-    v4l2_buffer_info outBuf;
-    CLEAR(outBuf);
+    V4L2BufferInfo outBuf;
 
     status = mNode->grabFrame(&outBuf);
 
@@ -325,17 +326,17 @@ status_t OutputFrameWorker::postRun()
         if (mPostProcessType & PROCESS_JPEG_ENCODING
             || mPostProcessType & PROCESS_SCALING) {
             if (mPostProcessBufs.empty()
-                || mPostProcessBufs[0]->width() != mFormat.fmt.pix.height
-                || mPostProcessBufs[0]->height() != mFormat.fmt.pix.width) {
+                || mPostProcessBufs[0]->width() != mFormat.height()
+                || mPostProcessBufs[0]->height() != mFormat.width()) {
                 mPostProcessBufs.clear();
                 // Create rotate output working buffer
                 std::shared_ptr<CameraBuffer> buf;
-                buf = MemoryUtils::allocateHeapBuffer(mFormat.fmt.pix.height,
-                                   mFormat.fmt.pix.width,
-                                   mFormat.fmt.pix.height,
-                                   mFormat.fmt.pix.pixelformat,
+                buf = MemoryUtils::allocateHeapBuffer(mFormat.height(),
+                                   mFormat.width(),
+                                   mFormat.height(),
+                                   mFormat.pixelformat(),
                                    mCameraId,
-                                   PAGE_ALIGN(mFormat.fmt.pix.sizeimage));
+                                   PAGE_ALIGN(mFormat.sizeimage()));
                 CheckError((buf.get() == nullptr), NO_MEMORY,
                            "@%s, No memory for rotate", __FUNCTION__);
                 mPostProcessBufs.push_back(buf);
@@ -366,7 +367,7 @@ status_t OutputFrameWorker::postRun()
                 buf = MemoryUtils::allocateHeapBuffer(mStream->width,
                                    mStream->height,
                                    mStream->width,
-                                   mFormat.fmt.pix.pixelformat,
+                                   mFormat.pixelformat(),
                                    mCameraId,
                                    PAGE_ALIGN(mStream->width * mStream->height * 3 / 2));
                 CheckError((buf.get() == nullptr), NO_MEMORY,
@@ -466,8 +467,8 @@ status_t OutputFrameWorker::rotateFrame(std::shared_ptr<CameraBuffer> input,
     int inW = input->width();
     int inH = input->height();
     int inStride = input->stride();
-    if (mRotateBuffer.size() < mFormat.fmt.pix.sizeimage) {
-        mRotateBuffer.resize(mFormat.fmt.pix.sizeimage);
+    if (mRotateBuffer.size() < mFormat.sizeimage()) {
+        mRotateBuffer.resize(mFormat.sizeimage());
     }
 
     uint8* I420Buffer = mRotateBuffer.data();

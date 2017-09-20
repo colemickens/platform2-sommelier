@@ -219,7 +219,7 @@ private:
 
     struct MessageBuffer {
         CaptureBuffer* captureBufPtr;
-        struct v4l2_buffer_info v4l2Buf;
+        V4L2BufferInfo v4l2Buf;
         IPU3NodeNames isysNodeName;
         int requestId;
 
@@ -228,7 +228,6 @@ private:
             isysNodeName(IMGU_NODE_NULL),
             requestId(-999)
         {
-            CLEAR(v4l2Buf);
         }
     };
 

@@ -95,6 +95,12 @@
  */
 #define CAMERA_OPERATION_FOLDER "/tmp/"
 
+#define V4L2_TYPE_IS_VALID(type) \
+    ((type) == V4L2_BUF_TYPE_VIDEO_CAPTURE \
+     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT \
+     || (type) == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE \
+     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
+
 /**
  * \macro UNUSED
  *  applied to parameters not used in a method in order to avoid the compiler

@@ -19,7 +19,7 @@
 
 #include "CameraBuffer.h"
 #include <vector>
-#include <linux/videodev2.h>
+#include <v4l2device.h>
 
 namespace android {
 namespace camera2 {
@@ -40,7 +40,7 @@ public:
  */
 struct CaptureBuffer {
     int                     reqId;
-    struct v4l2_buffer      v4l2Buf;
+    V4L2Buffer              v4l2Buf;
     std::shared_ptr<CameraBuffer>        buf;
     IBufferOwner*           owner;
     std::vector<std::shared_ptr<CameraBuffer>> mPlaneBufs; // For MPLANE V4L2 bufs
@@ -50,7 +50,6 @@ struct CaptureBuffer {
         reqId(-999),
         owner(nullptr),
         mDestinationTerminal(0) {
-        CLEAR(v4l2Buf);
     }
 };
 

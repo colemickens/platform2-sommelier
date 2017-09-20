@@ -600,10 +600,12 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
     if (mActiveIsysNodes & ISYS_NODE_RAW) {
         capBufPtr->mDestinationTerminal = mNodeToPortMap[ISYS_NODE_RAW];
 
-        capBufPtr->v4l2Buf.flags |= V4L2_BUF_FLAG_NO_CACHE_INVALIDATE | V4L2_BUF_FLAG_NO_CACHE_CLEAN;
+        uint32_t flags = capBufPtr->v4l2Buf.flags();
+        flags |= (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE | V4L2_BUF_FLAG_NO_CACHE_CLEAN);
+        capBufPtr->v4l2Buf.setFlags(flags);
 
         status = mIsys->putFrame(ISYS_NODE_RAW,
-                                 &(capBufPtr->v4l2Buf), reqId);
+                                 &capBufPtr->v4l2Buf, reqId);
     } else {
         LOGE("Unsupport ISYS capture type!");
         return UNKNOWN_ERROR;
@@ -752,7 +754,7 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
     status_t status = NO_ERROR;
     std::shared_ptr<GraphConfig> gc = nullptr;
     std::shared_ptr<CaptureBuffer> isysBufferPtr = nullptr;
-    v4l2_buffer_info *outBuf = nullptr;
+    V4L2BufferInfo *outBuf = nullptr;
     ICaptureEventListener::CaptureMessage outMsg;
     std::shared_ptr<InflightRequestState> state = nullptr;
     IPU3NodeNames isysNode = IMGU_NODE_NULL;
@@ -762,9 +764,9 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
 
     // Notify listeners, first fill the observer message
     outBuf = &msg.data.buffer.v4l2Buf;
-    outMsg.data.event.timestamp.tv_sec = outBuf->vbuffer.timestamp.tv_sec;
-    outMsg.data.event.timestamp.tv_usec = outBuf->vbuffer.timestamp.tv_usec;
-    outMsg.data.event.sequence = outBuf->vbuffer.sequence;
+    outMsg.data.event.timestamp.tv_sec = outBuf->vbuffer.timestamp().tv_sec;
+    outMsg.data.event.timestamp.tv_usec = outBuf->vbuffer.timestamp().tv_usec;
+    outMsg.data.event.sequence = outBuf->vbuffer.sequence();
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", outMsg.data.event.sequence);
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
     outMsg.data.event.reqId = requestId;
@@ -774,12 +776,12 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
     bufferQueuePtr = &mQueuedCaptureBuffers;
 
     for (size_t i = 0; i < bufferQueuePtr->size(); i++) {
-        if (outBuf->vbuffer.index == bufferQueuePtr->at(i)->v4l2Buf.index) {
+        if (outBuf->vbuffer.index() == bufferQueuePtr->at(i)->v4l2Buf.index()) {
             bufferQueuePtr->at(i)->buf->setRequestId(requestId);
             bufferQueuePtr->at(i)->buf->setTimeStamp(outMsg.data.event.timestamp);
 
             isysBufferPtr = bufferQueuePtr->at(i);
-            isysBufferPtr->v4l2Buf.sequence = outMsg.data.event.sequence;
+            isysBufferPtr->v4l2Buf.setSequence(outMsg.data.event.sequence);
             // Remove the shared pointer reference from the vector
             bufferQueuePtr->erase(bufferQueuePtr->begin() + i);
             break;

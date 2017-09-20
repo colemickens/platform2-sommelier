@@ -2306,7 +2306,6 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
             }
             struct v4l2_selection select;
             CLEAR(select);
-            select.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
             select.target = V4L2_SEL_TGT_CROP;
             select.flags = 0;
             select.r.left = 0;
@@ -2323,7 +2322,6 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
                 return UNKNOWN_ERROR;
             }
             CLEAR(select);
-            select.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
             select.target = V4L2_SEL_TGT_COMPOSE;
             select.flags = 0;
             select.r.left = 0;

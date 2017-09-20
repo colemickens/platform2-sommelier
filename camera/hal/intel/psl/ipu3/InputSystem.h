@@ -59,7 +59,7 @@ public:
     struct IsysMessageEvent {
         int requestId;
         IPU3NodeNames isysNodeName;
-        struct v4l2_buffer_info *buffer;
+        V4L2BufferInfo *buffer;
     };
 
     // For MESSAGE_ID_ERROR
@@ -100,8 +100,8 @@ public:
     status_t stop(bool keepBuffers = false);
     bool isStarted();
 
-    status_t putFrame(IPU3NodeNames isysNodeName, const struct v4l2_buffer *buf, int32_t reqId);
-    status_t setBufferPool(IPU3NodeNames isysNodeName, std::vector<struct v4l2_buffer> &pool, bool cached);
+    status_t putFrame(IPU3NodeNames isysNodeName, const V4L2Buffer *buf, int32_t reqId);
+    status_t setBufferPool(IPU3NodeNames isysNodeName, std::vector<V4L2Buffer> &pool, bool cached);
     status_t releaseBufferPools();
     status_t getOutputNodes(ConfiguredNodesPerName **nodes, int &nodeCount);
     std::shared_ptr<V4L2VideoNode> findOutputNode(IPU3NodeNames isysNodeName);
@@ -117,7 +117,7 @@ public:
     status_t requestExitAndWait();
 
 private: /* methods */
-    status_t grabFrame(IPU3NodeNames isysNodeName, struct v4l2_buffer_info *buf);
+    status_t grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf);
     status_t pollNextRequest();
     status_t getIsysNodeName(std::shared_ptr<V4L2VideoNode> node, IPU3NodeNames &isysNodeName);
 
@@ -147,12 +147,12 @@ private: /* methods */
     struct MessageFrame {
         int32_t reqId;
         IPU3NodeNames isysNodeName;
-        const struct v4l2_buffer *buf;
+        const V4L2Buffer *buf;
     };
 
     struct MessageBufferPool {
         IPU3NodeNames isysNodeName;
-        std::vector<struct v4l2_buffer> *pool;
+        std::vector<V4L2Buffer> *pool;
         bool cached;
     };
 

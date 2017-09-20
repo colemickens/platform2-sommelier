@@ -49,11 +49,11 @@ protected:
     status_t setWorkerDeviceBuffers(int memType);
 
 protected:
-    std::vector<v4l2_buffer> mBuffers;
+    std::vector<V4L2Buffer> mBuffers;
     unsigned int mIndex;
     std::vector<std::shared_ptr<CameraBuffer>> mCameraBuffers;
 
-    v4l2_format mFormat;
+    V4L2Format mFormat;
     std::shared_ptr<V4L2VideoNode> mNode;
     bool mPollMe;
     size_t mPipelineDepth;

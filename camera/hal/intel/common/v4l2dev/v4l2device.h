@@ -45,19 +45,97 @@ NAMESPACE_DECLARATION {
 
 #define perfpoll(fd, value, timeout) \
     SysCall::poll(fd, value, timeout)
+
+/*
+ * Wrapper for v4l2_buffer to provide compatible
+ * interfaces for multi-plane buffers.
+ */
+class V4L2Buffer
+{
+public:
+    V4L2Buffer();
+    V4L2Buffer(const struct v4l2_buffer &buf);
+    uint32_t index() const {return vbuf.index;}
+    void setIndex(uint32_t index) {vbuf.index = index;}
+    uint32_t type() {return vbuf.type;}
+    void setType(uint32_t type);
+    uint32_t flags() {return vbuf.flags;}
+    void setFlags(uint32_t flags) {vbuf.flags = flags;}
+    uint32_t field() {return vbuf.field;}
+    void setField(uint32_t field) {vbuf.field = field;}
+    struct timeval timestamp() {return vbuf.timestamp;}
+    void setTimestamp(struct timeval timestamp) {vbuf.timestamp = timestamp;}
+    struct v4l2_timecode timecode() {return vbuf.timecode;}
+    void setTimecode(struct v4l2_timecode timecode) {vbuf.timecode = timecode;}
+    uint32_t sequence() {return vbuf.sequence;}
+    void setSequence(uint32_t sequence) {vbuf.sequence = sequence;}
+    uint32_t memory() {return vbuf.memory;}
+    void setMemory(uint32_t memory) {vbuf.memory = memory;}
+    uint32_t offset(int plane = 0);
+    void setOffset(uint32_t offset, int plane = 0);
+    unsigned long userptr(int plane = 0);
+    void setUserptr(unsigned long userptr, int plane = 0);
+    int fd(int plane = 0);
+    void setFd(int fd, int plane = 0);
+    uint32_t bytesused(int plane = 0);
+    void setBytesused(uint32_t bytesused, int plane = 0);
+    uint32_t length(int plane = 0);
+    void setLength(uint32_t length, int plane = 0);
+    uint32_t getNumPlanes();
+    void setNumPlanes(int numPlanes);
+    struct v4l2_buffer *get() {return &vbuf;}
+    const V4L2Buffer &operator=(const V4L2Buffer &buf);
+
+private:
+    struct v4l2_buffer vbuf;
+    std::vector<struct v4l2_plane> planes; // For multi-planar buffers.
+};
+
 /**
  * v4l2 buffer descriptor.
  *
  * This information is stored in the pool
  */
-struct v4l2_buffer_info {
+class V4L2BufferInfo {
+public:
+    V4L2BufferInfo();
     void *data;
     size_t length;
     int width;
     int height;
     int format;
     int cache_flags;        /*!< initial flags used when creating buffers */
-    struct v4l2_buffer vbuffer;
+    V4L2Buffer vbuffer;
+};
+
+/*
+ * Wrapper for v4l2_format to provide compatible
+ * interfaces for multi-plane buffers.
+ */
+class V4L2Format
+{
+public:
+    V4L2Format() {CLEAR(vfmt);}
+    V4L2Format(const struct v4l2_format &fmt) {vfmt = fmt;}
+    uint32_t type() {return vfmt.type;}
+    void setType(uint32_t type);
+    uint32_t width();
+    void setWidth(uint32_t width);
+    uint32_t height();
+    void setHeight(uint32_t height);
+    uint32_t pixelformat();
+    void setPixelformat(uint32_t format);
+    uint32_t field();
+    void setField(uint32_t field);
+    uint32_t bytesperline(int plane = 0);
+    void setBytesperline(uint32_t bytesperline, int plane = 0);
+    uint32_t sizeimage(int plane = 0);
+    void setSizeimage(uint32_t size, int plane = 0);
+    struct v4l2_format *get() {return &vfmt;}
+    const V4L2Format &operator=(const V4L2Format &fmt);
+
+private:
+    struct v4l2_format vfmt;
 };
 
 struct v4l2_sensor_mode {
@@ -148,8 +226,8 @@ public:
     virtual status_t setCropRectangle (struct v4l2_rect *crop);
     virtual status_t getCropRectangle (struct v4l2_rect *crop);
     virtual status_t setFormat(FrameInfo &aConfig);
-    virtual status_t getFormat(struct v4l2_format &aFormat);
-    virtual status_t setFormat(struct v4l2_format &aFormat);
+    virtual status_t getFormat(V4L2Format &aFormat);
+    virtual status_t setFormat(V4L2Format &aFormat);
     virtual status_t setSelection(const struct v4l2_selection &aSelection);
     virtual status_t queryCapturePixelFormats(std::vector<v4l2_fmtdesc> &formats);
     virtual int getMemoryType();
@@ -161,7 +239,7 @@ public:
     virtual int createBufferPool(unsigned int buffer_count);
 
      // New Buffer pool management
-    virtual status_t setBufferPool(std::vector<struct v4l2_buffer> &pool,
+    virtual status_t setBufferPool(std::vector<V4L2Buffer> &pool,
                                    bool cached,
                                    int memType = V4L2_MEMORY_USERPTR);
 
@@ -169,8 +247,8 @@ public:
     virtual int stop(bool keepBuffers = false);
     virtual int start(int initialSkips);
 
-    virtual int grabFrame(struct v4l2_buffer_info *buf);
-    virtual int putFrame(struct v4l2_buffer const *buf);
+    virtual int grabFrame(V4L2BufferInfo *buf);
+    virtual int putFrame(const V4L2Buffer &buf);
     virtual int putFrame(unsigned int index);
     virtual int exportFrame(unsigned int index);
 
@@ -184,14 +262,14 @@ public:
     virtual status_t enumModes(std::vector<struct v4l2_sensor_mode> &modes);
 
 protected:
-    virtual int qbuf(struct v4l2_buffer_info *buf);
-    virtual int dqbuf(struct v4l2_buffer_info *buf);
-    virtual int newBuffer(int index, struct v4l2_buffer_info &buf,
+    virtual int qbuf(V4L2BufferInfo *buf);
+    virtual int dqbuf(V4L2BufferInfo *buf);
+    virtual int newBuffer(int index, V4L2BufferInfo &buf,
                           int memType = V4L2_MEMORY_USERPTR);
-    virtual int freeBuffer(struct v4l2_buffer_info *buf_info);
+    virtual int freeBuffer(V4L2BufferInfo *buf_info);
     virtual int requestBuffers(size_t num_buffers,
                                int memType = V4L2_MEMORY_USERPTR);
-    virtual void printBufferInfo(const char *func, const struct v4l2_buffer &buf);
+    virtual void printBufferInfo(const char *func, V4L2Buffer &buf);
 
 protected:
 
@@ -212,8 +290,8 @@ protected:
     unsigned int mFrameCounter;             /*!< Tracks the number of output buffers produced by the device. Running counter. It is reset when we start the device*/
     unsigned int mInitialSkips;
 
-    std::vector<struct v4l2_buffer_info> mSetBufferPool; /*!< DEPRECATED:This is the buffer pool set before the device is prepared*/
-    std::vector<struct v4l2_buffer_info> mBufferPool;    /*!< This is the active buffer pool */
+    std::vector<V4L2BufferInfo> mSetBufferPool; /*!< DEPRECATED:This is the buffer pool set before the device is prepared*/
+    std::vector<V4L2BufferInfo> mBufferPool;    /*!< This is the active buffer pool */
 
     enum v4l2_buf_type mBufType;
     int                mMemoryType;
