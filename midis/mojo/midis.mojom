@@ -27,7 +27,7 @@ interface MidisClient {
 
 // This interface is used by the client to send messages / requests to the
 // daemon. This should be implemented by midis.
-// Next Method ID: 0
+// Next Method ID: 1
 interface MidisServer {
   ListDevices@0() => (array<MidisDeviceInfo> devices);
 };

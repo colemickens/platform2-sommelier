@@ -17,8 +17,8 @@ namespace midis {
 
 MATCHER_P3(DeviceMatcher, id, name, manufacturer, "") {
   return (
-      id ==
-          UdevHandler::GenerateDeviceId(arg->GetCard(), arg->GetDeviceNum()) &&
+      id == DeviceTracker::GenerateDeviceId(arg->GetCard(),
+                                            arg->GetDeviceNum()) &&
       base::EqualsCaseInsensitiveASCII(arg->GetName(), name) &&
       base::EqualsCaseInsensitiveASCII(arg->GetManufacturer(), manufacturer));
 }
@@ -27,7 +27,8 @@ base::FilePath CreateFakeTempSubDir(base::FilePath temp_path,
                                     const std::string& subdir_path);
 
 base::FilePath CreateDevNodeFileName(base::FilePath dev_path_base,
-                                     uint32_t sys_num, uint32_t dev_num);
+                                     uint32_t sys_num,
+                                     uint32_t dev_num);
 
 }  // namespace midis
 
