@@ -67,3 +67,33 @@ bool is_hw_jpeg_acc_device(int fd) {
   TRACE("is_hw_jpeg_acc_device: false\n");
   return false;
 }
+
+/* Returns success or failure of getting resolution. The maximum resolution is
+   returned through arguments. */
+bool get_v4l2_max_resolution(
+    int fd, uint32_t fourcc,
+    int32_t* const resolution_width, int32_t* const resolution_height) {
+  *resolution_width = 0;
+  *resolution_height = 0;
+
+  struct v4l2_frmsizeenum frame_size;
+  memset(&frame_size, 0, sizeof(frame_size));
+  frame_size.pixel_format = fourcc;
+
+  for (; do_ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frame_size) == 0;
+       ++frame_size.index) {
+    if (frame_size.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
+      if (frame_size.discrete.width >= *resolution_width &&
+          frame_size.discrete.height >= *resolution_height) {
+        *resolution_width = frame_size.discrete.width;
+        *resolution_height = frame_size.discrete.height;
+      }
+    } else if (frame_size.type == V4L2_FRMSIZE_TYPE_STEPWISE ||
+               frame_size.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) {
+      *resolution_width = frame_size.stepwise.max_width;
+      *resolution_height = frame_size.stepwise.max_height;
+      break;
+    }
+  }
+  return *resolution_width > 0 && *resolution_height > 0;
+}

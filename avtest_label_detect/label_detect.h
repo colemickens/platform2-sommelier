@@ -27,11 +27,17 @@ extern bool is_v4l2_support_format(int fd, enum v4l2_buf_type buf_type,
     uint32_t fourcc);
 extern bool is_hw_video_acc_device(int fd);
 extern bool is_hw_jpeg_acc_device(int fd);
+bool get_v4l2_max_resolution(
+    int fd, uint32_t fourcc,
+    int32_t* const resolution_width, int32_t* const resolution_height);
 
 /* util_vaapi */
 #ifdef HAS_VAAPI
 bool is_vaapi_support_formats(int fd, VAProfile* profiles,
     VAEntrypoint entrypoint, unsigned int format);
+bool get_vaapi_max_resolution(
+    int fd, VAProfile* profiles, VAEntrypoint entrypoit,
+    int32_t* const resolution_width, int32_t* const resolution_height);
 #endif
 
 /* detectors */
@@ -42,5 +48,5 @@ extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
 extern bool detect_jpeg_acc_dec(void);
-
+bool detect_4k_video(void);
 #endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_

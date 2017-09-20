@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <va/va.h>
@@ -101,4 +102,178 @@ bool is_vaapi_support_formats(int fd, VAProfile* profiles,
   vaTerminate(va_display);
 
   return found;
+}
+
+/* Returns true if |entrypoint| is supported. */
+static bool is_entrypoint_supported(VADisplay va_display, VAProfile va_profile,
+                                    VAEntrypoint entrypoint) {
+  bool result = false;
+  int max_entrypoints = vaMaxNumEntrypoints(va_display);
+  VAEntrypoint* supported_entrypoints =
+      malloc(max_entrypoints * sizeof(VAEntrypoint));
+  int num_supported_entrypoints;
+  VAStatus va_res = vaQueryConfigEntrypoints(va_display, va_profile,
+                                             supported_entrypoints,
+                                             &num_supported_entrypoints);
+
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaQueryConfigEntrypoints failed (%d)\n", va_res);
+    goto finish;
+  }
+  if (num_supported_entrypoints < 0 ||
+      num_supported_entrypoints > max_entrypoints) {
+    TRACE("vaQueryConfigEntrypoints returned: %d\n", num_supported_entrypoints);
+    goto finish;
+  }
+
+  for (int i = 0; i < num_supported_entrypoints; i++) {
+    if (supported_entrypoints[i] == entrypoint) {
+      result = true;
+      break;
+    }
+  }
+
+ finish:
+  free(supported_entrypoints);
+  return result;
+}
+
+/* Returns true if |required_attribs| are supported. */
+static bool are_attribs_supported(
+    VADisplay va_display, VAProfile va_profile,
+    VAEntrypoint entrypoint,
+    VAConfigAttrib* required_attribs, int num_required_attribs) {
+  bool result = false;
+  VAConfigAttrib* attribs =
+      malloc(sizeof(VAConfigAttrib) * num_required_attribs);
+  memcpy(attribs, required_attribs, sizeof(attribs));
+  for (int i = 0; i < num_required_attribs; i++) {
+    attribs[i].value = 0;
+  }
+
+  VAStatus va_res = vaGetConfigAttributes(va_display, va_profile, entrypoint,
+                                          attribs, num_required_attribs);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaGetConfigAttributes failed (%d)\n", va_res);
+    goto finish;
+  }
+
+  for (int i = 0; i < num_required_attribs; i++) {
+    if (attribs[i].type != required_attribs[i].type ||
+        (attribs[i].value & required_attribs[i].value) !=
+            required_attribs[i].value) {
+      // Unsupported value.
+      goto finish;
+    }
+  }
+  result = true;
+
+ finish:
+  free(attribs);
+  return result;
+}
+
+/* Returns success or failure of getting resolution. The maximum resolution
+ * of a passed profile is returned through arguments. */
+static bool get_max_resolution(
+    VADisplay va_display, VAProfile va_profile, VAEntrypoint entrypoint,
+    VAConfigAttrib* required_attribs, int num_required_attribs,
+    int32_t *width, int32_t *height) {
+  VAStatus va_res;
+  VAConfigID va_config_id;
+  VASurfaceAttrib *attrib_list;
+  unsigned int num_attribs = 0;
+  *width = 0;
+  *height = 0;
+
+  va_res = vaCreateConfig(va_display, va_profile, entrypoint,
+                          required_attribs, num_attribs, &va_config_id);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaQueryConfigProfiles failed (%d)\n", va_res);
+    return false;
+  }
+  // Calls vaQuerySurfaceAttributes twice. The first time is to get the number
+  // of attributes to prepare the space and the second time is to get all
+  // attributes.
+  va_res =
+      vaQuerySurfaceAttributes(va_display, va_config_id, NULL, &num_attribs);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaQuerySurfaceAttributes failed (%d)\n", va_res);
+    return false;
+  }
+  if (!num_attribs) {
+    return false;
+  }
+
+  attrib_list = malloc(num_attribs * sizeof(VASurfaceAttrib));
+  va_res= vaQuerySurfaceAttributes(va_display, va_config_id, attrib_list,
+                                   &num_attribs);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaQuerySurfaceAttributes failed (%d)\n", va_res);
+    free(attrib_list);
+    return false;
+  }
+  for (unsigned int j = 0; j < num_attribs; j++) {
+    VASurfaceAttrib attrib = attrib_list[j];
+    if (attrib.type == VASurfaceAttribMaxWidth) {
+      *width = attrib.value.value.i;
+    } else if (attrib.type == VASurfaceAttribMaxHeight) {
+      *height = attrib.value.value.i;
+    }
+  }
+  free(attrib_list);
+  return *width > 0 && *height > 0;
+}
+
+
+/* Returns success or failure of getting resolution. The maximum resolution
+ * among passed profiles is returned through arguments. */
+bool get_vaapi_max_resolution(
+    int fd, VAProfile* profiles, VAEntrypoint entrypoint,
+    int32_t* const resolution_width, int32_t* const resolution_height) {
+  *resolution_width = 0;
+  *resolution_height = 0;
+
+  VAConfigAttrib required_attribs = {VAConfigAttribRTFormat,
+                                     VA_RT_FORMAT_YUV420};
+  VAStatus va_res;
+  VADisplay va_display = vaGetDisplayDRM(fd);
+  int major_version, minor_version;
+  if (!vaDisplayIsValid(va_display)) {
+    TRACE("vaGetDisplay returns invalid display\n");
+    return false;
+  }
+  va_res = vaInitialize(va_display, &major_version, &minor_version);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaInitialize failed\n");
+    return false;
+  }
+
+  for (size_t i = 0; profiles[i] != VAProfileNone; i++) {
+    VAProfile va_profile = profiles[i];
+    int32_t width = 0;
+    int32_t height = 0;
+    if (!is_entrypoint_supported(va_display, va_profile, entrypoint)) {
+      continue;
+    }
+
+    if (!are_attribs_supported(va_display, va_profile, entrypoint,
+                               &required_attribs, 1)) {
+      continue;
+    }
+
+    if (!get_max_resolution(va_display, va_profile, entrypoint,
+                            &required_attribs, 1, &width, &height)) {
+      TRACE("GetMaxResolution failed for va_profile %d and entrypoint %u\n",
+            va_profile, entrypoint);
+      continue;
+    }
+
+    if (*resolution_width <= width && *resolution_height <= height) {
+      *resolution_width = width;
+      *resolution_height = height;
+    }
+  }
+  vaTerminate(va_display);
+  return *resolution_width > 0 && *resolution_height > 0;
 }
