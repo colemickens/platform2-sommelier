@@ -280,6 +280,8 @@
       'sources': [
         'policy/device_policy.cc',
         'policy/device_policy_impl.cc',
+        'policy/policy_util.cc',
+        'policy/resilient_policy_util.cc',
         'policy/libpolicy.cc',
       ],
     },
@@ -452,6 +454,8 @@
             'install_attributes/mock_install_attributes_reader.cc',
             'policy/tests/device_policy_impl_unittest.cc',
             'policy/tests/libpolicy_unittest.cc',
+            'policy/tests/policy_util_unittest.cc',
+            'policy/tests/resilient_policy_util_unittest.cc',
           ]
         },
       ],

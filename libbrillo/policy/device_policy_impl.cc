@@ -6,9 +6,11 @@
 
 #include <memory>
 
+#include <base/containers/adapters.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -17,6 +19,8 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "policy/policy_util.h"
+#include "policy/resilient_policy_util.h"
 
 namespace em = enterprise_management;
 
@@ -68,9 +72,7 @@ bool VerifySignature(const std::string& signed_data,
   int rv = EVP_VerifyInit_ex(&ctx, digest, nullptr);
   if (rv == 1) {
     EVP_VerifyUpdate(&ctx, signed_data.data(), signed_data.length());
-    rv = EVP_VerifyFinal(&ctx,
-                         sig, signature.length(),
-                         public_key_ssl);
+    rv = EVP_VerifyFinal(&ctx, sig, signature.length(), public_key_ssl);
   }
 
   EVP_PKEY_free(public_key_ssl);
@@ -84,11 +86,7 @@ bool VerifySignature(const std::string& signed_data,
 // representations. The strings must match the connection manager definitions.
 std::string DecodeConnectionType(int type) {
   static const char* const kConnectionTypes[] = {
-    "ethernet",
-    "wifi",
-    "wimax",
-    "bluetooth",
-    "cellular",
+      "ethernet", "wifi", "wimax", "bluetooth", "cellular",
   };
 
   if (type < 0 || type >= static_cast<int>(arraysize(kConnectionTypes)))
@@ -101,51 +99,31 @@ std::string DecodeConnectionType(int type) {
 
 DevicePolicyImpl::DevicePolicyImpl()
     : policy_path_(kPolicyPath),
-      keyfile_path_(kPublicKeyPath) {
-}
+      keyfile_path_(kPublicKeyPath),
+      verify_root_ownership_(true) {}
 
-DevicePolicyImpl::~DevicePolicyImpl() {
-}
+DevicePolicyImpl::~DevicePolicyImpl() {}
 
 bool DevicePolicyImpl::LoadPolicy() {
-  bool verify_policy = true;
-  if (!install_attributes_reader_) {
-    install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
-  }
-  const std::string& mode =
-      install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode);
-  if (mode == InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    verify_policy = false;
+  std::map<int, base::FilePath> sorted_policy_file_paths =
+      policy::GetSortedResilientPolicyFilePaths(policy_path_);
+  if (sorted_policy_file_paths.empty())
+    return false;
+
+  // Try to load the existent policy files one by one in reverse order of their
+  // index until we succeed. The default policy, if present, appears as index 0
+  // in the map and is loaded the last. This is intentional as that file is the
+  // oldest.
+  bool policy_loaded = false;
+  for (const auto& map_pair : base::Reversed(sorted_policy_file_paths)) {
+    const base::FilePath& policy_path = map_pair.second;
+    if (LoadPolicyFromFile(policy_path)) {
+      policy_loaded = true;
+      break;
+    }
   }
 
-  if (verify_policy && !VerifyPolicyFiles()) {
-    return false;
-  }
-
-  std::string polstr;
-  if (!base::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
-    LOG(ERROR) << "Could not read policy off disk";
-    return false;
-  }
-  if (!policy_.ParseFromString(polstr) || !policy_.has_policy_data()) {
-    LOG(ERROR) << "Policy on disk could not be parsed!";
-    return false;
-  }
-  policy_data_.ParseFromString(policy_.policy_data());
-  if (!policy_data_.has_policy_value()) {
-    LOG(ERROR) << "Policy on disk could not be parsed!";
-    return false;
-  }
-
-  // Make sure the signature is still valid.
-  if (verify_policy && !VerifyPolicySignature()) {
-    LOG(ERROR) << "Policy signature verification failed!";
-    return false;
-  }
-
-  device_policy_.ParseFromString(policy_data_.policy_value());
-  return true;
+  return policy_loaded;
 }
 
 bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
@@ -257,8 +235,7 @@ bool DevicePolicyImpl::GetEphemeralUsersEnabled(
   return true;
 }
 
-bool DevicePolicyImpl::GetReleaseChannel(
-    std::string* release_channel) const {
+bool DevicePolicyImpl::GetReleaseChannel(std::string* release_channel) const {
   if (!device_policy_.has_release_channel())
     return false;
 
@@ -283,8 +260,7 @@ bool DevicePolicyImpl::GetReleaseChannelDelegated(
   return true;
 }
 
-bool DevicePolicyImpl::GetUpdateDisabled(
-    bool* update_disabled) const {
+bool DevicePolicyImpl::GetUpdateDisabled(bool* update_disabled) const {
   if (!device_policy_.has_auto_update_settings())
     return false;
 
@@ -326,7 +302,7 @@ bool DevicePolicyImpl::GetScatterFactorInSeconds(
 }
 
 bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
-      std::set<std::string>* connection_types) const {
+    std::set<std::string>* connection_types) const {
   if (!device_policy_.has_auto_update_settings())
     return false;
 
@@ -399,7 +375,7 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
 }
 
 bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
-      bool* allow_kiosk_app_control_chrome_version) const {
+    bool* allow_kiosk_app_control_chrome_version) const {
   if (!device_policy_.has_allow_kiosk_app_control_chrome_version())
     return false;
 
@@ -487,16 +463,19 @@ bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
   return true;
 }
 
+bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
+  if (!verify_root_ownership_) {
+    return true;
+  }
 
-bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
-  if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {
+  if (!base::PathExists(policy_path) || !base::PathExists(keyfile_path_)) {
     return false;
   }
 
   // Check if the policy and signature file is owned by root.
   struct stat file_stat;
-  stat(policy_path_.value().c_str(), &file_stat);
+  stat(policy_path.value().c_str(), &file_stat);
   if (file_stat.st_uid != 0) {
     LOG(ERROR) << "Policy file is not owned by root!";
     return false;
@@ -526,6 +505,48 @@ bool DevicePolicyImpl::VerifyPolicySignature() {
   }
   LOG(ERROR) << "The policy blob is not signed!";
   return false;
+}
+
+bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
+  std::string policy_data_str;
+  if (policy::LoadPolicyFromPath(policy_path, &policy_data_str, &policy_) !=
+      LoadPolicyResult::kSuccess) {
+    return false;
+  }
+  if (!policy_.has_policy_data()) {
+    LOG(ERROR) << "Policy on disk could not be parsed!";
+    return false;
+  }
+  if (!policy_data_.ParseFromString(policy_.policy_data()) ||
+      !policy_data_.has_policy_value()) {
+    LOG(ERROR) << "Policy on disk could not be parsed!";
+    return false;
+  }
+
+  bool verify_policy = true;
+  if (!install_attributes_reader_) {
+    install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
+  }
+  const std::string& mode = install_attributes_reader_->GetAttribute(
+      InstallAttributesReader::kAttrMode);
+  if (mode == InstallAttributesReader::kDeviceModeEnterpriseAD) {
+    verify_policy = false;
+  }
+  if (verify_policy && !VerifyPolicyFile(policy_path)) {
+    return false;
+  }
+
+  // Make sure the signature is still valid.
+  if (verify_policy && !VerifyPolicySignature()) {
+    LOG(ERROR) << "Policy signature verification failed!";
+    return false;
+  }
+  if (!device_policy_.ParseFromString(policy_data_.policy_value())) {
+    LOG(ERROR) << "Policy on disk could not be parsed!";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace policy

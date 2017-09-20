@@ -65,32 +65,53 @@ class DevicePolicyImpl : public DevicePolicy {
       bool* allow_kiosk_app_control_chrome_version) const override;
   bool GetUsbDetachableWhitelist(
       std::vector<UsbDeviceId>* usb_whitelist) const override;
-  bool GetAutoLaunchedKioskAppId(
-      std::string* app_id_out) const override;
+  bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const override;
   bool IsEnterpriseManaged() const override;
-  bool GetSecondFactorAuthenticationMode(
-      int* mode_out) const override;
+  bool GetSecondFactorAuthenticationMode(int* mode_out) const override;
 
+  // Methods that can be used only for testing.
   void set_policy_data_for_testing(
       const enterprise_management::PolicyData& policy_data) {
     policy_data_ = policy_data;
   }
+  void set_verify_root_ownership_for_testing(bool verify_root_ownership) {
+    verify_root_ownership_ = verify_root_ownership;
+  }
+  void set_install_attributes_for_testing(
+      std::unique_ptr<InstallAttributesReader> install_attributes_reader) {
+    install_attributes_reader_ = std::move(install_attributes_reader);
+  }
+  void set_policy_path_for_testing(const base::FilePath& policy_path) {
+    policy_path_ = policy_path;
+  }
+  void set_key_file_path_for_testing(const base::FilePath& keyfile_path) {
+    keyfile_path_ = keyfile_path;
+  }
 
- protected:
-  // Verifies that the policy files are owned by root and exist.
-  bool VerifyPolicyFiles() override;
+ private:
+  // Verifies that both the policy file and the signature file exist and are
+  // owned by the root. Does nothing when |verify_root_ownership_| is set to
+  // false.
+  bool VerifyPolicyFile(const base::FilePath& policy_path);
+
+  // Verifies that the policy signature is correct.
+  bool VerifyPolicySignature() override;
+
+  // Loads the signed policy off of disk from |policy_path| into |policy_|.
+  // Returns true if the |policy_path| is present on disk and loading it is
+  // successful.
+  bool LoadPolicyFromFile(const base::FilePath& policy_path);
 
   base::FilePath policy_path_;
   base::FilePath keyfile_path_;
   std::unique_ptr<InstallAttributesReader> install_attributes_reader_;
-
- private:
-  // Verifies that the policy signature is correct.
-  bool VerifyPolicySignature() override;
-
   enterprise_management::PolicyFetchResponse policy_;
   enterprise_management::PolicyData policy_data_;
   enterprise_management::ChromeDeviceSettingsProto device_policy_;
+
+  // If true, verify that policy files are owned by root. True in production
+  // but can be set to false by tests.
+  bool verify_root_ownership_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyImpl);
 };
