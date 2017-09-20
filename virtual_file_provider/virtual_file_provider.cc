@@ -90,6 +90,15 @@ void SendReadRequest(ServiceThread* service_thread,
                  id, offset, size, base::Passed(&fd)));
 }
 
+// Sends the released ID to Chrome.
+void OnIdReleased(ServiceThread* service_thread, const std::string& id) {
+  service_thread->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::SendIdReleased,
+                 // This is safe as service_thread outlives the FUSE main loop.
+                 base::Unretained(service_thread->service()), id));
+}
+
 }  // namespace
 
 }  // namespace virtual_file_provider
@@ -113,5 +122,6 @@ int main(int argc, char** argv) {
   // Enter the FUSE main loop.
   return virtual_file_provider::FuseMain(
       fuse_mount_path,
-      base::Bind(&virtual_file_provider::SendReadRequest, &service_thread));
+      base::Bind(&virtual_file_provider::SendReadRequest, &service_thread),
+      base::Bind(&virtual_file_provider::OnIdReleased, &service_thread));
 }

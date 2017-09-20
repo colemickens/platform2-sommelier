@@ -20,9 +20,16 @@ namespace {
 
 constexpr char kFileSystemName[] = "virtual-file-provider";
 
-const SendReadRequestCallback& GetSendReadRequestCallback() {
-  return *static_cast<const SendReadRequestCallback*>(
-      fuse_get_context()->private_data);
+struct Callbacks {
+  Callbacks() = default;
+  ~Callbacks() = default;
+
+  SendReadRequestCallback send_read_request_callback;
+  ReleaseCallback release_callback;
+};
+
+const Callbacks& GetCallbacks() {
+  return *static_cast<const Callbacks*>(fuse_get_context()->private_data);
 }
 
 int GetAttr(const char* path, struct stat* stat) {
@@ -63,7 +70,8 @@ int Read(const char* path,
   base::ScopedFD read_end(fds[0]), write_end(fds[1]);
 
   // Send read request to chrome with the write end of the pipe.
-  GetSendReadRequestCallback().Run(id, off, size, std::move(write_end));
+  GetCallbacks().send_read_request_callback.Run(
+      id, off, size, std::move(write_end));
 
   // Read the data from the read end of the pipe.
   size_t result = 0;
@@ -81,6 +89,11 @@ int Read(const char* path,
 }
 
 int Release(const char* path, struct fuse_file_info* fi) {
+  DCHECK_EQ('/', path[0]);
+  // File name is the ID.
+  std::string id(path + 1);
+
+  GetCallbacks().release_callback.Run(id);
   return 0;
 }
 
@@ -104,7 +117,8 @@ void* Init(struct fuse_conn_info* conn) {
 }  // namespace
 
 int FuseMain(const base::FilePath& mount_path,
-             const SendReadRequestCallback& send_read_request_callback) {
+             const SendReadRequestCallback& send_read_request_callback,
+             const ReleaseCallback& release_callback) {
   const std::string path_str = mount_path.AsUTF8Unsafe();
   const char* fuse_argv[] = {
       kFileSystemName,
@@ -122,9 +136,10 @@ int FuseMain(const base::FilePath& mount_path,
       .readdir = ReadDir,
       .init = Init,
   };
-  SendReadRequestCallback send_read_request_callback_non_const =
-      send_read_request_callback;
-  void* private_data = &send_read_request_callback_non_const;
+  Callbacks callbacks;
+  callbacks.send_read_request_callback = send_read_request_callback;
+  callbacks.release_callback = release_callback;
+  void* private_data = &callbacks;
   return fuse_main(arraysize(fuse_argv),
                    const_cast<char**>(fuse_argv),
                    &operations,

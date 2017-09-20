@@ -86,6 +86,20 @@ void Service::SendReadRequest(const std::string& id,
       dbus::ObjectProxy::EmptyResponseCallback());
 }
 
+void Service::SendIdReleased(const std::string& id) {
+  DCHECK(thread_checker_.CalledOnValidThread());
+  dbus::MethodCall method_call(
+      chromeos::kVirtualFileRequestServiceInterface,
+      chromeos::kVirtualFileRequestServiceHandleIdReleasedMethod);
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(id);
+  request_handler_proxy_->CallMethod(
+      &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      dbus::ObjectProxy::EmptyResponseCallback());
+}
+
 void Service::OpenFile(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender) {
   DCHECK(thread_checker_.CalledOnValidThread());

@@ -39,6 +39,10 @@ class Service {
                        int64_t size,
                        base::ScopedFD fd);
 
+  // Sends a released ID. Chrome is responsible to release resources associated
+  // with the ID.
+  void SendIdReleased(const std::string& id);
+
  private:
   // Handles OpenFile D-Bus method calls.
   // Returns a seekable FD backed by the FUSE file system, and an ID associated
