@@ -270,14 +270,8 @@ ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
   if (error == ERROR_NONE && tgt_autorenewal_enabled_)
     UpdateTgtAutoRenewal();
 
-  // If there was no error, assume that the Kerberos credential cache changed.
-  if (error == ERROR_NONE)
-    kerberos_files_dirty_ = true;
-
-  // Trigger the files-changed signal.
-  if (kerberos_files_dirty_ && !kerberos_files_changed_.is_null())
-    kerberos_files_changed_.Run();
-  kerberos_files_dirty_ = false;
+  // Trigger signal if files changed.
+  MaybeTriggerKerberosFilesChanged();
 
   return error;
 }
@@ -310,6 +304,10 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
   // If it worked, re-trigger the TGT renewal task.
   if (error == ERROR_NONE && tgt_autorenewal_enabled_)
     UpdateTgtAutoRenewal();
+
+  // Trigger signal if files changed.
+  MaybeTriggerKerberosFilesChanged();
+
   return error;
 }
 
@@ -361,6 +359,10 @@ ErrorType TgtManager::RenewTgt() {
   // No matter if it worked or not, reschedule auto-renewal. We might be offline
   // and want to try again later.
   UpdateTgtAutoRenewal();
+
+  // Trigger signal if files changed.
+  MaybeTriggerKerberosFilesChanged();
+
   return error;
 }
 
@@ -450,6 +452,11 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
     }
   }
   metrics_->Report(METRIC_KINIT_FAILED_TRY_COUNT, failed_tries);
+
+  // If there was no error, assume that the Kerberos credential cache changed.
+  if (error == ERROR_NONE)
+    kerberos_files_dirty_ = true;
+
   return error;
 }
 
@@ -556,6 +563,12 @@ void TgtManager::AutoRenewTgt() {
     LOG(INFO) << kTgtRenewalHeader << "Succeeded";
   else
     LOG(INFO) << kTgtRenewalHeader << "Failed with error " << error;
+}
+
+void TgtManager::MaybeTriggerKerberosFilesChanged() {
+  if (kerberos_files_dirty_ && !kerberos_files_changed_.is_null())
+    kerberos_files_changed_.Run();
+  kerberos_files_dirty_ = false;
 }
 
 }  // namespace authpolicy

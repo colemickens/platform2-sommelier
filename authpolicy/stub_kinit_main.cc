@@ -48,6 +48,8 @@ const char kKdcIpKey[] = "kdc = [";
 const char kPasswordWillExpireWarning[] =
     "Warning: Your password will expire in 7 days on Fri May 19 14:28:41 2017";
 const char kRefresh[] = "-R";
+const char kTicketExpired[] =
+    "kinit: Ticket expired while renewing credentials";
 
 // Helper file for simulating account propagation issues.
 const char kPropagationTestFile[] = "propagation_test";
@@ -115,6 +117,21 @@ bool Krb5ConfContainsKdcIp() {
   return Contains(krb5_conf, kKdcIpKey);
 }
 
+// Handles ticket refresh with kinit -R. Switches behavior based on the contents
+// of the Kerberos ticket.
+int HandleRefresh() {
+  const std::string krb5cc_path = GetKrb5CCFilePath();
+  CHECK(!krb5cc_path.empty());
+  std::string krb5cc_data;
+  CHECK(base::ReadFileToString(base::FilePath(krb5cc_path), &krb5cc_data));
+  if (krb5cc_data == kExpiredKrb5CCData) {
+    WriteOutput("", kTicketExpired);
+    return kExitCodeError;
+  }
+  WriteKrb5CC(kValidKrb5CCData);
+  return kExitCodeOk;
+}
+
 int HandleCommandLine(const std::string& command_line) {
   // Read the password from stdin.
   std::string password;
@@ -124,10 +141,8 @@ int HandleCommandLine(const std::string& command_line) {
   }
 
   // Request for TGT refresh. The only test that uses it expects a failure.
-  if (StartsWithCaseSensitive(command_line, kRefresh)) {
-    WriteOutput("", kCannotContactKdc);
-    return kExitCodeError;
-  }
+  if (StartsWithCaseSensitive(command_line, kRefresh))
+    return HandleRefresh();
 
   // Stub non-existing account error.
   if (StartsWithCaseSensitive(command_line, kNonExistingUserPrincipal)) {

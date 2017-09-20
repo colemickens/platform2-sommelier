@@ -124,6 +124,9 @@ class TgtManager {
   // appropriate error messages.
   void AutoRenewTgt();
 
+  // Runs |kerberos_files_changed_| if |kerberos_files_dirty_| is set.
+  void MaybeTriggerKerberosFilesChanged();
+
   const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   const PathService* const paths_ = nullptr;    // File paths, not owned.
   AuthPolicyMetrics* const metrics_ = nullptr;  // UMA statistics, not owned.

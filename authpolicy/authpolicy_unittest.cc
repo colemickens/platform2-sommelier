@@ -315,6 +315,9 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce(Return(message_loop_->task_runner().get()));
     EXPECT_CALL(*mock_exported_object_.get(), ExportMethod(_, _, _, _))
         .Times(AnyNumber());
+    EXPECT_CALL(*mock_exported_object_.get(), SendSignal(_))
+        .WillRepeatedly(
+            Invoke(this, &AuthPolicyTest::HandleUserKerberosFilesChanged));
 
     // Create AuthPolicy instance.
     authpolicy_ = base::MakeUnique<AuthPolicy>(metrics_.get(), paths_.get());
@@ -445,17 +448,15 @@ class AuthPolicyTest : public testing::Test {
       const std::string& account_id,
       dbus::FileDescriptor password_fd,
       authpolicy::ActiveDirectoryAccountInfo* account_info = nullptr) {
-    EXPECT_CALL(*mock_exported_object_.get(), SendSignal(_))
-        .Times(AtMost(1))
-        .WillOnce(
-            Invoke(this, &AuthPolicyTest::VerifyGetUserKerberosFilesSignal));
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> account_info_blob;
     expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER]++;
+    int prev_files_changed_count = user_kerberos_files_changed_count_;
     authpolicy_->AuthenticateUser(
         user_principal, account_id, password_fd, &error, &account_info_blob);
     MaybeParseProto(error, account_info_blob, account_info);
-    testing::Mock::VerifyAndClearExpectations(mock_exported_object_.get());
+    // At most one UserKerberosFilesChanged signal should have been fired.
+    EXPECT_LE(user_kerberos_files_changed_count_, prev_files_changed_count + 1);
     return CastError(error);
   }
 
@@ -607,7 +608,7 @@ class AuthPolicyTest : public testing::Test {
       validate_device_policy_;
 
  private:
-  void VerifyGetUserKerberosFilesSignal(dbus::Signal* signal) {
+  void HandleUserKerberosFilesChanged(dbus::Signal* signal) {
     EXPECT_EQ(signal->GetInterface(), "org.chromium.AuthPolicy");
     EXPECT_EQ(signal->GetMember(), "UserKerberosFilesChanged");
     user_kerberos_files_changed_count_++;
@@ -910,17 +911,19 @@ TEST_F(AuthPolicyTest, GetUserKerberosFilesSucceeds) {
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
-// Retrying kinit without kdc ip causes a config change and should result in a
-// UserKerberosFilesChanged signal.
+// Changes of krb5.conf should trigger the UserKerberosFilesChanged signal. This
+// is tested by retrying kinit without kdc ip causes a config change and should
+// result in a UserKerberosFilesChanged signal.
 TEST_F(AuthPolicyTest, ConfigChangeTriggersFilesChangedSignal) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
-  // Do a normal auth first to bootstrap Kerberos files.
-  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  // Do a normal auth first to bootstrap Kerberos files, but generate an expired
+  // TGT, so that the last step won't change the TGT.
+  EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(1, user_kerberos_files_changed_count_);
   // 1x machine and 1x user TGT.
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 
-  // Try to auth again, but trigger a KDC retry to change the config.
+  // Try to auth again, but trigger a KDC retry to change JUST the config.
   EXPECT_EQ(ERROR_CONTACTING_KDC_FAILED,
             Auth(kKdcRetryFailsUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
@@ -928,10 +931,22 @@ TEST_F(AuthPolicyTest, ConfigChangeTriggersFilesChangedSignal) {
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 
   // Once the config is changed, it shouldn't change again.
-  EXPECT_EQ(ERROR_CONTACTING_KDC_FAILED, authpolicy_->RenewUserTgtForTesting());
+  EXPECT_EQ(ERROR_KERBEROS_TICKET_EXPIRED,
+            authpolicy_->RenewUserTgtForTesting());
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
   // 1x user TGT.
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// TGT renewal should trigger a KerberosFilesChanged signal.
+TEST_F(AuthPolicyTest, RenewTriggersFilesChangedSignal) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(1, user_kerberos_files_changed_count_);
+  EXPECT_EQ(ERROR_NONE, authpolicy_->RenewUserTgtForTesting());
+  EXPECT_EQ(2, user_kerberos_files_changed_count_);
+  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Join fails if there's a network issue.
