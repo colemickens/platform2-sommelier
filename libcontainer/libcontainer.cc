@@ -15,8 +15,10 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -33,6 +35,7 @@
 #include <scoped_minijail.h>
 
 #include "libcontainer/cgroup.h"
+#include "libcontainer/config.h"
 #include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
 
@@ -205,6 +208,11 @@ struct container_config {
   void* pre_start_hook_payload;
 
   std::vector<int> inherited_fds;
+
+  // A list of hooks that will be called upon minijail reaching various states
+  // of execution.
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
+      hooks;
 };
 
 // Container manipulation
@@ -223,6 +231,10 @@ struct container {
   std::vector<base::FilePath> loopdev_paths;
   std::vector<std::string> device_mappers;
   std::string name;
+
+  std::vector<std::pair<libcontainer::HookState,
+                        std::vector<libcontainer::HookCallback>>>
+      hook_states;
 };
 
 namespace {
@@ -267,12 +279,10 @@ int SetupMountDestination(const struct container_config* config,
 }
 
 // Fork and exec the setfiles command to configure the selinux policy.
-int RunSetfilesCommand(const struct container* c,
-                       const struct container_config* config,
-                       const std::vector<base::FilePath>& destinations) {
-  if (config->run_setfiles.empty())
-    return 0;
-
+bool RunSetfilesCommand(const struct container* c,
+                        const struct container_config* config,
+                        const std::vector<base::FilePath>& destinations,
+                        pid_t container_pid) {
   int pid = fork();
   if (pid == 0) {
     size_t arg_index = 0;
@@ -301,19 +311,24 @@ int RunSetfilesCommand(const struct container* c,
   }
   if (pid < 0) {
     PLOG_PRESERVE(ERROR) << "Failed to fork to run setfiles";
-    return -errno;
+    return false;
   }
 
-  int rc;
   int status;
-  do {
-    rc = waitpid(pid, &status, 0);
-  } while (rc == -1 && errno == EINTR);
-  if (rc < 0) {
+  if (HANDLE_EINTR(waitpid(pid, &status, 0)) < 0) {
     PLOG_PRESERVE(ERROR) << "Failed to wait for setfiles";
-    return -errno;
+    return false;
   }
-  return status;
+  if (!WIFEXITED(status)) {
+    LOG(ERROR) << "setfiles did not terminate cleanly";
+    return false;
+  }
+  if (WEXITSTATUS(status) != 0) {
+    LOG(ERROR) << "setfiles exited with non-zero status: "
+               << WEXITSTATUS(status);
+    return false;
+  }
+  return true;
 }
 
 // Unmounts anything we mounted in this mount namespace in the opposite order
@@ -549,6 +564,28 @@ int MountRunfs(struct container* c, const struct container_config* config) {
   return 0;
 }
 
+bool CreateDeviceNodes(struct container* c,
+                       const struct container_config* config,
+                       pid_t container_pid) {
+  for (const auto& dev : config->devices) {
+    int minor = dev.minor;
+
+    if (dev.copy_minor) {
+      struct stat st_buff;
+      if (stat(dev.path.value().c_str(), &st_buff) < 0)
+        continue;
+      minor = minor(st_buff.st_rdev);
+    }
+    if (minor < 0)
+      continue;
+    int rc = ContainerCreateDevice(c, config, dev, minor);
+    if (rc)
+      return false;
+  }
+
+  return true;
+}
+
 int DeviceSetup(struct container* c, const struct container_config* config) {
   int rc;
 
@@ -564,22 +601,6 @@ int DeviceSetup(struct container* c, const struct container_config* config) {
                               dev.type);
     if (rc)
       return rc;
-  }
-
-  for (const auto& dev : config->devices) {
-    int minor = dev.minor;
-
-    if (dev.copy_minor) {
-      struct stat st_buff;
-      if (stat(dev.path.value().c_str(), &st_buff) < 0)
-        continue;
-      minor = minor(st_buff.st_rdev);
-    }
-    if (minor >= 0) {
-      rc = ContainerCreateDevice(c, config, dev, minor);
-      if (rc)
-        return rc;
-    }
   }
 
   for (const auto& loopdev_path : c->loopdev_paths) {
@@ -1024,6 +1045,14 @@ void container_config_set_pre_execve_hook(struct container_config* c,
   c->pre_start_hook_payload = payload;
 }
 
+void container_config_add_hook(struct container_config* c,
+                               minijail_hook_event_t event,
+                               libcontainer::HookCallback callback) {
+  auto it = c->hooks.insert(
+      std::make_pair(event, std::vector<libcontainer::HookCallback>()));
+  it.first->second.emplace_back(std::move(callback));
+}
+
 int container_config_inherit_fds(struct container_config* c,
                                  int* inherited_fds,
                                  size_t inherited_fd_count) {
@@ -1096,34 +1125,55 @@ int container_start(struct container* c,
   if (!c->cgroup)
     return -errno;
 
-  /* Must be root to modify device cgroup or mknod */
+  // Must be root to modify device cgroup or mknod.
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
+      hook_callbacks;
   if (getuid() == 0) {
+    if (!config->devices.empty()) {
+      // Create the devices in the mount namespace.
+      auto it = hook_callbacks.insert(
+          std::make_pair(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
+                         std::vector<libcontainer::HookCallback>()));
+      it.first->second.emplace_back(
+          libcontainer::AdaptCallbackToRunInNamespaces(
+              base::Bind(&CreateDeviceNodes, base::Unretained(c),
+                         base::Unretained(config)),
+              {CLONE_NEWNS}));
+    }
     rc = DeviceSetup(c, config);
     if (rc)
       return rc;
   }
 
-  /* Potentially run setfiles on mounts configured outside of the jail */
-  const base::FilePath kDataPath("/data");
-  const base::FilePath kCachePath("/cache");
-  std::vector<base::FilePath> destinations;
-  for (const auto& mnt : config->mounts) {
-    if (mnt.mount_in_ns)
-      continue;
-    if (mnt.flags & MS_RDONLY)
-      continue;
+  // Potentially run setfiles on mounts configured outside of the jail.
+  if (!config->run_setfiles.empty()) {
+    const base::FilePath kDataPath("/data");
+    const base::FilePath kCachePath("/cache");
+    std::vector<base::FilePath> destinations;
+    for (const auto& mnt : config->mounts) {
+      if (mnt.mount_in_ns)
+        continue;
+      if (mnt.flags & MS_RDONLY)
+        continue;
 
-    /* A hack to avoid setfiles on /data and /cache. */
-    if (mnt.destination == kDataPath || mnt.destination == kCachePath)
-      continue;
+      // A hack to avoid setfiles on /data and /cache.
+      if (mnt.destination == kDataPath || mnt.destination == kCachePath)
+        continue;
 
-    destinations.emplace_back(
-        GetPathInOuterNamespace(c->runfsroot, mnt.destination));
-  }
-  if (!destinations.empty()) {
-    rc = RunSetfilesCommand(c, config, destinations);
-    if (rc)
-      return rc;
+      destinations.emplace_back(
+          GetPathInOuterNamespace(c->runfsroot, mnt.destination));
+    }
+
+    if (!destinations.empty()) {
+      auto it = hook_callbacks.insert(
+          std::make_pair(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
+                         std::vector<libcontainer::HookCallback>()));
+      it.first->second.emplace_back(
+          libcontainer::AdaptCallbackToRunInNamespaces(
+              base::Bind(&RunSetfilesCommand, base::Unretained(c),
+                         base::Unretained(config), destinations),
+              {CLONE_NEWNS}));
+    }
   }
 
   /* Setup CPU cgroup params. */
@@ -1230,6 +1280,31 @@ int container_start(struct container* c,
       return rc;
   }
 
+  // Now that all pre-requisite hooks are installed, copy the ones in the
+  // container_config object in the correct order.
+  for (const auto& config_hook : config->hooks) {
+    auto it = hook_callbacks.insert(std::make_pair(
+        config_hook.first, std::vector<libcontainer::HookCallback>()));
+    it.first->second.insert(it.first->second.end(), config_hook.second.begin(),
+                            config_hook.second.end());
+  }
+
+  c->hook_states.clear();
+  // Reserve enough memory to hold all the hooks, so that their addresses do not
+  // get invalidated by reallocation.
+  c->hook_states.reserve(MINIJAIL_HOOK_EVENT_MAX);
+  for (minijail_hook_event_t event : {MINIJAIL_HOOK_EVENT_PRE_CHROOT,
+                                      MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS,
+                                      MINIJAIL_HOOK_EVENT_PRE_EXECVE}) {
+    const auto& it = hook_callbacks.find(event);
+    if (it == hook_callbacks.end())
+      continue;
+    c->hook_states.emplace_back(
+        std::make_pair(libcontainer::HookState(), it->second));
+    if (!c->hook_states.back().first.InstallHook(c->jail.get(), event))
+      return -1;
+  }
+
   for (int fd : config->inherited_fds) {
     rc = minijail_preserve_fd(c->jail.get(), fd, fd);
     if (rc)
@@ -1271,6 +1346,12 @@ int container_start(struct container* c,
                                          nullptr);
   if (rc)
     return rc;
+
+  // |hook_states| is already sorted in the correct order.
+  for (auto& hook_state : c->hook_states) {
+    if (!hook_state.first.WaitForHookAndRun(hook_state.second, c->init_pid))
+      return -1;
+  }
 
   // The container has started successfully, no need to tear it down anymore.
   ignore_result(teardown.Release());

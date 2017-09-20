@@ -52,6 +52,7 @@
             '-Wl,-wrap=mkdtemp',
             '-Wl,-wrap=mount',
             '-Wl,-wrap=rmdir',
+            '-Wl,-wrap=setns',
             '-Wl,-wrap=umount',
             '-Wl,-wrap=umount2',
             '-Wl,-wrap=unlink',

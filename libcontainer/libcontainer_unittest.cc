@@ -9,13 +9,18 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/posix/eintr_wrapper.h>
 #include <gtest/gtest.h>
 
 #include "libcontainer/cgroup.h"
@@ -28,7 +33,8 @@ namespace libcontainer {
 
 namespace {
 
-constexpr pid_t kInitTestPid = 5555;
+using MinijailHookCallback = base::Callback<int()>;
+
 constexpr int kTestCpuShares = 200;
 constexpr int kTestCpuQuota = 20000;
 constexpr int kTestCpuPeriod = 50000;
@@ -147,16 +153,21 @@ class MockCgroup : public libcontainer::Cgroup {
   DISALLOW_COPY_AND_ASSIGN(MockCgroup);
 };
 
-const char* minijail_alt_syscall_table;
-int minijail_ipc_called;
-int minijail_vfs_called;
-int minijail_net_called;
-int minijail_pids_called;
-int minijail_run_as_init_called;
-int minijail_user_called;
-int minijail_cgroups_called;
-int minijail_wait_called;
-int minijail_reset_signal_mask_called;
+struct MockMinijailState {
+  std::string alt_syscall_table;
+  int ipc_called_count;
+  int vfs_called_count;
+  int net_called_count;
+  int pids_called_count;
+  int run_as_init_called_count;
+  int user_called_count;
+  int cgroups_called_count;
+  int wait_called_count;
+  int reset_signal_mask_called_count;
+  int pid;
+  std::map<minijail_hook_event_t, std::vector<MinijailHookCallback>> hooks;
+};
+MockMinijailState* g_mock_minijail_state = nullptr;
 
 }  // namespace
 
@@ -198,23 +209,13 @@ class ContainerTest : public ::testing::Test {
   void SetUp() override {
     g_mock_posix_state = new MockPosixState();
     g_mock_cgroup_state = new MockCgroupState();
+    g_mock_minijail_state = new MockMinijailState();
     libcontainer::Cgroup::SetCgroupFactoryForTesting(&MockCgroup::Create);
 
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     ASSERT_TRUE(base::CreateTemporaryDirInDir(
         temp_dir_.path(), FILE_PATH_LITERAL("container_test"), &rootfs_));
-
-    minijail_alt_syscall_table = nullptr;
-    minijail_ipc_called = 0;
-    minijail_vfs_called = 0;
-    minijail_net_called = 0;
-    minijail_pids_called = 0;
-    minijail_run_as_init_called = 0;
-    minijail_user_called = 0;
-    minijail_cgroups_called = 0;
-    minijail_wait_called = 0;
-    minijail_reset_signal_mask_called = 0;
 
     mount_flags_ = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
@@ -290,6 +291,8 @@ class ContainerTest : public ::testing::Test {
     g_mock_posix_state = nullptr;
     libcontainer::Cgroup::SetCgroupFactoryForTesting(nullptr);
     delete g_mock_cgroup_state;
+    delete g_mock_minijail_state;
+    g_mock_minijail_state = nullptr;
   }
 
  protected:
@@ -317,13 +320,13 @@ TEST_F(ContainerTest, TestMountTmpStart) {
             static_cast<unsigned long>(mount_flags_));
   EXPECT_EQ(nullptr, g_mock_posix_state->mount_args[1].data);
 
-  EXPECT_EQ(1, minijail_ipc_called);
-  EXPECT_EQ(1, minijail_vfs_called);
-  EXPECT_EQ(1, minijail_net_called);
-  EXPECT_EQ(1, minijail_pids_called);
-  EXPECT_EQ(1, minijail_user_called);
-  EXPECT_EQ(1, minijail_cgroups_called);
-  EXPECT_EQ(1, minijail_run_as_init_called);
+  EXPECT_EQ(1, g_mock_minijail_state->ipc_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->vfs_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->net_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->pids_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->user_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->cgroups_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->run_as_init_called_count);
   EXPECT_EQ(1, g_mock_cgroup_state->deny_all_devs_called_count);
 
   ASSERT_EQ(2, g_mock_cgroup_state->added_devices.size());
@@ -354,19 +357,19 @@ TEST_F(ContainerTest, TestMountTmpStart) {
   EXPECT_EQ(0, g_mock_cgroup_state->set_cpu_rt_period_count);
   EXPECT_EQ(0, container_config_get_cpu_rt_period(config_->get()));
 
-  ASSERT_NE(nullptr, minijail_alt_syscall_table);
-  EXPECT_STREQ("testsyscalltable", minijail_alt_syscall_table);
+  ASSERT_NE(std::string(), g_mock_minijail_state->alt_syscall_table);
+  EXPECT_EQ("testsyscalltable", g_mock_minijail_state->alt_syscall_table);
 
   EXPECT_EQ(0, container_wait(container_->get()));
-  EXPECT_EQ(1, minijail_wait_called);
-  EXPECT_EQ(1, minijail_reset_signal_mask_called);
+  EXPECT_EQ(1, g_mock_minijail_state->wait_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->reset_signal_mask_called_count);
 }
 
 TEST_F(ContainerTest, TestKillContainer) {
   ASSERT_EQ(0, container_start(container_->get(), config_->get()));
   EXPECT_EQ(0, container_kill(container_->get()));
   EXPECT_EQ(std::vector<int>{SIGKILL}, g_mock_posix_state->kill_sigs);
-  EXPECT_EQ(1, minijail_wait_called);
+  EXPECT_EQ(1, g_mock_minijail_state->wait_called_count);
 }
 
 }  // namespace libcontainer
@@ -481,6 +484,13 @@ int __wrap___xstat(int ver, const char* path, struct stat* buf) {
   return 0;
 }
 
+extern decltype(setns) __real_setns;
+int __wrap_setns(int fd, int nstype) {
+  if (!libcontainer::g_mock_posix_state)
+    return __real_setns(fd, nstype);
+  return 0;
+}
+
 /* Minijail stubs */
 struct minijail* minijail_new(void) {
   return (struct minijail*)0x55;
@@ -507,27 +517,27 @@ int minijail_mount_with_data(struct minijail* j,
 void minijail_namespace_user_disable_setgroups(struct minijail* j) {}
 
 void minijail_namespace_vfs(struct minijail* j) {
-  ++libcontainer::minijail_vfs_called;
+  ++libcontainer::g_mock_minijail_state->vfs_called_count;
 }
 
 void minijail_namespace_ipc(struct minijail* j) {
-  ++libcontainer::minijail_ipc_called;
+  ++libcontainer::g_mock_minijail_state->ipc_called_count;
 }
 
 void minijail_namespace_net(struct minijail* j) {
-  ++libcontainer::minijail_net_called;
+  ++libcontainer::g_mock_minijail_state->net_called_count;
 }
 
 void minijail_namespace_pids(struct minijail* j) {
-  ++libcontainer::minijail_pids_called;
+  ++libcontainer::g_mock_minijail_state->pids_called_count;
 }
 
 void minijail_namespace_user(struct minijail* j) {
-  ++libcontainer::minijail_user_called;
+  ++libcontainer::g_mock_minijail_state->user_called_count;
 }
 
 void minijail_namespace_cgroups(struct minijail* j) {
-  ++libcontainer::minijail_cgroups_called;
+  ++libcontainer::g_mock_minijail_state->cgroups_called_count;
 }
 
 int minijail_uidmap(struct minijail* j, const char* uidmap) {
@@ -543,7 +553,7 @@ int minijail_enter_pivot_root(struct minijail* j, const char* dir) {
 }
 
 void minijail_run_as_init(struct minijail* j) {
-  ++libcontainer::minijail_run_as_init_called;
+  ++libcontainer::g_mock_minijail_state->run_as_init_called_count;
 }
 
 int minijail_run_pid_pipes_no_preload(struct minijail* j,
@@ -553,7 +563,27 @@ int minijail_run_pid_pipes_no_preload(struct minijail* j,
                                       int* pstdin_fd,
                                       int* pstdout_fd,
                                       int* pstderr_fd) {
-  *pchild_pid = libcontainer::kInitTestPid;
+  libcontainer::g_mock_minijail_state->pid = fork();
+  if (libcontainer::g_mock_minijail_state->pid == -1)
+    return libcontainer::g_mock_minijail_state->pid;
+
+  if (libcontainer::g_mock_minijail_state->pid == 0) {
+    for (minijail_hook_event_t event : {MINIJAIL_HOOK_EVENT_PRE_CHROOT,
+                                        MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS,
+                                        MINIJAIL_HOOK_EVENT_PRE_EXECVE}) {
+      auto it = libcontainer::g_mock_minijail_state->hooks.find(event);
+      if (it == libcontainer::g_mock_minijail_state->hooks.end())
+        continue;
+      for (auto& hook : it->second) {
+        int rc = hook.Run();
+        if (rc)
+          _exit(rc);
+      }
+    }
+    _exit(0);
+  }
+
+  *pchild_pid = libcontainer::g_mock_minijail_state->pid;
   return 0;
 }
 
@@ -562,12 +592,24 @@ int minijail_write_pid_file(struct minijail* j, const char* path) {
 }
 
 int minijail_wait(struct minijail* j) {
-  ++libcontainer::minijail_wait_called;
-  return 0;
+  ++libcontainer::g_mock_minijail_state->wait_called_count;
+  int status;
+  if (HANDLE_EINTR(
+          waitpid(libcontainer::g_mock_minijail_state->pid, &status, 0)) < 0) {
+    PLOG_PRESERVE(ERROR) << "Failed to wait for minijail";
+    return -errno;
+  }
+  if (!WIFEXITED(status)) {
+    LOG(ERROR) << "minijail terminated abnormally: " << std::hex << status;
+    return -ECANCELED;
+  }
+  // Exit status gets truncated to 8 bits. This should sign-extend it so that
+  // any negative values we passed are preserved.
+  return static_cast<int8_t>(WEXITSTATUS(status));
 }
 
 int minijail_use_alt_syscall(struct minijail* j, const char* table) {
-  libcontainer::minijail_alt_syscall_table = table;
+  libcontainer::g_mock_minijail_state->alt_syscall_table = table;
   return 0;
 }
 
@@ -576,10 +618,24 @@ int minijail_add_to_cgroup(struct minijail* j, const char* cg_path) {
 }
 
 void minijail_reset_signal_mask(struct minijail* j) {
-  ++libcontainer::minijail_reset_signal_mask_called;
+  ++libcontainer::g_mock_minijail_state->reset_signal_mask_called_count;
 }
 
 void minijail_skip_remount_private(struct minijail* j) {}
+
+int minijail_preserve_fd(struct minijail* j, int parent_fd, int child_fd) {
+  return 0;
+}
+
+int minijail_add_hook(struct minijail* j,
+                      minijail_hook_t hook,
+                      void* payload,
+                      minijail_hook_event_t event) {
+  auto it = libcontainer::g_mock_minijail_state->hooks.insert(
+      std::make_pair(event, std::vector<libcontainer::MinijailHookCallback>()));
+  it.first->second.emplace_back(base::Bind(hook, base::Unretained(payload)));
+  return 0;
+}
 
 void minijail_close_open_fds(struct minijail* j) {}
 
