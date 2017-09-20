@@ -19,11 +19,6 @@
 
 namespace libcontainer {
 
-// A hook that can be run at different stages of the container startup. The PID
-// parameter is the pid of the container's init process in the outer namespace.
-// The hook should return true on success.
-using HookCallback = base::Callback<bool(pid_t)>;
-
 // Simple class that saves errno.
 class SaveErrno {
  public:

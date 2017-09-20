@@ -5,12 +5,21 @@
 #ifndef LIBCONTAINER_CONFIG_H_
 #define LIBCONTAINER_CONFIG_H_
 
+#include <vector>
+
+#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
+#include <libminijail.h>
 
 #include "libcontainer/libcontainer.h"
 
 namespace libcontainer {
+
+// A hook that can be run at different stages of the container startup. The PID
+// parameter is the pid of the container's init process in the outer namespace.
+// The hook should return true on success.
+using HookCallback = base::Callback<bool(pid_t)>;
 
 class BRILLO_EXPORT Config {
  public:
@@ -18,6 +27,11 @@ class BRILLO_EXPORT Config {
   BRILLO_EXPORT ~Config();
 
   BRILLO_EXPORT container_config* get() const { return config_; }
+
+  // Runs |callback| when |event| is reached. If |callback| fails,
+  // container_start() will fail and tear down the container.
+  BRILLO_EXPORT void AddHook(minijail_hook_event_t event,
+                             libcontainer::HookCallback callback);
 
  private:
   container_config* const config_;

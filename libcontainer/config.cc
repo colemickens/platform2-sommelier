@@ -4,7 +4,16 @@
 
 #include "libcontainer/config.h"
 
+#include <utility>
+
+#include <base/callback.h>
 #include <base/logging.h>
+
+// TODO(lhchavez): Remove this once container_config only holds a pointer to
+// libcontainer::Config.
+extern void container_config_add_hook(struct container_config* c,
+                                      minijail_hook_event_t event,
+                                      libcontainer::HookCallback callback);
 
 namespace libcontainer {
 
@@ -19,5 +28,9 @@ Config::~Config() {
   container_config_destroy(config_);
 }
 
-}  // namespace libcontainer
+void Config::AddHook(minijail_hook_event_t event,
+                     libcontainer::HookCallback callback) {
+  container_config_add_hook(config_, event, std::move(callback));
+}
 
+}  // namespace libcontainer
