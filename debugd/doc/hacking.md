@@ -1,6 +1,6 @@
 # Hacking debugd
 
-[iface]: ../share/org.chromium.debugd.xml
+[iface]: ../dbus_bindings/org.chromium.debugd.xml
 [impl]: implementation.md
 [design]: design.md
 [makefile]: ../debugd.gyp
