@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -143,14 +144,19 @@ TEST_F(DiskManagerTest, EnumerateDisks) {
 }
 
 TEST_F(DiskManagerTest, GetDiskByDevicePath) {
-  Disk disk;
-  string device_path = "/dev/sda";
-  EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
-  EXPECT_EQ(device_path, disk.device_file());
+  vector<Disk> disks = manager_.EnumerateDisks();
+  if (disks.empty()) {
+    LOG(WARNING) << "No disks found to test.";
+  }
 
-  device_path = "/dev/sda1";
-  EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
-  EXPECT_EQ(device_path, disk.device_file());
+  for (const auto& found_disk : disks) {
+    string device_path = found_disk.device_file();
+    LOG(INFO) << "Using device_path: " << device_path << "\n";
+
+    Disk disk;
+    EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
+    EXPECT_EQ(device_path, disk.device_file());
+  }
 }
 
 TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
