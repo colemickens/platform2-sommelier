@@ -14,10 +14,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-
-#include "libcontainer/test_harness.h"
+#include <gtest/gtest.h>
 
 #include "libcontainer/cgroup.h"
+
+namespace libcontainer {
 
 namespace {
 
@@ -51,7 +52,7 @@ bool FileHasLine(const base::FilePath& path, const std::string& expected) {
 
 }  // namespace
 
-TEST(cgroup_new_with_parent) {
+TEST(CgroupTest, CgroupNewWithParent) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath cgroup_root = temp_dir.path();
@@ -102,182 +103,165 @@ TEST(cgroup_new_with_parent) {
   EXPECT_TRUE(temp_dir.Delete());
 }
 
-// TODO(lhchavez): Remove once we use gtest.
-struct BasicCgroupManipulationTest {
-  std::unique_ptr<libcontainer::Cgroup> ccg;
+class BasicCgroupManipulationTest : public ::testing::Test {
+ public:
+  BasicCgroupManipulationTest() = default;
+  ~BasicCgroupManipulationTest() override = default;
 
-  base::FilePath cpu_cg;
-  base::FilePath cpuacct_cg;
-  base::FilePath cpuset_cg;
-  base::FilePath devices_cg;
-  base::FilePath freezer_cg;
-  base::FilePath schedtune_cg;
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-  base::ScopedTempDir temp_dir;
-};
+    base::FilePath cgroup_root;
+    ASSERT_TRUE(base::CreateTemporaryDirInDir(
+        temp_dir_.path(), FILE_PATH_LITERAL("cgtest"), &cgroup_root));
 
-FIXTURE(basic_manipulation) {
-  BasicCgroupManipulationTest* state;
-};
+    for (const char* subsystem :
+         {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
+      base::FilePath path = cgroup_root.Append(subsystem);
+      ASSERT_EQ(0, mkdir(path.value().c_str(), S_IRWXU | S_IRWXG));
+    }
 
-FIXTURE_SETUP(basic_manipulation) {
-  self->state = new BasicCgroupManipulationTest();
-  ASSERT_TRUE(self->state->temp_dir.CreateUniqueTempDir());
+    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/cpus"), "0-3", 3));
+    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/mems"), "0", 1));
 
-  base::FilePath cgroup_root;
-  ASSERT_TRUE(base::CreateTemporaryDirInDir(
-      self->state->temp_dir.path(), FILE_PATH_LITERAL("cgtest"), &cgroup_root));
+    ccg_ = libcontainer::Cgroup::Create(
+        kCgroupName, cgroup_root, base::FilePath(), 0, 0);
+    ASSERT_NE(nullptr, ccg_.get());
 
-  for (const char* subsystem :
-       {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
-    base::FilePath path = cgroup_root.Append(subsystem);
-    ASSERT_EQ(0, mkdir(path.value().c_str(), S_IRWXU | S_IRWXG));
+    cpu_cg_ = cgroup_root.Append("cpu").Append(kCgroupName);
+    cpuacct_cg_ = cgroup_root.Append("cpuacct").Append(kCgroupName);
+    cpuset_cg_ = cgroup_root.Append("cpuset").Append(kCgroupName);
+    devices_cg_ = cgroup_root.Append("devices").Append(kCgroupName);
+    freezer_cg_ = cgroup_root.Append("freezer").Append(kCgroupName);
+    schedtune_cg_ = cgroup_root.Append("schedtune").Append(kCgroupName);
+
+    ASSERT_TRUE(base::DirectoryExists(cpu_cg_));
+    ASSERT_TRUE(base::DirectoryExists(cpuacct_cg_));
+    ASSERT_TRUE(base::DirectoryExists(cpuset_cg_));
+    ASSERT_TRUE(base::DirectoryExists(devices_cg_));
+    ASSERT_TRUE(base::DirectoryExists(freezer_cg_));
+    ASSERT_TRUE(base::DirectoryExists(schedtune_cg_));
+
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("tasks")));
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.shares")));
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.cfs_quota_us")));
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.cfs_period_us")));
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.rt_runtime_us")));
+    ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.rt_period_us")));
+    ASSERT_TRUE(CreateFile(cpuacct_cg_.Append("tasks")));
+    ASSERT_TRUE(CreateFile(cpuset_cg_.Append("tasks")));
+    ASSERT_TRUE(CreateFile(devices_cg_.Append("tasks")));
+    ASSERT_TRUE(CreateFile(devices_cg_.Append("devices.allow")));
+    ASSERT_TRUE(CreateFile(devices_cg_.Append("devices.deny")));
+    ASSERT_TRUE(CreateFile(freezer_cg_.Append("tasks")));
+    ASSERT_TRUE(CreateFile(freezer_cg_.Append("freezer.state")));
+    ASSERT_TRUE(CreateFile(schedtune_cg_.Append("tasks")));
   }
 
-  ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/cpus"), "0-3", 3));
-  ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/mems"), "0", 1));
+  void TearDown() override {
+    ccg_.reset();
+    ASSERT_TRUE(temp_dir_.Delete());
+  }
 
-  self->state->ccg = libcontainer::Cgroup::Create(
-      kCgroupName, cgroup_root, base::FilePath(), 0, 0);
-  ASSERT_NE(nullptr, self->state->ccg.get());
+ protected:
+  std::unique_ptr<libcontainer::Cgroup> ccg_;
 
-  self->state->cpu_cg = cgroup_root.Append("cpu").Append(kCgroupName);
-  self->state->cpuacct_cg = cgroup_root.Append("cpuacct").Append(kCgroupName);
-  self->state->cpuset_cg = cgroup_root.Append("cpuset").Append(kCgroupName);
-  self->state->devices_cg = cgroup_root.Append("devices").Append(kCgroupName);
-  self->state->freezer_cg = cgroup_root.Append("freezer").Append(kCgroupName);
-  self->state->schedtune_cg =
-      cgroup_root.Append("schedtune").Append(kCgroupName);
+  base::FilePath cpu_cg_;
+  base::FilePath cpuacct_cg_;
+  base::FilePath cpuset_cg_;
+  base::FilePath devices_cg_;
+  base::FilePath freezer_cg_;
+  base::FilePath schedtune_cg_;
 
-  ASSERT_TRUE(base::DirectoryExists(self->state->cpu_cg));
-  ASSERT_TRUE(base::DirectoryExists(self->state->cpuacct_cg));
-  ASSERT_TRUE(base::DirectoryExists(self->state->cpuset_cg));
-  ASSERT_TRUE(base::DirectoryExists(self->state->devices_cg));
-  ASSERT_TRUE(base::DirectoryExists(self->state->freezer_cg));
-  ASSERT_TRUE(base::DirectoryExists(self->state->schedtune_cg));
+  base::ScopedTempDir temp_dir_;
+};
 
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("tasks")));
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("cpu.shares")));
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("cpu.cfs_quota_us")));
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("cpu.cfs_period_us")));
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("cpu.rt_runtime_us")));
-  ASSERT_TRUE(CreateFile(self->state->cpu_cg.Append("cpu.rt_period_us")));
-  ASSERT_TRUE(CreateFile(self->state->cpuacct_cg.Append("tasks")));
-  ASSERT_TRUE(CreateFile(self->state->cpuset_cg.Append("tasks")));
-  ASSERT_TRUE(CreateFile(self->state->devices_cg.Append("tasks")));
-  ASSERT_TRUE(CreateFile(self->state->devices_cg.Append("devices.allow")));
-  ASSERT_TRUE(CreateFile(self->state->devices_cg.Append("devices.deny")));
-  ASSERT_TRUE(CreateFile(self->state->freezer_cg.Append("tasks")));
-  ASSERT_TRUE(CreateFile(self->state->freezer_cg.Append("freezer.state")));
-  ASSERT_TRUE(CreateFile(self->state->schedtune_cg.Append("tasks")));
+TEST_F(BasicCgroupManipulationTest, freeze) {
+  EXPECT_EQ(0, ccg_->Freeze());
+  EXPECT_TRUE(FileHasString(freezer_cg_.Append("freezer.state"), "FROZEN"));
 }
 
-FIXTURE_TEARDOWN(basic_manipulation) {
-  self->state->ccg.reset();
-  ASSERT_TRUE(self->state->temp_dir.Delete());
-  delete self->state;
+TEST_F(BasicCgroupManipulationTest, thaw) {
+  EXPECT_EQ(0, ccg_->Thaw());
+  EXPECT_TRUE(FileHasString(freezer_cg_.Append("freezer.state"), "THAWED"));
 }
 
-TEST_F(basic_manipulation, freeze) {
-  EXPECT_EQ(0, self->state->ccg->Freeze());
-  EXPECT_TRUE(
-      FileHasString(self->state->freezer_cg.Append("freezer.state"), "FROZEN"));
+TEST_F(BasicCgroupManipulationTest, default_all_devs_disallow) {
+  ASSERT_EQ(0, ccg_->DenyAllDevices());
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.deny"), "a"));
 }
 
-TEST_F(basic_manipulation, thaw) {
-  EXPECT_EQ(0, self->state->ccg->Thaw());
-  EXPECT_TRUE(
-      FileHasString(self->state->freezer_cg.Append("freezer.state"), "THAWED"));
+TEST_F(BasicCgroupManipulationTest, add_device_invalid_type) {
+  EXPECT_NE(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'x'));
 }
 
-TEST_F(basic_manipulation, default_all_devs_disallow) {
-  ASSERT_EQ(0, self->state->ccg->DenyAllDevices());
-  EXPECT_TRUE(FileHasLine(self->state->devices_cg.Append("devices.deny"), "a"));
+TEST_F(BasicCgroupManipulationTest, add_device_no_perms) {
+  EXPECT_NE(0, ccg_->AddDevice(1, 14, 3, 0, 0, 0, 'c'));
 }
 
-TEST_F(basic_manipulation, add_device_invalid_type) {
-  EXPECT_NE(0, self->state->ccg->AddDevice(1, 14, 3, 1, 1, 0, 'x'));
+TEST_F(BasicCgroupManipulationTest, add_device_rw) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 rw"));
 }
 
-TEST_F(basic_manipulation, add_device_no_perms) {
-  EXPECT_NE(0, self->state->ccg->AddDevice(1, 14, 3, 0, 0, 0, 'c'));
+TEST_F(BasicCgroupManipulationTest, add_device_rwm) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 1, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 rwm"));
 }
 
-TEST_F(basic_manipulation, add_device_rw) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, 3, 1, 1, 0, 'c'));
-  EXPECT_TRUE(FileHasLine(self->state->devices_cg.Append("devices.allow"),
-                          "c 14:3 rw"));
+TEST_F(BasicCgroupManipulationTest, add_device_ro) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 0, 0, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 r"));
 }
 
-TEST_F(basic_manipulation, add_device_rwm) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, 3, 1, 1, 1, 'c'));
-  EXPECT_TRUE(FileHasLine(self->state->devices_cg.Append("devices.allow"),
-                          "c 14:3 rwm"));
+TEST_F(BasicCgroupManipulationTest, add_device_wo) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 0, 1, 0, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 w"));
 }
 
-TEST_F(basic_manipulation, add_device_ro) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, 3, 1, 0, 0, 'c'));
-  EXPECT_TRUE(
-      FileHasLine(self->state->devices_cg.Append("devices.allow"), "c 14:3 r"));
+TEST_F(BasicCgroupManipulationTest, add_device_major_wide) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, -1, 0, 1, 0, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:* w"));
 }
 
-TEST_F(basic_manipulation, add_device_wo) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, 3, 0, 1, 0, 'c'));
-  EXPECT_TRUE(
-      FileHasLine(self->state->devices_cg.Append("devices.allow"), "c 14:3 w"));
+TEST_F(BasicCgroupManipulationTest, add_device_major_minor_wildcard) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, -1, -1, 0, 1, 0, 'c'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c *:* w"));
 }
 
-TEST_F(basic_manipulation, add_device_major_wide) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, -1, 0, 1, 0, 'c'));
-  EXPECT_TRUE(
-      FileHasLine(self->state->devices_cg.Append("devices.allow"), "c 14:* w"));
+TEST_F(BasicCgroupManipulationTest, add_device_deny_all) {
+  EXPECT_EQ(0, ccg_->AddDevice(0, -1, -1, 1, 1, 1, 'a'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.deny"), "a *:* rwm"));
 }
 
-TEST_F(basic_manipulation, add_device_major_minor_wildcard) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, -1, -1, 0, 1, 0, 'c'));
-  EXPECT_TRUE(
-      FileHasLine(self->state->devices_cg.Append("devices.allow"), "c *:* w"));
+TEST_F(BasicCgroupManipulationTest, add_device_block) {
+  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'b'));
+  EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "b 14:3 rw"));
 }
 
-TEST_F(basic_manipulation, add_device_deny_all) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(0, -1, -1, 1, 1, 1, 'a'));
-  EXPECT_TRUE(
-      FileHasLine(self->state->devices_cg.Append("devices.deny"), "a *:* rwm"));
+TEST_F(BasicCgroupManipulationTest, set_cpu_shares) {
+  EXPECT_EQ(0, ccg_->SetCpuShares(500));
+  EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.shares"), "500"));
 }
 
-TEST_F(basic_manipulation, add_device_block) {
-  EXPECT_EQ(0, self->state->ccg->AddDevice(1, 14, 3, 1, 1, 0, 'b'));
-  EXPECT_TRUE(FileHasLine(self->state->devices_cg.Append("devices.allow"),
-                          "b 14:3 rw"));
+TEST_F(BasicCgroupManipulationTest, set_cpu_quota) {
+  EXPECT_EQ(0, ccg_->SetCpuQuota(200000));
+  EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.cfs_quota_us"), "200000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_shares) {
-  EXPECT_EQ(0, self->state->ccg->SetCpuShares(500));
-  EXPECT_TRUE(FileHasString(self->state->cpu_cg.Append("cpu.shares"), "500"));
+TEST_F(BasicCgroupManipulationTest, set_cpu_period) {
+  EXPECT_EQ(0, ccg_->SetCpuPeriod(800000));
+  EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.cfs_period_us"), "800000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_quota) {
-  EXPECT_EQ(0, self->state->ccg->SetCpuQuota(200000));
-  EXPECT_TRUE(
-      FileHasString(self->state->cpu_cg.Append("cpu.cfs_quota_us"), "200000"));
+TEST_F(BasicCgroupManipulationTest, set_cpu_rt_runtime) {
+  EXPECT_EQ(0, ccg_->SetCpuRtRuntime(100000));
+  EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.rt_runtime_us"), "100000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_period) {
-  EXPECT_EQ(0, self->state->ccg->SetCpuPeriod(800000));
-  EXPECT_TRUE(
-      FileHasString(self->state->cpu_cg.Append("cpu.cfs_period_us"), "800000"));
+TEST_F(BasicCgroupManipulationTest, set_cpu_rt_period) {
+  EXPECT_EQ(0, ccg_->SetCpuRtPeriod(500000));
+  EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.rt_period_us"), "500000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_rt_runtime) {
-  EXPECT_EQ(0, self->state->ccg->SetCpuRtRuntime(100000));
-  EXPECT_TRUE(
-      FileHasString(self->state->cpu_cg.Append("cpu.rt_runtime_us"), "100000"));
-}
-
-TEST_F(basic_manipulation, set_cpu_rt_period) {
-  EXPECT_EQ(0, self->state->ccg->SetCpuRtPeriod(500000));
-  EXPECT_TRUE(
-      FileHasString(self->state->cpu_cg.Append("cpu.rt_period_us"), "500000"));
-}
-
-TEST_HARNESS_MAIN
+}  // namespace libcontainer

@@ -36,23 +36,40 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'libcontainer_unittest',
+          'target_name': 'libcontainer_test',
           'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'defines': ['UNIT_TEST'],
+          'dependencies': [
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'ldflags': [
+            '-Wl,-wrap=chmod',
+            '-Wl,-wrap=chown',
+            '-Wl,-wrap=getuid',
+            '-Wl,-wrap=kill',
+            '-Wl,-wrap=mkdir',
+            '-Wl,-wrap=mkdtemp',
+            '-Wl,-wrap=mount',
+            '-Wl,-wrap=rmdir',
+            '-Wl,-wrap=umount',
+            '-Wl,-wrap=umount2',
+            '-Wl,-wrap=unlink',
+            '-Wl,-wrap=__xmknod',
+            '-Wl,-wrap=__xstat',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'sources': [
             'cgroup.cc',
+            'cgroup_unittest.cc',
             'config.cc',
             'container.cc',
             'libcontainer.cc',
             'libcontainer_unittest.cc',
-            'libcontainer_util.cc',
-          ],
-        },
-        {
-          'target_name': 'container_cgroup_unittest',
-          'type': 'executable',
-          'sources': [
-            'cgroup.cc',
-            'cgroup_unittest.cc',
             'libcontainer_util.cc',
           ],
         },
