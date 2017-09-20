@@ -41,20 +41,6 @@ fail () {
     fail_count="$((fail_count+1))"
 }
 
-# Create a unique filename -- this is a "non secure" implementation (we would
-# have used mktemp if that was the concern), but instead we want to create an
-# easy way to tell which file is more recent.  Also, make a symlink to the most
-# recent file
-unique_file () {
-    local out_template="$1"
-    out_file="$(echo "${out_template}" | \
-      sed -e 's/\*/'$(date +'%Y-%m-%d.%H:%M:%S')'/')"
-    link_file="$(echo "${out_template}" | sed -e 's/\*/latest/')"
-    rm -f "${out_file}" "${link_file}"
-    ln -s "$(basename $out_file)" "${link_file}"
-    echo "$out_file"
-}
-
 # Split a dotted decimal string
 do_address_parts () {
   (IFS=" ."; echo $1)
@@ -1274,16 +1260,7 @@ main () {
     exit "${fail_count}"
   fi
 }
-
-if [ -d "/home/${USER}/user/Downloads" ] && \
-    ! expr "$*" : '.*--no-log' >/dev/null; then
-  # Log this output to somewhere the user can upload from
-  main "$@" 2>&1 | \
-    tee "$(unique_file \
-           "/home/${USER}/user/Downloads/network_diagnostics_*.txt")"
-else
-  main "$@"
-fi
+main "$@"
 
 
 exit "${fail_count}"

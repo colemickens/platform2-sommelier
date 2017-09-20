@@ -492,7 +492,7 @@ cmd_bt_console() (
 
 EXEC_ff_debug='/usr/bin/ff_debug'
 cmd_ff_debug() (
-  "${EXEC_ff_debug}" "$@"
+  debugd_shill ff_debug "$@"
 )
 help_ff_debug() (
   cmd_ff_debug --help
@@ -500,7 +500,7 @@ help_ff_debug() (
 
 EXEC_wpa_debug='/usr/bin/wpa_debug'
 cmd_wpa_debug() (
-  "${EXEC_wpa_debug}" "$@"
+  debugd_shill wpa_debug "$@"
 )
 help_wpa_debug() (
   cmd_wpa_debug --help
@@ -554,18 +554,7 @@ HELP_set_arpgw='
   is reachable.
 '
 cmd_set_arpgw() (
-  case "$1" in
-    "true"|"false")
-      /usr/bin/set_arpgw "$1"
-      ;;
-    "")
-      /usr/bin/set_arpgw
-      ;;
-    *)
-      help "unknown option: $1"
-      return 1
-      ;;
-  esac
+  debugd_shill set_arpgw "$@"
 )
 
 USAGE_set_wake_on_lan='<true | false>'
@@ -575,18 +564,7 @@ HELP_set_wake_on_lan='
   restarts.
 '
 cmd_set_wake_on_lan() (
-  case "$1" in
-    "true"|"false")
-      /usr/bin/set_wake_on_lan "$1"
-      ;;
-    "")
-      /usr/bin/set_wake_on_lan
-      ;;
-    *)
-      help "unknown option: $1"
-      return 1
-      ;;
-  esac
+  debugd_shill set_wake_on_lan "$@"
 )
 
 USAGE_wifi_power_save='< status | enable | disable >'
@@ -626,10 +604,26 @@ EOF
 
 EXEC_network_diag='/usr/bin/network_diag'
 cmd_network_diag() (
-  "${EXEC_network_diag}" "$@"
+  case " $* " in
+  *" --no-log "*)
+    debugd_shill network_diag "$@"
+    ;;
+  *)
+    # Create a mostly unique filename.  We won't care about clobbering existing
+    # files here as this is a user generated request, and we scope the filename
+    # to this specific use case.
+    local downloads_dir="/home/${USER}/user/Downloads"
+    local timestamp="$(date +'%Y-%m-%d.%H:%M:%S')"
+    local logname="network_diagnostics_${timestamp}.txt"
+    local logpath="${downloads_dir}/${logname}"
+    rm -f "${logpath}"
+    echo "Saving output to Downloads under: ${logname}"
+    debugd_shill network_diag "$@" | tee "${logpath}"
+    ;;
+  esac
 )
 help_network_diag() (
-  cmd_network_diag --help
+  debugd_shill network_diag --help
 )
 
 USAGE_u2f_flags='<u2f | g2f>[,verbose]'
@@ -697,6 +691,13 @@ debugd_poll() (
 
   cleanup
 )
+
+# Run a shill script via debugd.
+debugd_shill() {
+  local script="$1"; shift
+  local args="$(printf '%s,' "$@")"
+  debugd_poll RunShillScript "fd:1" "string:${script}" "array:string:${args%,}"
+}
 
 USAGE_ping="[-4] [-6] [-c count] [-i interval] [-n] [-s packetsize] \
 [-W waittime] <destination>"
@@ -863,7 +864,7 @@ HELP_modem='
   Interact with the 3G modem. Run "modem help" for detailed help.
 '
 cmd_modem() (
-  /usr/bin/modem "$@"
+  debugd_shill modem "$@"
 )
 
 USAGE_modem_set_carrier='carrier-name'
@@ -871,7 +872,7 @@ HELP_modem_set_carrier='
   Configures the modem for the specified carrier.
 '
 cmd_modem_set_carrier() (
-  /usr/bin/modem set-carrier "$@"
+  debugd_shill modem set-carrier "$@"
 )
 
 USAGE_set_apn='[-c] [-n <network-id>] [-u <username>] [-p <password>] <apn>'
@@ -884,7 +885,7 @@ HELP_set_apn='
   instead.
 '
 cmd_set_apn() (
-  /usr/bin/set_apn "$@"
+  debugd_shill set_apn "$@"
 )
 
 USAGE_set_cellular_ppp='[-c] [-u <username>] [-p <password>]'
