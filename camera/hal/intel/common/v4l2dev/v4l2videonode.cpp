@@ -32,16 +32,14 @@
 #define MAX_CAMERA_BUFFERS_NUM  32  //MAX_CAMERA_BUFFERS_NUM
 
 NAMESPACE_DECLARATION {
-V4L2VideoNode::V4L2VideoNode(const char *name, VideNodeDirection nodeDirection):
-                                                        V4L2DeviceBase(name),
-                                                        mState(DEVICE_CLOSED),
-                                                        mBuffersInDevice(0),
-                                                        mFrameCounter(0),
-                                                        mInitialSkips(0),
-                                                        mDirection(nodeDirection),
-                                                        mInBufType(V4L2_BUF_TYPE_VIDEO_CAPTURE),
-                                                        mOutBufType(V4L2_BUF_TYPE_VIDEO_OUTPUT),
-                                                        mMemoryType(V4L2_MEMORY_USERPTR)
+V4L2VideoNode::V4L2VideoNode(const char *name):
+                             V4L2DeviceBase(name),
+                             mState(DEVICE_CLOSED),
+                             mBuffersInDevice(0),
+                             mFrameCounter(0),
+                             mInitialSkips(0),
+                             mBufType(V4L2_BUF_TYPE_VIDEO_CAPTURE),
+                             mMemoryType(V4L2_MEMORY_USERPTR)
 {
     LOG1("@%s: device: %s", __FUNCTION__, name);
     mBufferPool.reserve(MAX_CAMERA_BUFFERS_NUM);
@@ -60,10 +58,26 @@ V4L2VideoNode::~V4L2VideoNode()
 
 status_t V4L2VideoNode::open()
 {
+    struct v4l2_capability cap;
     status_t status(NO_ERROR);
+
     status = V4L2DeviceBase::open();
-    if (status == NO_ERROR)
-        mState = DEVICE_OPEN;
+    CheckError((status != NO_ERROR), status, "@%s: failed to open video device node", __FUNCTION__);
+    mState = DEVICE_OPEN;
+    status = queryCap(&cap);
+    CheckError((status != NO_ERROR), status, "@%s: query device caps failed", __FUNCTION__);
+    if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)
+        mBufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    else if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE)
+        mBufType = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    else if (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT)
+        mBufType = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    else if (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE)
+        mBufType = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    else {
+        LOGE("@%s: unsupported buffer type.", __FUNCTION__);
+        return DEAD_OBJECT;
+    }
 
     mBuffersInDevice = 0;
     return status;
@@ -116,31 +130,11 @@ status_t V4L2VideoNode::queryCap(struct v4l2_capability *cap)
         return UNKNOWN_ERROR;
     }
 
-    LOG1( "driver:      '%s'", cap->driver);
-    LOG1( "card:        '%s'", cap->card);
-    LOG1( "bus_info:      '%s'", cap->bus_info);
+    LOG1( "driver:       '%s'", cap->driver);
+    LOG1( "card:         '%s'", cap->card);
+    LOG1( "bus_info:     '%s'", cap->bus_info);
     LOG1( "version:      %x", cap->version);
-    LOG1( "capabilities:      %x", cap->capabilities);
-
-    /* Do some basic sanity check */
-
-    if (mDirection == INPUT_VIDEO_NODE) {
-        if (!(cap->capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-           LOGW("No capture devices - But this is an input video node!");
-           return DEAD_OBJECT;
-        }
-
-        if (!(cap->capabilities & V4L2_CAP_STREAMING)) {
-            LOGW("Is not a video streaming device");
-            return DEAD_OBJECT;
-        }
-
-    } else {
-        if (!(cap->capabilities & V4L2_CAP_VIDEO_OUTPUT)) {
-            LOGW("No output devices - but this is an output video node!");
-            return DEAD_OBJECT;
-        }
-    }
+    LOG1( "capabilities: %x", cap->capabilities);
 
     return NO_ERROR;
 }
@@ -183,7 +177,7 @@ status_t V4L2VideoNode::queryCapturePixelFormats(std::vector<v4l2_fmtdesc> &form
     CLEAR(aFormat);
 
     aFormat.index = 0;
-    aFormat.type = mInBufType;
+    aFormat.type = mBufType;
 
     while (pioctl(mFd, VIDIOC_ENUM_FMT , &aFormat, mName.c_str()) == 0) {
         formats.push_back(aFormat);
@@ -249,14 +243,8 @@ int V4L2VideoNode::stop(bool keepBuffers)
     int ret = 0;
 
     if (mState == DEVICE_STARTED) {
-        enum v4l2_buf_type type;
-        if (CC_LIKELY(mDirection == INPUT_VIDEO_NODE))
-            type = mInBufType;
-        else
-            type = mOutBufType;
-
         //stream off
-        ret = pioctl(mFd, VIDIOC_STREAMOFF, &type, mName.c_str());
+        ret = pioctl(mFd, VIDIOC_STREAMOFF, &mBufType, mName.c_str());
         if (ret < 0) {
             LOGE("VIDIOC_STREAMOFF returned: %d (%s)", ret, strerror(errno));
             return ret;
@@ -296,13 +284,7 @@ int V4L2VideoNode::start(int initialSkips)
     }
 
     //stream on
-    enum v4l2_buf_type type;
-    if (CC_LIKELY(mDirection == INPUT_VIDEO_NODE))
-        type = mInBufType;
-    else
-        type = mOutBufType;
-
-    ret = pioctl(mFd, VIDIOC_STREAMON, &type, mName.c_str());
+    ret = pioctl(mFd, VIDIOC_STREAMON, &mBufType, mName.c_str());
     if (ret < 0) {
         LOGE("VIDIOC_STREAMON returned: %d (%s)", ret, strerror(errno));
         return ret;
@@ -356,7 +338,6 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
         return INVALID_OPERATION;
     }
 
-    v4l2_fmt.type = mInBufType;
     LOG1("VIDIOC_G_FMT");
     ret = pioctl (mFd, VIDIOC_G_FMT, &v4l2_fmt, mName.c_str());
     if (ret < 0) {
@@ -364,7 +345,7 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
         return UNKNOWN_ERROR;
     }
 
-    v4l2_fmt.type = mInBufType;
+    v4l2_fmt.type = mBufType;
 
     v4l2_fmt.fmt.pix.width = aConfig.width;
     v4l2_fmt.fmt.pix.height = aConfig.height;
@@ -621,7 +602,7 @@ status_t V4L2VideoNode::getMaxCropRectangle(struct v4l2_rect *crop)
         return INVALID_OPERATION;
 
     CLEAR(cropcap);
-    cropcap.type = mInBufType;
+    cropcap.type = mBufType;
     ret = pioctl(mFd, VIDIOC_CROPCAP, &cropcap, mName.c_str());
     if (ret != NO_ERROR)
         return ret;
@@ -658,7 +639,7 @@ status_t V4L2VideoNode::setCropRectangle(struct v4l2_rect *crop)
     if (mState == DEVICE_CLOSED)
         return INVALID_OPERATION;
 
-    v4l2_crop.type     = mInBufType;
+    v4l2_crop.type     = mBufType;
     v4l2_crop.c.left   = crop->left;
     v4l2_crop.c.top    = crop->top;
     v4l2_crop.c.width  = crop->width;
@@ -696,7 +677,7 @@ status_t V4L2VideoNode::getCropRectangle(struct v4l2_rect *crop)
     if (mState == DEVICE_CLOSED)
         return INVALID_OPERATION;
 
-    v4l2_crop.type = mInBufType;
+    v4l2_crop.type = mBufType;
 
     // Update current configuration with the new one
     ret = pioctl(mFd, VIDIOC_G_CROP, &v4l2_crop, mName.c_str());
@@ -991,15 +972,7 @@ int V4L2VideoNode::requestBuffers(size_t num_buffers, int memType)
 
     req_buf.memory = memType;
     req_buf.count = num_buffers;
-
-    if (mDirection == INPUT_VIDEO_NODE)
-        req_buf.type = mInBufType;
-    else if (mDirection == OUTPUT_VIDEO_NODE)
-        req_buf.type = mOutBufType;
-    else {
-        LOGE("Unknown node direction (in/out) this should not happen");
-        return -1;
-    }
+    req_buf.type = mBufType;
 
     LOG1("VIDIOC_REQBUFS, count=%u, memory=%u, type=%u", req_buf.count, req_buf.memory, req_buf.type);
     ret = pioctl(mFd, VIDIOC_REQBUFS, &req_buf, mName.c_str());
@@ -1057,10 +1030,7 @@ int V4L2VideoNode::dqbuf(struct v4l2_buffer_info *buf)
     int ret = 0;
 
     v4l2_buf->memory = V4L2_MEMORY_USERPTR;
-    if (CC_LIKELY(mDirection == INPUT_VIDEO_NODE))
-        v4l2_buf->type = mInBufType;
-    else
-        v4l2_buf->type = mOutBufType;
+    v4l2_buf->type = mBufType;
 
     ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf, mName.c_str());
     if (ret < 0) {
@@ -1134,17 +1104,7 @@ int V4L2VideoNode::newBuffer(int index, struct v4l2_buffer_info &buf, int memTyp
 
     vbuf->flags = 0x0;
     vbuf->memory = memType;
-
-    if (mDirection == INPUT_VIDEO_NODE)
-        vbuf->type = mInBufType;
-    else if (mDirection == OUTPUT_VIDEO_NODE)
-        vbuf->type = mOutBufType;
-    else {
-        LOGE("Unknown node direction (in/out) this should not happen");
-        return -1;
-    }
-
-
+    vbuf->type = mBufType;
     vbuf->index = index;
     ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf, mName.c_str());
 
@@ -1180,16 +1140,6 @@ int V4L2VideoNode::freeBuffer(struct v4l2_buffer_info *buf_info)
     return 0;
 }
 
-void V4L2VideoNode::setInputBufferType(enum v4l2_buf_type v4l2BufType)
-{
-    mInBufType = v4l2BufType;
-}
-
-void V4L2VideoNode::setOutputBufferType(enum v4l2_buf_type v4l2BufType)
-{
-    mOutBufType = v4l2BufType;
-}
-
 status_t V4L2VideoNode::getFormat(struct v4l2_format &aFormat)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
@@ -1201,7 +1151,7 @@ status_t V4L2VideoNode::getFormat(struct v4l2_format &aFormat)
         return INVALID_OPERATION;
     }
 
-    aFormat.type = mInBufType;
+    aFormat.type = mBufType;
     ret = pioctl(mFd, VIDIOC_G_FMT, &aFormat, mName.c_str());
 
     if (ret < 0) {

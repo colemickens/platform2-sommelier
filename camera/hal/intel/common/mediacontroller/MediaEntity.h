@@ -50,8 +50,7 @@ public:
                     struct media_pad_desc *pads);
     ~MediaEntity();
 
-    status_t getDevice(std::shared_ptr<V4L2DeviceBase> &device,
-                       VideNodeDirection direction = INPUT_VIDEO_NODE);
+    status_t getDevice(std::shared_ptr<V4L2DeviceBase> &device);
     void updateLinks(const struct media_link_desc *links);
     V4L2DeviceType getType();
     void getLinkDesc(std::vector<media_link_desc>  &links) const { links = mLinks; }
@@ -60,8 +59,7 @@ public:
     const char* getName() const { return mInfo.name; }
 
 private:
-    status_t openDevice(std::shared_ptr<V4L2DeviceBase> &device,
-                        VideNodeDirection direction = INPUT_VIDEO_NODE);
+    status_t openDevice(std::shared_ptr<V4L2DeviceBase> &device);
 
 private:
     struct media_entity_desc        mInfo;       /*!< media entity descriptor info */

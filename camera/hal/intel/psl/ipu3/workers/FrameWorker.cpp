@@ -60,14 +60,11 @@ status_t FrameWorker::stopWorker()
     return mNode->stop(true);
 }
 
-status_t FrameWorker::setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame)
+status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
     CLEAR(mFormat);
-
-    mFormat.type = type;
-    mNode->setInputBufferType(type);
 
     mFormat.fmt.pix.width = frame.width;
     mFormat.fmt.pix.height = frame.height;

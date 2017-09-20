@@ -280,7 +280,6 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
     status_t status = UNKNOWN_ERROR;
     std::shared_ptr<MediaEntity> entity = nullptr;
     std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
-    VideNodeDirection direction = INPUT_VIDEO_NODE;
 
     if (entityName != nullptr) {
         status = mMediaCtl->getMediaEntity(entity, entityName);
@@ -289,15 +288,10 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
             return status;
         }
 
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode, direction);
+        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode);
         if (status != NO_ERROR) {
             LOGE("Error opening device \"%s\"", entityName);
             return status;
-        }
-
-        if (isysNodeName == IMGU_NODE_INPUT) {
-            direction = OUTPUT_VIDEO_NODE;
-            videoNode->setInputBufferType(V4L2_BUF_TYPE_VIDEO_OUTPUT);
         }
 
         mConfiguredNodes.push_back(videoNode);

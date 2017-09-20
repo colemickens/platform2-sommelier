@@ -51,7 +51,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     frame.height = 1;
     frame.stride = frame.width;
     frame.format = V4L2_PIX_FMT_YUYV;
-    status_t ret = setWorkerDeviceFormat(V4L2_BUF_TYPE_VIDEO_CAPTURE, frame);
+    status_t ret = setWorkerDeviceFormat(frame);
     if (ret != OK)
         return ret;
 

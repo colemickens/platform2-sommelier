@@ -64,14 +64,14 @@ MediaEntity::~MediaEntity()
     }
 }
 
-status_t MediaEntity::getDevice(std::shared_ptr<V4L2DeviceBase> &device, VideNodeDirection direction)
+status_t MediaEntity::getDevice(std::shared_ptr<V4L2DeviceBase> &device)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
     if (mDevice == nullptr || !mDevice->isOpen()) {
         LOG1("Opening device");
-        status = openDevice(mDevice, direction);
+        status = openDevice(mDevice);
     }
     if (status == NO_ERROR)
         device = mDevice;
@@ -81,7 +81,7 @@ status_t MediaEntity::getDevice(std::shared_ptr<V4L2DeviceBase> &device, VideNod
     return status;
 }
 
-status_t MediaEntity::openDevice(std::shared_ptr<V4L2DeviceBase> &device, VideNodeDirection direction)
+status_t MediaEntity::openDevice(std::shared_ptr<V4L2DeviceBase> &device)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = UNKNOWN_ERROR;
@@ -110,7 +110,7 @@ status_t MediaEntity::openDevice(std::shared_ptr<V4L2DeviceBase> &device, VideNo
 
         device.reset();
         if (mInfo.type == MEDIA_ENT_T_DEVNODE_V4L) {
-            device = std::make_shared<V4L2VideoNode>(devname, direction);
+            device = std::make_shared<V4L2VideoNode>(devname);
         } else {
             device = std::make_shared<V4L2Subdevice>(devname);
         }

@@ -66,11 +66,6 @@ struct v4l2_sensor_mode {
     struct v4l2_frmivalenum ival;
 };
 
-enum VideNodeDirection {
-    INPUT_VIDEO_NODE,   /*!< input video devices like cameras or capture cards */
-    OUTPUT_VIDEO_NODE  /*!< output video devices like displays */
-};
-
 /**
  * A class encapsulating simple V4L2 device operations
  *
@@ -136,8 +131,7 @@ protected:
  */
 class V4L2VideoNode: public V4L2DeviceBase {
 public:
-    explicit V4L2VideoNode(const char *name,
-                  VideNodeDirection nodeDirection = INPUT_VIDEO_NODE);
+    explicit V4L2VideoNode(const char *name);
     virtual ~V4L2VideoNode();
 
     virtual status_t open();
@@ -148,8 +142,6 @@ public:
     virtual status_t enumerateInputs(struct v4l2_input *anInput);
 
     // Video node configuration
-    virtual void setInputBufferType(enum v4l2_buf_type v4l2BufType);
-    virtual void setOutputBufferType(enum v4l2_buf_type v4l2BufType);
     virtual int getFramerate(float * framerate, int width, int height, int pix_fmt);
     virtual status_t setParameter (struct v4l2_streamparm *aParam);
     virtual status_t getMaxCropRectangle(struct v4l2_rect *crop);
@@ -223,9 +215,7 @@ protected:
     std::vector<struct v4l2_buffer_info> mSetBufferPool; /*!< DEPRECATED:This is the buffer pool set before the device is prepared*/
     std::vector<struct v4l2_buffer_info> mBufferPool;    /*!< This is the active buffer pool */
 
-    VideNodeDirection mDirection;
-    enum v4l2_buf_type mInBufType;
-    enum v4l2_buf_type mOutBufType;
+    enum v4l2_buf_type mBufType;
     int                mMemoryType;
 };
 

@@ -182,7 +182,7 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     frame.height = 1;
     frame.stride = frame.width;
     frame.format = V4L2_META_FMT_IPU3_PARAMS;
-    ret = setWorkerDeviceFormat(V4L2_BUF_TYPE_VIDEO_OUTPUT, frame);
+    ret = setWorkerDeviceFormat(frame);
     if (ret != OK)
         return ret;
 
