@@ -136,7 +136,7 @@
           'sources': [
             # TODO(pmalani): Re-enable tests.
             #'tests/client_test.cc',
-            #'tests/client_tracker_test.cc',
+            'tests/client_tracker_test.cc',
             #'tests/device_test.cc',
             'tests/device_tracker_test.cc',
             'tests/test_helper.cc',

@@ -24,8 +24,7 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
  public:
   ClientTracker();
   ~ClientTracker();
-  bool InitClientTracker(DeviceTracker* device_tracker);
-  void ProcessClient(int fd);
+  void InitClientTracker();
   void SetDeviceTracker(DeviceTracker* ptr) { device_tracker_ = ptr; }
   size_t GetNumClientsForTesting() const { return clients_.size(); }
   void RemoveClient(uint32_t client_id);
@@ -47,9 +46,7 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
                       arc::mojom::MidisClientPtr client_ptr);
 
  private:
-  friend class ClientTest;
   friend class ClientTrackerTest;
-  FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
   FRIEND_TEST(ClientTrackerTest, AddClientPositive);
   // Helper function to set the base directory to be used for looking for the
   // Unix Domain socket path. Helpful for testing, where the we won't be allowed

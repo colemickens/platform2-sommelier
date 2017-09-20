@@ -23,62 +23,29 @@ namespace midis {
 class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
  public:
   using ClientDeletionCallback = base::Callback<void(uint32_t)>;
-  ~Client() override;
-
-  // Legacy Create() function to create a new client.
-  // Still kept here while we are in the process of transitioning to Mojo
-  // clients.
-  // TODO(pmalani): Remove once Mojo server and client interfaces are fully
-  // implemented.
-  static std::unique_ptr<Client> Create(base::ScopedFD fd,
-                                        DeviceTracker* device_tracker,
-                                        uint32_t client_id,
-                                        ClientDeletionCallback del_callback);
-
-  // Similar to the original Create() call, but for Mojo clients.
-  static std::unique_ptr<Client> CreateMojo(
-      DeviceTracker* device_tracker,
-      uint32_t client_id,
-      ClientDeletionCallback del_callback,
-      arc::mojom::MidisServerRequest request,
-      arc::mojom::MidisClientPtr client_ptr);
-
-  void NotifyDeviceAddedOrRemoved(const Device& dev, bool added);
-
- private:
-  Client(base::ScopedFD fd,
-         DeviceTracker* device_tracker,
+  Client(DeviceTracker* device_tracker,
          uint32_t client_id,
          ClientDeletionCallback del_cb,
          arc::mojom::MidisServerRequest request,
          arc::mojom::MidisClientPtr client_ptr);
+  ~Client() override;
 
-  // Start monitoring the client socket fd for messages from the client.
-  bool StartMonitoring();
-  // Stop the task which was watching the client socket df.
-  void StopMonitoring();
-  // Main function to handle all messages sent by the client.
-  // Messages will be of the following format:
-  //
-  // |<--- 4 bytes --->|<----  4 bytes  ---->|<---- payload_size bytes --->|
-  // |  message type   |  size of payload    |      message payload        |
-  void HandleClientMessages();
+  void NotifyDeviceAddedOrRemoved(const Device& dev, bool added);
 
+ private:
   // This function is a DeviceTracker::Observer override.
   void OnDeviceAddedOrRemoved(const Device& dev, bool added) override;
 
   void HandleCloseDeviceMessage();
 
-  // On receipt of a REQUEST_PORT message header, this function contacts
-  // the requisite device, obtains an FD for the relevant subdevice, and
-  // returns the FD.
-  // The FD is returned via the cmsg mechanism. The buffer will contain a
-  // struct MidisRequestPort with information regarding the port requested.
-  // The cmsg header will contain information regarding the information
-  // about the FD to be sent over.
-  //
-  // Just as the sendmsg() protocol is used by the server to send the FD, so too
-  // the client must use the recvmsg() protocol to retrieve said FD.
+  // TODO(pmalani): This function will eventually be an implementation of an
+  // interface routine in the Mojo interface MidisServer, and will return
+  // a FD using which the client can read from / write to the requested
+  // port.
+  // Leaving this in here, since this function was also present when the
+  // IPC mechanism for midis clients was Unix Domain Sockets, and we'd like
+  // to re-use that name (also as a reminder that this function needs
+  // to be implemented!).
   void AddClientToPort();
 
   void TriggerClientDeletion();
@@ -86,8 +53,6 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
   // arc::mojom::MidisServer
   void ListDevices(const ListDevicesCallback& callback) override;
 
-  base::ScopedFD client_fd_;
-  brillo::MessageLoop::TaskId msg_taskid_;
   // The DeviceTracker can be guaranteed to exist for the lifetime of the
   // service. As such, it is safe to maintain this pointer as a means to make
   // updates and derive information regarding devices.

@@ -32,10 +32,11 @@ int Daemon::OnInit() {
     return -1;
   }
 
-  if (!client_tracker_->InitClientTracker(device_tracker_.get())) {
-    return -1;
-  }
-
+  // It's OK to set |device_tracker_| here because the D-Bus connection
+  // has not yet been initialized, so it is impossible for clients to be
+  // registered.
+  client_tracker_->SetDeviceTracker(device_tracker_.get());
+  client_tracker_->InitClientTracker();
   InitDBus();
   return 0;
 }
