@@ -11,14 +11,16 @@
 #include "cryptohome/mock_service.h"
 
 namespace cryptohome {
+
 using base::FilePath;
 using std::ostringstream;
-using ::testing::_;
+
 using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::StrEq;
 using ::testing::SetArgPointee;
+using ::testing::StrEq;
+using ::testing::_;
 
 TEST(StatefulRecovery, ValidRequestV1) {
   MockPlatform platform;
@@ -27,6 +29,9 @@ TEST(StatefulRecovery, ValidRequestV1) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -59,6 +64,9 @@ TEST(StatefulRecovery, ValidRequestV1WriteProtected) {
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())
@@ -80,6 +88,9 @@ TEST(StatefulRecovery, ValidRequestV2) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -135,6 +146,9 @@ TEST(StatefulRecovery, ValidRequestV2NotOwner) {
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
 
@@ -172,6 +186,9 @@ TEST(StatefulRecovery, ValidRequestV2BadUser) {
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
 
@@ -199,6 +216,9 @@ TEST(StatefulRecovery, ValidRequestV2BadUserNotWriteProtected) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -244,6 +264,9 @@ TEST(StatefulRecovery, ValidRequestV2NotOwnerNotWriteProtected) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -317,6 +340,9 @@ TEST(StatefulRecovery, UncopyableData) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform, CreateDirectory(
         FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -339,6 +365,9 @@ TEST(StatefulRecovery, DirectoryCreationFailure) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform, CreateDirectory(
         FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(false));
@@ -355,6 +384,9 @@ TEST(StatefulRecovery, StatVFSFailure) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform, CreateDirectory(
         FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -379,6 +411,9 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
   EXPECT_CALL(platform,
       ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
     .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform,
       CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
@@ -449,6 +484,28 @@ TEST(StatefulRecovery, UsageReportOk) {
   EXPECT_FALSE(platform.StatVFS(FilePath("/this/is/very/wrong"), &vfs));
 
   /* TODO(keescook): mockable tune2fs, since it's not installed in chroot. */
+}
+
+TEST(StatefulRecovery, DestinationRecreateFailure) {
+  MockPlatform platform;
+  MockService service;
+  std::string flag_content = "1";
+  EXPECT_CALL(platform,
+      ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform,
+      DeleteFile(FilePath(StatefulRecovery::kRecoverDestination), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform,
+      CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform,
+      Copy(_, FilePath(StatefulRecovery::kRecoverDestination)))
+    .Times(0);
+
+  StatefulRecovery recovery(&platform, &service);
+  EXPECT_TRUE(recovery.Requested());
+  EXPECT_FALSE(recovery.Recover());
 }
 
 }  // namespace cryptohome

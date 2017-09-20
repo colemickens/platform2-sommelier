@@ -159,9 +159,14 @@ bool StatefulRecovery::Recover() {
   if (!requested_)
     return false;
 
-  if (!platform_->CreateDirectory(FilePath(kRecoverDestination))) {
-    LOG(ERROR) << "Failed to mkdir "
-               << FilePath(kRecoverDestination).value();
+  // Start with a clean slate. Note that there is a window of opportunity for
+  // another process to create the directory with funky permissions after the
+  // delete takes place but before we manage to recreate. Since the parent
+  // directory is root-owned though, this isn't a problem in practice.
+  const FilePath kDestinationPath(kRecoverDestination);
+  if (!platform_->DeleteFile(kDestinationPath, true) ||
+      !platform_->CreateDirectory(kDestinationPath)) {
+    PLOG(ERROR) << "Failed to create fresh " << kDestinationPath.value();
     return false;
   }
 
