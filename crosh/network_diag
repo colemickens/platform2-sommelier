@@ -379,7 +379,10 @@ diag_arp () {
   local failures=0
 
   if [ -n "${ip}" ] ; then
-    arp="$(${ARP} -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')"
+    # Example arp output:
+    # 10.0.2.2   ether   52:55:0a:00:02:02   C   eth0
+    arp="$(${ARP} -en -i "${ifc}" | \
+             awk -v ip="${ip}" '$1 == ip { print $3 }')"
     if [ -z "${arp}" ]; then
       fail "Arp table does not contain entry for ${ip}"
       failures="$((failures + 1))"
@@ -732,7 +735,7 @@ dbus_get_object_list () {
   # and a search for "Devices", we'd return a newline separated
   # "/device/wlan0 /device/eth1 /device/eth0"
   dbus_get_object_properties "${entity}" "${parent}" "${parent_path}" | \
-    awk '/^\/[0-9]+\/'${child}'[\/ ]/ { print $2 }'
+    awk -v re="^/[0-9]+/${child}[/ ]" 'match($0, re) { print $2 }'
 }
 
 diag_flimflam_dbus () {
