@@ -52,11 +52,16 @@ if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
   fi
 fi
 
-# Flush buffers to disk to be safe in case there is a problem with umount.
+# Flush buffers to disk to reflect this part of shutdown in the metrics.
 sync
 
 # Measure shutdown time up to this point.
 bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
+
+# To be safe, flush buffers to disk again before unmounting. (From
+# https://crbug.com/760007 it seems that a failed umount can get the filesystem
+# into a state that renders a subsequent sync ineffective.)
+sync
 
 if [ -e /dev/mapper/encstateful ]; then
   # Give mount-encrypted umount 10 times to retry, otherwise
