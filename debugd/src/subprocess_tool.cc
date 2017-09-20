@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/memory/ptr_util.h>
+#include <base/stl_util.h>
 
 #include "debugd/src/error_utils.h"
 
@@ -27,12 +28,22 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
   if (access_root_mount_ns)
     process->AllowAccessRootMountNamespace();
 
-  if (!process->Init() || processes_.count(process->id()) == 1)
+  if (!process->Init())
     return nullptr;
 
   ProcessWithId* process_ptr = process.get();
+  if (RecordProcess(std::move(process)))
+    return process_ptr;
+
+  return nullptr;
+}
+
+bool SubprocessTool::RecordProcess(std::unique_ptr<ProcessWithId> process) {
+  if (ContainsKey(processes_, process->id()))
+    return false;
+
   processes_[process->id()] = std::move(process);
-  return process_ptr;
+  return true;
 }
 
 bool SubprocessTool::Stop(const std::string& handle, brillo::ErrorPtr* error) {

@@ -48,6 +48,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   perf_tool_ = base::MakeUnique<PerfTool>();
   ping_tool_ = base::MakeUnique<PingTool>();
   route_tool_ = base::MakeUnique<RouteTool>();
+  shill_scripts_tool_ = base::MakeUnique<ShillScriptsTool>();
   storage_tool_ = base::MakeUnique<StorageTool>();
   swap_tool_ = base::MakeUnique<SwapTool>();
   sysrq_tool_ = base::MakeUnique<SysrqTool>();
@@ -399,6 +400,20 @@ std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {
 
 std::string DebugdDBusAdaptor::GetWifiPowerSave() {
   return wifi_power_tool_->GetWifiPowerSave();
+}
+
+bool DebugdDBusAdaptor::RunShillScriptStart(
+    brillo::ErrorPtr* error,
+    const dbus::FileDescriptor& outfd,
+    const std::string& script,
+    const std::vector<std::string>& script_args,
+    std::string* handle) {
+  return shill_scripts_tool_->Run(outfd, script, script_args, handle, error);
+}
+
+bool DebugdDBusAdaptor::RunShillScriptStop(brillo::ErrorPtr* error,
+                                           const std::string& handle) {
+  return shill_scripts_tool_->Stop(handle, error);
 }
 
 }  // namespace debugd

@@ -877,5 +877,40 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="RunShillScriptStart">
+      <tp:docstring>
+        Run a shill debug script in a sandboxed environment.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="script" type="s" direction="in">
+        <tp:docstring>
+          The script to run.
+        </tp:docstring>
+      </arg>
+      <arg name="script_args" type="as" direction="in">
+        <tp:docstring>
+          The command line flags to pass to the script.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this run.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="RunShillScriptStop">
+      <tp:docstring>
+        Stops a running script.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the script to stop.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

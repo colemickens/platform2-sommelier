@@ -96,6 +96,7 @@
         'src/route_tool.cc',
         'src/sandboxed_process.cc',
         'src/session_manager_proxy.cc',
+        'src/shill_scripts_tool.cc',
         'src/storage_tool.cc',
         'src/subprocess_tool.cc',
         'src/swap_tool.cc',

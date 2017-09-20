@@ -24,6 +24,9 @@ class SubprocessTool {
   virtual ProcessWithId* CreateProcess(bool sandboxed = true,
                                        bool allow_root_mount_ns = false);
 
+  // TODO(vapier): Rework sandboxing so we can re-internalize this function.
+  bool RecordProcess(std::unique_ptr<ProcessWithId> process);
+
   virtual bool Stop(const std::string& handle, brillo::ErrorPtr* error);
 
  private:
