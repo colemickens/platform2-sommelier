@@ -18,10 +18,6 @@ const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
 
 }  // namespace
 
-ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed) {
-  return CreateProcess(sandboxed, false);
-}
-
 ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
                                              bool access_root_mount_ns) {
   auto process = base::MakeUnique<ProcessWithId>();

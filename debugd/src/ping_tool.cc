@@ -29,7 +29,7 @@ bool PingTool::Start(const dbus::FileDescriptor& outfd,
                      const brillo::VariantDictionary& options,
                      std::string* out_id,
                      brillo::ErrorPtr* error) {
-  ProcessWithId* p = CreateProcess(true);
+  ProcessWithId* p = CreateProcess();
   if (!p) {
     DEBUGD_ADD_ERROR(
         error, kPingToolErrorString, "Could not create ping process");

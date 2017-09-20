@@ -19,7 +19,7 @@ std::string TracePathTool::Start(
     const dbus::FileDescriptor& outfd,
     const std::string& destination,
     const brillo::VariantDictionary& options) {
-  ProcessWithId* p = CreateProcess(true);
+  ProcessWithId* p = CreateProcess();
   if (!p)
     return "";
 

@@ -21,9 +21,8 @@ class SubprocessTool {
   SubprocessTool() = default;
   virtual ~SubprocessTool() = default;
 
-  virtual ProcessWithId* CreateProcess(bool sandboxed);
-  virtual ProcessWithId* CreateProcess(bool sandboxed,
-                                       bool allow_root_mount_ns);
+  virtual ProcessWithId* CreateProcess(bool sandboxed = true,
+                                       bool allow_root_mount_ns = false);
 
   virtual bool Stop(const std::string& handle, brillo::ErrorPtr* error);
 
