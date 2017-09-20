@@ -612,6 +612,11 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   camera_metadata_entry active_array_size =
       metadata->find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
 
+  if (active_array_size.count == 0) {
+    LOGF(ERROR) << "Active array size is not found.";
+    return -EINVAL;
+  }
+
   // android.scaler
   const int32_t crop_region[] = {
       active_array_size.data.i32[0], active_array_size.data.i32[1],
