@@ -41,6 +41,10 @@ int main(int argc, char* argv[]) {
                -1,
                "Convert the supplied panel brightness level to a nonlinear "
                "percent.");
+  DEFINE_int32(lux,
+               0,
+               "Initial ambient light sensor reading (only used if "
+               "has_ambient_light_sensor pref is set)");
   DEFINE_double(percent_to_level,
                -1.0,
                "Convert the supplied nonlinear panel brightness percent to a "
@@ -74,8 +78,10 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<power_manager::system::AmbientLightSensorStub> light_sensor;
   bool has_als = false;
   if (prefs.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
-      has_als)
-    light_sensor.reset(new power_manager::system::AmbientLightSensorStub(0));
+      has_als) {
+    light_sensor.reset(
+        new power_manager::system::AmbientLightSensorStub(FLAGS_lux));
+  }
 
   std::unique_ptr<power_manager::policy::BacklightController>
       backlight_controller;
