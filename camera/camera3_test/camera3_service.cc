@@ -236,13 +236,30 @@ void Camera3Service::Camera3DeviceService::StartAutoFocus() {
 int Camera3Service::Camera3DeviceService::WaitForAutoFocusDone() {
   VLOGF_ENTER();
   auto future = internal::Future<void>::Create(nullptr);
+  int32_t result;
   service_thread_.PostTaskAsync(
       FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
                                 AddMetadataListenerOnServiceThread,
                             base::Unretained(this), ANDROID_CONTROL_AF_STATE,
-                            ANDROID_CONTROL_AF_STATE_FOCUSED_LOCKED,
-                            internal::GetFutureCallback(future)));
-  return future->Wait(kWaitForFocusDoneTimeoutMs) ? 0 : -ETIMEDOUT;
+                            std::unordered_set<int32_t>(
+                                {ANDROID_CONTROL_AF_STATE_FOCUSED_LOCKED,
+                                 ANDROID_CONTROL_AF_STATE_NOT_FOCUSED_LOCKED}),
+                            internal::GetFutureCallback(future), &result));
+  if (!future->Wait(kWaitForFocusDoneTimeoutMs)) {
+    service_thread_.PostTaskSync(
+        FROM_HERE,
+        base::Bind(&Camera3Service::Camera3DeviceService::
+                       DeleteMetadataListenerOnServiceThread,
+                   base::Unretained(this), ANDROID_CONTROL_AF_STATE,
+                   std::unordered_set<int32_t>(
+                       {ANDROID_CONTROL_AF_STATE_FOCUSED_LOCKED,
+                        ANDROID_CONTROL_AF_STATE_NOT_FOCUSED_LOCKED})));
+    return -ETIMEDOUT;
+  }
+  if (result == ANDROID_CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
+    VLOGF(1) << "Auto-focus did not lock";
+  }
+  return 0;
 }
 
 int Camera3Service::Camera3DeviceService::WaitForAWBConvergedAndLock() {
@@ -252,9 +269,16 @@ int Camera3Service::Camera3DeviceService::WaitForAWBConvergedAndLock() {
       FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
                                 AddMetadataListenerOnServiceThread,
                             base::Unretained(this), ANDROID_CONTROL_AWB_STATE,
-                            ANDROID_CONTROL_AWB_STATE_CONVERGED,
-                            internal::GetFutureCallback(future)));
+                            std::unordered_set<int32_t>(
+                                {ANDROID_CONTROL_AWB_STATE_CONVERGED}),
+                            internal::GetFutureCallback(future), nullptr));
   if (!future->Wait(kWaitForAWBConvergedTimeoutMs)) {
+    service_thread_.PostTaskSync(
+        FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
+                                  DeleteMetadataListenerOnServiceThread,
+                              base::Unretained(this), ANDROID_CONTROL_AWB_STATE,
+                              std::unordered_set<int32_t>(
+                                  {ANDROID_CONTROL_AWB_STATE_CONVERGED})));
     return -ETIMEDOUT;
   }
 
@@ -279,13 +303,29 @@ void Camera3Service::Camera3DeviceService::StartAEPrecapture() {
 int Camera3Service::Camera3DeviceService::WaitForAEStable() {
   VLOGF_ENTER();
   auto future = internal::Future<void>::Create(nullptr);
+  int32_t result;
   service_thread_.PostTaskAsync(
       FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
                                 AddMetadataListenerOnServiceThread,
                             base::Unretained(this), ANDROID_CONTROL_AE_STATE,
-                            ANDROID_CONTROL_AE_STATE_CONVERGED,
-                            internal::GetFutureCallback(future)));
-  return future->Wait(kWaitForFocusDoneTimeoutMs) ? 0 : -ETIMEDOUT;
+                            std::unordered_set<int32_t>(
+                                {ANDROID_CONTROL_AE_STATE_CONVERGED,
+                                 ANDROID_CONTROL_AE_STATE_FLASH_REQUIRED}),
+                            internal::GetFutureCallback(future), &result));
+  if (!future->Wait(kWaitForFocusDoneTimeoutMs)) {
+    service_thread_.PostTaskSync(
+        FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
+                                  DeleteMetadataListenerOnServiceThread,
+                              base::Unretained(this), ANDROID_CONTROL_AE_STATE,
+                              std::unordered_set<int32_t>(
+                                  {ANDROID_CONTROL_AE_STATE_CONVERGED,
+                                   ANDROID_CONTROL_AE_STATE_FLASH_REQUIRED})));
+    return -ETIMEDOUT;
+  }
+  if (result == ANDROID_CONTROL_AE_STATE_FLASH_REQUIRED) {
+    VLOGF(1) << "Flash needs to be fired for good quality still capture";
+  }
+  return 0;
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCapture(
@@ -441,10 +481,24 @@ void Camera3Service::Camera3DeviceService::StartAutoFocusOnServiceThread() {
 
 void Camera3Service::Camera3DeviceService::AddMetadataListenerOnServiceThread(
     int32_t key,
-    int32_t value,
-    base::Callback<void()> cb) {
+    std::unordered_set<int32_t> values,
+    base::Callback<void()> cb,
+    int32_t* result) {
   DCHECK(service_thread_.IsCurrentThread());
-  metadata_listener_list_.emplace_back(key, value, cb);
+  metadata_listener_list_.emplace_back(key, values, cb, result);
+}
+
+void Camera3Service::Camera3DeviceService::
+    DeleteMetadataListenerOnServiceThread(int32_t key,
+                                          std::unordered_set<int32_t> values) {
+  DCHECK(service_thread_.IsCurrentThread());
+  for (auto it = metadata_listener_list_.begin();
+       it != metadata_listener_list_.end(); it++) {
+    if (it->key == key && it->values == values) {
+      it = metadata_listener_list_.erase(it);
+      break;
+    }
+  }
 }
 
 void Camera3Service::Camera3DeviceService::LockAWBOnServiceThread() {
@@ -545,10 +599,13 @@ void Camera3Service::Camera3DeviceService::
        it != metadata_listener_list_.end();) {
     camera_metadata_ro_entry_t entry;
     if (find_camera_metadata_ro_entry(metadata.get(), it->key, &entry) == 0 &&
-        entry.data.i32[0] == it->value) {
+        it->values.find(entry.data.i32[0]) != it->values.end()) {
       VLOGF(1) << "Metadata listener gets tag "
                << get_camera_metadata_tag_name(it->key) << " value "
-               << it->value;
+               << entry.data.i32[0];
+      if (it->result) {
+        *it->result = entry.data.i32[0];
+      }
       it->cb.Run();
       it = metadata_listener_list_.erase(it);
     } else {

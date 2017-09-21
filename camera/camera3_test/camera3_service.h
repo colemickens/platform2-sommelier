@@ -10,6 +10,7 @@
 #include <list>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "camera3_test/camera3_device_fixture.h"
@@ -186,8 +187,13 @@ class Camera3Service::Camera3DeviceService {
   void StopPreviewOnServiceThread(base::Callback<void()> cb);
 
   void AddMetadataListenerOnServiceThread(int32_t key,
-                                          int32_t value,
-                                          base::Callback<void()> cb);
+                                          std::unordered_set<int32_t> values,
+                                          base::Callback<void()> cb,
+                                          int32_t* result);
+
+  void DeleteMetadataListenerOnServiceThread(
+      int32_t key,
+      std::unordered_set<int32_t> values);
 
   void LockAWBOnServiceThread();
 
@@ -252,10 +258,14 @@ class Camera3Service::Camera3DeviceService {
 
   struct MetadataListener {
     int32_t key;
-    int32_t value;
+    std::unordered_set<int32_t> values;
     base::Callback<void()> cb;
-    MetadataListener(int32_t k, int32_t v, base::Callback<void()> c)
-        : key(k), value(v), cb(c) {}
+    int32_t* result;
+    MetadataListener(int32_t k,
+                     const std::unordered_set<int32_t>& v,
+                     base::Callback<void()> c,
+                     int32_t* r)
+        : key(k), values(v), cb(c), result(r) {}
   };
 
   std::list<MetadataListener> metadata_listener_list_;
