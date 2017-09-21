@@ -50,9 +50,6 @@ class MockDevicePolicyService : public DevicePolicyService {
 
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
-
- private:
-  enterprise_management::ChromeDeviceSettingsProto proto_;
 };
 }  // namespace login_manager
 

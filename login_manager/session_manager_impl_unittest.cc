@@ -82,6 +82,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
@@ -95,6 +96,8 @@ using brillo::cryptohome::home::SetSystemSalt;
 using brillo::cryptohome::home::kGuestUserName;
 
 using enterprise_management::ChromeDeviceSettingsProto;
+using enterprise_management::PolicyData;
+using enterprise_management::PolicyFetchResponse;
 
 using std::map;
 using std::string;
@@ -329,7 +332,9 @@ class SessionManagerImplTest : public ::testing::Test,
         &install_attributes_reader_, system_clock_proxy_.get());
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
-    device_policy_service_ = new MockDevicePolicyService();
+    device_policy_store_ = new MockPolicyStore();
+    device_policy_service_ = new MockDevicePolicyService(
+        std::unique_ptr<MockPolicyStore>(device_policy_store_), &owner_key_);
     user_policy_service_factory_ =
         new testing::NiceMock<MockUserPolicyServiceFactory>();
     ON_CALL(*user_policy_service_factory_, Create(_))
@@ -544,6 +549,7 @@ class SessionManagerImplTest : public ::testing::Test,
   // on them after we hand them off.
   // Owned by SessionManagerImpl.
   MockInitDaemonController* init_controller_ = nullptr;
+  MockPolicyStore* device_policy_store_ = nullptr;
   MockDevicePolicyService* device_policy_service_ = nullptr;
   MockUserPolicyServiceFactory* user_policy_service_factory_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
@@ -2156,6 +2162,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     ON_CALL(vpd_process_, RunInBackground(_, _, _))
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
+    ON_CALL(*device_policy_store_, Get())
+        .WillByDefault(ReturnRef(policy_));
 
     SetFileExists(SessionManagerImpl::kTPMFirmwareUpdateAvailableFile, true);
   }
@@ -2223,6 +2231,12 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
   void SetVpdStatus(bool status) { vpd_status_ = status; }
 
+  void SetPolicy(const ChromeDeviceSettingsProto& settings) {
+    PolicyData policy_data;
+    CHECK(settings.SerializeToString(policy_data.mutable_policy_value()));
+    CHECK(policy_data.SerializeToString(policy_.mutable_policy_data()));
+  }
+
   std::string update_mode_ = "first_boot";
   std::string existing_vpd_params_;
   std::string expected_vpd_params_ = "mode:first_boot";
@@ -2231,6 +2245,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   bool vpd_spawned_ = true;
   bool vpd_status_ = true;
   VpdProcess::CompletionCallback completion_;
+  PolicyFetchResponse policy_;
 };
 
 TEST_F(StartTPMFirmwareUpdateTest, Success_FirstBoot) {
@@ -2258,10 +2273,20 @@ TEST_F(StartTPMFirmwareUpdateTest, BadUpdateMode) {
   ExpectError(dbus_error::kInvalidParameter);
 }
 
-TEST_F(StartTPMFirmwareUpdateTest, Enterprise) {
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseNotSet) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
   ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseAllowed) {
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  ChromeDeviceSettingsProto settings;
+  settings.mutable_tpm_firmware_update_settings()
+      ->set_allow_user_initiated_powerwash(true);
+  SetPolicy(settings);
+  ExpectDeviceRestart();
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, VpdSpawnError) {

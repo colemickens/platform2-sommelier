@@ -869,11 +869,14 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
   // For remotely managed devices, make sure the requested update mode matches
   // the admin-configured one in device policy.
   if (device_policy_->InstallAttributesEnterpriseMode()) {
-    // TODO(mnissler): Verify that device policy matches |update_mode|.
-    auto error = CreateError(dbus_error::kNotAvailable,
-                             "Not yet supported on enterprise devices.");
-    response->ReplyWithError(error.get());
-    return;
+    const enterprise_management::TPMFirmwareUpdateSettingsProto& settings =
+        device_policy_->GetSettings().tpm_firmware_update_settings();
+    if (!settings.allow_user_initiated_powerwash()) {
+      auto error = CreateError(dbus_error::kNotAvailable,
+                               "Policy doesn't allow TPM firmware update.");
+      response->ReplyWithError(error.get());
+      return;
+    }
   }
 
   // Check whether a firmware update is present.
