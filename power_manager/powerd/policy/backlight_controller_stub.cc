@@ -140,5 +140,15 @@ bool BacklightControllerStub::DecreaseUserBrightness(bool allow_off) {
   return true;
 }
 
+double BacklightControllerStub::LevelToPercent(int64_t level) const {
+  NOTIMPLEMENTED();
+  return 0.0;
+}
+
+int64_t BacklightControllerStub::PercentToLevel(double percent) const {
+  NOTIMPLEMENTED();
+  return 0;
+}
+
 }  // namespace policy
 }  // namespace power_manager

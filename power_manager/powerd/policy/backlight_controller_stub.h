@@ -101,6 +101,8 @@ class BacklightControllerStub : public policy::BacklightController {
     return num_als_adjustments_;
   }
   int GetNumUserAdjustments() const override { return num_user_adjustments_; }
+  double LevelToPercent(int64_t level) const override;
+  int64_t PercentToLevel(double percent) const override;
 
  private:
   base::ObserverList<BacklightControllerObserver> observers_;

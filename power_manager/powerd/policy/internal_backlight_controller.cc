@@ -216,38 +216,6 @@ void InternalBacklightController::Init(
             << " (" << LevelToPercent(current_level_) << "%)";
 }
 
-double InternalBacklightController::LevelToPercent(int64_t raw_level) {
-  // If the passed-in level is below the minimum visible level, just map it
-  // linearly into [0, kMinVisiblePercent).
-  if (raw_level < min_visible_level_)
-    return kMinVisiblePercent * raw_level / min_visible_level_;
-
-  // Since we're at or above the minimum level, we know that we're at 100% if
-  // the min and max are equal.
-  if (min_visible_level_ == max_level_)
-    return 100.0;
-
-  double linear_fraction = static_cast<double>(raw_level - min_visible_level_) /
-                           (max_level_ - min_visible_level_);
-  return kMinVisiblePercent +
-         (kMaxPercent - kMinVisiblePercent) *
-             pow(linear_fraction, level_to_percent_exponent_);
-}
-
-int64_t InternalBacklightController::PercentToLevel(double percent) {
-  if (percent < kMinVisiblePercent)
-    return lround(min_visible_level_ * percent / kMinVisiblePercent);
-
-  if (percent == kMaxPercent)
-    return max_level_;
-
-  double linear_fraction =
-      (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent);
-  return lround(min_visible_level_ +
-                (max_level_ - min_visible_level_) *
-                    pow(linear_fraction, 1.0 / level_to_percent_exponent_));
-}
-
 void InternalBacklightController::AddObserver(
     BacklightControllerObserver* observer) {
   DCHECK(observer);
@@ -480,6 +448,39 @@ int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
 int InternalBacklightController::GetNumUserAdjustments() const {
   return user_adjustment_count_;
 }
+
+double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
+  // If the passed-in level is below the minimum visible level, just map it
+  // linearly into [0, kMinVisiblePercent).
+  if (raw_level < min_visible_level_)
+    return kMinVisiblePercent * raw_level / min_visible_level_;
+
+  // Since we're at or above the minimum level, we know that we're at 100% if
+  // the min and max are equal.
+  if (min_visible_level_ == max_level_)
+    return 100.0;
+
+  double linear_fraction = static_cast<double>(raw_level - min_visible_level_) /
+                           (max_level_ - min_visible_level_);
+  return kMinVisiblePercent +
+         (kMaxPercent - kMinVisiblePercent) *
+             pow(linear_fraction, level_to_percent_exponent_);
+}
+
+int64_t InternalBacklightController::PercentToLevel(double percent) const {
+  if (percent < kMinVisiblePercent)
+    return lround(min_visible_level_ * percent / kMinVisiblePercent);
+
+  if (percent == kMaxPercent)
+    return max_level_;
+
+  double linear_fraction =
+      (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent);
+  return lround(min_visible_level_ +
+                (max_level_ - min_visible_level_) *
+                    pow(linear_fraction, 1.0 / level_to_percent_exponent_));
+}
+
 
 void InternalBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,

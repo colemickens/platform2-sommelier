@@ -157,6 +157,18 @@ int ExternalBacklightController::GetNumUserAdjustments() const {
   return num_brightness_adjustments_in_session_;
 }
 
+double ExternalBacklightController::LevelToPercent(int64_t level) const {
+  // This class doesn't have any knowledge of hardware backlight levels (since
+  // it can simultaneously control multiple heterogeneous displays).
+  NOTIMPLEMENTED();
+  return 0.0;
+}
+
+int64_t ExternalBacklightController::PercentToLevel(double percent) const {
+  NOTIMPLEMENTED();
+  return 0;
+}
+
 void ExternalBacklightController::OnDisplaysChanged(
     const std::vector<system::DisplayInfo>& displays) {
   UpdateDisplays(displays);

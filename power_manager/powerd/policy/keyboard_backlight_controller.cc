@@ -343,6 +343,21 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
   return num_user_adjustments_;
 }
 
+double KeyboardBacklightController::LevelToPercent(int64_t level) const {
+  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
+  if (max_level == 0)
+    return -1.0;
+  level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
+  return level * 100.0 / max_level;
+}
+
+int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
+  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
+  if (max_level == 0)
+    return -1;
+  return lround(max_level * util::ClampPercent(percent) / 100.0);
+}
+
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,
     AmbientLightHandler::BrightnessChangeCause cause) {
@@ -389,22 +404,6 @@ void KeyboardBacklightController::HandleVideoTimeout() {
   fullscreen_video_playing_ = false;
   UpdateState(Transition::FAST, BrightnessChangeCause::AUTOMATED);
   UpdateTurnOffTimer();
-}
-
-int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
-  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
-  if (max_level == 0)
-    return -1;
-  percent = std::max(std::min(percent, 100.0), 0.0);
-  return lround(static_cast<double>(max_level) * percent / 100.0);
-}
-
-double KeyboardBacklightController::LevelToPercent(int64_t level) const {
-  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
-  if (max_level == 0)
-    return -1.0;
-  level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
-  return static_cast<double>(level) * 100.0 / max_level;
 }
 
 bool KeyboardBacklightController::RecentlyHoveringOrUserActive() const {

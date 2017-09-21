@@ -66,6 +66,8 @@ class ExternalBacklightController : public BacklightController,
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
+  double LevelToPercent(int64_t level) const override;
+  int64_t PercentToLevel(double percent) const override;
 
   // system::DisplayWatcherObserver implementation:
   void OnDisplaysChanged(

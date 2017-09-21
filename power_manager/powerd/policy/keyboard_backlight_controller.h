@@ -99,6 +99,8 @@ class KeyboardBacklightController : public BacklightController,
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
+  double LevelToPercent(int64_t level) const override;
+  int64_t PercentToLevel(double percent) const override;
 
   // AmbientLightHandler::Delegate implementation:
   void SetBrightnessPercentForAmbientLight(
@@ -116,9 +118,6 @@ class KeyboardBacklightController : public BacklightController,
  private:
   // Handles |video_timer_| firing, indicating that video activity has stopped.
   void HandleVideoTimeout();
-
-  int64_t PercentToLevel(double percent) const;
-  double LevelToPercent(int64_t level) const;
 
   // Returns true if hovering is active or if user activity or hovering was
   // observed recently enough that the backlight should be kept on.

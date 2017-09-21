@@ -202,8 +202,10 @@
       'target_name': 'backlight_tool',
       'type': 'executable',
       'dependencies': [
-        'libutil',
+        'libpolicy',
         'libsystem',
+        'libsystem_stub',
+        'libutil',
       ],
       'sources': ['tools/backlight_tool.cc'],
     },

@@ -139,6 +139,12 @@ class BacklightController {
   virtual int GetNumAmbientLightSensorAdjustments() const = 0;
   virtual int GetNumUserAdjustments() const = 0;
 
+  // Converts between a (possibly-non-linear) brightness percent in the range
+  // [0.0, 100.0] and a hardware-specific brightness level (as exposed by the
+  // backlight driver).
+  virtual int64_t PercentToLevel(double percent) const = 0;
+  virtual double LevelToPercent(int64_t level) const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };

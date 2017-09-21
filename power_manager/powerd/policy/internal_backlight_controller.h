@@ -74,10 +74,6 @@ class InternalBacklightController : public BacklightController,
             system::AmbientLightSensorInterface* sensor,
             system::DisplayPowerSetterInterface* display_power_setter);
 
-  // Converts between [0, 100] and [0, |max_level_|] brightness scales.
-  double LevelToPercent(int64_t level);
-  int64_t PercentToLevel(double percent);
-
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
   void RemoveObserver(BacklightControllerObserver* observer) override;
@@ -104,6 +100,8 @@ class InternalBacklightController : public BacklightController,
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
+  double LevelToPercent(int64_t level) const override;
+  int64_t PercentToLevel(double percent) const override;
 
   // AmbientLightHandler::Delegate implementation:
   void SetBrightnessPercentForAmbientLight(
