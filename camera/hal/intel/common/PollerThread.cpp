@@ -24,17 +24,15 @@
 
 NAMESPACE_DECLARATION {
 
-static const int POLLER_THREAD_PRIORITY_LEVEL = 1;
-
 PollerThread::PollerThread(const char* name,
                             int priority):
     mName(name),
     mPriority(priority),
     mThreadRunning(false),
     mMessageQueue("PollThread", static_cast<int>(MESSAGE_ID_MAX)),
+    mMessageThread(new MessageThread(this, mName.c_str(), mPriority)),
     mListener (nullptr),
-    mEvents(POLLPRI | POLLIN | POLLERR),
-    mMessageThread(new MessageThread(this, mName.c_str(), mPriority))
+    mEvents(POLLPRI | POLLIN | POLLERR)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
@@ -174,7 +172,6 @@ status_t PollerThread::handlePollRequest(Message &msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
     int ret;
-    char readbuf = 0;
     IPollEventListener::PollEventMessage outMsg;
 
     if (msg.devices.size() > 0)

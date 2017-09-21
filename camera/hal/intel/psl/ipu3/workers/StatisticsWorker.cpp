@@ -256,7 +256,6 @@ void StatisticsWorker::writeRgbsGridToBmp(const std::string &rgbsFilename,
 {
     int grid_width = input_params.stats_4a_config->awb_grd_config.grid_width;
     int grid_height = input_params.stats_4a_config->awb_grd_config.grid_height;
-    int rgbs_grids_size = grid_width * grid_height;
     int rgbs_flag = RGBS_GRID_TO_BMP;
 
     if (input_params.data == nullptr) {

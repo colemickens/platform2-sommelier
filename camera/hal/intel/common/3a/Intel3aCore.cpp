@@ -975,13 +975,11 @@ status_t Intel3aCore::deepCopyPAResults(ia_aiq_pa_results *dst,
      * lets check that all the pointers are there
      * in the source and in the destination
      */
-    if (CC_UNLIKELY(dst == nullptr ||
-                    dst->color_conversion_matrix == nullptr)) {
+    if (CC_UNLIKELY(dst == nullptr)) {
         LOGE("Failed to deep copy PA result- invalid destination");
         return BAD_VALUE;
     }
-    if (CC_UNLIKELY(src == nullptr ||
-                   src->color_conversion_matrix == nullptr)) {
+    if (CC_UNLIKELY(src == nullptr)) {
         LOGE("Failed to deep copy PA result- invalid source");
         return BAD_VALUE;
     }

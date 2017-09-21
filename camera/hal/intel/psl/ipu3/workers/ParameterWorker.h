@@ -112,7 +112,6 @@ private:
     status_t setGridInfo(uint32_t csiBeWidth);
     status_t getPipeConfig(PipeConfig &pipeCfg, std::shared_ptr<GraphConfig> &config, const string &pin) const;
     void overrideCPFFMode(PipeConfig *pipeCfg, std::shared_ptr<GraphConfig> &config);
-    int allocLscTable(IPU3AICRuntimeParams &runtimeParams);
 
 private:
     std::shared_ptr<SkyCamProxy> mSkyCamAIC;

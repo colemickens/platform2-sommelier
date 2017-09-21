@@ -15,7 +15,6 @@
  */
 
 #define LOG_TAG "ImgEncoderCore"
-static const unsigned char JPEG_MARKER_EOI[2] = {0xFF, 0xD9};  //  JPEG EndOfImage marker
 
 #include "PlatformData.h"
 #include "ImgEncoderCore.h"

@@ -124,7 +124,6 @@ status_t BufferPools::allocateCaptureBuffers(
     status_t status = NO_ERROR;
     std::shared_ptr<CameraBuffer> tmpBuf = nullptr;
     std::shared_ptr<CaptureBuffer> captureBuf = nullptr;
-    InputSystem::ConfiguredNodesPerName *nodes = nullptr;
 
     if (v4l2Buffers.size() == 0) {
         LOGE("v4l2 buffers where not allocated");

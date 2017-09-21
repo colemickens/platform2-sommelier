@@ -137,8 +137,8 @@ status_t MessageQueue<MessageType, MessageId>::receive(MessageType *msg,
             unsigned int timeout_ms)
 {
     status_t status = NO_ERROR;
-    nsecs_t timeout_val = 0;
     std::unique_lock<std::mutex> l(mQueueMutex);
+
     while (isEmptyLocked()) {
         if (timeout_ms) {
             mQueueCondition.wait_for(l, std::chrono::milliseconds(timeout_ms));

@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <linux/intel-ipu3.h>
 
 #define __aligned(x)            __attribute__((aligned(x)))
 #define s64 int64_t
@@ -29,8 +30,6 @@
 #define s16 int16_t
 #define u8 uint8_t
 #define s8 int8_t
-
-#define IMGU_ABI_PAD	__aligned(IMGU_ABI_ISP_WORD_BYTES)
 
 #define IMGU_ABI_ISP_WORD_BYTES				32
 #define IMGU_ABI_MAX_STRIPES				2

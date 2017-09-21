@@ -287,7 +287,6 @@ status_t OutputFrameWorker::postRun()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = OK;
-    int angle = 0;
 
     if (mMsg == nullptr) {
         LOGE("Message null - Fix the bug");

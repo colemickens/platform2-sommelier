@@ -56,12 +56,14 @@ const char* frameUseModeList[FRAME_USE_MODE_NUMBER] = {CPF_MODE_STILL,
                                                        CPF_MODE_PREVIEW};
 
 AiqConf::AiqConf(const int cameraId, const int size):
-    mMetadata(nullptr),
-    mCameraId(cameraId),
     mPtr(nullptr),
+    mSize(size),
     mCmc(cameraId),
-    mSize(size)
+    mMetadata(nullptr),
+    mCameraId(cameraId)
 {
+    UNUSED(mCameraId);
+
     if (size)
         mPtr = ::operator new(size);
 }

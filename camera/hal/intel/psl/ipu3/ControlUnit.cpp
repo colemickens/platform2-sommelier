@@ -35,8 +35,6 @@
 
 static const int SETTINGS_POOL_SIZE = MAX_REQUEST_IN_PROCESS_NUM * 2;
 
-static const int IPU3_MAX_STATISTICS_BLOCK = (80*60); // size of RGBS blocks
-
 namespace android {
 namespace camera2 {
 

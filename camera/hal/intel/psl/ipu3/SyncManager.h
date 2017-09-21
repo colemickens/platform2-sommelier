@@ -100,7 +100,6 @@ private:
     std::shared_ptr<MediaController> mMediaCtl;
 
     ISofListener *mSofListener; /* SyncManager doesn't own mSofListener */
-    ISettingsSyncListener *mSettingsSyncListener; /* SyncManager doesn't own mSettingsSyncListener */
     std::unique_ptr<PollerThread> mPollerThread;
 
     std::shared_ptr<V4L2Subdevice> mPixelArraySubdev;

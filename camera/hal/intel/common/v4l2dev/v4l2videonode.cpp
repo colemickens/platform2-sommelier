@@ -718,7 +718,7 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
     int ret(0);
-    struct V4L2Format v4l2_fmt;
+    V4L2Format v4l2_fmt;
 
     if ((mState != DEVICE_OPEN) &&
         (mState != DEVICE_CONFIGURED) &&

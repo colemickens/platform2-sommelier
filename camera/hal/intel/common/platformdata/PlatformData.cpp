@@ -444,7 +444,6 @@ const CameraCapInfo * PlatformData::getCameraCapInfo(int cameraId)
  */
 status_t PlatformData::getDeviceIds(std::vector<string> &names)
 {
-    status_t status = OK;
     char prop[PATH_MAX] = {0};
     static const char *deviceIdKeys[] = {
        "ro.product.device",

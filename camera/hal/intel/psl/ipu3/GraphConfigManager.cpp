@@ -56,8 +56,8 @@ GraphConfigNodes::~GraphConfigNodes()
 GraphConfigManager::GraphConfigManager(int32_t camId,
                                        GraphConfigNodes *testNodes) :
     mCameraId(camId),
-    mFallback(false),
-    mGraphQueryManager(new GraphQueryManager())
+    mGraphQueryManager(new GraphQueryManager()),
+    mFallback(false)
 {
     const CameraCapInfo *info = PlatformData::getCameraCapInfo(mCameraId);
     if (CC_UNLIKELY(!info || !info->getGraphConfigNodes())) {
@@ -436,14 +436,14 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
-    PlatformGraphConfigKey streamKey;
-    mFirstQueryResults.clear();
-    mQuery.clear();
-    ResolutionItem res;
-    mFallback = false;
     UNUSED(operationMode);
+    ResolutionItem res;
     int needEnableStill = false;
     status_t ret = OK;
+
+    mFirstQueryResults.clear();
+    mQuery.clear();
+    mFallback = false;
 
     /*
      * Add to the query the number of active outputs

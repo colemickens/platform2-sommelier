@@ -38,8 +38,8 @@ ImguUnit::ImguUnit(int cameraId,
         mGCM(gcm),
         mThreadRunning(false),
         mMessageQueue("ImguUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
-        mMediaCtlHelper(mediaCtl, nullptr, true),
         mCurPipeConfig(nullptr),
+        mMediaCtlHelper(mediaCtl, nullptr, true),
         mPollerThread(new PollerThread("ImguPollerThread")),
         mFirstRequest(true),
         mTakingPicture(false)
@@ -280,9 +280,6 @@ status_t ImguUnit::mapStreamWithDeviceNode()
         return BAD_VALUE;
     }
 
-    IPU3NodeNames videoNode = IMGU_NODE_VIDEO;
-    IPU3NodeNames vfPreviewNode = IMGU_NODE_VF_PREVIEW;
-    IPU3NodeNames pvPreivewNode = IMGU_NODE_PV_PREVIEW;
     mStreamNodeMapping.clear();
     mStreamListenerMapping.clear();
 
@@ -596,7 +593,6 @@ status_t
 ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
 
     Camera3Request *request = msg.cbMetadataMsg.request;
     if (request == nullptr) {

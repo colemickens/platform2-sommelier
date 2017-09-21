@@ -34,10 +34,7 @@ SettingsProcessor::SettingsProcessor(int cameraId,
         m3aWrapper(a3aWrapper),
         mMinSensorModeFrameTime(INT32_MAX),
         mStreamCfgProv(aStreamCfgProv),
-        mFixedFocus(false),
-        mPipelineDepth(-1),
-        mBufferPoolSize(-1),
-        mSensorSettingsDelay(-1)
+        mFixedFocus(false)
 {
     /**
      * cache some static value for later use

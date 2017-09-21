@@ -26,9 +26,9 @@ namespace camera2 {
 FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node,
                          int cameraId, size_t pipelineDepth, std::string name) :
         IDeviceWorker(cameraId),
+        mIndex(0),
         mNode(node),
         mPollMe(false),
-        mIndex(0),
         mPipelineDepth(pipelineDepth)
 {
     LOG1("%s handling node %s", name.c_str(), mNode->name());

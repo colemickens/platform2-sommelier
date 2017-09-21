@@ -155,12 +155,6 @@ private:
      * To be handled by the AF state machine
      */
     bool mFixedFocus;
-
-    /* Cache some parameters */
-    int mPipelineDepth;
-    int mBufferPoolSize;
-    int mSensorSettingsDelay;
-
 };
 
 } /* namespace camera2 */

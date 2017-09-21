@@ -64,28 +64,6 @@ ParameterWorker::~ParameterWorker()
     }
 }
 
-int ParameterWorker::allocLscTable(IPU3AICRuntimeParams & runtime)
-{
-    ia_aiq_sa_results *sa_results = new ia_aiq_sa_results;
-    int  LscSize = 0;
-    memset(sa_results, 0, sizeof(ia_aiq_sa_results));
-
-    if(mCmcData != nullptr){
-         LscSize = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_height *
-                      mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_width ;
-        LOG2("%s alloc lsc for runtime size %d",__FUNCTION__, LscSize);
-        sa_results->channel_r  =  new float[LscSize];
-        sa_results->channel_gr =  new float[LscSize];
-        sa_results->channel_gb =  new float[LscSize];
-        sa_results->channel_b  =  new float[LscSize];
-        sa_results->width = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_width;
-        sa_results->height = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_height;
-    }
-    runtime.sa_results = sa_results;
-
-    return LscSize;
-}
-
 status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);

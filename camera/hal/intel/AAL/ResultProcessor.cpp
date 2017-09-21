@@ -28,11 +28,11 @@ ResultProcessor::ResultProcessor(RequestThread * aReqThread,
                                  const camera3_callback_ops_t * cbOps) :
     mRequestThread(aReqThread),
     mMessageQueue("ResultProcessor", MESSAGE_ID_MAX),
+    mMessageThread(new MessageThread(this,"ResultProcessor")),
     mCallbackOps(cbOps),
     mThreadRunning(true),
     mPartialResultCount(0),
-    mNextRequestId(0),
-    mMessageThread(new MessageThread(this,"ResultProcessor"))
+    mNextRequestId(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mReqStatePool.init(MAX_REQUEST_IN_TRANSIT);

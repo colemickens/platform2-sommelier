@@ -48,6 +48,7 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mLocked(false),
                                 mType(BUF_TYPE_HANDLE),
                                 mGbmBufferManager(nullptr),
+                                mHandle(nullptr),
                                 mHandlePtr(nullptr),
                                 mOwner(nullptr),
                                 mDataPtr(nullptr),
@@ -58,7 +59,6 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
     LOG1("%s default constructor for buf %p", __FUNCTION__, this);
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
-    CLEAR(mHandle);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 
@@ -94,13 +94,13 @@ CameraBuffer::CameraBuffer(int w,
         mInit(false),
         mLocked(true),
         mType(BUF_TYPE_MALLOC),
+        mGbmBufferManager(nullptr),
+        mHandle(nullptr),
+        mHandlePtr(nullptr),
         mOwner(nullptr),
         mDataPtr(nullptr),
         mRequestID(0),
         mCameraId(cameraId),
-        mHandle(nullptr),
-        mHandlePtr(nullptr),
-        mGbmBufferManager(nullptr),
         mDmaBufFd(-1)
 {
     LOG1("%s create malloc camera buffer %p", __FUNCTION__, this);
@@ -148,13 +148,13 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
         mInit(false),
         mLocked(false),
         mType(BUF_TYPE_MMAP),
+        mGbmBufferManager(nullptr),
+        mHandle(nullptr),
+        mHandlePtr(nullptr),
         mOwner(nullptr),
         mDataPtr(nullptr),
         mRequestID(0),
         mCameraId(-1),
-        mHandle(nullptr),
-        mHandlePtr(nullptr),
-        mGbmBufferManager(nullptr),
         mDmaBufFd(dmaBufFd)
 {
     LOG1("%s create mmap camera buffer %p", __FUNCTION__, this);

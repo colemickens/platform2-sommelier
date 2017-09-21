@@ -265,13 +265,11 @@ int32_t GraphConfig::getTuningMode(int32_t streamId)
 status_t GraphConfig::analyzeSourceType()
 {
     css_err_t ret = css_err_none;
-    bool hasSensor = false, hasTPG = false;
     Node *inputDevNode = nullptr;
     ret = mSettings->getDescendant(GCSS_KEY_SENSOR, &inputDevNode);
     if (ret == css_err_none) {
         mSourceType = SRC_SENSOR;
         mSourcePortName = SENSOR_PORT_NAME;
-        hasSensor = true;
     } else {
         LOG1("No sensor node from the graph");
     }
@@ -915,8 +913,6 @@ status_t GraphConfig::pipelineGetInternalConnections(
 
             aConnection.hasEdgePort = false;
             if (isPipeEdgePort(port)) {
-                int32_t direction = portGetDirection(port);
-
                 camera3_stream_t *clientStream = nullptr;
                 status = portGetClientStream(peerPort, &clientStream);
                 if (CC_UNLIKELY(status != OK)) {
@@ -1520,7 +1516,7 @@ status_t GraphConfig::portGetFourCCInfo(Node &portNode,
 {
     Node *pgNode; // The Program group node
     css_err_t ret = css_err_none;
-    int32_t pgId, portId;
+    int32_t portId;
     string type, subsystem;
 
     ret = portNode.getValue(GCSS_KEY_ID, portId);
@@ -1847,7 +1843,6 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
     info.output.mbusFormat = gcu::getMBusFormat(get_fourcc(tmp[0], tmp[1],
                                                           tmp[2], tmp[3]));
     // Imgu format. The tool and getMBusFormat is not in sync.
-    int format = 0;
     if (tmp == "RA10" || tmp == "RG10") {
         info.output.mbusFormat = MEDIA_BUS_FMT_SRGGB10_1X10;
     } else if (tmp == "BA10" || tmp == "BG10") {
@@ -1917,7 +1912,6 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
     Node *sourceNode = nullptr;
 
     string csi2;
-    bool hasTPG = false;
     if (mSourceType == SRC_SENSOR) {
         ret = mSettings->getDescendant(GCSS_KEY_SENSOR, &sourceNode);
         if (ret != css_err_none) {
@@ -2098,14 +2092,10 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
      * non scaled output from ISA and apply the formats. Otherwise add formats
      * for CSI BE SOC.
      */
-    Node *isaNode = nullptr, *outputNode = nullptr;
+    Node *isaNode = nullptr;
     Node *cropVideoIn = nullptr, *cropVideoOut = nullptr;
-    Node *cropStillIn = nullptr, *cropStillOut = nullptr;
-    int scaledOutW = 0, scaledOutH = 0, nonScaledOutW = 0, nonScaledOutH = 0;
     int videoCropW = 0, videoCropH = 0, videoCropT = 0, videoCropL = 0;
     int videoCropOutW = 0, videoCropOutH = 0;
-    int stillCropW = 0, stillCropH = 0, stillCropT = 0, stillCropL = 0;
-    int stillCropOutW = 0, stillCropOutH = 0;
 
     /*
      * First get and set values when CSI BE SOC is not used
@@ -2930,8 +2920,6 @@ GraphConfig::getSensorFrameParams(ia_aiq_frame_params &sensorFrameParams)
     Node *pixelArrayNode = nullptr;
     Node *binnerNode = nullptr;
     Node *scalerNode = nullptr;
-    Node *csiBeNode = nullptr;
-    Node *pixelFormatterNode = nullptr;
     css_err_t ret = css_err_none;
     int32_t w,h;
     int32_t wPixArray,hPixArray;

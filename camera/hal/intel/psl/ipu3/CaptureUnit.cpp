@@ -39,12 +39,12 @@ CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::
         mStreamCfgProvider(aStreamCfgProv),
         mBufferPools(nullptr),
         mSettingProcessor(nullptr),
-        mLensController(nullptr),
-        mLensSupported(false),
         mPipelineDepth(0),
         mInflightRequestPool("CaptureUnit"),
         mSensorSettingsDelay(0),
-        mGainDelay(0)
+        mGainDelay(0),
+        mLensSupported(false),
+        mLensController(nullptr)
 {}
 
 CaptureUnit::~CaptureUnit()

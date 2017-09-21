@@ -448,7 +448,7 @@ void repadYUV420(int width, int height, int srcStride, int dstStride, void *src,
     dptr = (unsigned char *)dst + dySize + 2*dcSize - dcStride;
 
     // try to avoid overlapped memcpy()
-    myCopy = (abs(sptr -dptr) > dstStride) ? memcpy : memmove;
+    myCopy = (std::abs(sptr -dptr) > dstStride) ? memcpy : memmove;
 
     for (int i = 0; i < hhalf; i ++) {
         myCopy(dptr, sptr, whalf);

@@ -111,11 +111,18 @@ libcamerahal_la_SOURCES = $(3ASRC) \
                           Camera3HALModule.cpp
 
 #cpphacks
-CPPHACKS = -std=c++11 \
+CPPHACKS = \
    -DPAGESIZE=4096 \
    -DCAMERA_HAL_DEBUG
 
-libcamerahal_la_CPPFLAGS = $(CPPHACKS)
+STRICTED_CPPFLAGS = \
+    -std=c++11 \
+    -Wall -Werror -Wno-unused-function -Wno-unused-value \
+    -fstack-protector -fPIE -fPIC -D_FORTIFY_SOURCE=2 \
+    -Wformat -Wformat-security
+
+libcamerahal_la_CPPFLAGS = $(CPPHACKS) \
+                           $(STRICTED_CPPFLAGS)
 
 #Namespace Declaration
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namespace\ camera2

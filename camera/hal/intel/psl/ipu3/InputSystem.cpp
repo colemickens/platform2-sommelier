@@ -28,12 +28,6 @@
 #include "GraphConfig.h"
 #include "CameraStream.h"
 
-// File-local constants
-namespace {
-const int ISA_CONFIG_STATS_PLANES = 2;
-const int MIPI_CAPTURE_PLANES = 1;
-}
-
 namespace android {
 namespace camera2 {
 

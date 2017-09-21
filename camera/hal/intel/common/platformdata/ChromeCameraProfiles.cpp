@@ -48,8 +48,6 @@ ChromeCameraProfiles::ChromeCameraProfiles(CameraHWInfo *cameraHWInfo) :
  */
 void ChromeCameraProfiles::getXmlConfigName(void)
 {
-    char gHalConfigId[PROPERTY_VALUE_MAX]={0};
-
     struct stat sb;
     int PathExists = stat(sDefaultXmlFileName, &sb);
     if (PathExists != 0) {

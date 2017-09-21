@@ -54,6 +54,7 @@ PSLSRC = \
     psl/ipu3/NodeTypes.cpp
 
 PSLCPPFLAGS = \
+    $(STRICTED_CPPFLAGS) \
     -I$(top_srcdir)/common/platformdata/metadataAutoGen/6.0.1 \
     -I$(top_srcdir)/psl/ipu3 \
     $(LIBUTILS_CFLAGS) \
@@ -121,7 +122,8 @@ libcam_algo_la_SOURCES = \
     psl/ipu3/ipc/IPCExc.cpp \
     psl/ipu3/ipc/IPCMkn.cpp
 
-libcam_algo_la_CPPFLAGS = -std=c++11 \
+libcam_algo_la_CPPFLAGS = \
+    $(STRICTED_CPPFLAGS) \
     -I$(top_srcdir)/common \
     -I$(top_srcdir)/psl/ipu3 \
     -I$(top_srcdir)/psl/ipu3/ipc \

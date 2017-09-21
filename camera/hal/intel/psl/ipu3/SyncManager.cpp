@@ -35,18 +35,17 @@ SyncManager::SyncManager(int32_t cameraId,
     mCameraId(cameraId),
     mMediaCtl(mediaCtl),
     mSofListener(sofListener),
-    mSettingsSyncListener(listener),
     mSensorType(SENSOR_TYPE_NONE),
     mSensorOp(nullptr),
     mFrameSyncSource(FRAME_SYNC_NA),
     mMessageQueue("Camera_SyncManager", (int)MESSAGE_ID_MAX),
+    mMessageThread(new MessageThread(this, "SyncManager", PRIORITY_CAMERA)),
     mThreadRunning(false),
     mStarted(false),
     mExposureDelay(0),
     mGainDelay(0),
     mDigiGainOnSensor(false),
-    mCurrentSettingIdentifier(0),
-    mMessageThread(new MessageThread(this, "SyncManager", PRIORITY_CAMERA))
+    mCurrentSettingIdentifier(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mCapInfo = getIPU3CameraCapInfo(cameraId);
@@ -274,7 +273,6 @@ exit:
  */
 status_t SyncManager::createSensorObj()
 {
-    int fll, llp;
     status_t status = OK;
 
     if (mPixelArraySubdev == nullptr) {
