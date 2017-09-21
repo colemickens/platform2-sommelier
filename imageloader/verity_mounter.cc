@@ -5,11 +5,14 @@
 #include "verity_mounter.h"
 
 #include <algorithm>
-#include <string>
+#include <memory>
+#include <utility>
 
 #include </usr/include/linux/magic.h>
 #include <fcntl.h>
+#include <libdevmapper.h>
 #include <linux/loop.h>
+#include <mntent.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -20,6 +23,8 @@
 #include <base/containers/adapters.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -28,15 +33,158 @@
 #include <base/time/time.h>
 
 #include "component.h"
+#include "verity_mounter_impl.h"
 
 namespace imageloader {
 
 namespace {
+// Path to devices created by device mapper.
+constexpr char kDeviceMapperPath[] = "/dev/mapper";
+
+using dm_task_ptr = std::unique_ptr<dm_task, void(*)(dm_task *)>;
 
 enum class MountStatus { FAIL, RETRY, SUCCESS };
 
 constexpr int GET_LOOP_DEVICE_MAX_RETRY = 5;
 constexpr int DMSETUP_TIMEOUT_SECONDS = 3;
+
+// Fetches the device mapper table entry with the specified name and writes the
+// type and parameters into the provided pointers.
+// Returns true on success.
+bool MapperGetEntry(const std::string& name, std::string* type,
+                    std::string* parameters) {
+  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_TABLE), &dm_task_destroy);
+  struct dm_info info;
+
+  if (!task) {
+    LOG(ERROR) << "dm_task_create failed!";
+    return false;
+  }
+
+  if (!dm_task_set_name(task.get(), name.c_str())) {
+    LOG(ERROR) << "dm_task_set_name failed!";
+    return false;
+  }
+
+  if (!dm_task_run(task.get())) {
+    LOG(ERROR) << "dm_task_run failed!";
+    return false;
+  }
+
+  if (!dm_task_get_info(task.get(), &info)) {
+    LOG(ERROR) << "dm_task_get_info failed!";
+    return false;
+  }
+
+  void* next = nullptr;
+  uint64_t start;
+  uint64_t length;
+  char* type_cstr;
+  char* parameters_cstr;
+  next = dm_get_next_target(task.get(), next, &start, &length, &type_cstr,
+                            &parameters_cstr);
+  if (type != nullptr) {
+    *type = std::string(type_cstr);
+  }
+  if (parameters != nullptr) {
+    *parameters = std::string(parameters_cstr);
+  }
+  return true;
+}
+
+// Fetches the length of the device mapper table entries for the specified name.
+bool MapperTableLength(const std::string& name, uint64_t* length) {
+  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_TABLE), &dm_task_destroy);
+  struct dm_info info;
+
+  if (!task) {
+    LOG(ERROR) << "dm_task_create failed!";
+    return false;
+  }
+
+  if (!dm_task_set_name(task.get(), name.c_str())) {
+    LOG(ERROR) << "dm_task_set_name failed!";
+    return false;
+  }
+
+  if (!dm_task_run(task.get())) {
+    LOG(ERROR) << "dm_task_run failed!";
+    return false;
+  }
+
+  if (!dm_task_get_info(task.get(), &info)) {
+    LOG(ERROR) << "dm_task_get_info failed!";
+    return false;
+  }
+
+  *length = 0;
+  void* next = nullptr;
+  uint64_t start;
+  uint64_t length_part;
+  char* type;
+  char* parameters;
+  do {
+    next =
+        dm_get_next_target(task.get(), next, &start, &length_part, &type,
+                           &parameters);
+    *length += length_part;
+  } while (next);
+  return true;
+}
+
+// Executes the equivalent of: dmsetup wipe_table <name>
+// Returns true on success.
+bool MapperWipeTable(const std::string& name) {
+  uint64_t length;
+  if (!MapperTableLength(name, &length)) {
+    return false;
+  }
+
+  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_RELOAD), &dm_task_destroy);
+
+  if (!task) {
+    LOG(ERROR) << "dm_task_create failed!";
+    return false;
+  }
+
+  if (!dm_task_set_name(task.get(), name.c_str())) {
+    LOG(ERROR) << "dm_task_set_name failed!";
+    return false;
+  }
+
+  if (!dm_task_add_target(task.get(), 0, length, "error", "")) {
+    LOG(ERROR) << "dm_task_add_target failed!";
+    return false;
+  }
+
+  if (!dm_task_run(task.get())) {
+    LOG(ERROR) << "dm_task_run failed!";
+    return false;
+  }
+  return true;
+}
+
+// Executes the equivalent of: dmsetup remove <name>
+// Returns true on success.
+bool MapperRemove(const std::string& name) {
+  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_REMOVE), &dm_task_destroy);
+
+  if (!task) {
+    LOG(ERROR) << "dm_task_create failed!";
+    return false;
+  }
+
+  if (!dm_task_set_name(task.get(), name.c_str())) {
+    LOG(ERROR) << "dm_task_set_name failed!";
+    return false;
+  }
+
+  if (!dm_task_run(task.get())) {
+    LOG(ERROR) << "dm_task_run failed!";
+    return false;
+  }
+  return true;
+}
 
 // |argv| should include all the commands and table to dmsetup, but not
 // include the path to the binary.
@@ -77,11 +225,9 @@ void ClearVerityDevice(const std::string& name) {
   // table with a new table that fails any new I/O sent to the device.  If
   // successful, this should release any devices held open by the device's
   // table(s).
-  const std::vector<std::string> wipe_argv = {"wipe_table", name};
-  RunDMSetup(wipe_argv);
+  MapperWipeTable(name);
   // Now remove the actual device.
-  const std::vector<std::string> remove_argv = {"remove", name};
-  RunDMSetup(remove_argv);
+  MapperRemove(name);
 }
 
 // Clear the file descriptor behind a loop device.
@@ -108,7 +254,8 @@ bool SetupDeviceMapper(const std::string& device_path, const std::string& table,
     return false;
   }
 
-  dev_name->assign("/dev/mapper/" + name);
+  const base::FilePath dev_mapper(kDeviceMapperPath);
+  dev_name->assign(dev_mapper.Append(name).value().c_str());
   return true;
 }
 
@@ -129,8 +276,8 @@ bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
     if (base::DirectoryExists(subpath)) continue;
     if (mkdir(subpath.value().c_str(), mode) == 0) continue;
     // Mkdir failed, but it might have failed with EEXIST, or some other error
-    // due to the the directory appearing out of thin air. This can occur if
-    // two processes are trying to create the same file system tree at the same
+    // due to the directory appearing out of thin air. This can occur if two
+    // processes are trying to create the same file system tree at the same
     // time. Check to see if it exists and make sure it is a directory.
     if (!base::DirectoryExists(subpath)) {
       PLOG(ERROR) << "Failed to create directory: " << subpath.value();
@@ -282,6 +429,139 @@ bool VerityMounter::Mount(const base::ScopedFD& image_fd,
   }
 
   return true;
+}
+
+// Takes a device mapper name and determines the loop device number.
+bool MapperNameToLoop(const std::string& name, int32_t* loop) {
+  std::string type;
+  std::string parameters;
+  if (!MapperGetEntry(name, &type, &parameters)) {
+    return false;
+  }
+
+  if (type != "verity") {
+    LOG(ERROR) << "Encountered unexpected mapping \"" << type
+               << "\" instead of \"verity\".";
+    return false;
+  }
+
+  return MapperParametersToLoop(parameters, loop);
+}
+
+bool Unmount(const base::FilePath& mount_point) {
+  return umount(mount_point.value().c_str()) == 0;
+}
+
+// Returns (mount point, source path) pairs visible to this process. The order
+// can be reversed to help with unmounting.
+std::vector<std::pair<std::string, std::string>>
+    GetAllMountPaths(bool reverse) {
+  std::vector<std::pair<std::string, std::string>> mount_paths;
+  base::ScopedFILE mountinfo(fopen("/proc/self/mounts", "re"));
+  if (!mountinfo) {
+    PLOG(ERROR) << "Failed to open \"/proc/self/mounts\".";
+    return mount_paths;
+  }
+
+  // MNT_LINE_MAX from sys/mnttab.h is 1024, extra bytes are for null
+  // termination of strings.
+  static char buffer[1024 + 4];
+  struct mntent mount_entry;
+  while (getmntent_r(mountinfo.get(), &mount_entry, buffer, sizeof(buffer))) {
+    mount_paths.emplace(reverse ? mount_paths.end() : mount_paths.begin(),
+                        mount_entry.mnt_dir, mount_entry.mnt_fsname);
+  }
+  return mount_paths;
+}
+
+// Performs the a cleanup of a given mount point which should be tied to the
+// given source path. This entails unmounting the mount point, removing the
+// device mapper table entry, deleting the mount point folder, and freeing the
+// loop device.
+// Returns true on success.
+bool CleanupImpl(const base::FilePath& mount_point,
+                 const base::FilePath source_path) {
+  const base::FilePath dev_mapper(kDeviceMapperPath);
+  if (!IsAncestor(dev_mapper, source_path)) {
+    LOG(ERROR) << source_path.value() << " is not device mapped!";
+    return false;
+  }
+
+  // Lookup loop info.
+  int32_t loop = -1;
+  if (!MapperNameToLoop(source_path.BaseName().value(), &loop) ||
+      loop < 0) {
+    LOG(ERROR) << "Unable to determine loop device for " << source_path.value();
+    return false;
+  }
+
+  // Unmount the image.
+  if (!Unmount(mount_point)) {
+    PLOG(ERROR) << "Unmount failed";
+    return false;
+  }
+  // Delete mount target folder
+  base::DeleteFile(mount_point, true);
+
+  // Clear Verity device.
+  if (!MapperWipeTable(source_path.value())) {
+    PLOG(ERROR) << "Device mapper wipe table failed";
+    return false;
+  }
+  if (!MapperRemove(source_path.value())) {
+    PLOG(ERROR) << "Device mapper remove failed";
+    return false;
+  }
+
+  // Clear loop device.
+  ClearLoopDevice(base::StringPrintf("/dev/loop%d", loop));
+  return true;
+}
+
+// Unmounts the given path, cleans up the device mapper entry, and frees the
+// loop device for the specified mount point.
+// Returns true on success.
+bool VerityMounter::Cleanup(const base::FilePath& mount_point) {
+  bool ret = true;
+  for (const auto& mount_path : GetAllMountPaths(true)) {
+    if (mount_point.value() == mount_path.first) {
+      if (!CleanupImpl(mount_point, base::FilePath(mount_path.second))) {
+        ret = false;
+      }
+    }
+  }
+  return ret;
+}
+
+// Performs a cleanup for all mount points under parent_dir.
+// All successfully cleaned up mount points will be appended to "paths".
+// Returns false if cleanup fails for any mount point.
+bool VerityMounter::CleanupAll(bool dry_run,
+                               const base::FilePath& parent_dir,
+                               std::vector<base::FilePath>* paths) {
+  bool ret = true;
+  for (const auto& mount_path : GetAllMountPaths(true)) {
+    base::FilePath fp_mount_path(mount_path.first);
+    // It is not enough to check if fp_mount_path is a direct child because
+    // some mount points, such as printer drivers, are mounted under a sub
+    // folder.
+    if (IsAncestor(parent_dir, fp_mount_path)) {
+      if (dry_run) {
+        if (paths) {
+          paths->push_back(fp_mount_path);
+        }
+      } else if (CleanupImpl(fp_mount_path,
+                             base::FilePath(mount_path.second))) {
+        if (paths) {
+          paths->push_back(fp_mount_path);
+        }
+      } else {
+        LOG(ERROR) << "Failed to cleanup \"" << mount_path.first << "\"";
+        ret = false;
+      }
+    }
+  }
+  return ret;
 }
 
 }  // namespace imageloader

@@ -4,6 +4,8 @@
 
 #include <signal.h>
 
+#include <iostream>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
@@ -29,8 +31,6 @@ constexpr uint8_t kProdPublicKey[] = {
 
 // The path where the components are stored on the device.
 constexpr char kComponentsPath[] = "/var/lib/imageloader";
-// The base path where the components are mounted.
-constexpr char kMountPath[] = "/run/imageloader";
 // The location of the container public key.
 constexpr char kContainerPublicKeyPath[] =
     "/usr/share/misc/oci-container-key-pub.der";
@@ -56,20 +56,63 @@ bool LoadKeyFromFile(const std::string& file, std::vector<uint8_t>* key_out) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  DEFINE_bool(dry_run, false,
+              "Changes unmount_all to print the paths which would be "
+              "affected.");
   DEFINE_bool(mount, false,
               "Rather than starting a dbus daemon, verify and mount a single "
               "component and exit immediately.");
   DEFINE_string(mount_component, "",
                 "Specifies the name of the component when using --mount.");
   DEFINE_string(mount_point, "",
-                "Specifies the mountpoint when using --mount.");
+                "Specifies the mountpoint when using either --mount or "
+                "--unmount.");
+  DEFINE_string(loaded_mounts_base, "/run/imageloader",
+                "Base path where components are mounted (unless --mount_point "
+                "is used).");
   DEFINE_int32(mount_helper_fd, -1,
                "Control socket for starting an ImageLoader subprocess. Used "
                "internally.");
+  DEFINE_bool(unmount, false,
+              "Unmounts the path specified by mount_point and exits "
+              "immediately.");
+  DEFINE_bool(unmount_all, false,
+              "Unmounts all the mountpoints under loaded_mounts_base and exits "
+              "immediately.");
   brillo::FlagHelper::Init(argc, argv, "imageloader");
 
   brillo::OpenLog("imageloader", true);
   brillo::InitLog(brillo::kLogToSyslog);
+
+  if (FLAGS_mount + FLAGS_unmount + FLAGS_unmount_all > 1) {
+    LOG(ERROR) << "Only one of --mount, --unmount, and --unmount_all can be "
+                  "set at a time.";
+    return 1;
+  }
+
+  if (FLAGS_unmount_all) {
+    imageloader::VerityMounter mounter;
+    std::vector<base::FilePath> paths;
+    const base::FilePath parent_dir(FLAGS_loaded_mounts_base);
+    bool success = mounter.CleanupAll(FLAGS_dry_run, parent_dir, &paths);
+    if (FLAGS_dry_run) {
+      for (const auto& path : paths) {
+        std::cout << path.value() << "\n";
+      }
+    }
+    LOG(ERROR) << "--unmount_all failed!";
+    return success ? 0 : 1;
+  }
+
+  if (FLAGS_unmount) {
+    if (FLAGS_mount_point.empty()) {
+      LOG(ERROR) << "--mount_point=path must be set with --unmount";
+      return 1;
+    }
+
+    imageloader::VerityMounter mounter;
+    return mounter.Cleanup(base::FilePath(FLAGS_mount_point)) ? 0 : 1;
+  }
 
   // Executing this as the helper process if specified.
   if (FLAGS_mount_helper_fd >= 0) {
@@ -89,7 +132,8 @@ int main(int argc, char** argv) {
   if (LoadKeyFromFile(kContainerPublicKeyPath, &container_key))
     keys.push_back(container_key);
 
-  imageloader::ImageLoaderConfig config(keys, kComponentsPath, kMountPath);
+  imageloader::ImageLoaderConfig config(keys, kComponentsPath,
+                                        FLAGS_loaded_mounts_base.c_str());
   auto helper_process = base::MakeUnique<imageloader::HelperProcess>();
   helper_process->Start(argc, argv, "--mount_helper_fd");
 
@@ -98,7 +142,7 @@ int main(int argc, char** argv) {
     // Run with minimal privilege.
     imageloader::ImageLoader::EnterSandbox();
 
-    if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {
+    if (FLAGS_mount_point.empty() || FLAGS_mount_component.empty()) {
       LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
                     "with --mount";
       return 1;

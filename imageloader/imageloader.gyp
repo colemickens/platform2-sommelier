@@ -5,6 +5,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'devmapper',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libcrypto',
@@ -72,6 +73,8 @@
         'mount_helper.h',
         'verity_mounter.h',
         'verity_mounter.cc',
+        'verity_mounter_impl.h',
+        'verity_mounter_impl.cc',
       ],
     },
     {
@@ -113,6 +116,7 @@
             'mock_helper_process.h',
             'test_utilities.cc',
             'test_utilities.h',
+            'verity_mounter_unittest.cc',
           ],
         },
         ],
