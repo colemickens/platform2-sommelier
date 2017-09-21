@@ -154,7 +154,8 @@ void Intel3aPlus::setSupportIsoMap(bool support)
  */
 void Intel3aPlus::initIsoMappingRatio()
 {
-    CheckError(mSupportIsoMap == false, VOID_VALUE, "@%s, mSupportIsoMap is false", __FUNCTION__);
+    if (mSupportIsoMap == false)
+        return;
 
     const ia_cmc_t* cmc = getCmc();
     CheckError(cmc == nullptr, VOID_VALUE, "@%s, cmc is nullptr", __FUNCTION__);
@@ -208,12 +209,14 @@ void Intel3aPlus::initIsoMappingRatio()
  */
 int32_t Intel3aPlus::mapUiIso2RealIso (int32_t iso)
 {
-    CheckError(mSupportIsoMap == false, iso, "@%s, mSupportIsoMap is false", __FUNCTION__);
-    CheckError(fabs(mPseudoIsoRatio) < EPSILON, 0, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
+    if (mSupportIsoMap == false)
+        return iso;
+
+    CheckError(fabs(mPseudoIsoRatio) < EPSILON, iso, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
 
     const ia_cmc_t* cmc = getCmc();
-    CheckError(cmc == nullptr, 0, "@%s, cmc is nullptr", __FUNCTION__);
-    CheckError(cmc->cmc_sensitivity == nullptr, 0, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
+    CheckError(cmc == nullptr, iso, "@%s, cmc is nullptr", __FUNCTION__);
+    CheckError(cmc->cmc_sensitivity == nullptr, iso, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
 
     int baseIso = cmc->cmc_sensitivity->base_iso;
     if (iso < mMinSensitivity) {
@@ -238,12 +241,14 @@ int32_t Intel3aPlus::mapUiIso2RealIso (int32_t iso)
  */
 int32_t Intel3aPlus::mapRealIso2UiIso (int32_t iso)
 {
-    CheckError(mSupportIsoMap == false, iso, "@%s, mSupportIsoMap is false", __FUNCTION__);
-    CheckError(fabs(mPseudoIsoRatio) < EPSILON, 0, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
+    if (mSupportIsoMap == false)
+        return iso;
+
+    CheckError(fabs(mPseudoIsoRatio) < EPSILON, iso, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
 
     const ia_cmc_t* cmc = getCmc();
-    CheckError(cmc == nullptr, 0, "@%s, cmc is nullptr", __FUNCTION__);
-    CheckError(cmc->cmc_sensitivity == nullptr, 0, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
+    CheckError(cmc == nullptr, iso, "@%s, cmc is nullptr", __FUNCTION__);
+    CheckError(cmc->cmc_sensitivity == nullptr, iso, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
 
     int baseIso = cmc->cmc_sensitivity->base_iso;
     if (iso < baseIso) {
