@@ -90,8 +90,7 @@ int main(int argc, char* argv[]) {
 
   // Set an RTC alarm to wake up the system.
   if (FLAGS_wakeup_timeout) {
-    std::string alarm_string =
-        base::IntToString(time(NULL) + FLAGS_wakeup_timeout);
+    std::string alarm_string = "+" + base::IntToString(FLAGS_wakeup_timeout);
     CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath),
                           alarm_string.c_str(),
                           alarm_string.length()));
