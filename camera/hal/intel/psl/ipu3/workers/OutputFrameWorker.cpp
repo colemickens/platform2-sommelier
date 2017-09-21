@@ -357,23 +357,24 @@ status_t OutputFrameWorker::postRun()
     // Scale input buffer is mPostProcessBufs[0]
     // and output buffer will be mPostProcessBufs[1] or directly mOutputBuffer
     if (mPostProcessType & PROCESS_SCALING) {
-        if (mPostProcessType & PROCESS_JPEG_ENCODING
-            && (mPostProcessBufs.empty()
+        if (mPostProcessType & PROCESS_JPEG_ENCODING) {
+            if (mPostProcessBufs.empty()
                 || mPostProcessBufs.back()->width() != mStream->width
-                || mPostProcessBufs.back()->height() != mStream->height)) {
-            // Create scale output working buffer
-            std::shared_ptr<CameraBuffer> buf;
-            buf = MemoryUtils::allocateHeapBuffer(mStream->width,
-                               mStream->height,
-                               mStream->width,
-                               mFormat.fmt.pix.pixelformat,
-                               mCameraId,
-                               PAGE_ALIGN(mStream->width * mStream->height * 3 / 2));
-            CheckError((buf.get() == nullptr), NO_MEMORY,
-                       "@%s, No memory for scale", __FUNCTION__);
-            mPostProcessBufs.push_back(buf);
+                || mPostProcessBufs.back()->height() != mStream->height) {
+                // Create scale output working buffer
+                std::shared_ptr<CameraBuffer> buf;
+                buf = MemoryUtils::allocateHeapBuffer(mStream->width,
+                                   mStream->height,
+                                   mStream->width,
+                                   mFormat.fmt.pix.pixelformat,
+                                   mCameraId,
+                                   PAGE_ALIGN(mStream->width * mStream->height * 3 / 2));
+                CheckError((buf.get() == nullptr), NO_MEMORY,
+                           "@%s, No memory for scale", __FUNCTION__);
+                mPostProcessBufs.push_back(buf);
+            }
             // Scale to internal post-processing buffer
-             status = scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
+            status = scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
         } else {
             // Scale to output dst buffer
             status = scaleFrame(mPostProcessBufs[0], mOutputBuffer);
