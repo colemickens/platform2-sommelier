@@ -25,18 +25,25 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+#include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/internal_backlight.h"
+#include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
+using power_manager::PowerSource;
 using power_manager::Prefs;
 using power_manager::TabletMode;
 using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
+using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DisplayPowerSetterStub;
 using power_manager::system::InternalBacklight;
+using power_manager::system::PowerSupply;
+using power_manager::system::UdevStub;
 using power_manager::util::ClampPercent;
 
 namespace {
@@ -48,28 +55,61 @@ void Abort(const std::string& message) {
 }
 
 // Converter instantiates several internal powerd classes to perform conversions
-// between hardware backlight levels and the nonlinear percents that powerd
-// uses (which are dependent on the powerd prefs that have been set for the
-// device). It also supports linear percents.
+// between hardware backlight levels, nonlinear percents that powerd uses (which
+// are dependent on the powerd prefs that have been set for the device), and
+// linear percents. It also supports getting the initial level that powerd would
+// choose.
 class Converter {
  public:
-  Converter(int64_t current_level, int64_t max_level, bool keyboard)
+  Converter(int64_t current_level,
+            int64_t max_level,
+            int64_t lux,
+            bool keyboard,
+            bool force_battery)
       : backlight_(max_level, current_level) {
     CHECK(prefs_.Init(Prefs::GetDefaultPaths()));
+
+    bool has_als = false;
+    if (prefs_.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
+        has_als) {
+      light_sensor_ = base::MakeUnique<AmbientLightSensorStub>(lux);
+    }
+
     if (keyboard) {
       auto controller = base::MakeUnique<KeyboardBacklightController>();
       controller->Init(&backlight_,
                        &prefs_,
-                       nullptr /* sensor */,
+                       light_sensor_.get(),
                        nullptr /* display_backlight_controller */,
                        TabletMode::UNSUPPORTED);
       controller_ = std::move(controller);
     } else {
       auto controller = base::MakeUnique<InternalBacklightController>();
       controller->Init(
-          &backlight_, &prefs_, nullptr /* sensor */, &display_power_setter_);
+          &backlight_, &prefs_, light_sensor_.get(), &display_power_setter_);
       controller_ = std::move(controller);
     }
+
+    if (light_sensor_.get())
+      light_sensor_->NotifyObservers();
+
+    PowerSource power_source = PowerSource::BATTERY;
+    if (!force_battery) {
+      UdevStub udev;
+      PowerSupply power_supply;
+      power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
+                        &prefs_,
+                        &udev,
+                        false /* log_shutdown_thresholds */);
+      if (!power_supply.RefreshImmediately()) {
+        LOG(ERROR) << "Failed to read power supply information; using battery";
+      } else {
+        power_source = power_supply.GetPowerStatus().line_power_on
+                           ? PowerSource::AC
+                           : PowerSource::BATTERY;
+      }
+    }
+    controller_->HandlePowerSourceChange(power_source);
   }
 
   // Converts a brightness level to a nonlinear percent in [0.0, 100.0].
@@ -93,10 +133,16 @@ class Converter {
         ClampPercent(percent) * backlight_.GetMaxBrightnessLevel() / 100.0));
   }
 
+  // Returns the initial brightness level requested by |controller_|.
+  int64_t GetInitialLevel() {
+    return backlight_.GetCurrentBrightnessLevel();
+  }
+
  private:
   // A stub is used so |controller_| won't change the actual brightness.
   BacklightStub backlight_;
   Prefs prefs_;
+  std::unique_ptr<AmbientLightSensorStub> light_sensor_;
   DisplayPowerSetterStub display_power_setter_;
   std::unique_ptr<BacklightController> controller_;
 
@@ -112,6 +158,8 @@ int main(int argc, char* argv[]) {
               false,
               "Print current brightness as linear percent");
   DEFINE_bool(get_max_brightness, false, "Print max brightness level");
+  DEFINE_bool(get_initial_brightness, false, "Print brightness level used "
+              "by powerd at boot");
 
   // Flags that convert between units.
   DEFINE_double(nonlinear_to_level,
@@ -148,7 +196,13 @@ int main(int argc, char* argv[]) {
                 "[0.0, 100.0]");
 
   // Other flags.
+  DEFINE_bool(force_battery,
+              false,
+              "Act as if on battery even if currently on AC (for "
+              "-get_initial_brightness)");
   DEFINE_bool(keyboard, false, "Use keyboard (rather than panel) backlight");
+  DEFINE_int32(
+      lux, 0, "Ambient light sensor reading (for -get_initial_brightness)");
 
   brillo::FlagHelper::Init(
       argc,
@@ -160,9 +214,10 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(logging::LOG_WARNING);
 
   if (FLAGS_get_brightness + FLAGS_get_max_brightness +
-          FLAGS_get_brightness_percent + (FLAGS_nonlinear_to_level >= 0.0) +
-          (FLAGS_level_to_nonlinear >= 0) + (FLAGS_linear_to_level >= 0.0) +
-          (FLAGS_level_to_linear >= 0) + (FLAGS_linear_to_nonlinear >= 0.0) +
+          FLAGS_get_initial_brightness + FLAGS_get_brightness_percent +
+          (FLAGS_nonlinear_to_level >= 0.0) + (FLAGS_level_to_nonlinear >= 0) +
+          (FLAGS_linear_to_level >= 0.0) + (FLAGS_level_to_linear >= 0) +
+          (FLAGS_linear_to_nonlinear >= 0.0) +
           (FLAGS_nonlinear_to_linear >= 0.0) >
       1) {
     Abort("At most one flag that prints a level or percent may be passed.");
@@ -175,15 +230,20 @@ int main(int argc, char* argv[]) {
   }
 
   InternalBacklight backlight;
-  CHECK(backlight.Init(
-      base::FilePath(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath
-                                    : power_manager::kInternalBacklightPath),
-      FLAGS_keyboard ? power_manager::kKeyboardBacklightPattern
-                     : power_manager::kInternalBacklightPattern));
+  base::FilePath path(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath
+                                     : power_manager::kInternalBacklightPath);
+  std::string pattern = FLAGS_keyboard
+                            ? power_manager::kKeyboardBacklightPattern
+                            : power_manager::kInternalBacklightPattern;
+  if (!backlight.Init(path, pattern))
+    Abort("No backlight in " + path.value() + " matched by " + pattern + ".");
 
   const int64_t current_level = backlight.GetCurrentBrightnessLevel();
-  Converter converter(
-      current_level, backlight.GetMaxBrightnessLevel(), FLAGS_keyboard);
+  Converter converter(current_level,
+                      backlight.GetMaxBrightnessLevel(),
+                      FLAGS_lux,
+                      FLAGS_keyboard,
+                      FLAGS_force_battery);
 
   // Print brightness.
   if (FLAGS_get_brightness)
@@ -192,6 +252,8 @@ int main(int argc, char* argv[]) {
     printf("%" PRIi64 "\n", backlight.GetMaxBrightnessLevel());
   if (FLAGS_get_brightness_percent)
     printf("%f\n", converter.LevelToLinearPercent(current_level));
+  if (FLAGS_get_initial_brightness)
+    printf("%" PRIi64 "\n", converter.GetInitialLevel());
 
   // Convert between units.
   if (FLAGS_nonlinear_to_level >= 0.0) {
