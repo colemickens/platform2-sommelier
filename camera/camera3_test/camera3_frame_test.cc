@@ -401,8 +401,8 @@ TEST_P(Camera3MultiFrameTest, GetFrame) {
 
   int32_t num_frames = std::get<2>(GetParam());
   struct timespec timeout;
-  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   for (int32_t i = 0; i < num_frames; i++) {
+    GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
     if (i >= stream_queue_depth) {
       WaitShutterAndCaptureResult(timeout);
     }
@@ -439,8 +439,8 @@ TEST_P(Camera3MixedTemplateMultiFrameTest, GetFrame) {
   }
 
   struct timespec timeout;
-  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   for (size_t i = 0; i < arraysize(types); ++i) {
+    GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
     WaitShutterAndCaptureResult(timeout);
   }
 }
@@ -534,8 +534,8 @@ TEST_P(Camera3FlushRequestsTest, GetFrame) {
       << "There are requests left in the HAL after flushing";
 
   struct timespec timeout;
-  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   for (int32_t i = 0; i < num_frames; i++) {
+    GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
     ASSERT_EQ(0, sem_timedwait(&flush_result_sem_, &timeout));
   }
 }
