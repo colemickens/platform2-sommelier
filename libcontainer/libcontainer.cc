@@ -32,7 +32,7 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
-#include "libcontainer/container_cgroup.h"
+#include "libcontainer/cgroup.h"
 #include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
 
@@ -209,7 +209,7 @@ struct container_config {
 
 // Container manipulation
 struct container {
-  struct container_cgroup* cgroup;
+  std::unique_ptr<libcontainer::Cgroup> cgroup;
   ScopedMinijail jail;
   pid_t init_pid;
   base::FilePath config_root;
@@ -552,17 +552,16 @@ int MountRunfs(struct container* c, const struct container_config* config) {
 int DeviceSetup(struct container* c, const struct container_config* config) {
   int rc;
 
-  c->cgroup->ops->deny_all_devices(c->cgroup);
+  c->cgroup->DenyAllDevices();
 
   for (const auto& dev : config->cgroup_devices) {
-    rc = c->cgroup->ops->add_device(c->cgroup,
-                                    dev.allow,
-                                    dev.major,
-                                    dev.minor,
-                                    dev.read,
-                                    dev.write,
-                                    dev.modify,
-                                    dev.type);
+    rc = c->cgroup->AddDevice(dev.allow,
+                              dev.major,
+                              dev.minor,
+                              dev.read,
+                              dev.write,
+                              dev.modify,
+                              dev.type);
     if (rc)
       return rc;
   }
@@ -591,8 +590,8 @@ int DeviceSetup(struct container* c, const struct container_config* config) {
       PLOG_PRESERVE(ERROR) << "Failed to stat " << loopdev_path.value();
       return -errno;
     }
-    rc = c->cgroup->ops->add_device(
-        c->cgroup, 1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0, 'b');
+    rc = c->cgroup->AddDevice(
+        1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0, 'b');
     if (rc)
       return rc;
   }
@@ -1045,8 +1044,6 @@ struct container* container_new(const char* name, const char* rundir) {
 }
 
 void container_destroy(struct container* c) {
-  if (c->cgroup)
-    container_cgroup_destroy(c->cgroup);
   delete c;
 }
 
@@ -1091,11 +1088,11 @@ int container_start(struct container* c,
   if (cgroup_gid < 0)
     return cgroup_gid;
 
-  c->cgroup = container_cgroup_new(c->name.c_str(),
-                                   "/sys/fs/cgroup",
-                                   config->cgroup_parent.value().c_str(),
-                                   cgroup_uid,
-                                   cgroup_gid);
+  c->cgroup = libcontainer::Cgroup::Create(c->name,
+                                           base::FilePath("/sys/fs/cgroup"),
+                                           config->cgroup_parent,
+                                           cgroup_uid,
+                                           cgroup_gid);
   if (!c->cgroup)
     return -errno;
 
@@ -1131,25 +1128,23 @@ int container_start(struct container* c,
 
   /* Setup CPU cgroup params. */
   if (config->cpu_cgparams.shares) {
-    rc = c->cgroup->ops->set_cpu_shares(c->cgroup, config->cpu_cgparams.shares);
+    rc = c->cgroup->SetCpuShares(config->cpu_cgparams.shares);
     if (rc)
       return rc;
   }
   if (config->cpu_cgparams.period) {
-    rc = c->cgroup->ops->set_cpu_quota(c->cgroup, config->cpu_cgparams.quota);
+    rc = c->cgroup->SetCpuQuota(config->cpu_cgparams.quota);
     if (rc)
       return rc;
-    rc = c->cgroup->ops->set_cpu_period(c->cgroup, config->cpu_cgparams.period);
+    rc = c->cgroup->SetCpuPeriod(config->cpu_cgparams.period);
     if (rc)
       return rc;
   }
   if (config->cpu_cgparams.rt_period) {
-    rc = c->cgroup->ops->set_cpu_rt_runtime(c->cgroup,
-                                            config->cpu_cgparams.rt_runtime);
+    rc = c->cgroup->SetCpuRtRuntime(config->cpu_cgparams.rt_runtime);
     if (rc)
       return rc;
-    rc = c->cgroup->ops->set_cpu_rt_period(c->cgroup,
-                                           config->cpu_cgparams.rt_period);
+    rc = c->cgroup->SetCpuRtPeriod(config->cpu_cgparams.rt_period);
     if (rc)
       return rc;
   }
@@ -1197,11 +1192,11 @@ int container_start(struct container* c,
   if (rc)
     return rc;
 
-  /* Add the cgroups configured above. */
-  for (int i = 0; i < NUM_CGROUP_TYPES; i++) {
-    if (c->cgroup->cgroup_tasks_paths[i]) {
+  // Add the cgroups configured above.
+  for (int32_t i = 0; i < libcontainer::Cgroup::Type::NUM_TYPES; i++) {
+    if (c->cgroup->has_tasks_path(i)) {
       rc = minijail_add_to_cgroup(c->jail.get(),
-                                  c->cgroup->cgroup_tasks_paths[i]);
+                                  c->cgroup->tasks_path(i).value().c_str());
       if (rc)
         return rc;
     }

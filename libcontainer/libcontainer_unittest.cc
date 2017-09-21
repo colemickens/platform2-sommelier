@@ -11,16 +11,118 @@
 #include <unistd.h>
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 
 #include "libcontainer/test_harness.h"
 
-#include "libcontainer/container_cgroup.h"
+#include "libcontainer/cgroup.h"
+#include "libcontainer/config.h"
+#include "libcontainer/container.h"
 #include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
-#include "libcontainer/container.h"
-#include "libcontainer/config.h"
+
+namespace {
+
+struct MockCgroupState {
+  struct AddedDevice {
+    bool allow;
+    int major;
+    int minor;
+    bool read;
+    bool write;
+    bool modify;
+    char type;
+  };
+
+  int freeze_ret;
+  int thaw_ret;
+  int deny_all_devs_ret;
+  int add_device_ret;
+  int set_cpu_ret;
+
+  int init_called_count;
+  int deny_all_devs_called_count;
+
+  std::vector<AddedDevice> added_devices;
+
+  int set_cpu_shares_count;
+  int set_cpu_quota_count;
+  int set_cpu_period_count;
+  int set_cpu_rt_runtime_count;
+  int set_cpu_rt_period_count;
+};
+MockCgroupState* g_mock_cgroup_state = nullptr;
+
+class MockCgroup : public libcontainer::Cgroup {
+ public:
+  explicit MockCgroup(MockCgroupState* state) : state_(state) {}
+  ~MockCgroup() = default;
+
+  static std::unique_ptr<libcontainer::Cgroup> Create(
+      base::StringPiece name,
+      const base::FilePath& cgroup_root,
+      const base::FilePath& cgroup_parent,
+      uid_t cgroup_owner,
+      gid_t cgroup_group) {
+    return base::MakeUnique<MockCgroup>(g_mock_cgroup_state);
+  }
+
+  int Freeze() override { return state_->freeze_ret; }
+
+  int Thaw() override { return state_->thaw_ret; }
+
+  int DenyAllDevices() override {
+    ++state_->deny_all_devs_called_count;
+    return state_->deny_all_devs_ret;
+  }
+
+  int AddDevice(bool allow,
+                int major,
+                int minor,
+                bool read,
+                bool write,
+                bool modify,
+                char type) override {
+    state_->added_devices.emplace_back(MockCgroupState::AddedDevice{
+        allow, major, minor, read, write, modify, type});
+    return state_->add_device_ret;
+  }
+
+  int SetCpuShares(int shares) override {
+    state_->set_cpu_shares_count++;
+    return state_->set_cpu_ret;
+  }
+
+  int SetCpuQuota(int quota) override {
+    state_->set_cpu_quota_count++;
+    return state_->set_cpu_ret;
+  }
+
+  int SetCpuPeriod(int period) override {
+    state_->set_cpu_period_count++;
+    return state_->set_cpu_ret;
+  }
+
+  int SetCpuRtRuntime(int rt_runtime) override {
+    state_->set_cpu_rt_runtime_count++;
+    return state_->set_cpu_ret;
+  }
+
+  int SetCpuRtPeriod(int rt_period) override {
+    state_->set_cpu_rt_period_count++;
+    return state_->set_cpu_ret;
+  }
+
+ private:
+  MockCgroupState* const state_;
+
+  DISALLOW_COPY_AND_ASSIGN(MockCgroup);
+};
+
+}  // namespace
 
 static const pid_t INIT_TEST_PID = 5555;
 static const int TEST_CPU_SHARES = 200;
@@ -61,121 +163,6 @@ static int minijail_wait_called;
 static int minijail_reset_signal_mask_called;
 static int mount_ret;
 static base::FilePath mkdtemp_root;
-
-/* global mock cgroup. */
-#define MAX_ADD_DEVICE_CALLS 2
-struct mock_cgroup {
-  struct container_cgroup cg;
-  int freeze_ret;
-  int thaw_ret;
-  int deny_all_devs_ret;
-  int add_device_ret;
-  int set_cpu_ret;
-
-  int init_called_count;
-  int deny_all_devs_called_count;
-
-  int add_dev_allow[MAX_ADD_DEVICE_CALLS];
-  int add_dev_major[MAX_ADD_DEVICE_CALLS];
-  int add_dev_minor[MAX_ADD_DEVICE_CALLS];
-  int add_dev_read[MAX_ADD_DEVICE_CALLS];
-  int add_dev_write[MAX_ADD_DEVICE_CALLS];
-  int add_dev_modify[MAX_ADD_DEVICE_CALLS];
-  char add_dev_type[MAX_ADD_DEVICE_CALLS];
-  int add_dev_called_count;
-
-  int set_cpu_shares_count;
-  int set_cpu_quota_count;
-  int set_cpu_period_count;
-  int set_cpu_rt_runtime_count;
-  int set_cpu_rt_period_count;
-};
-
-static struct mock_cgroup gmcg;
-
-static int mock_freeze(const struct container_cgroup* cg) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  return mcg->freeze_ret;
-}
-
-static int mock_thaw(const struct container_cgroup* cg) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  return mcg->thaw_ret;
-}
-
-static int mock_deny_all_devices(const struct container_cgroup* cg) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  ++mcg->deny_all_devs_called_count;
-  return mcg->deny_all_devs_ret;
-}
-
-static int mock_add_device(const struct container_cgroup* cg,
-                           int allow,
-                           int major,
-                           int minor,
-                           int read,
-                           int write,
-                           int modify,
-                           char type) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-
-  if (mcg->add_dev_called_count >= MAX_ADD_DEVICE_CALLS)
-    return mcg->add_device_ret;
-  mcg->add_dev_allow[mcg->add_dev_called_count] = allow;
-  mcg->add_dev_major[mcg->add_dev_called_count] = major;
-  mcg->add_dev_minor[mcg->add_dev_called_count] = minor;
-  mcg->add_dev_read[mcg->add_dev_called_count] = read;
-  mcg->add_dev_write[mcg->add_dev_called_count] = write;
-  mcg->add_dev_modify[mcg->add_dev_called_count] = modify;
-  mcg->add_dev_type[mcg->add_dev_called_count] = type;
-  mcg->add_dev_called_count++;
-  return mcg->add_device_ret;
-}
-
-static int mock_set_cpu_shares(const struct container_cgroup* cg, int shares) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  mcg->set_cpu_shares_count++;
-  return mcg->set_cpu_ret;
-}
-
-static int mock_set_cpu_quota(const struct container_cgroup* cg, int quota) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  mcg->set_cpu_quota_count++;
-  return mcg->set_cpu_ret;
-}
-
-static int mock_set_cpu_period(const struct container_cgroup* cg, int period) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  mcg->set_cpu_period_count++;
-  return mcg->set_cpu_ret;
-}
-
-static int mock_set_cpu_rt_runtime(const struct container_cgroup* cg,
-                                   int rt_runtime) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  mcg->set_cpu_rt_runtime_count++;
-  return mcg->set_cpu_ret;
-}
-
-static int mock_set_cpu_rt_period(const struct container_cgroup* cg,
-                                  int rt_period) {
-  struct mock_cgroup* mcg = (struct mock_cgroup*)cg;
-  mcg->set_cpu_rt_period_count++;
-  return mcg->set_cpu_ret;
-}
-
-struct container_cgroup* container_cgroup_new(const char* name,
-                                              const char* cgroup_root,
-                                              const char* cgroup_parent,
-                                              uid_t uid,
-                                              gid_t gid) {
-  gmcg.cg.name = strdup(name);
-  return &gmcg.cg;
-}
-
-void container_cgroup_destroy(struct container_cgroup* c) {
-  free(c->name);
-}
 
 TEST(premounted_runfs) {
   char premounted_runfs[] = "/tmp/cgtest_run/root";
@@ -224,23 +211,12 @@ FIXTURE_SETUP(container_test) {
       "/sbin/init",
   };
 
+  g_mock_cgroup_state = new MockCgroupState();
+  libcontainer::Cgroup::SetCgroupFactoryForTesting(&MockCgroup::Create);
+
   memset(&mount_call_args, 0, sizeof(mount_call_args));
   mount_called = 0;
   mknod_called = false;
-
-  memset(&gmcg, 0, sizeof(gmcg));
-  static const struct cgroup_ops cgops = {
-      .freeze = mock_freeze,
-      .thaw = mock_thaw,
-      .deny_all_devices = mock_deny_all_devices,
-      .add_device = mock_add_device,
-      .set_cpu_shares = mock_set_cpu_shares,
-      .set_cpu_quota = mock_set_cpu_quota,
-      .set_cpu_period = mock_set_cpu_period,
-      .set_cpu_rt_runtime = mock_set_cpu_rt_runtime,
-      .set_cpu_rt_period = mock_set_cpu_rt_period,
-  };
-  gmcg.cg.ops = &cgops;
 
   self->rootfs = strdup(mkdtemp(temp_template));
 
@@ -335,6 +311,9 @@ FIXTURE_TEARDOWN(container_test) {
     free(mount_call_args[i].target);
     free(mount_call_args[i].filesystemtype);
   }
+
+  libcontainer::Cgroup::SetCgroupFactoryForTesting(nullptr);
+  delete g_mock_cgroup_state;
 }
 
 TEST_F(container_test, test_mount_tmp_start) {
@@ -355,24 +334,24 @@ TEST_F(container_test, test_mount_tmp_start) {
   EXPECT_EQ(1, minijail_user_called);
   EXPECT_EQ(1, minijail_cgroups_called);
   EXPECT_EQ(1, minijail_run_as_init_called);
-  EXPECT_EQ(1, gmcg.deny_all_devs_called_count);
+  EXPECT_EQ(1, g_mock_cgroup_state->deny_all_devs_called_count);
 
-  ASSERT_EQ(2, gmcg.add_dev_called_count);
-  EXPECT_EQ(1, gmcg.add_dev_allow[0]);
-  EXPECT_EQ(245, gmcg.add_dev_major[0]);
-  EXPECT_EQ(2, gmcg.add_dev_minor[0]);
-  EXPECT_EQ(1, gmcg.add_dev_read[0]);
-  EXPECT_EQ(1, gmcg.add_dev_write[0]);
-  EXPECT_EQ(0, gmcg.add_dev_modify[0]);
-  EXPECT_EQ('c', gmcg.add_dev_type[0]);
+  ASSERT_EQ(2, g_mock_cgroup_state->added_devices.size());
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[0].allow);
+  EXPECT_EQ(245, g_mock_cgroup_state->added_devices[0].major);
+  EXPECT_EQ(2, g_mock_cgroup_state->added_devices[0].minor);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[0].read);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[0].write);
+  EXPECT_EQ(0, g_mock_cgroup_state->added_devices[0].modify);
+  EXPECT_EQ('c', g_mock_cgroup_state->added_devices[0].type);
 
-  EXPECT_EQ(1, gmcg.add_dev_allow[1]);
-  EXPECT_EQ(1, gmcg.add_dev_major[1]);
-  EXPECT_EQ(-1, gmcg.add_dev_minor[1]);
-  EXPECT_EQ(1, gmcg.add_dev_read[1]);
-  EXPECT_EQ(1, gmcg.add_dev_write[1]);
-  EXPECT_EQ(0, gmcg.add_dev_modify[1]);
-  EXPECT_EQ('c', gmcg.add_dev_type[1]);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[1].allow);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[1].major);
+  EXPECT_EQ(-1, g_mock_cgroup_state->added_devices[1].minor);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[1].read);
+  EXPECT_EQ(1, g_mock_cgroup_state->added_devices[1].write);
+  EXPECT_EQ(0, g_mock_cgroup_state->added_devices[1].modify);
+  EXPECT_EQ('c', g_mock_cgroup_state->added_devices[1].type);
 
   ASSERT_EQ(true, mknod_called);
   base::FilePath node_path = mkdtemp_root.Append("root/dev/null");
@@ -382,18 +361,18 @@ TEST_F(container_test, test_mount_tmp_start) {
             static_cast<mode_t>(S_IRWXU | S_IRWXG | S_IFCHR));
   EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
 
-  EXPECT_EQ(1, gmcg.set_cpu_shares_count);
+  EXPECT_EQ(1, g_mock_cgroup_state->set_cpu_shares_count);
   EXPECT_EQ(TEST_CPU_SHARES,
             container_config_get_cpu_shares(self->config->get()));
-  EXPECT_EQ(1, gmcg.set_cpu_quota_count);
+  EXPECT_EQ(1, g_mock_cgroup_state->set_cpu_quota_count);
   EXPECT_EQ(TEST_CPU_QUOTA,
             container_config_get_cpu_quota(self->config->get()));
-  EXPECT_EQ(1, gmcg.set_cpu_period_count);
+  EXPECT_EQ(1, g_mock_cgroup_state->set_cpu_period_count);
   EXPECT_EQ(TEST_CPU_PERIOD,
             container_config_get_cpu_period(self->config->get()));
-  EXPECT_EQ(0, gmcg.set_cpu_rt_runtime_count);
+  EXPECT_EQ(0, g_mock_cgroup_state->set_cpu_rt_runtime_count);
   EXPECT_EQ(0, container_config_get_cpu_rt_runtime(self->config->get()));
-  EXPECT_EQ(0, gmcg.set_cpu_rt_period_count);
+  EXPECT_EQ(0, g_mock_cgroup_state->set_cpu_rt_period_count);
   EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config->get()));
 
   ASSERT_NE(nullptr, minijail_alt_syscall_table);
