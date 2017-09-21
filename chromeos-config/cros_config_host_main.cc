@@ -16,6 +16,8 @@
 #include "chromeos-config/libcros_config/cros_config.h"
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(get_all, false,
+      "Returns the string value at path + key for all models.");
   DEFINE_bool(list_models, false, "Lists all models in the config file.");
   DEFINE_string(model, "", "Optionally specifies which model name to use.")
 
@@ -29,8 +31,11 @@ int main(int argc, char* argv[]) {
   base::CommandLine::StringVector args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
 
-  CHECK_EQ(args.size() >= 3 && FLAGS_model.empty(), false)
-      << "Must pass in --model to use [path + key] args.";
+  CHECK_EQ(args.size() >= 3 && FLAGS_model.empty() && !FLAGS_get_all, false)
+      << "Must pass in --model or --get_all to use [path + key] args.";
+
+  CHECK_EQ(args.size() >= 3 && !FLAGS_model.empty() && FLAGS_get_all, false)
+      << "Must pass in --model or --get_all, not both.";
 
   CHECK_EQ(args.size() <= 2 && !FLAGS_list_models, false)
       << "Must pass either --list_models or [path + args].";
@@ -57,11 +62,27 @@ int main(int argc, char* argv[]) {
     std::string path = args[1];
     std::string property = args[2];
 
-    std::string value;
-    if (!cros_config.GetString(path, property, &value)) {
-      return 1;
+    if (FLAGS_get_all) {
+      for (const auto& model : cros_config.GetModelNames()) {
+        if (!cros_config.InitForHost(base::FilePath(config_filepath), model)) {
+          std::cout << std::endl;
+          continue;
+        }
+        std::string value;
+        // Ignore errors incase just one of the models doesn't have the property
+        if (cros_config.GetString(path, property, &value)) {
+          std::cout << value << std::endl;
+        } else {
+          std::cout << std::endl;
+        }
+      }
+    } else {
+      std::string value;
+      if (!cros_config.GetString(path, property, &value)) {
+        return 1;
+      }
+      std::cout << value;
     }
-    std::cout << value;
   }
 
   if (FLAGS_list_models) {

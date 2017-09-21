@@ -19,5 +19,8 @@
 		wallpaper = "default";
 		string-list = "default", "more";
 	};
-	reef {};
+	caroline { };
+	reef {
+		wallpaper = "epic";
+	};
 };

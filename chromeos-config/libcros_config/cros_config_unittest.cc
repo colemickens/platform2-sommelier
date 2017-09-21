@@ -74,9 +74,10 @@ TEST_F(CrosConfigTest, CheckCorrectModel) {
 TEST_F(CrosConfigTest, CheckGetModelNames) {
   InitConfig();
   std::vector<std::string> models = cros_config_.GetModelNames();
-  ASSERT_EQ(models.size(), 2);
+  ASSERT_EQ(models.size(), 3);
   ASSERT_EQ(models[0], "pyro");
-  ASSERT_EQ(models[1], "reef");
+  ASSERT_EQ(models[1], "caroline");
+  ASSERT_EQ(models[2], "reef");
 }
 
 int main(int argc, char **argv) {
