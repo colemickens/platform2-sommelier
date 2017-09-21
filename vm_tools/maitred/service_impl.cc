@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
 
@@ -252,6 +253,24 @@ grpc::Status ServiceImpl::LaunchProcess(
 
   // Return OK no matter what because the RPC itself succeeded even if there
   // was an issue with launching the process.
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
+                                const MountRequest* request,
+                                MountResponse* response) {
+  int ret = mount(request->source().c_str(),
+                  request->target().c_str(),
+                  request->fstype().c_str(),
+                  request->mountflags(),
+                  request->options().c_str());
+
+  if (ret < 0) {
+    response->set_error(errno);
+  } else {
+    response->set_error(0);
+  }
+
   return grpc::Status::OK;
 }
 

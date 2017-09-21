@@ -130,6 +130,37 @@ bool LaunchProcess(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   return true;
 }
+
+bool Mount(vm_tools::Maitred::Stub* stub, base::FilePath path) {
+  LOG(INFO) << "Attempting to mount filesystem";
+
+  vm_tools::MountRequest request;
+  if (!ParseFileToProto(path, &request)) {
+    LOG(ERROR) << "Unable to parse proto file";
+    return false;
+  }
+
+  // Make the RPC.
+  grpc::ClientContext ctx;
+  vm_tools::MountResponse response;
+
+  grpc::Status status = stub->Mount(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to send mount RPC " << request.source() << " -> "
+               << request.target() << ": " << status.error_message();
+    return true;
+  }
+
+  if (response.error() != 0) {
+    LOG(ERROR) << "Failed to mount " << request.source() << " -> "
+               << request.target() << ": " << strerror(response.error());
+    return false;
+  }
+
+  LOG(INFO) << "Mount successful " << request.source() << " -> "
+            << request.target();
+  return true;
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -141,9 +172,9 @@ int main(int argc, char* argv[]) {
                 "Path to NetworkConfigRequest text proto file");
   DEFINE_string(launch_process, "",
                 "Path to LaunchProcessRequest text proto file");
+  DEFINE_string(mount, "", "Path to MountRequest text proto file");
   DEFINE_bool(shutdown, false, "Shutdown the VM");
   brillo::FlagHelper::Init(argc, argv, "maitred client tool");
-
   if (FLAGS_cid == 0) {
     LOG(ERROR) << "--cid flag is required";
     return EXIT_FAILURE;
@@ -176,6 +207,8 @@ int main(int argc, char* argv[]) {
     success = ConfigureNetwork(&stub, base::FilePath(FLAGS_configure_network));
   } else if (!FLAGS_launch_process.empty()) {
     success = LaunchProcess(&stub, base::FilePath(FLAGS_launch_process));
+  } else if (!FLAGS_mount.empty()) {
+    success = Mount(&stub, base::FilePath(FLAGS_mount));
   } else if (FLAGS_shutdown) {
     Shutdown(&stub);
   } else {

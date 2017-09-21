@@ -82,6 +82,20 @@ message LaunchProcessResponse {
   sint32 code = 2;
 }
 
+// Request for maitred to mount a filesystem.
+message MountRequest {
+  string source = 1;
+  string target = 2;
+  string fstype = 3;
+  uint64 mountflags = 4;
+  string options = 5;
+}
+
+// Response after maitred attempts to mount a filesystem.
+message MountResponse {
+  sint32 error = 1;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -92,4 +106,7 @@ service Maitred {
 
   // Launch one process inside the VM.
   rpc LaunchProcess (LaunchProcessRequest) returns (LaunchProcessResponse);
+
+  // Mount a filesystem in the VM.
+  rpc Mount (MountRequest) returns (MountResponse);
 }
