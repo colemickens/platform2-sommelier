@@ -22,7 +22,7 @@
       'sources': [
         'launcher/crosvm.cc',
         'launcher/mac_address.cc',
-        'launcher/nfs_launcher.cc',
+        'launcher/nfs_export.cc',
         'launcher/pooled_resource.cc',
         'launcher/subnet.cc',
         'launcher/vm_launcher.cc',

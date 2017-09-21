@@ -27,6 +27,7 @@
 #include "vm_tools/common/constants.h"
 #include "vm_tools/launcher/constants.h"
 #include "vm_tools/launcher/mac_address.h"
+#include "vm_tools/launcher/nfs_export.h"
 #include "vm_tools/launcher/subnet.h"
 #include "vm_tools/launcher/vsock_cid.h"
 
@@ -55,16 +56,18 @@ CrosVM::CrosVM(const std::string& name,
                const base::FilePath& vm_rootfs,
                const base::FilePath& instance_runtime_dir,
                std::unique_ptr<MacAddress> mac_addr,
-               std::unique_ptr<Subnet> subnet,
+               std::shared_ptr<Subnet> subnet,
                std::unique_ptr<VsockCid> cid,
+               std::unique_ptr<NfsExport> nfs_export,
                bool release_on_destruction)
     : name_(name),
       vm_kernel_(vm_kernel),
       vm_rootfs_(vm_rootfs),
       instance_runtime_dir_(instance_runtime_dir),
       mac_addr_(std::move(mac_addr)),
-      subnet_(std::move(subnet)),
+      subnet_(subnet),
       cid_(std::move(cid)),
+      nfs_export_(std::move(nfs_export)),
       release_on_destruction_(release_on_destruction),
       vm_process_(std::make_unique<brillo::ProcessImpl>()) {}
 
@@ -75,7 +78,8 @@ CrosVM::~CrosVM() {
 
 std::unique_ptr<CrosVM> CrosVM::Create(const std::string& name,
                                        const base::FilePath& vm_kernel,
-                                       const base::FilePath& vm_rootfs) {
+                                       const base::FilePath& vm_rootfs,
+                                       const base::FilePath& nfs_path) {
   if (!base::PathExists(vm_kernel)) {
     LOG(ERROR) << "VM kernel '" << vm_kernel.value() << "' does not exist";
     return nullptr;
@@ -125,9 +129,19 @@ std::unique_ptr<CrosVM> CrosVM::Create(const std::string& name,
 
   LOG(INFO) << "Allocated vsock cid: " << cid->GetCid();
 
-  return std::unique_ptr<CrosVM>(
-      new CrosVM(name, vm_kernel, vm_rootfs, instance_dir, std::move(mac_addr),
-                 std::move(subnet), std::move(cid), true));
+  std::unique_ptr<NfsExport> nfs_export = nullptr;
+  if (!nfs_path.empty()) {
+    nfs_export = NfsExport::Create(instance_dir, nfs_path, subnet);
+    if (!nfs_export) {
+      LOG(ERROR) << "Could not allocate NFS export id";
+      return nullptr;
+    }
+    LOG(INFO) << "Allocated NFS export id: " << nfs_export->GetExportID();
+  }
+
+  return std::unique_ptr<CrosVM>(new CrosVM(name, vm_kernel, vm_rootfs, instance_dir,
+                                     std::move(mac_addr), std::move(subnet),
+                                     std::move(cid), std::move(nfs_export), true));
 }
 
 std::unique_ptr<CrosVM> CrosVM::Load(const std::string& name) {
@@ -156,10 +170,15 @@ std::unique_ptr<CrosVM> CrosVM::Load(const std::string& name) {
     return nullptr;
   }
 
+  auto nfs_export = NfsExport::Load(instance_dir, subnet);
+  if (!nfs_export) {
+    LOG(WARNING) << "Could not allocate NFS export id. The VM may not have NFS enabled.";
+  }
+
   base::FilePath emptyPath;
   auto crosvm = std::unique_ptr<CrosVM>(
       new CrosVM(name, emptyPath, emptyPath, instance_dir, std::move(mac_addr),
-                 std::move(subnet), std::move(cid), false));
+                 subnet, std::move(cid), std::move(nfs_export), false));
 
   if (!crosvm->RestoreProcessState())
     return nullptr;
@@ -493,6 +512,8 @@ bool CrosVM::Teardown() {
     subnet_->SetReleaseOnDestruction(release_on_destruction_);
   if (cid_)
     cid_->SetReleaseOnDestruction(release_on_destruction_);
+  if (nfs_export_)
+    nfs_export_->SetReleaseOnDestruction(release_on_destruction_);
 
   if (release_on_destruction_) {
     // Check that the VM process is running before we attempt any shutdown.

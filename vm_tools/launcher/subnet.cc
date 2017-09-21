@@ -32,19 +32,19 @@ Subnet::~Subnet() {
     LOG(ERROR) << "Failed to Release() subnet";
 }
 
-std::unique_ptr<Subnet> Subnet::Create(
+std::shared_ptr<Subnet> Subnet::Create(
     const base::FilePath& instance_runtime_dir) {
-  auto subnet = std::unique_ptr<Subnet>(new Subnet(instance_runtime_dir, true));
+  auto subnet = std::shared_ptr<Subnet>(new Subnet(instance_runtime_dir, true));
   if (!subnet->Allocate())
     return nullptr;
 
   return subnet;
 }
 
-std::unique_ptr<Subnet> Subnet::Load(
+std::shared_ptr<Subnet> Subnet::Load(
     const base::FilePath& instance_runtime_dir) {
   auto subnet =
-      std::unique_ptr<Subnet>(new Subnet(instance_runtime_dir, false));
+      std::shared_ptr<Subnet>(new Subnet(instance_runtime_dir, false));
   if (!subnet->LoadInstance())
     return nullptr;
 

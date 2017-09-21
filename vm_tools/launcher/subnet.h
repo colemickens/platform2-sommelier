@@ -26,9 +26,9 @@ class Subnet : public PooledResource {
   std::string GetIpAddress() const;
   std::string GetNetmask() const;
 
-  static std::unique_ptr<Subnet> Create(
+  static std::shared_ptr<Subnet> Create(
       const base::FilePath& instance_runtime_dir);
-  static std::unique_ptr<Subnet> Load(
+  static std::shared_ptr<Subnet> Load(
       const base::FilePath& instance_runtime_dir);
 
  protected:

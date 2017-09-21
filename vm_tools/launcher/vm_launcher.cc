@@ -121,6 +121,8 @@ int main(int argc, char** argv) {
       return 1;
     }
 
+    base::FilePath nfs = cl->GetSwitchValuePath("nfs");
+
     base::FilePath vm_path = cl->GetSwitchValuePath("vm_path");
     if (vm_path.empty())
       vm_path = GetLatestVMPath();
@@ -140,8 +142,8 @@ int main(int argc, char** argv) {
     base::FilePath rootfs_path =
         vm_path.Append(vm_tools::launcher::kVmRootfsName);
 
-    auto crosvm =
-        vm_tools::launcher::CrosVM::Create(vm_name, kernel_path, rootfs_path);
+    auto crosvm = vm_tools::launcher::CrosVM::Create(vm_name, kernel_path,
+                                                     rootfs_path, nfs);
     if (!crosvm)
       return 1;
 

@@ -16,6 +16,7 @@
 
 #include "vm_tools/launcher/mac_address.h"
 #include "vm_tools/launcher/subnet.h"
+#include "vm_tools/launcher/nfs_export.h"
 #include "vm_tools/launcher/vsock_cid.h"
 
 #include "guest.grpc.pb.h"  // NOLINT(build/include)
@@ -44,7 +45,8 @@ class CrosVM {
   // by default.
   static std::unique_ptr<CrosVM> Create(const std::string& name,
                                         const base::FilePath& vm_kernel,
-                                        const base::FilePath& vm_rootfs);
+                                        const base::FilePath& vm_rootfs,
+                                        const base::FilePath& nfs_path);
 
   // Load an existing CrosVM instance with the given |name|. Instances
   // created by this factory method are NOT set to release on their
@@ -77,8 +79,9 @@ class CrosVM {
          const base::FilePath& vm_rootfs,
          const base::FilePath& instance_runtime_dir_,
          std::unique_ptr<MacAddress> mac_addr,
-         std::unique_ptr<Subnet> subnet,
+         std::shared_ptr<Subnet> subnet,
          std::unique_ptr<VsockCid> cid,
+         std::unique_ptr<NfsExport> nfs_export,
          bool release_on_destruction);
 
   // Save state to the VM instance runtime directory, including the VM pid.
@@ -122,8 +125,9 @@ class CrosVM {
   const base::FilePath instance_runtime_dir_;
 
   const std::unique_ptr<MacAddress> mac_addr_;
-  const std::unique_ptr<Subnet> subnet_;
+  const std::shared_ptr<Subnet> subnet_;
   const std::unique_ptr<VsockCid> cid_;
+  const std::unique_ptr<NfsExport> nfs_export_;
 
   bool release_on_destruction_;
 
