@@ -227,7 +227,6 @@ public:
     virtual status_t getCropRectangle (struct v4l2_rect *crop);
     virtual status_t setFormat(FrameInfo &aConfig);
     virtual status_t getFormat(V4L2Format &aFormat);
-    virtual status_t setFormat(V4L2Format &aFormat);
     virtual status_t setSelection(const struct v4l2_selection &aSelection);
     virtual status_t queryCapturePixelFormats(std::vector<v4l2_fmtdesc> &formats);
     virtual int getMemoryType();
@@ -260,6 +259,10 @@ public:
     virtual void getConfig(FrameInfo &config) const { config = mConfig; }
 
     virtual status_t enumModes(std::vector<struct v4l2_sensor_mode> &modes);
+
+private:
+    virtual status_t setPixFormat(V4L2Format &aFormat);
+    virtual status_t setMetaFormat(V4L2Format &aFormat);
 
 protected:
     virtual int qbuf(V4L2BufferInfo *buf);

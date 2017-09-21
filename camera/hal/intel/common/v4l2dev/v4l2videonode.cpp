@@ -244,7 +244,10 @@ uint32_t V4L2Format::width()
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.width : vfmt.fmt.pix.width;
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return vfmt.fmt.meta.buffersize;
+    else
+        return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.width : vfmt.fmt.pix.width;
 }
 
 void V4L2Format::setWidth(uint32_t width)
@@ -252,7 +255,9 @@ void V4L2Format::setWidth(uint32_t width)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        LOGE("@%s: setting width for meta format is not allowed.", __FUNCTION__);
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.width = width;
     else
         vfmt.fmt.pix.width = width;
@@ -263,7 +268,10 @@ uint32_t V4L2Format::height()
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.height : vfmt.fmt.pix.height;
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return 1;
+    else
+        return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.height : vfmt.fmt.pix.height;
 }
 
 void V4L2Format::setHeight(uint32_t height)
@@ -271,7 +279,9 @@ void V4L2Format::setHeight(uint32_t height)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        LOGE("@%s: setting height for meta format is not allowed.", __FUNCTION__);
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.height = height;
     else
         vfmt.fmt.pix.height = height;
@@ -282,8 +292,11 @@ uint32_t V4L2Format::pixelformat()
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ?
-        vfmt.fmt.pix_mp.pixelformat : vfmt.fmt.pix.pixelformat;
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return vfmt.fmt.meta.dataformat;
+    else
+        return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ?
+            vfmt.fmt.pix_mp.pixelformat : vfmt.fmt.pix.pixelformat;
 }
 
 void V4L2Format::setPixelformat(uint32_t format)
@@ -291,7 +304,9 @@ void V4L2Format::setPixelformat(uint32_t format)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        vfmt.fmt.meta.dataformat = format;
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.pixelformat = format;
     else
         vfmt.fmt.pix.pixelformat = format;
@@ -302,7 +317,10 @@ uint32_t V4L2Format::field()
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.field : vfmt.fmt.pix.field;
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return V4L2_FIELD_NONE;
+    else
+        return V4L2_TYPE_IS_MULTIPLANAR(vfmt.type) ? vfmt.fmt.pix_mp.field : vfmt.fmt.pix.field;
 }
 
 void V4L2Format::setField(uint32_t field)
@@ -310,7 +328,9 @@ void V4L2Format::setField(uint32_t field)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        LOGE("@%s: setting field for meta format is not allowed.", __FUNCTION__);
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.field = field;
     else
         vfmt.fmt.pix.field = field;
@@ -320,6 +340,9 @@ uint32_t V4L2Format::bytesperline(int plane)
 {
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return vfmt.fmt.meta.buffersize;
 
     bool mp = V4L2_TYPE_IS_MULTIPLANAR(vfmt.type);
 
@@ -337,7 +360,9 @@ void V4L2Format::setBytesperline(uint32_t bytesperline, int plane)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        LOGE("@%s: setting bytesperline for meta format is not allowed.", __FUNCTION__);
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.plane_fmt[plane].bytesperline = bytesperline;
     else
         vfmt.fmt.pix.bytesperline = bytesperline;
@@ -347,6 +372,9 @@ uint32_t V4L2Format::sizeimage(int plane)
 {
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        return vfmt.fmt.meta.buffersize;
 
     bool mp = V4L2_TYPE_IS_MULTIPLANAR(vfmt.type);
 
@@ -364,7 +392,9 @@ void V4L2Format::setSizeimage(uint32_t size, int plane)
     CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
 
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+    if (V4L2_TYPE_IS_META(vfmt.type))
+        vfmt.fmt.meta.buffersize = size;
+    else if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
         vfmt.fmt.pix_mp.plane_fmt[plane].sizeimage = size;
     else
         vfmt.fmt.pix.sizeimage = size;
@@ -428,6 +458,10 @@ status_t V4L2VideoNode::open()
         mBufType = V4L2_BUF_TYPE_VIDEO_OUTPUT;
     else if (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE)
         mBufType = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    else if (cap.capabilities & V4L2_CAP_META_CAPTURE)
+        mBufType = V4L2_BUF_TYPE_META_CAPTURE;
+    else if (cap.capabilities & V4L2_CAP_META_OUTPUT)
+        mBufType = V4L2_BUF_TYPE_META_OUTPUT;
     else {
         LOGE("@%s: unsupported buffer type.", __FUNCTION__);
         return DEAD_OBJECT;
@@ -489,6 +523,8 @@ status_t V4L2VideoNode::queryCap(struct v4l2_capability *cap)
     LOG1( "bus_info:     '%s'", cap->bus_info);
     LOG1( "version:      %x", cap->version);
     LOG1( "capabilities: %x", cap->capabilities);
+    LOG1( "device caps:  %x", cap->device_caps);
+    LOG1( "buffer type   %d", mBufType);
 
     return NO_ERROR;
 }
@@ -699,27 +735,35 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
         return UNKNOWN_ERROR;
     }
 
-    v4l2_fmt.setWidth(aConfig.width);
-    v4l2_fmt.setHeight(aConfig.height);
-    v4l2_fmt.setPixelformat(aConfig.format);
-    v4l2_fmt.setBytesperline(pixelsToBytes(aConfig.format, aConfig.stride));
-    v4l2_fmt.setSizeimage(0);
-    v4l2_fmt.setField(aConfig.field);
+    if (V4L2_TYPE_IS_META(mBufType)) {
+        v4l2_fmt.setPixelformat(aConfig.format);
+        v4l2_fmt.setSizeimage(0);
+        LOG2("@%s, set meta format: %d", __FUNCTION__, v4l2_fmt.pixelformat());
 
-    // Update current configuration with the new one
-    ret = setFormat(v4l2_fmt);
-    if (ret != NO_ERROR)
-        return ret;
+        ret = setMetaFormat(v4l2_fmt);
+        CheckError(ret != NO_ERROR, ret, "@%s set meta format failed", __FUNCTION__);
+        // update config info
+        aConfig.size = mConfig.size;
+    } else {
+        v4l2_fmt.setType(mBufType);
+        v4l2_fmt.setWidth(aConfig.width);
+        v4l2_fmt.setHeight(aConfig.height);
+        v4l2_fmt.setPixelformat(aConfig.format);
+        v4l2_fmt.setBytesperline((unsigned int)pixelsToBytes(aConfig.format, aConfig.stride));
+        v4l2_fmt.setSizeimage(0);
+        v4l2_fmt.setField(aConfig.field);
+        LOG2("@%s, set pixel format: %d", __FUNCTION__, v4l2_fmt.pixelformat());
 
-    // .. but get the stride from ISP
-    // and update the new configuration struct with it
-    aConfig.stride = mConfig.stride;
-    aConfig.width = mConfig.width;
-    aConfig.height = mConfig.height;
-    aConfig.field = mConfig.field;
-
-    // Do the same for the frame size
-    aConfig.size = mConfig.size;
+        // Update current configuration with the new one
+        ret = setPixFormat(v4l2_fmt);
+        CheckError(ret != NO_ERROR, ret, "@%s set pixel format failed", __FUNCTION__);
+        // update config info
+        aConfig.stride = mConfig.stride;
+        aConfig.width = mConfig.width;
+        aConfig.height = mConfig.height;
+        aConfig.field = mConfig.field;
+        aConfig.size = mConfig.size;
+    }
 
     return NO_ERROR;
 }
@@ -742,9 +786,8 @@ status_t V4L2VideoNode::setFormat(FrameInfo &aConfig)
  *          INVALID_OPERATION if device is not in correct state (open)
  *          UNKNOW_ERROR if we get an error from the v4l2 ioctl's
  */
-status_t V4L2VideoNode::setFormat(V4L2Format &aFormat)
+status_t V4L2VideoNode::setPixFormat(V4L2Format &aFormat)
 {
-
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
     int ret(0);
 
@@ -787,6 +830,44 @@ status_t V4L2VideoNode::setFormat(V4L2Format &aFormat)
 
     if (mConfig.stride != mConfig.width)
         LOG1("stride: %d from ISP width: %d", mConfig.stride,mConfig.width);
+
+    mState = DEVICE_CONFIGURED;
+    mSetBufferPool.clear();
+    return NO_ERROR;
+}
+
+status_t V4L2VideoNode::setMetaFormat(V4L2Format &aFormat)
+{
+    LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
+    int ret(0);
+
+    if ((mState != DEVICE_OPEN) &&
+        (mState != DEVICE_CONFIGURED) &&
+        (mState != DEVICE_PREPARED) ){
+        LOGE("%s invalid device state %d", __FUNCTION__, mState);
+        return INVALID_OPERATION;
+    }
+
+    aFormat.setType(mBufType);
+    LOG1("VIDIOC_S_FMT: %s fourcc: %s, size: %d",
+        mName.c_str(),
+        v4l2Fmt2Str(aFormat.pixelformat()),
+        aFormat.sizeimage());
+
+    ret = pioctl(mFd, VIDIOC_S_FMT, aFormat.get(), mName.c_str());
+    if (ret < 0) {
+        LOGE("VIDIOC_S_FMT failed: %s", strerror(errno));
+        return UNKNOWN_ERROR;
+    }
+
+    LOG2("after VIDIOC_S_FMT: %s fourcc: %s, size: %d",
+        mName.c_str(),
+        v4l2Fmt2Str(aFormat.pixelformat()),
+        aFormat.sizeimage());
+
+    // Update current configuration with the new one
+    mConfig.format = aFormat.pixelformat();
+    mConfig.size = aFormat.sizeimage();
 
     mState = DEVICE_CONFIGURED;
     mSetBufferPool.clear();
@@ -1504,19 +1585,25 @@ status_t V4L2VideoNode::getFormat(V4L2Format &aFormat)
 
     aFormat.setType(mBufType);
     ret = pioctl(mFd, VIDIOC_G_FMT, aFormat.get(), mName.c_str());
-
     if (ret < 0) {
         LOGE("VIDIOC_G_FMT failed: %s", strerror(errno));
         return UNKNOWN_ERROR;
     }
 
-    LOG1("VIDIOC_G_FMT: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
-             mName.c_str(),
-             aFormat.width(),
-             aFormat.height(),
-             aFormat.bytesperline(),
-             v4l2Fmt2Str(aFormat.pixelformat()),
-             aFormat.field());
+    if (V4L2_TYPE_IS_META(mBufType)) {
+        LOG1("Get Meta format: %s format: %d, size: %d",
+                mName.c_str(),
+                aFormat.pixelformat(),
+                aFormat.sizeimage());
+    } else {
+        LOG1("Get pixel format: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
+                mName.c_str(),
+                aFormat.width(),
+                aFormat.height(),
+                aFormat.bytesperline(),
+                v4l2Fmt2Str(aFormat.pixelformat()),
+                aFormat.field());
+    }
 
     return NO_ERROR;
 }

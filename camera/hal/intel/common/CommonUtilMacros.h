@@ -99,7 +99,13 @@
     ((type) == V4L2_BUF_TYPE_VIDEO_CAPTURE \
      || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT \
      || (type) == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE \
-     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
+     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE \
+     || (type) == V4L2_BUF_TYPE_META_OUTPUT \
+     || (type) == V4L2_BUF_TYPE_META_CAPTURE)
+
+#define V4L2_TYPE_IS_META(type) \
+    ((type) == V4L2_BUF_TYPE_META_OUTPUT \
+     || (type) == V4L2_BUF_TYPE_META_CAPTURE)
 
 /**
  * \macro UNUSED

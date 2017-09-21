@@ -63,28 +63,11 @@ status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    mFormat.setWidth(frame.width);
-    mFormat.setHeight(frame.height);
-    uint32_t bpl;
-    if (frame.format == V4L2_PIX_FMT_YUYV) {
-        bpl = frame.stride ? frame.stride * 2: frame.width * 2;
-        mFormat.setBytesperline(bpl);
-    } else if (frame.format == V4L2_PIX_FMT_NV12 ||
-            frame.format == V4L2_PIX_FMT_NV21 ||
-            frame.format == V4L2_META_FMT_IPU3_PARAMS) {
-        bpl = frame.stride ? frame.stride: frame.width;
-        mFormat.setBytesperline(bpl);
-    } else {
-        LOGE("Unsupported format: %d", frame.format);
-        return UNKNOWN_ERROR;
-    }
-    mFormat.setPixelformat(frame.format);
+    status_t ret = mNode->setFormat(frame);
+    CheckError(ret != NO_ERROR, ret, "@%s set worker format failed", __FUNCTION__);
+    ret = mNode->getFormat(mFormat);
+    CheckError(ret != NO_ERROR, ret, "@%s get worker format failed", __FUNCTION__);
 
-    status_t ret = mNode->setFormat(mFormat);
-    if (ret != OK) {
-        LOGE("Unable to configure format: %d", ret);
-        return ret;
-    }
     return OK;
 }
 
