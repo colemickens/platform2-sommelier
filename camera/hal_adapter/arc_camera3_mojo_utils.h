@@ -17,6 +17,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/single_thread_task_runner.h>
+#include <base/synchronization/lock.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "arc/common.h"

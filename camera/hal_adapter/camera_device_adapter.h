@@ -117,6 +117,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // The delegate that handles the Camera3CallbackOps mojo IPC.
   std::unique_ptr<Camera3CallbackOpsDelegate> callback_ops_delegate_;
+  // Lock to protect |callback_ops_delegate_| as it is accessed on multiple
+  // threads.
+  base::Lock callback_ops_delegate_lock_;
 
   // The callback to run when the device is closed.
   base::Callback<void()> close_callback_;

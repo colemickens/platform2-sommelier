@@ -76,11 +76,11 @@ void CameraDeviceAdapter::Bind(
 int32_t CameraDeviceAdapter::Initialize(
     mojom::Camera3CallbackOpsPtr callback_ops) {
   VLOGF_ENTER();
-  DCHECK(!callback_ops_delegate_);
   if (!fence_sync_thread_.Start()) {
     LOGF(ERROR) << "Fence sync thread failed to start";
     return -ENODEV;
   }
+  base::AutoLock l(callback_ops_delegate_lock_);
   // Unlike the camera module, only one peer is allowed to access a camera
   // device at any time.
   DCHECK(!callback_ops_delegate_);
@@ -319,7 +319,10 @@ void CameraDeviceAdapter::ProcessCaptureResult(
       static_cast<const CameraDeviceAdapter*>(ops));
   mojom::Camera3CaptureResultPtr result_ptr =
       self->PrepareCaptureResult(result);
-  self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  base::AutoLock l(self->callback_ops_delegate_lock_);
+  if (self->callback_ops_delegate_) {
+    self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  }
 }
 
 // static
@@ -329,7 +332,10 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(msg);
-  self->callback_ops_delegate_->Notify(std::move(msg_ptr));
+  base::AutoLock l(self->callback_ops_delegate_lock_);
+  if (self->callback_ops_delegate_) {
+    self->callback_ops_delegate_->Notify(std::move(msg_ptr));
+  }
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
@@ -483,6 +489,7 @@ void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {
 
 void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
   DCHECK(camera_callback_ops_thread_.task_runner()->BelongsToCurrentThread());
+  base::AutoLock l(callback_ops_delegate_lock_);
   callback_ops_delegate_.reset();
 }
 
