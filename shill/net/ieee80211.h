@@ -21,17 +21,21 @@ namespace shill {
 
 namespace IEEE_80211 {
 // Information Element Ids from IEEE 802.11-2012 Section 8.4.2
+const uint8_t kElemIdBSSMaxIdlePeriod = 0x5a;
 const uint8_t kElemIdChannels = 0x24;
 const uint8_t kElemIdChallengeText = 0x10;
 const uint8_t kElemIdCountry = 0x07;
 const uint8_t kElemIdDSParameterSet = 0x03;
 const uint8_t kElemIdErp = 0x2a;
+const uint8_t kElemIdExtendedCap = 0x7f;
 const uint8_t kElemIdExtendedRates = 0x32;
 const uint8_t kElemIdHTCap = 0x2d;
 const uint8_t kElemIdHTInfo = 0x3d;
+const uint8_t kElemIdMDE = 0x36;
 const uint8_t kElemIdPowerCapability = 0x21;
 const uint8_t kElemIdPowerConstraint = 0x20;
 const uint8_t kElemIdRequest = 0x0a;
+const uint8_t kElemIdRmEnabledCap = 0x46;
 const uint8_t kElemIdRSN = 0x30;
 const uint8_t kElemIdSsid = 0x00;
 const uint8_t kElemIdSupportedRates = 0x01;
@@ -68,6 +72,7 @@ const int kRSNIECipherCountOffset = kRSNIEVersionLen + kRSNIESelectorLen;
 const int kRSNIECipherCountLen = 2;
 const int kRSNIENumCiphers = 2;
 const int kRSNIECapabilitiesLen = 2;
+const int kRSNIEAuthKeyCiphers = 1;
 const uint16_t kRSNCapabilityPreAuth = 0x0001;
 const uint16_t kRSNCapabilityPairwise = 0x0002;
 const uint16_t kRSNCapabilityPTKSA = 0x000c;
@@ -75,6 +80,20 @@ const uint16_t kRSNCapabilityGTKSA = 0x0030;
 const uint16_t kRSNCapabilityFrameProtectionRequired = 0x0040;
 const uint16_t kRSNCapabilityFrameProtectionCapable = 0x0080;
 const uint16_t kRSNCapabilityPeerKey = 0x0200;
+
+// Little endian representations of FT cipher suites.
+const uint32_t kRSNAuthType8021XFT = 0x03ac0f00;
+const uint32_t kRSNAuthTypePSKFT = 0x04ac0f00;
+const uint32_t kRSNAuthTypeSAEFT = 0x09ac0f00;
+
+// MD Element constants
+const int kMDEFTCapabilitiesLen = 3;
+const int kMDEIDLen = 2;
+const uint8_t kMDEOTDSCapability = 0x01;
+
+// Extended Capabilities element masks.
+const uint8_t kExtendedCapBit3 = 0x08;
+const uint8_t kExtendedCapBit2 = 0x04;
 
 /* 802.11n HT capabilities masks (for cap_info) */
 const uint16_t kHTCapMaskLdpcCoding = 0x0001;
@@ -138,6 +157,14 @@ struct ieee80211_frame {
       uint16_t status_code;
     } associate_response;
   } u;
+};
+
+// Enum for the Capabilites bit field of the Extended Capabilities element.
+enum ExtendedCapOctet {
+  kExtendedCapOctet2 = 2,
+  kExtendedCapOctet3 = 3,
+
+  kExtendedCapOctetMax
 };
 
 // Status/reason code returned by nl80211 messages: Authenticate,

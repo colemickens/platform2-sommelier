@@ -178,13 +178,15 @@ class WiFiEndpointTest : public PropertyStoreTest {
                 WiFiEndpoint::VendorInformation* vendor_information,
                 bool* ieee80211w_required,
                 std::string* country_code,
-                WiFiEndpoint::Ap80211krvSupport* krv_support) {
+                WiFiEndpoint::Ap80211krvSupport* krv_support,
+                bool* found_ft_cipher) {
     return WiFiEndpoint::ParseIEs(properties,
                                   phy_mode,
                                   vendor_information,
                                   ieee80211w_required,
                                   country_code,
-                                  krv_support);
+                                  krv_support,
+                                  found_ft_cipher);
   }
 
   void SetVendorInformation(
@@ -341,6 +343,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
                           &vendor_information,
                           nullptr,
                           nullptr,
+                          nullptr,
                           nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, phy_mode);
   }
@@ -352,6 +355,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
                          &phy_mode,
                          &vendor_information,
+                         nullptr,
                          nullptr,
                          nullptr,
                          nullptr));
@@ -367,6 +371,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
                          &vendor_information,
                          nullptr,
                          nullptr,
+                         nullptr,
                          nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
   }
@@ -378,6 +383,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
                          &phy_mode,
                          &vendor_information,
+                         nullptr,
                          nullptr,
                          nullptr,
                          nullptr));
@@ -394,6 +400,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
                          &vendor_information,
                          nullptr,
                          nullptr,
+                         nullptr,
                          nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
   }
@@ -405,6 +412,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
                          &phy_mode,
                          &vendor_information,
+                         nullptr,
                          nullptr,
                          nullptr,
                          nullptr));
@@ -420,6 +428,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
                          &vendor_information,
                          nullptr,
                          nullptr,
+                         nullptr,
                          nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11ac, phy_mode);
   }
@@ -433,6 +442,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
                          &phy_mode,
                          &vendor_information,
+                         nullptr,
                          nullptr,
                          nullptr,
                          nullptr));
@@ -455,6 +465,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
              &vendor_information,
              nullptr,
              nullptr,
+             nullptr,
              nullptr);
   }
   {
@@ -464,6 +475,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ParseIEs(MakeBSSPropertiesWithIEs(ies),
              &phy_mode,
              &vendor_information,
+             nullptr,
              nullptr,
              nullptr,
              nullptr);
@@ -487,6 +499,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
              &vendor_information,
              nullptr,
              nullptr,
+             nullptr,
              nullptr);
   }
   {
@@ -500,6 +513,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ParseIEs(MakeBSSPropertiesWithIEs(ies),
              &phy_mode,
              &vendor_information,
+             nullptr,
              nullptr,
              nullptr,
              nullptr);
@@ -539,6 +553,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
              &vendor_information,
              nullptr,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
   }
@@ -560,6 +575,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ParseIEs(MakeBSSPropertiesWithIEs(ies),
              &phy_mode,
              &vendor_information,
+             nullptr,
              nullptr,
              nullptr,
              nullptr);
@@ -596,6 +612,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
              &vendor_information,
              nullptr,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
     EXPECT_EQ(kModelName, vendor_information.wps_model_name);
@@ -617,6 +634,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &vendor_information,
              &ieee80211w_required,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_FALSE(ieee80211w_required);
   }
@@ -635,6 +653,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &vendor_information,
              &ieee80211w_required,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_FALSE(ieee80211w_required);
   }
@@ -652,6 +671,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &vendor_information,
              &ieee80211w_required,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
@@ -667,6 +687,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &phy_mode,
              &vendor_information,
              &ieee80211w_required,
+             nullptr,
              nullptr,
              nullptr);
     EXPECT_TRUE(ieee80211w_required);
@@ -685,6 +706,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &vendor_information,
              &ieee80211w_required,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
@@ -701,6 +723,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &phy_mode,
              &vendor_information,
              &ieee80211w_required,
+             nullptr,
              nullptr,
              nullptr);
     EXPECT_FALSE(ieee80211w_required);
@@ -720,6 +743,7 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              &vendor_information,
              &ieee80211w_required,
              nullptr,
+             nullptr,
              nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
@@ -736,6 +760,7 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
              &vendor_information,
              nullptr,
              &country_code,
+             nullptr,
              nullptr);
     EXPECT_TRUE(country_code.empty());
   }
@@ -753,6 +778,7 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
              &vendor_information,
              nullptr,
              &country_code,
+             nullptr,
              nullptr);
     EXPECT_TRUE(country_code.empty());
   }
@@ -770,6 +796,7 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
              &vendor_information,
              nullptr,
              &country_code,
+             nullptr,
              nullptr);
     EXPECT_EQ(kCountryCode, country_code);
   }
@@ -787,6 +814,7 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
              &vendor_information,
              nullptr,
              &country_code,
+             nullptr,
              nullptr);
     EXPECT_EQ(string(kCountryCode, 0, 2), country_code);
   }

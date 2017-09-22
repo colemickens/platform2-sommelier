@@ -192,12 +192,28 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
                        VendorInformation* vendor_information,
                        bool* ieee80211w_required,
                        std::string* country_code,
-                       Ap80211krvSupport* krv_support);
+                       Ap80211krvSupport* krv_support,
+                       bool* found_ft_cipher);
+  // Parse MDE information element and set *|otds_ft_supported| to true if
+  // Over-the-DS Fast BSS Transition is supported by this AP.
+  static void ParseMobilityDomainElement(
+      std::vector<uint8_t>::const_iterator ie,
+      std::vector<uint8_t>::const_iterator end,
+      Ap80211krvSupport* krv_support);
+  // Parse an Extended Capabilities information element, set
+  // *|bss_transition_supported| to true if BSS Transition management is
+  // supported by this AP, and set *|dms_supported| to true if DMS is supported
+  // by this AP.
+  static void ParseExtendedCapabilities(
+      std::vector<uint8_t>::const_iterator ie,
+      std::vector<uint8_t>::const_iterator end,
+      Ap80211krvSupport* krv_support);
   // Parse a WPA information element and set *|ieee80211w_required| to true
   // if IEEE 802.11w is required by this AP.
   static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
                                    std::vector<uint8_t>::const_iterator end,
-                                   bool* ieee80211w_required);
+                                   bool* ieee80211w_required,
+                                   bool* found_ft_cipher);
   // Parse a single vendor information element.  If this is a WPA vendor
   // element, call ParseWPACapabilites with |ieee80211w_required|.
   static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
@@ -234,6 +250,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   SecurityFlags security_flags_;
 
   Ap80211krvSupport krv_support_;
+  bool found_ft_cipher_;
 
   ControlInterface* control_interface_;
   WiFiRefPtr device_;

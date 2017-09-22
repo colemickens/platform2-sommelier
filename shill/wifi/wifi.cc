@@ -994,6 +994,16 @@ void WiFi::HandleRoam(const string& new_bss) {
       return;
   }
 
+  metrics()->NotifyAp80211kSupport(
+      endpoint->krv_support().neighbor_list_supported);
+  metrics()->NotifyAp80211rSupport(endpoint->krv_support().ota_ft_supported,
+                                   endpoint->krv_support().otds_ft_supported);
+  metrics()->NotifyAp80211vDMSSupport(endpoint->krv_support().dms_supported);
+  metrics()->NotifyAp80211vBSSMaxIdlePeriodSupport(
+      endpoint->krv_support().bss_max_idle_period_supported);
+  metrics()->NotifyAp80211vBSSTransitionSupport(
+      endpoint->krv_support().bss_transition_supported);
+
   SLOG(this, 2) << "WiFi " << link_name()
                 << " roamed to Endpoint " << endpoint->bssid_string()
                 << " " << LogSSID(endpoint->ssid_string());

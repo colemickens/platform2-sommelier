@@ -53,6 +53,7 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
     : frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
+      found_ft_cipher_(false),
       control_interface_(control_interface),
       device_(device),
       rpc_id_(rpc_id) {
@@ -69,7 +70,8 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                 &vendor_information_,
                 &ieee80211w_required_,
                 &country_code_,
-                &krv_support_)) {
+                &krv_support_,
+                &found_ft_cipher_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -417,7 +419,8 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                             VendorInformation* vendor_information,
                             bool* ieee80211w_required,
                             string* country_code,
-                            Ap80211krvSupport* krv_support) {
+                            Ap80211krvSupport* krv_support,
+                            bool* found_ft_cipher) {
   if (!properties.ContainsUint8s(WPASupplicant::kBSSPropertyIEs)) {
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;
@@ -433,6 +436,10 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   bool found_ht = false;
   bool found_vht = false;
   bool found_erp = false;
+  bool found_country = false;
+  bool found_power_constraint = false;
+  bool found_rm_enabled_cap = false;
+  bool found_mde = false;
   int ie_len = 0;
   vector<uint8_t>::iterator it;
   for (it = ies.begin();
@@ -444,29 +451,62 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
       break;
     }
     switch (*it) {
+      case IEEE_80211::kElemIdBSSMaxIdlePeriod:
+        if (krv_support) {
+          krv_support->bss_max_idle_period_supported = true;
+        }
+        break;
       case IEEE_80211::kElemIdCountry:
         // Retrieve 2-character country code from the beginning of the element.
+        found_country = true;
         if (ie_len >= 4) {
           *country_code = string(it + 2, it + 4);
         }
       case IEEE_80211::kElemIdErp:
         found_erp = true;
         break;
+      case IEEE_80211::kElemIdExtendedCap:
+        if (krv_support) {
+          ParseExtendedCapabilities(it + 2, it + ie_len, krv_support);
+        }
+        break;
       case IEEE_80211::kElemIdHTCap:
       case IEEE_80211::kElemIdHTInfo:
         found_ht = true;
         break;
-      case IEEE_80211::kElemIdVHTCap:
-      case IEEE_80211::kElemIdVHTOperation:
-        found_vht = true;
+      case IEEE_80211::kElemIdMDE:
+        found_mde = true;
+        if (krv_support) {
+          ParseMobilityDomainElement(it + 2, it + ie_len, krv_support);
+        }
+        break;
+      case IEEE_80211::kElemIdPowerConstraint:
+        found_power_constraint = true;
+        break;
+      case IEEE_80211::kElemIdRmEnabledCap:
+        found_rm_enabled_cap = true;
         break;
       case IEEE_80211::kElemIdRSN:
-        ParseWPACapabilities(it + 2, it + ie_len, ieee80211w_required);
+        ParseWPACapabilities(
+            it + 2, it + ie_len, ieee80211w_required, found_ft_cipher);
         break;
       case IEEE_80211::kElemIdVendor:
         ParseVendorIE(it + 2, it + ie_len, vendor_information,
                       ieee80211w_required);
         break;
+      case IEEE_80211::kElemIdVHTCap:
+      case IEEE_80211::kElemIdVHTOperation:
+        found_vht = true;
+        break;
+    }
+  }
+  if (krv_support) {
+    krv_support->neighbor_list_supported =
+        found_country && found_power_constraint && found_rm_enabled_cap;
+    if (found_ft_cipher) {
+      krv_support->ota_ft_supported = found_mde && *found_ft_cipher;
+      krv_support->otds_ft_supported =
+          krv_support->otds_ft_supported && krv_support->ota_ft_supported;
     }
   }
   if (found_vht) {
@@ -482,10 +522,54 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
 }
 
 // static
-void WiFiEndpoint::ParseWPACapabilities(
+void WiFiEndpoint::ParseMobilityDomainElement(
     vector<uint8_t>::const_iterator ie,
     vector<uint8_t>::const_iterator end,
-    bool* ieee80211w_required) {
+    Ap80211krvSupport* krv_support) {
+  // Format of a Mobility Domain Element:
+  //    2                1
+  // +------+--------------------------+
+  // | MDID | FT Capability and Policy |
+  // +------+--------------------------+
+  if (std::distance(ie, end) < IEEE_80211::kMDEFTCapabilitiesLen) {
+    return;
+  }
+
+  // Advance past the MDID field and check the first bit of the capability
+  // field, the Over-the-DS FT bit.
+  ie += IEEE_80211::kMDEIDLen;
+  krv_support->otds_ft_supported = (*ie & IEEE_80211::kMDEOTDSCapability) > 0;
+}
+
+// static
+void WiFiEndpoint::ParseExtendedCapabilities(
+    vector<uint8_t>::const_iterator ie,
+    vector<uint8_t>::const_iterator end,
+    Ap80211krvSupport* krv_support) {
+  // Format of an Extended Capabilities Element:
+  //        n
+  // +--------------+
+  // | Capabilities |
+  // +--------------+
+  // The Capabilities field is a bit field indicating the capabilities being
+  // advertised by the STA transmitting the element. See section 8.4.2.29 of
+  // the IEEE 802.11-2012 for a list of capabilities and their corresponding
+  // bit positions.
+  if (std::distance(ie, end) < IEEE_80211::kExtendedCapOctetMax) {
+    return;
+  }
+  krv_support->bss_transition_supported =
+      (*(ie + IEEE_80211::kExtendedCapOctet2) & IEEE_80211::kExtendedCapBit3) !=
+      0;
+  krv_support->dms_supported = (*(ie + IEEE_80211::kExtendedCapOctet3) &
+                                IEEE_80211::kExtendedCapBit2) != 0;
+}
+
+// static
+void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
+                                        vector<uint8_t>::const_iterator end,
+                                        bool* ieee80211w_required,
+                                        bool* found_ft_cipher) {
   // Format of an RSN Information Element:
   //    2             4
   // +------+--------------------+
@@ -525,12 +609,32 @@ void WiFiEndpoint::ParseWPACapabilities(
     }
     uint16_t cipher_count = *ie | (*(ie + 1) << 8);
 
-    // Skip over the cipher selectors.
     int skip_length = IEEE_80211::kRSNIECipherCountLen +
       cipher_count * IEEE_80211::kRSNIESelectorLen;
     if (std::distance(ie, end) < skip_length) {
       return;
     }
+
+    if (i == IEEE_80211::kRSNIEAuthKeyCiphers && cipher_count > 0 &&
+        found_ft_cipher) {
+      // Find the AuthKey Suite List and check for matches to Fast Transition
+      // ciphers.
+      vector<uint32_t> akm_suite_list(cipher_count, 0);
+      std::memcpy(&akm_suite_list[0],
+                  &*(ie + IEEE_80211::kRSNIECipherCountLen),
+                  cipher_count * IEEE_80211::kRSNIESelectorLen);
+      for (uint16_t i = 0; i < cipher_count; i++) {
+        uint32_t suite = akm_suite_list[i];
+        if (suite == IEEE_80211::kRSNAuthType8021XFT ||
+            suite == IEEE_80211::kRSNAuthTypePSKFT ||
+            suite == IEEE_80211::kRSNAuthTypeSAEFT) {
+          *found_ft_cipher = true;
+          break;
+        }
+      }
+    }
+
+    // Skip over the cipher selectors.
     ie += skip_length;
   }
 
@@ -606,7 +710,7 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
     }
   } else if (oui == IEEE_80211::kOUIVendorMicrosoft &&
              oui_type == IEEE_80211::kOUIMicrosoftWPA) {
-    ParseWPACapabilities(ie, end, ieee80211w_required);
+    ParseWPACapabilities(ie, end, ieee80211w_required, nullptr);
   } else if (oui != IEEE_80211::kOUIVendorEpigram &&
              oui != IEEE_80211::kOUIVendorMicrosoft) {
     vendor_information->oui_set.insert(oui);

@@ -273,6 +273,18 @@ const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
     LinkMonitor::kFailureThreshold + 1;
 
 // static
+const char Metrics::kMetricAp80211kSupport[] =
+    "Network.Shill.WiFi.Ap80211kSupport";
+const char Metrics::kMetricAp80211rSupport[] =
+    "Network.Shill.WiFi.Ap80211rSupport";
+const char Metrics::kMetricAp80211vDMSSupport[] =
+    "Network.Shill.WiFi.Ap80211vDMSSupport";
+const char Metrics::kMetricAp80211vBSSMaxIdlePeriodSupport[] =
+    "Network.Shill.WiFi.Ap80211vBSSMaxIdlePeriodSupport";
+const char Metrics::kMetricAp80211vBSSTransitionSupport[] =
+    "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
+
+// static
 const char Metrics::kMetricLinkClientDisconnectReason[] =
     "Network.Shill.WiFi.ClientDisconnectReason";
 const char Metrics::kMetricLinkApDisconnectReason[] =
@@ -1024,6 +1036,55 @@ void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
             kMetricLinkMonitorResponseTimeSampleMin,
             kMetricLinkMonitorResponseTimeSampleMax,
             kMetricLinkMonitorResponseTimeSampleNumBuckets);
+}
+
+void Metrics::NotifyAp80211kSupport(bool neighbor_list_supported) {
+  WiFiAp80211kSupport support = kWiFiAp80211kNone;
+  if (neighbor_list_supported) {
+    support = kWiFiAp80211kNeighborList;
+  }
+  SendEnumToUMA(kMetricAp80211kSupport, support, kWiFiAp80211kMax);
+}
+
+void Metrics::NotifyAp80211rSupport(bool ota_ft_supported,
+                                    bool otds_ft_supported) {
+  WiFiAp80211rSupport support = kWiFiAp80211rNone;
+  if (otds_ft_supported) {
+    support = kWiFiAp80211rOTDS;
+  } else if (ota_ft_supported) {
+    support = kWiFiAp80211rOTA;
+  }
+  SendEnumToUMA(kMetricAp80211rSupport, support, kWiFiAp80211rMax);
+}
+
+void Metrics::NotifyAp80211vDMSSupport(bool dms_supported) {
+  WiFiAp80211vDMSSupport support = kWiFiAp80211vNoDMS;
+  if (dms_supported) {
+    support = kWiFiAp80211vDMS;
+  }
+  SendEnumToUMA(kMetricAp80211vDMSSupport, support, kWiFiAp80211vDMSMax);
+}
+
+void Metrics::NotifyAp80211vBSSMaxIdlePeriodSupport(
+    bool bss_max_idle_period_supported) {
+  WiFiAp80211vBSSMaxIdlePeriodSupport support = kWiFiAp80211vNoBSSMaxIdlePeriod;
+  if (bss_max_idle_period_supported) {
+    support = kWiFiAp80211vBSSMaxIdlePeriod;
+  }
+  SendEnumToUMA(kMetricAp80211vBSSMaxIdlePeriodSupport,
+                support,
+                kWiFiAp80211vBSSMaxIdlePeriodMax);
+}
+
+void Metrics::NotifyAp80211vBSSTransitionSupport(
+    bool bss_transition_supported) {
+  WiFiAp80211vBSSTransitionSupport support = kWiFiAp80211vNoBSSTransition;
+  if (bss_transition_supported) {
+    support = kWiFiAp80211vBSSTransition;
+  }
+  SendEnumToUMA(kMetricAp80211vBSSTransitionSupport,
+                support,
+                kWiFiAp80211vBSSTransitionMax);
 }
 
 #if !defined(DISABLE_WIFI)

@@ -178,6 +178,42 @@ class Metrics {
     kLinkMonitorFailureMax
   };
 
+  enum WiFiAp80211kSupport {
+    kWiFiAp80211kNone = 0,
+    kWiFiAp80211kNeighborList = 1,
+
+    kWiFiAp80211kMax
+  };
+
+  enum WiFiAp80211rSupport {
+    kWiFiAp80211rNone = 0,
+    kWiFiAp80211rOTA = 1,
+    kWiFiAp80211rOTDS = 2,
+
+    kWiFiAp80211rMax
+  };
+
+  enum WiFiAp80211vDMSSupport {
+    kWiFiAp80211vNoDMS = 0,
+    kWiFiAp80211vDMS = 1,
+
+    kWiFiAp80211vDMSMax
+  };
+
+  enum WiFiAp80211vBSSMaxIdlePeriodSupport {
+    kWiFiAp80211vNoBSSMaxIdlePeriod = 0,
+    kWiFiAp80211vBSSMaxIdlePeriod = 1,
+
+    kWiFiAp80211vBSSMaxIdlePeriodMax
+  };
+
+  enum WiFiAp80211vBSSTransitionSupport {
+    kWiFiAp80211vNoBSSTransition = 0,
+    kWiFiAp80211vBSSTransition = 1,
+
+    kWiFiAp80211vBSSTransitionMax
+  };
+
   enum WiFiStatusType {
     kStatusCodeTypeByAp,
     kStatusCodeTypeByClient,
@@ -637,6 +673,13 @@ class Metrics {
   static const int kMetricServiceSignalStrengthMax;
   static const int kMetricServiceSignalStrengthNumBuckets;
 
+  // AP 802.11r/k/v support statistics.
+  static const char kMetricAp80211kSupport[];
+  static const char kMetricAp80211rSupport[];
+  static const char kMetricAp80211vDMSSupport[];
+  static const char kMetricAp80211vBSSMaxIdlePeriodSupport[];
+  static const char kMetricAp80211vBSSTransitionSupport[];
+
   static const char kMetricLinkClientDisconnectReason[];
   static const char kMetricLinkApDisconnectReason[];
   static const char kMetricLinkClientDisconnectType[];
@@ -926,6 +969,27 @@ class Metrics {
   void NotifyLinkMonitorResponseTimeSampleAdded(
       Technology::Identifier technology,
       int response_time_milliseconds);
+
+  // Notifies this object that an AP was discovered and of that AP's 802.11k
+  // support.
+  void NotifyAp80211kSupport(bool neighbor_list_supported);
+
+  // Notifies this object that an AP was discovered and of that AP's 802.11r
+  // support.
+  void NotifyAp80211rSupport(bool ota_ft_supported, bool otds_ft_supported);
+
+  // Notifies this object that an AP was discovered and of that AP's 802.11v
+  // DMS support.
+  void NotifyAp80211vDMSSupport(bool dms_supported);
+
+  // Notifies this object that an AP was discovered and of that AP's 802.11v
+  // BSS Max Idle Period support.
+  void NotifyAp80211vBSSMaxIdlePeriodSupport(
+      bool bss_max_idle_period_supported);
+
+  // Notifies this object that an AP was discovered and of that AP's 802.11v
+  // BSS Transition support.
+  void NotifyAp80211vBSSTransitionSupport(bool bss_transition_supported);
 
 #if !defined(DISABLE_WIFI)
   // Notifies this object of WiFi disconnect.
