@@ -119,7 +119,8 @@ class HammerUpdaterTest : public testing::Test {
     // Checked in TearDown.
     EXPECT_CALL(*fw_updater_, TryConnectUSB())
         .Times(count)
-        .WillRepeatedly(DoAll(Increment(&usb_connection_count_), Return(true)));
+        .WillRepeatedly(DoAll(Increment(&usb_connection_count_),
+                              Return(UsbConnectStatus::kSuccess)));
     EXPECT_CALL(*fw_updater_, CloseUSB())
         .Times(count)
         .WillRepeatedly(DoAll(Decrement(&usb_connection_count_), Return()));
@@ -212,7 +213,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
-// Return false if the layout of the firmware is changed.
+// Return kInvalidFirmware if the layout of the firmware is changed.
 // Condition:
 //   1. The current section is Invalid.
 TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
@@ -304,8 +305,9 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, TryConnectUSB())
         .Times(10)
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*fw_updater_, TryConnectUSB()).WillOnce(Return(false));
+        .WillRepeatedly(Return(UsbConnectStatus::kSuccess));
+    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+        .WillOnce(Return(UsbConnectStatus::kUsbPathEmpty));
   }
   EXPECT_CALL(*fw_updater_, CloseUSB()).Times(11).WillRepeatedly(Return());
 

@@ -19,11 +19,12 @@ extern "C" {
 using hammerd::FirmwareUpdater;
 using hammerd::SectionName;
 using hammerd::UpdateExtraCommand;
+using hammerd::UsbConnectStatus;
 
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
     uint16_t vendor_id, uint16_t product_id, int bus, int port);
-BRILLO_EXPORT bool FirmwareUpdater_TryConnectUSB(
+BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUSB(
     FirmwareUpdater* updater);
 BRILLO_EXPORT void FirmwareUpdater_CloseUSB(
     FirmwareUpdater* updater);

@@ -110,7 +110,7 @@ FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
       ec_image_(""),
       sections_() {}
 
-bool FirmwareUpdater::TryConnectUSB() {
+UsbConnectStatus FirmwareUpdater::TryConnectUSB() {
   constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;
   constexpr unsigned int kIntervalMs = 100;
@@ -119,8 +119,8 @@ bool FirmwareUpdater::TryConnectUSB() {
   auto start_time = base::Time::Now();
   int64_t duration = 0;
   while (true) {
-    bool ret = endpoint_->Connect();
-    if (ret) {
+    UsbConnectStatus ret = endpoint_->Connect();
+    if (ret == UsbConnectStatus::kSuccess) {
       // Flush data from the EC's "out" buffer.  There may be leftover data
       // in this buffer from a previous failure.
       const size_t buf_len = endpoint_->GetChunkLength();
@@ -130,8 +130,9 @@ bool FirmwareUpdater::TryConnectUSB() {
         LOG(INFO) << "Flushing data...";
       }
 
-      // If we can't properly parse the section version string, return false.
-      return FetchVersion();
+      // If we can't properly parse the section version string, the device
+      // is considered invalid.
+      return FetchVersion() ? ret : UsbConnectStatus::kInvalidDevice;
     }
 
     duration = (base::Time::Now() - start_time).InMilliseconds();
@@ -141,7 +142,7 @@ bool FirmwareUpdater::TryConnectUSB() {
     base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kIntervalMs));
   }
   LOG(ERROR) << "Failed to connect USB endpoint.";
-  return false;
+  return UsbConnectStatus::kUsbPathEmpty;
 }
 
 bool FirmwareUpdater::FetchVersion() {

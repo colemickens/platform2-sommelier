@@ -75,7 +75,9 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
   HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
-    if (!fw_updater_->TryConnectUSB()) {
+    if (fw_updater_->TryConnectUSB() != UsbConnectStatus::kSuccess) {
+      // TODO(kitching): Send a dbus message notifying Chrome OS of any rogue
+      // USB devices. See b/66321020 for details.
       LOG(ERROR) << "Failed to connect USB.";
       fw_updater_->CloseUSB();
       return HammerUpdater::RunStatus::kLostConnection;
@@ -334,9 +336,10 @@ void HammerUpdater::WaitUSBReady(HammerUpdater::RunStatus status) {
   if (status == HammerUpdater::RunStatus::kNeedReset ||
       status == HammerUpdater::RunStatus::kNeedJump) {
     LOG(INFO) << "Wait for USB device ready...";
-    bool usb_connection = fw_updater_->TryConnectUSB();
+    UsbConnectStatus usb_connection = fw_updater_->TryConnectUSB();
     fw_updater_->CloseUSB();
-    if (!usb_connection) {
+    // If there is no device there, don't bother waiting.
+    if (usb_connection == UsbConnectStatus::kUsbPathEmpty) {
       return;
     }
     if (status == HammerUpdater::RunStatus::kNeedReset) {
@@ -346,7 +349,8 @@ void HammerUpdater::WaitUSBReady(HammerUpdater::RunStatus status) {
 
       usb_connection = fw_updater_->TryConnectUSB();
       fw_updater_->CloseUSB();
-      if (!usb_connection) {
+      // If there is no device there, don't bother waiting.
+      if (usb_connection == UsbConnectStatus::kUsbPathEmpty) {
         return;
       }
     }

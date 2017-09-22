@@ -23,12 +23,19 @@ bool InitLibUSB();
 void ExitLibUSB();
 void LogUSBError(const char* func_name, int return_code);
 
+enum class UsbConnectStatus {
+  kSuccess,
+  kUsbPathEmpty,
+  kInvalidDevice,
+  kUnknownError,
+};
+
 class UsbEndpointInterface {
  public:
   virtual ~UsbEndpointInterface() = default;
 
   // Initializes the USB endpoint.
-  virtual bool Connect() = 0;
+  virtual UsbConnectStatus Connect() = 0;
   // Releases USB endpoint.
   virtual void Close() = 0;
   // Returns whether the USB endpoint is initialized.
@@ -67,7 +74,7 @@ class UsbEndpoint : public UsbEndpointInterface {
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
-  bool Connect() override;
+  UsbConnectStatus Connect() override;
   void Close() override;
   bool IsConnected() const override;
   int Transfer(const void* outbuf,
@@ -90,8 +97,9 @@ class UsbEndpoint : public UsbEndpointInterface {
  private:
   // Opens and returns a handle of device with vendor_id and product_id
   // connected to given bus and port.
-  libusb_device_handle* OpenDevice(
-      uint16_t vendor_id, uint16_t product_id, int bus, int port);
+  UsbConnectStatus OpenDevice(
+      uint16_t vendor_id, uint16_t product_id, int bus, int port,
+      libusb_device_handle** devh);
   // Returns the descriptor at the given index as an ASCII string.
   std::string GetStringDescriptorAscii(uint8_t index);
   // Finds the interface number. Returns -1 on error.

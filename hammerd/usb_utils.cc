@@ -59,9 +59,10 @@ UsbEndpoint::~UsbEndpoint() {
   ExitLibUSB();
 }
 
-libusb_device_handle* UsbEndpoint::OpenDevice(
-    uint16_t vendor_id, uint16_t product_id, int bus, int port) {
-  libusb_device_handle* devh = nullptr;
+UsbConnectStatus UsbEndpoint::OpenDevice(
+    uint16_t vendor_id, uint16_t product_id, int bus, int port,
+    libusb_device_handle** devh) {
+  UsbConnectStatus ret = UsbConnectStatus::kUsbPathEmpty;
   struct libusb_device** devs;
   unsigned count = libusb_get_device_list(nullptr, &devs);
 
@@ -79,54 +80,59 @@ libusb_device_handle* UsbEndpoint::OpenDevice(
       libusb_get_device_descriptor(devs[i], &info);
 
       if (info.idVendor != vendor_id_ || info.idProduct != product_id_) {
+        ret = UsbConnectStatus::kInvalidDevice;
         LOG(ERROR) << "Invalid VID " << info.idVendor
                    << " and PID " << info.idProduct << ".";
-        // TODO(kitching): Send a dbus message notifying Chrome OS of any rogue
-        // USB devices. See b/66321020 for details.
         break;
       }
 
-      int r = libusb_open(devs[i], &devh);
+      int r = libusb_open(devs[i], devh);
       if (r) {
         LogUSBError("libusb_open", r);
+        ret = UsbConnectStatus::kUnknownError;
         LOG(ERROR) << "Failed to open device.";
+      } else {
+        ret = UsbConnectStatus::kSuccess;
       }
       break;
     }
   }
 
+  if (ret == UsbConnectStatus::kUsbPathEmpty) {
+    LOG(ERROR) << "No device was found on the given USB bus/port.";
+  }
   libusb_free_device_list(devs, 1);
-  return devh;
+  return ret;
 }
 
-bool UsbEndpoint::Connect() {
+UsbConnectStatus UsbEndpoint::Connect() {
   if (IsConnected()) {
     LOG(INFO) << "Already initialized. Ignore.";
-    return true;
+    return UsbConnectStatus::kSuccess;
   }
 
   InitLibUSB();
   LOG(INFO) << base::StringPrintf(
       "open_device %x:%x", vendor_id_, product_id_);
 
-  devh_ = OpenDevice(vendor_id_, product_id_, bus_, port_);
+  UsbConnectStatus status =
+      OpenDevice(vendor_id_, product_id_, bus_, port_, &devh_);
 
-  if (!devh_) {
-    LOG(ERROR) << "Can't find device.";
+  if (status != UsbConnectStatus::kSuccess) {
     Close();
-    return false;
+    return status;
   }
 
   iface_num_ = FindInterface();
   if (iface_num_ < 0) {
     LOG(ERROR) << "USB FW update not supported by that device";
     Close();
-    return false;
+    return UsbConnectStatus::kInvalidDevice;
   }
   if (!chunk_len_) {
     LOG(ERROR) << "wMaxPacketSize isn't valid";
     Close();
-    return false;
+    return UsbConnectStatus::kInvalidDevice;
   }
 
   LOG(INFO) << "found interface " << iface_num_ << ", endpoint "
@@ -137,10 +143,10 @@ bool UsbEndpoint::Connect() {
   if (r < 0) {
     LogUSBError("libusb_claim_interface", r);
     Close();
-    return false;
+    return UsbConnectStatus::kUnknownError;
   }
   LOG(INFO) << "USB endpoint is initialized successfully.";
-  return true;
+  return status;
 }
 
 // Release USB device.

@@ -20,7 +20,7 @@ BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
   return new FirmwareUpdater(
       base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port));
 }
-BRILLO_EXPORT bool FirmwareUpdater_TryConnectUSB(
+BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUSB(
     FirmwareUpdater* updater) {
   return updater->TryConnectUSB();
 }

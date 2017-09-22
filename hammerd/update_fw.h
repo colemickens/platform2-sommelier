@@ -194,7 +194,7 @@ class FirmwareUpdaterInterface {
   virtual bool LoadTouchpadImage(const std::string& touchpad_image) = 0;
 
   // Tries to connect to the USB endpoint during a period of time.
-  virtual bool TryConnectUSB() = 0;
+  virtual UsbConnectStatus TryConnectUSB() = 0;
 
   // Closes the connection to the USB endpoint.
   virtual void CloseUSB() = 0;
@@ -269,7 +269,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // FirmwareUpdaterInterface implementation:
   bool LoadECImage(const std::string& ec_image) override;
   bool LoadTouchpadImage(const std::string& touchpad_image) override;
-  bool TryConnectUSB() override;
+  UsbConnectStatus TryConnectUSB() override;
   void CloseUSB() override;
   bool SendFirstPDU() override;
   void SendDone() override;
