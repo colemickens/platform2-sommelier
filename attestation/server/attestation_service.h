@@ -149,9 +149,6 @@ class AttestationService : public AttestationInterface {
 
   void set_hwid(const std::string& hwid) { hwid_ = hwid; }
 
-  // So tests don't need to duplicate URL decisions.
-  const std::string& attestation_ca_origin() { return attestation_ca_origin_; }
-
  private:
   friend class AttestationServiceTest;
 
@@ -305,7 +302,8 @@ class AttestationService : public AttestationInterface {
 
   // Creates an enrollment request compatible with the Google Attestation CA.
   // Returns true on success.
-  bool CreateEnrollRequestInternal(std::string* enroll_request);
+  bool CreateEnrollRequestInternal(ACAType aca_type,
+                                   std::string* enroll_request);
 
   // Finishes enrollment given an |enroll_response| from the Google Attestation
   // CA. Returns true on success. On failure, returns false and sets
@@ -346,9 +344,10 @@ class AttestationService : public AttestationInterface {
     CertifiedKey* key,
     std::string* certificate_chain);
 
-  // Sends a |request_type| |request| to the Google Attestation CA and waits for
-  // the |reply|. Returns true on success.
-  bool SendACARequestAndBlock(ACARequestType request_type,
+  // Sends a |request_type| |request| to the |aca_type| Google Attestation CA
+  // and waits for the |reply|. Returns true on success.
+  bool SendACARequestAndBlock(ACAType aca_type,
+                              ACARequestType request_type,
                               const std::string& request,
                               std::string* reply);
 
@@ -401,8 +400,11 @@ class AttestationService : public AttestationInterface {
   // which has not already been used by another user for the same origin.
   int ChooseTemporalIndex(const std::string& user, const std::string& origin);
 
-  // Creates a Google Attestation CA URL for the given |request_type|.
-  std::string GetACAURL(ACARequestType request_type) const;
+  // Returns te Web origin for the |aca_type| Google Attestation CA.
+  std::string GetACAWebOrigin(ACAType aca_type) const;
+
+  // Creates a |aca_type| Google Attestation CA URL for the |request_type|.
+  std::string GetACAURL(ACAType aca_type, ACARequestType request_type) const;
 
   // Creates a X.509/DER SubjectPublicKeyInfo for the given |key_type| and
   // |public_key|. On success returns true and provides |public_key_info|.
@@ -492,8 +494,6 @@ class AttestationService : public AttestationInterface {
                               const std::string& aik_public_key_tpm_format);
 
   base::WeakPtr<AttestationService> GetWeakPtr();
-
-  const std::string attestation_ca_origin_;
 
   // Other than initialization and destruction, these are used only by the
   // worker thread.

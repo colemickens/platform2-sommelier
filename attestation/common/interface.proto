@@ -32,6 +32,11 @@ enum AttestationStatus {
   STATUS_NOT_SUPPORTED = 8;
 }
 
+enum ACAType {
+  DEFAULT_ACA = 0;
+  TEST_ACA = 1;
+}
+
 message CreateGoogleAttestedKeyRequest {
   // An arbitrary label which can be used to reference the key later.
   optional string key_label = 1;
@@ -46,6 +51,8 @@ message CreateGoogleAttestedKeyRequest {
   // If the |certificate_profile| is intended to be bound to a particular origin
   // this field specifies the origin. For most profiles this is not required.
   optional string origin = 6;
+  // What kind of ACA to use.
+  optional ACAType aca_type = 7;
 }
 
 message CreateGoogleAttestedKeyReply {
@@ -219,6 +226,8 @@ message VerifyReply {
 // of a device and issues a certificate for an AIK. The enrollment process can
 // be finished by sending FinishEnrollRequest with the response from the CA.
 message CreateEnrollRequestRequest {
+  // What kind of ACA to use.
+  optional ACAType aca_type = 1;
 }
 
 message CreateEnrollRequestReply {

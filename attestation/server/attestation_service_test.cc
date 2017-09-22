@@ -165,7 +165,7 @@ class AttestationServiceTest : public testing::Test {
  protected:
   void SetupFakeCAEnroll(FakeCAState state) {
     fake_http_transport_->AddHandler(
-        service_->attestation_ca_origin() + "/enroll",
+        service_->GetACAWebOrigin(DEFAULT_ACA) + "/enroll",
         brillo::http::request_type::kPost,
         base::Bind(&AttestationServiceTest::FakeCAEnroll,
                    base::Unretained(this), state));
@@ -173,7 +173,7 @@ class AttestationServiceTest : public testing::Test {
 
   void SetupFakeCASign(FakeCAState state) {
     fake_http_transport_->AddHandler(
-        service_->attestation_ca_origin() + "/sign",
+        service_->GetACAWebOrigin(DEFAULT_ACA) + "/sign",
         brillo::http::request_type::kPost,
         base::Bind(&AttestationServiceTest::FakeCASign, base::Unretained(this),
                    state));

@@ -39,10 +39,9 @@ extern "C" {
 
 namespace {
 
-#ifndef USE_TEST_ACA
 // Google Attestation Certificate Authority (ACA) production instance.
-const char kACAWebOrigin[] = "https://chromeos-ca.gstatic.com";
-const char kACAPublicKey[] =
+const char kDefaultACAWebOrigin[] = "https://chromeos-ca.gstatic.com";
+const char kDefaultACAPublicKey[] =
     "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
     "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
     "B3A80731BA9311EC16F8F66060A2C550914D252DB90B44D19BC6C15E923FFCFB"
@@ -51,11 +50,11 @@ const char kACAPublicKey[] =
     "4083FD98758745CBFFD6F55DA699B2EE983307C14C9990DDFB48897F26DF8FB2"
     "CFFF03E631E62FAE59CBF89525EDACD1F7BBE0BA478B5418E756FF3E14AC9970"
     "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
-const char kACAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
-#else
+const char kDefaultACAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
+
 // Google Attestation Certificate Authority (ACA) test instance.
-const char kACAWebOrigin[] = "https://asbestos-qa.corp.google.com";
-const char kACAPublicKey[] =
+const char kTestACAWebOrigin[] = "https://asbestos-qa.corp.google.com";
+const char kTestACAPublicKey[] =
     "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
     "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
     "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
@@ -64,7 +63,11 @@ const char kACAPublicKey[] =
     "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
     "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
-const char kACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
+const char kTestACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
+
+#ifdef USE_TEST_ACA
+#error "Do not compile with USE_TEST_ACA"
+       " but provide the right aca_type in requests."
 #endif
 
 const char kEnterpriseSigningPublicKey[] =
@@ -281,8 +284,7 @@ namespace attestation {
 
 const size_t kChallengeSignatureNonceSize = 20; // For all TPMs.
 
-AttestationService::AttestationService()
-    : attestation_ca_origin_(kACAWebOrigin), weak_factory_(this) {}
+AttestationService::AttestationService() : weak_factory_(this) {}
 
 bool AttestationService::Initialize() {
   if (!worker_thread_) {
@@ -359,12 +361,13 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   }
   if (!IsEnrolled()) {
     std::string enroll_request;
-    if (!CreateEnrollRequestInternal(&enroll_request)) {
+    if (!CreateEnrollRequestInternal(request.aca_type(), &enroll_request)) {
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
       return;
     }
     std::string enroll_reply;
-    if (!SendACARequestAndBlock(kEnroll, enroll_request, &enroll_reply)) {
+    if (!SendACARequestAndBlock(request.aca_type(), kEnroll, enroll_request,
+                                &enroll_reply)) {
       result->set_status(STATUS_CA_NOT_AVAILABLE);
       return;
     }
@@ -394,8 +397,8 @@ void AttestationService::CreateGoogleAttestedKeyTask(
     return;
   }
   std::string certificate_reply;
-  if (!SendACARequestAndBlock(kGetCertificate, certificate_request,
-                              &certificate_reply)) {
+  if (!SendACARequestAndBlock(request.aca_type(), kGetCertificate,
+                              certificate_request, &certificate_reply)) {
     result->set_status(STATUS_CA_NOT_AVAILABLE);
     return;
   }
@@ -759,7 +762,8 @@ bool AttestationService::IsEnrolled() {
          database_pb.identity_key().has_identity_credential();
 }
 
-bool AttestationService::CreateEnrollRequestInternal(std::string* enroll_request) {
+bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
+    std::string* enroll_request) {
   if (!IsPreparedForEnrollment()) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
                << "does not exist.";
@@ -769,7 +773,9 @@ bool AttestationService::CreateEnrollRequestInternal(std::string* enroll_request
   AttestationEnrollmentRequest request_pb;
   request_pb.set_tpm_version(tpm_utility_->GetVersion());
   *request_pb.mutable_encrypted_endorsement_credential() =
-      database_pb.credentials().default_encrypted_endorsement_credential();
+      aca_type == DEFAULT_ACA ?
+      database_pb.credentials().default_encrypted_endorsement_credential() :
+      database_pb.credentials().test_encrypted_endorsement_credential();
   request_pb.set_identity_public_key(
       database_pb.identity_binding().identity_public_key());
   *request_pb.mutable_pcr0_quote() = database_pb.pcr0_quote();
@@ -901,7 +907,8 @@ bool AttestationService::PopulateAndStoreCertifiedKey(
   return true;
 }
 
-bool AttestationService::SendACARequestAndBlock(ACARequestType request_type,
+bool AttestationService::SendACARequestAndBlock(ACAType aca_type,
+                                                ACARequestType request_type,
                                                 const std::string& request,
                                                 std::string* reply) {
   std::shared_ptr<brillo::http::Transport> transport = http_transport_;
@@ -909,7 +916,7 @@ bool AttestationService::SendACARequestAndBlock(ACARequestType request_type,
     transport = brillo::http::Transport::CreateDefault();
   }
   std::unique_ptr<brillo::http::Response> response = PostBinaryAndBlock(
-      GetACAURL(request_type), request.data(), request.size(),
+      GetACAURL(aca_type, request_type), request.data(), request.size(),
       brillo::mime::application::kOctet_stream, {},  // headers
       transport,
       nullptr);  // error
@@ -1152,8 +1159,16 @@ int AttestationService::ChooseTemporalIndex(const std::string& user,
   return least_used_index;
 }
 
-std::string AttestationService::GetACAURL(ACARequestType request_type) const {
-  std::string url = attestation_ca_origin_;
+std::string AttestationService::GetACAWebOrigin(ACAType aca_type) const {
+  if (aca_type == TEST_ACA) {
+    return kTestACAWebOrigin;
+  }
+  return kDefaultACAWebOrigin;
+}
+
+std::string AttestationService::GetACAURL(ACAType aca_type,
+                                          ACARequestType request_type) const {
+  std::string url = GetACAWebOrigin(aca_type);
   switch (request_type) {
     case kEnroll:
       url += "/enroll";
@@ -1260,10 +1275,18 @@ void AttestationService::PrepareForEnrollment() {
   credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
 
   if (!crypto_utility_->EncryptDataForGoogle(
-          rsa_ek_certificate, kACAPublicKey,
-          std::string(kACAPublicKeyID, arraysize(kACAPublicKeyID) - 1),
+          rsa_ek_certificate, kDefaultACAPublicKey,
+          std::string(kDefaultACAPublicKeyID,
+                      arraysize(kDefaultACAPublicKeyID) - 1),
           credentials_pb->mutable_default_encrypted_endorsement_credential())) {
     LOG(ERROR) << "Attestation: Failed to encrypt EK certificate.";
+    return;
+  }
+  if (!crypto_utility_->EncryptDataForGoogle(
+          rsa_ek_certificate, kTestACAPublicKey,
+          std::string(kTestACAPublicKeyID, arraysize(kTestACAPublicKeyID) - 1),
+          credentials_pb->mutable_test_encrypted_endorsement_credential())) {
+    LOG(ERROR) << "Attestation: Failed to encrypt EK certificate (test).";
     return;
   }
   IdentityKey* key_pb = database_pb->mutable_identity_key();
@@ -1706,7 +1729,8 @@ void AttestationService::CreateEnrollRequest(
 void AttestationService::CreateEnrollRequestTask(
     const CreateEnrollRequestRequest& request,
     const std::shared_ptr<CreateEnrollRequestReply>& result) {
-  if (!CreateEnrollRequestInternal(result->mutable_pca_request())) {
+  if (!CreateEnrollRequestInternal(request.aca_type(),
+                                   result->mutable_pca_request())) {
     result->clear_pca_request();
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
   }
