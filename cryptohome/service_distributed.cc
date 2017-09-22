@@ -15,6 +15,22 @@ using attestation::AttestationStatus;
 
 namespace cryptohome {
 
+// A helper function which maps an integer to a valid ACAType.
+gboolean ServiceDistributed::ConvertPCATypeToACAType(gint pca_type,
+    attestation::ACAType* aca_type, GError** error) {
+  switch (pca_type) {
+    case Attestation::kDefaultPCA:
+      *aca_type = attestation::DEFAULT_ACA;
+      return TRUE;
+    case Attestation::kTestPCA:
+      *aca_type = attestation::TEST_ACA;
+      return TRUE;
+    default:
+      ReportUnsupportedPCAType(error, pca_type);
+      return FALSE;
+  }
+}
+
 // A helper function which maps an integer to a valid CertificateProfile.
 attestation::CertificateProfile ServiceDistributed::GetProfile(
     int profile_value) {
@@ -338,11 +354,12 @@ gboolean ServiceDistributed::TpmAttestationCreateEnrollRequest(
     GArray** OUT_pca_request,
     GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   attestation::CreateEnrollRequestRequest request;
+  request.set_aca_type(aca_type);
   attestation::CreateEnrollRequestReply reply;
   auto method = base::Bind(&AttestationInterface::CreateEnrollRequest,
                            base::Unretained(attestation_interface_), request);
@@ -367,12 +384,13 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateEnrollRequest(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   *OUT_async_id = AllocateAsyncId();
   attestation::CreateEnrollRequestRequest request;
+  request.set_aca_type(aca_type);
   auto callback = base::Bind(
       &ServiceDistributed::ProcessDataReply<
           attestation::CreateEnrollRequestReply>,
@@ -393,8 +411,8 @@ gboolean ServiceDistributed::TpmAttestationEnroll(gint pca_type,
                                                   gboolean* OUT_success,
                                                   GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   attestation::FinishEnrollRequest request;
@@ -417,8 +435,8 @@ gboolean ServiceDistributed::AsyncTpmAttestationEnroll(gint pca_type,
                                                        gint* OUT_async_id,
                                                        GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   *OUT_async_id = AllocateAsyncId();
@@ -445,8 +463,8 @@ gboolean ServiceDistributed::TpmAttestationCreateCertRequest(
     GArray** OUT_pca_request,
     GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   attestation::CreateCertificateRequestRequest request;
@@ -480,8 +498,8 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateCertRequest(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  if (pca_type != Attestation::kDefaultPCA) {
-    ReportUnsupportedPCAType(error, pca_type);
+  attestation::ACAType aca_type;
+  if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
   *OUT_async_id = AllocateAsyncId();

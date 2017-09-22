@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_SERVICE_DISTRIBUTED_H_
 #define CRYPTOHOME_SERVICE_DISTRIBUTED_H_
 
+#include <memory>
 #include <string>
 
 #include "attestation/common/attestation_interface.h"
@@ -177,12 +178,17 @@ class ServiceDistributed : public Service {
   bool SendRequestAndWait(const MethodType& method,
                           ReplyProtoType* reply_proto);
 
+  // A helper function which maps an integer to a valid ACAType.
+  static gboolean ConvertPCATypeToACAType(gint pca_type,
+                                          attestation::ACAType* aca_type,
+                                          GError** error);
+
   // Helper methods that fill GError where an error
   // is returned directly from the original handler.
-  void ReportErrorFromStatus(GError** error,
-                             attestation::AttestationStatus status);
-  void ReportSendFailure(GError** error);
-  void ReportUnsupportedPCAType(GError** error, int pca_type);
+  static void ReportErrorFromStatus(GError** error,
+                                    attestation::AttestationStatus status);
+  static void ReportSendFailure(GError** error);
+  static void ReportUnsupportedPCAType(GError** error, int pca_type);
 
   std::unique_ptr<attestation::AttestationInterface>
       default_attestation_interface_;
