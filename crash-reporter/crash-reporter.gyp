@@ -57,6 +57,7 @@
         'deps': [
           'dbus-1',
           'libmetrics-<(libbase_ver)',
+          'libminijail',
         ],
       },
       'dependencies': [

@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <libminijail.h>
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_collector.h"
@@ -315,6 +316,37 @@ void OpenStandardFileDescriptors() {
   close(new_fd);
 }
 
+// Reduce privs that we don't need.  But we still need:
+// - The top most /proc to pull details out of it.
+// - Read access to the crashing process's memory (regardless of user).
+// - Write access to the crash spool dir.
+void EnterSandbox(bool write_proc) {
+  // If we're not root, we won't be able to jail ourselves (well, we could if
+  // we used user namespaces, but maybe later).  Need to double check handling
+  // when called by chrome to process its crashes.
+  if (getuid() != 0)
+    return;
+
+  struct minijail *j = minijail_new();
+  minijail_namespace_ipc(j);
+  minijail_namespace_uts(j);
+  minijail_namespace_net(j);
+  minijail_namespace_vfs(j);
+  minijail_mount_tmp(j);
+  minijail_mount_dev(j);
+  // We use syslog heavily.
+  minijail_bind(j, "/dev/log", "/dev/log", 0);
+  minijail_no_new_privs(j);
+  minijail_new_session_keyring(j);
+
+  // If we're initializing the system, we're need to write to /proc/sys/.
+  if (!write_proc) {
+    minijail_remount_proc_readonly(j);
+  }
+
+  minijail_enter(j);
+}
+
 }  // namespace
 
 int main(int argc, char *argv[]) {
@@ -352,6 +384,9 @@ int main(int argc, char *argv[]) {
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
   brillo::OpenLog(my_path.BaseName().value().c_str(), true);
   brillo::InitLog(brillo::kLogToSyslog);
+
+  // Now that we've processed the command line, sandbox ourselves.
+  EnterSandbox(FLAGS_init || FLAGS_clean_shutdown);
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);
