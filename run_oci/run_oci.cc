@@ -405,12 +405,13 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
 // pretty-printed so that bash scripts can more easily grab the fields instead
 // of having to parse the JSON blob.
 std::string ContainerState(int child_pid,
+                           const std::string& container_id,
                            const base::FilePath& bundle_dir,
                            const base::FilePath& container_dir,
                            const std::string& status) {
   base::DictionaryValue state;
   state.SetString("ociVersion", "1.0");
-  state.SetString("id", base::StringPrintf("run_oci:%d", child_pid));
+  state.SetString("id", container_id);
   state.SetString("status", status);
   state.SetString("bundle", base::MakeAbsoluteFilePath(bundle_dir).value());
   state.SetInteger("pid", child_pid);
@@ -489,13 +490,14 @@ bool RunOneHook(const OciHook& hook,
 
 bool RunHooks(const std::vector<OciHook>& hooks,
               int child_pid,
+              const std::string& container_id,
               const base::FilePath& bundle_dir,
               const base::FilePath& container_dir,
               const std::string& hook_stage,
               const std::string& status) {
   bool success = true;
-  std::string container_state =
-      ContainerState(child_pid, bundle_dir, container_dir, status);
+  std::string container_state = ContainerState(
+      child_pid, container_id, bundle_dir, container_dir, status);
   for (const auto& hook : hooks)
     success &= RunOneHook(hook, hook_stage, container_state);
   return success;
@@ -503,10 +505,16 @@ bool RunHooks(const std::vector<OciHook>& hooks,
 
 void RunPostStopHooks(const std::vector<OciHook>& hooks,
                       int child_pid,
+                      const std::string& container_id,
                       const base::FilePath& bundle_dir,
                       const base::FilePath& container_dir) {
-  if (!RunHooks(
-          hooks, child_pid, bundle_dir, container_dir, "poststop", "stopped")) {
+  if (!RunHooks(hooks,
+                child_pid,
+                container_id,
+                bundle_dir,
+                container_dir,
+                "poststop",
+                "stopped")) {
     LOG(WARNING) << "Error running poststop hooks";
   }
 }
@@ -703,6 +711,7 @@ int RunOci(const base::FilePath& bundle_dir,
       base::Bind(&RunPostStopHooks,
                  base::ConstRef(oci_config->post_stop_hooks),
                  child_pid,
+                 container_id,
                  bundle_dir,
                  container_dir));
 
@@ -710,6 +719,7 @@ int RunOci(const base::FilePath& bundle_dir,
     pre_start_hook_state->reached_pipe.Wait();
     if (!RunHooks(oci_config->pre_start_hooks,
                   child_pid,
+                  container_id,
                   bundle_dir,
                   container_dir,
                   "prestart",
@@ -723,6 +733,7 @@ int RunOci(const base::FilePath& bundle_dir,
 
   if (!RunHooks(oci_config->post_start_hooks,
                 child_pid,
+                container_id,
                 bundle_dir,
                 container_dir,
                 "poststart",
@@ -824,6 +835,7 @@ int OciDestroy(const std::string& container_id) {
   // We are committed to cleaning everything up now.
   RunPostStopHooks(oci_config->post_stop_hooks,
                    container_pid,
+                   container_id,
                    GetBundlePath(container_config_file),
                    container_dir);
   CleanUpContainer(container_dir);
