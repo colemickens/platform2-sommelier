@@ -64,8 +64,12 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  if (!ParseIEs(properties, &phy_mode, &vendor_information_,
-                &ieee80211w_required_, &country_code_)) {
+  if (!ParseIEs(properties,
+                &phy_mode,
+                &vendor_information_,
+                &ieee80211w_required_,
+                &country_code_,
+                &krv_support_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -248,6 +252,10 @@ bool WiFiEndpoint::has_tethering_signature() const {
   return has_tethering_signature_;
 }
 
+const WiFiEndpoint::Ap80211krvSupport& WiFiEndpoint::krv_support() const {
+  return krv_support_;
+}
+
 // static
 WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
@@ -404,12 +412,12 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
 }
 
 // static
-bool WiFiEndpoint::ParseIEs(
-    const KeyValueStore& properties,
-    Metrics::WiFiNetworkPhyMode* phy_mode,
-    VendorInformation* vendor_information,
-    bool* ieee80211w_required, string* country_code) {
-
+bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
+                            Metrics::WiFiNetworkPhyMode* phy_mode,
+                            VendorInformation* vendor_information,
+                            bool* ieee80211w_required,
+                            string* country_code,
+                            Ap80211krvSupport* krv_support) {
   if (!properties.ContainsUint8s(WPASupplicant::kBSSPropertyIEs)) {
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;

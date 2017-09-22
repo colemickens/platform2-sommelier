@@ -176,9 +176,15 @@ class WiFiEndpointTest : public PropertyStoreTest {
   bool ParseIEs(const KeyValueStore& properties,
                 Metrics::WiFiNetworkPhyMode* phy_mode,
                 WiFiEndpoint::VendorInformation* vendor_information,
-                bool* ieee80211w_required, std::string* country_code) {
-    return WiFiEndpoint::ParseIEs(properties, phy_mode, vendor_information,
-                                  ieee80211w_required, country_code);
+                bool* ieee80211w_required,
+                std::string* country_code,
+                WiFiEndpoint::Ap80211krvSupport* krv_support) {
+    return WiFiEndpoint::ParseIEs(properties,
+                                  phy_mode,
+                                  vendor_information,
+                                  ieee80211w_required,
+                                  country_code,
+                                  krv_support);
   }
 
   void SetVendorInformation(
@@ -330,8 +336,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     vector<uint8_t> ies;
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_FALSE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                          &vendor_information, nullptr, nullptr));
+    EXPECT_FALSE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                          &phy_mode,
+                          &vendor_information,
+                          nullptr,
+                          nullptr,
+                          nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, phy_mode);
   }
   {
@@ -339,8 +349,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdErp, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g, phy_mode);
   }
   {
@@ -348,8 +362,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdHTCap, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
   }
   {
@@ -357,8 +375,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdHTInfo, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
   }
   {
@@ -367,8 +389,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdHTCap, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
   }
   {
@@ -376,8 +402,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdVHTCap, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11ac, phy_mode);
   }
   {
@@ -385,8 +415,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdVHTOperation, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11ac, phy_mode);
   }
   {
@@ -396,8 +430,12 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     AddIE(IEEE_80211::kElemIdVHTCap, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode,
-                         &vendor_information, nullptr, nullptr));
+    EXPECT_TRUE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                         &phy_mode,
+                         &vendor_information,
+                         nullptr,
+                         nullptr,
+                         nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11ac, phy_mode);
   }
 }
@@ -412,15 +450,23 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     AddIE(IEEE_80211::kElemIdVendor, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
   }
   {
     vector<uint8_t> ies;
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
     EXPECT_EQ("", vendor_information.wps_model_name);
     EXPECT_EQ("", vendor_information.wps_model_number);
@@ -436,8 +482,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ies.resize(ies.size() - 1);  // Cause an underrun in the data.
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
   }
   {
     vector<uint8_t> ies;
@@ -447,8 +497,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     AddVendorIE(IEEE_80211::kOUIVendorEpigram, 0, vector<uint8_t>(), &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
     EXPECT_EQ("", vendor_information.wps_model_name);
     EXPECT_EQ("", vendor_information.wps_model_number);
@@ -480,8 +534,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
                 IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
   }
   {
@@ -499,8 +557,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
                 IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
     EXPECT_EQ(kManufacturer, vendor_information.wps_manufacturer);
     EXPECT_EQ(kModelName, vendor_information.wps_model_name);
     EXPECT_EQ(kModelNumber, vendor_information.wps_model_number);
@@ -529,8 +591,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
                 IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr);
     EXPECT_EQ("", vendor_information.wps_manufacturer);
     EXPECT_EQ(kModelName, vendor_information.wps_model_name);
   }
@@ -546,8 +612,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_FALSE(ieee80211w_required);
   }
   {
@@ -560,8 +630,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_FALSE(ieee80211w_required);
   }
   {
@@ -573,8 +647,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
   {
@@ -585,8 +663,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
   {
@@ -598,8 +680,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
   {
@@ -611,8 +697,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_FALSE(ieee80211w_required);
   }
   {
@@ -625,8 +715,12 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     bool ieee80211w_required = false;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             &ieee80211w_required, nullptr);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             &ieee80211w_required,
+             nullptr,
+             nullptr);
     EXPECT_TRUE(ieee80211w_required);
   }
 }
@@ -637,8 +731,12 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     string country_code;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, &country_code);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             &country_code,
+             nullptr);
     EXPECT_TRUE(country_code.empty());
   }
   {
@@ -650,8 +748,12 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     string country_code;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, &country_code);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             &country_code,
+             nullptr);
     EXPECT_TRUE(country_code.empty());
   }
   {
@@ -663,8 +765,12 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     string country_code;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, &country_code);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             &country_code,
+             nullptr);
     EXPECT_EQ(kCountryCode, country_code);
   }
   {
@@ -676,8 +782,12 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
     string country_code;
-    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
-             nullptr, &country_code);
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             &country_code,
+             nullptr);
     EXPECT_EQ(string(kCountryCode, 0, 2), country_code);
   }
 }
@@ -828,6 +938,34 @@ TEST_F(WiFiEndpointTest, HasTetheringSignature) {
     endpoint->CheckForTetheringSignature();
     EXPECT_FALSE(endpoint->has_tethering_signature());
   }
+}
+
+TEST_F(WiFiEndpointTest, Ap80211krvSupported) {
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", false, false);
+  EXPECT_FALSE(endpoint->krv_support().neighbor_list_supported);
+  endpoint->krv_support_.neighbor_list_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().neighbor_list_supported);
+
+  EXPECT_FALSE(endpoint->krv_support().ota_ft_supported);
+  endpoint->krv_support_.ota_ft_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().ota_ft_supported);
+
+  EXPECT_FALSE(endpoint->krv_support().otds_ft_supported);
+  endpoint->krv_support_.otds_ft_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().otds_ft_supported);
+
+  EXPECT_FALSE(endpoint->krv_support().dms_supported);
+  endpoint->krv_support_.dms_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().dms_supported);
+
+  EXPECT_FALSE(endpoint->krv_support().bss_max_idle_period_supported);
+  endpoint->krv_support_.bss_max_idle_period_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().bss_max_idle_period_supported);
+
+  EXPECT_FALSE(endpoint->krv_support().bss_transition_supported);
+  endpoint->krv_support_.bss_transition_supported = true;
+  EXPECT_TRUE(endpoint->krv_support().bss_transition_supported);
 }
 
 }  // namespace shill

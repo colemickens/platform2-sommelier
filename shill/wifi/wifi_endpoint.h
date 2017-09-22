@@ -58,6 +58,21 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     std::string wps_device_name;
     std::set<uint32_t> oui_set;
   };
+  struct Ap80211krvSupport {
+    Ap80211krvSupport()
+        : neighbor_list_supported(false),
+          ota_ft_supported(false),
+          otds_ft_supported(false),
+          dms_supported(false),
+          bss_max_idle_period_supported(false),
+          bss_transition_supported(false) {}
+    bool neighbor_list_supported;
+    bool ota_ft_supported;
+    bool otds_ft_supported;
+    bool dms_supported;
+    bool bss_max_idle_period_supported;
+    bool bss_transition_supported;
+  };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
                const std::string& rpc_id,
@@ -100,6 +115,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_rsn_property() const;
   bool has_wpa_property() const;
   bool has_tethering_signature() const;
+  const Ap80211krvSupport& krv_support() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -120,6 +136,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
   // for physical_mode_
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, PhysicalMode);
+  // for 802.11k/r/v features
+  FRIEND_TEST(WiFiEndpointTest, Ap80211krvSupported);
 
   enum KeyManagement {
     kKeyManagement802_1x,
@@ -172,7 +190,9 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   static bool ParseIEs(const KeyValueStore& properties,
                        Metrics::WiFiNetworkPhyMode* phy_mode,
                        VendorInformation* vendor_information,
-                       bool* ieee80211w_required, std::string* country_code);
+                       bool* ieee80211w_required,
+                       std::string* country_code,
+                       Ap80211krvSupport* krv_support);
   // Parse a WPA information element and set *|ieee80211w_required| to true
   // if IEEE 802.11w is required by this AP.
   static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
@@ -212,6 +232,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_wpa_property_;
   bool has_tethering_signature_;
   SecurityFlags security_flags_;
+
+  Ap80211krvSupport krv_support_;
 
   ControlInterface* control_interface_;
   WiFiRefPtr device_;
