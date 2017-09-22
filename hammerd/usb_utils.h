@@ -63,7 +63,6 @@ class UsbEndpointInterface {
 
 class UsbEndpoint : public UsbEndpointInterface {
  public:
-  UsbEndpoint(uint16_t vendor_id, uint16_t product_id);
   UsbEndpoint(uint16_t vendor_id, uint16_t product_id, int bus, int port);
 
   // UsbEndpointInterface:
@@ -89,6 +88,10 @@ class UsbEndpoint : public UsbEndpointInterface {
   }
 
  private:
+  // Opens and returns a handle of device with vendor_id and product_id
+  // connected to given bus and port.
+  libusb_device_handle* OpenDevice(
+      uint16_t vendor_id, uint16_t product_id, int bus, int port);
   // Returns the descriptor at the given index as an ASCII string.
   std::string GetStringDescriptorAscii(uint8_t index);
   // Finds the interface number. Returns -1 on error.

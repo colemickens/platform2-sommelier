@@ -49,9 +49,6 @@ void LogUSBError(const char* func_name, int return_code) {
              << libusb_strerror(static_cast<libusb_error>(return_code)) << ")";
 }
 
-UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id)
-    : UsbEndpoint(vendor_id, product_id, -1, -1) {}
-
 UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
                          int bus, int port)
     : vendor_id_(vendor_id), product_id_(product_id), bus_(bus), port_(port),
@@ -62,9 +59,47 @@ UsbEndpoint::~UsbEndpoint() {
   ExitLibUSB();
 }
 
+libusb_device_handle* UsbEndpoint::OpenDevice(
+    uint16_t vendor_id, uint16_t product_id, int bus, int port) {
+  libusb_device_handle* devh = nullptr;
+  struct libusb_device** devs;
+  unsigned count = libusb_get_device_list(nullptr, &devs);
+
+  for (int i = 0; i < count; i++) {
+    int cur_bus = libusb_get_bus_number(devs[i]);
+    uint8_t port_numbers[1];
+    // Returns LIBUSB_ERROR_OVERFLOW if the array is too small.  The port is
+    // expected to be at the very top of the USB tree, thus only provide enough
+    // room for one port number.
+    int num_ports = libusb_get_port_numbers(
+        devs[i], port_numbers, sizeof(port_numbers));
+
+    if (cur_bus == bus && num_ports == 1 && port_numbers[0] == port) {
+      struct libusb_device_descriptor info;
+      libusb_get_device_descriptor(devs[i], &info);
+
+      if (info.idVendor != vendor_id_ || info.idProduct != product_id_) {
+        LOG(ERROR) << "Invalid VID " << info.idVendor
+                   << " and PID " << info.idProduct << ".";
+        // TODO(kitching): Send a dbus message notifying Chrome OS of any rogue
+        // USB devices. See b/66321020 for details.
+        break;
+      }
+
+      int r = libusb_open(devs[i], &devh);
+      if (r) {
+        LogUSBError("libusb_open", r);
+        LOG(ERROR) << "Failed to open device.";
+      }
+      break;
+    }
+  }
+
+  libusb_free_device_list(devs, 1);
+  return devh;
+}
+
 bool UsbEndpoint::Connect() {
-  // NOTE: If multiple interfaces matched the VID/PID, then we connect
-  // to the first one found, and ignore others.
   if (IsConnected()) {
     LOG(INFO) << "Already initialized. Ignore.";
     return true;
@@ -73,23 +108,11 @@ bool UsbEndpoint::Connect() {
   InitLibUSB();
   LOG(INFO) << base::StringPrintf(
       "open_device %x:%x", vendor_id_, product_id_);
-  // TODO(kitching): We should use libusb_get_device_list for device
-  //                 enumeration instead, looking to see which device is
-  //                 on the particular bus/port.
-  devh_ = libusb_open_device_with_vid_pid(nullptr, vendor_id_, product_id_);
+
+  devh_ = OpenDevice(vendor_id_, product_id_, bus_, port_);
+
   if (!devh_) {
     LOG(ERROR) << "Can't find device.";
-    Close();
-    return false;
-  }
-
-  LOG(INFO) << "Checking for bus " << bus_ << " port " << port_ << "...";
-  libusb_device* dev = libusb_get_device(devh_);
-  int bus = libusb_get_bus_number(dev);
-  int port = libusb_get_port_number(dev);
-
-  if ((bus_ != -1 && bus != bus_) || (port_ != -1 && port != port_)) {
-    LOG(ERROR) << "Invalid bus " << bus << " and port " << port << ".";
     Close();
     return false;
   }
