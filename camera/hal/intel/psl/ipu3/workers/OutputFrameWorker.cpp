@@ -210,7 +210,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
                 switch (mNode->getMemoryType()) {
                 case V4L2_MEMORY_USERPTR:
                     mBuffers[mIndex].m.userptr = reinterpret_cast<unsigned long>(buffer->data());
-                    LOG2("%s mBuffers[%d].m.userptr: %p",
+                    LOG2("%s mBuffers[%d].m.userptr: 0x%lx",
                         __FUNCTION__, mIndex, mBuffers[mIndex].m.userptr);
                     break;
                 case V4L2_MEMORY_DMABUF:

@@ -91,7 +91,7 @@ int Intel3AClient::allocateShmMem(std::string& name, int size, int* fd, void** a
     struct stat sb;
     ret = fstat(shmFd, &sb);
     CheckError((ret == -1), UNKNOWN_ERROR, "@%s, call fstat fail", __FUNCTION__);
-    CheckError((sb.st_size != size), UNKNOWN_ERROR, "@%s, sb.st_size:%d", __FUNCTION__, sb.st_size);
+    CheckError((sb.st_size != size), UNKNOWN_ERROR, "@%s, sb.st_size:%ld", __FUNCTION__, sb.st_size);
 
     shmAddr = mmap(0, sb.st_size, PROT_WRITE, MAP_SHARED, shmFd, 0);
     CheckError((!shmAddr), UNKNOWN_ERROR, "@%s, call mmap fail", __FUNCTION__);

@@ -114,7 +114,7 @@ status_t Intel3aPlus::initAIQ(int maxGridW,
     if (count >= 2 && exposureTimeRange != nullptr) {
         mMinExposureTime = exposureTimeRange[0];
         mMaxExposureTime = exposureTimeRange[1];
-        LOG2("mMinExposureTime:%lld mMaxExposureTime:%lld", mMinExposureTime, mMaxExposureTime);
+        LOG2("mMinExposureTime:%ld mMaxExposureTime:%ld", mMinExposureTime, mMaxExposureTime);
     }
 
     /* get max frame duration */
@@ -126,7 +126,7 @@ status_t Intel3aPlus::initAIQ(int maxGridW,
                                       &count);
     if (count >= 1 && maxFrameDuration != nullptr) {
         mMaxFrameDuration = *maxFrameDuration;
-        LOG2("mMaxFrameDuration:%lld", mMaxFrameDuration);
+        LOG2("mMaxFrameDuration:%ld", mMaxFrameDuration);
     }
 
     return status;
@@ -519,11 +519,11 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
             int64_t timeMicros = entry.data.i64[0] / 1000;
             if (timeMicros > 0) {
                 if (timeMicros > mMaxExposureTime / 1000) {
-                    LOGE("exposure time %lld ms is bigger than the max exposure time %lld ms",
+                    LOGE("exposure time %ld ms is bigger than the max exposure time %ld ms",
                         timeMicros, mMaxExposureTime / 1000);
                     return BAD_VALUE;
                 } else if (timeMicros < mMinExposureTime / 1000) {
-                    LOGE("exposure time %lld ms is smaller than the min exposure time %lld ms",
+                    LOGE("exposure time %ld ms is smaller than the min exposure time %ld ms",
                         timeMicros, mMinExposureTime / 1000);
                     return BAD_VALUE;
                 }
@@ -550,7 +550,7 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
             int64_t timeMicros = entry.data.i64[0] / 1000;
             if (timeMicros > 0) {
                 if (timeMicros > mMaxFrameDuration / 1000) {
-                    LOGE("frame duration %lld ms is bigger than the max frame duration %lld ms",
+                    LOGE("frame duration %ld ms is bigger than the max frame duration %ld ms",
                         timeMicros, mMaxFrameDuration / 1000);
                     return BAD_VALUE;
                 }

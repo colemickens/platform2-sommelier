@@ -319,7 +319,7 @@ status_t MediaCtlHelper::closeVideoNodes()
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
         status = mConfiguredNodes[i]->close();
         if (status != NO_ERROR)
-            LOGW("Error in closing video node (%d)", i);
+            LOGW("Error in closing video node (%zu)", i);
     }
     mConfiguredNodes.clear();
     mConfiguredNodesPerName.clear();

@@ -77,7 +77,7 @@ ia_err Intel3aExc::SensorUnitsToAnalogGain(
     float* analog_gain)
 {
     LOG1("@%s, gain_conversion:%p, gain_code:%d, analog_gain:%f",
-        __FUNCTION__, gain_conversion, gain_code, analog_gain);
+        __FUNCTION__, gain_conversion, gain_code, *analog_gain);
 
     CheckError((gain_conversion == nullptr), ia_err_argument, "@%s, gain_conversion is nullptr", __FUNCTION__);
     CheckError((analog_gain == nullptr), ia_err_argument, "@%s, analog_gain is nullptr", __FUNCTION__);

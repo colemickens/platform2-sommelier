@@ -205,7 +205,7 @@ status_t StatisticsWorker::run()
             for (size_t i = 0; i < size; ++i) {
                 sumLuma += (ptr[i].avg_r + (ptr[i].avg_gb+ptr[i].avg_gr )/2 + ptr[i].avg_b) / 3;
             }
-            LOGAIQ("%s, frame %u RGBS y_mean %d, widthxheight = [%dx%d]", __FUNCTION__,
+            LOGAIQ("%s, frame %u RGBS y_mean %lu, widthxheight = [%dx%d]", __FUNCTION__,
                 stats->frameSequence, sumLuma / size,
                 rgbsGrid.get()->grid_width, rgbsGrid.get()->grid_height);
         }
@@ -238,7 +238,7 @@ void StatisticsWorker::writeBmp(const std::string &filename,
                                  sizeof(BMPINFOHEADER) + ALGIN4(grid_width * 3) * grid_height;
     std::unique_ptr<unsigned char[]> bmpBuffer(new unsigned char[bmpSize]);
 
-    LOG2("stat bmp buffer size %d grid %dx%d", bmpSize, grid_width, grid_height);
+    LOG2("stat bmp buffer size %lu grid %ux%u", bmpSize, grid_width, grid_height);
 
     if (flag == RGBS_GRID_TO_BMP) {
         gridToBmp(input_params.data, grid_width, grid_height, bmpBuffer.get());

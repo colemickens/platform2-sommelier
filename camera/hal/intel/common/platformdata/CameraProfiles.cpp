@@ -489,7 +489,7 @@ int CameraProfiles::parseStreamConfig(const char *src,
     void *next;
 
     if (refTables.size() < 2) {
-        LOGE("incomplete reference table :%d", refTables.size());
+        LOGE("incomplete reference table :%zu", refTables.size());
         return count;
     }
 
@@ -661,7 +661,7 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
     void *next;
 
     if (refTables.size() < 1) {
-        LOGE("incomplete reference table :%d", refTables.size());
+        LOGE("incomplete reference table :%zu", refTables.size());
         return count;
     }
 
@@ -822,7 +822,7 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
     void *next;
 
     if (refTables.size() < 1) {
-        LOGE("incomplete reference table :%d", refTables.size());
+        LOGE("incomplete reference table :%zu", refTables.size());
         return count;
     }
 

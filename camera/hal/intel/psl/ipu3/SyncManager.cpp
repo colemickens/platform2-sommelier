@@ -893,7 +893,7 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
                 LOGE("Message ID = MESSAGE_ID_MAX should never end up here");
             }
             mMessageQueue.send(&msg);
-            LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId: %d, seq: %u, frame sequence: %u",
+            LOG2("%s: EVENT, MessageId: %d, activedev: %lu, reqId: %d, seq: %u, frame sequence: %u",
                  __FUNCTION__, pollEventMsg->id, pollEventMsg->data.activeDevices->size(),
                  pollEventMsg->data.reqId, event.sequence, event.u.frame_sync.frame_sequence);
 

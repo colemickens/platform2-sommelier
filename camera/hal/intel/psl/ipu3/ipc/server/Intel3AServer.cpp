@@ -113,7 +113,7 @@ int Intel3AServer::parseReqHeader(const uint8_t req_header[], uint32_t size, uin
 
     *cmd = req_header[1];
 
-    LOG2("@%s, size:%d, cmd:%d:%s, requestSize:%d",
+    LOG2("@%s, size:%d, cmd:%d:%s",
         __FUNCTION__, size, *cmd, Intel3AIpcCmdToString((IPC_CMD)(*cmd)));
 
     return 0;
@@ -231,7 +231,7 @@ void Intel3AServer::request(const uint8_t req_header[], uint32_t size, int32_t b
                     VOID_VALUE, "@%s, Invalid buffer handle", __FUNCTION__);
         ShmInfo info = mShmInfoMap[buffer_handle];
 
-        LOG2("@%s, info.fd:%d, info.size:%d", __FUNCTION__, info.fd, info.size);
+        LOG2("@%s, info.fd:%d, info.size:%lu", __FUNCTION__, info.fd, info.size);
         status = handleRequest(cmd, info.size, info.addr);
     }
 

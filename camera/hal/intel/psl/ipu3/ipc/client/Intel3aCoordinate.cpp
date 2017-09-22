@@ -47,7 +47,7 @@ Intel3aCoordinate::convert(
                     const ia_coordinate_system& trg_system,
                     const ia_coordinate& src_coordinate)
 {
-    LOG1("@%s, src_system:%p, src_system:%p", __FUNCTION__, src_system, src_system);
+    LOG1("@%s, src_system:%p, trg_system:%p", __FUNCTION__, &src_system, &trg_system);
     LOG1("@%s, src_coordinate.x:%d, src_coordinate.y:%d",
         __FUNCTION__, src_coordinate.x, src_coordinate.y);
 

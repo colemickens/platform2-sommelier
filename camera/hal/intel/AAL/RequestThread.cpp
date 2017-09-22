@@ -389,7 +389,7 @@ status_t RequestThread::flush(void)
 
     nsecs_t intervalTimeout = 1000000;
     if (interval / 1000 > intervalTimeout) {
-        LOGE("@%s, the flush() >" PRId64 "ms, time spend:%" PRId64 "us",
+        LOGE("@%s, the flush() >%" PRId64 "ms, time spend:%" PRId64 "us",
             __FUNCTION__, intervalTimeout / 1000, interval / 1000);
         return 0; // TODO: after the performance issue is resolved, change it back to -ENODEV
     }

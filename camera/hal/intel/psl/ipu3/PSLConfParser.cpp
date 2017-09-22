@@ -504,7 +504,7 @@ int PSLConfParser::convertXmlData(void * dest, int destMaxNum, const char * src,
             break;
         case TYPE_INT64:
             data.i64[index] = strtol(src, &endPtr, 0);
-            LOG2("    - %lld -", data.i64[index]);
+            LOG2("    - %ld -", data.i64[index]);
             break;
         case TYPE_FLOAT:
             data.f[index] = strtof(src, &endPtr);
@@ -652,7 +652,7 @@ void PSLConfParser::getGraphConfigFromXmlFile()
     for (size_t i = 0; i < mCaps.size(); ++i) {
         IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[i]);
         if (info->mGCMNodes) {
-            LOGE("Camera %d Graph Config already initialized - BUG", i);
+            LOGE("Camera %zu Graph Config already initialized - BUG", i);
             continue;
         }
 
@@ -664,13 +664,13 @@ void PSLConfParser::getGraphConfigFromXmlFile()
         } else {
             settingsPath += fileName;
         }
-        LOGW("Using settings file %s for camera %d", settingsPath.c_str(), i);
+        LOGW("Using settings file %s for camera %zu", settingsPath.c_str(), i);
 
         info->mGCMNodes = GraphConfigManager::parse(
             GraphConfigManager::DEFAULT_DESCRIPTOR_FILE, settingsPath.c_str());
 
         if (!info->mGCMNodes) {
-            LOGE("Could not read graph descriptor from file for camera %d", i);
+            LOGE("Could not read graph descriptor from file for camera %zu", i);
             continue;
         }
     }

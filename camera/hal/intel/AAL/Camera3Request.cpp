@@ -461,7 +461,7 @@ void Camera3Request::reAllocateResultBuffer(camera_metadata_t* m, int index)
         delete [] reinterpret_cast<char*>(mmdata.baseBuf);
     }
     mmdata.baseBuf = (void*) new char[mmdata.size];
-    LOG2("Need to resize meta result buffers to %d entry cap %d, data cap %d"
+    LOG2("Need to resize meta result buffers to %zu entry cap %d, data cap %d"
             ,mmdata.size, mmdata.entryCap, mmdata.dataCap);
 }
 

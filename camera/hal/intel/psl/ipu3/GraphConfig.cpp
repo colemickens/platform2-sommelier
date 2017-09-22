@@ -311,7 +311,7 @@ status_t GraphConfig::getActiveOutputPorts(const StreamToSinkMap &streamToSinkId
         status = graphGetSinksByName(GCSS::ItemUID::key2str(it->second), sinks);
         if (CC_UNLIKELY(status != OK) || sinks.empty()) {
             string sinkName = GCSS::ItemUID::key2str(it->second);
-            LOGE("Found %d sinks, expecting 1 for sink %s", sinks.size(),
+            LOGE("Found %lu sinks, expecting 1 for sink %s", sinks.size(),
                  sinkName.c_str());
             return BAD_VALUE;
         }
@@ -931,16 +931,16 @@ status_t GraphConfig::pipelineGetInternalConnections(
                           port) != alreadyConnectedPorts.end()) {
                 continue;
             }
-            LOG1("Configuring Port from PG[%d]", i);
+            LOG1("Configuring Port from PG[%zu]", i);
 
             status = portGetFormat(port, aConnection.portFormatSettings);
             if (CC_UNLIKELY(status != OK)) {
-                LOGE("Failed to get port format info in port from PG[%d] "
+                LOGE("Failed to get port format info in port from PG[%zu] "
                      "from stream id %d", i, streamId);
                 return BAD_VALUE;
             }
             if (aConnection.portFormatSettings.enabled == 0) {
-                LOG1("Port from PG[%d] from stream id %d disabled",
+                LOG1("Port from PG[%zu] from stream id %d disabled",
                         i, streamId);
                 confVector.push_back(aConnection);
                 continue;
@@ -962,7 +962,7 @@ status_t GraphConfig::pipelineGetInternalConnections(
                                        aConnection.connectionConfig,
                                        &peerPort);
             if (CC_UNLIKELY(status != OK )) {
-                LOGE("Failed to create connection info in port from PG[%d]"
+                LOGE("Failed to create connection info in port from PG[%zu]"
                      "from stream id %d", i, streamId);
                 return BAD_VALUE;
             }
@@ -1997,7 +1997,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
         std::vector<media_link_desc> links;
         entity->getLinkDesc(links);
-        LOG1("@%s, linkes number:%d\n", __FUNCTION__, links.size());
+        LOG1("@%s, linkes number:%lu\n", __FUNCTION__, links.size());
         if (links.size()) {
             struct media_pad_desc* pad = &links[0].sink;
             LOG1("@%s, entity:%d, flags:%d, index:%d\n",
@@ -2290,7 +2290,7 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
         ret = imgu->getDescendant(mLut[i].uid, &pipe);
 
         if (ret != css_err_none) {
-            LOGD("<%s> node is not present in graph (descriptor or settings) - continuing.", mLut[i].uid);
+            LOGD("<%u> node is not present in graph (descriptor or settings) - continuing.", mLut[i].uid);
             continue;
         }
 
@@ -2302,7 +2302,7 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
         }
 
         if (!enabled) {
-            LOG1("Node <%s> not enabled - continuing");
+            LOG1("Node <%s> not enabled - continuing", NODE_NAME(pipe));
             continue;
         }
 

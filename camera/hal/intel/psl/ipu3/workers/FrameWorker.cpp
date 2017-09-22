@@ -100,7 +100,7 @@ status_t FrameWorker::setWorkerDeviceBuffers(int memType)
     }
     status_t ret = mNode->setBufferPool(mBuffers, true, memType);
     if (ret != OK) {
-        LOGE("Unable to set buffer pool", ret);
+        LOGE("Unable to set buffer pool, ret = %d", ret);
         return ret;
     }
 
@@ -130,7 +130,7 @@ status_t FrameWorker::allocateWorkerBuffers()
                 return NO_MEMORY;
             mBuffers[i].m.userptr = reinterpret_cast<unsigned long>(buf->data());
             memset(buf->data(), 0, buf->size());
-            LOG2("mBuffers[%d].m.userptr: %p", i , mBuffers[i].m.userptr);
+            LOG2("mBuffers[%d].m.userptr: 0x%lx", i , mBuffers[i].m.userptr);
             break;
         case V4L2_MEMORY_MMAP:
             dmaBufFd = mNode->exportFrame(i);

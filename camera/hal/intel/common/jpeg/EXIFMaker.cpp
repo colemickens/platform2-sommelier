@@ -712,7 +712,7 @@ size_t EXIFMaker::makeExifInPlace(unsigned char *bufferStartAddr,
     }
     if (encoder.makeExifInPlace(bufferStartAddr, dqtAddress, &exifAttributes,
                                 jpegSize, usePadding, exifSize) == EXIF_SUCCESS) {
-        LOG1("Generated EXIF (@%p) of size: %u", bufferStartAddr, exifSize);
+        LOG1("Generated EXIF (@%p) of size: %zu", bufferStartAddr, exifSize);
         return exifSize;
     }
     return 0;

@@ -135,7 +135,7 @@ status_t BufferPools::allocateCaptureBuffers(
 
     if (v4l2Buffers.size() != mBufferPoolSize) {
         LOGE("BufferPoolSize is not matching to requested number of v4l2 buffers, \
-              v4l2 Buffer size: %d, bufferpool size: %d", \
+              v4l2 Buffer size: %lu, bufferpool size: %u", \
               v4l2Buffers.size(), mBufferPoolSize);
         return BAD_VALUE;
     }
@@ -160,7 +160,7 @@ status_t BufferPools::allocateCaptureBuffers(
         captureBuf->v4l2Buf = v4l2Buffers[i];
         captureBuf->v4l2Buf.m.userptr = (unsigned long int)captureBuf->buf->data();
 
-        LOG2("captureBuf->v4l2Buf.m.userptr: %p", captureBuf->v4l2Buf.m.userptr);
+        LOG2("captureBuf->v4l2Buf.m.userptr: %p", (void*)captureBuf->v4l2Buf.m.userptr);
         LOG2("captureBuf->v4l2Buf.index: %d", captureBuf->v4l2Buf.index);
 
         if (i >= numBufs)
@@ -239,7 +239,7 @@ status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &c
     if (mCaptureSkipBuffers.empty() == false) {
         capBuffer = mCaptureSkipBuffers.at(0);
         mCaptureSkipBuffers.erase(mCaptureSkipBuffers.begin());
-        LOG2("@%s captureBuf->v4l2Buf.m.userptr: %p", __func__, capBuffer->v4l2Buf.m.userptr);
+        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, capBuffer->v4l2Buf.m.userptr);
         LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, capBuffer->v4l2Buf.index);
         return OK;
     }

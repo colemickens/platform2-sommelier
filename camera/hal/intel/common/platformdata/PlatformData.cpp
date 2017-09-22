@@ -612,7 +612,7 @@ unsigned int PlatformData::getAiqdFileSize(std::string fileName)
         return 0;
     }
 
-    LOG1("@%s: read aiqd file: %s, size = %d", __FUNCTION__, fileName.c_str(), fileStat.st_size);
+    LOG1("@%s: read aiqd file: %s, size = %ld", __FUNCTION__, fileName.c_str(), fileStat.st_size);
     return fileStat.st_size;
 }
 
@@ -1094,7 +1094,7 @@ status_t CameraHWInfo::getCSIPortID(const std::string &deviceName, int &portId)
 
         // For sensor type there will be only one sink
         if (names.size() != 1) {
-            LOGW("Number of sinks for sensor not 1 it is %d", names.size());
+            LOGW("Number of sinks for sensor not 1 it is %zu", names.size());
         }
         if (names.size() == 0) {
             LOGW("No sink names available for %s", deviceName.c_str());

@@ -103,7 +103,7 @@ status_t SharedItemPool<ItemType>::deInit()
         return UNKNOWN_ERROR;
     }
     if (mAvailable.size() != mCapacity) {
-        LOGE("Not all items are returned when destroying pool %s (%d/%d)!",
+        LOGE("Not all items are returned when destroying pool %s (%lu/%zu)!",
                 mName, mAvailable.size(), mCapacity);
     }
     delete [] mAllocated;

@@ -306,7 +306,7 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
 
     status = setSensorFrameTimings();
     if (status != NO_ERROR) {
-        LOGE("Failed to set sensor frame timings", status);
+        LOGE("Failed to set sensor frame timings, status:%d", status);
         mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
         return status;
     }
@@ -694,7 +694,7 @@ status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool is
     }
 
     if (settings) {
-        LOG2("@%s: enqueue skip capture settings to sync manager",
+        LOG2("@%s: enqueue skip capture settings to sync manager, count:%d",
                 __FUNCTION__, count);
         for (int i = 0; i < count; i++) {
             status = applyAeParams(mLastInflightRequest->aiqCaptureSettings);

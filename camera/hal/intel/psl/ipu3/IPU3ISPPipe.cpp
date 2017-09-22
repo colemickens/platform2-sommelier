@@ -81,61 +81,61 @@ void IPU3ISPPipe::SetPipeConfig(const aic_output_t pipe_config)
 void IPU3ISPPipe::dump()
 {
     if (mAicOutput.ae_2500_config) {
-        LOGD("mAicOutput.ae_2500_config->ae.ae_grid_config.ae_en %d", mAicOutput.ae_2500_config->ae.ae_grid_config.ae_en);
-        LOGD("mAicOutput.ae_2500_config->ae.ae_grid_config.block_height %d", mAicOutput.ae_2500_config->ae.ae_grid_config.block_height);
+        LOG1("mAicOutput.ae_2500_config->ae.ae_grid_config.ae_en %d", mAicOutput.ae_2500_config->ae.ae_grid_config.ae_en);
+        LOG1("mAicOutput.ae_2500_config->ae.ae_grid_config.block_height %d", mAicOutput.ae_2500_config->ae.ae_grid_config.block_height);
     }
     if (mAicOutput.af_2500_config) {
-        LOGD("mAicOutput.af_2500_config->af.grid.grid_height %d", mAicOutput.af_2500_config->af.grid.grid_height);
-        LOGD("mAicOutput.af_2500_config->af.grid.grid_width %d", mAicOutput.af_2500_config->af.grid.grid_width);
+        LOG1("mAicOutput.af_2500_config->af.grid.grid_height %d", mAicOutput.af_2500_config->af.grid.grid_height);
+        LOG1("mAicOutput.af_2500_config->af.grid.grid_width %d", mAicOutput.af_2500_config->af.grid.grid_width);
     }
     if (mAicOutput.anr_2500_config) {
-            LOGD("mAicOutput.anr_2500_config %d", mAicOutput.anr_2500_config);
+            LOG1("mAicOutput.anr_2500_config %p", mAicOutput.anr_2500_config);
     }
     if (mAicOutput.awb_2500_config) {
-            LOGD("mAicOutput.awb_2500_config->awb.grid.grid_block_height: %d", mAicOutput.awb_2500_config->awb.grid.grid_block_height);
-            LOGD("mAicOutput.awb_2500_config->awb.grid.grid_block_width: %d", mAicOutput.awb_2500_config->awb.grid.grid_block_width);
+            LOG1("mAicOutput.awb_2500_config->awb.grid.grid_block_height: %d", mAicOutput.awb_2500_config->awb.grid.grid_block_height);
+            LOG1("mAicOutput.awb_2500_config->awb.grid.grid_block_width: %d", mAicOutput.awb_2500_config->awb.grid.grid_block_width);
     }
     if (mAicOutput.awb_fr_2500_config) {
-            LOGD("mAicOutput.awb_fr_2500_config %d", mAicOutput.awb_fr_2500_config);
+            LOG1("mAicOutput.awb_fr_2500_config %p", mAicOutput.awb_fr_2500_config);
     }
     if (mAicOutput.bnr_2500_config) {
-            LOGD("mAicOutput.bnr_2500_config %d", mAicOutput.bnr_2500_config);
+            LOG1("mAicOutput.bnr_2500_config %p", mAicOutput.bnr_2500_config);
     }
     if (mAicOutput.dm_2500_config) {
-            LOGD("mAicOutput.dm_2500_config %d", mAicOutput.dm_2500_config);
+            LOG1("mAicOutput.dm_2500_config %p", mAicOutput.dm_2500_config);
     }
     if (mAicOutput.dpc_2500_config) {
-            LOGD("mAicOutput.dpc_2500_config %d", mAicOutput.dpc_2500_config);
+            LOG1("mAicOutput.dpc_2500_config %p", mAicOutput.dpc_2500_config);
     }
     if (mAicOutput.lin_2500_config) {
-            LOGD("mAicOutput.lin_2500_config %d", mAicOutput.lin_2500_config);
+            LOG1("mAicOutput.lin_2500_config %p", mAicOutput.lin_2500_config);
     }
     if (mAicOutput.obgrid_2500_config) {
-            LOGD("mAicOutput.obgrid_2500_config %d", mAicOutput.obgrid_2500_config);
+            LOG1("mAicOutput.obgrid_2500_config %p", mAicOutput.obgrid_2500_config);
     }
     if (mAicOutput.rgbir_2500_config) {
-            LOGD("mAicOutput.rgbir_2500_config %d", mAicOutput.rgbir_2500_config);
+            LOG1("mAicOutput.rgbir_2500_config %p", mAicOutput.rgbir_2500_config);
     }
     if (mAicOutput.rgbpp_2500_config) {
-            LOGD("mAicOutput.rgbpp_2500_config %d", mAicOutput.rgbpp_2500_config);
+            LOG1("mAicOutput.rgbpp_2500_config %p", mAicOutput.rgbpp_2500_config);
     }
     if (mAicOutput.shd_2500_config) {
-            LOGD("mAicOutput.shd_2500_config %d", mAicOutput.shd_2500_config);
+            LOG1("mAicOutput.shd_2500_config %p", mAicOutput.shd_2500_config);
     }
     if (mAicOutput.tnr3_2500_config) {
-            LOGD("mAicOutput.tnr3_2500_config %d", mAicOutput.tnr3_2500_config);
+            LOG1("mAicOutput.tnr3_2500_config %p", mAicOutput.tnr3_2500_config);
     }
     if (mAicOutput.xnr_2500_config) {
-            LOGD("mAicOutput.xnr_2500_config %d", mAicOutput.xnr_2500_config);
+            LOG1("mAicOutput.xnr_2500_config %p", mAicOutput.xnr_2500_config);
     }
     if (mAicOutput.yuvp1_2500_config) {
-            LOGD("mAicOutput.yuvp1_2500_config %d", mAicOutput.yuvp1_2500_config);
+            LOG1("mAicOutput.yuvp1_2500_config %p", mAicOutput.yuvp1_2500_config);
     }
     if (mAicOutput.yuvp1_c0_2500_config) {
-            LOGD("mAicOutput.yuvp1_c0_2500_config %d", mAicOutput.yuvp1_c0_2500_config);
+            LOG1("mAicOutput.yuvp1_c0_2500_config %p", mAicOutput.yuvp1_c0_2500_config);
     }
     if (mAicOutput.yuvp2_2500_config) {
-            LOGD("mAicOutput.yuvp2_2500_config %d", mAicOutput.yuvp2_2500_config);
+            LOG1("mAicOutput.yuvp2_2500_config %p", mAicOutput.yuvp2_2500_config);
     }
 }
 

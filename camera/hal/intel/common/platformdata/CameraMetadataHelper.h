@@ -82,7 +82,7 @@ bool getSetting(const camera_metadata_ro_entry_t& supported,
              get_camera_metadata_section_name(setting.tag),
              get_camera_metadata_tag_name(setting.tag));
     } else {
-        LOGE("count for settings isn't one, can't check it, count:%d", setting.count);
+        LOGE("count for settings isn't one, can't check it, count:%zu", setting.count);
     }
 
     getValueByType(supported, 0, &supportedVal);

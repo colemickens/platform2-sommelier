@@ -62,7 +62,7 @@ bool Intel3aCommon::requestSync(IPC_CMD cmd)
 
 void Intel3aCommon::freeShmMem(ShmMemInfo& shm)
 {
-    LOG1("@%s, mHandle:%d, mFd:%d, mName:%d, mSize:%d, mAddr:%d",
+    LOG1("@%s, mHandle:%d, mFd:%d, mName:%s, mSize:%d, mAddr:%p",
         __FUNCTION__, shm.mHandle, shm.mFd, shm.mName.c_str(), shm.mSize, shm.mAddr);
     if (shm.mHandle < 0 || shm.mFd < 0) {
         LOGE("@%s, mHandle:%d, mFd:%d, one of them < 0", __FUNCTION__, shm.mHandle, shm.mFd);

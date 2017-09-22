@@ -141,7 +141,7 @@ status_t InputSystem::handleMessageConfigure(Message &msg)
 
     status = gc->getSensorFrameParams(mMediaCtlHelper.getConfigResults().sensorFrameParams);
     if (status != NO_ERROR) {
-        LOGE("Failed to calculate Frame Params", status);
+        LOGE("Failed to calculate Frame Params, status:%d", status);
         goto exit;
     }
 
@@ -163,7 +163,7 @@ exit:
 status_t InputSystem::opened(IPU3NodeNames isysNodeName,
         std::shared_ptr<V4L2VideoNode> videoNode)
 {
-    LOG1("@%s: isysNodeName:%d", __FUNCTION__, __LINE__, isysNodeName);
+    LOG1("@%s: isysNodeName:%d", __FUNCTION__, isysNodeName);
     mConfiguredNodes.push_back(videoNode);
     mConfiguredNodesPerName.insert(std::make_pair(isysNodeName,
             videoNode));
@@ -271,7 +271,7 @@ status_t InputSystem::handleMessageReleaseBufferPools()
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
         ret = mConfiguredNodes[i]->stop(false);
         if (ret < 0) {
-            LOGE("Failed (%d)", i);
+            LOGE("Failed (%zu)", i);
             status = UNKNOWN_ERROR;
         }
     }
@@ -694,7 +694,7 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
         mMessageQueue.send(&msg);
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
-            LOG2("@%s: %d inactive nodes for request %d, retry poll", __FUNCTION__,
+            LOG2("@%s: %lu inactive nodes for request %d, retry poll", __FUNCTION__,
                                                                       pollMsg->data.inactiveDevices->size(),
                                                                       pollMsg->data.reqId);
             pollMsg->data.polledDevices->clear();

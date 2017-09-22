@@ -160,7 +160,7 @@ template <class MessageType, class MessageId>
 void MessageQueue<MessageType, MessageId>::reply(MessageId replyId, status_t status)
 {
     if (replyId < 0 || replyId > mNumReply) {
-        LOGE("Camera_MessageQueue error: incorrect replyId\n", replyId);
+        LOGE("Camera_MessageQueue error: incorrect replyId\n");
         return;
     }
 

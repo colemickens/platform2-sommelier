@@ -662,7 +662,7 @@ status_t AAARunner::processSAResults(RequestCtrlState &reqState)
             }
         }
         if (errCount) {
-            LOGE("Error - SA produced too small values (%d/%d)!", errCount, size);
+            LOGE("Error - SA produced too small values (%zu/%zu)!", errCount, size);
             status = BAD_VALUE;
         }
     }

@@ -35,7 +35,7 @@ IPCCmc::~IPCCmc()
 
 bool IPCCmc::clientFlattenInit(const ia_binary_data& aiqb, cmc_init_params* params)
 {
-    LOG1("@%s, aiqb: data:%p, size:%p, params:%p", __FUNCTION__, aiqb.data, aiqb.size, params);
+    LOG1("@%s, aiqb: data:%p, size:%d, params:%p", __FUNCTION__, aiqb.data, aiqb.size, params);
     CheckError(params == nullptr, false, "@%s, pData is nullptr", __FUNCTION__);
     CheckError(aiqb.data == nullptr, false, "@%s, aiqb_data.data is nullptr", __FUNCTION__);
     CheckError(aiqb.size == 0, false, "@%s, aiqb_data.size is 0", __FUNCTION__);

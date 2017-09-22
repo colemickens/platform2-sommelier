@@ -81,9 +81,9 @@ ImguUnit::~ImguUnit()
     }
 
     if (mMessagesUnderwork.size())
-        LOGW("There are messages that are not processed %d:", mMessagesUnderwork.size());
+        LOGW("There are messages that are not processed %lu:", mMessagesUnderwork.size());
     if (mMessagesPending.size())
-        LOGW("There are pending messages %d:", mMessagesPending.size());
+        LOGW("There are pending messages %lu:", mMessagesPending.size());
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
@@ -194,7 +194,7 @@ void ImguUnit::freePublicStatBuffers()
             DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_1);
             DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_2);
         } else {
-            LOGE("Could not acquire filter response [%d] for deletion - leak?", i);
+            LOGE("Could not acquire filter response [%zu] for deletion - leak?", i);
         }
     }
     availableItems = mRgbsGridBuffPool->availableItems();
@@ -203,7 +203,7 @@ void ImguUnit::freePublicStatBuffers()
         if (status == OK && rgbsGrid.get() != nullptr) {
             DELETE_ARRAY_AND_NULLIFY(rgbsGrid->blocks_ptr);
         } else {
-            LOGE("Could not acquire RGBS grid [%d] for deletion - leak?", i);
+            LOGE("Could not acquire RGBS grid [%zu] for deletion - leak?", i);
         }
     }
 }
@@ -506,7 +506,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
 std::shared_ptr<SWOutputFrameWorker>
 ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName, ICaptureEventSource* source)
 {
-    LOG1("@%s nodeName 0x%x, mapping len %d",  __FUNCTION__, nodeName, mStreamListenerMapping.size());
+    LOG1("@%s nodeName 0x%x, mapping len %lu",  __FUNCTION__, nodeName, mStreamListenerMapping.size());
     std::map<IPU3NodeNames, camera3_stream_t *>::iterator it;
     it = mStreamListenerMapping.find(nodeName);
     if (it != mStreamListenerMapping.end()) {
@@ -562,7 +562,7 @@ ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
         const std::vector<camera3_stream_buffer> *inBufs = request->getInputBuffers();
         int reqId = request->getId();
 
-        LOG2("@%s: Req id %d,  Num outbufs %d Num inbufs %d",
+        LOG2("@%s: Req id %d,  Num outbufs %lu Num inbufs %lu",
              __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, inBufs ? inBufs->size() : 0);
 
         if (captureBufs.rawNonScaledBuffer.get() != nullptr) {
@@ -863,7 +863,7 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         msg.pollEvent.polledDevices = numPolledDevices;
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
-            LOG2("@%s: %d inactive nodes for request %d, retry poll", __FUNCTION__,
+            LOG2("@%s: %lu inactive nodes for request %u, retry poll", __FUNCTION__,
                                                                       pollMsg->data.inactiveDevices->size(),
                                                                       pollMsg->data.reqId);
             pollMsg->data.polledDevices->clear();
