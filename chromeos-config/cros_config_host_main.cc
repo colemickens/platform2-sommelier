@@ -8,16 +8,18 @@
 #include <iostream>
 #include <string>
 
-#include "base/command_line.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/logging.h"
-#include "brillo/flag_helper.h"
+#include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <brillo/flag_helper.h>
+
 #include "chromeos-config/libcros_config/cros_config.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(get_all, false,
-      "Returns the string value at path + key for all models.");
+      "Lists the string value at path + key for all models or a blank line "
+      "if the property doesn't exist.");
   DEFINE_bool(list_models, false, "Lists all models in the config file.");
   DEFINE_string(model, "", "Optionally specifies which model name to use.")
 

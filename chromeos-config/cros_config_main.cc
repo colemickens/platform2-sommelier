@@ -7,9 +7,10 @@
 #include <iostream>
 #include <string>
 
-#include "base/command_line.h"
-#include "base/files/file_path.h"
-#include "brillo/flag_helper.h"
+#include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <brillo/flag_helper.h>
+
 #include "chromeos-config/libcros_config/cros_config.h"
 
 int main(int argc, char* argv[]) {

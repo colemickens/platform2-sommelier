@@ -147,7 +147,6 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
   base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &model_);
 
-
   const void* blob = blob_.c_str();
   int ret = fdt_check_header(blob);
   if (ret) {
