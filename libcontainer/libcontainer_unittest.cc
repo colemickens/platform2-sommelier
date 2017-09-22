@@ -369,7 +369,8 @@ TEST_F(container_test, test_mount_tmp_start) {
   EXPECT_EQ('c', gmcg.add_dev_type[1]);
 
   ASSERT_EQ(true, mknod_called);
-  EXPECT_STREQ(mkdtemp_root.Append("root/dev/null").value().c_str(),
+  base::FilePath node_path = mkdtemp_root.Append("root/dev/null");
+  EXPECT_STREQ(node_path.value().c_str(),
                mknod_call_args.pathname.value().c_str());
   EXPECT_EQ(mknod_call_args.mode,
             static_cast<mode_t>(S_IRWXU | S_IRWXG | S_IFCHR));
