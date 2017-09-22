@@ -30,6 +30,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
       close_callback_(close_callback),
+      device_closed_(false),
       camera_device_(camera_device) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
@@ -303,7 +304,11 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 int32_t CameraDeviceAdapter::Close() {
   // Close the device.
   VLOGF_ENTER();
+  if (device_closed_) {
+    return 0;
+  }
   int32_t ret = camera_device_->common.close(&camera_device_->common);
+  device_closed_ = true;
   DCHECK_EQ(ret, 0);
   fence_sync_thread_.Stop();
   close_callback_.Run();
