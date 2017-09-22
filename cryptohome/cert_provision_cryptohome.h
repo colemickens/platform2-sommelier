@@ -23,6 +23,8 @@ class CryptohomeProxy {
  public:
   CryptohomeProxy() = default;
 
+  virtual ~CryptohomeProxy() {}
+
   // Initializes the proxy.
   // Returns operation result.
   virtual OpResult Init() = 0;

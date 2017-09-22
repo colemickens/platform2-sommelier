@@ -22,6 +22,8 @@ class PCAProxy {
  public:
   explicit PCAProxy(const std::string& pca_url) : pca_url_(pca_url) {}
 
+  virtual ~PCAProxy() {}
+
   // Sends |request| to the PCA, waits for the |response|. |action| is appended
   // to the PCA base url to form the url for the POST request.
   virtual OpResult MakeRequest(const std::string& action,
