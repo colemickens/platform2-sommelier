@@ -624,7 +624,6 @@
         ArcInstanceStopped:
         @reason: The value of ArcContainerStopReason.
         @container_instance_id: opaque identifier of the stopped container.
-                See also StartArcInstance.
 
         Sent when ARC instance is stopped. Maybe clean shutdown, upgrade
         failure, or crash.

@@ -353,7 +353,7 @@ struct ArcPaths {
   const base::FilePath restorecon_whitelist_sync{kRestoreconWhitelistSync};
   // session_manager must start arc-setup job with ANDROID_DATA_DIR parameter
   // containing the path of the real android-data directory. They are passed
-  // only when the mode is either --setup or --boot-continue.
+  // only when the mode is --boot-continue.
   const bool kHasAndroidDataDir = mode == Mode::BOOT_CONTINUE;
   const base::FilePath android_data_directory =
       kHasAndroidDataDir ? GetFilePathOrDie(env.get(), "ANDROID_DATA_DIR")
@@ -1142,7 +1142,6 @@ void ArcSetup::SetUpSharedMountPoints() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kRootGid,
                             arc_paths_->shared_mount_directory));
-
   // Use 0755 to make sure only the real root user can write to the shared
   // mount point.
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->shared_mount_directory,

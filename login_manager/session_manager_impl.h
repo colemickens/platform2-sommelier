@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <map>
 #include <memory>
@@ -380,38 +381,19 @@ class SessionManagerImpl
   // Creates a server socket for ARC and stores the descriptor in |out_fd|.
   bool CreateArcServerSocket(base::ScopedFD* out_fd, brillo::ErrorPtr* error);
 
-  // Core implementation of StartArcMiniContainer().
-  bool StartArcMiniContainerInternal(
-      const StartArcMiniContainerRequest& request,
-      std::string* container_instance_id_out,
-      brillo::ErrorPtr* error_out);
-
   // Starts the Android container for ARC. If the container has started,
   // container_instance_id will be returned. Otherwise, an empty string
   // is returned and brillo::Error instance is set to |error_out|.
   // After this succeeds, in case of ARC stop, OnAndroidContainerStopped()
   // is called with the returned container_instance_id.
-  std::string StartArcContainer(const std::string& init_signal,
-                                const std::vector<std::string>& init_keyvals,
+  std::string StartArcContainer(const std::vector<std::string>& env_vars,
                                 brillo::ErrorPtr* error_out);
 
-  // Starts the network interface for the Android container for ARC.
-  // On success, returns true. Otherwise returns false and brillo::Error
-  // instance is set to |error_out|.
-  bool StartArcNetwork(brillo::ErrorPtr* error_out);
-
-  // Core implementation of UpgradeArcContainer().
-  bool UpgradeArcContainerInternal(const UpgradeArcContainerRequest& request,
-                                   base::ScopedClosureRunner* scoped_runner,
-                                   brillo::dbus_utils::FileDescriptor* fd_out,
-                                   brillo::ErrorPtr* error_out);
-
-  // Sends an init signal to turn the container from the one for login screen
-  // into a fully featured one. If that succeeds, this function also sends an
-  // init signal for starting  the network interface for the container.
-  // Returns true if both succeed.
-  bool ContinueArcBoot(const std::vector<std::string>& init_keyvals,
-                       brillo::ErrorPtr* error_out);
+  // Creates environment variables passed to upstart for container upgrade.
+  std::vector<std::string> CreateUpgradeArcEnvVars(
+      const UpgradeArcContainerRequest& request,
+      const std::string& account_id,
+      pid_t pid);
 
   // Called when the container fails to continue booting.
   void OnContinueArcBootFailed();
