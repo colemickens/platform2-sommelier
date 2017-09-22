@@ -47,13 +47,8 @@ public:
     void deregisterBuffers(const int32_t buffer_handles[], uint32_t size);
 
 private:
-    Intel3AServer():
-        mThread("Intel3AServer Thread"),
-        mCallback(nullptr) {
-        mThread.Start();
-        mHandleSeed = 1;
-    }
-    ~Intel3AServer() {}
+    Intel3AServer();
+    ~Intel3AServer();
 
     void returnCallback(uint32_t status, int32_t buffer_handle);
     int parseReqHeader(const uint8_t req_header[], uint32_t size, uint8_t* cmd);
@@ -62,6 +57,8 @@ private:
 private:
     base::Thread mThread;
     const camera_algorithm_callback_ops_t* mCallback;
+
+    bool mIaLogInitialized;
 
     // key: shared memory fd from client
     // value: handle that returns from RegisterBuffer()

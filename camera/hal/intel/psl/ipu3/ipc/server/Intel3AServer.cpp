@@ -24,6 +24,8 @@
 #include "LogHelper.h"
 #include "RuntimeParamsHelper.h"
 
+#include <ia_log.h>
+
 namespace intel {
 namespace camera {
 
@@ -34,6 +36,27 @@ Intel3AServer* Intel3AServer::getInstance()
     return &instance;
 }
 
+Intel3AServer::Intel3AServer():
+    mThread("Intel3AServer Thread"),
+    mCallback(nullptr),
+    mIaLogInitialized(false)
+{
+    LogHelper::setDebugLevel();
+
+    LOG1("@%s", __FUNCTION__);
+
+    mThread.Start();
+    mHandleSeed = 1;
+}
+
+Intel3AServer::~Intel3AServer()
+{
+    LOG1("@%s", __FUNCTION__);
+
+    if (mIaLogInitialized)
+        ia_log_deinit();
+}
+
 int32_t Intel3AServer::initialize(const camera_algorithm_callback_ops_t* callback_ops)
 {
     LOG1("@%s, callback_ops:%p", __FUNCTION__, callback_ops);
@@ -41,6 +64,19 @@ int32_t Intel3AServer::initialize(const camera_algorithm_callback_ops_t* callbac
     CheckError((!callback_ops), -EINVAL, "@%s, the callback_ops is nullptr", __FUNCTION__);
 
     mCallback = callback_ops;
+
+    // ia log redirection
+    if (mIaLogInitialized == false) {
+        ia_env env = {
+            &LogHelper::cca_print_debug,
+            &LogHelper::cca_print_error,
+            &LogHelper::cca_print_info
+        };
+        ia_err ret = ia_log_init(&env);
+        CheckError(ret != ia_err_none, -ENOMEM, "@%s, ia_log_init fails, ret:%d", __FUNCTION__, ret);
+        mIaLogInitialized = true;
+    }
+
     return 0;
 }
 
