@@ -80,7 +80,7 @@ class SkyCamProxy;
 class ParameterWorker: public FrameWorker
 {
 public:
-    ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId);
+    ParameterWorker(std::shared_ptr<V4L2VideoNode> node, const StreamConfig& activeStreams, int cameraId);
     virtual ~ParameterWorker();
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);
@@ -117,13 +117,16 @@ private:
 private:
     std::shared_ptr<SkyCamProxy> mSkyCamAIC;
 
-    IPU3AICRuntimeParams mStillRuntimeParams;
-    PipeConfig mStillPipeConfig;
+    IPU3AICRuntimeParams mVideoRuntimeParams;
+    PipeConfig mVideoPipeConfig;
 
     IPU3AICRuntimeParams mPreviewRuntimeParams;
     PipeConfig mPreviewPipeConfig;
 
     IPU3ISPPipe *mIspPipes[NUM_ISP_PIPES];
+
+    // Runtime parameter using currently which can be mVideoRuntimeParams or mPreviewRuntimeParams
+    IPU3AICRuntimeParams *mCurRuntimeParams;
 
     ia_binary_data mCpfData;
     ia_cmc_t *mCmcData; /* Aiq owns this */
@@ -134,7 +137,8 @@ private:
 
     aic_config *mAicConfig;
 
-    std::mutex mStillParamsMutex;
+    std::mutex mParamsMutex;
+    StreamConfig mActiveStreams;
 
 };
 

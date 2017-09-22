@@ -434,7 +434,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             videoConfig->pollableWorkers.push_back(statWorker);
             videoConfig->nodes.push_back(statWorker->getNode());
         } else if (it.first == IMGU_NODE_PARAM) {
-            worker = std::make_shared<ParameterWorker>(it.second, mCameraId);
+            worker = std::make_shared<ParameterWorker>(it.second, mActiveStreams, mCameraId);
             mFirstWorkers.push_back(worker);
             videoConfig->deviceWorkers.push_back(worker); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO) {

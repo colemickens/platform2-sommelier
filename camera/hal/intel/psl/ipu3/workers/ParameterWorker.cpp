@@ -35,15 +35,19 @@ namespace camera2 {
 
 const unsigned int PARA_WORK_BUFFERS = 1;
 
-ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
+ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node,
+                                 const StreamConfig& activeStreams,
+                                 int cameraId) :
         FrameWorker(node, cameraId, PARA_WORK_BUFFERS, "ParameterWorker"),
         mSkyCamAIC(nullptr),
+        mCurRuntimeParams(nullptr),
         mCmcData(nullptr),
-        mAicConfig(nullptr)
+        mAicConfig(nullptr),
+        mActiveStreams(activeStreams)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     CLEAR(mIspPipes);
-    CLEAR(mStillRuntimeParams);
+    CLEAR(mVideoRuntimeParams);
     CLEAR(mPreviewRuntimeParams);
     CLEAR(mCpfData);
     CLEAR(mGridInfo);
@@ -52,7 +56,7 @@ ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int camera
 ParameterWorker::~ParameterWorker()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    RuntimeParamsHelper::deleteAiStructs(mStillRuntimeParams);
+    RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
     RuntimeParamsHelper::deleteAiStructs(mPreviewRuntimeParams);
     for (int i = 0; i < NUM_ISP_PIPES; i++) {
         delete mIspPipes[i];
@@ -93,17 +97,17 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         return NO_INIT;
     }
 
-    ret = RuntimeParamsHelper::allocateAiStructs(mStillRuntimeParams);
+    ret = RuntimeParamsHelper::allocateAiStructs(mVideoRuntimeParams);
     if (ret != OK) {
         LOGE("Cannot allocate AIC struct");
-        RuntimeParamsHelper::deleteAiStructs(mStillRuntimeParams);
+        RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
         return ret;
     }
 
     ret = RuntimeParamsHelper::allocateAiStructs(mPreviewRuntimeParams);
     if (ret != OK) {
         LOGE("Cannot allocate AIC struct");
-        RuntimeParamsHelper::deleteAiStructs(mStillRuntimeParams);
+        RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
         RuntimeParamsHelper::deleteAiStructs(mPreviewRuntimeParams);
         return ret;
     }
@@ -135,15 +139,15 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         fillAicInputParams(sensorParams, mPreviewPipeConfig, mPreviewRuntimeParams);
     }
 
-    bool foundStill = config->doesNodeExist("imgu:video");
-    if (foundStill) {
-        ret = getPipeConfig(mStillPipeConfig, config, GC_VIDEO);
+    bool foundVideo = config->doesNodeExist("imgu:video");
+    if (foundVideo) {
+        ret = getPipeConfig(mVideoPipeConfig, config, GC_VIDEO);
         if (ret != OK) {
             LOGE("Failed to get pipe config for video pipe");
             return ret;
         }
-        overrideCPFFMode(&mStillPipeConfig, config);
-        fillAicInputParams(sensorParams, mStillPipeConfig, mStillRuntimeParams);
+        overrideCPFFMode(&mVideoPipeConfig, config);
+        fillAicInputParams(sensorParams, mVideoPipeConfig, mVideoRuntimeParams);
 
         foundPreview = false;
     }
@@ -153,24 +157,23 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     }
 
     ia_cmc_t* cmc = reinterpret_cast<ia_cmc_t*>(cmcHandle);
-    if (foundStill) {
-        if (mSkyCamAIC == nullptr) {
-            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mStillRuntimeParams, 0, 0);
-            if (mSkyCamAIC == nullptr) {
-                LOGE("Not able to create SkyCam AIC");
-                return NO_MEMORY;
+    if (mActiveStreams.blobStreams.empty() || mActiveStreams.yuvStreams.empty()) {
+        mCurRuntimeParams = foundVideo ? &mVideoRuntimeParams : &mPreviewRuntimeParams;
+    } else {
+        mCurRuntimeParams = &mVideoRuntimeParams;
+        // Check if jpeg stream has the largest resolution
+        for (auto it : mActiveStreams.yuvStreams) {
+            if (it->width > mActiveStreams.blobStreams[0]->width
+                || it->height > mActiveStreams.blobStreams[0]->height) {
+               mCurRuntimeParams = &mPreviewRuntimeParams;
+               break;
             }
         }
     }
 
-    if (foundPreview) {
-        if (mSkyCamAIC == nullptr) {
-            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mPreviewRuntimeParams, 0, 0);
-            if (mSkyCamAIC == nullptr) {
-                LOGE("Not able to create SkyCam AIC");
-                return NO_MEMORY;
-            }
-        }
+    if (mSkyCamAIC == nullptr) {
+        mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, mCurRuntimeParams, 0, 0);
+        CheckError((mSkyCamAIC == nullptr), NO_MEMORY, "Not able to create SkyCam AIC");
     }
 
     FrameInfo frame;
@@ -210,23 +213,23 @@ status_t ParameterWorker::setGridInfo(uint32_t csiBeWidth)
 void ParameterWorker::dump()
 {
     LOGD("mRuntimeParams");
-    if (mStillRuntimeParams.awb_results)
-        LOGD("  mRuntimeParams.awb_results: %f", mStillRuntimeParams.awb_results->accurate_b_per_g);
-    if (mStillRuntimeParams.frame_resolution_parameters)
-        LOGD("  mRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding %d", mStillRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding);
-    if (mStillRuntimeParams.exposure_results)
-        LOGD("  mRuntimeParams.exposure_results->analog_gain: %f", mStillRuntimeParams.exposure_results->analog_gain);
+    if (mVideoRuntimeParams.awb_results)
+        LOGD("  mRuntimeParams.awb_results: %f", mVideoRuntimeParams.awb_results->accurate_b_per_g);
+    if (mVideoRuntimeParams.frame_resolution_parameters)
+        LOGD("  mRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding %d", mVideoRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding);
+    if (mVideoRuntimeParams.exposure_results)
+        LOGD("  mRuntimeParams.exposure_results->analog_gain: %f", mVideoRuntimeParams.exposure_results->analog_gain);
 }
 
 status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::lock_guard<std::mutex> l(mStillParamsMutex);
+    std::lock_guard<std::mutex> l(mParamsMutex);
 
     mMsg = msg;
-    updateAicInputParams(mMsg, mStillRuntimeParams);
+    updateAicInputParams(mMsg, *mCurRuntimeParams);
     if (mSkyCamAIC)
-        mSkyCamAIC->Run(mStillRuntimeParams);
+        mSkyCamAIC->Run(*mCurRuntimeParams);
     mAicConfig = mSkyCamAIC->GetAicConfig();
     if (mAicConfig == nullptr) {
         LOGE("Could not get AIC config");
