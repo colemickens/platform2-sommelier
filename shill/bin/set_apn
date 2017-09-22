@@ -20,16 +20,16 @@
 
 PROGRAM=$(basename $0)
 FLAGS_HELP="Usage:
-
   ${PROGRAM}
-
-or
-
   ${PROGRAM} [-n <network_id>] [-u <username] [-p <password] <apn>
-
-or
-
   ${PROGRAM} -c
+
+Set the APN to use when connecting to the network specified by <network-id>.
+If <network-id> is not specified, use the network-id of the currently
+registered network.
+
+The -c option clears the APN to be used, so that the default APN will be used
+instead.
 "
 
 . /usr/share/misc/shflags
@@ -147,6 +147,13 @@ get_cellular_service_network_id() {
   get_service_property "${service}" "Cellular.ServingOperator\/[0-9]\/code"
 }
 
+DEFINE_string 'network_id' "" 'network ID (MCCMNC) of the operator with which the APN should be used' 'n'
+DEFINE_string 'username' "" 'username to be used with the APN' 'u'
+DEFINE_string 'password' "" 'password to be used with the APN' 'p'
+DEFINE_boolean 'clear' false 'clear any APN that has been previously set' 'c'
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
 service="$(get_first_cellular_service)"
 if [ -z "${service}" ]; then
   echo "No cellular service exists."
@@ -156,13 +163,6 @@ fi
 if [ $# -lt 1 ]; then
   display_apn "${service}"
 fi
-
-DEFINE_string 'network_id' "" 'network ID (MCCMNC) of the operator with which the APN should be used' 'n'
-DEFINE_string 'username' "" 'username to be used with the APN' 'u'
-DEFINE_string 'password' "" 'password to be used with the APN' 'p'
-DEFINE_boolean 'clear' false 'clear any APN that has been previously set' 'c'
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
 
 network_id="${FLAGS_network_id}"
 if [ -z "${FLAGS_network_id}" ]; then

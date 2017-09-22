@@ -22,13 +22,13 @@
 PROGRAM=$(basename $0)
 FLAGS_HELP="Usage:
 
-Show current PPP username
+Show the existing PPP username for the cellular connection.
   ${PROGRAM}
 
-Set PPP username and/or password
+Set the PPP username and/or password for an existing cellular connection.
   ${PROGRAM} [-u <username>] [-p <password>]
 
-Clear PPP username and password
+Clear any PPP username and PPP password for an existing cellular connection.
   ${PROGRAM} -c
 "
 
@@ -167,6 +167,13 @@ move_service_to_profile() {
   fi
 }
 
+DEFINE_string 'username' "" 'PPP username for the Service' 'u'
+DEFINE_string 'password' "" 'PPP password for the Service' 'p'
+DEFINE_boolean 'clear' false \
+  'clear any username and password that has been previously set' 'c'
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
 service="$(get_first_cellular_service)"
 if [ -z "${service}" ]; then
   echo "No cellular service exists."
@@ -176,13 +183,6 @@ fi
 if [ $# -lt 1 ]; then
   display_username "${service}"
 fi
-
-DEFINE_string 'username' "" 'PPP username for the Service' 'u'
-DEFINE_string 'password' "" 'PPP password for the Service' 'p'
-DEFINE_boolean 'clear' false \
-  'clear any username and password that has been previously set' 'c'
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
 
 if [ "${FLAGS_clear}" -ne 0 ]; then
   if [ $# -ne 0 ]; then

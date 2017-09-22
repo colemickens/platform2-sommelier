@@ -18,12 +18,11 @@
 # Set the ARP gateway.
 
 FLAGS_HELP="Usage:
-
   $(basename $0)
-
-or
-
   $(basename $0) [true | false]
+
+Turn on extra network state checking to make sure the default gateway
+is reachable.
 "
 
 FLIMFLAM=org.chromium.flimflam
@@ -32,7 +31,7 @@ IMANAGER=$FLIMFLAM.Manager
 usage() {
   echo "$*"
   echo
-  echo $FLAGS_HELP
+  echo "${FLAGS_HELP}"
   exit 1
 }
 
