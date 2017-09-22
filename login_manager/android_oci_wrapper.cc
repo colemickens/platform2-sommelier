@@ -81,8 +81,17 @@ void AndroidOciWrapper::RequestJobExit() {
 void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
   pid_t pid;
   if (GetContainerPID(&pid) && !system_utils_->ProcessIsGone(pid, timeout)) {
+    LOG(INFO) << "Killing container " << pid;
     if (system_utils_->kill(pid, -1, SIGKILL))
       PLOG(ERROR) << "Failed to kill container " << pid;
+
+    // Reap container process here. run_oci uses kill(2) to detect whether the
+    // process is gone, so reap it here to avoid kernel telling run_oci that
+    // the process is still there. We killed |pid| just now so we won't need
+    // more than 1s to reap it, but I'll give it 5s because this failure is not
+    // recoverable until next reboot.
+    if (!system_utils_->ProcessIsGone(pid, base::TimeDelta::FromSeconds(5)))
+      LOG(ERROR) << "Container process " << pid << " is still here";
   }
 
   CleanUpContainer();
