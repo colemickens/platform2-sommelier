@@ -16,6 +16,7 @@
 
 #include <base/bind.h>
 #include <base/callback_forward.h>
+#include <base/callback_helpers.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -30,6 +31,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
+#include <libcontainer/config.h>
+#include <libcontainer/container.h>
 #include <libcontainer/libcontainer.h>
 
 #include "run_oci/container_config_parser.h"
@@ -42,9 +45,6 @@ using run_oci::BindMount;
 using run_oci::BindMounts;
 using run_oci::ContainerOptions;
 using run_oci::OciConfigPtr;
-
-using ContainerConfigPtr = std::unique_ptr<container_config,
-                                           decltype(&container_config_destroy)>;
 
 constexpr base::FilePath::CharType kRunContainersPath[] =
     FILE_PATH_LITERAL("/run/containers");
@@ -78,73 +78,6 @@ const std::map<std::string, int> kSignalMap = {
     SIGNAL_MAP_ENTRY(WINCH), SIGNAL_MAP_ENTRY(POLL),   SIGNAL_MAP_ENTRY(IO),
     SIGNAL_MAP_ENTRY(PWR),   SIGNAL_MAP_ENTRY(SYS),
 #undef SIGNAL_MAP_ENTRY
-};
-
-// WaitablePipe provides a way for one process to wait on another. This only
-// uses the read(2) and close(2) syscalls, so it can work even in a restrictive
-// environment. Each process must call only one of Wait() and Signal() exactly
-// once.
-struct WaitablePipe {
-  WaitablePipe() {
-    if (pipe(pipe_fds) == -1)
-      PLOG(FATAL) << "Failed to create pipe";
-  }
-
-  ~WaitablePipe() {
-    if (pipe_fds[0] != -1)
-      close(pipe_fds[0]);
-    if (pipe_fds[1] != -1)
-      close(pipe_fds[1]);
-  }
-
-  void Wait() {
-    char buf;
-
-    close(pipe_fds[1]);
-    HANDLE_EINTR(read(pipe_fds[0], &buf, sizeof(buf)));
-    close(pipe_fds[0]);
-
-    pipe_fds[0] = -1;
-    pipe_fds[1] = -1;
-  }
-
-  void Signal() {
-    close(pipe_fds[0]);
-    close(pipe_fds[1]);
-
-    pipe_fds[0] = -1;
-    pipe_fds[1] = -1;
-  }
-
-  int pipe_fds[2];
-};
-
-// PreStartHookState holds two WaitablePipes so that the container can wait for
-// its parent to run prestart hooks just prior to calling execve(2).
-struct PreStartHookState {
-  WaitablePipe reached_pipe;
-  WaitablePipe ready_pipe;
-};
-
-// DeferredRunner ensures a base::Closure is run when it goes out of scope.
-class DeferredRunner {
- public:
-  explicit DeferredRunner(base::Closure closure = base::Closure())
-      : closure_(std::move(closure)) {}
-
-  ~DeferredRunner() {
-    if (closure_.is_null())
-      return;
-    closure_.Run();
-  }
-
-  void Reset(base::Closure closure = base::Closure()) {
-    closure_ = std::move(closure);
-  }
-
- private:
-  base::Closure closure_;
-  DISALLOW_COPY_AND_ASSIGN(DeferredRunner);
 };
 
 std::ostream& operator<<(std::ostream& o, const OciHook& hook) {
@@ -408,7 +341,7 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
 // Generates OCI-compliant, JSON-formatted container state. This is
 // pretty-printed so that bash scripts can more easily grab the fields instead
 // of having to parse the JSON blob.
-std::string ContainerState(int child_pid,
+std::string ContainerState(pid_t child_pid,
                            const std::string& container_id,
                            const base::FilePath& bundle_dir,
                            const base::FilePath& container_dir,
@@ -493,45 +426,44 @@ bool RunOneHook(const OciHook& hook,
 }
 
 bool RunHooks(const std::vector<OciHook>& hooks,
-              int child_pid,
+              pid_t* child_pid,
               const std::string& container_id,
               const base::FilePath& bundle_dir,
               const base::FilePath& container_dir,
               const std::string& hook_stage,
               const std::string& status) {
+  if (*child_pid == -1) {
+    // If the child PID is not present, that means that the container failed to
+    // run at least to a point where there was a PID at all. Hooks do not need
+    // to be run in that case.
+    return false;
+  }
   bool success = true;
   std::string container_state = ContainerState(
-      child_pid, container_id, bundle_dir, container_dir, status);
+      *child_pid, container_id, bundle_dir, container_dir, status);
   for (const auto& hook : hooks)
     success &= RunOneHook(hook, hook_stage, container_state);
+  if (!success)
+    LOG(WARNING) << "Error running " << hook_stage << " hooks";
   return success;
 }
 
-void RunPostStopHooks(const std::vector<OciHook>& hooks,
-                      int child_pid,
-                      const std::string& container_id,
-                      const base::FilePath& bundle_dir,
-                      const base::FilePath& container_dir) {
-  if (!RunHooks(hooks,
-                child_pid,
-                container_id,
-                bundle_dir,
-                container_dir,
-                "poststop",
-                "stopped")) {
-    LOG(WARNING) << "Error running poststop hooks";
-  }
-}
-
-// A callback that is run in the container process just before calling execve(2)
-// that waits for the parent process to run all the prestart hooks.
-int WaitForPreStartHooks(void* payload) {
-  PreStartHookState* state = reinterpret_cast<PreStartHookState*>(payload);
-
-  state->reached_pipe.Signal();
-  state->ready_pipe.Wait();
-
-  return 0;
+bool SaveChildPidAndRunHooks(const std::vector<OciHook>& hooks,
+                             pid_t* child_pid,
+                             const std::string& container_id,
+                             const base::FilePath& bundle_dir,
+                             const base::FilePath& container_dir,
+                             const std::string& hook_stage,
+                             const std::string& status,
+                             pid_t container_pid) {
+  *child_pid = container_pid;
+  return RunHooks(hooks,
+                  child_pid,
+                  container_id,
+                  bundle_dir,
+                  container_dir,
+                  hook_stage,
+                  status);
 }
 
 void CleanUpContainer(const base::FilePath& container_dir) {
@@ -577,8 +509,7 @@ int RunOci(const base::FilePath& bundle_dir,
     return -1;
   }
 
-  DeferredRunner cleanup;
-
+  base::ScopedClosureRunner cleanup;
   if (detach_after_start) {
     container_dir = base::FilePath(kRunContainersPath).Append(container_id);
     if (inplace) {
@@ -607,8 +538,7 @@ int RunOci(const base::FilePath& bundle_dir,
     container_dir = bundle_dir;
   }
 
-  ContainerConfigPtr config(container_config_create(),
-                            &container_config_destroy);
+  libcontainer::Config config;
   if (!ContainerConfigFromOci(*oci_config,
                               container_dir,
                               container_options.extra_program_args,
@@ -620,9 +550,8 @@ int RunOci(const base::FilePath& bundle_dir,
   AppendMounts(container_options.bind_mounts, config.get());
   // Create a container based on the config.  The run_dir argument will be
   // unused as this container will be run in place where it was mounted.
-  std::unique_ptr<container, decltype(&container_destroy)>
-      container(container_new(oci_config->hostname.c_str(), "/unused"),
-                &container_destroy);
+  libcontainer::Container container(oci_config->hostname,
+                                    base::FilePath("/unused"));
 
   container_config_keep_fds_open(config.get());
   if (!oci_config->process.capabilities.empty()) {
@@ -636,26 +565,6 @@ int RunOci(const base::FilePath& bundle_dir,
   if (!oci_config->process.selinuxLabel.empty()) {
     container_config_set_selinux_context(
         config.get(), oci_config->process.selinuxLabel.c_str());
-  }
-
-  std::unique_ptr<PreStartHookState> pre_start_hook_state;
-  if (!oci_config->pre_start_hooks.empty()) {
-    pre_start_hook_state = std::make_unique<PreStartHookState>();
-    int inherited_fds[4];
-    memcpy(inherited_fds,
-           pre_start_hook_state->reached_pipe.pipe_fds,
-           sizeof(pre_start_hook_state->reached_pipe.pipe_fds));
-    memcpy(
-        inherited_fds + arraysize(pre_start_hook_state->reached_pipe.pipe_fds),
-        pre_start_hook_state->ready_pipe.pipe_fds,
-        sizeof(pre_start_hook_state->ready_pipe.pipe_fds));
-    // All these fds will be closed in WaitForPreStartHooks in the child
-    // process.
-    container_config_inherit_fds(
-        config.get(), inherited_fds, arraysize(inherited_fds));
-    container_config_set_pre_execve_hook(config.get(),
-                                        WaitForPreStartHooks,
-                                        pre_start_hook_state.get());
   }
 
   if (container_options.cgroup_parent.length() > 0) {
@@ -688,6 +597,34 @@ int RunOci(const base::FilePath& bundle_dir,
 
   container_config_set_run_as_init(config.get(), container_options.run_as_init);
 
+  // Prepare the post-stop hooks to be run. Note that we don't need to run them
+  // if the |child_pid| is -1. Either the pre-start hooks or the call to
+  // container_pid() will populate the value, and RunHooks() will simply refuse
+  // to run if |child_pid| is -1, so we will always do the right thing.
+  // The callback is run in the same stack, so base::ConstRef() is safe.
+  pid_t child_pid = -1;
+  base::ScopedClosureRunner post_stop_hooks(
+      base::Bind(base::IgnoreResult(&RunHooks),
+                 base::ConstRef(oci_config->post_stop_hooks),
+                 base::Unretained(&child_pid),
+                 container_id,
+                 bundle_dir,
+                 container_dir,
+                 "poststop",
+                 "stopped"));
+
+  if (!oci_config->pre_start_hooks.empty()) {
+    config.AddHook(MINIJAIL_HOOK_EVENT_PRE_EXECVE,
+                   base::Bind(&SaveChildPidAndRunHooks,
+                              base::ConstRef(oci_config->pre_start_hooks),
+                              base::Unretained(&child_pid),
+                              container_id,
+                              bundle_dir,
+                              container_dir,
+                              "prestart",
+                              "created"));
+  }
+
   int rc;
   rc = container_start(container.get(), config.get());
   if (rc) {
@@ -696,7 +633,7 @@ int RunOci(const base::FilePath& bundle_dir,
     return -1;
   }
 
-  int child_pid = container_pid(container.get());
+  child_pid = container_pid(container.get());
   if (detach_after_start) {
     const base::FilePath container_pid_path =
         container_dir.Append(kContainerPidFilename);
@@ -710,33 +647,8 @@ int RunOci(const base::FilePath& bundle_dir,
     }
   }
 
-  // The callback is run in the same stack, so base::ConstRef() is safe.
-  DeferredRunner post_stop_hooks(
-      base::Bind(&RunPostStopHooks,
-                 base::ConstRef(oci_config->post_stop_hooks),
-                 child_pid,
-                 container_id,
-                 bundle_dir,
-                 container_dir));
-
-  if (pre_start_hook_state) {
-    pre_start_hook_state->reached_pipe.Wait();
-    if (!RunHooks(oci_config->pre_start_hooks,
-                  child_pid,
-                  container_id,
-                  bundle_dir,
-                  container_dir,
-                  "prestart",
-                  "created")) {
-      LOG(ERROR) << "Failed to run all prestart hooks";
-      container_kill(container.get());
-      return -1;
-    }
-    pre_start_hook_state->ready_pipe.Signal();
-  }
-
   if (!RunHooks(oci_config->post_start_hooks,
-                child_pid,
+                &child_pid,
                 container_id,
                 bundle_dir,
                 container_dir,
@@ -751,8 +663,8 @@ int RunOci(const base::FilePath& bundle_dir,
     // The container has reached a steady state. We can now return and let the
     // container keep running. We don't want to run the post-stop hooks now, but
     // until the user actually deletes the container.
-    post_stop_hooks.Reset();
-    cleanup.Reset();
+    ignore_result(post_stop_hooks.Release());
+    ignore_result(cleanup.Release());
     return 0;
   }
 
@@ -837,11 +749,13 @@ int OciDestroy(const std::string& container_id) {
   }
 
   // We are committed to cleaning everything up now.
-  RunPostStopHooks(oci_config->post_stop_hooks,
-                   container_pid,
-                   container_id,
-                   GetBundlePath(container_config_file),
-                   container_dir);
+  RunHooks(oci_config->post_stop_hooks,
+           &container_pid,
+           container_id,
+           GetBundlePath(container_config_file),
+           container_dir,
+           "poststop",
+           "stopped");
   CleanUpContainer(container_dir);
 
   return 0;
