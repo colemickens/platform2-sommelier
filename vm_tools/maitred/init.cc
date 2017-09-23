@@ -569,7 +569,6 @@ void Init::Worker::Spawn(struct ChildInfo info,
                          int semfd,
                          ProcessLaunchInfo* launch_info) {
   DCHECK_GT(info.argv.size(), 0);
-  DCHECK_NE(semfd, -1);
   DCHECK(launch_info);
 
   // Build the argv.
@@ -678,9 +677,11 @@ void Init::Worker::Spawn(struct ChildInfo info,
     launch_info->status = ProcessStatus::LAUNCHED;
   }
 
-  uint64_t done = 1;
-  ssize_t count = write(semfd, &done, sizeof(done));
-  DCHECK_EQ(count, sizeof(done));
+  if (semfd != -1) {
+    uint64_t done = 1;
+    ssize_t count = write(semfd, &done, sizeof(done));
+    DCHECK_EQ(count, sizeof(done));
+  }
 
   // Restore the signal mask.
   sigprocmask(SIG_SETMASK, &omask, nullptr);
@@ -753,7 +754,30 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
     }
 
     // Respawn the process.
-    Spawn(std::move(info), -1, nullptr);
+    LOG(INFO) << "Restarting " << info.argv[0];
+    string app(info.argv[0]);
+
+    Init::ProcessLaunchInfo launch_info;
+    Spawn(std::move(info), -1, &launch_info);
+    switch (launch_info.status) {
+      case ProcessStatus::UNKNOWN:
+        LOG(WARNING) << app << " has unknown status";
+        break;
+      case ProcessStatus::EXITED:
+        LOG(WARNING) << app << " unexpectedly exited with status "
+                     << launch_info.code << ";  stopped";
+        break;
+      case ProcessStatus::SIGNALED:
+        LOG(WARNING) << app << " unexpectedly killed by signal "
+                     << launch_info.code << "; stopped";
+        break;
+      case ProcessStatus::LAUNCHED:
+        LOG(INFO) << app << " restarted";
+        break;
+      case ProcessStatus::FAILED:
+        LOG(ERROR) << "Failed to start " << app;
+        break;
+    }
   }
 }
 
