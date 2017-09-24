@@ -310,6 +310,7 @@ class Metrics {
     kVpnDriverOpenVpn = 0,
     kVpnDriverL2tpIpsec = 1,
     kVpnDriverThirdParty = 2,
+    kVpnDriverArc = 3,
     kVpnDriverMax
   };
 

@@ -134,6 +134,10 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   device_->SetLooseRouting(true);
 
   service_->SetState(Service::kStateOnline);
+
+  metrics_->SendEnumToUMA(Metrics::kMetricVpnDriver,
+                          Metrics::kVpnDriverArc,
+                          Metrics::kMetricVpnDriverMax);
 }
 
 bool ArcVpnDriver::ClaimInterface(const std::string& link_name,
