@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 
@@ -136,6 +137,12 @@ bool Collector::Init() {
   if (bind(syslog_fd_.get(), reinterpret_cast<struct sockaddr*>(&sun),
            sizeof(sun)) != 0) {
     PLOG(ERROR) << "Failed to bind logging socket";
+    return false;
+  }
+
+  // Give everyone write permissions to the socket.
+  if (chmod(sun.sun_path, 0666) != 0) {
+    PLOG(ERROR) << "Unable to change permissions for syslog socket";
     return false;
   }
 
