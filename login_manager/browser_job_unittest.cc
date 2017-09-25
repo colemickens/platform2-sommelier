@@ -27,6 +27,7 @@
 namespace login_manager {
 
 using ::testing::AnyNumber;
+using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::_;
@@ -350,6 +351,37 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     EXPECT_EQ(kArg3, job_argv[2]);
     EXPECT_EQ(kArg4, job_argv[3]);
   }
+}
+
+TEST_F(BrowserJobTest, CombineFeatureArgs) {
+  constexpr const char kArg1[] = "--first";
+  constexpr const char kArg2[] = "--second";
+
+  constexpr const char kEnable1[] = "--enable-features=1a,1b";
+  constexpr const char kEnable2[] = "--enable-features=2a,2b";
+  constexpr const char kEnable3[] = "--enable-features=3a,3b";
+  constexpr const char kCombinedEnable[] =
+      "--enable-features=1a,1b,2a,2b,3a,3b";
+
+  constexpr const char kDisable1[] = "--disable-features=1c,1d";
+  constexpr const char kDisable2[] = "--disable-features=2c,2d";
+  constexpr const char kDisable3[] = "--disable-features=3c,3d";
+  constexpr const char kCombinedDisable[] =
+      "--disable-features=1c,1d,2c,2d,3c,3d";
+
+  const std::vector<std::string> kArgv = {
+      kEnable1,  kDisable1, kArg1,    kEnable2,
+      kDisable2, kArg2,     kEnable3, kDisable3,
+  };
+
+  // All the --enable-features and --disable-features values should be merged
+  // into args at the end of the command line, but the original args should be
+  // preserved: https://crbug.com/767266
+  BrowserJob job(kArgv, env_, -1, &checker_, &metrics_, &utils_);
+  EXPECT_THAT(
+      job.ExportArgv(),
+      ElementsAre(kEnable1, kDisable1, kArg1, kEnable2, kDisable2, kArg2,
+                  kEnable3, kDisable3, kCombinedEnable, kCombinedDisable));
 }
 
 }  // namespace login_manager

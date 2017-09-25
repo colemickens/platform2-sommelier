@@ -48,31 +48,46 @@ const time_t BrowserJob::kRestartWindowSeconds = 60;
 namespace {
 
 constexpr const char kVmoduleFlag[] = "--vmodule=";
+constexpr const char kEnableFeaturesFlag[] = "--enable-features=";
+constexpr const char kDisableFeaturesFlag[] = "--disable-features=";
 
-// Chrome only reads a single --vmodule flag. Combine them if we have multiple.
-// Example:
-//   --arg1 --vmodule=a=1,b=2 --arg2 --arg3 --vmodule=c=3
-// becomes
-//   --arg1 --arg2 --arg3 --vmodule=a=1,b=2,c=3
-// If --vmodule is not present, args are kept intact.
-void CombineVModuleArgs(std::vector<std::string>* args) {
-  std::string combined_vmodule;
+// Erases all occurrences of |arg| within |args|. Returns true if any entries
+// were removed or false otherwise.
+bool RemoveArgs(std::vector<std::string>* args, const std::string& arg) {
+  std::vector<std::string>::iterator new_end =
+      std::remove(args->begin(), args->end(), arg);
+  if (new_end == args->end())
+    return false;
+
+  args->erase(new_end, args->end());
+  return true;
+}
+
+// Joins the values of all switches in |args| prefixed by |prefix| using
+// |separator| and appends a merged version of the switch. If |keep_existing| is
+// true, all earlier occurrences of the switch are preserved; otherwise, they
+// are removed.
+void MergeSwitches(std::vector<std::string>* args,
+                   const std::string& prefix,
+                   const std::string& separator,
+                   bool keep_existing) {
+  std::string values;
   auto head = args->begin();
   for (const auto arg : *args) {
-    if (arg.find(kVmoduleFlag) == 0) {
-      // The value of --vmodule is commma separated, so using a comma to join
-      // each of them.
-      if (!combined_vmodule.empty())
-        combined_vmodule += ",";
-      combined_vmodule += arg.substr(arraysize(kVmoduleFlag) - 1);
-    } else {
+    bool match = base::StartsWith(arg, prefix, base::CompareCase::SENSITIVE);
+    if (match) {
+      if (!values.empty())
+        values += separator;
+      values += arg.substr(prefix.size());
+    }
+    if (!match || keep_existing) {
       *head++ = arg;
     }
   }
-  if (head != args->end()) {
+  if (head != args->end())
     args->erase(head, args->end());
-    args->push_back(kVmoduleFlag + combined_vmodule);
-  }
+  if (!values.empty())
+    args->push_back(prefix + values);
 }
 
 }  // namespace
@@ -96,11 +111,8 @@ BrowserJob::BrowserJob(
   for (const auto& it : environment_variables)
     environment_variables_.push_back(it.first + "=" + it.second);
 
-  // Take over managing the kLoginManagerFlag.
-  std::vector<std::string>::iterator to_erase =
-      std::remove(arguments_.begin(), arguments_.end(), kLoginManagerFlag);
-  if (to_erase != arguments_.end()) {
-    arguments_.erase(to_erase, arguments_.end());
+  // Take over managing kLoginManagerFlag.
+  if (RemoveArgs(&arguments_, kLoginManagerFlag)) {
     removed_login_manager_flag_ = true;
     login_arguments_.push_back(kLoginManagerFlag);
   }
@@ -131,12 +143,8 @@ bool BrowserJob::RunInBackground() {
   if (first_boot)
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
 
-  // Debugging for crbug.com/631640.
   const std::vector<std::string> argv(ExportArgv());
-  std::string argstr;
-  for (const std::string& s : argv)
-    argstr += s + ' ';
-  LOG(INFO) << "Running child " << argstr;
+  LOG(INFO) << "Running child " << base::JoinString(argv, " ");
   RecordTime();
   return subprocess_.ForkAndExec(argv, environment_variables_);
 }
@@ -234,7 +242,21 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
     to_return.insert(to_return.end(), extra_one_time_arguments_.begin(),
                      extra_one_time_arguments_.end());
   }
-  CombineVModuleArgs(&to_return);
+
+  // Chrome doesn't support repeated switches. Merge switches containing
+  // comma-separated values that may be supplied via multiple sources (e.g.
+  // chrome_setup.cc, chrome://flags, Telemetry).
+  //
+  // --enable-features and --disable-features may be placed within sentinel
+  // values (--flag-switches-begin/end, --policy-switches-begin/end). To
+  // preserve those positions, keep the existing flags while also appending
+  // merged versions at the end of the command line. Chrome will use the final,
+  // merged flags: https://crbug.com/767266
+  MergeSwitches(&to_return, kVmoduleFlag, ",", false /* keep_existing */);
+  MergeSwitches(&to_return, kEnableFeaturesFlag, ",", true /* keep_existing */);
+  MergeSwitches(&to_return, kDisableFeaturesFlag, ",",
+                true /* keep_existing */);
+
   return to_return;
 }
 
