@@ -24,6 +24,7 @@
         'launcher/pooled_resource.cc',
         'launcher/subnet.cc',
         'launcher/vm_launcher.cc',
+        'launcher/vsock_cid.cc',
       ],
     },
     {
