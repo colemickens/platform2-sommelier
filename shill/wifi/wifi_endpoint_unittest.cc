@@ -149,6 +149,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   // element prefix).
   vector<uint8_t> MakeRSNProperties(uint16_t pairwise_count,
                                     uint16_t authkey_count,
+                                    const vector<uint32_t>& ciphers,
                                     uint16_t capabilities) {
     vector<uint8_t> rsn(IEEE_80211::kRSNIECipherCountOffset +
                         IEEE_80211::kRSNIECipherCountLen * 2 +
@@ -164,6 +165,15 @@ class WiFiEndpointTest : public PropertyStoreTest {
         pairwise_count * IEEE_80211::kRSNIESelectorLen;
     rsn[authkey_offset] = authkey_count & 0xff;
     rsn[authkey_offset + 1] = authkey_count >> 8;
+
+    if (authkey_count > 0 && authkey_count == ciphers.size()) {
+      vector<uint8_t>::iterator rsn_authkeys =
+          rsn.begin() + authkey_offset + IEEE_80211::kRSNIECipherCountLen;
+      uint8_t* authkeys = (uint8_t*)&ciphers[0];
+      std::copy(authkeys,
+                authkeys + authkey_count * IEEE_80211::kRSNIESelectorLen,
+                rsn_authkeys);
+    }
 
     // Set the little-endian capabilities field.
     size_t capabilities_offset = rsn.size() - 2;
@@ -338,14 +348,23 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     vector<uint8_t> ies;
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::Ap80211krvSupport krv_support;
+    bool found_ft_cipher = false;
     EXPECT_FALSE(ParseIEs(MakeBSSPropertiesWithIEs(ies),
                           &phy_mode,
                           &vendor_information,
                           nullptr,
                           nullptr,
-                          nullptr,
-                          nullptr));
+                          &krv_support,
+                          &found_ft_cipher));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, phy_mode);
+    EXPECT_FALSE(krv_support.neighbor_list_supported);
+    EXPECT_FALSE(krv_support.ota_ft_supported);
+    EXPECT_FALSE(krv_support.otds_ft_supported);
+    EXPECT_FALSE(krv_support.dms_supported);
+    EXPECT_FALSE(krv_support.bss_max_idle_period_supported);
+    EXPECT_FALSE(krv_support.bss_transition_supported);
+    EXPECT_FALSE(found_ft_cipher);
   }
   {
     vector<uint8_t> ies;
@@ -447,6 +466,85 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
                          nullptr,
                          nullptr));
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11ac, phy_mode);
+  }
+  {
+    vector<uint8_t> ies;
+    const vector<uint8_t> kRmEnabledCap(5, 0);
+    const string kCountryCode("GO");
+    const vector<uint8_t> kCountryCodeAsVector(kCountryCode.begin(),
+                                               kCountryCode.end());
+    AddIE(IEEE_80211::kElemIdPowerConstraint, &ies);
+    AddIEWithData(IEEE_80211::kElemIdRmEnabledCap, kRmEnabledCap, &ies);
+    AddIEWithData(IEEE_80211::kElemIdCountry, kCountryCodeAsVector, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::Ap80211krvSupport krv_support;
+    string country_code;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             &country_code,
+             &krv_support,
+             nullptr);
+    EXPECT_TRUE(krv_support.neighbor_list_supported);
+  }
+  {
+    vector<uint8_t> ies;
+    const vector<uint8_t> kMDE{0x00, 0x00, 0x01};
+    vector<uint32_t> authkeys(4, 0);
+    authkeys[3] = IEEE_80211::kRSNAuthType8021XFT;
+    vector<uint8_t> rsn = MakeRSNProperties(
+        1, 4, authkeys, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
+    AddIEWithData(IEEE_80211::kElemIdMDE, kMDE, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::Ap80211krvSupport krv_support;
+    bool found_ft_cipher = false;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             &krv_support,
+             &found_ft_cipher);
+    EXPECT_TRUE(krv_support.ota_ft_supported);
+    EXPECT_TRUE(krv_support.otds_ft_supported);
+    EXPECT_TRUE(found_ft_cipher);
+  }
+  {
+    vector<uint8_t> ies;
+    const vector<uint8_t> kExtendedCapabilities{0x00, 0x00, 0x08, 0x04};
+    AddIEWithData(IEEE_80211::kElemIdExtendedCap, kExtendedCapabilities, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::Ap80211krvSupport krv_support;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             &krv_support,
+             nullptr);
+    EXPECT_TRUE(krv_support.dms_supported);
+    EXPECT_TRUE(krv_support.bss_transition_supported);
+  }
+  {
+    vector<uint8_t> ies;
+    const vector<uint8_t> kBSSMaxIdlePeriod(3, 0);
+    AddIEWithData(IEEE_80211::kElemIdBSSMaxIdlePeriod, kBSSMaxIdlePeriod, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::Ap80211krvSupport krv_support;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             &krv_support,
+             nullptr);
+    EXPECT_TRUE(krv_support.bss_max_idle_period_supported);
   }
 }
 
@@ -640,8 +738,11 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn = MakeRSNProperties(
-        2, 3, ~IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn =
+        MakeRSNProperties(2,
+                          3,
+                          vector<uint32_t>(),
+                          ~IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, IEEE_80211::kOUIMicrosoftWPA,
                 rsn, &ies);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
@@ -659,8 +760,11 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn = MakeRSNProperties(
-        2, 3, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn =
+        MakeRSNProperties(2,
+                          3,
+                          vector<uint32_t>(),
+                          IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, IEEE_80211::kOUIMicrosoftWPA,
                 rsn, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -677,8 +781,11 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn = MakeRSNProperties(
-        8, 2, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn =
+        MakeRSNProperties(8,
+                          2,
+                          vector<uint32_t>(),
+                          IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
@@ -694,8 +801,11 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn = MakeRSNProperties(
-        8, 2, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn =
+        MakeRSNProperties(8,
+                          2,
+                          vector<uint32_t>(),
+                          IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     rsn.resize(rsn.size() + 1);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -712,8 +822,11 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn = MakeRSNProperties(
-        8, 2, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn =
+        MakeRSNProperties(8,
+                          2,
+                          vector<uint32_t>(),
+                          IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     rsn.resize(rsn.size() - 1);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -730,10 +843,13 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
   }
   {
     vector<uint8_t> ies;
-    vector<uint8_t> rsn0 = MakeRSNProperties(
-        1, 1, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    vector<uint8_t> rsn0 =
+        MakeRSNProperties(1,
+                          1,
+                          vector<uint32_t>(),
+                          IEEE_80211::kRSNCapabilityFrameProtectionRequired);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn0, &ies);
-    vector<uint8_t> rsn1 = MakeRSNProperties(1, 1, 0);
+    vector<uint8_t> rsn1 = MakeRSNProperties(1, 1, vector<uint32_t>(), 0);
     AddIEWithData(IEEE_80211::kElemIdRSN, rsn1, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
@@ -746,6 +862,63 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
              nullptr,
              nullptr);
     EXPECT_TRUE(ieee80211w_required);
+  }
+  {
+    vector<uint8_t> ies;
+    vector<uint32_t> authkeys(4, 0);
+    authkeys[3] = IEEE_80211::kRSNAuthType8021XFT;
+    vector<uint8_t> rsn = MakeRSNProperties(
+        1, 4, authkeys, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    bool found_ft_cipher = false;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr,
+             &found_ft_cipher);
+    EXPECT_TRUE(found_ft_cipher);
+  }
+  {
+    vector<uint8_t> ies;
+    vector<uint32_t> authkeys(3, 0);
+    authkeys[0] = IEEE_80211::kRSNAuthTypeSAEFT;
+    authkeys[1] = IEEE_80211::kRSNAuthTypePSKFT;
+    vector<uint8_t> rsn = MakeRSNProperties(
+        4, 3, authkeys, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    bool found_ft_cipher = false;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr,
+             &found_ft_cipher);
+    EXPECT_TRUE(found_ft_cipher);
+  }
+  {
+    vector<uint8_t> ies;
+    vector<uint32_t> authkeys(1, 4);
+    vector<uint8_t> rsn = MakeRSNProperties(
+        2, 4, authkeys, IEEE_80211::kRSNCapabilityFrameProtectionRequired);
+    AddIEWithData(IEEE_80211::kElemIdRSN, rsn, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    bool found_ft_cipher = false;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies),
+             &phy_mode,
+             &vendor_information,
+             nullptr,
+             nullptr,
+             nullptr,
+             &found_ft_cipher);
+    EXPECT_FALSE(found_ft_cipher);
   }
 }
 

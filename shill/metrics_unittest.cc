@@ -1097,6 +1097,94 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
   metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
 }
 
+TEST_F(MetricsTest, NotifyAp80211kSupport) {
+  bool neighbor_list_supported = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211kSupport,
+                            Metrics::kWiFiAp80211kNone,
+                            Metrics::kWiFiAp80211kMax));
+  metrics_.NotifyAp80211kSupport(neighbor_list_supported);
+
+  neighbor_list_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211kSupport,
+                            Metrics::kWiFiAp80211kNeighborList,
+                            Metrics::kWiFiAp80211kMax));
+  metrics_.NotifyAp80211kSupport(neighbor_list_supported);
+}
+
+TEST_F(MetricsTest, NotifyAp80211rSupport) {
+  bool ota_ft_supported = false;
+  bool otds_ft_supported = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                            Metrics::kWiFiAp80211rNone,
+                            Metrics::kWiFiAp80211rMax));
+  metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
+
+  ota_ft_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                            Metrics::kWiFiAp80211rOTA,
+                            Metrics::kWiFiAp80211rMax));
+  metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
+
+  otds_ft_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                            Metrics::kWiFiAp80211rOTDS,
+                            Metrics::kWiFiAp80211rMax));
+  metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
+}
+
+TEST_F(MetricsTest, NotifyAp80211vDMSSupport) {
+  bool dms_supported = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
+                            Metrics::kWiFiAp80211vNoDMS,
+                            Metrics::kWiFiAp80211vDMSMax));
+  metrics_.NotifyAp80211vDMSSupport(dms_supported);
+
+  dms_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
+                            Metrics::kWiFiAp80211vDMS,
+                            Metrics::kWiFiAp80211vDMSMax));
+  metrics_.NotifyAp80211vDMSSupport(dms_supported);
+}
+
+TEST_F(MetricsTest, NotifyAp80211vBSSMaxIdlePeriodSupport) {
+  bool bss_max_idle_period_supported = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vBSSMaxIdlePeriodSupport,
+                            Metrics::kWiFiAp80211vNoBSSMaxIdlePeriod,
+                            Metrics::kWiFiAp80211vBSSMaxIdlePeriodMax));
+  metrics_.NotifyAp80211vBSSMaxIdlePeriodSupport(bss_max_idle_period_supported);
+
+  bss_max_idle_period_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vBSSMaxIdlePeriodSupport,
+                            Metrics::kWiFiAp80211vBSSMaxIdlePeriod,
+                            Metrics::kWiFiAp80211vBSSMaxIdlePeriodMax));
+  metrics_.NotifyAp80211vBSSMaxIdlePeriodSupport(bss_max_idle_period_supported);
+}
+
+TEST_F(MetricsTest, NotifyAp80211vBSSTransitionSupport) {
+  bool bss_transition_supported = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vBSSTransitionSupport,
+                            Metrics::kWiFiAp80211vNoBSSTransition,
+                            Metrics::kWiFiAp80211vBSSTransitionMax));
+  metrics_.NotifyAp80211vBSSTransitionSupport(bss_transition_supported);
+
+  bss_transition_supported = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricAp80211vBSSTransitionSupport,
+                            Metrics::kWiFiAp80211vBSSTransition,
+                            Metrics::kWiFiAp80211vBSSTransitionMax));
+  metrics_.NotifyAp80211vBSSTransitionSupport(bss_transition_supported);
+}
+
 #ifndef NDEBUG
 
 using MetricsDeathTest = MetricsTest;
