@@ -20,15 +20,13 @@
 #include <base/strings/stringprintf.h>
 #include <grpc++/grpc++.h>
 
+#include "vm_tools/common/constants.h"
 #include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
 
 using std::string;
 
 namespace {
-
-// Default port for maitred.
-constexpr unsigned int kPort = 8888;
 
 // Path to logging file.
 constexpr char kDevKmsg[] = "/dev/kmsg";
@@ -134,7 +132,7 @@ int main(int argc, char** argv) {
   // Build the server.
   grpc::ServerBuilder builder;
   builder.AddListeningPort(
-      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, kPort),
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kMaitredPort),
       grpc::InsecureServerCredentials());
 
   vm_tools::maitred::ServiceImpl maitred_service(std::move(init));
@@ -143,7 +141,7 @@ int main(int argc, char** argv) {
   std::unique_ptr<grpc::Server> server = builder.BuildAndStart();
   CHECK(server);
 
-  LOG(INFO) << "Server listening on port " << kPort;
+  LOG(INFO) << "Server listening on port " << vm_tools::kMaitredPort;
 
   // The following call will never return.
   server->Wait();
