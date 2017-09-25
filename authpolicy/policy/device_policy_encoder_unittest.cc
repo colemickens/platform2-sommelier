@@ -434,6 +434,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kStringList,
             ToVector(policy.native_device_printers_blacklist().blacklist()));
 
+  EncodeString(&policy,
+               key::kTPMFirmwareUpdateSettings,
+               "{\"allow-user-initiated-powerwash\":true}");
+  EXPECT_EQ(
+      true,
+      policy.tpm_firmware_update_settings().allow_user_initiated_powerwash());
+
   //
   // Check whether all device policies have been handled.
   //

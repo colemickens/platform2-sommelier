@@ -600,6 +600,28 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                      for (const std::string& value : values)
                        list->add_whitelist(value);
                    });
+
+  EncodeString(
+      key::kTPMFirmwareUpdateSettings, [policy](const std::string& value) {
+        std::string error;
+        std::unique_ptr<base::DictionaryValue> dict_value =
+            JsonToDictionary(value, &error);
+        bool allow_user_initiated_powerwash;
+        if (!dict_value ||
+            !dict_value->GetBoolean("allow-user-initiated-powerwash",
+                                    &allow_user_initiated_powerwash)) {
+          LOG(ERROR) << "Invalid JSON string '"
+                     << (!error.empty() ? error : value) << "' for policy '"
+                     << key::kTPMFirmwareUpdateSettings
+                     << "', ignoring. Expected: "
+                     << "'{\"allow-user-initiated-powerwash\"=<true/false>}.";
+          return;
+        }
+        em::TPMFirmwareUpdateSettingsProto* tpm_firmware_update_settings =
+            policy->mutable_tpm_firmware_update_settings();
+        tpm_firmware_update_settings->set_allow_user_initiated_powerwash(
+            allow_user_initiated_powerwash);
+      });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(
