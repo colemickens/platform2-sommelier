@@ -332,8 +332,13 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
-  if (builder->UseFlagIsSet("eve"))
+  if (builder->UseFlagIsSet("eve")) {
     builder->AddArg("--force-clamshell-power-button");
+  } else {
+    // TODO(tbarzic): Remove in M63: https://crbug.com/767698
+    builder->AddArg("--disable-lock-screen-apps");
+  }
+
   if (builder->UseFlagIsSet("kevin")) {
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
