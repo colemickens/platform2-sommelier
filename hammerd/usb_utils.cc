@@ -19,23 +19,23 @@ constexpr unsigned int kTimeoutMs = 1000;  // Default timeout value.
 bool is_libusb_inited = false;
 }  // namespace
 
-bool InitLibUSB() {
-  DLOG(INFO) << "Call InitLibUSB";
+bool InitLibUsb() {
+  DLOG(INFO) << "Call InitLibUsb";
   if (is_libusb_inited) {
     DLOG(INFO) << "libusb is already initialized. Ignored.";
     return true;
   }
   int r = libusb_init(nullptr);
   if (r < 0) {
-    LogUSBError("libusb_init", r);
+    LogUsbError("libusb_init", r);
     return false;
   }
   is_libusb_inited = true;
   return true;
 }
 
-void ExitLibUSB() {
-  DLOG(INFO) << "Call ExitLibUSB";
+void ExitLibUsb() {
+  DLOG(INFO) << "Call ExitLibUsb";
   if (!is_libusb_inited) {
     LOG(INFO) << "libusb is not initialized. Ignored.";
     return;
@@ -44,7 +44,7 @@ void ExitLibUSB() {
   is_libusb_inited = false;
 }
 
-void LogUSBError(const char* func_name, int return_code) {
+void LogUsbError(const char* func_name, int return_code) {
   LOG(ERROR) << func_name << " returned " << return_code << " ("
              << libusb_strerror(static_cast<libusb_error>(return_code)) << ")";
 }
@@ -56,7 +56,7 @@ UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
 
 UsbEndpoint::~UsbEndpoint() {
   Close();
-  ExitLibUSB();
+  ExitLibUsb();
 }
 
 UsbConnectStatus UsbEndpoint::OpenDevice(
@@ -88,7 +88,7 @@ UsbConnectStatus UsbEndpoint::OpenDevice(
 
       int r = libusb_open(devs[i], devh);
       if (r) {
-        LogUSBError("libusb_open", r);
+        LogUsbError("libusb_open", r);
         ret = UsbConnectStatus::kUnknownError;
         LOG(ERROR) << "Failed to open device.";
       } else {
@@ -111,7 +111,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
     return UsbConnectStatus::kSuccess;
   }
 
-  InitLibUSB();
+  InitLibUsb();
   LOG(INFO) << base::StringPrintf(
       "open_device %x:%x", vendor_id_, product_id_);
 
@@ -141,7 +141,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
   libusb_set_auto_detach_kernel_driver(devh_, 1);
   int r = libusb_claim_interface(devh_, iface_num_);
   if (r < 0) {
-    LogUSBError("libusb_claim_interface", r);
+    LogUsbError("libusb_claim_interface", r);
     Close();
     return UsbConnectStatus::kUnknownError;
   }
@@ -219,7 +219,7 @@ std::string UsbEndpoint::GetStringDescriptorAscii(uint8_t index) {
   uint8_t data[128];
   int r = libusb_get_string_descriptor_ascii(devh_, index, data, sizeof(data));
   if (r < 0) {
-    LogUSBError("libusb_get_string_descriptor", r);
+    LogUsbError("libusb_get_string_descriptor", r);
     return std::string();
   }
 
@@ -236,7 +236,7 @@ int UsbEndpoint::FindInterface() {
   libusb_config_descriptor* conf = nullptr;
   int r = libusb_get_active_config_descriptor(dev, &conf);
   if (r < 0) {
-    LogUSBError("libusb_get_active_config_descriptor", r);
+    LogUsbError("libusb_get_active_config_descriptor", r);
     libusb_free_config_descriptor(conf);
     return kError;
   }
@@ -290,7 +290,7 @@ int UsbEndpoint::BulkTransfer(void* buf,
                                &actual,
                                timeout_ms);
   if (r < 0) {
-    LogUSBError("libusb_bulk_transfer", r);
+    LogUsbError("libusb_bulk_transfer", r);
     return kError;
   }
   return actual;

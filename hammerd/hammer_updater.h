@@ -69,7 +69,7 @@ class HammerUpdater {
 
   // Waits for hammer USB device ready. It is called after the whole updating
   // process to prevent invoking hammerd infinitely.
-  void WaitUSBReady(HammerUpdater::RunStatus status);
+  void WaitUsbReady(HammerUpdater::RunStatus status);
   // Sends DBus kBaseFirmwareUpdateStartedSignal to notify other processes that
   // the RW section will now be updated.
   void NotifyUpdateStarted();

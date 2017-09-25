@@ -46,14 +46,14 @@ HammerUpdater::HammerUpdater(
 
 bool HammerUpdater::Run() {
   LOG(INFO) << "Load and validate the EC image.";
-  if (!fw_updater_->LoadECImage(ec_image_)) {
+  if (!fw_updater_->LoadEcImage(ec_image_)) {
     LOG(ERROR) << "Failed to load EC image.";
     return false;
   }
 
   HammerUpdater::RunStatus status = RunLoop();
   bool ret = (status == HammerUpdater::RunStatus::kNoUpdate);
-  WaitUSBReady(status);
+  WaitUsbReady(status);
 
   // If we tried to update the firmware, send a signal to notify the updating is
   // finished.
@@ -75,11 +75,11 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
   HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
-    if (fw_updater_->TryConnectUSB() != UsbConnectStatus::kSuccess) {
+    if (fw_updater_->TryConnectUsb() != UsbConnectStatus::kSuccess) {
       // TODO(kitching): Send a dbus message notifying Chrome OS of any rogue
       // USB devices. See b/66321020 for details.
       LOG(ERROR) << "Failed to connect USB.";
-      fw_updater_->CloseUSB();
+      fw_updater_->CloseUsb();
       return HammerUpdater::RunStatus::kLostConnection;
     }
 
@@ -89,7 +89,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         return status;
 
       case HammerUpdater::RunStatus::kFatalError:
@@ -97,14 +97,14 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         // Send the reset signal to hammer, and then prevent the next hammerd
         // process from being invoked.
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         return HammerUpdater::RunStatus::kNeedReset;
 
       case HammerUpdater::RunStatus::kInvalidFirmware:
         // Send the JumpToRW to hammer, and then prevent the next hammerd
         // process from being invoked.
         fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         return HammerUpdater::RunStatus::kNeedJump;
@@ -112,7 +112,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       case HammerUpdater::RunStatus::kNeedReset:
         LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
@@ -121,7 +121,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         post_rw_jump = true;
         LOG(INFO) << "Jump to RW and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         // TODO(kitching): Make RW jumps more robust by polling until
         // the jump completes (or fails).
         base::PlatformThread::Sleep(
@@ -131,7 +131,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       case HammerUpdater::RunStatus::kNeedInjectEntropy:
         need_inject_entropy = true;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         // If it is the last run, we should treat it as kNeedReset because we
@@ -141,7 +141,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
       default:
         LOG(ERROR) << "Unknown RunStatus: " << static_cast<int>(status);
-        fw_updater_->CloseUSB();
+        fw_updater_->CloseUsb();
         return HammerUpdater::RunStatus::kFatalError;
     }
   }
@@ -152,10 +152,10 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
 HammerUpdater::RunStatus HammerUpdater::RunOnce(
     const bool post_rw_jump, const bool need_inject_entropy) {
-  // The first time we use SendFirstPDU it is to gather information about
+  // The first time we use SendFirstPdu it is to gather information about
   // hammer's running EC. We should use SendDone right away to get the EC
   // back into a state where we can send a subcommand.
-  if (!fw_updater_->SendFirstPDU()) {
+  if (!fw_updater_->SendFirstPdu()) {
     LOG(ERROR) << "Failed to send the first PDU.";
     return HammerUpdater::RunStatus::kNeedReset;
   }
@@ -320,7 +320,7 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
   return HammerUpdater::RunStatus::kFatalError;
 }
 
-void HammerUpdater::WaitUSBReady(HammerUpdater::RunStatus status) {
+void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
   // The time period after which hammer automatically jumps to RW section.
   constexpr unsigned int kJumpToRWTimeMs = 1000;
   // The time period from USB device ready to udev invoking hammerd.
@@ -336,8 +336,8 @@ void HammerUpdater::WaitUSBReady(HammerUpdater::RunStatus status) {
   if (status == HammerUpdater::RunStatus::kNeedReset ||
       status == HammerUpdater::RunStatus::kNeedJump) {
     LOG(INFO) << "Wait for USB device ready...";
-    UsbConnectStatus usb_connection = fw_updater_->TryConnectUSB();
-    fw_updater_->CloseUSB();
+    UsbConnectStatus usb_connection = fw_updater_->TryConnectUsb();
+    fw_updater_->CloseUsb();
     // If there is no device there, don't bother waiting.
     if (usb_connection == UsbConnectStatus::kUsbPathEmpty) {
       return;
@@ -347,8 +347,8 @@ void HammerUpdater::WaitUSBReady(HammerUpdater::RunStatus status) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromMilliseconds(kJumpToRWTimeMs));
 
-      usb_connection = fw_updater_->TryConnectUSB();
-      fw_updater_->CloseUSB();
+      usb_connection = fw_updater_->TryConnectUsb();
+      fw_updater_->CloseUsb();
       // If there is no device there, don't bother waiting.
       if (usb_connection == UsbConnectStatus::kUsbPathEmpty) {
         return;

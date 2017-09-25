@@ -102,26 +102,26 @@ class HammerUpdaterTest : public testing::Test {
         static_cast<MockDBusWrapper*>(hammer_updater_->dbus_wrapper_.get());
 
     // By default, expect no USB connections to be made. This can
-    // be overridden by a call to ExpectUSBConnections.
+    // be overridden by a call to ExpectUsbConnections.
     usb_connection_count_ = 0;
-    EXPECT_CALL(*fw_updater_, TryConnectUSB()).Times(0);
-    EXPECT_CALL(*fw_updater_, CloseUSB()).Times(0);
+    EXPECT_CALL(*fw_updater_, TryConnectUsb()).Times(0);
+    EXPECT_CALL(*fw_updater_, CloseUsb()).Times(0);
 
     // These two methods are called at the beginning of each round but not
     // related to most of testing logic. Set the default action here.
-    ON_CALL(*fw_updater_, SendFirstPDU()).WillByDefault(Return(true));
+    ON_CALL(*fw_updater_, SendFirstPdu()).WillByDefault(Return(true));
     ON_CALL(*fw_updater_, SendDone()).WillByDefault(Return());
   }
 
   void TearDown() override { ASSERT_EQ(usb_connection_count_, 0); }
 
-  void ExpectUSBConnections(const testing::Cardinality count) {
+  void ExpectUsbConnections(const testing::Cardinality count) {
     // Checked in TearDown.
-    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+    EXPECT_CALL(*fw_updater_, TryConnectUsb())
         .Times(count)
         .WillRepeatedly(DoAll(Increment(&usb_connection_count_),
                               Return(UsbConnectStatus::kSuccess)));
-    EXPECT_CALL(*fw_updater_, CloseUSB())
+    EXPECT_CALL(*fw_updater_, CloseUsb())
         .Times(count)
         .WillRepeatedly(DoAll(Decrement(&usb_connection_count_), Return()));
   }
@@ -162,10 +162,10 @@ class HammerUpdaterPostRWTest : public HammerUpdaterTest<MockNothing> {
   uint8_t digest[SHA256_DIGEST_LENGTH];
 };
 
-// Failed to load EC_image.
-TEST_F(HammerUpdaterFlowTest, Run_LoadECImageFailed) {
-  EXPECT_CALL(*fw_updater_, LoadECImage(ec_image_)).WillOnce(Return(false));
-  EXPECT_CALL(*fw_updater_, TryConnectUSB()).Times(0);
+// Failed to load EC image.
+TEST_F(HammerUpdaterFlowTest, Run_LoadEcImageFailed) {
+  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(false));
+  EXPECT_CALL(*fw_updater_, TryConnectUsb()).Times(0);
   EXPECT_CALL(*hammer_updater_, RunOnce(_, _)).Times(0);
 
   ASSERT_FALSE(hammer_updater_->Run());
@@ -173,7 +173,7 @@ TEST_F(HammerUpdaterFlowTest, Run_LoadECImageFailed) {
 
 // Sends reset command if RunOnce returns kNeedReset.
 TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
-  EXPECT_CALL(*fw_updater_, LoadECImage(ec_image_)).WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(HammerUpdater::RunStatus::kNeedReset));
@@ -181,25 +181,25 @@ TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  ExpectUSBConnections(AtLeast(1));
+  ExpectUsbConnections(AtLeast(1));
   ASSERT_FALSE(hammer_updater_->Run());
 }
 
 // A fatal error occurred during update.
 TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
-  EXPECT_CALL(*fw_updater_, LoadECImage(ec_image_)).WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .WillOnce(Return(HammerUpdater::RunStatus::kFatalError));
   EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
       .WillOnce(Return(true));
 
-  ExpectUSBConnections(AtLeast(1));
+  ExpectUsbConnections(AtLeast(1));
   ASSERT_FALSE(hammer_updater_->Run());
 }
 
 // After three attempts, Run reports no update needed.
 TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
-  EXPECT_CALL(*fw_updater_, LoadECImage(ec_image_)).WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
@@ -209,7 +209,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
       .Times(3)
       .WillRepeatedly(Return(true));
 
-  ExpectUSBConnections(Exactly(4));
+  ExpectUsbConnections(Exactly(4));
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
@@ -232,7 +232,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
 TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
   SectionName current_section = SectionName::RO;
 
-  EXPECT_CALL(*fw_updater_, LoadECImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, UpdatePossible(SectionName::RW))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
@@ -270,7 +270,7 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
-  ExpectUSBConnections(AtLeast(1));
+  ExpectUsbConnections(AtLeast(1));
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
@@ -292,7 +292,7 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
 
   // Hammerd would try to update RW 10 times, so just use WillRepeatedly
   // instead of using InSequence.
-  EXPECT_CALL(*fw_updater_, LoadECImage(_)).WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
@@ -303,13 +303,13 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
   // USB losts connection after jumping out the RunLoop.
   {
     InSequence dummy;
-    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+    EXPECT_CALL(*fw_updater_, TryConnectUsb())
         .Times(10)
         .WillRepeatedly(Return(UsbConnectStatus::kSuccess));
-    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+    EXPECT_CALL(*fw_updater_, TryConnectUsb())
         .WillOnce(Return(UsbConnectStatus::kUsbPathEmpty));
   }
-  EXPECT_CALL(*fw_updater_, CloseUSB()).Times(11).WillRepeatedly(Return());
+  EXPECT_CALL(*fw_updater_, CloseUsb()).Times(11).WillRepeatedly(Return());
 
   // We should send UpdateStart and UpdateFailed DBus signal.
   EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
@@ -328,7 +328,7 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
 TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
   SectionName current_section = SectionName::RO;
 
-  EXPECT_CALL(*fw_updater_, LoadECImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, UpdatePossible(SectionName::RW))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
@@ -374,7 +374,7 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
-  ExpectUSBConnections(AtLeast(1));
+  ExpectUsbConnections(AtLeast(1));
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
@@ -642,8 +642,10 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
   SectionName current_section = SectionName::RO;
   bool rw_version_mismatch = false;
 
-  EXPECT_CALL(*fw_updater_, LoadECImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, UpdatePossible(SectionName::RW))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
       .WillRepeatedly(ReturnPointee(&rw_version_mismatch));
   EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
@@ -706,7 +708,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
-  ExpectUSBConnections(AtLeast(1));
+  ExpectUsbConnections(AtLeast(1));
   ASSERT_EQ(hammer_updater_->Run(), true);
 }
 

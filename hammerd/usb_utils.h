@@ -19,9 +19,9 @@ namespace hammerd {
 constexpr uint8_t kUsbSubclassGoogleUpdate = 0x53;
 constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 
-bool InitLibUSB();
-void ExitLibUSB();
-void LogUSBError(const char* func_name, int return_code);
+bool InitLibUsb();
+void ExitLibUsb();
+void LogUsbError(const char* func_name, int return_code);
 
 enum class UsbConnectStatus {
   kSuccess,

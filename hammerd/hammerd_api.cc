@@ -20,17 +20,17 @@ BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
   return new FirmwareUpdater(
       base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port));
 }
-BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUSB(
+BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUsb(
     FirmwareUpdater* updater) {
-  return updater->TryConnectUSB();
+  return updater->TryConnectUsb();
 }
-BRILLO_EXPORT void FirmwareUpdater_CloseUSB(
+BRILLO_EXPORT void FirmwareUpdater_CloseUsb(
     FirmwareUpdater* updater) {
-  updater->CloseUSB();
+  updater->CloseUsb();
 }
-BRILLO_EXPORT bool FirmwareUpdater_LoadECImage(
+BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
     FirmwareUpdater* updater, std::string image) {
-  return updater->LoadECImage(image);
+  return updater->LoadEcImage(image);
 }
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater) {
@@ -56,9 +56,9 @@ BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
     FirmwareUpdater* updater, UpdateExtraCommand subcommand) {
   return updater->SendSubcommand(subcommand);
 }
-BRILLO_EXPORT bool FirmwareUpdater_SendFirstPDU(
+BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
     FirmwareUpdater* updater) {
-  return updater->SendFirstPDU();
+  return updater->SendFirstPdu();
 }
 BRILLO_EXPORT void FirmwareUpdater_SendDone(
     FirmwareUpdater* updater) {

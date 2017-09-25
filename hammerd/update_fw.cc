@@ -110,7 +110,7 @@ FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
       ec_image_(""),
       sections_() {}
 
-UsbConnectStatus FirmwareUpdater::TryConnectUSB() {
+UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
   constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;
   constexpr unsigned int kIntervalMs = 100;
@@ -162,11 +162,11 @@ bool FirmwareUpdater::FetchVersion() {
   return true;
 }
 
-void FirmwareUpdater::CloseUSB() {
+void FirmwareUpdater::CloseUsb() {
   endpoint_->Close();
 }
 
-bool FirmwareUpdater::LoadECImage(const std::string& ec_image) {
+bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
   ec_image_.clear();
   sections_.clear();
   sections_.push_back(SectionInfo(SectionName::RO));
@@ -426,8 +426,8 @@ bool FirmwareUpdater::SendSubcommandReceiveResponse(
   return (received == resp_size);
 }
 
-bool FirmwareUpdater::SendFirstPDU() {
-  LOG(INFO) << ">>> SendFirstPDU";
+bool FirmwareUpdater::SendFirstPdu() {
+  LOG(INFO) << ">>> SendFirstPdu";
   UpdateFrameHeader ufh;
   memset(&ufh, 0, sizeof(ufh));
   ufh.block_size = htobe32(sizeof(ufh));
@@ -437,7 +437,7 @@ bool FirmwareUpdater::SendFirstPDU() {
   }
 
   // We got something. Check for errors in response.
-  FirstResponsePDU rpdu;
+  FirstResponsePdu rpdu;
   size_t rxed_size = endpoint_->Receive(&rpdu, sizeof(rpdu), true);
   const size_t kMinimumResponseSize = 8;
   if (rxed_size < kMinimumResponseSize) {
@@ -465,7 +465,7 @@ bool FirmwareUpdater::SendFirstPDU() {
     return false;
   }
   if (targ_.header_type !=
-      static_cast<int>(FirstResponsePDUHeaderType::kCommon)) {
+      static_cast<int>(FirstResponsePduHeaderType::kCommon)) {
     LOG(ERROR) << "Unsupported header type " << targ_.header_type;
     return false;
   }
@@ -499,7 +499,7 @@ void FirmwareUpdater::SendDone() {
 bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
                                       uint32_t section_addr,
                                       size_t data_len, bool use_block_skip) {
-  if (!SendFirstPDU()) {
+  if (!SendFirstPdu()) {
     LOG(ERROR) << "Failed to send the first PDU.";
     return false;
   }

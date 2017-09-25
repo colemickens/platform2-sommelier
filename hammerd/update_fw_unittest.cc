@@ -41,7 +41,7 @@ class FirmwareUpdaterTest : public testing::Test {
 
     good_rpdu_.return_value = htobe32(0);
     good_rpdu_.header_type =
-        htobe16(static_cast<int>(FirstResponsePDUHeaderType::kCommon));
+        htobe16(static_cast<int>(FirstResponsePduHeaderType::kCommon));
     good_rpdu_.protocol_version = htobe16(6);
     good_rpdu_.maximum_pdu_size = htobe32(128);
     good_rpdu_.flash_protection = htobe32(0);
@@ -74,7 +74,7 @@ class FirmwareUpdaterTest : public testing::Test {
   MockFmap* fmap_;
 
   // Good response of first header.
-  FirstResponsePDU good_rpdu_;
+  FirstResponsePdu good_rpdu_;
   // Zero-size header:
   std::vector<uint8_t> first_header_;
   std::vector<uint8_t> done_cmd_;
@@ -87,7 +87,7 @@ class FirmwareUpdaterTest : public testing::Test {
 // - RW version string: 32 bytes
 // - RW rollback version: 4 bytes
 // - RO key: sizeof(vb21_packed_key) bytes
-TEST_F(FirmwareUpdaterTest, LoadECImage) {
+TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   // Build a fake EC image.
   std::string ec_image("12345");
   int64_t mock_offset = ec_image.size();
@@ -155,7 +155,7 @@ TEST_F(FirmwareUpdaterTest, LoadECImage) {
   EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "RW_RBVER"))
       .WillOnce(Return(&rw_rollback_area));
 
-  ASSERT_EQ(fw_updater_->LoadECImage(ec_image), true);
+  ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), true);
   ASSERT_EQ(fw_updater_->ec_image_, ec_image);
   ASSERT_EQ(
       fw_updater_->sections_[0],
@@ -177,7 +177,7 @@ std::function<T()> BeforeAfterPeriod(int64_t period_ms, T before, T after) {
 }
 
 // USB endpoint is ready to connect after 500 ms.
-TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
+TEST_F(FirmwareUpdaterTest, TryConnectUsb_OK) {
   InSequence dummy;
   ON_CALL(*endpoint_, Connect()).WillByDefault(Invoke(BeforeAfterPeriod(
       500, UsbConnectStatus::kUsbPathEmpty, UsbConnectStatus::kSuccess)));
@@ -186,22 +186,22 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
   EXPECT_CALL(*endpoint_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
   EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
-  ASSERT_EQ(fw_updater_->TryConnectUSB(), UsbConnectStatus::kSuccess);
+  ASSERT_EQ(fw_updater_->TryConnectUsb(), UsbConnectStatus::kSuccess);
   ASSERT_EQ(fw_updater_->version_, "version_string");
 }
 
 // USB endpoint is ready to connect after 5000 ms, which is longer than timeout.
-TEST_F(FirmwareUpdaterTest, TryConnectUSB_FAIL) {
+TEST_F(FirmwareUpdaterTest, TryConnectUsb_FAIL) {
   InSequence dummy;
   ON_CALL(*endpoint_, Connect()).WillByDefault(Invoke(BeforeAfterPeriod(
       5000, UsbConnectStatus::kUsbPathEmpty, UsbConnectStatus::kSuccess)));
   EXPECT_CALL(*endpoint_, Connect()).Times(AtLeast(1));
   EXPECT_CALL(*endpoint_, GetConfigurationString()).Times(0);
-  ASSERT_EQ(fw_updater_->TryConnectUSB(), UsbConnectStatus::kUsbPathEmpty);
+  ASSERT_EQ(fw_updater_->TryConnectUsb(), UsbConnectStatus::kUsbPathEmpty);
 }
 
 // Test legacy-style version string.
-TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
+TEST_F(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_Legacy) {
   InSequence dummy;
   EXPECT_CALL(*endpoint_, Connect())
       .WillOnce(Return(UsbConnectStatus::kSuccess));
@@ -209,23 +209,23 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
   EXPECT_CALL(*endpoint_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
   EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("version_string"));
-  ASSERT_EQ(fw_updater_->TryConnectUSB(), UsbConnectStatus::kSuccess);
+  ASSERT_EQ(fw_updater_->TryConnectUsb(), UsbConnectStatus::kSuccess);
   ASSERT_EQ(fw_updater_->version_, "version_string");
 }
 
 // Parse the given invalid configuration string descriptor.
-TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL) {
+TEST_F(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_FAIL) {
   InSequence dummy;
   EXPECT_CALL(*endpoint_, Connect())
       .WillOnce(Return(UsbConnectStatus::kSuccess));
   EXPECT_CALL(*endpoint_, GetChunkLength()).WillOnce(Return(0x40));
   EXPECT_CALL(*endpoint_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
   EXPECT_CALL(*endpoint_, GetConfigurationString()).WillOnce(Return(""));
-  ASSERT_EQ(fw_updater_->TryConnectUSB(), UsbConnectStatus::kInvalidDevice);
+  ASSERT_EQ(fw_updater_->TryConnectUsb(), UsbConnectStatus::kInvalidDevice);
 }
 
 // Simulate leftover data on the EC's "out" buffer.
-TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
+TEST_F(FirmwareUpdaterTest, TryConnectUsb_LeftoverData) {
   EXPECT_CALL(*endpoint_, Connect())
       .WillOnce(Return(UsbConnectStatus::kSuccess));
   EXPECT_CALL(*endpoint_, GetChunkLength()).WillOnce(Return(10));
@@ -236,7 +236,7 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
       .WillOnce(Return(0));
   EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
-  ASSERT_EQ(fw_updater_->TryConnectUSB(), UsbConnectStatus::kSuccess);
+  ASSERT_EQ(fw_updater_->TryConnectUsb(), UsbConnectStatus::kSuccess);
 }
 
 // Send done command.
@@ -248,14 +248,14 @@ TEST_F(FirmwareUpdaterTest, SendDone) {
 }
 
 // Send first PDU and get the good response.
-TEST_F(FirmwareUpdaterTest, SendFirstPDU) {
+TEST_F(FirmwareUpdaterTest, SendFirstPdu) {
   InSequence dummy;
   EXPECT_CALL(*endpoint_, SendHelper(first_header_, _, _))
       .WillOnce(ReturnArg<2>());
   EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
       .WillOnce(WriteBuf(&good_rpdu_));
 
-  ASSERT_EQ(fw_updater_->SendFirstPDU(), true);
+  ASSERT_EQ(fw_updater_->SendFirstPdu(), true);
 }
 
 // Send the kInjectEntropy subcommand.
@@ -467,7 +467,7 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
     EXPECT_CALL(*endpoint_, Receive(_, 1, false, _)).WillOnce(Return(1));
   }
 
-  // TransferImage takes care of running SendFirstPDU, which sets maximum
+  // TransferImage takes care of running SendFirstPdu, which sets maximum
   // PDU size to 0x80.
   ASSERT_EQ(fw_updater_->TransferImage(SectionName::RW), true);
 }

@@ -34,7 +34,7 @@ ChallengeStatus PairManager::PairChallenge(
           reinterpret_cast<void*>(&response),
           sizeof(response))) {
     if (response.status ==
-        static_cast<uint8_t>(ECResponseStatus::kUnavailable)) {
+        static_cast<uint8_t>(EcResponseStatus::kUnavailable)) {
       LOG(ERROR) << "Need to inject the entropy.";
       return ChallengeStatus::kNeedInjectEntropy;
     }

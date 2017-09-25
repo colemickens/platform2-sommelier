@@ -117,7 +117,7 @@ TEST_F(PairTest, ChallengePassed) {
                                             request_payload_,
                                             _,
                                             sizeof(PairChallengeResponse)))
-      .WillOnce(SetChallengeResponse(ECResponseStatus::kSuccess,
+      .WillOnce(SetChallengeResponse(EcResponseStatus::kSuccess,
                                      tv_.bob_public_,
                                      tv_.authenticator_,
                                      true));
@@ -133,7 +133,7 @@ TEST_F(PairTest, ChallengeFailed) {
                                             request_payload_,
                                             _,
                                             sizeof(PairChallengeResponse)))
-      .WillOnce(SetChallengeResponse(ECResponseStatus::kSuccess,
+      .WillOnce(SetChallengeResponse(EcResponseStatus::kSuccess,
                                      tv_.alice_public_,
                                      tv_.authenticator_,
                                      true));
@@ -148,7 +148,7 @@ TEST_F(PairTest, ChallengeNeedInjectEntropy) {
                                             request_payload_,
                                             _,
                                             sizeof(PairChallengeResponse)))
-      .WillOnce(SetChallengeResponse(ECResponseStatus::kUnavailable,
+      .WillOnce(SetChallengeResponse(EcResponseStatus::kUnavailable,
                                      std::vector<uint8_t>(),
                                      std::vector<uint8_t>(),
                                      false));
@@ -163,7 +163,7 @@ TEST_F(PairTest, ChallengeUnknownError) {
                                             request_payload_,
                                             _,
                                             sizeof(PairChallengeResponse)))
-      .WillOnce(SetChallengeResponse(ECResponseStatus::kInvalidParam,
+      .WillOnce(SetChallengeResponse(EcResponseStatus::kInvalidParam,
                                      std::vector<uint8_t>(),
                                      std::vector<uint8_t>(),
                                      false));

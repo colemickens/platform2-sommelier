@@ -22,7 +22,7 @@
 // signals the EC that the host intends to transfer a new image.
 //
 // The connection establishment response is described by the
-// FirstResponsePDU structure below.
+// FirstResponsePdu structure below.
 
 #ifndef HAMMERD_UPDATE_FW_H_
 #define HAMMERD_UPDATE_FW_H_
@@ -46,7 +46,7 @@ constexpr int kUpdateProtocolVersion = 6;
 constexpr uint32_t kUpdateDoneCmd = 0xB007AB1E;
 constexpr uint32_t kUpdateExtraCmd = 0xB007AB1F;
 
-enum class FirstResponsePDUHeaderType {
+enum class FirstResponsePduHeaderType {
   kCR50 = 0,
   kCommon = 1,
 };
@@ -64,7 +64,7 @@ enum class UpdateExtraCommand : uint16_t {
 };
 const char* ToString(UpdateExtraCommand subcommand);
 
-enum class ECResponseStatus : uint8_t {
+enum class EcResponseStatus : uint8_t {
   kSuccess = 0,
   kInvalidCommand = 1,
   kError = 2,
@@ -124,7 +124,7 @@ struct UpdateFrameHeader {
 // packet is considered an indication of the target running the 'legacy'
 // protocol, version 1. Receiving of an 8 byte or longer response would
 // communicates the protocol version in the second 4 bytes.
-struct FirstResponsePDU {
+struct FirstResponsePdu {
   uint32_t return_value;
 
   // The below fields are present in versions 2 and up.
@@ -188,20 +188,20 @@ class FirmwareUpdaterInterface {
   virtual ~FirmwareUpdaterInterface() = default;
 
   // Scans the new EC image and retrieve versions of RO and RW sections.
-  virtual bool LoadECImage(const std::string& ec_image) = 0;
+  virtual bool LoadEcImage(const std::string& ec_image) = 0;
 
   // Retrieves local touchpad firmware.
   virtual bool LoadTouchpadImage(const std::string& touchpad_image) = 0;
 
   // Tries to connect to the USB endpoint during a period of time.
-  virtual UsbConnectStatus TryConnectUSB() = 0;
+  virtual UsbConnectStatus TryConnectUsb() = 0;
 
   // Closes the connection to the USB endpoint.
-  virtual void CloseUSB() = 0;
+  virtual void CloseUsb() = 0;
 
   // Setups the connection with the EC firmware by sending the first PDU.
   // Returns true if successfully setup the connection.
-  virtual bool SendFirstPDU() = 0;
+  virtual bool SendFirstPdu() = 0;
 
   // Indicates to hammer that transferal of EC/touchpad firmware has completed.
   // Upon receipt of this message the target state machine transitions into
@@ -267,11 +267,11 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   explicit FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint);
 
   // FirmwareUpdaterInterface implementation:
-  bool LoadECImage(const std::string& ec_image) override;
+  bool LoadEcImage(const std::string& ec_image) override;
   bool LoadTouchpadImage(const std::string& touchpad_image) override;
-  UsbConnectStatus TryConnectUSB() override;
-  void CloseUSB() override;
-  bool SendFirstPDU() override;
+  UsbConnectStatus TryConnectUsb() override;
+  void CloseUsb() override;
+  bool SendFirstPdu() override;
   void SendDone() override;
   bool InjectEntropy() override;
   bool SendSubcommand(UpdateExtraCommand subcommand) override;
@@ -316,9 +316,9 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // The fmap function interface.
   std::unique_ptr<FmapInterface> fmap_;
   // The information of the first response PDU.
-  FirstResponsePDU targ_;
+  FirstResponsePdu targ_;
   // The version of the currently-running section.  Retrieved through USB
-  // endpoint's configuration string descriptor as part of TryConnectUSB.
+  // endpoint's configuration string descriptor as part of TryConnectUsb.
   std::string version_;
   // The EC image data to be updated.
   std::string ec_image_;
@@ -328,12 +328,12 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   std::vector<SectionInfo> sections_;
 
   friend class FirmwareUpdaterTest;
-  FRIEND_TEST(FirmwareUpdaterTest, LoadECImage);
-  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_OK);
-  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FAIL);
-  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy);
-  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL);
-  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPDU);
+  FRIEND_TEST(FirmwareUpdaterTest, LoadEcImage);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_OK);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FAIL);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_Legacy);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_FAIL);
+  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPdu);
   FRIEND_TEST(FirmwareUpdaterTest, SendDone);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_InjectEntropy);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);

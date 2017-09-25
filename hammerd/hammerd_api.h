@@ -24,11 +24,11 @@ using hammerd::UsbConnectStatus;
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
     uint16_t vendor_id, uint16_t product_id, int bus, int port);
-BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUSB(
+BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUsb(
     FirmwareUpdater* updater);
-BRILLO_EXPORT void FirmwareUpdater_CloseUSB(
+BRILLO_EXPORT void FirmwareUpdater_CloseUsb(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_LoadECImage(
+BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
     FirmwareUpdater* updater, std::string ec_image);
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater);
@@ -42,7 +42,7 @@ BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
     FirmwareUpdater* updater, UpdateExtraCommand subcommand);
-BRILLO_EXPORT bool FirmwareUpdater_SendFirstPDU(
+BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
     FirmwareUpdater* updater);
 BRILLO_EXPORT void FirmwareUpdater_SendDone(
     FirmwareUpdater* updater);
