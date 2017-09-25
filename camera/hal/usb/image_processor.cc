@@ -243,7 +243,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
 }
 
 int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
-  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
                 << " is unsupported.";
     return -EINVAL;
@@ -281,7 +281,7 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
 int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
                                   FrameBuffer* out_frame,
                                   int rotate_degree) {
-  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
                 << " is unsupported.";
     return -EINVAL;
