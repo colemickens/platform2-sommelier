@@ -11,6 +11,8 @@
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/system/handle.h>
 
 #include "midis/constants.h"
 
@@ -43,13 +45,6 @@ void Client::TriggerClientDeletion() {
   }
 }
 
-void Client::AddClientToPort() {
-  // TODO(pmalani): This will be directly implemented as an function inside the
-  // interface MidisServer; The generated FD will be returned directly as a
-  // response to this callback.
-  NOTIMPLEMENTED();
-}
-
 void Client::OnDeviceAddedOrRemoved(const Device& dev, bool added) {
   arc::mojom::MidisDeviceInfoPtr dev_info = arc::mojom::MidisDeviceInfo::New();
   dev_info->card = dev.GetCard();
@@ -58,15 +53,10 @@ void Client::OnDeviceAddedOrRemoved(const Device& dev, bool added) {
   dev_info->name = dev.GetName();
   dev_info->manufacturer = dev.GetManufacturer();
   if (added) {
-    client_ptr_->DeviceAdded(std::move(dev_info));
+    client_ptr_->OnDeviceAdded(std::move(dev_info));
   } else {
-    client_ptr_->DeviceRemoved(std::move(dev_info));
+    client_ptr_->OnDeviceRemoved(std::move(dev_info));
   }
-}
-
-void Client::HandleCloseDeviceMessage() {
-  // TODO(pmalani): Implement!
-  NOTIMPLEMENTED();
 }
 
 void Client::ListDevices(const ListDevicesCallback& callback) {
@@ -74,6 +64,40 @@ void Client::ListDevices(const ListDevicesCallback& callback) {
   mojo::Array<arc::mojom::MidisDeviceInfoPtr> device_list;
   device_tracker_->ListDevices(&device_list);
   callback.Run(std::move(device_list));
+}
+
+void Client::RequestPort(arc::mojom::MidisRequestPtr request,
+                         const RequestPortCallback& callback) {
+  base::ScopedFD clientfd = device_tracker_->AddClientToReadSubdevice(
+      request->card, request->device_num, request->subdevice_num, client_id_);
+  if (!clientfd.is_valid()) {
+    LOG(ERROR) << "AddClientToReadSubdevice failed.";
+    // We don't delete the client here, because this could mean an issue with
+    // the device h/w.
+    callback.Run(mojo::ScopedHandle());
+    return;
+  }
+
+  mojo::edk::ScopedPlatformHandle platform_handle{
+      mojo::edk::PlatformHandle(clientfd.release())};
+  MojoHandle wrapped_handle;
+  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
+      std::move(platform_handle), &wrapped_handle);
+  if (wrap_result != MOJO_RESULT_OK) {
+    LOG(ERROR) << "Failed to wrap port FD in a Mojo Handle.";
+    callback.Run(mojo::ScopedHandle());
+    return;
+  }
+
+  mojo::ScopedHandle scoped_handle{mojo::Handle(wrapped_handle)};
+
+  callback.Run(std::move(scoped_handle));
+  DVLOG(1) << "Converted port into Mojo scoped handle successfully.";
+}
+
+void Client::CloseDevice(arc::mojom::MidisRequestPtr request) {
+  device_tracker_->RemoveClientFromDevice(client_id_, request->card,
+                                          request->device_num);
 }
 
 }  // namespace midis

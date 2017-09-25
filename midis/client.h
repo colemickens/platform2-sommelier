@@ -36,22 +36,13 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
   // This function is a DeviceTracker::Observer override.
   void OnDeviceAddedOrRemoved(const Device& dev, bool added) override;
 
-  void HandleCloseDeviceMessage();
-
-  // TODO(pmalani): This function will eventually be an implementation of an
-  // interface routine in the Mojo interface MidisServer, and will return
-  // a FD using which the client can read from / write to the requested
-  // port.
-  // Leaving this in here, since this function was also present when the
-  // IPC mechanism for midis clients was Unix Domain Sockets, and we'd like
-  // to re-use that name (also as a reminder that this function needs
-  // to be implemented!).
-  void AddClientToPort();
-
   void TriggerClientDeletion();
 
-  // arc::mojom::MidisServer
+  // arc::mojom:MidisServer overrides
   void ListDevices(const ListDevicesCallback& callback) override;
+  void RequestPort(arc::mojom::MidisRequestPtr request,
+                   const RequestPortCallback& callback) override;
+  void CloseDevice(arc::mojom::MidisRequestPtr request) override;
 
   // The DeviceTracker can be guaranteed to exist for the lifetime of the
   // service. As such, it is safe to maintain this pointer as a means to make
