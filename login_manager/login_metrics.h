@@ -106,6 +106,9 @@ class LoginMetrics {
   // container is stopped.
   virtual void StopTrackingArcUseTime();
 
+  // Submits to UMA the number of invalid policy files detected.
+  virtual void SendNumberOfInvalidPolicyFiles(int invalid_files);
+
  private:
   friend class LoginMetricsTest;
   friend class UserTypeTest;

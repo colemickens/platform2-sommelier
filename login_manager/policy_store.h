@@ -46,12 +46,20 @@ class PolicyStore {
 
   const base::FilePath policy_path() const { return policy_path_; }
 
- private:
-  static const char kPrefsFileName[];
+  virtual bool resilient_for_testing() const { return false; }
 
+ protected:
   // Load the signed policy off of disk into |policy_|. Returns true unless
   // there is a policy on disk and loading it fails.
-  bool LoadOrCreate();
+  virtual bool LoadOrCreate();
+
+  // Load the signed policy off of disk into |policy_| from |policy_path|.
+  // Returns true unless there is a policy on disk and loading it fails.
+  bool LoadOrCreateFromPath(const base::FilePath& policy_path);
+
+  // Persist |policy_| to disk at |policy_path|.
+  // Returns false if there's an error while writing data.
+  bool PersistToPath(const base::FilePath& policy_path);
 
   // The cached policy data from |policy_path_|. It is kept up to date whenever
   // the contents in the file are updated by this object.

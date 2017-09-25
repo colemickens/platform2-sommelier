@@ -71,7 +71,7 @@ MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), nullptr) {}
 MockPolicyKey::~MockPolicyKey() = default;
 
 MockPolicyService::MockPolicyService()
-    : PolicyService(base::FilePath(), nullptr) {}
+    : PolicyService(base::FilePath(), nullptr, nullptr, false) {}
 MockPolicyService::~MockPolicyService() = default;
 
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() = default;

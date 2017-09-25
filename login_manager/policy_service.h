@@ -27,6 +27,7 @@ class PolicyFetchResponse;
 
 namespace login_manager {
 
+class LoginMetrics;
 class PolicyKey;
 class PolicyStore;
 
@@ -78,7 +79,13 @@ class PolicyService {
 
   // Constructor. |policy_dir| is the directory where policy is stored.
   // |policy_key| is the key for policy validation.
-  PolicyService(const base::FilePath& policy_dir, PolicyKey* policy_key);
+  // |metrics| is transferred to policy stores created by this instance.
+  // |resilient_chrome_policy_store| is used to decide if the policy store has
+  // to be created with backup files for resilience.
+  PolicyService(const base::FilePath& policy_dir,
+                PolicyKey* policy_key,
+                LoginMetrics* metrics,
+                bool resilient_chrome_policy_store);
   virtual ~PolicyService();
 
   // Stores a new policy under the namespace |ns|. If mandated by
@@ -155,6 +162,10 @@ class PolicyService {
   void OnPolicyPersisted(const Completion& completion,
                          const std::string& dbus_error_code);
 
+  // Owned by the caller. Passed to the policy stores at creation and used by
+  // device policy service.
+  LoginMetrics* metrics_ = nullptr;
+
  private:
   // Persists key() to disk synchronously and passes the result to
   // OnKeyPersisted().
@@ -163,13 +174,13 @@ class PolicyService {
   // Returns the file path of the policy for the given namespace |ns|.
   base::FilePath GetPolicyPath(const PolicyNamespace& ns);
 
- private:
   using PolicyStoreMap =
       std::map<PolicyNamespace, std::unique_ptr<PolicyStore>>;
   PolicyStoreMap policy_stores_;
   base::FilePath policy_dir_;
-  PolicyKey* policy_key_;
-  Delegate* delegate_;
+  PolicyKey* policy_key_ = nullptr;
+  bool resilient_chrome_policy_store_ = false;
+  Delegate* delegate_ = nullptr;
 
   // Put at the last member, so that inflight weakptrs will be invalidated
   // before other members' destruction.

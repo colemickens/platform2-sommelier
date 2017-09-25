@@ -214,9 +214,8 @@ DevicePolicyService::DevicePolicyService(
     NssUtil* nss,
     Crossystem* crossystem,
     VpdProcess* vpd_process)
-    : PolicyService(policy_dir, policy_key),
+    : PolicyService(policy_dir, policy_key, metrics, true),
       install_attributes_file_(install_attributes_file),
-      metrics_(metrics),
       mitigator_(mitigator),
       nss_(nss),
       crossystem_(crossystem),
@@ -589,6 +588,10 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
 
 PolicyStore* DevicePolicyService::GetChromeStore() {
   return GetOrCreateStore(MakeChromePolicyNamespace());
+}
+
+bool DevicePolicyService::IsChromeStoreResilientForTesting() {
+  return GetChromeStore()->resilient_for_testing();
 }
 
 }  // namespace login_manager

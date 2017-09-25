@@ -106,7 +106,8 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
       return nullptr;
     }
 
-    entry->second = std::make_unique<PolicyService>(policy_dir, owner_key_);
+    entry->second =
+        std::make_unique<PolicyService>(policy_dir, owner_key_, nullptr, false);
   }
 
   return entry->second.get();

@@ -55,7 +55,8 @@ class PolicyServiceTest : public testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_ = std::make_unique<PolicyService>(base::FilePath(), &key_);
+    service_ = std::make_unique<PolicyService>(base::FilePath(), &key_, nullptr,
+                                               false);
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
                                  std::unique_ptr<PolicyStore>(store_));
     service_->set_delegate(&delegate_);
@@ -427,7 +428,8 @@ class PolicyServiceNamespaceTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     fake_loop_.SetAsCurrent();
-    service_ = std::make_unique<PolicyService>(temp_dir_.path(), nullptr);
+    service_ = std::make_unique<PolicyService>(temp_dir_.path(), nullptr,
+                                               nullptr, false);
 
     const std::string extension_id = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");

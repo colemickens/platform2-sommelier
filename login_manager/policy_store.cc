@@ -6,13 +6,18 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <policy/policy_util.h>
 
-#include "login_manager/login_metrics.h"
 #include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
-// static
-const char PolicyStore::kPrefsFileName[] = "preferences";
+
+namespace {
+
+const base::FilePath::CharType kPrefsFileName[] =
+    FILE_PATH_LITERAL("preferences");
+
+}  // namespace
 
 PolicyStore::PolicyStore(const base::FilePath& policy_path)
     : policy_path_(policy_path) {}
@@ -30,55 +35,59 @@ bool PolicyStore::EnsureLoadedOrCreated() {
   return load_result_ == LOAD_SUCCEEDED;
 }
 
-bool PolicyStore::LoadOrCreate() {
-  if (!base::PathExists(policy_path_)) {
-    // This is non-fatal, the policy may not have been stored yet.
-    LOG(WARNING) << "Policy file at " << policy_path_.value()
-                 << " does not exist. Continuing anyway.";
-    cached_policy_data_.clear();
-    return true;
-  }
-
-  std::string polstr;
-  if (!base::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
-    PLOG(ERROR) << "Could not read policy off disk at " << policy_path_.value();
-    cached_policy_data_.clear();
-    return false;
-  }
-  if (!policy_.ParseFromString(polstr)) {
-    LOG(ERROR) << "Policy on disk at " << policy_path_.value()
-               << "could not be parsed and will be deleted!";
-    base::DeleteFile(policy_path_, false);
-    cached_policy_data_.clear();
-    return false;
-  }
-  cached_policy_data_ = polstr;
-
-  return true;
-}
-
 const enterprise_management::PolicyFetchResponse& PolicyStore::Get() const {
   return policy_;
 }
 
 bool PolicyStore::Persist() {
-  SystemUtilsImpl utils;
+  return PersistToPath(policy_path_);
+}
+
+bool PolicyStore::LoadOrCreate() {
+  return LoadOrCreateFromPath(policy_path_);
+}
+
+bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
   std::string polstr;
-  if (!policy_.SerializeToString(&polstr)) {
+  cached_policy_data_.clear();
+  policy::LoadPolicyResult result =
+      policy::LoadPolicyFromPath(policy_path, &polstr, &policy_);
+  switch (result) {
+    case policy::LoadPolicyResult::kSuccess:
+      cached_policy_data_ = polstr;
+      return true;
+    case policy::LoadPolicyResult::kFileNotFound:
+      return true;
+    case policy::LoadPolicyResult::kFailedToReadFile:
+    case policy::LoadPolicyResult::kEmptyFile:
+      return false;
+    case policy::LoadPolicyResult::kInvalidPolicyData:
+      base::DeleteFile(policy_path, false);
+      policy_.Clear();
+      return false;
+  }
+
+  NOTREACHED();
+}
+
+bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
+  SystemUtilsImpl utils;
+  std::string policy_blob;
+  if (!policy_.SerializeToString(&policy_blob)) {
     LOG(ERROR) << "Could not serialize policy!";
     return false;
   }
 
   // Skip writing to the file if the contents of policy data haven't been
   // changed.
-  if (cached_policy_data_ == polstr)
+  if (cached_policy_data_ == policy_blob)
     return true;
 
-  if (!utils.AtomicFileWrite(policy_path_, polstr))
+  if (!utils.AtomicFileWrite(policy_path, policy_blob))
     return false;
 
-  LOG(INFO) << "Persisted policy to disk.";
-  cached_policy_data_ = polstr;
+  LOG(INFO) << "Persisted policy to disk, path: " << policy_path.value();
+  cached_policy_data_ = policy_blob;
   return true;
 }
 

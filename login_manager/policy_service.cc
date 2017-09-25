@@ -23,6 +23,7 @@
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/resilient_policy_store.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/validator_utils.h"
 
@@ -41,9 +42,13 @@ constexpr char PolicyService::kSignInExtensionsPolicyFileNamePrefix[] =
     "policy_signin_extension_id_";
 
 PolicyService::PolicyService(const base::FilePath& policy_dir,
-                             PolicyKey* policy_key)
-    : policy_dir_(policy_dir),
+                             PolicyKey* policy_key,
+                             LoginMetrics* metrics,
+                             bool resilient_chrome_policy_store)
+    : metrics_(metrics),
+      policy_dir_(policy_dir),
       policy_key_(policy_key),
+      resilient_chrome_policy_store_(resilient_chrome_policy_store),
       delegate_(NULL),
       weak_ptr_factory_(this) {}
 
@@ -89,7 +94,14 @@ PolicyStore* PolicyService::GetOrCreateStore(const PolicyNamespace& ns) {
   if (iter != policy_stores_.end())
     return iter->second.get();
 
-  auto store = std::make_unique<PolicyStore>(GetPolicyPath(ns));
+  bool resilient =
+      (ns == MakeChromePolicyNamespace() && resilient_chrome_policy_store_);
+  std::unique_ptr<PolicyStore> store;
+  if (resilient)
+    store = std::make_unique<ResilientPolicyStore>(GetPolicyPath(ns), metrics_);
+  else
+    store = std::make_unique<PolicyStore>(GetPolicyPath(ns));
+
   store->EnsureLoadedOrCreated();
   PolicyStore* policy_store_ptr = store.get();
   policy_stores_[ns] = std::move(store);

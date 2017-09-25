@@ -120,16 +120,18 @@ class DevicePolicyServiceTest : public ::testing::Test {
     InitPolicy(settings, owner, signature, request_token);
   }
 
-  void InitService(NssUtil* nss) {
-    auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
-    store_ = store_ptr.get();
+  void InitService(NssUtil* nss, bool use_mock_store) {
     metrics_ = std::make_unique<MockMetrics>();
     mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
         tmpdir_.path(), &key_, install_attributes_file_, metrics_.get(),
         mitigator_.get(), nss, &crossystem_, &vpd_process_));
-    service_->SetStoreForTesting(MakeChromePolicyNamespace(),
-                                 std::move(store_ptr));
+    if (use_mock_store) {
+      auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
+      store_ = store_ptr.get();
+      service_->SetStoreForTesting(MakeChromePolicyNamespace(),
+                                   std::move(store_ptr));
+    }
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
@@ -260,6 +262,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(key_populated));
   }
 
+  bool IsResilient() { return service_->IsChromeStoreResilientForTesting(); }
+
   LoginMetrics::PolicyFileState SimulateNullPolicy() {
     EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(new_policy_proto_));
     return LoginMetrics::NOT_PRESENT;
@@ -334,7 +338,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
 
@@ -354,7 +358,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -373,7 +377,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, "fake_token"));
 
   Sequence s;
@@ -392,7 +396,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -414,7 +418,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 TEST_F(DevicePolicyServiceTest,
        CheckAndHandleOwnerLogin_MissingPublicKeyOwner) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -436,7 +440,7 @@ TEST_F(DevicePolicyServiceTest,
 TEST_F(DevicePolicyServiceTest,
        CheckAndHandleOwnerLogin_MissingPublicKeyNonOwner) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -455,7 +459,7 @@ TEST_F(DevicePolicyServiceTest,
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -542,7 +546,7 @@ TEST_F(DevicePolicyServiceTest, GivenUserIsOwner) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectMitigating(false);
 
@@ -563,7 +567,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectMitigating(true);
 
@@ -584,7 +588,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectMitigating(true);
 
@@ -603,7 +607,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
@@ -628,7 +632,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
 // Ensure block devmode is set properly in NVRAM.
 TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
@@ -650,7 +654,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
 // Ensure block devmode is unset properly in NVRAM.
 TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
@@ -673,7 +677,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
 // process to clean block_devmode only.
 TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
@@ -710,7 +714,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 // used.
 TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
@@ -746,7 +750,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 // Check enrolled device that fails at VPD update.
 TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   MockPolicyKey key;
   MockDevicePolicyService service;
@@ -776,14 +780,14 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
   KeyFailUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectMitigating(false);
 
@@ -798,7 +802,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
   KeyCheckUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectMitigating(true);
 
@@ -814,7 +818,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectKeyPopulated(true);
 
@@ -823,7 +827,7 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(false));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
@@ -833,7 +837,7 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   ExpectKeyPopulated(false);
 
@@ -842,7 +846,7 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_NoKeyNoPolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateNullOwnerKey();
@@ -856,7 +860,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_NoKeyNoPolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_UnloadableKeyNoPolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = LoginMetrics::MALFORMED;
@@ -870,7 +874,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_UnloadableKeyNoPolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_BadKeyNoPolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateBadOwnerKey(&nss);
@@ -884,7 +888,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_BadKeyNoPolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
@@ -898,7 +902,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyUnloadablePolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
@@ -912,7 +916,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyUnloadablePolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyGoodPolicyNoPrefs) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
@@ -927,7 +931,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyGoodPolicyNoPrefs) {
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
   // This is http://crosbug.com/24361
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
@@ -941,7 +945,7 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
 
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(false));
@@ -964,7 +968,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
 
 TEST_F(DevicePolicyServiceTest, GetSettings) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   // No policy blob should result in an empty settings protobuf.
   em::ChromeDeviceSettingsProto settings;
@@ -984,7 +988,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
 
 TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   em::ChromeDeviceSettingsProto settings;
   // Some valid flags.
@@ -1014,7 +1018,7 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
 
 TEST_F(DevicePolicyServiceTest, PersistPolicyMultipleNamespaces) {
   MockNssUtil nss;
-  InitService(&nss);
+  InitService(&nss, true);
 
   // Set up store for extension policy.
   auto extension_store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
@@ -1055,6 +1059,12 @@ TEST_F(DevicePolicyServiceTest, PersistPolicyMultipleNamespaces) {
   EXPECT_NE(nullptr, service_->settings_);
   EXPECT_EQ(service_->settings_->SerializeAsString(),
             settings.SerializeAsString());
+}
+
+TEST_F(DevicePolicyServiceTest, TestResilientStore) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+  EXPECT_TRUE(IsResilient());
 }
 
 }  // namespace login_manager

@@ -29,7 +29,7 @@ UserPolicyService::UserPolicyService(const base::FilePath& policy_dir,
                                      std::unique_ptr<PolicyKey> policy_key,
                                      const base::FilePath& key_copy_path,
                                      SystemUtils* system_utils)
-    : PolicyService(policy_dir, policy_key.get()),
+    : PolicyService(policy_dir, policy_key.get(), nullptr, false),
       scoped_policy_key_(std::move(policy_key)),
       key_copy_path_(key_copy_path),
       system_utils_(system_utils) {}

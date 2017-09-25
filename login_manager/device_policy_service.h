@@ -183,8 +183,10 @@ class DevicePolicyService : public PolicyService {
   // Helper to return the policy store for the Chrome domain.
   PolicyStore* GetChromeStore();
 
+  // Returns whether the store is resilent. To be used for testing only.
+  bool IsChromeStoreResilientForTesting();
+
   const base::FilePath install_attributes_file_;
-  LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
   Crossystem* crossystem_;   // Owned by the caller.
