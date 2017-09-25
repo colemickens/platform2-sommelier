@@ -92,10 +92,15 @@ bool WriteStringToFd(int fd, const std::string& contents) {
 
 }  // namespace
 
+PooledResource::PooledResource(const base::FilePath& instance_runtime_dir,
+                               bool release_on_destruction)
+    : instance_runtime_dir_(instance_runtime_dir),
+      release_on_destruction_(release_on_destruction) {}
+
 bool PooledResource::Allocate() {
   // The fcntl lock will be dropped when fd goes out of scope.
   std::string file_path =
-      base::StringPrintf("%s/%s", launcher::kVmRuntimeDirectory, GetName());
+      base::StringPrintf("%s/%s", kVmRuntimeDirectory, GetName());
   base::ScopedFD fd = CreateAndLockFile(base::FilePath(file_path));
   if (!fd.is_valid())
     return false;
@@ -104,13 +109,43 @@ bool PooledResource::Allocate() {
   if (!ReadFdToString(fd.get(), &resource_file))
     return false;
 
-  if (!LoadResources(resource_file))
+  if (!LoadGlobalResources(resource_file))
     return false;
 
   if (!AllocateResource())
     return false;
 
-  if (!WriteStringToFd(fd.get(), PersistResources()))
+  if (!WriteStringToFd(fd.get(), PersistGlobalResources()))
+    return false;
+
+  if (!PersistInstanceResource())
+    return false;
+
+  return true;
+}
+
+bool PooledResource::LoadInstance() {
+  // The fcntl lock will be dropped when fd goes out of scope.
+  std::string global_path =
+      base::StringPrintf("%s/%s", kVmRuntimeDirectory, GetName());
+  base::ScopedFD global_fd = CreateAndLockFile(base::FilePath(global_path));
+  base::FilePath instance_path = instance_runtime_dir_.Append(GetName());
+  base::ScopedFD instance_fd = CreateAndLockFile(base::FilePath(instance_path));
+  if (!global_fd.is_valid() || !instance_fd.is_valid())
+    return false;
+
+  std::string global_file;
+  if (!ReadFdToString(global_fd.get(), &global_file))
+    return false;
+
+  if (!LoadGlobalResources(global_file))
+    return false;
+
+  std::string instance_file;
+  if (!ReadFdToString(instance_fd.get(), &instance_file))
+    return false;
+
+  if (!LoadInstanceResource(instance_file))
     return false;
 
   return true;
@@ -128,16 +163,37 @@ bool PooledResource::Release() {
   if (!ReadFdToString(fd.get(), &resource_file))
     return false;
 
-  if (!LoadResources(resource_file))
+  if (!LoadGlobalResources(resource_file))
     return false;
 
   if (!ReleaseResource())
     return false;
 
-  if (!WriteStringToFd(fd.get(), PersistResources()))
+  if (!WriteStringToFd(fd.get(), PersistGlobalResources()))
     return false;
 
   return true;
+}
+
+bool PooledResource::PersistInstanceResource() {
+  // The fcntl lock will be dropped when fd goes out of scope.
+  base::FilePath instance_path = instance_runtime_dir_.Append(GetName());
+  base::ScopedFD fd = CreateAndLockFile(base::FilePath(instance_path));
+  if (!fd.is_valid())
+    return false;
+
+  if (!WriteStringToFd(fd.get(), GetResourceID()))
+    return false;
+
+  return true;
+}
+
+bool PooledResource::ShouldReleaseOnDestruction() {
+  return release_on_destruction_;
+}
+
+void PooledResource::SetReleaseOnDestruction(bool release_on_destruction) {
+  release_on_destruction_ = release_on_destruction;
 }
 
 }  // namespace launcher

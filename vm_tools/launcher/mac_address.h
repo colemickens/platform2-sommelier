@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include "vm_tools/launcher/pooled_resource.h"
@@ -24,23 +25,31 @@ class MacAddress : public PooledResource {
  public:
   using Octets = std::array<uint8_t, 6>;
 
-  MacAddress() = default;
-  virtual ~MacAddress();
+  ~MacAddress() override;
 
   std::string ToString() const;
 
-  static std::unique_ptr<MacAddress> Create();
+  static std::unique_ptr<MacAddress> Create(
+      const base::FilePath& instance_runtime_dir);
+  static std::unique_ptr<MacAddress> Load(
+      const base::FilePath& instance_runtime_dir);
 
  protected:
   // PooledResource overrides
   const char* GetName() const override;
-  bool LoadResources(const std::string& resources) override;
-  std::string PersistResources() override;
+  const std::string GetResourceID() const override;
+  bool LoadGlobalResources(const std::string& resources) override;
+  std::string PersistGlobalResources() override;
+  bool LoadInstanceResource(const std::string& resource) override;
   bool AllocateResource() override;
   bool ReleaseResource() override;
 
  private:
+  MacAddress(const base::FilePath& instance_runtime_dir,
+             bool release_on_destruction);
+
   bool IsValidMac(const Octets& candidate) const;
+  bool IsMacAllocated(const Octets& candidate) const;
 
   std::vector<Octets> allocated_macs_;
   Octets selected_mac_;

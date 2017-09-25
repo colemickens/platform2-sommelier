@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include "vm_tools/launcher/pooled_resource.h"
@@ -19,24 +20,32 @@ namespace launcher {
 // Manages IPv4 subnets that can be assigned to VMs.
 class Subnet : public PooledResource {
  public:
-  Subnet() = default;
-  virtual ~Subnet();
+  ~Subnet() override;
 
   std::string GetGatewayAddress() const;
   std::string GetIpAddress() const;
   std::string GetNetmask() const;
 
-  static std::unique_ptr<Subnet> Create();
+  static std::unique_ptr<Subnet> Create(
+      const base::FilePath& instance_runtime_dir);
+  static std::unique_ptr<Subnet> Load(
+      const base::FilePath& instance_runtime_dir);
 
  protected:
   // PooledResource overrides
   const char* GetName() const override;
-  bool LoadResources(const std::string& resources) override;
-  std::string PersistResources() override;
+  const std::string GetResourceID() const override;
+  bool LoadGlobalResources(const std::string& resources) override;
+  std::string PersistGlobalResources() override;
+  bool LoadInstanceResource(const std::string& resource) override;
   bool AllocateResource() override;
   bool ReleaseResource() override;
 
  private:
+  Subnet(const base::FilePath& instance_runtime_dir,
+         bool release_on_destruction);
+
+  bool IsSubnetAllocated(const size_t subnet_id) const;
   // For simplicity, divide our /24 into 64 /30 subnets. Each subnet can then
   // be referred to by an id from 0-63. Within each subnet:
   // addr 0 - network identifier

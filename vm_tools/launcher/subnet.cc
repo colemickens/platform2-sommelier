@@ -23,14 +23,29 @@ namespace {
 const char kIpFormat[] = "100.115.92.%hhu";
 }  // namespace
 
+Subnet::Subnet(const base::FilePath& instance_runtime_dir,
+               bool release_on_destruction)
+    : PooledResource(instance_runtime_dir, release_on_destruction) {}
+
 Subnet::~Subnet() {
-  if (!Release())
-    LOG(ERROR) << "Unable to release subnet " << selected_subnet_;
+  if (ShouldReleaseOnDestruction() && !Release())
+    LOG(ERROR) << "Failed to Release() subnet";
 }
 
-std::unique_ptr<Subnet> Subnet::Create() {
-  auto subnet = std::make_unique<Subnet>();
+std::unique_ptr<Subnet> Subnet::Create(
+    const base::FilePath& instance_runtime_dir) {
+  auto subnet = std::unique_ptr<Subnet>(new Subnet(instance_runtime_dir, true));
   if (!subnet->Allocate())
+    return nullptr;
+
+  return subnet;
+}
+
+std::unique_ptr<Subnet> Subnet::Load(
+    const base::FilePath& instance_runtime_dir) {
+  auto subnet =
+      std::unique_ptr<Subnet>(new Subnet(instance_runtime_dir, false));
+  if (!subnet->LoadInstance())
     return nullptr;
 
   return subnet;
@@ -54,10 +69,14 @@ std::string Subnet::GetNetmask() const {
 }
 
 const char* Subnet::GetName() const {
-  return "subnets";
+  return "subnet";
 }
 
-bool Subnet::LoadResources(const std::string& resources) {
+const std::string Subnet::GetResourceID() const {
+  return base::StringPrintf("%zu", selected_subnet_);
+}
+
+bool Subnet::LoadGlobalResources(const std::string& resources) {
   std::vector<std::string> lines = base::SplitString(
       resources, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -91,7 +110,7 @@ bool Subnet::LoadResources(const std::string& resources) {
   return true;
 }
 
-std::string Subnet::PersistResources() {
+std::string Subnet::PersistGlobalResources() {
   std::string resources;
 
   for (size_t i = 0; i < allocated_subnets_.size(); i++) {
@@ -100,6 +119,18 @@ std::string Subnet::PersistResources() {
   }
 
   return resources;
+}
+
+bool Subnet::LoadInstanceResource(const std::string& resource) {
+  size_t id;
+  if (!base::StringToSizeT(resource, &id))
+    return false;
+
+  if (!IsSubnetAllocated(id))
+    return false;
+
+  selected_subnet_ = id;
+  return true;
 }
 
 bool Subnet::AllocateResource() {
@@ -124,6 +155,10 @@ bool Subnet::ReleaseResource() {
   allocated_subnets_.reset(selected_subnet_);
 
   return true;
+}
+
+bool Subnet::IsSubnetAllocated(const size_t subnet_id) const {
+  return allocated_subnets_.test(subnet_id);
 }
 
 }  // namespace launcher

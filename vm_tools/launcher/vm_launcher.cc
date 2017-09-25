@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
@@ -39,12 +41,12 @@ std::string BuildKernelCommandLine(
 }  // namespace
 
 int main(int argc, char** argv) {
-  DEFINE_bool(kvmtool,
-              false,
+  DEFINE_bool(kvmtool, false,
               "Use the kvmtool hypervisor instead of the default crosvm");
   DEFINE_bool(runc, false, "Use the runc container runtime instead of run_oci");
   DEFINE_bool(nfs, false, "Launch NFS server before launching the VM");
   DEFINE_string(container, "", "Path of the container to start");
+  DEFINE_string(name, "default", "Path of the container to start");
   brillo::FlagHelper::Init(argc, argv, "Launches a container in a VM");
   brillo::InitLog(brillo::kLogToSyslog);
 
@@ -86,7 +88,25 @@ int main(int argc, char** argv) {
     vm_process.AddStringOption("-d", FLAGS_container + ",ro");
   }
 
-  auto mac_addr = vm_tools::launcher::MacAddress::Create();
+  base::FilePath instance_dir =
+      base::FilePath(vm_tools::launcher::kVmRuntimeDirectory)
+          .Append(FLAGS_name);
+
+  if (base::PathExists(instance_dir)) {
+    LOG(ERROR) << "VM runtime directory '" << instance_dir.value()
+               << "' already exists";
+    return 1;
+  }
+
+  // Create a runtime directory for the VM. Note that we don't delete this
+  // for now; that will be taken care of in later refactoring.
+  if (!base::CreateDirectory(instance_dir)) {
+    LOG(ERROR) << "Could not create VM runtime directory '"
+               << instance_dir.value();
+    return 1;
+  }
+
+  auto mac_addr = vm_tools::launcher::MacAddress::Create(instance_dir);
   if (!mac_addr) {
     LOG(ERROR) << "Could not allocate MAC address";
     return 1;
@@ -94,7 +114,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Allocated MAC address " << mac_addr->ToString();
 
-  auto subnet = vm_tools::launcher::Subnet::Create();
+  auto subnet = vm_tools::launcher::Subnet::Create(instance_dir);
   if (!subnet) {
     LOG(ERROR) << "Could not allocate subnet";
     return 1;
@@ -107,11 +127,10 @@ int main(int argc, char** argv) {
 
   // Handle networking-specific args.
   vm_process.AddStringOption(
-      "-n",
-      base::StringPrintf("mode=tap,guest_mac=%s,host_ip=%s,guest_ip=%s",
-                         mac_addr->ToString().c_str(),
-                         subnet->GetGatewayAddress().c_str(),
-                         subnet->GetIpAddress().c_str()));
+      "-n", base::StringPrintf("mode=tap,guest_mac=%s,host_ip=%s,guest_ip=%s",
+                               mac_addr->ToString().c_str(),
+                               subnet->GetGatewayAddress().c_str(),
+                               subnet->GetIpAddress().c_str()));
 
   // Create kernel command line args.
   std::map<std::string, std::string> args = {
