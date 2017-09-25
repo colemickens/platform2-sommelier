@@ -25,13 +25,15 @@ Turn on extra network state checking to make sure the default gateway
 is reachable.
 "
 
+. /usr/share/misc/shflags
+
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=$FLIMFLAM.Manager
 
 usage() {
   echo "$*"
   echo
-  echo "${FLAGS_HELP}"
+  flags_help
   exit 1
 }
 
@@ -58,6 +60,9 @@ display_arpgw () {
   echo "This Flimflam instance does not support ArpGateway"
   exit 0
 }
+
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
 
 if [ $# -lt 1 ]; then
     display_arpgw
