@@ -46,6 +46,8 @@
 
 #define OBG_TILE_SIZE 16
 
+#define __AIC_UNUSED(x) (void)(x)
+
 typedef struct ia_aiq_output_frame_parameters{
 	//output_resolution resolution;
 	unsigned short width;
@@ -84,6 +86,7 @@ public:
 	{}
 	Array2DInterpMachine(int frames, int modes) :
 		m_size(0), m_frameNum(frames), m_modeNum(modes), m_data((frames + 1)*(modes + 1)) {
+		__AIC_UNUSED(m_modeNum);
 	}
 	void Set(InterpMachine* intMach, int frame_index, int mode_index) {
 		if ((mode_index*m_frameNum + frame_index) >= (int)m_data.size())
@@ -127,8 +130,9 @@ public:
 		m_size(0), m_width(2), m_height(0), m_data(10)
 	{}
 	Array2DInt(size_t x, size_t y, int init = 0) :
-		m_size(0), m_width(x), m_height(y), m_data(x*y, init)
-	{}
+		m_size(0), m_width(x), m_height(y), m_data(x*y, init) {
+		__AIC_UNUSED(m_height);
+        }
 	void Set(int domNum, int x, int y) {
 	  if ((int)m_data.size() <= (int)(y*m_width + x))
 			m_data.resize(y*m_width + m_width);
