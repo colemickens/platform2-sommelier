@@ -27,20 +27,20 @@ const char kTestEAPUserPassword[] = "testpass";
 
 class GdmDeviceTest : public testing::Test {
  protected:
-  void ExpectEAPParameters(const GCT_API_EAP_PARAM &eap_parameters,
+  void ExpectEAPParameters(const GCT_API_EAP_PARAM& eap_parameters,
                            GCT_API_EAP_TYPE eap_type,
-                           const char *anonymous_identity,
-                           const char *user_identity,
-                           const char *user_password,
+                           const char* anonymous_identity,
+                           const char* user_identity,
+                           const char* user_password,
                            int device_certificate_null,
                            int ca_certificate_null) {
     EXPECT_EQ(eap_type, eap_parameters.type);
     EXPECT_STREQ(anonymous_identity,
-                 reinterpret_cast<const char *>(eap_parameters.anonymousId));
+                 reinterpret_cast<const char*>(eap_parameters.anonymousId));
     EXPECT_STREQ(user_identity,
-                 reinterpret_cast<const char *>(eap_parameters.userId));
+                 reinterpret_cast<const char*>(eap_parameters.userId));
     EXPECT_STREQ(user_password,
-                 reinterpret_cast<const char *>(eap_parameters.userIdPwd));
+                 reinterpret_cast<const char*>(eap_parameters.userIdPwd));
     EXPECT_EQ(device_certificate_null, eap_parameters.devCertNULL);
     EXPECT_EQ(ca_certificate_null, eap_parameters.caCertNULL);
   }
@@ -60,10 +60,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingConnectParameters) {
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
     ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP,
-                        kTestEAPAnonymousIdentity,
-                        kTestEAPUserIdentity,
-                        kTestEAPUserPassword,
-                        0, 0);
+                        kTestEAPAnonymousIdentity, kTestEAPUserIdentity,
+                        kTestEAPUserPassword, 0, 0);
   }
   {
     // Network operator has an anonymous identity, user identity, and user
@@ -75,10 +73,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingConnectParameters) {
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
     ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP,
-                        kTestEAPAnonymousIdentity,
-                        kTestEAPUserIdentity,
-                        kTestEAPUserPassword,
-                        0, 0);
+                        kTestEAPAnonymousIdentity, kTestEAPUserIdentity,
+                        kTestEAPUserPassword, 0, 0);
   }
 }
 
@@ -119,8 +115,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters,
-                        GCT_WIMAX_EAP_TTLS_MD5, "", "", "", 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_EAP_TTLS_MD5, "", "", "", 0,
+                        0);
   }
   {
     // Network operator's EAP type is TTLS/MSCHAPv2.
@@ -129,8 +125,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters,
-                        GCT_WIMAX_EAP_TTLS_MSCHAPV2, "", "", "", 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_EAP_TTLS_MSCHAPV2, "", "", "",
+                        0, 0);
   }
   {
     // Network operator's EAP type is TTLS/CHAP.
@@ -139,8 +135,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters,
-                        GCT_WIMAX_EAP_TTLS_CHAP, "", "", "", 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_EAP_TTLS_CHAP, "", "", "", 0,
+                        0);
   }
   {
     // Network operator's EAP type is AKA.
@@ -149,8 +145,7 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters,
-                        GCT_WIMAX_EAP_AKA, "", "", "", 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_EAP_AKA, "", "", "", 0, 0);
   }
   {
     // Network operator has an anonymous identity specified.
@@ -169,8 +164,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP,
-                        "", kTestEAPUserIdentity, "", 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP, "",
+                        kTestEAPUserIdentity, "", 0, 0);
   }
   {
     // Network operator has a user password specified.
@@ -179,8 +174,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     EXPECT_TRUE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
-    ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP,
-                        "", "", kTestEAPUserPassword, 0, 0);
+    ExpectEAPParameters(eap_parameters, GCT_WIMAX_NO_EAP, "", "",
+                        kTestEAPUserPassword, 0, 0);
   }
   {
     // Network operator bypasses any device certificate.
@@ -253,8 +248,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersWithInvalidEAPParameters) {
     GCT_API_EAP_PARAM eap_parameters;
     connect_parameters.SetString(kEAPAnonymousIdentity,
                                  kTestEAPAnonymousIdentity);
-    connect_parameters.SetString(
-        kEAPUserIdentity, string(sizeof(eap_parameters.userId), 'a'));
+    connect_parameters.SetString(kEAPUserIdentity,
+                                 string(sizeof(eap_parameters.userId), 'a'));
     connect_parameters.SetString(kEAPUserPassword, kTestEAPUserPassword);
     EXPECT_FALSE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
@@ -266,8 +261,8 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersWithInvalidEAPParameters) {
     connect_parameters.SetString(kEAPAnonymousIdentity,
                                  kTestEAPAnonymousIdentity);
     connect_parameters.SetString(kEAPUserIdentity, kTestEAPUserIdentity);
-    connect_parameters.SetString(
-        kEAPUserPassword, string(sizeof(eap_parameters.userIdPwd), 'a'));
+    connect_parameters.SetString(kEAPUserPassword,
+                                 string(sizeof(eap_parameters.userIdPwd), 'a'));
     EXPECT_FALSE(GdmDevice::ConstructEAPParameters(
         connect_parameters, operator_eap_parameters, &eap_parameters));
   }

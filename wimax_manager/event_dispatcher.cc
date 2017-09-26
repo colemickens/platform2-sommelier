@@ -11,19 +11,18 @@ namespace wimax_manager {
 
 EventDispatcher::EventDispatcher()
     : dont_use_directly_(new base::MessageLoopForUI()),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()) {
-}
+      task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 void EventDispatcher::DispatchForever() {
   base::MessageLoop::current()->Run();
 }
 
-bool EventDispatcher::PostTask(const base::Closure &task) {
+bool EventDispatcher::PostTask(const base::Closure& task) {
   return task_runner_->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(
-    const base::Closure &task, const base::TimeDelta &delay) {
+bool EventDispatcher::PostDelayedTask(const base::Closure& task,
+                                      const base::TimeDelta& delay) {
   return task_runner_->PostDelayedTask(FROM_HERE, task, delay);
 }
 

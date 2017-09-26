@@ -15,8 +15,8 @@ using std::string;
 
 namespace wimax_manager {
 
-NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
-                                       Network *network)
+NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection* connection,
+                                       Network* network)
     : DBusAdaptor(connection, GetNetworkObjectPath(*network)),
       network_(network) {
   // Initialize |SignalStrength| before UpdateProperties() reads it for
@@ -26,7 +26,7 @@ NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
 }
 
 // static
-string NetworkDBusAdaptor::GetNetworkObjectPath(const Network &network) {
+string NetworkDBusAdaptor::GetNetworkObjectPath(const Network& network) {
   return base::StringPrintf("%s%08x", kNetworkObjectPathPrefix,
                             network.identifier());
 }

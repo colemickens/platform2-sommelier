@@ -27,9 +27,8 @@ class EventDispatcher {
   ~EventDispatcher() = default;
 
   void DispatchForever();
-  bool PostTask(const base::Closure &task);
-  bool PostDelayedTask(const base::Closure &task,
-                       const base::TimeDelta &delay);
+  bool PostTask(const base::Closure& task);
+  bool PostDelayedTask(const base::Closure& task, const base::TimeDelta& delay);
   void Stop();
 
  private:

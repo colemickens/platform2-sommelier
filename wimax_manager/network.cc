@@ -19,17 +19,18 @@ const int Network::kMaxRSSI = -40;
 const int Network::kMinRSSI = -123;
 const Network::Identifier Network::kInvalidIdentifier = 0;
 
-Network::Network(Identifier identifier, const string &name, NetworkType type,
-                 int cinr, int rssi)
+Network::Network(Identifier identifier,
+                 const string& name,
+                 NetworkType type,
+                 int cinr,
+                 int rssi)
     : identifier_(identifier),
       name_(name),
       type_(type),
       cinr_(cinr),
-      rssi_(rssi) {
-}
+      rssi_(rssi) {}
 
-Network::~Network() {
-}
+Network::~Network() {}
 
 // static
 int Network::DecodeCINR(int encoded_cinr) {
@@ -51,7 +52,7 @@ int Network::DecodeRSSI(int encoded_rssi) {
   return rssi;
 }
 
-void Network::UpdateFrom(const Network &network) {
+void Network::UpdateFrom(const Network& network) {
   identifier_ = network.identifier_;
   name_ = network.name_;
   type_ = network.type_;
@@ -73,13 +74,16 @@ int Network::GetSignalStrength() const {
   // ( -75..-65] |     0     |    0    |   20   |   20   |    40    |    60
   // ( -65..-55] |     0     |   20    |   20   |   40   |    60    |    80
   // ( -55..-40] |     0     |   20    |   40   |   60   |    80    |   100
+
+  // clang-format off
   static const int kSignalStrengthTable[5][6] = {
-    { 0,  0,  0,  0,  0,   0 },
-    { 0,  0,  0, 20, 20,  40 },
-    { 0,  0, 20, 20, 40,  60 },
-    { 0, 20, 20, 40, 60,  80 },
-    { 0, 20, 40, 60, 80, 100 },
+      {0,  0,  0,  0,  0,   0},
+      {0,  0,  0, 20, 20,  40},
+      {0,  0, 20, 20, 40,  60},
+      {0, 20, 20, 40, 60,  80},
+      {0, 20, 40, 60, 80, 100},
   };
+  // clang-format on
 
   int row = 4;
   if (rssi_ <= -80) {
@@ -109,9 +113,9 @@ int Network::GetSignalStrength() const {
 }
 
 string Network::GetNameWithIdentifier() const {
-  return name_.empty() ?
-      base::StringPrintf("network (0x%08x)", identifier_) :
-      base::StringPrintf("network '%s' (0x%08x)", name_.c_str(), identifier_);
+  return name_.empty() ? base::StringPrintf("network (0x%08x)", identifier_)
+                       : base::StringPrintf("network '%s' (0x%08x)",
+                                            name_.c_str(), identifier_);
 }
 
 }  // namespace wimax_manager

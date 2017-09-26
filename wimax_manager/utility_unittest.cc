@@ -12,8 +12,7 @@ using std::set;
 
 namespace wimax_manager {
 
-class UtilityTest : public testing::Test {
-};
+class UtilityTest : public testing::Test {};
 
 TEST_F(UtilityTest, GetKeysOfMapWithEmptyMap) {
   map<int, char> empty_map;

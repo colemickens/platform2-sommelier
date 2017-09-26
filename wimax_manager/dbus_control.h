@@ -26,7 +26,7 @@ namespace wimax_manager {
 
 class DBusControl {
  public:
-  static DBus::Connection *GetConnection();
+  static DBus::Connection* GetConnection();
 
  private:
   friend struct base::DefaultLazyInstanceTraits<DBusControl>;
@@ -34,7 +34,7 @@ class DBusControl {
   DBusControl();
   ~DBusControl();
 
-  static DBusControl *GetInstance();
+  static DBusControl* GetInstance();
 
   void Initialize();
   void Finalize();

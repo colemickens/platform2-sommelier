@@ -35,11 +35,8 @@ const char kDefaultConfigFile[] = "/usr/share/wimax-manager/default.conf";
 
 }  // namespace
 
-Manager::Manager(EventDispatcher *dispatcher)
-    : dispatcher_(dispatcher),
-      num_device_scans_(0),
-      dbus_service_(this) {
-}
+Manager::Manager(EventDispatcher* dispatcher)
+    : dispatcher_(dispatcher), num_device_scans_(0), dbus_service_(this) {}
 
 Manager::~Manager() {
   Finalize();
@@ -114,8 +111,7 @@ bool Manager::ScanDevices() {
     VLOG(1) << "No WiMAX devices detected. Rescan later.";
     device_scan_timer_.Start(
         FROM_HERE,
-        base::TimeDelta::FromSeconds(kDefaultDeviceScanIntervalInSeconds),
-        this,
+        base::TimeDelta::FromSeconds(kDefaultDeviceScanIntervalInSeconds), this,
         &Manager::OnDeviceScan);
   }
   return true;
@@ -142,16 +138,15 @@ void Manager::Resume() {
   // Delay the device scan to avoid getting the old device.
   device_scan_timer_.Start(
       FROM_HERE,
-      base::TimeDelta::FromSeconds(kDeviceScanDelayAfterResumeInSeconds),
-      this,
+      base::TimeDelta::FromSeconds(kDeviceScanDelayAfterResumeInSeconds), this,
       &Manager::OnDeviceScan);
 }
 
-bool Manager::LoadConfig(const base::FilePath &file_path) {
+bool Manager::LoadConfig(const base::FilePath& file_path) {
   int fd = HANDLE_EINTR(open(file_path.MaybeAsASCII().c_str(), O_RDONLY));
   if (fd == -1) {
-    PLOG(ERROR) << "Failed to read config file '"
-                << file_path.MaybeAsASCII() << "'";
+    PLOG(ERROR) << "Failed to read config file '" << file_path.MaybeAsASCII()
+                << "'";
     return false;
   }
 
@@ -166,13 +161,13 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
   return true;
 }
 
-const NetworkOperator *Manager::GetNetworkOperator(
+const NetworkOperator* Manager::GetNetworkOperator(
     Network::Identifier network_id) const {
   if (!config_.get())
     return nullptr;
 
   for (int i = 0; i < config_->network_operator_size(); ++i) {
-    const NetworkOperator &network_operator = config_->network_operator(i);
+    const NetworkOperator& network_operator = config_->network_operator(i);
     if (network_operator.identifier() == network_id)
       return &network_operator;
   }

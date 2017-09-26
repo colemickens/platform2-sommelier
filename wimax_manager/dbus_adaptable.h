@@ -28,7 +28,7 @@ class DBusAdaptable {
         new Adaptor(DBusControl::GetConnection(), static_cast<Adaptee*>(this)));
   }
 
-  Adaptor *dbus_adaptor() const { return dbus_adaptor_.get(); }
+  Adaptor* dbus_adaptor() const { return dbus_adaptor_.get(); }
 
   DBus::Path dbus_object_path() const {
     return dbus_adaptor_.get() ? dbus_adaptor_->path() : DBus::Path();

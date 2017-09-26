@@ -20,20 +20,20 @@ class PowerManager;
 
 class DBusService : public DBusProxiable<DBusService, DBusServiceDBusProxy> {
  public:
-  explicit DBusService(Manager *manager);
+  explicit DBusService(Manager* manager);
   ~DBusService();
 
   void Initialize();
   void Finalize();
-  bool NameHasOwner(const std::string &name);
-  void OnNameOwnerChanged(const std::string &name,
-                          const std::string &old_owner,
-                          const std::string &new_owner);
+  bool NameHasOwner(const std::string& name);
+  void OnNameOwnerChanged(const std::string& name,
+                          const std::string& old_owner,
+                          const std::string& new_owner);
 
  private:
-  void SetPowerManager(PowerManager *power_manager);
+  void SetPowerManager(PowerManager* power_manager);
 
-  Manager *manager_;
+  Manager* manager_;
   std::unique_ptr<PowerManager> power_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);

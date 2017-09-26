@@ -28,7 +28,7 @@ class NetworkOperator;
 
 class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
  public:
-  explicit Manager(EventDispatcher *dispatcher);
+  explicit Manager(EventDispatcher* dispatcher);
   virtual ~Manager();
 
   bool Initialize();
@@ -40,10 +40,10 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   void Suspend();
   void Resume();
 
-  const NetworkOperator *GetNetworkOperator(
+  const NetworkOperator* GetNetworkOperator(
       Network::Identifier network_id) const;
 
-  const std::vector<std::unique_ptr<Device>> &devices() const {
+  const std::vector<std::unique_ptr<Device>>& devices() const {
     return devices_;
   }
 
@@ -54,12 +54,12 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   FRIEND_TEST(ManagerTest, LoadNonExistentConfigFile);
   FRIEND_TEST(ManagerTest, LoadValidConfigFile);
 
-  bool LoadConfig(const base::FilePath &config_file);
+  bool LoadConfig(const base::FilePath& config_file);
 
-  EventDispatcher *dispatcher() const { return dispatcher_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
 
  private:
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   std::unique_ptr<Config> config_;
   std::unique_ptr<Driver> driver_;
   std::vector<std::unique_ptr<Device>> devices_;

@@ -17,18 +17,18 @@ class Manager;
 
 class Driver {
  public:
-  explicit Driver(Manager *manager);
+  explicit Driver(Manager* manager);
   virtual ~Driver() = default;
 
   virtual bool Initialize() = 0;
   virtual bool Finalize() = 0;
-  virtual bool GetDevices(std::vector<std::unique_ptr<Device>> *devices) = 0;
+  virtual bool GetDevices(std::vector<std::unique_ptr<Device>>* devices) = 0;
 
  protected:
-  Manager *manager() const { return manager_; }
+  Manager* manager() const { return manager_; }
 
  private:
-  Manager *manager_;
+  Manager* manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Driver);
 };

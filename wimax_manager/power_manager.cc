@@ -20,12 +20,12 @@ namespace wimax_manager {
 namespace {
 
 const uint32_t kDefaultSuspendDelayInMilliSeconds = 5000;  // 5s
-const uint32_t kSuspendTimeoutInSeconds = 15;  // 15s
+const uint32_t kSuspendTimeoutInSeconds = 15;              // 15s
 const char kSuspendDelayDescription[] = "wimax-manager";
 
 // Serializes |protobuf| to |out| and returns true on success.
-bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
-                             vector<uint8_t> *out) {
+bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
+                             vector<uint8_t>* out) {
   CHECK(out);
 
   out->clear();
@@ -39,8 +39,8 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
 
 // Deserializes |serialized_protobuf| to |protobuf_out| and returns true on
 // success.
-bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
-                               google::protobuf::MessageLite *protobuf_out) {
+bool DeserializeProtocolBuffer(const vector<uint8_t>& serialized_protobuf,
+                               google::protobuf::MessageLite* protobuf_out) {
   CHECK(protobuf_out);
 
   if (serialized_protobuf.empty())
@@ -52,7 +52,7 @@ bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
 
 }  // namespace
 
-PowerManager::PowerManager(Manager *wimax_manager)
+PowerManager::PowerManager(Manager* wimax_manager)
     : suspend_delay_registered_(false),
       suspend_delay_id_(0),
       suspended_(false),
@@ -78,7 +78,7 @@ void PowerManager::Finalize() {
 }
 
 void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
-                                        const string &description) {
+                                        const string& description) {
   if (!dbus_proxy())
     return;
 
@@ -93,7 +93,7 @@ void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
   vector<uint8_t> serialized_reply;
   try {
     serialized_reply = dbus_proxy()->RegisterSuspendDelay(serialized_request);
-  } catch (const DBus::Error &error) {
+  } catch (const DBus::Error& error) {
     LOG(ERROR) << "Failed to register suspend delay. DBus exception: "
                << error.name() << ": " << error.what();
     return;
@@ -127,13 +127,13 @@ void PowerManager::UnregisterSuspendDelay() {
     dbus_proxy()->UnregisterSuspendDelay(serialized_request);
     suspend_delay_registered_ = false;
     suspend_delay_id_ = 0;
-  } catch (const DBus::Error &error) {
+  } catch (const DBus::Error& error) {
     LOG(ERROR) << "Failed to unregister suspend delay. DBus exception: "
                << error.name() << ": " << error.what();
   }
 }
 
-void PowerManager::OnSuspendImminent(const vector<uint8_t> &serialized_proto) {
+void PowerManager::OnSuspendImminent(const vector<uint8_t>& serialized_proto) {
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendImminent signal.";
@@ -150,13 +150,11 @@ void PowerManager::OnSuspendImminent(const vector<uint8_t> &serialized_proto) {
   // |kSuspendTimeoutInSeconds|, assume suspend is canceled. Schedule a callback
   // to resume.
   suspend_timeout_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromSeconds(kSuspendTimeoutInSeconds),
-      this,
+      FROM_HERE, base::TimeDelta::FromSeconds(kSuspendTimeoutInSeconds), this,
       &PowerManager::ResumeOnSuspendTimedOut);
 }
 
-void PowerManager::OnSuspendDone(const vector<uint8_t> &serialized_proto) {
+void PowerManager::OnSuspendDone(const vector<uint8_t>& serialized_proto) {
   power_manager::SuspendDone proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendDone signal.";
@@ -177,7 +175,7 @@ void PowerManager::SendHandleSuspendReadiness(int suspend_id) {
 
   try {
     dbus_proxy()->HandleSuspendReadiness(serialized_proto);
-  } catch (const DBus::Error &error) {
+  } catch (const DBus::Error& error) {
     LOG(ERROR) << "Failed to call HandleSuspendReadiness. DBus exception: "
                << error.name() << ": " << error.what();
   }

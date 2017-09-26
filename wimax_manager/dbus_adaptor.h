@@ -16,10 +16,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
                     public DBus::PropertiesAdaptor,
                     public DBus::IntrospectableAdaptor {
  public:
-  DBusAdaptor(DBus::Connection *connection, const std::string &object_path);
+  DBusAdaptor(DBus::Connection* connection, const std::string& object_path);
   ~DBusAdaptor() override = default;
 
-  static void SetError(DBus::Error *error, const std::string &message);
+  static void SetError(DBus::Error* error, const std::string& message);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);

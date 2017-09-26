@@ -15,8 +15,8 @@ using std::vector;
 
 namespace wimax_manager {
 
-PowerManagerDBusProxy::PowerManagerDBusProxy(DBus::Connection *connection,
-                                             PowerManager *power_manager)
+PowerManagerDBusProxy::PowerManagerDBusProxy(DBus::Connection* connection,
+                                             PowerManager* power_manager)
     : DBusProxy(connection,
                 power_manager::kPowerManagerServiceName,
                 power_manager::kPowerManagerServicePath),
@@ -25,12 +25,12 @@ PowerManagerDBusProxy::PowerManagerDBusProxy(DBus::Connection *connection,
 }
 
 void PowerManagerDBusProxy::SuspendImminent(
-    const vector<uint8_t> &serialized_proto) {
+    const vector<uint8_t>& serialized_proto) {
   power_manager_->OnSuspendImminent(serialized_proto);
 }
 
 void PowerManagerDBusProxy::SuspendDone(
-    const vector<uint8_t> &serialized_proto) {
+    const vector<uint8_t>& serialized_proto) {
   power_manager_->OnSuspendDone(serialized_proto);
 }
 

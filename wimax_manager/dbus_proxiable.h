@@ -28,11 +28,9 @@ class DBusProxiable {
         new Proxy(DBusControl::GetConnection(), static_cast<Self*>(this)));
   }
 
-  void InvalidateDBusProxy() {
-    dbus_proxy_.reset();
-  }
+  void InvalidateDBusProxy() { dbus_proxy_.reset(); }
 
-  Proxy *dbus_proxy() const { return dbus_proxy_.get(); }
+  Proxy* dbus_proxy() const { return dbus_proxy_.get(); }
 
  private:
   std::unique_ptr<Proxy> dbus_proxy_;

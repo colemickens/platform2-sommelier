@@ -14,8 +14,9 @@ namespace wimax_manager {
 
 class DBusProxy : public DBus::ObjectProxy {
  public:
-  DBusProxy(DBus::Connection *connection,
-            const std::string &service_name, const std::string &object_path);
+  DBusProxy(DBus::Connection* connection,
+            const std::string& service_name,
+            const std::string& object_path);
   ~DBusProxy() override = default;
 
  private:

@@ -17,13 +17,13 @@ class Manager;
 class ManagerDBusAdaptor : public org::chromium::WiMaxManager_adaptor,
                            public DBusAdaptor {
  public:
-  ManagerDBusAdaptor(DBus::Connection *connection, Manager *manager);
+  ManagerDBusAdaptor(DBus::Connection* connection, Manager* manager);
   ~ManagerDBusAdaptor() override = default;
 
   void UpdateDevices();
 
  private:
-  Manager *manager_;
+  Manager* manager_;
 
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);
 };

@@ -23,7 +23,7 @@ class PowerManagerDBusProxy;
 
 class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
  public:
-  explicit PowerManager(Manager *wimax_manager);
+  explicit PowerManager(Manager* wimax_manager);
   ~PowerManager();
 
   void Initialize();
@@ -36,19 +36,19 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   // announce its readiness before suspending the system.  |description| is
   // a human-readable string describing the delay's purpose.
   void RegisterSuspendDelay(base::TimeDelta timeout,
-                            const std::string &description);
+                            const std::string& description);
 
   // Unregisters |suspend_delay_id_|.
   void UnregisterSuspendDelay();
 
   // Invoked when the power manager is about to attempt to suspend the system.
   // Prepares the manager for suspend and calls SendHandleSuspendReadiness().
-  void OnSuspendImminent(const std::vector<uint8_t> &serialized_proto);
+  void OnSuspendImminent(const std::vector<uint8_t>& serialized_proto);
 
   // Invoked when the power manager has completed a suspend attempt (possibly
   // without actually suspending and resuming if the attempt was canceled by the
   // user).
-  void OnSuspendDone(const std::vector<uint8_t> &serialized_proto);
+  void OnSuspendDone(const std::vector<uint8_t>& serialized_proto);
 
  private:
   // Calls the power manager's HandleSuspendReadiness method to report readiness
@@ -72,7 +72,7 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
 
   bool suspended_;
   base::OneShotTimer suspend_timeout_timer_;
-  Manager *wimax_manager_;
+  Manager* wimax_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };

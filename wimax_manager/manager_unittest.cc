@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
@@ -22,35 +22,35 @@ namespace wimax_manager {
 namespace {
 
 const char kTestConfigFileContent[] =
-  "# Test config\n"
-  "\n"
-  "# Network operator 1\n"
-  "network_operator {\n"
-  "  identifier: 1\n"
-  "}\n"
-  "\n"
-  "# Network operator 2\n"
-  "network_operator {\n"
-  "  identifier: 2\n"
-  "  eap_parameters {\n"
-  "    type: EAP_TYPE_TLS\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "# Network operator 2\n"
-  "network_operator {\n"
-  "  identifier: 0x00000003\n"
-  "  name: \"My Net\"\n"
-  "  eap_parameters {\n"
-  "    type: EAP_TYPE_TTLS_MSCHAPV2\n"
-  "    anonymous_identity: \"test\"\n"
-  "    user_identity: \"user\"\n"
-  "    user_password: \"password\"\n"
-  "    bypass_device_certificate: true\n"
-  "    bypass_ca_certificate: true\n"
-  "  }\n"
-  "}"
-  "\n";
+    "# Test config\n"
+    "\n"
+    "# Network operator 1\n"
+    "network_operator {\n"
+    "  identifier: 1\n"
+    "}\n"
+    "\n"
+    "# Network operator 2\n"
+    "network_operator {\n"
+    "  identifier: 2\n"
+    "  eap_parameters {\n"
+    "    type: EAP_TYPE_TLS\n"
+    "  }\n"
+    "}\n"
+    "\n"
+    "# Network operator 2\n"
+    "network_operator {\n"
+    "  identifier: 0x00000003\n"
+    "  name: \"My Net\"\n"
+    "  eap_parameters {\n"
+    "    type: EAP_TYPE_TTLS_MSCHAPV2\n"
+    "    anonymous_identity: \"test\"\n"
+    "    user_identity: \"user\"\n"
+    "    user_password: \"password\"\n"
+    "    bypass_device_certificate: true\n"
+    "    bypass_ca_certificate: true\n"
+    "  }\n"
+    "}"
+    "\n";
 
 }  // namespace
 
@@ -58,8 +58,9 @@ class ManagerTest : public testing::Test {
  protected:
   ManagerTest() : manager_(&dispatcher_) {}
 
-  bool CreateConfigFileInDir(const string &content, const FilePath &dir,
-                             FilePath *config_file) {
+  bool CreateConfigFileInDir(const string& content,
+                             const FilePath& dir,
+                             FilePath* config_file) {
     if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
 
@@ -89,7 +90,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
 
   EXPECT_EQ(nullptr, manager_.GetNetworkOperator(0));
 
-  const NetworkOperator *network_operator1 = manager_.GetNetworkOperator(1);
+  const NetworkOperator* network_operator1 = manager_.GetNetworkOperator(1);
   EXPECT_NE(nullptr, network_operator1);
   EXPECT_EQ(1, network_operator1->identifier());
   EXPECT_EQ("", network_operator1->name());
@@ -100,7 +101,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
   EXPECT_FALSE(network_operator1->eap_parameters().bypass_device_certificate());
   EXPECT_FALSE(network_operator1->eap_parameters().bypass_ca_certificate());
 
-  const NetworkOperator *network_operator2 = manager_.GetNetworkOperator(2);
+  const NetworkOperator* network_operator2 = manager_.GetNetworkOperator(2);
   EXPECT_NE(nullptr, network_operator2);
   EXPECT_EQ(2, network_operator2->identifier());
   EXPECT_EQ("", network_operator2->name());
@@ -111,7 +112,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
   EXPECT_FALSE(network_operator2->eap_parameters().bypass_device_certificate());
   EXPECT_FALSE(network_operator2->eap_parameters().bypass_ca_certificate());
 
-  const NetworkOperator *network_operator3 = manager_.GetNetworkOperator(3);
+  const NetworkOperator* network_operator3 = manager_.GetNetworkOperator(3);
   EXPECT_NE(nullptr, network_operator3);
   EXPECT_EQ(3, network_operator3->identifier());
   EXPECT_EQ("My Net", network_operator3->name());
@@ -129,7 +130,7 @@ TEST_F(ManagerTest, LoadEmptyConfigFile) {
   ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.path(), &config_file));
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
-  Config *config = manager_.config_.get();
+  Config* config = manager_.config_.get();
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(0, config->network_operator_size());
 }
@@ -156,11 +157,11 @@ TEST_F(ManagerTest, LoadValidConfigFile) {
                                     &config_file));
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
-  Config *config = manager_.config_.get();
+  Config* config = manager_.config_.get();
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(3, config->network_operator_size());
 
-  const NetworkOperator &network_operator1 = config->network_operator(0);
+  const NetworkOperator& network_operator1 = config->network_operator(0);
   EXPECT_EQ(1, network_operator1.identifier());
   EXPECT_EQ("", network_operator1.name());
   EXPECT_EQ(EAP_TYPE_NONE, network_operator1.eap_parameters().type());
@@ -170,7 +171,7 @@ TEST_F(ManagerTest, LoadValidConfigFile) {
   EXPECT_FALSE(network_operator1.eap_parameters().bypass_device_certificate());
   EXPECT_FALSE(network_operator1.eap_parameters().bypass_ca_certificate());
 
-  const NetworkOperator &network_operator2 = config->network_operator(1);
+  const NetworkOperator& network_operator2 = config->network_operator(1);
   EXPECT_EQ(2, network_operator2.identifier());
   EXPECT_EQ("", network_operator2.name());
   EXPECT_EQ(EAP_TYPE_TLS, network_operator2.eap_parameters().type());
@@ -180,7 +181,7 @@ TEST_F(ManagerTest, LoadValidConfigFile) {
   EXPECT_FALSE(network_operator2.eap_parameters().bypass_device_certificate());
   EXPECT_FALSE(network_operator2.eap_parameters().bypass_ca_certificate());
 
-  const NetworkOperator &network_operator3 = config->network_operator(2);
+  const NetworkOperator& network_operator3 = config->network_operator(2);
   EXPECT_EQ(3, network_operator3.identifier());
   EXPECT_EQ("My Net", network_operator3.name());
   EXPECT_EQ(EAP_TYPE_TTLS_MSCHAPV2, network_operator3.eap_parameters().type());

@@ -21,18 +21,18 @@ class Device;
 class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
                           public DBusAdaptor {
  public:
-  DeviceDBusAdaptor(DBus::Connection *connection, Device *device);
+  DeviceDBusAdaptor(DBus::Connection* connection, Device* device);
   virtual ~DeviceDBusAdaptor() = default;
 
-  static std::string GetDeviceObjectPath(const Device &device);
+  static std::string GetDeviceObjectPath(const Device& device);
 
-  virtual void Enable(DBus::Error &error);  // NOLINT
-  virtual void Disable(DBus::Error &error);  // NOLINT
-  virtual void ScanNetworks(DBus::Error &error);  // NOLINT
-  virtual void Connect(const DBus::Path &network_object_path,
-                       const std::map<std::string, DBus::Variant> &parameters,
-                       DBus::Error &error);  // NOLINT
-  virtual void Disconnect(DBus::Error &error);  // NOLINT
+  virtual void Enable(DBus::Error& error);        // NOLINT
+  virtual void Disable(DBus::Error& error);       // NOLINT
+  virtual void ScanNetworks(DBus::Error& error);  // NOLINT
+  virtual void Connect(const DBus::Path& network_object_path,
+                       const std::map<std::string, DBus::Variant>& parameters,
+                       DBus::Error& error);     // NOLINT
+  virtual void Disconnect(DBus::Error& error);  // NOLINT
 
   void UpdateMACAddress();
   void UpdateNetworks();
@@ -41,14 +41,15 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
 
  private:
   NetworkRefPtr FindNetworkByDBusObjectPath(
-      const DBus::Path &network_object_path) const;
+      const DBus::Path& network_object_path) const;
 
   // Overrides PropertiesAdaptor::on_set_property to handle
   // org.freedesktop.DBus.Properties.Set calls.
   virtual void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
-      const std::string& property, const DBus::Variant& value);
+                               const std::string& property,
+                               const DBus::Variant& value);
 
-  Device *device_;
+  Device* device_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceDBusAdaptor);
 };

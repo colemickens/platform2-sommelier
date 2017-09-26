@@ -17,14 +17,14 @@ namespace wimax_manager {
 class ByteIdentifier {
  public:
   explicit ByteIdentifier(size_t length);
-  ByteIdentifier(const uint8_t *data, size_t length);
+  ByteIdentifier(const uint8_t* data, size_t length);
   ~ByteIdentifier() = default;
 
-  const std::vector<uint8_t> &data() const { return data_; }
+  const std::vector<uint8_t>& data() const { return data_; }
 
   std::string GetHexString() const;
 
-  void CopyFrom(const ByteIdentifier &identifier);
+  void CopyFrom(const ByteIdentifier& identifier);
 
  private:
   std::vector<uint8_t> data_;

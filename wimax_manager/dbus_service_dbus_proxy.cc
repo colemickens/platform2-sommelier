@@ -13,16 +13,16 @@ using std::string;
 
 namespace wimax_manager {
 
-DBusServiceDBusProxy::DBusServiceDBusProxy(DBus::Connection *connection,
-                                           DBusService *dbus_service)
+DBusServiceDBusProxy::DBusServiceDBusProxy(DBus::Connection* connection,
+                                           DBusService* dbus_service)
     : DBusProxy(connection, dbus::kDBusServiceName, dbus::kDBusServicePath),
       dbus_service_(dbus_service) {
   CHECK(dbus_service_);
 }
 
-void DBusServiceDBusProxy::NameOwnerChanged(const string &name,
-                                            const string &old_owner,
-                                            const string &new_owner) {
+void DBusServiceDBusProxy::NameOwnerChanged(const string& name,
+                                            const string& old_owner,
+                                            const string& new_owner) {
   dbus_service_->OnNameOwnerChanged(name, old_owner, new_owner);
 }
 

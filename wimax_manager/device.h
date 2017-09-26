@@ -25,24 +25,24 @@ class Manager;
 
 class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
  public:
-  Device(Manager *manager, uint8_t index, const std::string &name);
+  Device(Manager* manager, uint8_t index, const std::string& name);
   virtual ~Device() = default;
 
   virtual bool Enable() = 0;
   virtual bool Disable() = 0;
   virtual bool ScanNetworks() = 0;
-  virtual bool Connect(const Network &network,
-                       const base::DictionaryValue &parameters) = 0;
+  virtual bool Connect(const Network& network,
+                       const base::DictionaryValue& parameters) = 0;
   virtual bool Disconnect() = 0;
 
   uint8_t index() const { return index_; }
-  const std::string &name() const { return name_; }
-  const ByteIdentifier &mac_address() const { return mac_address_; }
-  const ByteIdentifier &base_station_id() const { return base_station_id_; }
+  const std::string& name() const { return name_; }
+  const ByteIdentifier& mac_address() const { return mac_address_; }
+  const ByteIdentifier& base_station_id() const { return base_station_id_; }
   const int frequency() const { return frequency_; }
-  const std::vector<int> &cinr() const { return cinr_; }
-  const std::vector<int> &rssi() const { return rssi_; }
-  const NetworkMap &networks() const { return networks_; }
+  const std::vector<int>& cinr() const { return cinr_; }
+  const std::vector<int>& rssi() const { return rssi_; }
+  const NetworkMap& networks() const { return networks_; }
   const DeviceStatus status() const { return status_; }
 
   uint32_t network_scan_interval() const { return network_scan_interval_; }
@@ -55,21 +55,21 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   virtual void UpdateNetworkScanInterval(uint32_t network_scan_interval) = 0;
   virtual void UpdateStatusUpdateInterval(uint32_t status_update_interval) = 0;
 
-  Manager *manager() const { return manager_; }
+  Manager* manager() const { return manager_; }
 
   void UpdateNetworks();
   void UpdateRFInfo();
 
-  void SetMACAddress(const ByteIdentifier &mac_address);
-  void SetBaseStationId(const ByteIdentifier &base_station_id);
+  void SetMACAddress(const ByteIdentifier& mac_address);
+  void SetBaseStationId(const ByteIdentifier& base_station_id);
   void set_frequency(int frequency) { frequency_ = frequency; }
-  void set_cinr(const std::vector<int> &cinr) { cinr_ = cinr; }
-  void set_rssi(const std::vector<int> &rssi) { rssi_ = rssi; }
-  NetworkMap *mutable_networks() { return &networks_; }
+  void set_cinr(const std::vector<int>& cinr) { cinr_ = cinr; }
+  void set_rssi(const std::vector<int>& rssi) { rssi_ = rssi; }
+  NetworkMap* mutable_networks() { return &networks_; }
   void SetStatus(DeviceStatus status);
 
  private:
-  Manager *manager_;
+  Manager* manager_;
   uint8_t index_;
   std::string name_;
   ByteIdentifier mac_address_;

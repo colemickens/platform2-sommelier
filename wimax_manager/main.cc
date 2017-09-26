@@ -45,7 +45,7 @@ const char kHelpMessage[] =
 
 }  // namespace switches
 
-int GetLogLevel(const string &log_level_value) {
+int GetLogLevel(const string& log_level_value) {
   int log_level = 0;
   if (!base::StringToInt(log_level_value, &log_level)) {
     LOG(WARNING) << "Invalid log level '" << log_level_value << "'";
@@ -67,7 +67,7 @@ void SetupLogging(bool foreground, int log_level) {
 
 // This callback will be inovked when this process receives SIGINT or SIGTERM.
 gboolean TerminationSignalCallback(gpointer data) {
-  EventDispatcher *dispatcher = reinterpret_cast<EventDispatcher *>(data);
+  EventDispatcher* dispatcher = reinterpret_cast<EventDispatcher*>(data);
   dispatcher->Stop();
 
   // This function can return false to remove this signal handler as we are
@@ -89,8 +89,10 @@ int main(int argc, char** argv) {
   }
 
   bool foreground = cl->HasSwitch(switches::kForeground);
-  int log_level = cl->HasSwitch(switches::kLogLevel) ?
-      GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
+  int log_level =
+      cl->HasSwitch(switches::kLogLevel)
+          ? GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel))
+          : 0;
 
   SetupLogging(foreground, log_level);
 

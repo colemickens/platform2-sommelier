@@ -25,15 +25,17 @@ class GdmDriver;
 
 class GdmDevice : public Device {
  public:
-  GdmDevice(Manager *manager, uint8_t index, const std::string &name,
-            const base::WeakPtr<GdmDriver> &driver);
+  GdmDevice(Manager* manager,
+            uint8_t index,
+            const std::string& name,
+            const base::WeakPtr<GdmDriver>& driver);
   ~GdmDevice() override;
 
   bool Enable() override;
   bool Disable() override;
   bool ScanNetworks() override;
-  bool Connect(const Network &network,
-               const base::DictionaryValue &parameters) override;
+  bool Connect(const Network& network,
+               const base::DictionaryValue& parameters) override;
   bool Disconnect() override;
 
   void OnNetworkScan();
@@ -61,11 +63,11 @@ class GdmDevice : public Device {
   void ClearCurrentConnectionProfile();
 
   static bool ConstructEAPParameters(
-      const base::DictionaryValue &connect_parameters,
-      const EAPParameters &operator_eap_parameters,
-      GCT_API_EAP_PARAM *eap_parameters);
+      const base::DictionaryValue& connect_parameters,
+      const EAPParameters& operator_eap_parameters,
+      GCT_API_EAP_PARAM* eap_parameters);
 
-  EAPParameters GetNetworkOperatorEAPParameters(const Network &network) const;
+  EAPParameters GetNetworkOperatorEAPParameters(const Network& network) const;
 
   void set_connection_progress(
       WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress) {

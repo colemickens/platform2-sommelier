@@ -14,13 +14,10 @@ const char kHexDigits[] = "0123456789abcdef";
 
 }  // namespace
 
-ByteIdentifier::ByteIdentifier(size_t length)
-    : data_(length, 0) {
-}
+ByteIdentifier::ByteIdentifier(size_t length) : data_(length, 0) {}
 
-ByteIdentifier::ByteIdentifier(const uint8_t *data, size_t length)
-    : data_(data, data + length) {
-}
+ByteIdentifier::ByteIdentifier(const uint8_t* data, size_t length)
+    : data_(data, data + length) {}
 
 string ByteIdentifier::GetHexString() const {
   string hex_string;
@@ -35,7 +32,7 @@ string ByteIdentifier::GetHexString() const {
   return hex_string;
 }
 
-void ByteIdentifier::CopyFrom(const ByteIdentifier &identifier) {
+void ByteIdentifier::CopyFrom(const ByteIdentifier& identifier) {
   data_ = identifier.data_;
 }
 

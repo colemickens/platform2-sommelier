@@ -37,13 +37,16 @@ class Network : public base::RefCounted<Network>,
   static const int kMinRSSI;
   static const Identifier kInvalidIdentifier;
 
-  Network(Identifier identifier, const std::string &name, NetworkType type,
-          int cinr, int rssi);
+  Network(Identifier identifier,
+          const std::string& name,
+          NetworkType type,
+          int cinr,
+          int rssi);
 
   static int DecodeCINR(int encoded_cinr);
   static int DecodeRSSI(int encoded_rssi);
 
-  void UpdateFrom(const Network &network);
+  void UpdateFrom(const Network& network);
   int GetSignalStrength() const;
 
   // Returns a string description that comprises |name_| and |identifier_|.
@@ -52,7 +55,7 @@ class Network : public base::RefCounted<Network>,
   std::string GetNameWithIdentifier() const;
 
   Identifier identifier() const { return identifier_; }
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
   NetworkType type() const { return type_; }
   int cinr() const { return cinr_; }
   int rssi() const { return rssi_; }

@@ -8,9 +8,9 @@ using std::string;
 
 namespace wimax_manager {
 
-DBusProxy::DBusProxy(DBus::Connection *connection,
-                     const string &service_name, const string &object_path)
-    : DBus::ObjectProxy(*connection, object_path, service_name.c_str()) {
-}
+DBusProxy::DBusProxy(DBus::Connection* connection,
+                     const string& service_name,
+                     const string& object_path)
+    : DBus::ObjectProxy(*connection, object_path, service_name.c_str()) {}
 
 }  // namespace wimax_manager

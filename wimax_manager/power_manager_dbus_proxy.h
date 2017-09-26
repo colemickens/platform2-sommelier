@@ -21,29 +21,29 @@ class PowerManager;
 class PowerManagerDBusProxy : public org::chromium::PowerManager_proxy,
                               public DBusProxy {
  public:
-  PowerManagerDBusProxy(DBus::Connection *connection, PowerManager *manager);
+  PowerManagerDBusProxy(DBus::Connection* connection, PowerManager* manager);
   ~PowerManagerDBusProxy() override = default;
 
-  void SuspendImminent(const std::vector<uint8_t> &serialized_proto) override;
-  void SuspendDone(const std::vector<uint8_t> &serialized_proto) override;
+  void SuspendImminent(const std::vector<uint8_t>& serialized_proto) override;
+  void SuspendDone(const std::vector<uint8_t>& serialized_proto) override;
 
   // Ignored signals:
-  void BrightnessChanged(const int32_t &brightness_percent,
-                         const bool &user_initiated) override {}
-  void KeyboardBrightnessChanged(const int32_t &brightness_percent,
-                                 const bool &user_initiated) override {}
+  void BrightnessChanged(const int32_t& brightness_percent,
+                         const bool& user_initiated) override {}
+  void KeyboardBrightnessChanged(const int32_t& brightness_percent,
+                                 const bool& user_initiated) override {}
   void PeripheralBatteryStatus(
-      const std::vector<uint8_t> &serialized_proto) override {}
-  void PowerSupplyPoll(const std::vector<uint8_t> &serialized_proto) override {}
+      const std::vector<uint8_t>& serialized_proto) override {}
+  void PowerSupplyPoll(const std::vector<uint8_t>& serialized_proto) override {}
   void DarkSuspendImminent(
-      const std::vector<uint8_t> &serialized_proto) override {}
-  void InputEvent(const std::vector<uint8_t> &serialized_proto) override {}
+      const std::vector<uint8_t>& serialized_proto) override {}
+  void InputEvent(const std::vector<uint8_t>& serialized_proto) override {}
   void IdleActionImminent(
-      const std::vector<uint8_t> &serialized_proto) override {}
+      const std::vector<uint8_t>& serialized_proto) override {}
   void IdleActionDeferred() override {}
 
  private:
-  PowerManager *power_manager_;
+  PowerManager* power_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManagerDBusProxy);
 };

@@ -10,13 +10,12 @@ using std::string;
 
 namespace wimax_manager {
 
-DBusAdaptor::DBusAdaptor(DBus::Connection *connection,
+DBusAdaptor::DBusAdaptor(DBus::Connection* connection,
                          const string& object_path)
-    : DBus::ObjectAdaptor(*connection, object_path) {
-}
+    : DBus::ObjectAdaptor(*connection, object_path) {}
 
 // static
-void DBusAdaptor::SetError(DBus::Error *error, const string &message) {
+void DBusAdaptor::SetError(DBus::Error* error, const string& message) {
   error->set(kWiMaxManagerServiceError, message.c_str());
 }
 

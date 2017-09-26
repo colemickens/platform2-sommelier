@@ -43,7 +43,7 @@ string GetDeviceStatusDescription(DeviceStatus device_status) {
 
 }  // namespace
 
-Device::Device(Manager *manager, uint8_t index, const string &name)
+Device::Device(Manager* manager, uint8_t index, const string& name)
     : manager_(manager),
       index_(index),
       name_(name),
@@ -52,8 +52,7 @@ Device::Device(Manager *manager, uint8_t index, const string &name)
       frequency_(0),
       network_scan_interval_(kDefaultNetworkScanIntervalInSeconds),
       status_update_interval_(kDefaultStatusUpdateIntervalInSeconds),
-      status_(kDeviceStatusUninitialized) {
-}
+      status_(kDeviceStatusUninitialized) {}
 
 void Device::UpdateNetworks() {
   dbus_adaptor()->UpdateNetworks();
@@ -77,13 +76,13 @@ void Device::SetStatusUpdateInterval(uint32_t status_update_interval) {
   }
 }
 
-void Device::SetMACAddress(const ByteIdentifier &mac_address) {
+void Device::SetMACAddress(const ByteIdentifier& mac_address) {
   mac_address_.CopyFrom(mac_address);
   if (dbus_adaptor())
     dbus_adaptor()->UpdateMACAddress();
 }
 
-void Device::SetBaseStationId(const ByteIdentifier &base_station_id) {
+void Device::SetBaseStationId(const ByteIdentifier& base_station_id) {
   base_station_id_.CopyFrom(base_station_id);
 }
 

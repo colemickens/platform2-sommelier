@@ -31,8 +31,8 @@ const size_t kMaxNumberOfNetworks = 16;
 
 const char kLogDirectory[] = "/var/log/gct";
 const char kNonVolatileDirectory[] = "/var/cache/gct";
-const char *const kInitalDirectoriesToCreate[] = {
-  kLogDirectory, kNonVolatileDirectory
+const char* const kInitalDirectoriesToCreate[] = {
+    kLogDirectory, kNonVolatileDirectory,
 };
 
 string GetDeviceStatusDescription(WIMAX_API_DEVICE_STATUS device_status) {
@@ -131,7 +131,7 @@ NetworkType ConvertNetworkType(WIMAX_API_NETWORK_TYPE network_type) {
 
 template <size_t N>
 bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
-                                           std::string *utf8_string) {
+                                           std::string* utf8_string) {
   // Check if the wide character array is NULL-terminated.
   if (wmemchr(wide_char_array, L'\0', N) == nullptr)
     return false;
@@ -144,10 +144,8 @@ bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
 
 }  // namespace
 
-GdmDriver::GdmDriver(Manager *manager)
-    : Driver(manager),
-      api_handle_(nullptr) {
-}
+GdmDriver::GdmDriver(Manager* manager)
+    : Driver(manager), api_handle_(nullptr) {}
 
 GdmDriver::~GdmDriver() {
   Finalize();
@@ -162,14 +160,11 @@ bool GdmDriver::Initialize() {
     return false;
 
   GCT_WIMAX_API_PARAM api_param;
-  CHECK_LT(snprintf(api_param.nonvolatile_dir,
-                    sizeof(api_param.nonvolatile_dir),
-                    "%s",
-                    kNonVolatileDirectory),
-           static_cast<int>(sizeof(api_param.nonvolatile_dir)));
-  CHECK_LT(snprintf(api_param.log_path,
-                    sizeof(api_param.log_path),
-                    "%s",
+  CHECK_LT(
+      snprintf(api_param.nonvolatile_dir, sizeof(api_param.nonvolatile_dir),
+               "%s", kNonVolatileDirectory),
+      static_cast<int>(sizeof(api_param.nonvolatile_dir)));
+  CHECK_LT(snprintf(api_param.log_path, sizeof(api_param.log_path), "%s",
                     kLogDirectory),
            static_cast<int>(sizeof(api_param.log_path)));
   api_param.log_level = 1;
@@ -209,7 +204,7 @@ bool GdmDriver::Finalize() {
   return success;
 }
 
-bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
+bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>>* devices) {
   CHECK(devices);
 
   WIMAX_API_HW_DEVICE_ID device_list[kMaxNumberOfDevices];
@@ -231,11 +226,10 @@ bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
     }
 
     VLOG(1) << base::StringPrintf("Found device '%s': index = %d",
-                                  device_name.c_str(),
-                                  device_index);
+                                  device_name.c_str(), device_index);
 
-    auto device = std::make_unique<GdmDevice>(
-        manager(), device_index, device_name, AsWeakPtr());
+    auto device = std::make_unique<GdmDevice>(manager(), device_index,
+                                              device_name, AsWeakPtr());
     // The WiMAX device changes its MAC address to the actual value after the
     // firmware is loaded. Opening the device seems to be enough to trigger the
     // update of the MAC address. So open the device here before
@@ -246,7 +240,7 @@ bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
   return true;
 }
 
-bool GdmDriver::OpenDevice(GdmDevice *device) {
+bool GdmDriver::OpenDevice(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_WiMaxDeviceOpen(&device_id);
   if (ret != GCT_API_RET_SUCCESS)
@@ -266,13 +260,13 @@ bool GdmDriver::OpenDevice(GdmDevice *device) {
   return true;
 }
 
-bool GdmDriver::CloseDevice(GdmDevice *device) {
+bool GdmDriver::CloseDevice(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_WiMaxDeviceClose(&device_id);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
+bool GdmDriver::GetDeviceStatus(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   WIMAX_API_DEVICE_STATUS device_status;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress;
@@ -284,14 +278,14 @@ bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
   device->SetStatus(ConvertDeviceStatus(device_status));
   device->set_connection_progress(connection_progress);
 
-  VLOG(1) << "Device '" << device->name()
-          << "': status = '" << GetDeviceStatusDescription(device_status)
+  VLOG(1) << "Device '" << device->name() << "': status = '"
+          << GetDeviceStatusDescription(device_status)
           << "', connection progress = '"
           << GetConnectionProgressDescription(connection_progress) << "'";
   return true;
 }
 
-bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
+bool GdmDriver::GetDeviceRFInfo(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RF_INFORM rf_info;
   GCT_API_RET ret = GAPI_GetRFInform(&device_id, &rf_info);
@@ -302,24 +296,24 @@ bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
   device->SetBaseStationId(base_station_id);
   device->set_frequency(rf_info.Frequency);
 
-  device->set_cinr({Network::DecodeCINR(rf_info.CINR),
-                    Network::DecodeCINR(rf_info.CINR2)});
+  device->set_cinr(
+      {Network::DecodeCINR(rf_info.CINR), Network::DecodeCINR(rf_info.CINR2)});
 
-  device->set_rssi({Network::DecodeRSSI(rf_info.RSSI),
-                    Network::DecodeRSSI(rf_info.RSSI2)});
+  device->set_rssi(
+      {Network::DecodeRSSI(rf_info.RSSI), Network::DecodeRSSI(rf_info.RSSI2)});
 
   device->UpdateRFInfo();
   return true;
 }
 
-bool GdmDriver::SetDeviceEAPParameters(GdmDevice *device,
-                                       GCT_API_EAP_PARAM *eap_parameters) {
+bool GdmDriver::SetDeviceEAPParameters(GdmDevice* device,
+                                       GCT_API_EAP_PARAM* eap_parameters) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_SetEap(&device_id, eap_parameters);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::AutoSelectProfileForDevice(GdmDevice *device) {
+bool GdmDriver::AutoSelectProfileForDevice(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   WIMAX_API_PROFILE_INFO profile_list[kMaxNumberOfProfiles];
   uint32_t num_profiles = static_cast<uint32_t>(arraysize(profile_list));
@@ -334,8 +328,8 @@ bool GdmDriver::AutoSelectProfileForDevice(GdmDevice *device) {
     if (ConvertWideCharacterArrayToUTF8String(profile_list[i].profileName,
                                               &profile_name)) {
       LOG(INFO) << base::StringPrintf("Found profile '%s': id = %d",
-                profile_name.c_str(),
-                profile_list[i].profileID);
+                                      profile_name.c_str(),
+                                      profile_list[i].profileID);
     }
   }
 
@@ -346,34 +340,34 @@ bool GdmDriver::AutoSelectProfileForDevice(GdmDevice *device) {
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::PowerOnDeviceRF(GdmDevice *device) {
+bool GdmDriver::PowerOnDeviceRF(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_CmdControlPowerManagement(&device_id, WIMAX_API_RF_ON);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::PowerOffDeviceRF(GdmDevice *device) {
+bool GdmDriver::PowerOffDeviceRF(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret =
       GAPI_CmdControlPowerManagement(&device_id, WIMAX_API_RF_OFF);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::SetScanInterval(GdmDevice *device, uint32_t interval) {
+bool GdmDriver::SetScanInterval(GdmDevice* device, uint32_t interval) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_SetScanInterval(&device_id, interval);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
-                                     vector<NetworkRefPtr> *networks) {
+bool GdmDriver::GetNetworksForDevice(GdmDevice* device,
+                                     vector<NetworkRefPtr>* networks) {
   CHECK(networks);
 
   GDEV_ID device_id = GetDeviceId(device);
   WIMAX_API_NSP_INFO network_list[kMaxNumberOfNetworks];
   uint32_t num_networks = static_cast<uint32_t>(arraysize(network_list));
-  GCT_API_RET ret = GAPI_GetNetworkList(&device_id, network_list,
-                                        &num_networks);
+  GCT_API_RET ret =
+      GAPI_GetNetworkList(&device_id, network_list, &num_networks);
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
@@ -431,15 +425,15 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
         network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
         network_id, network_cinr, network_rssi);
 
-    NetworkRefPtr network = new Network(
-        network_id, network_name, network_type, network_cinr, network_rssi);
+    NetworkRefPtr network = new Network(network_id, network_name, network_type,
+                                        network_cinr, network_rssi);
     networks->push_back(network);
   }
   return true;
 }
 
-bool GdmDriver::ConnectDeviceToNetwork(GdmDevice *device,
-                                       const Network &network) {
+bool GdmDriver::ConnectDeviceToNetwork(GdmDevice* device,
+                                       const Network& network) {
   GDEV_ID device_id = GetDeviceId(device);
   wstring network_name_wcs;
   if (!base::UTF8ToWide(network.name().c_str(), network.name().size(),
@@ -447,21 +441,19 @@ bool GdmDriver::ConnectDeviceToNetwork(GdmDevice *device,
     return false;
   }
 
-  GCT_API_RET ret =
-      GAPI_CmdConnectToNetwork(&device_id,
-                               const_cast<wchar_t *>(network_name_wcs.c_str()),
-                               0);
+  GCT_API_RET ret = GAPI_CmdConnectToNetwork(
+      &device_id, const_cast<wchar_t*>(network_name_wcs.c_str()), 0);
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice *device) {
+bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice* device) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_CmdDisconnectFromNetwork(&device_id);
   return ret == GCT_API_RET_SUCCESS;
 }
 
 bool GdmDriver::CreateInitialDirectories() const {
-  for (const char *directory : kInitalDirectoriesToCreate) {
+  for (const char* directory : kInitalDirectoriesToCreate) {
     if (!base::CreateDirectory(base::FilePath(directory))) {
       LOG(ERROR) << "Failed to create directory '" << directory << "'";
       return false;
@@ -470,7 +462,7 @@ bool GdmDriver::CreateInitialDirectories() const {
   return true;
 }
 
-GDEV_ID GdmDriver::GetDeviceId(const GdmDevice *device) const {
+GDEV_ID GdmDriver::GetDeviceId(const GdmDevice* device) const {
   CHECK(device);
 
   GDEV_ID device_id;

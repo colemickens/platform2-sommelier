@@ -36,13 +36,15 @@ TEST_F(NetworkTest, DecodeRSSI) {
 }
 
 TEST_F(NetworkTest, GetSignalStrength) {
+  // clang-format off
   static const int kSignalStrengthTable[5][6] = {
-    { 0,  0,  0,  0,  0,   0 },
-    { 0,  0,  0, 20, 20,  40 },
-    { 0,  0, 20, 20, 40,  60 },
-    { 0, 20, 20, 40, 60,  80 },
-    { 0, 20, 40, 60, 80, 100 },
+      {0,  0,  0,  0,  0,   0},
+      {0,  0,  0, 20, 20,  40},
+      {0,  0, 20, 20, 40,  60},
+      {0, 20, 20, 40, 60,  80},
+      {0, 20, 40, 60, 80, 100},
   };
+  // clang-format on
 
   for (int rssi = Network::kMinRSSI; rssi <= Network::kMaxRSSI; ++rssi) {
     for (int cinr = Network::kMinCINR; cinr <= Network::kMaxCINR; ++cinr) {

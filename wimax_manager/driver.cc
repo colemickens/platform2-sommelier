@@ -6,8 +6,6 @@
 
 namespace wimax_manager {
 
-Driver::Driver(Manager *manager)
-    : manager_(manager) {
-}
+Driver::Driver(Manager* manager) : manager_(manager) {}
 
 }  // namespace wimax_manager

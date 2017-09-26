@@ -40,10 +40,10 @@ const int kShortDelayInSeconds = 1;
 
 const char kRealmTag[] = "@${realm}";
 
-bool ExtractStringParameter(const DictionaryValue &parameters,
-                            const string &key,
-                            const string &default_value,
-                            string *value) {
+bool ExtractStringParameter(const DictionaryValue& parameters,
+                            const string& key,
+                            const string& default_value,
+                            string* value) {
   if (!parameters.HasKey(key)) {
     *value = default_value;
     return true;
@@ -56,18 +56,18 @@ bool ExtractStringParameter(const DictionaryValue &parameters,
 }
 
 template <size_t N>
-bool CopyStringToUInt8Array(const string &value, UINT8 (&uint8_array)[N]) {
+bool CopyStringToUInt8Array(const string& value, UINT8 (&uint8_array)[N]) {
   size_t value_length = value.length();
   if (value_length >= N)
     return false;
 
-  char *char_array = reinterpret_cast<char *>(uint8_array);
+  char* char_array = reinterpret_cast<char*>(uint8_array);
   value.copy(char_array, value_length);
   char_array[value_length] = '\0';
   return true;
 }
 
-const char *GetEAPTypeString(GCT_API_EAP_TYPE eap_type) {
+const char* GetEAPTypeString(GCT_API_EAP_TYPE eap_type) {
   switch (eap_type) {
     case GCT_WIMAX_NO_EAP:
       return "No EAP";
@@ -86,21 +86,22 @@ const char *GetEAPTypeString(GCT_API_EAP_TYPE eap_type) {
   }
 }
 
-const char *MaskString(const char *value) {
+const char* MaskString(const char* value) {
   return (value && value[0]) ? "<***>" : "";
 }
 
 }  // namespace
 
-GdmDevice::GdmDevice(Manager *manager, uint8_t index, const string &name,
-                     const base::WeakPtr<GdmDriver> &driver)
+GdmDevice::GdmDevice(Manager* manager,
+                     uint8_t index,
+                     const string& name,
+                     const base::WeakPtr<GdmDriver>& driver)
     : Device(manager, index, name),
       driver_(driver),
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
       restore_status_update_interval_(false),
-      current_network_identifier_(Network::kInvalidIdentifier) {
-}
+      current_network_identifier_(Network::kInvalidIdentifier) {}
 
 GdmDevice::~GdmDevice() {
   Disable();
@@ -167,8 +168,7 @@ bool GdmDevice::Enable() {
   // Schedule an initial network scan shortly after the device is enabled.
   initial_network_scan_timer_.Start(
       FROM_HERE,
-      base::TimeDelta::FromSeconds(kInitialNetworkScanIntervalInSeconds),
-      this,
+      base::TimeDelta::FromSeconds(kInitialNetworkScanIntervalInSeconds), this,
       &GdmDevice::OnNetworkScan);
 
   // Set OnNetworkScan() to be called repeatedly at |network_scan_interval_|
@@ -177,15 +177,11 @@ bool GdmDevice::Enable() {
   // TODO(benchan): Refactor common functionalities like periodic network scan
   // to the Device base class.
   network_scan_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromSeconds(network_scan_interval()),
-      this,
+      FROM_HERE, base::TimeDelta::FromSeconds(network_scan_interval()), this,
       &GdmDevice::OnNetworkScan);
 
   status_update_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromSeconds(status_update_interval()),
-      this,
+      FROM_HERE, base::TimeDelta::FromSeconds(status_update_interval()), this,
       &GdmDevice::OnStatusUpdate);
 
   if (!driver_->GetDeviceStatus(this)) {
@@ -215,7 +211,7 @@ bool GdmDevice::Disable() {
   dbus_adaptor_status_update_timer_.Stop();
   status_update_timer_.Stop();
 
-  NetworkMap *networks = mutable_networks();
+  NetworkMap* networks = mutable_networks();
   if (!networks->empty()) {
     networks->clear();
     UpdateNetworks();
@@ -239,14 +235,14 @@ bool GdmDevice::ScanNetworks() {
 
   vector<NetworkRefPtr> scanned_networks;
   if (!driver_->GetNetworksForDevice(this, &scanned_networks)) {
-    LOG(WARNING) << "Failed to get list of networks for device '"
-                 << name() << "'";
+    LOG(WARNING) << "Failed to get list of networks for device '" << name()
+                 << "'";
     // Ignore error and wait for next scan.
     return true;
   }
 
   bool networks_added = false;
-  NetworkMap *networks = mutable_networks();
+  NetworkMap* networks = mutable_networks();
   set<Network::Identifier> networks_to_remove = GetKeysOfMap(*networks);
 
   for (size_t i = 0; i < scanned_networks.size(); ++i) {
@@ -293,9 +289,7 @@ bool GdmDevice::UpdateStatus() {
     connect_timeout_timer_.Stop();
 
     restore_status_update_interval_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromSeconds(kShortDelayInSeconds),
-        this,
+        FROM_HERE, base::TimeDelta::FromSeconds(kShortDelayInSeconds), this,
         &GdmDevice::RestoreStatusUpdateInterval);
   }
 
@@ -319,9 +313,7 @@ void GdmDevice::UpdateNetworkScanInterval(uint32_t network_scan_interval) {
     LOG(INFO) << "Update network scan interval to " << network_scan_interval
               << "s.";
     network_scan_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromSeconds(network_scan_interval),
-        this,
+        FROM_HERE, base::TimeDelta::FromSeconds(network_scan_interval), this,
         &GdmDevice::OnNetworkScan);
 
     if (!driver_->SetScanInterval(this, network_scan_interval)) {
@@ -335,9 +327,7 @@ void GdmDevice::UpdateStatusUpdateInterval(uint32_t status_update_interval) {
     LOG(INFO) << "Update status update interval to " << status_update_interval
               << "s.";
     status_update_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromSeconds(status_update_interval),
-        this,
+        FROM_HERE, base::TimeDelta::FromSeconds(status_update_interval), this,
         &GdmDevice::OnStatusUpdate);
   }
 }
@@ -355,8 +345,8 @@ void GdmDevice::RestoreStatusUpdateInterval() {
   UpdateNetworkScanInterval(network_scan_interval());
 }
 
-bool GdmDevice::Connect(const Network &network,
-                        const DictionaryValue &parameters) {
+bool GdmDevice::Connect(const Network& network,
+                        const DictionaryValue& parameters) {
   if (!Open())
     return false;
 
@@ -373,8 +363,7 @@ bool GdmDevice::Connect(const Network &network,
 
   // TODO(benchan): Refactor this code into Device base class.
   string user_identity;
-  ExtractStringParameter(parameters,
-                         kEAPUserIdentity,
+  ExtractStringParameter(parameters, kEAPUserIdentity,
                          operator_eap_parameters.user_identity(),
                          &user_identity);
   if (status() == kDeviceStatusConnecting ||
@@ -385,9 +374,7 @@ bool GdmDevice::Connect(const Network &network,
       // DeviceDBusAdaptor::UpdateStatus() to explicitly notify the connection
       // manager about the current device status.
       dbus_adaptor_status_update_timer_.Start(
-          FROM_HERE,
-          base::TimeDelta::FromSeconds(kShortDelayInSeconds),
-          this,
+          FROM_HERE, base::TimeDelta::FromSeconds(kShortDelayInSeconds), this,
           &GdmDevice::OnDBusAdaptorStatusUpdate);
       return true;
     }
@@ -407,18 +394,16 @@ bool GdmDevice::Connect(const Network &network,
   VLOG(1) << "Connect to " << network.GetNameWithIdentifier()
           << " via EAP (Type: " << GetEAPTypeString(eap_parameters.type)
           << ", Anonymous identity: '"
-          << MaskString(reinterpret_cast<const char *>(
-              eap_parameters.anonymousId))
+          << MaskString(
+                 reinterpret_cast<const char*>(eap_parameters.anonymousId))
           << "', User identity: '"
-          << MaskString(reinterpret_cast<const char *>(eap_parameters.userId))
+          << MaskString(reinterpret_cast<const char*>(eap_parameters.userId))
           << "', User password: '"
-          << MaskString(reinterpret_cast<const char *>(
-              eap_parameters.userIdPwd))
+          << MaskString(reinterpret_cast<const char*>(eap_parameters.userIdPwd))
           << "', Bypass device certificate: "
           << (eap_parameters.devCertNULL == 0 ? false : true)
           << ", Bypass CA certificate: "
-          << (eap_parameters.caCertNULL == 0 ? false : true)
-          << ")";
+          << (eap_parameters.caCertNULL == 0 ? false : true) << ")";
 
   if (!driver_->SetDeviceEAPParameters(this, &eap_parameters)) {
     LOG(ERROR) << "Failed to set EAP parameters on device '" << name() << "'";
@@ -426,8 +411,8 @@ bool GdmDevice::Connect(const Network &network,
   }
 
   if (!driver_->ConnectDeviceToNetwork(this, network)) {
-    LOG(ERROR) << "Failed to connect device '" << name()
-               << "' to " << network.GetNameWithIdentifier();
+    LOG(ERROR) << "Failed to connect device '" << name() << "' to "
+               << network.GetNameWithIdentifier();
     return false;
   }
 
@@ -441,9 +426,7 @@ bool GdmDevice::Connect(const Network &network,
   // Schedule a timeout to abort the connection attempt in case the device
   // is stuck at the 'connecting' state.
   connect_timeout_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromSeconds(kConnectTimeoutInSeconds),
-      this,
+      FROM_HERE, base::TimeDelta::FromSeconds(kConnectTimeoutInSeconds), this,
       &GdmDevice::CancelConnectOnTimeout);
 
   if (!driver_->GetDeviceStatus(this)) {
@@ -486,9 +469,9 @@ void GdmDevice::ClearCurrentConnectionProfile() {
 
 // static
 bool GdmDevice::ConstructEAPParameters(
-    const DictionaryValue &connect_parameters,
-    const EAPParameters &operator_eap_parameters,
-    GCT_API_EAP_PARAM *eap_parameters) {
+    const DictionaryValue& connect_parameters,
+    const EAPParameters& operator_eap_parameters,
+    GCT_API_EAP_PARAM* eap_parameters) {
   CHECK(eap_parameters);
 
   memset(eap_parameters, 0, sizeof(GCT_API_EAP_PARAM));
@@ -523,8 +506,7 @@ bool GdmDevice::ConstructEAPParameters(
     eap_parameters->caCertNULL = 1;
 
   string user_identity;
-  if (!ExtractStringParameter(connect_parameters,
-                              kEAPUserIdentity,
+  if (!ExtractStringParameter(connect_parameters, kEAPUserIdentity,
                               operator_eap_parameters.user_identity(),
                               &user_identity) ||
       !CopyStringToUInt8Array(user_identity, eap_parameters->userId)) {
@@ -533,8 +515,7 @@ bool GdmDevice::ConstructEAPParameters(
   }
 
   string user_password;
-  if (!ExtractStringParameter(connect_parameters,
-                              kEAPUserPassword,
+  if (!ExtractStringParameter(connect_parameters, kEAPUserPassword,
                               operator_eap_parameters.user_password(),
                               &user_password) ||
       !CopyStringToUInt8Array(user_password, eap_parameters->userIdPwd)) {
@@ -543,8 +524,7 @@ bool GdmDevice::ConstructEAPParameters(
   }
 
   string anonymous_identity;
-  if (!ExtractStringParameter(connect_parameters,
-                              kEAPAnonymousIdentity,
+  if (!ExtractStringParameter(connect_parameters, kEAPAnonymousIdentity,
                               operator_eap_parameters.anonymous_identity(),
                               &anonymous_identity)) {
     LOG(ERROR) << "Invalid EAP anonymous identity";
@@ -570,8 +550,8 @@ bool GdmDevice::ConstructEAPParameters(
 }
 
 EAPParameters GdmDevice::GetNetworkOperatorEAPParameters(
-    const Network &network) const {
-  const NetworkOperator *network_operator =
+    const Network& network) const {
+  const NetworkOperator* network_operator =
       manager()->GetNetworkOperator(network.identifier());
   if (network_operator)
     return network_operator->eap_parameters();

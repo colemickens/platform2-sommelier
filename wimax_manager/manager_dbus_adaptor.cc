@@ -17,17 +17,16 @@ using std::vector;
 
 namespace wimax_manager {
 
-ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection *connection,
-                                       Manager *manager)
-    : DBusAdaptor(connection, kWiMaxManagerServicePath),
-      manager_(manager) {
+ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection* connection,
+                                       Manager* manager)
+    : DBusAdaptor(connection, kWiMaxManagerServicePath), manager_(manager) {
   Devices = vector<DBus::Path>();
 }
 
 void ManagerDBusAdaptor::UpdateDevices() {
   vector<DBus::Path> device_paths;
-  const vector<std::unique_ptr<Device>> &devices = manager_->devices();
-  for (const auto &device : devices) {
+  const vector<std::unique_ptr<Device>>& devices = manager_->devices();
+  for (const auto& device : devices) {
     device_paths.push_back(device->dbus_object_path());
   }
   Devices = device_paths;

@@ -26,12 +26,12 @@ DBusControl::~DBusControl() {
 }
 
 // static
-DBusControl *DBusControl::GetInstance() {
+DBusControl* DBusControl::GetInstance() {
   return g_dbus_control.Pointer();
 }
 
 // static
-DBus::Connection *DBusControl::GetConnection() {
+DBus::Connection* DBusControl::GetConnection() {
   return GetInstance()->connection_.get();
 }
 

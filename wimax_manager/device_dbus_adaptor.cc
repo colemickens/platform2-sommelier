@@ -25,14 +25,14 @@ namespace wimax_manager {
 namespace {
 
 bool ConvertDBusDictionaryToDictionaryValue(
-    const map<string, DBus::Variant> &dbus_dictionary,
-    base::DictionaryValue *dictionary_value) {
+    const map<string, DBus::Variant>& dbus_dictionary,
+    base::DictionaryValue* dictionary_value) {
   CHECK(dictionary_value);
 
   dictionary_value->Clear();
-  for (const auto &key_value : dbus_dictionary) {
-    const string &key = key_value.first;
-    const DBus::Signature &value_signature = key_value.second.signature();
+  for (const auto& key_value : dbus_dictionary) {
+    const string& key = key_value.first;
+    const DBus::Signature& value_signature = key_value.second.signature();
     DBus::MessageIter value_reader = key_value.second.reader();
     if (value_signature == DBus::type<string>::sig()) {
       dictionary_value->SetString(key, value_reader.get_string());
@@ -61,10 +61,9 @@ bool ConvertDBusDictionaryToDictionaryValue(
 
 }  // namespace
 
-DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
-                                     Device *device)
-    : DBusAdaptor(connection, GetDeviceObjectPath(*device)),
-      device_(device) {
+DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* connection,
+                                     Device* device)
+    : DBusAdaptor(connection, GetDeviceObjectPath(*device)), device_(device) {
   Index = device->index();
   Name = device->name();
   MACAddress = device->mac_address().GetHexString();
@@ -79,40 +78,40 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
 }
 
 // static
-string DeviceDBusAdaptor::GetDeviceObjectPath(const Device &device) {
+string DeviceDBusAdaptor::GetDeviceObjectPath(const Device& device) {
   return base::StringPrintf("%s%s", kDeviceObjectPathPrefix,
                             device.name().c_str());
 }
 
-void DeviceDBusAdaptor::Enable(DBus::Error &error) {  // NOLINT
+void DeviceDBusAdaptor::Enable(DBus::Error& error) {  // NOLINT
   if (!device_->Enable()) {
     SetError(&error, "Failed to enable device " + device_->name());
   }
 }
 
-void DeviceDBusAdaptor::Disable(DBus::Error &error) {  // NOLINT
+void DeviceDBusAdaptor::Disable(DBus::Error& error) {  // NOLINT
   if (!device_->Disable()) {
     SetError(&error, "Failed to disable device " + device_->name());
   }
 }
 
-void DeviceDBusAdaptor::ScanNetworks(DBus::Error &error) {  // NOLINT
+void DeviceDBusAdaptor::ScanNetworks(DBus::Error& error) {  // NOLINT
   if (!device_->ScanNetworks()) {
     SetError(&error, "Failed to scan networks from device " + device_->name());
   }
 }
 
-void DeviceDBusAdaptor::Connect(const DBus::Path &network_object_path,
-                                const map<string, DBus::Variant> &parameters,
-                                DBus::Error &error) {  // NOLINT
+void DeviceDBusAdaptor::Connect(const DBus::Path& network_object_path,
+                                const map<string, DBus::Variant>& parameters,
+                                DBus::Error& error) {  // NOLINT
   NetworkRefPtr network = FindNetworkByDBusObjectPath(network_object_path);
   if (!network) {
     SetError(&error, "Could not find network ' " + network_object_path + "'.");
     return;
   }
   base::DictionaryValue parameters_dictionary;
-  if (!ConvertDBusDictionaryToDictionaryValue(
-      parameters, &parameters_dictionary)) {
+  if (!ConvertDBusDictionaryToDictionaryValue(parameters,
+                                              &parameters_dictionary)) {
     SetError(&error, "Invalid connect parameters value.");
     return;
   }
@@ -122,11 +121,10 @@ void DeviceDBusAdaptor::Connect(const DBus::Path &network_object_path,
   }
 }
 
-void DeviceDBusAdaptor::Disconnect(DBus::Error &error) {  // NOLINT
+void DeviceDBusAdaptor::Disconnect(DBus::Error& error) {  // NOLINT
   if (!device_->Disconnect()) {
-    SetError(&error,
-             "Failed to disconnect device " + device_->name() +
-             " from network");
+    SetError(&error, "Failed to disconnect device " + device_->name() +
+                         " from network");
   }
 }
 
@@ -136,7 +134,7 @@ void DeviceDBusAdaptor::UpdateMACAddress() {
 
 void DeviceDBusAdaptor::UpdateNetworks() {
   vector<DBus::Path> network_paths;
-  for (const auto &network : device_->networks()) {
+  for (const auto& network : device_->networks()) {
     network_paths.push_back(network.second->dbus_object_path());
   }
   Networks = network_paths;
@@ -157,8 +155,8 @@ void DeviceDBusAdaptor::UpdateStatus() {
 }
 
 NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
-    const DBus::Path &network_object_path) const {
-  for (const auto &network : device_->networks()) {
+    const DBus::Path& network_object_path) const {
+  for (const auto& network : device_->networks()) {
     if (network.second->dbus_object_path() == network_object_path)
       return network.second;
   }
@@ -167,7 +165,8 @@ NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
 
 void DeviceDBusAdaptor::on_set_property(
     DBus::InterfaceAdaptor& interface,  // NOLINT(runtime/references)
-    const string& property, const DBus::Variant& value) {
+    const string& property,
+    const DBus::Variant& value) {
   if (property == "NetworkScanInterval") {
     device_->SetNetworkScanInterval(value.reader().get_uint32());
   } else if (property == "StatusUpdateInterval") {
