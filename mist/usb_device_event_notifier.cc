@@ -73,7 +73,7 @@ bool UsbDeviceEventNotifier::Initialize() {
   }
 
   if (!dispatcher_->StartWatchingFileDescriptor(
-      udev_monitor_file_descriptor_, MessageLoopForIO::WATCH_READ, this)) {
+          udev_monitor_file_descriptor_, MessageLoopForIO::WATCH_READ, this)) {
     LOG(ERROR) << "Could not watch udev monitor file descriptor.";
     return false;
   }
@@ -83,8 +83,7 @@ bool UsbDeviceEventNotifier::Initialize() {
 
 bool UsbDeviceEventNotifier::ScanExistingDevices() {
   unique_ptr<UdevEnumerate> enumerate(udev_->CreateEnumerate());
-  if (!enumerate ||
-      !enumerate->AddMatchSubsystem("usb") ||
+  if (!enumerate || !enumerate->AddMatchSubsystem("usb") ||
       !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
       !enumerate->ScanDevices()) {
     LOG(ERROR) << "Could not enumerate USB devices on the system.";
@@ -92,8 +91,7 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
   }
 
   for (unique_ptr<UdevListEntry> list_entry(enumerate->GetListEntry());
-       list_entry;
-       list_entry.reset(list_entry->GetNext())) {
+       list_entry; list_entry.reset(list_entry->GetNext())) {
     string sys_path = ConvertNullToEmptyString(list_entry->GetName());
 
     unique_ptr<UdevDevice> device(
@@ -105,20 +103,13 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     uint8_t device_address;
     uint16_t vendor_id;
     uint16_t product_id;
-    if (!GetDeviceAttributes(device.get(),
-                             &bus_number,
-                             &device_address,
-                             &vendor_id,
-                             &product_id))
+    if (!GetDeviceAttributes(device.get(), &bus_number, &device_address,
+                             &vendor_id, &product_id))
       continue;
 
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver,
-                      observer_list_,
-                      OnUsbDeviceAdded(sys_path,
-                                       bus_number,
-                                       device_address,
-                                       vendor_id,
-                                       product_id));
+    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
+                      OnUsbDeviceAdded(sys_path, bus_number, device_address,
+                                       vendor_id, product_id));
   }
   return true;
 }
@@ -145,24 +136,22 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
     return;
   }
 
-  VLOG(1) << StringPrintf("udev (SysPath=%s, "
-                          "Node=%s, "
-                          "Subsystem=%s, "
-                          "DevType=%s, "
-                          "Action=%s, "
-                          "BusNumber=%s, "
-                          "DeviceAddress=%s, "
-                          "VendorId=%s, "
-                          "ProductId=%s)",
-                          device->GetSysPath(),
-                          device->GetDeviceNode(),
-                          device->GetSubsystem(),
-                          device->GetDeviceType(),
-                          device->GetAction(),
-                          device->GetSysAttributeValue(kAttributeBusNumber),
-                          device->GetSysAttributeValue(kAttributeDeviceAddress),
-                          device->GetSysAttributeValue(kAttributeIdVendor),
-                          device->GetSysAttributeValue(kAttributeIdProduct));
+  VLOG(1) << StringPrintf(
+      "udev (SysPath=%s, "
+      "Node=%s, "
+      "Subsystem=%s, "
+      "DevType=%s, "
+      "Action=%s, "
+      "BusNumber=%s, "
+      "DeviceAddress=%s, "
+      "VendorId=%s, "
+      "ProductId=%s)",
+      device->GetSysPath(), device->GetDeviceNode(), device->GetSubsystem(),
+      device->GetDeviceType(), device->GetAction(),
+      device->GetSysAttributeValue(kAttributeBusNumber),
+      device->GetSysAttributeValue(kAttributeDeviceAddress),
+      device->GetSysAttributeValue(kAttributeIdVendor),
+      device->GetSysAttributeValue(kAttributeIdProduct));
 
   string sys_path = ConvertNullToEmptyString(device->GetSysPath());
   if (sys_path.empty()) {
@@ -176,22 +165,15 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
     uint8_t device_address;
     uint16_t vendor_id;
     uint16_t product_id;
-    if (!GetDeviceAttributes(device.get(),
-                             &bus_number,
-                             &device_address,
-                             &vendor_id,
-                             &product_id)) {
+    if (!GetDeviceAttributes(device.get(), &bus_number, &device_address,
+                             &vendor_id, &product_id)) {
       LOG(WARNING) << "Ignore device event of unidentifiable device.";
       return;
     }
 
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver,
-                      observer_list_,
-                      OnUsbDeviceAdded(sys_path,
-                                       bus_number,
-                                       device_address,
-                                       vendor_id,
-                                       product_id));
+    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
+                      OnUsbDeviceAdded(sys_path, bus_number, device_address,
+                                       vendor_id, product_id));
     return;
   }
 
@@ -215,10 +197,8 @@ std::string UsbDeviceEventNotifier::ConvertNullToEmptyString(const char* str) {
 bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const string& str,
                                                       uint16_t* value) {
   int temp_value = -1;
-  if (str.size() != 4 ||
-      !base::HexStringToInt(str, &temp_value) ||
-      temp_value < 0 ||
-      temp_value > std::numeric_limits<uint16_t>::max()) {
+  if (str.size() != 4 || !base::HexStringToInt(str, &temp_value) ||
+      temp_value < 0 || temp_value > std::numeric_limits<uint16_t>::max()) {
     return false;
   }
 

@@ -41,8 +41,7 @@ void UsbModemOneShotSwitcher::Start(UsbModemSwitchContext* switch_context) {
 }
 
 void UsbModemOneShotSwitcher::OnSwitchOperationCompleted(
-    UsbModemSwitchOperation* operation,
-    bool success) {
+    UsbModemSwitchOperation* operation, bool success) {
   CHECK_EQ(operation_.get(), operation);
   operation_.reset();
 

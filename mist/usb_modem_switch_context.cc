@@ -57,10 +57,7 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
   uint16_t vendor_id;
   uint16_t product_id;
   if (!context->usb_device_event_notifier()->GetDeviceAttributes(
-          device.get(),
-          &bus_number,
-          &device_address,
-          &vendor_id,
+          device.get(), &bus_number, &device_address, &vendor_id,
           &product_id)) {
     VLOG(1) << "Could not get attributes of device '" << sys_path << "'.";
     return false;
@@ -80,17 +77,14 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
   product_id_ = product_id;
   modem_info_ = modem_info;
 
-  VLOG(1) << StringPrintf("Initialized UsbModemSwitchContext("
-                          "SysPath=%s, "
-                          "BusNumber=%03u, "
-                          "DeviceAddress=%03u, "
-                          "VendorId=0x%04x, "
-                          "ProductId=0x%04x)",
-                          sys_path_.c_str(),
-                          bus_number_,
-                          device_address_,
-                          vendor_id_,
-                          product_id_);
+  VLOG(1) << StringPrintf(
+      "Initialized UsbModemSwitchContext("
+      "SysPath=%s, "
+      "BusNumber=%03u, "
+      "DeviceAddress=%03u, "
+      "VendorId=0x%04x, "
+      "ProductId=0x%04x)",
+      sys_path_.c_str(), bus_number_, device_address_, vendor_id_, product_id_);
   return true;
 }
 

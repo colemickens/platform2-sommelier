@@ -38,8 +38,7 @@ void UsbModemSwitcher::Start() {
 }
 
 void UsbModemSwitcher::OnSwitchOperationCompleted(
-    UsbModemSwitchOperation* operation,
-    bool success) {
+    UsbModemSwitchOperation* operation, bool success) {
   CHECK(operation);
   delete operation;
 }

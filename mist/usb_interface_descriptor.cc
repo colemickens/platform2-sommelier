@@ -24,8 +24,7 @@ namespace mist {
 UsbInterfaceDescriptor::UsbInterfaceDescriptor(
     const base::WeakPtr<UsbDevice>& device,
     const libusb_interface_descriptor* interface_descriptor)
-    : device_(device),
-      interface_descriptor_(interface_descriptor) {
+    : device_(device), interface_descriptor_(interface_descriptor) {
   CHECK(interface_descriptor_);
 }
 
@@ -64,17 +63,17 @@ uint8_t UsbInterfaceDescriptor::GetInterfaceProtocol() const {
 }
 
 string UsbInterfaceDescriptor::GetInterfaceDescription() const {
-  return device_ ?
-      device_->GetStringDescriptorAscii(interface_descriptor_->iInterface) :
-      string();
+  return device_ ? device_->GetStringDescriptorAscii(
+                       interface_descriptor_->iInterface)
+                 : string();
 }
 
 UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
     uint8_t index) const {
   if (index >= GetNumEndpoints()) {
-    LOG(ERROR) << StringPrintf("Invalid endpoint index %d. "
-                               "Must be less than %d.",
-                               index, GetNumEndpoints());
+    LOG(ERROR) << StringPrintf(
+        "Invalid endpoint index %d. Must be less than %d.", index,
+        GetNumEndpoints());
     return nullptr;
   }
 
@@ -96,24 +95,20 @@ UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
 }
 
 string UsbInterfaceDescriptor::ToString() const {
-  return StringPrintf("Interface (Length=%u, "
-                      "DescriptorType=%u, "
-                      "InterfaceNumber=%u, "
-                      "AlternateSetting=%u, "
-                      "NumEndpoints=%u, "
-                      "InterfaceClass=%u, "
-                      "InterfaceSubclass=%u, "
-                      "InterfaceProtocol=%u, "
-                      "Interface='%s')",
-                      GetLength(),
-                      GetDescriptorType(),
-                      GetInterfaceNumber(),
-                      GetAlternateSetting(),
-                      GetNumEndpoints(),
-                      GetInterfaceClass(),
-                      GetInterfaceSubclass(),
-                      GetInterfaceProtocol(),
-                      GetInterfaceDescription().c_str());
+  return StringPrintf(
+      "Interface (Length=%u, "
+      "DescriptorType=%u, "
+      "InterfaceNumber=%u, "
+      "AlternateSetting=%u, "
+      "NumEndpoints=%u, "
+      "InterfaceClass=%u, "
+      "InterfaceSubclass=%u, "
+      "InterfaceProtocol=%u, "
+      "Interface='%s')",
+      GetLength(), GetDescriptorType(), GetInterfaceNumber(),
+      GetAlternateSetting(), GetNumEndpoints(), GetInterfaceClass(),
+      GetInterfaceSubclass(), GetInterfaceProtocol(),
+      GetInterfaceDescription().c_str());
 }
 
 }  // namespace mist

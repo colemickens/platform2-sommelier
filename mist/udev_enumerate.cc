@@ -36,11 +36,9 @@ bool UdevEnumerate::AddMatchSubsystem(const char* subsystem) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_subsystem"
-                          "(%p, \"%s\") returned %d.",
-                          enumerate_,
-                          subsystem,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_subsystem (%p, \"%s\") returned %d.",
+      enumerate_, subsystem, result);
   return false;
 }
 
@@ -49,11 +47,9 @@ bool UdevEnumerate::AddNoMatchSubsystem(const char* subsystem) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_nomatch_subsystem"
-                          "(%p, \"%s\") returned %d.",
-                          enumerate_,
-                          subsystem,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_nomatch_subsystem (%p, \"%s\") returned %d.",
+      enumerate_, subsystem, result);
   return false;
 }
 
@@ -63,12 +59,9 @@ bool UdevEnumerate::AddMatchSysAttribute(const char* attribute,
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_sysattr"
-                          "(%p, \"%s\", \"%s\") returned %d.",
-                          enumerate_,
-                          attribute,
-                          value,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_sysattr (%p, \"%s\", \"%s\") returned %d.",
+      enumerate_, attribute, value, result);
   return false;
 }
 
@@ -78,12 +71,9 @@ bool UdevEnumerate::AddNoMatchSysAttribute(const char* attribute,
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_nomatch_sysattr"
-                          "(%p, \"%s\", \"%s\") returned %d.",
-                          enumerate_,
-                          attribute,
-                          value,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_nomatch_sysattr (%p, \"%s\", \"%s\") returned %d.",
+      enumerate_, attribute, value, result);
   return false;
 }
 
@@ -92,12 +82,9 @@ bool UdevEnumerate::AddMatchProperty(const char* property, const char* value) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_property"
-                          "(%p, \"%s\", \"%s\") returned %d.",
-                          enumerate_,
-                          property,
-                          value,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_property (%p, \"%s\", \"%s\") returned %d.",
+      enumerate_, property, value, result);
   return false;
 }
 
@@ -106,11 +93,9 @@ bool UdevEnumerate::AddMatchSysName(const char* sys_name) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_sysname"
-                          "(%p, \"%s\") returned %d.",
-                          enumerate_,
-                          sys_name,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_sysname (%p, \"%s\") returned %d.", enumerate_,
+      sys_name, result);
   return false;
 }
 
@@ -119,11 +104,9 @@ bool UdevEnumerate::AddMatchTag(const char* tag) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_tag"
-                          "(%p, \"%s\") returned %d.",
-                          enumerate_,
-                          tag,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_tag (%p, \"%s\") returned %d.", enumerate_, tag,
+      result);
   return false;
 }
 
@@ -132,10 +115,9 @@ bool UdevEnumerate::AddMatchIsInitialized() {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_enumerate_add_match_is_initialized"
-                          "(%p) returned %d.",
-                          enumerate_,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_enumerate_add_match_is_initialized (%p) returned %d.", enumerate_,
+      result);
   return false;
 }
 
@@ -145,9 +127,7 @@ bool UdevEnumerate::AddSysPath(const char* sys_path) {
     return true;
 
   VLOG(2) << StringPrintf("udev_enumerate_add_syspath(%p, \"%s\") returned %d.",
-                          enumerate_,
-                          sys_path,
-                          result);
+                          enumerate_, sys_path, result);
   return false;
 }
 
@@ -157,8 +137,7 @@ bool UdevEnumerate::ScanDevices() {
     return true;
 
   VLOG(2) << StringPrintf("udev_enumerate_scan_devices(%p) returned %d.",
-                          enumerate_,
-                          result);
+                          enumerate_, result);
   return false;
 }
 
@@ -168,8 +147,7 @@ bool UdevEnumerate::ScanSubsystems() {
     return true;
 
   VLOG(2) << StringPrintf("udev_enumerate_scan_subsystems(%p) returned %d.",
-                          enumerate_,
-                          result);
+                          enumerate_, result);
   return false;
 }
 

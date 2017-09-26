@@ -41,8 +41,7 @@ MessageLoopForIO::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
 }  // namespace
 
 UsbManager::UsbManager(EventDispatcher* dispatcher)
-    : dispatcher_(dispatcher),
-      context_(nullptr) {}
+    : dispatcher_(dispatcher), context_(nullptr) {}
 
 UsbManager::~UsbManager() {
   if (context_) {
@@ -128,8 +127,7 @@ void UsbManager::OnPollFileDescriptorAdded(int file_descriptor,
   CHECK(user_data);
 
   VLOG(2) << StringPrintf("Poll file descriptor %d on events 0x%016x added.",
-                          file_descriptor,
-                          events);
+                          file_descriptor, events);
   UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
   manager->dispatcher_->StartWatchingFileDescriptor(
       file_descriptor, ConvertEventFlagsToWatchMode(events), manager);
@@ -147,8 +145,8 @@ void UsbManager::OnPollFileDescriptorRemoved(int file_descriptor,
 bool UsbManager::StartWatchingPollFileDescriptors() {
   CHECK(context_);
 
-  libusb_set_pollfd_notifiers(
-      context_, &OnPollFileDescriptorAdded, &OnPollFileDescriptorRemoved, this);
+  libusb_set_pollfd_notifiers(context_, &OnPollFileDescriptorAdded,
+                              &OnPollFileDescriptorRemoved, this);
 
   unique_ptr<const libusb_pollfd*, base::FreeDeleter> pollfd_list(
       libusb_get_pollfds(context_));
@@ -160,8 +158,7 @@ bool UsbManager::StartWatchingPollFileDescriptors() {
   for (const libusb_pollfd** fd_ptr = pollfd_list.get(); *fd_ptr; ++fd_ptr) {
     const libusb_pollfd& pollfd = *(*fd_ptr);
     VLOG(2) << StringPrintf("Poll file descriptor %d for events 0x%016x added.",
-                            pollfd.fd,
-                            pollfd.events);
+                            pollfd.fd, pollfd.events);
     if (!dispatcher_->StartWatchingFileDescriptor(
             pollfd.fd, ConvertEventFlagsToWatchMode(pollfd.events), this)) {
       return false;

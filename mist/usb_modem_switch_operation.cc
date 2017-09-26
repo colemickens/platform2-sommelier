@@ -55,8 +55,7 @@ const int64_t kUsbMessageTransferTimeoutMilliseconds = 8000;
 // TODO(benchan): Add unit tests for UsbModemSwitchOperation.
 
 UsbModemSwitchOperation::UsbModemSwitchOperation(
-    Context* context,
-    UsbModemSwitchContext* switch_context)
+    Context* context, UsbModemSwitchContext* switch_context)
     : context_(context),
       switch_context_(switch_context),
       interface_claimed_(false),
@@ -103,9 +102,8 @@ void UsbModemSwitchOperation::Start(
       switch_context_->modem_info()->initial_delay_ms());
   LOG(INFO) << "Starting the modem switch operation in "
             << initial_delay.InMilliseconds() << " ms.";
-  ScheduleDelayedTask(
-      &UsbModemSwitchOperation::OpenDeviceAndSelectInterface,
-      initial_delay);
+  ScheduleDelayedTask(&UsbModemSwitchOperation::OpenDeviceAndSelectInterface,
+                      initial_delay);
 }
 
 void UsbModemSwitchOperation::Cancel() {
@@ -123,8 +121,7 @@ void UsbModemSwitchOperation::ScheduleTask(Task task) {
 }
 
 void UsbModemSwitchOperation::ScheduleDelayedTask(
-    Task task,
-    const base::TimeDelta& delay) {
+    Task task, const base::TimeDelta& delay) {
   pending_task_.Reset(Bind(task, Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(pending_task_.callback(),
                                                 delay);
@@ -215,10 +212,9 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
         continue;
 
       int configuration_value = config_descriptor->GetConfigurationValue();
-      LOG(INFO) << StringPrintf("Found MBIM support at configuration %d "
-                                "on device '%s'.",
-                                configuration_value,
-                                switch_context_->sys_path().c_str());
+      LOG(INFO) << StringPrintf(
+          "Found MBIM support at configuration %d on device '%s'.",
+          configuration_value, switch_context_->sys_path().c_str());
       return configuration_value;
     }
   }
@@ -244,17 +240,14 @@ bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
   DetachAllKernelDrivers();
   if (device_->SetConfiguration(configuration)) {
     LOG(INFO) << StringPrintf(
-                     "Successfully selected configuration %d for device '%s'.",
-                     configuration,
-                     switch_context_->sys_path().c_str());
+        "Successfully selected configuration %d for device '%s'.",
+        configuration, switch_context_->sys_path().c_str());
     return true;
   }
 
   LOG(ERROR) << StringPrintf(
-                    "Could not select configuration %d for device '%s': %s",
-                    configuration,
-                    switch_context_->sys_path().c_str(),
-                    device_->error().ToString());
+      "Could not select configuration %d for device '%s': %s", configuration,
+      switch_context_->sys_path().c_str(), device_->error().ToString());
   return false;
 }
 
@@ -281,19 +274,15 @@ void UsbModemSwitchOperation::CloseDevice() {
 void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   CHECK(!interface_claimed_);
 
-  device_.reset(
-      context_->usb_manager()->GetDevice(switch_context_->bus_number(),
-                                         switch_context_->device_address(),
-                                         switch_context_->vendor_id(),
-                                         switch_context_->product_id()));
+  device_.reset(context_->usb_manager()->GetDevice(
+      switch_context_->bus_number(), switch_context_->device_address(),
+      switch_context_->vendor_id(), switch_context_->product_id()));
   if (!device_) {
-    LOG(ERROR) << StringPrintf("Could not find USB device '%s' "
-                               "(Bus %03d Address %03d ID %04x:%04x).",
-                               switch_context_->sys_path().c_str(),
-                               switch_context_->bus_number(),
-                               switch_context_->device_address(),
-                               switch_context_->vendor_id(),
-                               switch_context_->product_id());
+    LOG(ERROR) << StringPrintf(
+        "Could not find USB device '%s' (Bus %03d Address %03d ID %04x:%04x).",
+        switch_context_->sys_path().c_str(), switch_context_->bus_number(),
+        switch_context_->device_address(), switch_context_->vendor_id(),
+        switch_context_->product_id());
     Complete(false);
     return;
   }
@@ -409,8 +398,8 @@ bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
     return true;
 
   LOG(ERROR) << StringPrintf(
-      "Could not clear halt condition for endpoint %u: %s",
-      endpoint_address, device_->error().ToString());
+      "Could not clear halt condition for endpoint %u: %s", endpoint_address,
+      device_->error().ToString());
   return false;
 }
 
@@ -422,21 +411,17 @@ void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
   vector<uint8_t> bytes;
   if (!base::HexStringToBytes(usb_message, &bytes)) {
     LOG(ERROR) << StringPrintf("Invalid USB message (%d/%d): %s",
-                               message_index_,
-                               num_usb_messages_,
+                               message_index_, num_usb_messages_,
                                usb_message.c_str());
     Complete(false);
     return;
   }
 
   VLOG(1) << StringPrintf("Prepare to send USB message (%d/%d): %s",
-                          message_index_ + 1,
-                          num_usb_messages_,
+                          message_index_ + 1, num_usb_messages_,
                           usb_message.c_str());
 
-  InitiateUsbBulkTransfer(out_endpoint_address_,
-                          &bytes[0],
-                          bytes.size(),
+  InitiateUsbBulkTransfer(out_endpoint_address_, &bytes[0], bytes.size(),
                           &UsbModemSwitchOperation::OnSendMessageCompleted);
 }
 
@@ -444,11 +429,9 @@ void UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint() {
   CHECK_LT(message_index_, num_usb_messages_);
 
   VLOG(1) << StringPrintf("Prepare to receive USB message (%d/%d)",
-                          message_index_ + 1,
-                          num_usb_messages_);
+                          message_index_ + 1, num_usb_messages_);
 
-  InitiateUsbBulkTransfer(in_endpoint_address_,
-                          nullptr,
+  InitiateUsbBulkTransfer(in_endpoint_address_, nullptr,
                           kExpectedResponseLength,
                           &UsbModemSwitchOperation::OnReceiveMessageCompleted);
 }
@@ -461,9 +444,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
   CHECK_GT(length, 0);
 
   unique_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
-  if (!bulk_transfer->Initialize(*device_,
-                                 endpoint_address,
-                                 length,
+  if (!bulk_transfer->Initialize(*device_, endpoint_address, length,
                                  kUsbMessageTransferTimeoutMilliseconds)) {
     LOG(ERROR) << "Could not create USB bulk transfer: "
                << bulk_transfer->error();
@@ -512,16 +493,14 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
 
   if (!transfer->IsCompletedWithExpectedLength(transfer->GetLength())) {
     LOG(ERROR) << StringPrintf(
-                      "Could not successfully send USB message (%d/%d).",
-                      message_index_ + 1,
-                      num_usb_messages_);
+        "Could not successfully send USB message (%d/%d).", message_index_ + 1,
+        num_usb_messages_);
     Complete(false);
     return;
   }
 
   LOG(INFO) << StringPrintf("Successfully sent USB message (%d/%d).",
-                            message_index_ + 1,
-                            num_usb_messages_);
+                            message_index_ + 1, num_usb_messages_);
 
   if (switch_context_->modem_info()->expect_response()) {
     ScheduleTask(
@@ -554,16 +533,14 @@ void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
 
   if (!transfer->IsCompletedWithExpectedLength(kExpectedResponseLength)) {
     LOG(ERROR) << StringPrintf(
-                      "Could not successfully receive USB message (%d/%d).",
-                      message_index_ + 1,
-                      num_usb_messages_);
+        "Could not successfully receive USB message (%d/%d).",
+        message_index_ + 1, num_usb_messages_);
     Complete(false);
     return;
   }
 
   LOG(INFO) << StringPrintf("Successfully received USB message (%d/%d).",
-                            message_index_ + 1,
-                            num_usb_messages_);
+                            message_index_ + 1, num_usb_messages_);
 
   ScheduleNextMessageToMassStorageEndpoint();
 }
@@ -614,10 +591,8 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
       const UsbId& initial_usb_id = modem_info->initial_usb_id();
       LOG(INFO) << StringPrintf(
           "Successfully switched device '%s' from %04x:%04x to %04x:%04x.",
-          switch_context_->sys_path().c_str(),
-          initial_usb_id.vendor_id(),
-          initial_usb_id.product_id(),
-          final_usb_id.vendor_id(),
+          switch_context_->sys_path().c_str(), initial_usb_id.vendor_id(),
+          initial_usb_id.product_id(), final_usb_id.vendor_id(),
           final_usb_id.product_id());
       Complete(true);
       return;

@@ -18,8 +18,7 @@ namespace mist {
 
 UsbInterface::UsbInterface(const base::WeakPtr<UsbDevice>& device,
                            const libusb_interface* interface)
-    : device_(device),
-      interface_(interface) {
+    : device_(device), interface_(interface) {
   CHECK(interface_);
 }
 
@@ -27,12 +26,12 @@ int UsbInterface::GetNumAlternateSettings() const {
   return interface_->num_altsetting;
 }
 
-UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(
-    int index) const {
+UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(int index) const {
   if (index < 0 || index >= GetNumAlternateSettings()) {
-    LOG(ERROR) << StringPrintf("Invalid alternate setting index %d. "
-                               "Must be non-negative and less than %d.",
-                               index, GetNumAlternateSettings());
+    LOG(ERROR) << StringPrintf(
+        "Invalid alternate setting index %d. "
+        "Must be non-negative and less than %d.",
+        index, GetNumAlternateSettings());
     return nullptr;
   }
 

@@ -37,8 +37,7 @@ class UdevDevice {
   // UdevDevice object is not managed and should be deleted by the caller after
   // use.
   virtual UdevDevice* GetParentWithSubsystemDeviceType(
-      const char* subsystem,
-      const char* device_type) const;
+      const char* subsystem, const char* device_type) const;
 
   // Wraps udev_device_get_is_initialized().
   virtual bool IsInitialized() const;

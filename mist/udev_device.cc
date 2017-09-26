@@ -33,8 +33,7 @@ UdevDevice* UdevDevice::GetParent() const {
 }
 
 UdevDevice* UdevDevice::GetParentWithSubsystemDeviceType(
-    const char* subsystem,
-    const char* device_type) const {
+    const char* subsystem, const char* device_type) const {
   // udev_device_get_parent_with_subsystem_devtype does not increase the
   // reference count of the returned udev_device struct.
   udev_device* parent_device = udev_device_get_parent_with_subsystem_devtype(

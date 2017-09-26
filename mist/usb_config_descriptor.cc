@@ -56,9 +56,9 @@ uint8_t UsbConfigDescriptor::GetConfigurationValue() const {
 }
 
 string UsbConfigDescriptor::GetConfigurationDescription() const {
-  return device_ ?
-      device_->GetStringDescriptorAscii(config_descriptor_->iConfiguration) :
-      string();
+  return device_ ? device_->GetStringDescriptorAscii(
+                       config_descriptor_->iConfiguration)
+                 : string();
 }
 
 uint8_t UsbConfigDescriptor::GetAttributes() const {
@@ -71,9 +71,9 @@ uint8_t UsbConfigDescriptor::GetMaxPower() const {
 
 UsbInterface* UsbConfigDescriptor::GetInterface(uint8_t index) const {
   if (index >= GetNumInterfaces()) {
-    LOG(ERROR) << StringPrintf("Invalid interface index %d. "
-                               "Must be less than %d.",
-                               index, GetNumInterfaces());
+    LOG(ERROR) << StringPrintf(
+        "Invalid interface index %d. Must be less than %d.", index,
+        GetNumInterfaces());
     return nullptr;
   }
 
@@ -81,22 +81,18 @@ UsbInterface* UsbConfigDescriptor::GetInterface(uint8_t index) const {
 }
 
 string UsbConfigDescriptor::ToString() const {
-  return StringPrintf("Configuration (Length=%u, "
-                      "DescriptorType=%u, "
-                      "TotalLength=%u, "
-                      "NumInterfaces=%u, "
-                      "ConfigurationValue=%u, "
-                      "Configuration='%s', "
-                      "Attributes=0x%02x, "
-                      "MaxPower=%u)",
-                      GetLength(),
-                      GetDescriptorType(),
-                      GetTotalLength(),
-                      GetNumInterfaces(),
-                      GetConfigurationValue(),
-                      GetConfigurationDescription().c_str(),
-                      GetAttributes(),
-                      GetMaxPower());
+  return StringPrintf(
+      "Configuration (Length=%u, "
+      "DescriptorType=%u, "
+      "TotalLength=%u, "
+      "NumInterfaces=%u, "
+      "ConfigurationValue=%u, "
+      "Configuration='%s', "
+      "Attributes=0x%02x, "
+      "MaxPower=%u)",
+      GetLength(), GetDescriptorType(), GetTotalLength(), GetNumInterfaces(),
+      GetConfigurationValue(), GetConfigurationDescription().c_str(),
+      GetAttributes(), GetMaxPower());
 }
 
 }  // namespace mist

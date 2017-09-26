@@ -17,8 +17,7 @@ namespace mist {
 
 UdevMonitor::UdevMonitor() : monitor_(nullptr) {}
 
-UdevMonitor::UdevMonitor(udev_monitor* monitor)
-    : monitor_(monitor) {
+UdevMonitor::UdevMonitor(udev_monitor* monitor) : monitor_(monitor) {
   CHECK(monitor_);
 
   udev_monitor_ref(monitor_);
@@ -37,8 +36,7 @@ bool UdevMonitor::EnableReceiving() {
     return true;
 
   VLOG(2) << StringPrintf("udev_monitor_enable_receiving(%p) returned %d.",
-                          monitor_,
-                          result);
+                          monitor_, result);
   return false;
 }
 
@@ -47,10 +45,10 @@ bool UdevMonitor::SetReceiveBufferSize(int size) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_monitor_set_receive_buffer_size"
-                          "(%p) returned %d.",
-                          monitor_,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_monitor_set_receive_buffer_size"
+      "(%p) returned %d.",
+      monitor_, result);
   return false;
 }
 
@@ -59,8 +57,7 @@ int UdevMonitor::GetFileDescriptor() const {
   if (file_descriptor >= 0)
     return file_descriptor;
 
-  VLOG(2) << StringPrintf("udev_monitor_get_fd(%p) returned %d.",
-                          monitor_,
+  VLOG(2) << StringPrintf("udev_monitor_get_fd(%p) returned %d.", monitor_,
                           file_descriptor);
   return kInvalidFileDescriptor;
 }
@@ -90,12 +87,10 @@ bool UdevMonitor::FilterAddMatchSubsystemDeviceType(const char* subsystem,
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_monitor_filter_add_match_subsystem_devtype"
-                          "(%p, \"%s\", \"%s\") returned %d.",
-                          monitor_,
-                          subsystem,
-                          device_type,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_monitor_filter_add_match_subsystem_devtype (%p, \"%s\", \"%s\") "
+      "returned %d.",
+      monitor_, subsystem, device_type, result);
   return false;
 }
 
@@ -104,11 +99,9 @@ bool UdevMonitor::FilterAddMatchTag(const char* tag) {
   if (result == 0)
     return true;
 
-  VLOG(2) << StringPrintf("udev_monitor_filter_add_tag"
-                          "(%p, \"%s\") returned %d.",
-                          monitor_,
-                          tag,
-                          result);
+  VLOG(2) << StringPrintf(
+      "udev_monitor_filter_add_tag (%p, \"%s\") returned %d.", monitor_, tag,
+      result);
   return false;
 }
 
@@ -118,8 +111,7 @@ bool UdevMonitor::FilterUpdate() {
     return true;
 
   VLOG(2) << StringPrintf("udev_monitor_filter_update(%p) returned %d.",
-                          monitor_,
-                          result);
+                          monitor_, result);
   return false;
 }
 
@@ -129,8 +121,7 @@ bool UdevMonitor::FilterRemove() {
     return true;
 
   VLOG(2) << StringPrintf("udev_monitor_filter_remove(%p) returned %d.",
-                          monitor_,
-                          result);
+                          monitor_, result);
   return false;
 }
 

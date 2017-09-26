@@ -25,9 +25,7 @@ class UsbTransferTest : public testing::Test {
 
   // Temporarily injects a hand crafted libusb_transfer struct into |transfer_|
   // for testing. The injected libusb_transfer struct is removed in TearDown().
-  void InjectTestLibUsbTransfer() {
-    transfer_.transfer_ = &test_transfer_;
-  }
+  void InjectTestLibUsbTransfer() { transfer_.transfer_ = &test_transfer_; }
 
   // Pretends the transfer has been submitted and is still in progress.
   void PretendTransferInProgress() {

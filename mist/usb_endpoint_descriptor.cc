@@ -60,24 +60,20 @@ UsbTransferType UsbEndpointDescriptor::GetTransferType() const {
 }
 
 string UsbEndpointDescriptor::ToString() const {
-  return StringPrintf("Endpoint (Length=%u, "
-                      "DescriptorType=%u, "
-                      "EndpointAddress=0x%02x, "
-                      "EndpointNumber=%u, "
-                      "Attributes=0x%02x, "
-                      "MaxPacketSize=%u, "
-                      "Interval=%u, "
-                      "Direction=%s, "
-                      "TransferType=%s)",
-                      GetLength(),
-                      GetDescriptorType(),
-                      GetEndpointAddress(),
-                      GetEndpointNumber(),
-                      GetAttributes(),
-                      GetMaxPacketSize(),
-                      GetInterval(),
-                      UsbDirectionToString(GetDirection()),
-                      UsbTransferTypeToString(GetTransferType()));
+  return StringPrintf(
+      "Endpoint (Length=%u, "
+      "DescriptorType=%u, "
+      "EndpointAddress=0x%02x, "
+      "EndpointNumber=%u, "
+      "Attributes=0x%02x, "
+      "MaxPacketSize=%u, "
+      "Interval=%u, "
+      "Direction=%s, "
+      "TransferType=%s)",
+      GetLength(), GetDescriptorType(), GetEndpointAddress(),
+      GetEndpointNumber(), GetAttributes(), GetMaxPacketSize(), GetInterval(),
+      UsbDirectionToString(GetDirection()),
+      UsbTransferTypeToString(GetTransferType()));
 }
 
 }  // namespace mist

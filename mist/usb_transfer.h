@@ -31,11 +31,7 @@ class UsbTransfer {
  public:
   using CompletionCallback = base::Callback<void(UsbTransfer* transfer)>;
 
-  enum State {
-    kIdle,
-    kInProgress,
-    kCancelling
-  };
+  enum State { kIdle, kInProgress, kCancelling };
 
   ~UsbTransfer();
 

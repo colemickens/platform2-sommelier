@@ -95,8 +95,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   // or a NULL pointer if the configuration value is invalid. The returned
   // object should be deleted by the caller after use and should not be held
   // beyond the lifetime of this object.
-  UsbConfigDescriptor* GetConfigDescriptorByValue(
-      uint8_t configuration_value);
+  UsbConfigDescriptor* GetConfigDescriptorByValue(uint8_t configuration_value);
 
   // Returns a pointer to a UsbDeviceDescriptor object for the descriptor
   // of this device, or a NULL pointer on error. The returned object should be

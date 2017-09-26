@@ -196,12 +196,11 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
   EXPECT_CALL(*device4, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device4, GetAction()).WillOnce(Return(kUdevActionRemove));
 
-  EXPECT_CALL(observer_,
-              OnUsbDeviceAdded(kFakeUsbDevice2SysPath,
-                               kFakeUsbDevice2BusNumber,
-                               kFakeUsbDevice2DeviceAddress,
-                               kFakeUsbDevice2VendorId,
-                               kFakeUsbDevice2ProductId));
+  EXPECT_CALL(
+      observer_,
+      OnUsbDeviceAdded(kFakeUsbDevice2SysPath, kFakeUsbDevice2BusNumber,
+                       kFakeUsbDevice2DeviceAddress, kFakeUsbDevice2VendorId,
+                       kFakeUsbDevice2ProductId));
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(kFakeUsbDevice1SysPath));
 
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
@@ -330,8 +329,8 @@ TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
   MockUdevDevice* device2 = new MockUdevDevice();
 
   EXPECT_CALL(udev_, CreateEnumerate()).WillOnce(Return(enumerate));
-  EXPECT_CALL(*enumerate,
-              AddMatchSubsystem(StrEq("usb"))).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq("usb")))
+      .WillOnce(Return(true));
   EXPECT_CALL(*enumerate,
               AddMatchProperty(StrEq("DEVTYPE"), StrEq("usb_device")))
       .WillOnce(Return(true));
@@ -357,18 +356,16 @@ TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
       .WillOnce(Return(kFakeUsbDevice2ProductIdString));
 
   InSequence sequence;
-  EXPECT_CALL(observer_,
-              OnUsbDeviceAdded(kFakeUsbDevice1SysPath,
-                               kFakeUsbDevice1BusNumber,
-                               kFakeUsbDevice1DeviceAddress,
-                               kFakeUsbDevice1VendorId,
-                               kFakeUsbDevice1ProductId));
-  EXPECT_CALL(observer_,
-              OnUsbDeviceAdded(kFakeUsbDevice2SysPath,
-                               kFakeUsbDevice2BusNumber,
-                               kFakeUsbDevice2DeviceAddress,
-                               kFakeUsbDevice2VendorId,
-                               kFakeUsbDevice2ProductId));
+  EXPECT_CALL(
+      observer_,
+      OnUsbDeviceAdded(kFakeUsbDevice1SysPath, kFakeUsbDevice1BusNumber,
+                       kFakeUsbDevice1DeviceAddress, kFakeUsbDevice1VendorId,
+                       kFakeUsbDevice1ProductId));
+  EXPECT_CALL(
+      observer_,
+      OnUsbDeviceAdded(kFakeUsbDevice2SysPath, kFakeUsbDevice2BusNumber,
+                       kFakeUsbDevice2DeviceAddress, kFakeUsbDevice2VendorId,
+                       kFakeUsbDevice2ProductId));
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
 
   notifier_.AddObserver(&observer_);

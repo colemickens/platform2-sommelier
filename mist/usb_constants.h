@@ -12,15 +12,10 @@
 namespace mist {
 
 // USB class codes.
-enum UsbClass {
-  kUsbClassCommunication = 0x02,
-  kUsbClassMassStorage = 0x08
-};
+enum UsbClass { kUsbClassCommunication = 0x02, kUsbClassMassStorage = 0x08 };
 
 // USB subclass codes.
-enum UsbSubClass {
-  kUsbSubClassMBIM = 0x0e
-};
+enum UsbSubClass { kUsbSubClassMBIM = 0x0e };
 
 // USB endpoint direction, which is one-to-one equivalent to the
 // libusb_endpoint_direction enum defined in libusb 1.0.

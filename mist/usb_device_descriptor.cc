@@ -20,8 +20,7 @@ namespace mist {
 UsbDeviceDescriptor::UsbDeviceDescriptor(
     const base::WeakPtr<UsbDevice>& device,
     const libusb_device_descriptor* device_descriptor)
-    : device_(device),
-      device_descriptor_(device_descriptor) {
+    : device_(device), device_descriptor_(device_descriptor) {
   CHECK(device_descriptor_);
 }
 
@@ -58,21 +57,21 @@ uint16_t UsbDeviceDescriptor::GetProductId() const {
 }
 
 string UsbDeviceDescriptor::GetManufacturer() const {
-  return device_ ?
-      device_->GetStringDescriptorAscii(device_descriptor_->iManufacturer) :
-      string();
+  return device_ ? device_->GetStringDescriptorAscii(
+                       device_descriptor_->iManufacturer)
+                 : string();
 }
 
 string UsbDeviceDescriptor::GetProduct() const {
-  return device_ ?
-      device_->GetStringDescriptorAscii(device_descriptor_->iProduct) :
-      string();
+  return device_
+             ? device_->GetStringDescriptorAscii(device_descriptor_->iProduct)
+             : string();
 }
 
 string UsbDeviceDescriptor::GetSerialNumber() const {
-  return device_ ?
-      device_->GetStringDescriptorAscii(device_descriptor_->iSerialNumber) :
-      string();
+  return device_ ? device_->GetStringDescriptorAscii(
+                       device_descriptor_->iSerialNumber)
+                 : string();
 }
 
 uint8_t UsbDeviceDescriptor::GetNumConfigurations() const {
@@ -80,30 +79,23 @@ uint8_t UsbDeviceDescriptor::GetNumConfigurations() const {
 }
 
 string UsbDeviceDescriptor::ToString() const {
-  return StringPrintf("Device (Length=%u, "
-                      "DescriptorType=%u, "
-                      "DeviceClass=%u, "
-                      "DeviceSubclass=%u, "
-                      "DeviceProtocol=%u, "
-                      "MaxPacketSize0=%u, "
-                      "VendorId=0x%04x, "
-                      "ProductId=0x%04x, "
-                      "Manufacturer='%s', "
-                      "Product='%s', "
-                      "SerialNumber='%s', "
-                      "NumConfigurations=%d)",
-                      GetLength(),
-                      GetDescriptorType(),
-                      GetDeviceClass(),
-                      GetDeviceSubclass(),
-                      GetDeviceProtocol(),
-                      GetMaxPacketSize0(),
-                      GetVendorId(),
-                      GetProductId(),
-                      GetManufacturer().c_str(),
-                      GetProduct().c_str(),
-                      GetSerialNumber().c_str(),
-                      GetNumConfigurations());
+  return StringPrintf(
+      "Device (Length=%u, "
+      "DescriptorType=%u, "
+      "DeviceClass=%u, "
+      "DeviceSubclass=%u, "
+      "DeviceProtocol=%u, "
+      "MaxPacketSize0=%u, "
+      "VendorId=0x%04x, "
+      "ProductId=0x%04x, "
+      "Manufacturer='%s', "
+      "Product='%s', "
+      "SerialNumber='%s', "
+      "NumConfigurations=%d)",
+      GetLength(), GetDescriptorType(), GetDeviceClass(), GetDeviceSubclass(),
+      GetDeviceProtocol(), GetMaxPacketSize0(), GetVendorId(), GetProductId(),
+      GetManufacturer().c_str(), GetProduct().c_str(),
+      GetSerialNumber().c_str(), GetNumConfigurations());
 }
 
 }  // namespace mist

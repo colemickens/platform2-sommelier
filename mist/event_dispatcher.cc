@@ -68,8 +68,8 @@ bool EventDispatcher::StartWatchingFileDescriptor(
 
   if (!MessageLoopForIO::current()->WatchFileDescriptor(
           file_descriptor, true, mode, file_descriptor_watcher, watcher)) {
-    LOG(ERROR)
-        << StringPrintf("Could not watch file descriptor %d.", file_descriptor);
+    LOG(ERROR) << StringPrintf("Could not watch file descriptor %d.",
+                               file_descriptor);
     return false;
   }
 

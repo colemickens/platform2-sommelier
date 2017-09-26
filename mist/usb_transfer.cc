@@ -16,9 +16,7 @@ using std::string;
 namespace mist {
 
 UsbTransfer::UsbTransfer()
-    : transfer_(nullptr),
-      buffer_length_(0),
-      state_(kIdle) {}
+    : transfer_(nullptr), buffer_length_(0), state_(kIdle) {}
 
 UsbTransfer::~UsbTransfer() {
   Free();
@@ -124,27 +122,21 @@ string UsbTransfer::ToString() const {
   if (!transfer_)
     return "Transfer (not allocated)";
 
-  return StringPrintf("Transfer %p (Type=%s, "
-                      "Flags=0x%08x, "
-                      "DeviceHandle=%p, "
-                      "EndpointAddress=%u, "
-                      "NumIsoPackets=%d, "
-                      "Buffer=%p, "
-                      "Length=%d, "
-                      "Transferred=%d, "
-                      "Timeout=%u, "
-                      "Status=%s)",
-                      transfer_,
-                      UsbTransferTypeToString(GetType()),
-                      transfer_->flags,
-                      transfer_->dev_handle,
-                      transfer_->endpoint,
-                      transfer_->num_iso_packets,
-                      transfer_->buffer,
-                      transfer_->length,
-                      transfer_->actual_length,
-                      transfer_->timeout,
-                      UsbTransferStatusToString(GetStatus()));
+  return StringPrintf(
+      "Transfer %p (Type=%s, "
+      "Flags=0x%08x, "
+      "DeviceHandle=%p, "
+      "EndpointAddress=%u, "
+      "NumIsoPackets=%d, "
+      "Buffer=%p, "
+      "Length=%d, "
+      "Transferred=%d, "
+      "Timeout=%u, "
+      "Status=%s)",
+      transfer_, UsbTransferTypeToString(GetType()), transfer_->flags,
+      transfer_->dev_handle, transfer_->endpoint, transfer_->num_iso_packets,
+      transfer_->buffer, transfer_->length, transfer_->actual_length,
+      transfer_->timeout, UsbTransferStatusToString(GetStatus()));
 }
 
 bool UsbTransfer::VerifyAllocated() {
@@ -197,8 +189,7 @@ bool UsbTransfer::AllocateBuffer(int length) {
   if (buffer_) {
     buffer_length_ = length;
     VLOG(2) << StringPrintf("Allocated data buffer %p for USB transfer %p.",
-                            buffer_.get(),
-                            transfer_);
+                            buffer_.get(), transfer_);
     return true;
   }
 

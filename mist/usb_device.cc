@@ -17,15 +17,13 @@ using std::unique_ptr;
 namespace mist {
 
 UsbDevice::UsbDevice(libusb_device* device)
-    : device_(device),
-      device_handle_(nullptr) {
+    : device_(device), device_handle_(nullptr) {
   CHECK(device_);
   libusb_ref_device(device_);
 }
 
 UsbDevice::UsbDevice(libusb_device_handle* device_handle)
-    : device_(nullptr),
-      device_handle_(device_handle) {
+    : device_(nullptr), device_handle_(device_handle) {
   CHECK(device_handle_);
   device_ = libusb_get_device(device_handle_);
   CHECK(device_);
@@ -227,8 +225,8 @@ string UsbDevice::GetStringDescriptorAscii(uint8_t index) {
   // hold up to 128 ASCII characters.
   int length = 128;
   unique_ptr<uint8_t[]> data(new uint8_t[length]);
-  int result = libusb_get_string_descriptor_ascii(
-      device_handle_, index, data.get(), length);
+  int result = libusb_get_string_descriptor_ascii(device_handle_, index,
+                                                  data.get(), length);
   if (result < 0) {
     error_.SetFromLibUsbError(static_cast<libusb_error>(result));
     return string();

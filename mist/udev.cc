@@ -58,10 +58,10 @@ UdevDevice* Udev::CreateDeviceFromSysPath(const char* sys_path) {
   if (device)
     return CreateDevice(device);
 
-  VLOG(2) << StringPrintf("udev_device_new_from_syspath"
-                          "(%p, \"%s\") returned nullptr.",
-                          udev_,
-                          sys_path);
+  VLOG(2) << StringPrintf(
+      "udev_device_new_from_syspath"
+      "(%p, \"%s\") returned nullptr.",
+      udev_, sys_path);
   return nullptr;
 }
 
@@ -70,11 +70,10 @@ UdevDevice* Udev::CreateDeviceFromDeviceNumber(char type, dev_t device_number) {
   if (device)
     return CreateDevice(device);
 
-  VLOG(2) << StringPrintf("udev_device_new_from_devnum"
-                          "(%p, %d, %" PRIu64 ") returned nullptr.",
-                          udev_,
-                          type,
-                          device_number);
+  VLOG(2) << StringPrintf(
+      "udev_device_new_from_devnum"
+      "(%p, %d, %" PRIu64 ") returned nullptr.",
+      udev_, type, device_number);
   return nullptr;
 }
 
@@ -85,11 +84,10 @@ UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
   if (device)
     return CreateDevice(device);
 
-  VLOG(2) << StringPrintf("udev_device_new_from_subsystem_sysname"
-                          "(%p, \"%s\", \"%s\") returned nullptr.",
-                          udev_,
-                          subsystem,
-                          sys_name);
+  VLOG(2) << StringPrintf(
+      "udev_device_new_from_subsystem_sysname"
+      "(%p, \"%s\", \"%s\") returned nullptr.",
+      udev_, subsystem, sys_name);
   return nullptr;
 }
 
@@ -107,8 +105,7 @@ UdevEnumerate* Udev::CreateEnumerate() {
     return enumerate_to_return;
   }
 
-  VLOG(2) << StringPrintf("udev_enumerate_new(%p) returned nullptr.",
-                          udev_);
+  VLOG(2) << StringPrintf("udev_enumerate_new(%p) returned nullptr.", udev_);
   return nullptr;
 }
 
@@ -126,10 +123,10 @@ UdevMonitor* Udev::CreateMonitorFromNetlink(const char* name) {
     return monitor_to_return;
   }
 
-  VLOG(2) << StringPrintf("udev_monitor_new_from_netlink"
-                          "(%p, \"%s\") returned nullptr.",
-                          udev_,
-                          name);
+  VLOG(2) << StringPrintf(
+      "udev_monitor_new_from_netlink"
+      "(%p, \"%s\") returned nullptr.",
+      udev_, name);
   return nullptr;
 }
 

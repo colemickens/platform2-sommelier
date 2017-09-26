@@ -47,7 +47,8 @@ const char kTestConfigFileContent[] =
 
 class ConfigLoaderTest : public testing::Test {
  protected:
-  bool CreateConfigFileInDir(const string& content, const FilePath& dir,
+  bool CreateConfigFileInDir(const string& content,
+                             const FilePath& dir,
                              FilePath* config_file) {
     if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
