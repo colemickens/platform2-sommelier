@@ -138,7 +138,6 @@ class U2fDaemon : public brillo::Daemon {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(
       force_g2f, false, "force U2F mode plus extensions regardless of policy");
@@ -148,10 +147,8 @@ int main(int argc, char* argv[]) {
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");
 
-  int flags = brillo::kLogToSyslog | brillo::kLogHeader;
-  if (FLAGS_log_to_stderr)
-    flags |= brillo::kLogToStderr;
-  brillo::InitLog(flags);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
+                  brillo::kLogToStderrIfTty);
   if (FLAGS_verbose)
     logging::SetMinLogLevel(-1);
 
