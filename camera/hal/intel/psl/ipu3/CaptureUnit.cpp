@@ -74,7 +74,6 @@ CaptureUnit::~CaptureUnit()
     mInflightRequests.clear();
     mQueuedCaptureBuffers.clear();
     mLastInflightRequest = nullptr;
-    mInflightRequestPool.deInit();
 
     if (mBufferPools) {
         delete mBufferPools;
