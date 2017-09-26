@@ -553,30 +553,26 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
   // Preview stream with large size no bigger than 1080p
   ResolutionInfo limit_resolution(1920, 1080);
   ResolutionInfo preview_resolution(0, 0);
-  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                                &preview_resolution))
+  ASSERT_EQ(
+      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &preview_resolution))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
   cam_device_.AddOutputStream(
-      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
+      HAL_PIXEL_FORMAT_YCbCr_420_888, preview_resolution.Width(),
       preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
-  // Another stream with small size
-  ResolutionInfo fd_resolution(0, 0);
-  ASSERT_EQ(0, GetMinResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &fd_resolution))
-      << "Failed to get min resolution for YCbCr 420 format";
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_YCbCr_420_888,
-                              fd_resolution.Width(), fd_resolution.Height(),
-                              CAMERA3_STREAM_ROTATION_0);
+  // Second preview stream
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_YCbCr_420_888, preview_resolution.Width(),
+      preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
-  ASSERT_EQ(
-      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &capture_resolution))
+  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_BLOB, &capture_resolution))
       << "Failed to get max resolution for YCbCr 420 format";
-  cam_device_.AddOutputStream(
-      HAL_PIXEL_FORMAT_YCbCr_420_888, capture_resolution.Width(),
-      capture_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
+  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_BLOB, capture_resolution.Width(),
+                              capture_resolution.Height(),
+                              CAMERA3_STREAM_ROTATION_0);
 
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
