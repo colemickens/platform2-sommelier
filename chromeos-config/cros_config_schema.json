@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "typeDefs": {
+    "componentConfig": {
+      "type": "object",
+      "properties": {
+        "bluetoothConfigPath": {
+          "description": "Path to the bluetooth config file that will be used.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "bluetoothConfigPath"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[_a-zA-Z0-9]{3,}",
+      "description": "String that is at least 3 chars with letters/numbers/underscrores"
+    }
+  },
+
+  "type": "object",
+  "properties": {
+    "name": {
+      "$ref": "#/typeDefs/name"
+    },
+    "componentConfig": {
+      "$ref": "#/typeDefs/componentConfig"
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/typeDefs/name"
+          },
+          "componentConfig": {
+            "$ref": "#/typeDefs/componentConfig"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "componentConfig"
+        ]
+      }
+    },
+    "componentConfig": {
+      "$ref": "#/typeDefs/componentConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "componentConfig"
+  ]
+}

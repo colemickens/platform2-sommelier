@@ -1,0 +1,19 @@
+# This example demonstrates how to create a well formed yaml document that complies with the schema
+# definition.
+#
+# It is also used to demonstrate specific use cases and how they are handled in the current schema.
+
+name: 'coral'
+
+# Defines the default config that is shared across the family.
+componentConfig: &familyConfig
+    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
+
+models:
+  - name: 'astronaut'
+    # Optionally specifies any model specific override values.
+    componentConfig:
+      bluetoothConfigPath: '/etc/bluetooth/astronaut.conf'
+  - name: 'lava'
+    componentConfig:
+      bluetoothConfigPath: '/etc/bluetooth/lava.conf'
