@@ -2,162 +2,210 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 
+#include <base/command_line.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 
 #include "vm_tools/launcher/constants.h"
-#include "vm_tools/launcher/mac_address.h"
-#include "vm_tools/launcher/nfs_launcher.h"
-#include "vm_tools/launcher/subnet.h"
+#include "vm_tools/launcher/crosvm.h"
+
+using std::cerr;
+using std::cout;
+using std::endl;
 
 namespace {
 
-std::string BuildKernelCommandLine(
-    const std::map<std::string, std::string>& args) {
-  std::string command_line;
-  for (const auto& key_value : args) {
-    if (!command_line.empty()) {
-      command_line += " ";
-    }
-    command_line += key_value.first;
-    command_line += "=";
-    command_line += key_value.second;
+void Usage(const std::string& program, const std::string& subcommand) {
+  if (subcommand == "run" || subcommand == "start") {
+    cout << "Usage: " << program << " " << subcommand
+         << " VM_NAME ([ --container=PATH ] | [ --rwcontainer=PATH ])\n"
+         << "         [ --nfs=PATH ] [ --ssh ] [ --vm_path=PATH ]\n";
+
+    if (subcommand == "run")
+      cout << "Run a VM in the foreground with serial console.\n";
+    else
+      cout << "Start a headless VM. Returns once the VM has booted\n\n";
+
+    cout
+        << "Arguments: VM_NAME - An arbitrary name for the VM. Required. Must\n"
+        << "                     not be 'all'.\n\n"
+        << "Flags: --container=PATH - Optional container disk image to mount.\n"
+        << "                          If not specified, the VM will not run a\n"
+        << "                          container.\n"
+        << "       --rwcontainer=PATH - Same as the --container flag, but the\n"
+        << "                            disk image will be mounted read-write\n"
+        << "       --nfs=PATH - Optional path to a directory to mount via NFS\n"
+        << "       --ssh - Enable ssh in the VM. Only functional on VM test\n"
+        << "               images.\n"
+        << "       --vm_path=PATH - Optional path to a custom VM\n"
+        << "                        kernel/rootfs.\n";
+
+  } else if (subcommand == "stop") {
+    cout << "Usage: " << program << " " << subcommand
+         << " (VM_NAME | all) [ --force ]\n"
+         << "Shut down a VM with the given name.\n\n"
+         << "Arguments: (VM_NAME | all) - VM name to stop. 'all' will stop all "
+         << "                             running VMs. \n\n";
+
+  } else if (subcommand == "getname") {
+    cout << "Usage: " << program << " " << subcommand << " PID\n"
+         << "Print the name for a VM with a given PID to stdout.\n\n"
+         << "Arguments: PID - PID to find a VM name for. \n";
+
+  } else {
+    cout << "Usage: " << program << " run     VM_NAME\n"
+         << "       " << program << " start   VM_NAME\n"
+         << "       " << program << " stop    (VM_NAME | all)\n"
+         << "       " << program << " getname PID\n"
+         << "       " << program << " help    SUBCOMMAND\n\n"
+         << "Run `" << program
+         << " help SUBCOMMAND` for specific usage and flags.\n";
   }
-  return command_line;
+  exit(1);
+}
+
+// TODO(smbarber): This assumes there is only one component version loaded at a
+// time. This should handle component upgrades and load the latest version
+// that's available. http://crbug.com/769625
+base::FilePath GetLatestVMPath() {
+  base::FilePath component_dir(vm_tools::launcher::kVmDefaultPath);
+  base::FileEnumerator dir_enum(component_dir, false,
+                                base::FileEnumerator::DIRECTORIES);
+
+  return dir_enum.Next();
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-  DEFINE_bool(kvmtool, false,
-              "Use the kvmtool hypervisor instead of the default crosvm");
-  DEFINE_bool(runc, false, "Use the runc container runtime instead of run_oci");
-  DEFINE_bool(nfs, false, "Launch NFS server before launching the VM");
-  DEFINE_string(container, "", "Path of the container to start");
-  DEFINE_string(name, "default", "Path of the container to start");
-  brillo::FlagHelper::Init(argc, argv, "Launches a container in a VM");
-  brillo::InitLog(brillo::kLogToSyslog);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
-  if (FLAGS_container.empty()) {
-    LOG(ERROR) << "No container to start";
-    return 1;
-  }
+  auto args = cl->GetArgs();
 
-  struct stat container_stat;
-  int rc = stat(FLAGS_container.c_str(), &container_stat);
-  if (rc) {
-    PLOG(ERROR) << "Failed to stat container path";
-    return 1;
-  }
+  if (args.size() < 2)
+    Usage(cl->GetProgram().value(), "");
+  else if (cl->HasSwitch("help"))
+    Usage(cl->GetProgram().value(), args[1]);
+
+  std::string subcommand = args[0];
 
   // TODO(smbarber): Make an init script do this.
-  rc = mkdir(vm_tools::launcher::kVmRuntimeDirectory, 0700);
+  int rc = mkdir(vm_tools::launcher::kVmRuntimeDirectory, 0700);
   if (rc && errno != EEXIST) {
     PLOG(ERROR) << "Failed to create vm runtime directory";
     return 1;
   }
 
-  // TODO(smbarber): Work with crosvm one day.
-  if (!FLAGS_kvmtool) {
-    LOG(ERROR) << "Only kvmtool is supported as a VM hypervisor";
-    return 1;
-  }
+  // Handle run and start. Both have the same args, and only differ in
+  // I/O and blocking.
+  if (subcommand == "run" || subcommand == "start") {
+    std::string vm_name = args[1];
+    if (vm_name == "all") {
+      cout << "'all' is reserved and cannot be used for a VM name\n";
+      return 1;
+    }
 
-  brillo::ProcessImpl vm_process;
-  vm_process.AddArg(vm_tools::launcher::kLkvmBin);
-  vm_process.AddArg("run");
-  vm_process.AddStringOption("-k", vm_tools::launcher::kVmKernelPath);
-  vm_process.AddStringOption(
-      "-d", std::string(vm_tools::launcher::kVmRootfsPath) + ",ro");
+    base::FilePath vm_path = cl->GetSwitchValuePath("vm_path");
+    if (vm_path.empty())
+      vm_path = GetLatestVMPath();
 
-  if (S_ISDIR(container_stat.st_mode & S_IFMT)) {
-    vm_process.AddStringOption("--9p", FLAGS_container + ",container_rootfs");
+    base::FilePath container_disk = cl->GetSwitchValuePath("rwcontainer");
+    bool rw_container = false;
+    if (!container_disk.empty()) {
+      rw_container = true;
+    } else {
+      container_disk = cl->GetSwitchValuePath("container");
+    }
+
+    bool ssh = cl->HasSwitch("ssh");
+
+    base::FilePath kernel_path =
+        vm_path.Append(vm_tools::launcher::kVmKernelName);
+    base::FilePath rootfs_path =
+        vm_path.Append(vm_tools::launcher::kVmRootfsName);
+
+    auto crosvm =
+        vm_tools::launcher::CrosVM::Create(vm_name, kernel_path, rootfs_path);
+    if (!crosvm)
+      return 1;
+
+    if (subcommand == "run") {
+      if (!crosvm->Run(ssh, container_disk, rw_container))
+        return 1;
+    } else if (subcommand == "start") {
+      if (!crosvm->Start(ssh, container_disk, rw_container)) {
+        cout << "Failed to start VM '" << vm_name << "'\n";
+        return 1;
+      }
+      cout << "VM '" << vm_name << "' started\n";
+    }
+  } else if (subcommand == "stop") {
+    std::string vm_name = args[1];
+
+    if (vm_name == "all") {
+      bool all_vms_stopped = true;
+
+      base::FileEnumerator file_enum(
+          base::FilePath(vm_tools::launcher::kVmRuntimeDirectory),
+          false,  // recursive
+          base::FileEnumerator::DIRECTORIES);
+      for (base::FilePath instance_dir = file_enum.Next();
+           !instance_dir.empty(); instance_dir = file_enum.Next()) {
+        std::string vm_name = instance_dir.BaseName().value();
+        auto crosvm = vm_tools::launcher::CrosVM::Load(vm_name);
+        if (!crosvm)
+          return 1;
+
+        if (!crosvm->Stop()) {
+          cout << "Failed to stop VM '" << vm_name << "'\n";
+          all_vms_stopped = false;
+        }
+        cout << "VM '" << vm_name << "' stopped\n";
+      }
+      return !all_vms_stopped;
+    }
+
+    auto crosvm = vm_tools::launcher::CrosVM::Load(vm_name);
+    if (!crosvm)
+      return 1;
+
+    if (!crosvm->Stop()) {
+      cout << "Failed to stop VM '" << vm_name << "'\n";
+      return 1;
+    }
+    cout << "VM '" << vm_name << "' stopped\n";
+  } else if (subcommand == "getname") {
+    std::string pid_raw = args[1];
+    pid_t pid;
+    if (!base::StringToInt(args[1], &pid)) {
+      cerr << "Couldn't parse '" << pid_raw << "' as a pid\n";
+      return 1;
+    }
+    std::string vm_name;
+    if (!vm_tools::launcher::CrosVM::GetNameForPid(pid, &vm_name)) {
+      cerr << "No VM associated with " << pid << endl;
+      return 1;
+    }
+    cout << vm_name << endl;
   } else {
-    vm_process.AddStringOption("-d", FLAGS_container + ",ro");
+    Usage(cl->GetProgram().value(), args[1]);
   }
-
-  base::FilePath instance_dir =
-      base::FilePath(vm_tools::launcher::kVmRuntimeDirectory)
-          .Append(FLAGS_name);
-
-  if (base::PathExists(instance_dir)) {
-    LOG(ERROR) << "VM runtime directory '" << instance_dir.value()
-               << "' already exists";
-    return 1;
-  }
-
-  // Create a runtime directory for the VM. Note that we don't delete this
-  // for now; that will be taken care of in later refactoring.
-  if (!base::CreateDirectory(instance_dir)) {
-    LOG(ERROR) << "Could not create VM runtime directory '"
-               << instance_dir.value();
-    return 1;
-  }
-
-  auto mac_addr = vm_tools::launcher::MacAddress::Create(instance_dir);
-  if (!mac_addr) {
-    LOG(ERROR) << "Could not allocate MAC address";
-    return 1;
-  }
-
-  LOG(INFO) << "Allocated MAC address " << mac_addr->ToString();
-
-  auto subnet = vm_tools::launcher::Subnet::Create(instance_dir);
-  if (!subnet) {
-    LOG(ERROR) << "Could not allocate subnet";
-    return 1;
-  }
-
-  LOG(INFO) << "Allocated subnet with"
-            << " gateway: " << subnet->GetGatewayAddress()
-            << " ip: " << subnet->GetIpAddress()
-            << " netmask: " << subnet->GetNetmask();
-
-  // Handle networking-specific args.
-  vm_process.AddStringOption(
-      "-n", base::StringPrintf("mode=tap,guest_mac=%s,host_ip=%s,guest_ip=%s",
-                               mac_addr->ToString().c_str(),
-                               subnet->GetGatewayAddress().c_str(),
-                               subnet->GetIpAddress().c_str()));
-
-  // Create kernel command line args.
-  std::map<std::string, std::string> args = {
-      {"container_runtime", FLAGS_runc ? "runc" : "kvmtool"},
-      {"ip_addr", subnet->GetIpAddress()},
-      {"netmask", subnet->GetNetmask()},
-      {"gateway", subnet->GetGatewayAddress()}};
-
-  vm_process.AddStringOption("-p", BuildKernelCommandLine(args));
-
-  vm_process.AddArg("--rng");
-
-  // kvmtool likes sticking sockets in HOME. Force it to use /run/vm instead.
-  rc = setenv("HOME", vm_tools::launcher::kVmRuntimeDirectory, true);
-  if (rc < 0) {
-    PLOG(ERROR) << "Could not set HOME before launching kvmtool";
-    return 1;
-  }
-  vm_tools::launcher::NfsLauncher nfs;
-
-  if (FLAGS_nfs && !nfs.Launch()) {
-    LOG(ERROR) << "Unable to launch NFS server";
-    return 1;
-  }
-
-  rc = vm_process.Run();
-  LOG(INFO) << "VM exit with status code " << rc;
 
   return 0;
 }
