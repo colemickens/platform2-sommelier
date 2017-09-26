@@ -22,11 +22,9 @@ const char kEjectProgram[] = "/usr/bin/eject";
 
 namespace cros_disks {
 
-DeviceEjector::DeviceEjector() {
-}
+DeviceEjector::DeviceEjector() {}
 
-DeviceEjector::~DeviceEjector() {
-}
+DeviceEjector::~DeviceEjector() {}
 
 bool DeviceEjector::Eject(const string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";

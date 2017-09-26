@@ -44,7 +44,8 @@ class Platform {
   // is only accessible by the current user. Returns true if the directory is
   // created successfully.
   virtual bool CreateOrReuseEmptyDirectoryWithFallback(
-      std::string* path, unsigned max_suffix_to_retry,
+      std::string* path,
+      unsigned max_suffix_to_retry,
       const std::set<std::string>& reserved_paths) const;
 
   // Returns the fallback directory name of |path| using |suffix| as follows:
@@ -59,13 +60,15 @@ class Platform {
   // Gets the user ID and group ID of a given user name. Returns true on
   // success.
   virtual bool GetUserAndGroupId(const std::string& user_name,
-                                 uid_t* user_id, gid_t* group_id) const;
+                                 uid_t* user_id,
+                                 gid_t* group_id) const;
 
   // Gets the user ID and group ID of |path|. If |path| is a symbolic link, the
   // ownership of the linked file, not the symbolic link itself, is obtained.
   // Returns true on success.
   virtual bool GetOwnership(const std::string& path,
-                            uid_t* user_id, gid_t* group_id) const;
+                            uid_t* user_id,
+                            gid_t* group_id) const;
 
   // Gets the permissions of |path|. If |path| is a symbolic link, the
   // permissions of the linked file, not the symbolic link itself, is obtained.
@@ -86,7 +89,8 @@ class Platform {
   // Sets the user ID and group ID of |path| to |user_id| and |group_id|,
   // respectively. Returns true on success.
   virtual bool SetOwnership(const std::string& path,
-                            uid_t user_id, gid_t group_id) const;
+                            uid_t user_id,
+                            gid_t group_id) const;
 
   // Sets the permissions of |path| to |mode|. Returns true on success.
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;

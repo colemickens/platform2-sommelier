@@ -36,8 +36,7 @@ FUSEMounter::FUSEMounter(const string& source_path,
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
-      mount_user_(mount_user) {
-}
+      mount_user_(mount_user) {}
 
 MountErrorType FUSEMounter::MountImpl() {
   if (!base::PathExists(FilePath(mount_program_path_))) {
@@ -53,8 +52,8 @@ MountErrorType FUSEMounter::MountImpl() {
   // group of the source and target path to the group of the non-privileged
   // user, but keep the user of the source and target path unchanged. Also set
   // appropriate group permissions on the source and target path.
-  if (!platform_->GetUserAndGroupId(mount_user_,
-                                    &mount_user_id, &mount_group_id) ||
+  if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
+                                    &mount_group_id) ||
       !platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
       !platform_->SetPermissions(source_path(), kSourcePathPermissions) ||
       !platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||

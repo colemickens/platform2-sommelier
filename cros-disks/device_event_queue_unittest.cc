@@ -17,16 +17,16 @@ class DeviceEventQueueTest : public ::testing::Test {
   // Returns true if two device event objects have the same event type
   // and device path.
   static bool CompareDeviceEvent(const DeviceEvent& event1,
-      const DeviceEvent& event2) {
+                                 const DeviceEvent& event2) {
     return (event1.event_type == event2.event_type) &&
-      (event1.device_path == event2.device_path);
+           (event1.device_path == event2.device_path);
   }
 
   // Returns true if the device event queue under test has the expected
   // events.
   bool VerifyDeviceEventQueue() {
     return std::equal(expected_events_.begin(), expected_events_.end(),
-        queue_.events().begin(), CompareDeviceEvent);
+                      queue_.events().begin(), CompareDeviceEvent);
   }
 
   DeviceEventQueue queue_;

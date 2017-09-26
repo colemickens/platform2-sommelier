@@ -24,32 +24,32 @@ namespace cros_disks {
 // A utility class that helps query information about a udev device.
 class UdevDevice {
  public:
-  explicit UdevDevice(udev_device *dev);
+  explicit UdevDevice(udev_device* dev);
   ~UdevDevice();
 
   // Gets the string value of a device attribute.
-  std::string GetAttribute(const char *key) const;
+  std::string GetAttribute(const char* key) const;
 
   // Checks if the value of a device attribute represents a Boolean true.
-  bool IsAttributeTrue(const char *key) const;
+  bool IsAttributeTrue(const char* key) const;
 
   // Checks if a device attribute exists.
-  bool HasAttribute(const char *key) const;
+  bool HasAttribute(const char* key) const;
 
   // Gets the string value of a device property.
-  std::string GetProperty(const char *key) const;
+  std::string GetProperty(const char* key) const;
 
   // Checks if the value of a device property represents a Boolean true.
-  bool IsPropertyTrue(const char *key) const;
+  bool IsPropertyTrue(const char* key) const;
 
   // Checks if a device property exists.
-  bool HasProperty(const char *key) const;
+  bool HasProperty(const char* key) const;
 
   // Gets the string value of a device property from blkid.
-  std::string GetPropertyFromBlkId(const char *key);
+  std::string GetPropertyFromBlkId(const char* key);
 
   // Gets the total and remaining capacity of the device.
-  void GetSizeInfo(uint64_t *total_size, uint64_t *remaining_size) const;
+  void GetSizeInfo(uint64_t* total_size, uint64_t* remaining_size) const;
 
   // Gets the number of partitions on the device.
   size_t GetPartitionCount() const;
@@ -103,8 +103,7 @@ class UdevDevice {
   std::vector<std::string> GetMountPaths() const;
 
   // Gets the mount paths for a given device path.
-  static std::vector<std::string> GetMountPaths(
-      const std::string& device_path);
+  static std::vector<std::string> GetMountPaths(const std::string& device_path);
 
   // Returns a Disk object based on the device information.
   Disk ToDisk();
@@ -118,9 +117,9 @@ class UdevDevice {
   bool IsOnMMCDevice() const;
 
   // Checks if a string contains a "1" (as Boolean true).
-  static bool IsValueBooleanTrue(const char *value);
+  static bool IsValueBooleanTrue(const char* value);
 
-  mutable udev_device *dev_;
+  mutable udev_device* dev_;
 
   blkid_cache blkid_cache_;
 

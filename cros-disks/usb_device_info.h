@@ -48,7 +48,8 @@ class USBDeviceInfo {
   // The extracted identifier and name are returned via |id| and |name|,
   // respectively.
   bool ExtractIdAndName(const std::string& line,
-                        std::string* id, std::string* name) const;
+                        std::string* id,
+                        std::string* name) const;
 
   // Returns true if |line| is skippable, i.e. an empty or comment line.
   bool IsLineSkippable(const std::string& line) const;

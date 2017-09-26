@@ -21,7 +21,8 @@ class PlatformTest : public ::testing::Test {
  public:
   // Returns true if |path| is owned by |user_id| and |group_id|.
   static bool CheckOwnership(const string& path,
-                             uid_t user_id, gid_t group_id) {
+                             uid_t user_id,
+                             gid_t group_id) {
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0)
       return false;
@@ -214,8 +215,8 @@ TEST_F(PlatformTest, GetUserAndGroupIdOfRoot) {
 TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
   uid_t user_id;
   gid_t group_id;
-  EXPECT_FALSE(platform_.GetUserAndGroupId("nonexistent-user",
-                                           &user_id, &group_id));
+  EXPECT_FALSE(
+      platform_.GetUserAndGroupId("nonexistent-user", &user_id, &group_id));
 }
 
 TEST_F(PlatformTest, GetOwnershipOfDirectory) {
@@ -264,8 +265,8 @@ TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
 TEST_F(PlatformTest, GetOwnershipOfNonexistentPath) {
   uid_t user_id;
   gid_t group_id;
-  EXPECT_FALSE(platform_.GetOwnership("/nonexistent-path",
-                                      &user_id, &group_id));
+  EXPECT_FALSE(
+      platform_.GetOwnership("/nonexistent-path", &user_id, &group_id));
 }
 
 TEST_F(PlatformTest, GetPermissionsOfDirectory) {

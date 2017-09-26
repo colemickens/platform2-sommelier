@@ -4,8 +4,8 @@
 
 // A simple daemon to detect, mount, and eject removable storage devices.
 
-#include <glib.h>
 #include <glib-unix.h>
+#include <glib.h>
 #include <libudev.h>
 
 #include <dbus-c++/glib-integration.h>
@@ -110,8 +110,10 @@ int main(int argc, char** argv) {
 
   bool foreground = cl->HasSwitch(switches::kForeground);
   bool no_session_manager = cl->HasSwitch(switches::kNoSessionManager);
-  int log_level = cl->HasSwitch(switches::kLogLevel) ?
-      GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
+  int log_level =
+      cl->HasSwitch(switches::kLogLevel)
+          ? GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel))
+          : 0;
 
   SetupLogging(foreground, log_level);
 
@@ -145,12 +147,9 @@ int main(int argc, char** argv) {
   g_io_channel_set_close_on_unref(device_event_channel, TRUE);
   CHECK_EQ(G_IO_STATUS_NORMAL,
            g_io_channel_set_encoding(device_event_channel, nullptr, nullptr));
-  g_io_add_watch_full(device_event_channel,
-                      G_PRIORITY_HIGH_IDLE,
+  g_io_add_watch_full(device_event_channel, G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI),  // Ignore errors.
-                      DeviceEventCallback,
-                      &daemon,
-                      nullptr);
+                      DeviceEventCallback, &daemon, nullptr);
   g_main_loop_run(loop);
 
   LOG(INFO) << "Cleaning up and exiting";

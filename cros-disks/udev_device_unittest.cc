@@ -33,19 +33,21 @@ class UdevDeviceTest : public ::testing::Test {
 
     string boot_device_path = GetBootDevicePath();
 
-    udev_enumerate *enumerate = udev_enumerate_new(udev_);
+    udev_enumerate* enumerate = udev_enumerate_new(udev_);
     udev_enumerate_add_match_subsystem(enumerate, "block");
     udev_enumerate_scan_devices(enumerate);
 
     udev_list_entry *device_list, *device_list_entry;
     device_list = udev_enumerate_get_list_entry(enumerate);
     udev_list_entry_foreach(device_list_entry, device_list) {
-      const char *path = udev_list_entry_get_name(device_list_entry);
+      const char* path = udev_list_entry_get_name(device_list_entry);
       udev_device* device = udev_device_new_from_syspath(udev_, path);
-      if (!device) continue;
+      if (!device)
+        continue;
 
-      const char *device_file = udev_device_get_devnode(device);
-      if (!device_file) continue;
+      const char* device_file = udev_device_get_devnode(device);
+      if (!device_file)
+        continue;
 
       if (!boot_device_ && !boot_device_path.empty() &&
           boot_device_path == device_file) {
@@ -63,21 +65,20 @@ class UdevDeviceTest : public ::testing::Test {
       }
 
       if (!loop_device_ && device_file != boot_device_path &&
-          strncmp(device_file, kLoopDevicePrefix,
-                  strlen(kLoopDevicePrefix)) == 0) {
+          strncmp(device_file, kLoopDevicePrefix, strlen(kLoopDevicePrefix)) ==
+              0) {
         udev_device_ref(device);
         loop_device_ = device;
       }
 
-      if (!ram_device_ &&
-          (strcmp(device_file, kRamDeviceFile) == 0 ||
-           strcmp(device_file, kZRamDeviceFile) == 0)) {
+      if (!ram_device_ && (strcmp(device_file, kRamDeviceFile) == 0 ||
+                           strcmp(device_file, kZRamDeviceFile) == 0)) {
         udev_device_ref(device);
         ram_device_ = device;
       }
 
       if (!partitioned_device_) {
-        const char *device_type = udev_device_get_devtype(device);
+        const char* device_type = udev_device_get_devtype(device);
         if (device_type && strcmp(device_type, "partition") == 0) {
           partitioned_device_ = udev_device_get_parent(device);
           udev_device_ref(partitioned_device_);

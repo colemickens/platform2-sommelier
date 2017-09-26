@@ -30,8 +30,7 @@ ExternalMounter::ExternalMounter(const string& source_path,
                                  const string& target_path,
                                  const string& filesystem_type,
                                  const MountOptions& mount_options)
-    : Mounter(source_path, target_path, filesystem_type, mount_options) {
-}
+    : Mounter(source_path, target_path, filesystem_type, mount_options) {}
 
 MountErrorType ExternalMounter::MountImpl() {
   string mount_program = GetMountProgramPath();

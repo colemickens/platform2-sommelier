@@ -25,8 +25,7 @@ class MounterUnderTest : public Mounter {
                    const string& target_path,
                    const string& filesystem_type,
                    const MountOptions& mount_options)
-      : Mounter(source_path, target_path, filesystem_type, mount_options) {
-  }
+      : Mounter(source_path, target_path, filesystem_type, mount_options) {}
 
   // Mocks mount implementation.
   MOCK_METHOD0(MountImpl, MountErrorType());
@@ -49,8 +48,8 @@ class MounterTest : public ::testing::Test {
 
 TEST_F(MounterTest, MountReadOnlySucceeded) {
   mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_,
-                           filesystem_type_, mount_options_);
+  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
+                           mount_options_);
 
   EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
@@ -59,8 +58,8 @@ TEST_F(MounterTest, MountReadOnlySucceeded) {
 
 TEST_F(MounterTest, MountReadOnlyFailed) {
   mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_,
-                           filesystem_type_, mount_options_);
+  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
+                           mount_options_);
 
   EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_INTERNAL));
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
@@ -70,8 +69,8 @@ TEST_F(MounterTest, MountReadOnlyFailed) {
 TEST_F(MounterTest, MountReadWriteSucceeded) {
   options_.push_back("rw");
   mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_,
-                           filesystem_type_, mount_options_);
+  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
+                           mount_options_);
 
   EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
@@ -81,12 +80,12 @@ TEST_F(MounterTest, MountReadWriteSucceeded) {
 TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
   options_.push_back("rw");
   mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_,
-                           filesystem_type_, mount_options_);
+  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
+                           mount_options_);
 
   EXPECT_CALL(mounter, MountImpl())
-    .WillOnce(Return(MOUNT_ERROR_INTERNAL))
-    .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MOUNT_ERROR_INTERNAL))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
@@ -95,12 +94,12 @@ TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
 TEST_F(MounterTest, MountReadWriteAndReadOnlyFailed) {
   options_.push_back("rw");
   mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_,
-                           filesystem_type_, mount_options_);
+  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
+                           mount_options_);
 
   EXPECT_CALL(mounter, MountImpl())
-    .WillOnce(Return(MOUNT_ERROR_INTERNAL))
-    .WillOnce(Return(MOUNT_ERROR_INTERNAL));
+      .WillOnce(Return(MOUNT_ERROR_INTERNAL))
+      .WillOnce(Return(MOUNT_ERROR_INTERNAL));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
   EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());

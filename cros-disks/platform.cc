@@ -35,10 +35,7 @@ const unsigned kFallbackPasswordBufferSize = 16384;
 namespace cros_disks {
 
 Platform::Platform()
-    : mount_group_id_(0),
-      mount_user_id_(0),
-      mount_user_("root") {
-}
+    : mount_group_id_(0), mount_user_id_(0), mount_user_("root") {}
 
 bool Platform::GetRealPath(const string& path, string* real_path) const {
   CHECK(real_path) << "Invalid real_path argument";
@@ -77,7 +74,8 @@ bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
 }
 
 bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
-    string* path, unsigned max_suffix_to_retry,
+    string* path,
+    unsigned max_suffix_to_retry,
     const std::set<std::string>& reserved_paths) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
 
@@ -113,8 +111,8 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
   getgrnam_r(group_name.c_str(), &group_buffer, buffer.data(), buffer_size,
              &group_buffer_ptr);
   if (group_buffer_ptr == nullptr) {
-    PLOG(WARNING) << "Failed to determine group ID of group '"
-      << group_name << "'";
+    PLOG(WARNING) << "Failed to determine group ID of group '" << group_name
+                  << "'";
     return false;
   }
 
@@ -124,7 +122,8 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
 }
 
 bool Platform::GetUserAndGroupId(const string& user_name,
-                                 uid_t* user_id, gid_t* group_id) const {
+                                 uid_t* user_id,
+                                 gid_t* group_id) const {
   long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
@@ -132,10 +131,10 @@ bool Platform::GetUserAndGroupId(const string& user_name,
   passwd password_buffer, *password_buffer_ptr = nullptr;
   vector<char> buffer(buffer_size);
   getpwnam_r(user_name.c_str(), &password_buffer, buffer.data(), buffer_size,
-      &password_buffer_ptr);
+             &password_buffer_ptr);
   if (password_buffer_ptr == nullptr) {
     PLOG(WARNING) << "Failed to determine user and group ID of user '"
-      << user_name << "'";
+                  << user_name << "'";
     return false;
   }
 
@@ -149,7 +148,8 @@ bool Platform::GetUserAndGroupId(const string& user_name,
 }
 
 bool Platform::GetOwnership(const string& path,
-                            uid_t* user_id, gid_t* group_id) const {
+                            uid_t* user_id,
+                            gid_t* group_id) const {
   struct stat path_status;
   if (stat(path.c_str(), &path_status) != 0) {
     PLOG(ERROR) << "Failed to get the ownership of '" << path << "'";
@@ -194,7 +194,8 @@ bool Platform::RemoveEmptyDirectory(const string& path) const {
 }
 
 bool Platform::SetOwnership(const string& path,
-                            uid_t user_id, gid_t group_id) const {
+                            uid_t user_id,
+                            gid_t group_id) const {
   if (chown(path.c_str(), user_id, group_id)) {
     PLOG(ERROR) << "Failed to set ownership of '" << path
                 << "' to (uid=" << user_id << ", gid=" << group_id << ")";
@@ -205,8 +206,8 @@ bool Platform::SetOwnership(const string& path,
 
 bool Platform::SetPermissions(const string& path, mode_t mode) const {
   if (chmod(path.c_str(), mode)) {
-    PLOG(ERROR) << "Failed to set permissions of '" << path
-                << "' to " << base::StringPrintf("%04o", mode);
+    PLOG(ERROR) << "Failed to set permissions of '" << path << "' to "
+                << base::StringPrintf("%04o", mode);
     return false;
   }
   return true;

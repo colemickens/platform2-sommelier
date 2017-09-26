@@ -44,11 +44,12 @@ class Platform;
 //
 // This class is designed to run within a single-threaded GMainLoop application
 // and should not be considered thread safe.
-class DiskManager : public MountManager,
-                    public DeviceEventSourceInterface {
+class DiskManager : public MountManager, public DeviceEventSourceInterface {
  public:
-  DiskManager(const std::string& mount_root, Platform* platform,
-              Metrics* metrics, DeviceEjector* device_ejector);
+  DiskManager(const std::string& mount_root,
+              Platform* platform,
+              Metrics* metrics,
+              DeviceEjector* device_ejector);
   ~DiskManager() override;
 
   // Initializes the disk manager and registers default filesystems.
@@ -78,7 +79,7 @@ class DiskManager : public MountManager,
   bool GetDeviceEvents(DeviceEventList* events) override;
 
   // Gets a Disk object that corresponds to a given device file.
-  bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
+  bool GetDiskByDevicePath(const std::string& device_path, Disk* disk) const;
 
   // Registers a set of default filesystems to the disk manager.
   void RegisterDefaultFilesystems();
@@ -112,10 +113,10 @@ class DiskManager : public MountManager,
  private:
   // Creates an appropriate mounter object for a given filesystem.
   std::unique_ptr<Mounter> CreateMounter(
-        const Disk& disk,
-        const Filesystem& filesystem,
-        const std::string& target_path,
-        const std::vector<std::string>& options) const;
+      const Disk& disk,
+      const Filesystem& filesystem,
+      const std::string& target_path,
+      const std::vector<std::string>& options) const;
 
   // Returns a Filesystem object if a given filesystem type is supported.
   // Otherwise, it returns NULL. This pointer is owned by the DiskManager.
@@ -135,7 +136,7 @@ class DiskManager : public MountManager,
 
   // Determines one or more device/disk events from a udev block device change.
   void ProcessBlockDeviceEvents(udev_device* device,
-                                const char *action,
+                                const char* action,
                                 DeviceEventList* events);
 
   // Determines one or more device/disk events from a udev MMC or SCSI device

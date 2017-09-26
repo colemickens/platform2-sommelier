@@ -19,7 +19,8 @@ namespace cros_disks {
 // filesystem.
 class ArchiveManager : public MountManager {
  public:
-  ArchiveManager(const std::string& mount_root, Platform* platform,
+  ArchiveManager(const std::string& mount_root,
+                 Platform* platform,
                  Metrics* metrics);
   ~ArchiveManager() override;
 

@@ -199,8 +199,8 @@ RenameErrorType RenameManager::ValidateParameters(
 
 bool RenameManager::CanRename(const std::string& source_path) const {
   return base::StartsWith(source_path, "/sys/", base::CompareCase::SENSITIVE) ||
-         base::StartsWith(
-             source_path, "/devices/", base::CompareCase::SENSITIVE) ||
+         base::StartsWith(source_path, "/devices/",
+                          base::CompareCase::SENSITIVE) ||
          base::StartsWith(source_path, "/dev/", base::CompareCase::SENSITIVE);
 }
 

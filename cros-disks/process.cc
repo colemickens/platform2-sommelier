@@ -11,11 +11,9 @@ namespace cros_disks {
 // static
 const pid_t Process::kInvalidProcessId = -1;
 
-Process::Process() : pid_(kInvalidProcessId) {
-}
+Process::Process() : pid_(kInvalidProcessId) {}
 
-Process::~Process() {
-}
+Process::~Process() {}
 
 void Process::AddArgument(const string& argument) {
   arguments_.push_back(argument);

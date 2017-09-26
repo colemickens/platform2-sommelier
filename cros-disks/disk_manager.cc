@@ -68,7 +68,9 @@ bool AppendDiskIfNotIgnored(vector<Disk>* disks, udev_device* dev) {
 // EnumerateBlockDevices. Otherwise, sets |match| to false, leaves |disk|
 // unchanged, and returns true to continue the enumeration in
 // EnumerateBlockDevices.
-bool MatchDiskByPath(const string& path, bool* match, Disk* disk,
+bool MatchDiskByPath(const string& path,
+                     bool* match,
+                     Disk* disk,
                      udev_device* dev) {
   DCHECK(match);
   DCHECK(dev);
@@ -76,8 +78,7 @@ bool MatchDiskByPath(const string& path, bool* match, Disk* disk,
   const char* sys_path = udev_device_get_syspath(dev);
   const char* dev_path = udev_device_get_devpath(dev);
   const char* dev_file = udev_device_get_devnode(dev);
-  *match = (sys_path && path == sys_path) ||
-           (dev_path && path == dev_path) ||
+  *match = (sys_path && path == sys_path) || (dev_path && path == dev_path) ||
            (dev_file && path == dev_file);
   if (!*match)
     return true;  // Not a match. Continue the enumeration.
@@ -90,8 +91,10 @@ bool MatchDiskByPath(const string& path, bool* match, Disk* disk,
 
 }  // namespace
 
-DiskManager::DiskManager(const string& mount_root, Platform* platform,
-                         Metrics* metrics, DeviceEjector* device_ejector)
+DiskManager::DiskManager(const string& mount_root,
+                         Platform* platform,
+                         Metrics* metrics,
+                         DeviceEjector* device_ejector)
     : MountManager(mount_root, platform, metrics),
       device_ejector_(device_ejector),
       udev_(udev_new()),
@@ -103,10 +106,10 @@ DiskManager::DiskManager(const string& mount_root, Platform* platform,
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
                                                   kBlockSubsystem, nullptr);
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kMmcSubsystem, nullptr);
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kScsiSubsystem, kScsiDevice);
+  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_, kMmcSubsystem,
+                                                  nullptr);
+  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_, kScsiSubsystem,
+                                                  kScsiDevice);
   udev_monitor_enable_receiving(udev_monitor_);
   udev_monitor_fd_ = udev_monitor_get_fd(udev_monitor_);
 }
@@ -124,8 +127,7 @@ bool DiskManager::Initialize() {
   // when the disk manager starts, emulate udev add events for these devices
   // to correctly populate |disks_detected_|.
   EnumerateBlockDevices(base::Bind(&DiskManager::EmulateBlockDeviceEvent,
-                                   base::Unretained(this),
-                                   kUdevAddAction));
+                                   base::Unretained(this), kUdevAddAction));
 
   return MountManager::Initialize();
 }
@@ -153,16 +155,17 @@ vector<Disk> DiskManager::EnumerateDisks() const {
 
 void DiskManager::EnumerateBlockDevices(
     const base::Callback<bool(udev_device* dev)>& callback) const {
-  udev_enumerate *enumerate = udev_enumerate_new(udev_);
+  udev_enumerate* enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
   udev_enumerate_scan_devices(enumerate);
 
   udev_list_entry *device_list, *device_list_entry;
   device_list = udev_enumerate_get_list_entry(enumerate);
   udev_list_entry_foreach(device_list_entry, device_list) {
-    const char *path = udev_list_entry_get_name(device_list_entry);
-    udev_device *dev = udev_device_new_from_syspath(udev_, path);
-    if (dev == nullptr) continue;
+    const char* path = udev_list_entry_get_name(device_list_entry);
+    udev_device* dev = udev_device_new_from_syspath(udev_, path);
+    if (dev == nullptr)
+      continue;
 
     LOG(INFO) << "Device";
     LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -175,8 +178,8 @@ void DiskManager::EnumerateBlockDevices(
     udev_list_entry *property_list, *property_list_entry;
     property_list = udev_device_get_properties_list_entry(dev);
     udev_list_entry_foreach(property_list_entry, property_list) {
-      const char *key = udev_list_entry_get_name(property_list_entry);
-      const char *value = udev_list_entry_get_value(property_list_entry);
+      const char* key = udev_list_entry_get_name(property_list_entry);
+      const char* value = udev_list_entry_get_value(property_list_entry);
       LOG(INFO) << "      " << key << " = " << value;
     }
 
@@ -188,8 +191,9 @@ void DiskManager::EnumerateBlockDevices(
   udev_enumerate_unref(enumerate);
 }
 
-void DiskManager::ProcessBlockDeviceEvents(
-    udev_device* dev, const char* action, DeviceEventList* events) {
+void DiskManager::ProcessBlockDeviceEvents(udev_device* dev,
+                                           const char* action,
+                                           DeviceEventList* events) {
   UdevDevice device(dev);
   if (device.IsIgnored())
     return;
@@ -256,8 +260,9 @@ void DiskManager::ProcessBlockDeviceEvents(
   }
 }
 
-void DiskManager::ProcessMmcOrScsiDeviceEvents(
-    udev_device* dev, const char* action, DeviceEventList* events) {
+void DiskManager::ProcessMmcOrScsiDeviceEvents(udev_device* dev,
+                                               const char* action,
+                                               DeviceEventList* events) {
   UdevDevice device(dev);
   if (device.IsMobileBroadbandDevice())
     return;
@@ -281,7 +286,7 @@ void DiskManager::ProcessMmcOrScsiDeviceEvents(
 bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
   CHECK(events) << "Invalid device event list";
 
-  udev_device *dev = udev_monitor_receive_device(udev_monitor_);
+  udev_device* dev = udev_monitor_receive_device(udev_monitor_);
   if (!dev) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return false;
@@ -294,9 +299,9 @@ bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
   LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
 
-  const char *sys_path = udev_device_get_syspath(dev);
-  const char *subsystem = udev_device_get_subsystem(dev);
-  const char *action = udev_device_get_action(dev);
+  const char* sys_path = udev_device_get_syspath(dev);
+  const char* subsystem = udev_device_get_subsystem(dev);
+  const char* action = udev_device_get_action(dev);
   if (!sys_path || !subsystem || !action) {
     udev_device_unref(dev);
     return false;
@@ -317,13 +322,12 @@ bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
 }
 
 bool DiskManager::GetDiskByDevicePath(const string& device_path,
-                                      Disk *disk) const {
+                                      Disk* disk) const {
   if (device_path.empty())
     return false;
 
   bool disk_found = false;
-  EnumerateBlockDevices(base::Bind(&MatchDiskByPath,
-                                   device_path,
+  EnumerateBlockDevices(base::Bind(&MatchDiskByPath, device_path,
                                    base::Unretained(&disk_found),
                                    base::Unretained(disk)));
   return disk_found;
@@ -396,16 +400,16 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
 }
 
 unique_ptr<Mounter> DiskManager::CreateMounter(
-        const Disk& disk,
-        const Filesystem& filesystem,
-        const string& target_path,
-        const vector<string>& options) const {
+    const Disk& disk,
+    const Filesystem& filesystem,
+    const string& target_path,
+    const vector<string>& options) const {
   const vector<string>& extra_options = filesystem.extra_mount_options();
   vector<string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
   extended_options.assign(options.begin(), options.end());
-  extended_options.insert(extended_options.end(),
-                          extra_options.begin(), extra_options.end());
+  extended_options.insert(extended_options.end(), extra_options.begin(),
+                          extra_options.end());
 
   string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
@@ -418,8 +422,8 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
   mount_options.Initialize(extended_options, set_user_and_group_id,
                            default_user_id, default_group_id);
 
-  if (filesystem.is_mounted_read_only() ||
-      disk.is_read_only() || disk.is_optical_disk()) {
+  if (filesystem.is_mounted_read_only() || disk.is_read_only() ||
+      disk.is_optical_disk()) {
     mount_options.SetReadOnlyOption();
   }
 
@@ -441,8 +445,8 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
 
   if (mounter_type == NTFSMounter::kMounterType)
     return std::make_unique<NTFSMounter>(disk.device_file(), target_path,
-                                         filesystem.mount_type(),
-                                         mount_options, platform());
+                                         filesystem.mount_type(), mount_options,
+                                         platform());
 
   LOG(FATAL) << "Invalid mounter type '" << mounter_type << "'";
   return nullptr;
@@ -479,8 +483,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
-  string device_filesystem_type = filesystem_type.empty() ?
-      disk.filesystem_type() : filesystem_type;
+  string device_filesystem_type =
+      filesystem_type.empty() ? disk.filesystem_type() : filesystem_type;
   metrics()->RecordDeviceMediaType(disk.media_type());
   metrics()->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
@@ -589,8 +593,8 @@ bool DiskManager::EjectDeviceOfMountPath(const string& mount_path) {
 
   LOG(INFO) << "Eject device '" << device_file << "'.";
   if (!device_ejector_->Eject(device_file)) {
-    LOG(WARNING) << "Failed to eject media from optical device '"
-                 << device_file << "'.";
+    LOG(WARNING) << "Failed to eject media from optical device '" << device_file
+                 << "'.";
     return false;
   }
 

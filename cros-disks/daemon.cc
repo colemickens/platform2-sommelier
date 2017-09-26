@@ -16,14 +16,16 @@ namespace cros_disks {
 
 Daemon::Daemon(DBus::Connection* dbus_connection, bool has_session_manager)
     : archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
-      disk_manager_(kDiskMountRootDirectory, &platform_, &metrics_,
-                    &device_ejector_),
+      disk_manager_(
+          kDiskMountRootDirectory, &platform_, &metrics_, &device_ejector_),
       rename_manager_(&platform_),
-      server_(*dbus_connection, &platform_, &disk_manager_, &format_manager_,
+      server_(*dbus_connection,
+              &platform_,
+              &disk_manager_,
+              &format_manager_,
               &rename_manager_),
       event_moderator_(&server_, &disk_manager_, has_session_manager),
-      session_manager_proxy_(dbus_connection) {
-}
+      session_manager_proxy_(dbus_connection) {}
 
 void Daemon::Initialize() {
   // Register mount managers with the commonly used ones come first.

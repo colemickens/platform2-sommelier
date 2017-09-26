@@ -22,10 +22,7 @@ class GlibProcessTest : public ::testing::Test {
 
  protected:
   GlibProcessTest()
-      : callback_invoked_(false),
-        main_loop_(nullptr),
-        timeout_id_(0) {
-  }
+      : callback_invoked_(false), main_loop_(nullptr), timeout_id_(0) {}
 
   static gboolean OnTimeout(gpointer data) {
     GMainLoop* main_loop = static_cast<GMainLoop*>(data);
@@ -39,9 +36,8 @@ class GlibProcessTest : public ::testing::Test {
     callback_invoked_ = false;
 
     main_loop_ = g_main_loop_new(g_main_context_default(), FALSE);
-    timeout_id_ = g_timeout_add_seconds(timeout_in_seconds,
-                                        &GlibProcessTest::OnTimeout,
-                                        main_loop_);
+    timeout_id_ = g_timeout_add_seconds(
+        timeout_in_seconds, &GlibProcessTest::OnTimeout, main_loop_);
     g_main_loop_run(main_loop_);
 
     g_source_remove(timeout_id_);

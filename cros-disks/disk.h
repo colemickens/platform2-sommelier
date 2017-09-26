@@ -114,9 +114,7 @@ class Disk {
   void set_label(const std::string& label) { label_ = label; }
 
   std::string vendor_id() const { return vendor_id_; }
-  void set_vendor_id(const std::string& vendor_id) {
-    vendor_id_ = vendor_id;
-  }
+  void set_vendor_id(const std::string& vendor_id) { vendor_id_ = vendor_id; }
 
   std::string vendor_name() const { return vendor_name_; }
   void set_vendor_name(const std::string& vendor_name) {

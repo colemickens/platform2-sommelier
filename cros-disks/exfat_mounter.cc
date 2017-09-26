@@ -26,8 +26,12 @@ ExFATMounter::ExFATMounter(const string& source_path,
                            const string& filesystem_type,
                            const MountOptions& mount_options,
                            const Platform* platform)
-    : FUSEMounter(source_path, target_path, filesystem_type, mount_options,
-                  platform, kMountProgramPath, kMountUser) {
-}
+    : FUSEMounter(source_path,
+                  target_path,
+                  filesystem_type,
+                  mount_options,
+                  platform,
+                  kMountProgramPath,
+                  kMountUser) {}
 
 }  // namespace cros_disks

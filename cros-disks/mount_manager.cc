@@ -50,11 +50,10 @@ const unsigned kMaxNumMountTrials = 100;
 
 namespace cros_disks {
 
-MountManager::MountManager(const string& mount_root, Platform* platform,
+MountManager::MountManager(const string& mount_root,
+                           Platform* platform,
                            Metrics* metrics)
-    : mount_root_(mount_root),
-      platform_(platform),
-      metrics_(metrics) {
+    : mount_root_(mount_root), platform_(platform), metrics_(metrics) {
   CHECK(!mount_root_.empty()) << "Invalid mount root directory";
   CHECK(platform_) << "Invalid platform object";
   CHECK(metrics_) << "Invalid metrics object";
@@ -69,8 +68,7 @@ MountManager::~MountManager() {
 bool MountManager::Initialize() {
   return platform_->CreateDirectory(mount_root_) &&
          platform_->SetOwnership(mount_root_, getuid(), getgid()) &&
-         platform_->SetPermissions(mount_root_,
-                                   kMountRootDirectoryPermissions);
+         platform_->SetPermissions(mount_root_, kMountRootDirectoryPermissions);
 }
 
 bool MountManager::StartSession() {
@@ -184,7 +182,8 @@ MountErrorType MountManager::MountNewSource(const string& source_path,
     mount_path_created = platform_->CreateOrReuseEmptyDirectoryWithFallback(
         &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
   } else {
-    mount_path_created = !IsMountPathReserved(actual_mount_path) &&
+    mount_path_created =
+        !IsMountPathReserved(actual_mount_path) &&
         platform_->CreateOrReuseEmptyDirectory(actual_mount_path);
   }
   if (!mount_path_created) {
@@ -214,8 +213,8 @@ MountErrorType MountManager::MountNewSource(const string& source_path,
     LOG(INFO) << "Path '" << source_path << "' is mounted to '"
               << actual_mount_path << "'";
   } else if (ShouldReserveMountPathOnError(error_type)) {
-    LOG(INFO) << "Reserving mount path '" << actual_mount_path
-              << "' for '" << source_path << "'";
+    LOG(INFO) << "Reserving mount path '" << actual_mount_path << "' for '"
+              << source_path << "'";
     ReserveMountPath(actual_mount_path, error_type);
   } else {
     LOG(ERROR) << "Failed to mount path '" << source_path << "'";
@@ -239,7 +238,7 @@ MountErrorType MountManager::Unmount(const string& path,
   // Determine whether the path is a source path or a mount path.
   string mount_path;
   if (!GetMountPathFromCache(path, &mount_path)) {  // is a source path?
-    if (!IsMountPathInCache(path)) {  // is a mount path?
+    if (!IsMountPathInCache(path)) {                // is a mount path?
       LOG(ERROR) << "Path '" << path << "' is not mounted";
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     }
@@ -387,10 +386,9 @@ void MountManager::GetMountEntries(vector<MountEntry>* mount_entries) {
     const string& mount_path = mount_state.mount_path;
     bool is_read_only = mount_state.is_read_only;
     MountErrorType error_type = GetMountErrorOfReservedMountPath(mount_path);
-    mount_entries->push_back(MountEntry(error_type,
-                                        source_path,
-                                        GetMountSourceType(),
-                                        mount_path, is_read_only));
+    mount_entries->push_back(MountEntry(error_type, source_path,
+                                        GetMountSourceType(), mount_path,
+                                        is_read_only));
   }
 }
 
@@ -418,7 +416,7 @@ bool MountManager::ExtractMountLabelFromOptions(
 }
 
 bool MountManager::ExtractUnmountOptions(const vector<string>& options,
-                                         int *unmount_flags) const {
+                                         int* unmount_flags) const {
   CHECK(unmount_flags) << "Invalid unmount flags argument";
 
   *unmount_flags = 0;

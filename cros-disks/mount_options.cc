@@ -52,14 +52,13 @@ void MountOptions::Initialize(const vector<string>& options,
       option_read_write = true;
     } else if (option == kOptionRemount) {
       option_remount = true;
-    } else if (base::StartsWith(option, "uid=",
-               base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::StartsWith(option,
+                                "uid=", base::CompareCase::INSENSITIVE_ASCII)) {
       option_user_id = option;
-    } else if (base::StartsWith(option, "gid=",
-               base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::StartsWith(option,
+                                "gid=", base::CompareCase::INSENSITIVE_ASCII)) {
       option_group_id = option;
-    } else if (option == kOptionNoDev ||
-               option == kOptionNoExec ||
+    } else if (option == kOptionNoDev || option == kOptionNoExec ||
                option == kOptionNoSuid) {
       // We'll add these options unconditionally below.
       continue;
@@ -107,9 +106,9 @@ void MountOptions::Initialize(const vector<string>& options,
 }
 
 bool MountOptions::IsReadOnlyOptionSet() const {
-  for (vector<string>::const_reverse_iterator
-       option_iterator = options_.rbegin(); option_iterator != options_.rend();
-       ++option_iterator) {
+  for (vector<string>::const_reverse_iterator option_iterator =
+           options_.rbegin();
+       option_iterator != options_.rend(); ++option_iterator) {
     const string& option = *option_iterator;
     if (option == kOptionReadOnly)
       return true;
@@ -121,8 +120,8 @@ bool MountOptions::IsReadOnlyOptionSet() const {
 }
 
 void MountOptions::SetReadOnlyOption() {
-  std::replace(options_.begin(), options_.end(),
-               kOptionReadWrite, kOptionReadOnly);
+  std::replace(options_.begin(), options_.end(), kOptionReadWrite,
+               kOptionReadOnly);
 }
 
 pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {

@@ -18,13 +18,13 @@ class MountInfoTest : public ::testing::Test {
  public:
   void SetUp() override {
     string content =
-      "14 12 0:3 / /proc rw,noexec - proc none rw\n"
-      "15 12 0:12 / /sys rw,noexec - sysfs none rw\n"
-      "16 12 0:13 / /tmp rw,nodev - tmpfs /tmp rw\n"
-      "18 13 0:14 / /dev/shm rw,noexec - tmpfs shmfs rw\n"
-      "21 12 8:1 /var /var rw,noexec - ext3 /dev/sda1 rw\n"
-      "22 12 8:1 /home /home rw,nodev - ext3 /dev/sda1 rw\n"
-      "30 26 11:0 / /media/Test\\0401 ro - vfat /dev/sdb1 ro\n";
+        "14 12 0:3 / /proc rw,noexec - proc none rw\n"
+        "15 12 0:12 / /sys rw,noexec - sysfs none rw\n"
+        "16 12 0:13 / /tmp rw,nodev - tmpfs /tmp rw\n"
+        "18 13 0:14 / /dev/shm rw,noexec - tmpfs shmfs rw\n"
+        "21 12 8:1 /var /var rw,noexec - ext3 /dev/sda1 rw\n"
+        "22 12 8:1 /home /home rw,nodev - ext3 /dev/sda1 rw\n"
+        "30 26 11:0 / /media/Test\\0401 ro - vfat /dev/sdb1 ro\n";
 
     FilePath mount_file;
     ASSERT_TRUE(base::CreateTemporaryFile(&mount_file));

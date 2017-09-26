@@ -22,9 +22,7 @@ namespace cros_disks {
 
 class ArchiveManagerTest : public ::testing::Test {
  public:
-  ArchiveManagerTest()
-      : manager_(kMountRootDirectory, &platform_, &metrics_) {
-  }
+  ArchiveManagerTest() : manager_(kMountRootDirectory, &platform_, &metrics_) {}
 
  protected:
   Metrics metrics_;
@@ -48,12 +46,14 @@ TEST_F(ArchiveManagerTest, CanMount) {
   EXPECT_TRUE(manager_.CanMount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/user/GCache/test1.zip"));
-  EXPECT_TRUE(manager_.CanMount("/home/chronos"
-                                "/u-0123456789abcdef0123456789abcdef01234567"
-                                "/Downloads/test1.zip"));
-  EXPECT_TRUE(manager_.CanMount("/home/chronos"
-                                "/u-0123456789abcdef0123456789abcdef01234567"
-                                "/GCache/test1.zip"));
+  EXPECT_TRUE(
+      manager_.CanMount("/home/chronos"
+                        "/u-0123456789abcdef0123456789abcdef01234567"
+                        "/Downloads/test1.zip"));
+  EXPECT_TRUE(
+      manager_.CanMount("/home/chronos"
+                        "/u-0123456789abcdef0123456789abcdef01234567"
+                        "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanMount(""));
   EXPECT_FALSE(manager_.CanMount("/tmp"));
   EXPECT_FALSE(manager_.CanMount("/media/removable"));
@@ -81,12 +81,14 @@ TEST_F(ArchiveManagerTest, CanMount) {
   EXPECT_FALSE(manager_.CanMount("/home/chronos/foo/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/foo/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/u-/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanMount("/home/chronos"
-                                 "/u-0123456789abcdef0123456789abcdef0123456"
-                                 "/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanMount("/home/chronos"
-                                 "/u-xyz3456789abcdef0123456789abcdef01234567"
-                                 "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanMount("/home/chronos"
+                        "/u-0123456789abcdef0123456789abcdef0123456"
+                        "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanMount("/home/chronos"
+                        "/u-xyz3456789abcdef0123456789abcdef01234567"
+                        "/Downloads/test1.zip"));
 }
 
 TEST_F(ArchiveManagerTest, CanUnmount) {
@@ -105,12 +107,14 @@ TEST_F(ArchiveManagerTest, CanUnmount) {
   EXPECT_TRUE(manager_.CanUnmount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/GCache/test1.zip"));
-  EXPECT_TRUE(manager_.CanUnmount("/home/chronos"
-                                  "/u-0123456789abcdef0123456789abcdef01234567"
-                                  "/Downloads/test1.zip"));
-  EXPECT_TRUE(manager_.CanUnmount("/home/chronos"
-                                  "/u-0123456789abcdef0123456789abcdef01234567"
-                                  "/GCache/test1.zip"));
+  EXPECT_TRUE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-0123456789abcdef0123456789abcdef01234567"
+                          "/Downloads/test1.zip"));
+  EXPECT_TRUE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-0123456789abcdef0123456789abcdef01234567"
+                          "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount(""));
   EXPECT_FALSE(manager_.CanUnmount("/tmp"));
   EXPECT_FALSE(manager_.CanUnmount("/media/removable"));
@@ -138,12 +142,14 @@ TEST_F(ArchiveManagerTest, CanUnmount) {
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/foo/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/foo/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/u-/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
-                                   "/u-0123456789abcdef0123456789abcdef0123456"
-                                   "/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
-                                   "/u-xyz3456789abcdef0123456789abcdef01234567"
-                                   "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-0123456789abcdef0123456789abcdef0123456"
+                          "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-xyz3456789abcdef0123456789abcdef01234567"
+                          "/Downloads/test1.zip"));
 }
 
 TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
@@ -155,8 +161,8 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
 
   manager_.avfs_started_ = true;
   EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_ARCHIVE,
-            manager_.DoMount(source_path, filesystem_type, options,
-                             mount_path, &applied_options));
+            manager_.DoMount(source_path, filesystem_type, options, mount_path,
+                             &applied_options));
 }
 
 TEST_F(ArchiveManagerTest, SuggestMountPath) {
@@ -190,11 +196,13 @@ TEST_F(ArchiveManagerTest, GetAVFSPath) {
 
   EXPECT_EQ("/run/avfsroot/users/user/Downloads/a.zip#uzip",
             manager_.GetAVFSPath("/home/chronos/user/Downloads/a.zip", "zip"));
-  EXPECT_EQ("/run/avfsroot/users/u-0123456789abcdef0123456789abcdef01234567"
-            "/Downloads/a.zip#uzip",
-            manager_.GetAVFSPath(
-                "/home/chronos/u-0123456789abcdef0123456789abcdef01234567"
-                "/Downloads/a.zip", "zip"));
+  EXPECT_EQ(
+      "/run/avfsroot/users/u-0123456789abcdef0123456789abcdef01234567"
+      "/Downloads/a.zip#uzip",
+      manager_.GetAVFSPath(
+          "/home/chronos/u-0123456789abcdef0123456789abcdef01234567"
+          "/Downloads/a.zip",
+          "zip"));
   EXPECT_EQ("/run/avfsroot/media/archive/test.zip/doc.zip#uzip",
             manager_.GetAVFSPath("/media/archive/test.zip/doc.zip", "zip"));
   EXPECT_EQ("/run/avfsroot/media/removable/disk1/test.zip#uzip",
@@ -234,9 +242,8 @@ TEST_F(ArchiveManagerTest, GetAVFSPathWithNestedArchives) {
             manager_.GetAVFSPath("/media/archive/l2.zip/t/doc/l1.zip", "zip"));
 
   // archive within an archive within an archive
-  manager_.AddMountVirtualPath(
-      "/media/archive/l1.zip",
-      "/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip");
+  manager_.AddMountVirtualPath("/media/archive/l1.zip",
+                               "/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip");
   EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/l0.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip", "zip"));
   EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/test/l0.zip#uzip",
@@ -248,9 +255,8 @@ TEST_F(ArchiveManagerTest, GetAVFSPathWithNestedArchives) {
       "/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip");
   EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/l0.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip", "zip"));
-  EXPECT_EQ(
-      "/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/test/l0.zip#uzip",
-      manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip", "zip"));
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/test/l0.zip#uzip",
+            manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip", "zip"));
   manager_.RemoveMountVirtualPath("/media/archive/l1.zip");
 
   manager_.RemoveMountVirtualPath("/media/archive/l2.zip");

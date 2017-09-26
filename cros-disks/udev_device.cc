@@ -69,9 +69,7 @@ const char* const kPartitionTypesToHide[] = {
 
 namespace cros_disks {
 
-UdevDevice::UdevDevice(udev_device *dev)
-    : dev_(dev),
-      blkid_cache_(nullptr) {
+UdevDevice::UdevDevice(udev_device* dev) : dev_(dev), blkid_cache_(nullptr) {
   CHECK(dev_) << "Invalid udev device";
   udev_device_ref(dev_);
 }
@@ -90,50 +88,50 @@ string UdevDevice::EnsureUTF8String(const string& str) {
 }
 
 // static
-bool UdevDevice::IsValueBooleanTrue(const char *value) {
+bool UdevDevice::IsValueBooleanTrue(const char* value) {
   return value && strcmp(value, "1") == 0;
 }
 
-string UdevDevice::GetAttribute(const char *key) const {
-  const char *value = udev_device_get_sysattr_value(dev_, key);
+string UdevDevice::GetAttribute(const char* key) const {
+  const char* value = udev_device_get_sysattr_value(dev_, key);
   return (value) ? value : "";
 }
 
-bool UdevDevice::IsAttributeTrue(const char *key) const {
-  const char *value = udev_device_get_sysattr_value(dev_, key);
+bool UdevDevice::IsAttributeTrue(const char* key) const {
+  const char* value = udev_device_get_sysattr_value(dev_, key);
   return IsValueBooleanTrue(value);
 }
 
-bool UdevDevice::HasAttribute(const char *key) const {
-  const char *value = udev_device_get_sysattr_value(dev_, key);
+bool UdevDevice::HasAttribute(const char* key) const {
+  const char* value = udev_device_get_sysattr_value(dev_, key);
   return value != nullptr;
 }
 
-string UdevDevice::GetProperty(const char *key) const {
-  const char *value = udev_device_get_property_value(dev_, key);
+string UdevDevice::GetProperty(const char* key) const {
+  const char* value = udev_device_get_property_value(dev_, key);
   return (value) ? value : "";
 }
 
-bool UdevDevice::IsPropertyTrue(const char *key) const {
-  const char *value = udev_device_get_property_value(dev_, key);
+bool UdevDevice::IsPropertyTrue(const char* key) const {
+  const char* value = udev_device_get_property_value(dev_, key);
   return IsValueBooleanTrue(value);
 }
 
-bool UdevDevice::HasProperty(const char *key) const {
-  const char *value = udev_device_get_property_value(dev_, key);
+bool UdevDevice::HasProperty(const char* key) const {
+  const char* value = udev_device_get_property_value(dev_, key);
   return value != nullptr;
 }
 
-string UdevDevice::GetPropertyFromBlkId(const char *key) {
+string UdevDevice::GetPropertyFromBlkId(const char* key) {
   string value;
-  const char *dev_file = udev_device_get_devnode(dev_);
+  const char* dev_file = udev_device_get_devnode(dev_);
   if (dev_file) {
     // No cache file is used as it should always query information from
     // the device, i.e. setting cache file to /dev/null.
     if (blkid_cache_ || blkid_get_cache(&blkid_cache_, kNullDeviceFile) == 0) {
       blkid_dev dev = blkid_get_dev(blkid_cache_, dev_file, BLKID_DEV_NORMAL);
       if (dev) {
-        char *tag_value = blkid_get_tag_value(blkid_cache_, key, dev_file);
+        char* tag_value = blkid_get_tag_value(blkid_cache_, key, dev_file);
         if (tag_value) {
           value = tag_value;
           free(tag_value);
@@ -144,8 +142,8 @@ string UdevDevice::GetPropertyFromBlkId(const char *key) {
   return value;
 }
 
-void UdevDevice::GetSizeInfo(uint64_t *total_size,
-                             uint64_t *remaining_size) const {
+void UdevDevice::GetSizeInfo(uint64_t* total_size,
+                             uint64_t* remaining_size) const {
   static const int kSectorSize = 512;
   uint64_t total = 0, remaining = 0;
 
@@ -164,14 +162,14 @@ void UdevDevice::GetSizeInfo(uint64_t *total_size,
   // instead. If the UDISKS_PARTITION_SIZE property is not set but sysfs
   // provides a size value, which is the actual size in bytes divided by 512,
   // use that as the total size instead.
-  const char *partition_size =
+  const char* partition_size =
       udev_device_get_property_value(dev_, kPropertyPartitionSize);
   int64_t size = 0;
   if (partition_size) {
     base::StringToInt64(partition_size, &size);
     total = size;
   } else {
-    const char *size_attr = udev_device_get_sysattr_value(dev_, kAttributeSize);
+    const char* size_attr = udev_device_get_sysattr_value(dev_, kAttributeSize);
     if (size_attr) {
       base::StringToInt64(size_attr, &size);
       total = size * kSectorSize;
@@ -186,7 +184,7 @@ void UdevDevice::GetSizeInfo(uint64_t *total_size,
 
 size_t UdevDevice::GetPartitionCount() const {
   size_t partition_count = 0;
-  const char *dev_file = udev_device_get_devnode(dev_);
+  const char* dev_file = udev_device_get_devnode(dev_);
   if (dev_file) {
     blkid_probe probe = blkid_new_probe_from_filename(dev_file);
     if (probe) {
@@ -219,18 +217,18 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   return DEVICE_MEDIA_UNKNOWN;
 }
 
-bool UdevDevice::GetVendorAndProductId(
-    string* vendor_id, string* product_id) const {
+bool UdevDevice::GetVendorAndProductId(string* vendor_id,
+                                       string* product_id) const {
   // Search up the parent device tree to obtain the vendor and product ID
   // of the first device with a device type "usb_device". Then look up the
   // media type based on the vendor and product ID from a USB device info file.
-  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
-    const char *device_type =
+  for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char* device_type =
         udev_device_get_property_value(dev, kPropertyDeviceType);
     if (device_type && strcmp(device_type, kPropertyDeviceTypeUSBDevice) == 0) {
-      const char *vendor_id_attr =
+      const char* vendor_id_attr =
           udev_device_get_sysattr_value(dev, kAttributeIdVendor);
-      const char *product_id_attr =
+      const char* product_id_attr =
           udev_device_get_sysattr_value(dev, kAttributeIdProduct);
       if (vendor_id_attr && product_id_attr) {
         *vendor_id = vendor_id_attr;
@@ -248,7 +246,7 @@ bool UdevDevice::IsMediaAvailable() const {
     if (IsPropertyTrue(kPropertyCDROM)) {
       is_media_available = IsPropertyTrue(kPropertyCDROMMedia);
     } else {
-      const char *dev_file = udev_device_get_devnode(dev_);
+      const char* dev_file = udev_device_get_devnode(dev_);
       if (dev_file) {
         int fd = open(dev_file, O_RDONLY);
         if (fd < 0) {
@@ -266,7 +264,7 @@ bool UdevDevice::IsMobileBroadbandDevice() const {
   // Check if a parent device, which belongs to the "usb" subsystem and has a
   // device type "usb_device", has a property "MIST_SUPPORTED_DEVICE=1". If so,
   // it is a mobile broadband device supported by mist.
-  udev_device *parent = udev_device_get_parent_with_subsystem_devtype(
+  udev_device* parent = udev_device_get_parent_with_subsystem_devtype(
       dev_, kSubsystemUsb, kPropertyDeviceTypeUSBDevice);
   if (!parent)
     return false;
@@ -304,8 +302,7 @@ bool UdevDevice::IsHidden() {
   // corrupted). An unformatted or corrupted device is visible in the file
   // the file browser so that we can provide a way to format it.
   if (!HasAttribute(kAttributePartition) &&
-      !HasProperty(kPropertyFilesystemUsage) &&
-      (GetPartitionCount() > 0))
+      !HasProperty(kPropertyFilesystemUsage) && (GetPartitionCount() > 0))
     return true;
 
   // Hide special partitions based on partition type.
@@ -338,8 +335,8 @@ bool UdevDevice::IsOnBootDevice() const {
   // Compare the device file path of the current device and all its parents
   // with the boot device path. Any match indicates that the current device
   // is on the boot device.
-  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
-    const char *dev_file = udev_device_get_devnode(dev);
+  for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char* dev_file = udev_device_get_devnode(dev);
     if (dev_file) {
       if (strncmp(boot_device_path, dev_file, PATH_MAX) == 0) {
         return true;
@@ -350,8 +347,8 @@ bool UdevDevice::IsOnBootDevice() const {
 }
 
 bool UdevDevice::IsOnMMCDevice() const {
-  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
-    const char *driver = udev_device_get_driver(dev);
+  for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char* driver = udev_device_get_driver(dev);
     if (driver && strcmp(driver, kDriverMMCBlock) == 0) {
       return true;
     }
@@ -360,8 +357,8 @@ bool UdevDevice::IsOnMMCDevice() const {
 }
 
 bool UdevDevice::IsOnRemovableDevice() const {
-  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
-    const char *value = udev_device_get_sysattr_value(dev, kAttributeRemovable);
+  for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char* value = udev_device_get_sysattr_value(dev, kAttributeRemovable);
     if (IsValueBooleanTrue(value))
       return true;
   }
@@ -369,7 +366,7 @@ bool UdevDevice::IsOnRemovableDevice() const {
 }
 
 bool UdevDevice::IsVirtual() const {
-  const char *sys_path = udev_device_get_syspath(dev_);
+  const char* sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
     return base::StartsWith(sys_path, kVirtualDevicePathPrefix,
                             base::CompareCase::SENSITIVE);
@@ -379,7 +376,7 @@ bool UdevDevice::IsVirtual() const {
 }
 
 bool UdevDevice::IsLoopDevice() const {
-  const char *sys_path = udev_device_get_syspath(dev_);
+  const char* sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
     return base::StartsWith(sys_path, kLoopDevicePathPrefix,
                             base::CompareCase::SENSITIVE);
@@ -388,12 +385,12 @@ bool UdevDevice::IsLoopDevice() const {
 }
 
 string UdevDevice::NativePath() const {
-  const char *sys_path = udev_device_get_syspath(dev_);
+  const char* sys_path = udev_device_get_syspath(dev_);
   return sys_path ? sys_path : "";
 }
 
 vector<string> UdevDevice::GetMountPaths() const {
-  const char *device_path = udev_device_get_devnode(dev_);
+  const char* device_path = udev_device_get_devnode(dev_);
   if (device_path) {
     return GetMountPaths(device_path);
   }
@@ -438,9 +435,8 @@ Disk UdevDevice::ToDisk() {
 
     string vendor_name, product_name;
     USBDeviceInfo info;
-    if (info.GetVendorAndProductName(kUSBIdentifierDatabase,
-                                     vendor_id, product_id,
-                                     &vendor_name, &product_name)) {
+    if (info.GetVendorAndProductName(kUSBIdentifierDatabase, vendor_id,
+                                     product_id, &vendor_name, &product_name)) {
       disk.set_vendor_name(EnsureUTF8String(vendor_name));
       disk.set_product_name(EnsureUTF8String(product_name));
     }
@@ -452,7 +448,7 @@ Disk UdevDevice::ToDisk() {
       GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
   disk.set_uuid(base::HexEncode(uuid_hash.data(), uuid_hash.size()));
 
-  const char *dev_file = udev_device_get_devnode(dev_);
+  const char* dev_file = udev_device_get_devnode(dev_);
   if (dev_file)
     disk.set_device_file(dev_file);
 

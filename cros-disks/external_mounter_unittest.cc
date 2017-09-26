@@ -17,8 +17,8 @@ namespace cros_disks {
 TEST(ExternalMounterTest, RunAsRootMount) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-                          "tmpfs", MountOptions());
+  ExternalMounter mounter("/dev/null", temp_dir.path().value(), "tmpfs",
+                          MountOptions());
   EXPECT_FALSE(mounter.GetMountProgramPath().empty());
   if (!mounter.GetMountProgramPath().empty()) {
     EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
@@ -34,8 +34,8 @@ TEST(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
   // about source path.
-  ExternalMounter mounter("/nonexistent", temp_dir.path().value(),
-                          "ext2", MountOptions());
+  ExternalMounter mounter("/nonexistent", temp_dir.path().value(), "ext2",
+                          MountOptions());
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
@@ -47,8 +47,8 @@ TEST(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
 TEST(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-                          "nonexistentfs", MountOptions());
+  ExternalMounter mounter("/dev/null", temp_dir.path().value(), "nonexistentfs",
+                          MountOptions());
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 

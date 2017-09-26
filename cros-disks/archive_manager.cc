@@ -50,8 +50,8 @@ const char kAVFSUsersDirectory[] = "/run/avfsroot/users";
 const char kMediaDirectory[] = "/media";
 const char kUserRootDirectory[] = "/home/chronos";
 const AVFSPathMapping kAVFSPathMapping[] = {
-  { kMediaDirectory, kAVFSMediaDirectory },
-  { kUserRootDirectory, kAVFSUsersDirectory },
+    {kMediaDirectory, kAVFSMediaDirectory},
+    {kUserRootDirectory, kAVFSUsersDirectory},
 };
 
 }  // namespace
@@ -61,9 +61,7 @@ namespace cros_disks {
 ArchiveManager::ArchiveManager(const string& mount_root,
                                Platform* platform,
                                Metrics* metrics)
-    : MountManager(mount_root, platform, metrics),
-      avfs_started_(false) {
-}
+    : MountManager(mount_root, platform, metrics), avfs_started_(false) {}
 
 ArchiveManager::~ArchiveManager() {
   // StopAVFS() unmounts all mounted archives as well as AVFS mount points.
@@ -284,8 +282,7 @@ bool ArchiveManager::StartAVFS() {
   for (const auto& mapping : kAVFSPathMapping) {
     bool base_path_exists = base::PathExists(FilePath(mapping.base_path));
     const string& avfs_path = mapping.avfs_path;
-    if (!base_path_exists ||
-        !platform()->CreateDirectory(avfs_path) ||
+    if (!base_path_exists || !platform()->CreateDirectory(avfs_path) ||
         !platform()->SetOwnership(avfs_path, user_id, group_id) ||
         !platform()->SetPermissions(avfs_path, S_IRWXU) ||
         !MountAVFSPath(mapping.base_path, avfs_path)) {
@@ -347,11 +344,10 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   // supports it.
   mount_process.SetUserId(user_id);
   mount_process.SetGroupId(group_id);
-  if (mount_process.Run() != 0 ||
-      !mount_info.RetrieveFromCurrentProcess() ||
+  if (mount_process.Run() != 0 || !mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
-    LOG(WARNING) << "Failed to mount '" << base_path << "' to '"
-                 << avfs_path << "' via AVFS";
+    LOG(WARNING) << "Failed to mount '" << base_path << "' to '" << avfs_path
+                 << "' via AVFS";
     return false;
   }
 

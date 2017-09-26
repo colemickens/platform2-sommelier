@@ -11,8 +11,7 @@ using std::string;
 
 namespace cros_disks {
 
-SandboxedProcess::SandboxedProcess()
-    : jail_(minijail_new()) {
+SandboxedProcess::SandboxedProcess() : jail_(minijail_new()) {
   CHECK(jail_) << "Failed to create a process jail";
 }
 

@@ -36,17 +36,13 @@ MountErrorType Mounter::Mount() {
   }
 
   if (error == MOUNT_ERROR_NONE) {
-    LOG(INFO) << "Mounted '" << source_path_
-      << "' to '" << target_path_
-      << "' as filesystem '" << filesystem_type_
-      << "' with options '" << mount_options_.ToString()
-      << "'";
+    LOG(INFO) << "Mounted '" << source_path_ << "' to '" << target_path_
+              << "' as filesystem '" << filesystem_type_ << "' with options '"
+              << mount_options_.ToString() << "'";
   } else {
-    LOG(ERROR) << "Failed to mount '" << source_path_
-      << "' to '" << target_path_
-      << "' as filesystem '" << filesystem_type_
-      << "' with options '" << mount_options_.ToString()
-      << "'";
+    LOG(ERROR) << "Failed to mount '" << source_path_ << "' to '"
+               << target_path_ << "' as filesystem '" << filesystem_type_
+               << "' with options '" << mount_options_.ToString() << "'";
   }
   return error;
 }

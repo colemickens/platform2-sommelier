@@ -88,28 +88,28 @@ TEST_F(USBDeviceInfoTest, RetrieveFromFile) {
 TEST_F(USBDeviceInfoTest, GetVendorAndProductName) {
   string vendor_name, product_name;
 
-  EXPECT_FALSE(info_.GetVendorAndProductName(
-      "nonexistent-path", "0123", "ab01", &vendor_name, &product_name));
-  EXPECT_FALSE(info_.GetVendorAndProductName(
-      ids_file_, "1234", "ab01", &vendor_name, &product_name));
+  EXPECT_FALSE(info_.GetVendorAndProductName("nonexistent-path", "0123", "ab01",
+                                             &vendor_name, &product_name));
+  EXPECT_FALSE(info_.GetVendorAndProductName(ids_file_, "1234", "ab01",
+                                             &vendor_name, &product_name));
 
-  EXPECT_TRUE(info_.GetVendorAndProductName(
-      ids_file_, "0123", "0000", &vendor_name, &product_name));
+  EXPECT_TRUE(info_.GetVendorAndProductName(ids_file_, "0123", "0000",
+                                            &vendor_name, &product_name));
   EXPECT_EQ("Vendor A", vendor_name);
   EXPECT_EQ("", product_name);
 
-  EXPECT_TRUE(info_.GetVendorAndProductName(
-      ids_file_, "0123", "ab03", &vendor_name, &product_name));
+  EXPECT_TRUE(info_.GetVendorAndProductName(ids_file_, "0123", "ab03",
+                                            &vendor_name, &product_name));
   EXPECT_EQ("Vendor A", vendor_name);
   EXPECT_EQ("Product 3", product_name);
 
-  EXPECT_TRUE(info_.GetVendorAndProductName(
-      ids_file_, "5678", "0005", &vendor_name, &product_name));
+  EXPECT_TRUE(info_.GetVendorAndProductName(ids_file_, "5678", "0005",
+                                            &vendor_name, &product_name));
   EXPECT_EQ("Vendor with no product IDs", vendor_name);
   EXPECT_EQ("", product_name);
 
-  EXPECT_TRUE(info_.GetVendorAndProductName(
-      ids_file_, "abcd", "0005", &vendor_name, &product_name));
+  EXPECT_TRUE(info_.GetVendorAndProductName(ids_file_, "abcd", "0005",
+                                            &vendor_name, &product_name));
   EXPECT_EQ("Vendor B", vendor_name);
   EXPECT_EQ("Product Y", product_name);
 }

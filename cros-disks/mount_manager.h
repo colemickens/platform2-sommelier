@@ -48,7 +48,8 @@ class MountManager {
   // of the |platform| and |metrics| object, and thus expects these objects
   // to exist until its destruction. No actual operation is performed at
   // construction. Initialization is performed when Initializes() is called.
-  MountManager(const std::string& mount_root, Platform* platform,
+  MountManager(const std::string& mount_root,
+               Platform* platform,
                Metrics* metrics);
 
   // Destructor that performs no specific operations and does not unmount
@@ -219,7 +220,7 @@ class MountManager {
 
   // Extracts unmount flags for umount() from an array of options.
   virtual bool ExtractUnmountOptions(const std::vector<std::string>& options,
-                                     int *unmount_flags) const;
+                                     int* unmount_flags) const;
 
   // Returns true if the manager should reserve a mount path if the mount
   // operation returns a particular type of error. The default implementation

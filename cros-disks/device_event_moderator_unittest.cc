@@ -34,14 +34,13 @@ class MockDeviceEventSource : public DeviceEventSourceInterface {
 class DeviceEventModeratorTest : public ::testing::Test {
  public:
   DeviceEventModeratorTest()
-      : moderator_(new DeviceEventModerator(
-            &event_dispatcher_, &event_source_, true)),
+      : moderator_(
+            new DeviceEventModerator(&event_dispatcher_, &event_source_, true)),
         event1_(DeviceEvent::kDeviceAdded, "1"),
         event2_(DeviceEvent::kDeviceAdded, "2"),
         event_list1_({event1_}),
         event_list2_({event2_}),
-        event_list3_({event1_, event2_}) {
-  }
+        event_list3_({event1_, event2_}) {}
 
  protected:
   void RecreateDeviceEventModerator(bool dispatch_initially) {

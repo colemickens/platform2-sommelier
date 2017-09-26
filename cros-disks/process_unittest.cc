@@ -23,9 +23,7 @@ class ProcessTest : public ::testing::Test {
 };
 
 TEST_F(ProcessTest, GetArguments) {
-  static const char* const kTestArguments[] = {
-    "/bin/ls", "-l", "", "."
-  };
+  static const char* const kTestArguments[] = {"/bin/ls", "-l", "", "."};
   for (const char* test_argument : kTestArguments) {
     process_.AddArgument(test_argument);
   }

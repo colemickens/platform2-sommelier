@@ -30,15 +30,13 @@ struct MountPoint {
   string filesystem_type;
 };
 
-MountInfo::MountInfo() {
-}
+MountInfo::MountInfo() {}
 
-MountInfo::~MountInfo() {
-}
+MountInfo::~MountInfo() {}
 
 int MountInfo::ConvertOctalStringToInt(const string& octal) const {
-  if (octal.size() == 3 && IsOctalDigit(octal[0]) &&
-      IsOctalDigit(octal[1]) && IsOctalDigit(octal[2])) {
+  if (octal.size() == 3 && IsOctalDigit(octal[0]) && IsOctalDigit(octal[1]) &&
+      IsOctalDigit(octal[2])) {
     return (octal[0] - '0') * 64 + (octal[1] - '0') * 8 + (octal[2] - '0');
   }
   return -1;

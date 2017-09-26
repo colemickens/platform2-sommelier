@@ -216,8 +216,8 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
 
   // options: nodev, rw, nosuid, noexec, sync
   options.push_back("sync");
-  expected_flags = security_flags |
-    MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_SYNCHRONOUS;
+  expected_flags =
+      security_flags | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_SYNCHRONOUS;
   mount_options_.Initialize(options, false, "", "");
   flags_and_data = mount_options_.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
@@ -226,8 +226,8 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: nodev, rw, nosuid, noexec, sync
   // default uid=1000, gid=1001
   // ignore user and group ID
-  expected_flags = security_flags | MS_NODEV | MS_NOSUID | MS_NOEXEC |
-    MS_SYNCHRONOUS;
+  expected_flags =
+      security_flags | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_SYNCHRONOUS;
   mount_options_.Initialize(options, false, "1000", "1001");
   flags_and_data = mount_options_.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);

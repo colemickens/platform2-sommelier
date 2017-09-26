@@ -8,8 +8,7 @@
 
 namespace cros_disks {
 
-GlibProcess::GlibProcess() : status_(0), child_watch_id_(0) {
-}
+GlibProcess::GlibProcess() : status_(0), child_watch_id_(0) {}
 
 GlibProcess::~GlibProcess() {
   // If the process has not yet terminated or |callback_| has not been called,
@@ -32,8 +31,7 @@ bool GlibProcess::Start() {
 
   GSpawnFlags flags = static_cast<GSpawnFlags>(
       G_SPAWN_DO_NOT_REAP_CHILD |  // Required for g_child_watch_add to work
-      G_SPAWN_SEARCH_PATH |
-      G_SPAWN_STDOUT_TO_DEV_NULL |
+      G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL |
       G_SPAWN_STDERR_TO_DEV_NULL);
   pid_t child_pid = kInvalidProcessId;
   GError* error = nullptr;
@@ -43,8 +41,7 @@ bool GlibProcess::Start() {
                               flags,
                               nullptr,  // No setup function
                               nullptr,  // No user data
-                              &child_pid,
-                              &error);
+                              &child_pid, &error);
 
   if (ok) {
     set_pid(child_pid);

@@ -34,8 +34,7 @@ Disk::Disk()
       is_virtual_(true),
       media_type_(DEVICE_MEDIA_UNKNOWN),
       device_capacity_(0),
-      bytes_remaining_(0) {
-}
+      bytes_remaining_(0) {}
 
 string Disk::GetPresentationName() const {
   if (!label_.empty()) {

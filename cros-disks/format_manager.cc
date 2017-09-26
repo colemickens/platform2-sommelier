@@ -42,19 +42,16 @@ void OnFormatProcessExit(pid_t pid, gint status, gpointer data) {
 
 namespace cros_disks {
 
-FormatManager::FormatManager() {
-}
+FormatManager::FormatManager() {}
 
-FormatManager::~FormatManager() {
-}
+FormatManager::~FormatManager() {}
 
 FormatErrorType FormatManager::StartFormatting(const string& device_path,
                                                const string& device_file,
                                                const string& filesystem) {
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
-    LOG(WARNING) << filesystem
-                 << " filesystem is not supported for formatting";
+    LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
     return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
@@ -67,8 +64,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
   }
 
   if (ContainsKey(format_process_, device_path)) {
-    LOG(WARNING) << "Device '" << device_path
-                 << "' is already being formatted";
+    LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
@@ -84,8 +80,8 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
   }
   process->AddArg(device_file);
   if (!process->Start()) {
-    LOG(WARNING) << "Cannot start a process for formatting '"
-                 << device_path << "' as filesystem '" << filesystem << "'";
+    LOG(WARNING) << "Cannot start a process for formatting '" << device_path
+                 << "' as filesystem '" << filesystem << "'";
     format_process_.erase(device_path);
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }

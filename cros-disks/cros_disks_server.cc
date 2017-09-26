@@ -51,7 +51,7 @@ bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
 void CrosDisksServer::Format(const string& path,
                              const string& filesystem_type,
                              const vector<string>& options,
-                             DBus::Error &error) {  // NOLINT
+                             DBus::Error& error) {  // NOLINT
   FormatErrorType error_type = FORMAT_ERROR_NONE;
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
@@ -59,15 +59,13 @@ void CrosDisksServer::Format(const string& path,
   } else if (disk.is_on_boot_device()) {
     error_type = FORMAT_ERROR_DEVICE_NOT_ALLOWED;
   } else {
-    error_type =
-       format_manager_->StartFormatting(path,
-                                        disk.device_file(),
-                                        filesystem_type);
+    error_type = format_manager_->StartFormatting(path, disk.device_file(),
+                                                  filesystem_type);
   }
 
   if (error_type != FORMAT_ERROR_NONE) {
-    LOG(ERROR) << "Could not format device '" << path
-               << "' as filesystem '" << filesystem_type << "'";
+    LOG(ERROR) << "Could not format device '" << path << "' as filesystem '"
+               << filesystem_type << "'";
     FormatCompleted(error_type, path);
   }
 }
@@ -82,14 +80,13 @@ void CrosDisksServer::Rename(const string& path,
   } else if (disk.is_on_boot_device() || disk.is_read_only()) {
     error_type = RENAME_ERROR_DEVICE_NOT_ALLOWED;
   } else {
-    error_type =
-       rename_manager_->StartRenaming(path, disk.device_file(), volume_name,
-                                      disk.filesystem_type());
+    error_type = rename_manager_->StartRenaming(
+        path, disk.device_file(), volume_name, disk.filesystem_type());
   }
 
   if (error_type != RENAME_ERROR_NONE) {
-    LOG(ERROR) << "Could not rename device '" << path
-               << "' as '" << volume_name << "'";
+    LOG(ERROR) << "Could not rename device '" << path << "' as '" << volume_name
+               << "'";
     RenameCompleted(error_type, path);
   }
 }

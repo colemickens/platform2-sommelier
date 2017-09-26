@@ -16,9 +16,7 @@ class Filesystem {
 
   ~Filesystem() = default;
 
-  bool accepts_user_and_group_id() const {
-    return accepts_user_and_group_id_;
-  }
+  bool accepts_user_and_group_id() const { return accepts_user_and_group_id_; }
   void set_accepts_user_and_group_id(bool accepts_user_and_group_id) {
     accepts_user_and_group_id_ = accepts_user_and_group_id;
   }
@@ -48,9 +46,7 @@ class Filesystem {
     mount_type_ = mount_type;
   }
 
-  const std::string& mounter_type() const {
-    return mounter_type_;
-  }
+  const std::string& mounter_type() const { return mounter_type_; }
   void set_mounter_type(const std::string& mounter_type) {
     mounter_type_ = mounter_type;
   }

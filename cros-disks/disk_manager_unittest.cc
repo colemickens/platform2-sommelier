@@ -208,12 +208,14 @@ TEST_F(DiskManagerTest, CanMount) {
   EXPECT_FALSE(manager_.CanMount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/user/GCache/test1.zip"));
-  EXPECT_FALSE(manager_.CanMount("/home/chronos"
-                                 "/u-0123456789abcdef0123456789abcdef01234567"
-                                 "/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanMount("/home/chronos"
-                                 "/u-0123456789abcdef0123456789abcdef01234567"
-                                 "/GCache/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanMount("/home/chronos"
+                        "/u-0123456789abcdef0123456789abcdef01234567"
+                        "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanMount("/home/chronos"
+                        "/u-0123456789abcdef0123456789abcdef01234567"
+                        "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanMount(""));
   EXPECT_FALSE(manager_.CanMount("/tmp"));
   EXPECT_FALSE(manager_.CanMount("/media/removable"));
@@ -240,12 +242,14 @@ TEST_F(DiskManagerTest, CanUnmount) {
   EXPECT_FALSE(manager_.CanUnmount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/GCache/test1.zip"));
-  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
-                                   "/u-0123456789abcdef0123456789abcdef01234567"
-                                   "/Downloads/test1.zip"));
-  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
-                                   "/u-0123456789abcdef0123456789abcdef01234567"
-                                   "/GCache/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-0123456789abcdef0123456789abcdef01234567"
+                          "/Downloads/test1.zip"));
+  EXPECT_FALSE(
+      manager_.CanUnmount("/home/chronos"
+                          "/u-0123456789abcdef0123456789abcdef01234567"
+                          "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount(""));
   EXPECT_FALSE(manager_.CanUnmount("/tmp"));
   EXPECT_FALSE(manager_.CanUnmount("/media/removable"));
@@ -263,8 +267,8 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
   vector<string> options;
   MountOptions applied_options;
   EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH,
-            manager_.DoMount(source_path, filesystem_type, options,
-                             mount_path, &applied_options));
+            manager_.DoMount(source_path, filesystem_type, options, mount_path,
+                             &applied_options));
 }
 
 TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {

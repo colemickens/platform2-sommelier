@@ -18,9 +18,9 @@ class SystemMounter : public Mounter {
   static const char kMounterType[];
 
   SystemMounter(const std::string& source_path,
-      const std::string& target_path,
-      const std::string& filesystem_type,
-      const MountOptions& mount_options);
+                const std::string& target_path,
+                const std::string& filesystem_type,
+                const MountOptions& mount_options);
 
  protected:
   // Mounts a device file using the system mount() call.

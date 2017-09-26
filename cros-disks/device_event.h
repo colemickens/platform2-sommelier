@@ -22,14 +22,10 @@ struct DeviceEvent {
     kDiskRemoved,
   };
 
-  DeviceEvent()
-    : event_type(kIgnored) {
-  }
+  DeviceEvent() : event_type(kIgnored) {}
 
   DeviceEvent(EventType type, const std::string& path)
-    : event_type(type),
-      device_path(path) {
-  }
+      : event_type(type), device_path(path) {}
 
   // NOTE: This operator== is needed due to the use of gmock matcher in
   // DeviceEventModeratorTest.
