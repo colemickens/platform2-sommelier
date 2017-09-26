@@ -50,9 +50,7 @@ class DaemonTest : public ::testing::Test {
   }
 
   // Needs to be public so we can use the testing::Invoke() family of functions.
-  bool KillRealProcess() {
-    return real_process_->Kill(SIGTERM, 5);
-  }
+  bool KillRealProcess() { return real_process_->Kill(SIGTERM, 5); }
 
  protected:
   void WritePidFile(const string& pid) {
@@ -68,17 +66,11 @@ class DaemonTest : public ::testing::Test {
     CHECK(real_process_->Start());
   }
 
-  const string& GetPidFile() {
-    return daemon_->pid_file_;
-  }
+  const string& GetPidFile() { return daemon_->pid_file_; }
 
-  Process* GetProcess() {
-    return daemon_->process_.get();
-  }
+  Process* GetProcess() { return daemon_->process_.get(); }
 
-  void SetProcess(Process* process) {
-    daemon_->SetProcess(process);
-  }
+  void SetProcess(Process* process) { daemon_->SetProcess(process); }
 
   FilePath pid_file_path_;
   std::unique_ptr<Daemon> daemon_;

@@ -63,14 +63,15 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
     int status;
     int ipsec_poll_timeout = ipsec->Poll();
     int l2tp_poll_timeout = l2tp->Poll();
-    int poll_timeout = (ipsec_poll_timeout > l2tp_poll_timeout) ?
-        ipsec_poll_timeout : l2tp_poll_timeout;
+    int poll_timeout = (ipsec_poll_timeout > l2tp_poll_timeout)
+                           ? ipsec_poll_timeout
+                           : l2tp_poll_timeout;
 
     const int poll_input_count = 3;
     struct pollfd poll_inputs[poll_input_count] = {
-      { ipsec->output_fd(), POLLIN },  // ipsec output
-      { l2tp->output_fd(), POLLIN },  // l2tp output
-      { l2tp->ppp_output_fd(), POLLIN }  // ppp output
+        {ipsec->output_fd(), POLLIN},    // ipsec output
+        {l2tp->output_fd(), POLLIN},     // l2tp output
+        {l2tp->ppp_output_fd(), POLLIN}  // ppp output
     };
     int poll_result = poll(poll_inputs, poll_input_count, poll_timeout);
     if (poll_result < 0 && errno != EINTR) {
@@ -115,22 +116,24 @@ int main(int argc, char* argv[]) {
   // 3des-sha1-modp1536: strongSwan fallback
   // 3des-sha1-modp1024: for compatibility with Windows RRAS, which requires
   //                     using the modp1024 dh-group
-  DEFINE_string(ike, "aes128-sha256-modp3072,"
-                     "aes128-sha1-modp2048,"
-                     "3des-sha1-modp1536,"
-                     "3des-sha1-modp1024",
+  DEFINE_string(ike,
+                "aes128-sha256-modp3072,"
+                "aes128-sha1-modp2048,"
+                "3des-sha1-modp1536,"
+                "3des-sha1-modp1024",
                 "ike proposals");
 
   // Phase 2 ciphersuites:
   // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
   // authentication for the IPsec SA.  Default StrongS/WAN setup is
   // to only propose SHA1.
-  DEFINE_string(esp, "aes128gcm16,"
-                     "aes128-sha256,"
-                     "aes128-sha1,"
-                     "3des-sha1,"
-                     "aes128-md5,"
-                     "3des-md5",
+  DEFINE_string(esp,
+                "aes128gcm16,"
+                "aes128-sha256,"
+                "aes128-sha1,"
+                "3des-sha1,"
+                "aes128-md5,"
+                "3des-md5",
                 "esp proposals");
 
   DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
@@ -186,7 +189,8 @@ int main(int argc, char* argv[]) {
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
   int log_flags = brillo::kLogToSyslog;
-  if (isatty(STDOUT_FILENO)) log_flags |= brillo::kLogToStderr;
+  if (isatty(STDOUT_FILENO))
+    log_flags |= brillo::kLogToStderr;
   brillo::InitLog(log_flags);
   brillo::OpenLog("l2tpipsec_vpn", true);
   IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
@@ -196,9 +200,8 @@ int main(int argc, char* argv[]) {
   L2tpManager l2tp(FLAGS_defaultroute, FLAGS_length_bit, FLAGS_require_chap,
                    FLAGS_refuse_pap, FLAGS_require_authentication,
                    FLAGS_password, FLAGS_ppp_debug, FLAGS_ppp_lcp_echo,
-                   FLAGS_ppp_setup_timeout, FLAGS_pppd_plugin,
-                   FLAGS_usepeerdns, FLAGS_user, FLAGS_systemconfig,
-                   temp_path);
+                   FLAGS_ppp_setup_timeout, FLAGS_pppd_plugin, FLAGS_usepeerdns,
+                   FLAGS_user, FLAGS_systemconfig, temp_path);
 
   LockDownUmask();
 
@@ -217,15 +220,10 @@ int main(int argc, char* argv[]) {
     return vpn_manager::kServiceErrorInvalidArgument;
   }
 
-  if (!ipsec.Initialize(1,
-                        remote_address,
-                        FLAGS_psk_file,
-                        FLAGS_xauth_credentials_file,
-                        FLAGS_server_ca_file,
-                        FLAGS_server_id,
-                        FLAGS_client_cert_slot,
-                        FLAGS_client_cert_id,
-                        FLAGS_user_pin)) {
+  if (!ipsec.Initialize(1, remote_address, FLAGS_psk_file,
+                        FLAGS_xauth_credentials_file, FLAGS_server_ca_file,
+                        FLAGS_server_id, FLAGS_client_cert_slot,
+                        FLAGS_client_cert_id, FLAGS_user_pin)) {
     return ipsec.GetError();
   }
   if (!l2tp.Initialize(remote_address)) {

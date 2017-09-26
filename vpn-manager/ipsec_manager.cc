@@ -81,8 +81,7 @@ IpsecManager::IpsecManager(const std::string& esp,
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_daemon_(new Daemon(kStarterPidFile)),
-      charon_daemon_(new Daemon(kCharonPidFile)) {
-}
+      charon_daemon_(new Daemon(kCharonPidFile)) {}
 
 bool IpsecManager::Initialize(int ike_version,
                               const struct sockaddr& remote_address,
@@ -101,8 +100,7 @@ bool IpsecManager::Initialize(int ike_version,
   remote_address_ = remote_address;
 
   if (psk_file.empty()) {
-    if (server_ca_file.empty() && server_id.empty() &&
-        client_cert_id.empty() &&
+    if (server_ca_file.empty() && server_id.empty() && client_cert_id.empty() &&
         user_pin.empty()) {
       LOG(ERROR) << "Must specify either PSK or certificates for IPsec layer";
       RegisterError(kServiceErrorInvalidArgument);
@@ -152,8 +150,7 @@ bool IpsecManager::Initialize(int ike_version,
     }
     user_pin_ = user_pin;
   } else {
-    if (!server_ca_file.empty() ||
-        !server_id.empty() ||
+    if (!server_ca_file.empty() || !server_id.empty() ||
         !client_cert_id.empty()) {
       LOG(WARNING) << "Specified both certificates and PSK to IPsec layer";
     }
@@ -224,10 +221,9 @@ bool IpsecManager::FormatIpsecSecret(std::string* formatted) {
   std::string secret_mode;
   std::string secret;
   if (psk_file_.empty()) {
-    secret_mode = StringPrintf("PIN %%smartcard%s@%s:%s",
-                               client_cert_slot_.c_str(),
-                               kSmartcardModuleName,
-                               client_cert_id_.c_str());
+    secret_mode =
+        StringPrintf("PIN %%smartcard%s@%s:%s", client_cert_slot_.c_str(),
+                     kSmartcardModuleName, client_cert_id_.c_str());
     secret = user_pin_;
   } else {
     secret_mode = "PSK";
@@ -270,9 +266,8 @@ bool IpsecManager::FormatXauthSecret(std::string* formatted) {
                << xauth_credentials_file_;
     return false;
   }
-  std::vector<std::string> xauth_parts =
-      base::SplitString(xauth_contents, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> xauth_parts = base::SplitString(
+      xauth_contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (xauth_parts.size() < 2) {
     LOG(ERROR) << "Unable to parse XAUTH credentials from "
                << xauth_credentials_file_;
@@ -282,8 +277,8 @@ bool IpsecManager::FormatXauthSecret(std::string* formatted) {
   // Save this identity for use in the ipsec starter file.
   xauth_identity_ = xauth_parts[0];
   std::string xauth_password = xauth_parts[1];
-  *formatted = StringPrintf(
-      "%s : XAUTH \"%s\"\n", xauth_identity_.c_str(), xauth_password.c_str());
+  *formatted = StringPrintf("%s : XAUTH \"%s\"\n", xauth_identity_.c_str(),
+                            xauth_password.c_str());
   return true;
 }
 
@@ -322,18 +317,19 @@ bool IpsecManager::StartStarter() {
   return true;
 }
 
-inline void AppendBoolSetting(std::string* config, const char* key,
+inline void AppendBoolSetting(std::string* config,
+                              const char* key,
                               bool value) {
   config->append(StringPrintf("\t%s=%s\n", key, value ? "yes" : "no"));
 }
 
-inline void AppendStringSetting(std::string* config, const char* key,
+inline void AppendStringSetting(std::string* config,
+                                const char* key,
                                 const std::string& value) {
   config->append(StringPrintf("\t%s=\"%s\"\n", key, value.c_str()));
 }
 
-inline void AppendIntSetting(std::string* config, const char* key,
-                             int value) {
+inline void AppendIntSetting(std::string* config, const char* key, int value) {
   config->append(StringPrintf("\t%s=%d\n", key, value));
 }
 
@@ -384,16 +380,15 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendBoolSetting(&config, "rekey", rekey_);
   AppendStringSetting(&config, "left", "%defaultroute");
   if (!client_cert_slot_.empty()) {
-    std::string smartcard = StringPrintf("%%smartcard%s@%s:%s",
-                                         client_cert_slot_.c_str(),
-                                         kSmartcardModuleName,
-                                         client_cert_id_.c_str());
+    std::string smartcard =
+        StringPrintf("%%smartcard%s@%s:%s", client_cert_slot_.c_str(),
+                     kSmartcardModuleName, client_cert_id_.c_str());
     AppendStringSetting(&config, "leftcert", smartcard);
   }
   if (!tunnel_group_.empty()) {
     AppendStringSetting(&config, "aggressive", "yes");
     std::string hex_tunnel_id =
-      base::HexEncode(tunnel_group_.c_str(), tunnel_group_.length());
+        base::HexEncode(tunnel_group_.c_str(), tunnel_group_.length());
     std::string left_id = StringPrintf("@#%s", hex_tunnel_id.c_str());
     AppendStringSetting(&config, "leftid", left_id);
   }
@@ -423,14 +418,13 @@ bool IpsecManager::WriteConfigFile(const std::string& output_name,
   FilePath temp_file = temp_path().Append(output_name);
   base::DeleteFile(temp_file, false);
   if (base::PathExists(temp_file)) {
-    LOG(ERROR) << "Unable to remove existing file "
-               << temp_file.value();
+    LOG(ERROR) << "Unable to remove existing file " << temp_file.value();
     return false;
   }
   if (!base::WriteFile(temp_file, contents.c_str(), contents.length()) ||
       !SetIpsecGroup(temp_file)) {
-    LOG(ERROR) << "Unable to write " << output_name
-               << " file " << temp_file.value();
+    LOG(ERROR) << "Unable to write " << output_name << " file "
+               << temp_file.value();
     return false;
   }
 
@@ -444,14 +438,12 @@ bool IpsecManager::MakeSymbolicLink(const std::string& output_name,
   // cannot delete dangling symlinks.
   unlink(symlink_path.value().c_str());
   if (base::PathExists(symlink_path)) {
-    LOG(ERROR) << "Unable to remove existing file "
-               << symlink_path.value();
+    LOG(ERROR) << "Unable to remove existing file " << symlink_path.value();
     return false;
   }
   if (symlink(source_path.value().c_str(), symlink_path.value().c_str()) < 0) {
-    PLOG(ERROR) << "Unable to symlink config file "
-                << symlink_path.value() << " -> "
-                << source_path.value();
+    PLOG(ERROR) << "Unable to symlink config file " << symlink_path.value()
+                << " -> " << source_path.value();
     return false;
   }
   return true;
@@ -505,8 +497,9 @@ bool IpsecManager::Start() {
     struct group group_buffer;
     struct group* group_result = nullptr;
     char buffer[256];
-    if (getgrnam_r(kIpsecGroupName, &group_buffer, buffer,
-                   sizeof(buffer), &group_result) != 0 || !group_result) {
+    if (getgrnam_r(kIpsecGroupName, &group_buffer, buffer, sizeof(buffer),
+                   &group_result) != 0 ||
+        !group_result) {
       LOG(ERROR) << "Cannot find group id for " << kIpsecGroupName;
       RegisterError(kServiceErrorInternal);
       return false;
@@ -514,9 +507,7 @@ bool IpsecManager::Start() {
     ipsec_group_ = group_result->gr_gid;
     DLOG(INFO) << "Using ipsec group " << ipsec_group_;
   }
-  if (!WriteConfigFiles() ||
-      !CreateIpsecRunDirectory() ||
-      !StartStarter()) {
+  if (!WriteConfigFiles() || !CreateIpsecRunDirectory() || !StartStarter()) {
     RegisterError(kServiceErrorInternal);
     return false;
   }
@@ -527,8 +518,10 @@ bool IpsecManager::Start() {
 }
 
 int IpsecManager::Poll() {
-  if (is_running()) return -1;
-  if (start_ticks_.is_null()) return -1;
+  if (is_running())
+    return -1;
+  if (start_ticks_.is_null())
+    return -1;
   if (!base::PathExists(FilePath(ipsec_up_file_))) {
     if (base::TimeTicks::Now() - start_ticks_ >
         base::TimeDelta::FromSeconds(ipsec_timeout_)) {

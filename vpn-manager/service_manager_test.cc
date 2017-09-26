@@ -163,15 +163,14 @@ TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
   struct sockaddr remote_address;
   struct sockaddr local_address;
   std::string local_address_text;
-  EXPECT_TRUE(ServiceManager::ConvertIPStringToSockAddr("127.0.0.1",
-                                                        &remote_address));
+  EXPECT_TRUE(
+      ServiceManager::ConvertIPStringToSockAddr("127.0.0.1", &remote_address));
   EXPECT_TRUE(ServiceManager::GetLocalAddressFromRemote(remote_address,
                                                         &local_address));
   EXPECT_TRUE(ServiceManager::ConvertSockAddrToIPString(local_address,
                                                         &local_address_text));
   EXPECT_EQ("127.0.0.1", local_address_text);
 }
-
 
 }  // namespace vpn_manager
 

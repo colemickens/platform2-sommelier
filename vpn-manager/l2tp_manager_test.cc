@@ -34,19 +34,19 @@ class L2tpManagerTest : public ::testing::Test {
     pppd_config_path_ = test_path_.Append("pppd.config");
     ppp_interface_path_ = test_path_.Append("ppp0");
     l2tpd_ = new ProcessMock;
-    l2tp_.reset(new L2tpManager(true,  // default_route
-                                true,  // length_bit
-                                true,  // require_chap
-                                false,  // refuse_pap
-                                true,  // require_authentication
-                                "",  // password
-                                true,  // ppp_debug
-                                true,  // ppp_lcp_echo
-                                10,  // ppp_setup_timeout
-                                "",  // pppd_plugin
-                                true,  // usepeerdns
-                                "",  // user
-                                true,  // systemconfig
+    l2tp_.reset(new L2tpManager(true,          // default_route
+                                true,          // length_bit
+                                true,          // require_chap
+                                false,         // refuse_pap
+                                true,          // require_authentication
+                                "",            // password
+                                true,          // ppp_debug
+                                true,          // ppp_lcp_echo
+                                10,            // ppp_setup_timeout
+                                "",            // pppd_plugin
+                                true,          // usepeerdns
+                                "",            // user
+                                true,          // systemconfig
                                 test_path_));  // temp_path
     l2tp_->l2tpd_.reset(l2tpd_);
     l2tp_->l2tpd_control_path_ = control_path_;
@@ -56,8 +56,7 @@ class L2tpManagerTest : public ::testing::Test {
   }
 
  protected:
-  std::string GetExpectedConfig(std::string remote_address_text,
-                                bool debug);
+  std::string GetExpectedConfig(std::string remote_address_text, bool debug);
 
   std::string remote_address_text_;
   struct sockaddr remote_address_;
@@ -86,8 +85,7 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
       "redial = yes\n"
       "redial timeout = 2\n"
       "max redials = 30\n",
-      remote_address_text.c_str(),
-      debug ? "ppp debug = yes\n" : "",
+      remote_address_text.c_str(), debug ? "ppp debug = yes\n" : "",
       test_path_.value().c_str());
 }
 
@@ -112,7 +110,6 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "lock\n"
       "connect-delay 5000\n";
 
-
   l2tp_->SetPppLcpEchoForTesting(false);
   l2tp_->SetDefaultRouteForTesting(false);
   l2tp_->SetUsePeerDnsForTesting(false);
@@ -124,8 +121,9 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
   expected.append("defaultroute\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   l2tp_->SetPppLcpEchoForTesting(true);
-  expected.append("lcp-echo-failure 4\n"
-                  "lcp-echo-interval 30\n");
+  expected.append(
+      "lcp-echo-failure 4\n"
+      "lcp-echo-interval 30\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   l2tp_->ppp_output_fd_ = 4;
   l2tp_->ppp_output_path_ = FilePath("/tmp/pppd.log");
@@ -187,7 +185,8 @@ TEST_F(L2tpManagerTest, PollWaitIfNotUpYet) {
 }
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
-  l2tp_->start_ticks_ = base::TimeTicks::Now() -
+  l2tp_->start_ticks_ =
+      base::TimeTicks::Now() -
       base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
@@ -196,7 +195,8 @@ TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
 }
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {
-  l2tp_->start_ticks_ = base::TimeTicks::Now() -
+  l2tp_->start_ticks_ =
+      base::TimeTicks::Now() -
       base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   l2tp_->was_initiated_ = true;
   EXPECT_EQ(1000, l2tp_->Poll());

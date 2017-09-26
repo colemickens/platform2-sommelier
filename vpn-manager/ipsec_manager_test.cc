@@ -59,9 +59,9 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_run_path_ = test_path_.Append("run").value();
     ipsec_up_file_ = FilePath(ipsec_run_path_).Append("up").value();
     WriteFile(psk_file_, "secret");
-    WriteFile(xauth_credentials_file_,
-              base::StringPrintf("%s\n%s\n",
-                                 kXauthUser, kXauthPassword).c_str());
+    WriteFile(
+        xauth_credentials_file_,
+        base::StringPrintf("%s\n%s\n", kXauthUser, kXauthPassword).c_str());
     const char* srcvar = getenv("SRC");
     FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
     base::CopyFile(srcdir.Append("testdata/cacert.der"),
@@ -69,19 +69,19 @@ class IpsecManagerTest : public ::testing::Test {
     brillo::ClearLog();
     starter_daemon_ = new DaemonMock;
     charon_daemon_ = new DaemonMock;
-    ipsec_.reset(new IpsecManager(
-                     "aes128-sha1,3des-sha1,aes128-md5,3des-md5",  // esp
-                     "3des-sha1-modp1024",  // ike
-                     30,  // ipsec_timeout
-                     "17/1701",  // left_protoport
-                     true,  // rekey
-                     "17/1701",  // right_protoport
-                     "",  // tunnel_group
-                     "transport",  // type
-                     test_path_,  // temp_path
-                     persistent_path_));  // persistent_path
+    ipsec_.reset(
+        new IpsecManager("aes128-sha1,3des-sha1,aes128-md5,3des-md5",  // esp
+                         "3des-sha1-modp1024",                         // ike
+                         30,                         // ipsec_timeout
+                         "17/1701",                  // left_protoport
+                         true,                       // rekey
+                         "17/1701",                  // right_protoport
+                         "",                         // tunnel_group
+                         "transport",                // type
+                         test_path_,                 // temp_path
+                         persistent_path_));         // persistent_path
     ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
-    ipsec_->charon_daemon_.reset(charon_daemon_);  // Passes ownership.
+    ipsec_->charon_daemon_.reset(charon_daemon_);    // Passes ownership.
     ipsec_->ipsec_group_ = getgid();
     ipsec_->ipsec_run_path_ = ipsec_run_path_;
     ipsec_->ipsec_up_file_ = ipsec_up_file_;
@@ -130,23 +130,22 @@ class IpsecManagerTest : public ::testing::Test {
 const char IpsecManagerTest::kXauthUser[] = "xauth_user";
 const char IpsecManagerTest::kXauthPassword[] = "xauth_password";
 
-void IpsecManagerTest::DoInitialize(
-    int ike_version, bool use_psk, bool use_xauth) {
+void IpsecManagerTest::DoInitialize(int ike_version,
+                                    bool use_psk,
+                                    bool use_xauth) {
   std::string xauth_file;
   if (use_xauth) {
     xauth_file = xauth_credentials_file_;
   }
   if (use_psk) {
     ASSERT_TRUE(ipsec_->Initialize(ike_version, remote_address_, psk_file_,
-                                  xauth_file, "", "", "", "", ""));
+                                   xauth_file, "", "", "", "", ""));
   } else {
-    ASSERT_TRUE(ipsec_->Initialize(ike_version, remote_address_, "", xauth_file,
-                                  server_ca_file_, server_id_,
-                                  client_cert_tpm_slot_, client_cert_tpm_id_,
-                                  tpm_user_pin_));
+    ASSERT_TRUE(ipsec_->Initialize(
+        ike_version, remote_address_, "", xauth_file, server_ca_file_,
+        server_id_, client_cert_tpm_slot_, client_cert_tpm_id_, tpm_user_pin_));
   }
 }
-
 
 ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
   EXPECT_CALL(*starter_daemon_, FindProcess());
@@ -155,8 +154,7 @@ ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
   EXPECT_CALL(*charon_daemon_, ClearProcess());
   ProcessMock* process = new ProcessMock;
   // Does not pass ownership.
-  EXPECT_CALL(*starter_daemon_, CreateProcess())
-      .WillOnce(Return(process));
+  EXPECT_CALL(*starter_daemon_, CreateProcess()).WillOnce(Return(process));
   EXPECT_CALL(*process, AddArg(IPSEC_STARTER));
   EXPECT_CALL(*process, AddArg("--nofork"));
   EXPECT_CALL(*process, RedirectUsingPipe(STDERR_FILENO, false));
@@ -167,36 +165,28 @@ ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
 }
 
 TEST_F(IpsecManagerTest, InitializeNoAuth) {
-  EXPECT_FALSE(ipsec_->Initialize(
-                   1, remote_address_, "", "", "", "", "", "", ""));
+  EXPECT_FALSE(
+      ipsec_->Initialize(1, remote_address_, "", "", "", "", "", "", ""));
   EXPECT_TRUE(FindLog("Must specify either PSK or certificates"));
 }
 
 TEST_F(IpsecManagerTest, InitializeNotBoth) {
-  EXPECT_TRUE(ipsec_->Initialize(1, remote_address_,
-                                psk_file_,
-                                "",
-                                server_ca_file_,
-                                server_id_,
-                                client_cert_tpm_slot_,
-                                client_cert_tpm_id_,
-                                tpm_user_pin_));
+  EXPECT_TRUE(ipsec_->Initialize(
+      1, remote_address_, psk_file_, "", server_ca_file_, server_id_,
+      client_cert_tpm_slot_, client_cert_tpm_id_, tpm_user_pin_));
   EXPECT_TRUE(FindLog("Specified both certificates and PSK to IPsec layer"));
 }
 
 TEST_F(IpsecManagerTest, InitializeUnsupportedVersion) {
   EXPECT_FALSE(ipsec_->Initialize(3, remote_address_, psk_file_, "", "", "", "",
-                                 "", ""));
+                                  "", ""));
   EXPECT_TRUE(FindLog("Unsupported IKE version"));
 }
 
 TEST_F(IpsecManagerTest, InitializeIkev2WithCertificates) {
-  EXPECT_FALSE(ipsec_->Initialize(2, remote_address_, "", "",
-                                 server_ca_file_,
-                                 server_id_,
-                                 client_cert_tpm_slot_,
-                                 client_cert_tpm_id_,
-                                 tpm_user_pin_));
+  EXPECT_FALSE(ipsec_->Initialize(2, remote_address_, "", "", server_ca_file_,
+                                  server_id_, client_cert_tpm_slot_,
+                                  client_cert_tpm_id_, tpm_user_pin_));
   EXPECT_TRUE(FindLog("Only IKE version 1 is supported with certificates"));
 }
 
@@ -224,8 +214,8 @@ TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
     }
   }
 
-  ipsec_->start_ticks_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(ipsec_timeout + 1);
+  ipsec_->start_ticks_ =
+      base::TimeTicks::Now() - base::TimeDelta::FromSeconds(ipsec_timeout + 1);
   EXPECT_EQ(1000, ipsec_->Poll());
   EXPECT_TRUE(FindLog("IPsec connection timed out"));
   EXPECT_TRUE(ipsec_->was_stopped());
@@ -273,7 +263,9 @@ TEST_F(IpsecManagerTest, FormatSecretsXauthCredentials) {
   EXPECT_EQ(
       base::StringPrintf(
           "5.6.7.8 1.2.3.4 : PIN %%smartcard1@crypto_module:0a \"123456\"\n"
-          "%s : XAUTH \"%s\"\n", kXauthUser, kXauthPassword), formatted);
+          "%s : XAUTH \"%s\"\n",
+          kXauthUser, kXauthPassword),
+      formatted);
   EXPECT_EQ(kXauthUser, ipsec_->xauth_identity_);
 }
 
@@ -284,7 +276,8 @@ TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
       "    pkcs11 {\n"
       "      modules {\n"
       "        crypto_module {\n"
-      "          path = " PKCS11_LIB "\n"
+      "          path = " PKCS11_LIB
+      "\n"
       "        }\n"
       "      }\n"
       "    }\n"
@@ -338,8 +331,7 @@ class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
   std::string GetExpectedStarter(bool debug, bool xauth);
 };
 
-TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {
-}
+TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {}
 
 TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   FilePath input(psk_file_);
@@ -350,10 +342,9 @@ TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PSK \"pAssword\"\n", formatted);
 }
 
-std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(
-    bool debug, bool xauth) {
-  std::string expected(
-      "config setup\n");
+std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug,
+                                                         bool xauth) {
+  std::string expected("config setup\n");
   if (debug) {
     expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }
@@ -365,10 +356,11 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(
       "\tkeyexchange=\"ikev1\"\n");
 
   if (xauth) {
-    expected.append(base::StringPrintf(
-        "\tauthby=\"xauthpsk\"\n"
-        "\txauth=\"client\"\n"
-        "\txauth_identity=\"%s\"\n", kXauthUser));
+    expected.append(
+        base::StringPrintf("\tauthby=\"xauthpsk\"\n"
+                           "\txauth=\"client\"\n"
+                           "\txauth_identity=\"%s\"\n",
+                           kXauthUser));
   } else {
     expected.append("\tauthby=\"psk\"\n");
   }
@@ -436,8 +428,7 @@ TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
 }
 
 std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
-  std::string expected(
-      "config setup\n");
+  std::string expected("config setup\n");
   if (debug) {
     expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }

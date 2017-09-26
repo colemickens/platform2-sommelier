@@ -74,39 +74,28 @@ class ServiceManager {
   ServiceError GetError() const;
 
   // Queries if this service is currently running.
-  bool is_running() const {
-    return is_running_;
-  }
+  bool is_running() const { return is_running_; }
 
   // Queries if this service was once running and is now stopped.
-  bool was_stopped() const {
-    return was_stopped_;
-  }
+  bool was_stopped() const { return was_stopped_; }
 
   // Accessor for debug_ field.
-  bool debug() const {
-    return debug_;
-  }
+  bool debug() const { return debug_; }
 
   // Setter for debug_ field.
-  void set_debug(bool debug) {
-    debug_ = debug;
-  }
+  void set_debug(bool debug) { debug_ = debug; }
 
   // Set up layering between two service managers |outer| and |inner|.
   // This function may be called multiple times to chain servics together,
   // for instance:
   //   ServiceManager::SetLayerOrder(&turkey, &duck);
   //   ServiceManager::SetLayerOrder(&duck, &chicken);
-  static void SetLayerOrder(ServiceManager* outer,
-                            ServiceManager* inner) {
+  static void SetLayerOrder(ServiceManager* outer, ServiceManager* inner) {
     outer->inner_service_ = inner;
     inner->outer_service_ = outer;
   }
 
-  const std::string& service_name() {
-    return service_name_;
-  }
+  const std::string& service_name() { return service_name_; }
 
   // Repeat data from the given |fd| which is assumed to be ready and
   // send it out to syslog, placing |prefix| before each line of
@@ -114,7 +103,8 @@ class ServiceManager {
   // ready.  It will also only read a fixed size per call.  Any
   // partial line read is stored into |partial_line|.  This variable
   // is used on each call to prefix any newly read data.
-  void WriteFdToSyslog(int fd, const std::string& prefix,
+  void WriteFdToSyslog(int fd,
+                       const std::string& prefix,
                        std::string* partial_line);
 
   // Resolve given |name| into an IP address |socket_address| or return

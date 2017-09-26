@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
-#include <netdb.h>  // for getaddrinfo
+#include <netdb.h>      // for getaddrinfo
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -29,8 +29,7 @@ ServiceManager::ServiceManager(const std::string& service_name,
       outer_service_(nullptr),
       service_name_(service_name),
       error_(kServiceErrorNoError),
-      temp_path_(temp_path) {
-}
+      temp_path_(temp_path) {}
 
 void ServiceManager::OnStarted() {
   CHECK(!is_running_ && !was_stopped_);
@@ -58,8 +57,7 @@ void ServiceManager::OnStopped(bool was_error) {
 }
 
 void ServiceManager::OnSyslogOutput(const std::string& prefix,
-                                    const std::string& line) {
-}
+                                    const std::string& line) {}
 
 void ServiceManager::RegisterError(ServiceError error) {
   // Register a given error only if it has a higher value than the one
@@ -89,9 +87,8 @@ void ServiceManager::WriteFdToSyslog(int fd,
   }
   buffer[written] = '\0';
   partial_line->append(buffer);
-  std::vector<std::string> lines =
-      base::SplitString(*partial_line, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      *partial_line, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (lines.empty()) {
     partial_line->clear();
   } else {
@@ -117,9 +114,8 @@ bool ServiceManager::ResolveNameToSockAddr(const std::string& name,
   return true;
 }
 
-bool ServiceManager::ConvertIPStringToSockAddr(
-    const std::string& address_text,
-    struct sockaddr* address) {
+bool ServiceManager::ConvertIPStringToSockAddr(const std::string& address_text,
+                                               struct sockaddr* address) {
   struct addrinfo hint_info = {};
   struct addrinfo* address_info;
   hint_info.ai_flags = AI_NUMERICHOST;
@@ -133,21 +129,24 @@ bool ServiceManager::ConvertIPStringToSockAddr(
   return true;
 }
 
-bool ServiceManager::ConvertSockAddrToIPString(
-    const struct sockaddr& address,
-    std::string* address_text) {
-  char str[INET6_ADDRSTRLEN] = { 0 };
+bool ServiceManager::ConvertSockAddrToIPString(const struct sockaddr& address,
+                                               std::string* address_text) {
+  char str[INET6_ADDRSTRLEN] = {0};
   switch (address.sa_family) {
     case AF_INET:
-      if (!inet_ntop(AF_INET, &(reinterpret_cast<const sockaddr_in*>(
-              &address)->sin_addr), str, sizeof(str))) {
+      if (!inet_ntop(
+              AF_INET,
+              &(reinterpret_cast<const sockaddr_in*>(&address)->sin_addr), str,
+              sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }
       break;
     case AF_INET6:
-      if (!inet_ntop(AF_INET6, &(reinterpret_cast<const sockaddr_in6*>(
-              &address)->sin6_addr), str, sizeof(str))) {
+      if (!inet_ntop(
+              AF_INET6,
+              &(reinterpret_cast<const sockaddr_in6*>(&address)->sin6_addr),
+              str, sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }
@@ -161,15 +160,14 @@ bool ServiceManager::ConvertSockAddrToIPString(
 }
 
 bool ServiceManager::GetLocalAddressFromRemote(
-    const struct sockaddr& remote_address,
-    struct sockaddr* local_address) {
+    const struct sockaddr& remote_address, struct sockaddr* local_address) {
   int sock = HANDLE_EINTR(socket(AF_INET, SOCK_DGRAM, 0));
   if (sock < 0) {
     LOG(ERROR) << "Unable to create socket";
     return false;
   }
-  if (HANDLE_EINTR(connect(sock, &remote_address,
-                           sizeof(struct sockaddr))) != 0) {
+  if (HANDLE_EINTR(connect(sock, &remote_address, sizeof(struct sockaddr))) !=
+      0) {
     LOG(ERROR) << "Unable to connect";
     IGNORE_EINTR(close(sock));
     return false;
@@ -182,7 +180,7 @@ bool ServiceManager::GetLocalAddressFromRemote(
   }
   result = true;
 
- error_label:
+error_label:
   IGNORE_EINTR(close(sock));
   return result;
 }

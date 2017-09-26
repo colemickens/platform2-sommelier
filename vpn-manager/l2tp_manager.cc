@@ -70,8 +70,7 @@ L2tpManager::L2tpManager(bool default_route,
       output_fd_(-1),
       ppp_output_fd_(-1),
       ppp_interface_path_(kPppInterfacePath),
-      l2tpd_(new ProcessImpl) {
-}
+      l2tpd_(new ProcessImpl) {}
 
 int L2tpManager::GetPppSetupTimeoutForTesting() {
   return ppp_setup_timeout_;
@@ -118,8 +117,7 @@ bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
     RegisterError(kServiceErrorInvalidArgument);
     return false;
   }
-  if (!pppd_plugin_.empty() &&
-      !base::PathExists(FilePath(pppd_plugin_))) {
+  if (!pppd_plugin_.empty() && !base::PathExists(FilePath(pppd_plugin_))) {
     LOG(WARNING) << "pppd_plugin (" << pppd_plugin_ << ") does not exist";
   }
   if (!password_.empty()) {
@@ -128,7 +126,8 @@ bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
   return true;
 }
 
-static void AddString(std::string* config, const char* key,
+static void AddString(std::string* config,
+                      const char* key,
                       const std::string& value) {
   config->append(StringPrintf("%s = %s\n", key, value.c_str()));
 }
@@ -155,8 +154,7 @@ std::string L2tpManager::FormatL2tpdConfiguration(
   AddString(&l2tpd_config, "lns", remote_address_text_);
   AddBool(&l2tpd_config, "require chap", require_chap_);
   AddBool(&l2tpd_config, "refuse pap", refuse_pap_);
-  AddBool(&l2tpd_config, "require authentication",
-          require_authentication_);
+  AddBool(&l2tpd_config, "require authentication", require_authentication_);
   AddString(&l2tpd_config, "name", user_);
   if (debug()) {
     AddBool(&l2tpd_config, "ppp debug", ppp_debug_);
@@ -182,16 +180,16 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "mru 1410\n"
       "lock\n"
       "connect-delay 5000\n");
-  pppd_config.append(StringPrintf("%sdefaultroute\n",
-                                  default_route_ ? "" : "no"));
+  pppd_config.append(
+      StringPrintf("%sdefaultroute\n", default_route_ ? "" : "no"));
   if (ppp_lcp_echo_) {
-      pppd_config.append(
-          "lcp-echo-failure 4\n"
-          "lcp-echo-interval 30\n");
+    pppd_config.append(
+        "lcp-echo-failure 4\n"
+        "lcp-echo-interval 30\n");
   }
   if (ppp_output_fd_ != -1) {
-    pppd_config.append(StringPrintf("logfile %s\n",
-                                    ppp_output_path_.value().c_str()));
+    pppd_config.append(
+        StringPrintf("logfile %s\n", ppp_output_path_.value().c_str()));
   }
   if (use_peer_dns_) {
     pppd_config.append("usepeerdns\n");
@@ -215,9 +213,8 @@ bool L2tpManager::Initiate() {
   std::string control_string;
   control_string = StringPrintf("c %s", kL2tpConnectionName);
   if (pppd_plugin_.empty()) {
-    control_string.append(StringPrintf(" %s %s\n",
-                                       user_.c_str(),
-                                       password_.c_str()));
+    control_string.append(
+        StringPrintf(" %s %s\n", user_.c_str(), password_.c_str()));
   } else {
     // otherwise the plugin must specify username and password.
     control_string.append("\n");
@@ -231,8 +228,7 @@ bool L2tpManager::Initiate() {
 }
 
 bool L2tpManager::Terminate() {
-  std::string control_string = StringPrintf("d %s\n",
-                                            kL2tpConnectionName);
+  std::string control_string = StringPrintf("d %s\n", kL2tpConnectionName);
   if (!base::WriteFile(l2tpd_control_path_, control_string.c_str(),
                        control_string.size())) {
     return false;
@@ -285,8 +281,10 @@ bool L2tpManager::Start() {
 }
 
 int L2tpManager::Poll() {
-  if (is_running()) return -1;
-  if (start_ticks_.is_null()) return -1;
+  if (is_running())
+    return -1;
+  if (start_ticks_.is_null())
+    return -1;
   if (!was_initiated_ && base::PathExists(l2tpd_control_path_)) {
     if (!Initiate()) {
       LOG(ERROR) << "Unable to initiate connection";
@@ -312,7 +310,8 @@ int L2tpManager::Poll() {
     RegisterError(kServiceErrorPppConnectionFailed);
     LOG(ERROR) << "PPP setup timed out";
     // Cleanly terminate if the control file exists.
-    if (was_initiated_) Terminate();
+    if (was_initiated_)
+      Terminate();
     OnStopped(false);
     // Poll in 1 second in order to check if clean shutdown worked.
   }
