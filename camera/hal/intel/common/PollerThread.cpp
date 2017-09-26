@@ -189,13 +189,6 @@ status_t PollerThread::handlePollRequest(Message &msg)
             outMsg.id = IPollEventListener::POLL_EVENT_ID_ERROR;
         } else {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_EVENT;
-            // if no active devices selected and success of poll,
-            // then the poll returned on a flush
-            if (mActiveDevices.size() == 0) {
-                unsigned int size = read(mFlushFd[0], (void*) &readbuf, sizeof(char));
-                if (size != sizeof(char))
-                    LOGW("Reading for flush not completed.");
-            }
         }
         outMsg.data.reqId = msg.data.request.reqId;
         outMsg.data.activeDevices = &mActiveDevices;

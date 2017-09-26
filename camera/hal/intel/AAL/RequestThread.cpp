@@ -73,6 +73,10 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
 status_t
 RequestThread::deinit()
 {
+    if (!mInitialized) {
+        return NO_ERROR;
+    }
+
     if (mResultProcessor!= nullptr) {
         mBlockAction = REQBLK_NONBLOCKING;
         mResultProcessor->requestExitAndWait();
@@ -96,10 +100,8 @@ RequestThread::deinit()
 
     mWaitingRequest = nullptr;
     mBlockAction = REQBLK_NONBLOCKING;
-    if (mInitialized) {
-        mRequestsPool.deInit();
-        mInitialized = false;
-    }
+    mRequestsPool.deInit();
+    mInitialized = false;
     return NO_ERROR;
 }
 
