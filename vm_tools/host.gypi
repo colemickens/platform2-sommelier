@@ -18,7 +18,9 @@
     {
       'target_name': 'vm_launcher',
       'type': 'executable',
+      'dependencies': ['vm-rpcs'],
       'sources': [
+        'launcher/crosvm.cc',
         'launcher/mac_address.cc',
         'launcher/nfs_launcher.cc',
         'launcher/pooled_resource.cc',
