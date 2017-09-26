@@ -75,12 +75,23 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
   HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
-    if (fw_updater_->TryConnectUsb() != UsbConnectStatus::kSuccess) {
-      // TODO(kitching): Send a dbus message notifying Chrome OS of any rogue
-      // USB devices. See b/66321020 for details.
+    UsbConnectStatus connect_status = fw_updater_->TryConnectUsb();
+
+    if (connect_status != UsbConnectStatus::kSuccess) {
       LOG(ERROR) << "Failed to connect USB.";
       fw_updater_->CloseUsb();
-      return HammerUpdater::RunStatus::kLostConnection;
+
+      if (connect_status == UsbConnectStatus::kUsbPathEmpty) {
+        return HammerUpdater::RunStatus::kLostConnection;
+      } else if (connect_status == UsbConnectStatus::kInvalidDevice) {
+        LOG(ERROR) << "Invalid base connected.";
+        dbus_wrapper_->SendSignal(kInvalidBaseConnectedSignal);
+      }
+
+      // If there is a "hammer-like" device attached, hammerd should
+      // try to avoid running again when hammer jumps to RW. Use kNeedJump
+      // to force this wait time before exiting.
+      return HammerUpdater::RunStatus::kNeedJump;
     }
 
     status = RunOnce(post_rw_jump, need_inject_entropy);
@@ -324,7 +335,7 @@ void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
   // The time period after which hammer automatically jumps to RW section.
   constexpr unsigned int kJumpToRWTimeMs = 1000;
   // The time period from USB device ready to udev invoking hammerd.
-  constexpr unsigned int kUdevGuardTimeMs = 1000;
+  constexpr unsigned int kUdevGuardTimeMs = 1500;
 
   // If hammerd send reset or jump to RW signal at the last run, hammer will
   // re-connect to the AP and udev will trigger hammerd again. We MUST prohibit
@@ -356,8 +367,8 @@ void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
     }
 
     LOG(INFO) << "Now USB device should be in RW. Wait "
-              << kUdevGuardTimeMs / 1000
-              << "s to prevent udev invoking next process.";
+              << kUdevGuardTimeMs
+              << "ms to prevent udev invoking next process.";
     base::PlatformThread::Sleep(
         base::TimeDelta::FromMilliseconds(kUdevGuardTimeMs));
     LOG(INFO) << "Finish the infinite loop prevention.";

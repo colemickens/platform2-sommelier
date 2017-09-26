@@ -120,6 +120,12 @@ UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
   int64_t duration = 0;
   while (true) {
     UsbConnectStatus ret = endpoint_->Connect();
+    // Short-circuit if we have a strange device, since a retry will make
+    // no difference.
+    if (ret == UsbConnectStatus::kInvalidDevice) {
+      return ret;
+    }
+
     if (ret == UsbConnectStatus::kSuccess) {
       // Flush data from the EC's "out" buffer.  There may be leftover data
       // in this buffer from a previous failure.

@@ -213,6 +213,21 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
+// Fails if the base connected is invalid.
+// kInvalidBaseConnectedSignal DBus signal should be raised.
+TEST_F(HammerUpdaterFlowTest, RunOnce_InvalidDevice) {
+  EXPECT_CALL(*fw_updater_, TryConnectUsb())
+    .WillRepeatedly(Return(UsbConnectStatus::kInvalidDevice));
+  EXPECT_CALL(*fw_updater_, CloseUsb())
+    .WillRepeatedly(Return());
+
+  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
+  EXPECT_CALL(*dbus_wrapper_, SendSignal(kInvalidBaseConnectedSignal));
+
+  // Do not call ExpectUsbConnections since it conflicts with our EXPECT_CALLs.
+  ASSERT_FALSE(hammer_updater_->Run());
+}
+
 // Return kInvalidFirmware if the layout of the firmware is changed.
 // Condition:
 //   1. The current section is Invalid.
