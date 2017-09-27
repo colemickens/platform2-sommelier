@@ -1,19 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "typeDefs": {
-    "componentConfig": {
-      "type": "object",
-      "properties": {
-        "bluetoothConfigPath": {
-          "description": "Path to the bluetooth config file that will be used.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "bluetoothConfigPath"
-      ]
-    },
     "name": {
       "type": "string",
       "pattern": "^[_a-zA-Z0-9]{3,}",
@@ -26,9 +13,6 @@
     "name": {
       "$ref": "#/typeDefs/name"
     },
-    "componentConfig": {
-      "$ref": "#/typeDefs/componentConfig"
-    },
     "models": {
       "type": "array",
       "items": {
@@ -38,7 +22,18 @@
             "$ref": "#/typeDefs/name"
           },
           "componentConfig": {
-            "$ref": "#/typeDefs/componentConfig"
+            "type": "object",
+            "properties": {
+              "bluetoothConfigPath": {
+                "description": "Path to the bluetooth config file that will be used.",
+                "type": "string",
+                "pattern": "^(/[^/ ]*)+/?$"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "bluetoothConfigPath"
+            ]
           }
         },
         "additionalProperties": false,
@@ -47,14 +42,10 @@
           "componentConfig"
         ]
       }
-    },
-    "componentConfig": {
-      "$ref": "#/typeDefs/componentConfig"
     }
   },
   "additionalProperties": false,
   "required": [
-    "name",
-    "componentConfig"
+    "name"
   ]
 }

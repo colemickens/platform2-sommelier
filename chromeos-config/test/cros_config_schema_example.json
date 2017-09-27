@@ -1,0 +1,17 @@
+{
+  "models": [
+    {
+      "componentConfig": {
+        "bluetoothConfigPath": "/etc/bluetooth/astronaut.conf"
+      }, 
+      "name": "astronaut"
+    }, 
+    {
+      "componentConfig": {
+        "bluetoothConfigPath": "/etc/bluetooth/lava.conf"
+      }, 
+      "name": "lava"
+    }
+  ], 
+  "name": "coral"
+}

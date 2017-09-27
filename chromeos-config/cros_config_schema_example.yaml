@@ -6,7 +6,7 @@
 name: 'coral'
 
 # Defines the default config that is shared across the family.
-componentConfig: &familyConfig
+componentConfig:
     bluetoothConfigPath: '/etc/bluetooth/coral.conf'
 
 models:
