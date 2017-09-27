@@ -245,6 +245,7 @@ struct KernelTestCase {
   const char* buf;
   vm_tools::LogSeverity severity;
   int64_t micros;
+  uint64_t sequence;
   size_t content_offset;
   bool success;
 };
@@ -255,6 +256,7 @@ const KernelTestCase kernel_record_tests[] = {
                "0x0000-0x0cf7] (ignored)",
         .severity = vm_tools::DEBUG,
         .micros = 424069,
+        .sequence = 160,
         .content_offset = 15,
         .success = true,
     },
@@ -262,6 +264,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = " SUBSYSTEM=acpi",
         .severity = vm_tools::UNKNOWN,
         .micros = 0,
+        .sequence = 0,
         .content_offset = 0,
         .success = false,
     },
@@ -269,6 +272,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = "",
         .severity = vm_tools::UNKNOWN,
         .micros = 0,
+        .sequence = 0,
         .content_offset = 0,
         .success = false,
     },
@@ -276,6 +280,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = "6,339,5140900,-;NET: Registered protocol family 10",
         .severity = vm_tools::INFO,
         .micros = 5140900,
+        .sequence = 339,
         .content_offset = 16,
         .success = true,
     },
@@ -283,6 +288,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = "30,340,5690716,-;udevd[80]: starting version 181",
         .severity = vm_tools::INFO,
         .micros = 5690716,
+        .sequence = 340,
         .content_offset = 17,
         .success = true,
     },
@@ -303,6 +309,7 @@ const KernelTestCase kernel_record_tests[] = {
             "tpm_tis.interrupts=0 nmi_watchdog=panic,lapic i915.enable_psr=1",
         .severity = vm_tools::ERROR,
         .micros = 0,
+        .sequence = 4,
         .content_offset = 8,
         .success = true,
     },
@@ -310,6 +317,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = "37,5,3,cThere is no semi-colon in this line",
         .severity = vm_tools::UNKNOWN,
         .micros = 0,
+        .sequence = 5,
         .content_offset = 0,
         .success = false,
     },
@@ -317,6 +325,7 @@ const KernelTestCase kernel_record_tests[] = {
         .buf = ";Missing metadata",
         .severity = vm_tools::UNKNOWN,
         .micros = 0,
+        .sequence = 0,
         .content_offset = 1,
         .success = false,
     },
@@ -325,6 +334,7 @@ const KernelTestCase kernel_record_tests[] = {
                "SUBSYSTEM=platform\n DEVICE=+platform:rtc_cmos",
         .severity = vm_tools::WARNING,
         .micros = 504028,
+        .sequence = 210,
         .content_offset = 15,
         .success = true,
     },
@@ -478,8 +488,9 @@ TEST_P(KernelRecordTest, ParsesCorrectly) {
 
   // Now parse the record and check the result.
   vm_tools::LogRecord actual;
+  uint64_t sequence = 0;
   EXPECT_EQ(param.success, ParseKernelRecord(param.buf, strlen(param.buf),
-                                             boot_time, &actual));
+                                             boot_time, &actual, &sequence));
 
   if (param.success) {
     pb::util::MessageDifferencer differencer;
@@ -488,6 +499,7 @@ TEST_P(KernelRecordTest, ParsesCorrectly) {
     differencer.ReportDifferencesToString(&difference);
 
     EXPECT_TRUE(differencer.Compare(expected, actual)) << difference;
+    EXPECT_EQ(sequence, param.sequence);
   }
 }
 

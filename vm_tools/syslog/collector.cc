@@ -25,6 +25,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
@@ -71,6 +73,46 @@ constexpr char kVarEmpty[] = "/var/empty";
 
 // Name for the "syslog" user and group.
 constexpr char kSyslog[] = "syslog";
+
+// Path to the file that stores the last kernel log sequence number that was
+// sent to the LogCollector service.
+constexpr char kKernelSequenceFile[] = "/run/syslog_kernel_sequence";
+
+// Opens and reads the contents of the file used to keep track of the sequence
+// number of the last kernel log sent to the LogCollector service.  Returns
+// true and fills in |fd| and |sequence| with the file descriptor for the file
+// and the sequence number respectively on success.  Returns false and leaves
+// |fd| and |sequence| unchanged if the file does not exist or there was an
+// error in any of the steps.
+bool GetLastKernelSequence(base::ScopedFD* fd, uint64_t* sequence) {
+  base::ScopedFD desc(open(kKernelSequenceFile, O_RDWR | O_CLOEXEC));
+  if (!desc.is_valid()) {
+    if (errno != ENOENT) {
+      PLOG(WARNING) << "Failed to open " << kKernelSequenceFile;
+    }
+    return false;
+  }
+
+  char buf[32];
+  ssize_t count = read(desc.get(), buf, sizeof(buf) - 1);
+  if (count < 0) {
+    PLOG(WARNING) << "Failed to read from " << kKernelSequenceFile;
+    return false;
+  }
+  buf[count] = '\0';
+
+  uint64_t value = 0;
+  if (!base::StringToUint64(base::StringPiece(buf, count), &value)) {
+    LOG(WARNING) << "Unable to convert value in " << kKernelSequenceFile
+                 << " to a uint64_t";
+    return false;
+  }
+
+  *fd = std::move(desc);
+  *sequence = value;
+
+  return true;
+}
 
 }  // namespace
 
@@ -152,6 +194,28 @@ bool Collector::Init() {
   if (!ret) {
     LOG(ERROR) << "Failed to watch syslog file descriptor";
     return false;
+  }
+
+  // Get the sequence number of the last kernel log message that was sent to
+  // LogCollector service, if any.
+  if (GetLastKernelSequence(&kernel_sequence_fd_, &kernel_sequence_)) {
+    LOG(INFO) << "Resuming kernel log messages at sequence number "
+              << kernel_sequence_;
+  } else {
+    // There was no sequence file or there was an error.  Start from the first
+    // kernel log message.
+    if (unlink(kKernelSequenceFile) != 0 && errno != ENOENT) {
+      PLOG(ERROR) << "Unable to remove old kernel log sequence file";
+      return false;
+    }
+
+    kernel_sequence_fd_.reset(open(
+        kKernelSequenceFile, O_WRONLY | O_CLOEXEC | O_CREAT | O_EXCL, 0600));
+    if (!kernel_sequence_fd_.is_valid()) {
+      PLOG(ERROR) << "Unable to create kernel log sequence file";
+      return false;
+    }
+    kernel_sequence_ = 0;
   }
 
   // Start listening for kernel log messages.
@@ -251,6 +315,13 @@ void Collector::FlushLogs() {
     }
   }
 
+  // Flush the kernel log sequence number.
+  string sequence = base::Uint64ToString(kernel_sequence_);
+  if (pwrite(kernel_sequence_fd_.get(), sequence.data(), sequence.size(), 0) !=
+      sequence.size()) {
+    PLOG(WARNING) << "Failed to update kernel log sequence number";
+  }
+
   // Reset everything.
   arena_.Reset();
   syslog_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
@@ -326,12 +397,21 @@ bool Collector::ReadOneKernelRecord() {
 
   // Try to parse the record to see if it is something we should try to forward.
   auto* record = pb::Arena::CreateMessage<vm_tools::LogRecord>(&arena_);
-  if (!ParseKernelRecord(buf, ret, boot_time_, record)) {
+  uint64_t sequence = 0;
+  if (!ParseKernelRecord(buf, ret, boot_time_, record, &sequence)) {
     // Don't log anything here because it may just be a message we don't care
     // about (like a context line).  Return true because there may still be
     // more data to read from the buffer.
     return true;
   }
+
+  if (sequence <= kernel_sequence_ && kernel_sequence_ != 0) {
+    // This message has already been sent to the LogCollector service.
+    return true;
+  }
+
+  // Update the last read kernel log sequence number.
+  kernel_sequence_ = sequence;
 
   // Update the buffered data counter.
   buffered_size_ += record->ByteSizeLong();
@@ -391,6 +471,15 @@ bool Collector::InitForTesting(
   }
   // Store the stub for the LogCollector.
   stub_ = std::move(stub);
+
+  // Create a temporary file for the kernel log sequence number.
+  kernel_sequence_fd_.reset(
+      open("/tmp", O_WRONLY | O_TMPFILE | O_CLOEXEC | O_EXCL, 0600));
+  if (!kernel_sequence_fd_.is_valid()) {
+    PLOG(ERROR) << "Failed to create temporary file for kernel log sequence";
+    return false;
+  }
+  kernel_sequence_ = 0;
 
   // Start a timer to periodically flush logs.
   timer_.Start(

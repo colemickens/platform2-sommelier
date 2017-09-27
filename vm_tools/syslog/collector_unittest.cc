@@ -403,7 +403,7 @@ TEST_F(CollectorTest, EndToEnd) {
           .content_offset = 15,
       },
       {
-          .buf = "5,79,0,-;Kernel command line: noapic noacpi pci=conf1 "
+          .buf = "5,279,0,-;Kernel command line: noapic noacpi pci=conf1 "
                  "reboot=k panic=1 i8042.direct=1 i8042.dumbkbd=1 "
                  "i8042.nopnp=1 console=ttyS0 earlyprintk=serial i8042.noaux=1 "
                  "root=/dev/vda rw  container_runtime=kvmtool "
@@ -411,10 +411,10 @@ TEST_F(CollectorTest, EndToEnd) {
                  "netmask=255.255.255.252",
           .micros = 0,
           .severity = vm_tools::NOTICE,
-          .content_offset = 9,
+          .content_offset = 10,
       },
       {
-          .buf = "2,205,408127,-;virtio-pci 0000:00:04.0: virtio_pci: leaving "
+          .buf = "2,305,408127,-;virtio-pci 0000:00:04.0: virtio_pci: leaving "
                  "for legacy driver\n SUBSYSTEM=pci\n DEVICE=+pci:0000:00:04.0",
           .micros = 408127,
           .severity = vm_tools::CRITICAL,

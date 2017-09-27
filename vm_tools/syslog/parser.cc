@@ -137,9 +137,11 @@ bool ParseSyslogRecord(const char* buf,
 bool ParseKernelRecord(const char* buf,
                        size_t len,
                        const base::Time& boot_time,
-                       vm_tools::LogRecord* record) {
+                       vm_tools::LogRecord* record,
+                       uint64_t* sequence) {
   CHECK(buf);
   CHECK(record);
+  CHECK(sequence);
 
   if (len == 0) {
     return false;
@@ -166,12 +168,11 @@ bool ParseKernelRecord(const char* buf,
 
   // Read the log metadata.
   unsigned int priority;
-  uint64_t sequence;
   int64_t micros;
   int pos;
 
-  if (sscanf(line.data(), "%u,%lu,%ld%n", &priority, &sequence, &micros,
-             &pos) != 3) {
+  if (sscanf(line.data(), "%u,%lu,%ld%n", &priority, sequence, &micros, &pos) !=
+      3) {
     return false;
   }
 

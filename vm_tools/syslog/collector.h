@@ -90,6 +90,13 @@ class Collector : public base::MessageLoopForIO::Watcher {
   // Size of all the currently buffered log records.
   size_t buffered_size_;
 
+  // File descriptor for the file used to keep track of the last flushed kernel
+  // log message.
+  base::ScopedFD kernel_sequence_fd_;
+
+  // Sequence number of the last kernel log message that was sent to the host.
+  uint64_t kernel_sequence_ = 0;
+
   // Connection to the LogCollector service on the host.
   std::unique_ptr<vm_tools::LogCollector::Stub> stub_;
 

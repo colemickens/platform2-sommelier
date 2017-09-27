@@ -38,7 +38,8 @@ bool ParseSyslogRecord(const char* buf,
 bool ParseKernelRecord(const char* buf,
                        size_t len,
                        const base::Time& boot_time,
-                       vm_tools::LogRecord* record);
+                       vm_tools::LogRecord* record,
+                       uint64_t* sequence);
 
 }  // namespace syslog
 }  // namespace vm_tools
