@@ -64,14 +64,14 @@ LoginMetrics::~LoginMetrics() {}
 
 void LoginMetrics::SendConsumerAllowsNewUsers(bool allowed) {
   int uma_code = allowed ? ANY_USER_ALLOWED : ONLY_WHITELISTED_ALLOWED;
-  metrics_lib_.SendEnumToUMA(kLoginConsumerAllowsNewUsersMetric, uma_code, 1);
+  metrics_lib_.SendEnumToUMA(kLoginConsumerAllowsNewUsersMetric, uma_code, 2);
 }
 
 void LoginMetrics::SendLoginUserType(bool dev_mode,
                                      bool incognito,
                                      bool owner) {
   int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
-  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES - 1);
+  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES);
 }
 
 bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
