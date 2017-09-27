@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/json/json_writer.h>
-#include <base/memory/ptr_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -22,7 +21,7 @@ std::unique_ptr<base::Value> CollectWiMaxStatus() {
   auto proxy =
       SystemServiceProxy::Create(wimax_manager::kWiMaxManagerServiceName);
   if (!proxy)
-    return base::MakeUnique<base::DictionaryValue>();
+    return std::make_unique<base::DictionaryValue>();
 
   // Gets the manager properties from which we can identify the list of device
   // object paths.
@@ -30,7 +29,7 @@ std::unique_ptr<base::Value> CollectWiMaxStatus() {
       wimax_manager::kWiMaxManagerInterface,
       dbus::ObjectPath(wimax_manager::kWiMaxManagerServicePath));
   if (!manager_properties)
-    return base::MakeUnique<base::DictionaryValue>();
+    return std::make_unique<base::DictionaryValue>();
 
   // Gets the device properties of all listed devices.
   auto device_paths = proxy->GetObjectPaths(*manager_properties,

@@ -4,13 +4,13 @@
 
 #include "debugd/src/log_tool.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -366,7 +366,7 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
 
 void LogTool::CreateConnectivityReport() {
   // Perform ConnectivityTrial to report connection state in feedback log.
-  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus_);
+  auto shill = std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   // Give the connection trial time to test the connection and log the results
   // before collecting the logs for feedback.
   // TODO(silberst): Replace the simple approach of a single timeout with a more

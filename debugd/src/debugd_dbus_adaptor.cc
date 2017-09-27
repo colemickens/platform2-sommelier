@@ -4,10 +4,11 @@
 
 #include "debugd/src/debugd_dbus_adaptor.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
@@ -28,36 +29,36 @@ const char kDevCoredumpDBusErrorString[] =
 DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
-  battery_tool_ = base::MakeUnique<BatteryTool>();
-  container_tool_ = base::MakeUnique<ContainerTool>();
-  crash_sender_tool_ = base::MakeUnique<CrashSenderTool>();
-  cups_tool_ = base::MakeUnique<CupsTool>();
-  debug_logs_tool_ = base::MakeUnique<DebugLogsTool>();
-  debug_mode_tool_ = base::MakeUnique<DebugModeTool>(bus);
+  battery_tool_ = std::make_unique<BatteryTool>();
+  container_tool_ = std::make_unique<ContainerTool>();
+  crash_sender_tool_ = std::make_unique<CrashSenderTool>();
+  cups_tool_ = std::make_unique<CupsTool>();
+  debug_logs_tool_ = std::make_unique<DebugLogsTool>();
+  debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
-      base::MakeUnique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
-  example_tool_ = base::MakeUnique<ExampleTool>();
-  icmp_tool_ = base::MakeUnique<ICMPTool>();
-  log_tool_ = base::MakeUnique<LogTool>(bus);
-  memory_tool_ = base::MakeUnique<MemtesterTool>();
-  modem_status_tool_ = base::MakeUnique<ModemStatusTool>();
-  netif_tool_ = base::MakeUnique<NetifTool>();
-  network_status_tool_ = base::MakeUnique<NetworkStatusTool>();
-  oom_adj_tool_ = base::MakeUnique<OomAdjTool>();
-  packet_capture_tool_ = base::MakeUnique<PacketCaptureTool>();
-  perf_tool_ = base::MakeUnique<PerfTool>();
-  ping_tool_ = base::MakeUnique<PingTool>();
-  route_tool_ = base::MakeUnique<RouteTool>();
-  shill_scripts_tool_ = base::MakeUnique<ShillScriptsTool>();
-  storage_tool_ = base::MakeUnique<StorageTool>();
-  swap_tool_ = base::MakeUnique<SwapTool>();
-  sysrq_tool_ = base::MakeUnique<SysrqTool>();
-  systrace_tool_ = base::MakeUnique<SystraceTool>();
-  tracepath_tool_ = base::MakeUnique<TracePathTool>();
-  u2f_tool_ = base::MakeUnique<U2fTool>();
-  wifi_power_tool_ = base::MakeUnique<WifiPowerTool>();
-  wimax_status_tool_ = base::MakeUnique<WiMaxStatusTool>();
-  session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(bus);
+      std::make_unique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
+  example_tool_ = std::make_unique<ExampleTool>();
+  icmp_tool_ = std::make_unique<ICMPTool>();
+  log_tool_ = std::make_unique<LogTool>(bus);
+  memory_tool_ = std::make_unique<MemtesterTool>();
+  modem_status_tool_ = std::make_unique<ModemStatusTool>();
+  netif_tool_ = std::make_unique<NetifTool>();
+  network_status_tool_ = std::make_unique<NetworkStatusTool>();
+  oom_adj_tool_ = std::make_unique<OomAdjTool>();
+  packet_capture_tool_ = std::make_unique<PacketCaptureTool>();
+  perf_tool_ = std::make_unique<PerfTool>();
+  ping_tool_ = std::make_unique<PingTool>();
+  route_tool_ = std::make_unique<RouteTool>();
+  shill_scripts_tool_ = std::make_unique<ShillScriptsTool>();
+  storage_tool_ = std::make_unique<StorageTool>();
+  swap_tool_ = std::make_unique<SwapTool>();
+  sysrq_tool_ = std::make_unique<SysrqTool>();
+  systrace_tool_ = std::make_unique<SystraceTool>();
+  tracepath_tool_ = std::make_unique<TracePathTool>();
+  u2f_tool_ = std::make_unique<U2fTool>();
+  wifi_power_tool_ = std::make_unique<WifiPowerTool>();
+  wimax_status_tool_ = std::make_unique<WiMaxStatusTool>();
+  session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
   if (dev_features_tool_wrapper_->restriction().InDevMode() &&
       base::PathExists(
       base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {

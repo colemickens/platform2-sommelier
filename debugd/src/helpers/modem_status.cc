@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/json/json_writer.h>
-#include <base/memory/ptr_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -51,12 +50,12 @@ class CromoProxy : public SystemServiceProxy {
     if (result)
       return result;
 
-    return base::MakeUnique<base::ListValue>();
+    return std::make_unique<base::ListValue>();
   }
 
   std::unique_ptr<base::DictionaryValue> GetModemProperties(
       const dbus::ObjectPath& object_path) {
-    auto result = base::MakeUnique<base::DictionaryValue>();
+    auto result = std::make_unique<base::DictionaryValue>();
     result->SetString("service", cromo::kCromoServicePath);
     result->SetString("path", object_path.value());
     result->Set("status", GetStatus(object_path));
@@ -74,14 +73,14 @@ class CromoProxy : public SystemServiceProxy {
     if (result)
       return result;
 
-    return base::MakeUnique<base::DictionaryValue>();
+    return std::make_unique<base::DictionaryValue>();
   }
 
   std::unique_ptr<base::DictionaryValue> GetInfo(
       const dbus::ObjectPath& object_path) {
     dbus::MethodCall method_call(cromo::kModemInterface,
                                  kModemManangerGetInfoMethod);
-    auto result = base::MakeUnique<base::DictionaryValue>();
+    auto result = std::make_unique<base::DictionaryValue>();
     auto info = base::ListValue::From(
         CallMethodAndGetResponse(object_path, &method_call));
     if (info && info->GetSize() == 3) {
@@ -98,7 +97,7 @@ class CromoProxy : public SystemServiceProxy {
 
   std::unique_ptr<base::DictionaryValue> GetInterfaceProperties(
       const dbus::ObjectPath& object_path) {
-    auto result = base::MakeUnique<base::DictionaryValue>();
+    auto result = std::make_unique<base::DictionaryValue>();
     for (std::string interface : kModemInterfaces) {
       auto interface_properties = GetProperties(interface, object_path);
       if (interface_properties) {
@@ -116,7 +115,7 @@ class CromoProxy : public SystemServiceProxy {
 };
 
 std::unique_ptr<base::Value> CollectModemStatus() {
-  auto result = base::MakeUnique<base::ListValue>();
+  auto result = std::make_unique<base::ListValue>();
 
   auto proxy = CromoProxy::Create();
   if (!proxy)

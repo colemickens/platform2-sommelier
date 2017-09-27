@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/json/json_writer.h>
-#include <base/memory/ptr_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -19,7 +18,7 @@ namespace debugd {
 namespace {
 
 std::unique_ptr<base::Value> CollectNetworkStatus() {
-  auto result = base::MakeUnique<base::DictionaryValue>();
+  auto result = std::make_unique<base::DictionaryValue>();
 
   auto proxy = ShillProxy::Create();
   if (!proxy)

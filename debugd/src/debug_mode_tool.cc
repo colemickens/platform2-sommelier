@@ -7,7 +7,6 @@
 #include <memory>
 
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -128,7 +127,7 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
     flimflam_tags = "";
   }
 
-  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus_);
+  auto shill = std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   if (shill) {
     shill->SetDebugTags(flimflam_tags, nullptr);
     if (flimflam_tags.length()) {

@@ -72,7 +72,7 @@ std::unique_ptr<base::DictionaryValue>
 SystemServiceProxy::BuildObjectPropertiesMap(
     const std::string& interface_name,
     const std::vector<dbus::ObjectPath>& object_paths) {
-  auto result = base::MakeUnique<base::DictionaryValue>();
+  auto result = std::make_unique<base::DictionaryValue>();
   for (const auto& object_path : object_paths) {
     result->SetWithoutPathExpansion(object_path.value(),
                                     GetProperties(interface_name, object_path));

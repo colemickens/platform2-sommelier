@@ -4,9 +4,9 @@
 
 #include "debugd/src/subprocess_tool.h"
 
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 
 #include "debugd/src/error_utils.h"
@@ -21,7 +21,7 @@ const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
 
 ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
                                              bool access_root_mount_ns) {
-  auto process = base::MakeUnique<ProcessWithId>();
+  auto process = std::make_unique<ProcessWithId>();
   if (!sandboxed)
     process->DisableSandbox();
 
