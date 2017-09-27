@@ -58,6 +58,9 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
                          const std::string& input,
                          std::string* output);
 
+  // Retrieve and record in the log the individual attestation certificate.
+  void LogIndividualCertificate();
+
   DISALLOW_COPY_AND_ASSIGN(TpmVendorCommandProxy);
 };
 

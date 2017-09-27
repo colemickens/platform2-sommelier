@@ -77,6 +77,20 @@ U2fMode GetU2fMode(bool force_u2f, bool force_g2f) {
   return U2fMode::kDisabled;
 }
 
+const char* U2fModeToString(U2fMode mode) {
+  switch (mode) {
+    case U2fMode::kUnset:
+      return "disabled (no policy)";
+    case U2fMode::kDisabled:
+      return "disabled";
+    case U2fMode::kU2f:
+      return "U2F";
+    case U2fMode::kU2fExtended:
+      return "U2F+extensions";
+  }
+  return "unknown";
+}
+
 class U2fDaemon : public brillo::Daemon {
  public:
   U2fDaemon(U2fMode mode, uint32_t vendor_id, uint32_t product_id)
@@ -155,6 +169,9 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "Daemon version " << VCSID;
 
   U2fMode mode = GetU2fMode(FLAGS_force_u2f, FLAGS_force_g2f);
+  LOG(INFO) << "Mode: " << U2fModeToString(mode)
+            << " (force_u2f=" << FLAGS_force_u2f
+            << " force_g2f=" << FLAGS_force_g2f << ")";
   if (mode == U2fMode::kDisabled) {
     LOG(INFO) << "U2F disabled, exiting...";
     // Exit gracefully as we don't want to re-spawn.
