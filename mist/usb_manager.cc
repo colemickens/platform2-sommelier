@@ -11,7 +11,6 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "mist/event_dispatcher.h"
@@ -113,7 +112,7 @@ bool UsbManager::GetDevices(std::vector<std::unique_ptr<UsbDevice>>* devices) {
     return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 
   for (ssize_t i = 0; i < result; ++i) {
-    devices->push_back(base::MakeUnique<UsbDevice>(device_list[i]));
+    devices->push_back(std::make_unique<UsbDevice>(device_list[i]));
   }
 
   // UsbDevice holds a reference count of a libusb_device struct. Thus,
