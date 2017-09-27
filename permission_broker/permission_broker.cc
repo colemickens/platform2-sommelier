@@ -11,12 +11,12 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
@@ -122,7 +122,7 @@ PermissionBroker::PermissionBroker(
 #if USE_DEVICE_JAIL
   // Try to serve device_jail requests. If we can't, it's not a huge deal.
   jail_server_ = device_jail::DeviceJailServer::CreateAndListen(
-      base::MakeUnique<JailRequestHandler>(&rule_engine_),
+      std::make_unique<JailRequestHandler>(&rule_engine_),
       base::MessageLoopForIO::current());
   if (!jail_server_)
     LOG(WARNING) << "Jail server failed to start";
