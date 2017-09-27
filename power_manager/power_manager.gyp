@@ -389,5 +389,14 @@
         },
       ],
     }],
+    ['USE_amd64 == 1', {
+      'targets': [
+        {
+          'target_name': 'dump_intel_rapl_consumption',
+          'type': 'executable',
+          'sources': ['tools/dump_intel_rapl_consumption.cc'],
+        },
+      ],
+    }],
   ],
 }
