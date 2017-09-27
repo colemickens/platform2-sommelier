@@ -59,10 +59,12 @@
 #include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/termina_manager_interface.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/vpd_process.h"
 
 using base::FilePath;
+using brillo::cryptohome::home::GetHashedUserPath;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
@@ -133,6 +135,19 @@ const char kAccountIdKeyLegalCharacters[] =
     "-0123456789"
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+// Characters allowed in a container name.
+constexpr char kContainerNameAllowedChars[] =
+    "0123456789"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "+-_.";
+// Characters allowed in a container path.
+constexpr char kContainerPathAllowedChars[] =
+    "0123456789"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "+-_./";
 
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
@@ -299,7 +314,9 @@ SessionManagerImpl::SessionManagerImpl(
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
     ContainerManagerInterface* android_container,
+    TerminaManagerInterface* termina_manager,
     InstallAttributesReader* install_attributes_reader,
+    dbus::ObjectProxy* component_updater_proxy,
     dbus::ObjectProxy* system_clock_proxy)
     : session_started_(false),
       session_stopping_(false),
@@ -322,7 +339,9 @@ SessionManagerImpl::SessionManagerImpl(
       vpd_process_(vpd_process),
       owner_key_(owner_key),
       android_container_(android_container),
+      termina_manager_(termina_manager),
       install_attributes_reader_(install_attributes_reader),
+      component_updater_proxy_(component_updater_proxy),
       system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
       weak_ptr_factory_(this) {
@@ -478,10 +497,12 @@ void SessionManagerImpl::Finalize() {
     if (it->second)
       it->second->policy_service->PersistPolicy(PolicyService::Completion());
   }
-  // We want to stop any running containers.  Containers are per-session and
-  // cannot persist across sessions.
+  // We want to stop all running containers and VMs.  Containers and VMs are
+  // per-session and cannot persist across sessions.
   android_container_->RequestJobExit();
   android_container_->EnsureJobExit(kContainerTimeout);
+  termina_manager_->RequestJobExit();
+  termina_manager_->EnsureJobExit(kContainerTimeout);
 }
 
 bool SessionManagerImpl::StartDBusService() {
@@ -1164,21 +1185,61 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
 }
 
 bool SessionManagerImpl::StartContainer(brillo::ErrorPtr* error,
-                                        const std::string& in_name) {
-  // TODO(dgreid): Add support for other containers.
-  constexpr char kMessage[] = "Container not found.";
-  LOG(ERROR) << kMessage;
-  *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-  return false;
+                                        const std::string& in_path,
+                                        const std::string& in_name,
+                                        const std::string& in_hashed_username) {
+  // Ensure that the vm component is installed.
+  dbus::MethodCall method_call(
+      chromeos::kComponentUpdaterServiceInterface,
+      chromeos::kComponentUpdaterServiceLoadComponentMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(imageloader::kTerminaComponentName);
+  component_updater_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+  if (!base::ContainsOnlyChars(in_name, kContainerNameAllowedChars)) {
+    LOG(ERROR) << "Invalid character in container name " << in_name;
+    return false;
+  }
+  if (!base::ContainsOnlyChars(in_path,
+                               std::string(kContainerPathAllowedChars) + "/")) {
+    LOG(ERROR) << "Invalid character in container path" << in_path;
+    return false;
+  }
+  // TODO(dgreid) - bug 770766 - Make hashed_username mandatory, drop default.
+  static const base::FilePath kDefaultUserPath("/home/chronos/user");
+  base::FilePath user_path;
+  if (!in_hashed_username.empty()) {
+    user_path = GetHashedUserPath(in_hashed_username);
+    if (user_path.empty())
+      return false;
+  } else {
+    user_path = kDefaultUserPath;
+  }
+  // TODO(dgreid) - Allow paths outside of downloads.
+  base::FilePath container_path = user_path.Append("Downloads").Append(in_path);
+  // Checking that the provided path doesn't contain '..' is important as it
+  // limits the caller to reading files that they own.
+  if (container_path.empty() || container_path.ReferencesParent())
+    return false;
+  if (!termina_manager_->StartVmContainer(container_path, in_name)) {
+    constexpr char kMessage[] = "Container start failed.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+  return true;
 }
 
 bool SessionManagerImpl::StopContainer(brillo::ErrorPtr* error,
                                        const std::string& in_name) {
-  // TODO(dgreid): Add support for other containers.
-  constexpr char kMessage[] = "Container not found.";
-  LOG(ERROR) << kMessage;
-  *error = CreateError(dbus_error::kContainerShutdownFail, kMessage);
-  return false;
+  if (!termina_manager_->StopVmContainer(in_name)) {
+    constexpr char kMessage[] = "Container stop failed.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+  return true;
 }
 
 bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,

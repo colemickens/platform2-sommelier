@@ -49,6 +49,7 @@
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
+#include "login_manager/fake_termina_manager.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
@@ -262,6 +263,7 @@ class SessionManagerImplTest : public ::testing::Test,
       : bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
+        component_updater_proxy_(new MockObjectProxy()),
         system_clock_proxy_(new MockObjectProxy()) {}
 
   ~SessionManagerImplTest() override = default;
@@ -329,7 +331,8 @@ class SessionManagerImplTest : public ::testing::Test,
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &key_gen_, &state_key_generator_, &manager_, &metrics_, &nss_, &utils_,
         &crossystem_, &vpd_process_, &owner_key_, &android_container_,
-        &install_attributes_reader_, system_clock_proxy_.get());
+        &termina_manager_, &install_attributes_reader_,
+        component_updater_proxy_.get(), system_clock_proxy_.get());
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
     device_policy_store_ = new MockPolicyStore();
@@ -572,7 +575,9 @@ class SessionManagerImplTest : public ::testing::Test,
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
   FakeContainerManager android_container_;
+  FakeTerminaManager termina_manager_;
   MockInstallAttributesReader install_attributes_reader_;
+  scoped_refptr<MockObjectProxy> component_updater_proxy_;
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
@@ -1438,16 +1443,23 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   EXPECT_FALSE(base::PathExists(key_file_path));
 }
 
-TEST_F(SessionManagerImplTest, ContainerStart) {
+TEST_F(SessionManagerImplTest, ContainerValidChars) {
   const std::string kContainerName = "testc";
-
-  ExpectAndRunStartSession(kSaneEmail);
+  const std::string kInvalidContainerName = "test/c";
+  const std::string kContainerPath = "test_c+-.ext4";
+  const std::string kInvalidContainerPath = "testc*.ext4";
+  const std::string kParentContainerPath = "../testc.ext4";
+  const std::string kHashedUserName = "";
 
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartContainer(&error, kContainerName));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kContainerStartupFail, error->GetCode());
-  EXPECT_FALSE(android_container_.running());
+  EXPECT_TRUE(impl_->StartContainer(&error, kContainerPath, kContainerName,
+                                    kHashedUserName));
+  EXPECT_FALSE(impl_->StartContainer(&error, kContainerPath,
+                                     kInvalidContainerName, kHashedUserName));
+  EXPECT_FALSE(impl_->StartContainer(&error, kInvalidContainerPath,
+                                     kContainerName, kHashedUserName));
+  EXPECT_FALSE(impl_->StartContainer(&error, kParentContainerPath,
+                                     kContainerName, kHashedUserName));
 }
 
 #if USE_CHEETS
