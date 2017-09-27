@@ -4,12 +4,12 @@
 
 #include "wimax_manager/gdm_driver.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversions.h>
 
@@ -234,7 +234,7 @@ bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
                                   device_name.c_str(),
                                   device_index);
 
-    auto device = base::MakeUnique<GdmDevice>(
+    auto device = std::make_unique<GdmDevice>(
         manager(), device_index, device_name, AsWeakPtr());
     // The WiMAX device changes its MAC address to the actual value after the
     // firmware is loaded. Opening the device seems to be enough to trigger the

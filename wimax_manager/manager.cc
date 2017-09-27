@@ -6,11 +6,11 @@
 
 #include <fcntl.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -158,7 +158,7 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
   base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
-  auto config = base::MakeUnique<Config>();
+  auto config = std::make_unique<Config>();
   if (!google::protobuf::TextFormat::Parse(&file_stream, config.get()))
     return false;
 
