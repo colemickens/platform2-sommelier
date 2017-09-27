@@ -130,6 +130,13 @@
         'brillo/http/http_transport_curl.cc',
         'brillo/http/http_utils.cc',
       ],
+      'conditions': [
+        ['USE_dbus == 1', {
+          'sources': [
+            'brillo/http/http_proxy.cc',
+          ],
+        }],
+      ],
     },
     {
       'target_name': 'libbrillo-streams-<(libbase_ver)',
@@ -411,6 +418,7 @@
                 'brillo/dbus/dbus_signal_handler_unittest.cc',
                 'brillo/dbus/exported_object_manager_unittest.cc',
                 'brillo/dbus/exported_property_set_unittest.cc',
+                'brillo/http/http_proxy_unittest.cc',
                 'brillo/type_name_undecorate_unittest.cc',
                 'brillo/variant_dictionary_unittest.cc',
                 '<(proto_in_dir)/test.proto',

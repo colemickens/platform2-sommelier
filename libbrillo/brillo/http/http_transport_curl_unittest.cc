@@ -78,6 +78,36 @@ TEST_F(HttpCurlTransportTest, RequestGet) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, RequestGetWithProxy) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_USERAGENT, "User Agent"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_REFERER, "http://foo.bar/baz"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_PROXY, "http://proxy.server"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  std::shared_ptr<Transport> proxy_transport =
+      std::make_shared<Transport>(curl_api_, "http://proxy.server");
+
+  auto connection = proxy_transport->CreateConnection("http://foo.bar/get",
+                                                      request_type::kGet,
+                                                      {},
+                                                      "User Agent",
+                                                      "http://foo.bar/baz",
+                                                      nullptr);
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 TEST_F(HttpCurlTransportTest, RequestHead) {
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/head"))

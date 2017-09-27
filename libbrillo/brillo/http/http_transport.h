@@ -21,6 +21,8 @@ namespace brillo {
 namespace http {
 
 BRILLO_EXPORT extern const char kErrorDomain[];
+// Constant referring to 'direct' proxy which implies no proxy server.
+BRILLO_EXPORT extern const char kDirectProxy[];  // direct://
 
 class Request;
 class Response;
@@ -87,6 +89,13 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();
+
+  // Creates a default http::Transport that will utilize the passed in proxy
+  // server (currently, using a http::curl::Transport). |proxy| should be of the
+  // form scheme://[user:pass@]host:port or may be the empty string or the
+  // string kDirectProxy (i.e. direct://) to indicate no proxy.
+  static std::shared_ptr<Transport> CreateDefaultWithProxy(
+      const std::string& proxy);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);
