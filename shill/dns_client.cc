@@ -115,7 +115,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       return false;
     }
 
-    resolver_state_ = base::MakeUnique<DNSClientState>();
+    resolver_state_ = std::make_unique<DNSClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel,
                                    &options,
                                    ARES_OPT_TIMEOUTMS);

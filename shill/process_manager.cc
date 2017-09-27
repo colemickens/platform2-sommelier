@@ -20,9 +20,8 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 
+#include <memory>
 #include <utility>
-
-#include <base/memory/ptr_util.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -357,7 +356,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
   if (killed) {
     return true;
   }
-  auto termination_callback = base::MakeUnique<TerminationTimeoutCallback>(
+  auto termination_callback = std::make_unique<TerminationTimeoutCallback>(
       base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
                  weak_factory_.GetWeakPtr(),
                  pid,

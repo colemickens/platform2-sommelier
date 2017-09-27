@@ -16,7 +16,7 @@
 
 #include "shill/dbus/dbus_service_watcher_factory.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
 
@@ -39,7 +39,7 @@ DBusServiceWatcherFactory::CreateDBusServiceWatcher(
     scoped_refptr<dbus::Bus> bus,
     const std::string& connection_name,
     const base::Closure& on_connection_vanish) {
-  return base::MakeUnique<ChromeosDBusServiceWatcher>(
+  return std::make_unique<ChromeosDBusServiceWatcher>(
       bus, connection_name, on_connection_vanish);
 }
 

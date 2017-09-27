@@ -20,10 +20,10 @@
 #include <linux/nl80211.h>
 
 #include <iomanip>
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 
 #include "shill/net/netlink_attribute.h"
@@ -142,7 +142,7 @@ bool AttributeList::CreateU8Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkU8Attribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkU8Attribute>(id, id_string);
   return true;
 }
 
@@ -168,7 +168,7 @@ bool AttributeList::CreateU16Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkU16Attribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkU16Attribute>(id, id_string);
   return true;
 }
 
@@ -193,7 +193,7 @@ bool AttributeList::CreateU32Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkU32Attribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkU32Attribute>(id, id_string);
   return true;
 }
 
@@ -218,7 +218,7 @@ bool AttributeList::CreateU64Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkU64Attribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkU64Attribute>(id, id_string);
   return true;
 }
 
@@ -243,7 +243,7 @@ bool AttributeList::CreateFlagAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkFlagAttribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkFlagAttribute>(id, id_string);
   return true;
 }
 
@@ -276,7 +276,7 @@ bool AttributeList::CreateStringAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkStringAttribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkStringAttribute>(id, id_string);
   return true;
 }
 
@@ -285,7 +285,7 @@ bool AttributeList::CreateSsidAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkSsidAttribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkSsidAttribute>(id, id_string);
   return true;
 }
 
@@ -326,7 +326,7 @@ bool AttributeList::CreateNestedAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkNestedAttribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkNestedAttribute>(id, id_string);
   return true;
 }
 
@@ -361,7 +361,7 @@ bool AttributeList::CreateRawAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = base::MakeUnique<NetlinkRawAttribute>(id, id_string);
+  attributes_[id] = std::make_unique<NetlinkRawAttribute>(id, id_string);
   return true;
 }
 

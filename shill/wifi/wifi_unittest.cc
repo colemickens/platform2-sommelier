@@ -21,12 +21,12 @@
 #include <netinet/ether.h>
 #include <sys/socket.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -1990,7 +1990,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
+  auto network_proxy = std::make_unique<MockSupplicantNetworkProxy>();
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
   EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
       .WillOnce(Return(ByMove(std::move(network_proxy))));
@@ -2016,7 +2016,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
+  auto network_proxy = std::make_unique<MockSupplicantNetworkProxy>();
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
   EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
       .WillOnce(Return(ByMove(std::move(network_proxy))));

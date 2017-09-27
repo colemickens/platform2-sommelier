@@ -19,7 +19,6 @@
 #include <memory>
 #include <set>
 
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -188,7 +187,7 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   const string kInterfaceName("tun0");
   const int kInterfaceIndex = 1;
 
-  auto bad_driver = base::MakeUnique<MockVPNDriver>();
+  auto bad_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*bad_driver.get(), ClaimInterface(_, _))
       .Times(2)
       .WillRepeatedly(Return(false));
@@ -198,13 +197,13 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   EXPECT_FALSE(provider_.OnDeviceInfoAvailable(
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));
 
-  auto good_driver = base::MakeUnique<MockVPNDriver>();
+  auto good_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*good_driver.get(), ClaimInterface(_, _))
       .WillOnce(Return(true));
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, good_driver.release()));
 
-  auto dup_driver = base::MakeUnique<MockVPNDriver>();
+  auto dup_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*dup_driver.get(), ClaimInterface(_, _))
       .Times(0);
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,

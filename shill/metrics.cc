@@ -16,9 +16,9 @@
 
 #include "shill/metrics.h"
 
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -661,7 +661,7 @@ void Metrics::RegisterService(const Service& service) {
   SLOG(this, 2) << __func__;
   LOG_IF(WARNING, ContainsKey(services_metrics_, &service))
       << "Repeatedly registering " << service.unique_name();
-  services_metrics_[&service] = base::MakeUnique<ServiceMetrics>();
+  services_metrics_[&service] = std::make_unique<ServiceMetrics>();
   InitializeCommonServiceMetrics(service);
 }
 
@@ -685,7 +685,7 @@ void Metrics::AddServiceStateTransitionTimer(
   }
   ServiceMetrics* service_metrics = it->second.get();
   CHECK(start_state < stop_state);
-  auto timer = base::MakeUnique<chromeos_metrics::TimerReporter>(
+  auto timer = std::make_unique<chromeos_metrics::TimerReporter>(
       histogram_name, kTimerHistogramMillisecondsMin,
       kTimerHistogramMillisecondsMax, kTimerHistogramNumBuckets);
   service_metrics->start_on_state[start_state].push_back(timer.get());
@@ -1063,7 +1063,7 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
-  auto device_metrics = base::MakeUnique<DeviceMetrics>();
+  auto device_metrics = std::make_unique<DeviceMetrics>();
   device_metrics->technology = technology;
   string histogram = GetFullMetricName(
       kMetricTimeToInitializeMillisecondsSuffix, technology);

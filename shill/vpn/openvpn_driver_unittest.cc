@@ -17,11 +17,11 @@
 #include "shill/vpn/openvpn_driver.h"
 
 #include <algorithm>
+#include <memory>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

@@ -16,11 +16,12 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <ModemManager/ModemManager.h>
+
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
-#include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"
 #include "shill/cellular/mock_modem.h"
@@ -56,7 +57,7 @@ class ModemManagerTest : public Test {
   static const char kModemPath[];
 
   std::unique_ptr<StrictModem> CreateModem() {
-    return base::MakeUnique<StrictModem>(kService, kModemPath, &modem_info_);
+    return std::make_unique<StrictModem>(kService, kModemPath, &modem_info_);
   }
 
   EventDispatcherForTest dispatcher_;
@@ -146,7 +147,7 @@ TEST_F(ModemManagerClassicTest, StartStop) {
   EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
 
   EXPECT_CALL(control_, CreateModemManagerProxy(_, kPath, kService, _, _))
-      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
+      .WillOnce(Return(ByMove(std::make_unique<MockModemManagerProxy>())));
   modem_manager_.Start();
   EXPECT_NE(nullptr, modem_manager_.proxy_.get());
 
@@ -155,7 +156,7 @@ TEST_F(ModemManagerClassicTest, StartStop) {
 }
 
 TEST_F(ModemManagerClassicTest, Connect) {
-  auto proxy = base::MakeUnique<MockModemManagerProxy>();
+  auto proxy = std::make_unique<MockModemManagerProxy>();
   EXPECT_CALL(*proxy, EnumerateDevices())
       .WillOnce(Return(vector<string>(1, kModemPath)));
 
@@ -186,7 +187,7 @@ class ModemManager1Test : public ModemManagerTest {
 
  protected:
   std::unique_ptr<MockDBusObjectManagerProxy> CreateDBusObjectManagerProxy() {
-    auto proxy = base::MakeUnique<MockDBusObjectManagerProxy>();
+    auto proxy = std::make_unique<MockDBusObjectManagerProxy>();
     proxy->IgnoreSetCallbacks();
     return proxy;
   }

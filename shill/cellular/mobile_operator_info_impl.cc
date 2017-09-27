@@ -21,10 +21,10 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
@@ -836,7 +836,7 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
   if (data.mobile_apn_size() > 0) {
     apn_list_.clear();
     for (const auto& apn_data : data.mobile_apn()) {
-      auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
+      auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
       apn->apn = apn_data.apn();
       apn->username = apn_data.username();
       apn->password = apn_data.password();

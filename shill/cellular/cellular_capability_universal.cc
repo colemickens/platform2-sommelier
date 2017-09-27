@@ -16,10 +16,10 @@
 
 #include "shill/cellular/cellular_capability_universal.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -797,7 +797,7 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
   // one. Right now, we don't allow more than one active bearer.
   active_bearer_.reset();
   for (const auto& path : bearer_paths_) {
-    auto bearer = base::MakeUnique<CellularBearer>(
+    auto bearer = std::make_unique<CellularBearer>(
         control_interface(), path, cellular()->dbus_service());
     // The bearer object may have vanished before ModemManager updates the
     // 'Bearers' property.

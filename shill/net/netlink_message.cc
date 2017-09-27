@@ -25,7 +25,6 @@
 
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -287,13 +286,13 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
 
   auto message_type = packet->GetMessageType();
   if (message_type == NoopMessage::kMessageType) {
-    message = base::MakeUnique<NoopMessage>();
+    message = std::make_unique<NoopMessage>();
   } else if (message_type == DoneMessage::kMessageType) {
-    message = base::MakeUnique<DoneMessage>();
+    message = std::make_unique<DoneMessage>();
   } else if (message_type == OverrunMessage::kMessageType) {
-    message = base::MakeUnique<OverrunMessage>();
+    message = std::make_unique<OverrunMessage>();
   } else if (message_type == ErrorAckMessage::kMessageType) {
-    message = base::MakeUnique<ErrorAckMessage>();
+    message = std::make_unique<ErrorAckMessage>();
   } else if (ContainsKey(factories_, message_type)) {
     map<uint16_t, FactoryMethod>::const_iterator factory;
     factory = factories_.find(message_type);
@@ -305,7 +304,7 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
   // creating an |UnknownMessage|.
   if (!message) {
     message =
-        base::MakeUnique<UnknownMessage>(message_type, packet->GetPayload());
+        std::make_unique<UnknownMessage>(message_type, packet->GetPayload());
   }
 
   if (!message->InitFromPacket(packet, context)) {

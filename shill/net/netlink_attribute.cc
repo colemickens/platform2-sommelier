@@ -24,7 +24,6 @@
 
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/attribute_list.h"
@@ -52,143 +51,143 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
     NetlinkMessage::MessageContext context, int id) {
   switch (id) {
     case NL80211_ATTR_BSS:
-      return base::MakeUnique<Nl80211AttributeBss>();
+      return std::make_unique<Nl80211AttributeBss>();
     case NL80211_ATTR_CIPHER_SUITES:
-      return base::MakeUnique<Nl80211AttributeCipherSuites>();
+      return std::make_unique<Nl80211AttributeCipherSuites>();
     case NL80211_ATTR_CONTROL_PORT_ETHERTYPE:
-      return base::MakeUnique<Nl80211AttributeControlPortEthertype>();
+      return std::make_unique<Nl80211AttributeControlPortEthertype>();
     case NL80211_ATTR_COOKIE:
-      return base::MakeUnique<Nl80211AttributeCookie>();
+      return std::make_unique<Nl80211AttributeCookie>();
     case NL80211_ATTR_CQM:
-      return base::MakeUnique<Nl80211AttributeCqm>();
+      return std::make_unique<Nl80211AttributeCqm>();
     case NL80211_ATTR_DEVICE_AP_SME:
-      return base::MakeUnique<Nl80211AttributeDeviceApSme>();
+      return std::make_unique<Nl80211AttributeDeviceApSme>();
     case NL80211_ATTR_DFS_REGION:
-      return base::MakeUnique<Nl80211AttributeDfsRegion>();
+      return std::make_unique<Nl80211AttributeDfsRegion>();
     case NL80211_ATTR_DISCONNECTED_BY_AP:
-      return base::MakeUnique<Nl80211AttributeDisconnectedByAp>();
+      return std::make_unique<Nl80211AttributeDisconnectedByAp>();
     case NL80211_ATTR_DURATION:
-      return base::MakeUnique<Nl80211AttributeDuration>();
+      return std::make_unique<Nl80211AttributeDuration>();
     case NL80211_ATTR_FEATURE_FLAGS:
-      return base::MakeUnique<Nl80211AttributeFeatureFlags>();
+      return std::make_unique<Nl80211AttributeFeatureFlags>();
     case NL80211_ATTR_FRAME:
-      return base::MakeUnique<Nl80211AttributeFrame>();
+      return std::make_unique<Nl80211AttributeFrame>();
     case NL80211_ATTR_GENERATION:
-      return base::MakeUnique<Nl80211AttributeGeneration>();
+      return std::make_unique<Nl80211AttributeGeneration>();
     case NL80211_ATTR_HT_CAPABILITY_MASK:
-      return base::MakeUnique<Nl80211AttributeHtCapabilityMask>();
+      return std::make_unique<Nl80211AttributeHtCapabilityMask>();
     case NL80211_ATTR_IFINDEX:
-      return base::MakeUnique<Nl80211AttributeIfindex>();
+      return std::make_unique<Nl80211AttributeIfindex>();
     case NL80211_ATTR_IFTYPE:
-      return base::MakeUnique<Nl80211AttributeIftype>();
+      return std::make_unique<Nl80211AttributeIftype>();
     case NL80211_ATTR_KEY_IDX:
-      return base::MakeUnique<Nl80211AttributeKeyIdx>();
+      return std::make_unique<Nl80211AttributeKeyIdx>();
     case NL80211_ATTR_KEY_SEQ:
-      return base::MakeUnique<Nl80211AttributeKeySeq>();
+      return std::make_unique<Nl80211AttributeKeySeq>();
     case NL80211_ATTR_KEY_TYPE:
-      return base::MakeUnique<Nl80211AttributeKeyType>();
+      return std::make_unique<Nl80211AttributeKeyType>();
     case NL80211_ATTR_MAC:
-      return base::MakeUnique<Nl80211AttributeMac>();
+      return std::make_unique<Nl80211AttributeMac>();
     case NL80211_ATTR_MAX_MATCH_SETS:
-      return base::MakeUnique<Nl80211AttributeMaxMatchSets>();
+      return std::make_unique<Nl80211AttributeMaxMatchSets>();
     case NL80211_ATTR_MAX_NUM_PMKIDS:
-      return base::MakeUnique<Nl80211AttributeMaxNumPmkids>();
+      return std::make_unique<Nl80211AttributeMaxNumPmkids>();
     case NL80211_ATTR_MAX_NUM_SCAN_SSIDS:
-      return base::MakeUnique<Nl80211AttributeMaxNumScanSsids>();
+      return std::make_unique<Nl80211AttributeMaxNumScanSsids>();
     case NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS:
-      return base::MakeUnique<Nl80211AttributeMaxNumSchedScanSsids>();
+      return std::make_unique<Nl80211AttributeMaxNumSchedScanSsids>();
     case NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION:
-      return base::MakeUnique<Nl80211AttributeMaxRemainOnChannelDuration>();
+      return std::make_unique<Nl80211AttributeMaxRemainOnChannelDuration>();
     case NL80211_ATTR_MAX_SCAN_IE_LEN:
-      return base::MakeUnique<Nl80211AttributeMaxScanIeLen>();
+      return std::make_unique<Nl80211AttributeMaxScanIeLen>();
     case NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN:
-      return base::MakeUnique<Nl80211AttributeMaxSchedScanIeLen>();
+      return std::make_unique<Nl80211AttributeMaxSchedScanIeLen>();
     case NL80211_ATTR_MPATH_INFO:
-      return base::MakeUnique<Nl80211AttributeMPathInfo>();
+      return std::make_unique<Nl80211AttributeMPathInfo>();
     case NL80211_ATTR_OFFCHANNEL_TX_OK:
-      return base::MakeUnique<Nl80211AttributeOffchannelTxOk>();
+      return std::make_unique<Nl80211AttributeOffchannelTxOk>();
     case NL80211_ATTR_PROBE_RESP_OFFLOAD:
-      return base::MakeUnique<Nl80211AttributeProbeRespOffload>();
+      return std::make_unique<Nl80211AttributeProbeRespOffload>();
     case NL80211_ATTR_REASON_CODE:
-      return base::MakeUnique<Nl80211AttributeReasonCode>();
+      return std::make_unique<Nl80211AttributeReasonCode>();
     case NL80211_ATTR_REG_ALPHA2:
-      return base::MakeUnique<Nl80211AttributeRegAlpha2>();
+      return std::make_unique<Nl80211AttributeRegAlpha2>();
     case NL80211_ATTR_REG_INITIATOR:
-      return base::MakeUnique<Nl80211AttributeRegInitiator>();
+      return std::make_unique<Nl80211AttributeRegInitiator>();
     case NL80211_ATTR_REG_RULES:
-      return base::MakeUnique<Nl80211AttributeRegRules>();
+      return std::make_unique<Nl80211AttributeRegRules>();
     case NL80211_ATTR_REG_TYPE:
-      return base::MakeUnique<Nl80211AttributeRegType>();
+      return std::make_unique<Nl80211AttributeRegType>();
     case NL80211_ATTR_RESP_IE:
-      return base::MakeUnique<Nl80211AttributeRespIe>();
+      return std::make_unique<Nl80211AttributeRespIe>();
     case NL80211_ATTR_ROAM_SUPPORT:
-      return base::MakeUnique<Nl80211AttributeRoamSupport>();
+      return std::make_unique<Nl80211AttributeRoamSupport>();
     case NL80211_ATTR_SCAN_FREQUENCIES:
-      return base::MakeUnique<Nl80211AttributeScanFrequencies>();
+      return std::make_unique<Nl80211AttributeScanFrequencies>();
     case NL80211_ATTR_SCAN_SSIDS:
-      return base::MakeUnique<Nl80211AttributeScanSsids>();
+      return std::make_unique<Nl80211AttributeScanSsids>();
     case NL80211_ATTR_STA_INFO:
-      return base::MakeUnique<Nl80211AttributeStaInfo>();
+      return std::make_unique<Nl80211AttributeStaInfo>();
     case NL80211_ATTR_STATUS_CODE:
-      return base::MakeUnique<Nl80211AttributeStatusCode>();
+      return std::make_unique<Nl80211AttributeStatusCode>();
     case NL80211_ATTR_SUPPORT_AP_UAPSD:
-      return base::MakeUnique<Nl80211AttributeSupportApUapsd>();
+      return std::make_unique<Nl80211AttributeSupportApUapsd>();
     case NL80211_ATTR_SUPPORT_IBSS_RSN:
-      return base::MakeUnique<Nl80211AttributeSupportIbssRsn>();
+      return std::make_unique<Nl80211AttributeSupportIbssRsn>();
     case NL80211_ATTR_SUPPORT_MESH_AUTH:
-      return base::MakeUnique<Nl80211AttributeSupportMeshAuth>();
+      return std::make_unique<Nl80211AttributeSupportMeshAuth>();
     case NL80211_ATTR_SUPPORTED_IFTYPES:
-      return base::MakeUnique<Nl80211AttributeSupportedIftypes>();
+      return std::make_unique<Nl80211AttributeSupportedIftypes>();
     case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
-      return base::MakeUnique<Nl80211AttributeTdlsExternalSetup>();
+      return std::make_unique<Nl80211AttributeTdlsExternalSetup>();
     case NL80211_ATTR_TDLS_SUPPORT:
-      return base::MakeUnique<Nl80211AttributeTdlsSupport>();
+      return std::make_unique<Nl80211AttributeTdlsSupport>();
     case NL80211_ATTR_TIMED_OUT:
-      return base::MakeUnique<Nl80211AttributeTimedOut>();
+      return std::make_unique<Nl80211AttributeTimedOut>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX:
-      return base::MakeUnique<Nl80211AttributeWiphyAntennaAvailRx>();
+      return std::make_unique<Nl80211AttributeWiphyAntennaAvailRx>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX:
-      return base::MakeUnique<Nl80211AttributeWiphyAntennaAvailTx>();
+      return std::make_unique<Nl80211AttributeWiphyAntennaAvailTx>();
     case NL80211_ATTR_WIPHY_ANTENNA_RX:
-      return base::MakeUnique<Nl80211AttributeWiphyAntennaRx>();
+      return std::make_unique<Nl80211AttributeWiphyAntennaRx>();
     case NL80211_ATTR_WIPHY_ANTENNA_TX:
-      return base::MakeUnique<Nl80211AttributeWiphyAntennaTx>();
+      return std::make_unique<Nl80211AttributeWiphyAntennaTx>();
     case NL80211_ATTR_WIPHY_BANDS:
-      return base::MakeUnique<Nl80211AttributeWiphyBands>();
+      return std::make_unique<Nl80211AttributeWiphyBands>();
     case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
-      return base::MakeUnique<Nl80211AttributeWiphyCoverageClass>();
+      return std::make_unique<Nl80211AttributeWiphyCoverageClass>();
     case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:
-      return base::MakeUnique<Nl80211AttributeWiphyFragThreshold>();
+      return std::make_unique<Nl80211AttributeWiphyFragThreshold>();
     case NL80211_ATTR_WIPHY_FREQ:
-      return base::MakeUnique<Nl80211AttributeWiphyFreq>();
+      return std::make_unique<Nl80211AttributeWiphyFreq>();
     case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
-      return base::MakeUnique<Nl80211AttributeChannelType>();
+      return std::make_unique<Nl80211AttributeChannelType>();
     case NL80211_ATTR_CHANNEL_WIDTH:
-      return base::MakeUnique<Nl80211AttributeChannelWidth>();
+      return std::make_unique<Nl80211AttributeChannelWidth>();
     case NL80211_ATTR_CENTER_FREQ1:
-      return base::MakeUnique<Nl80211AttributeCenterFreq1>();
+      return std::make_unique<Nl80211AttributeCenterFreq1>();
     case NL80211_ATTR_CENTER_FREQ2:
-      return base::MakeUnique<Nl80211AttributeCenterFreq2>();
+      return std::make_unique<Nl80211AttributeCenterFreq2>();
     case NL80211_ATTR_WIPHY:
-      return base::MakeUnique<Nl80211AttributeWiphy>();
+      return std::make_unique<Nl80211AttributeWiphy>();
     case NL80211_ATTR_WIPHY_NAME:
-      return base::MakeUnique<Nl80211AttributeWiphyName>();
+      return std::make_unique<Nl80211AttributeWiphyName>();
     case NL80211_ATTR_WIPHY_RETRY_LONG:
-      return base::MakeUnique<Nl80211AttributeWiphyRetryLong>();
+      return std::make_unique<Nl80211AttributeWiphyRetryLong>();
     case NL80211_ATTR_WIPHY_RETRY_SHORT:
-      return base::MakeUnique<Nl80211AttributeWiphyRetryShort>();
+      return std::make_unique<Nl80211AttributeWiphyRetryShort>();
     case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
-      return base::MakeUnique<Nl80211AttributeWiphyRtsThreshold>();
+      return std::make_unique<Nl80211AttributeWiphyRtsThreshold>();
 #if !defined(DISABLE_WAKE_ON_WIFI)
     case NL80211_ATTR_WOWLAN_TRIGGERS:
-      return base::MakeUnique<Nl80211AttributeWowlanTriggers>(context);
+      return std::make_unique<Nl80211AttributeWowlanTriggers>(context);
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
-      return base::MakeUnique<Nl80211AttributeWowlanTriggersSupported>();
+      return std::make_unique<Nl80211AttributeWowlanTriggersSupported>();
 #endif  // DISABLE_WAKE_ON_WIFI
     case NL80211_ATTR_SURVEY_INFO:
-      return base::MakeUnique<Nl80211AttributeSurveyInfo>();
+      return std::make_unique<Nl80211AttributeSurveyInfo>();
     default:
-      return base::MakeUnique<NetlinkAttributeGeneric>(id);
+      return std::make_unique<NetlinkAttributeGeneric>(id);
   }
 }
 
@@ -197,21 +196,21 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewControlAttributeFromId(
     int id) {
   switch (id) {
     case CTRL_ATTR_FAMILY_ID:
-      return base::MakeUnique<ControlAttributeFamilyId>();
+      return std::make_unique<ControlAttributeFamilyId>();
     case CTRL_ATTR_FAMILY_NAME:
-      return base::MakeUnique<ControlAttributeFamilyName>();
+      return std::make_unique<ControlAttributeFamilyName>();
     case CTRL_ATTR_VERSION:
-      return base::MakeUnique<ControlAttributeVersion>();
+      return std::make_unique<ControlAttributeVersion>();
     case CTRL_ATTR_HDRSIZE:
-      return base::MakeUnique<ControlAttributeHdrSize>();
+      return std::make_unique<ControlAttributeHdrSize>();
     case CTRL_ATTR_MAXATTR:
-      return base::MakeUnique<ControlAttributeMaxAttr>();
+      return std::make_unique<ControlAttributeMaxAttr>();
     case CTRL_ATTR_OPS:
-      return base::MakeUnique<ControlAttributeAttrOps>();
+      return std::make_unique<ControlAttributeAttrOps>();
     case CTRL_ATTR_MCAST_GROUPS:
-      return base::MakeUnique<ControlAttributeMcastGroups>();
+      return std::make_unique<ControlAttributeMcastGroups>();
     default:
-      return base::MakeUnique<NetlinkAttributeGeneric>(id);
+      return std::make_unique<NetlinkAttributeGeneric>(id);
   }
 }
 

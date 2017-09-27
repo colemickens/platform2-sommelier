@@ -30,7 +30,6 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <base/json/json_string_value_serializer.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -111,7 +110,7 @@ unique_ptr<brillo::Any> DecodeCoercedValue(
   if (native_type == kNativeTypeNonAsciiString) {
     vector<uint8_t> native_value;
     if (base::HexStringToBytes(encoded_value, &native_value)) {
-      return base::MakeUnique<brillo::Any>(
+      return std::make_unique<brillo::Any>(
           string(native_value.begin(), native_value.end()));
     } else {
       LOG(ERROR) << "Failed to decode hex data from |" << encoded_value << "|.";
@@ -120,7 +119,7 @@ unique_ptr<brillo::Any> DecodeCoercedValue(
   } else if (native_type == kNativeTypeUint64) {
     uint64_t native_value;
     if (base::StringToUint64(encoded_value, &native_value)) {
-      return base::MakeUnique<brillo::Any>(native_value);
+      return std::make_unique<brillo::Any>(native_value);
     } else {
       LOG(ERROR) << "Failed to parse uint64 from |" << encoded_value << "|.";
       return nullptr;
@@ -135,7 +134,7 @@ unique_ptr<string> MakeStringFromValue(const base::Value& value) {
   const auto value_type = value.GetType();
 
   if (value_type == base::Value::TYPE_STRING) {
-    auto unwrapped_string = base::MakeUnique<string>();
+    auto unwrapped_string = std::make_unique<string>();
     value.GetAsString(unwrapped_string.get());
     return unwrapped_string;
   } else if (value_type == base::Value::TYPE_DICTIONARY) {
@@ -154,7 +153,7 @@ unique_ptr<string> MakeStringFromValue(const base::Value& value) {
                  << ".";
       return nullptr;
     }
-    return base::MakeUnique<string>(decoded_value->Get<string>());
+    return std::make_unique<string>(decoded_value->Get<string>());
   } else {
     LOG(ERROR) << "Got unexpected type |" << value_type << "|.";
     return nullptr;
@@ -178,7 +177,7 @@ unique_ptr<vector<string>> ConvertListValueToStringVector(
     }
   }
 
-  auto result = base::MakeUnique<vector<string>>();
+  auto result = std::make_unique<vector<string>>();
   for (size_t i = 0; i < list_len; ++i) {
     const base::Value* list_item;
     list_value.Get(i, &list_item);
@@ -196,7 +195,7 @@ unique_ptr<brillo::VariantDictionary>
 ConvertDictionaryValueToVariantDictionary(
     const base::DictionaryValue& dictionary_value) {
   base::DictionaryValue::Iterator it(dictionary_value);
-  auto variant_dictionary = base::MakeUnique<brillo::VariantDictionary>();
+  auto variant_dictionary = std::make_unique<brillo::VariantDictionary>();
   while (!it.IsAtEnd()) {
     const string& key = it.key();
     const base::Value& value = it.value();
@@ -268,7 +267,7 @@ ConvertDictionaryValueToVariantDictionary(
 
 unique_ptr<base::DictionaryValue> MakeCoercedValue(
     const string& native_type, const string& encoded_value) {
-  auto coerced_value = base::MakeUnique<base::DictionaryValue>();
+  auto coerced_value = std::make_unique<base::DictionaryValue>();
   coerced_value->SetStringWithoutPathExpansion(
       kCoercedValuePropertyNativeType, native_type);
   coerced_value->SetStringWithoutPathExpansion(
@@ -284,7 +283,7 @@ unique_ptr<base::Value> MakeValueForString(const string& native_string) {
   // similar-looking glyphs.)
   if (base::IsStringASCII(native_string) &&
       native_string.find('\0') == string::npos) {
-    return base::MakeUnique<base::StringValue>(native_string);
+    return std::make_unique<base::StringValue>(native_string);
   } else {
     const string hex_encoded_string(
         base::HexEncode(native_string.data(), native_string.size()));
@@ -294,7 +293,7 @@ unique_ptr<base::Value> MakeValueForString(const string& native_string) {
 
 unique_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
     const brillo::VariantDictionary& variant_dictionary) {
-  auto dictionary_value = base::MakeUnique<base::DictionaryValue>();
+  auto dictionary_value = std::make_unique<base::DictionaryValue>();
   for (const auto& key_and_value : variant_dictionary) {
     const auto& key = key_and_value.first;
     const auto& value = key_and_value.second;
@@ -311,7 +310,7 @@ unique_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
       dictionary_value->SetWithoutPathExpansion(
           key, MakeCoercedValue(kNativeTypeUint64, encoded_value));
     } else if (value.IsTypeCompatible<vector<string>>()) {
-      auto list_value = base::MakeUnique<base::ListValue>();
+      auto list_value = std::make_unique<base::ListValue>();
       for (const auto& string_list_item : value.Get<vector<string>>()) {
         list_value->Append(MakeValueForString(string_list_item));
       }
@@ -421,7 +420,7 @@ bool JsonStore::Close() {
 }
 
 bool JsonStore::Flush() {
-  auto groups = base::MakeUnique<base::DictionaryValue>();
+  auto groups = std::make_unique<base::DictionaryValue>();
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
     unique_ptr<base::DictionaryValue> group_settings(
@@ -691,7 +690,7 @@ bool JsonStore::WriteSetting(
 }
 
 std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path) {
-  return base::MakeUnique<JsonStore>(path);
+  return std::make_unique<JsonStore>(path);
 }
 
 }  // namespace shill

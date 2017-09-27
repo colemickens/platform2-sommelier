@@ -16,11 +16,11 @@
 
 #include "shill/wimax/wimax_provider.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -81,7 +81,7 @@ class MockWiMaxNetworkProxyFactory {
       : identifier_(identifier) {}
 
   std::unique_ptr<MockWiMaxNetworkProxy> CreateProxy() {
-    auto proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+    auto proxy = std::make_unique<MockWiMaxNetworkProxy>();
     ON_CALL(*proxy, Name(_))
         .WillByDefault(Return(GetTestNetworkName(identifier_)));
     ON_CALL(*proxy, Identifier(_)).WillByDefault(Return(identifier_));
@@ -122,7 +122,7 @@ class WiMaxProviderTest : public testing::Test {
 TEST_F(WiMaxProviderTest, StartStop) {
   base::Closure service_appeared_callback;
 
-  auto wimax_manager_proxy = base::MakeUnique<MockWiMaxManagerProxy>();
+  auto wimax_manager_proxy = std::make_unique<MockWiMaxManagerProxy>();
   EXPECT_CALL(*wimax_manager_proxy, set_devices_changed_callback(_)).Times(1);
   EXPECT_CALL(*wimax_manager_proxy, Devices(_))
       .WillOnce(Return(RpcIdentifiers()));
@@ -174,7 +174,7 @@ TEST_F(WiMaxProviderTest, ConnectDisconnectWiMaxManager) {
   EXPECT_EQ(1, provider_.pending_devices_.count(pending_device_link));
 
   // Enable the live device.
-  auto device_proxy = base::MakeUnique<MockWiMaxDeviceProxy>();
+  auto device_proxy = std::make_unique<MockWiMaxDeviceProxy>();
   EXPECT_CALL(*device_proxy, Enable(_, _, _))
       .WillOnce(SetErrorTypeInArgument<0>(Error::kSuccess));
   EXPECT_CALL(*device_proxy, Connect(_, _, _, _, _))
@@ -334,7 +334,7 @@ TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
   static const char kNetworkId[] = "00abcdef";
   string network_path = GetTestNetworkPath(kIdentifier);
 
-  auto network_proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+  auto network_proxy = std::make_unique<MockWiMaxNetworkProxy>();
   EXPECT_CALL(*network_proxy, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(control_, CreateWiMaxNetworkProxy(network_path))
@@ -476,7 +476,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   service1->set_friendly_name(kName);
   service1->InitStorageIdentifier();
 
-  auto network_proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+  auto network_proxy = std::make_unique<MockWiMaxNetworkProxy>();
   EXPECT_CALL(*network_proxy, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(control_, CreateWiMaxNetworkProxy(GetTestNetworkPath(101)))

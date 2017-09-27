@@ -26,7 +26,6 @@
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -1185,7 +1184,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200002", ""});
 
     apn_list_.clear();
-    auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
+    auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
     apn->apn = "test@test.com";
     apn->username = "testuser";
     apn->password = "is_public_boohoohoo";
@@ -1217,7 +1216,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200102", ""});
 
     apn_list_.clear();
-    auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
+    auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
     apn->apn = "test2@test.com";
     apn->username = "testuser2";
     apn->password = "is_public_boohoohoo_too";

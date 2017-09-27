@@ -24,7 +24,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
@@ -1013,7 +1012,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
 TEST_F(RoutingTableTest, CancelQueryCallback) {
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   destination_address.SetAddressFromString(kTestRemoteAddress4);
-  auto target = base::MakeUnique<QueryCallbackTarget>();
+  auto target = std::make_unique<QueryCallbackTarget>();
   EXPECT_CALL(rtnl_handler_, SendMessage(_))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
   EXPECT_TRUE(

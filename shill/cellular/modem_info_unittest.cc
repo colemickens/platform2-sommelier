@@ -16,7 +16,8 @@
 
 #include "shill/cellular/modem_info.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"
@@ -54,11 +55,11 @@ TEST_F(ModemInfoTest, StartStop) {
   EXPECT_EQ(0, modem_info_.modem_managers_.size());
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, "org.chromium.ModemManager", _, _))
-      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
+      .WillOnce(Return(ByMove(std::make_unique<MockModemManagerProxy>())));
   EXPECT_CALL(
       control_interface_,
       CreateDBusObjectManagerProxy(_, "org.freedesktop.ModemManager1", _, _))
-      .WillOnce(Return(ByMove(base::MakeUnique<MockDBusObjectManagerProxy>())));
+      .WillOnce(Return(ByMove(std::make_unique<MockDBusObjectManagerProxy>())));
   modem_info_.Start();
   EXPECT_EQ(2, modem_info_.modem_managers_.size());
   modem_info_.Stop();
@@ -69,8 +70,8 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   static const char kService[] = "some.dbus.service";
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, kService, _, _))
-      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
-  modem_info_.RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
+      .WillOnce(Return(ByMove(std::make_unique<MockModemManagerProxy>())));
+  modem_info_.RegisterModemManager(std::make_unique<ModemManagerClassic>(
       kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());
   ModemManager* manager = modem_info_.modem_managers_[0].get();

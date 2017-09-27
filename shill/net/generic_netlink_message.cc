@@ -16,9 +16,10 @@
 
 #include "shill/net/generic_netlink_message.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/netlink_attribute.h"
@@ -147,13 +148,13 @@ std::unique_ptr<NetlinkMessage> ControlNetlinkMessage::CreateMessage(
 
   switch (header.cmd) {
     case NewFamilyMessage::kCommand:
-      return base::MakeUnique<NewFamilyMessage>();
+      return std::make_unique<NewFamilyMessage>();
     case GetFamilyMessage::kCommand:
-      return base::MakeUnique<GetFamilyMessage>();
+      return std::make_unique<GetFamilyMessage>();
     default:
       LOG(WARNING) << "Unknown/unhandled netlink control message "
                    << header.cmd;
-      return base::MakeUnique<UnknownControlMessage>(header.cmd);
+      return std::make_unique<UnknownControlMessage>(header.cmd);
   }
   return nullptr;
 }

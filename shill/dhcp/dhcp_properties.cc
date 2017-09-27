@@ -16,10 +16,10 @@
 
 #include "shill/dhcp/dhcp_properties.h"
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
@@ -108,7 +108,7 @@ void DhcpProperties::Save(StoreInterface* storage, const string& id) const {
 std::unique_ptr<DhcpProperties> DhcpProperties::Combine(
     const DhcpProperties& base, const DhcpProperties& to_merge) {
   SLOG(nullptr, 2) << __func__;
-  auto to_return = base::MakeUnique<DhcpProperties>();
+  auto to_return = std::make_unique<DhcpProperties>();
   to_return->properties_ = base.properties_;
   for (const auto& it : to_merge.properties_.properties()) {
     const string& name = it.first;

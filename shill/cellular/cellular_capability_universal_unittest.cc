@@ -16,13 +16,13 @@
 
 #include "shill/cellular/cellular_capability_universal.h"
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -296,7 +296,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         const std::string& /*path*/, const std::string& /*service*/) override {
       std::unique_ptr<mm1::MockSimProxy> sim_proxy =
           std::move(test_->sim_proxy_);
-      test_->sim_proxy_ = base::MakeUnique<mm1::MockSimProxy>();
+      test_->sim_proxy_ = std::make_unique<mm1::MockSimProxy>();
       return sim_proxy;
     }
 
@@ -314,7 +314,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
             .Times(AnyNumber())
             .WillRepeatedly(Return(inactive_bearer_properties_));
       }
-      test_->properties_proxy_ = base::MakeUnique<MockDBusPropertiesProxy>();
+      test_->properties_proxy_ = std::make_unique<MockDBusPropertiesProxy>();
       return properties_proxy;
     }
 

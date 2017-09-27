@@ -16,7 +16,7 @@
 
 #include "shill/dns_client_factory.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 using std::string;
 using std::vector;
@@ -44,7 +44,7 @@ std::unique_ptr<DNSClient> DNSClientFactory::CreateDNSClient(
     int timeout_ms,
     EventDispatcher* dispatcher,
     const DNSClient::ClientCallback& callback) {
-  return base::MakeUnique<DNSClient>(family,
+  return std::make_unique<DNSClient>(family,
                                      interface_name,
                                      dns_servers,
                                      timeout_ms,

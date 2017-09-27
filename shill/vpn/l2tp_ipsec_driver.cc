@@ -35,11 +35,11 @@
 
 #include "shill/vpn/l2tp_ipsec_driver.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -225,7 +225,7 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local =
-      base::MakeUnique<ExternalTask>(control_,
+      std::make_unique<ExternalTask>(control_,
                                      process_manager_,
                                      weak_ptr_factory_.GetWeakPtr(),
                                      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,

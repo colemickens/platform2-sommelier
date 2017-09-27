@@ -16,9 +16,9 @@
 
 #include "shill/cellular/modem_info.h"
 
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/modem_manager.h"
@@ -47,10 +47,10 @@ void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
 
-  RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
+  RegisterModemManager(std::make_unique<ModemManagerClassic>(
       cromo::kCromoServiceName, cromo::kCromoServicePath, this));
   RegisterModemManager(
-      base::MakeUnique<ModemManager1>(modemmanager::kModemManager1ServiceName,
+      std::make_unique<ModemManager1>(modemmanager::kModemManager1ServiceName,
                                       modemmanager::kModemManager1ServicePath,
                                       this));
 }

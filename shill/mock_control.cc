@@ -16,7 +16,7 @@
 
 #include "shill/mock_control.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 #include "shill/mock_adaptors.h"
 
@@ -28,38 +28,38 @@ MockControl::~MockControl() {}
 
 std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
     Device* /*device*/) {
-  return base::MakeUnique<DeviceMockAdaptor>();
+  return std::make_unique<DeviceMockAdaptor>();
 }
 
 std::unique_ptr<IPConfigAdaptorInterface> MockControl::CreateIPConfigAdaptor(
     IPConfig* /*config*/) {
-  return base::MakeUnique<IPConfigMockAdaptor>();
+  return std::make_unique<IPConfigMockAdaptor>();
 }
 
 std::unique_ptr<ManagerAdaptorInterface> MockControl::CreateManagerAdaptor(
     Manager* /*manager*/) {
-  return base::MakeUnique<ManagerMockAdaptor>();
+  return std::make_unique<ManagerMockAdaptor>();
 }
 
 std::unique_ptr<ProfileAdaptorInterface> MockControl::CreateProfileAdaptor(
     Profile* /*profile*/) {
-  return base::MakeUnique<ProfileMockAdaptor>();
+  return std::make_unique<ProfileMockAdaptor>();
 }
 
 std::unique_ptr<RPCTaskAdaptorInterface> MockControl::CreateRPCTaskAdaptor(
     RPCTask* /*task*/) {
-  return base::MakeUnique<RPCTaskMockAdaptor>();
+  return std::make_unique<RPCTaskMockAdaptor>();
 }
 
 std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(
     Service* /*service*/) {
-  return base::MakeUnique<ServiceMockAdaptor>();
+  return std::make_unique<ServiceMockAdaptor>();
 }
 
 #ifndef DISABLE_VPN
 std::unique_ptr<ThirdPartyVpnAdaptorInterface>
 MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
-  return base::MakeUnique<ThirdPartyVpnMockAdaptor>();
+  return std::make_unique<ThirdPartyVpnMockAdaptor>();
 }
 #endif
 

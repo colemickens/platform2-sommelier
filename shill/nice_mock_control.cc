@@ -16,7 +16,8 @@
 
 #include "shill/nice_mock_control.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "shill/mock_adaptors.h"
@@ -31,38 +32,38 @@ NiceMockControl::~NiceMockControl() {}
 
 std::unique_ptr<DeviceAdaptorInterface> NiceMockControl::CreateDeviceAdaptor(
     Device* /*device*/) {
-  return base::MakeUnique<NiceMock<DeviceMockAdaptor>>();
+  return std::make_unique<NiceMock<DeviceMockAdaptor>>();
 }
 
 std::unique_ptr<IPConfigAdaptorInterface>
 NiceMockControl::CreateIPConfigAdaptor(IPConfig* /*config*/) {
-  return base::MakeUnique<NiceMock<IPConfigMockAdaptor>>();
+  return std::make_unique<NiceMock<IPConfigMockAdaptor>>();
 }
 
 std::unique_ptr<ManagerAdaptorInterface> NiceMockControl::CreateManagerAdaptor(
     Manager* /*manager*/) {
-  return base::MakeUnique<NiceMock<ManagerMockAdaptor>>();
+  return std::make_unique<NiceMock<ManagerMockAdaptor>>();
 }
 
 std::unique_ptr<ProfileAdaptorInterface> NiceMockControl::CreateProfileAdaptor(
     Profile* /*profile*/) {
-  return base::MakeUnique<NiceMock<ProfileMockAdaptor>>();
+  return std::make_unique<NiceMock<ProfileMockAdaptor>>();
 }
 
 std::unique_ptr<RPCTaskAdaptorInterface> NiceMockControl::CreateRPCTaskAdaptor(
     RPCTask* /*task*/) {
-  return base::MakeUnique<NiceMock<RPCTaskMockAdaptor>>();
+  return std::make_unique<NiceMock<RPCTaskMockAdaptor>>();
 }
 
 std::unique_ptr<ServiceAdaptorInterface> NiceMockControl::CreateServiceAdaptor(
     Service* /*service*/) {
-  return base::MakeUnique<NiceMock<ServiceMockAdaptor>>();
+  return std::make_unique<NiceMock<ServiceMockAdaptor>>();
 }
 
 #ifndef DISABLE_VPN
 std::unique_ptr<ThirdPartyVpnAdaptorInterface>
 NiceMockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
-  return base::MakeUnique<NiceMock<ThirdPartyVpnMockAdaptor>>();
+  return std::make_unique<NiceMock<ThirdPartyVpnMockAdaptor>>();
 }
 #endif
 

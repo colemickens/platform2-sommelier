@@ -22,7 +22,6 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -222,7 +221,7 @@ class ManagerTest : public PropertyStoreTest {
 
   Profile* CreateProfileForManager(Manager* manager) {
     Profile::Identifier id("rather", "irrelevant");
-    auto storage = base::MakeUnique<FakeStore>();
+    auto storage = std::make_unique<FakeStore>();
     if (!storage->Open())
       return nullptr;
     Profile* profile(new Profile(

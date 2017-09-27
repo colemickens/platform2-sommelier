@@ -15,9 +15,10 @@
 //
 
 #include "proxy_rpc_in_data_types.h"
-#include "proxy_util.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
+
+#include "proxy_util.h"
 
 namespace {
 // Autotest Server test encodes the object type in this key.
@@ -118,7 +119,7 @@ AssociationParameters::AssociationParameters(
   GetBoolValueFromXmlRpcValueStructMember(
       xml_rpc_value_in, "expect_failure", false, &expect_failure_);
   autoconnect_type_ = ParseAutoConnectTypeFromXmlRpcValue(xml_rpc_value_in);
-  bgscan_config_ = base::MakeUnique<BgscanConfiguration>(
+  bgscan_config_ = std::make_unique<BgscanConfiguration>(
       &(*xml_rpc_value_in)["bgscan_config"]);
   security_config_ = SecurityConfig::CreateSecurityConfigObject(
       &(*xml_rpc_value_in)["security_config"]);

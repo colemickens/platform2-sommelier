@@ -16,8 +16,9 @@
 
 #include "shill/cellular/modem.h"
 
+#include <memory>
+
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular_capability.h"
@@ -118,7 +119,7 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
 
   EXPECT_CALL(*(modem_info_.mock_control_interface()),
               CreateDBusPropertiesProxy(kPath, kService))
-      .WillOnce(Return(ByMove(base::MakeUnique<MockDBusPropertiesProxy>())));
+      .WillOnce(Return(ByMove(std::make_unique<MockDBusPropertiesProxy>())));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());
   EXPECT_TRUE(modem_->device()->capability_->IsRegistered());

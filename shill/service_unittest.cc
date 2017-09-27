@@ -23,7 +23,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -543,7 +542,7 @@ TEST_F(ServiceTest, LoadAutoConnect) {
   EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
+  auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_))
       .Times(AnyNumber());
   service_->dhcp_properties_ = std::move(dhcp_props);
@@ -670,7 +669,7 @@ TEST_F(ServiceTest, Save) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
+  auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Save(&storage, storage_id_));
   service_->dhcp_properties_ = std::move(dhcp_props);
   EXPECT_TRUE(service_->Save(&storage));
@@ -1368,7 +1367,7 @@ TEST_F(ServiceTest, IsRemembered) {
 TEST_F(ServiceTest, IsDependentOn) {
   EXPECT_FALSE(service_->IsDependentOn(nullptr));
 
-  auto mock_device_info = base::MakeUnique<NiceMock<MockDeviceInfo>>(
+  auto mock_device_info = std::make_unique<NiceMock<MockDeviceInfo>>(
       control_interface(), dispatcher(), metrics(), &mock_manager_);
   scoped_refptr<MockConnection> mock_connection0(
       new NiceMock<MockConnection>(mock_device_info.get()));
@@ -1558,7 +1557,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  auto mock_device_info = base::MakeUnique<NiceMock<MockDeviceInfo>>(
+  auto mock_device_info = std::make_unique<NiceMock<MockDeviceInfo>>(
       control_interface(), dispatcher(), metrics(), &mock_manager_);
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(mock_device_info.get()));

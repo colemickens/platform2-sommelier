@@ -18,9 +18,9 @@
 
 #include <net/if_arp.h>
 
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/icmp_session.h"
@@ -371,7 +371,7 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kResultSuccess);
     ASSERT_FALSE(family == IPAddress::kFamilyUnknown);
 
-    auto dns_client = base::MakeUnique<NiceMock<MockDNSClient>>();
+    auto dns_client = std::make_unique<NiceMock<MockDNSClient>>();
     EXPECT_CALL(*dns_client,
                 Start(connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
@@ -666,9 +666,9 @@ class ConnectionDiagnosticsTest : public Test {
                   expected_issue == ConnectionDiagnostics::kIssueInternalError);
 
       auto dns_server_icmp_session_0 =
-          base::MakeUnique<NiceMock<MockIcmpSession>>(&dispatcher_);
+          std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
       auto dns_server_icmp_session_1 =
-          base::MakeUnique<NiceMock<MockIcmpSession>>(&dispatcher_);
+          std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
 
       EXPECT_CALL(*dns_server_icmp_session_0,
                   Start(IsSameIPAddress(IPAddress(kDNSServer0)), _, _))

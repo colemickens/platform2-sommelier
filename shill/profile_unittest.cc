@@ -16,11 +16,11 @@
 
 #include "shill/profile.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
@@ -89,7 +89,7 @@ class ProfileTest : public PropertyStoreTest {
 };
 
 TEST_F(ProfileTest, DeleteEntry) {
-  auto manager = base::MakeUnique<StrictMock<MockManager>>(
+  auto manager = std::make_unique<StrictMock<MockManager>>(
       control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
@@ -479,7 +479,7 @@ TEST_F(ProfileTest, UpdateDevice) {
 }
 
 TEST_F(ProfileTest, GetServiceFromEntry) {
-  auto manager = base::MakeUnique<StrictMock<MockManager>>(
+  auto manager = std::make_unique<StrictMock<MockManager>>(
       control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 

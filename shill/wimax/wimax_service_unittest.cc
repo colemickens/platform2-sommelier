@@ -16,10 +16,10 @@
 
 #include "shill/wimax/wimax_service.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -139,7 +139,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_EQ(0, service_->strength());
   EXPECT_FALSE(service_->proxy_.get());
 
-  auto network_proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+  auto network_proxy = std::make_unique<MockWiMaxNetworkProxy>();
   EXPECT_CALL(*network_proxy, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*network_proxy, SignalStrength(_)).WillOnce(Return(kStrength));
@@ -191,7 +191,7 @@ TEST_F(WiMaxServiceTest, Connectable) {
   EXPECT_FALSE(service_->connectable());
 
   // Connectable.
-  service_->proxy_ = base::MakeUnique<MockWiMaxNetworkProxy>();
+  service_->proxy_ = std::make_unique<MockWiMaxNetworkProxy>();
   ExpectUpdateService();
   service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->need_passphrase_);

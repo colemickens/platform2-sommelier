@@ -16,9 +16,9 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
 
@@ -132,7 +132,7 @@ void ModemManagerClassic::AddModemClassic(const string& path) {
     return;
   }
 
-  auto modem = base::MakeUnique<ModemClassic>(service(), path, modem_info());
+  auto modem = std::make_unique<ModemClassic>(service(), path, modem_info());
   InitModemClassic(modem.get());
 
   RecordAddedModem(std::move(modem));

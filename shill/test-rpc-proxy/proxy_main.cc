@@ -20,10 +20,10 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <memory>
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 
 #include "proxy_dbus_shill_wifi_client.h"
@@ -70,10 +70,10 @@ int main(int argc, char* argv[]) {
   CHECK(dbus_bus->Connect());
 
   // We're creating the Dbus version of the Shill Wifi Client for now.
-  auto shill_wifi_client = base::MakeUnique<ProxyShillWifiClient>(dbus_bus);
+  auto shill_wifi_client = std::make_unique<ProxyShillWifiClient>(dbus_bus);
 
   // Create the RPC server object
-  auto rpc_server = base::MakeUnique<ProxyRpcServer>(
+  auto rpc_server = std::make_unique<ProxyRpcServer>(
       xml_rpc_port, std::move(shill_wifi_client));
 
   // Run indefinitely

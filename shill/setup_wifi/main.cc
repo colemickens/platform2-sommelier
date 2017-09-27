@@ -22,7 +22,6 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/any.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -76,7 +75,7 @@ class MyClient : public brillo::DBusDaemon {
 
   bool ConfigureAndConnect() {
     auto shill_manager_proxy =
-        base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus_);
+        std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
 
     dbus::ObjectPath created_service;
     brillo::ErrorPtr configure_error;
@@ -88,7 +87,7 @@ class MyClient : public brillo::DBusDaemon {
 
     brillo::ErrorPtr connect_error;
     shill_service_proxy_ =
-        base::MakeUnique<org::chromium::flimflam::ServiceProxy>(
+        std::make_unique<org::chromium::flimflam::ServiceProxy>(
             bus_, created_service);
     if (!shill_service_proxy_->Connect(&connect_error)) {
       LOG(ERROR) << "Connect service failed";

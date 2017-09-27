@@ -16,7 +16,7 @@
 
 #include "shill/icmp_session_factory.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 namespace shill {
 
@@ -34,7 +34,7 @@ IcmpSessionFactory* IcmpSessionFactory::GetInstance() {
 
 std::unique_ptr<IcmpSession> IcmpSessionFactory::CreateIcmpSession(
     EventDispatcher* dispatcher) {
-  return base::MakeUnique<IcmpSession>(dispatcher);
+  return std::make_unique<IcmpSession>(dispatcher);
 }
 
 }  // namespace shill

@@ -23,6 +23,7 @@
 
 #include <limits>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -30,7 +31,6 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -2267,7 +2267,7 @@ void WiFi::SetSupplicantInterfaceProxy(
     std::unique_ptr<SupplicantInterfaceProxyInterface> proxy) {
   if (proxy) {
     supplicant_interface_proxy_ = std::move(proxy);
-    tdls_manager_ = base::MakeUnique<TDLSManager>(
+    tdls_manager_ = std::make_unique<TDLSManager>(
         dispatcher(), supplicant_interface_proxy_.get(), link_name());
   } else {
     supplicant_interface_proxy_.reset();

@@ -26,7 +26,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_async_connection.h"
@@ -360,7 +359,7 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
   EXPECT_TRUE(dns_clients().empty());
 
   for (int i = 0; i < 3; ++i) {
-    auto dns_client = base::MakeUnique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDNSClient>();
     EXPECT_CALL(*dns_client, IsActive())
         .WillOnce(Return(true))
         .WillOnce(Return(true))
@@ -368,7 +367,7 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
     dns_clients().push_back(std::move(dns_client));
   }
   for (int i = 0; i < 2; ++i) {
-    auto dns_client = base::MakeUnique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDNSClient>();
     EXPECT_CALL(*dns_client, IsActive()).WillOnce(Return(false));
     dns_clients().push_back(std::move(dns_client));
   }
@@ -395,7 +394,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // All DNS queries fail.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = base::MakeUnique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDNSClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(false));
     dns_client_buffer.push_back(std::move(dns_client));
   }
@@ -414,7 +413,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // All but one DNS queries fail, 1 succeeds.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = base::MakeUnique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDNSClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(true));
     dns_client_buffer.push_back(std::move(dns_client));
   }
@@ -437,7 +436,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // Only 2 distinct IP addresses are returned.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = base::MakeUnique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDNSClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(true));
     dns_client_buffer.push_back(std::move(dns_client));
   }

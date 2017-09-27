@@ -16,9 +16,8 @@
 
 #include "shill/cellular/out_of_credits_detector.h"
 
+#include <memory>
 #include <string>
-
-#include <base/memory/ptr_util.h>
 
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/no_out_of_credits_detector.h"
@@ -59,11 +58,11 @@ std::unique_ptr<OutOfCreditsDetector> OutOfCreditsDetector::CreateDetector(
     case OOCTypeSubscriptionState:
       LOG(INFO) << __func__
                 << ": Using subscription status out-of-credits detection";
-      return base::MakeUnique<SubscriptionStateOutOfCreditsDetector>(
+      return std::make_unique<SubscriptionStateOutOfCreditsDetector>(
           dispatcher, manager, metrics, service);
     default:
       LOG(INFO) << __func__ << ": No out-of-credits detection";
-      return base::MakeUnique<NoOutOfCreditsDetector>(
+      return std::make_unique<NoOutOfCreditsDetector>(
           dispatcher, manager, metrics, service);
   }
 }

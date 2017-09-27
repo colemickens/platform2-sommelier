@@ -18,7 +18,7 @@
 
 #include <ModemManager/ModemManager.h>
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -155,7 +155,7 @@ TEST_F(CellularBearerTest, Constructor) {
 }
 
 TEST_F(CellularBearerTest, Init) {
-  auto properties_proxy = base::MakeUnique<MockDBusPropertiesProxy>();
+  auto properties_proxy = std::make_unique<MockDBusPropertiesProxy>();
   EXPECT_CALL(*properties_proxy.get(), set_properties_changed_callback(_))
       .Times(1);
   EXPECT_CALL(*properties_proxy.get(), GetAll(MM_DBUS_INTERFACE_BEARER))
