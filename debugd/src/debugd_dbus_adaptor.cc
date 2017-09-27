@@ -55,7 +55,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   systrace_tool_ = base::MakeUnique<SystraceTool>();
   tracepath_tool_ = base::MakeUnique<TracePathTool>();
   u2f_tool_ = base::MakeUnique<U2fTool>();
-  wifi_debug_tool_ = base::MakeUnique<WifiDebugTool>();
   wifi_power_tool_ = base::MakeUnique<WifiPowerTool>();
   wimax_status_tool_ = base::MakeUnique<WiMaxStatusTool>();
   session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(bus);
@@ -380,10 +379,6 @@ std::string DebugdDBusAdaptor::SwapSetParameter(
 
 std::string DebugdDBusAdaptor::SetU2fFlags(const std::string& flags) {
   return u2f_tool_->SetFlags(flags);
-}
-
-bool DebugdDBusAdaptor::SetWifiDriverDebug(int32_t flags) {
-  return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), nullptr);
 }
 
 void DebugdDBusAdaptor::ContainerStarted() {

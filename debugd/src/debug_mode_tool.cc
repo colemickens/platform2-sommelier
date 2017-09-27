@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -57,6 +58,39 @@ class SupplicantProxy {
   DISALLOW_COPY_AND_ASSIGN(SupplicantProxy);
 };
 
+// Marvell wifi.
+constexpr char kMwifiexDebugMask[] =
+    "/sys/kernel/debug/mwifiex/mlan0/debug_mask";
+// Enable extra debugging: MSG | FATAL | ERROR | CMD | EVENT.
+constexpr char kMwifiexEnable[] = "0x37";
+// Default debugging level: MSG | FATAL | ERROR.
+constexpr char kMwifiexDisable[] = "0x7";
+
+// Intel wifi.
+constexpr char kIwlwifiDebugFlag[] = "/sys/module/iwlwifi/parameters/debug";
+// Full debugging: see below file for details on each bit:
+// drivers/net/wireless-$(WIFIVERSION)/iwl7000/iwlwifi/iwl-debug.h
+constexpr char kIwlwifiEnable[] = "0xFFFFFFFF";
+// Default debugging: none
+constexpr char kIwlwifiDisable[] = "0x0";
+
+void MaybeWriteSysfs(const char* sysfs_path, const char* data) {
+  base::FilePath path(sysfs_path);
+
+  if (base::PathExists(path)) {
+    int len = strlen(data);
+    if (base::WriteFile(path, data, len) != len)
+      PLOG(WARNING) << "Writing to " << path.value() << " failed";
+  }
+}
+void WifiSetDebugLevels(bool enable) {
+  MaybeWriteSysfs(kIwlwifiDebugFlag,
+                  enable ? kIwlwifiEnable : kIwlwifiDisable);
+
+  MaybeWriteSysfs(kMwifiexDebugMask,
+                  enable ? kMwifiexEnable : kMwifiexDisable);
+}
+
 }  // namespace
 
 #if USE_CELLULAR
@@ -77,9 +111,12 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   std::string flimflam_tags;
   std::string supplicant_level = "info";
   std::string modemmanager_level = "info";
+  bool wifi_debug = false;
+
   if (subsystem == "wifi") {
     flimflam_tags = "service+wifi+inet+device+manager";
     supplicant_level = "msgdump";
+    wifi_debug = true;
   } else if (subsystem == "wimax") {
     flimflam_tags = "service+wimax+device+manager";
   } else if (subsystem == "cellular") {
@@ -100,6 +137,8 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
       shill->SetDebugLevel(kFlimflamLogLevelInfo, nullptr);
     }
   }
+
+  WifiSetDebugLevels(wifi_debug);
 
   SupplicantProxy supplicant(bus_);
   supplicant.SetDebugLevel(supplicant_level);
