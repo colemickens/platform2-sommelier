@@ -421,23 +421,19 @@ void ParameterWorker::overrideCPFFMode(PipeConfig *pipeCfg, std::shared_ptr<Grap
     if (pipeCfg == nullptr)
         return;
 
-    if (config->isStillPipe()) {
+    /* Due to suppport 360 degree orientation, so width is less than
+     * height in portrait mode, need to use max length between width
+     * and height to do comparison.
+     */
+    int maxLength = MAX(pipeCfg->main_out_width, pipeCfg->main_out_height);
+    if (maxLength > RESOLUTION_1080P_WIDTH) {
         pipeCfg->cpff_mode_hint = CPFF_MAIN;
+    } else if (maxLength > RESOLUTION_720P_WIDTH) {
+        pipeCfg->cpff_mode_hint = CPFF_FHD;
+    } else if (maxLength > RESOLUTION_VGA_WIDTH) {
+        pipeCfg->cpff_mode_hint = CPFF_HD;
     } else {
-        /* preview/video pipe
-         * Due to suppport 360 degree orientation, so width is less than
-         * height in portrait mode, need to use max length between width
-         * and height to do comparison.
-         */
-        int maxLength = MAX(pipeCfg->main_out_width, pipeCfg->main_out_height);
-        if (maxLength > RESOLUTION_720P_WIDTH) {
-            pipeCfg->cpff_mode_hint = CPFF_FHD;
-        } else if (maxLength <= RESOLUTION_720P_WIDTH &&
-            maxLength > RESOLUTION_VGA_WIDTH) {
-            pipeCfg->cpff_mode_hint = CPFF_HD;
-        } else if (maxLength <= RESOLUTION_VGA_WIDTH) {
-            pipeCfg->cpff_mode_hint = CPFF_VGA;
-        }
+        pipeCfg->cpff_mode_hint = CPFF_VGA;
     }
     LOG2("%s final cpff mode %d", __FUNCTION__, pipeCfg->cpff_mode_hint);
 }
