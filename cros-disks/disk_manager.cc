@@ -14,7 +14,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -426,22 +425,22 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
 
   const string& mounter_type = filesystem.mounter_type();
   if (mounter_type == SystemMounter::kMounterType)
-    return base::MakeUnique<SystemMounter>(disk.device_file(), target_path,
+    return std::make_unique<SystemMounter>(disk.device_file(), target_path,
                                            filesystem.mount_type(),
                                            mount_options);
 
   if (mounter_type == ExternalMounter::kMounterType)
-    return base::MakeUnique<ExternalMounter>(disk.device_file(), target_path,
+    return std::make_unique<ExternalMounter>(disk.device_file(), target_path,
                                              filesystem.mount_type(),
                                              mount_options);
 
   if (mounter_type == ExFATMounter::kMounterType)
-    return base::MakeUnique<ExFATMounter>(disk.device_file(), target_path,
+    return std::make_unique<ExFATMounter>(disk.device_file(), target_path,
                                           filesystem.mount_type(),
                                           mount_options, platform());
 
   if (mounter_type == NTFSMounter::kMounterType)
-    return base::MakeUnique<NTFSMounter>(disk.device_file(), target_path,
+    return std::make_unique<NTFSMounter>(disk.device_file(), target_path,
                                          filesystem.mount_type(),
                                          mount_options, platform());
 

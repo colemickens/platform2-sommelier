@@ -4,9 +4,10 @@
 
 #include "cros-disks/device_ejector.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 
 #include "cros-disks/glib_process.h"
 
@@ -30,7 +31,7 @@ DeviceEjector::~DeviceEjector() {
 bool DeviceEjector::Eject(const string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
-  eject_processes_.push_back(base::MakeUnique<GlibProcess>());
+  eject_processes_.push_back(std::make_unique<GlibProcess>());
   GlibProcess* process = eject_processes_.back().get();
 
   process->AddArgument(kEjectProgram);
