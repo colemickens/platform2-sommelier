@@ -76,6 +76,7 @@ DebugModeTool::DebugModeTool(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
 void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   std::string flimflam_tags;
   std::string supplicant_level = "info";
+  std::string modemmanager_level = "info";
   if (subsystem == "wifi") {
     flimflam_tags = "service+wifi+inet+device+manager";
     supplicant_level = "msgdump";
@@ -83,6 +84,7 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
     flimflam_tags = "service+wimax+device+manager";
   } else if (subsystem == "cellular") {
     flimflam_tags = "service+cellular+modem+device+manager";
+    modemmanager_level = "debug";
   } else if (subsystem == "ethernet") {
     flimflam_tags = "service+ethernet+device+manager";
   } else if (subsystem == "none") {
@@ -102,7 +104,7 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   SupplicantProxy supplicant(bus_);
   supplicant.SetDebugLevel(supplicant_level);
 
-  SetAllModemManagersLogging("info");
+  SetAllModemManagersLogging(modemmanager_level);
 }
 
 void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
@@ -145,8 +147,7 @@ void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
 #if USE_CELLULAR
   std::vector<std::string> managers;
   GetAllModemManagers(&managers);
-  for (size_t i = 0; i < managers.size(); ++i) {
-    const std::string& manager = managers[i];
+  for (const auto& manager : managers) {
     if (manager == cromo::kCromoServiceName) {
       SetModemManagerLogging(cromo::kCromoServiceName,
                              cromo::kCromoServicePath,
