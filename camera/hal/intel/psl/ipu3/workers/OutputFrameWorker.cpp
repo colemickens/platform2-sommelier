@@ -155,9 +155,9 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
         LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__, stream->getStream(), mStream);
         if (stream->getStream() == mStream) {
-            buffer = request->findBuffer(stream);
+            buffer = request->findBuffer(stream, false);
             if (CC_UNLIKELY(buffer == nullptr)) {
-                LOGE("buffer not found for stream - BUG");
+                LOGD("buffer not found for stream");
                 return UNKNOWN_ERROR;
             }
 

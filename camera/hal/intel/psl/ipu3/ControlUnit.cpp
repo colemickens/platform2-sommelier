@@ -336,6 +336,7 @@ ControlUnit::~ControlUnit()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
+    mLatestStatistics = nullptr;
     mSettingsHistory.clear();
 
     requestExitAndWait();
@@ -889,6 +890,10 @@ ControlUnit::handleMessageFlush(void)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     mAfApplySequence = 0;
+    mWaitingForCapture.clear();
+    mPendingRequests.clear();
+    mSettingsHistory.clear();
+
     return NO_ERROR;
 }
 
@@ -1047,7 +1052,7 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         params->frame_sa_parameters = &settingsInEffect->aiqResults.saResults;
         params->frame_pa_parameters = &settingsInEffect->aiqResults.paResults;
     } else {
-        LOGE("preparing statistics from exp %lld that we do not track", params->frame_id);
+        LOG1("preparing statistics from exp %lld that we do not track", params->frame_id);
 
         // default to latest results
         AiqResults& latestResults = m3ARunner->getLatestResults();

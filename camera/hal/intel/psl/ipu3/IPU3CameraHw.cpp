@@ -124,6 +124,7 @@ IPU3CameraHw::deInit()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mImguUnit) {
        mImguUnit->cleanListener();
+       mImguUnit->flush();
     }
 
     if (mCaptureUnit) {
@@ -132,6 +133,7 @@ IPU3CameraHw::deInit()
     }
 
     if (mControlUnit) {
+        mControlUnit->flush();
         delete mControlUnit;
         mControlUnit = nullptr;
     }

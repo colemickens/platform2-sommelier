@@ -93,7 +93,7 @@ status_t SWOutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     status_t status;
     CameraStream *stream = reinterpret_cast<CameraStream *>(mStream->priv);
     Camera3Request* request = mMsg->cbMetadataMsg.request;
-    std::shared_ptr<CameraBuffer> buffer = request->findBuffer(stream);
+    std::shared_ptr<CameraBuffer> buffer = request->findBuffer(stream, false);
     if (buffer == nullptr) {
         LOGD("No work for this worker mStream: %p", mStream);
         mAllDone = true;
