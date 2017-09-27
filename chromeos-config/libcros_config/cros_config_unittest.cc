@@ -74,10 +74,23 @@ TEST_F(CrosConfigTest, CheckCorrectModel) {
 TEST_F(CrosConfigTest, CheckGetModelNames) {
   InitConfig();
   std::vector<std::string> models = cros_config_.GetModelNames();
-  ASSERT_EQ(models.size(), 3);
+  ASSERT_EQ(models.size(), 4);
   ASSERT_EQ(models[0], "pyro");
   ASSERT_EQ(models[1], "caroline");
   ASSERT_EQ(models[2], "reef");
+  ASSERT_EQ(models[3], "broken");
+}
+
+TEST_F(CrosConfigTest, CheckGetFirmwareUri) {
+  std::string bucket = "gs://chromeos-binaries/HOME/bcs-reef-private/"
+    "overlay-reef-private/chromeos-base/chromeos-firmware-pyro";
+  InitConfig();
+  std::vector<std::string> uris = cros_config_.GetFirmwareUris();
+  ASSERT_EQ(uris.size(), 4);
+  ASSERT_EQ(uris[0], bucket + "/Reef_EC.9042.87.1.tbz2");
+  ASSERT_EQ(uris[1], bucket + "/Reef_PD.9042.87.1.tbz2");
+  ASSERT_EQ(uris[2], bucket + "/Reef.9042.87.1.tbz2");
+  ASSERT_EQ(uris[3], bucket + "/Reef.9042.110.0.tbz2");
 }
 
 int main(int argc, char **argv) {

@@ -52,6 +52,9 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool InitForTest(const base::FilePath& filepath, const std::string& model);
 
   // CrosConfigInterface:
+  std::vector<std::string> GetFirmwareUris() const override;
+
+  // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& prop,
                  std::string* val_out) override;
@@ -68,8 +71,9 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                   const base::CommandLine& cmdline);
 
   // Runs a quick init check and prints an error to stderr if it fails.
+  // @check_form_model Checks that the model has been inited if true.
   // @return true if OK, false on error.
-  bool InitCheck() const;
+  bool InitCheck(bool check_for_model) const;
 
   std::string blob_;        // Device tree binary blob
   std::string model_;       // Model name for this device

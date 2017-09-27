@@ -62,6 +62,7 @@
           ],
           'sources': [
             'libcros_config/cros_config_unittest.cc',
+            'libcros_config/fake_cros_config.cc',
           ],
         },
         {

@@ -62,7 +62,7 @@ TEST(CrosConfigTest, ListModels) {
   bool success = base::GetAppOutput(
       {base_command, "--model=pyro", "--list_models", "test.dtb"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("pyro\ncaroline\nreef\n", output);
+  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\n", output);
 }
 
 TEST(CrosConfigTest, GetStringForAllMissing) {
@@ -70,7 +70,7 @@ TEST(CrosConfigTest, GetStringForAllMissing) {
   bool success = base::GetAppOutput(
       {base_command, "--get_all", "test.dtb", "/", "does_not_exist"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("\n\n\n", output);
+  EXPECT_EQ("\n\n\n\n", output);
 }
 
 TEST(CrosConfigTest, GetStringForAll) {
@@ -78,7 +78,27 @@ TEST(CrosConfigTest, GetStringForAll) {
   bool success = base::GetAppOutput(
       {base_command, "--get_all", "test.dtb", "/", "wallpaper"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("default\n\nepic\n", output);
+  EXPECT_EQ("default\n\nepic\n\n", output);
+}
+
+TEST(CrosConfigTest, GetFirmwareUris) {
+  std::string bucket = "gs://chromeos-binaries/HOME/bcs-reef-private/"
+    "overlay-reef-private/chromeos-base";
+  std::string output;
+  bool success = base::GetAppOutput(
+      {base_command, "--get_firmware_uris", "test.dtb"}, &output);
+  EXPECT_TRUE(success);
+  EXPECT_EQ(
+      bucket + "/chromeos-firmware-pyro/Reef_EC.9042.87.1.tbz2 " +
+      bucket + "/chromeos-firmware-pyro/Reef_PD.9042.87.1.tbz2 " +
+      bucket + "/chromeos-firmware-pyro/Reef.9042.87.1.tbz2 " +
+      bucket + "/chromeos-firmware-pyro/Reef.9042.110.0.tbz2 \n" +
+      "\n" +
+      bucket + "/chromeos-firmware-reef/Reef_EC.9042.87.1.tbz2 " +
+      bucket + "/chromeos-firmware-reef/Reef.9042.87.1.tbz2 " +
+      bucket + "/chromeos-firmware-reef/Reef.9042.110.0.tbz2 \n" +
+      "\n",
+      output);
 }
 
 TEST(CrosConfigTest, StdinGetString) {
@@ -95,7 +115,7 @@ TEST(CrosConfigTest, StdinListModels) {
     " --list_models -";
   std::string output;
   bool success = base::GetAppOutput({"/bin/bash", "-c", command}, &output);
-  EXPECT_EQ("pyro\ncaroline\nreef\n", output);
+  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\n", output);
   EXPECT_TRUE(success);
 }
 

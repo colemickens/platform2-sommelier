@@ -17,6 +17,15 @@ void FakeCrosConfig::SetString(const std::string& path, const std::string& prop,
   values_[PathProp{path, prop}] = val;
 }
 
+void FakeCrosConfig::SetFirmwareUrisList(
+    const std::vector<std::string>& values) {
+  firmware_uris_ = values;
+}
+
+std::vector<std::string> FakeCrosConfig::GetFirmwareUris() const {
+  return firmware_uris_;
+}
+
 bool FakeCrosConfig::GetString(const std::string& path, const std::string& prop,
                                std::string* val) {
   // TODO(sjg): Handle non-root nodes. For now this is disabled since the

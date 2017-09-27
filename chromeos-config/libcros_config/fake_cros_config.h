@@ -33,6 +33,13 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  const std::string& val);
 
+  // Sets the fake URIs returned by GetFirmwareUris()
+  // @values The fake URI that will be returned by GetFirmwareUris()
+  void SetFirmwareUrisList(const std::vector<std::string>& values);
+
+  // CrosConfigInterface:
+  std::vector<std::string> GetFirmwareUris() const override;
+
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& prop,
@@ -47,6 +54,9 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
   // This stores the string values, keyed by a pair consisting of the path
   // and the property.
   std::map<PathProp, std::string> values_;
+
+  // This stores a fake firmware URI list.
+  std::vector<std::string> firmware_uris_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeCrosConfig);
 };

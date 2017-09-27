@@ -18,6 +18,12 @@ class CrosConfigInterface {
   CrosConfigInterface() {}
   virtual ~CrosConfigInterface() {}
 
+  // Obtain a list of all firmware URIs attached to the inited model. Just like
+  // GetString, InitModel or InitHost must be called with a valid model name
+  // before calling this.
+  // @return A space separated list of firmware URIs.
+  virtual std::vector<std::string> GetFirmwareUris() const = 0;
+
   // Obtain a config property.
   // This returns a property for the current board model. This can only be
   // called if Init*() was called, and either InitModel was called OR InitHost

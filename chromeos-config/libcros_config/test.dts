@@ -18,9 +18,28 @@
 	pyro {
 		wallpaper = "default";
 		string-list = "default", "more";
+		firmware {
+			bcs-overlay = "overlay-reef-private";
+			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
+			pd-image = "bcs://Reef_PD.9042.87.1.tbz2";
+			main-image = "bcs://Reef.9042.87.1.tbz2";
+			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+		};
 	};
 	caroline { };
 	reef {
 		wallpaper = "epic";
+		firmware {
+			bcs-overlay = "overlay-reef-private";
+			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
+			main-image = "bcs://Reef.9042.87.1.tbz2";
+			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+		};
+	};
+	broken {
+		firmware {
+			bcs-overlay = "-reef-private";
+			main-image = "bcs://Reef.9042.87.1.tbz2";
+		};
 	};
 };
