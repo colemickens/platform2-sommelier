@@ -59,6 +59,28 @@ emmc_disk_metrics() {
   done
 }
 
+sindin8de2_disk_metrics() {
+  # Sandisk SDIN8DE2-*G 4.51 stores eMMC device health in vendor registers:
+  # 94: MLC Device health.
+  # 87: SLC Device health.
+  local offset_A=94
+  local offset_B=87
+  local offset life type
+
+  if grep -qe "^name.*SEM..G" "${STORAGE_INFO_FILE}"; then
+    for type in 'A' 'B'; do
+      eval "offset=\"\${offset_${type}}\""
+
+      life="$(sed -ne "/Vendor Specific Fields \[VENDOR_SPECIFIC_FIELD\[${offset}\]\]:/s/.*: \(0x.*\)$/\1/p" \
+        "${STORAGE_INFO_FILE}")"
+      if [ -n "${life}" ]; then
+        metrics_client -s "Platform.Emmc.LifeUsed.Type${type}" \
+          "$(printf "%d" "${life}")"
+      fi
+    done
+  fi
+}
+
 # Invoke main if not in test mode, otherwise let the test code call.
 main() {
   if [ ${FLAGS_test} -eq ${FLAGS_TRUE} ]; then
@@ -72,5 +94,6 @@ main() {
   get_storage_info > "${STORAGE_INFO_FILE}"
   sata_disk_metrics
   emmc_disk_metrics
+  sindin8de2_disk_metrics
 }
 main "$@"
