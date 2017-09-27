@@ -119,6 +119,11 @@ properties.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
+        *   `thermal`(optional): Contains information about thermel properties
+            and settings.
+            *   `dptf-dv': Filename of the .dv file containing DPTF (Dynamic
+                Platform and Thermal Framework) settings, relative to the
+                ebuild's FILESDIR.
         *   `wallpaper` (optional): base filename of the default wallpaper to
             show on this device. The base filename points `session_manager` to
             two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
@@ -197,6 +202,9 @@ chromeos {
                 shares = <&shared>;
                 key-id = "reef";
             };
+            thermal {
+                dptf-dv = "reef/dptf.dv";
+            };
         };
 
         pyro {
@@ -213,6 +221,9 @@ chromeos {
                     depthcharge = "pyro";
                     libpayload = "reef";
                 };
+            };
+            thermal {
+                dptf-dv = "pyro/dptf.dv";
             };
         };
 
