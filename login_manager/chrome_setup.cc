@@ -124,6 +124,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-transition-migration-required");
   if (builder->UseFlagIsSet("arc_only_start_after_login"))
     builder->AddArg("--arc-start-mode=only-start-after-login");
+  if (builder->UseFlagIsSet("arc_force_2x_scaling"))
+    builder->AddArg("--force-remote-shell-scale=2");
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
