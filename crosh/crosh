@@ -363,6 +363,52 @@ cmd_set_time() (
   esac
 )
 
+session_manager() {
+  # Default timeout 30 seconds.
+  local timeout="--reply-timeout=30000"
+  case $1 in
+  --reply-timeout=*) timeout=$1; shift;;
+  esac
+  local method="$1"; shift
+  dbus-send ${timeout} --system --print-reply --fixed \
+      --dest=org.chromium.SessionManager \
+      /org/chromium/SessionManager \
+      "org.chromium.SessionManagerInterface.${method}" "$@"
+}
+
+# Set the vars to pass the unittests ...
+USAGE_vmc=''
+HELP_vmc=''
+EXEC_vmc='/usr/bin/vm_launcher'
+# ... then unset them to hide the command from "help" output.
+unset USAGE_vmc HELP_vmc
+cmd_vmc() (
+  local reply
+  local cmd="$1"; shift
+  case "${cmd}" in
+  start)
+    if [ $# -ne 2 ]; then
+      help "Usage: vmc ${cmd} <conatiner path> <container name>"
+      return 1
+    fi
+    local container="$1"; shift
+    local name="$1";shift
+    # TODO(dgreid) - crbug.com/770766 - Fill user id field.
+    session_manager "StartContainer" "string:${container}" "string:${name}" "string:"
+    ;;
+  stop)
+    if [ $# -ne 1 ]; then
+      help "Usage: vmc ${cmd} <container name>"
+      return 1
+    fi
+    local name="$1"; shift
+    session_manager "StopContainer" "string:${name}"
+    ;;
+  *)
+    echo "Unknown VM command: ${cmd}"
+  esac
+)
+
 # Set the vars to pass the unittests ...
 USAGE_ssh=''
 HELP_ssh=''
