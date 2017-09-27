@@ -2985,7 +2985,7 @@ void Service::DoSetFirmwareManagementParameters(
     flags = request_pb.flags();
   }
 
-  std::unique_ptr<brillo::Blob> hash;
+  std::unique_ptr<brillo::SecureBlob> hash;
   if (request_pb.has_developer_key_hash()) {
     hash.reset(new SecureBlob(request_pb.developer_key_hash()));
   }
