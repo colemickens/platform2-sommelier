@@ -7,12 +7,6 @@
 
 namespace midis {
 
-// A single variable of |struct MidisDeviceInfo| has both name and manufacturer
-// strings. These alone will take up 512 bytes. Since kMaxBufSize is used to
-// create the buffer which lists the connected devices, we set it to a
-// sufficient value so that at least 7 devices can be represented.
-// TODO(pmalani): Revisit this value based on how many simultaneous devices we
-// expect to support.
 const int kMaxBufSize = 4096;
 
 }  // namespace midis

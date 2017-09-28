@@ -9,6 +9,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/message_loops/message_loop.h>
+#include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
@@ -94,6 +95,13 @@ class SeqHandler : public SeqHandlerInterface {
   void UnsubscribeInPort(uint32_t device_id, uint32_t port_id) override;
   void UnsubscribeOutPort(int out_port_id) override;
 
+  // Encodes the bytes in a MIDI buffer into the provided |encoder|.
+  bool EncodeMidiBytes(int out_port_id,
+                       snd_seq_t* out_client,
+                       const uint8_t* buffer,
+                       size_t buffer_len,
+                       snd_midi_event_t* encoder);
+
   // Callback to send MIDI data to the H/W. This callback is generally called by
   // a Device handler which receives MIDI data from a client (e.g ARC++). The
   // Device handler will in turn be called by a Client handler which is
@@ -107,7 +115,20 @@ class SeqHandler : public SeqHandlerInterface {
   // data accordingly.
   void ProcessMidiEvent(snd_seq_event_t* event) override;
 
+  // Wrappers for functions that interact with the ALSA Sequencer interface.
+  // These are kept separately, because the intention is to mock these functions
+  // in unit tests.
+  virtual int SndSeqEventOutputDirect(snd_seq_t* out_client,
+                                      snd_seq_event_t* event);
+
+ protected:
+  // For testing purposes.
+  SeqHandler();
+
  private:
+  friend class SeqHandlerTest;
+  FRIEND_TEST(SeqHandlerTest, TestEncodeBytes);
+
   std::unique_ptr<snd_seq_t, SeqDeleter> in_client_;
   std::unique_ptr<snd_seq_t, SeqDeleter> out_client_;
   std::unique_ptr<snd_midi_event_t, MidiEventDeleter> decoder_;

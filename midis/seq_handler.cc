@@ -12,6 +12,8 @@
 #include <base/bind.h>
 #include <poll.h>
 
+#include "midis/constants.h"
+
 namespace {
 
 const unsigned int kCreateInputPortCaps =
@@ -25,6 +27,8 @@ const char kSndSeqName[] = "hw";
 }  // namespace
 
 namespace midis {
+
+SeqHandler::SeqHandler() : weak_factory_(this) {}
 
 SeqHandler::SeqHandler(AddDeviceCallback add_device_cb,
                        RemoveDeviceCallback remove_device_cb,
@@ -116,10 +120,7 @@ bool SeqHandler::InitSeq() {
   snd_seq_poll_descriptors(in_client_.get(), pfd_.get(), 1, POLLIN);
 
   taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE,
-      pfd_.get()->fd,
-      brillo::MessageLoop::kWatchRead,
-      true,
+      FROM_HERE, pfd_.get()->fd, brillo::MessageLoop::kWatchRead, true,
       base::Bind(&SeqHandler::ProcessAlsaClientFd, weak_factory_.GetWeakPtr()));
 
   if (taskid_ == brillo::MessageLoop::kTaskIdNull) {
@@ -184,7 +185,8 @@ void SeqHandler::ProcessAlsaClientFd() {
 }
 
 void SeqHandler::AddSeqDevice(uint32_t device_id) {
-  if (is_device_present_cb_.Run(0 /* FIXME: Remove card number */, device_id)) {
+  if (is_device_present_cb_.Run(0 /* TODO(pmalani): Remove card number */,
+                                device_id)) {
     LOG(INFO) << "Device: " << device_id << " already exists.";
     return;
   }
@@ -222,15 +224,10 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
                       snd_seq_port_info_get_capability(port_info));
   }
 
-  // FIXME(pmalani): Remove card/sys_num entirely (or retrieve it from snd_seq,
-  // and fill it in correctly.
-  auto dev = std::make_unique<Device>(
-      name,
-      std::string(),
-      0 /* card number; FIXME remove card number */,
-      device_id,
-      num_subdevices,
-      0 /* device flags FIXME */,
+  auto dev = base::MakeUnique<Device>(
+      name, std::string(),
+      0 /* card number; TODO(pmalani) remove card number */, device_id,
+      num_subdevices, 0 /* device flags TODO(pmalani): flags not needed. */,
       base::Bind(&SeqHandler::SubscribeInPort, base::Unretained(this)),
       base::Bind(&SeqHandler::SubscribeOutPort, base::Unretained(this)),
       base::Bind(&SeqHandler::UnsubscribeInPort, weak_factory_.GetWeakPtr()),
@@ -282,8 +279,8 @@ bool SeqHandler::SubscribeInPort(uint32_t device_id, uint32_t port_id) {
 
 int SeqHandler::SubscribeOutPort(uint32_t device_id, uint32_t port_id) {
   int out_port;
-  out_port = snd_seq_create_simple_port(
-      out_client_.get(), NULL, kCreateOutputPortCaps, kCreatePortType);
+  out_port = snd_seq_create_simple_port(out_client_.get(), NULL,
+                                        kCreateOutputPortCaps, kCreatePortType);
   if (out_port < 0) {
     LOG(INFO) << "snd_seq_creat_simple_port (output) failed: "
               << snd_strerror(out_port);
@@ -335,21 +332,54 @@ void SeqHandler::UnsubscribeOutPort(int out_port_id) {
   snd_seq_delete_simple_port(out_client_.get(), out_port_id);
 }
 
-void SeqHandler::SendMidiData(int out_port_id,
-                              const uint8_t* buffer,
-                              size_t buf_len) {
-  snd_midi_event_t* encoder;
-  snd_midi_event_new(buf_len, &encoder);
+bool SeqHandler::EncodeMidiBytes(int out_port_id,
+                                 snd_seq_t* out_client,
+                                 const uint8_t* buffer,
+                                 size_t buf_len,
+                                 snd_midi_event_t* encoder) {
+  if (buf_len == 0 || buf_len > kMaxBufSize) {
+    return false;
+  }
+
   for (int i = 0; i < buf_len; i++) {
     snd_seq_event_t event;
     int result = snd_midi_event_encode_byte(encoder, buffer[i], &event);
+    if (result < 0) {
+      LOG(ERROR) << "Error snd_midi_event_encode_byte(): " << result;
+      return false;
+    }
     if (result == 1) {
       // Send the message.
       snd_seq_ev_set_source(&event, out_port_id);
       snd_seq_ev_set_subs(&event);
       snd_seq_ev_set_direct(&event);
-      snd_seq_event_output_direct(out_client_.get(), &event);
+      int expected_length = snd_seq_event_length(&event);
+      result = SndSeqEventOutputDirect(out_client, &event);
+      if (result != expected_length) {
+        LOG(ERROR) << "Error in snd_seq_event_output_direct(): " << result;
+        return false;
+      }
+      return true;
     }
+  }
+
+  // If we reached here, something went wrong.
+  return false;
+}
+
+void SeqHandler::SendMidiData(int out_port_id,
+                              const uint8_t* buffer,
+                              size_t buf_len) {
+  snd_midi_event_t* encoder;
+  int ret = snd_midi_event_new(buf_len, &encoder);
+  if (ret != 0) {
+    LOG(ERROR) << "Error snd_midi_event_new(): " << ret;
+    return;
+  }
+  bool success =
+      EncodeMidiBytes(out_port_id, out_client_.get(), buffer, buf_len, encoder);
+  if (!success) {
+    LOG(ERROR) << "Failed to send MIDI data to output port: " << out_port_id;
   }
   snd_midi_event_free(encoder);
 }
@@ -360,9 +390,7 @@ void SeqHandler::ProcessMidiEvent(snd_seq_event_t* event) {
 
   if (event->type == SND_SEQ_EVENT_SYSEX) {
     // SysEX, so pass it through without decoding.
-    handle_rx_data_cb_.Run(0,
-                           device_id,
-                           subdevice_num,
+    handle_rx_data_cb_.Run(0, device_id, subdevice_num,
                            static_cast<char*>(event->data.ext.ptr),
                            event->data.ext.len);
   } else {
@@ -375,10 +403,15 @@ void SeqHandler::ProcessMidiEvent(snd_seq_event_t* event) {
         LOG(ERROR) << "snd_midi_event_decoder failed: " << snd_strerror(count);
       }
     } else {
-      handle_rx_data_cb_.Run(
-          0, device_id, subdevice_num, reinterpret_cast<char*>(buf), count);
+      handle_rx_data_cb_.Run(0, device_id, subdevice_num,
+                             reinterpret_cast<char*>(buf), count);
     }
   }
+}
+
+int SeqHandler::SndSeqEventOutputDirect(snd_seq_t* out_client,
+                                        snd_seq_event_t* event) {
+  return snd_seq_event_output_direct(out_client, event);
 }
 
 }  // namespace midis
