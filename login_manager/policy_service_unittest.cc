@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/ptr_util.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -47,7 +46,7 @@ class PolicyServiceTest : public testing::Test {
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_ = base::MakeUnique<PolicyService>(
+    service_ = std::make_unique<PolicyService>(
         std::unique_ptr<PolicyStore>(store_), &key_);
     service_->set_delegate(&delegate_);
   }

@@ -99,7 +99,7 @@ class NssUtilImpl : public NssUtil {
 // Defined here, instead of up above, because we need NssUtilImpl.
 // static
 std::unique_ptr<NssUtil> NssUtil::Create() {
-  return base::MakeUnique<NssUtilImpl>();
+  return std::make_unique<NssUtilImpl>();
 }
 
 // We're generating and using 2048-bit RSA keys.

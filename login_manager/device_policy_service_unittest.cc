@@ -107,8 +107,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   void InitService(NssUtil* nss) {
     store_ = new StrictMock<MockPolicyStore>();
-    metrics_ = base::MakeUnique<MockMetrics>();
-    mitigator_ = base::MakeUnique<StrictMock<MockMitigator>>();
+    metrics_ = std::make_unique<MockMetrics>();
+    mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
         base::WrapUnique(store_), &key_, install_attributes_file_,
         metrics_.get(), mitigator_.get(), nss, &crossystem_, &vpd_process_));
@@ -124,7 +124,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
 
-    auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+    auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
     proto->mutable_system_settings()->set_block_devmode(false);
     SetSettings(service_.get(), std::move(proto));
 
@@ -593,7 +593,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
   crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
 
-  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
@@ -615,7 +615,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
   crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
 
-  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(service_.get(), std::move(proto));
 
@@ -643,7 +643,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
@@ -679,7 +679,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
@@ -712,7 +712,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
+  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);

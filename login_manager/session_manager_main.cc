@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,7 +21,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
 
   // Set things up for running Chrome.
   std::unique_ptr<brillo::CrosConfig> cros_config =
-      base::MakeUnique<brillo::CrosConfig>();
+      std::make_unique<brillo::CrosConfig>();
   if (!cros_config->Init())
     cros_config = nullptr;
   bool is_developer_end_user = false;
@@ -195,7 +195,7 @@ int main(int argc, char* argv[]) {
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
-  auto browser_job = base::MakeUnique<BrowserJob>(command, env_vars, uid,
+  auto browser_job = std::make_unique<BrowserJob>(command, env_vars, uid,
                                                   &checker, &metrics, &system);
   bool should_run_browser = browser_job->ShouldRunBrowser();
 

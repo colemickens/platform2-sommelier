@@ -23,7 +23,6 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
@@ -210,7 +209,7 @@ class SessionManagerImpl::DBusService {
     DCHECK(!dbus_object_);
 
     // Registers the SessionManagerInterface D-Bus methods and signals.
-    dbus_object_ = base::MakeUnique<brillo::dbus_utils::DBusObject>(
+    dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus,
         org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath());
     adaptor_->RegisterWithDBusObject(dbus_object_.get());
@@ -487,7 +486,7 @@ void SessionManagerImpl::Finalize() {
 
 bool SessionManagerImpl::StartDBusService() {
   DCHECK(!dbus_service_);
-  auto dbus_service = base::MakeUnique<DBusService>(&adaptor_);
+  auto dbus_service = std::make_unique<DBusService>(&adaptor_);
   if (!dbus_service->Start(bus_))
     return false;
 
@@ -1377,7 +1376,7 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  return base::MakeUnique<UserSession>(username, SanitizeUserName(username),
+  return std::make_unique<UserSession>(username, SanitizeUserName(username),
                                        is_incognito, std::move(slot),
                                        std::move(user_policy));
 }

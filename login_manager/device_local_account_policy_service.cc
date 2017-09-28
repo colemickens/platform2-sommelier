@@ -11,7 +11,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
@@ -143,14 +142,14 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       return NULL;
     }
 
-    auto store = base::MakeUnique<PolicyStore>(policy_path);
+    auto store = std::make_unique<PolicyStore>(policy_path);
     if (!store->LoadOrCreate()) {
       // This is non-fatal, the policy may not have been stored yet.
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
     }
     entry->second =
-        base::MakeUnique<PolicyService>(std::move(store), owner_key_);
+        std::make_unique<PolicyService>(std::move(store), owner_key_);
   }
 
   return entry->second.get();

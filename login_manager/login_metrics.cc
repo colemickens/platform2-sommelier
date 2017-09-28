@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/sys_info.h>
 #include <base/time/default_clock.h>
 #include <base/time/default_tick_clock.h>
@@ -52,8 +51,8 @@ LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
   if (metrics_lib_.AreMetricsEnabled()) {
     arc_cumulative_use_time_.reset(new CumulativeUseTimeMetric(
         kArcCumulativeUseTimeMetric, &metrics_lib_, base::FilePath(kMetricsDir),
-        base::MakeUnique<base::DefaultClock>(),
-        base::MakeUnique<base::DefaultTickClock>()));
+        std::make_unique<base::DefaultClock>(),
+        std::make_unique<base::DefaultTickClock>()));
     std::string version;
     base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version);
     arc_cumulative_use_time_->Init(version);

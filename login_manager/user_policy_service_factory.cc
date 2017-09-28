@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "brillo/cryptohome.h"
@@ -84,7 +83,7 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
     const std::string& username,
     const base::FilePath& policy_dir) {
   auto key =
-      base::MakeUnique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
+      std::make_unique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
   bool key_load_success = key->PopulateFromDiskIfPossible();
   if (!key_load_success) {
     LOG(ERROR) << "Failed to load user policy key from disk.";
@@ -92,7 +91,7 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
   }
 
   auto store =
-      base::MakeUnique<PolicyStore>(policy_dir.Append(kPolicyDataFile));
+      std::make_unique<PolicyStore>(policy_dir.Append(kPolicyDataFile));
   bool policy_success = store->LoadOrCreate();
   if (!policy_success)  // Non-fatal, so log, and keep going.
     LOG(WARNING) << "Failed to load user policy data, continuing anyway.";
@@ -103,7 +102,7 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
       "%s/%s/%s", kPolicyKeyCopyDir, sanitized.c_str(), kPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
-      base::MakeUnique<UserPolicyService>(std::move(store), std::move(key),
+      std::make_unique<UserPolicyService>(std::move(store), std::move(key),
                                           key_copy_file, system_utils_);
   service->PersistKeyCopy();
   return service;

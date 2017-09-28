@@ -236,7 +236,7 @@ class ResponseCapturer {
   template <typename... Types>
   std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>
   CreateMethodResponse() {
-    return base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<Types...>>(
+    return std::make_unique<brillo::dbus_utils::DBusMethodResponse<Types...>>(
         &call_,
         base::Bind(&ResponseCapturer::Capture, weak_ptr_factory_.GetWeakPtr()));
   }
@@ -325,7 +325,7 @@ class SessionManagerImplTest : public ::testing::Test,
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
     init_controller_ = new MockInitDaemonController();
-    impl_ = base::MakeUnique<SessionManagerImpl>(
+    impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &key_gen_, &state_key_generator_, &manager_, &metrics_, &nss_, &utils_,
         &crossystem_, &vpd_process_, &owner_key_, &android_container_,
@@ -345,7 +345,7 @@ class SessionManagerImplTest : public ::testing::Test,
             this,
             &SessionManagerImplTest::CreateUserPolicyServiceForHiddenUserHome));
     auto device_local_account_policy =
-        base::MakeUnique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
+        std::make_unique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
                                                           nullptr);
     impl_->SetPolicyServicesForTest(
         base::WrapUnique(device_policy_service_),
@@ -500,7 +500,7 @@ class SessionManagerImplTest : public ::testing::Test,
   std::unique_ptr<PolicyService> CreateUserPolicyService(
       const string& username) {
     std::unique_ptr<MockPolicyService> policy_service =
-        base::MakeUnique<MockPolicyService>();
+        std::make_unique<MockPolicyService>();
     user_policy_services_[username] = policy_service.get();
     return policy_service;
   }
@@ -1170,7 +1170,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
 
   // Set up what MockUserPolicyServiceFactory will return.
   hidden_user_home_expected_username_ = kSaneEmail;
-  hidden_user_home_policy_service_ = base::MakeUnique<MockPolicyService>();
+  hidden_user_home_policy_service_ = std::make_unique<MockPolicyService>();
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
   EXPECT_CALL(*policy_service, Retrieve(_))

@@ -99,7 +99,7 @@ class SessionManagerProcessTest : public ::testing::Test {
         .WillOnce(Return(false))
         .WillOnce(Return(true));
 
-    job->set_fake_child_process(base::MakeUnique<FakeChildProcess>(
+    job->set_fake_child_process(std::make_unique<FakeChildProcess>(
         kDummyPid, exit_status, manager_->test_api()));
   }
 
@@ -125,7 +125,7 @@ class SessionManagerProcessTest : public ::testing::Test {
     InitManager(base::WrapUnique(job));
 
     job->set_fake_child_process(
-        base::MakeUnique<FakeChildProcess>(kDummyPid, 0, manager_->test_api()));
+        std::make_unique<FakeChildProcess>(kDummyPid, 0, manager_->test_api()));
 
     return job;
   }

@@ -21,7 +21,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -115,11 +114,11 @@ SessionManagerService::SessionManagerService(
       state_key_generator_(utils, metrics),
       vpd_process_(utils),
 #if USE_ANDROID_MASTER_CONTAINER
-      android_container_(base::MakeUnique<AndroidOciWrapper>(
+      android_container_(std::make_unique<AndroidOciWrapper>(
           utils,
           base::FilePath(kContainerInstallDirectory))),
 #else   // USE_ANDROID_MASTER_CONTAINER
-      android_container_(base::MakeUnique<AndroidContainerManagerImpl>(
+      android_container_(std::make_unique<AndroidContainerManagerImpl>(
           utils,
           base::FilePath(kContainerInstallDirectory),
           SessionManagerImpl::kArcContainerName)),
@@ -169,9 +168,9 @@ bool SessionManagerService::Initialize() {
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
-  impl_ = base::MakeUnique<SessionManagerImpl>(
+  impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
-      base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
+      std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
       &key_gen_, &state_key_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), system_, &crossystem_, &vpd_process_, &owner_key_,

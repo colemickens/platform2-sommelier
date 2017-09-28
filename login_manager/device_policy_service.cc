@@ -125,7 +125,7 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
   return base::WrapUnique(new DevicePolicyService(
-      base::MakeUnique<PolicyStore>(base::FilePath(kPolicyPath)), owner_key,
+      std::make_unique<PolicyStore>(base::FilePath(kPolicyPath)), owner_key,
       base::FilePath(kInstallAttributesPath), metrics, mitigator, nss,
       crossystem, vpd_process));
 }

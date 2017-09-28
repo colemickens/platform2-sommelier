@@ -12,7 +12,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -38,10 +37,10 @@ class AndroidOciWrapperTest : public ::testing::Test {
   ~AndroidOciWrapperTest() override = default;
 
   void SetUp() override {
-    containers_directory_ = base::MakeUnique<base::ScopedTempDir>();
+    containers_directory_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(containers_directory_->CreateUniqueTempDir());
 
-    impl_ = base::MakeUnique<AndroidOciWrapper>(&system_utils_,
+    impl_ = std::make_unique<AndroidOciWrapper>(&system_utils_,
                                                 containers_directory_->path());
   }
 
