@@ -7,10 +7,10 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/rand_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -72,7 +72,7 @@ MacAddress::~MacAddress() {
 }
 
 std::unique_ptr<MacAddress> MacAddress::Create() {
-  auto addr = base::MakeUnique<MacAddress>();
+  auto addr = std::make_unique<MacAddress>();
   if (!addr->Allocate())
     return nullptr;
 

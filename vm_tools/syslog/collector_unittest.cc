@@ -18,7 +18,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/location.h>
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -91,7 +90,7 @@ grpc::Status FakeLogCollectorService::CollectUserLogs(
     const vm_tools::LogRequest* request,
     vm_tools::EmptyMessage* response) {
   // Make a copy of the request and pass it on.
-  auto request_copy = base::MakeUnique<vm_tools::LogRequest>(*request);
+  auto request_copy = std::make_unique<vm_tools::LogRequest>(*request);
   main_task_runner_->PostTask(
       FROM_HERE, base::Bind(handle_user_logs_cb_,
                             base::Passed(std::move(request_copy))));
@@ -104,7 +103,7 @@ grpc::Status FakeLogCollectorService::CollectKernelLogs(
     const vm_tools::LogRequest* request,
     vm_tools::EmptyMessage* response) {
   // Make a copy of the request and pass it on.
-  auto request_copy = base::MakeUnique<vm_tools::LogRequest>(*request);
+  auto request_copy = std::make_unique<vm_tools::LogRequest>(*request);
   main_task_runner_->PostTask(
       FROM_HERE, base::Bind(handle_kernel_logs_cb_,
                             base::Passed(std::move(request_copy))));
@@ -430,7 +429,7 @@ TEST_F(CollectorTest, EndToEnd) {
   ASSERT_TRUE(localtime_r(&ts.tv_sec, &current_tm));
 
   // Construct the expected user log protobuf.
-  auto user_request = base::MakeUnique<vm_tools::LogRequest>();
+  auto user_request = std::make_unique<vm_tools::LogRequest>();
   for (TestUserRecord test : user_tests) {
     vm_tools::LogRecord* record = user_request->add_records();
     record->set_severity(test.severity);
@@ -446,7 +445,7 @@ TEST_F(CollectorTest, EndToEnd) {
   expected_user_requests_.push_back(std::move(user_request));
 
   // Construct the expected kernel log protobuf.
-  auto kernel_request = base::MakeUnique<vm_tools::LogRequest>();
+  auto kernel_request = std::make_unique<vm_tools::LogRequest>();
   for (TestKernelRecord test : kernel_tests) {
     vm_tools::LogRecord* record = kernel_request->add_records();
     record->set_severity(test.severity);
@@ -473,7 +472,7 @@ TEST_F(CollectorTest, EndToEnd) {
 
   // Construct the MessageDifferencer.
   string differences;
-  message_differencer_ = base::MakeUnique<pb::util::MessageDifferencer>();
+  message_differencer_ = std::make_unique<pb::util::MessageDifferencer>();
   message_differencer_->ReportDifferencesToString(&differences);
 
   failed_ = false;

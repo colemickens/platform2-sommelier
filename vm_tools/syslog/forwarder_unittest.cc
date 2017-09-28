@@ -10,7 +10,6 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <grpc++/grpc++.h>
 #include <gtest/gtest.h>
 
@@ -102,7 +101,7 @@ TEST(ForwarderTest, EndToEnd) {
   ASSERT_EQ(socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0, fds), 0);
 
   base::ScopedFD receiver(fds[0]);
-  auto forwarder = base::MakeUnique<Forwarder>(base::ScopedFD(fds[1]));
+  auto forwarder = std::make_unique<Forwarder>(base::ScopedFD(fds[1]));
 
   vm_tools::LogRequest request;
   for (const auto& test_case : kEndToEndTests) {

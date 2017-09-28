@@ -7,10 +7,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -29,7 +29,7 @@ Subnet::~Subnet() {
 }
 
 std::unique_ptr<Subnet> Subnet::Create() {
-  auto subnet = base::MakeUnique<Subnet>();
+  auto subnet = std::make_unique<Subnet>();
   if (!subnet->Allocate())
     return nullptr;
 

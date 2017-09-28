@@ -479,7 +479,7 @@ void LogChildError(const struct ChildErrorInfo& child_info, int fd) {
 
   if (child_info.reason == ChildErrorInfo::Reason::SETENV &&
       child_info.details.env_length > 0) {
-    auto buf = base::MakeUnique<char[]>(child_info.details.env_length + 1);
+    auto buf = std::make_unique<char[]>(child_info.details.env_length + 1);
     if (recv(fd, buf.get(), child_info.details.env_length, 0) !=
         child_info.details.env_length) {
       PLOG(ERROR) << "Unable to fetch error details from child process";
@@ -947,7 +947,7 @@ bool Init::Setup() {
     return false;
   }
 
-  worker_ = base::MakeUnique<Worker>();
+  worker_ = std::make_unique<Worker>();
   bool ret = worker_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&Worker::Start, base::Unretained(worker_.get())));
   if (!ret) {

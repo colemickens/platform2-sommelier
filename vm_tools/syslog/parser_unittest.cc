@@ -4,10 +4,10 @@
 
 #include <time.h>
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
@@ -381,10 +381,10 @@ TEST_P(EndToEndSyslogTest, ParsesCorrectly) {
   struct EndToEndTestCase param = GetParam();
 
   // Set up the MessageDifferencer.
-  auto differencer = base::MakeUnique<pb::util::MessageDifferencer>();
+  auto differencer = std::make_unique<pb::util::MessageDifferencer>();
 
   // Set up the expected protobuf.
-  auto expected = base::MakeUnique<vm_tools::LogRecord>();
+  auto expected = std::make_unique<vm_tools::LogRecord>();
   expected->set_severity(param.severity);
 
   // A non-zero content_length indicates that the buffer has embedded \0
@@ -418,7 +418,7 @@ TEST_P(EndToEndSyslogTest, ParsesCorrectly) {
     expected->mutable_timestamp()->set_nanos(0);
   }
 
-  auto actual = base::MakeUnique<vm_tools::LogRecord>();
+  auto actual = std::make_unique<vm_tools::LogRecord>();
   size_t length = param.content_offset + param.content_length;
   if (length == param.content_offset) {
     length = strlen(param.buf);
