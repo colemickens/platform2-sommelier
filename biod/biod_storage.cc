@@ -18,7 +18,6 @@
 #include <base/files/important_file_writer.h>
 #include <base/guid.h>
 #include <base/json/json_string_value_serializer.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>

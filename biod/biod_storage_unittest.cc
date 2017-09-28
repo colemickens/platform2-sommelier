@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
 namespace biod {
@@ -111,9 +110,7 @@ TEST_F(BiodStorageTest, WriteAndReadRecords) {
   // Write the record.
   for (auto const& record : kRecords) {
     EXPECT_TRUE(biod_storage_->WriteRecord(
-        record,
-        std::unique_ptr<base::Value>(
-            base::MakeUnique<base::StringValue>(record.GetData()))));
+        record, std::make_unique<base::StringValue>(record.GetData())));
   }
 
   // Read the record.
@@ -130,9 +127,7 @@ TEST_F(BiodStorageTest, DeleteRecord) {
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
   EXPECT_TRUE(biod_storage_->WriteRecord(
-      kRecord,
-      std::unique_ptr<base::Value>(
-          base::MakeUnique<base::StringValue>(kRecord.GetData()))));
+      kRecord, std::make_unique<base::StringValue>(kRecord.GetData())));
 
   // Check this record is properly written.
   std::unordered_set<std::string> user_ids({kUserId1});

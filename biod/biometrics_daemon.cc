@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
@@ -425,8 +424,8 @@ BiometricsDaemon::BiometricsDaemon() {
 
   ObjectPath fake_bio_path = ObjectPath(base::StringPrintf(
       "%s/%s", kBiodServicePath, kFakeBiometricsManagerName));
-  biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(
-      std::unique_ptr<BiometricsManager>(new FakeBiometricsManager),
+  biometrics_managers_.emplace_back(std::make_unique<BiometricsManagerWrapper>(
+      std::make_unique<FakeBiometricsManager>(),
       object_manager_.get(),
       fake_bio_path,
       sequencer->GetHandler("Failed to register FakeBiometricsManager object",
@@ -436,7 +435,7 @@ BiometricsDaemon::BiometricsDaemon() {
       base::StringPrintf("%s/%s", kBiodServicePath, kFpcBiometricsManagerName));
   std::unique_ptr<BiometricsManager> fpc_bio = FpcBiometricsManager::Create();
   CHECK(fpc_bio);
-  biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(
+  biometrics_managers_.emplace_back(std::make_unique<BiometricsManagerWrapper>(
       std::move(fpc_bio),
       object_manager_.get(),
       fpc_bio_path,

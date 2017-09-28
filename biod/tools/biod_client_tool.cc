@@ -10,7 +10,6 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
@@ -390,7 +389,7 @@ class BiodProxy {
         CHECK(interface_entry_reader.PopArray(&pset_reader));
         if (interface_name == biod::kBiometricsManagerInterface) {
           biometrics_managers_.emplace_back(
-              base::MakeUnique<BiometricsManagerProxy>(
+              std::make_unique<BiometricsManagerProxy>(
                   bus_, object_path, &pset_reader));
         }
       }
