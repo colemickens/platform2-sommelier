@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <memory>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -22,7 +23,6 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
@@ -416,7 +416,7 @@ std::string ContainerState(int child_pid,
   state.SetString("bundle", base::MakeAbsoluteFilePath(bundle_dir).value());
   state.SetInteger("pid", child_pid);
   std::unique_ptr<base::DictionaryValue> annotations =
-      base::MakeUnique<base::DictionaryValue>();
+      std::make_unique<base::DictionaryValue>();
   annotations->SetStringWithoutPathExpansion(
       "org.chromium.run_oci.container_root",
       base::MakeAbsoluteFilePath(container_dir).value());
@@ -636,7 +636,7 @@ int RunOci(const base::FilePath& bundle_dir,
 
   std::unique_ptr<PreStartHookState> pre_start_hook_state;
   if (!oci_config->pre_start_hooks.empty()) {
-    pre_start_hook_state = base::MakeUnique<PreStartHookState>();
+    pre_start_hook_state = std::make_unique<PreStartHookState>();
     int inherited_fds[4];
     memcpy(inherited_fds,
            pre_start_hook_state->reached_pipe.pipe_fds,
