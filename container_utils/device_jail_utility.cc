@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <brillo/flag_helper.h>
@@ -65,7 +64,7 @@ int main(int argc, char** argv) {
   if (FLAGS_server) {
     base::MessageLoopForIO message_loop;
     std::unique_ptr<DeviceJailServer> server =
-        DeviceJailServer::CreateAndListen(base::MakeUnique<RequestHandler>(),
+        DeviceJailServer::CreateAndListen(std::make_unique<RequestHandler>(),
                                           &message_loop);
     if (!server)
       LOG(FATAL) << "could not initialize device jail server";
