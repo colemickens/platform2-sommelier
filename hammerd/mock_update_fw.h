@@ -48,9 +48,9 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
   MOCK_CONST_METHOD1(UpdatePossible, bool(SectionName section_name));
   MOCK_CONST_METHOD1(VersionMismatch, bool(SectionName section_name));
   MOCK_CONST_METHOD1(IsSectionLocked, bool(SectionName section_name));
-  MOCK_METHOD1(UnLockSection, bool(SectionName section_name));
+  MOCK_METHOD1(UnlockSection, bool(SectionName section_name));
   MOCK_CONST_METHOD0(IsRollbackLocked, bool());
-  MOCK_METHOD0(UnLockRollback, bool());
+  MOCK_METHOD0(UnlockRollback, bool());
 };
 
 }  // namespace hammerd

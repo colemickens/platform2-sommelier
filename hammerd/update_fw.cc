@@ -332,7 +332,7 @@ bool FirmwareUpdater::IsSectionLocked(SectionName section_name) const {
   return false;
 }
 
-bool FirmwareUpdater::UnLockSection(SectionName section_name) {
+bool FirmwareUpdater::UnlockSection(SectionName section_name) {
   // TODO(akahuang): Implement this.
   return false;
 }
@@ -342,9 +342,8 @@ bool FirmwareUpdater::IsRollbackLocked() const {
   return false;
 }
 
-bool FirmwareUpdater::UnLockRollback() {
-  // TODO(akahuang): Implement this.
-  return false;
+bool FirmwareUpdater::UnlockRollback() {
+  return SendSubcommand(UpdateExtraCommand::kUnlockRollback);
 }
 
 // Note: It is assumed that when TransferImage is called, hammer EC is in the

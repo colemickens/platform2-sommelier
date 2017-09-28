@@ -241,7 +241,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 
     if (fw_updater_->IsSectionLocked(SectionName::RW)) {
       LOG(INFO) << "Unlock RW section, and reset EC.";
-      fw_updater_->UnLockSection(SectionName::RW);
+      fw_updater_->UnlockSection(SectionName::RW);
       return HammerUpdater::RunStatus::kNeedReset;
     }
 
@@ -315,7 +315,7 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
 
     case ChallengeStatus::kNeedInjectEntropy:
       if (fw_updater_->IsRollbackLocked()) {
-        if (!fw_updater_->UnLockRollback()) {
+        if (!fw_updater_->UnlockRollback()) {
           LOG(ERROR) << "Failed to unlock rollback. Skip injecting entropy.";
           return HammerUpdater::RunStatus::kFatalError;
         }

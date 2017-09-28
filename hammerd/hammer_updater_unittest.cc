@@ -441,7 +441,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, UnLockSection(SectionName::RW))
+    EXPECT_CALL(*fw_updater_, UnlockSection(SectionName::RW))
         .WillRepeatedly(Return(true));
   }
 
@@ -576,14 +576,14 @@ TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackLocked) {
     EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
         .WillOnce(Return(ChallengeStatus::kNeedInjectEntropy));
     EXPECT_CALL(*fw_updater_, IsRollbackLocked()).WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, UnLockRollback()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, UnlockRollback()).WillOnce(Return(true));
   }
   EXPECT_EQ(hammer_updater_->Pair(),
             HammerUpdater::RunStatus::kNeedInjectEntropy);
 }
 
 // Hammer needs to inject entropy, and rollback is not locked.
-TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackUnLocked) {
+TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackUnlocked) {
   {
     InSequence dummy;
     EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
