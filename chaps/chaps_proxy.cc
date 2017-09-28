@@ -75,11 +75,11 @@ ChapsProxyImpl::~ChapsProxyImpl() {}
 
 // static
 std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create() {
-  auto at_exit = base::MakeUnique<ProxyAtExitManager>();
+  auto at_exit = std::make_unique<ProxyAtExitManager>();
 
   base::Thread::Options options;
   options.message_loop_type = base::MessageLoop::TYPE_IO;
-  auto dbus_thread = base::MakeUnique<base::Thread>(kDBusThreadName);
+  auto dbus_thread = std::make_unique<base::Thread>(kDBusThreadName);
   dbus_thread->StartWithOptions(options);
 
   scoped_refptr<ProxyWrapperConstructionTask> task(
