@@ -39,45 +39,43 @@ base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
   return base::ScopedFD(open(path.value().c_str(), flags, 0664));
 }
 
-int WriteCgroupFile(const base::FilePath& cgroup_path,
-                    base::StringPiece name,
-                    base::StringPiece str) {
+bool WriteCgroupFile(const base::FilePath& cgroup_path,
+                     base::StringPiece name,
+                     base::StringPiece str) {
   base::ScopedFD fd = OpenCgroupFile(cgroup_path, name, true);
   if (!fd.is_valid())
-    return -errno;
-  if (write(fd.get(), str.data(), str.size()) !=
-      static_cast<ssize_t>(str.size())) {
-    return -errno;
-  }
-  return 0;
+    return false;
+  if (!base::WriteFileDescriptor(fd.get(), str.data(), str.size()))
+    return false;
+  return true;
 }
 
-int WriteCgroupFileInt(const base::FilePath& cgroup_path,
-                       base::StringPiece name,
-                       const int value) {
+bool WriteCgroupFileInt(const base::FilePath& cgroup_path,
+                        base::StringPiece name,
+                        const int value) {
   return WriteCgroupFile(cgroup_path, name, base::IntToString(value));
 }
 
-int CopyCgroupParent(const base::FilePath& cgroup_path,
-                     base::StringPiece name) {
+bool CopyCgroupParent(const base::FilePath& cgroup_path,
+                      base::StringPiece name) {
   base::ScopedFD dest = OpenCgroupFile(cgroup_path, name, true);
   if (!dest.is_valid())
-    return -errno;
+    return false;
 
   base::ScopedFD source = OpenCgroupFile(cgroup_path.DirName(), name, false);
   if (!source.is_valid())
-    return -errno;
+    return false;
 
   char buffer[256];
   ssize_t bytes_read;
   while ((bytes_read = read(source.get(), buffer, sizeof(buffer))) > 0) {
     if (!base::WriteFileDescriptor(dest.get(), buffer, bytes_read))
-      return -errno;
+      return false;
   }
   if (bytes_read < 0)
-    return -errno;
+    return false;
 
-  return 0;
+  return true;
 }
 
 std::string GetDeviceString(const int major, const int minor) {
@@ -91,66 +89,69 @@ std::string GetDeviceString(const int major, const int minor) {
     return base::StringPrintf("*:*");
 }
 
-int CreateCgroupAsOwner(const base::FilePath& cgroup_path,
-                        uid_t cgroup_owner,
-                        gid_t cgroup_group) {
+bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
+                         uid_t cgroup_owner,
+                         gid_t cgroup_group) {
   // If running as root and the cgroup owner is a user, create the cgroup
   // as that user.
   base::ScopedClosureRunner reset_setegid, reset_seteuid;
   if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
-    if (setegid(cgroup_group))
-      return -errno;
+    if (setegid(cgroup_group) != 0)
+      return false;
     reset_setegid.Reset(base::Bind(base::IgnoreResult(&setegid), 0));
 
-    if (seteuid(cgroup_owner))
-      return -errno;
+    if (seteuid(cgroup_owner) != 0)
+      return false;
     reset_seteuid.Reset(base::Bind(base::IgnoreResult(&seteuid), 0));
   }
 
   if (mkdir(cgroup_path.value().c_str(), S_IRWXU | S_IRWXG) < 0 &&
       errno != EEXIST) {
-    return -errno;
+    return false;
   }
 
-  return 0;
+  return true;
 }
 
-int CheckCgroupAvailable(const base::FilePath& cgroup_root,
-                         base::StringPiece cgroup_name) {
+bool CheckCgroupAvailable(const base::FilePath& cgroup_root,
+                          base::StringPiece cgroup_name) {
   base::FilePath path = cgroup_root.Append(cgroup_name);
 
-  if (access(path.value().c_str(), F_OK))
-    return -errno;
-  return 0;
+  return access(path.value().c_str(), F_OK) == 0;
 }
 
 }  // namespace
 
-int Cgroup::Freeze() {
+bool Cgroup::Freeze() {
   return WriteCgroupFile(
       cgroup_paths_[Type::FREEZER], "freezer.state", "FROZEN\n");
 }
 
-int Cgroup::Thaw() {
+bool Cgroup::Thaw() {
   return WriteCgroupFile(
       cgroup_paths_[Type::FREEZER], "freezer.state", "THAWED\n");
 }
 
-int Cgroup::DenyAllDevices() {
+bool Cgroup::DenyAllDevices() {
   return WriteCgroupFile(cgroup_paths_[Type::DEVICES], "devices.deny", "a\n");
 }
 
-int Cgroup::AddDevice(bool allow,
-                      int major,
-                      int minor,
-                      bool read,
-                      bool write,
-                      bool modify,
-                      char type) {
-  if (type != 'b' && type != 'c' && type != 'a')
-    return -EINVAL;
-  if (!read && !write && !modify)
-    return -EINVAL;
+bool Cgroup::AddDevice(bool allow,
+                       int major,
+                       int minor,
+                       bool read,
+                       bool write,
+                       bool modify,
+                       char type) {
+  if (type != 'b' && type != 'c' && type != 'a') {
+    LOG(ERROR) << "Invalid cgroup type '" << type << "'";
+    return false;
+  }
+  if (!read && !write && !modify) {
+    LOG(ERROR) << "Invalid cgroup permissions: at least one of read, write, "
+                  "modify should be true";
+    return false;
+  }
 
   std::string device_string = GetDeviceString(major, minor);
 
@@ -167,26 +168,26 @@ int Cgroup::AddDevice(bool allow,
                          perm_string);
 }
 
-int Cgroup::SetCpuShares(int shares) {
+bool Cgroup::SetCpuShares(int shares) {
   return WriteCgroupFileInt(cgroup_paths_[Type::CPU], "cpu.shares", shares);
 }
 
-int Cgroup::SetCpuQuota(int quota) {
+bool Cgroup::SetCpuQuota(int quota) {
   return WriteCgroupFileInt(
       cgroup_paths_[Type::CPU], "cpu.cfs_quota_us", quota);
 }
 
-int Cgroup::SetCpuPeriod(int period) {
+bool Cgroup::SetCpuPeriod(int period) {
   return WriteCgroupFileInt(
       cgroup_paths_[Type::CPU], "cpu.cfs_period_us", period);
 }
 
-int Cgroup::SetCpuRtRuntime(int rt_runtime) {
+bool Cgroup::SetCpuRtRuntime(int rt_runtime) {
   return WriteCgroupFileInt(
       cgroup_paths_[Type::CPU], "cpu.rt_runtime_us", rt_runtime);
 }
 
-int Cgroup::SetCpuRtPeriod(int rt_period) {
+bool Cgroup::SetCpuRtPeriod(int rt_period) {
   return WriteCgroupFileInt(
       cgroup_paths_[Type::CPU], "cpu.rt_period_us", rt_period);
 }
@@ -209,9 +210,8 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
   std::unique_ptr<Cgroup> cg(new Cgroup());
 
   for (int32_t i = 0; i < Type::NUM_TYPES; ++i) {
-    int rc = CheckCgroupAvailable(cgroup_root, kCgroupNames[i]);
-    if (rc < 0) {
-      if (rc == -ENOENT)
+    if (!CheckCgroupAvailable(cgroup_root, kCgroupNames[i])) {
+      if (errno == ENOENT)
         continue;
       PLOG(ERROR) << "Cgroup " << kCgroupNames[i] << " not available";
       return nullptr;
@@ -225,7 +225,8 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
       cg->cgroup_paths_[i] = cgroup_root.Append(kCgroupNames[i]).Append(name);
     }
 
-    if (CreateCgroupAsOwner(cg->cgroup_paths_[i], cgroup_owner, cgroup_group)) {
+    if (!CreateCgroupAsOwner(cg->cgroup_paths_[i], cgroup_owner,
+                             cgroup_group)) {
       PLOG(ERROR) << "Failed to create cgroup " << cg->cgroup_paths_[i].value()
                   << " as owner";
       return nullptr;
@@ -237,12 +238,12 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
     // otherwise we'll start with "empty" cpuset and nothing can
     // run in it/be moved into it.
     if (i == Type::CPUSET) {
-      if (CopyCgroupParent(cg->cgroup_paths_[i], "cpus")) {
+      if (!CopyCgroupParent(cg->cgroup_paths_[i], "cpus")) {
         PLOG(ERROR) << "Failed to copy " << cg->cgroup_paths_[i].value()
                     << "/cpus from parent";
         return nullptr;
       }
-      if (CopyCgroupParent(cg->cgroup_paths_[i], "mems")) {
+      if (!CopyCgroupParent(cg->cgroup_paths_[i], "mems")) {
         PLOG(ERROR) << "Failed to copy " << cg->cgroup_paths_[i].value()
                     << "/mems from parent";
         return nullptr;

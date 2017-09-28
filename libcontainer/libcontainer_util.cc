@@ -126,7 +126,7 @@ SaveErrno::~SaveErrno() {
 }
 
 WaitablePipe::WaitablePipe() {
-  if (pipe2(pipe_fds, O_CLOEXEC) == -1)
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0)
     PLOG(FATAL) << "Failed to create pipe";
 }
 
@@ -172,19 +172,19 @@ bool HookState::InstallHook(struct minijail* j, minijail_hook_event_t event) {
 
   // All these fds will be closed in WaitHook in the child process.
   for (size_t i = 0; i < 2; ++i) {
-    if (minijail_preserve_fd(
-            j, reached_pipe_.pipe_fds[i], reached_pipe_.pipe_fds[i]) < 0) {
+    if (minijail_preserve_fd(j, reached_pipe_.pipe_fds[i],
+                             reached_pipe_.pipe_fds[i]) != 0) {
       LOG(ERROR) << "Failed to preserve reached pipe FDs to install hook";
       return false;
     }
-    if (minijail_preserve_fd(
-            j, ready_pipe_.pipe_fds[i], ready_pipe_.pipe_fds[i]) < 0) {
+    if (minijail_preserve_fd(j, ready_pipe_.pipe_fds[i],
+                             ready_pipe_.pipe_fds[i]) != 0) {
       LOG(ERROR) << "Failed to preserve ready pipe FDs to install hook";
       return false;
     }
   }
 
-  if (minijail_add_hook(j, &HookState::WaitHook, this, event) < 0) {
+  if (minijail_add_hook(j, &HookState::WaitHook, this, event) != 0) {
     LOG(ERROR) << "Failed to add hook";
     return false;
   }
@@ -221,9 +221,12 @@ int HookState::WaitHook(void* payload) {
   return 0;
 }
 
-int GetUsernsOutsideId(const std::string& map, int id) {
-  if (map.empty())
-    return id;
+bool GetUsernsOutsideId(const std::string& map, int id, int* id_out) {
+  if (map.empty()) {
+    if (id_out)
+      *id_out = id;
+    return true;
+  }
 
   std::string map_copy = map;
   base::StringPiece map_piece(map_copy);
@@ -235,7 +238,7 @@ int GetUsernsOutsideId(const std::string& map, int id) {
 
     if (tokens.size() != 3) {
       LOG(ERROR) << "Malformed ugid mapping: '" << mapping << "'";
-      return -EINVAL;
+      return false;
     }
 
     uint32_t inside, outside, length;
@@ -243,67 +246,69 @@ int GetUsernsOutsideId(const std::string& map, int id) {
         !base::StringToUint(tokens[1], &outside) ||
         !base::StringToUint(tokens[2], &length)) {
       LOG(ERROR) << "Malformed ugid mapping: '" << mapping << "'";
-      return -EINVAL;
+      return false;
     }
 
     if (id >= inside && id <= (inside + length)) {
-      return (id - inside) + outside;
+      if (id_out)
+        *id_out = (id - inside) + outside;
+      return true;
     }
   }
   VLOG(1) << "ugid " << id << " not found in mapping";
 
-  return -EINVAL;
+  return false;
 }
 
-int MakeDir(const base::FilePath& path, int uid, int gid, int mode) {
+bool MakeDir(const base::FilePath& path, int uid, int gid, int mode) {
   if (mkdir(path.value().c_str(), mode)) {
     PLOG_PRESERVE(ERROR) << "Failed to mkdir " << path.value();
-    return -errno;
+    return false;
   }
   if (chmod(path.value().c_str(), mode)) {
     PLOG_PRESERVE(ERROR) << "Failed to chmod " << path.value();
-    return -errno;
+    return false;
   }
   if (chown(path.value().c_str(), uid, gid)) {
     PLOG_PRESERVE(ERROR) << "Failed to chown " << path.value();
-    return -errno;
+    return false;
   }
-  return 0;
+  return true;
 }
 
-int TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
+bool TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
   base::ScopedFD fd(open(path.value().c_str(), O_RDWR | O_CREAT, mode));
   if (!fd.is_valid()) {
     PLOG_PRESERVE(ERROR) << "Failed to create " << path.value();
-    return -errno;
+    return false;
   }
   if (fchown(fd.get(), uid, gid)) {
     PLOG_PRESERVE(ERROR) << "Failed to chown " << path.value();
-    return -errno;
+    return false;
   }
-  return 0;
+  return true;
 }
 
-int LoopdevSetup(const base::FilePath& source,
-                 base::FilePath* loopdev_path_out) {
+bool LoopdevSetup(const base::FilePath& source,
+                  base::FilePath* loopdev_path_out) {
   base::ScopedFD source_fd(open(source.value().c_str(), O_RDONLY | O_CLOEXEC));
   if (!source_fd.is_valid()) {
     PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
-    return -errno;
+    return false;
   }
 
   base::ScopedFD control_fd(
       open(kLoopdevCtlPath, O_RDWR | O_NOFOLLOW | O_CLOEXEC));
   if (!control_fd.is_valid()) {
     PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
-    return -errno;
+    return false;
   }
 
   while (true) {
     int num = ioctl(control_fd.get(), LOOP_CTL_GET_FREE);
     if (num < 0) {
       PLOG_PRESERVE(ERROR) << "Failed to open " << source.value();
-      return -errno;
+      return false;
     }
 
     base::FilePath loopdev_path(base::StringPrintf("/dev/loop%i", num));
@@ -311,7 +316,7 @@ int LoopdevSetup(const base::FilePath& source,
         open(loopdev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
     if (!loop_fd.is_valid()) {
       PLOG_PRESERVE(ERROR) << "Failed to open " << loopdev_path.value();
-      return -errno;
+      return false;
     }
 
     if (ioctl(loop_fd.get(), LOOP_SET_FD, source_fd.get()) == 0) {
@@ -322,33 +327,33 @@ int LoopdevSetup(const base::FilePath& source,
     if (errno != EBUSY) {
       PLOG_PRESERVE(ERROR) << "Failed to ioctl(LOOP_SET_FD) "
                            << loopdev_path.value();
-      return -errno;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-int LoopdevDetach(const base::FilePath& loopdev) {
+bool LoopdevDetach(const base::FilePath& loopdev) {
   base::ScopedFD fd(
       open(loopdev.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
   if (!fd.is_valid()) {
     PLOG_PRESERVE(ERROR) << "Failed to open " << loopdev.value();
-    return -errno;
+    return false;
   }
   if (ioctl(fd.get(), LOOP_CLR_FD) < 0) {
     PLOG_PRESERVE(ERROR) << "Failed to ioctl(LOOP_CLR_FD) for "
                          << loopdev.value();
-    return -errno;
+    return false;
   }
 
-  return 0;
+  return true;
 }
 
-int DeviceMapperSetup(const base::FilePath& source,
-                      const std::string& verity_cmdline,
-                      base::FilePath* dm_path_out,
-                      std::string* dm_name_out) {
+bool DeviceMapperSetup(const base::FilePath& source,
+                       const std::string& verity_cmdline,
+                       base::FilePath* dm_path_out,
+                       std::string* dm_name_out) {
 #if USE_device_mapper
   // Normalize the name into something unique-esque.
   std::string dm_name =
@@ -369,7 +374,7 @@ int DeviceMapperSetup(const base::FilePath& source,
   if (sscanf(verity.c_str(), "%llu %llu %10s %n", &start, &size, ttype, &n) !=
       3) {
     PLOG_PRESERVE(ERROR) << "Malformed verity string " << verity;
-    return -errno;
+    return false;
   }
 
   /* Finally create the device mapper. */
@@ -377,36 +382,37 @@ int DeviceMapperSetup(const base::FilePath& source,
       dm_task_create(DM_DEVICE_CREATE), &dm_task_destroy);
   if (dmt == nullptr) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_create() for " << source.value();
-    return -errno;
+    return false;
   }
 
-  if (!dm_task_set_name(dmt.get(), dm_name.c_str())) {
+  if (dm_task_set_name(dmt.get(), dm_name.c_str()) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_name() for "
                          << source.value();
-    return -errno;
+    return false;
   }
 
-  if (!dm_task_set_ro(dmt.get())) {
+  if (dm_task_set_ro(dmt.get()) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_ro() for " << source.value();
-    return -errno;
+    return false;
   }
 
-  if (!dm_task_add_target(dmt.get(), start, size, ttype, verity.c_str() + n)) {
+  if (dm_task_add_target(dmt.get(), start, size, ttype, verity.c_str() + n) !=
+      0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_add_target() for "
                          << source.value();
-    return -errno;
+    return false;
   }
 
   uint32_t cookie = 0;
-  if (!dm_task_set_cookie(dmt.get(), &cookie, 0)) {
+  if (dm_task_set_cookie(dmt.get(), &cookie, 0) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_cookie() for "
                          << source.value();
-    return -errno;
+    return false;
   }
 
-  if (!dm_task_run(dmt.get())) {
+  if (dm_task_run(dmt.get()) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << source.value();
-    return -errno;
+    return false;
   }
 
   /* Make sure the node exists before we continue. */
@@ -415,39 +421,39 @@ int DeviceMapperSetup(const base::FilePath& source,
   *dm_path_out = dm_path;
   *dm_name_out = dm_name;
 #endif
-  return 0;
+  return true;
 }
 
 // Tear down the device mapper target.
-int DeviceMapperDetach(const std::string& dm_name) {
+bool DeviceMapperDetach(const std::string& dm_name) {
 #if USE_device_mapper
   struct dm_task* dmt = dm_task_create(DM_DEVICE_REMOVE);
   if (dmt == nullptr) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << dm_name;
-    return -errno;
+    return false;
   }
 
   base::ScopedClosureRunner teardown(
       base::Bind(base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
 
-  if (!dm_task_set_name(dmt, dm_name.c_str())) {
+  if (dm_task_set_name(dmt, dm_name.c_str()) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_set_name() for " << dm_name;
-    return -errno;
+    return false;
   }
 
-  if (!dm_task_run(dmt)) {
+  if (dm_task_run(dmt) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to dm_task_run() for " << dm_name;
-    return -errno;
+    return false;
   }
 #endif
-  return 0;
+  return true;
 }
 
-int MountExternal(const std::string& src,
-                  const std::string& dest,
-                  const std::string& type,
-                  unsigned long flags,
-                  const std::string& data) {
+bool MountExternal(const std::string& src,
+                   const std::string& dest,
+                   const std::string& type,
+                   unsigned long flags,
+                   const std::string& data) {
   bool remount_ro = false;
 
   // R/O bind mounts have to be remounted since 'bind' and 'ro' can't both be
@@ -457,28 +463,22 @@ int MountExternal(const std::string& src,
     flags &= ~MS_RDONLY;
   }
 
-  if (mount(src.c_str(),
-            dest.c_str(),
-            type.c_str(),
-            flags,
-            data.empty() ? nullptr : data.c_str()) == -1) {
+  if (mount(src.c_str(), dest.c_str(), type.c_str(), flags,
+            data.empty() ? nullptr : data.c_str()) != 0) {
     PLOG_PRESERVE(ERROR) << "Failed to mount " << src << " to " << dest;
-    return -errno;
+    return false;
   }
 
   if (remount_ro) {
     flags |= MS_RDONLY;
-    if (mount(src.c_str(),
-              dest.c_str(),
-              nullptr,
-              flags | MS_REMOUNT,
-              data.empty() ? nullptr : data.c_str()) == -1) {
+    if (mount(src.c_str(), dest.c_str(), nullptr, flags | MS_REMOUNT,
+              data.empty() ? nullptr : data.c_str()) != 0) {
       PLOG_PRESERVE(ERROR) << "Failed to remount " << src << " to " << dest;
-      return -errno;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
 HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,

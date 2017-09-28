@@ -177,90 +177,90 @@ class BasicCgroupManipulationTest : public ::testing::Test {
 };
 
 TEST_F(BasicCgroupManipulationTest, freeze) {
-  EXPECT_EQ(0, ccg_->Freeze());
+  EXPECT_TRUE(ccg_->Freeze());
   EXPECT_TRUE(FileHasString(freezer_cg_.Append("freezer.state"), "FROZEN"));
 }
 
 TEST_F(BasicCgroupManipulationTest, thaw) {
-  EXPECT_EQ(0, ccg_->Thaw());
+  EXPECT_TRUE(ccg_->Thaw());
   EXPECT_TRUE(FileHasString(freezer_cg_.Append("freezer.state"), "THAWED"));
 }
 
 TEST_F(BasicCgroupManipulationTest, default_all_devs_disallow) {
-  ASSERT_EQ(0, ccg_->DenyAllDevices());
+  ASSERT_TRUE(ccg_->DenyAllDevices());
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.deny"), "a"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_invalid_type) {
-  EXPECT_NE(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'x'));
+  EXPECT_FALSE(ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'x'));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_no_perms) {
-  EXPECT_NE(0, ccg_->AddDevice(1, 14, 3, 0, 0, 0, 'c'));
+  EXPECT_FALSE(ccg_->AddDevice(1, 14, 3, 0, 0, 0, 'c'));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_rw) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 rw"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_rwm) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 1, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, 3, 1, 1, 1, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 rwm"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_ro) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 0, 0, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, 3, 1, 0, 0, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 r"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_wo) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 0, 1, 0, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, 3, 0, 1, 0, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:3 w"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_major_wide) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, -1, 0, 1, 0, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, -1, 0, 1, 0, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c 14:* w"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_major_minor_wildcard) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, -1, -1, 0, 1, 0, 'c'));
+  EXPECT_TRUE(ccg_->AddDevice(1, -1, -1, 0, 1, 0, 'c'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "c *:* w"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_deny_all) {
-  EXPECT_EQ(0, ccg_->AddDevice(0, -1, -1, 1, 1, 1, 'a'));
+  EXPECT_TRUE(ccg_->AddDevice(0, -1, -1, 1, 1, 1, 'a'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.deny"), "a *:* rwm"));
 }
 
 TEST_F(BasicCgroupManipulationTest, add_device_block) {
-  EXPECT_EQ(0, ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'b'));
+  EXPECT_TRUE(ccg_->AddDevice(1, 14, 3, 1, 1, 0, 'b'));
   EXPECT_TRUE(FileHasLine(devices_cg_.Append("devices.allow"), "b 14:3 rw"));
 }
 
 TEST_F(BasicCgroupManipulationTest, set_cpu_shares) {
-  EXPECT_EQ(0, ccg_->SetCpuShares(500));
+  EXPECT_TRUE(ccg_->SetCpuShares(500));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.shares"), "500"));
 }
 
 TEST_F(BasicCgroupManipulationTest, set_cpu_quota) {
-  EXPECT_EQ(0, ccg_->SetCpuQuota(200000));
+  EXPECT_TRUE(ccg_->SetCpuQuota(200000));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.cfs_quota_us"), "200000"));
 }
 
 TEST_F(BasicCgroupManipulationTest, set_cpu_period) {
-  EXPECT_EQ(0, ccg_->SetCpuPeriod(800000));
+  EXPECT_TRUE(ccg_->SetCpuPeriod(800000));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.cfs_period_us"), "800000"));
 }
 
 TEST_F(BasicCgroupManipulationTest, set_cpu_rt_runtime) {
-  EXPECT_EQ(0, ccg_->SetCpuRtRuntime(100000));
+  EXPECT_TRUE(ccg_->SetCpuRtRuntime(100000));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.rt_runtime_us"), "100000"));
 }
 
 TEST_F(BasicCgroupManipulationTest, set_cpu_rt_period) {
-  EXPECT_EQ(0, ccg_->SetCpuRtPeriod(500000));
+  EXPECT_TRUE(ccg_->SetCpuRtPeriod(500000));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.rt_period_us"), "500000"));
 }
 

@@ -38,21 +38,21 @@ class Cgroup {
                                         gid_t cgroup_group);
   virtual ~Cgroup();
 
-  virtual int Freeze();
-  virtual int Thaw();
-  virtual int DenyAllDevices();
-  virtual int AddDevice(bool allow,
-                        int major,
-                        int minor,
-                        bool read,
-                        bool write,
-                        bool modify,
-                        char type);
-  virtual int SetCpuShares(int shares);
-  virtual int SetCpuQuota(int quota);
-  virtual int SetCpuPeriod(int period);
-  virtual int SetCpuRtRuntime(int rt_runtime);
-  virtual int SetCpuRtPeriod(int rt_period);
+  virtual bool Freeze();
+  virtual bool Thaw();
+  virtual bool DenyAllDevices();
+  virtual bool AddDevice(bool allow,
+                         int major,
+                         int minor,
+                         bool read,
+                         bool write,
+                         bool modify,
+                         char type);
+  virtual bool SetCpuShares(int shares);
+  virtual bool SetCpuQuota(int quota);
+  virtual bool SetCpuPeriod(int period);
+  virtual bool SetCpuRtRuntime(int rt_runtime);
+  virtual bool SetCpuRtPeriod(int rt_period);
 
   bool has_tasks_path(int32_t t) const {
     return !cgroup_tasks_paths_[t].empty();

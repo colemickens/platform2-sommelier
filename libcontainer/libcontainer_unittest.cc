@@ -68,13 +68,12 @@ struct MockCgroupState {
     char type;
   };
 
-  int freeze_ret;
-  int thaw_ret;
-  int deny_all_devs_ret;
-  int add_device_ret;
-  int set_cpu_ret;
+  bool freeze_ret = true;
+  bool thaw_ret = true;
+  bool deny_all_devs_ret = true;
+  bool add_device_ret = true;
+  bool set_cpu_ret = true;
 
-  int init_called_count;
   int deny_all_devs_called_count;
 
   std::vector<AddedDevice> added_devices;
@@ -101,48 +100,48 @@ class MockCgroup : public libcontainer::Cgroup {
     return std::make_unique<MockCgroup>(g_mock_cgroup_state);
   }
 
-  int Freeze() override { return state_->freeze_ret; }
+  bool Freeze() override { return state_->freeze_ret; }
 
-  int Thaw() override { return state_->thaw_ret; }
+  bool Thaw() override { return state_->thaw_ret; }
 
-  int DenyAllDevices() override {
+  bool DenyAllDevices() override {
     ++state_->deny_all_devs_called_count;
     return state_->deny_all_devs_ret;
   }
 
-  int AddDevice(bool allow,
-                int major,
-                int minor,
-                bool read,
-                bool write,
-                bool modify,
-                char type) override {
+  bool AddDevice(bool allow,
+                 int major,
+                 int minor,
+                 bool read,
+                 bool write,
+                 bool modify,
+                 char type) override {
     state_->added_devices.emplace_back(MockCgroupState::AddedDevice{
         allow, major, minor, read, write, modify, type});
     return state_->add_device_ret;
   }
 
-  int SetCpuShares(int shares) override {
+  bool SetCpuShares(int shares) override {
     state_->set_cpu_shares_count++;
     return state_->set_cpu_ret;
   }
 
-  int SetCpuQuota(int quota) override {
+  bool SetCpuQuota(int quota) override {
     state_->set_cpu_quota_count++;
     return state_->set_cpu_ret;
   }
 
-  int SetCpuPeriod(int period) override {
+  bool SetCpuPeriod(int period) override {
     state_->set_cpu_period_count++;
     return state_->set_cpu_ret;
   }
 
-  int SetCpuRtRuntime(int rt_runtime) override {
+  bool SetCpuRtRuntime(int rt_runtime) override {
     state_->set_cpu_rt_runtime_count++;
     return state_->set_cpu_ret;
   }
 
-  int SetCpuRtPeriod(int rt_period) override {
+  bool SetCpuRtPeriod(int rt_period) override {
     state_->set_cpu_rt_period_count++;
     return state_->set_cpu_ret;
   }

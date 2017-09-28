@@ -91,36 +91,36 @@ class HookState {
 };
 
 // Given a uid/gid map of "inside1 outside1 length1, ...", and an id inside of
-// the user namespace, return the equivalent outside id, or return < 0 on error.
-int GetUsernsOutsideId(const std::string& map, int id);
+// the user namespace, populate |id_out|. Returns true on success.
+bool GetUsernsOutsideId(const std::string& map, int id, int* id_out);
 
-int MakeDir(const base::FilePath& path, int uid, int gid, int mode);
+bool MakeDir(const base::FilePath& path, int uid, int gid, int mode);
 
-int TouchFile(const base::FilePath& path, int uid, int gid, int mode);
+bool TouchFile(const base::FilePath& path, int uid, int gid, int mode);
 
 // Find a free loop device and attach it.
-int LoopdevSetup(const base::FilePath& source,
-                 base::FilePath* loopdev_path_out);
+bool LoopdevSetup(const base::FilePath& source,
+                  base::FilePath* loopdev_path_out);
 
 // Detach the specified loop device.
-int LoopdevDetach(const base::FilePath& loopdev);
+bool LoopdevDetach(const base::FilePath& loopdev);
 
 // Create a new device mapper target for the source.
-int DeviceMapperSetup(const base::FilePath& source,
-                      const std::string& verity_cmdline,
-                      base::FilePath* dm_path_out,
-                      std::string* dm_name_out);
+bool DeviceMapperSetup(const base::FilePath& source,
+                       const std::string& verity_cmdline,
+                       base::FilePath* dm_path_out,
+                       std::string* dm_name_out);
 
 // Tear down the device mapper target.
-int DeviceMapperDetach(const std::string& dm_name);
+bool DeviceMapperDetach(const std::string& dm_name);
 
 // Match mount_one in minijail, mount one mountpoint with
 // consideration for combination of MS_BIND/MS_RDONLY flag.
-int MountExternal(const std::string& src,
-                  const std::string& dest,
-                  const std::string& type,
-                  unsigned long flags,
-                  const std::string& data);
+bool MountExternal(const std::string& src,
+                   const std::string& dest,
+                   const std::string& type,
+                   unsigned long flags,
+                   const std::string& data);
 
 // Wraps a callback to be run in a subset of the container's namespaces.
 HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
