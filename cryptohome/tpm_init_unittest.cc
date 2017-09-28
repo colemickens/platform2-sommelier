@@ -133,6 +133,13 @@ class TpmInitTest : public ::testing::Test {
     EXPECT_TRUE(tpm_status->ParseFromArray(file_data.data(), file_data.size()));
   }
 
+  void SetTpmReady() {
+    SetIsTpmOwned(true);
+    SetIsTpmBeingOwned(false);
+    FileTouch(kTpmOwnedFile);
+    ASSERT_TRUE(tpm_init_.IsTpmReady());
+  }
+
   void SetUp() override {
     ON_CALL(tpm_, IsEnabled())
       .WillByDefault(Return(true));
@@ -419,6 +426,7 @@ TEST_F(TpmInitTest, LoadCryptohomeKeyTransientFailure) {
 TEST_F(TpmInitTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   // Permanent failure while loading the key leads to re-creating, storing
   // and loading the new key.
+  SetTpmReady();
   SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
@@ -436,6 +444,7 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyAfterLoadFailure) {
 TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
   // Permanent failure while loading the key leads to an attempt to re-create
   // the key. Which fails. So, nothing new is stored or loaded.
+  SetTpmReady();
   SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
@@ -453,6 +462,7 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
   // Permanent failure while loading the key leads to re-creating the key.
   // It is stored. But then loading fails.
   // Still, on the next attempt, the key is loaded, and not re-created again.
+  SetTpmReady();
   SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))

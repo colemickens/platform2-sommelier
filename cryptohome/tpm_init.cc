@@ -492,6 +492,10 @@ bool TpmInit::IsOwnedCheckViaSysfs(const FilePath& owned_file) {
 }
 
 bool TpmInit::CreateCryptohomeKey() {
+  if (!IsTpmReady()) {
+    LOG(WARNING) << "Canceled creating cryptohome key - TPM is not ready.";
+    return false;
+  }
   SecureBlob n;
   SecureBlob p;
   if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
