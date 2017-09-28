@@ -84,9 +84,6 @@ enum class EcResponseStatus : uint8_t {
   kBusy = 16,  // Up but too busy.  Should retry
 };
 
-
-
-
 // This is the frame format the host uses when sending update PDUs over USB.
 //
 // The PDUs are up to 1K bytes in size, they are fragmented into USB chunks of

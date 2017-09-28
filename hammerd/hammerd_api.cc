@@ -5,8 +5,15 @@
 #include "hammerd/hammerd_api.h"
 
 #include <memory>
+#include <string>
 
 #include "hammerd/usb_utils.h"
+
+// Because it returns std::string, which is not compatible with C, we move
+// outside the extern "C" scope.
+std::string ToString(const ByteString* s) {
+  return std::string(s->ptr, s->size);
+}
 
 extern "C" {
 
@@ -20,6 +27,14 @@ BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
   return new FirmwareUpdater(
       std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port));
 }
+BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
+    FirmwareUpdater* updater, const ByteString* ec_image) {
+  return updater->LoadEcImage(ToString(ec_image));
+}
+BRILLO_EXPORT bool FirmwareUpdater_LoadTouchpadImage(
+    FirmwareUpdater* updater, const ByteString* touchpad_image) {
+  return updater->LoadTouchpadImage(ToString(touchpad_image));
+}
 BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUsb(
     FirmwareUpdater* updater) {
   return updater->TryConnectUsb();
@@ -28,9 +43,41 @@ BRILLO_EXPORT void FirmwareUpdater_CloseUsb(
     FirmwareUpdater* updater) {
   updater->CloseUsb();
 }
-BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
-    FirmwareUpdater* updater, std::string image) {
-  return updater->LoadEcImage(image);
+BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
+    FirmwareUpdater* updater) {
+  return updater->SendFirstPdu();
+}
+BRILLO_EXPORT void FirmwareUpdater_SendDone(
+    FirmwareUpdater* updater) {
+  return updater->SendDone();
+}
+BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
+    FirmwareUpdater* updater) {
+  return updater->InjectEntropy();
+}
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
+    FirmwareUpdater* updater, UpdateExtraCommand subcommand) {
+  return updater->SendSubcommand(subcommand);
+}
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommandWithPayload(
+    FirmwareUpdater* updater,
+    UpdateExtraCommand subcommand, const ByteString* cmd_body) {
+  return updater->SendSubcommandWithPayload(subcommand, ToString(cmd_body));
+}
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommandReceiveResponse(
+    FirmwareUpdater* updater,
+    UpdateExtraCommand subcommand, const ByteString* cmd_body,
+    void* resp, size_t resp_size) {
+  return updater->SendSubcommandReceiveResponse(
+      subcommand, ToString(cmd_body), resp, resp_size);
+}
+BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
+    FirmwareUpdater* updater, SectionName section_name) {
+  return updater->TransferImage(section_name);
+}
+BRILLO_EXPORT bool FirmwareUpdater_TransferTouchpadFirmware(
+    FirmwareUpdater* updater, uint32_t section_addr, size_t data_len) {
+  return updater->TransferTouchpadFirmware(section_addr, data_len);
 }
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater) {
@@ -44,25 +91,21 @@ BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name) {
   return updater->VersionMismatch(section_name);
 }
-BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
+BRILLO_EXPORT bool FirmwareUpdater_IsSectionLocked(
     FirmwareUpdater* updater, SectionName section_name) {
-  return updater->TransferImage(section_name);
+  return updater->IsSectionLocked(section_name);
 }
-BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
+BRILLO_EXPORT bool FirmwareUpdater_UnlockSection(
+    FirmwareUpdater* updater, SectionName section_name) {
+  return updater->UnLockSection(section_name);
+}
+BRILLO_EXPORT bool FirmwareUpdater_IsRollbackLocked(
     FirmwareUpdater* updater) {
-  return updater->InjectEntropy();
+  return updater->IsRollbackLocked();
 }
-BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
-    FirmwareUpdater* updater, UpdateExtraCommand subcommand) {
-  return updater->SendSubcommand(subcommand);
-}
-BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
+BRILLO_EXPORT bool FirmwareUpdater_UnlockRollback(
     FirmwareUpdater* updater) {
-  return updater->SendFirstPdu();
-}
-BRILLO_EXPORT void FirmwareUpdater_SendDone(
-    FirmwareUpdater* updater) {
-  return updater->SendDone();
+  return updater->UnLockRollback();
 }
 
 }  // extern "C"

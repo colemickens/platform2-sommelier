@@ -4,11 +4,13 @@
 //
 // The external API for firmware testing. Because it is called by Python ctypes
 // modules, we wrap it as C header file.
+// When we expose a C++ class, the wrapper function of its constructor should be
+// named as "<class_name>_New", and return a pointer to the instance.
+// The wrapper function of a public method should be named as
+// "<class_name>_<method_name>".
 
 #ifndef HAMMERD_HAMMERD_API_H_
 #define HAMMERD_HAMMERD_API_H_
-
-#include <string>
 
 #include <brillo/brillo_export.h>
 
@@ -21,30 +23,56 @@ using hammerd::SectionName;
 using hammerd::UpdateExtraCommand;
 using hammerd::UsbConnectStatus;
 
+// The intermediary type for converting Python string to C++ std::string.
+// It is used to store either a normal string ending with '\0' or binary data.
+struct ByteString {
+  char* ptr;
+  size_t size;
+};
+
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
     uint16_t vendor_id, uint16_t product_id, int bus, int port);
+BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
+    FirmwareUpdater* updater, const ByteString* ec_image);
+BRILLO_EXPORT bool FirmwareUpdater_LoadTouchpadImage(
+    FirmwareUpdater* updater, const ByteString* touchpad_image);
 BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUsb(
     FirmwareUpdater* updater);
 BRILLO_EXPORT void FirmwareUpdater_CloseUsb(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
-    FirmwareUpdater* updater, std::string ec_image);
+BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
+    FirmwareUpdater* updater);
+BRILLO_EXPORT void FirmwareUpdater_SendDone(
+    FirmwareUpdater* updater);
+BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
+    FirmwareUpdater* updater);
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
+    FirmwareUpdater* updater, UpdateExtraCommand subcommand);
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommandWithPayload(
+    FirmwareUpdater* updater,
+    UpdateExtraCommand subcommand, const ByteString* cmd_body);
+BRILLO_EXPORT bool FirmwareUpdater_SendSubcommandReceiveResponse(
+    FirmwareUpdater* updater,
+    UpdateExtraCommand subcommand, const ByteString* cmd_body,
+    void* resp, size_t resp_size);
+BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
+    FirmwareUpdater* updater, SectionName section_name);
+BRILLO_EXPORT bool FirmwareUpdater_TransferTouchpadFirmware(
+    FirmwareUpdater* updater, uint32_t section_addr, size_t data_len);
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_UpdatePossible(
     FirmwareUpdater* updater, SectionName section_name);
 BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name);
-BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
+BRILLO_EXPORT bool FirmwareUpdater_IsSectionLocked(
     FirmwareUpdater* updater, SectionName section_name);
-BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
+BRILLO_EXPORT bool FirmwareUpdater_UnlockSection(
+    FirmwareUpdater* updater, SectionName section_name);
+BRILLO_EXPORT bool FirmwareUpdater_IsRollbackLocked(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
-    FirmwareUpdater* updater, UpdateExtraCommand subcommand);
-BRILLO_EXPORT bool FirmwareUpdater_SendFirstPdu(
-    FirmwareUpdater* updater);
-BRILLO_EXPORT void FirmwareUpdater_SendDone(
+BRILLO_EXPORT bool FirmwareUpdater_UnlockRollback(
     FirmwareUpdater* updater);
 
 }  // extern "C"
