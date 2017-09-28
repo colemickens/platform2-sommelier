@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -110,7 +109,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     if (!ReadStringFromFile(path.Append(kModelNameFile), &model_name))
       continue;
 
-    battery_readers_.push_back(base::MakeUnique<AsyncFileReader>());
+    battery_readers_.push_back(std::make_unique<AsyncFileReader>());
     AsyncFileReader* reader = battery_readers_.back().get();
 
     if (reader->Init(capacity_path.value())) {

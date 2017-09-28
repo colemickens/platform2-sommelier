@@ -10,7 +10,6 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -88,7 +87,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   power_supply_ = power_supply;
   prefs_ = prefs;
 
-  auto timer = base::MakeUnique<timers::SimpleAlarmTimer>();
+  auto timer = std::make_unique<timers::SimpleAlarmTimer>();
   if (timer->can_wake_from_suspend())
     timer_ = std::move(timer);
 

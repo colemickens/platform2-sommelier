@@ -14,7 +14,6 @@
 #include <base/command_line.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
@@ -72,11 +71,11 @@ class Converter {
     bool has_als = false;
     if (prefs_.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
         has_als) {
-      light_sensor_ = base::MakeUnique<AmbientLightSensorStub>(lux);
+      light_sensor_ = std::make_unique<AmbientLightSensorStub>(lux);
     }
 
     if (keyboard) {
-      auto controller = base::MakeUnique<KeyboardBacklightController>();
+      auto controller = std::make_unique<KeyboardBacklightController>();
       controller->Init(&backlight_,
                        &prefs_,
                        light_sensor_.get(),
@@ -84,7 +83,7 @@ class Converter {
                        TabletMode::UNSUPPORTED);
       controller_ = std::move(controller);
     } else {
-      auto controller = base::MakeUnique<InternalBacklightController>();
+      auto controller = std::make_unique<InternalBacklightController>();
       controller->Init(
           &backlight_, &prefs_, light_sensor_.get(), &display_power_setter_);
       controller_ = std::move(controller);

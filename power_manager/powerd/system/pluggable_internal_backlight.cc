@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 
-#include <base/memory/ptr_util.h>
 #include <base/strings/pattern.h>
 
 #include "power_manager/powerd/system/backlight_observer.h"
@@ -72,7 +71,7 @@ bool PluggableInternalBacklight::TransitionInProgress() const {
 }
 
 void PluggableInternalBacklight::UpdateDevice() {
-  device_ = base::MakeUnique<InternalBacklight>();
+  device_ = std::make_unique<InternalBacklight>();
   if (!device_->Init(base_path_, pattern_)) {
     LOG(INFO) << "No backlight found under " << base_path_.value()
               << " matching pattern " << pattern_;
