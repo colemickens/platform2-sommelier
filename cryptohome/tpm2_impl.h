@@ -204,6 +204,9 @@ class Tpm2Impl : public Tpm {
   // True, if the tpm firmware has been already successfully declared stable.
   bool fw_declared_stable_ = false;
 
+  // Indicates if the TPM is being owned
+  bool is_being_owned_ = false;
+
   // A message loop thread dedicated for asynchronous communication with
   // tpm_managerd.
   base::Thread tpm_manager_thread_{"tpm_manager_thread"};

@@ -176,12 +176,11 @@ void Tpm2Impl::SetIsInitialized(bool done) {
 }
 
 bool Tpm2Impl::IsBeingOwned() {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  return is_being_owned_;
 }
 
-void Tpm2Impl::SetIsBeingOwned(bool /* value */) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+void Tpm2Impl::SetIsBeingOwned(bool value) {
+  is_being_owned_ = value;
 }
 
 bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
