@@ -280,27 +280,18 @@ SectionName FirmwareUpdater::CurrentSection() const {
   return SectionName::Invalid;
 }
 
-bool FirmwareUpdater::UpdatePossible(SectionName section_name) const {
-  // section_name refers to the section about which we are inquiring.
-  // local_section refers to the particular section of the local firmware file.
-  // CurrentSection() refers to the currently-running section.
-  SectionInfo local_section = sections_[static_cast<int>(section_name)];
+bool FirmwareUpdater::ValidKey() const {
+  SectionInfo local_section = sections_[static_cast<int>(SectionName::RW)];
+  LOG(INFO) << "ValidKey: key_version [EC] " << targ_.key_version
+            << " vs. " << local_section.key_version << " [update]";
+  return targ_.key_version == local_section.key_version;
+}
 
-  if (section_name == SectionName::RW) {
-    LOG(INFO) << "UpdatePossible(" << ToString(section_name) << ")?";
-    LOG(INFO) << "UpdatePossible: rollback [EC] " << targ_.min_rollback
-              << " vs. " << local_section.rollback << " [update]";
-    LOG(INFO) << "UpdatePossible: key_version [EC] " << targ_.key_version
-              << " vs. " << local_section.key_version << " [update]";
-
-    return (targ_.min_rollback <= local_section.rollback &&
-            targ_.key_version == local_section.key_version);
-  } else {
-    // RO updates will only be allowed for Dogfood devices (i.e. write-protect
-    // is disabled). In this case, updates are possible regardless of rollback
-    // and key version.
-    return true;
-  }
+bool FirmwareUpdater::ValidRollback() const {
+  SectionInfo local_section = sections_[static_cast<int>(SectionName::RW)];
+  LOG(INFO) << "ValidRollback: rollback [EC] " << targ_.min_rollback
+            << " vs. " << local_section.rollback << " [update]";
+  return targ_.min_rollback <= local_section.rollback;
 }
 
 bool FirmwareUpdater::VersionMismatch(SectionName section_name) const {

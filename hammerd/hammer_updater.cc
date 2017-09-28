@@ -188,7 +188,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   // of Run handle the update.
   if (fw_updater_->CurrentSection() == SectionName::RW) {
     if (fw_updater_->VersionMismatch(SectionName::RW)) {
-      if (fw_updater_->UpdatePossible(SectionName::RW)) {
+      if (fw_updater_->ValidKey() && fw_updater_->ValidRollback()) {
         LOG(INFO) << "RW section needs update. Rebooting to RO.";
         NotifyUpdateStarted();
         return HammerUpdater::RunStatus::kNeedReset;
@@ -208,15 +208,18 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   // then continue with the update procedure.
   if (need_inject_entropy || post_rw_jump ||
       (fw_updater_->VersionMismatch(SectionName::RW) &&
-       fw_updater_->UpdatePossible(SectionName::RW))) {
+       fw_updater_->ValidKey() &&
+       fw_updater_->ValidRollback())) {
     NotifyUpdateStarted();
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
     if (post_rw_jump) {
       LOG(ERROR) << "Failed to jump to RW. Need to update RW section.";
-      if (!fw_updater_->UpdatePossible(SectionName::RW)) {
+      if (!fw_updater_->ValidKey() || !fw_updater_->ValidRollback()) {
         LOG(ERROR) << "RW section is unusable, but local image is "
                    << "incompatible. Giving up.";
+        // TODO(kitching): UMA metric:
+        // DetachableBase.RWUpdate = InvalidKey | RollbackDisallowed
         return HammerUpdater::RunStatus::kFatalError;
       }
     }
@@ -247,6 +250,8 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 
     // Now RW section needs an update, and it is not locked. Let's update!
     bool ret = fw_updater_->TransferImage(SectionName::RW);
+    // TODO(kitching): UMA metric:
+    // DetachableBase.RWUpdate = Success | TransferFailed
     LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
     return HammerUpdater::RunStatus::kNeedReset;
   }
@@ -300,6 +305,8 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
   LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
   NotifyUpdateStarted();
   bool ret = fw_updater_->TransferImage(SectionName::RO);
+  // TODO(kitching): UMA metric:
+  // DetachableBase.ROUpdate = Success | TransferFailed
   LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
   // In the case that the update failed, a reset will either brick the device,
   // or get it back into a normal state.

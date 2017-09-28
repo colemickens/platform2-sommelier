@@ -331,7 +331,7 @@ TEST_F(FirmwareUpdaterTest, CurrentSection) {
   ASSERT_EQ(fw_updater_->CurrentSection(), SectionName::Invalid);
 }
 
-TEST_F(FirmwareUpdaterTest, UpdatePossible) {
+TEST_F(FirmwareUpdaterTest, CheckKeyRollback) {
   fw_updater_->sections_ = {
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
       SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
@@ -346,7 +346,8 @@ TEST_F(FirmwareUpdaterTest, UpdatePossible) {
            fw_updater_->sections_[1].version);
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), true);
+  ASSERT_EQ(fw_updater_->ValidKey(), true);
+  ASSERT_EQ(fw_updater_->ValidRollback(), true);
 
   // Version is different -- update should be possible.
   snprintf(fw_updater_->targ_.version,
@@ -354,7 +355,8 @@ TEST_F(FirmwareUpdaterTest, UpdatePossible) {
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), true);
+  ASSERT_EQ(fw_updater_->ValidKey(), true);
+  ASSERT_EQ(fw_updater_->ValidRollback(), true);
 
   // Minimum rollback is larger than the updated image -- update not possible.
   snprintf(fw_updater_->targ_.version,
@@ -362,7 +364,8 @@ TEST_F(FirmwareUpdaterTest, UpdatePossible) {
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 40;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), false);
+  ASSERT_EQ(fw_updater_->ValidKey(), true);
+  ASSERT_EQ(fw_updater_->ValidRollback(), false);
 
   // The key version is not the same -- update not possible.
   snprintf(fw_updater_->targ_.version,
@@ -370,18 +373,8 @@ TEST_F(FirmwareUpdaterTest, UpdatePossible) {
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 2;
-  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), false);
-
-  // Writable offset is at RO, so current section is RW.
-  fw_updater_->targ_.offset = 0x0;
-
-  // RO updates should always be possible.
-  snprintf(fw_updater_->targ_.version,
-           sizeof(fw_updater_->targ_.version),
-           "ANOTHER VERSION");
-  fw_updater_->targ_.min_rollback = 40;
-  fw_updater_->targ_.key_version = 2;
-  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RO), true);
+  ASSERT_EQ(fw_updater_->ValidKey(), false);
+  ASSERT_EQ(fw_updater_->ValidRollback(), true);
 }
 
 TEST_F(FirmwareUpdaterTest, VersionMismatch) {

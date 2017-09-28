@@ -45,7 +45,8 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
   MOCK_METHOD2(TransferTouchpadFirmware,
                bool(uint32_t section_addr, size_t data_len));
   MOCK_CONST_METHOD0(CurrentSection, SectionName());
-  MOCK_CONST_METHOD1(UpdatePossible, bool(SectionName section_name));
+  MOCK_CONST_METHOD0(ValidKey, bool());
+  MOCK_CONST_METHOD0(ValidRollback, bool());
   MOCK_CONST_METHOD1(VersionMismatch, bool(SectionName section_name));
   MOCK_CONST_METHOD1(IsSectionLocked, bool(SectionName section_name));
   MOCK_METHOD1(UnlockSection, bool(SectionName section_name));

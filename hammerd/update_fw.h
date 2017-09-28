@@ -238,8 +238,13 @@ class FirmwareUpdaterInterface {
   // Returns the current section that EC is running. One of "RO" or "RW".
   virtual SectionName CurrentSection() const = 0;
 
-  // Determines whether it is possible to update the given section.
-  virtual bool UpdatePossible(SectionName section_name) const = 0;
+  // Returns whether the key version of the local image is valid
+  // (i.e. matches key version in RW section of EC).
+  virtual bool ValidKey() const = 0;
+
+  // Returns whether the rollback version of the local image is valid
+  // (i.e. >= rollback stored in RB section of EC).
+  virtual bool ValidRollback() const = 0;
 
   // Determines whether the given section has a different firmware version
   // from that of the local file.
@@ -286,7 +291,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool TransferTouchpadFirmware(uint32_t section_addr,
                                 size_t data_len) override;
   SectionName CurrentSection() const override;
-  bool UpdatePossible(SectionName section_name) const override;
+  bool ValidKey() const override;
+  bool ValidRollback() const override;
   bool VersionMismatch(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
   bool UnlockSection(SectionName section_name) override;
@@ -340,7 +346,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
   FRIEND_TEST(FirmwareUpdaterTest, TransferImage);
   FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);
-  FRIEND_TEST(FirmwareUpdaterTest, UpdatePossible);
+  FRIEND_TEST(FirmwareUpdaterTest, CheckKeyRollback);
   FRIEND_TEST(FirmwareUpdaterTest, VersionMismatch);
 
  private:
