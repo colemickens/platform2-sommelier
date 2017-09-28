@@ -111,7 +111,8 @@ bool TpmInit::IsTpmReady() {
   // The TPM is "ready" if it is enabled, owned, and not being owned.
   return (tpm_init_task_->get_tpm()->IsEnabled() &&
           tpm_init_task_->get_tpm()->IsOwned() &&
-          !tpm_init_task_->get_tpm()->IsBeingOwned());
+          !tpm_init_task_->get_tpm()->IsBeingOwned() &&
+          platform_->FileExists(kTpmOwnedFile));
 }
 
 bool TpmInit::IsTpmEnabled() {

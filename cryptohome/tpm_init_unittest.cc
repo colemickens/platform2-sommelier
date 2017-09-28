@@ -471,4 +471,23 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
   EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
 }
 
+TEST_F(TpmInitTest, IsTpmReady) {
+  SetIsTpmOwned(true);
+  SetIsTpmBeingOwned(false);
+  FileTouch(kTpmOwnedFile);
+  EXPECT_TRUE(tpm_init_.IsTpmReady());
+
+  SetIsTpmOwned(false);
+  EXPECT_FALSE(tpm_init_.IsTpmReady());
+
+  SetIsTpmOwned(true);
+  SetIsTpmBeingOwned(true);
+  EXPECT_FALSE(tpm_init_.IsTpmReady());
+
+  SetIsTpmOwned(true);
+  SetIsTpmBeingOwned(false);
+  FileDelete(kTpmOwnedFile, false);
+  EXPECT_FALSE(tpm_init_.IsTpmReady());
+}
+
 }  // namespace cryptohome
