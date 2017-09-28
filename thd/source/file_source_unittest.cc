@@ -8,7 +8,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
@@ -21,7 +20,7 @@ class FileSourceTest : public ::testing::Test {
   FileSourceTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     file_ = temp_dir_.path().Append("content");
-    source_ = base::MakeUnique<FileSource>(file_);
+    source_ = std::make_unique<FileSource>(file_);
   }
   ~FileSourceTest() override {}
 
