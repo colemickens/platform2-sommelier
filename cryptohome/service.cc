@@ -21,7 +21,6 @@
 #include <base/command_line.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -3048,7 +3047,7 @@ gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
-  auto mounts = base::MakeUnique<base::ListValue>();
+  auto mounts = std::make_unique<base::ListValue>();
   mounts_lock_.Acquire();
   for (const auto& mount_pair : mounts_) {
     mounts->Append(mount_pair.second->GetStatus());
@@ -3059,7 +3058,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   Tpm::TpmStatusInfo tpm_status_info;
   tpm_->GetStatus(tpm_init_->GetCryptohomeKey(),
                   &tpm_status_info);
-  auto tpm = base::MakeUnique<base::DictionaryValue>();
+  auto tpm = std::make_unique<base::DictionaryValue>();
   tpm->SetBoolean("can_connect", tpm_status_info.can_connect);
   tpm->SetBoolean("can_load_srk", tpm_status_info.can_load_srk);
   tpm->SetBoolean("can_load_srk_pubkey",
@@ -3350,7 +3349,7 @@ gboolean Service::MigrateToDircrypto(const GArray* account_id,
   // be optional here anymore.
   if (migrate_request) {
     std::unique_ptr<MigrateToDircryptoRequest> request =
-        base::MakeUnique<MigrateToDircryptoRequest>();
+        std::make_unique<MigrateToDircryptoRequest>();
     if (!request->ParseFromArray(migrate_request->data,
                                  migrate_request->len)) {
       LOG(ERROR) << "Failed to parse migrate_request.";

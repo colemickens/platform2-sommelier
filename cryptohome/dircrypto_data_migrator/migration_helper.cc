@@ -20,7 +20,6 @@
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/memory/ptr_util.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_info.h>
@@ -202,7 +201,7 @@ class MigrationHelper::WorkerPool {
     max_job_list_size_ = max_job_list_size;
 
     for (size_t i = 0; i < job_threads_.size(); ++i) {
-      job_threads_[i] = base::MakeUnique<base::Thread>(
+      job_threads_[i] = std::make_unique<base::Thread>(
           "MigrationHelper worker #" + base::IntToString(i));
       base::Thread::Options options;
       options.message_loop_type = base::MessageLoop::TYPE_IO;

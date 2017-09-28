@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
@@ -997,7 +996,7 @@ bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
   base::PlatformThreadId thread_id = base::PlatformThread::CurrentId();
   if (trunks_contexts_.count(thread_id) == 0) {
     std::unique_ptr<TrunksClientContext> new_context(new TrunksClientContext);
-    new_context->factory_impl = base::MakeUnique<trunks::TrunksFactoryImpl>();
+    new_context->factory_impl = std::make_unique<trunks::TrunksFactoryImpl>();
     if (!new_context->factory_impl->Initialize()) {
       LOG(ERROR) << "Failed to initialize trunks factory.";
       return false;
@@ -1048,9 +1047,9 @@ bool Tpm2Impl::InitializeTpmManagerClients() {
     tpm_manager_thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind([this, &event]() {
           default_tpm_owner_ =
-              base::MakeUnique<tpm_manager::TpmOwnershipDBusProxy>();
+              std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
           default_tpm_nvram_ =
-              base::MakeUnique<tpm_manager::TpmNvramDBusProxy>();
+              std::make_unique<tpm_manager::TpmNvramDBusProxy>();
           if (default_tpm_owner_->Initialize()) {
             tpm_owner_ = default_tpm_owner_.get();
           }

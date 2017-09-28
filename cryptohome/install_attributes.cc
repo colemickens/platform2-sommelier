@@ -12,7 +12,6 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/time/time.h>
 
 #include "cryptohome/lockbox.h"
@@ -326,7 +325,7 @@ bool InstallAttributes::SerializeAttributes(brillo::Blob* out_bytes) {
 }
 
 std::unique_ptr<base::Value> InstallAttributes::GetStatus() {
-  auto dv = base::MakeUnique<base::DictionaryValue>();
+  auto dv = std::make_unique<base::DictionaryValue>();
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());
   dv->SetInteger("lockbox_index", lockbox()->nvram_index());
@@ -336,7 +335,7 @@ std::unique_ptr<base::Value> InstallAttributes::GetStatus() {
   dv->SetBoolean("first_install", is_first_install());
   dv->SetInteger("size", Count());
   if (Count()) {
-    auto attrs = base::MakeUnique<base::DictionaryValue>();
+    auto attrs = std::make_unique<base::DictionaryValue>();
     std::string key;
     brillo::Blob value;
     for (int i = 0; i < Count(); i++) {
