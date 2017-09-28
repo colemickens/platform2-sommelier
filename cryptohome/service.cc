@@ -3131,7 +3131,7 @@ void Service::LowDiskCallback() {
 }
 
 void Service::ResetDictionaryAttackMitigation() {
-  if (!use_tpm_) {
+  if (!use_tpm_ || !tpm_init_ || !tpm_init_->IsTpmReady()) {
     return;
   }
   int counter = 0;

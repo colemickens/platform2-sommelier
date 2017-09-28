@@ -967,7 +967,8 @@ bool Tpm2Impl::ResetDictionaryAttackMitigation(
   if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
     return false;
   }
-  if (!tpm_status_.local_data().has_lockout_password()) {
+  if (!tpm_status_.local_data().has_lockout_password() ||
+      !tpm_status_.owned()) {
     return false;
   }
   TrunksClientContext* trunks;
