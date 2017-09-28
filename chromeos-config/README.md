@@ -138,6 +138,24 @@ properties.
                     a phandle pointing to the model (it cannot point to a
                     sub-model).
 
+    *   `touch` (optional): Contains information about touch devices used by
+        this family. Each node is defined as a Phandle that can be referenced
+        from the model-specific configuration using the `touch-type` property.
+        *   `vendor`: Name of vendor.
+        *   `firmware-bin`: Template filename to use for vendor firmware binary.
+            The file is installed into `/opt/google/touch`.
+        *   `firmware-symlink`: Template filename to use for the /lib/firmware
+            symlink to the firmware file in `/opt/google/touch`. The
+            `/lib/firmware` part is assumed.
+
+        Template filenames may include the following fields, enclosed in
+        `${...}` defined by the touch node: `vendor`, `pid`, `version` as well
+        as `model` for the model name. The expansion / interpretation happens
+        in cros_config. Other users should not attempt to implement this. The
+        purpose is to avoid having to repeat the filename in each model that
+        uses a particular manufacturer's touchscreen, since the naming
+        convention is typically consistent for that manufacturer.
+
 *   `models`: Sub-nodes of this define models supported by this board.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
@@ -147,9 +165,51 @@ properties.
             [one-pager](gi/chromeos-rlz-onepager).
         *   `thermal`(optional): Contains information about thermel properties
             and settings.
-            *   `dptf-dv': Filename of the .dv file containing DPTF (Dynamic
+            *   `dptf-dv`: Filename of the .dv file containing DPTF (Dynamic
                 Platform and Thermal Framework) settings, relative to the
                 ebuild's FILESDIR.
+        *   `touch` (optional): Contains information about touch devices such
+            as touchscreens, touchpads, stylus.
+            *   `present` (optional): Indicates whether this model has a
+                touchscreen. This is used by the ARC++ system to pass
+                information to Android, for example. Valid values are:
+                *   `no`: This model does not have a touchscreen (default)
+                *   `yes`: This model has a touchscreen
+                *   `probe`: This model might have a touchscreen but we need to
+                    probe at run-time to find out. This should ideally only be
+                    needed on legacy devices which were not shipped with
+                    unibuild.
+            *   `probe-regex` (optional): Indicates the regular expression that
+                should be used to match again device names in
+                `sys/class/input/input*/name`. If the expression matches any
+                device then the touchscreen is assumed to exist.
+            *   `<device_type>` (optional): Contains information about touch
+                firmware packages. Valid values for package_name are:
+                * `stylus` - a pen-like device with a sensor on or behind the
+                    display which together provide absolute positions with
+                    respect to the display
+                * `touchpad` - a touch surface separate from the display
+                * `touchscreen` - a transparent touch surface on a display which
+                    provides absolute positions with respect to the display
+
+                You can use unit values (`touchscreen@0`, `touchscreen@1`) to
+                allow multiple devices of the same type on a model.
+
+                For each of these:
+
+                *   `touch-type`: Phandle pointing to the `touch` node in the
+                    Family configuration. This allows the vendor name and
+                    default firmware file template to be defined.
+                *   `pid`: Product ID string, as defined by the vendor.
+                *   `version`: Version string, as defined by the vendor.
+                *   `firmware-bin` (optional): Filename of firmware file. See
+                    the Family `touch` node above for the format. If not
+                    specified then the firmware-bin property from touch-type is
+                    used.
+                *   `firmware-symlink`: Filename of firmware file within
+                    /lib/firmware on the device. See the Family `touch` node
+                    above for the format.
+
         *   `wallpaper` (optional): base filename of the default wallpaper to
             show on this device. The base filename points `session_manager` to
             two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
@@ -248,6 +308,24 @@ chromeos {
                 single-sku = <&sand>;
             };
         };
+
+        touch {
+            elan_touchscreen: elan-touchscreen {
+                vendor = "elan";
+                firmware-bin = "${vendor}/${pid}_${version}.bin";
+                firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+            };
+            elan_touchpad: elan-touchpad {
+                vendor = "elan";
+                firmware-bin = "${vendor}/${pid}_${version}.bin";
+                firmware-symlink = "${vendor}_i2c_${pid}.bin";
+            };
+            wacom_stylus: wacom-stylus {
+                vendor = "wacom";
+                firmware-bin = "wacom/${version}.hex";
+                firmware-symlink = "wacom_firmware_${model}.bin";
+            };
+        };
     };
 
     models {
@@ -266,6 +344,17 @@ chromeos {
                 reef_4: reef-touchscreen {
                 };
                 reef_5: reef-notouch {
+                };
+            };
+            touch {
+                present = "probe";
+                probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+                touchscreen {
+                    touch-type = <&elan_touchscreen>;
+                    pid = "0a97";
+                    version = "1012";
+                    firmware-bin = "${vendor}/${pid}_${version}.bin";
+                    firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
                 };
             };
         };
@@ -316,6 +405,33 @@ chromeos {
             firmware {
                 shares = <&shared>;
                 key-id = "basking";
+            };
+            touch {
+                #address-cells = <1>;
+                #size-cells = <0>;
+                present = "yes";
+                stylus {
+                    touch-type = <&wacom_stylus>;
+                    version = "4209";
+                };
+                touchpad {
+                    touch-type = <&elan_touchpad>;
+                    pid = "97.0";
+                    version = "6.0";
+                    firmware-symlink = "${vendor}_i2c_${pid}.bin";
+                };
+                touchscreen@0 {
+                    reg = <0>;
+                    touch-type = <&elan_touchscreen>;
+                    pid = "3062";
+                    version = "5602";
+                };
+                touchscreen@1 {
+                    reg = <1>;
+                    touch-type = <&elan_touchscreen>;
+                    pid = "306e";
+                    version = "5611";
+                };
             };
         };
 
@@ -379,3 +495,37 @@ the example above) for the firmware pinning case:
     * setvars.sh
   * electro/
     * setvars.sh (points to models/sand/...)
+
+
+### Creating touch settings
+
+To enable touch on a Chromebook you need to set up the touch firmware
+correctly.
+
+First, create a `touch` node in your family. Add to that subnodes for each
+type of touch device you have, e.g. elan-touchpad, wacom-stylus. Each node
+should specify the firmware-bin and firmware-symlink filename patterns for that
+device.
+
+Once you have done that you can add a `touch` node in your model. This should
+reference the touch firmware node using the `touch-type` property. It should
+also define things needed to identify the firmware, typically `pid` and
+`version`.
+
+Make sure that the ebuild which installs your BSP files (e.g.
+`chromeos-bsp-coral-private`) calls the `install_touch_files` function from the
+`cros-unibuild`. Check that your ebuild inherits `cros-unibuild` too.
+
+If you are adding touch support for a new model in the family, take a look at
+what other models have done.
+
+To test your changes (e.g. for coral):
+
+   emerge-coral chromeos-config-bsp chromeos-config chromeos-bsp-coral-private
+
+You should see it install each of the touch files. If not, or you get an error,
+check your configuration.
+
+To test at run-time, build a new image and write it to your device. Check that
+the firmware files are installed in /lib/firmware and loaded correctly by your
+kernel driver.
