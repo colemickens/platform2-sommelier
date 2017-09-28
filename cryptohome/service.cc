@@ -93,6 +93,10 @@ const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
 const char kDircryptoMigrationProgressEventType[] =
                                                "DircryptoMigrationProgress";
+// If this file is present, the TPM ownership can be attempted, if not acquired
+// yet, at any time. The file is preserved over reboots and removed during
+// powerwash.
+const FilePath kCanAttemptOwnershipFile("/home/.shadow/.can_attempt_ownership");
 
 // The default entropy source to seed with random data from the TPM on startup.
 const FilePath kDefaultEntropySource("/dev/urandom");
@@ -569,7 +573,8 @@ bool Service::Initialize() {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
     AttestationInitializeTpm();
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+    if (CanAttemptOwnership() ||
+        base::CommandLine::ForCurrentProcess()->HasSwitch(
           kAutoInitializeTpmSwitch)) {
       tpm_init_->AsyncTakeOwnership();
     }
@@ -2440,6 +2445,7 @@ gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
 }
 
 gboolean Service::TpmCanAttemptOwnership(GError** error) {
+  SetCanAttemptOwnership();
   if (!tpm_init_->OwnershipRequested()) {
     ReportTimerStart(kTpmTakeOwnershipTimer);
     tpm_init_->AsyncTakeOwnership();
@@ -3405,6 +3411,14 @@ gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
   *OUT_needs_migration = !force_ecryptfs_ &&
       homedirs_->NeedsDircryptoMigration(credentials);
   return TRUE;
+}
+
+void Service::SetCanAttemptOwnership() {
+  platform_->TouchFileDurable(kCanAttemptOwnershipFile);
+}
+
+bool Service::CanAttemptOwnership() const {
+  return platform_->FileExists(kCanAttemptOwnershipFile);
 }
 
 }  // namespace cryptohome

@@ -836,6 +836,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
 
+  // Sets and gets global flag indicating if EULA has been accepted and
+  // cryptohomed can attempt TPM ownership. This is a one-time decision
+  // until the owner is changed, so the flag is preserved over reboots and
+  // is cleared by the powerwash.
+  void SetCanAttemptOwnership();
+  bool CanAttemptOwnership() const;
+
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>
       MountMap;
