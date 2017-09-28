@@ -114,7 +114,6 @@ libcam_algo_la_SOURCES = \
     psl/ipu3/ipc/server/CoordinateLibrary.cpp \
     psl/ipu3/ipc/server/ExcLibrary.cpp \
     common/LogHelper.cpp \
-    common/LogHelperChrome.cpp \
     psl/ipu3/ipc/IPCCommon.cpp \
     psl/ipu3/ipc/IPCAic.cpp \
     psl/ipu3/ipc/IPCAiq.cpp \

@@ -44,30 +44,34 @@ int32_t gRgbsGridDump = 0;
 int32_t gAfGridDump = 0;
 
 namespace LogHelper {
-// Declare external functions (Depends on OS)
-extern void __initOsEnviroment();
 
 void cca_print_error(const char *fmt, va_list ap)
 {
-    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_ERROR)
-        __camera_hal_log_ap(true, CAMERA_DEBUG_TYPE_ERROR, LOG_TAG_CCA, fmt, ap);
+    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_ERROR) {
+        LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG)
+                   << base::StringPrintV(fmt, ap);
+    }
 }
 
 void cca_print_debug(const char *fmt, va_list ap)
 {
-    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_DEBUG)
-        __camera_hal_log_ap(true, CAMERA_DEBUG_TYPE_DEBUG, LOG_TAG_CCA, fmt, ap);
+    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_DEBUG) {
+        VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG)
+                << base::StringPrintV(fmt, ap);
+    }
 }
 
 void cca_print_info(const char *fmt, va_list ap)
 {
-    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_INFO)
-       __camera_hal_log_ap(true, CAMERA_DEBUG_TYPE_INFO, LOG_TAG_CCA, fmt, ap);
+    if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_INFO) {
+        VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG)
+                << base::StringPrintV(fmt, ap);
+    }
 }
 
 void setDebugLevel(void)
 {
-    __initOsEnviroment();
+    // The camera HAL adapter handled the logging initialization already.
 
     if (__getEnviromentValue(ENV_CAMERA_HAL_DEBUG, &gLogLevel)) {
         LOGD("Debug level is 0x%x", gLogLevel);
@@ -139,6 +143,62 @@ bool isDebugTypeEnable(int debugType)
 bool isPerfDumpTypeEnable(int dumpType)
 {
     return gPerfLevel & dumpType;
+}
+
+bool __setEnviromentValue(const char* variable, const int value)
+{
+    std::string env_val = std::to_string(value);
+
+    if (!variable) {
+        return false;
+    }
+
+    if (setenv(variable, env_val.c_str(), 1) != 0) {
+        LOGE("setenv error for %s", variable);
+        return false;
+    }
+
+    return true;
+}
+
+bool __setEnviromentValue(const char* variable, const char* value)
+{
+    if (!variable || !value) {
+        return false;
+    }
+
+    if (setenv(variable, value, 1) != 0) {
+        LOGE("setenv error for %s", variable);
+        return false;
+    }
+
+    return true;
+}
+
+bool __getEnviromentValue(const char* variable, int* value)
+{
+    if (!variable || !value) {
+        return false;
+    }
+
+    char* valueStr = getenv(variable);
+    if (valueStr) {
+        *value = strtoul(valueStr, nullptr, 0);
+        return true;
+    }
+    return false;
+}
+
+bool __getEnviromentValue(const char* variable, char *value, size_t buf_size)
+{
+    char* valueStr = getenv(variable);
+
+    if (valueStr) {
+        MEMCPY_S(value, buf_size, valueStr, strlen(valueStr) + 1);
+        value[buf_size - 1] = '\0';
+        return true;
+    }
+    return false;
 }
 
 } // namespace LogHelper

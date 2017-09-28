@@ -54,8 +54,7 @@ HAL_COMMON_SRC = \
     CommonBuffer.cpp \
     CameraWindow.cpp \
     PerformanceTraces.cpp \
-    LogHelper.cpp \
-    LogHelperChrome.cpp
+    LogHelper.cpp
 
 libhalcommon_la_SOURCES = $(HAL_COMMON_SRC)
 

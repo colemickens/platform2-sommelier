@@ -17,11 +17,6 @@
 #ifndef _CHROME_CAMERA_LOG_H_
 #define _CHROME_CAMERA_LOG_H_
 
-#include <sys/time.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #define ENV_CAMERA_HAL_DEBUG  "cameraDebug"
 #define ENV_CAMERA_CCA_DEBUG  "cameraCca"
 #define ENV_CAMERA_HAL_PERF   "cameraPerf"

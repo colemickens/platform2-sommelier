@@ -22,6 +22,9 @@
 #include <limits.h>
 #include <stdarg.h>
 
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
+
 #include <utils/Errors.h>
 #include "CommonUtilMacros.h"
 
@@ -160,12 +163,6 @@ enum  {
 // Dedicated namespace section for function declarations
 namespace LogHelper {
 
-void __camera_hal_log(bool condition, int prio, const char *tag,
-                      const char *fmt, ...);
-
-void __camera_hal_log_ap(bool condition, int prio, const char *tag,
-                      const char *fmt, va_list ap);
-
 void cca_print_error(const char *fmt, va_list ap);
 
 void cca_print_debug(const char *fmt, va_list ap);
@@ -194,16 +191,22 @@ bool __getEnviromentValue(const char* variable, char *value, size_t buf_size);
 bool __setEnviromentValue(const char* variable, const int value);
 bool __setEnviromentValue(const char* variable, const char* value);
 
+#define LOG_HEADER "%s %s:"
+
 class ScopedTrace {
 public:
 inline ScopedTrace(int level, const char* name) :
         mLevel(level),
         mName(name) {
-    __camera_hal_log(gLogLevel & mLevel, CAMERA_DEBUG_TYPE_DEBUG, CAMHAL_TAG, "ENTER-%s", mName);
+    if (gLogLevel & mLevel) {
+        VLOG(3) << base::StringPrintf(LOG_HEADER "ENTER-%s", "D/", CAMHAL_TAG, mName);
+    }
 }
 
 inline ~ScopedTrace() {
-    __camera_hal_log(gLogLevel & mLevel, CAMERA_DEBUG_TYPE_DEBUG, CAMHAL_TAG, "EXIT-%s", mName);
+    if (gLogLevel & mLevel) {
+        VLOG(3) << base::StringPrintf(LOG_HEADER "EXIT-%s", "D/", CAMHAL_TAG, mName);
+    }
 }
 
 private:
@@ -213,22 +216,44 @@ private:
 
 } // namespace LogHelper
 
-// Take the namespaced function to be used for unqualified
-// lookup  in the LOG* macros below
-using LogHelper::__camera_hal_log;
-
-#define LOGE(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_ERROR, CAMHAL_TAG, __VA_ARGS__)
-#define LOGW(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_WARN, CAMHAL_TAG, __VA_ARGS__)
+#define LOGE(...)                                                  \
+    LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG) \
+               << base::StringPrintf(__VA_ARGS__)
+#define LOGW(...)                                                    \
+    LOG(WARNING) << base::StringPrintf(LOG_HEADER, "W/", CAMHAL_TAG) \
+                 << base::StringPrintf(__VA_ARGS__)
 
 #ifdef CAMERA_HAL_DEBUG
-#define LOG1(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL1, CAMERA_DEBUG_LOG_LEVEL1, CAMHAL_TAG, __VA_ARGS__)
-#define LOG2(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL2, CAMERA_DEBUG_LOG_LEVEL2, CAMHAL_TAG, __VA_ARGS__)
-#define LOGR(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_REQ_STATE, CAMERA_DEBUG_LOG_REQ_STATE, CAMHAL_TAG, __VA_ARGS__)
-#define LOGAIQ(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_AIQ, CAMERA_DEBUG_LOG_AIQ, CAMHAL_TAG, __VA_ARGS__)
+#define LOG1(...)                                                               \
+    !(gLogLevel & CAMERA_DEBUG_LOG_LEVEL1)                                      \
+        ? (void)(0) : LOG(INFO)                                                 \
+                          << base::StringPrintf(LOG_HEADER, "D/L1", CAMHAL_TAG) \
+                          << base::StringPrintf(__VA_ARGS__)
+#define LOG2(...)                                                               \
+    !(gLogLevel & CAMERA_DEBUG_LOG_LEVEL2)                                      \
+        ? (void)(0) : LOG(INFO)                                                 \
+                          << base::StringPrintf(LOG_HEADER, "D/L2", CAMHAL_TAG) \
+                          << base::StringPrintf(__VA_ARGS__)
+#define LOGR(...)                                                                \
+    !(gLogLevel & CAMERA_DEBUG_LOG_REQ_STATE)                                    \
+        ? (void)(0) : LOG(INFO)                                                  \
+                          << base::StringPrintf(LOG_HEADER, "D/REQ", CAMHAL_TAG) \
+                          << base::StringPrintf(__VA_ARGS__)
+#define LOGAIQ(...)                                                              \
+    !(gLogLevel & CAMERA_DEBUG_LOG_AIQ)                                          \
+        ? (void)(0) : LOG(INFO)                                                  \
+                          << base::StringPrintf(LOG_HEADER, "D/AIQ", CAMHAL_TAG) \
+                          << base::StringPrintf(__VA_ARGS__)
 
-#define LOGD(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_DEBUG, CAMHAL_TAG, __VA_ARGS__)
-#define LOGV(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_VERBOSE, CAMHAL_TAG, __VA_ARGS__)
-#define LOGI(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_INFO, CAMHAL_TAG, __VA_ARGS__)
+#define LOGI(...)                                               \
+    VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG) \
+            << base::StringPrintf(__VA_ARGS__)
+#define LOGV(...)                                               \
+    VLOG(2) << base::StringPrintf(LOG_HEADER, "V/", CAMHAL_TAG) \
+            << base::StringPrintf(__VA_ARGS__)
+#define LOGD(...)                                               \
+    VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG) \
+            << base::StringPrintf(__VA_ARGS__)
 
 // CAMTRACE_NAME traces the beginning and end of the current scope.  To trace
 // the correct start and end times this macro should be declared first in the
