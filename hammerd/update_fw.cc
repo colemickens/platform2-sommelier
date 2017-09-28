@@ -373,12 +373,19 @@ bool FirmwareUpdater::TransferTouchpadFirmware(
 
 
 bool FirmwareUpdater::InjectEntropy() {
-  constexpr int kDataSize = 32;
-  uint8_t entropy[kDataSize];
-  RAND_bytes(entropy, kDataSize);
-  std::string entropy_data(reinterpret_cast<char*>(entropy), kDataSize);
-  return SendSubcommandWithPayload(UpdateExtraCommand::kInjectEntropy,
-                                   entropy_data);
+  uint8_t entropy[kEntropySize];
+  RAND_bytes(entropy, kEntropySize);
+  std::string entropy_data(reinterpret_cast<const char*>(entropy),
+                           kEntropySize);
+  return InjectEntropyWithPayload(entropy_data);
+}
+
+bool FirmwareUpdater::InjectEntropyWithPayload(const std::string& payload) {
+  if (payload.size() != kEntropySize) {
+    LOG(ERROR) << "Entropy size should be " << kEntropySize << " bytes.";
+    return false;
+  }
+  return SendSubcommandWithPayload(UpdateExtraCommand::kInjectEntropy, payload);
 }
 
 bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand) {

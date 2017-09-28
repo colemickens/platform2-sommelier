@@ -55,6 +55,10 @@ BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
     FirmwareUpdater* updater) {
   return updater->InjectEntropy();
 }
+BRILLO_EXPORT bool FirmwareUpdater_InjectEntropyWithPayload(
+    FirmwareUpdater* updater, const ByteString* payload) {
+  return updater->InjectEntropyWithPayload(ToString(payload));
+}
 BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
     FirmwareUpdater* updater, UpdateExtraCommand subcommand) {
   return updater->SendSubcommand(subcommand);

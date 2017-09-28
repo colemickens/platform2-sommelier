@@ -8,9 +8,11 @@
 from __future__ import print_function
 
 import ctypes
+import time
 
 # Load hammerd-api library.
 _DLL = ctypes.CDLL('libhammerd-api.so')
+ENTROPY_SIZE = ctypes.c_int.in_dll(_DLL, 'kEntropySize').value
 
 
 class UpdateExtraCommand(object):
@@ -105,6 +107,8 @@ class FirmwareUpdater(object):
       ('SendFirstPdu', [ctypes.c_voidp], ctypes.c_bool),
       ('SendDone', [ctypes.c_voidp], None),
       ('InjectEntropy', [ctypes.c_voidp], ctypes.c_bool),
+      ('InjectEntropyWithPayload',
+       [ctypes.c_voidp, ctypes.POINTER(ByteString)], ctypes.c_bool),
       ('SendSubcommand', [ctypes.c_voidp, ctypes.c_uint16], ctypes.c_bool),
       ('SendSubcommandWithPayload',
        [ctypes.c_voidp, ctypes.c_uint16, ctypes.POINTER(ByteString)],
@@ -145,6 +149,14 @@ def main():
   updater.SendDone()
   updater.SendSubcommand(UpdateExtraCommand.ImmediateReset)
   updater.CloseUsb()
+
+  # Inject all-zero entropy.
+  time.sleep(0.5)
+  updater.TryConnectUsb()
+  updater.SendSubcommand(UpdateExtraCommand.StayInRO)
+  updater.InjectEntropyWithPayload('\x00' * ENTROPY_SIZE)
+  updater.CloseUsb()
+
 
 
 if __name__ == '__main__':

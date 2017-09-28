@@ -284,9 +284,7 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
     EXPECT_CALL(*endpoint_, Receive(_, 1, false, _));
   }
 
-  ASSERT_EQ(fw_updater_->SendSubcommandWithPayload(
-                UpdateExtraCommand::kInjectEntropy, fake_entropy),
-            true);
+  ASSERT_EQ(fw_updater_->InjectEntropyWithPayload(fake_entropy), true);
 }
 
 // Send the kImmediateReset subcommand.

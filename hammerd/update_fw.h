@@ -45,6 +45,7 @@ namespace hammerd {
 constexpr int kUpdateProtocolVersion = 6;
 constexpr uint32_t kUpdateDoneCmd = 0xB007AB1E;
 constexpr uint32_t kUpdateExtraCmd = 0xB007AB1F;
+constexpr int kEntropySize = 32;
 
 enum class FirstResponsePduHeaderType {
   kCR50 = 0,
@@ -271,6 +272,9 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool SendFirstPdu() override;
   void SendDone() override;
   bool InjectEntropy() override;
+  // InjectEntropyWithPayload is exposed at hammerd_api for FAFT use.
+  // It should not be called directly in hammer_updater.
+  bool InjectEntropyWithPayload(const std::string& payload);
   bool SendSubcommand(UpdateExtraCommand subcommand) override;
   bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
                                  const std::string& cmd_body) override;

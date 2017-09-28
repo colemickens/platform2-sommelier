@@ -30,6 +30,9 @@ struct ByteString {
   size_t size;
 };
 
+// Expose the global constant.
+BRILLO_EXPORT int kEntropySize = hammerd::kEntropySize;
+
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
     uint16_t vendor_id, uint16_t product_id, int bus, int port);
@@ -47,6 +50,8 @@ BRILLO_EXPORT void FirmwareUpdater_SendDone(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_InjectEntropy(
     FirmwareUpdater* updater);
+BRILLO_EXPORT bool FirmwareUpdater_InjectEntropyWithPayload(
+    FirmwareUpdater* updater, const ByteString* payload);
 BRILLO_EXPORT bool FirmwareUpdater_SendSubcommand(
     FirmwareUpdater* updater, UpdateExtraCommand subcommand);
 BRILLO_EXPORT bool FirmwareUpdater_SendSubcommandWithPayload(
