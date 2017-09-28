@@ -4,7 +4,7 @@
 
 #include "authpolicy/jail_helper.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
@@ -50,7 +50,7 @@ bool JailHelper::SetupJailAndRun(ProcessExecutor* cmd,
   //   2) Ability to log seccomp filter failures. Without this, it is hard to
   //      know which syscall has to be added to the filter policy file.
   auto timer = timer_type != TIMER_NONE
-                   ? base::MakeUnique<ScopedTimerReporter>(timer_type)
+                   ? std::make_unique<ScopedTimerReporter>(timer_type)
                    : nullptr;
   ScopedSwitchToSavedUid switch_scope;
   return cmd->Execute();

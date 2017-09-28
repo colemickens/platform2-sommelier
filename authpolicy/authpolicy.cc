@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -68,7 +67,7 @@ ErrorType SerializeProto(ProtoType proto, std::vector<uint8_t>* proto_blob) {
 // static
 std::unique_ptr<DBusObject> AuthPolicy::GetDBusObject(
     brillo::dbus_utils::ExportedObjectManager* object_manager) {
-  return base::MakeUnique<DBusObject>(
+  return std::make_unique<DBusObject>(
       object_manager,
       object_manager->GetBus(),
       org::chromium::AuthPolicyAdaptor::GetObjectPath());
@@ -174,7 +173,7 @@ int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
                                    const std::string& account_id_key) {
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
-  auto timer = base::MakeUnique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
+  auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
   protos::GpoPolicyData gpo_policy_data;
@@ -196,7 +195,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   LOG(INFO) << "Received 'RefreshDevicePolicy' request";
   auto timer =
-      base::MakeUnique<ScopedTimerReporter>(TIMER_REFRESH_DEVICE_POLICY);
+      std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_DEVICE_POLICY);
 
   // Fetch GPOs for the device.
   protos::GpoPolicyData gpo_policy_data;

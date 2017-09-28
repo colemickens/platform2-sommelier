@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/json/json_reader.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
@@ -550,7 +549,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         !dict_value || !dict_value->GetList("intervals", &intervals) ||
         !dict_value->GetList("ignored_policies", &ignored_policies) ||
         !dict_value->GetString("timezone", &timezone);
-    auto proto = base::MakeUnique<em::DeviceOffHoursProto>();
+    auto proto = std::make_unique<em::DeviceOffHoursProto>();
     if (!is_error) {
       proto->set_timezone(timezone);
 

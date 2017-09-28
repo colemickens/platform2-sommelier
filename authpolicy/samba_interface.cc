@@ -12,7 +12,6 @@
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -271,7 +270,7 @@ SambaInterface::SambaInterface(
     const base::Closure& user_kerberos_files_changed)
     : metrics_(metrics),
       paths_(path_service),
-      anonymizer_(base::MakeUnique<Anonymizer>()),
+      anonymizer_(std::make_unique<Anonymizer>()),
       jail_helper_(paths_, &flags_, anonymizer_.get()),
       user_tgt_manager_(task_runner,
                         paths_,
@@ -482,7 +481,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
-  config_ = base::MakeUnique<protos::ActiveDirectoryConfig>();
+  config_ = std::make_unique<protos::ActiveDirectoryConfig>();
   config_->set_machine_name(base::ToUpperASCII(machine_name));
   config_->set_realm(realm);
 
@@ -875,7 +874,7 @@ ErrorType SambaInterface::ReadConfiguration() {
     return ERROR_LOCAL_IO;
   }
 
-  auto config = base::MakeUnique<protos::ActiveDirectoryConfig>();
+  auto config = std::make_unique<protos::ActiveDirectoryConfig>();
   if (!config->ParseFromString(config_blob)) {
     LOG(ERROR) << "Failed to parse configuration from string";
     return ERROR_LOCAL_IO;

@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <base/json/json_string_value_serializer.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -23,7 +22,7 @@ namespace {
 // Values. In case of name collisions, keys win over values. Similar to
 // RegistryDict::ConvertToJSON, just without schema validation.
 std::unique_ptr<base::Value> ConvertToValue(const RegistryDict& dict) {
-  auto value = base::MakeUnique<base::DictionaryValue>();
+  auto value = std::make_unique<base::DictionaryValue>();
   for (const auto& entry : dict.values())
     value->SetWithoutPathExpansion(entry.first, entry.second->CreateDeepCopy());
   for (const auto& entry : dict.keys())

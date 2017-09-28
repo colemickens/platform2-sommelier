@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <components/policy/core/common/registry_dict.h>
@@ -36,13 +35,13 @@ class PolicyEncoderTestBase : public ::testing::Test {
   // Clears |policy|, encodes |value| as value for the boolean policy |key| and
   // marks |key| as handled.
   void EncodeBoolean(T_POLICY* policy, const char* key, bool value) {
-    EncodeValue(policy, key, base::MakeUnique<base::FundamentalValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::FundamentalValue>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the integer policy |key| and
   // marks |key| as handled.
   void EncodeInteger(T_POLICY* policy, const char* key, int value) {
-    EncodeValue(policy, key, base::MakeUnique<base::FundamentalValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::FundamentalValue>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the string policy |key| and
@@ -50,7 +49,7 @@ class PolicyEncoderTestBase : public ::testing::Test {
   void EncodeString(T_POLICY* policy,
                     const char* key,
                     const std::string& value) {
-    EncodeValue(policy, key, base::MakeUnique<base::StringValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::StringValue>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the string list policy |key|
@@ -58,10 +57,10 @@ class PolicyEncoderTestBase : public ::testing::Test {
   void EncodeStringList(T_POLICY* policy,
                         const char* key,
                         const std::vector<std::string>& value) {
-    auto value_dict = base::MakeUnique<RegistryDict>();
+    auto value_dict = std::make_unique<RegistryDict>();
     for (int n = 0; n < static_cast<int>(value.size()); ++n) {
       value_dict->SetValue(base::IntToString(n + 1),
-                           base::MakeUnique<base::StringValue>(value[n]));
+                           std::make_unique<base::StringValue>(value[n]));
     }
     std::unique_ptr<RegistryDict> root_dict;
     RegistryDict* dict = MakeRegistryDictTree(&root_dict);
@@ -81,10 +80,10 @@ class PolicyEncoderTestBase : public ::testing::Test {
   // Creates a RegistryDict sequence along |path_| with |root_dict| at the root
   // and the return value at the leaf.
   RegistryDict* MakeRegistryDictTree(std::unique_ptr<RegistryDict>* root_dict) {
-    *root_dict = base::MakeUnique<RegistryDict>();
+    *root_dict = std::make_unique<RegistryDict>();
     RegistryDict* curr_dict = root_dict->get();
     for (const char* subkey : path_) {
-      curr_dict->SetKey(subkey, base::MakeUnique<RegistryDict>());
+      curr_dict->SetKey(subkey, std::make_unique<RegistryDict>());
       curr_dict = curr_dict->GetKey(subkey);
     }
     return curr_dict;

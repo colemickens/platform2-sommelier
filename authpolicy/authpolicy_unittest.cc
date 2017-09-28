@@ -13,7 +13,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -277,17 +276,17 @@ class AuthPolicyTest : public testing::Test {
   void SetUp() override {
     // The message loop registers a task runner with the current thread, which
     // is used by TgtManager to post automatic TGT renewal tasks.
-    message_loop_ = base::MakeUnique<base::MessageLoop>();
+    message_loop_ = std::make_unique<base::MessageLoop>();
 
     const ObjectPath object_path(std::string("/object/path"));
     auto dbus_object =
-        base::MakeUnique<DBusObject>(nullptr, mock_bus_, object_path);
+        std::make_unique<DBusObject>(nullptr, mock_bus_, object_path);
 
-    metrics_ = base::MakeUnique<TestMetrics>();
+    metrics_ = std::make_unique<TestMetrics>();
 
     // Create path service with all paths pointing into a temp directory.
     CHECK(base::CreateNewTempDirectory("" /* prefix (ignored) */, &base_path_));
-    paths_ = base::MakeUnique<TestPathService>(base_path_);
+    paths_ = std::make_unique<TestPathService>(base_path_);
 
     // Create the state directory since authpolicyd assumes its existence.
     const base::FilePath state_path =
@@ -319,7 +318,7 @@ class AuthPolicyTest : public testing::Test {
             Invoke(this, &AuthPolicyTest::HandleUserKerberosFilesChanged));
 
     // Create AuthPolicy instance.
-    authpolicy_ = base::MakeUnique<AuthPolicy>(metrics_.get(), paths_.get());
+    authpolicy_ = std::make_unique<AuthPolicy>(metrics_.get(), paths_.get());
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
 
     // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
@@ -506,7 +505,7 @@ class AuthPolicyTest : public testing::Test {
     validate_device_policy_called_ = false;
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
-        base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
+        std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
             base::Bind(&CheckError, expected_error, &callback_was_called));
     expected_dbus_calls[DBUS_CALL_REFRESH_USER_POLICY]++;
@@ -536,7 +535,7 @@ class AuthPolicyTest : public testing::Test {
     validate_device_policy_called_ = false;
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
-        base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
+        std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
             base::Bind(&CheckError, expected_error, &callback_was_called));
     expected_dbus_calls[DBUS_CALL_REFRESH_DEVICE_POLICY]++;
