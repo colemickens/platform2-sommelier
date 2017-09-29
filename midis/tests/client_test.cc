@@ -1,18 +1,18 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
@@ -164,7 +164,7 @@ TEST_F(ClientTest, AddClientAndReceiveMessages) {
   ASSERT_TRUE(cli_tracker.InitClientTracker(&device_tracker));
 
   device_tracker.AddDevice(
-      base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
+      std::make_unique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
                                kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
   ASSERT_EQ(device_tracker.devices_.size(), 1);
 

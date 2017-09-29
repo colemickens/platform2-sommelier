@@ -8,12 +8,12 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/location.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
@@ -70,7 +70,7 @@ void ClientTracker::MakeMojoClient(arc::mojom::MidisServerRequest request,
                                    arc::mojom::MidisClientPtr client_ptr) {
   client_id_counter_++;
   VLOG(1) << "MakeMojoClient called.";
-  auto new_cli = base::MakeUnique<Client>(
+  auto new_cli = std::make_unique<Client>(
       device_tracker_,
       client_id_counter_,
       base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()),
@@ -110,7 +110,7 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
       mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(kMidisPipe);
-  midis_host_ = base::MakeUnique<MidisHostImpl>(
+  midis_host_ = std::make_unique<MidisHostImpl>(
       mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)), this);
 }
 

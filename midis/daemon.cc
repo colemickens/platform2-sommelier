@@ -6,11 +6,11 @@
 
 #include <fcntl.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -21,8 +21,8 @@
 namespace midis {
 
 Daemon::Daemon()
-    : device_tracker_(base::MakeUnique<DeviceTracker>()),
-      client_tracker_(base::MakeUnique<ClientTracker>()),
+    : device_tracker_(std::make_unique<DeviceTracker>()),
+      client_tracker_(std::make_unique<ClientTracker>()),
       weak_factory_(this) {}
 
 Daemon::~Daemon() {}

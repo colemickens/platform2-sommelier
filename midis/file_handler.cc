@@ -1,14 +1,16 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include "midis/file_handler.h"
 
 #include <fcntl.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "midis/device.h"
@@ -33,7 +35,7 @@ FileHandler::~FileHandler() { StopMonitoring(); }
 std::unique_ptr<FileHandler> FileHandler::Create(
     const std::string& path, uint32_t subdevice_id,
     const DeviceDataCallback& device_data_cb) {
-  auto fhandler = base::MakeUnique<FileHandler>(path, device_data_cb);
+  auto fhandler = std::make_unique<FileHandler>(path, device_data_cb);
   if (!fhandler->StartMonitoring(subdevice_id)) {
     return nullptr;
   }

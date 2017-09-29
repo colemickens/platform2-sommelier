@@ -1,11 +1,11 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
+#include <memory>
 #include <string>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/daemons/daemon.h>
@@ -49,7 +49,7 @@ class UdevHandlerTest : public ::testing::Test {
  protected:
   void SetUp() override {
     message_loop_.SetAsCurrent();
-    info1_ = base::MakeUnique<snd_rawmidi_info>();
+    info1_ = std::make_unique<snd_rawmidi_info>();
     memset(info1_.get(), 0, sizeof(snd_rawmidi_info));
     strncpy(reinterpret_cast<char*>(info1_->name), kFakeName1,
             sizeof(kFakeName1));
@@ -58,7 +58,7 @@ class UdevHandlerTest : public ::testing::Test {
     info1_->subdevices_count = kFakeSubdevs1;
     info1_->flags = kFakeFlags1;
 
-    info2_ = base::MakeUnique<snd_rawmidi_info>();
+    info2_ = std::make_unique<snd_rawmidi_info>();
     memset(info2_.get(), 0, sizeof(snd_rawmidi_info));
     strncpy(reinterpret_cast<char*>(info2_->name), kFakeName2,
             sizeof(kFakeName2));

@@ -1,13 +1,13 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
 #include "midis/device_tracker.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/test_helpers.h>
@@ -69,7 +69,7 @@ class DeviceTrackerTest : public ::testing::Test {
 TEST_F(DeviceTrackerTest, Add2DevicesPositive) {
   // Since this test isn't testing the Device class functionality, it's OK
   // to set the callbacks to be no-ops.
-  auto dev = base::MakeUnique<Device>(kFakeName1,
+  auto dev = std::make_unique<Device>(kFakeName1,
                                       kFakeManufacturer1,
                                       kFakeSysNum1,
                                       kFakeDevNum1,
@@ -84,7 +84,7 @@ TEST_F(DeviceTrackerTest, Add2DevicesPositive) {
   tracker_.AddDevice(std::move(dev));
 
   auto dev2 =
-      base::MakeUnique<Device>(kFakeName2,
+      std::make_unique<Device>(kFakeName2,
                                kFakeManufacturer2,
                                kFakeSysNum2,
                                kFakeDevNum2,
@@ -114,7 +114,7 @@ TEST_F(DeviceTrackerTest, Add2DevicesPositive) {
 // Check whether a device gets successfully added, then removed from the devices
 // map.
 TEST_F(DeviceTrackerTest, AddRemoveDevicePositive) {
-  auto dev = base::MakeUnique<Device>(kFakeName1,
+  auto dev = std::make_unique<Device>(kFakeName1,
                                       kFakeManufacturer1,
                                       kFakeSysNum1,
                                       kFakeDevNum1,
@@ -135,7 +135,7 @@ TEST_F(DeviceTrackerTest, AddRemoveDevicePositive) {
 
 // Check whether a device gets successfully added, but not removed.
 TEST_F(DeviceTrackerTest, AddDeviceRemoveNegative) {
-  auto dev = base::MakeUnique<Device>(kFakeName1,
+  auto dev = std::make_unique<Device>(kFakeName1,
                                       kFakeManufacturer1,
                                       kFakeSysNum1,
                                       kFakeDevNum1,

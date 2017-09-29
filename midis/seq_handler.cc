@@ -5,11 +5,11 @@
 #include "midis/seq_handler.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <poll.h>
 
 namespace {
@@ -112,7 +112,7 @@ bool SeqHandler::InitSeq() {
   decoder_.reset(decoder.release());
 
   // Obtain the poll file descriptor to watch.
-  pfd_ = base::MakeUnique<pollfd>();
+  pfd_ = std::make_unique<pollfd>();
   snd_seq_poll_descriptors(in_client_.get(), pfd_.get(), 1, POLLIN);
 
   taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
@@ -224,7 +224,7 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
 
   // FIXME(pmalani): Remove card/sys_num entirely (or retrieve it from snd_seq,
   // and fill it in correctly.
-  auto dev = base::MakeUnique<Device>(
+  auto dev = std::make_unique<Device>(
       name,
       std::string(),
       0 /* card number; FIXME remove card number */,

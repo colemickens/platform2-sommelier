@@ -1,15 +1,14 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
-//
 
 #include <fcntl.h>
+
+#include <memory>
 
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/test_helpers.h>
@@ -70,7 +69,7 @@ TEST_F(DeviceTest, TestHandleDeviceRead) {
       dev_node_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR));
 
   auto dev =
-      base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
+      std::make_unique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
                                kFakeDevNum1, kFakeSubdevs1, kFakeFlags1);
   Device::SetBaseDirForTesting(temp_fp_);
   dev->StartMonitoring();

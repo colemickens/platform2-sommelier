@@ -4,10 +4,10 @@
 
 #include "midis/subdevice_client_fd_holder.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 
 #include "midis/constants.h"
@@ -28,7 +28,7 @@ SubDeviceClientFdHolder::SubDeviceClientFdHolder(
 std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
     uint32_t client_id, uint32_t subdevice_id, base::ScopedFD fd,
     ClientDataCallback client_data_cb) {
-  auto holder = base::MakeUnique<SubDeviceClientFdHolder>(
+  auto holder = std::make_unique<SubDeviceClientFdHolder>(
       client_id, subdevice_id, std::move(fd), client_data_cb);
   if (!holder->StartClientMonitoring()) {
     return nullptr;

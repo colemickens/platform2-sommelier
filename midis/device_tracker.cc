@@ -6,11 +6,11 @@
 
 #include <fcntl.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/location.h>
-#include <base/memory/ptr_util.h>
 
 #include "midis/seq_handler.h"
 
@@ -19,7 +19,7 @@ namespace midis {
 DeviceTracker::DeviceTracker() {}
 
 bool DeviceTracker::InitDeviceTracker() {
-  seq_handler_ = base::MakeUnique<SeqHandler>(
+  seq_handler_ = std::make_unique<SeqHandler>(
       base::Bind(&DeviceTracker::AddDevice, base::Unretained(this)),
       base::Bind(&DeviceTracker::RemoveDevice, base::Unretained(this)),
       base::Bind(&DeviceTracker::HandleReceiveData, base::Unretained(this)),

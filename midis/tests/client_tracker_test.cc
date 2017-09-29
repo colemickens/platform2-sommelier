@@ -1,10 +1,10 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
+#include <memory>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <base/run_loop.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/test_helpers.h>
@@ -29,8 +29,8 @@ TEST_F(ClientTrackerTest, AddClientPositive) {
   ClientTracker cli_tracker;
   cli_tracker.SetDeviceTracker(&device_tracker);
   cli_tracker.InitClientTracker();
-  auto request = base::MakeUnique<arc::mojom::MidisServerRequest>();
-  auto client_pointer = base::MakeUnique<arc::mojom::MidisClientPtr>();
+  auto request = std::make_unique<arc::mojom::MidisServerRequest>();
+  auto client_pointer = std::make_unique<arc::mojom::MidisClientPtr>();
   cli_tracker.MakeMojoClient(std::move(*request), std::move(*client_pointer));
   EXPECT_EQ(1, cli_tracker.GetNumClientsForTesting());
 
