@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -696,7 +695,7 @@ void DeviceManager::AddOrUpdateDevices(
     base::Closure callback(base::Bind(&DeviceManager::PollDevice,
                                       base::Unretained(this), mtp_device,
                                       usb_bus_str));
-    auto p_thread = base::MakeUnique<MtpPollThread>(callback);
+    auto p_thread = std::make_unique<MtpPollThread>(callback);
     p_thread->Start();
     bool device_added =
         device_map_
