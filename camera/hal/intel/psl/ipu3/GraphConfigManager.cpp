@@ -371,7 +371,10 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
             secondaryOutputIndex = (mainOutputIndex == 1) ? 2 : 1; // For preview stream
         } else {
             // Ignore 3rd stream, it will use frames of preview stream as input.
-            secondaryOutputIndex = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For preview stream
+            secondaryOutputIndex = (streamSizeGT(availableStreams[1], availableStreams[2])) ? 1
+                                 : (streamSizeGT(availableStreams[2], availableStreams[1])) ? 2
+                                 : (availableStreams[1]->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) ? 2
+                                 : 1; // For preview stream
 
             if (streamSizeGT(availableStreams[0], availableStreams[secondaryOutputIndex])) {
                 mainOutputIndex = 0; // For JPEG stream

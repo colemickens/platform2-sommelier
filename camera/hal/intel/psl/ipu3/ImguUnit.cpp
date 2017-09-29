@@ -314,7 +314,11 @@ status_t ImguUnit::mapStreamWithDeviceNode()
             listenerIdx = 0; // For jpeg stream
             listenToNode = IMGU_NODE_VIDEO;
         } else {
-            previewIdx = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For preview stream
+            previewIdx = (streamSizeGT(availableStreams[1], availableStreams[2])) ? 1
+                       : (streamSizeGT(availableStreams[2], availableStreams[1])) ? 2
+                       : (availableStreams[1]->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) ? 2
+                       : 1; // For preview stream
+
             listenerIdx = (previewIdx == 1) ? 2 : 1; // For preview callback stream
             if (streamSizeGT(availableStreams[0], availableStreams[previewIdx])) {
                 videoIdx = 0; // For JPEG stream
