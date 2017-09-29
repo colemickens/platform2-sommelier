@@ -9,5 +9,24 @@ namespace hammerd {
 
 #define DETACHABLE_BASE_PREFIX "DetachableBase."
 
+const char kMetricROUpdateResult[] = DETACHABLE_BASE_PREFIX "ROUpdateResult";
+const char kMetricRWUpdateResult[] = DETACHABLE_BASE_PREFIX "RWUpdateResult";
+
+enum class ROUpdateResult {
+  kSuccess = 1,
+  kTransferFailed,
+
+  kMax,
+};
+
+enum class RWUpdateResult {
+  kSuccess = 1,
+  kTransferFailed,
+  kInvalidKey,
+  kRollbackDisallowed,
+
+  kMax,
+};
+
 }  // namespace hammerd
 #endif  // HAMMERD_UMA_METRIC_NAMES_H_

@@ -223,8 +223,14 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
       if (!fw_updater_->ValidKey() || !fw_updater_->ValidRollback()) {
         LOG(ERROR) << "RW section is unusable, but local image is "
                    << "incompatible. Giving up.";
-        // TODO(kitching): UMA metric:
-        // DetachableBase.RWUpdate = InvalidKey | RollbackDisallowed
+        // If both key and rollback are invalid, only the key will be
+        // reported to UMA as invalid.
+        metrics_->SendEnumToUMA(
+            kMetricRWUpdateResult,
+            static_cast<int>(fw_updater_->ValidKey()
+                ? RWUpdateResult::kRollbackDisallowed
+                : RWUpdateResult::kInvalidKey),
+            static_cast<int>(RWUpdateResult::kMax));
         return HammerUpdater::RunStatus::kFatalError;
       }
     }
@@ -255,8 +261,12 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 
     // Now RW section needs an update, and it is not locked. Let's update!
     bool ret = fw_updater_->TransferImage(SectionName::RW);
-    // TODO(kitching): UMA metric:
-    // DetachableBase.RWUpdate = Success | TransferFailed
+    metrics_->SendEnumToUMA(
+        kMetricRWUpdateResult,
+        static_cast<int>(ret
+            ? RWUpdateResult::kSuccess
+            : RWUpdateResult::kTransferFailed),
+        static_cast<int>(RWUpdateResult::kMax));
     LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
     return HammerUpdater::RunStatus::kNeedReset;
   }
@@ -310,8 +320,12 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
   LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
   NotifyUpdateStarted();
   bool ret = fw_updater_->TransferImage(SectionName::RO);
-  // TODO(kitching): UMA metric:
-  // DetachableBase.ROUpdate = Success | TransferFailed
+  metrics_->SendEnumToUMA(
+      kMetricROUpdateResult,
+      static_cast<int>(ret
+          ? ROUpdateResult::kSuccess
+          : ROUpdateResult::kTransferFailed),
+      static_cast<int>(ROUpdateResult::kMax));
   LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
   // In the case that the update failed, a reset will either brick the device,
   // or get it back into a normal state.
