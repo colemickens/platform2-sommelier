@@ -27,7 +27,6 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/memory/ptr_util.h>
 #include <base/process/launch.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -69,7 +68,7 @@ std::string PartitionForPath(const base::FilePath& file_path) {
   }
 
   size_t best_length = 0;
-  auto best_mntent = base::MakeUnique<struct mntent>();
+  auto best_mntent = std::make_unique<struct mntent>();
 
   struct mntent* mnt;
   // getmntent() returns a thread local, so it's safe.
