@@ -4,11 +4,12 @@
 
 #include <sys/vfs.h>
 
+#include <memory>
+
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/platform_thread.h>
@@ -29,7 +30,7 @@ class ServiceThread : public base::Thread {
   ServiceThread(const base::FilePath& fuse_mount_path, SizeMap* size_map)
       : Thread("Service thread"),
         fuse_mount_path_(fuse_mount_path),
-        service_(base::MakeUnique<Service>(fuse_mount_path, size_map)) {}
+        service_(std::make_unique<Service>(fuse_mount_path, size_map)) {}
 
   ~ServiceThread() override { Stop(); }
 
