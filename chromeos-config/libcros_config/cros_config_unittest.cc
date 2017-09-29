@@ -64,11 +64,18 @@ TEST_F(CrosConfigTest, CheckBadString) {
   ASSERT_FALSE(cros_config_.GetString("/", "string-list", &val));
 }
 
-TEST_F(CrosConfigTest, CheckCorrectModel) {
+TEST_F(CrosConfigTest, CheckGoodStringRoot) {
   InitConfig();
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("default", val);
+}
+
+TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
+  InitConfig();
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/firmware", "bcs-overlay", &val));
+  ASSERT_EQ("overlay-reef-private", val);
 }
 
 TEST_F(CrosConfigTest, CheckGetModelNames) {

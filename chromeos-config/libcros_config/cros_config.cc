@@ -106,21 +106,24 @@ std::vector<std::string> CrosConfig::GetFirmwareUris() const {
   return uris;
 }
 
-bool CrosConfig::GetString(const std::string &path, const std::string &prop,
+bool CrosConfig::GetString(const std::string& path, const std::string& prop,
                            std::string* val) {
   if (!InitCheck(true)) {
     return false;
   }
 
-  // TODO(sjg): Handle non-root nodes.
-  if (path != "/") {
-    LOG(ERROR) << "Cannot access non-root node " << path;
+  const void* blob = blob_.c_str();
+
+  std::string full_path = kModelNodePath + std::string("/") + model_ + path;
+  int subnode = fdt_path_offset(blob, full_path.c_str());
+  if (subnode < 0) {
+    LOG(ERROR) << "The path " << path << " does not exist.";
     return false;
   }
 
   int len = 0;
   const char* ptr = static_cast<const char*>(
-      fdt_getprop(blob_.c_str(), model_offset_, prop.c_str(), &len));
+      fdt_getprop(blob, subnode, prop.c_str(), &len));
   if (!ptr || len < 0) {
     LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
                  << fdt_strerror(len);

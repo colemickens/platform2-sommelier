@@ -49,12 +49,20 @@ TEST(CrosConfigTest, FileDoesntExist) {
   EXPECT_FALSE(success);
 }
 
-TEST(CrosConfigTest, GetString) {
+TEST(CrosConfigTest, GetStringRoot) {
   std::string output;
   bool success = base::GetAppOutput(
       {base_command, "--model=pyro", "test.dtb", "/", "wallpaper"}, &output);
   EXPECT_TRUE(success);
   EXPECT_EQ("default", output);
+}
+
+TEST(CrosConfigTest, GetStringNonRoot) {
+  std::string output;
+  bool success = base::GetAppOutput({base_command, "--model=pyro", "test.dtb",
+      "/firmware", "bcs-overlay"}, &output);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("overlay-reef-private", output);
 }
 
 TEST(CrosConfigTest, ListModels) {

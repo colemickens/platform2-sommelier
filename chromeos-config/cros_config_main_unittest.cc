@@ -40,12 +40,20 @@ TEST(CrosConfigTest, MissingParams) {
   EXPECT_FALSE(success);
 }
 
-TEST(CrosConfigTest, GetString) {
+TEST(CrosConfigTest, GetStringRoot) {
   std::string val;
   bool success =
       base::GetAppOutput(GetCrosConfigCommand({"/", "wallpaper"}), &val);
   EXPECT_TRUE(success);
   EXPECT_EQ("default", val);
+}
+
+TEST(CrosConfigTest, GetStringNonRoot) {
+  std::string val;
+  bool success = base::GetAppOutput(
+      GetCrosConfigCommand({"/firmware", "bcs-overlay"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("overlay-reef-private", val);
 }
 
 int main(int argc, char** argv) {
