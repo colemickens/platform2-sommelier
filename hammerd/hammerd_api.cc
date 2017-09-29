@@ -4,7 +4,7 @@
 
 #include "hammerd/hammerd_api.h"
 
-#include <base/memory/ptr_util.h>
+#include <memory>
 
 #include "hammerd/usb_utils.h"
 
@@ -18,7 +18,7 @@ using hammerd::UsbEndpoint;
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
     uint16_t vendor_id, uint16_t product_id, int bus, int port) {
   return new FirmwareUpdater(
-      base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port));
+      std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port));
 }
 BRILLO_EXPORT UsbConnectStatus FirmwareUpdater_TryConnectUsb(
     FirmwareUpdater* updater) {

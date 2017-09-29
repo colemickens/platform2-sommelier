@@ -8,10 +8,10 @@
 
 #include <unistd.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -26,10 +26,10 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
     : HammerUpdater(
         ec_image,
         touchpad_image,
-        base::MakeUnique<FirmwareUpdater>(
-            base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port)),
-        base::MakeUnique<PairManager>(),
-        base::MakeUnique<DBusWrapper>()) {}
+        std::make_unique<FirmwareUpdater>(
+            std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port)),
+        std::make_unique<PairManager>(),
+        std::make_unique<DBusWrapper>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& ec_image,

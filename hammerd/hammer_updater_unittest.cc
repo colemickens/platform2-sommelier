@@ -28,10 +28,10 @@
 //    - Verify the return value if update is failed during process.
 //  - Mock all external data members only.
 
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -91,9 +91,9 @@ class HammerUpdaterTest : public testing::Test {
     hammer_updater_.reset(new HammerUpdaterType{
         ec_image_,
         touchpad_image_,
-        base::MakeUnique<MockFirmwareUpdater>(),
-        base::MakeUnique<MockPairManagerInterface>(),
-        base::MakeUnique<MockDBusWrapper>()});
+        std::make_unique<MockFirmwareUpdater>(),
+        std::make_unique<MockPairManagerInterface>(),
+        std::make_unique<MockDBusWrapper>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
     pair_manager_ = static_cast<MockPairManagerInterface*>(

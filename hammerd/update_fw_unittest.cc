@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
 #include <base/time/time.h>
@@ -34,8 +34,8 @@ class FirmwareUpdaterTest : public testing::Test {
   void SetUp() override {
     fw_updater_.reset(
         new FirmwareUpdater{
-            base::MakeUnique<MockUsbEndpoint>(),
-            base::MakeUnique<MockFmap>()});
+            std::make_unique<MockUsbEndpoint>(),
+            std::make_unique<MockFmap>()});
     endpoint_ = static_cast<MockUsbEndpoint*>(fw_updater_->endpoint_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 
