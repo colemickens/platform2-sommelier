@@ -707,6 +707,16 @@ TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
   EXPECT_TRUE(options.empty());
 }
 
+TEST_F(OpenVPNDriverTest, InitOptionsNoPrimaryHost) {
+  Error error;
+  vector<vector<string>> options;
+  vector<string> extra_hosts{"1.2.3.4"};
+  SetArgArray(kOpenVPNExtraHostsProperty, extra_hosts);
+  driver_->InitOptions(&options, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_TRUE(options.empty());
+}
+
 TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
@@ -758,6 +768,28 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
   ExpectInFlags(options, vector<string> { "remote", "v.com", "1234" });
+}
+
+TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
+  SetArg(kProviderHostProperty, "1.2.3.4");
+  SetArgArray(kOpenVPNExtraHostsProperty,
+              vector<string>{"abc.com:123", "127.0.0.1", "v.com:8000"});
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->tunnel_interface_ = kInterfaceName;
+  EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
+
+  Error error;
+  vector<vector<string>> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  ExpectInFlags(options,
+                vector<string>{
+                    "remote", "1.2.3.4",
+                });
+  ExpectInFlags(options, vector<string>{"remote", "abc.com", "123"});
+  ExpectInFlags(options, vector<string>{"remote", "127.0.0.1"});
+  ExpectInFlags(options, vector<string>{"remote", "v.com", "8000"});
 }
 
 TEST_F(OpenVPNDriverTest, InitCAOptions) {
@@ -1056,6 +1088,20 @@ TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
   if (!vpn_logging) {
     ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   }
+}
+
+TEST_F(OpenVPNDriverTest, AppendRemoteOption) {
+  vector<vector<string>> options;
+  driver_->AppendRemoteOption("1.2.3.4:1234", &options);
+  driver_->AppendRemoteOption("abc.com", &options);
+  driver_->AppendRemoteOption("1.0.0.1:8080", &options);
+  ASSERT_EQ(3, options.size());
+  vector<string> expected_value0{"remote", "1.2.3.4", "1234"};
+  vector<string> expected_value1{"remote", "abc.com"};
+  vector<string> expected_value2{"remote", "1.0.0.1", "8080"};
+  EXPECT_EQ(expected_value0, options[0]);
+  EXPECT_EQ(expected_value1, options[1]);
+  EXPECT_EQ(expected_value2, options[2]);
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {

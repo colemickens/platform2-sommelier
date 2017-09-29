@@ -106,6 +106,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNClientCertIdProperty, Property::kCredential },
   { kOpenVPNCompLZOProperty, 0 },
   { kOpenVPNCompNoAdaptProperty, 0 },
+  { kOpenVPNExtraHostsProperty, Property::kArray },
   { kOpenVPNIgnoreDefaultRouteProperty, 0 },
   { kOpenVPNKeyDirectionProperty, 0 },
   { kOpenVPNNsCertTypeProperty, 0 },
@@ -602,13 +603,11 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendOption("client", options);
   AppendOption("tls-client", options);
 
-  string host_name, host_port;
-  if (SplitPortFromHost(vpnhost, &host_name, &host_port)) {
-    DCHECK(!host_name.empty());
-    DCHECK(!host_port.empty());
-    AppendOption("remote", host_name, host_port, options);
-  } else {
-    AppendOption("remote", vpnhost, options);
+  AppendRemoteOption(vpnhost, options);
+  if (args()->ContainsStrings(kOpenVPNExtraHostsProperty)) {
+    for (const auto& host : args()->GetStrings(kOpenVPNExtraHostsProperty)) {
+      AppendRemoteOption(host, options);
+    }
   }
 
   AppendOption("nobind", options);
@@ -882,6 +881,18 @@ void OpenVPNDriver::AppendOption(
     const string& value1,
     vector<vector<string>>* options) {
   options->push_back(vector<string>{ option, value0, value1 });
+}
+
+void OpenVPNDriver::AppendRemoteOption(const string& host,
+                                       vector<vector<string>>* options) {
+  string host_name, host_port;
+  if (SplitPortFromHost(host, &host_name, &host_port)) {
+    DCHECK(!host_name.empty());
+    DCHECK(!host_port.empty());
+    AppendOption("remote", host_name, host_port, options);
+  } else {
+    AppendOption("remote", host, options);
+  }
 }
 
 bool OpenVPNDriver::AppendValueOption(

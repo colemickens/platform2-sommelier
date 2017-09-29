@@ -794,6 +794,16 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			value of this property is readable in the "Provider"
 			property of this service.
 
+		array{string} OpenVPN.ExtraHosts [writeonly]
+
+			(VPN services of type OpenVPN only) A list of
+			additional hosts that the client will try connecting
+			to in the event that it cannot connect to
+			Provider.Host. The client will attempt connection
+			with hosts in the order they appear in the array.
+			The current value of this property is readable in
+			the "Provider" property of this service.
+
 		string OpenVPN.IgnoreDefaultRoute [writeonly]
 
 			(VPN services of type OpenVPN only) If set, a

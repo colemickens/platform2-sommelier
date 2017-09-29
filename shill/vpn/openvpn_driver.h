@@ -88,6 +88,10 @@ class OpenVPNDriver : public VPNDriver,
       const std::string& value1,
       std::vector<std::vector<std::string>>* options);
 
+  // Appends remote option to the |options| array.
+  void AppendRemoteOption(const std::string& host,
+                          std::vector<std::vector<std::string>>* options);
+
   // Returns true if an option was appended.
   bool AppendValueOption(const std::string& property,
                          const std::string& option,
@@ -139,8 +143,10 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitExtraCertOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithExtraHosts);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoPrimaryHost);
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyUMA);
