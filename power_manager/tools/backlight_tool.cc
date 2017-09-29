@@ -81,6 +81,7 @@ class Converter {
                        light_sensor_.get(),
                        nullptr /* display_backlight_controller */,
                        TabletMode::UNSUPPORTED);
+      controller->HandleHoverStateChange(true /* hovering */);
       controller_ = std::move(controller);
     } else {
       auto controller = std::make_unique<InternalBacklightController>();
