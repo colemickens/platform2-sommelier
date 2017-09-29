@@ -187,6 +187,11 @@ class CrashCollector {
   // Returns true if user crash directory may be used.
   bool IsUserSpecificDirectoryEnabled();
 
+  // Gzip-compresses |path|, removes the original file, and returns the path of
+  // the new file. On failure, the original file is left alone and an empty path
+  // is returned.
+  base::FilePath GzipFile(const base::FilePath& path);
+
   CountCrashFunction count_crash_function_;
   IsFeedbackAllowedFunction is_feedback_allowed_function_;
   std::string extra_metadata_;

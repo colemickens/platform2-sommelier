@@ -244,10 +244,11 @@ int HandleUdevCrash(UdevCollector *udev_collector,
   return 0;
 }
 
-int HandleKernelWarning(KernelWarningCollector *kernel_warning_collector) {
+int HandleKernelWarning(KernelWarningCollector *kernel_warning_collector,
+                        KernelWarningCollector::WarningType type) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
-  bool handled = kernel_warning_collector->Collect();
+  bool handled = kernel_warning_collector->Collect(type);
   brillo::LogToString(false);
   if (!handled)
     return 1;
@@ -316,6 +317,8 @@ int main(int argc, char *argv[]) {
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
+  DEFINE_bool(kernel_wifi_warning, false,
+      "Report collected kernel wifi warning");
   DEFINE_bool(service_failure, false, "Report collected service failure");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
@@ -405,7 +408,13 @@ int main(int argc, char *argv[]) {
   }
 
   if (FLAGS_kernel_warning) {
-    return HandleKernelWarning(&kernel_warning_collector);
+    return HandleKernelWarning(&kernel_warning_collector,
+                               KernelWarningCollector::WarningType::kGeneric);
+  }
+
+  if (FLAGS_kernel_wifi_warning) {
+    return HandleKernelWarning(&kernel_warning_collector,
+                               KernelWarningCollector::WarningType::kWifi);
   }
 
   if (FLAGS_service_failure) {

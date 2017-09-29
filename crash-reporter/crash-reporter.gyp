@@ -151,6 +151,7 @@
             'ec_collector_test.cc',
             'kernel_collector_test.cc',
             'kernel_collector_test.h',
+            'kernel_warning_collector_test.cc',
             'service_failure_collector_test.cc',
             'testrunner.cc',
             'udev_collector_test.cc',

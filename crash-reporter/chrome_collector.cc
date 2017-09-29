@@ -25,9 +25,6 @@ namespace {
 
 const char kDefaultMinidumpName[] = "upload_file_minidump";
 
-// Path to the gzip binary.
-const char kGzipPath[] = "/bin/gzip";
-
 // Filenames for logs attached to crash reports. Also used as metadata keys.
 const char kChromeLogFilename[] = "chrome.txt";
 const char kGpuStateFilename[] = "i915_error_state.log.xz";
@@ -99,21 +96,6 @@ bool GetDriErrorState(const FilePath &error_state_path,
   }
 
   return true;
-}
-
-// Gzip-compresses |path|, removes the original file, and returns the path of
-// the new file. On failure, the original file is left alone and an empty path
-// is returned.
-FilePath GzipFile(const FilePath& path) {
-  brillo::ProcessImpl proc;
-  proc.AddArg(kGzipPath);
-  proc.AddArg(path.value());
-  const int res = proc.Run();
-  if (res != 0) {
-    LOG(ERROR) << "Failed to gzip " << path.value();
-    return FilePath();
-  }
-  return path.AddExtension(".gz");
 }
 
 }  // namespace

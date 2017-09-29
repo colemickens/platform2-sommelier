@@ -98,6 +98,11 @@ const char service_failure_hist_name[] = "Platform.ServiceFailureHashes";
 uint32_t service_failure_hash_bitmap[HASH_BITMAP_SIZE / 32];
 CMetricsLibrary metrics_library;
 
+typedef enum {
+  kWarningTypeGeneric,
+  kWarningTypeWifi,
+} KernelWarningType;
+
 const char *prog_name;          /* the name of this program */
 int yyin_fd;                    /* instead of FILE *yyin to avoid buffering */
 int i_fd;                       /* for inotify, to detect file changes */
@@ -105,11 +110,13 @@ int testing;                    /* 1 if running test */
 int filter;                     /* 1 when using as filter (for development) */
 int fifo;                       /* 1 when reading from fifo (for devel) */
 int draining;                   /* 1 when draining renamed log file */
+KernelWarningType warn_type;    /* the type of kernel warning */
 
 const char *msg_path = "/var/log/messages";
 const char anomaly_dump_dir[]  = "/run/anomaly-collector";
 const char *warn_dump_path = "/run/anomaly-collector/warning";
 const char *warn_crash_reporter_command;
+const char *wifi_warn_crash_reporter_command;
 const char *service_fail_dump_path = "/run/anomaly-collector/service-fail";
 const char *service_fail_crash_reporter_command;
 
@@ -205,6 +212,11 @@ int KernelWarnStart(void) {
                     warn_hash_bitmap, hash))
     return 0;
 
+  if (strstr(yytext, "drivers/net/wireless"))
+    warn_type = kWarningTypeWifi;
+  else
+    warn_type = kWarningTypeGeneric;
+
   spacep = index(yytext, ' ');
   if (spacep == NULL || spacep[1] == '\0')
     spacep = "unknown-function";
@@ -213,7 +225,10 @@ int KernelWarnStart(void) {
 }
 
 void KernelWarnEnd(void) {
-  AnomalyEnd(warn_crash_reporter_command);
+  if (warn_type == kWarningTypeWifi)
+    AnomalyEnd(wifi_warn_crash_reporter_command);
+  else
+    AnomalyEnd(warn_crash_reporter_command);
 }
 
 static void CollectorOpenInput(const char *path) {
@@ -316,6 +331,10 @@ int main(int argc, char **argv) {
   warn_crash_reporter_command = testing ?
     "./anomaly_collector_test_reporter.sh warning" :
     "/sbin/crash_reporter --kernel_warning";
+
+  wifi_warn_crash_reporter_command = testing ?
+    "./anomaly_collector_test_reporter.sh warning wifi-warning" :
+    "/sbin/crash_reporter --kernel_wifi_warning";
 
   service_fail_crash_reporter_command = testing ?
     "./anomaly_collector_test_reporter.sh service-fail" :

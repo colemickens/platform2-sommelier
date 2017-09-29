@@ -96,5 +96,14 @@ sed s/crash-crash/fresh-fresh/ < "${SRC}/TEST_SERVICE_FAILURE" >> messages
 sleep 1
 check_log 6
 
+# Emit a kernel warning from a wifi driver.
+rm -f "wifi-warning"
+sed s/gpu\\/drm\\/ttm/net\\/wireless\\// < "${SRC}/TEST_WARNING" >> messages
+sleep 1
+check_log 7
+if [[ ! -f "wifi-warning" ]]; then
+  fail "wifi-warning was not generated."
+fi
+
 # Success!
 exit 0

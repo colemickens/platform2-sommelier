@@ -11,7 +11,8 @@
 #include <base/strings/stringprintf.h>
 
 namespace {
-const char kExecName[] = "kernel-warning";
+const char kGenericWarningExecName[] = "kernel-warning";
+const char kWifiWarningExecName[] = "kernel-wifi-warning";
 const char kKernelWarningSignatureKey[] = "sig";
 const char kKernelWarningPath[] = "/run/anomaly-collector/warning";
 const pid_t kKernelPid = 0;
@@ -20,7 +21,8 @@ const pid_t kKernelPid = 0;
 using base::FilePath;
 using base::StringPrintf;
 
-KernelWarningCollector::KernelWarningCollector() {
+KernelWarningCollector::KernelWarningCollector()
+    : warning_report_path_(kKernelWarningPath) {
 }
 
 KernelWarningCollector::~KernelWarningCollector() {
@@ -28,9 +30,9 @@ KernelWarningCollector::~KernelWarningCollector() {
 
 bool KernelWarningCollector::LoadKernelWarning(std::string *content,
                                                std::string *signature) {
-  FilePath kernel_warning_path(kKernelWarningPath);
+  FilePath kernel_warning_path(warning_report_path_.c_str());
   if (!base::ReadFileToString(kernel_warning_path, content)) {
-    LOG(ERROR) << "Could not open " << kKernelWarningPath;
+    LOG(ERROR) << "Could not open " << kernel_warning_path.value();
     return false;
   }
   // The signature is in the first line.
@@ -43,7 +45,7 @@ bool KernelWarningCollector::LoadKernelWarning(std::string *content,
   return true;
 }
 
-bool KernelWarningCollector::Collect() {
+bool KernelWarningCollector::Collect(WarningType type) {
   std::string reason = "normal collection";
   bool feedback = true;
   if (IsDeveloperImage()) {
@@ -72,8 +74,13 @@ bool KernelWarningCollector::Collect() {
     return true;
   }
 
+  const char *exec_name = (type == kWifi) ? kWifiWarningExecName
+                                          : kGenericWarningExecName;
   std::string dump_basename =
-      FormatDumpBasename(kExecName, time(nullptr), kKernelPid);
+      FormatDumpBasename(exec_name, time(nullptr), kKernelPid);
+  FilePath log_path = GetCrashPath(root_crash_directory, dump_basename, "log");
+  FilePath meta_path = GetCrashPath(root_crash_directory, dump_basename,
+                                    "meta");
   FilePath kernel_crash_path = root_crash_directory.Append(
       StringPrintf("%s.kcrash", dump_basename.c_str()));
 
@@ -90,10 +97,19 @@ bool KernelWarningCollector::Collect() {
   }
 
   AddCrashMetaData(kKernelWarningSignatureKey, warning_signature);
-  WriteCrashMetaData(
-      root_crash_directory.Append(
-          StringPrintf("%s.meta", dump_basename.c_str())),
-    kExecName, kernel_crash_path.value());
+
+  // Get the log contents, compress, and attach to crash report.
+  bool result = GetLogContents(log_config_path_, exec_name, log_path);
+  if (result) {
+    const FilePath compressed_log_path = GzipFile(log_path);
+    // The log could be large, so only send it if compression succeeds.
+    if (!compressed_log_path.empty()) {
+      AddCrashMetaUploadFile("log", compressed_log_path.value());
+    }
+    base::DeleteFile(log_path, false /* recursive */);
+  }
+
+  WriteCrashMetaData(meta_path, exec_name, kernel_crash_path.value());
 
   LOG(INFO) << "Stored kernel warning into " << kernel_crash_path.value();
   return true;

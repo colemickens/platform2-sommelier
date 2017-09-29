@@ -15,12 +15,20 @@
 // Kernel warning collector.
 class KernelWarningCollector : public CrashCollector {
  public:
+  enum WarningType {
+    kGeneric,
+    kWifi,
+  };
+
   KernelWarningCollector();
 
   ~KernelWarningCollector() override;
 
   // Collects warning.
-  bool Collect();
+  bool Collect(WarningType type);
+
+ protected:
+  std::string warning_report_path_;
 
  private:
   friend class KernelWarningCollectorTest;

@@ -70,6 +70,8 @@ const uid_t kRootGroup = 0;
 // Buffer size for reading a log into memory.
 constexpr size_t kMaxLogSize = 1024 * 1024;
 
+const char kGzipPath[] = "/bin/gzip";
+
 }  // namespace
 
 const char * const CrashCollector::kUnknownVersion = "unknown";
@@ -654,6 +656,18 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
 
 bool CrashCollector::IsUserSpecificDirectoryEnabled() {
   return !ShouldHandleChromeCrashes();
+}
+
+FilePath CrashCollector::GzipFile(const FilePath& path) {
+  brillo::ProcessImpl proc;
+  proc.AddArg(kGzipPath);
+  proc.AddArg(path.value());
+  const int res = proc.Run();
+  if (res != 0) {
+    LOG(ERROR) << "Failed to gzip " << path.value();
+    return FilePath();
+  }
+  return path.AddExtension(".gz");
 }
 
 // Hash a string to a number.  We define our own hash function to not
