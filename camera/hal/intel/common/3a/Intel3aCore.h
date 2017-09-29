@@ -63,8 +63,8 @@ static const unsigned int COLOR_MATRIX_ELEMENT_COUNT = 9;  // 3 x 3 matrix
  *  Section 1 is used for Normal capture
  *  Section 2 is used for RAW captures
  */
-static const unsigned int MAKERNOTE_SECTION1_SIZE = 32000;  // 32KB
-static const unsigned int MAKERNOTE_SECTION2_SIZE = 100000;  //100KB
+static const unsigned int MAKERNOTE_SECTION1_SIZE = 56000;
+static const unsigned int MAKERNOTE_SECTION2_SIZE = 110592;
 
 /**
  * \struct AiqInputParams
