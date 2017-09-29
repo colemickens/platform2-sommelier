@@ -8,7 +8,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
 #include <base/timer/timer.h>
@@ -242,7 +241,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       ignore_button_(ignore_func),
       free_cid_(1),
       locked_cid_(0) {
-  transaction_ = base::MakeUnique<Transaction>();
+  transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::Bind(&U2fHid::ProcessReport, base::Unretained(this)));
 }
@@ -286,7 +285,7 @@ void U2fHid::ReturnError(U2fHidError errcode, uint32_t cid, bool clear) {
   VLOG(1) << "ERROR/" << std::hex << static_cast<int>(errcode)
           << " CID:" << std::hex << cid;
   if (clear)
-    transaction_ = base::MakeUnique<Transaction>();
+    transaction_ = std::make_unique<Transaction>();
 
   std::string report;
   msg.BuildReport(0, &report);
@@ -454,7 +453,7 @@ void U2fHid::ExecuteCmd() {
     ReturnResponse(resp);
 
   // we are done with this transaction
-  transaction_ = base::MakeUnique<Transaction>();
+  transaction_ = std::make_unique<Transaction>();
 }
 
 void U2fHid::ProcessReport(const std::string& report) {
@@ -478,7 +477,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     if (pkt.ChannelId() == transaction_->cid) {
       // Abort an ongoing multi-packet transaction
       VLOG(1) << "Transaction cancelled on CID:" << std::hex << pkt.ChannelId();
-      transaction_ = base::MakeUnique<Transaction>();
+      transaction_ = std::make_unique<Transaction>();
     }
     // special case: INIT should not interrupt other commands
     CmdInit(pkt.ChannelId(), report.substr(pkt.PayloadIndex(), kInitNonceSize));

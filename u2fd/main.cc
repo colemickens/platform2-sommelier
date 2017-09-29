@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -124,10 +124,10 @@ class U2fDaemon : public brillo::Daemon {
       LOG(ERROR) << "Cannot connect to D-Bus.";
       return EX_IOERR;
     }
-    pm_proxy_ = base::MakeUnique<org::chromium::PowerManagerProxy>(bus_.get());
+    pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
 
-    u2fhid_ = base::MakeUnique<u2f::U2fHid>(
-        base::MakeUnique<u2f::UHidDevice>(
+    u2fhid_ = std::make_unique<u2f::U2fHid>(
+        std::make_unique<u2f::UHidDevice>(
             vendor_id_, product_id_, kDeviceName, "u2fd-tpm-cr50"),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
                    base::Unretained(&tpm_proxy_)),
