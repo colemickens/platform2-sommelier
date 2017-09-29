@@ -1,0 +1,17 @@
+{
+  "models": [
+    {
+      "componentConfig": {
+        "bluetoothConfigPath": "/etc/bluetooth/pyro.conf"
+      },
+      "name": "pyro"
+    },
+    {
+      "componentConfig": {
+        "bluetoothConfigPath": "/etc/bluetooth/sand.conf"
+      },
+      "name": "sand"
+    }
+  ],
+  "name": "reef"
+}

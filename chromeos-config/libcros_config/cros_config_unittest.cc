@@ -12,6 +12,13 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <gtest/gtest.h>
 
+#ifndef USE_JSON
+#define TEST_FILE "test.dtb"
+#else
+#define TEST_FILE "test_config.json"
+#endif
+
+
 class CrosConfigTest : public testing::Test {
  protected:
   void InitConfig(const std::string name = "Pyro", int sku_id = -1,
@@ -89,6 +96,30 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
   ASSERT_FALSE(cros_config_.GetString("noslash", "wallpaper", &val));
   ASSERT_EQ("", val);
 }
+
+#ifdef USE_JSON
+TEST_F(CrosConfigTest, GetNonRootProperty_JsonConfig) {
+  InitConfig();
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString(
+      "/componentConfig", "bluetoothConfigPath", &val));
+  ASSERT_EQ("/etc/bluetooth/pyro.conf", val);
+}
+
+TEST_F(CrosConfigTest, GetRootProperty_JsonConfig) {
+  InitConfig();
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
+  ASSERT_EQ("pyro", val);
+}
+
+TEST_F(CrosConfigTest, CheckBadString_JsonConfig) {
+  InitConfig();
+  std::string val;
+  ASSERT_FALSE(cros_config_.GetString("/componentConfig", "missing", &val));
+  ASSERT_EQ("", val);
+}
+#endif /* USE_JSON */
 
 TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // These mirror the tests in libcros_config_host_unittest testWhitelabel()

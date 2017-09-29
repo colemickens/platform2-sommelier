@@ -1,4 +1,7 @@
 {
+  'variables': {
+    'USE_json%': '0',
+  },
   'target_defaults': {
     'variables': {
       'deps': [
@@ -14,6 +17,19 @@
         'libcros_config/cros_config.cc',
         'libcros_config/fake_cros_config.cc',
         'libcros_config/lookup.cc',
+      ],
+      'conditions': [
+        ['USE_json == 1', {
+          'sources': [
+            'libcros_config/cros_config_json.cc',
+          ],
+          'defines': [
+            'USE_JSON',
+          ],
+          'sources!': [
+            'libcros_config/cros_config.cc',
+          ]},
+        ],
       ],
       'link_settings': {
         'libraries': [

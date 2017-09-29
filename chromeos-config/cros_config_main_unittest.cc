@@ -28,7 +28,11 @@ std::vector<std::string> GetCrosConfigCommand(
     const std::vector<std::string>& params) {
   std::vector<std::string> cmd = {
       base::StringPrintf("%s/cros_config", installed_dir),
+#ifndef USE_JSON
       "--test_database=test.dtb",
+#else
+      "--test_database=test_config.json",
+#endif
       "--test_name=Pyro"};
   cmd.insert(cmd.end(), params.begin(), params.end());
   return cmd;
@@ -55,6 +59,17 @@ TEST(CrosConfigTest, GetStringNonRoot) {
   EXPECT_TRUE(success);
   EXPECT_EQ("overlay-pyro-private", val);
 }
+
+#ifdef USE_JSON
+TEST(CrosConfigTest, GetString_JsonConfig) {
+  std::string val;
+  bool success =
+      base::GetAppOutput(GetCrosConfigCommand(
+          {"/componentConfig", "bluetoothConfigPath"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("/etc/bluetooth/pyro.conf", val);
+}
+#endif /* USE_JSON */
 
 TEST(CrosConfigTest, GetAbsPath) {
   std::string val;

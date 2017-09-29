@@ -9,10 +9,12 @@
 
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 
 namespace base {
@@ -177,6 +179,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
   int default_offset_ = -1;      // Device tree offset of the default mode
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
+
+#ifdef USE_JSON
+  // JSON configuration
+  std::unique_ptr<const base::Value> json_config_ = nullptr;
+  const base::DictionaryValue* root_dict_ = nullptr;  // JSON root
+#endif
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };
 
