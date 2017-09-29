@@ -42,15 +42,15 @@ int main(int argc, char* argv[]) {
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
+  logging::SetMinLogLevel(logging::LOG_WARNING);
 
-  CHECK_EQ((FLAGS_ambient_light_sensor ? 1 : 0) +
-               (FLAGS_hover_detection ? 1 : 0) +
-               (FLAGS_keyboard_backlight ? 1 : 0) +
-               (FLAGS_low_battery_shutdown_percent ? 1 : 0) +
-               (FLAGS_low_battery_shutdown_time ? 1 : 0) +
-               (FLAGS_suspend_to_idle ? 1 : 0),
-           1)
-      << "Exactly one flag must be set";
+  if (FLAGS_ambient_light_sensor + FLAGS_hover_detection +
+          FLAGS_keyboard_backlight + FLAGS_low_battery_shutdown_percent +
+          FLAGS_low_battery_shutdown_time + FLAGS_suspend_to_idle !=
+      1) {
+    fprintf(stderr, "Exactly one flag must be set\n");
+    exit(1);
+  }
 
   power_manager::Prefs prefs;
   CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));

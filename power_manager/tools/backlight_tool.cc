@@ -98,9 +98,7 @@ class Converter {
       UdevStub udev;
       PowerSupply power_supply;
       power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
-                        &prefs_,
-                        &udev,
-                        false /* log_shutdown_thresholds */);
+                        &prefs_, &udev);
       if (!power_supply.RefreshImmediately()) {
         LOG(ERROR) << "Failed to read power supply information; using battery";
       } else {

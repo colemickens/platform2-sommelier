@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
       "Print information obtained from /sys about the power supply.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
+  logging::SetMinLogLevel(logging::LOG_WARNING);
 
   power_manager::Prefs prefs;
   CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
@@ -94,7 +95,7 @@ int main(int argc, char** argv) {
   power_manager::system::UdevStub udev;
   base::FilePath path(power_manager::kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev, false /* log_shutdown_thresholds */);
+  power_supply.Init(path, &prefs, &udev);
 
   CHECK(power_supply.RefreshImmediately());
   const PowerStatus status = power_supply.GetPowerStatus();

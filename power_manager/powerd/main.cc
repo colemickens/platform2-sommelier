@@ -191,8 +191,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
       PrefsInterface* prefs,
       system::UdevInterface* udev) override {
     auto supply = base::WrapUnique(new system::PowerSupply());
-    supply->Init(
-        power_supply_path, prefs, udev, true /* log_shutdown_thresholds */);
+    supply->Init(power_supply_path, prefs, udev);
     return std::move(supply);
   }
 

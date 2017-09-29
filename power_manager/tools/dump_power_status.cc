@@ -19,6 +19,7 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, "Print power information for tests.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
+  logging::SetMinLogLevel(logging::LOG_WARNING);
 
   power_manager::Prefs prefs;
   CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
@@ -26,7 +27,7 @@ int main(int argc, char** argv) {
   power_manager::system::UdevStub udev;
   base::FilePath path(power_manager::kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev, false /* log_shutdown_thresholds */);
+  power_supply.Init(path, &prefs, &udev);
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus status =

@@ -99,10 +99,8 @@ int main(int argc, char* argv[]) {
   // Get the power source.
   power_manager::system::UdevStub udev;
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
-                    &prefs,
-                    &udev,
-                    false /* log_shutdown_thresholds */);
+  power_supply.Init(base::FilePath(power_manager::kPowerStatusPath), &prefs,
+                    &udev);
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
       (!FLAGS_force_battery && power_supply.GetPowerStatus().line_power_on)
