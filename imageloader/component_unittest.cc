@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
@@ -155,7 +154,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentExt4) {
   // Note: this fails to test the actual mounting process since it is just a
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -185,7 +184,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentSquashfs) {
   // Note: this fails to test the actual mounting process since it is just a
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))

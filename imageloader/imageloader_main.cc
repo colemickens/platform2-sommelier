@@ -5,10 +5,10 @@
 #include <signal.h>
 
 #include <iostream>
+#include <memory>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 
   imageloader::ImageLoaderConfig config(keys, kComponentsPath,
                                         FLAGS_loaded_mounts_base.c_str());
-  auto helper_process = base::MakeUnique<imageloader::HelperProcess>();
+  auto helper_process = std::make_unique<imageloader::HelperProcess>();
   helper_process->Start(argc, argv, "--mount_helper_fd");
 
   // Load and mount the specified component and exit.

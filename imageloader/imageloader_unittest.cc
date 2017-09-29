@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,7 +19,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -117,7 +117,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
                                       std::end(kDevPublicKey)));
 
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(2);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -152,7 +152,7 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -177,7 +177,7 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -202,7 +202,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(0);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
