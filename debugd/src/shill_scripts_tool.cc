@@ -9,12 +9,12 @@
 
 #include "debugd/src/shill_scripts_tool.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/memory/ptr_util.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_id.h"
@@ -66,7 +66,7 @@ bool ShillScriptsTool::Run(const dbus::FileDescriptor& outfd,
   if (!WhitelistedScript(script, error))
     return false;
 
-  auto p = base::MakeUnique<ProcessWithId>();
+  auto p = std::make_unique<ProcessWithId>();
   p->SandboxAs(kUser, kGroup);
   p->Init();
 
