@@ -194,11 +194,6 @@
       },
     },
     {
-      'target_name': 'backlight_dbus_tool',
-      'type': 'executable',
-      'sources': ['tools/backlight_dbus_tool.cc'],
-    },
-    {
       'target_name': 'backlight_tool',
       'type': 'executable',
       'dependencies': [
@@ -216,17 +211,6 @@
         'libutil',
       ],
       'sources': ['tools/check_powerd_config.cc'],
-    },
-    {
-      'target_name': 'get_powerd_initial_backlight_level',
-      'type': 'executable',
-      'dependencies': [
-        'libpolicy',
-        'libsystem',
-        'libsystem_stub',
-        'libutil',
-      ],
-      'sources': ['tools/get_powerd_initial_backlight_level.cc'],
     },
     {
       'target_name': 'memory_suspend_test',
