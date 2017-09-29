@@ -35,6 +35,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
 
 #include "hammerd/hammer_updater.h"
 #include "hammerd/mock_dbus_wrapper.h"
@@ -93,7 +94,8 @@ class HammerUpdaterTest : public testing::Test {
         touchpad_image_,
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),
-        std::make_unique<MockDBusWrapper>()});
+        std::make_unique<MockDBusWrapper>(),
+        std::make_unique<MetricsLibrary>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
     pair_manager_ = static_cast<MockPairManagerInterface*>(

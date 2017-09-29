@@ -17,6 +17,8 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "hammerd/uma_metric_names.h"
+
 namespace hammerd {
 
 HammerUpdater::HammerUpdater(const std::string& ec_image,
@@ -29,20 +31,23 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
         std::make_unique<FirmwareUpdater>(
             std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port)),
         std::make_unique<PairManager>(),
-        std::make_unique<DBusWrapper>()) {}
+        std::make_unique<DBusWrapper>(),
+        std::make_unique<MetricsLibrary>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& ec_image,
     const std::string& touchpad_image,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
     std::unique_ptr<PairManagerInterface> pair_manager,
-    std::unique_ptr<DBusWrapperInterface> dbus_wrapper)
+    std::unique_ptr<DBusWrapperInterface> dbus_wrapper,
+    std::unique_ptr<MetricsLibraryInterface> metrics)
     : ec_image_(ec_image),
       touchpad_image_(touchpad_image),
       fw_updater_(std::move(fw_updater)),
       pair_manager_(std::move(pair_manager)),
       dbus_wrapper_(std::move(dbus_wrapper)),
-      dbus_notified_(false) {}
+      dbus_notified_(false),
+      metrics_(std::move(metrics)) {}
 
 bool HammerUpdater::Run() {
   LOG(INFO) << "Load and validate the EC image.";

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <metrics/metrics_library.h>
 
 #include "hammerd/dbus_wrapper.h"
 #include "hammerd/pair_utils.h"
@@ -65,7 +66,8 @@ class HammerUpdater {
                 const std::string& touchpad_image,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
                 std::unique_ptr<PairManagerInterface> pair_manager,
-                std::unique_ptr<DBusWrapperInterface> dbus_wrapper);
+                std::unique_ptr<DBusWrapperInterface> dbus_wrapper,
+                std::unique_ptr<MetricsLibraryInterface> metrics);
 
   // Waits for hammer USB device ready. It is called after the whole updating
   // process to prevent invoking hammerd infinitely.
@@ -93,6 +95,8 @@ class HammerUpdater {
   // DBus signal to notify whether the process succeeded or failed, and the flag
   // will be unset.
   bool dbus_notified_;
+  // The UMA metrics object.
+  std::unique_ptr<MetricsLibraryInterface> metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };

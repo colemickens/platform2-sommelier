@@ -5,6 +5,7 @@
         'fmap',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libmetrics-<(libbase_ver)',
         'libusb-1.0',
         'openssl',
         # system_api depends on protobuf (or protobuf-lite). It must appear
