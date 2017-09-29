@@ -117,6 +117,69 @@ bool RunInNamespacesHelper(HookCallback callback,
   return static_cast<int8_t>(WEXITSTATUS(status)) == 0;
 }
 
+// Helper function that runs a program execve(2)-style.
+bool ExecveCallbackHelper(base::FilePath filename,
+                          std::vector<std::string> args,
+                          base::ScopedFD stdin_fd,
+                          base::ScopedFD stdout_fd,
+                          base::ScopedFD stderr_fd,
+                          pid_t container_pid) {
+  pid_t child = fork();
+  if (child < 0) {
+    PLOG(ERROR) << "Failed to fork()";
+    return false;
+  }
+
+  if (child == 0) {
+    if (stdin_fd.is_valid()) {
+      if (dup2(stdin_fd.get(), STDIN_FILENO) == -1) {
+        PLOG(ERROR) << "Failed to dup2() stdin fd";
+        _exit(-1);
+      }
+    }
+    if (stdout_fd.is_valid()) {
+      if (dup2(stdout_fd.get(), STDOUT_FILENO) == -1) {
+        PLOG(ERROR) << "Failed to dup2() stdout fd";
+        _exit(-1);
+      }
+    }
+    if (stderr_fd.is_valid()) {
+      if (dup2(stderr_fd.get(), STDERR_FILENO) == -1) {
+        PLOG(ERROR) << "Failed to dup2() stderr fd";
+        _exit(-1);
+      }
+    }
+
+    std::string pid_str = base::IntToString(container_pid);
+    std::vector<const char*> argv;
+    argv.reserve(args.size() + 1);
+    for (const auto& arg : args) {
+      if (arg == "$PID") {
+        argv.emplace_back(pid_str.c_str());
+        continue;
+      }
+      argv.emplace_back(arg.c_str());
+    }
+    argv.emplace_back(nullptr);
+
+    execve(filename.value().c_str(), const_cast<char**>(argv.data()), environ);
+
+    // Only happens when execve(2) fails.
+    _exit(-1);
+  }
+
+  int status;
+  if (HANDLE_EINTR(waitpid(child, &status, 0)) < 0) {
+    PLOG(ERROR) << "Failed to wait for hook";
+    return false;
+  }
+  if (!WIFEXITED(status)) {
+    LOG(ERROR) << "Hook terminated abnormally: " << std::hex << status;
+    return false;
+  }
+  return static_cast<int8_t>(WEXITSTATUS(status)) == 0;
+}
+
 }  // namespace
 
 WaitablePipe::WaitablePipe() {
@@ -468,6 +531,25 @@ bool MountExternal(const std::string& src,
   }
 
   return true;
+}
+
+bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags) {
+  int fds[2];
+  if (pipe2(fds, flags) != 0)
+    return false;
+  read_pipe->reset(fds[0]);
+  write_pipe->reset(fds[1]);
+  return true;
+}
+
+HookCallback CreateExecveCallback(base::FilePath filename,
+                                  std::vector<std::string> args,
+                                  base::ScopedFD stdin_fd,
+                                  base::ScopedFD stdout_fd,
+                                  base::ScopedFD stderr_fd) {
+  return base::Bind(
+      &ExecveCallbackHelper, filename, args, base::Passed(std::move(stdin_fd)),
+      base::Passed(std::move(stdout_fd)), base::Passed(std::move(stderr_fd)));
 }
 
 HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,

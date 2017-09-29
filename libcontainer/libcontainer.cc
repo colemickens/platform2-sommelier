@@ -207,6 +207,7 @@ struct container_config {
   // Parameter that will be passed to pre_start_hook().
   void* pre_start_hook_payload;
 
+  // A list of file descriptors to inherit.
   std::vector<int> inherited_fds;
 
   // A list of hooks that will be called upon minijail reaching various states
@@ -1033,6 +1034,57 @@ void container_config_add_hook(struct container_config* c,
   auto it = c->hooks.insert(
       std::make_pair(event, std::vector<libcontainer::HookCallback>()));
   it.first->second.emplace_back(std::move(callback));
+}
+
+int container_config_add_hook(struct container_config* c,
+                              minijail_hook_event_t event,
+                              const char* filename,
+                              const char** argv,
+                              size_t num_args,
+                              int* pstdin_fd,
+                              int* pstdout_fd,
+                              int* pstderr_fd) {
+  std::vector<std::string> args;
+  args.reserve(num_args);
+  for (size_t i = 0; i < num_args; ++i)
+    args.emplace_back(argv[i]);
+
+  // First element of the array belongs to the parent and the second one belongs
+  // to the child.
+  base::ScopedFD stdin_fds[2], stdout_fds[2], stderr_fds[2];
+  if (pstdin_fd) {
+    if (!libcontainer::Pipe2(&stdin_fds[1], &stdin_fds[0], 0))
+      return -1;
+  }
+  if (pstdout_fd) {
+    if (!libcontainer::Pipe2(&stdout_fds[0], &stdout_fds[0], 0))
+      return -1;
+  }
+  if (pstderr_fd) {
+    if (!libcontainer::Pipe2(&stderr_fds[0], &stderr_fds[0], 0))
+      return -1;
+  }
+
+  // After this point the call has been successful, so we can now commit to
+  // whatever pipes we have opened.
+  if (pstdin_fd) {
+    *pstdin_fd = stdin_fds[0].release();
+    c->inherited_fds.emplace_back(stdin_fds[1].get());
+  }
+  if (pstdout_fd) {
+    *pstdout_fd = stdout_fds[0].release();
+    c->inherited_fds.emplace_back(stdout_fds[1].get());
+  }
+  if (pstderr_fd) {
+    *pstderr_fd = stderr_fds[0].release();
+    c->inherited_fds.emplace_back(stderr_fds[1].get());
+  }
+  container_config_add_hook(
+      c, event,
+      libcontainer::CreateExecveCallback(
+          base::FilePath(filename), args, std::move(stdin_fds[1]),
+          std::move(stdout_fds[1]), std::move(stderr_fds[1])));
+  return 0;
 }
 
 int container_config_inherit_fds(struct container_config* c,

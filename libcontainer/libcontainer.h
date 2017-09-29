@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <brillo/brillo_export.h>
+#include <libminijail.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -294,6 +295,23 @@ BRILLO_EXPORT int container_config_set_selinux_context(
  */
 BRILLO_EXPORT void container_config_set_pre_execve_hook(
     struct container_config* c, int (*hook)(void*), void* payload);
+
+/*
+ * Adds a hook that will be run, execve(2)-style. This new process will be run
+ * outside the container in the original namespace. Any parameters that are
+ * equal to the magic value "$PID" will be replaced with the container's PID. If
+ * |pstdin_fd|, |pstdout_fd|, or |pstderr_fd| are set to non-null values, they
+ * will contain valid file descriptors that can be used to communicate with the
+ * process.
+ */
+BRILLO_EXPORT int container_config_add_hook(struct container_config* c,
+                                            minijail_hook_event_t event,
+                                            const char* filename,
+                                            const char** argv,
+                                            size_t num_args,
+                                            int* pstdin_fd,
+                                            int* pstdtout_fd,
+                                            int* pstderr_fd);
 
 /*
  * Sets the set of file descriptors to inherit.

@@ -10,6 +10,7 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <libminijail.h>
@@ -104,6 +105,16 @@ bool MountExternal(const std::string& src,
                    const std::string& type,
                    unsigned long flags,
                    const std::string& data);
+
+// Creates a pipe using pipe2(2) and returns both ends as base::ScopedFDs.
+bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags);
+
+// Creates a callback that will fork(2)+execve(2) the program specified by args.
+HookCallback CreateExecveCallback(base::FilePath filename,
+                                  std::vector<std::string> args,
+                                  base::ScopedFD stdin_fd,
+                                  base::ScopedFD stdout_fd,
+                                  base::ScopedFD stderr_fd);
 
 // Wraps a callback to be run in a subset of the container's namespaces.
 HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
