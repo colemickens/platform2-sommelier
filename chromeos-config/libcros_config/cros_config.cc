@@ -63,6 +63,16 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
+  if (path.size() == 0) {
+    LOG(ERROR) << "Path must be specified";
+    return false;
+  }
+
+  if (path.substr(0, 1) != "/") {
+    LOG(ERROR) << "Path must start with / specifying the root node";
+    return false;
+  }
+
   const void* blob = blob_.c_str();
 
   std::string full_path = kModelNodePath + std::string("/") + model_ + path;

@@ -70,6 +70,20 @@ TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
   ASSERT_EQ("overlay-reef-private", val);
 }
 
+TEST_F(CrosConfigTest, CheckEmptyPathError) {
+  InitConfig();
+  std::string val;
+  ASSERT_FALSE(cros_config_.GetString("", "wallpaper", &val));
+  ASSERT_EQ("", val);
+}
+
+TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
+  InitConfig();
+  std::string val;
+  ASSERT_FALSE(cros_config_.GetString("noslash", "wallpaper", &val));
+  ASSERT_EQ("", val);
+}
+
 TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // These mirror the tests in libcros_config_host_unittest testWhitelabel()
   InitConfig("whitetip1");
