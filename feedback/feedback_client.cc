@@ -4,12 +4,13 @@
 
 #include "feedback/feedback_daemon.h"
 
+#include <memory>
+
 #include "base/at_exit.h"
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/guid.h"
 #include "base/logging.h"
-#include "base/memory/ptr_util.h"
 #include "base/message_loop/message_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
@@ -68,7 +69,7 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
                         kListSeparator, base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_NONEMPTY);
   for (const std::string& path : raw_files) {
-    auto content = base::MakeUnique<std::string>();
+    auto content = std::make_unique<std::string>();
     if (base::ReadFileToString(base::FilePath(path), content.get())) {
       report->AddFile(path, std::move(content));
     } else {
