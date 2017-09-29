@@ -115,6 +115,29 @@ properties.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
 
+        *   `mapping`: (optional): Used to determine the model/sub-model for a
+            particular device. There can be any number of mappings. At present
+            only a `sku-map` is allowed.
+            *   `sku-map`: Provides a mapping from SKU ID to model/sub-model.
+                One of `simple-sku-map` or `single-sku` must be provided.
+                `smbios-name-match` is needed only if the family supports
+                models which have SKU ID conflicts and needs the SMBIOS name to
+                disambiguate them. This is common when migrating legacy boards
+                to unified builds, but may also occur if the SKU ID mapping is
+                not used for some reason.
+                *   `smbios-name-match` (optional) Indicates the smbios name
+                    that this table mapping relates to. This map will be
+                    ignored on models which don't have a matching smbios name.
+                *   `simple-sku-map` (optional): Provides a simple mapping from
+                    SKU (an integer value) to model / sub-model. Each entry
+                    consists of a sku value (typically 0-255) and a phandle
+                    pointing to the model or sub-model.
+                *   `single-sku` (optional): Used in cases where only a single
+                    model is supported by this mapping. In other words, if the
+                    SMBIOS name matches, this is the model to use. The value is
+                    a phandle pointing to the model (it cannot point to a
+                    sub-model).
+
 *   `models`: Sub-nodes of this define models supported by this board.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
@@ -195,10 +218,40 @@ chromeos {
                 };
             };
         };
+
+        mapping {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            sku-map@0 {
+                reg = <0>;
+                smbios-name-match = "reef";
+                /* This is an example! It does not match any real family */
+                simple-sku-map = <
+                   0 &basking
+                   4 &reef_4
+                   5 &reef_5
+                   8 &electro>;
+            };
+            sku-map@1 {
+                reg = <1>;
+                smbios-name-match = "pyro";
+                single-sku = <&pyro>;
+            };
+            sku-map@2 {
+                reg = <2>;
+                smbios-name-match = "snappy";
+                single-sku = <&snappy>;
+            };
+            sku-map@3 {
+                reg = <3>;
+                smbios-name-match = "sand";
+                single-sku = <&sand>;
+            };
+        };
     };
 
     models {
-        reef {
+        reef: reef {
             powerd-prefs = "reef";
             wallpaper = "seaside_life";
             brand-code = "ABCD";
@@ -209,9 +262,15 @@ chromeos {
             thermal {
                 dptf-dv = "reef/dptf.dv";
             };
+            submodels {
+                reef_4: reef-touchscreen {
+                };
+                reef_5: reef-notouch {
+                };
+            };
         };
 
-        pyro {
+        pyro: pyro {
             powerd-prefs = "pyro_snappy";
             wallpaper = "alien_invasion";
             brand-code = "ABCE";
@@ -232,7 +291,7 @@ chromeos {
             };
         };
 
-        snappy {
+        snappy: snappy {
             powerd-prefs = "pyro_snappy";
             wallpaper = "chocolate";
             brand-code = "ABCF";
@@ -250,7 +309,7 @@ chromeos {
             };
         };
 
-        basking {
+        basking: basking {
             powerd-prefs = "reef";
             wallpaper = "coffee";
             brand-code = "ABCG";
@@ -260,7 +319,7 @@ chromeos {
             };
         };
 
-        sand {
+        sand: sand {
             powerd-prefs = "reef";
             wallpaper = "coffee";
             brand-code = "ABCH";
@@ -270,7 +329,7 @@ chromeos {
             };
         };
 
-        electro {
+        electro: electro {
             powerd-prefs = "reef";
             wallpaper = "coffee";
             brand-code = "ABCI";
