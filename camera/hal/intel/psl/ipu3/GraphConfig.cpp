@@ -186,12 +186,6 @@ status_t GraphConfig::prepare(GraphConfigManager *manager,
         LOGE("Failed to get output ports");
         return ret;
     }
-    // Options should be updated before kernel list generation
-    ret = handleDynamicOptions();
-    if (ret != OK) {
-        LOGE("Failed to update options");
-        return ret;
-    }
 
     ret = generateKernelListsForStreams();
     if (ret != OK) {
@@ -397,25 +391,6 @@ GraphConfig::Node *GraphConfig::getOutputPortForSink(const string &sinkName)
 }
 
 /**
- * Update the option-list to the graph tree.
- * TODO: Add more options.
- * \return OK in case of success
- * \return UNKNOWN_ERROR if graph update failed.
- */
-status_t GraphConfig::handleDynamicOptions()
-{
-    status_t status = OK;
-    status = setSinkFormats();
-    if (status != OK) {
-        LOGE("Failed to update metadata");
-        return UNKNOWN_ERROR;
-    }
-
-    //TODO add other options
-    return status;
-}
-
-/**
  * Returns true if the given node is used to output a video record
  * stream. The sink name is found and used to find client stream from the
  * mStreamToSinkIdMap.
@@ -486,35 +461,6 @@ bool GraphConfig::hasStreamInGraph(int streamId)
             return true;
     }
     return false;
-}
-
-/**
- * Apply the video recording format for the video record stream handling
- * output port.
- * \return OK in case of success
- * \return UNKNOWN_ERROR if option list apply failed.
- */
-status_t GraphConfig::setSinkFormats()
-{
-    Node *sink = nullptr;
-    css_err_t ret = css_err_none;
-    std::map<Node*, Node*>::iterator it;
-    it = mSinkPeerPort.begin();
-
-    for (; it != mSinkPeerPort.end(); ++it) {
-        // TODO: Rename
-        sink = it->first;
-
-        if (isVideoRecordPort(sink)) {
-            ret = sink->setValue(GCSS_KEY_FORMAT, STRINGIFY(VIDEO_RECORDING_FORMAT));
-            if (ret != css_err_none) {
-                LOGE("Failed to update options for video record port");
-                return UNKNOWN_ERROR;
-            }
-        }
-    }
-
-    return OK;
 }
 
 /**

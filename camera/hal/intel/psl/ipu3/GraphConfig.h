@@ -413,8 +413,6 @@ private:
             const StreamToSinkMap &streamToSinkIdMap);
     Node *getOutputPortForSink(const std::string &sinkName);
     status_t getSinkFormatOptions();
-    status_t handleDynamicOptions();
-    status_t setSinkFormats();
     bool isVideoRecordPort(Node *sink);
     // Kernel list generation methods
     void deleteKernelInfo();
