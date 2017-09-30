@@ -23,6 +23,9 @@
 #include "v4l2dev/v4l2device.h"
 #include "UtilityMacros.h"
 #include "ChromeCameraProfiles.h"
+#ifdef REMOTE_3A_SERVER
+#include "ipc/client/Intel3AClient.h"
+#endif
 
 #include <unistd.h>        // usleep()
 #include <ctype.h>         // tolower()
@@ -241,6 +244,10 @@ void PlatformData::deinit() {
         delete mInstance;
         mInstance = nullptr;
     }
+
+#ifdef REMOTE_3A_SERVER
+    Intel3AClient::release();
+#endif
 }
 
 /**

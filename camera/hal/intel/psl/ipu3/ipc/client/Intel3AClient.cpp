@@ -25,6 +25,18 @@
 #include "Utils.h"
 
 NAMESPACE_DECLARATION {
+Intel3AClient* Intel3AClient::mInstance = nullptr;
+
+void Intel3AClient::release()
+{
+    LOG1("@%s", __FUNCTION__);
+
+    if (mInstance) {
+        delete mInstance;
+        mInstance = nullptr;
+    }
+}
+
 Intel3AClient::Intel3AClient():
     mIsCallbacked(false),
     mCbResult(true),
@@ -65,8 +77,10 @@ Intel3AClient::~Intel3AClient()
 Intel3AClient* Intel3AClient::getInstance()
 {
     LOG1("@%s", __FUNCTION__);
-    static Intel3AClient client;
-    return client.mInitialized ? &client: nullptr;
+
+    if (mInstance == nullptr)
+        mInstance = new Intel3AClient;
+    return mInstance->mInitialized ? mInstance: nullptr;
 }
 
 int Intel3AClient::allocateShmMem(std::string& name, int size, int* fd, void** addr)

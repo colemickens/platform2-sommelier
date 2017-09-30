@@ -29,6 +29,8 @@ class Intel3AClient : public camera_algorithm_callback_ops_t {
 public:
     static Intel3AClient* getInstance();
 
+    static void release();
+
     int allocateShmMem(std::string& name, int size, int* fd, void** addr);
     void releaseShmMem(std::string& name, int size, int fd, void* addr);
 
@@ -50,6 +52,8 @@ private:
                                 uint32_t status, int32_t buffer_handle);
 
 private:
+    static Intel3AClient* mInstance;
+
     arc::CameraAlgorithmBridge* mBridge;
     pthread_mutex_t mCbLock;
     pthread_cond_t mCbCond;
