@@ -29,11 +29,22 @@
 namespace intel {
 namespace camera {
 
-Intel3AServer* Intel3AServer::getInstance()
+Intel3AServer* Intel3AServer::mInstance = nullptr;
+
+void Intel3AServer::init()
 {
     LOG1("@%s", __FUNCTION__);
-    static Intel3AServer instance;
-    return &instance;
+
+    if (mInstance == nullptr)
+        mInstance = new Intel3AServer;
+}
+
+void Intel3AServer::deInit()
+{
+    LOG1("@%s", __FUNCTION__);
+
+    delete mInstance;
+    mInstance = nullptr;
 }
 
 Intel3AServer::Intel3AServer():
@@ -41,8 +52,6 @@ Intel3AServer::Intel3AServer():
     mCallback(nullptr),
     mIaLogInitialized(false)
 {
-    LogHelper::setDebugLevel();
-
     LOG1("@%s", __FUNCTION__);
 
     mThread.Start();
@@ -297,6 +306,15 @@ camera_algorithm_ops_t CAMERA_ALGORITHM_MODULE_INFO_SYM
         .request = request,
         .deregister_buffers = deregisterBuffers
     };
+}
+
+__attribute__((constructor)) void initIntel3AServer() {
+    LogHelper::setDebugLevel();
+    Intel3AServer::init();
+}
+
+__attribute__((destructor)) void deinitIntel3AServer() {
+    Intel3AServer::deInit();
 }
 
 } /* namespace camera */

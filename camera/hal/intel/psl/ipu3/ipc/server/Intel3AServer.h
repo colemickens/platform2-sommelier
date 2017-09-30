@@ -39,7 +39,10 @@ namespace camera {
 
 class Intel3AServer {
 public:
-    static Intel3AServer* getInstance();
+    static void init();
+    static void deInit();
+
+    static Intel3AServer* getInstance() { return mInstance; }
 
     int32_t initialize(const camera_algorithm_callback_ops_t* callback_ops);
     int32_t registerBuffer(int buffer_fd);
@@ -55,6 +58,8 @@ private:
     uint32_t handleRequest(uint8_t cmd, int reqeustSize, void* addr);
 
 private:
+    static Intel3AServer* mInstance;
+
     base::Thread mThread;
     const camera_algorithm_callback_ops_t* mCallback;
 
