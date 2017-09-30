@@ -36,10 +36,11 @@ Intel3aCmc::Intel3aCmc(int cameraId):
         "@%s, cameraId:%d >= MAX_CAMERAS:%d", __FUNCTION__, cameraId, MAX_CAMERAS);
 
     std::string initName = "/cmcInit" + std::to_string(cameraId) + "Shm";
+    std::string deinitName = "/cmcDeinit" + std::to_string(cameraId) + "Shm";
 
     mMems = {
         {initName.c_str(), sizeof(cmc_init_params), &mMemInit, false},
-        {"/cmcDeinitShm", sizeof(cmc_deinit_params), &mMemDeinit, false}};
+        {deinitName.c_str(), sizeof(cmc_deinit_params), &mMemDeinit, false}};
 
     bool success = mCommon.allocateAllShmMems(mMems);
     if (!success) {

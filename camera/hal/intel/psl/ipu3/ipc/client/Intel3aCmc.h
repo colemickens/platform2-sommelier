@@ -38,8 +38,8 @@ private:
 
     bool mInitialized;
 
-    ShmMemInfo mMemDeinit;
     ShmMemInfo mMemInit;
+    ShmMemInfo mMemDeinit;
 
     std::vector<ShmMem> mMems;
 
