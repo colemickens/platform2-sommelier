@@ -17,42 +17,38 @@
 #include "IPCCommon.h"
 #include <iostream>
 #include <string>
-#include <unordered_map>
 
 const char* Intel3AIpcCmdToString(IPC_CMD cmd) {
-    static const char* defStr = "unknown";
-    static std::unordered_map<int, std::string> gIpcCmdMapping = {
-        {IPC_3A_AIC_INIT, "IPC_3A_AIC_INIT"},
-        {IPC_3A_AIC_RUN, "IPC_3A_AIC_RUN"},
-        {IPC_3A_AIC_RESET, "IPC_3A_AIC_RESET"},
-        {IPC_3A_AIC_GETAICVERSION, "IPC_3A_AIC_GETAICVERSION"},
-        {IPC_3A_AIC_GETAICCONFIG, "IPC_3A_AIC_GETAICCONFIG"},
-        {IPC_3A_AIQ_INIT, "IPC_3A_AIQ_INIT"},
-        {IPC_3A_AIQ_DEINIT, "IPC_3A_AIQ_DEINIT"},
-        {IPC_3A_AIQ_AE_RUN, "IPC_3A_AIQ_AE_RUN"},
-        {IPC_3A_AIQ_AF_RUN, "IPC_3A_AIQ_AF_RUN"},
-        {IPC_3A_AIQ_AWB_RUN, "IPC_3A_AIQ_AWB_RUN"},
-        {IPC_3A_AIQ_GBCE_RUN, "IPC_3A_AIQ_GBCE_RUN"},
-        {IPC_3A_AIQ_PA_RUN, "IPC_3A_AIQ_PA_RUN"},
-        {IPC_3A_AIQ_SA_RUN, "IPC_3A_AIQ_SA_RUN"},
-        {IPC_3A_AIQ_GET_AIQ_DATA, "IPC_3A_AIQ_GET_AIQ_DATA"},
-        {IPC_3A_AIQ_STATISTICS_SET, "IPC_3A_AIQ_STATISTICS_SET"},
-        {IPC_3A_AIQ_GET_VERSION, "IPC_3A_AIQ_GET_VERSION"},
-        {IPC_3A_CMC_INIT, "IPC_3A_CMC_INIT"},
-        {IPC_3A_CMC_DEINIT, "IPC_3A_CMC_DEINIT"},
-        {IPC_3A_EXC_ANALOG_GAIN_TO_SENSOR, "IPC_3A_EXC_ANALOG_GAIN_TO_SENSOR"},
-        {IPC_3A_EXC_SENSOR_TO_ANALOG_GAIN, "IPC_3A_EXC_SENSOR_TO_ANALOG_GAIN"},
-        {IPC_3A_MKN_INIT, "IPC_3A_MKN_INIT"},
-        {IPC_3A_MKN_UNINIT, "IPC_3A_MKN_UNINIT"},
-        {IPC_3A_MKN_PREPARE, "IPC_3A_MKN_PREPARE"},
-        {IPC_3A_MKN_ENABLE, "IPC_3A_MKN_ENABLE"},
-        {IPC_3A_COORDINATE_COVERT, "IPC_3A_COORDINATE_COVERT"},
-        {IPC_3A_COORDINATE_FACES, "IPC_3A_COORDINATE_FACES"}};
+    static const char* gIpcCmdMapping[] = {
+        "unknown",
+        "IPC_3A_AIC_INIT",
+        "IPC_3A_AIC_RUN",
+        "IPC_3A_AIC_RESET",
+        "IPC_3A_AIC_GETAICVERSION",
+        "IPC_3A_AIC_GETAICCONFIG",
+        "IPC_3A_AIQ_INIT",
+        "IPC_3A_AIQ_DEINIT",
+        "IPC_3A_AIQ_AE_RUN",
+        "IPC_3A_AIQ_AF_RUN",
+        "IPC_3A_AIQ_AWB_RUN",
+        "IPC_3A_AIQ_GBCE_RUN",
+        "IPC_3A_AIQ_PA_RUN",
+        "IPC_3A_AIQ_SA_RUN",
+        "IPC_3A_AIQ_GET_AIQ_DATA",
+        "IPC_3A_AIQ_STATISTICS_SET",
+        "IPC_3A_AIQ_GET_VERSION",
+        "IPC_3A_CMC_INIT",
+        "IPC_3A_CMC_DEINIT",
+        "IPC_3A_EXC_ANALOG_GAIN_TO_SENSOR",
+        "IPC_3A_EXC_SENSOR_TO_ANALOG_GAIN",
+        "IPC_3A_MKN_INIT",
+        "IPC_3A_MKN_UNINIT",
+        "IPC_3A_MKN_PREPARE",
+        "IPC_3A_MKN_ENABLE",
+        "IPC_3A_COORDINATE_COVERT",
+        "IPC_3A_COORDINATE_FACES",
+    };
 
-    auto item = gIpcCmdMapping.find(cmd);
-    if (item != gIpcCmdMapping.end()) {
-        return item->second.c_str();
-    }
-
-    return defStr;
+    unsigned int num = sizeof(gIpcCmdMapping) / sizeof(gIpcCmdMapping[0]);
+    return cmd < num ? gIpcCmdMapping[cmd] : gIpcCmdMapping[0];
 }
