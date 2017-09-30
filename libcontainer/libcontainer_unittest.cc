@@ -16,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "libcontainer/cgroup.h"
@@ -93,7 +92,7 @@ class MockCgroup : public libcontainer::Cgroup {
       const base::FilePath& cgroup_parent,
       uid_t cgroup_owner,
       gid_t cgroup_group) {
-    return base::MakeUnique<MockCgroup>(g_mock_cgroup_state);
+    return std::make_unique<MockCgroup>(g_mock_cgroup_state);
   }
 
   int Freeze() override { return state_->freeze_ret; }
