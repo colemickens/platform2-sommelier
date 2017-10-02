@@ -1,0 +1,4 @@
+main_firmware {
+  device_id: "device-id"
+  filename: "random_filename.fls"
+}

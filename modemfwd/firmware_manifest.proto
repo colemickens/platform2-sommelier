@@ -1,0 +1,26 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package modemfwd;
+option optimize_for = LITE_RUNTIME;
+
+message MainFirmware {
+  string filename = 1;
+  string device_id = 2;
+  string version = 3;
+}
+
+message CarrierFirmware {
+  string filename = 1;
+  string device_id = 2;
+  string carrier_id = 3;
+  string version = 4;
+}
+
+message FirmwareManifest {
+  repeated MainFirmware main_firmware = 1;
+  repeated CarrierFirmware carrier_firmware = 2;
+}

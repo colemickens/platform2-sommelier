@@ -1,0 +1,5 @@
+carrier_firmware {
+  device_id: "device-id"
+  carrier_id: "CarrierA"
+  version: "9001"
+}

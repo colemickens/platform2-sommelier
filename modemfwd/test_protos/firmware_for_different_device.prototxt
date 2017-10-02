@@ -1,0 +1,5 @@
+main_firmware {
+  filename: "NAND_10.20.30.40.fls"
+  device_id: "device-id-2"
+  version: "10.20.30.40"
+}
