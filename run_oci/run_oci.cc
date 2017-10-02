@@ -318,7 +318,11 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   container_config_config_root(config_out, container_root.value().c_str());
   container_config_uid(config_out, oci.process.user.uid);
   container_config_gid(config_out, oci.process.user.gid);
-  base::FilePath root_dir = container_root.Append(oci.root.path);
+  base::FilePath root_dir;
+  if (oci.root.path.IsAbsolute())
+    root_dir = oci.root.path;
+  else
+    root_dir = container_root.Append(oci.root.path);
   container_config_premounted_runfs(config_out, root_dir.value().c_str());
 
   std::vector<const char *> argv;
@@ -995,6 +999,11 @@ int main(int argc, char **argv) {
     return -1;
   }
   std::string container_id(argv[optind++]);
+  if (container_id.find(base::FilePath::kSeparators[0]) != std::string::npos) {
+    LOG(ERROR) << "Container ID cannot contain path separators.";
+    print_help(argv[0]);
+    return -1;
+  }
 
   for (; optind < argc; optind++)
     container_options.extra_program_args.push_back(std::string(argv[optind]));

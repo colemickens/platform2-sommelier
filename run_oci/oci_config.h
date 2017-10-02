@@ -50,7 +50,7 @@ struct OciProcess {
 };
 
 struct OciRoot {
-  std::string path;
+  base::FilePath path;
   bool readonly;  // Optional
 };
 

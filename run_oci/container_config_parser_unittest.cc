@@ -408,7 +408,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
 
   EXPECT_EQ(basic_config->ociVersion, "1.0.0-rc1");
   EXPECT_EQ(basic_config->platform.os, "linux");
-  EXPECT_EQ(basic_config->root.path, "rootfs");
+  EXPECT_EQ(basic_config->root.path, base::FilePath("rootfs"));
   EXPECT_EQ(basic_config->root.readonly, true);
   EXPECT_EQ(basic_config->process.terminal, true);
   EXPECT_EQ(basic_config->process.user.uid, 0);

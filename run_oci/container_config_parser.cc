@@ -74,10 +74,12 @@ bool ParseRootFileSystemConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "Fail to parse rootfs dictionary from config";
     return false;
   }
-  if (!rootfs_dict->GetString("path", &config_out->root.path)) {
+  std::string path;
+  if (!rootfs_dict->GetString("path", &path)) {
     LOG(ERROR) << "Fail to get rootfs path from config";
     return false;
   }
+  config_out->root.path = base::FilePath(path);
   rootfs_dict->GetBoolean("readonly", &config_out->root.readonly);
   return true;
 }
