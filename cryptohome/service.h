@@ -807,6 +807,7 @@ class Service : public brillo::dbus::AbstractDbusService,
 
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
+  FRIEND_TEST(ServiceTest, CanAttemptOwnership);
 
   std::unique_ptr<SecureBlob> GetAttestationBasedEnrollmentData();
 
@@ -874,6 +875,13 @@ class Service : public brillo::dbus::AbstractDbusService,
       default_firmware_management_params_;
   FirmwareManagementParameters* firmware_management_parameters_;
   int low_disk_notification_period_ms_;
+  // A pair of flags for checking if owning the tpm can be attempted.
+  //  - checked_can_attempt_ownership_ - indicates if a non-volatile flag
+  //    has been read from the file system into can_attempt_ownership_ (below).
+  //  - can_attempt_ownership_ - in-memory cached flag.
+  // TODO(apronin): replace with std::optional / base::Optional, when available.
+  mutable bool checked_can_attempt_ownership_ = false;
+  mutable bool can_attempt_ownership_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

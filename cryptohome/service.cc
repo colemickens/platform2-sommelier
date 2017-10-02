@@ -3413,11 +3413,19 @@ gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
 }
 
 void Service::SetCanAttemptOwnership() {
-  platform_->TouchFileDurable(kCanAttemptOwnershipFile);
+  if (!can_attempt_ownership_) {
+    platform_->TouchFileDurable(kCanAttemptOwnershipFile);
+    can_attempt_ownership_ = true;
+    checked_can_attempt_ownership_ = true;
+  }
 }
 
 bool Service::CanAttemptOwnership() const {
-  return platform_->FileExists(kCanAttemptOwnershipFile);
+  if (!checked_can_attempt_ownership_) {
+    can_attempt_ownership_ = platform_->FileExists(kCanAttemptOwnershipFile);
+    checked_can_attempt_ownership_ = true;
+  }
+  return can_attempt_ownership_;
 }
 
 }  // namespace cryptohome
