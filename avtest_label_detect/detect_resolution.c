@@ -177,54 +177,32 @@ static bool is_v4l2_4k_device_vp9(int fd) {
   return false;
 }
 
-/* Return true, if either the VAAPI device supports 4k resolution H264 decoding,
- * has decoding entry point, and input YUV420 formats. Or there is a
+/* Determines "4k_video_h264". Return true, if either the VAAPI device
+ * supports 4k resolution H264 decoding, has decoding entry point,
+ * and input YUV420 formats. Or there is a
  * /dev/video* device supporting 4k resolution H264 decoding.
  */
-bool is_4k_device_h264(void) {
+bool detect_4k_device_h264(void) {
   return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_h264) ||
           is_any_device(kVideoDevicePattern, is_v4l2_4k_device_h264));
 }
 
-/* Return true, if either the VAAPI device supports 4k resolution VP8 decoding,
- * has decoding entry point, and input YUV420 formats. Or there is a
+/* Determines "4k_video_vp8". Return true, if either the VAAPI device
+ * supports 4k resolution VP8 decoding, has decoding entry point,
+ * and input YUV420 formats. Or there is a
  * /dev/video* device supporting 4k resolution VP8 decoding.
  */
-bool is_4k_device_vp8(void) {
+bool detect_4k_device_vp8(void) {
   return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_vp8) ||
           is_any_device(kVideoDevicePattern, is_v4l2_4k_device_vp8));
 }
 
-/* Return true, if either the VAAPI device supports 4k resolution VP9 decoding,
- * has decoding entry point, and input YUV420 formats. Or there is a
+/* Determines "4k_video_vp9". Return true, if either the VAAPI device
+ * supports 4k resolution VP9 decoding, has decoding entry point,
+ * and input YUV420 formats. Or there is a
  * /dev/video* device supporting 4k resolution VP9 decoding.
  */
-bool is_4k_device_vp9(void) {
+bool detect_4k_device_vp9(void) {
   return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_vp9) ||
           is_any_device(kVideoDevicePattern, is_v4l2_4k_device_vp9));
-}
-
-/* Determines "4k_video" label. Returns true if and only if a device
- * supports 4k resolution decoding for all its supported codec.
- */
-bool detect_4k_video(void) {
-  bool video_acc_h264 = detect_video_acc_h264();
-  bool video_acc_vp8 = detect_video_acc_vp8();
-  bool video_acc_vp9 = detect_video_acc_vp9();
-  if (!video_acc_h264 && !video_acc_vp8 && !video_acc_vp9) {
-    // If a device doesn't support any type of codec,
-    // it shouldn't have '4k_device' label.
-    return false;
-  }
-
-  if (video_acc_h264 && !is_4k_device_h264())
-    return false;
-
-  if (video_acc_vp8 && !is_4k_device_vp8())
-    return false;
-
-  if (video_acc_vp9 && !is_4k_device_vp9())
-    return false;
-
-  return true;
 }

@@ -48,5 +48,7 @@ extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
 extern bool detect_jpeg_acc_dec(void);
-bool detect_4k_video(void);
+bool detect_4k_device_h264(void);
+bool detect_4k_device_vp8(void);
+bool detect_4k_device_vp9(void);
 #endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_
