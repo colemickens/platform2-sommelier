@@ -194,12 +194,6 @@ TEST(LibcontainerTest, PidFilePath) {
   container_config_destroy(config);
 }
 
-TEST(LibcontainerTest, LogPreserve) {
-  errno = EPERM;
-  PLOG_PRESERVE(ERROR) << "This is an expected error log";
-  ASSERT_EQ(EPERM, errno);
-}
-
 class ContainerTest : public ::testing::Test {
  public:
   ContainerTest() = default;
@@ -595,7 +589,7 @@ int minijail_wait(struct minijail* j) {
   int status;
   if (HANDLE_EINTR(
           waitpid(libcontainer::g_mock_minijail_state->pid, &status, 0)) < 0) {
-    PLOG_PRESERVE(ERROR) << "Failed to wait for minijail";
+    PLOG(ERROR) << "Failed to wait for minijail";
     return -errno;
   }
   if (!WIFEXITED(status)) {

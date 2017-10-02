@@ -19,23 +19,6 @@
 
 namespace libcontainer {
 
-// Simple class that saves errno.
-class SaveErrno {
- public:
-  SaveErrno();
-  ~SaveErrno();
-
- private:
-  const int saved_errno_;
-
-  DISALLOW_COPY_AND_ASSIGN(SaveErrno);
-};
-
-// The comma operator will discard the SaveErrno instance, but will keep it
-// alive until after the whole expression has been evaluated.
-#define PLOG_PRESERVE(verbose_level) \
-  ::libcontainer::SaveErrno(), PLOG(verbose_level)
-
 // WaitablePipe provides a way for one process to wait on another. This only
 // uses the read(2) and close(2) syscalls, so it can work even in a restrictive
 // environment. Each process must call only one of Wait() and Signal() exactly
