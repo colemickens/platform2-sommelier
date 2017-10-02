@@ -414,11 +414,11 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   LOG(INFO) << "status: 0x" << std::hex << static_cast<int>(response.status);
   LOG(INFO) << "vendor: 0x" << std::hex << response.vendor;
   LOG(INFO) << "fw_address: 0x" << std::hex << response.fw_address;
-  LOG(INFO) << "fw_size: 0x" << std::hex << response.fw_size;
+  LOG(INFO) << "fw_size: " << response.fw_size << " bytes";
   LOG(INFO) << "allowed_fw_hash: 0x" <<
       base::HexEncode(response.allowed_fw_hash, SHA256_DIGEST_LENGTH);
-  LOG(INFO) << "id: 0x" << std::hex << response.elan.id;
-  LOG(INFO) << "fw_version: 0x" << std::hex << response.elan.fw_version;
+  LOG(INFO) << "product_id: " << response.elan.id << ".0";
+  LOG(INFO) << "fw_ver: " << response.elan.fw_version << ".0";
   LOG(INFO) << "fw_checksum: 0x" << std::hex << response.elan.fw_checksum;
 
   // Check if the image size matches IC size.
