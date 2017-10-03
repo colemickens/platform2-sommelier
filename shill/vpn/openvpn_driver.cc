@@ -43,7 +43,6 @@
 using base::FilePath;
 using base::SplitString;
 using base::Unretained;
-using base::WeakPtr;
 using std::map;
 using std::string;
 using std::vector;

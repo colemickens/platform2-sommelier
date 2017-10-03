@@ -32,13 +32,6 @@
 #include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
 
-namespace base {
-
-template<typename T>
-class WeakPtr;
-
-}  // namespace base
-
 namespace shill {
 
 class CertificateFile;
