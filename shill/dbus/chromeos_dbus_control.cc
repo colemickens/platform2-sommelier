@@ -119,12 +119,6 @@ void ChromeosDBusControl::RegisterManagerObject(
   });
 }
 
-template <typename Object, typename AdaptorInterface, typename Adaptor>
-std::unique_ptr<AdaptorInterface> ChromeosDBusControl::CreateAdaptor(
-    Object* object) {
-  return std::make_unique<Adaptor>(adaptor_bus_, object);
-}
-
 void ChromeosDBusControl::OnDBusServiceRegistered(
     const base::Callback<void(bool)>& completion_action, bool success) {
   // The DBus control interface will take over the ownership of the DBus service
@@ -147,16 +141,12 @@ void ChromeosDBusControl::TakeServiceOwnership(bool success) {
 
 std::unique_ptr<DeviceAdaptorInterface>
 ChromeosDBusControl::CreateDeviceAdaptor(Device* device) {
-  return CreateAdaptor<Device,
-                       DeviceAdaptorInterface,
-                       ChromeosDeviceDBusAdaptor>(device);
+  return std::make_unique<ChromeosDeviceDBusAdaptor>(adaptor_bus_, device);
 }
 
 std::unique_ptr<IPConfigAdaptorInterface>
 ChromeosDBusControl::CreateIPConfigAdaptor(IPConfig* config) {
-  return CreateAdaptor<IPConfig,
-                       IPConfigAdaptorInterface,
-                       ChromeosIPConfigDBusAdaptor>(config);
+  return std::make_unique<ChromeosIPConfigDBusAdaptor>(adaptor_bus_, config);
 }
 
 std::unique_ptr<ManagerAdaptorInterface>
@@ -167,31 +157,24 @@ ChromeosDBusControl::CreateManagerAdaptor(Manager* manager) {
 
 std::unique_ptr<ProfileAdaptorInterface>
 ChromeosDBusControl::CreateProfileAdaptor(Profile* profile) {
-  return CreateAdaptor<Profile,
-                       ProfileAdaptorInterface,
-                       ChromeosProfileDBusAdaptor>(profile);
+  return std::make_unique<ChromeosProfileDBusAdaptor>(adaptor_bus_, profile);
 }
 
 std::unique_ptr<RPCTaskAdaptorInterface>
 ChromeosDBusControl::CreateRPCTaskAdaptor(RPCTask* task) {
-  return CreateAdaptor<RPCTask,
-                       RPCTaskAdaptorInterface,
-                       ChromeosRPCTaskDBusAdaptor>(task);
+  return std::make_unique<ChromeosRPCTaskDBusAdaptor>(adaptor_bus_, task);
 }
 
 std::unique_ptr<ServiceAdaptorInterface>
 ChromeosDBusControl::CreateServiceAdaptor(Service* service) {
-  return CreateAdaptor<Service,
-                       ServiceAdaptorInterface,
-                       ChromeosServiceDBusAdaptor>(service);
+  return std::make_unique<ChromeosServiceDBusAdaptor>(adaptor_bus_, service);
 }
 
 #ifndef DISABLE_VPN
 std::unique_ptr<ThirdPartyVpnAdaptorInterface>
 ChromeosDBusControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) {
-  return CreateAdaptor<ThirdPartyVpnDriver,
-                       ThirdPartyVpnAdaptorInterface,
-                       ChromeosThirdPartyVpnDBusAdaptor>(driver);
+  return std::make_unique<ChromeosThirdPartyVpnDBusAdaptor>(adaptor_bus_,
+                                                            driver);
 }
 #endif
 

@@ -158,9 +158,6 @@ class ChromeosDBusControl : public ControlInterface {
 #endif  // DISABLE_WIMAX
 
  private:
-  template <typename Object, typename AdaptorInterface, typename Adaptor>
-  std::unique_ptr<AdaptorInterface> CreateAdaptor(Object* object);
-
   void OnDBusServiceRegistered(
       const base::Callback<void(bool)>& completion_action, bool success);
   void TakeServiceOwnership(bool success);
