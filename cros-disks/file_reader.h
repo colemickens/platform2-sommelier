@@ -7,9 +7,9 @@
 
 #include <string>
 
+#include <base/macros.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 
 namespace cros_disks {
 

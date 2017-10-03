@@ -5,11 +5,14 @@
 #ifndef CROS_DISKS_DEVICE_EJECTOR_H_
 #define CROS_DISKS_DEVICE_EJECTOR_H_
 
-#include <list>
+#include <map>
 #include <memory>
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/process_reaper.h>
+
+#include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
 
@@ -18,7 +21,7 @@ class GlibProcess;
 // A class for ejecting any removable media on a device.
 class DeviceEjector {
  public:
-  DeviceEjector();
+  explicit DeviceEjector(brillo::ProcessReaper* process_reaper);
   virtual ~DeviceEjector();
 
   // Ejects any removable media on a device at |device_path| using the
@@ -29,10 +32,15 @@ class DeviceEjector {
 
  private:
   // Invoked when an eject process has terminated.
-  void OnEjectProcessTerminated(GlibProcess* process);
+  void OnEjectProcessTerminated(const std::string& device_path,
+                                const siginfo_t& info);
 
-  // List of outstanding eject processes.
-  std::list<std::unique_ptr<GlibProcess>> eject_processes_;
+  brillo::ProcessReaper* process_reaper_;
+
+  // A list of outstanding eject processes indexed by device path.
+  std::map<std::string, SandboxedProcess> eject_process_;
+
+  base::WeakPtrFactory<DeviceEjector> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceEjector);
 };

@@ -9,6 +9,9 @@
 namespace cros_disks {
 
 class FormatManagerTest : public ::testing::Test {
+ public:
+  FormatManagerTest() : manager_(nullptr) {}
+
  protected:
   FormatManager manager_;
 };

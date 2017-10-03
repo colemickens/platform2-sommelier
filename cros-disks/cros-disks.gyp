@@ -6,17 +6,13 @@
     'variables': {
       'deps': [
         'blkid',
-        'dbus-c++-1',
-        'glib-2.0',
-        'gthread-2.0',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
         'libminijail',
+        'libsession_manager-client',
         'libudev',
       ],
-      # cros-disks uses try/catch to interact with dbus-c++.
-      'enable_exceptions': 1,
     },
   },
   'targets': [
@@ -24,14 +20,13 @@
       'target_name': 'libdisks-adaptors',
       'type': 'none',
       'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_in_dir': 'dbus_bindings',
-        'xml2cpp_out_dir': 'include/cros-disks/dbus_adaptors',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'dbus_adaptors_out_dir': 'include/cros-disks/dbus_adaptors',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.CrosDisks.xml',
+        'dbus_bindings/org.chromium.CrosDisks.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'libdisks',
@@ -54,7 +49,6 @@
         'filesystem.cc',
         'format_manager.cc',
         'fuse_mounter.cc',
-        'glib_process.cc',
         'metrics.cc',
         'mount_info.cc',
         'mount_manager.cc',
@@ -99,7 +93,6 @@
             'disk_unittest.cc',
             'file_reader_unittest.cc',
             'format_manager_unittest.cc',
-            'glib_process_unittest.cc',
             'metrics_unittest.cc',
             'mount_info_unittest.cc',
             'mount_manager_unittest.cc',

@@ -9,6 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
@@ -20,7 +22,7 @@ class FormatManagerObserverInterface;
 
 class FormatManager {
  public:
-  FormatManager();
+  explicit FormatManager(brillo::ProcessReaper* process_reaper);
   ~FormatManager();
 
   // Starts a formatting process of a given device.
@@ -28,14 +30,17 @@ class FormatManager {
                                   const std::string& device_file,
                                   const std::string& filesystem);
 
-  // Handles a terminated formatting process.
-  void FormattingFinished(pid_t pid, int status);
-
   void set_observer(FormatManagerObserverInterface* observer) {
     observer_ = observer;
   }
 
  private:
+  FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);
+  FRIEND_TEST(FormatManagerTest, IsFilesystemSupported);
+
+  void OnFormatProcessTerminated(const std::string& device_path,
+                                 const siginfo_t& info);
+
   // Returns the full path of an external formatting program if it is
   // found in some predefined locations. Otherwise, an empty string is
   // returned.
@@ -44,16 +49,14 @@ class FormatManager {
   // Returns true if formatting a given file system is supported.
   bool IsFilesystemSupported(const std::string& filesystem) const;
 
+  brillo::ProcessReaper* process_reaper_;
+
   // A list of outstanding formatting processes indexed by device path.
   std::map<std::string, SandboxedProcess> format_process_;
 
-  // Given the pid of formatting process it finds the device path.
-  std::map<pid_t, std::string> pid_to_device_path_;
-
   FormatManagerObserverInterface* observer_;
 
-  FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);
-  FRIEND_TEST(FormatManagerTest, IsFilesystemSupported);
+  base::WeakPtrFactory<FormatManager> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(FormatManager);
 };

@@ -4,6 +4,8 @@
 
 #include "cros-disks/daemon.h"
 
+#include <chromeos/dbus/service_constants.h>
+
 namespace {
 
 const char kArchiveMountRootDirectory[] = "/media/archive";
@@ -14,41 +16,58 @@ const char kNonPrivilegedMountUser[] = "chronos";
 
 namespace cros_disks {
 
-Daemon::Daemon(DBus::Connection* dbus_connection, bool has_session_manager)
-    : archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
+Daemon::Daemon(bool has_session_manager)
+    : brillo::DBusServiceDaemon(kCrosDisksServiceName),
+      has_session_manager_(has_session_manager),
+      device_ejector_(&process_reaper_),
+      archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
       disk_manager_(
           kDiskMountRootDirectory, &platform_, &metrics_, &device_ejector_),
-      rename_manager_(&platform_),
-      server_(*dbus_connection,
-              &platform_,
-              &disk_manager_,
-              &format_manager_,
-              &rename_manager_),
-      event_moderator_(&server_, &disk_manager_, has_session_manager),
-      session_manager_proxy_(dbus_connection) {}
-
-void Daemon::Initialize() {
-  // Register mount managers with the commonly used ones come first.
-  server_.RegisterMountManager(&disk_manager_);
-  server_.RegisterMountManager(&archive_manager_);
-
+      format_manager_(&process_reaper_),
+      rename_manager_(&platform_, &process_reaper_),
+      device_event_task_id_(brillo::MessageLoop::kTaskIdNull) {
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
       << "'" << kNonPrivilegedMountUser
       << "' is not available for non-privileged mount operations.";
   CHECK(archive_manager_.Initialize())
       << "Failed to initialize the archive manager";
   CHECK(disk_manager_.Initialize()) << "Failed to initialize the disk manager";
-
-  session_manager_proxy_.AddObserver(&server_);
-  session_manager_proxy_.AddObserver(&event_moderator_);
+  process_reaper_.Register(this);
 }
 
-int Daemon::GetDeviceEventDescriptor() const {
-  return disk_manager_.udev_monitor_fd();
+Daemon::~Daemon() {
+  brillo::MessageLoop::current()->CancelTask(device_event_task_id_);
 }
 
-void Daemon::ProcessDeviceEvents() {
-  event_moderator_.ProcessDeviceEvents();
+void Daemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  server_ = std::make_unique<CrosDisksServer>(
+      bus_, &platform_, &disk_manager_, &format_manager_, &rename_manager_);
+
+  // Register mount managers with the commonly used ones come first.
+  server_->RegisterMountManager(&disk_manager_);
+  server_->RegisterMountManager(&archive_manager_);
+
+  event_moderator_ = std::make_unique<DeviceEventModerator>(
+      server_.get(), &disk_manager_, has_session_manager_);
+
+  if (has_session_manager_) {
+    session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
+    session_manager_proxy_->AddObserver(server_.get());
+    session_manager_proxy_->AddObserver(event_moderator_.get());
+  }
+
+  device_event_task_id_ = brillo::MessageLoop::current()->WatchFileDescriptor(
+      FROM_HERE, disk_manager_.udev_monitor_fd(),
+      brillo::MessageLoop::kWatchRead, true,
+      base::Bind(&Daemon::OnDeviceEvents, base::Unretained(this)));
+
+  server_->RegisterAsync(
+      sequencer->GetHandler("Failed to export cros-disks service.", false));
+}
+
+void Daemon::OnDeviceEvents() {
+  event_moderator_->ProcessDeviceEvents();
 }
 
 }  // namespace cros_disks

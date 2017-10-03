@@ -9,10 +9,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
-#include "cros-disks/glib_process.h"
-
-using std::string;
-
 namespace {
 
 // Expected location of the 'eject' program.
@@ -22,31 +18,58 @@ const char kEjectProgram[] = "/usr/bin/eject";
 
 namespace cros_disks {
 
-DeviceEjector::DeviceEjector() {}
+DeviceEjector::DeviceEjector(brillo::ProcessReaper* process_reaper)
+    : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
 
 DeviceEjector::~DeviceEjector() {}
 
-bool DeviceEjector::Eject(const string& device_path) {
+bool DeviceEjector::Eject(const std::string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
-  eject_processes_.push_back(std::make_unique<GlibProcess>());
-  GlibProcess* process = eject_processes_.back().get();
+  if (ContainsKey(eject_process_, device_path)) {
+    LOG(WARNING) << "Device '" << device_path << "' is already being ejected";
+    return false;
+  }
 
+  SandboxedProcess* process = &eject_process_[device_path];
+  process->SetNoNewPrivileges();
+  process->NewIpcNamespace();
+  process->NewNetworkNamespace();
   process->AddArgument(kEjectProgram);
   process->AddArgument(device_path);
-  process->set_callback(base::Bind(&DeviceEjector::OnEjectProcessTerminated,
-                                   base::Unretained(this)));
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, process->pid(),
+      base::Bind(&DeviceEjector::OnEjectProcessTerminated,
+                 weak_ptr_factory_.GetWeakPtr(), device_path));
+
   // TODO(benchan): Set up a timeout to kill a hanging process.
   return process->Start();
 }
 
-void DeviceEjector::OnEjectProcessTerminated(GlibProcess* process) {
-  CHECK(process);
-  for (auto it = eject_processes_.begin(); it != eject_processes_.end(); ++it) {
-    if (it->get() == process) {
-      eject_processes_.erase(it);
+void DeviceEjector::OnEjectProcessTerminated(const std::string& device_path,
+                                             const siginfo_t& info) {
+  eject_process_.erase(device_path);
+  switch (info.si_code) {
+    case CLD_EXITED:
+      if (info.si_status == 0) {
+        LOG(INFO) << "Process " << info.si_pid << " for ejecting '"
+                  << device_path << "' completed successfully";
+      } else {
+        LOG(ERROR) << "Process " << info.si_pid << " for ejecting '"
+                   << device_path << "' exited with a status "
+                   << info.si_status;
+      }
       break;
-    }
+
+    case CLD_DUMPED:
+    case CLD_KILLED:
+      LOG(ERROR) << "Process " << info.si_pid << " for ejecting '"
+                 << device_path << "' killed by a signal " << info.si_status;
+      break;
+
+    default:
+      break;
   }
 }
 

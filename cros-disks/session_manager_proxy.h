@@ -5,21 +5,24 @@
 #ifndef CROS_DISKS_SESSION_MANAGER_PROXY_H_
 #define CROS_DISKS_SESSION_MANAGER_PROXY_H_
 
-#include <dbus-c++/dbus.h>
+#include <string>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
+#include <dbus/bus.h>
+#include <session_manager/dbus-proxies.h>
+
+#include "cros-disks/session_manager_observer_interface.h"
 
 namespace cros_disks {
 
-class SessionManagerObserverInterface;
-
 // A proxy class that listens to DBus signals from the session manager and
 // notifies a list of registered observers for events.
-class SessionManagerProxy : public DBus::InterfaceProxy,
-                            public DBus::ObjectProxy {
+class SessionManagerProxy {
  public:
-  explicit SessionManagerProxy(DBus::Connection* connection);
+  explicit SessionManagerProxy(scoped_refptr<dbus::Bus> bus);
 
   ~SessionManagerProxy() = default;
 
@@ -27,15 +30,17 @@ class SessionManagerProxy : public DBus::InterfaceProxy,
 
  private:
   // Handles the ScreenIsLocked DBus signal.
-  void OnScreenIsLocked(const DBus::SignalMessage& signal);
+  void OnScreenIsLocked();
 
   // Handles the ScreenIsUnlocked DBus signal.
-  void OnScreenIsUnlocked(const DBus::SignalMessage& signal);
+  void OnScreenIsUnlocked();
 
   // Handles the SessionStateChanged DBus signal.
-  void OnSessionStateChanged(const DBus::SignalMessage& signal);
+  void OnSessionStateChanged(const std::string& state);
 
+  org::chromium::SessionManagerInterfaceProxy proxy_;
   base::ObserverList<SessionManagerObserverInterface> observer_list_;
+  base::WeakPtrFactory<SessionManagerProxy> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProxy);
 };

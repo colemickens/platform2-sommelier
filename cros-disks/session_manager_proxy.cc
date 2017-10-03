@@ -4,25 +4,37 @@
 
 #include "cros-disks/session_manager_proxy.h"
 
-#include <string>
-
-#include <chromeos/dbus/service_constants.h>
-
-#include "cros-disks/session_manager_observer_interface.h"
-
-using std::string;
+#include <base/bind.h>
 
 namespace cros_disks {
 
-SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection)
-    : DBus::InterfaceProxy(login_manager::kSessionManagerInterface),
-      DBus::ObjectProxy(*connection,
-                        login_manager::kSessionManagerServicePath,
-                        login_manager::kSessionManagerServiceName) {
-  connect_signal(SessionManagerProxy, ScreenIsLocked, OnScreenIsLocked);
-  connect_signal(SessionManagerProxy, ScreenIsUnlocked, OnScreenIsUnlocked);
-  connect_signal(SessionManagerProxy, SessionStateChanged,
-                 OnSessionStateChanged);
+namespace {
+
+void OnSignalConnected(const std::string& interface,
+                       const std::string& signal,
+                       bool success) {
+  if (!success) {
+    LOG(ERROR) << "Could not connect to signal " << signal << " on interface "
+               << interface;
+  }
+}
+
+}  // namespace
+
+SessionManagerProxy::SessionManagerProxy(scoped_refptr<dbus::Bus> bus)
+    : proxy_(bus), weak_ptr_factory_(this) {
+  proxy_.RegisterScreenIsLockedSignalHandler(
+      base::Bind(&SessionManagerProxy::OnScreenIsLocked,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&OnSignalConnected));
+  proxy_.RegisterScreenIsUnlockedSignalHandler(
+      base::Bind(&SessionManagerProxy::OnScreenIsUnlocked,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&OnSignalConnected));
+  proxy_.RegisterSessionStateChangedSignalHandler(
+      base::Bind(&SessionManagerProxy::OnSessionStateChanged,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&OnSignalConnected));
 }
 
 void SessionManagerProxy::AddObserver(
@@ -31,22 +43,17 @@ void SessionManagerProxy::AddObserver(
   observer_list_.AddObserver(observer);
 }
 
-void SessionManagerProxy::OnScreenIsLocked(const DBus::SignalMessage& signal) {
+void SessionManagerProxy::OnScreenIsLocked() {
   FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
                     OnScreenIsLocked());
 }
 
-void SessionManagerProxy::OnScreenIsUnlocked(
-    const DBus::SignalMessage& signal) {
+void SessionManagerProxy::OnScreenIsUnlocked() {
   FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
                     OnScreenIsUnlocked());
 }
 
-void SessionManagerProxy::OnSessionStateChanged(
-    const DBus::SignalMessage& signal) {
-  DBus::MessageIter reader = signal.reader();
-  string state;
-  reader >> state;
+void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
   if (state == "started") {
     FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
                       OnSessionStarted());

@@ -32,38 +32,48 @@
       <tp:member name="MountPath" type="s" />
     </tp:struct>
     <method name="Mount">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="path" type="s" direction="in" />
-      <arg name="filesystemType" type="s" direction="in" />
+      <arg name="filesystem_type" type="s" direction="in" />
       <arg name="options" type="as" direction="in" />
     </method>
     <method name="Unmount">
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
       <arg name="path" type="s" direction="in" />
       <arg name="options" type="as" direction="in" />
     </method>
     <method name="UnmountAll">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
     <method name="EnumerateDevices">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="devices" type="as" direction="out" />
     </method>
     <method name="EnumerateAutoMountableDevices">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="devices" type="as" direction="out" />
     </method>
     <method name="EnumerateMountEntries">
-      <arg name="mountEntries" type="a(usus)" direction="out"
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="mount_entries" type="a(usus)" direction="out"
            tp:type="MountEntries" />
     </method>
     <method name="GetDeviceProperties">
-      <arg name="devicePath" type="s" direction="in" />
-      <arg name="device" type="a{sv}" direction="out" tp:type="DiskDevices" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <arg name="device_path" type="s" direction="in" />
+      <arg name="properties" type="a{sv}" direction="out"
+           tp:type="DiskDevices" />
     </method>
     <method name="Format">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="path" type="s" direction="in" />
-      <arg name="filesystemType" type="s" direction="in" />
+      <arg name="filesystem_type" type="s" direction="in" />
       <arg name="options" type="as" direction="in" />
     </method>
     <method name="Rename">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="path" type="s" direction="in" />
-      <arg name="volumeName" type="s" direction="in" />
+      <arg name="volume_name" type="s" direction="in" />
     </method>
 
     <signal name="DeviceAdded">
@@ -86,9 +96,9 @@
     </signal>
     <signal name="MountCompleted">
       <arg name="status" type="u" direction="out" />
-      <arg name="sourcePath" type="s" direction="out" />
-      <arg name="sourceType" type="u" direction="out" />
-      <arg name="mountPath" type="s" direction="out" />
+      <arg name="source_path" type="s" direction="out" />
+      <arg name="source_type" type="u" direction="out" />
+      <arg name="mount_path" type="s" direction="out" />
     </signal>
     <signal name="FormatCompleted">
       <arg name="status" type="u" direction="out" />

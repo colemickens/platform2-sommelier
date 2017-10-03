@@ -9,6 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
@@ -21,7 +23,7 @@ class RenameManagerObserverInterface;
 
 class RenameManager {
  public:
-  explicit RenameManager(Platform* platform);
+  RenameManager(Platform* platform, brillo::ProcessReaper* process_reaper);
   ~RenameManager();
 
   // Starts a renaming process of a given device.
@@ -29,9 +31,6 @@ class RenameManager {
                                 const std::string& device_file,
                                 const std::string& volume_name,
                                 const std::string& filesystem_type);
-
-  // Handles a terminated renaming process.
-  void RenamingFinished(pid_t pid, int status);
 
   void set_observer(RenameManagerObserverInterface* observer) {
     observer_ = observer;
@@ -42,8 +41,8 @@ class RenameManager {
   FRIEND_TEST(RenameManagerTest, ValidateParameters);
   FRIEND_TEST(RenameManagerVolumeNameTest, ValidateParameters);
 
-  // Platform service
-  Platform* platform_;
+  void OnRenameProcessTerminated(const std::string& device_path,
+                                 const siginfo_t& info);
 
   // Returns RENAME_ERROR_NONE if file system type is supported, and new
   // |volume_name| contains only allowed characters and length is not greater
@@ -54,13 +53,17 @@ class RenameManager {
   // Returns true if renaming |source_path| is supported.
   bool CanRename(const std::string& source_path) const;
 
+  // Platform service
+  Platform* platform_;
+
+  brillo::ProcessReaper* process_reaper_;
+
   // A list of outstanding renaming processes indexed by device path.
   std::map<std::string, SandboxedProcess> rename_process_;
 
-  // Given the pid of renaming process it finds the device path.
-  std::map<pid_t, std::string> pid_to_device_path_;
-
   RenameManagerObserverInterface* observer_;
+
+  base::WeakPtrFactory<RenameManager> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(RenameManager);
 };

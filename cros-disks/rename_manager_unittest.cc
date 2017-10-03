@@ -20,7 +20,7 @@ namespace cros_disks {
 
 class RenameManagerTest : public ::testing::Test {
  public:
-  RenameManagerTest() : manager_(&platform_) {}
+  RenameManagerTest() : manager_(&platform_, nullptr) {}
 
  protected:
   Platform platform_;

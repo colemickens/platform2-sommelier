@@ -4,8 +4,6 @@
 
 #include "cros-disks/format_manager.h"
 
-#include <glib.h>
-
 #include <string>
 
 #include <base/files/file_util.h>
@@ -32,17 +30,12 @@ const char* const kSupportedFilesystems[] = {
 
 const char kDefaultLabel[] = "UNTITLED";
 
-void OnFormatProcessExit(pid_t pid, gint status, gpointer data) {
-  cros_disks::FormatManager* format_manager =
-      reinterpret_cast<cros_disks::FormatManager*>(data);
-  format_manager->FormattingFinished(pid, status);
-}
-
 }  // namespace
 
 namespace cros_disks {
 
-FormatManager::FormatManager() {}
+FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
+    : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
 
 FormatManager::~FormatManager() {}
 
@@ -92,31 +85,41 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
     format_process_.erase(device_path);
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
-  pid_to_device_path_[process->pid()] = device_path;
-  g_child_watch_add(process->pid(), &OnFormatProcessExit, this);
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, process->pid(),
+      base::Bind(&FormatManager::OnFormatProcessTerminated,
+                 weak_ptr_factory_.GetWeakPtr(), device_path));
   return FORMAT_ERROR_NONE;
 }
 
-void FormatManager::FormattingFinished(pid_t pid, int status) {
-  string device_path = pid_to_device_path_[pid];
+void FormatManager::OnFormatProcessTerminated(const string& device_path,
+                                              const siginfo_t& info) {
   format_process_.erase(device_path);
-  pid_to_device_path_.erase(pid);
   FormatErrorType error_type = FORMAT_ERROR_UNKNOWN;
-  if (WIFEXITED(status)) {
-    int exit_status = WEXITSTATUS(status);
-    if (exit_status == 0) {
-      error_type = FORMAT_ERROR_NONE;
-      LOG(INFO) << "Process " << pid << " for formatting '" << device_path
-                << "' completed successfully";
-    } else {
+  switch (info.si_code) {
+    case CLD_EXITED:
+      if (info.si_status == 0) {
+        error_type = FORMAT_ERROR_NONE;
+        LOG(INFO) << "Process " << info.si_pid << " for formatting '"
+                  << device_path << "' completed successfully";
+      } else {
+        error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+        LOG(ERROR) << "Process " << info.si_pid << " for formatting '"
+                   << device_path << "' exited with a status "
+                   << info.si_status;
+      }
+      break;
+
+    case CLD_DUMPED:
+    case CLD_KILLED:
       error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-      LOG(ERROR) << "Process " << pid << " for formatting '" << device_path
-                 << "' exited with a status " << exit_status;
-    }
-  } else if (WIFSIGNALED(status)) {
-    error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-    LOG(ERROR) << "Process " << pid << " for formatting '" << device_path
-               << "' killed by a signal " << WTERMSIG(status);
+      LOG(ERROR) << "Process " << info.si_pid << " for formatting '"
+                 << device_path << "' killed by a signal " << info.si_status;
+      break;
+
+    default:
+      break;
   }
   if (observer_)
     observer_->OnFormatCompleted(device_path, error_type);

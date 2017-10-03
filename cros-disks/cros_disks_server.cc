@@ -4,6 +4,8 @@
 
 #include "cros-disks/cros_disks_server.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -20,12 +22,13 @@ using std::vector;
 
 namespace cros_disks {
 
-CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
+CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
                                  Platform* platform,
                                  DiskManager* disk_manager,
                                  FormatManager* format_manager,
                                  RenameManager* rename_manager)
-    : DBus::ObjectAdaptor(connection, kCrosDisksServicePath),
+    : org::chromium::CrosDisksAdaptor(this),
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kCrosDisksServicePath)),
       platform_(platform),
       disk_manager_(disk_manager),
       format_manager_(format_manager),
@@ -39,6 +42,12 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
   rename_manager_->set_observer(this);
 }
 
+void CrosDisksServer::RegisterAsync(
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
+}
+
 void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
   CHECK(mount_manager) << "Invalid mount manager object";
   mount_managers_.push_back(mount_manager);
@@ -46,8 +55,7 @@ void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
 
 void CrosDisksServer::Format(const string& path,
                              const string& filesystem_type,
-                             const vector<string>& options,
-                             DBus::Error& error) {  // NOLINT
+                             const vector<string>& options) {
   FormatErrorType error_type = FORMAT_ERROR_NONE;
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
@@ -62,13 +70,11 @@ void CrosDisksServer::Format(const string& path,
   if (error_type != FORMAT_ERROR_NONE) {
     LOG(ERROR) << "Could not format device '" << path << "' as filesystem '"
                << filesystem_type << "'";
-    FormatCompleted(error_type, path);
+    SendFormatCompletedSignal(error_type, path);
   }
 }
 
-void CrosDisksServer::Rename(const string& path,
-                             const string& volume_name,
-                             DBus::Error& error) {  // NOLINT
+void CrosDisksServer::Rename(const string& path, const string& volume_name) {
   RenameErrorType error_type = RENAME_ERROR_NONE;
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
@@ -83,7 +89,7 @@ void CrosDisksServer::Rename(const string& path,
   if (error_type != RENAME_ERROR_NONE) {
     LOG(ERROR) << "Could not rename device '" << path << "' as '" << volume_name
                << "'";
-    RenameCompleted(error_type, path);
+    SendRenameCompletedSignal(error_type, path);
   }
 }
 
@@ -98,8 +104,7 @@ MountManager* CrosDisksServer::FindMounter(const string& source_path) const {
 
 void CrosDisksServer::Mount(const string& path,
                             const string& filesystem_type,
-                            const vector<string>& options,
-                            DBus::Error& error) {  // NOLINT
+                            const vector<string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   MountSourceType source_type = MOUNT_SOURCE_INVALID;
   string source_path;
@@ -117,12 +122,12 @@ void CrosDisksServer::Mount(const string& path,
   if (error_type != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to mount '" << path << "'";
   }
-  MountCompleted(error_type, path, source_type, mount_path);
+  SendMountCompletedSignal(error_type, path, source_type, mount_path);
 }
 
-void CrosDisksServer::Unmount(const string& path,
-                              const vector<string>& options,
-                              DBus::Error& error) {  // NOLINT
+bool CrosDisksServer::Unmount(brillo::ErrorPtr* error,
+                              const string& path,
+                              const vector<string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   for (const auto& manager : mount_managers_) {
     if (manager->CanUnmount(path)) {
@@ -131,17 +136,17 @@ void CrosDisksServer::Unmount(const string& path,
     }
   }
 
-  if (error_type != MOUNT_ERROR_NONE) {
-    string message = "Failed to unmount '" + path + "'";
-    error.set(kCrosDisksServiceError, message.c_str());
+  if (error_type == MOUNT_ERROR_NONE) {
+    return true;
   }
+
+  string message = "Failed to unmount '" + path + "'";
+  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                       kCrosDisksServiceError, message);
+  return false;
 }
 
-void CrosDisksServer::UnmountAll(DBus::Error& error) {  // NOLINT
-  DoUnmountAll();
-}
-
-void CrosDisksServer::DoUnmountAll() {
+void CrosDisksServer::UnmountAll() {
   for (const auto& manager : mount_managers_) {
     manager->UnmountAll();
   }
@@ -160,78 +165,77 @@ vector<string> CrosDisksServer::DoEnumerateDevices(
   return devices;
 }
 
-vector<string> CrosDisksServer::EnumerateDevices(
-    DBus::Error& error) {  // NOLINT
+vector<string> CrosDisksServer::EnumerateDevices() {
   return DoEnumerateDevices(false);
 }
 
-vector<string> CrosDisksServer::EnumerateAutoMountableDevices(
-    DBus::Error& error) {  // NOLINT
+vector<string> CrosDisksServer::EnumerateAutoMountableDevices() {
   return DoEnumerateDevices(true);
 }
 
-vector<CrosDisksServer::DBusMountEntry> CrosDisksServer::EnumerateMountEntries(
-    DBus::Error& error) {  // NOLINT
+vector<CrosDisksServer::DBusMountEntry>
+CrosDisksServer::EnumerateMountEntries() {
   vector<DBusMountEntry> dbus_mount_entries;
   for (const auto& manager : mount_managers_) {
     for (const auto& mount_entry : manager->GetMountEntries()) {
       dbus_mount_entries.push_back(
-          {mount_entry.error_type, mount_entry.source_path,
-           mount_entry.source_type, mount_entry.mount_path});
+          std::make_tuple(static_cast<uint32_t>(mount_entry.error_type),
+                          mount_entry.source_path,
+                          static_cast<uint32_t>(mount_entry.source_type),
+                          mount_entry.mount_path));
     }
   }
   return dbus_mount_entries;
 }
 
-std::map<std::string, DBus::Variant> CrosDisksServer::GetDeviceProperties(
+bool CrosDisksServer::GetDeviceProperties(
+    brillo::ErrorPtr* error,
     const string& device_path,
-    DBus::Error& error) {  // NOLINT
+    brillo::VariantDictionary* properties) {
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
     string message = "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
-    error.set(kCrosDisksServiceError, message.c_str());
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kCrosDisksServiceError, message);
+    return false;
   }
 
-  std::map<std::string, DBus::Variant> properties;
-  properties[kDeviceIsDrive].writer().append_bool(disk.is_drive);
-  properties[kDevicePresentationHide].writer().append_bool(disk.is_hidden);
-  properties[kDeviceIsMounted].writer().append_bool(disk.IsMounted());
-  properties[kDeviceIsMediaAvailable].writer().append_bool(
-      disk.is_media_available);
-  properties[kDeviceIsOnBootDevice].writer().append_bool(
-      disk.is_on_boot_device);
-  properties[kDeviceIsOnRemovableDevice].writer().append_bool(
-      disk.is_on_removable_device);
-  properties[kDeviceIsVirtual].writer().append_bool(disk.is_virtual);
-  properties[kNativePath].writer().append_string(disk.native_path.c_str());
-  properties[kDeviceFile].writer().append_string(disk.device_file.c_str());
-  properties[kIdUuid].writer().append_string(disk.uuid.c_str());
-  properties[kIdLabel].writer().append_string(disk.label.c_str());
-  properties[kVendorId].writer().append_string(disk.vendor_id.c_str());
-  properties[kVendorName].writer().append_string(disk.vendor_name.c_str());
-  properties[kProductId].writer().append_string(disk.product_id.c_str());
-  properties[kProductName].writer().append_string(disk.product_name.c_str());
-  properties[kDriveModel].writer().append_string(disk.drive_model.c_str());
-  properties[kDriveIsRotational].writer().append_bool(disk.is_rotational);
-  properties[kDeviceMediaType].writer().append_uint32(disk.media_type);
-  properties[kDeviceSize].writer().append_uint64(disk.device_capacity);
-  properties[kDeviceIsReadOnly].writer().append_bool(disk.is_read_only);
-  properties[kFileSystemType].writer().append_string(
-      disk.filesystem_type.c_str());
-  DBus::MessageIter iter = properties[kDeviceMountPaths].writer();
-  iter << disk.mount_paths;
-  return properties;
+  brillo::VariantDictionary temp_properties;
+  temp_properties[kDeviceIsDrive] = disk.is_drive;
+  temp_properties[kDevicePresentationHide] = disk.is_hidden;
+  temp_properties[kDeviceIsMounted] = disk.IsMounted();
+  temp_properties[kDeviceIsMediaAvailable] = disk.is_media_available;
+  temp_properties[kDeviceIsOnBootDevice] = disk.is_on_boot_device;
+  temp_properties[kDeviceIsOnRemovableDevice] = disk.is_on_removable_device;
+  temp_properties[kDeviceIsVirtual] = disk.is_virtual;
+  temp_properties[kNativePath] = disk.native_path;
+  temp_properties[kDeviceFile] = disk.device_file;
+  temp_properties[kIdUuid] = disk.uuid;
+  temp_properties[kIdLabel] = disk.label;
+  temp_properties[kVendorId] = disk.vendor_id;
+  temp_properties[kVendorName] = disk.vendor_name;
+  temp_properties[kProductId] = disk.product_id;
+  temp_properties[kProductName] = disk.product_name;
+  temp_properties[kDriveModel] = disk.drive_model;
+  temp_properties[kDriveIsRotational] = disk.is_rotational;
+  temp_properties[kDeviceMediaType] = static_cast<uint32_t>(disk.media_type);
+  temp_properties[kDeviceSize] = disk.device_capacity;
+  temp_properties[kDeviceIsReadOnly] = disk.is_read_only;
+  temp_properties[kFileSystemType] = disk.filesystem_type;
+  temp_properties[kDeviceMountPaths] = disk.mount_paths;
+  *properties = std::move(temp_properties);
+  return true;
 }
 
 void CrosDisksServer::OnFormatCompleted(const string& device_path,
                                         FormatErrorType error_type) {
-  FormatCompleted(error_type, device_path);
+  SendFormatCompletedSignal(error_type, device_path);
 }
 
 void CrosDisksServer::OnRenameCompleted(const string& device_path,
                                         RenameErrorType error_type) {
-  RenameCompleted(error_type, device_path);
+  SendRenameCompletedSignal(error_type, device_path);
 }
 
 void CrosDisksServer::OnScreenIsLocked() {
@@ -257,22 +261,22 @@ void CrosDisksServer::OnSessionStopped() {
 void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
   switch (event.event_type) {
     case DeviceEvent::kDeviceAdded:
-      DeviceAdded(event.device_path);
+      SendDeviceAddedSignal(event.device_path);
       break;
     case DeviceEvent::kDeviceScanned:
-      DeviceScanned(event.device_path);
+      SendDeviceScannedSignal(event.device_path);
       break;
     case DeviceEvent::kDeviceRemoved:
-      DeviceRemoved(event.device_path);
+      SendDeviceRemovedSignal(event.device_path);
       break;
     case DeviceEvent::kDiskAdded:
-      DiskAdded(event.device_path);
+      SendDiskAddedSignal(event.device_path);
       break;
     case DeviceEvent::kDiskChanged:
-      DiskChanged(event.device_path);
+      SendDiskChangedSignal(event.device_path);
       break;
     case DeviceEvent::kDiskRemoved:
-      DiskRemoved(event.device_path);
+      SendDiskRemovedSignal(event.device_path);
       break;
     default:
       break;

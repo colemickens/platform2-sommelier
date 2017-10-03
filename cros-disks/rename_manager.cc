@@ -4,15 +4,14 @@
 
 #include "cros-disks/rename_manager.h"
 
-#include <glib.h>
+#include <linux/capability.h>
 
 #include <string>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/process.h>
-#include <linux/capability.h>
 
 #include "cros-disks/platform.h"
 #include "cros-disks/rename_manager_observer_interface.h"
@@ -50,17 +49,15 @@ const RenameParameters* FindRenameParameters(
   return nullptr;
 }
 
-void OnRenameProcessExit(pid_t pid, gint status, gpointer data) {
-  cros_disks::RenameManager* rename_manager =
-      reinterpret_cast<cros_disks::RenameManager*>(data);
-  rename_manager->RenamingFinished(pid, status);
-}
-
 }  // namespace
 
 namespace cros_disks {
 
-RenameManager::RenameManager(Platform* platform) : platform_(platform) {}
+RenameManager::RenameManager(Platform* platform,
+                             brillo::ProcessReaper* process_reaper)
+    : platform_(platform),
+      process_reaper_(process_reaper),
+      weak_ptr_factory_(this) {}
 
 RenameManager::~RenameManager() {}
 
@@ -132,31 +129,41 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
     rename_process_.erase(device_path);
     return RENAME_ERROR_RENAME_PROGRAM_FAILED;
   }
-  pid_to_device_path_[process->pid()] = device_path;
-  g_child_watch_add(process->pid(), &OnRenameProcessExit, this);
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, process->pid(),
+      base::Bind(&RenameManager::OnRenameProcessTerminated,
+                 weak_ptr_factory_.GetWeakPtr(), device_path));
   return RENAME_ERROR_NONE;
 }
 
-void RenameManager::RenamingFinished(pid_t pid, int status) {
-  string device_path = pid_to_device_path_[pid];
+void RenameManager::OnRenameProcessTerminated(const string& device_path,
+                                              const siginfo_t& info) {
   rename_process_.erase(device_path);
-  pid_to_device_path_.erase(pid);
   RenameErrorType error_type = RENAME_ERROR_UNKNOWN;
-  if (WIFEXITED(status)) {
-    int exit_status = WEXITSTATUS(status);
-    if (exit_status == 0) {
-      error_type = RENAME_ERROR_NONE;
-      LOG(INFO) << "Process " << pid << " for renaming '" << device_path
-                << "' completed successfully";
-    } else {
+  switch (info.si_code) {
+    case CLD_EXITED:
+      if (info.si_status == 0) {
+        error_type = RENAME_ERROR_NONE;
+        LOG(INFO) << "Process " << info.si_pid << " for renaming '"
+                  << device_path << "' completed successfully";
+      } else {
+        error_type = RENAME_ERROR_RENAME_PROGRAM_FAILED;
+        LOG(ERROR) << "Process " << info.si_pid << " for renaming '"
+                   << device_path << "' exited with a status "
+                   << info.si_status;
+      }
+      break;
+
+    case CLD_DUMPED:
+    case CLD_KILLED:
       error_type = RENAME_ERROR_RENAME_PROGRAM_FAILED;
-      LOG(ERROR) << "Process " << pid << " for renaming '" << device_path
-                 << "' exited with a status " << exit_status;
-    }
-  } else if (WIFSIGNALED(status)) {
-    error_type = RENAME_ERROR_RENAME_PROGRAM_FAILED;
-    LOG(ERROR) << "Process " << pid << " for renaming '" << device_path
-               << "' killed by a signal " << WTERMSIG(status);
+      LOG(ERROR) << "Process " << info.si_pid << " for renaming '"
+                 << device_path << "' killed by a signal " << info.si_status;
+      break;
+
+    default:
+      break;
   }
   if (observer_)
     observer_->OnRenameCompleted(device_path, error_type);

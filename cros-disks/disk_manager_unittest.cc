@@ -41,7 +41,7 @@ namespace cros_disks {
 // A mock device ejector class for testing the disk manager class.
 class MockDeviceEjector : public DeviceEjector {
  public:
-  MockDeviceEjector() = default;
+  MockDeviceEjector() : DeviceEjector(nullptr) {}
 
   MOCK_METHOD1(Eject, bool(const string& device_path));
 };

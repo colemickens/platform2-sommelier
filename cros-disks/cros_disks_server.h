@@ -7,7 +7,12 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
+
+#include <base/memory/ref_counted.h>
+#include <brillo/dbus/dbus_object.h>
+#include <dbus/bus.h>
 
 #include "cros-disks/dbus_adaptors/org.chromium.CrosDisks.h"
 #include "cros-disks/device_event_dispatcher_interface.h"
@@ -28,91 +33,73 @@ class RenameManager;
 
 struct DeviceEvent;
 
-// The d-bus server for the cros-disks daemon.
-//
-// Example Usage:
-//
-// DBus::Connection server_conn = DBus::Connection::SystemBus();
-// CHECK(server_conn.acquire_name("org.chromium.CrosDisks"));
-// ArchiveManager archive_manager(...);
-// DiskManager disk_manager(...);
-// FormatManager format_manager;
-// CrosDisksServer* server = new(std::nothrow)
-//     CrosDisksServer(server_conn, &platform,
-//                     &disk_manager, &format_manager);
-// server.RegisterMountManager(&disk_manager);
-// server.RegisterMountManager(&archive_manager);
-//
-// At this point the server should be attached to the main loop.
-//
-class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
-                        public DBus::ObjectAdaptor,
+class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
+                        public org::chromium::CrosDisksInterface,
                         public DeviceEventDispatcherInterface,
                         public FormatManagerObserverInterface,
                         public SessionManagerObserverInterface,
                         public RenameManagerObserverInterface {
  public:
-  CrosDisksServer(DBus::Connection& connection,  // NOLINT
+  CrosDisksServer(scoped_refptr<dbus::Bus> bus,
                   Platform* platform,
                   DiskManager* disk_manager,
                   FormatManager* format_manager,
                   RenameManager* rename_manager);
   ~CrosDisksServer() override = default;
 
+  // Registers the D-Bus object and interfaces.
+  void RegisterAsync(
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+
   // Registers a mount manager.
   void RegisterMountManager(MountManager* mount_manager);
+
+  // Implementation of org::chromium::CrosDisks:
 
   // A method for formatting a device specified by |path|.
   // On completion, a FormatCompleted signal is emitted to indicate whether
   // the operation succeeded or failed using a FormatErrorType enum value.
   void Format(const std::string& path,
               const std::string& filesystem_type,
-              const std::vector<std::string>& options,
-              DBus::Error& error) override;  // NOLINT
+              const std::vector<std::string>& options) override;
 
   // A method for renaming a device specified by |path|.
   // On completion, a RenameCompleted signal is emitted to indicate whether
   // the operation succeeded or failed using a RenameErrorType enum value.
-  void Rename(const std::string& path,
-              const std::string& volume_name,
-              DBus::Error& error) override;  // NOLINT
+  void Rename(const std::string& path, const std::string& volume_name) override;
 
   // Mounts a path when invoked.
   void Mount(const std::string& path,
              const std::string& filesystem_type,
-             const std::vector<std::string>& options,
-             DBus::Error& error) override;  // NOLINT
+             const std::vector<std::string>& options) override;
 
   // Unmounts a path when invoked.
-  void Unmount(const std::string& path,
-               const std::vector<std::string>& options,
-               DBus::Error& error) override;  // NOLINT
+  bool Unmount(brillo::ErrorPtr* error,
+               const std::string& path,
+               const std::vector<std::string>& options) override;
 
   // Unmounts all paths mounted by Mount() when invoked.
-  void UnmountAll(DBus::Error& error) override;  // NOLINT
+  void UnmountAll() override;
 
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system.
-  std::vector<std::string> EnumerateDevices(
-      DBus::Error& error) override;  // NOLINT
+  std::vector<std::string> EnumerateDevices() override;
 
   // Returns a list of device sysfs paths for all auto-mountable disk devices
   // attached to the system. Currently, all external disk devices, which are
   // neither on the boot device nor virtual, are considered auto-mountable.
-  std::vector<std::string> EnumerateAutoMountableDevices(
-      DBus::Error& error) override;  // NOLINT
+  std::vector<std::string> EnumerateAutoMountableDevices() override;
 
   // Returns a list of mount entries (<error type, source path, source type,
   // mount path>) that are currently managed by cros-disks.
   using DBusMountEntry =
-      DBus::Struct<uint32_t, std::string, uint32_t, std::string>;
-  std::vector<DBusMountEntry> EnumerateMountEntries(
-      DBus::Error& error) override;  // NOLINT
+      std::tuple<uint32_t, std::string, uint32_t, std::string>;
+  std::vector<DBusMountEntry> EnumerateMountEntries() override;
 
   // Returns properties of a disk device attached to the system.
-  std::map<std::string, DBus::Variant> GetDeviceProperties(
-      const std::string& device_path,
-      DBus::Error& error) override;  // NOLINT
+  bool GetDeviceProperties(brillo::ErrorPtr* error,
+                           const std::string& device_path,
+                           brillo::VariantDictionary* properties) override;
 
   // Implements the FormatManagerObserverInterface interface to handle
   // the event when a formatting operation has completed.
@@ -154,17 +141,11 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // one can.
   MountManager* FindMounter(const std::string& source_path) const;
 
-  // Unmounts all paths mounted by Mount().
-  void DoUnmountAll();
-
+  brillo::dbus_utils::DBusObject dbus_object_;
   Platform* platform_;
-
   DiskManager* disk_manager_;
-
   FormatManager* format_manager_;
-
   RenameManager* rename_manager_;
-
   std::vector<MountManager*> mount_managers_;
 };
 
