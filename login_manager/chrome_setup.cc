@@ -435,6 +435,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("webui_login_view=2");
   builder->AddVmodulePattern("power_button_observer=2");
 
+  // Turn on logging for Night Light.
+  // See crbug.com/768902.
+  builder->AddVmodulePattern("*night_light*=1");
+
   // Turn on logging about external displays being connected and disconnected.
   // Different behavior is seen from different displays and these messages are
   // used to determine what happened within feedback reports.
