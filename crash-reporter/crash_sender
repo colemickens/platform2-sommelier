@@ -460,7 +460,7 @@ send_crash() {
   # "https://bugs.launchpad.net/ubuntu/+source/dash/+bug/139097").
   if [ -f "${LIST_PROXIES}" ]; then
     local proxy ret
-    proxy=$("${LIST_PROXIES}" --quiet "${url}")
+    proxy=$("${LIST_PROXIES}" "${url}")
     ret=$?
     if [ ${ret} -ne 0 ]; then
       proxy=''

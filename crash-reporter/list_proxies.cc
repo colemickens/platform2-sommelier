@@ -8,27 +8,14 @@
 #include <string>
 #include <vector>
 
-#include <base/command_line.h>
 #include <base/strings/string_util.h>
+#include <brillo/flag_helper.h>
 #include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 
 namespace {
-
-
-const char kHelp[] = "help";
-const char kQuiet[] = "quiet";
-const char kVerbose[] = "verbose";
-// Help message to show when the --help command line switch is specified.
-const char kHelpMessage[] =
-    "Chromium OS Crash helper: proxy lister\n"
-    "\n"
-    "Available Switches:\n"
-    "  --quiet      Only print the proxies\n"
-    "  --verbose    Print additional messages even when not run from a TTY\n"
-    "  --help       Show this help.\n";
 
 bool ShowBrowserProxies(const std::string& url) {
   dbus::Bus::Options options;
@@ -53,30 +40,17 @@ bool ShowBrowserProxies(const std::string& url) {
 }  // namespace
 
 int main(int argc, char *argv[]) {
-  base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  brillo::FlagHelper::Init(argc, argv, "Crash helper: proxy lister");
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (cl->HasSwitch(kHelp)) {
-    LOG(INFO) << kHelpMessage;
-    return 0;
+  if (argc > 2) {
+    LOG(ERROR) << "Only one argument allowed: an optional URL";
+    return 1;
   }
 
-  bool quiet = cl->HasSwitch(kQuiet);
-  bool verbose = cl->HasSwitch(kVerbose);
-
-  // Default to logging to syslog.
-  int init_flags = brillo::kLogToSyslog;
-  // Log to stderr if a TTY (and "-quiet" wasn't passed), or if "-verbose"
-  // was passed.
-
-  if ((!quiet && isatty(STDERR_FILENO)) || verbose)
-    init_flags |= brillo::kLogToStderr;
-  brillo::InitLog(init_flags);
-
   std::string url;
-  base::CommandLine::StringVector urls = cl->GetArgs();
-  if (!urls.empty()) {
-    url = urls[0];
+  if (argc > 1) {
+    url = argv[1];
     LOG(INFO) << "Resolving proxies for URL: " << url;
   } else {
     LOG(INFO) << "Resolving proxies without URL";
