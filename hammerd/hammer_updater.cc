@@ -311,7 +311,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
     metrics_->SendEnumToUMA(
         kMetricRWUpdateResult,
         static_cast<int>(ret
-            ? RWUpdateResult::kSuccess
+            ? RWUpdateResult::kSucceeded
             : RWUpdateResult::kTransferFailed),
         static_cast<int>(RWUpdateResult::kMax));
     LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
@@ -370,7 +370,7 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
   metrics_->SendEnumToUMA(
       kMetricROUpdateResult,
       static_cast<int>(ret
-          ? ROUpdateResult::kSuccess
+          ? ROUpdateResult::kSucceeded
           : ROUpdateResult::kTransferFailed),
       static_cast<int>(ROUpdateResult::kMax));
   LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
@@ -380,29 +380,43 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
 }
 
 HammerUpdater::RunStatus HammerUpdater::Pair() {
-  auto status = pair_manager_->PairChallenge(fw_updater_.get(),
-                                             dbus_wrapper_.get());
+  ChallengeStatus status = pair_manager_->PairChallenge(fw_updater_.get(),
+                                                        dbus_wrapper_.get());
+  PairResult metric_result = PairResult::kUnknownError;
+  HammerUpdater::RunStatus ret = HammerUpdater::RunStatus::kFatalError;
+
   switch (status) {
     case ChallengeStatus::kChallengePassed:
+      metric_result = PairResult::kChallengePassed;
       // TODO(akahuang): Check if the base is swapped.
-      return HammerUpdater::RunStatus::kNoUpdate;
+      ret = HammerUpdater::RunStatus::kNoUpdate;
+      break;
 
     case ChallengeStatus::kNeedInjectEntropy:
+      metric_result = PairResult::kNeedInjectEntropy;
       if (fw_updater_->IsRollbackLocked()) {
         if (!fw_updater_->UnlockRollback()) {
           LOG(ERROR) << "Failed to unlock rollback. Skip injecting entropy.";
-          return HammerUpdater::RunStatus::kFatalError;
+          ret = HammerUpdater::RunStatus::kFatalError;
+          break;
         }
       }
-      return HammerUpdater::RunStatus::kNeedInjectEntropy;
+      ret = HammerUpdater::RunStatus::kNeedInjectEntropy;
+      break;
 
     case ChallengeStatus::kChallengeFailed:
-      return HammerUpdater::RunStatus::kFatalError;
+      metric_result = PairResult::kChallengeFailed;
+      break;
 
     case ChallengeStatus::kUnknownError:
-      return HammerUpdater::RunStatus::kFatalError;
+      break;
   }
-  return HammerUpdater::RunStatus::kFatalError;
+
+  metrics_->SendEnumToUMA(
+      kMetricPairResult,
+      static_cast<int>(metric_result),
+      static_cast<int>(PairResult::kMax));
+  return ret;
 }
 
 void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {

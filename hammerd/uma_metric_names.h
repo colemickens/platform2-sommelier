@@ -11,19 +11,29 @@ namespace hammerd {
 
 const char kMetricROUpdateResult[] = DETACHABLE_BASE_PREFIX "ROUpdateResult";
 const char kMetricRWUpdateResult[] = DETACHABLE_BASE_PREFIX "RWUpdateResult";
+const char kMetricPairResult[] = DETACHABLE_BASE_PREFIX "PairResult";
 
 enum class ROUpdateResult {
-  kSuccess = 1,
+  kSucceeded = 1,
   kTransferFailed,
 
   kMax,
 };
 
 enum class RWUpdateResult {
-  kSuccess = 1,
+  kSucceeded = 1,
   kTransferFailed,
   kInvalidKey,
   kRollbackDisallowed,
+
+  kMax,
+};
+
+enum class PairResult {
+  kUnknownError = 0,
+  kChallengePassed = 1,
+  kChallengeFailed,
+  kNeedInjectEntropy,
 
   kMax,
 };
