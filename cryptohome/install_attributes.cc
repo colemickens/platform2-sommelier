@@ -110,7 +110,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
 
     set_is_initialized(true);
     tpm_init->RemoveTpmOwnerDependency(
-        Tpm::TpmOwnerDependency::kInstallAttributes);
+        TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
     return true;
   }
 
@@ -135,7 +135,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       }
       set_is_initialized(true);
       tpm_init->RemoveTpmOwnerDependency(
-          Tpm::TpmOwnerDependency::kInstallAttributes);
+          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
       // No data.
       return true;
       break;
@@ -144,7 +144,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       set_is_first_install(true);
       set_is_initialized(true);
       tpm_init->RemoveTpmOwnerDependency(
-          Tpm::TpmOwnerDependency::kInstallAttributes);
+          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
       // Since we write when we finalize, we don't try to reparse.
       return true;
       break;
@@ -192,7 +192,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   // don't need to hold owner dependency. So, repeat removing owner dependency
   // in case it didn't succeed during the first boot.
   tpm_init->RemoveTpmOwnerDependency(
-      Tpm::TpmOwnerDependency::kInstallAttributes);
+      TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
   return true;
 }
 

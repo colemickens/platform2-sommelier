@@ -152,7 +152,8 @@ class StubTpm : public Tpm {
       const SecureBlob& delegate_blob,
       const SecureBlob& delegate_secret) override { return false; }
   void DeclareTpmFirmwareStable() override {}
-  bool RemoveOwnerDependency(TpmOwnerDependency dependency) override
+  bool RemoveOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency dependency) override
     { return true; }
   bool ClearStoredPassword() override { return true; }
   bool GetVersionInfo(TpmVersionInfo* version_info) override { return false; }

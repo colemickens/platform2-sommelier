@@ -9,23 +9,22 @@
 // keys.
 // TODO(wad) make more functions virtual for use in mock_tpm.h.
 
+#ifndef CRYPTOHOME_TPM_H_
+#define CRYPTOHOME_TPM_H_
+
 #include <string>
 
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
 
-#include "tpm_status.pb.h"  // NOLINT(build/include)
+#include "cryptohome/tpm_persistent_state.h"
 
 #if USE_TPM2
 #include "cryptohome/tpm2.h"
 #else
 #include "cryptohome/tpm1.h"
 #endif
-
-#ifndef CRYPTOHOME_TPM_H_
-#define CRYPTOHOME_TPM_H_
-
 
 namespace cryptohome {
 
@@ -91,11 +90,6 @@ class Tpm {
 
     // NVRAM space is readable by firmware (PPREAD is set)
     kTpmNvramFirmwareReadable = (1<<2),
-  };
-
-  enum class TpmOwnerDependency {
-    kInstallAttributes,
-    kAttestation,
   };
 
   struct TpmStatusInfo {
@@ -574,7 +568,8 @@ class Tpm {
   // the owner password can be cleared.
   // Returns true if the dependency has been successfully removed or was
   // already removed by the time this function is called.
-  virtual bool RemoveOwnerDependency(TpmOwnerDependency dependency) = 0;
+  virtual bool RemoveOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency dependency) = 0;
 
   // Clears the stored owner password.
   // Returns true if the password is cleared by this method, or was already

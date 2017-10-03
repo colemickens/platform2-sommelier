@@ -1078,11 +1078,11 @@ TEST_F(Tpm2Test, DeclareTpmFirmwareStable) {
 
 TEST_F(Tpm2Test, RemoveOwnerDependencySuccess) {
   EXPECT_TRUE(tpm_->RemoveOwnerDependency(
-      Tpm::TpmOwnerDependency::kInstallAttributes));
+      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram,
             last_remove_owner_dependency_request.owner_dependency());
   EXPECT_TRUE(tpm_->RemoveOwnerDependency(
-      Tpm::TpmOwnerDependency::kAttestation));
+      TpmPersistentState::TpmOwnerDependency::kAttestation));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation,
             last_remove_owner_dependency_request.owner_dependency());
 }
@@ -1091,14 +1091,14 @@ TEST_F(Tpm2Test, RemoveOwnerDependencyFailure) {
   next_remove_owner_dependency_reply.set_status(
       tpm_manager::STATUS_DEVICE_ERROR);
   EXPECT_FALSE(tpm_->RemoveOwnerDependency(
-      Tpm::TpmOwnerDependency::kInstallAttributes));
+      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram,
             last_remove_owner_dependency_request.owner_dependency());
 }
 
 TEST_F(Tpm2Test, RemoveOwnerDependencyUnknown) {
-  Tpm::TpmOwnerDependency unknown_dep =
-      static_cast<Tpm::TpmOwnerDependency>(100);
+  TpmPersistentState::TpmOwnerDependency unknown_dep =
+      static_cast<TpmPersistentState::TpmOwnerDependency>(100);
   EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .Times(0);
   EXPECT_TRUE(tpm_->RemoveOwnerDependency(unknown_dep));

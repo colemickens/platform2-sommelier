@@ -32,9 +32,6 @@ const FilePath kMiscTpmCheckEnabledFile("/sys/class/misc/tpm0/device/enabled");
 const FilePath kMiscTpmCheckOwnedFile("/sys/class/misc/tpm0/device/owned");
 const FilePath kTpmTpmCheckEnabledFile("/sys/class/tpm/tpm0/device/enabled");
 const FilePath kTpmTpmCheckOwnedFile("/sys/class/tpm/tpm0/device/owned");
-extern const FilePath kTpmOwnedFile("/mnt/stateful_partition/.tpm_owned");
-const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
-const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
 const FilePath kDefaultCryptohomeKeyFile("/home/.shadow/cryptohome.key");
 
 const int kOwnerPasswordLength = 12;
@@ -69,7 +66,9 @@ class TpmInitTask : public PlatformThread::Delegate {
 };
 
 TpmInit::TpmInit(Tpm* tpm, Platform* platform)
-    : tpm_init_task_(new TpmInitTask()), platform_(platform) {
+    : tpm_init_task_(new TpmInitTask()),
+      platform_(platform),
+      tpm_persistent_state_(platform) {
   set_tpm(tpm);
 }
 
@@ -112,7 +111,7 @@ bool TpmInit::IsTpmReady() {
   return (tpm_init_task_->get_tpm()->IsEnabled() &&
           tpm_init_task_->get_tpm()->IsOwned() &&
           !tpm_init_task_->get_tpm()->IsBeingOwned() &&
-          platform_->FileExists(kTpmOwnedFile));
+          tpm_persistent_state_.IsReady());
 }
 
 bool TpmInit::IsTpmEnabled() {
@@ -144,20 +143,9 @@ bool TpmInit::GetTpmPassword(brillo::Blob* password) {
 }
 
 void TpmInit::ClearStoredTpmPassword() {
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    int32_t dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                               TpmStatus::ATTESTATION_NEEDS_OWNER;
-    if (tpm_status.flags() & dependency_flags) {
-      // The password is still needed, do not clear.
-      return;
-    }
-    if (tpm_status.has_owner_password()) {
-      tpm_status.clear_owner_password();
-      StoreTpmStatus(tpm_status);
-    }
+  if (tpm_persistent_state_.ClearStoredPasswordIfNotNeeded()) {
+    get_tpm()->ClearStoredPassword();
   }
-  get_tpm()->ClearStoredPassword();
 }
 
 void TpmInit::ThreadMain() {
@@ -190,7 +178,7 @@ bool TpmInit::SetupTpm(bool load_key) {
   }
 
   // In case of interrupted initialization, continue it.
-  if (IsTpmOwned() && !platform_->FileExists(kTpmOwnedFile)) {
+  if (IsTpmOwned() && !tpm_persistent_state_.IsReady()) {
     LOG(WARNING) << "Taking ownership was interrupted, continuing.";
     AsyncTakeOwnership();
   }
@@ -230,30 +218,17 @@ void TpmInit::RestoreTpmStateFromStorage() {
   get_tpm()->SetIsEnabled(is_enabled);
 
   if (successful_check && !is_owned) {
-    platform_->DeleteFileDurable(kOpenCryptokiPath, true);
-    platform_->DeleteFileDurable(kTpmOwnedFile, false);
-    platform_->DeleteFileDurable(kTpmStatusFile, false);
+    tpm_persistent_state_.SetReady(false);
+    tpm_persistent_state_.ClearStatus();
   }
 
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    if (tpm_status.has_owner_password()) {
-      SecureBlob local_owner_password;
-      if (LoadOwnerPassword(tpm_status, &local_owner_password)) {
-        get_tpm()->SetOwnerPassword(local_owner_password);
-      }
-    }
+  SecureBlob local_owner_password;
+  if (LoadOwnerPassword(&local_owner_password)) {
+    get_tpm()->SetOwnerPassword(local_owner_password);
   }
 }
 
 bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
-  TpmStatus tpm_status;
-
-  if (!LoadTpmStatus(&tpm_status)) {
-    tpm_status.Clear();
-    tpm_status.set_flags(TpmStatus::NONE);
-  }
-
   if (OUT_took_ownership) {
     *OUT_took_ownership = false;
   }
@@ -269,9 +244,8 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
   bool took_ownership = false;
   if (!IsTpmOwned()) {
     SetTpmBeingOwned(true);
-    platform_->DeleteFileDurable(kOpenCryptokiPath, true);
-    platform_->DeleteFileDurable(kTpmOwnedFile, false);
-    platform_->DeleteFileDurable(kTpmStatusFile, false);
+    tpm_persistent_state_.SetReady(false);
+    tpm_persistent_state_.ClearStatus();
 
     if (!get_tpm()->IsEndorsementKeyAvailable()) {
       if (!get_tpm()->CreateEndorsementKey()) {
@@ -293,15 +267,9 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
       return false;
     }
 
+    tpm_persistent_state_.SetDefaultPassword();
     SetTpmOwned(true);
     took_ownership = true;
-
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_WELL_KNOWN_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    tpm_status.clear_owner_password();
-    StoreTpmStatus(tpm_status);
   }
 
   if (OUT_took_ownership) {
@@ -310,7 +278,7 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
 
   // If we can open the TPM with the default password, then we still need to
   // zero the SRK password and unrestrict it, then change the owner password.
-  if (!platform_->FileExists(kTpmOwnedFile) &&
+  if (!tpm_persistent_state_.IsReady() &&
       get_tpm()->TestTpmAuth(default_owner_password)) {
     if (!get_tpm()->InitializeSrk(default_owner_password)) {
       LOG(ERROR) << "Couldn't initialize the SRK";
@@ -321,16 +289,15 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
     SecureBlob owner_password;
     CreateOwnerPassword(&owner_password);
 
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_RANDOM_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    if (!StoreOwnerPassword(owner_password, &tpm_status)) {
-      LOG(ERROR) << "Couldn't store the owner password.";
-      tpm_status.clear_owner_password();
+    SecureBlob sealed_password;
+    if (!get_tpm()->SealToPCR0(owner_password, &sealed_password)) {
+      LOG(ERROR) << "Failed to seal owner password.";
       return false;
     }
-    StoreTpmStatus(tpm_status);
+    if (!tpm_persistent_state_.SetSealedPassword(sealed_password)) {
+      LOG(ERROR) << "Couldn't store the owner password.";
+      return false;
+    }
 
     if ((!get_tpm()->ChangeOwnerPassword(default_owner_password,
                                          owner_password))) {
@@ -346,51 +313,10 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
   // assume that the TPM has already been owned and set to a random password.
   // In any case, it's time to touch the TPM owned file to indicate that we
   // don't need to re-attempt completing initialization on the next boot.
-  if (!platform_->FileExists(kTpmOwnedFile)) {
-    platform_->TouchFileDurable(kTpmOwnedFile);
-  }
+  tpm_persistent_state_.SetReady(true);
 
   SetTpmBeingOwned(false);
   return true;
-}
-
-bool TpmInit::LoadTpmStatus(TpmStatus* serialized) {
-  if (!platform_->FileExists(kTpmStatusFile)) {
-    return false;
-  }
-  SecureBlob file_data;
-  if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
-    return false;
-  }
-  if (!serialized->ParseFromArray(file_data.data(), file_data.size())) {
-    return false;
-  }
-  return true;
-}
-
-bool TpmInit::StoreTpmStatus(const TpmStatus& serialized) {
-  if (platform_->FileExists(kTpmStatusFile)) {
-    // Shred old status file, not very useful on SSD. :(
-    do {
-      int64_t file_size;
-      if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
-        break;
-      }
-      SecureBlob random;
-      if (!get_tpm()->GetRandomData(file_size, &random)) {
-        break;
-      }
-      platform_->WriteFile(kTpmStatusFile, random);
-      platform_->DataSyncFile(kTpmStatusFile);
-    } while (false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-  }
-
-  SecureBlob final_blob(serialized.ByteSize());
-  serialized.SerializeWithCachedSizesToArray(
-      static_cast<google::protobuf::uint8*>(final_blob.data()));
-  bool ok = platform_->WriteFileAtomicDurable(kTpmStatusFile, final_blob, 0600);
-  return ok;
 }
 
 void TpmInit::CreateOwnerPassword(SecureBlob* password) {
@@ -405,71 +331,31 @@ void TpmInit::CreateOwnerPassword(SecureBlob* password) {
   password->swap(tpm_password);
 }
 
-bool TpmInit::LoadOwnerPassword(const TpmStatus& tpm_status,
-                                brillo::Blob* owner_password) {
-  if (!(tpm_status.flags() & TpmStatus::OWNED_BY_THIS_INSTALL)) {
+bool TpmInit::LoadOwnerPassword(brillo::SecureBlob* owner_password) {
+  SecureBlob sealed_password;
+  if (!tpm_persistent_state_.GetSealedPassword(&sealed_password)) {
     return false;
   }
-  if ((tpm_status.flags() & TpmStatus::USES_WELL_KNOWN_OWNER)) {
-    SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-    memcpy(default_owner_password.data(), kTpmWellKnownPassword,
+  if (sealed_password.empty()) {
+    // Empty password means default password.
+    owner_password->resize(sizeof(kTpmWellKnownPassword));
+    memcpy(owner_password->data(), kTpmWellKnownPassword,
            sizeof(kTpmWellKnownPassword));
-    owner_password->swap(default_owner_password);
     return true;
   }
-  if (!(tpm_status.flags() & TpmStatus::USES_RANDOM_OWNER) ||
-      !tpm_status.has_owner_password()) {
-    return false;
-  }
-
-  SecureBlob local_owner_password(tpm_status.owner_password().length());
-  tpm_status.owner_password().copy(
-      local_owner_password.char_data(),
-      tpm_status.owner_password().length(), 0);
-  if (!get_tpm()->Unseal(local_owner_password, owner_password)) {
+  if (!get_tpm()->Unseal(sealed_password, owner_password)) {
     LOG(ERROR) << "Failed to unseal the owner password.";
     return false;
   }
   return true;
 }
 
-bool TpmInit::StoreOwnerPassword(const brillo::Blob& owner_password,
-                                 TpmStatus* tpm_status) {
-  // Use PCR0 when sealing the data so that the owner password is only
-  // available in the current boot mode.  This helps protect the password from
-  // offline attacks until it has been presented and cleared.
-  SecureBlob sealed_password;
-  if (!get_tpm()->SealToPCR0(owner_password, &sealed_password)) {
-    LOG(ERROR) << "StoreOwnerPassword: Failed to seal owner password.";
-    return false;
-  }
-  tpm_status->set_owner_password(sealed_password.data(),
-                                 sealed_password.size());
-  return true;
-}
-
-void TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
-  int32_t flag_to_clear = TpmStatus::NONE;
-  switch (dependency) {
-    case Tpm::TpmOwnerDependency::kInstallAttributes:
-      flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
-      break;
-    case Tpm::TpmOwnerDependency::kAttestation:
-      flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
-      break;
-    default:
-      CHECK(false);
-  }
+void TpmInit::RemoveTpmOwnerDependency(
+    TpmPersistentState::TpmOwnerDependency dependency) {
   if (!get_tpm()->RemoveOwnerDependency(dependency)) {
     return;
   }
-  TpmStatus tpm_status;
-  if (!LoadTpmStatus(&tpm_status))
-    return;
-  if (tpm_status.flags() & flag_to_clear) {
-    tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
-    StoreTpmStatus(tpm_status);
-  }
+  tpm_persistent_state_.ClearDependency(dependency);
 }
 
 bool TpmInit::CheckSysfsForOne(const FilePath& file_name) const {

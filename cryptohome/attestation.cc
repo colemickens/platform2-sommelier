@@ -345,7 +345,8 @@ void Attestation::Initialize(Tpm* tpm,
     FinalizeEndorsementData();
     LOG(INFO) << "Attestation: Valid attestation data exists.";
     // Make sure the owner password is not being held on our account.
-    tpm_init_->RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency::kAttestation);
+    tpm_init_->RemoveTpmOwnerDependency(
+        TpmPersistentState::TpmOwnerDependency::kAttestation);
   }
 }
 
@@ -625,7 +626,8 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to store db.";
     return;
   }
-  tpm_init_->RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency::kAttestation);
+  tpm_init_->RemoveTpmOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency::kAttestation);
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
             << "ms).";

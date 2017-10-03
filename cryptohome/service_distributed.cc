@@ -253,7 +253,8 @@ void ServiceDistributed::AttestationInitializeTpmComplete() {
   // the Attestation dependency with tpm_manager. Here we just clear
   // it in local TpmStatus stored by cryptohomed, so that it doesn't
   // prevent ClearStoredOwnerPassword from being sent to tpm_manager.
-  tpm_init_->RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency::kAttestation);
+  tpm_init_->RemoveTpmOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency::kAttestation);
 }
 
 void ServiceDistributed::AttestationGetTpmStatus(GetTpmStatusReply* reply_out) {

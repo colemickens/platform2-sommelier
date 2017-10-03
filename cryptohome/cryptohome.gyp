@@ -128,6 +128,7 @@
         'platform.cc',
         'tpm.cc',
         'tpm_init.cc',
+        'tpm_persistent_state.cc',
       ],
       'conditions': [
         ['USE_tpm2 == 1', {
@@ -569,6 +570,7 @@
             'service_unittest.cc',
             'stateful_recovery_unittest.cc',
             'tpm_init_unittest.cc',
+            'tpm_persistent_state_unittest.cc',
             'user_oldest_activity_timestamp_cache_unittest.cc',
             'user_session_unittest.cc',
             'username_passkey_unittest.cc',

@@ -15,8 +15,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "cryptohome/tpm.h"
-
-#include "tpm_status.pb.h"  // NOLINT(build/include)
+#include "cryptohome/tpm_persistent_state.h"
 
 namespace cryptohome {
 
@@ -107,7 +106,8 @@ class TpmInit {
   //
   // Parameters
   //   dependency - The dependency (on TPM ownership) to be removed
-  virtual void RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency);
+  virtual void RemoveTpmOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency dependency);
 
   virtual void set_tpm(Tpm* value);
 
@@ -129,25 +129,14 @@ class TpmInit {
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
   void RestoreTpmStateFromStorage();
 
-  // Loads the TpmStatus object.
-  bool LoadTpmStatus(TpmStatus* serialized);
-
-  // Saves the TpmStatus object.
-  bool StoreTpmStatus(const TpmStatus& serialized);
-
   // Creates a random owner password.
   //
   // Parameters
   //   password (OUT) - the generated password
   void CreateOwnerPassword(brillo::SecureBlob* password);
 
-  // Stores the TPM owner password to the TpmStatus object.
-  bool StoreOwnerPassword(const brillo::Blob& owner_password,
-                          TpmStatus* tpm_status);
-
   // Retrieves the TPM owner password.
-  bool LoadOwnerPassword(const TpmStatus& tpm_status,
-                         brillo::Blob* owner_password);
+  bool LoadOwnerPassword(brillo::SecureBlob* owner_password);
 
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
   // entry in either /sys/class/misc or /sys/class/tpm.
@@ -181,6 +170,7 @@ class TpmInit {
   bool statistics_reported_ = false;
   int64_t initialization_time_ = 0;
   Platform* platform_ = nullptr;
+  TpmPersistentState tpm_persistent_state_;
   ScopedKeyHandle cryptohome_key_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);

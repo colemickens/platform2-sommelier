@@ -347,7 +347,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |
                        TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
@@ -361,7 +361,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyAlreadyRemoved) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
@@ -375,7 +375,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
@@ -386,7 +386,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
 }
 
 TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
-  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
@@ -481,10 +481,11 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
   EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
 }
 
-TEST_F(TpmInitTest, IsTpmReady) {
+TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
+  FileTouch(kTpmOwnedFile);
+
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
-  FileTouch(kTpmOwnedFile);
   EXPECT_TRUE(tpm_init_.IsTpmReady());
 
   SetIsTpmOwned(false);
@@ -493,10 +494,12 @@ TEST_F(TpmInitTest, IsTpmReady) {
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(true);
   EXPECT_FALSE(tpm_init_.IsTpmReady());
+}
 
+TEST_F(TpmInitTest, IsTpmReadyNoOwnedFile) {
+  FileDelete(kTpmOwnedFile, false);
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
-  FileDelete(kTpmOwnedFile, false);
   EXPECT_FALSE(tpm_init_.IsTpmReady());
 }
 

@@ -2848,7 +2848,8 @@ void TpmImpl::CloseHandle(TpmKeyHandle key_handle) {
   Tspi_Context_CloseObject(tpm_context_.value(), key_handle);
 }
 
-bool TpmImpl::RemoveOwnerDependency(TpmOwnerDependency /* dependency */) {
+bool TpmImpl::RemoveOwnerDependency(
+    TpmPersistentState::TpmOwnerDependency /* dependency */) {
   return true;
 }
 

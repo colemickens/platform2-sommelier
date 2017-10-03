@@ -40,6 +40,8 @@ namespace {
 constexpr TPM_RC kResponseLayerMask = 0xFFFFF000;
 
 using cryptohome::Tpm;
+using cryptohome::TpmPersistentState;
+
 Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
   // For hardware TPM errors and TPM-equivalent response codes produced by
   // Resource Manager, use just the error number and strip everything else.
@@ -88,14 +90,14 @@ Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
 }
 
 // Sets owner_dependency field in RemoveOwnerDependencyRequest based on
-// the provided Tpm::TpmOwnerDependency value
-void SetOwnerDependency(Tpm::TpmOwnerDependency dependency,
+// the provided TpmPersistentState::TpmOwnerDependency value
+void SetOwnerDependency(TpmPersistentState::TpmOwnerDependency dependency,
                         std::string* dependency_field) {
   switch (dependency) {
-    case Tpm::TpmOwnerDependency::kInstallAttributes:
+    case TpmPersistentState::TpmOwnerDependency::kInstallAttributes:
         dependency_field->assign(tpm_manager::kTpmOwnerDependency_Nvram);
         break;
-    case Tpm::TpmOwnerDependency::kAttestation:
+    case TpmPersistentState::TpmOwnerDependency::kAttestation:
         dependency_field->assign(tpm_manager::kTpmOwnerDependency_Attestation);
         break;
     default:
@@ -1101,7 +1103,8 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
   return (tpm_status_.status() == tpm_manager::STATUS_SUCCESS);
 }
 
-bool Tpm2Impl::RemoveOwnerDependency(TpmOwnerDependency dependency) {
+bool Tpm2Impl::RemoveOwnerDependency(
+    TpmPersistentState::TpmOwnerDependency dependency) {
   if (!InitializeTpmManagerClients()) {
     return false;
   }
