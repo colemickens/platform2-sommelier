@@ -150,9 +150,19 @@ int main(int argc, char** argv) {
     // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
     // which may not be available at early boot.
     imageloader::ImageLoaderImpl loader(std::move(config));
+
+    std::string flash_version =
+        loader.GetComponentVersion(FLAGS_mount_component);
+    // imageloader returns "" if the component doesn't exist. In this case
+    // return 0 so our crash reporting doesn't think something actually went
+    // wrong.
+    if (flash_version.empty())
+      return 0;
+
     if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
                               helper_process.get())) {
-      LOG(ERROR) << "Failed to verify and mount component.";
+      LOG(ERROR) << "Failed to verify and mount component: "
+                 << FLAGS_mount_component << " at " << FLAGS_mount_point;
       return 1;
     }
     return 0;

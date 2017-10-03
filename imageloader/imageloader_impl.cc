@@ -211,11 +211,20 @@ base::FilePath ImageLoaderImpl::GetComponentRoot(
 bool ImageLoaderImpl::GetPathToCurrentComponentVersion(
     const std::string& component_name, base::FilePath* result) {
   base::FilePath component_root(GetComponentRoot(component_name));
-  // Read the latest version file.
+  base::FilePath latest_version_path = GetLatestVersionFilePath(component_name);
+
+  // Check that the version file exists, otherwise the logging when
+  // ReadFileToString fails confuses the crash reporting. If the file doesn't
+  // exist, the component most likely isn't installed.
+  if (!base::PathExists(latest_version_path)) {
+    LOG(INFO) << "The latest-version file does not exist. Component "
+              << component_name << " is probably not installed.";
+    return false;
+  }
+
   std::string latest_version;
-  if (!base::ReadFileToStringWithMaxSize(
-          GetLatestVersionFilePath(component_name), &latest_version,
-          kMaximumLatestVersionSize)) {
+  if (!base::ReadFileToStringWithMaxSize(latest_version_path, &latest_version,
+                                         kMaximumLatestVersionSize)) {
     LOG(ERROR) << "Failed to read latest-version file.";
     return false;
   }
