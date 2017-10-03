@@ -145,6 +145,14 @@ class CryptoUtility {
   // must be provided in X.509 SubjectPublicKeyInfo format.
   virtual bool GetKeyDigest(const std::string& public_key,
                             std::string* key_digest) = 0;
+
+  // Computes and returns an HMAC of |data| using |key| and SHA-256.
+  virtual std::string HmacSha256(const std::string& key,
+                                 const std::string& data) = 0;
+
+  // Computes and returns an HMAC of |data| using |key| and SHA-512.
+  virtual std::string HmacSha512(const std::string& key,
+                                 const std::string& data) = 0;
 };
 
 }  // namespace attestation

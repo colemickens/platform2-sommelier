@@ -338,4 +338,25 @@ TEST_F(CryptoUtilityImplTest, KDFaKnownAnswerTest) {
   EXPECT_EQ(expected_output_128, KDFa(key, "STORAGE", context, 128));
 }
 
+TEST_F(CryptoUtilityImplTest, HmacSha256KnownAnswerTest) {
+  std::string key = HexDecode(
+      "3DE45E7AC03354DE42C3B02A8D370FBEE98AAEC3F333D1475EC3BB62D4690A07");
+  std::string data = HexDecode("706C656173655F686D61635F74686973");
+  std::string expected_output = HexDecode(
+      "02E3A9D63DA50426AF92AA849FE20D5BA7DB656E8E35CC1E1562D7365F9D893E");
+
+  EXPECT_EQ(expected_output, crypto_utility_->HmacSha256(key, data));
+}
+
+TEST_F(CryptoUtilityImplTest, HmacSha512KnownAnswerTest) {
+  std::string key = HexDecode(
+      "3DE45E7AC03354DE42C3B02A8D370FBEE98AAEC3F333D1475EC3BB62D4690A07");
+  std::string data = HexDecode("706C656173655F686D61635F74686973");
+  std::string expected_output = HexDecode(
+      "573C0E7F8CE36935F5110363CCC240B30225919226730121DC0D1982ECB007CCE2D85C11"
+      "15921E13AC8180B4BD9454B1463B897462F9FAD831066E117CF1D077");
+
+  EXPECT_EQ(expected_output, crypto_utility_->HmacSha512(key, data));
+}
+
 }  // namespace attestation

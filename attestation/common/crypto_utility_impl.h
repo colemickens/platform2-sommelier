@@ -88,6 +88,12 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool GetKeyDigest(const std::string& public_key,
                     std::string* key_digest) override;
 
+  std::string HmacSha256(const std::string& key,
+                         const std::string& data) override;
+
+  std::string HmacSha512(const std::string& key,
+                         const std::string& data) override;
+
  private:
   friend class CryptoUtilityImplTest;
 
@@ -114,12 +120,6 @@ class CryptoUtilityImpl : public CryptoUtility {
                   const std::string& key,
                   const std::string& iv,
                   std::string* data);
-
-  // Computes and returns an HMAC of |data| using |key| and SHA-256.
-  std::string HmacSha256(const std::string& key, const std::string& data);
-
-  // Computes and returns an HMAC of |data| using |key| and SHA-512.
-  std::string HmacSha512(const std::string& key, const std::string& data);
 
   // Encrypt like trousers does. This is like AesEncrypt but a random IV is
   // included in the output.
