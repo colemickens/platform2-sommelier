@@ -269,7 +269,8 @@ class SessionManagerImpl
   bool StartContainer(brillo::ErrorPtr* error,
                       const std::string& in_path,
                       const std::string& in_name,
-                      const std::string& in_hashed_username) override;
+                      const std::string& in_hashed_username,
+                      bool in_writable) override;
   bool StopContainer(brillo::ErrorPtr* error,
                      const std::string& in_name) override;
   bool StartArcInstance(brillo::ErrorPtr* error,

@@ -1187,7 +1187,8 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
 bool SessionManagerImpl::StartContainer(brillo::ErrorPtr* error,
                                         const std::string& in_path,
                                         const std::string& in_name,
-                                        const std::string& in_hashed_username) {
+                                        const std::string& in_hashed_username,
+                                        bool in_writable) {
   // Ensure that the vm component is installed.
   dbus::MethodCall method_call(
       chromeos::kComponentUpdaterServiceInterface,
@@ -1222,7 +1223,8 @@ bool SessionManagerImpl::StartContainer(brillo::ErrorPtr* error,
   // limits the caller to reading files that they own.
   if (container_path.empty() || container_path.ReferencesParent())
     return false;
-  if (!termina_manager_->StartVmContainer(container_path, in_name)) {
+  if (!termina_manager_->StartVmContainer(container_path, in_name,
+                                          in_writable)) {
     constexpr char kMessage[] = "Container start failed.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kContainerStartupFail, kMessage);

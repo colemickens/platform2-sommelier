@@ -387,14 +387,25 @@ cmd_vmc() (
   local cmd="$1"; shift
   case "${cmd}" in
   start)
-    if [ $# -ne 2 ]; then
-      help "Usage: vmc ${cmd} <conatiner path> <container name>"
+    local usage="Usage: vmc ${cmd} <container path> <container name> [writable]"
+    if [ $# -ne 2 ] && [ $# -ne 3 ]; then
+      help "${usage}"
       return 1
     fi
     local container="$1"; shift
-    local name="$1";shift
+    local name="$1"; shift
+    local writable="false"
+    if [ $# -eq 1 ]; then
+      if [ "$1" = "writable" ]; then
+        writable="true"
+      else
+        help "${usage}"
+        return 1
+      fi
+    fi
     # TODO(dgreid) - crbug.com/770766 - Fill user id field.
-    session_manager "StartContainer" "string:${container}" "string:${name}" "string:"
+    session_manager "StartContainer" "string:${container}" "string:${name}" \
+        "string:" "boolean:${writable}"
     ;;
   stop)
     if [ $# -ne 1 ]; then

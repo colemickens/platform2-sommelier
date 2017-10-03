@@ -13,7 +13,8 @@ FakeTerminaManager::FakeTerminaManager() {}
 FakeTerminaManager::~FakeTerminaManager() {}
 
 bool FakeTerminaManager::StartVmContainer(const base::FilePath& image_path,
-                                          const std::string& name) {
+                                          const std::string& name,
+                                          bool writable) {
   return true;
 }
 

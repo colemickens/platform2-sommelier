@@ -19,7 +19,8 @@ class FakeTerminaManager : public TerminaManagerInterface {
 
   // TerminaManagerInterface:
   bool StartVmContainer(const base::FilePath& image_path,
-                        const std::string& name) override;
+                        const std::string& name,
+                        bool writable) override;
   bool StopVmContainer(const std::string& name) override;
 
   // JobManagerInterface:

@@ -1453,13 +1453,14 @@ TEST_F(SessionManagerImplTest, ContainerValidChars) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartContainer(&error, kContainerPath, kContainerName,
-                                    kHashedUserName));
+                                    kHashedUserName, false));
   EXPECT_FALSE(impl_->StartContainer(&error, kContainerPath,
-                                     kInvalidContainerName, kHashedUserName));
+                                     kInvalidContainerName, kHashedUserName,
+                                     false));
   EXPECT_FALSE(impl_->StartContainer(&error, kInvalidContainerPath,
-                                     kContainerName, kHashedUserName));
+                                     kContainerName, kHashedUserName, false));
   EXPECT_FALSE(impl_->StartContainer(&error, kParentContainerPath,
-                                     kContainerName, kHashedUserName));
+                                     kContainerName, kHashedUserName, false));
 }
 
 #if USE_CHEETS

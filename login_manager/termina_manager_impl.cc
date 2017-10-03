@@ -29,6 +29,7 @@ namespace {
 const char kVmLauncherPath[] = "/usr/bin/vm_launcher";
 const char kVmToolAllVms[] = "all";
 const char kVmToolContainerOpt[] = "--container";
+const char kVmToolRwContainerOpt[] = "--rwcontainer";
 const char kVmToolForceOpt[] = "--force";
 const char kVmToolGetName[] = "getname";
 const char kVmToolStart[] = "start";
@@ -94,14 +95,17 @@ void TerminaManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 bool TerminaManagerImpl::StartVmContainer(const base::FilePath& image_path,
-                                          const std::string& name) {
+                                          const std::string& name,
+                                          bool writable) {
   LOG(INFO) << "Starting container " << image_path.value()
             << " in termina VM " << name;
 
   brillo::ProcessImpl vmtool;
   vmtool.AddArg(kVmLauncherPath);
   vmtool.AddArg(kVmToolStart);
-  vmtool.AddArg(std::string(kVmToolContainerOpt) + "=" + image_path.value());
+  vmtool.AddArg(base::StringPrintf(
+      "%s=%s", writable ? kVmToolRwContainerOpt : kVmToolContainerOpt,
+      image_path.value().c_str()));
   vmtool.AddArg(name);
 
   return vmtool.Run() == 0;
