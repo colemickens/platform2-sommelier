@@ -129,10 +129,6 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   void BoolMethodReplyCallback(DBusMethodResponsePtr<bool> response,
                                const Error& error,
                                bool returned);
-  template<typename T>
-  void TypedMethodReplyCallback(DBusMethodResponsePtr<T> response,
-                                const Error& error,
-                                const T& returned);
 
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

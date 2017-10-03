@@ -42,6 +42,22 @@ static string ObjectID(ChromeosDBusAdaptor* d) {
 }
 }
 
+namespace {
+
+template <typename T>
+void TypedMethodReplyCallback(DBusMethodResponsePtr<T> response,
+                              const Error& error,
+                              const T& returned) {
+  brillo::ErrorPtr chromeos_error;
+  if (error.ToChromeosError(&chromeos_error)) {
+    response->ReplyWithError(chromeos_error.get());
+  } else {
+    response->Return(returned);
+  }
+}
+
+}  // namespace
+
 // public static
 const char ChromeosDBusAdaptor::kNullPath[] = "/";
 
@@ -139,17 +155,6 @@ void ChromeosDBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,
     response->ReplyWithError(chromeos_error.get());
   } else {
     response->Return();
-  }
-}
-
-template<typename T>
-void ChromeosDBusAdaptor::TypedMethodReplyCallback(
-    DBusMethodResponsePtr<T> response, const Error& error, const T& returned) {
-  brillo::ErrorPtr chromeos_error;
-  if (error.ToChromeosError(&chromeos_error)) {
-    response->ReplyWithError(chromeos_error.get());
-  } else {
-    response->Return(returned);
   }
 }
 
