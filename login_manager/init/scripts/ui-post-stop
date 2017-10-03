@@ -43,7 +43,7 @@ bootstat other-processes-terminated
 # general cleanup.
 if [ -f /usr/bin/run_oci ]; then
   for container in /run/containers/* ; do
-    if [[ -d "${container}" ]]; then
+    if [ -d "${container}" ]; then
       run_oci kill "${container##*/}"
       run_oci destroy "${container##*/}"
     fi
@@ -54,7 +54,7 @@ fi
 # This needs to be done prior to cryptohome unmounting so that there are no
 # remaining processes with files open that would prevent a clean unmount.
 for container in /run/containers/* ; do
-  if [[ -d "${container}" ]]; then
+  if [ -d "${container}" ]; then
     kill_with_open_files_on "${container}/root"
     umount -R "${container}/root"
     rm -rf "${container}"
