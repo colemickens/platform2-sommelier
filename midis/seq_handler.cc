@@ -115,6 +115,8 @@ bool SeqHandler::InitSeq() {
   out_client_.reset(out_client.release());
   decoder_.reset(decoder.release());
 
+  EnumerateExistingDevices();
+
   // Obtain the poll file descriptor to watch.
   pfd_ = std::make_unique<pollfd>();
   snd_seq_poll_descriptors(in_client_.get(), pfd_.get(), 1, POLLIN);
@@ -412,6 +414,29 @@ void SeqHandler::ProcessMidiEvent(snd_seq_event_t* event) {
 int SeqHandler::SndSeqEventOutputDirect(snd_seq_t* out_client,
                                         snd_seq_event_t* event) {
   return snd_seq_event_output_direct(out_client, event);
+}
+
+void SeqHandler::EnumerateExistingDevices() {
+  snd_seq_client_info_t* client_info;
+  snd_seq_client_info_alloca(&client_info);
+  snd_seq_port_info_t* port_info;
+  snd_seq_port_info_alloca(&port_info);
+
+  snd_seq_client_info_set_client(client_info, -1);
+  while (!snd_seq_query_next_client(in_client_.get(), client_info)) {
+    int device_id = snd_seq_client_info_get_client(client_info);
+    AddSeqDevice(device_id);
+
+    // Call AddSeqPort to make sure we "process" all the ports of a client.
+    // Note that currently we don't support the dynamic addition / deletion
+    // of ports.
+    snd_seq_port_info_set_client(port_info, device_id);
+    snd_seq_port_info_set_port(port_info, -1);
+    while (!snd_seq_query_next_port(in_client_.get(), port_info)) {
+      int port_id = snd_seq_port_info_get_port(port_info);
+      AddSeqPort(device_id, port_id);
+    }
+  }
 }
 
 }  // namespace midis

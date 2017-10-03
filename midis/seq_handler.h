@@ -129,6 +129,9 @@ class SeqHandler : public SeqHandlerInterface {
   friend class SeqHandlerTest;
   FRIEND_TEST(SeqHandlerTest, TestEncodeBytes);
 
+  // Enumerates all clients which are already connected to the ALSA Sequencer.
+  void EnumerateExistingDevices();
+
   std::unique_ptr<snd_seq_t, SeqDeleter> in_client_;
   std::unique_ptr<snd_seq_t, SeqDeleter> out_client_;
   std::unique_ptr<snd_midi_event_t, MidiEventDeleter> decoder_;
