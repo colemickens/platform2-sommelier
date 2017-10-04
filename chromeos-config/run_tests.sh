@@ -3,9 +3,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Script to run basic tests on the config example in README.md
+# Script to run all unit tests in cros_config as well as a basic tests on the
+# config example in README.md
 
-# Use awk to extract the example (between ``` markers) and add a header / footer
+# Run all unit tests (all files ending with test.py recursively)
+for pytest in $(find . -name "*test.py"); do
+  echo "Running tests in ${pytest}"
+  "./${pytest}" || exit 1
+done
+
+# Test the README file, use awk to extract the example (between ``` markers) and
+# add a header / footer
 tmp="/tmp/test.$$"
 awk 'BEGIN {print "/dts-v1/; / {" } END {print "};"} \
             /```/{flag = !flag; next} flag' README.md > "${tmp}"
