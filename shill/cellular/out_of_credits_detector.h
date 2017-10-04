@@ -26,17 +26,11 @@
 namespace shill {
 
 class CellularService;
-class EventDispatcher;
-class Manager;
-class Metrics;
 
 // Base class for the various out-of-credits detection mechanism.
 class OutOfCreditsDetector {
  public:
-  OutOfCreditsDetector(EventDispatcher* dispatcher,
-                       Manager* manager,
-                       Metrics* metrics,
-                       CellularService* service);
+  explicit OutOfCreditsDetector(CellularService* service);
   virtual ~OutOfCreditsDetector();
 
   // Various types of out-of-credits detections.
@@ -52,11 +46,7 @@ class OutOfCreditsDetector {
   // For OOCTypeSubscriptionState, this method returns
   // SubscriptionStateOutOfCreditsDetector.
   static std::unique_ptr<OutOfCreditsDetector> CreateDetector(
-      OOCType detector_type,
-      EventDispatcher* dispatcher,
-      Manager* manager,
-      Metrics* metrics,
-      CellularService* service);
+      OOCType detector_type, CellularService* service);
 
   // Resets the detector state.
   virtual void ResetDetector() = 0;
@@ -76,15 +66,9 @@ class OutOfCreditsDetector {
   void ReportOutOfCredits(bool state);
 
   // Property accessors reserved for subclasses.
-  EventDispatcher* dispatcher() const { return dispatcher_; }
-  Manager* manager() const { return manager_; }
-  Metrics* metrics() const { return metrics_; }
   CellularService* service() const { return service_; }
 
  private:
-  EventDispatcher* dispatcher_;
-  Manager* manager_;
-  Metrics* metrics_;
   CellularService* service_;
   // Flag indicating if the account is out-of-credits.
   bool out_of_credits_;

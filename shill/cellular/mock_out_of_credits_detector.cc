@@ -20,12 +20,8 @@
 
 namespace shill {
 
-MockOutOfCreditsDetector::MockOutOfCreditsDetector(
-    EventDispatcher* dispatcher,
-    Manager* manager,
-    Metrics* metrics,
-    CellularService* service)
-    : OutOfCreditsDetector(dispatcher, manager, metrics, service) {}
+MockOutOfCreditsDetector::MockOutOfCreditsDetector(CellularService* service)
+    : OutOfCreditsDetector(service) {}
 
 MockOutOfCreditsDetector::~MockOutOfCreditsDetector() {}
 

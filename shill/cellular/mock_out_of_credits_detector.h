@@ -25,10 +25,7 @@ namespace shill {
 
 class MockOutOfCreditsDetector : public OutOfCreditsDetector {
  public:
-  MockOutOfCreditsDetector(EventDispatcher* dispatcher,
-                           Manager* manager,
-                           Metrics* metrics,
-                           CellularService* service);
+  explicit MockOutOfCreditsDetector(CellularService* service);
   ~MockOutOfCreditsDetector() override;
 
   MOCK_METHOD0(ResetDetector, void());

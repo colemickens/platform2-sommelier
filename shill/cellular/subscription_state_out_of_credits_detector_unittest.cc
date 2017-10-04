@@ -55,9 +55,7 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
         service_(new NiceMock<MockCellularService>(&modem_info_, cellular_)),
         connection_(new NiceMock<MockConnection>(&device_info_)),
         out_of_credits_detector_(
-            new SubscriptionStateOutOfCreditsDetector(
-                modem_info_.dispatcher(), modem_info_.manager(),
-                modem_info_.metrics(), service_.get())) {}
+            new SubscriptionStateOutOfCreditsDetector(service_.get())) {}
 
   void SetUp() override {
     service_->connection_ = connection_;

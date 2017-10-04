@@ -33,37 +33,23 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
 }
 
-OutOfCreditsDetector::OutOfCreditsDetector(EventDispatcher* dispatcher,
-                                           Manager* manager,
-                                           Metrics* metrics,
-                                           CellularService* service)
-    : dispatcher_(dispatcher),
-      manager_(manager),
-      metrics_(metrics),
-      service_(service),
-      out_of_credits_(false) {
-}
+OutOfCreditsDetector::OutOfCreditsDetector(CellularService* service)
+    : service_(service), out_of_credits_(false) {}
 
 OutOfCreditsDetector::~OutOfCreditsDetector() {
 }
 
 // static
 std::unique_ptr<OutOfCreditsDetector> OutOfCreditsDetector::CreateDetector(
-    OOCType detector_type,
-    EventDispatcher* dispatcher,
-    Manager* manager,
-    Metrics* metrics,
-    CellularService* service) {
+    OOCType detector_type, CellularService* service) {
   switch (detector_type) {
     case OOCTypeSubscriptionState:
       LOG(INFO) << __func__
                 << ": Using subscription status out-of-credits detection";
-      return std::make_unique<SubscriptionStateOutOfCreditsDetector>(
-          dispatcher, manager, metrics, service);
+      return std::make_unique<SubscriptionStateOutOfCreditsDetector>(service);
     default:
       LOG(INFO) << __func__ << ": No out-of-credits detection";
-      return std::make_unique<NoOutOfCreditsDetector>(
-          dispatcher, manager, metrics, service);
+      return std::make_unique<NoOutOfCreditsDetector>(service);
   }
 }
 

@@ -24,10 +24,7 @@ namespace shill {
 // Detects out-of-credits condition by using the subscription state.
 class SubscriptionStateOutOfCreditsDetector : public OutOfCreditsDetector {
  public:
-  SubscriptionStateOutOfCreditsDetector(EventDispatcher* dispatcher,
-                                        Manager* manager,
-                                        Metrics* metrics,
-                                        CellularService* service);
+  explicit SubscriptionStateOutOfCreditsDetector(CellularService* service);
   ~SubscriptionStateOutOfCreditsDetector() override;
 
   void ResetDetector() override {}

@@ -241,8 +241,8 @@ void CellularService::OnAfterResume() {
 
 void CellularService::InitOutOfCreditsDetection(
     OutOfCreditsDetector::OOCType ooc_type) {
-  out_of_credits_detector_ = OutOfCreditsDetector::CreateDetector(
-      ooc_type, dispatcher(), manager(), metrics(), this);
+  out_of_credits_detector_ =
+      OutOfCreditsDetector::CreateDetector(ooc_type, this);
 }
 
 bool CellularService::Load(StoreInterface* storage) {
