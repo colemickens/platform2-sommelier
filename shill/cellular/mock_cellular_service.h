@@ -43,7 +43,6 @@ class MockCellularService : public CellularService {
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
   MOCK_CONST_METHOD0(activation_state, const std::string&());
-  MOCK_CONST_METHOD0(resume_start_time, const base::Time&());
 
  private:
   std::string default_activation_state_;

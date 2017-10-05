@@ -234,11 +234,6 @@ void CellularService::ClearLastGoodApn() {
                                   last_good_apn_info_);
 }
 
-void CellularService::OnAfterResume() {
-  Service::OnAfterResume();
-  resume_start_time_ = base::Time::Now();
-}
-
 void CellularService::InitOutOfCreditsDetection(
     OutOfCreditsDetector::OOCType ooc_type) {
   out_of_credits_detector_ =

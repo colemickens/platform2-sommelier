@@ -97,10 +97,6 @@ class CellularService : public Service {
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
 
-  virtual const base::Time& resume_start_time() const {
-    return resume_start_time_;
-  }
-
   OutOfCreditsDetector* out_of_credits_detector() {
     return out_of_credits_detector_.get();
   }
@@ -115,8 +111,6 @@ class CellularService : public Service {
   Stringmap* GetLastGoodApn();
   virtual void SetLastGoodApn(const Stringmap& apn_info);
   virtual void ClearLastGoodApn();
-
-  void OnAfterResume() override;
 
   // Initialize out-of-credits detection.
   void InitOutOfCreditsDetection(OutOfCreditsDetector::OOCType ooc_type);
@@ -259,8 +253,6 @@ class CellularService : public Service {
   // call to Connect().  It does not remain set while the async request is
   // in flight.
   bool is_auto_connecting_;
-  // Time when the last resume occurred.
-  base::Time resume_start_time_;
   // Out-of-credits detector.
   std::unique_ptr<OutOfCreditsDetector> out_of_credits_detector_;
 
