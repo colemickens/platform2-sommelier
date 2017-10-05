@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/system/handle.h>

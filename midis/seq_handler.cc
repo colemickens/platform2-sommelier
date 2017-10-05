@@ -224,7 +224,7 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
                       snd_seq_port_info_get_capability(port_info));
   }
 
-  auto dev = base::MakeUnique<Device>(
+  auto dev = std::make_unique<Device>(
       name, std::string(),
       0 /* card number; TODO(pmalani) remove card number */, device_id,
       num_subdevices, 0 /* device flags TODO(pmalani): flags not needed. */,

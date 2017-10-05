@@ -1,11 +1,11 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
+#include <memory>
 #include <string>
 #include <utility>
 
-#include <base/memory/ptr_util.h>
 #include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
@@ -31,7 +31,7 @@ class SeqHandlerTest : public ::testing::Test {};
 
 // Check whether Device gets created successfully.
 TEST_F(SeqHandlerTest, TestEncodeBytes) {
-  auto seq_handler = base::MakeUnique<SeqHandlerMock>();
+  auto seq_handler = std::make_unique<SeqHandlerMock>();
 
   EXPECT_CALL(*seq_handler, SndSeqEventOutputDirect(_, _))
       .WillOnce(Return(kCorrectOutputDirectReturn))
