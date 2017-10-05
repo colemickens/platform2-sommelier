@@ -27,7 +27,6 @@ if len(sys.argv) < 2:
     print "  offlinemode [on|off]"
     print ""
     print "  dev <interface>"
-    print "  dev <interface> scan"
     print "  dev <interface> networks"
     print "  dev <interface> connect <network>"
     print "  dev <interface> disconnect [network]"
@@ -320,14 +319,7 @@ def main():
                 path != interface):
                 continue
 
-            if command == "scan":
-                if properties["Type"] in ["wifi", "wimax"]:
-                    interface = properties["Interface"]
-                    print "Scan for device %s" % (interface)
-                    device.ProposeScan()
-                else:
-                    print "No scanning for device %s" % (interface)
-            elif command in ["networks", "net"]:
+            if command in ["networks", "net"]:
                 if "Networks" in properties.keys():
                     print_networks(properties["Networks"])
                 else:
