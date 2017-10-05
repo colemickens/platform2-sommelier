@@ -8,7 +8,10 @@
 
 #include <unistd.h>
 
+#include <pcrecpp.h>
+
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -31,11 +34,15 @@ const base::FilePath GetUsbSysfsPath(int bus, int port) {
 
 HammerUpdater::HammerUpdater(const std::string& ec_image,
                              const std::string& touchpad_image,
+                             const std::string& touchpad_product_id,
+                             const std::string& touchpad_fw_ver,
                              uint16_t vendor_id, uint16_t product_id,
                              int bus, int port, bool at_boot)
     : HammerUpdater(
         ec_image,
         touchpad_image,
+        touchpad_product_id,
+        touchpad_fw_ver,
         at_boot,
         GetUsbSysfsPath(bus, port),
         std::make_unique<FirmwareUpdater>(
@@ -47,6 +54,8 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
 HammerUpdater::HammerUpdater(
     const std::string& ec_image,
     const std::string& touchpad_image,
+    const std::string& touchpad_product_id,
+    const std::string& touchpad_fw_ver,
     bool at_boot,
     const base::FilePath& base_path,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
@@ -55,6 +64,8 @@ HammerUpdater::HammerUpdater(
     std::unique_ptr<MetricsLibraryInterface> metrics)
     : ec_image_(ec_image),
       touchpad_image_(touchpad_image),
+      touchpad_product_id_(touchpad_product_id),
+      touchpad_fw_ver_(touchpad_fw_ver),
       at_boot_(at_boot),
       base_path_(base_path),
       fw_updater_(std::move(fw_updater)),
@@ -322,11 +333,11 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Trigger the retry if update fails.
-  if (RunTouchpadUpdater() == RunStatus::kTouchpadUpdated) {
+  if (RunTouchpadUpdater() == HammerUpdater::RunStatus::kTouchpadUptodate) {
     LOG(INFO) << "Touchpad update succeeded.";
   } else {
     LOG(INFO) << "Touchpad update failure.";
-    return RunStatus::kNeedReset;
+    return HammerUpdater::RunStatus::kNeedReset;
   }
 
   // Pair with hammer.
@@ -448,13 +459,13 @@ void HammerUpdater::NotifyUpdateStarted() {
 HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   if (!touchpad_image_.size()) {  // We are missing the touchpad file.
     LOG(INFO) << "Touchpad will remain unmodified as binary is not provided.";
-    return RunStatus::kTouchpadUpdated;
+    return HammerUpdater::RunStatus::kTouchpadUptodate;
   }
 
   LOG(INFO) << "Loading touchpad firmware image.";
   if (!fw_updater_->LoadTouchpadImage(touchpad_image_)) {
     LOG(ERROR) << "Failed to load touchpad image.";
-    return RunStatus::kInvalidFirmware;
+    return HammerUpdater::RunStatus::kInvalidFirmware;
   }
 
   // Make request to get infomation from hammer.
@@ -464,8 +475,9 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
           reinterpret_cast<void*>(&response),
           sizeof(response))) {
       LOG(ERROR) << "Not able to get touchpad info from base.";
-      return RunStatus::kNeedReset;
+      return HammerUpdater::RunStatus::kNeedReset;
   }
+  LOG(INFO) << "Current touchpad information from base:";
   LOG(INFO) << "status: 0x" << std::hex << static_cast<int>(response.status);
   LOG(INFO) << "vendor: 0x" << std::hex << response.vendor;
   LOG(INFO) << "fw_address: 0x" << std::hex << response.fw_address;
@@ -475,6 +487,12 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   LOG(INFO) << "product_id: " << response.elan.id << ".0";
   LOG(INFO) << "fw_ver: " << response.elan.fw_version << ".0";
   LOG(INFO) << "fw_checksum: 0x" << std::hex << response.elan.fw_checksum;
+
+  if (response.status != static_cast<uint8_t>(EcResponseStatus::kSuccess)) {
+    // EC must be really screw up to get this.
+    LOG(ERROR) << "Base can't read I2C bus normally. Abort touchpad update.";
+    return HammerUpdater::RunStatus::kNeedReset;
+  }
 
   // Check if the image size matches IC size.
   if (touchpad_image_.size() != response.fw_size) {
@@ -499,14 +517,47 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
     return HammerUpdater::RunStatus::kFatalError;
   }
 
-  // TODO(b/65534217): Check if our binary is identical to
-  //                   that of hammer by filename.
-  if (fw_updater_->TransferTouchpadFirmware(
-      response.fw_address, response.fw_size)) {
-    return HammerUpdater::RunStatus::kTouchpadUpdated;
-  } else {
+  // Check if the product_id is matched. Currently, Elan uses numbers for
+  // product_id, but it might be different for other vendors. For example,
+  // in chromeos-touch-firmware-nyan package, Cypress uses product id like
+  // CYTRA-103006-00.
+  if (base::StringPrintf(kElanFormatString, response.elan.id) !=
+      touchpad_product_id_) {
+    LOG(ERROR) << "product_id mismatch. Local: " << touchpad_product_id_;
     return HammerUpdater::RunStatus::kFatalError;
   }
+  // If fw_ver match, then we skip the update. Otherwise, flash it.
+  std::string base_fw_ver = base::StringPrintf(
+      kElanFormatString, response.elan.fw_version);
+
+  if (base_fw_ver == touchpad_fw_ver_) {
+    LOG(INFO) << "Local(" << touchpad_fw_ver_ << ")" << " is equal to "
+              << "Base(" << base_fw_ver << "). Skip update.";
+    return HammerUpdater::RunStatus::kTouchpadUptodate;
+  }
+  LOG(INFO) << "Touchpad hash matched but version mismatch. Updating.";
+  bool ret = fw_updater_->TransferTouchpadFirmware(
+        response.fw_address, response.fw_size);
+  return ret ? HammerUpdater::RunStatus::kTouchpadUptodate :
+               HammerUpdater::RunStatus::kFatalError;
+}
+
+bool HammerUpdater::ParseTouchpadInfoFromFilename(
+      const std::string& filename,
+      std::string* touchpad_product_id,
+      std::string* touchpad_fw_ver) {
+  base::FilePath real_path;
+  bool ret = base::NormalizeFilePath(base::FilePath(filename), &real_path);
+  std::string basename = real_path.BaseName().value();
+
+  LOG(INFO) << "Canonical path for touchpad firmware : " << real_path.value();
+  // Filename should be in format of <product_id>_<fw_ver>.bin
+  pcrecpp::RE re("(.+)_([\\.\\d]+?)\\.bin");
+  ret &= re.FullMatch(basename, touchpad_product_id, touchpad_fw_ver);
+  LOG(INFO) << "Parsed product_id : " << *touchpad_product_id;
+  LOG(INFO) << "Parsed fw_ver : " << *touchpad_fw_ver;
+
+  return ret;
 }
 
 }  // namespace hammerd

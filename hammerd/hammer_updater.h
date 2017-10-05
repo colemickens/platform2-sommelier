@@ -31,11 +31,13 @@ class HammerUpdater {
     kNeedInjectEntropy,
     kLostConnection,
     kInvalidFirmware,
-    kTouchpadUpdated
+    kTouchpadUptodate
   };
 
   HammerUpdater(const std::string& ec_image,
                 const std::string& touchpad_image,
+                const std::string& touchpad_product_id,
+                const std::string& touchpad_fw_ver,
                 uint16_t vendor_id,
                 uint16_t product_id,
                 int bus,
@@ -64,11 +66,18 @@ class HammerUpdater {
   virtual RunStatus Pair();
   // Update the touchpad firmware via the virtual address.
   virtual RunStatus RunTouchpadUpdater();
+  // Extract product_id and firmware version.
+  static bool ParseTouchpadInfoFromFilename(
+      const std::string& filename,
+      std::string* touchpad_product_id,
+      std::string* touchpad_fw_ver);
 
  protected:
   // Used in unittests to inject mock instance.
   HammerUpdater(const std::string& ec_image,
                 const std::string& touchpad_image,
+                const std::string& touchpad_product_id,
+                const std::string& touchpad_fw_ver,
                 bool at_boot,
                 const base::FilePath& base_path,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
@@ -91,6 +100,10 @@ class HammerUpdater {
   std::string ec_image_;
   // The touchpad image data to be updated.
   std::string touchpad_image_;
+  // The touchpad firmware product id.
+  std::string touchpad_product_id_;
+  // The touchpad firmware version.
+  std::string touchpad_fw_ver_;
   // Set this flag when hammerd is triggered at boot time.
   bool at_boot_;
   // The sysfs path of the USB device.

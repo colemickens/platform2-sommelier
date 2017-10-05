@@ -145,7 +145,8 @@ enum class SectionName {
 const char* ToString(SectionName name);
 SectionName OtherSection(SectionName name);
 
-
+// product_id format from elan_i2c.h. definition of ETP_PRODUCT_ID_FORMAT_STRING
+constexpr char kElanFormatString[] = "%d.0";
 // Below is the touchpad_info struct from src/platform/ec/include/update_fw.h.
 struct __attribute__((packed)) TouchpadInfo {
   uint8_t status;       // Indicate if we get info from touchpad

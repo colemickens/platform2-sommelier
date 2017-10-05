@@ -93,6 +93,8 @@ class HammerUpdaterTest : public testing::Test {
     hammer_updater_.reset(new HammerUpdaterType{
         ec_image_,
         touchpad_image_,
+        touchpad_product_id_,
+        touchpad_fw_ver_,
         false,
         base::FilePath(""),
         std::make_unique<MockFirmwareUpdater>(),
@@ -138,6 +140,8 @@ class HammerUpdaterTest : public testing::Test {
   MockDBusWrapper* dbus_wrapper_;
   std::string ec_image_ = "MOCK EC IMAGE";
   std::string touchpad_image_ = "MOCK TOUCHPAD IMAGE";
+  std::string touchpad_product_id_ = "1.0";
+  std::string touchpad_fw_ver_ = "2.0";
   int usb_connection_count_;
 };
 
@@ -155,16 +159,19 @@ class HammerUpdaterPostRWTest : public HammerUpdaterTest<MockNothing> {
   void SetUp() override {
     HammerUpdaterTest::SetUp();
     // Create a nice response of kTouchpadInfo for important fields.
-    response.fw_size = touchpad_image_.size();
-    std::memcpy(response.allowed_fw_hash, SHA256(
+    response_.status = 0x00;
+    response_.elan.id = 0x01;
+    response_.elan.fw_version = 0x02;
+    response_.fw_size = touchpad_image_.size();
+    std::memcpy(response_.allowed_fw_hash, SHA256(
         reinterpret_cast<const uint8_t*>(touchpad_image_.data()),
-        response.fw_size, reinterpret_cast<unsigned char *>(&digest)),
+        response_.fw_size, reinterpret_cast<unsigned char *>(&digest_)),
             SHA256_DIGEST_LENGTH);
   }
 
  protected:
-  TouchpadInfo response;
-  uint8_t digest[SHA256_DIGEST_LENGTH];
+  TouchpadInfo response_;
+  uint8_t digest_[SHA256_DIGEST_LENGTH];
 };
 
 // Failed to load EC image.
@@ -720,9 +727,9 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
         *fw_updater_,
         SendSubcommandReceiveResponse(
             UpdateExtraCommand::kTouchpadInfo, "", _, sizeof(TouchpadInfo)))
-        .WillOnce(WriteResponse(static_cast<void *>(&response)));
+        .WillOnce(WriteResponse(static_cast<void *>(&response_)));
     EXPECT_CALL(*fw_updater_, TransferTouchpadFirmware(_, _))
-        .WillOnce(Return(true));
+        .Times(0);  // Version matched, skip updating.
     EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
         .WillOnce(Return(ChallengeStatus::kChallengePassed));
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
@@ -748,13 +755,13 @@ TEST_F(HammerUpdaterPostRWTest, Run_FailToGetTouchpadInfo) {
 // Test logic of IC size matches with local firmware binary blob.
 TEST_F(HammerUpdaterPostRWTest, Run_ICSizeMismatchAndStop) {
   // Make a mismatch response by setting a different firmware size.
-  response.fw_size += 9487;
+  response_.fw_size += 9487;
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
       .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
-      .WillOnce(WriteResponse(reinterpret_cast<void *>(&response)));
+      .WillOnce(WriteResponse(reinterpret_cast<void *>(&response_)));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
             HammerUpdater::RunStatus::kFatalError);
@@ -763,14 +770,14 @@ TEST_F(HammerUpdaterPostRWTest, Run_ICSizeMismatchAndStop) {
 // Test logic of entire firmware blob hash matches one accepted in RW EC.
 TEST_F(HammerUpdaterPostRWTest, Run_HashMismatchAndStop) {
   // Make a mismatch response by setting a different allowed_fw_hash.
-  memset(response.allowed_fw_hash, response.allowed_fw_hash[0] + 0x5F,
+  memset(response_.allowed_fw_hash, response_.allowed_fw_hash[0] + 0x5F,
          SHA256_DIGEST_LENGTH);
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
       .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
-      .WillOnce(WriteResponse(static_cast<void *>(&response)));
+      .WillOnce(WriteResponse(static_cast<void *>(&response_)));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
             HammerUpdater::RunStatus::kFatalError);
@@ -778,12 +785,13 @@ TEST_F(HammerUpdaterPostRWTest, Run_HashMismatchAndStop) {
 
 // Test the return value if TransferTouchpadFirmware is failed.
 TEST_F(HammerUpdaterPostRWTest, Run_FailToTransferFirmware) {
+  response_.elan.fw_version -= 1;  // Make local fw_ver is newer than base.
   EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
       .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
-      .WillOnce(WriteResponse(static_cast<void *>(&response)));
+      .WillOnce(WriteResponse(static_cast<void *>(&response_)));
   EXPECT_CALL(*fw_updater_, TransferTouchpadFirmware(_, _))
       .WillOnce(Return(false));
 

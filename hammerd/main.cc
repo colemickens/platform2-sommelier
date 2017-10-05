@@ -64,6 +64,8 @@ int main(int argc, const char* argv[]) {
   }
 
   std::string touchpad_image;
+  std::string touchpad_product_id;
+  std::string touchpad_fw_ver;
   if (!FLAGS_touchpad_image_path.size()) {
     LOG(INFO) << "Touchpad image is not assigned. " <<
                  "Proceeding without updating touchpad.";
@@ -73,13 +75,22 @@ int main(int argc, const char* argv[]) {
     LOG(ERROR) << "Touchpad image is not found with path ["
                << FLAGS_touchpad_image_path << "]. Abort.";
     return EXIT_FAILURE;
+  } else if (!hammerd::HammerUpdater::ParseTouchpadInfoFromFilename(
+        FLAGS_touchpad_image_path, &touchpad_product_id, &touchpad_fw_ver)) {
+    LOG(ERROR) << "Not able to get version info from filename. "
+               << "Check if [" << FLAGS_touchpad_image_path << "] follows "
+               << "<product_id>_<fw_version>.bin format (applied to symbolic "
+               << "link as well).";
+    return EXIT_FAILURE;
   }
+
 
   // The message loop registers a task runner with the current thread, which
   // is used by DBusWrapper to send signals.
   base::MessageLoop message_loop;
   hammerd::HammerUpdater updater(
-      ec_image, touchpad_image, FLAGS_vendor_id, FLAGS_product_id,
+      ec_image, touchpad_image, touchpad_product_id, touchpad_fw_ver,
+      FLAGS_vendor_id, FLAGS_product_id,
       FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot);
   bool ret = updater.Run();
   if (ret && FLAGS_autosuspend_delay_ms >= 0) {
