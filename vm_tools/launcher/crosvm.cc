@@ -21,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/sys_info.h>
 #include <brillo/process.h>
 #include <grpc++/grpc++.h>
 
@@ -39,6 +40,7 @@ namespace launcher {
 namespace {
 
 constexpr int kGrpcTimeoutSeconds = 1;
+constexpr int kVmMaxMemoryMiB = 8192;
 
 bool StringToIPv4Address(const std::string& address, uint32_t* addr) {
   struct in_addr in = {};
@@ -299,7 +301,17 @@ bool CrosVM::BuildCrosVMCommandLine(const base::FilePath& container_disk,
   vm_process_->AddArg(kCrosvmBin);
   vm_process_->AddArg("run");
 
-  vm_process_->AddArg("--multiprocess");
+  // Give the VM the same number of CPUs as the host, and 75% of system memory
+  // or 8 GiB, whichever is less. This is overprovisioned under the assumption
+  // that virtio-balloon will reduce the real memory footprint.
+  vm_process_->AddStringOption(
+      "--cpus", std::to_string(base::SysInfo::NumberOfProcessors()));
+
+  int64_t vm_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
+  vm_memory_mb = (vm_memory_mb * 3) / 4;
+  if (vm_memory_mb > kVmMaxMemoryMiB)
+    vm_memory_mb = kVmMaxMemoryMiB;
+  vm_process_->AddStringOption("--mem", std::to_string(vm_memory_mb));
 
   // Add rootfs disk and container disk.
   vm_process_->AddStringOption("--root", vm_rootfs_.value());
@@ -314,9 +326,6 @@ bool CrosVM::BuildCrosVMCommandLine(const base::FilePath& container_disk,
   vm_process_->AddStringOption("--mac", mac_addr_->ToString());
   vm_process_->AddStringOption("--host_ip", subnet_->GetGatewayAddress());
   vm_process_->AddStringOption("--netmask", subnet_->GetNetmask());
-
-  // The root filesystem is always mounted read-only.
-  vm_process_->AddStringOption("--params", "ro");
 
   vm_process_->AddStringOption("--cid",
                                base::StringPrintf("%u", cid_->GetCid()));
