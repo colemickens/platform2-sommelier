@@ -79,6 +79,29 @@ class GypLintTests(LintTestCase):
         {'libraries': ['-lgmock', '-lgtest']},
     ))
 
+  def testGypLintStaticSharedLibMixing(self):
+    """Verify GypLintStaticSharedLibMixing catches bad inputs."""
+    self._CheckLinter(gyplint.GypLintStaticSharedLibMixing, (
+        {
+            'targets': [
+                {
+                    'target_name': 'libhammerd',
+                    'type': 'static_library',
+                },
+                {
+                    'target_name': 'libhammerd-api',
+                    'type': 'shared_library',
+                    'dependencies': ['libhammerd'],
+                },
+                {
+                    'target_name': 'another-target',
+                    'type': 'shared_library',
+                    'dependencies': ['libhammerd'],
+                },
+            ],
+        },
+    ))
+
   def testGypLintOrderedFiles(self):
     """Verify GypLintOrderedFiles catches bad inputs."""
     self._CheckLinter(gyplint.GypLintOrderedFiles, (

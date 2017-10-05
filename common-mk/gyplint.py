@@ -108,6 +108,60 @@ def GypLintCommonTesting(gypdata):
   return WalkGyp(CheckNode, gypdata)
 
 
+def GypLintStaticSharedLibMixing(gypdata):
+  """Static libs linked into shared libs need special PIC handling.
+
+  Normally static libs are built using PIE because they only get linked into
+  PIEs.  But if someone tries linking the static libs into a shared lib, we
+  need to make sure the code is built using PIC.
+
+  Note: We don't do an inverse check (PIC static libs not used by shared libs)
+  as the static libs might be installed by the ebuild.  Not that we want to
+  encourage that situation, but it is what it is ...
+  """
+  # Record static_libs that build as PIE, and all the deps of shared_libs.
+  # Afterwards, we'll sanity check all the shared lib deps.
+  pie_static_libs = []
+  shared_lib_deps = {}
+  def CheckNode(key, value):
+    if key != 'targets':
+      return []
+
+    for target in value:
+      ttype = target.get('type')
+      name = target['target_name']
+
+      if ttype == 'static_library':
+        if (not '-fPIE' in target.get('cflags!', []) or
+            not '-fPIC' in target.get('cflags', [])):
+          pie_static_libs.append(name)
+      elif ttype == 'shared_library':
+        assert name not in shared_lib_deps, 'duplicate target: %s' % name
+        shared_lib_deps[name] = target.get('dependencies', [])
+
+    return []
+
+  # We build up the full state first rather than check it as we go as gyp
+  # files do not force target ordering.
+  WalkGyp(CheckNode, gypdata)
+
+  # Now with the full state, run the checks.
+  ret = []
+  for pie_lib in pie_static_libs:
+    # Pull out all shared libs that depend on static PIE libs.
+    dependency_libs = [
+        shared_lib for shared_lib, deps in shared_lib_deps.items()
+        if pie_lib in deps
+    ]
+    if dependency_libs:
+      ret.append(('static library "%(pie)s" must be compiled as PIC, not PIE, '
+                  'because it is linked into the shared libraries %(pic)s; '
+                  'add this to the "%(pie)s" target to fix: '
+                  "'cflags!': ['-fPIE'], 'cflags': ['-fPIC']")
+                 % {'pie': pie_lib, 'pic': dependency_libs})
+  return ret
+
+
 def GypLintOrderedFiles(gypdata):
   """Files should be kept sorted.
 
