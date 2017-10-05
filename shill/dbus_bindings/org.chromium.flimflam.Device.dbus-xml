@@ -33,7 +33,6 @@
 		<method name="Disable">
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
-		<method name="ProposeScan"/>
 		<method name="Register">
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

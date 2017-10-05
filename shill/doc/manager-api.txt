@@ -122,9 +122,20 @@ Methods
 
 		void RequestScan(string type)
 
-			Request a scan for the specified technology. If
-			type is the string "" then a scan request is
-			made for each technology.
+			Request a scan for each device of the specified
+			technology.  If type is the string "" then a scan
+			request is made for each technology.
+
+			For WiFi devices this triggers a search for
+			available WiFi networks.  When results are
+			available, the Device.Networks property is
+			updated and a PropertyChanged signal is issued.
+
+			For cellular devices, this triggers a search for
+			available cellular networks, which may take up to a
+			minute or two to complete.  When the results are
+			available, the Cellular.FoundNetworks property of
+			each cellular device is set with the results.
 
 			Possible Errors: [service].Error.InvalidArguments
 

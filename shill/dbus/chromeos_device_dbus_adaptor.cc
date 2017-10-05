@@ -176,17 +176,6 @@ void ChromeosDeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
   ReturnResultOrDefer(callback, e);
 }
 
-bool ChromeosDeviceDBusAdaptor::ProposeScan(brillo::ErrorPtr* error) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  // User scan requests, which are the likely source of DBus requests, probably
-  // aren't time-critical so we might as well perform a complete scan.  It
-  // also provides a failsafe for progressive scan.
-  device_->Scan(&e, __func__);
-
-  return !e.ToChromeosError(error);
-}
-
 void ChromeosDeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
                                          const string& network_id) {
   SLOG(this, 2) << __func__ << ": " << network_id;

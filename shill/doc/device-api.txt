@@ -37,23 +37,6 @@ Methods		dict GetProperties()
 
 		        Disable the device.
 
-		void ProposeScan() --DEPRECATED--
-
-			Start a scan operation if possible.
-
-			For WiFi devices this triggers a search for
-			available WiFi networks.  When results are
-			available, the Device.Networks property is
-			updated and a PropertyChanged signal is issued.
-
-			For cellular devices, this triggers a search for
-			available cellular networks, which may take up to a
-			minute to complete. When the results are available,
-			the property Cellular.FoundNetworks (see below) is
-			set with the results.
-
-			Possible Errors: [service].Error.InvalidArguments
-
 		void RequirePin(string pin, boolean require)
 
 			(Cellular only) Enable or disable PIN protection for

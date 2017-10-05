@@ -77,7 +77,6 @@ class ChromeosDeviceDBusAdaptor
                      const std::string& name) override;
   void Enable(DBusMethodResponsePtr<> response) override;
   void Disable(DBusMethodResponsePtr<> response) override;
-  bool ProposeScan(brillo::ErrorPtr* error) override;
   void Register(DBusMethodResponsePtr<> response,
                 const std::string& network_id) override;
   void RequirePin(DBusMethodResponsePtr<> response,
