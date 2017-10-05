@@ -47,8 +47,7 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
   std::vector<std::string> lines = base::SplitString(
       steps_pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end();
-       ++iter) {
+       iter != lines.end(); ++iter) {
     std::vector<std::string> segments = base::SplitString(
         *iter, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     BrightnessStep new_step;

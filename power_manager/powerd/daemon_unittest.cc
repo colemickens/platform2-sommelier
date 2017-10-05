@@ -330,8 +330,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::string GetWifiTransmitPowerCommand(TabletMode mode) {
     return base::StringPrintf(
         "%s --action=set_wifi_transmit_power --%swifi_transmit_power_tablet",
-        kSetuidHelperPath,
-        mode == TabletMode::ON ? "" : "no");
+        kSetuidHelperPath, mode == TabletMode::ON ? "" : "no");
   }
 
   // Stub objects to be transferred by Create* methods.
@@ -785,10 +784,9 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
 
   const std::string kFlashromPid = "123";
-  ASSERT_EQ(
-      kFlashromPid.size(),
-      base::WriteFile(
-          flashrom_lock_path_, kFlashromPid.c_str(), kFlashromPid.size()));
+  ASSERT_EQ(kFlashromPid.size(),
+            base::WriteFile(flashrom_lock_path_, kFlashromPid.c_str(),
+                            kFlashromPid.size()));
   const base::FilePath kFlashromPidDir(proc_path_.Append(kFlashromPid));
   ASSERT_TRUE(base::CreateDirectory(kFlashromPidDir));
 

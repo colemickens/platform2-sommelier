@@ -46,8 +46,8 @@ InternalBacklight::~InternalBacklight() {}
 
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const base::FilePath::StringType& pattern) {
-  base::FileEnumerator enumerator(
-      base_path, false, base::FileEnumerator::DIRECTORIES, pattern);
+  base::FileEnumerator enumerator(base_path, false,
+                                  base::FileEnumerator::DIRECTORIES, pattern);
 
   // Find the backlight interface with greatest granularity (highest max).
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
@@ -147,10 +147,8 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
   transition_end_level_ = level;
   if (!transition_timer_.IsRunning()) {
     transition_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromMilliseconds(kTransitionIntervalMs),
-        this,
-        &InternalBacklight::HandleTransitionTimeout);
+        FROM_HERE, base::TimeDelta::FromMilliseconds(kTransitionIntervalMs),
+        this, &InternalBacklight::HandleTransitionTimeout);
     transition_timer_start_time_ = transition_start_time_;
   }
   return true;

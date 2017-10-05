@@ -60,10 +60,8 @@ int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy, int timeout_ms) {
       base::TimeDelta::FromMilliseconds(timeout_ms).ToInternalValue());
   request.set_description(kSuspendDelayDescription);
   power_manager::RegisterSuspendDelayReply reply;
-  CHECK(CallMethod(powerd_proxy,
-                   power_manager::kRegisterSuspendDelayMethod,
-                   request,
-                   &reply));
+  CHECK(CallMethod(powerd_proxy, power_manager::kRegisterSuspendDelayMethod,
+                   request, &reply));
   LOG(INFO) << "Registered delay " << reply.delay_id();
   return reply.delay_id();
 }
@@ -77,10 +75,8 @@ void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
   power_manager::SuspendReadinessInfo request;
   request.set_delay_id(delay_id);
   request.set_suspend_id(suspend_id);
-  CallMethod(powerd_proxy.get(),
-             power_manager::kHandleSuspendReadinessMethod,
-             request,
-             NULL);
+  CallMethod(powerd_proxy.get(), power_manager::kHandleSuspendReadinessMethod,
+             request, NULL);
 }
 
 // Handles the start of a suspend attempt. Posts a task to run
@@ -122,14 +118,12 @@ void DBusSignalConnected(const std::string& interface,
 }
 
 int main(int argc, char* argv[]) {
-  DEFINE_int32(delay_ms,
-               5000,
+  DEFINE_int32(delay_ms, 5000,
                "Milliseconds to wait before reporting suspend readiness");
   DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
 
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Exercise powerd's functionality that permits other processes to\n"
       "perform last-minute work before the system suspends.");
   base::AtExitManager at_exit_manager;
@@ -144,17 +138,15 @@ int main(int argc, char* argv[]) {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
   const int delay_id = RegisterSuspendDelay(powerd_proxy, FLAGS_timeout_ms);
-  powerd_proxy->ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendImminentSignal,
-                                base::Bind(&HandleSuspendImminent,
-                                           make_scoped_refptr(powerd_proxy),
-                                           delay_id,
-                                           FLAGS_delay_ms),
-                                base::Bind(&DBusSignalConnected));
-  powerd_proxy->ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendDoneSignal,
-                                base::Bind(&HandleSuspendDone),
-                                base::Bind(&DBusSignalConnected));
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendImminentSignal,
+      base::Bind(&HandleSuspendImminent, make_scoped_refptr(powerd_proxy),
+                 delay_id, FLAGS_delay_ms),
+      base::Bind(&DBusSignalConnected));
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
+      base::Bind(&HandleSuspendDone), base::Bind(&DBusSignalConnected));
 
   base::RunLoop().Run();
 

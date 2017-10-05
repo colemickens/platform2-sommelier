@@ -93,17 +93,15 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
                                    int64_t backlight_nits) {
   DCHECK(prefs);
   std::string pref_value;
-  CHECK(prefs->GetString(pref_name, &pref_value)) << "Unable to read pref "
-                                                  << pref_name;
+  CHECK(prefs->GetString(pref_name, &pref_value))
+      << "Unable to read pref " << pref_name;
 
   std::vector<std::string> lines = base::SplitString(
       pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     std::vector<std::string> parts =
-        base::SplitString(lines[i],
-                          base::kWhitespaceASCII,
-                          base::KEEP_WHITESPACE,
-                          base::SPLIT_WANT_NONEMPTY);
+        base::SplitString(lines[i], base::kWhitespaceASCII,
+                          base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     CHECK(parts.size() == 1U || parts.size() == 2U)
         << "Unable to parse \"" << lines[i] << "\" from pref " << pref_name;
 
@@ -316,8 +314,7 @@ void InternalBacklightController::HandlePolicyChange(
 
   using_policy_brightness_ = got_policy_brightness;
   if (got_policy_brightness) {
-    SetExplicitBrightnessPercent(ac_brightness,
-                                 battery_brightness,
+    SetExplicitBrightnessPercent(ac_brightness, battery_brightness,
                                  Transition::FAST,
                                  BrightnessChangeCause::AUTOMATED);
   }
@@ -409,8 +406,8 @@ bool InternalBacklightController::SetUserBrightnessPercent(
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  return SetExplicitBrightnessPercent(
-      percent, percent, transition, BrightnessChangeCause::USER_INITIATED);
+  return SetExplicitBrightnessPercent(percent, percent, transition,
+                                      BrightnessChangeCause::USER_INITIATED);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
@@ -481,7 +478,6 @@ int64_t InternalBacklightController::PercentToLevel(double percent) const {
                     pow(linear_fraction, 1.0 / level_to_percent_exponent_));
 }
 
-
 void InternalBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,
     AmbientLightHandler::BrightnessChangeCause cause) {
@@ -534,8 +530,7 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
       display_mode_ == DisplayMode::NORMAL &&
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
       !using_policy_brightness_ && !use_ambient_light_) {
-    SetExplicitBrightnessPercent(kMinVisiblePercent,
-                                 kMinVisiblePercent,
+    SetExplicitBrightnessPercent(kMinVisiblePercent, kMinVisiblePercent,
                                  Transition::FAST,
                                  BrightnessChangeCause::AUTOMATED);
   }
@@ -628,8 +623,7 @@ void InternalBacklightController::UpdateState() {
   // resulting in this request being dropped and the brightness being set to its
   // previous value instead. See chrome-os-partner:31186 and :35662 for more
   // details.
-  ApplyBrightnessPercent(brightness_percent,
-                         brightness_transition,
+  ApplyBrightnessPercent(brightness_percent, brightness_transition,
                          BrightnessChangeCause::AUTOMATED);
 
   if (resume_percent >= 0.0)
@@ -688,8 +682,7 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   }
 
   current_level_ = level;
-  FOR_EACH_OBSERVER(BacklightControllerObserver,
-                    observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChange(percent, cause, this));
   return true;
 }

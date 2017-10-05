@@ -195,8 +195,7 @@ class Daemon::StateControllerDelegate
     dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
                                  login_manager::kSessionManagerLockScreen);
     daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_,
-        &method_call,
+        daemon_->session_manager_dbus_proxy_, &method_call,
         base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
@@ -210,8 +209,7 @@ class Daemon::StateControllerDelegate
     dbus::MessageWriter writer(&method_call);
     writer.AppendString("");
     daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_,
-        &method_call,
+        daemon_->session_manager_dbus_proxy_, &method_call,
         base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
@@ -341,9 +339,7 @@ void Daemon::Init() {
       } else {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
-                display_backlight_.get(),
-                prefs_.get(),
-                light_sensor_.get(),
+                display_backlight_.get(), prefs_.get(), light_sensor_.get(),
                 display_power_setter_.get());
       }
     }
@@ -352,17 +348,12 @@ void Daemon::Init() {
 
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
       keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
-          udev_.get(),
-          kKeyboardBacklightUdevSubsystem,
-          base::FilePath(kKeyboardBacklightPath),
-          kKeyboardBacklightPattern);
+          udev_.get(), kKeyboardBacklightUdevSubsystem,
+          base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
-              keyboard_backlight_.get(),
-              prefs_.get(),
-              light_sensor_.get(),
-              display_backlight_controller_.get(),
-              tablet_mode);
+              keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              display_backlight_controller_.get(), tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
@@ -379,42 +370,33 @@ void Daemon::Init() {
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
-  power_supply_ = delegate_->CreatePowerSupply(
-      base::FilePath(kPowerStatusPath), prefs_.get(), udev_.get());
+  power_supply_ = delegate_->CreatePowerSupply(base::FilePath(kPowerStatusPath),
+                                               prefs_.get(), udev_.get());
   power_supply_->AddObserver(this);
   if (!power_supply_->RefreshImmediately())
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
-  metrics_collector_->Init(prefs_.get(),
-                           display_backlight_controller_.get(),
-                           keyboard_backlight_controller_.get(),
-                           power_status);
+  metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
+                           keyboard_backlight_controller_.get(), power_status);
 
   dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
 
-  input_event_handler_->Init(input_watcher_.get(),
-                             this,
-                             display_watcher_.get(),
-                             dbus_wrapper_.get(),
-                             prefs_.get());
+  input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),
+                             dbus_wrapper_.get(), prefs_.get());
 
   acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
   ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
-  input_device_controller_->Init(display_backlight_controller_.get(),
-                                 udev_.get(),
-                                 acpi_wakeup_helper_.get(),
-                                 ec_wakeup_helper_.get(),
-                                 lid_state,
-                                 tablet_mode,
-                                 DisplayMode::NORMAL,
-                                 prefs_.get());
+  input_device_controller_->Init(
+      display_backlight_controller_.get(), udev_.get(),
+      acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(), lid_state,
+      tablet_mode, DisplayMode::NORMAL, prefs_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
-  state_controller_->Init(
-      state_controller_delegate_.get(), prefs_.get(), power_source, lid_state);
+  state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
+                          power_source, lid_state);
 
   if (BoolPrefIsTrue(kUseCrasPref)) {
     audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get());
@@ -509,12 +491,12 @@ void Daemon::OnBrightnessChange(
     policy::BacklightController* source) {
   if (source == display_backlight_controller_.get() &&
       display_backlight_controller_) {
-    SendBrightnessChangedSignal(
-        brightness_percent, cause, kBrightnessChangedSignal);
+    SendBrightnessChangedSignal(brightness_percent, cause,
+                                kBrightnessChangedSignal);
   } else if (source == keyboard_backlight_controller_.get() &&
              keyboard_backlight_controller_) {
-    SendBrightnessChangedSignal(
-        brightness_percent, cause, kKeyboardBrightnessChangedSignal);
+    SendBrightnessChangedSignal(brightness_percent, cause,
+                                kKeyboardBrightnessChangedSignal);
   } else {
     NOTREACHED() << "Received a brightness change callback from an unknown "
                  << "backlight controller";
@@ -835,8 +817,7 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
-      session_manager_dbus_proxy_,
-      login_manager::kSessionManagerInterface,
+      session_manager_dbus_proxy_, login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -845,24 +826,18 @@ void Daemon::InitDBus() {
     dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
         cras::kCrasServiceName, cras::kCrasServicePath);
     dbus_wrapper_->RegisterForServiceAvailability(
-        cras_proxy,
-        base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                   weak_ptr_factory_.GetWeakPtr()));
+        cras_proxy, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                               weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy,
-        cras::kCrasControlInterface,
-        cras::kNodesChanged,
+        cras_proxy, cras::kCrasControlInterface, cras::kNodesChanged,
         base::Bind(&Daemon::HandleCrasNodesChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy,
-        cras::kCrasControlInterface,
-        cras::kActiveOutputNodeChanged,
+        cras_proxy, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
         base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy,
-        cras::kCrasControlInterface,
+        cras_proxy, cras::kCrasControlInterface,
         cras::kNumberOfActiveStreamsChanged,
         base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
                    weak_ptr_factory_.GetWeakPtr()));
@@ -876,8 +851,7 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleUpdateEngineAvailable,
                  weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
-      update_engine_dbus_proxy_,
-      update_engine::kUpdateEngineInterface,
+      update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -888,9 +862,8 @@ void Daemon::InitDBus() {
     cryptohomed_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
         cryptohome::kCryptohomeServiceName, cryptohome::kCryptohomeServicePath);
     dbus_wrapper_->RegisterForServiceAvailability(
-        cryptohomed_dbus_proxy_,
-        base::Bind(&Daemon::HandleCryptohomedAvailable,
-                   weak_ptr_factory_.GetWeakPtr()));
+        cryptohomed_dbus_proxy_, base::Bind(&Daemon::HandleCryptohomedAvailable,
+                                            weak_ptr_factory_.GetWeakPtr()));
 
     int64_t tpm_status_sec = 0;
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
@@ -935,9 +908,8 @@ void Daemon::InitDBus() {
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
-        it.first,
-        base::Bind(&HandleSynchronousDBusMethodCall,
-                   base::Bind(it.second, base::Unretained(this))));
+        it.first, base::Bind(&HandleSynchronousDBusMethodCall,
+                             base::Bind(it.second, base::Unretained(this))));
   }
 
   // Export |suspender_|'s D-Bus method calls.
@@ -974,9 +946,7 @@ void Daemon::InitDBus() {
   dbus::ObjectProxy* proxy =
       dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath);
   dbus_wrapper_->RegisterForSignal(
-      proxy,
-      kBusInterface,
-      kBusNameOwnerChangedSignal,
+      proxy, kBusInterface, kBusNameOwnerChangedSignal,
       base::Bind(&Daemon::HandleDBusNameOwnerChanged,
                  weak_ptr_factory_.GetWeakPtr()));
 
@@ -984,11 +954,9 @@ void Daemon::InitDBus() {
   // There's no underlying dbus::Bus object when we're being tested.
   dbus::Bus* bus = dbus_wrapper_->GetBus();
   if (bus) {
-    buffet::InitCommandHandlers(bus,
-                                base::Bind(&Daemon::ShutDown,
-                                           weak_ptr_factory_.GetWeakPtr(),
-                                           ShutdownMode::REBOOT,
-                                           ShutdownReason::USER_REQUEST));
+    buffet::InitCommandHandlers(
+        bus, base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(),
+                        ShutdownMode::REBOOT, ShutdownReason::USER_REQUEST));
   }
 #endif  // USE_BUFFET
 }
@@ -1012,8 +980,7 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrieveSessionState);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      session_manager_dbus_proxy_,
-      &method_call,
+      session_manager_dbus_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   if (!response)
     return;
@@ -1046,8 +1013,7 @@ void Daemon::HandleUpdateEngineAvailable(bool available) {
   dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
                                update_engine::kGetStatus);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      update_engine_dbus_proxy_,
-      &method_call,
+      update_engine_dbus_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kUpdateEngineDBusTimeoutMs));
   if (!response)
     return;
@@ -1074,8 +1040,8 @@ void Daemon::HandleCryptohomedAvailable(bool available) {
 
   RequestTpmStatus();
   if (tpm_status_interval_ > base::TimeDelta::FromSeconds(0)) {
-    tpm_status_timer_.Start(
-        FROM_HERE, tpm_status_interval_, this, &Daemon::RequestTpmStatus);
+    tpm_status_timer_.Start(FROM_HERE, tpm_status_interval_, this,
+                            &Daemon::RequestTpmStatus);
   }
 }
 
@@ -1575,8 +1541,7 @@ void Daemon::RequestTpmStatus() {
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(cryptohome::GetTpmStatusRequest());
   dbus_wrapper_->CallMethodAsync(
-      cryptohomed_dbus_proxy_,
-      &method_call,
+      cryptohomed_dbus_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kCryptohomedDBusTimeoutMs),
       base::Bind(&Daemon::HandleGetTpmStatusResponse,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -1595,8 +1560,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
       retry_shutdown_for_firmware_update_timer_.Start(
           FROM_HERE,
           base::TimeDelta::FromSeconds(kRetryShutdownForFirmwareUpdateSec),
-          base::Bind(
-              &Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode, reason));
+          base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode,
+                     reason));
     }
     return;
   }

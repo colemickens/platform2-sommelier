@@ -287,10 +287,8 @@ void StateController::Init(Delegate* delegate,
   lid_state_ = lid_state;
 
   initial_state_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs),
-      this,
-      &StateController::HandleInitialStateTimeout);
+      FROM_HERE, base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs),
+      this, &StateController::HandleInitialStateTimeout);
 
   UpdateSettingsAndState();
   initialized_ = true;
@@ -654,9 +652,8 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
 base::TimeTicks StateController::GetLastActivityTimeForScreenLock(
     base::TimeTicks now) const {
   // On-but-dimmed wake locks also keep the screen from locking.
-  return std::max(
-      GetLastActivityTimeForScreenDim(now),
-      dim_wake_lock_->GetLastActiveTime(now));
+  return std::max(GetLastActivityTimeForScreenDim(now),
+                  dim_wake_lock_->GetLastActiveTime(now));
 }
 
 void StateController::UpdateLastUserActivityTime() {
@@ -680,17 +677,17 @@ void StateController::LoadPrefs() {
 
   CHECK(
       GetMillisecondPref(prefs_, kPluggedSuspendMsPref, &pref_ac_delays_.idle));
-  CHECK(GetMillisecondPref(
-      prefs_, kPluggedOffMsPref, &pref_ac_delays_.screen_off));
-  CHECK(GetMillisecondPref(
-      prefs_, kPluggedDimMsPref, &pref_ac_delays_.screen_dim));
+  CHECK(GetMillisecondPref(prefs_, kPluggedOffMsPref,
+                           &pref_ac_delays_.screen_off));
+  CHECK(GetMillisecondPref(prefs_, kPluggedDimMsPref,
+                           &pref_ac_delays_.screen_dim));
 
-  CHECK(GetMillisecondPref(
-      prefs_, kUnpluggedSuspendMsPref, &pref_battery_delays_.idle));
-  CHECK(GetMillisecondPref(
-      prefs_, kUnpluggedOffMsPref, &pref_battery_delays_.screen_off));
-  CHECK(GetMillisecondPref(
-      prefs_, kUnpluggedDimMsPref, &pref_battery_delays_.screen_dim));
+  CHECK(GetMillisecondPref(prefs_, kUnpluggedSuspendMsPref,
+                           &pref_battery_delays_.idle));
+  CHECK(GetMillisecondPref(prefs_, kUnpluggedOffMsPref,
+                           &pref_battery_delays_.screen_off));
+  CHECK(GetMillisecondPref(prefs_, kUnpluggedDimMsPref,
+                           &pref_battery_delays_.screen_dim));
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);
@@ -832,8 +829,7 @@ void StateController::UpdateSettingsAndState() {
             << " use_video=" << use_video_activity_;
   if (screen_wake_lock_->active() || dim_wake_lock_->active() ||
       system_wake_lock_->active()) {
-    LOG(INFO) << "Wake locks:"
-              << (screen_wake_lock_->active() ? " screen" : "")
+    LOG(INFO) << "Wake locks:" << (screen_wake_lock_->active() ? " screen" : "")
               << (dim_wake_lock_->active() ? " dim" : "")
               << (system_wake_lock_->active() ? " system" : "");
   }
@@ -874,13 +870,10 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenLock(now);
 
   const bool screen_was_dimmed = screen_dimmed_;
-  HandleDelay(delays_.screen_dim,
-              screen_dim_duration,
+  HandleDelay(delays_.screen_dim, screen_dim_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
-              "Dimming screen",
-              "Undimming screen",
-              &screen_dimmed_);
+              "Dimming screen", "Undimming screen", &screen_dimmed_);
   if (screen_dimmed_ && !screen_was_dimmed && audio_activity_->active() &&
       delegate_->IsHdmiAudioActive()) {
     LOG(INFO) << "Audio is currently being sent to display; screen will not be "
@@ -888,25 +881,18 @@ void StateController::UpdateState() {
   }
 
   const bool screen_was_turned_off = screen_turned_off_;
-  HandleDelay(delays_.screen_off,
-              screen_off_duration,
+  HandleDelay(delays_.screen_off, screen_off_duration,
               base::Bind(&Delegate::TurnScreenOff, base::Unretained(delegate_)),
               base::Bind(&Delegate::TurnScreenOn, base::Unretained(delegate_)),
-              "Turning screen off",
-              "Turning screen on",
-              &screen_turned_off_);
+              "Turning screen off", "Turning screen on", &screen_turned_off_);
   if (screen_turned_off_ && !screen_was_turned_off)
     screen_turned_off_time_ = now;
   else if (!screen_turned_off_)
     screen_turned_off_time_ = base::TimeTicks();
 
-  HandleDelay(delays_.screen_lock,
-              screen_lock_duration,
+  HandleDelay(delays_.screen_lock, screen_lock_duration,
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
-              base::Closure(),
-              "Locking screen",
-              "",
-              &requested_screen_lock_);
+              base::Closure(), "Locking screen", "", &requested_screen_lock_);
 
   // The idle-imminent signal is only emitted if an idle action is set.
   if (delays_.idle_warning > base::TimeDelta() &&
@@ -1010,37 +996,27 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    UpdateActionTimeout(now,
-                        GetLastActivityTimeForScreenDim(now),
-                        delays_.screen_dim,
-                        &timeout_delay);
+    UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
+                        delays_.screen_dim, &timeout_delay);
   }
   if (!IsScreenOffBlocked()) {
-    UpdateActionTimeout(now,
-                        GetLastActivityTimeForScreenOff(now),
-                        delays_.screen_off,
-                        &timeout_delay);
+    UpdateActionTimeout(now, GetLastActivityTimeForScreenOff(now),
+                        delays_.screen_off, &timeout_delay);
   }
   if (!IsScreenLockBlocked()) {
-    UpdateActionTimeout(now,
-                        GetLastActivityTimeForScreenLock(now),
-                        delays_.screen_lock,
-                        &timeout_delay);
+    UpdateActionTimeout(now, GetLastActivityTimeForScreenLock(now),
+                        delays_.screen_lock, &timeout_delay);
   }
   if (!IsIdleBlocked()) {
-    UpdateActionTimeout(now,
-                        GetLastActivityTimeForIdle(now),
-                        delays_.idle_warning,
-                        &timeout_delay);
-    UpdateActionTimeout(now,
-                        GetLastActivityTimeForIdle(now),
-                        delays_.idle,
+    UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
+                        delays_.idle_warning, &timeout_delay);
+    UpdateActionTimeout(now, GetLastActivityTimeForIdle(now), delays_.idle,
                         &timeout_delay);
   }
 
   if (timeout_delay > base::TimeDelta()) {
-    action_timer_.Start(
-        FROM_HERE, timeout_delay, this, &StateController::HandleActionTimeout);
+    action_timer_.Start(FROM_HERE, timeout_delay, this,
+                        &StateController::HandleActionTimeout);
     action_timer_time_for_testing_ = now + timeout_delay;
   } else {
     action_timer_.Stop();

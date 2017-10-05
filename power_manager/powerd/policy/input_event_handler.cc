@@ -161,8 +161,7 @@ void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
           FROM_HERE,
           base::TimeDelta::FromMilliseconds(
               kPowerButtonAcknowledgmentTimeoutMs),
-          this,
-          &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
+          this, &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
     } else {
       expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
       power_button_acknowledgment_timer_.Stop();

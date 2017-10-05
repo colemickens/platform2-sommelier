@@ -195,15 +195,13 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
       std::string int_string = base::Int64ToString(kIntTestValue + i);
       EXPECT_EQ(int_string.size(),
                 base::WriteFile(path.Append(kIntTestFileName),
-                                int_string.data(),
-                                int_string.size()));
+                                int_string.data(), int_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
 
       std::string double_string = base::DoubleToString(kDoubleTestValue + i);
       EXPECT_EQ(double_string.size(),
                 base::WriteFile(path.Append(kDoubleTestFileName),
-                                double_string.data(),
-                                double_string.size()));
+                                double_string.data(), double_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
     }
 
@@ -258,14 +256,12 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
       double_string = base::DoubleToString(kDoubleTestValue);
     }
     EXPECT_EQ(int_string.size(),
-              base::WriteFile(path.Append(kIntTestFileName),
-                              int_string.data(),
+              base::WriteFile(path.Append(kIntTestFileName), int_string.data(),
                               int_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
     EXPECT_EQ(double_string.size(),
               base::WriteFile(path.Append(kDoubleTestFileName),
-                              double_string.data(),
-                              double_string.size()));
+                              double_string.data(), double_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
   }
 

@@ -31,7 +31,7 @@ const int kMsInSec = 1000;
 // 0.
 #define SET_DELAY_FIELD(flag, submessage, field) \
   if (flag >= 0) {                               \
-    submessage->set_##field(flag * kMsInSec);    \
+    submessage->set_##field(flag* kMsInSec);     \
   }
 
 // Given |name| (a string) and |proto| (a PowerManagementPolicy), sets |proto|'s
@@ -71,91 +71,67 @@ power_manager::PowerManagementPolicy_Action GetAction(
 
 int main(int argc, char* argv[]) {
   // These mirror the fields from the PowerManagementPolicy protocol buffer.
-  DEFINE_string(ac_idle_action,
-                "",
+  DEFINE_string(ac_idle_action, "",
                 "Action to perform when idle on AC power (one of "
                 "suspend, stop_session, shut_down, do_nothing)");
-  DEFINE_string(battery_idle_action,
-                "",
+  DEFINE_string(battery_idle_action, "",
                 "Action to perform when idle on battery power (one of "
                 "suspend, stop_session, shut_down, do_nothing)");
-  DEFINE_string(lid_closed_action,
-                "",
+  DEFINE_string(lid_closed_action, "",
                 "Action to perform when lid is closed (one of "
                 "suspend, stop_session, shut_down, do_nothing)");
-  DEFINE_int32(ac_screen_dim_delay,
-               -1,
+  DEFINE_int32(ac_screen_dim_delay, -1,
                "Delay before dimming screen on AC power, in seconds");
-  DEFINE_int32(ac_screen_off_delay,
-               -1,
+  DEFINE_int32(ac_screen_off_delay, -1,
                "Delay before turning screen off on AC power, in seconds");
-  DEFINE_int32(ac_screen_lock_delay,
-               -1,
+  DEFINE_int32(ac_screen_lock_delay, -1,
                "Delay before locking screen on AC power, in seconds");
-  DEFINE_int32(ac_idle_warning_delay,
-               -1,
+  DEFINE_int32(ac_idle_warning_delay, -1,
                "Delay before idle action warning on AC power, in seconds");
-  DEFINE_int32(
-      ac_idle_delay, -1, "Delay before idle action on AC power, in seconds");
-  DEFINE_int32(battery_screen_dim_delay,
-               -1,
+  DEFINE_int32(ac_idle_delay, -1,
+               "Delay before idle action on AC power, in seconds");
+  DEFINE_int32(battery_screen_dim_delay, -1,
                "Delay before dimming screen on battery power, in seconds");
-  DEFINE_int32(battery_screen_off_delay,
-               -1,
+  DEFINE_int32(battery_screen_off_delay, -1,
                "Delay before turning screen off on battery power, in seconds");
-  DEFINE_int32(battery_screen_lock_delay,
-               -1,
+  DEFINE_int32(battery_screen_lock_delay, -1,
                "Delay before locking screen on battery power, in seconds");
-  DEFINE_int32(battery_idle_warning_delay,
-               -1,
+  DEFINE_int32(battery_idle_warning_delay, -1,
                "Delay before idle action warning on battery power, in seconds");
-  DEFINE_int32(battery_idle_delay,
-               -1,
+  DEFINE_int32(battery_idle_delay, -1,
                "Delay before idle action on battery power, in seconds");
-  DEFINE_int32(dim_wake_lock,
-               -1,
+  DEFINE_int32(dim_wake_lock, -1,
                "Report dim wake lock (1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(screen_wake_lock,
-               -1,
+  DEFINE_int32(screen_wake_lock, -1,
                "Report screen wake lock (1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(system_wake_lock,
-               -1,
+  DEFINE_int32(system_wake_lock, -1,
                "Report system wake lock (1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(use_audio_activity,
-               -1,
+  DEFINE_int32(use_audio_activity, -1,
                "Honor audio activity (1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(use_video_activity,
-               -1,
+  DEFINE_int32(use_video_activity, -1,
                "Honor video activity (1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(wait_for_initial_user_activity,
-               -1,
+  DEFINE_int32(wait_for_initial_user_activity, -1,
                "Wait for initial user activity before enforcing delays "
                "(1 is true, 0 is false, -1 is unset");
-  DEFINE_int32(force_nonzero_brightness_for_user_activity,
-               -1,
+  DEFINE_int32(force_nonzero_brightness_for_user_activity, -1,
                "Force panel backlight to non-zero brightness for user activity "
                "(1 is true, 0 is false, -1 is unset");
-  DEFINE_double(ac_brightness_percent,
-                -1.0,
+  DEFINE_double(ac_brightness_percent, -1.0,
                 "Brightness percent to use while on AC power (less than 0.0 "
                 "means unset)");
-  DEFINE_double(battery_brightness_percent,
-                -1.0,
+  DEFINE_double(battery_brightness_percent, -1.0,
                 "Brightness percent to use while on battery power (less than "
                 "0.0 means unset)");
-  DEFINE_double(presentation_screen_dim_delay_factor,
-                0.0,
+  DEFINE_double(presentation_screen_dim_delay_factor, 0.0,
                 "Factor by which the screen-dim delay is scaled while "
                 "presenting (less than 1.0 means unset)");
-  DEFINE_double(user_activity_screen_dim_delay_factor,
-                0.0,
+  DEFINE_double(user_activity_screen_dim_delay_factor, 0.0,
                 "Factor by which the screen-dim delay is scaled if user "
                 "activity is observed while the screen is dimmed or soon after "
                 "it's been turned off (less than 1.0 means unset)");
 
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Configures powerd's power management policy.\n\n"
       "When called without any arguments, uses default settings.");
   base::AtExitManager at_exit_manager;

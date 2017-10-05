@@ -39,10 +39,8 @@ void PrintAddrMap(void* vaddr) {
   CHECK_GE(fd, 0);
   CHECK_EQ(static_cast<uintptr_t>(lseek64(fd, page * 8, SEEK_SET)), page * 8);
   CHECK_EQ(read(fd, &page_data, 8), 8);
-  printf("Vaddr: 0x%p   PFN=0x%llx  shift=%llu  present=%lld\n",
-         vaddr,
-         page_data & ((1LL << 55) - 1),
-         (page_data & ((0x3fLL << 55))) >> 55,
+  printf("Vaddr: 0x%p   PFN=0x%llx  shift=%llu  present=%lld\n", vaddr,
+         page_data & ((1LL << 55) - 1), (page_data & ((0x3fLL << 55))) >> 55,
          (page_data & (1LL << 63)) >> 63);
 }
 
@@ -68,10 +66,8 @@ bool Check(uint32_t* ptr, size_t size) {
 
   for (size_t i = 0; i < size / sizeof(*ptr); i++) {
     if (*(ptr + i) != PATTERN(i)) {
-      printf("Found changed value: Addr=%p val=0x%X, expected=0x%X\n",
-             ptr + i,
-             *(ptr + i),
-             PATTERN(i));
+      printf("Found changed value: Addr=%p val=0x%X, expected=0x%X\n", ptr + i,
+             *(ptr + i), PATTERN(i));
       PrintAddrMap(ptr + i);
       success = false;
     }
@@ -92,8 +88,8 @@ int64_t GetUsableMemorySize() {
   vector<string> lines = base::SplitString(
       meminfo_raw, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (auto line : lines) {
-    vector<string> tokens = base::SplitString(
-        line, ": ", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    vector<string> tokens = base::SplitString(line, ": ", base::KEEP_WHITESPACE,
+                                              base::SPLIT_WANT_NONEMPTY);
     auto it = field_name.find(tokens[0]);
     if (it != field_name.end()) {
       uint64_t field_value;
@@ -119,8 +115,7 @@ int main(int argc, char* argv[]) {
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Test memory retention across suspend/resume.\n\n"
       "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"
       "  those patterns after resume. Will return 0 on success, 1 when the\n"

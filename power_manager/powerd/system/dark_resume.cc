@@ -162,8 +162,7 @@ void DarkResume::ScheduleBatteryCheck() {
   UpdateNextAction();
 
   timer_->Start(
-      FROM_HERE,
-      GetNextSuspendDuration(),
+      FROM_HERE, GetNextSuspendDuration(),
       base::Bind(&DarkResume::ScheduleBatteryCheck, base::Unretained(this)));
 }
 
@@ -242,16 +241,16 @@ bool DarkResume::ExitDarkResume() {
   LOG(INFO) << "Transitioning from dark resume to fully resumed.";
 
   // Set up the pm_test down to devices level.
-  if (!util::WriteFileFully(
-          pm_test_path_, kPMTestDevices, strlen(kPMTestDevices))) {
+  if (!util::WriteFileFully(pm_test_path_, kPMTestDevices,
+                            strlen(kPMTestDevices))) {
     PLOG(ERROR) << "Unable to set up the pm_test level to properly exit dark "
                 << "resume";
     return false;
   }
 
   // Do the pm_test suspend.
-  if (!util::WriteFileFully(
-          power_state_path_, kPowerStateMem, strlen(kPowerStateMem))) {
+  if (!util::WriteFileFully(power_state_path_, kPowerStateMem,
+                            strlen(kPowerStateMem))) {
     PLOG(ERROR) << "Error while performing a pm_test suspend to exit dark "
                 << "resume";
     return false;
@@ -323,8 +322,7 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
 void DarkResume::SetStates(const std::vector<base::FilePath>& files,
                            const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
-       iter != files.end();
-       ++iter) {
+       iter != files.end(); ++iter) {
     if (!util::WriteFileFully(*iter, state.c_str(), state.length())) {
       PLOG(ERROR) << "Failed writing \"" << state << "\" to " << iter->value();
     }

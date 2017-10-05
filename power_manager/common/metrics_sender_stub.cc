@@ -43,13 +43,8 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
 
 std::string MetricsSenderStub::Metric::ToString() const {
   return base::StringPrintf(
-      "name=%s,type=%d,sample=%d,min=%d,max=%d,num_buckets=%d",
-      name.c_str(),
-      static_cast<int>(type),
-      sample,
-      min,
-      max,
-      num_buckets);
+      "name=%s,type=%d,sample=%d,min=%d,max=%d,num_buckets=%d", name.c_str(),
+      static_cast<int>(type), sample, min, max, num_buckets);
 }
 
 MetricsSenderStub::MetricsSenderStub() {

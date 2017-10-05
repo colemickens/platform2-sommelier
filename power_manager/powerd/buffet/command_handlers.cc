@@ -62,8 +62,7 @@ class CommandHandler final {
         //
         // TODO(kemp): This should be removed once brbug.com/1265 is fixed.
         base::MessageLoop::current()->PostDelayedTask(
-            FROM_HERE,
-            reboot_callback_,
+            FROM_HERE, reboot_callback_,
             base::TimeDelta::FromSeconds(kRebootDelayInSeconds));
       }
     }

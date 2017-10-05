@@ -111,15 +111,13 @@ void SuspendDelayController::HandleDBusClientDisconnected(
     const std::string& client) {
   std::vector<int> delay_ids_to_remove;
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-       it != registered_delays_.end();
-       ++it) {
+       it != registered_delays_.end(); ++it) {
     if (it->second.dbus_client == client)
       delay_ids_to_remove.push_back(it->first);
   }
 
   for (std::vector<int>::const_iterator it = delay_ids_to_remove.begin();
-       it != delay_ids_to_remove.end();
-       ++it) {
+       it != delay_ids_to_remove.end(); ++it) {
     LOG(INFO) << "Unregistering " << GetLogDescription() << " delay " << *it
               << " (" << GetDelayDescription(*it) << ") due to D-Bus client "
               << client << " going away";
@@ -133,8 +131,7 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   size_t old_count = delay_ids_being_waited_on_.size();
   delay_ids_being_waited_on_.clear();
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-       it != registered_delays_.end();
-       ++it)
+       it != registered_delays_.end(); ++it)
     delay_ids_being_waited_on_.insert(it->first);
 
   LOG(INFO) << "Announcing " << GetLogDescription() << " request "
@@ -146,15 +143,12 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   } else {
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-         it != registered_delays_.end();
-         ++it) {
+         it != registered_delays_.end(); ++it) {
       max_timeout = std::max(max_timeout, it->second.timeout);
     }
     max_timeout = std::min(
         max_timeout, base::TimeDelta::FromMilliseconds(kMaxDelayTimeoutMs));
-    delay_expiration_timer_.Start(FROM_HERE,
-                                  max_timeout,
-                                  this,
+    delay_expiration_timer_.Start(FROM_HERE, max_timeout, this,
                                   &SuspendDelayController::OnDelayExpiration);
   }
 }
@@ -201,8 +195,7 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
 void SuspendDelayController::OnDelayExpiration() {
   std::string tardy_delays;
   for (std::set<int>::const_iterator it = delay_ids_being_waited_on_.begin();
-       it != delay_ids_being_waited_on_.end();
-       ++it) {
+       it != delay_ids_being_waited_on_.end(); ++it) {
     const DelayInfo& delay = registered_delays_[*it];
     if (!tardy_delays.empty())
       tardy_delays += ", ";
@@ -221,18 +214,16 @@ void SuspendDelayController::OnDelayExpiration() {
 
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
   notify_observers_timer_.Start(
-      FROM_HERE,
-      base::TimeDelta(),
+      FROM_HERE, base::TimeDelta(),
       base::Bind(&SuspendDelayController::NotifyObservers,
-                 base::Unretained(this),
-                 suspend_id));
+                 base::Unretained(this), suspend_id));
 }
 
 void SuspendDelayController::NotifyObservers(int suspend_id) {
   LOG(INFO) << "Notifying observers that " << GetLogDescription()
             << " is ready";
-  FOR_EACH_OBSERVER(
-      SuspendDelayObserver, observers_, OnReadyForSuspend(this, suspend_id));
+  FOR_EACH_OBSERVER(SuspendDelayObserver, observers_,
+                    OnReadyForSuspend(this, suspend_id));
 }
 
 }  // namespace policy

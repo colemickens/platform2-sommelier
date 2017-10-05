@@ -15,30 +15,24 @@
 #include "power_manager/common/prefs.h"
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(ambient_light_sensor,
-              false,
+  DEFINE_bool(ambient_light_sensor, false,
               "Exit with success if ambient light sensor support is enabled");
-  DEFINE_bool(hover_detection,
-              false,
+  DEFINE_bool(hover_detection, false,
               "Exit with success if hover detection is enabled");
-  DEFINE_bool(keyboard_backlight,
-              false,
+  DEFINE_bool(keyboard_backlight, false,
               "Exit with success if keyboard backlight support is enabled");
-  DEFINE_bool(low_battery_shutdown_percent,
-              false,
+  DEFINE_bool(low_battery_shutdown_percent, false,
               "Print the percent-based low-battery shutdown threshold (in "
               "[0.0, 100.0]) to stdout");
-  DEFINE_bool(low_battery_shutdown_time,
-              false,
+  DEFINE_bool(low_battery_shutdown_time, false,
               "Print the time-based low-battery shutdown threshold (in "
               "seconds) to stdout");
-  DEFINE_bool(suspend_to_idle,
-              false,
+  DEFINE_bool(suspend_to_idle, false,
               "Exit with success if \"freeze\" (rather than \"mem\") will be "
               "written to /sys/power/state when suspending");
 
-  brillo::FlagHelper::Init(
-      argc, argv, "Check the device's power-related configuration");
+  brillo::FlagHelper::Init(argc, argv,
+                           "Check the device's power-related configuration");
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;

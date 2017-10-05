@@ -102,9 +102,9 @@ void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,
   CHECK(proxy);
   CHECK(signal);
   RegisteredSignalInfo info{proxy, signal->GetInterface(), signal->GetMember()};
-  CHECK(signal_handlers_.count(info)) << "No signal handler registered on "
-                                      << proxy << " for " << info.interface_name
-                                      << "." << info.signal_name;
+  CHECK(signal_handlers_.count(info))
+      << "No signal handler registered on " << proxy << " for "
+      << info.interface_name << "." << info.signal_name;
   signal_handlers_[info].Run(signal);
 }
 
@@ -154,8 +154,8 @@ void DBusWrapperStub::ExportMethod(
     dbus::ExportedObject::MethodCallCallback callback) {
   CHECK(!service_published_) << "Method " << method_name
                              << " exported after service already published";
-  CHECK(!exported_methods_.count(method_name)) << "Method " << method_name
-                                               << " exported twice";
+  CHECK(!exported_methods_.count(method_name))
+      << "Method " << method_name << " exported twice";
   exported_methods_[method_name] = callback;
 }
 
@@ -180,10 +180,9 @@ void DBusWrapperStub::EmitSignalWithProtocolBuffer(
     const google::protobuf::MessageLite& protobuf) {
   std::string serialized_data;
   protobuf.SerializeToString(&serialized_data);
-  sent_signals_.emplace_back(SignalInfo{signal_name,
-                                        std::unique_ptr<dbus::Signal>(),
-                                        protobuf.GetTypeName(),
-                                        serialized_data});
+  sent_signals_.emplace_back(
+      SignalInfo{signal_name, std::unique_ptr<dbus::Signal>(),
+                 protobuf.GetTypeName(), serialized_data});
 }
 
 std::unique_ptr<dbus::Response> DBusWrapperStub::CallMethodSync(

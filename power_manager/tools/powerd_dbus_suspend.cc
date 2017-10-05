@@ -55,25 +55,22 @@ void OnTimeout() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_int32(delay,
-               1,
+  DEFINE_int32(delay, 1,
                "Delay before suspending in seconds. Useful if "
                "running interactively to ensure that typing this command "
                "isn't recognized as user activity that cancels the suspend "
                "request.");
   DEFINE_int32(timeout, 0, "How long to wait for a resume signal in seconds.");
-  DEFINE_uint64(wakeup_count,
-                0,
+  DEFINE_uint64(wakeup_count, 0,
                 "Wakeup count to pass to powerd or 0 if "
                 "unset.");
-  DEFINE_int32(wakeup_timeout,
-               0,
+  DEFINE_int32(wakeup_timeout, 0,
                "RTC alarm timeout in seconds.  Sets an RTC "
                "alarm that fires after the given interval.  Useful "
                "to ensure that device resumes while testing remotely.");
 
-  brillo::FlagHelper::Init(
-      argc, argv, "Instruct powerd to suspend the system.");
+  brillo::FlagHelper::Init(argc, argv,
+                           "Instruct powerd to suspend the system.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
@@ -92,14 +89,12 @@ int main(int argc, char* argv[]) {
   if (FLAGS_wakeup_timeout) {
     std::string alarm_string = "+" + base::IntToString(FLAGS_wakeup_timeout);
     CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath),
-                          alarm_string.c_str(),
-                          alarm_string.length()));
+                          alarm_string.c_str(), alarm_string.length()));
   }
 
-  powerd_proxy->ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendDoneSignal,
-                                base::Bind(&OnSuspendDone),
-                                base::Bind(&OnDBusSignalConnected));
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
+      base::Bind(&OnSuspendDone), base::Bind(&OnDBusSignalConnected));
 
   // Send a suspend request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
@@ -115,8 +110,7 @@ int main(int argc, char* argv[]) {
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&OnTimeout),
+        FROM_HERE, base::Bind(&OnTimeout),
         base::TimeDelta::FromSeconds(FLAGS_timeout));
   }
 

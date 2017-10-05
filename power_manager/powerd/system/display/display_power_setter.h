@@ -65,7 +65,7 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   // Runs SendStateToDisplayService().
   base::OneShotTimer timer_;
 
-  DBusWrapperInterface* dbus_wrapper_;  // weak
+  DBusWrapperInterface* dbus_wrapper_;        // weak
   dbus::ObjectProxy* display_service_proxy_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);

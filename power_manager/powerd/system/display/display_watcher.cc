@@ -132,8 +132,8 @@ void DisplayWatcher::UpdateDisplays() {
   std::sort(new_displays.begin(), new_displays.end());
   if (new_displays != displays_) {
     displays_.swap(new_displays);
-    FOR_EACH_OBSERVER(
-        DisplayWatcherObserver, observers_, OnDisplaysChanged(displays_));
+    FOR_EACH_OBSERVER(DisplayWatcherObserver, observers_,
+                      OnDisplaysChanged(displays_));
   }
 }
 

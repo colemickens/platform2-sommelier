@@ -67,8 +67,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
     controller_.reset(new InternalBacklightController);
     if (!init_time_.is_null())
       controller_->clock()->set_current_time_for_testing(init_time_);
-    controller_->Init(&backlight_,
-                      &prefs_,
+    controller_->Init(&backlight_, &prefs_,
                       pass_light_sensor_ ? &light_sensor_ : NULL,
                       &display_power_setter_);
 
@@ -338,9 +337,9 @@ TEST_F(InternalBacklightControllerTest, LinearMappingForSmallBacklightRange) {
   const double kMinVisiblePercent =
       InternalBacklightController::kMinVisiblePercent;
   for (int i = 1; i <= max_backlight_level_; ++i) {
-    double percent =
-        kMinVisiblePercent +
-        (100.0 - kMinVisiblePercent) * (i - 1) / (max_backlight_level_ - 1);
+    double percent = kMinVisiblePercent + (100.0 - kMinVisiblePercent) *
+                                              (i - 1) /
+                                              (max_backlight_level_ - 1);
     EXPECT_EQ(static_cast<int64_t>(i), PercentToLevel(percent));
   }
 }

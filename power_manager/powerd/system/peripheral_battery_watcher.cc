@@ -37,7 +37,7 @@ const int kDefaultPollIntervalMs = 600000;
 
 // Reads |path| to |value_out| and trims trailing whitespace. False is returned
 // if the file doesn't exist or can't be read.
-bool ReadStringFromFile(const base::FilePath& path, std::string *value_out) {
+bool ReadStringFromFile(const base::FilePath& path, std::string* value_out) {
   if (!base::ReadFileToString(path, value_out))
     return false;
 
@@ -69,8 +69,8 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper) {
 void PeripheralBatteryWatcher::GetBatteryList(
     std::vector<base::FilePath>* battery_list) {
   battery_list->clear();
-  base::FileEnumerator dir_enumerator(
-      peripheral_battery_path_, false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator dir_enumerator(peripheral_battery_path_, false,
+                                      base::FileEnumerator::DIRECTORIES);
 
   for (base::FilePath device_path = dir_enumerator.Next(); !device_path.empty();
        device_path = dir_enumerator.Next()) {
@@ -113,21 +113,17 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     AsyncFileReader* reader = battery_readers_.back().get();
 
     if (reader->Init(capacity_path.value())) {
-      reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                                   base::Unretained(this),
-                                   path.value(),
-                                   model_name),
-                        base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
-                                   base::Unretained(this),
-                                   path.value(),
-                                   model_name));
+      reader->StartRead(
+          base::Bind(&PeripheralBatteryWatcher::ReadCallback,
+                     base::Unretained(this), path.value(), model_name),
+          base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
+                     base::Unretained(this), path.value(), model_name));
     } else {
       LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
     }
   }
   poll_timer_.Start(FROM_HERE,
-                    base::TimeDelta::FromMilliseconds(poll_interval_ms_),
-                    this,
+                    base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,
                     &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 

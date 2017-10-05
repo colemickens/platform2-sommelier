@@ -93,12 +93,10 @@ void PeriodicActivityLogger::OnActivityReported() {
 
   // Extend the "stopped" timeout and start the "ongoing" timer if it isn't
   // already running.
-  stopped_timer_.Start(
-      FROM_HERE, stopped_delay_, this, &PeriodicActivityLogger::LogStopped);
+  stopped_timer_.Start(FROM_HERE, stopped_delay_, this,
+                       &PeriodicActivityLogger::LogStopped);
   if (!ongoing_interval_.is_zero() && !ongoing_timer_.IsRunning()) {
-    ongoing_timer_.Start(FROM_HERE,
-                         ongoing_interval_,
-                         this,
+    ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
                          &PeriodicActivityLogger::LogOngoing);
   }
 }
@@ -134,9 +132,7 @@ void StartStopActivityLogger::OnActivityStarted() {
     stopped_timer_.Stop();
 
   if (!ongoing_interval_.is_zero() && !ongoing_timer_.IsRunning()) {
-    ongoing_timer_.Start(FROM_HERE,
-                         ongoing_interval_,
-                         this,
+    ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
                          &StartStopActivityLogger::LogOngoing);
   }
 }
@@ -154,8 +150,8 @@ void StartStopActivityLogger::OnActivityStopped() {
   if (stopped_delay_.is_zero()) {
     LogStopped();
   } else {
-    stopped_timer_.Start(
-        FROM_HERE, stopped_delay_, this, &StartStopActivityLogger::LogStopped);
+    stopped_timer_.Start(FROM_HERE, stopped_delay_, this,
+                         &StartStopActivityLogger::LogStopped);
   }
 }
 

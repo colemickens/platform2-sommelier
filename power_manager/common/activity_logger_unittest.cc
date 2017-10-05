@@ -47,9 +47,9 @@ class ActivityLoggerTest : public testing::Test {
   // BaseActivityLogger::LogCallback that just saves messages passed to it.
   void SaveMessage(const std::string& message) {
     EXPECT_FALSE(message.empty()) << "Got request to log empty message";
-    EXPECT_TRUE(last_message_.empty()) << "Got request to log \"" << message
-                                       << "\" before previous message \""
-                                       << last_message_ << "\" was popped";
+    EXPECT_TRUE(last_message_.empty())
+        << "Got request to log \"" << message << "\" before previous message \""
+        << last_message_ << "\" was popped";
     last_message_ = message;
   }
 

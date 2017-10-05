@@ -82,8 +82,7 @@ void AudioClient::UpdateDevices() {
 
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_,
-      &method_call,
+      cras_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   if (!response)
     return;
@@ -133,8 +132,7 @@ void AudioClient::UpdateNumActiveStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveStreams);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_,
-      &method_call,
+      cras_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   int num_streams = 0;
   if (response) {
@@ -164,8 +162,7 @@ void AudioClient::SetSuspended(bool suspended) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(suspended);
   dbus_wrapper_->CallMethodSync(
-      cras_proxy_,
-      &method_call,
+      cras_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
 }
 

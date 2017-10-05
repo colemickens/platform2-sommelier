@@ -172,8 +172,8 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
-    controller_.Init(
-        &delegate_, &prefs_, initial_power_source_, initial_lid_state_);
+    controller_.Init(&delegate_, &prefs_, initial_power_source_,
+                     initial_lid_state_);
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);
@@ -1166,10 +1166,9 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(
-      JoinActions(
-          GetIdleImminentAction(base::TimeDelta()).c_str(), kStopSession, NULL),
-      delegate_.GetActions());
+  EXPECT_EQ(JoinActions(GetIdleImminentAction(base::TimeDelta()).c_str(),
+                        kStopSession, NULL),
+            delegate_.GetActions());
 
   // Let idle-imminent get sent and then increase the idle delay. idle-imminent
   // should be sent again immediately with an updated time-until-idle-action.

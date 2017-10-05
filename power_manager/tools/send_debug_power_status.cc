@@ -46,22 +46,19 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(battery_state, 2, "BatteryState enum value");
   DEFINE_int32(battery_time_to_empty, -1, "Seconds until battery is empty");
   DEFINE_int32(battery_time_to_full, -1, "Seconds until battery is full");
-  DEFINE_bool(calculating_battery_time,
-              false,
+  DEFINE_bool(calculating_battery_time, false,
               "True if battery time estimates "
               "are still being calculated");
   DEFINE_int32(external_power, 2, "ExternalPower enum value");
   DEFINE_string(power_source_id, "", "ID of the active power source");
-  DEFINE_string(power_sources,
-                "",
+  DEFINE_string(power_sources, "",
                 "Comma-separated list of "
                 "id:manufacturer:model:active_by_default values describing "
                 "available external power sources; active_by_default is 1 if "
                 "true");
 
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Emits a fake D-Bus signal describing the current power supply status.\n"
       "Run this as the \"power\" user after stopping powerd.");
   base::AtExitManager at_exit_manager;

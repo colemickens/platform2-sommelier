@@ -119,11 +119,8 @@ class InputEventHandlerTest : public ::testing::Test {
  protected:
   // Initializes |handler_|.
   void Init() {
-    handler_.Init(&input_watcher_,
-                  &delegate_,
-                  &display_watcher_,
-                  &dbus_wrapper_,
-                  &prefs_);
+    handler_.Init(&input_watcher_, &delegate_, &display_watcher_,
+                  &dbus_wrapper_, &prefs_);
   }
 
   // Tests that one InputEvent D-Bus signal has been sent and returns the
@@ -330,8 +327,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
-                        kMissingPowerButtonAcknowledgment,
-                        NULL),
+                        kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
@@ -348,8 +344,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
-                        kMissingPowerButtonAcknowledgment,
-                        NULL),
+                        kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);

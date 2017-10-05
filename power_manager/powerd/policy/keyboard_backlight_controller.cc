@@ -132,8 +132,7 @@ void KeyboardBacklightController::Init(
   std::vector<std::string> lines = base::SplitString(
       input_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end();
-       ++iter) {
+       iter != lines.end(); ++iter) {
     double new_step = 0.0;
     if (!base::StringToDouble(*iter, &new_step))
       LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
@@ -204,10 +203,8 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
   video_timer_.Stop();
   if (is_fullscreen) {
     video_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
-        this,
-        &KeyboardBacklightController::HandleVideoTimeout);
+        FROM_HERE, base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
+        this, &KeyboardBacklightController::HandleVideoTimeout);
   }
 }
 
@@ -459,11 +456,9 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
     return;
 
   turn_off_timer_.Start(
-      FROM_HERE,
-      remaining_delay,
+      FROM_HERE, remaining_delay,
       base::Bind(base::IgnoreResult(&KeyboardBacklightController::UpdateState),
-                 base::Unretained(this),
-                 Transition::SLOW,
+                 base::Unretained(this), Transition::SLOW,
                  BrightnessChangeCause::AUTOMATED));
 }
 
@@ -500,17 +495,15 @@ bool KeyboardBacklightController::UpdateState(Transition transition,
   }
 
   if (dimmed_for_inactivity_) {
-    return ApplyBrightnessPercent(
-        std::min(kDimPercent, automated_percent_), transition, cause);
+    return ApplyBrightnessPercent(std::min(kDimPercent, automated_percent_),
+                                  transition, cause);
   }
 
   return ApplyBrightnessPercent(automated_percent_, transition, cause);
 }
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(
-    double percent,
-    Transition transition,
-    BrightnessChangeCause cause) {
+    double percent, Transition transition, BrightnessChangeCause cause) {
   const int64_t level = PercentToLevel(percent);
   if (level == PercentToLevel(current_percent_) &&
       !backlight_->TransitionInProgress())
@@ -531,8 +524,7 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   }
 
   current_percent_ = percent;
-  FOR_EACH_OBSERVER(BacklightControllerObserver,
-                    observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChange(percent, cause, this));
   return true;
 }

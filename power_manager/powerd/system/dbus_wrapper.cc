@@ -31,7 +31,7 @@ void HandleSignalConnected(const std::string& interface,
 
 DBusWrapper::DBusWrapper(scoped_refptr<dbus::Bus> bus,
                          dbus::ExportedObject* exported_object)
-  : bus_(bus), exported_object_(exported_object) {}
+    : bus_(bus), exported_object_(exported_object) {}
 
 DBusWrapper::~DBusWrapper() {}
 
@@ -74,17 +74,15 @@ void DBusWrapper::RegisterForSignal(
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback callback) {
   DCHECK(proxy);
-  proxy->ConnectToSignal(interface_name,
-                         signal_name,
-                         callback,
+  proxy->ConnectToSignal(interface_name, signal_name, callback,
                          base::Bind(&HandleSignalConnected));
 }
 
 void DBusWrapper::ExportMethod(
     const std::string& method_name,
     dbus::ExportedObject::MethodCallCallback callback) {
-  CHECK(exported_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, method_name, callback));
+  CHECK(exported_object_->ExportMethodAndBlock(kPowerManagerInterface,
+                                               method_name, callback));
 }
 
 bool DBusWrapper::PublishService() {

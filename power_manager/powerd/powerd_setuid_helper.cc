@@ -52,36 +52,29 @@ void RunCommand(const char* command, const char* arg, ...) {
 }
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(action,
-                "",
+  DEFINE_string(action, "",
                 "Action to perform.  Must be one of "
                 "\"mosys_eventlog\", \"reboot\", \"set_wifi_transmit_power\", "
                 "\"shut_down\", and \"suspend\".");
-  DEFINE_string(mosys_eventlog_code,
-                "",
+  DEFINE_string(mosys_eventlog_code, "",
                 "Hexadecimal byte, e.g. \"0xa7\", "
                 "describing the event being logged.");
-  DEFINE_string(shutdown_reason,
-                "",
+  DEFINE_string(shutdown_reason, "",
                 "Optional shutdown reason starting with a "
                 "lowercase letter and consisting only of lowercase letters and "
                 "dashes.");
-  DEFINE_int64(suspend_duration,
-               -1,
+  DEFINE_int64(suspend_duration, -1,
                "Pass --suspend_duration <INT> to "
                "powerd_suspend to resume after <INT> seconds for a dark "
                "resume.");
-  DEFINE_uint64(suspend_wakeup_count,
-                0,
+  DEFINE_uint64(suspend_wakeup_count, 0,
                 "Pass --wakeup_count <INT> to "
                 "powerd_suspend for the \"suspend\" action.");
-  DEFINE_bool(suspend_wakeup_count_valid,
-              false,
+  DEFINE_bool(suspend_wakeup_count_valid, false,
               "Should --suspend_wakeup_count be honored?");
-  DEFINE_bool(
-      suspend_to_idle, false, "Should the system suspend to idle (freeze)?");
-  DEFINE_bool(wifi_transmit_power_tablet,
-              false,
+  DEFINE_bool(suspend_to_idle, false,
+              "Should the system suspend to idle (freeze)?");
+  DEFINE_bool(wifi_transmit_power_tablet, false,
               "Set wifi transmit power mode to tablet mode");
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
@@ -92,8 +85,8 @@ int main(int argc, char* argv[]) {
           isxdigit(FLAGS_mosys_eventlog_code[2]) &&
           isxdigit(FLAGS_mosys_eventlog_code[3]))
         << "Invalid event code";
-    RunCommand(
-        "mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(), NULL);
+    RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
+               NULL);
   } else if (FLAGS_action == "reboot") {
     RunCommand("shutdown", "-r", "now", NULL);
   } else if (FLAGS_action == "set_wifi_transmit_power") {
@@ -110,13 +103,8 @@ int main(int argc, char* argv[]) {
       }
       reason_arg = "SHUTDOWN_REASON=" + FLAGS_shutdown_reason;
     }
-    RunCommand("initctl",
-               "emit",
-               "--no-wait",
-               "runlevel",
-               "RUNLEVEL=0",
-               (reason_arg.empty() ? NULL : reason_arg.c_str()),
-               NULL);
+    RunCommand("initctl", "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
+               (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
   } else if (FLAGS_action == "suspend") {
     std::string duration_flag =
         "--suspend_duration=" + base::IntToString(FLAGS_suspend_duration);
@@ -128,11 +116,8 @@ int main(int argc, char* argv[]) {
       wakeup_flag =
           "--wakeup_count=" + base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
-    RunCommand("powerd_suspend",
-               duration_flag.c_str(),
-               idle_flag.c_str(),
-               wakeup_flag.empty() ? NULL : wakeup_flag.c_str(),
-               NULL);
+    RunCommand("powerd_suspend", duration_flag.c_str(), idle_flag.c_str(),
+               wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else {
     LOG(ERROR) << "Unknown action \"" << FLAGS_action << "\"";
     return 1;

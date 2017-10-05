@@ -75,8 +75,7 @@ int AmbientLightSensor::GetAmbientLightLux() {
 
 void AmbientLightSensor::StartTimer() {
   poll_timer_.Start(FROM_HERE,
-                    base::TimeDelta::FromMilliseconds(poll_interval_ms_),
-                    this,
+                    base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,
                     &AmbientLightSensor::ReadAls);
 }
 
@@ -105,8 +104,8 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
   if (base::StringToInt(trimmed_data, &value)) {
     lux_value_ = value;
     VLOG(1) << "Read lux " << lux_value_;
-    FOR_EACH_OBSERVER(
-        AmbientLightObserver, observers_, OnAmbientLightUpdated(this));
+    FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
+                      OnAmbientLightUpdated(this));
   } else {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";
@@ -124,14 +123,11 @@ bool AmbientLightSensor::InitAlsFile() {
 
   // Search the iio/devices directory for a subdirectory (eg "device0" or
   // "iio:device0") that contains the "[in_]illuminance[0]_{input|raw}" file.
-  base::FileEnumerator dir_enumerator(
-      device_list_path_, false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator dir_enumerator(device_list_path_, false,
+                                      base::FileEnumerator::DIRECTORIES);
   const char* input_names[] = {
-      "in_illuminance0_input",
-      "in_illuminance_input",
-      "in_illuminance0_raw",
-      "in_illuminance_raw",
-      "illuminance0_input",
+      "in_illuminance0_input", "in_illuminance_input", "in_illuminance0_raw",
+      "in_illuminance_raw",    "illuminance0_input",
   };
 
   num_init_attempts_++;

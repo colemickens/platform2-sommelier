@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <gtest/gtest.h>
@@ -31,8 +31,7 @@ constexpr char kPattern[] = "*:kbd_backlight";
 // BacklightObserver implementation for testing that just counts changes.
 class TestObserver : public BacklightObserver {
  public:
-  explicit TestObserver(BacklightInterface* backlight)
-      : backlight_(backlight) {
+  explicit TestObserver(BacklightInterface* backlight) : backlight_(backlight) {
     backlight_->AddObserver(this);
   }
   ~TestObserver() override { backlight_->RemoveObserver(this); }

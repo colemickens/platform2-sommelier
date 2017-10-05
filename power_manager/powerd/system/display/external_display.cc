@@ -175,8 +175,7 @@ bool ExternalDisplay::RequestBrightness() {
   message.push_back(kDdcBrightnessIndex);
   const SendResult result = SendMessage(message);
   SendEnumMetric(metrics::kExternalBrightnessRequestResultName,
-                 static_cast<int>(result),
-                 metrics::kExternalDisplayResultMax);
+                 static_cast<int>(result), metrics::kExternalDisplayResultMax);
   return result == SendResult::SUCCESS;
 }
 

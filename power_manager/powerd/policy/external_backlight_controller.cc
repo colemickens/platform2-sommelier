@@ -188,19 +188,16 @@ void ExternalBacklightController::UpdateScreenPowerState() {
 }
 
 void ExternalBacklightController::NotifyObservers() {
-  FOR_EACH_OBSERVER(BacklightControllerObserver,
-                    observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
-                                       BrightnessChangeCause::AUTOMATED,
-                                       this));
+                                       BrightnessChangeCause::AUTOMATED, this));
 }
 
 void ExternalBacklightController::UpdateDisplays(
     const std::vector<system::DisplayInfo>& displays) {
   ExternalDisplayMap updated_displays;
   for (std::vector<system::DisplayInfo>::const_iterator it = displays.begin();
-       it != displays.end();
-       ++it) {
+       it != displays.end(); ++it) {
     const system::DisplayInfo& info = *it;
     if (info.i2c_path.empty())
       continue;
@@ -226,8 +223,7 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
     double percent_offset) {
   LOG(INFO) << "Adjusting brightness by " << percent_offset << "%";
   for (ExternalDisplayMap::const_iterator it = external_displays_.begin();
-       it != external_displays_.end();
-       ++it) {
+       it != external_displays_.end(); ++it) {
     it->second->AdjustBrightnessByPercent(percent_offset);
   }
 }

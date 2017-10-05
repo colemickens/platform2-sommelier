@@ -104,9 +104,7 @@ class PowerSupplyTest : public ::testing::Test {
 
  protected:
   // Initializes |power_supply_|.
-  void Init() {
-    power_supply_->Init(temp_dir_.path(), &prefs_, &udev_);
-  }
+  void Init() { power_supply_->Init(temp_dir_.path(), &prefs_, &udev_); }
 
   // Sets the time so that |power_supply_| will believe that the current
   // has stabilized.
@@ -139,8 +137,7 @@ class PowerSupplyTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(battery_dir_));
 
     UpdatePowerSourceAndBatteryStatus(
-        source,
-        kMainsType,
+        source, kMainsType,
         source == PowerSource::AC ? kCharging : kDischarging);
     WriteValue(battery_dir_, "type", kBatteryType);
     WriteValue(battery_dir_, "present", "1");
@@ -182,10 +179,8 @@ class PowerSupplyTest : public ::testing::Test {
           std::max(time_to_empty_sec - static_cast<int>(shutdown_sec), 0);
     }
     return base::StringPrintf("calculating=%d empty=%d shutdown=%d full=%d",
-                              calculating,
-                              time_to_empty_sec,
-                              time_to_shutdown_sec,
-                              time_to_full_sec);
+                              calculating, time_to_empty_sec,
+                              time_to_shutdown_sec, time_to_full_sec);
   }
 
   std::string GetEstimateStringFromStatus(const PowerStatus& status) {
@@ -218,8 +213,8 @@ class PowerSupplyTest : public ::testing::Test {
 
   // Sends a udev event to |power_supply_|.
   void SendUdevEvent() {
-    power_supply_->OnUdevEvent(
-        PowerSupply::kUdevSubsystem, "AC", UdevAction::CHANGE);
+    power_supply_->OnUdevEvent(PowerSupply::kUdevSubsystem, "AC",
+                               UdevAction::CHANGE);
   }
 
   FakePrefs prefs_;
@@ -348,8 +343,8 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   EXPECT_FALSE(power_status.supports_dual_role_devices);
 
   // Switch to battery.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
@@ -598,10 +593,10 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
   // Write a pref describing two charging ports and say that we're charging from
   // the first one. PowerSupply will sort the ports by name.
   const char kSecondName[] = "port2";
-  prefs_.SetString(kChargingPortsPref,
-                   base::StringPrintf("%s LEFT_FRONT\n%s RIGHT_BACK",
-                                      ac_dir_.BaseName().value().c_str(),
-                                      kSecondName));
+  prefs_.SetString(
+      kChargingPortsPref,
+      base::StringPrintf("%s LEFT_FRONT\n%s RIGHT_BACK",
+                         ac_dir_.BaseName().value().c_str(), kSecondName));
   WriteDefaultValues(PowerSource::AC);
 
   // Connect a second, idle power source.
@@ -752,8 +747,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // battery times should be reported as "calculating" again.
   current_time += base::TimeDelta::FromSeconds(120);
   test_api_->SetCurrentTime(current_time);
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   power_supply_->SetSuspended(false);
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
@@ -787,8 +782,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Now test the delay when going back to battery power.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   SendUdevEvent();
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
@@ -842,8 +837,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Disconnect the charger and report an immediate drop in charge and
   // current. The current shouldn't be used yet.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -0.5);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
 
@@ -885,8 +880,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Go back to battery and check that the previous on-battery current sample
   // (-2.5) is included in the average.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -1.5);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
@@ -923,8 +918,8 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
   EXPECT_EQ(MakeEstimateString(false, 0, -1), UpdateAndGetEstimateString());
 
   // Switch to battery power.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -1.0);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
@@ -952,8 +947,8 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, 0, -1), UpdateAndGetEstimateString());
 
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, -1, 0), UpdateAndGetEstimateString());
@@ -990,8 +985,8 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   UpdateChargeAndCurrent(1.0, -1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
@@ -1384,8 +1379,8 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
 
   // Switch to battery power and check that a udev event triggers a synchronous
   // notification.
-  UpdatePowerSourceAndBatteryStatus(
-      PowerSource::BATTERY, kMainsType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
+                                    kDischarging);
   SendUdevEvent();
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
@@ -1493,33 +1488,22 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
-  status.ports.emplace_back(kChargerId,
-                            kChargerPort,
+  status.ports.emplace_back(kChargerId, kChargerPort,
                             Connection::DEDICATED_SOURCE,
-                            kChargerManufacturerId,
-                            kChargerModelId,
-                            kChargerMaxPower,
-                            true /* active_by_default */);
+                            kChargerManufacturerId, kChargerModelId,
+                            kChargerMaxPower, true /* active_by_default */);
   const char kPhoneId[] = "PORT2";
   const PowerSupplyProperties::PowerSource::Port kPhonePort =
       PowerSupplyProperties_PowerSource_Port_RIGHT;
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
-  status.ports.emplace_back(kPhoneId,
-                            kPhonePort,
-                            Connection::DUAL_ROLE,
-                            kPhoneManufacturerId,
-                            kPhoneModelId,
-                            kPhoneMaxPower,
+  status.ports.emplace_back(kPhoneId, kPhonePort, Connection::DUAL_ROLE,
+                            kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower,
                             false /* active_by_default */);
-  status.ports.emplace_back("PORT3",
-                            PowerSupplyProperties_PowerSource_Port_FRONT,
-                            Connection::NONE,
-                            "",
-                            "",
-                            0.0,
-                            false /* active_by_default */);
+  status.ports.emplace_back(
+      "PORT3", PowerSupplyProperties_PowerSource_Port_FRONT, Connection::NONE,
+      "", "", 0.0, false /* active_by_default */);
   status.external_power_source_id = kChargerId;
   status.supports_dual_role_devices = true;
 

@@ -91,14 +91,10 @@ class InputDeviceControllerTest : public ::testing::Test {
 
   void InitInputDeviceController() {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
-    input_device_controller_.Init(&backlight_controller_,
-                                  &udev_,
-                                  &acpi_wakeup_helper_,
-                                  &ec_wakeup_helper_,
-                                  initial_lid_state_,
-                                  initial_tablet_mode_,
-                                  initial_display_mode_,
-                                  &prefs_);
+    input_device_controller_.Init(&backlight_controller_, &udev_,
+                                  &acpi_wakeup_helper_, &ec_wakeup_helper_,
+                                  initial_lid_state_, initial_tablet_mode_,
+                                  initial_display_mode_, &prefs_);
   }
 
   policy::BacklightControllerStub backlight_controller_;
@@ -139,11 +135,8 @@ TEST_F(InputDeviceControllerTest, ConfigureWakeupOnAdd) {
 }
 
 TEST_F(InputDeviceControllerTest, DisableWakeupWhenClosed) {
-  AddDeviceWithTags(kSyspath0,
-                    kTagWakeup,
-                    kTagWakeupOnlyWhenUsable,
-                    kTagUsableWhenLaptop,
-                    nullptr);
+  AddDeviceWithTags(kSyspath0, kTagWakeup, kTagWakeupOnlyWhenUsable,
+                    kTagUsableWhenLaptop, nullptr);
   InitInputDeviceController();
 
   // In laptop mode, wakeup should be enabled.
@@ -182,11 +175,8 @@ TEST_F(InputDeviceControllerTest, ConfigureInhibit) {
 }
 
 TEST_F(InputDeviceControllerTest, InhibitDocking) {
-  AddDeviceWithTags(kSyspath0,
-                    kTagInhibit,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenDocked,
-                    nullptr);
+  AddDeviceWithTags(kSyspath0, kTagInhibit, kTagUsableWhenLaptop,
+                    kTagUsableWhenDocked, nullptr);
   initial_display_mode_ = DisplayMode::PRESENTATION;
   InitInputDeviceController();
 
@@ -203,11 +193,8 @@ TEST_F(InputDeviceControllerTest, InhibitDocking) {
 }
 
 TEST_F(InputDeviceControllerTest, InhibitDockingDisallowed) {
-  AddDeviceWithTags(kSyspath0,
-                    kTagInhibit,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenDocked,
-                    nullptr);
+  AddDeviceWithTags(kSyspath0, kTagInhibit, kTagUsableWhenLaptop,
+                    kTagUsableWhenDocked, nullptr);
   default_allow_docked_mode_ = false;
   initial_display_mode_ = DisplayMode::PRESENTATION;
   InitInputDeviceController();
@@ -226,11 +213,8 @@ TEST_F(InputDeviceControllerTest, InhibitDockingDisallowed) {
 }
 
 TEST_F(InputDeviceControllerTest, SetDisplayModeExternalInput) {
-  AddDeviceWithTags(kSyspath0,
-                    kTagInhibit,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenDocked,
-                    nullptr);
+  AddDeviceWithTags(kSyspath0, kTagInhibit, kTagUsableWhenLaptop,
+                    kTagUsableWhenDocked, nullptr);
   initial_lid_state_ = LidState::CLOSED;
   InitInputDeviceController();
 
@@ -305,20 +289,12 @@ TEST_F(InputDeviceControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
 TEST_F(InputDeviceControllerTest, HandleTabletMode) {
   const char kKeyboardSyspath[] = "/sys/devices/keyboard/0";
   const char kTouchscreenSyspath[] = "/sys/devices/touchscreen/0";
-  AddDeviceWithTags(kKeyboardSyspath,
-                    kTagInhibit,
-                    kTagWakeup,
-                    kTagWakeupOnlyWhenUsable,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenDisplayOff,
-                    nullptr);
-  AddDeviceWithTags(kTouchscreenSyspath,
-                    kTagInhibit,
-                    kTagWakeup,
-                    kTagWakeupOnlyWhenUsable,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenTablet,
-                    nullptr);
+  AddDeviceWithTags(kKeyboardSyspath, kTagInhibit, kTagWakeup,
+                    kTagWakeupOnlyWhenUsable, kTagUsableWhenLaptop,
+                    kTagUsableWhenDisplayOff, nullptr);
+  AddDeviceWithTags(kTouchscreenSyspath, kTagInhibit, kTagWakeup,
+                    kTagWakeupOnlyWhenUsable, kTagUsableWhenLaptop,
+                    kTagUsableWhenTablet, nullptr);
   initial_tablet_mode_ = TabletMode::ON;
 
   // While in tablet mode, the keyboard should be inhibited with wakeup
@@ -341,8 +317,7 @@ TEST_F(InputDeviceControllerTest, HandleTabletMode) {
   input_device_controller_.SetLidState(LidState::OPEN);
   input_device_controller_.SetTabletMode(TabletMode::ON);
   input_device_controller_.OnBrightnessChange(
-      0.0,
-      BacklightController::BrightnessChangeCause::USER_INITIATED,
+      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED,
       &backlight_controller_);
   EXPECT_EQ("0", GetSysattr(kKeyboardSyspath, kInhibited));
   EXPECT_EQ(kEnabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
@@ -355,12 +330,8 @@ TEST_F(InputDeviceControllerTest, UsableWithoutWakeup) {
   // because it also produces power button events: http://crbug.com/703691) but
   // that should only wake the device while in laptop mode.
   const char kKeyboardSyspath[] = "/sys/devices/keyboard/0";
-  AddDeviceWithTags(kKeyboardSyspath,
-                    kTagInhibit,
-                    kTagUsableWhenLaptop,
-                    kTagUsableWhenTablet,
-                    kTagWakeup,
-                    kTagWakeupWhenLaptop,
+  AddDeviceWithTags(kKeyboardSyspath, kTagInhibit, kTagUsableWhenLaptop,
+                    kTagUsableWhenTablet, kTagWakeup, kTagWakeupWhenLaptop,
                     nullptr);
 
   initial_tablet_mode_ = TabletMode::OFF;
@@ -379,14 +350,9 @@ TEST_F(InputDeviceControllerTest, UsableWithoutWakeup) {
 
 TEST_F(InputDeviceControllerTest, InitWithoutBacklightController) {
   // Init with null backlight controller shouldn't crash.
-  input_device_controller_.Init(nullptr,
-                                &udev_,
-                                &acpi_wakeup_helper_,
-                                &ec_wakeup_helper_,
-                                initial_lid_state_,
-                                initial_tablet_mode_,
-                                initial_display_mode_,
-                                &prefs_);
+  input_device_controller_.Init(
+      nullptr, &udev_, &acpi_wakeup_helper_, &ec_wakeup_helper_,
+      initial_lid_state_, initial_tablet_mode_, initial_display_mode_, &prefs_);
 }
 
 }  // namespace policy

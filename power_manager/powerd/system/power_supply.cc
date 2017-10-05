@@ -218,9 +218,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
                                   ExternalPowerToString(status.external_power),
                                   status.line_power_type.c_str());
       if (status.line_power_current || status.line_power_voltage) {
-        output += base::StringPrintf(", %.3fA at %.1fV",
-                                     status.line_power_current,
-                                     status.line_power_voltage);
+        output +=
+            base::StringPrintf(", %.3fA at %.1fV", status.line_power_current,
+                               status.line_power_voltage);
         if (status.line_power_max_current && status.line_power_max_voltage) {
           output += base::StringPrintf(", max %.1fA at %.1fV",
                                        status.line_power_max_current,
@@ -239,10 +239,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   output += base::StringPrintf("%d%%", rounded_actual);
   if (rounded_actual != rounded_display)
     output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
-  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA",
-                               status.battery_charge,
-                               status.battery_charge_full,
-                               status.battery_current);
+  output +=
+      base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
+                         status.battery_charge_full, status.battery_current);
 
   switch (status.battery_state) {
     case PowerSupplyProperties_BatteryState_FULL:
@@ -642,8 +641,8 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   base::FilePath battery_path;
 
   // Iterate through sysfs's power supply information.
-  base::FileEnumerator file_enum(
-      power_supply_path_, false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator file_enum(power_supply_path_, false,
+                                 base::FileEnumerator::DIRECTORIES);
   for (base::FilePath path = file_enum.Next(); !path.empty();
        path = file_enum.Next()) {
     if (IsExternalPeripheral(path))
@@ -1009,9 +1008,8 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
         status->battery_time_to_full = base::TimeDelta::FromSeconds(-1);
       } else {
         const double charge_to_full =
-            std::max(0.0,
-                     status->battery_charge_full * full_factor_ -
-                         status->battery_charge);
+            std::max(0.0, status->battery_charge_full * full_factor_ -
+                              status->battery_charge);
         status->battery_time_to_full = base::TimeDelta::FromSeconds(
             roundl(3600 * charge_to_full / signed_current));
       }
@@ -1106,10 +1104,9 @@ void PowerSupply::SchedulePoll() {
   base::TimeDelta delay = poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
   if (battery_stabilized_timestamp_ > now) {
-    delay = std::min(
-        delay,
-        battery_stabilized_timestamp_ - now +
-            base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs));
+    delay = std::min(delay, battery_stabilized_timestamp_ - now +
+                                base::TimeDelta::FromMilliseconds(
+                                    kBatteryStabilizedSlackMs));
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";

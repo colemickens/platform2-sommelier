@@ -202,16 +202,16 @@ void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
   // higher-level nodes include USB hubs, and enabling wakeups on those isn't
   // a good idea.
   std::string parent_syspath;
-  if (!udev_->FindParentWithSysattr(
-          device.syspath(), kPowerWakeup, kUSBDevice, &parent_syspath)) {
+  if (!udev_->FindParentWithSysattr(device.syspath(), kPowerWakeup, kUSBDevice,
+                                    &parent_syspath)) {
     LOG(WARNING) << "No " << kPowerWakeup << " sysattr available for "
                  << device.syspath();
     return;
   }
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
             << device.syspath() << " through " << parent_syspath;
-  udev_->SetSysattr(
-      parent_syspath, kPowerWakeup, enabled ? kEnabled : kDisabled);
+  udev_->SetSysattr(parent_syspath, kPowerWakeup,
+                    enabled ? kEnabled : kDisabled);
 }
 
 void InputDeviceController::ConfigureInhibit(

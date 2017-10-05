@@ -204,8 +204,8 @@ TEST_F(InternalBacklightTest, InterruptTransition) {
   // Make the backlight start at its max level.
   const int kMaxBrightness = 100;
   base::FilePath backlight_dir = test_path_.Append("backlight");
-  PopulateBacklightDir(
-      backlight_dir, kMaxBrightness, kMaxBrightness, kMaxBrightness);
+  PopulateBacklightDir(backlight_dir, kMaxBrightness, kMaxBrightness,
+                       kMaxBrightness);
   InternalBacklight backlight;
   backlight.clock()->set_current_time_for_testing(
       base::TimeTicks::FromInternalValue(10000));

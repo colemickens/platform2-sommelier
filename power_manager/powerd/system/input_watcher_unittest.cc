@@ -147,8 +147,8 @@ class InputWatcherTest : public testing::Test {
     input_watcher_.reset(new InputWatcher);
     input_watcher_->set_dev_input_path_for_testing(dev_input_path_);
     input_watcher_->set_sys_class_input_path_for_testing(sys_class_input_path_);
-    ASSERT_TRUE(input_watcher_->Init(
-        std::move(scoped_device_factory_), &prefs_, &udev_));
+    ASSERT_TRUE(input_watcher_->Init(std::move(scoped_device_factory_), &prefs_,
+                                     &udev_));
 
     observer_.reset(new TestObserver(input_watcher_.get()));
   }
@@ -253,13 +253,9 @@ TEST_F(InputWatcherTest, PowerButton) {
   power_button->AppendEvent(EV_KEY, KEY_POWER, 3);
   power_button->AppendEvent(EV_KEY, KEY_POWER, 0);
   power_button->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kPowerButtonDownAction,
-                        kPowerButtonUpAction,
-                        kPowerButtonDownAction,
-                        kPowerButtonRepeatAction,
-                        kPowerButtonRepeatAction,
-                        kPowerButtonUpAction,
-                        NULL),
+  EXPECT_EQ(JoinActions(kPowerButtonDownAction, kPowerButtonUpAction,
+                        kPowerButtonDownAction, kPowerButtonRepeatAction,
+                        kPowerButtonRepeatAction, kPowerButtonUpAction, NULL),
             observer_->GetActions());
 
   // Check that an event from the ACPI button isn't reported.
@@ -572,11 +568,8 @@ TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
   lid_switch->NotifyAboutEvents();
   tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
   tablet_mode_switch->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kHoverOnAction,
-                        kPowerButtonDownAction,
-                        kLidClosedAction,
-                        kTabletModeOnAction,
-                        NULL),
+  EXPECT_EQ(JoinActions(kHoverOnAction, kPowerButtonDownAction,
+                        kLidClosedAction, kTabletModeOnAction, NULL),
             observer_->GetActions());
 }
 
@@ -601,11 +594,8 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
   device->AppendEvent(EV_SYN, SYN_REPORT, 0);
   device->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kPowerButtonDownAction,
-                        kLidClosedAction,
-                        kTabletModeOnAction,
-                        kHoverOnAction,
-                        NULL),
+  EXPECT_EQ(JoinActions(kPowerButtonDownAction, kLidClosedAction,
+                        kTabletModeOnAction, kHoverOnAction, NULL),
             observer_->GetActions());
 }
 
@@ -619,15 +609,15 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   linked_ptr<EventDeviceStub> keyboard(new EventDeviceStub);
   keyboard->set_is_power_button(true);
   AddDevice(kDeviceName, keyboard);
-  input_watcher_->OnUdevEvent(
-      InputWatcher::kInputUdevSubsystem, kDeviceName, UdevAction::ADD);
+  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem, kDeviceName,
+                              UdevAction::ADD);
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
-  input_watcher_->OnUdevEvent(
-      InputWatcher::kInputUdevSubsystem, kDeviceName, UdevAction::REMOVE);
+  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem, kDeviceName,
+                              UdevAction::REMOVE);
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();

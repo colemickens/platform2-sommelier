@@ -24,9 +24,7 @@ namespace system {
 namespace {
 // C++14's <algorithm> could do std::max(EV_MAX, KEY_MAX, SW_MAX);
 static constexpr int kMaxBit = MAX(MAX(EV_MAX, KEY_MAX), SW_MAX);
-};
-
-// EventDevice
+}  // namespace
 
 EventDevice::EventDevice(int fd, const base::FilePath& path)
     : fd_(fd), path_(path) {}
@@ -152,10 +150,7 @@ void EventDevice::WatchForEvents(base::Closure new_events_cb) {
   fd_watcher_.reset(new base::MessageLoopForIO::FileDescriptorWatcher);
   new_events_cb_ = new_events_cb;
   if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_,
-          true,
-          base::MessageLoopForIO::WATCH_READ,
-          fd_watcher_.get(),
+          fd_, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
           this)) {
     LOG(ERROR) << "Unable to watch FD " << fd_;
   }
@@ -169,8 +164,6 @@ void EventDevice::OnFileCanReadWithoutBlocking(int fd) {
 void EventDevice::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
 }
-
-// EventDeviceFactory
 
 EventDeviceFactory::EventDeviceFactory() {}
 

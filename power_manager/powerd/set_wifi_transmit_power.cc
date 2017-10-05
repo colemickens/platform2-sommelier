@@ -152,8 +152,8 @@ void SetWiFiTransmitPower::FillMessageMwifiex(struct nl_msg* msg, bool tablet) {
   err = nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, MWIFIEX_VENDOR_ID);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_ID";
 
-  err = nla_put_u32(
-      msg, NL80211_ATTR_VENDOR_SUBCMD, MWIFIEX_VENDOR_CMD_SET_TX_POWER_LIMIT);
+  err = nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+                    MWIFIEX_VENDOR_CMD_SET_TX_POWER_LIMIT);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
   struct nlattr* limits = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
@@ -175,8 +175,7 @@ void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg, bool tablet) {
   err = nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, INTEL_OUI);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_ID";
 
-  err = nla_put_u32(msg,
-                    NL80211_ATTR_VENDOR_SUBCMD,
+  err = nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
                     IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
@@ -208,8 +207,8 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet) {
   CHECK(msg);
 
   // Set header.
-  genlmsg_put(
-      msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id, 0, 0, NL80211_CMD_VENDOR, 0);
+  genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id, 0, 0,
+              NL80211_CMD_VENDOR, 0);
 
   // Set actual message.
   err = nla_put_u32(msg, NL80211_ATTR_IFINDEX, GetWirelessDeviceIndex());

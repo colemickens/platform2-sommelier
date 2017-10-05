@@ -14,8 +14,8 @@ AmbientLightSensorStub::AmbientLightSensorStub(int lux) : lux_(lux) {}
 AmbientLightSensorStub::~AmbientLightSensorStub() {}
 
 void AmbientLightSensorStub::NotifyObservers() {
-  FOR_EACH_OBSERVER(
-      AmbientLightObserver, observers_, OnAmbientLightUpdated(this));
+  FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
+                    OnAmbientLightUpdated(this));
 }
 
 void AmbientLightSensorStub::AddObserver(AmbientLightObserver* observer) {

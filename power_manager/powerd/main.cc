@@ -150,10 +150,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
       TabletMode initial_tablet_mode) override {
     auto controller =
         base::WrapUnique(new policy::KeyboardBacklightController());
-    controller->Init(backlight,
-                     prefs,
-                     sensor,
-                     display_backlight_controller,
+    controller->Init(backlight, prefs, sensor, display_backlight_controller,
                      initial_tablet_mode);
     return std::move(controller);
   }
@@ -163,8 +160,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto watcher = base::WrapUnique(new system::InputWatcher());
     CHECK(watcher->Init(std::unique_ptr<system::EventDeviceFactoryInterface>(
                             new system::EventDeviceFactory),
-                        prefs,
-                        udev));
+                        prefs, udev));
     return std::move(watcher);
   }
 
@@ -264,11 +260,11 @@ int main(int argc, char* argv[]) {
   // This flag is handled by libbase/libchrome's logging library instead of
   // directly by powerd, but it is defined here so FlagHelper won't abort after
   // seeing an unexpected flag.
-  DEFINE_string(
-      vmodule, "", "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
+  DEFINE_string(vmodule, "",
+                "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
-  brillo::FlagHelper::Init(
-      argc, argv, "powerd, the Chromium OS userspace power manager.");
+  brillo::FlagHelper::Init(argc, argv,
+                           "powerd, the Chromium OS userspace power manager.");
 
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
@@ -280,8 +276,7 @@ int main(int argc, char* argv[]) {
               brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
   brillo::UpdateLogSymlinks(
       base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
-      base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
-      log_file);
+      base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"), log_file);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_FILE;

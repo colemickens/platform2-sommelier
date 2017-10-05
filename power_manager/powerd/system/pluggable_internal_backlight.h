@@ -25,7 +25,7 @@ class UdevInterface;
 // This class wraps the InternalBacklight class, refreshing it in response to
 // udev events about the backlight being added or removed.
 class PluggableInternalBacklight : public BacklightInterface,
-                                   public UdevSubsystemObserver  {
+                                   public UdevSubsystemObserver {
  public:
   PluggableInternalBacklight();
   ~PluggableInternalBacklight() override;

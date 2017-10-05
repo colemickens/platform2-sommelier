@@ -159,8 +159,8 @@ bool Udev::SetSysattr(const std::string& syspath,
   }
   // udev can modify this value, hence we copy it first.
   std::unique_ptr<char, base::FreeDeleter> value_mutable(strdup(value.c_str()));
-  int rv = udev_device_set_sysattr_value(
-      device, sysattr.c_str(), value_mutable.get());
+  int rv = udev_device_set_sysattr_value(device, sysattr.c_str(),
+                                         value_mutable.get());
   udev_device_unref(device);
   if (rv != 0) {
     LOG(WARNING) << "Failed to set sysattr '" << sysattr << "' on device "
@@ -233,8 +233,7 @@ void Udev::HandleSubsystemEvent(UdevAction action, struct udev_device* dev) {
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end()) {
     base::ObserverList<UdevSubsystemObserver>* observers = it->second.get();
-    FOR_EACH_OBSERVER(UdevSubsystemObserver,
-                      *observers,
+    FOR_EACH_OBSERVER(UdevSubsystemObserver, *observers,
                       OnUdevEvent(subsystem, sysname ? sysname : "", action));
   }
 }
@@ -271,8 +270,7 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
   // Replace existing device with same syspath.
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
-                    tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
                     OnTaggedDeviceChanged(device));
 }
 
@@ -281,8 +279,7 @@ void Udev::TaggedDeviceRemoved(const std::string& syspath) {
   if (!device.tags().empty())
     LOG(INFO) << "Removing device " << syspath;
   tagged_devices_.erase(syspath);
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
-                    tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
                     OnTaggedDeviceRemoved(device));
 }
 

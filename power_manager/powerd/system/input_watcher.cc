@@ -150,8 +150,8 @@ bool InputWatcher::Init(
       LOG(ERROR) << dev_input_path_.value() << " isn't readable";
       return false;
     }
-    base::FileEnumerator enumerator(
-        dev_input_path_, false, base::FileEnumerator::FILES);
+    base::FileEnumerator enumerator(dev_input_path_, false,
+                                    base::FileEnumerator::FILES);
     for (base::FilePath path = enumerator.Next(); !path.empty();
          path = enumerator.Next()) {
       const std::string name = path.BaseName().value();
@@ -188,8 +188,7 @@ LidState InputWatcher::QueryLidState() {
     // Get the state from the last lid event (|events| may also contain non-lid
     // events).
     for (std::vector<input_event>::const_reverse_iterator it = events.rbegin();
-         it != events.rend();
-         ++it) {
+         it != events.rend(); ++it) {
       if (GetLidStateFromEvent(*it, &lid_state_))
         break;
     }
@@ -217,8 +216,7 @@ TabletMode InputWatcher::GetTabletMode() {
 
 bool InputWatcher::IsUSBInputDeviceConnected() const {
   base::FileEnumerator enumerator(
-      sys_class_input_path_,
-      false,
+      sys_class_input_path_, false,
       static_cast<::base::FileEnumerator::FileType>(
           base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS),
       kInputMatchPattern);
@@ -310,8 +308,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
     tablet_mode_ = tablet_mode;
     VLOG(1) << "Notifying observers about tablet mode "
             << TabletModeToString(tablet_mode) << " event";
-    FOR_EACH_OBSERVER(
-        InputObserver, observers_, OnTabletModeEvent(tablet_mode));
+    FOR_EACH_OBSERVER(InputObserver, observers_,
+                      OnTabletModeEvent(tablet_mode));
   }
 
   ButtonState button_state = ButtonState::DOWN;
@@ -319,8 +317,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
-    FOR_EACH_OBSERVER(
-        InputObserver, observers_, OnPowerButtonEvent(button_state));
+    FOR_EACH_OBSERVER(InputObserver, observers_,
+                      OnPowerButtonEvent(button_state));
   }
 
   if (device_types & DEVICE_HOVER)
@@ -377,8 +375,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
       VLOG(1) << "Notifying observers about hover state change to "
               << (hovering ? "on" : "off");
       hovering_ = hovering;
-      FOR_EACH_OBSERVER(
-          InputObserver, observers_, OnHoverStateChange(hovering_));
+      FOR_EACH_OBSERVER(InputObserver, observers_,
+                        OnHoverStateChange(hovering_));
     }
   }
 }
@@ -398,8 +396,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   const std::string phys = device->GetPhysPath();
-  if (base::StartsWith(
-          phys, power_button_to_skip_, base::CompareCase::SENSITIVE)) {
+  if (base::StartsWith(phys, power_button_to_skip_,
+                       base::CompareCase::SENSITIVE)) {
     VLOG(1) << "Skipping event device with phys path: " << phys;
     return;
   }

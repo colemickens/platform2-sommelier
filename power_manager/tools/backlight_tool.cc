@@ -76,17 +76,15 @@ class Converter {
 
     if (keyboard) {
       auto controller = std::make_unique<KeyboardBacklightController>();
-      controller->Init(&backlight_,
-                       &prefs_,
-                       light_sensor_.get(),
+      controller->Init(&backlight_, &prefs_, light_sensor_.get(),
                        nullptr /* display_backlight_controller */,
                        TabletMode::UNSUPPORTED);
       controller->HandleHoverStateChange(true /* hovering */);
       controller_ = std::move(controller);
     } else {
       auto controller = std::make_unique<InternalBacklightController>();
-      controller->Init(
-          &backlight_, &prefs_, light_sensor_.get(), &display_power_setter_);
+      controller->Init(&backlight_, &prefs_, light_sensor_.get(),
+                       &display_power_setter_);
       controller_ = std::move(controller);
     }
 
@@ -132,9 +130,7 @@ class Converter {
   }
 
   // Returns the initial brightness level requested by |controller_|.
-  int64_t GetInitialLevel() {
-    return backlight_.GetCurrentBrightnessLevel();
-  }
+  int64_t GetInitialLevel() { return backlight_.GetCurrentBrightnessLevel(); }
 
  private:
   // A stub is used so |controller_| won't change the actual brightness.
@@ -152,59 +148,48 @@ class Converter {
 int main(int argc, char* argv[]) {
   // Flags that print the brightness.
   DEFINE_bool(get_brightness, false, "Print current brightness level");
-  DEFINE_bool(get_brightness_percent,
-              false,
+  DEFINE_bool(get_brightness_percent, false,
               "Print current brightness as linear percent");
   DEFINE_bool(get_max_brightness, false, "Print max brightness level");
-  DEFINE_bool(get_initial_brightness, false, "Print brightness level used "
+  DEFINE_bool(get_initial_brightness, false,
+              "Print brightness level used "
               "by powerd at boot");
 
   // Flags that convert between units.
-  DEFINE_double(nonlinear_to_level,
-                -1.0,
+  DEFINE_double(nonlinear_to_level, -1.0,
                 "Convert supplied nonlinear brightness percent to level");
-  DEFINE_int64(level_to_nonlinear,
-               -1,
+  DEFINE_int64(level_to_nonlinear, -1,
                "Convert supplied brightness level to nonlinear percent");
-  DEFINE_double(linear_to_level,
-                -1.0,
+  DEFINE_double(linear_to_level, -1.0,
                 "Convert supplied linear brightness percent to level");
-  DEFINE_int64(level_to_linear,
-               -1,
+  DEFINE_int64(level_to_linear, -1,
                "Convert supplied brightness level to linear percent");
-  DEFINE_double(linear_to_nonlinear,
-                -1.0,
+  DEFINE_double(linear_to_nonlinear, -1.0,
                 "Convert supplied linear brightness percent to nonlinear");
-  DEFINE_double(nonlinear_to_linear,
-                -1.0,
+  DEFINE_double(nonlinear_to_linear, -1.0,
                 "Convert supplied nonlinear brightness percent to linear");
 
   // Flags that set the brightness.
   DEFINE_int64(set_brightness, -1, "Set brightness level");
-  DEFINE_double(set_brightness_percent,
-                -1.0,
+  DEFINE_double(set_brightness_percent, -1.0,
                 "Set brightness as "
                 "linearly-calculated percent in [0.0, 100.0]");
-  DEFINE_int64(set_resume_brightness,
-               -2,
+  DEFINE_int64(set_resume_brightness, -2,
                "Set brightness level on resume; -1 clears current level");
-  DEFINE_double(set_resume_brightness_percent,
-                -1.0,
+  DEFINE_double(set_resume_brightness_percent, -1.0,
                 "Set resume brightness as linearly-calculated percent in "
                 "[0.0, 100.0]");
 
   // Other flags.
-  DEFINE_bool(force_battery,
-              false,
+  DEFINE_bool(force_battery, false,
               "Act as if on battery even if currently on AC (for "
               "-get_initial_brightness)");
   DEFINE_bool(keyboard, false, "Use keyboard (rather than panel) backlight");
-  DEFINE_int32(
-      lux, 0, "Ambient light sensor reading (for -get_initial_brightness)");
+  DEFINE_int32(lux, 0,
+               "Ambient light sensor reading (for -get_initial_brightness)");
 
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Print or set the internal panel or keyboard backlight's brightness.");
 
   base::AtExitManager at_exit_manager;
@@ -237,11 +222,8 @@ int main(int argc, char* argv[]) {
     Abort("No backlight in " + path.value() + " matched by " + pattern + ".");
 
   const int64_t current_level = backlight.GetCurrentBrightnessLevel();
-  Converter converter(current_level,
-                      backlight.GetMaxBrightnessLevel(),
-                      FLAGS_lux,
-                      FLAGS_keyboard,
-                      FLAGS_force_battery);
+  Converter converter(current_level, backlight.GetMaxBrightnessLevel(),
+                      FLAGS_lux, FLAGS_keyboard, FLAGS_force_battery);
 
   // Print brightness.
   if (FLAGS_get_brightness)

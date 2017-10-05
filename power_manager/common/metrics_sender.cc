@@ -25,8 +25,8 @@ MetricsSenderInterface* MetricsSenderInterface::GetInstance() {
 
 // static
 void MetricsSenderInterface::SetInstance(MetricsSenderInterface* instance) {
-  CHECK((!!instance_) ^ (!!instance)) << "Replacing live instance " << instance_
-                                      << " with " << instance;
+  CHECK((!!instance_) ^ (!!instance))
+      << "Replacing live instance " << instance_ << " with " << instance;
   instance_ = instance;
 }
 

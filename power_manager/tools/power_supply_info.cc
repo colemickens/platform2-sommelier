@@ -82,8 +82,7 @@ class InfoDisplay {
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(
-      argc,
-      argv,
+      argc, argv,
       "Print information obtained from /sys about the power supply.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
@@ -133,11 +132,9 @@ int main(int argc, char** argv) {
   for (const auto& port : status.ports) {
     if (port.connection == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
         port.connection == PowerStatus::Port::Connection::DUAL_ROLE) {
-      sources.push_back(base::StringPrintf("%s%s [%s/%s]",
-                                           port.id.c_str(),
-                                           port.active_by_default ? "*" : "",
-                                           port.manufacturer_id.c_str(),
-                                           port.model_id.c_str()));
+      sources.push_back(base::StringPrintf(
+          "%s%s [%s/%s]", port.id.c_str(), port.active_by_default ? "*" : "",
+          port.manufacturer_id.c_str(), port.model_id.c_str()));
     }
   }
   display.PrintStringValue("available sources",

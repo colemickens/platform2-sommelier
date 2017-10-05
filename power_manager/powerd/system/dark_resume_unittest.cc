@@ -203,8 +203,8 @@ class DarkResumeTest : public ::testing::Test {
   void Suspend(DarkResumeInterface::Action* action,
                base::TimeDelta* suspend_duration,
                bool woken_by_timer) {
-    system_.Suspend(
-        dark_resume_.get(), action, suspend_duration, woken_by_timer);
+    system_.Suspend(dark_resume_.get(), action, suspend_duration,
+                    woken_by_timer);
     dark_resume_->HandleSuccessfulResume();
   }
 
