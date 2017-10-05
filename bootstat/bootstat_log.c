@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <brillo/brillo_export.h>
 #include <rootdev/rootdev.h>
 
 #include "bootstat.h"
@@ -144,6 +145,7 @@ static void write_mark(const char *event_name)
   close(fd);
 }
 
+BRILLO_EXPORT
 void bootstat_log(const char* event_name)
 {
   const char* disk_statistics_file_name;
@@ -159,6 +161,7 @@ void bootstat_log(const char* event_name)
   append_logdata(disk_statistics_file_name, "disk", event_name);
 }
 
+BRILLO_EXPORT
 void bootstat_set_output_directory_for_test(const char* dirname)
 {
   if (dirname != NULL)
@@ -167,6 +170,7 @@ void bootstat_set_output_directory_for_test(const char* dirname)
     output_directory_name = kDefaultOutputDirectoryName;
 }
 
+BRILLO_EXPORT
 void bootstat_set_uptime_file_name_for_test(const char* filename)
 {
   if (filename != NULL)
@@ -175,6 +179,7 @@ void bootstat_set_uptime_file_name_for_test(const char* filename)
     uptime_statistics_file_name = kDefaultUptimeStatisticsFileName;
 }
 
+BRILLO_EXPORT
 void bootstat_set_disk_file_name_for_test(const char* filename)
 {
   disk_statistics_file_name_for_test = filename;

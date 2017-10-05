@@ -3,9 +3,6 @@
     {
       'target_name': 'libbootstat',
       'type': 'shared_library',
-      'cflags': [
-        '-fvisibility=default',
-      ],
       'sources': [
         'bootstat_log.c',
       ],
