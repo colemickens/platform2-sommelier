@@ -1545,8 +1545,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-// run_oci is responsible to invoke setup for Android master containers.
-#if !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
@@ -1559,7 +1557,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
                               "ENABLE_VENDOR_PRIVILEGED=1"),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-#endif  // !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
@@ -1781,8 +1778,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   ON_CALL(utils_, GetDevModeState())
       .WillByDefault(Return(DevModeState::DEV_MODE_ON));
 
-// run_oci is reponsible to invoke setup for Android master container.
-#if !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
@@ -1795,7 +1790,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                               "ENABLE_VENDOR_PRIVILEGED=0"),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-#endif  // !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
@@ -1979,8 +1973,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
 
-// run_oci is responsible to invoke setup process for Android master container.
-#if !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
@@ -1993,7 +1985,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
                               "ENABLE_VENDOR_PRIVILEGED=0"),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-#endif  // !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcNetworkImpulse,
@@ -2033,8 +2024,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
 
-// run_oci is responsible to invoke setup for Android master containers.
-#if !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
@@ -2047,7 +2036,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                               "ENABLE_VENDOR_PRIVILEGED=0"),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-#endif  // !USE_ANDROID_MASTER_CONTAINER
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcNetworkImpulse,
