@@ -545,6 +545,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!platform_->AddDirCryptoKeyToKeyring(
             vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
       LOG(INFO) << "Error adding dircrypto key.";
+      UnmountAll();
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
@@ -837,7 +838,7 @@ void Mount::UnmountAll() {
 
   // Invalidate dircrypto key to make directory contents inaccessible.
   if (dircrypto_key_id_ != dircrypto::kInvalidKeySerial) {
-    platform_->InvalidateDirCryptoKey(dircrypto_key_id_);
+    platform_->InvalidateDirCryptoKey(dircrypto_key_id_, shadow_root_);
     dircrypto_key_id_ = dircrypto::kInvalidKeySerial;
   }
 }

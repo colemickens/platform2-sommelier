@@ -230,7 +230,7 @@ class MountTest
         .WillOnce(DoAll(SetArgPointee<2>(kDirCryptoKeyId), Return(true)));
     EXPECT_CALL(platform_, SetDirCryptoKey(user.vault_mount_path, _))
         .WillOnce(Return(true));
-    EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId))
+    EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId, kImageDir))
         .WillRepeatedly(Return(true));
   }
 

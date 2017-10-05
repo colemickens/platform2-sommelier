@@ -601,7 +601,9 @@ class Platform {
       key_serial_t* key_id);
 
   // Invalidates the key to make dircrypto data inaccessible.
-  virtual bool InvalidateDirCryptoKey(key_serial_t key_id);
+  virtual bool InvalidateDirCryptoKey(
+      key_serial_t key_id,
+      const base::FilePath& shadow_root);
 
   // Clears the kernel-managed user keyring
   virtual bool ClearUserKeyring();
@@ -788,6 +790,9 @@ class Platform {
   bool DecodeProcInfoLine(const std::string& line,
                           std::vector<std::string>* args,
                           size_t* file_system_type_idx);
+
+  // Drops caches selectively for the mount the directory resides in.
+  bool DropMountCaches(const base::FilePath& dir);
 
   base::FilePath mount_info_path_;
 
