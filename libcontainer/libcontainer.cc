@@ -17,6 +17,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -156,6 +157,9 @@ struct container_config {
   // Filesystems to mount in the new namespace.
   std::vector<Mount> mounts;
 
+  // Namespaces that should be used for the container.
+  std::set<std::string> namespaces;
+
   // Device nodes to create.
   std::vector<Device> devices;
 
@@ -176,9 +180,6 @@ struct container_config {
 
   // gid to own the created cgroups
   gid_t cgroup_group;
-
-  // Enable sharing of the host network namespace.
-  int share_host_netns;
 
   // Allow the child process to keep open FDs (for stdin/out/err).
   int keep_fds_open;
@@ -981,12 +982,24 @@ const char* container_config_get_cgroup_parent(struct container_config* c) {
   return c->cgroup_parent.value().c_str();
 }
 
-void container_config_share_host_netns(struct container_config* c) {
-  c->share_host_netns = 1;
+int container_config_namespaces(struct container_config* c,
+                                const char** namespaces,
+                                size_t num_ns) {
+  if (num_ns < 1)
+    return -EINVAL;
+  c->namespaces.clear();
+  for (size_t i = 0; i < num_ns; ++i)
+    c->namespaces.emplace(namespaces[i]);
+  return 0;
 }
 
-int get_container_config_share_host_netns(struct container_config* c) {
-  return c->share_host_netns;
+size_t container_config_get_num_namespaces(const struct container_config* c) {
+  return c->namespaces.size();
+}
+
+bool container_config_has_namespace(const struct container_config* c,
+                                    const char* ns) {
+  return c->namespaces.find(ns) != c->namespaces.end();
 }
 
 void container_config_keep_fds_open(struct container_config* c) {
@@ -1244,19 +1257,28 @@ int container_start(struct container* c,
   minijail_reset_signal_mask(c->jail.get());
 
   /* Setup container namespaces. */
-  minijail_namespace_ipc(c->jail.get());
-  minijail_namespace_vfs(c->jail.get());
-  if (!config->share_host_netns)
+  if (container_config_has_namespace(config, "ipc"))
+    minijail_namespace_ipc(c->jail.get());
+  if (container_config_has_namespace(config, "mount"))
+    minijail_namespace_vfs(c->jail.get());
+  if (container_config_has_namespace(config, "network"))
     minijail_namespace_net(c->jail.get());
-  minijail_namespace_pids(c->jail.get());
-  minijail_namespace_user(c->jail.get());
+  if (container_config_has_namespace(config, "pid"))
+    minijail_namespace_pids(c->jail.get());
+
+  if (container_config_has_namespace(config, "user")) {
+    minijail_namespace_user(c->jail.get());
+    if (minijail_uidmap(c->jail.get(), config->uid_map.c_str()) != 0)
+      return -1;
+    if (minijail_gidmap(c->jail.get(), config->gid_map.c_str()) != 0)
+      return -1;
+  }
+
+  if (container_config_has_namespace(config, "cgroup"))
+    minijail_namespace_cgroups(c->jail.get());
+
   if (getuid() != 0)
     minijail_namespace_user_disable_setgroups(c->jail.get());
-  minijail_namespace_cgroups(c->jail.get());
-  if (minijail_uidmap(c->jail.get(), config->uid_map.c_str()) != 0)
-    return -1;
-  if (minijail_gidmap(c->jail.get(), config->gid_map.c_str()) != 0)
-    return -1;
 
   /* Set the UID/GID inside the container if not 0. */
   if (!GetUsernsOutsideId(config->uid_map, config->uid, nullptr))

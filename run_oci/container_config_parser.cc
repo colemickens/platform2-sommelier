@@ -544,19 +544,13 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
 
   // |uid_map_list| is owned by |linux_dict|
   const base::ListValue* uid_map_list = nullptr;
-  if (!linux_dict->GetList("uidMappings", &uid_map_list)) {
-    LOG(ERROR) << "Fail to get uid mappings list";
-    return false;
-  }
-  ParseLinuxIdMappings(uid_map_list, &config_out->linux_config.uidMappings);
+  if (linux_dict->GetList("uidMappings", &uid_map_list))
+    ParseLinuxIdMappings(uid_map_list, &config_out->linux_config.uidMappings);
 
   // |gid_map_list| is owned by |linux_dict|
   const base::ListValue* gid_map_list = nullptr;
-  if (!linux_dict->GetList("gidMappings", &gid_map_list)) {
-    LOG(ERROR) << "Fail to get gid mappings list";
-    return false;
-  }
-  ParseLinuxIdMappings(gid_map_list, &config_out->linux_config.gidMappings);
+  if (linux_dict->GetList("gidMappings", &gid_map_list))
+    ParseLinuxIdMappings(gid_map_list, &config_out->linux_config.gidMappings);
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;

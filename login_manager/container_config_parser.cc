@@ -324,6 +324,33 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
   return true;
 }
 
+// Parses the list of namespaces and adds it to the container configuration.
+bool ParseNamespaces(const base::ListValue& namespaces_list,
+                     ContainerConfigPtr* config_out) {
+  std::vector<std::string> namespaces;
+  for (size_t i = 0; i < namespaces_list.GetSize(); i++) {
+    const base::DictionaryValue* ns;
+    if (!namespaces_list.GetDictionary(i, &ns)) {
+      LOG(ERROR) << "Failed to get namespace " << i;
+      return false;
+    }
+    std::string ns_type;
+    if (!ns->GetString("type", &ns_type)) {
+      LOG(ERROR) << "Namespace " << i << " missing type";
+      return false;
+    }
+    namespaces.push_back(ns_type);
+  }
+
+  std::vector<const char*> namespaces_cstr;
+  for (const auto& ns : namespaces) {
+    namespaces_cstr.push_back(ns.c_str());
+  }
+  container_config_namespaces(config_out->get(), namespaces_cstr.data(),
+                              namespaces_cstr.size());
+  return true;
+}
+
 // Parse the list of device nodes that the container needs to run.  |config|
 // will have all the devices listed in |linux_dict| added to a list that creates
 // and sets permissions for them when the container starts.
@@ -443,6 +470,13 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
   if (!runtime_root_dict.GetDictionary("linux", &linux_dict)) {
     LOG(ERROR) << "Fail to get linux dictionary from the runtime dictionary";
     return false;
+  }
+
+  // Parse namespaces to enter.
+  const base::ListValue* namespaces_list = nullptr;
+  if (linux_dict->GetList("namespaces", &namespaces_list)) {
+    if (!ParseNamespaces(*namespaces_list, config_out))
+      return false;
   }
 
   // User mappings for configuring a user namespace.

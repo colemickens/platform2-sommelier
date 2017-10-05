@@ -240,11 +240,17 @@ BRILLO_EXPORT int container_config_set_cgroup_parent(struct container_config* c,
 BRILLO_EXPORT const char* container_config_get_cgroup_parent(
     struct container_config* c);
 
-/* Enable sharing of the host's network namespace with the container */
-BRILLO_EXPORT void container_config_share_host_netns(
-    struct container_config* c);
-BRILLO_EXPORT int get_container_config_share_host_netns(
-    struct container_config* c);
+/* Set namespaces to be used by the container. */
+BRILLO_EXPORT int container_config_namespaces(
+    struct container_config* c, const char** namespaces, size_t num_ns);
+
+/* Get the number of namespaces to enter. */
+BRILLO_EXPORT size_t
+container_config_get_num_namespaces(const struct container_config* c);
+
+/* Get the namespace at the given index. */
+BRILLO_EXPORT bool container_config_has_namespace(
+    const struct container_config* c, const char* ns);
 
 /*
  * Configures the container so that any FDs open in the parent process are still

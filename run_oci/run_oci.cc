@@ -265,24 +265,30 @@ bool ContainerConfigFromOci(const OciConfig& oci,
     argv.push_back(arg.c_str());
   container_config_program_argv(config_out, argv.data(), argv.size());
 
-  std::string uid_maps = IdStringFromMap(oci.linux_config.uidMappings);
-  container_config_uid_map(config_out, uid_maps.c_str());
-  std::string gid_maps = IdStringFromMap(oci.linux_config.gidMappings);
-  container_config_gid_map(config_out, gid_maps.c_str());
+  std::vector<const char *> namespaces;
+  for (const auto& ns : oci.linux_config.namespaces) {
+    namespaces.push_back(ns.type.c_str());
+  }
+  container_config_namespaces(config_out, namespaces.data(), namespaces.size());
+
+  if (container_config_has_namespace(config_out, "user")) {
+    if (oci.linux_config.uidMappings.empty() ||
+        oci.linux_config.gidMappings.empty()) {
+      LOG(ERROR) << "User namespaces require at least one uid/gid mapping";
+      return false;
+    }
+
+    std::string uid_maps = IdStringFromMap(oci.linux_config.uidMappings);
+    container_config_uid_map(config_out, uid_maps.c_str());
+
+    std::string gid_maps = IdStringFromMap(oci.linux_config.gidMappings);
+    container_config_gid_map(config_out, gid_maps.c_str());
+  }
 
   ConfigureMounts(oci.mounts, oci.process.user.uid,
                   oci.process.user.gid, config_out);
   ConfigureDevices(oci.linux_config.devices, config_out);
   ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
-
-  // Allow using the host network namespace if the config omits it.
-  bool has_netns = false;
-  for (const auto& ns : oci.linux_config.namespaces) {
-      if (ns.type == "network")
-          has_netns = true;
-  }
-  if (!has_netns)
-      container_config_share_host_netns(config_out);
 
   for (const auto& limit : oci.process.rlimits) {
     if (container_config_add_rlimit(

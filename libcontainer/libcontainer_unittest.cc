@@ -261,6 +261,16 @@ class ContainerTest : public ::testing::Test {
                                 1,
                                 1,
                                 0);
+    static const char* kNamespaces[] = {
+        "cgroup",
+        "ipc",
+        "mount",
+        "network",
+        "pid",
+        "user",
+    };
+    container_config_namespaces(config_->get(), kNamespaces,
+                                arraysize(kNamespaces));
 
     container_config_set_cpu_shares(config_->get(), kTestCpuShares);
     container_config_set_cpu_cfs_params(
