@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/version.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
@@ -78,15 +79,27 @@ void Usage(const std::string& program, const std::string& subcommand) {
   exit(1);
 }
 
-// TODO(smbarber): This assumes there is only one component version loaded at a
-// time. This should handle component upgrades and load the latest version
-// that's available. http://crbug.com/769625
+// Get the path to the latest available cros-termina component.
 base::FilePath GetLatestVMPath() {
   base::FilePath component_dir(vm_tools::launcher::kVmDefaultPath);
   base::FileEnumerator dir_enum(component_dir, false,
                                 base::FileEnumerator::DIRECTORIES);
 
-  return dir_enum.Next();
+  base::Version latest_version("0");
+  base::FilePath latest_path;
+
+  for (base::FilePath path; !path.empty(); path = dir_enum.Next()) {
+    base::Version version(path.BaseName().value());
+    if (!version.IsValid())
+      continue;
+
+    if (version > latest_version) {
+      latest_version = version;
+      latest_path = path;
+    }
+  }
+
+  return latest_path;
 }
 
 }  // namespace
@@ -126,6 +139,11 @@ int main(int argc, char** argv) {
     base::FilePath vm_path = cl->GetSwitchValuePath("vm_path");
     if (vm_path.empty())
       vm_path = GetLatestVMPath();
+
+    if (vm_path.empty()) {
+      LOG(ERROR) << "No VM rootfs/kernel available to run";
+      return 1;
+    }
 
     base::FilePath container_disk = cl->GetSwitchValuePath("rwcontainer");
     bool rw_container = false;
