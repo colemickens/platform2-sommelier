@@ -899,7 +899,7 @@ TEST_F(DeviceTest, OnIPConfigExpired) {
   ipconfig->properties_.lease_duration_seconds = kLeaseLength;
 
   EXPECT_CALL(metrics_,
-              SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds",
+              SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds2",
                         kLeaseLength,
                         Metrics::kMetricExpiredLeaseLengthSecondsMin,
                         Metrics::kMetricExpiredLeaseLengthSecondsMax,

@@ -332,8 +332,12 @@ const char Metrics::kMetricVpnUserAuthenticationType[] =
 const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
+// CL:557297 changed the number of buckets for the 'ExpiredLeaseLengthSeconds'
+// metric. That would lead to confusing display of samples collected before and
+// after the change. To avoid that, the 'ExpiredLeaseLengthSeconds' metric is
+// renamed to 'ExpiredLeaseLengthSeconds2'.
 const char Metrics::kMetricExpiredLeaseLengthSecondsSuffix[] =
-    "ExpiredLeaseLengthSeconds";
+    "ExpiredLeaseLengthSeconds2";
 const int Metrics::kMetricExpiredLeaseLengthSecondsMax =
     7 * 24 * 60 * 60;  // 7 days
 const int Metrics::kMetricExpiredLeaseLengthSecondsMin = 1;
