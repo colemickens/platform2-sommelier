@@ -225,6 +225,27 @@ ec_power_modem() {
   fi
 }
 
+# Bluetooth HCI Mode Change event to "enable" or "disable".
+#
+# Enables or disables Bluetooth HCI mode change events based on an
+# "enable" or "disable" argument. Some Bluetooth devices enter Sniff
+# Mode to conserve power shortly after activity stops. This results
+# in a mode change event being sent. Disable these events before
+# suspending to prevent them from waking the system.
+bt_hci_mode_change_event_ctrl() {
+  local file
+  for file in /sys/class/bluetooth/hci[0-9]; do
+    local hcidev="$(basename "${file}")"
+    if [ "$1" = "disable" ]; then
+      echo "Disabling Bluetooth HCI mode change event before suspend"
+      hcitool -i "${hcidev}" cmd 03 01 ff ff f7 ff ff ff ff ff
+    elif [ "$1" = "enable" ]; then
+      echo "Enabling Bluetooth HCI mode change event after resume"
+      hcitool -i "${hcidev}" cmd 03 01 ff ff ff ff ff ff ff ff
+    fi
+  done
+}
+
 # Writes the wakeup count that was passed to this script to
 # /sys/power/wakeup_count.  Returns success if the write fails, indicating
 # that one or more wakeup events occurred in the meantime.
@@ -332,6 +353,9 @@ else
     ec_power_modem off
   fi
 
+  # Disable Bluetooth mode change events.
+  bt_hci_mode_change_event_ctrl "disable"
+
   log_msg "Finalizing suspend"
   # Make sure that hwclock is cached for when we wake up, this way we don't
   # wait for io and get a more accurate time for wakeup
@@ -416,6 +440,9 @@ else
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem on
   fi
+
+  # Enable Bluetooth mode change events.
+  bt_hci_mode_change_event_ctrl "enable"
 fi
 
 send_uma_result "${result}"
