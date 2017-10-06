@@ -249,11 +249,9 @@ chromeos {
                 bcs-overlay = "overlay-reef-private";
                 main-image = "bcs://Reef.9042.50.0.tbz2";
                 ec-image = "bcs://Reef-EC.9042.43.0.tbz2";
-                stable-main-version = "Google-Reef.9042.43.0";
-                stable-ec-version = "reef-v1.1.5840-f0d7761";
                 extra = "${FILESDIR}/extra",
                     "${SYSROOT}/usr/sbin/ectool",
-                    "bcs://Reef.something.tbz";
+                    "bcs://Reef.something.tbz2";
                 build-targets {
                     coreboot = "reef";
                     ec = "reef";
@@ -265,11 +263,9 @@ chromeos {
                 bcs-overlay = "overlay-reef-private";
                 main-image = "bcs://Reef.9041.50.0.tbz2";
                 ec-image = "bcs://Reef-EC.9041.43.0.tbz2";
-                stable-main-version = "Google-Reef.9041.43.0";
-                stable-ec-version = "reef-v1.1.5840-f0d7761";
                 extra = "${FILESDIR}/extra",
                     "${SYSROOT}/usr/sbin/ectool",
-                    "bcs://Reef.something.tbz";
+                    "bcs://Reef.something.tbz2";
                 build-targets {
                     coreboot = "reef";
                     ec = "reef";
@@ -335,7 +331,7 @@ chromeos {
             brand-code = "ABCD";
             firmware {
                 shares = <&shared>;
-                key-id = "reef";
+                key-id = "REEF";
             };
             thermal {
                 dptf-dv = "reef/dptf.dv";
@@ -367,7 +363,7 @@ chromeos {
                 bcs-overlay = "overlay-pyro-private";
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
                 ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
-                key-id = "pyro";
+                key-id = "PYRO";
                 build-targets {
                     coreboot = "pyro";
                     ec = "pyro";
@@ -388,7 +384,7 @@ chromeos {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
-                key-id = "snappy";
+                key-id = "SNAPPY";
                 build-targets {
                     coreboot = "snappy";
                     ec = "snappy";
@@ -404,7 +400,7 @@ chromeos {
             brand-code = "ABCG";
             firmware {
                 shares = <&shared>;
-                key-id = "basking";
+                key-id = "BASKING";
             };
             touch {
                 #address-cells = <1>;
@@ -441,7 +437,7 @@ chromeos {
             brand-code = "ABCH";
             firmware {
                 shares = <&pinned_version>;
-                key-id = "sand";
+                key-id = "SAND";
             };
         };
 
@@ -451,7 +447,7 @@ chromeos {
             brand-code = "ABCI";
             firmware {
                 shares = <&pinned_version>;
-                key-id = "electro";
+                key-id = "ELECTRO";
             };
         };
     };
