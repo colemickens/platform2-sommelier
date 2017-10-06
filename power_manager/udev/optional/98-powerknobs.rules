@@ -9,3 +9,7 @@ ACTION=="add", SUBSYSTEM=="module", DEVPATH=="/module/snd_hda_intel", \
 ACTION=="add|change", SUBSYSTEM=="scsi_host", \
   TEST=="link_power_management_policy", \
   ATTR{link_power_management_policy}="min_power"
+
+# Configure SSD/HDD power management setting on power plug/unplug
+ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}!="Battery", \
+  RUN+="/usr/bin/set_blkdev_pm"
