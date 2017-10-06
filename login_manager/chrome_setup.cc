@@ -477,10 +477,11 @@ void SetUpWallpaperFlags(
     ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists) {
-  std::string model;
+  std::string filename;
   // Use the configuration if available, then fall back to oem and default.
-  if (cros_config && cros_config->GetString("/", kWallpaperProperty, &model) &&
-      AddWallpaperFlags(builder, "default", model, path_exists)) {
+  if (cros_config &&
+      cros_config->GetString("/", kWallpaperProperty, &filename) &&
+      AddWallpaperFlags(builder, "default", filename, path_exists)) {
     AddWallpaperFlags(builder, "child", "child", path_exists);
   } else if (AddWallpaperFlags(builder, "default", "oem", path_exists)) {
     builder->AddArg("--default-wallpaper-is-oem");
