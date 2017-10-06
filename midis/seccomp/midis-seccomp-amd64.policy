@@ -34,7 +34,8 @@ getuid: 1
 # - SNDRV_SEQ_IOCTL_QUERY_NEXT_PORT
 # - SNDRV_SEQ_IOCTL_UNSUBSCRIBE_PORT
 # - SNDRV_SEQ_IOCTL_DELETE_PORT
-ioctl: arg1 == 0x5401 || arg1 == 0x80045300 || arg1 == 0x80045301 || arg1 == 0xc0105303 || arg1 == 0xc0bc5310 || arg1 == 0x40bc5311 || arg1 == 0xc0a85320 || arg1 == 0x40505330 || arg1 == 0xc0a85352 || arg1 == 0x40505331 || arg1 == 0x40a85321
+# - SNDRV_SEQ_IOCTL_QUERY_NEXT_CLIENT
+ioctl: arg1 == 0x5401 || arg1 == 0x80045300 || arg1 == 0x80045301 || arg1 == 0xc0105303 || arg1 == 0xc0bc5310 || arg1 == 0x40bc5311 || arg1 == 0xc0a85320 || arg1 == 0x40505330 || arg1 == 0xc0a85352 || arg1 == 0x40505331 || arg1 == 0x40a85321 || arg1 == 0xc0bc5351
 lseek: 1
 # mmap should only be allowed in READ mode.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd

@@ -29,6 +29,8 @@ Client::Client(DeviceTracker* device_tracker,
       binding_(this, std::move(request)),
       weak_factory_(this) {
   device_tracker_->AddDeviceObserver(this);
+  binding_.set_connection_error_handler(
+      base::Bind(&Client::TriggerClientDeletion, weak_factory_.GetWeakPtr()));
 }
 
 Client::~Client() {
