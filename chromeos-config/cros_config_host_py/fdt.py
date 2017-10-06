@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from collections import OrderedDict
 import struct
 
 import fdt_util
@@ -149,7 +150,7 @@ class Node(object):
     self.name = name
     self.path = path
     self.subnodes = []
-    self.props = {}
+    self.props = OrderedDict()
 
   def FindNode(self, name):
     """Find a node given its name
@@ -239,7 +240,7 @@ class Fdt(object):
     self._root = None
     self._fname = fname
     self._cached_offsets = False
-    self.phandle_to_node = {}
+    self.phandle_to_node = OrderedDict()
     if self._fname:
       with open(self._fname) as fd:
         self._fdt = bytearray(fd.read())
@@ -322,7 +323,7 @@ class Fdt(object):
     Raises:
       ValueError: if the node does not exist.
     """
-    props_dict = {}
+    props_dict = OrderedDict()
     poffset = libfdt.fdt_first_property_offset(self._fdt, node.offset)
     while poffset >= 0:
       p = self.fdt_obj.get_property_by_offset(poffset)

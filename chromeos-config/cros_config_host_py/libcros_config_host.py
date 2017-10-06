@@ -11,6 +11,8 @@ for CLI access to this library.
 
 from __future__ import print_function
 
+from collections import OrderedDict
+
 from fdt import Fdt
 
 
@@ -26,8 +28,8 @@ class CrosConfig(object):
   def __init__(self, filepath):
     fdt = Fdt(filepath)
     fdt.Scan()
-    self.models = {n.name: CrosConfig.Model(n)
-                   for n in fdt.GetNode('/chromeos/models').subnodes}
+    self.models = OrderedDict((n.name, CrosConfig.Model(n))
+                              for n in fdt.GetNode('/chromeos/models').subnodes)
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -45,9 +47,10 @@ class CrosConfig(object):
     """
     def __init__(self, fdt_node):
       self.name = fdt_node.name
-      self.subnodes = {n.name: CrosConfig.Node(n) for n in fdt_node.subnodes}
-      self.properties = {n: CrosConfig.Property(p)
-                         for n, p in fdt_node.props.iteritems()}
+      self.subnodes = OrderedDict((n.name, CrosConfig.Node(n))
+                                  for n in fdt_node.subnodes)
+      self.properties = OrderedDict((n, CrosConfig.Property(p))
+                                    for n, p in fdt_node.props.iteritems())
 
     def ChildNodeFromPath(self, relative_path):
       """Returns the CrosConfig.Node at the relative path.

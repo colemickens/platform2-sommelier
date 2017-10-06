@@ -14,6 +14,8 @@ import fdt
 import fdt_util
 
 DTS_FILE = '../libcros_config/test.dts'
+PYRO_FIRMWARE_NAMES = ['bcs-overlay', 'ec-image', 'pd-image', 'main-image',
+                       'main-rw-image']
 
 
 class FdtLibTest(unittest.TestCase):
@@ -36,6 +38,12 @@ class FdtLibTest(unittest.TestCase):
     models_node = self.test_fdt.GetNode('/chromeos/models')
     models = [m.name for m in models_node.subnodes]
     self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken'])
+
+  def testPropertyOrder(self):
+    self.test_fdt.Scan()
+    firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
+
+    self.assertSequenceEqual(firmware.props.keys(), PYRO_FIRMWARE_NAMES)
 
   def testGetStringProperty(self):
     self.test_fdt.Scan()

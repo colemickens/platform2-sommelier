@@ -14,13 +14,13 @@ import fdt_util
 from libcros_config_host import CrosConfig
 
 DTS_FILE = '../libcros_config/test.dts'
-MODELS = sorted(['pyro', 'caroline', 'reef', 'broken'])
+MODELS = ['pyro', 'caroline', 'reef', 'broken']
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
-               'overlay-reef-private/chromeos-base/chromeos-firmware-pyro')
-PYRO_FIRMWARE_FILES = sorted(['/Reef_EC.9042.87.1.tbz2',
-                              '/Reef_PD.9042.87.1.tbz2',
-                              '/Reef.9042.87.1.tbz2',
-                              '/Reef.9042.110.0.tbz2'])
+               'overlay-reef-private/chromeos-base/chromeos-firmware-pyro/')
+PYRO_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
+                       'Reef_PD.9042.87.1.tbz2',
+                       'Reef.9042.87.1.tbz2',
+                       'Reef.9042.110.0.tbz2']
 
 
 class CrosConfigHostTest(unittest.TestCase):
@@ -42,8 +42,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testModels(self):
     config = CrosConfig(self.file)
-    model_names = sorted([n for n, _ in config.models.iteritems()])
-    self.assertSequenceEqual(model_names, MODELS)
+    self.assertSequenceEqual([n for n, _ in config.models.iteritems()], MODELS)
 
   def testNodeSubnames(self):
     config = CrosConfig(self.file)
@@ -77,7 +76,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testGetFirmwareUris(self):
     config = CrosConfig(self.file)
-    firmware_uris = sorted(config.models['pyro'].GetFirmwareUris())
+    firmware_uris = config.models['pyro'].GetFirmwareUris()
     self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
                                              fname in PYRO_FIRMWARE_FILES])
 
