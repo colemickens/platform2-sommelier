@@ -4,8 +4,9 @@
 
 #include "policy/libpolicy.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 
 #include "policy/device_policy.h"
 #ifndef __ANDROID__
@@ -16,7 +17,7 @@ namespace policy {
 
 PolicyProvider::PolicyProvider() {
 #ifndef __ANDROID__
-  device_policy_ = base::MakeUnique<DevicePolicyImpl>();
+  device_policy_ = std::make_unique<DevicePolicyImpl>();
 #endif
 }
 

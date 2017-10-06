@@ -4,6 +4,7 @@
 
 #include "policy/libpolicy.h"
 
+#include <memory>
 #include <utility>
 
 #include <openssl/err.h>
@@ -11,7 +12,6 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "install_attributes/mock_install_attributes_reader.h"
@@ -58,7 +58,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   base::FilePath policy_file(kPolicyFileAllSet);
   base::FilePath key_file(kKeyFile);
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(
+      std::make_unique<MockInstallAttributesReader>(
           cryptohome::SerializedInstallAttributes()),
       policy_file, key_file, false);
   PolicyProvider provider(device_policy);
@@ -189,7 +189,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   base::FilePath policy_file(kPolicyFileNoneSet);
   base::FilePath key_file(kKeyFile);
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(
+      std::make_unique<MockInstallAttributesReader>(
           cryptohome::SerializedInstallAttributes()),
       policy_file, key_file, false);
   PolicyProvider provider(device_policy);
@@ -239,7 +239,7 @@ TEST(PolicyTest, DevicePolicyFailure) {
   base::FilePath policy_file(kNonExistingFile);
   base::FilePath key_file(kNonExistingFile);
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(
+      std::make_unique<MockInstallAttributesReader>(
           cryptohome::SerializedInstallAttributes()),
       policy_file, key_file, true);
   PolicyProvider provider(device_policy);
@@ -261,7 +261,7 @@ TEST(PolicyTest, SkipSignatureForEnterpriseAD) {
   attr->set_value("enterprise_ad");
 
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      std::make_unique<MockInstallAttributesReader>(install_attributes),
       policy_file, key_file, false);
   PolicyProvider provider(device_policy);
   provider.Reload();
@@ -283,7 +283,7 @@ TEST(PolicyTest, DontSkipSignatureForEnterprise) {
   attr->set_value("enterprise");
 
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      std::make_unique<MockInstallAttributesReader>(install_attributes),
       policy_file, key_file, false);
   PolicyProvider provider(device_policy);
   provider.Reload();
@@ -299,7 +299,7 @@ TEST(PolicyTest, DontSkipSignatureForConsumer) {
   cryptohome::SerializedInstallAttributes install_attributes;
 
   MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
-      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      std::make_unique<MockInstallAttributesReader>(install_attributes),
       policy_file, key_file, false);
   PolicyProvider provider(device_policy);
   provider.Reload();

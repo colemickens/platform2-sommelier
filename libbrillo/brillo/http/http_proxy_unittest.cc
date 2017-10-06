@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>

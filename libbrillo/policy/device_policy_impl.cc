@@ -4,10 +4,11 @@
 
 #include "policy/device_policy_impl.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/ptr_util.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -109,7 +110,7 @@ DevicePolicyImpl::~DevicePolicyImpl() {
 bool DevicePolicyImpl::LoadPolicy() {
   bool verify_policy = true;
   if (!install_attributes_reader_) {
-    install_attributes_reader_ = base::MakeUnique<InstallAttributesReader>();
+    install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
   }
   const std::string& mode =
       install_attributes_reader_->GetAttribute(

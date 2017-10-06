@@ -18,7 +18,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/process_metrics.h>
 #include <base/strings/string_number_conversions.h>
@@ -217,7 +216,7 @@ bool ProcessImpl::Start() {
     return false;
   }
   std::unique_ptr<char* []> argv =
-      base::MakeUnique<char* []>(arguments_.size() + 1);
+      std::make_unique<char* []>(arguments_.size() + 1);
 
   for (size_t i = 0; i < arguments_.size(); ++i)
     argv[i] = const_cast<char*>(arguments_[i].c_str());
