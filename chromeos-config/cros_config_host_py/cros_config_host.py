@@ -28,6 +28,10 @@ def ListModels(config):
   for model_name in sorted(model_names):
     print(model_name)
 
+def GetProperty(models, path, prop):
+  for model in models or []:
+    config_prop = model.ChildPropertyFromPath(path, prop)
+    print(config_prop.value if config_prop else '')
 
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
@@ -40,12 +44,26 @@ def GetParser(description):
   """
   parser = argparse.ArgumentParser(description)
   parser.add_argument('filepath', help='The master configuration file path.')
+  parser.add_argument('-m', '--model', type=str,
+                      help='Which model to run the subcommand on.')
+  parser.add_argument('-a', '--all-models', action='store_true',
+                      help='Runs the subcommand on all models, one per line.')
   subparsers = parser.add_subparsers(dest='subcommand')
   # Parser: list-models
   subparsers.add_parser(
       'list-models',
       help='Lists all models in the Cros Configuration Database at <filepath>',
       epilog='Each model will be printed on it\'s own line.')
+  # Parser: list-models
+  get_parser = subparsers.add_parser(
+      'get',
+      help='Gets a model property at the given path, with the given name.')
+  get_parser.add_argument(
+      'path',
+      help='Relative path (within the model) to the property\'s parent node')
+  get_parser.add_argument(
+      'prop',
+      help='The name of the property to get within the node at <path>.')
   return parser
 
 
@@ -60,8 +78,21 @@ def main(argv):
   # Parse argv
   opts = parser.parse_args(argv)
   config = CrosConfig(opts.filepath)
+  # Get all models we are invoking on (if any).
+  models = None
+  if opts.model and opts.model in config.models:
+    models = [config.models[opts.model]]
+  elif opts.all_models:
+    models = config.models.values()
+  # Main command branch
   if opts.subcommand == 'list-models':
     ListModels(config)
+  elif opts.subcommand == 'get':
+    if not opts.model and not opts.all_models:
+      print('You must specify --model or --all-models for this command. See '
+            '--help for more info.')
+      return
+    GetProperty(models, opts.path, opts.prop)
 
 
 if __name__ == '__main__':

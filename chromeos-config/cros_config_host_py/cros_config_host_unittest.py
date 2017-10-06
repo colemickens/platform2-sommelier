@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring,class-missing-docstring
+"""The unit test suite for the CrosConfigHost CLI tool."""
 
 from __future__ import print_function
 
@@ -19,16 +19,17 @@ MODELS = sorted(['pyro', 'caroline', 'reef', 'broken'])
 
 
 class CrosConfigHostTest(unittest.TestCase):
+  """The unit test suite for the CrosConfigHost CLI tool."""
   def setUp(self):
     path = os.path.join(os.path.dirname(__file__), DTS_FILE)
-    (self.file, self.temp_file) = fdt_util.EnsureCompiled(path)
+    (self.dtb_file, self.temp_file) = fdt_util.EnsureCompiled(path)
 
   def tearDown(self):
     if self.temp_file is not None:
       os.remove(self.temp_file.name)
 
   def testListModels(self):
-    call_args = '{} {} list-models'.format(CLI_FILE, self.file).split()
+    call_args = '{} {} list-models'.format(CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep.join(MODELS) + os.linesep)
 
@@ -37,6 +38,37 @@ class CrosConfigHostTest(unittest.TestCase):
     with open(os.devnull, 'w') as devnull:
       with self.assertRaises(subprocess.CalledProcessError):
         subprocess.check_call(call_args, stdout=devnull, stderr=devnull)
+
+  def testGetPropSingle(self):
+    call_args = '{} {} --model=pyro get / wallpaper'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual(output, 'default' + os.linesep)
+
+  def testGetPropSingleWrongModel(self):
+    call_args = '{} {} --model=dne get / wallpaper'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual(output, '')
+
+  def testGetPropSingleWrongPath(self):
+    call_args = '{} {} --model=pyro get /dne wallpaper'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual(output, os.linesep)
+
+  def testGetPropSingleWrongProp(self):
+    call_args = '{} {} --model=pyro get / dne'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual(output, os.linesep)
+
+  def testGetPropAllModels(self):
+    call_args = '{} {} --all-models get / wallpaper'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual(output,
+                     'default{ls}{ls}epic{ls}{ls}'.format(ls=os.linesep))
 
 
 if __name__ == '__main__':
