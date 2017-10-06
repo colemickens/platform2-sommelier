@@ -49,8 +49,8 @@ class Prop(object):
     data: The string data
   """
   def __init__(self, fdt, node, offset, name, data):
-    self._fdt = fdt
-    self._node = node
+    self.fdt = fdt
+    self.node = node
     self._offset = offset
     self.name = name
     self.value = None
@@ -74,7 +74,7 @@ class Prop(object):
     Returns:
       Node object, or None if not found
     """
-    return self._fdt.LookupPhandle(self.GetPhandle())
+    return self.fdt.LookupPhandle(self.GetPhandle())
 
   def BytesToValue(self, data):
     """Converts a string of bytes into a type and value
@@ -396,6 +396,7 @@ class Fdt(object):
 
 def FdtScan(fname):
   """Returns a new Fdt object from the implementation we are using"""
-  dtb = Fdt(fname)
+  with open(fname) as fd:
+    dtb = Fdt(fd)
   dtb.Scan()
   return dtb
