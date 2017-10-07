@@ -87,5 +87,20 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="RemoveComponent">
+    <tp:docstring>
+      Remove all versions of a component if removable.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+      <tp:docstring>
+        The name of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="success" type="b" direction="out">
+      <tp:docstring>
+        The result of the component removal (success or failure).
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

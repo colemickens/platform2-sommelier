@@ -197,6 +197,60 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   EXPECT_EQ(expected_path, mnt_path);
 }
 
+TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.path().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  // Make a copy to avoid permanent loss of test data.
+  base::ScopedTempDir component_root;
+  ASSERT_TRUE(component_root.CreateUniqueTempDir());
+  base::FilePath component_path = component_root.path().Append("9824.0.4");
+  ASSERT_TRUE(base::CreateDirectory(component_path));
+  std::unique_ptr<Component> component =
+      Component::Create(base::FilePath(GetTestDataPath("ext4_component")),
+                        keys);
+  ASSERT_TRUE(component->CopyTo(component_path));
+
+  // Remove the component.
+  EXPECT_TRUE(loader.RemoveComponentAtPath(
+      "ext4", component_root.path(), component_path));
+  EXPECT_FALSE(base::PathExists(component_root.path()));
+}
+
+TEST_F(ImageLoaderTest, RemoveImageAtPathNotRemovable) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.path().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  // Make a copy to avoid permanent loss of test data.
+  base::ScopedTempDir component_root;
+  ASSERT_TRUE(component_root.CreateUniqueTempDir());
+  base::FilePath component_path = component_root.path().Append("9824.0.4");
+  ASSERT_TRUE(base::CreateDirectory(component_path));
+  std::unique_ptr<Component> component =
+      Component::Create(base::FilePath(GetTestComponentPath()),
+                        keys);
+  ASSERT_TRUE(component->CopyTo(component_path));
+
+  // Remove the component.
+  EXPECT_FALSE(loader.RemoveComponentAtPath(
+      kTestComponentName, component_root.path(), component_path));
+  EXPECT_TRUE(base::PathExists(component_root.path()));
+}
+
 TEST_F(ImageLoaderTest, MountInvalidImage) {
   Keys keys;
   keys.push_back(

@@ -93,6 +93,40 @@ std::string ImageLoaderImpl::LoadComponentAtPath(
                                                 : kBadResult;
 }
 
+bool ImageLoaderImpl::RemoveComponent(const std::string& name) {
+  base::FilePath component_root(GetComponentRoot(name));
+  base::FilePath component_path;
+  if (!GetPathToCurrentComponentVersion(name, &component_path)) {
+    LOG(ERROR) << "Failed to get current component version: " << name;
+    return false;
+  }
+  return RemoveComponentAtPath(name, component_root, component_path);
+}
+
+bool ImageLoaderImpl::RemoveComponentAtPath(
+  const std::string& name,
+  const base::FilePath& component_root,
+  const base::FilePath& component_path) {
+  // Check if component is removable.
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, config_.keys);
+  if (!component) {
+    LOG(ERROR) << "Failed to initialize component: " << name;
+    return false;
+  }
+  if (!component->manifest().is_removable) {
+    LOG(ERROR) << "Component is not removable";
+    return false;
+  }
+
+  // Remove the component (all versions) and latest-version file.
+  if (!base::DeleteFile(component_root, /*recursive=*/true)) {
+    LOG(ERROR) << "Failed to delete component.";
+    return false;
+  }
+  return true;
+}
+
 bool ImageLoaderImpl::RegisterComponent(
     const std::string& name, const std::string& version,
     const std::string& component_folder_abs_path) {

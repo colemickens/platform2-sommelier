@@ -39,6 +39,8 @@ class ImageLoaderImpl {
   bool RegisterComponent(const std::string& name, const std::string& version,
                          const std::string& component_folder_abs_path);
 
+  bool RemoveComponent(const std::string& name);
+
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name);
 
@@ -81,8 +83,16 @@ class ImageLoaderImpl {
                                         base::FilePath* result);
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, RemoveImageAtPathRemovable);
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, RemoveImageAtPathNotRemovable);
+
   // The configuration traits.
   ImageLoaderConfig config_;
+
+  // Remove component if removable.
+  bool RemoveComponentAtPath(const std::string& name,
+                             const base::FilePath& component_root,
+                             const base::FilePath& component_path);
 
   DISALLOW_COPY_AND_ASSIGN(ImageLoaderImpl);
 };

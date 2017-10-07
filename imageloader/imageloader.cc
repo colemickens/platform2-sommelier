@@ -127,4 +127,11 @@ bool ImageLoader::LoadComponentAtPath(brillo::ErrorPtr* err,
   return true;
 }
 
+bool ImageLoader::RemoveComponent(
+    brillo::ErrorPtr* err, const std::string& name, bool* out_success) {
+  *out_success = impl_.RemoveComponent(name);
+  PostponeShutdown();
+  return true;
+}
+
 }  // namespace imageloader
