@@ -28,25 +28,22 @@ class FdtLibTest(unittest.TestCase):
     finally:
       if temp_file is not None:
         os.remove(temp_file.name)
+    self.test_fdt.Scan()
 
   def testFdtScan(self):
-    self.test_fdt.Scan()
     self.assertIsNotNone(self.test_fdt.GetRoot())
 
   def testGetModels(self):
-    self.test_fdt.Scan()
     models_node = self.test_fdt.GetNode('/chromeos/models')
     models = [m.name for m in models_node.subnodes]
     self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken'])
 
   def testPropertyOrder(self):
-    self.test_fdt.Scan()
     firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
 
     self.assertSequenceEqual(firmware.props.keys(), PYRO_FIRMWARE_NAMES)
 
   def testGetStringProperty(self):
-    self.test_fdt.Scan()
     firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
     bcs_overlay = firmware.props['bcs-overlay'].value
     self.assertEqual(bcs_overlay, 'overlay-reef-private')
