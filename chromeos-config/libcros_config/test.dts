@@ -9,7 +9,23 @@
 
 / {
 	chromeos {
+		family: family {
+		};
 		models: models {
+		};
+	};
+};
+
+&family {
+	firmware {
+		shared: caroline {
+			firmware {
+				bcs-overlay = "overlay-reef-private";
+				ec-image = "bcs://Caroline_EC.2017.21.1.tbz2";
+				pd-image = "bcs://Caroline_PD.2017.21.1.tbz2";
+				main-image = "bcs://Caroline.2017.21.1.tbz2";
+				main-rw-image = "bcs://Caroline.2017.41.0.tbz2";
+			};
 		};
 	};
 };
@@ -26,7 +42,11 @@
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
 		};
 	};
-	caroline { };
+	caroline {
+		firmware {
+			shares = < &shared >;
+		};
+	};
 	reef {
 		wallpaper = "epic";
 		firmware {

@@ -48,6 +48,13 @@ class FdtLibTest(unittest.TestCase):
     bcs_overlay = firmware.props['bcs-overlay'].value
     self.assertEqual(bcs_overlay, 'overlay-reef-private')
 
+  def testLookupPhandle(self):
+    firmware = self.test_fdt.GetNode('/chromeos/models/caroline/firmware')
+    shared = self.test_fdt.GetNode('/chromeos/family/firmware/caroline')
+    self.assertEqual(shared, firmware.props['shares'].LookupPhandle())
+
+    # Phandles are sequentially allocated integers > 0, so 0 is invalid
+    self.assertEqual(None, self.test_fdt.LookupPhandle(0))
 
 if __name__ == '__main__':
   unittest.main()

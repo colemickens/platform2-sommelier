@@ -41,13 +41,15 @@ class Prop(object):
   """A device tree property
 
   Properties:
+    fdt: Device tree object
     name: Property name (as per the device tree)
     value: Property value as a string of bytes, or a list of strings of
       bytes
     type: Value type
     data: The string data
   """
-  def __init__(self, node, offset, name, data):
+  def __init__(self, fdt, node, offset, name, data):
+    self._fdt = fdt
     self._node = node
     self._offset = offset
     self.name = name
@@ -65,6 +67,14 @@ class Prop(object):
     Gets the phandle value from a property and returns it as an integer
     """
     return fdt_util.fdt32_to_cpu(self.value[:4])
+
+  def LookupPhandle(self):
+    """Look up a node by its phandle (treating this property as a phandle)
+
+    Returns:
+      Node object, or None if not found
+    """
+    return self._fdt.LookupPhandle(self.GetPhandle())
 
   def BytesToValue(self, data):
     """Converts a string of bytes into a type and value
@@ -246,6 +256,17 @@ class Fdt(object):
         self._fdt = bytearray(fd.read())
         self.fdt_obj = libfdt.Fdt(self._fdt)
 
+  def LookupPhandle(self, phandle):
+    """Look up a node by its phandle
+
+    Args:
+      phandle: Phandle to look up (integer > 0)
+
+    Returns:
+      Node object, or None if not found
+    """
+    return self.phandle_to_node.get(phandle)
+
   def Scan(self):
     """Scan a device tree, building up a tree of Node objects
 
@@ -327,7 +348,7 @@ class Fdt(object):
     poffset = libfdt.fdt_first_property_offset(self._fdt, node.offset)
     while poffset >= 0:
       p = self.fdt_obj.get_property_by_offset(poffset)
-      prop = Prop(node, poffset, p.name, p.value)
+      prop = Prop(node.fdt, node, poffset, p.name, p.value)
       props_dict[prop.name] = prop
 
       poffset = libfdt.fdt_next_property_offset(self._fdt, poffset)
