@@ -318,8 +318,12 @@ chromeos {
             };
             wacom_stylus: wacom-stylus {
                 vendor = "wacom";
-                firmware-bin = "wacom/${version}.hex";
+                firmware-bin = "wacom/wacom_${version}.hex";
                 firmware-symlink = "wacom_firmware_${model}.bin";
+            };
+            weida_touchscreen: weida-touchscreen {
+                firmware-bin = "weida/${pid}_${version}_${date-code}.bin";
+                firmware-symlink = "wdt87xx.bin";
             };
         };
     };
@@ -424,9 +428,10 @@ chromeos {
                 };
                 touchscreen@1 {
                     reg = <1>;
-                    touch-type = <&elan_touchscreen>;
-                    pid = "306e";
-                    version = "5611";
+                    touch-type = <&weida_touchscreen>;
+                    pid = "01017401";
+                    version = "2082";
+                    date-code = "0133c65b";
                 };
             };
         };
