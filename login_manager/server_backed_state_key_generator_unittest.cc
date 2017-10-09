@@ -196,14 +196,14 @@ TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoSuccess) {
   EXPECT_TRUE(ServerBackedStateKeyGenerator::ParseMachineInfo(
       "\"serial_number\"=\"fake-machine-serial-number\"\n"
       "# This is a comment.\n"
-      "root_disk_serial_number=fake-disk-serial-number\n"
+      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n"
       "\"serial_number\"=\"key_collision\"\n"
       "\"stable_device_secret_DO_NOT_SHARE\"="
       "\"11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\"\n",
       &params));
   EXPECT_EQ(3, params.size());
   EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
-  EXPECT_EQ("fake-disk-serial-number", params["root_disk_serial_number"]);
+  EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
 }
 
 TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoFailure) {

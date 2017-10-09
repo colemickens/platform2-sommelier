@@ -16,5 +16,5 @@ dump_vpd_log --full --stdout > "${UI_MACHINE_INFO_FILE}"
 # Grab the disk serial number from the udev database.
 ROOTDEV=$(rootdev -s -d || true)
 udevadm info --query=property --name="${ROOTDEV}" |
-    awk -F = '/^ID_SERIAL=/ { print "root_disk_serial_number=" $2 }' \
+    awk -F = '/^ID_SERIAL=/ { print "\"root_disk_serial_number\"=\"" $2 "\""}' \
     >> "${UI_MACHINE_INFO_FILE}"
