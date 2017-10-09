@@ -58,7 +58,8 @@ def GetParser(description):
     An ArgumentParser structured for the cros_config_host CLI.
   """
   parser = argparse.ArgumentParser(description)
-  parser.add_argument('filepath', help='The master configuration file path.')
+  parser.add_argument('filepath',
+                      help='The master config file path. Use - for stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
   parser.add_argument('-a', '--all-models', action='store_true',
@@ -98,7 +99,12 @@ def main(argv):
   parser = GetParser(__doc__)
   # Parse argv
   opts = parser.parse_args(argv)
-  config = CrosConfig(opts.filepath)
+  config = None
+  if opts.filepath == '-':
+    config = CrosConfig(sys.stdin)
+  else:
+    with open(opts.filepath) as infile:
+      config = CrosConfig(infile)
   # Get all models we are invoking on (if any).
   models = None
   if opts.model and opts.model in config.models:

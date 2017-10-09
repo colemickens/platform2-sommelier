@@ -27,8 +27,8 @@ class CrosConfig(object):
     models: All models in the CrosConfig tree, in the form of a dictionary:
             <model name: string, model: CrosConfig.Model>
   """
-  def __init__(self, filepath):
-    self._fdt = fdt.Fdt(filepath)
+  def __init__(self, infile):
+    self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
     self.models = OrderedDict(
         (n.name, CrosConfig.Model(self._fdt, n))

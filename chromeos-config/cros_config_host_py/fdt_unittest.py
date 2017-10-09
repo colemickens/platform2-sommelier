@@ -24,7 +24,8 @@ class FdtLibTest(unittest.TestCase):
     path = os.path.join(os.path.dirname(__file__), DTS_FILE)
     try:
       (fname, temp_file) = fdt_util.EnsureCompiled(path)
-      self.test_fdt = fdt.Fdt(fname)
+      with open(fname) as fdt_file:
+        self.test_fdt = fdt.Fdt(fdt_file)
     finally:
       if temp_file is not None:
         os.remove(temp_file.name)

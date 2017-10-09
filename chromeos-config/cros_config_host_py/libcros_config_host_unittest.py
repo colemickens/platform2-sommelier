@@ -27,18 +27,16 @@ class CrosConfigHostTest(unittest.TestCase):
   """The unit test suite for the libcros_config_host.py library"""
   def setUp(self):
     path = os.path.join(os.path.dirname(__file__), DTS_FILE)
-    (self.file, self.temp_file) = fdt_util.EnsureCompiled(path)
+    (filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
+    self.file = open(filepath)
 
   def tearDown(self):
     if self.temp_file is not None:
       os.remove(self.temp_file.name)
+    self.file.close()
 
   def testGoodDtbFile(self):
     self.assertIsNotNone(CrosConfig(self.file))
-
-  def testDneDbtFile(self):
-    with self.assertRaises(IOError):
-      CrosConfig('does_not_exist.dtb')
 
   def testModels(self):
     config = CrosConfig(self.file)

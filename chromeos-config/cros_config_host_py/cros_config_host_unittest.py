@@ -28,6 +28,11 @@ class CrosConfigHostTest(unittest.TestCase):
     if self.temp_file is not None:
       os.remove(self.temp_file.name)
 
+  def testReadStdin(self):
+    call_args = '{} - list-models < {}'.format(CLI_FILE, self.dtb_file)
+    output = subprocess.check_output(call_args, shell=True)
+    self.assertEqual(output, os.linesep.join(MODELS) + os.linesep)
+
   def testListModels(self):
     call_args = '{} {} list-models'.format(CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)

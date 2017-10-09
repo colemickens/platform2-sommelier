@@ -243,18 +243,15 @@ class Fdt(object):
   """Provides simple access to a flat device tree blob using libfdts.
 
   Properties:
-    fname: Filename of fdt
+    infile: The File to read the dtb from
     _root: Root of device tree (a Node object)
   """
-  def __init__(self, fname):
+  def __init__(self, infile):
     self._root = None
-    self._fname = fname
     self._cached_offsets = False
     self.phandle_to_node = OrderedDict()
-    if self._fname:
-      with open(self._fname) as fd:
-        self._fdt = bytearray(fd.read())
-        self.fdt_obj = libfdt.Fdt(self._fdt)
+    self._fdt = bytearray(infile.read())
+    self.fdt_obj = libfdt.Fdt(self._fdt)
 
   def LookupPhandle(self, phandle):
     """Look up a node by its phandle
@@ -304,13 +301,13 @@ class Fdt(object):
         return None
     return node
 
-  def Flush(self):
-    """Flush device tree changes back to the file
+  def Flush(self, outfile):
+    """Flush device tree changes to the given file
 
-    If the device tree has changed in memory, write it back to the file.
+    Args:
+      outfile: The file to write the device tree out to
     """
-    with open(self._fname, 'wb') as fd:
-      fd.write(self._fdt)
+    outfile.write(self._fdt)
 
   def Pack(self):
     """Pack the device tree down to its minimum size
