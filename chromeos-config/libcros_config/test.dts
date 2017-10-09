@@ -28,6 +28,23 @@
 			};
 		};
 	};
+	touch {
+		elan_touchscreen: elan-touchscreen {
+			vendor = "elan";
+			firmware-bin = "${vendor}/${pid}_${version}.bin";
+			firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+		};
+		elan_touchpad: elan-touchpad {
+			vendor = "elan";
+			firmware-bin = "${vendor}/${pid}_${version}.bin";
+			firmware-symlink = "${vendor}_i2c_${pid}.bin";
+		};
+		wacom_stylus: wacom-stylus {
+			vendor = "wacom";
+			firmware-bin = "wacom/${version}.hex";
+			firmware-symlink = "wacom_firmware_${MODEL}.bin";
+		};
+	};
 };
 
 &models {
@@ -40,6 +57,21 @@
 			pd-image = "bcs://Reef_PD.9042.87.1.tbz2";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+		};
+		touch {
+			present = "probe";
+			probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+			stylus {
+				touch-type = <&wacom_stylus>;
+				version = "4209";
+			};
+			touchscreen {
+				touch-type = <&elan_touchscreen>;
+				pid = "0a97";
+				version = "1012";
+				firmware-bin = "${vendor}/${pid}_${version}.bin";
+				firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+			};
 		};
 	};
 	caroline {
@@ -54,6 +86,33 @@
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+		};
+		touch {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			present = "yes";
+			stylus {
+				touch-type = <&wacom_stylus>;
+				version = "4209";
+			};
+			touchpad {
+				touch-type = <&elan_touchpad>;
+				pid = "97.0";
+				version = "6.0";
+				firmware-symlink = "${vendor}_i2c_${pid}.bin";
+			};
+			touchscreen@0 {
+				reg = <0>;
+				touch-type = <&elan_touchscreen>;
+				pid = "3062";
+				version = "5602";
+			};
+			touchscreen@1 {
+				reg = <1>;
+				touch-type = <&elan_touchscreen>;
+				pid = "306e";
+				version = "5611";
+			};
 		};
 	};
 	broken {

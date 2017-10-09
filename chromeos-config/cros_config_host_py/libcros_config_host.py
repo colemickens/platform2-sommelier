@@ -11,9 +11,11 @@ for CLI access to this library.
 
 from __future__ import print_function
 
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 
 import fdt
+
+TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 
 
 class CrosConfig(object):
@@ -31,6 +33,20 @@ class CrosConfig(object):
     self.models = OrderedDict(
         (n.name, CrosConfig.Model(self._fdt, n))
         for n in self._fdt.GetNode('/chromeos/models').subnodes)
+
+  def GetTouchFirmwareFiles(self):
+    """Get a list of unique touch firmware files for all models
+
+    Returns:
+      List of TouchFile objects representing all the touch firmware referenced
+      by all models
+    """
+    file_set = set()
+    for model in self.models.values():
+      for files in model.GetTouchFirmwareFiles().values():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.firmware)
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -86,6 +102,20 @@ class CrosConfig(object):
       except (AttributeError, KeyError):
         return None
 
+    def _FollowPhandle(self, prop_name):
+      """Follow a property's phandle
+
+      Args:
+        prop_name: Property name to check
+
+      Returns:
+        Node that the property's phandle points to, or None if none
+      """
+      prop = self.properties.get(prop_name)
+      if not prop:
+        return None
+      return self._fdt.phandle_to_node[prop.GetPhandle()]
+
   class Model(Node):
     """Represents a ChromeOS Configuration Model.
 
@@ -119,6 +149,55 @@ class CrosConfig(object):
       return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname)
               for fname in file_names]
 
+    @staticmethod
+    def GetTouchFilename(node_path, props, fname_prop):
+      """Create a touch filename based on the given template and properties
+
+      Args:
+        node_path: Path of the node generating this filename (for error
+            reporting only)
+        props: Dict of properties which can be used in the template:
+            key: Variable name
+            value: Value of that variable
+        fname_prop: Name of property containing the template
+      """
+      template = props[fname_prop].replace('$', '')
+      try:
+        return template.format(props, **props)
+      except KeyError as e:
+        raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
+                          "but lacks '%s'") %
+                         (node_path, template, props.keys(), e.message))
+
+    def GetTouchFirmwareFiles(self):
+      """Get a list of unique touch firmware files
+
+      Returns:
+        List of TouchFile objects representing the touch firmware referenced
+        by this model
+      """
+      touch = self.ChildNodeFromPath('/touch')
+      files = {}
+      for device in touch.subnodes.values():
+        # First get all the property keys/values from the current node
+        props = dict((prop.name, prop.value)
+                     for prop in device.properties.values())
+
+        # Follow the phandle and add any new ones we find
+        touch_type = device._FollowPhandle('touch-type')
+        if touch_type:
+          for name, prop in touch_type.props.iteritems():
+            if name not in props:
+              props[name] = prop.value
+
+        # Add a special property for the capitalised model name
+        props['MODEL'] = self.name.upper()
+        files[device.name] = TouchFile(
+            self.GetTouchFilename(self._fdt_node.path, props, 'firmware-bin'),
+            self.GetTouchFilename(self._fdt_node.path, props,
+                                  'firmware-symlink'))
+      return files
+
   class Property(object):
     """Represents a single property in a ChromeOS Configuration.
 
@@ -133,3 +212,11 @@ class CrosConfig(object):
       self.value = fdt_prop.value
       # TODO(athilenius): Transform these int types to something more useful
       self.type = fdt_prop.type
+
+    def GetPhandle(self):
+      """Get the value of a property as a phandle
+
+      Returns:
+        Property's phandle as an integer (> 0)
+      """
+      return self._fdt_prop.GetPhandle()

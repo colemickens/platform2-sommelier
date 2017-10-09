@@ -11,7 +11,7 @@ import os
 import unittest
 
 import fdt_util
-from libcros_config_host import CrosConfig
+from libcros_config_host import CrosConfig, TouchFile
 
 DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken']
@@ -79,6 +79,25 @@ class CrosConfigHostTest(unittest.TestCase):
     firmware_uris = config.models['pyro'].GetFirmwareUris()
     self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
                                              fname in PYRO_FIRMWARE_FILES])
+
+  def testGetTouchFirmwareFiles(self):
+    config = CrosConfig(self.file)
+    touch_files = config.models['pyro'].GetTouchFirmwareFiles()
+    self.assertSequenceEqual(
+        touch_files,
+        {'touchscreen': TouchFile('elan/0a97_1012.bin', 'elants_i2c_0a97.bin'),
+         'stylus': TouchFile('wacom/4209.hex', 'wacom_firmware_PYRO.bin')})
+    touch_files = config.models['reef'].GetTouchFirmwareFiles()
+
+    # This checks that duplicate processing works correct, since both models
+    # have the same wacom firmware
+    self.assertSequenceEqual(touch_files, {
+        'stylus': TouchFile('wacom/4209.hex', 'wacom_firmware_REEF.bin'),
+        'touchpad': TouchFile('elan/97.0_6.0.bin', 'elan_i2c_97.0.bin'),
+        'touchscreen@0': TouchFile('elan/3062_5602.bin',
+                                   'elants_i2c_3062.bin'),
+        'touchscreen@1': TouchFile('elan/306e_5611.bin',
+                                   'elants_i2c_306e.bin')})
 
 if __name__ == '__main__':
   unittest.main()

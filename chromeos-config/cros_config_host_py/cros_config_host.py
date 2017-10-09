@@ -33,6 +33,21 @@ def GetProperty(models, path, prop):
     config_prop = model.ChildPropertyFromPath(path, prop)
     print(config_prop.value if config_prop else '')
 
+def GetTouchFirmwareFiles(config):
+  """Print a list of touch firmware files across all models
+
+  The output is one line for the firmware file and one line for the symlink,
+  e.g.:
+     wacom/4209.hex
+     wacom_firmware_reef.bin
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetTouchFirmwareFiles():
+    print(files.firmware)
+    print(files.symlink)
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -64,6 +79,12 @@ def GetParser(description):
   get_parser.add_argument(
       'prop',
       help='The name of the property to get within the node at <path>.')
+  # Parser: get-touch-firmware-files
+  subparsers.add_parser(
+      'get-touch-firmware-files',
+      help='Lists groups of touch firmware files in sequence: first line is ' +
+      'firmware file, second line is symlink name for /lib/firmware',
+      epilog='Each model will be printed on its own line.')
   return parser
 
 
@@ -93,6 +114,8 @@ def main(argv):
             '--help for more info.')
       return
     GetProperty(models, opts.path, opts.prop)
+  elif opts.subcommand == 'get-touch-firmware-files':
+    GetTouchFirmwareFiles(config)
 
 
 if __name__ == '__main__':
