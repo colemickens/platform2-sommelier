@@ -46,16 +46,14 @@ PLUGIN_SRCS = device_watcher.cc \
 
 PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 
-ALL_SRCS = $(PLUGIN_SRCS) $(TEST_SRCS)
-
-TARGETS = $(GOBI_PLUGIN) $(TESTS)
 INSTALL_TARGETS = install-production
 
 ifdef INSTALL_TESTS
 	INSTALL_TARGETS += install-tests
 endif
 
-all: $(TARGETS)
+plugin: $(GOBI_PLUGIN)
+tests: $(TESTS)
 
 $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
@@ -102,7 +100,7 @@ clean:
 .%.d: %.cc
 	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) -MF $@ -MT $(<:.cc=.o) -MT $@ $<
 
-depfiles = $(patsubst %.cc,.%.d,$(ALL_SRCS))
+depfiles = $(patsubst %.cc,.%.d,$(PLUGIN_SRCS))
 
 $(depfiles): $(GLUE_HEADERS)
 
