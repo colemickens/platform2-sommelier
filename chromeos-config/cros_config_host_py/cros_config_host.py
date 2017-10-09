@@ -53,8 +53,8 @@ def GetParser(description):
   subparsers.add_parser(
       'list-models',
       help='Lists all models in the Cros Configuration Database at <filepath>',
-      epilog='Each model will be printed on it\'s own line.')
-  # Parser: list-models
+      epilog='Each model will be printed on its own line.')
+  # Parser: get
   get_parser = subparsers.add_parser(
       'get',
       help='Gets a model property at the given path, with the given name.')
