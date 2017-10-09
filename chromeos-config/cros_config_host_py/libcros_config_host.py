@@ -13,7 +13,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 
-from fdt import Fdt
+import fdt
 
 
 class CrosConfig(object):
@@ -26,10 +26,11 @@ class CrosConfig(object):
             <model name: string, model: CrosConfig.Model>
   """
   def __init__(self, filepath):
-    fdt = Fdt(filepath)
-    fdt.Scan()
-    self.models = OrderedDict((n.name, CrosConfig.Model(n))
-                              for n in fdt.GetNode('/chromeos/models').subnodes)
+    self._fdt = fdt.Fdt(filepath)
+    self._fdt.Scan()
+    self.models = OrderedDict(
+        (n.name, CrosConfig.Model(self._fdt, n))
+        for n in self._fdt.GetNode('/chromeos/models').subnodes)
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -45,9 +46,11 @@ class CrosConfig(object):
       properties: All properties attached to this node in the form of a
                   dictionary: <name: string, property: CrosConfig.Property>
     """
-    def __init__(self, fdt_node):
+    def __init__(self, _fdt, fdt_node):
+      self._fdt = _fdt
+      self._fdt_node = fdt_node
       self.name = fdt_node.name
-      self.subnodes = OrderedDict((n.name, CrosConfig.Node(n))
+      self.subnodes = OrderedDict((n.name, CrosConfig.Node(_fdt, n))
                                   for n in fdt_node.subnodes)
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
@@ -90,8 +93,8 @@ class CrosConfig(object):
     traversed in the same manner. It also exposes helper functions
     specific to ChromeOS Config models.
     """
-    def __init__(self, fdt_node):
-      super(CrosConfig.Model, self).__init__(fdt_node)
+    def __init__(self, _fdt, fdt_node):
+      super(CrosConfig.Model, self).__init__(_fdt, fdt_node)
 
     def GetFirmwareUris(self):
       """Returns a list of (string) firmware URIs.
@@ -125,6 +128,7 @@ class CrosConfig(object):
       type: The FDT type of the property (for now).
     """
     def __init__(self, fdt_prop):
+      self._fdt_prop = fdt_prop
       self.name = fdt_prop.name
       self.value = fdt_prop.value
       # TODO(athilenius): Transform these int types to something more useful
