@@ -40,7 +40,7 @@ struct OciProcessRlimit {
 using OciEnvironment = std::map<std::string, std::string>;
 
 struct OciProcess {
-  bool terminal;  // Optional
+  bool terminal = false;  // Optional
   OciProcessUser user;
   std::vector<std::string> args;
   OciEnvironment env;  // Optional
@@ -53,7 +53,7 @@ struct OciProcess {
 
 struct OciRoot {
   base::FilePath path;
-  bool readonly;  // Optional
+  bool readonly = false;  // Optional
 };
 
 struct OciMount {
@@ -96,8 +96,8 @@ struct OciLinuxCgroupDevice {
     bool allow;
     std::string access;  // Optional
     std::string type;  // Optional
-    uint32_t major;  // Optional
-    uint32_t minor;  // Optional
+    uint32_t major = -1;  // Optional
+    uint32_t minor = -1;  // Optional
 };
 
 struct OciLinuxResources {
