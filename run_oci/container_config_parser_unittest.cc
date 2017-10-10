@@ -199,6 +199,15 @@ const char kBasicJsonData[] = R"json(
                     "fileMode": 432,
                     "uid": 0,
                     "gid": 0
+                },
+                {
+                    "path": "/dev/binder",
+                    "type": "c",
+                    "major": 10,
+                    "dynamicMinor": true,
+                    "fileMode": 438,
+                    "uid": 0,
+                    "gid": 0
                 }
             ],
             "resources": {
@@ -434,13 +443,20 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->mounts[1].destination, base::FilePath("/dev"));
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
   // Devices
-  ASSERT_EQ(2, basic_config->linux_config.devices.size());
+  ASSERT_EQ(3, basic_config->linux_config.devices.size());
   OciLinuxDevice *dev = &basic_config->linux_config.devices[0];
   EXPECT_EQ(dev->type, "c");
   EXPECT_EQ(dev->path, base::FilePath("/dev/fuse"));
   EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
   EXPECT_EQ(dev->gid, 3221225472);  // INT32_MAX < id < UINT32_MAX
+  dev = &basic_config->linux_config.devices[2];
+  EXPECT_EQ(dev->type, "c");
+  EXPECT_EQ(dev->path, base::FilePath("/dev/binder"));
+  EXPECT_EQ(dev->fileMode, 438);
+  EXPECT_EQ(dev->major, 10);
+  EXPECT_EQ(dev->minor, 0);
+  EXPECT_EQ(dev->dynamicMinor, true);
   // Namespaces
   ASSERT_EQ(5, basic_config->linux_config.namespaces.size());
   EXPECT_EQ(basic_config->linux_config.namespaces[0].type, "pid");

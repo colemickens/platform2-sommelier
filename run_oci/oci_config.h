@@ -72,11 +72,12 @@ struct OciLinuxNamespaceMapping {
 struct OciLinuxDevice {
   std::string type;
   base::FilePath path;
-  uint32_t major;  // Optional
-  uint32_t minor;  // Optional
-  uint32_t fileMode;  // Optional
-  uint32_t uid;  // Optional
-  uint32_t gid;  // Optional
+  uint32_t major = 0;  // Optional
+  uint32_t minor = 0;  // Optional
+  uint32_t fileMode = 0000;  // Optional
+  uint32_t uid = 0;  // Optional
+  uint32_t gid = 0;  // Optional
+  bool dynamicMinor = false;  // Optional, Chrome OS extension.
 };
 
 struct OciSeccompArg {

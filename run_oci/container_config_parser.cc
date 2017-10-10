@@ -428,8 +428,17 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
     }
     if (!ParseUint32FromDict(*dev, "major", &device.major))
       return false;
-    if (!ParseUint32FromDict(*dev, "minor", &device.minor))
-      return false;
+    dev->GetBoolean("dynamicMinor", &device.dynamicMinor);
+    if (device.dynamicMinor) {
+      if (dev->HasKey("minor")) {
+        LOG(WARNING)
+            << "Ignoring \"minor\" since \"dynamicMinor\" is specified for "
+            << device.path.value();
+      }
+    } else {
+      if (!ParseUint32FromDict(*dev, "minor", &device.minor))
+        return false;
+    }
     if (!ParseUint32FromDict(*dev, "fileMode", &device.fileMode))
       return false;
     if (!ParseUint32FromDict(*dev, "uid", &device.uid))
