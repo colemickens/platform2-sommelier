@@ -247,13 +247,23 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
         LOG(ERROR) << "Fail to get process env from config";
         return false;
       }
-      config_out->process.env.push_back(env);
+      std::vector<std::string> kvp = base::SplitString(
+          env, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      if (kvp.size() != 2) {
+        LOG(ERROR) << "Fail to parse env \"" << env
+                   << "\". Must be in name=value format.";
+        return false;
+      }
+      config_out->process.env.insert(std::make_pair(kvp[0], kvp[1]));
     }
   }
-  if (!process_dict->GetString("cwd", &config_out->process.cwd)) {
+  std::string path;
+  if (!process_dict->GetString("cwd", &path)) {
     LOG(ERROR) << "failed to get cwd of process";
     return false;
   }
+  config_out->process.cwd = base::FilePath(path);
+
   // selinuxLabel is optional.
   process_dict->GetString("selinuxLabel", &config_out->process.selinuxLabel);
   // |capabilities_dict| stays owned by |process_dict|
@@ -294,21 +304,21 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
       return false;
     }
     OciMount mount;
-    std::string value;
-    if (!mount_dict->GetString("destination", &value)) {
+    std::string path;
+    if (!mount_dict->GetString("destination", &path)) {
       LOG(ERROR) << "Fail to get mount path for mount " << i;
       return false;
     }
-    mount.destination = base::FilePath(value);
+    mount.destination = base::FilePath(path);
     if (!mount_dict->GetString("type", &mount.type)) {
       LOG(ERROR) << "Fail to get mount type for mount " << i;
       return false;
     }
-    if (!mount_dict->GetString("source", &value)) {
+    if (!mount_dict->GetString("source", &path)) {
       LOG(ERROR) << "Fail to get mount source for mount " << i;
       return false;
     }
-    mount.source = base::FilePath(value);
+    mount.source = base::FilePath(path);
 
     // |options| are owned by |mount_dict|
     const base::ListValue* options = nullptr;
@@ -380,7 +390,9 @@ bool ParseNamespaces(const base::ListValue* namespaces_list,
       LOG(ERROR) << "Namespace " << i << " missing type";
       return false;
     }
-    ns->GetString("path", &new_namespace.path);
+    std::string path;
+    if (ns->GetString("path", &path))
+      new_namespace.path = base::FilePath(path);
     namespaces_out->push_back(new_namespace);
   }
   return true;
@@ -405,12 +417,13 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       return false;
     }
     std::string path;
-    if (!dev->GetString("path", &device.path)) {
+    if (!dev->GetString("path", &path)) {
       LOG(ERROR) << "Fail to get path for dev";
       return false;
     }
+    device.path = base::FilePath(path);
     if (!dev->GetString("type", &device.type)) {
-      LOG(ERROR) << "Fail to get type for " << device.path;
+      LOG(ERROR) << "Fail to get type for " << device.path.value();
       return false;
     }
     if (!ParseUint32FromDict(*dev, "major", &device.major))
@@ -603,10 +616,12 @@ bool ParseHooksList(const base::ListValue& hooks_list,
       return false;
     }
 
-    if (!hook_dict->GetString("path", &hook.path)) {
+    std::string path;
+    if (!hook_dict->GetString("path", &path)) {
       LOG(ERROR) << "Fail to get path of " << hook_type << " hook " << i;
       return false;
     }
+    hook.path = base::FilePath(path);
 
     const base::ListValue* hook_args;
     // args are optional.

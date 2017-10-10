@@ -37,12 +37,14 @@ struct OciProcessRlimit {
   uint32_t soft;
 };
 
+using OciEnvironment = std::map<std::string, std::string>;
+
 struct OciProcess {
   bool terminal;  // Optional
   OciProcessUser user;
   std::vector<std::string> args;
-  std::vector<std::string> env;  // Optional
-  std::string cwd;
+  OciEnvironment env;  // Optional
+  base::FilePath cwd;
   std::map<std::string, CapSet> capabilities;  // Optional
   std::vector<OciProcessRlimit> rlimits;       // Optional
   std::string selinuxLabel;
@@ -69,7 +71,7 @@ struct OciLinuxNamespaceMapping {
 
 struct OciLinuxDevice {
   std::string type;
-  std::string path;
+  base::FilePath path;
   uint32_t major;  // Optional
   uint32_t minor;  // Optional
   uint32_t fileMode;  // Optional
@@ -111,12 +113,12 @@ struct OciSeccomp {
 
 struct OciNamespace {
   std::string type;
-  std::string path;  // Optional
+  base::FilePath path;  // Optional
 };
 
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
-  std::string cgroupsPath;  // Optional
+  base::FilePath cgroupsPath;  // Optional
   std::vector<OciNamespace> namespaces;
   OciLinuxResources resources;  // Optional
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
@@ -126,9 +128,9 @@ struct OciLinux {
 };
 
 struct OciHook {
-  std::string path;
+  base::FilePath path;
   std::vector<std::string> args;  // Optional
-  std::map<std::string, std::string> env;  // Optional
+  OciEnvironment env;  // Optional
   base::TimeDelta timeout;  // Optional
 };
 

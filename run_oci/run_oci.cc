@@ -81,7 +81,7 @@ const std::map<std::string, int> kSignalMap = {
 };
 
 std::ostream& operator<<(std::ostream& o, const OciHook& hook) {
-  o << "Hook{path=\"" << hook.path << "\", args=[";
+  o << "Hook{path=\"" << hook.path.value() << "\", args=[";
   bool first = true;
   for (const auto& arg : hook.args) {
     if (!first)
@@ -210,7 +210,7 @@ void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
   for (const auto& device : devices) {
     container_config_add_device(config_out,
                                 device.type.c_str()[0],
-                                device.path.c_str(),
+                                device.path.value().c_str(),
                                 device.fileMode,
                                 device.major,
                                 device.minor,
@@ -396,14 +396,14 @@ bool RunOneHook(const OciHook& hook,
 
   std::vector<std::string> args;
   if (hook.args.empty()) {
-    args.push_back(hook.path);
+    args.push_back(hook.path.value());
   } else {
     args = hook.args;
     // Overwrite the first argument with the path since base::LaunchProcess does
     // not take an additional parameter for the executable name. Since the OCI
     // spec mandates that the path should be absolute, it's better to use that
     // rather than rely on whatever short name was passed in |args|.
-    args[0] = hook.path;
+    args[0] = hook.path.value();
   }
 
   DVLOG(1) << "Running " << hook_type << " " << hook;

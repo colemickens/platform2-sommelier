@@ -417,8 +417,13 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->process.args.size(), 1);
   EXPECT_EQ(basic_config->process.args[0], "sh");
   EXPECT_EQ(basic_config->process.env.size(), 2);
-  EXPECT_EQ(basic_config->process.env[1], "TERM=xterm");
-  EXPECT_EQ(basic_config->process.cwd, "/");
+  EXPECT_EQ(
+      basic_config->process.env,
+      (OciEnvironment{
+          {"PATH",
+           "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+          {"TERM", "xterm"}}));
+  EXPECT_EQ(basic_config->process.cwd, base::FilePath("/"));
   EXPECT_EQ(basic_config->process.rlimits.size(), 1);
   EXPECT_EQ(basic_config->process.rlimits[0].type, RLIMIT_NICE);
   EXPECT_EQ(basic_config->process.rlimits[0].soft, 11);
@@ -432,16 +437,17 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   ASSERT_EQ(2, basic_config->linux_config.devices.size());
   OciLinuxDevice *dev = &basic_config->linux_config.devices[0];
   EXPECT_EQ(dev->type, "c");
-  EXPECT_EQ(dev->path, "/dev/fuse");
+  EXPECT_EQ(dev->path, base::FilePath("/dev/fuse"));
   EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
   EXPECT_EQ(dev->gid, 3221225472);  // INT32_MAX < id < UINT32_MAX
   // Namespaces
   ASSERT_EQ(5, basic_config->linux_config.namespaces.size());
   EXPECT_EQ(basic_config->linux_config.namespaces[0].type, "pid");
-  EXPECT_EQ(basic_config->linux_config.namespaces[0].path, "/proc/1234/ns/pid");
+  EXPECT_EQ(basic_config->linux_config.namespaces[0].path,
+            base::FilePath("/proc/1234/ns/pid"));
   EXPECT_EQ(basic_config->linux_config.namespaces[1].type, "network");
-  EXPECT_EQ(basic_config->linux_config.namespaces[1].path, "");
+  EXPECT_EQ(basic_config->linux_config.namespaces[1].path, base::FilePath(""));
   // Namespace Maps
   ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
   OciLinuxNamespaceMapping *id_map =
@@ -471,15 +477,16 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   // hooks
   std::vector<OciHook> *pre_start_hooks = &basic_config->pre_start_hooks;
   EXPECT_EQ(pre_start_hooks->size(), 2);
-  EXPECT_EQ((*pre_start_hooks)[0].path, "/usr/bin/fix-mounts");
+  EXPECT_EQ((*pre_start_hooks)[0].path, base::FilePath("/usr/bin/fix-mounts"));
   EXPECT_EQ((*pre_start_hooks)[0].args,
             (std::vector<std::string>{"fix-mounts", "arg1", "arg2"}));
-  EXPECT_EQ((*pre_start_hooks)[0].env,
-            (std::map<std::string, std::string>{{"key1", "value1"}}));
-  EXPECT_EQ((*pre_start_hooks)[1].path, "/usr/bin/setup-network");
+  EXPECT_EQ((*pre_start_hooks)[0].env, (OciEnvironment{{"key1", "value1"}}));
+  EXPECT_EQ((*pre_start_hooks)[1].path,
+            base::FilePath("/usr/bin/setup-network"));
   std::vector<OciHook>* post_start_hooks = &basic_config->post_start_hooks;
   EXPECT_EQ(post_start_hooks->size(), 1);
-  EXPECT_EQ((*post_start_hooks)[0].path, "/usr/bin/notify-start");
+  EXPECT_EQ((*post_start_hooks)[0].path,
+            base::FilePath("/usr/bin/notify-start"));
   EXPECT_EQ((*post_start_hooks)[0].timeout, base::TimeDelta::FromSeconds(5));
 }
 
