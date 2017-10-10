@@ -88,7 +88,9 @@ base::FilePath GetLatestVMPath() {
   base::Version latest_version("0");
   base::FilePath latest_path;
 
-  for (base::FilePath path; !path.empty(); path = dir_enum.Next()) {
+  for (base::FilePath path = dir_enum.Next();
+       !path.empty();
+       path = dir_enum.Next()) {
     base::Version version(path.BaseName().value());
     if (!version.IsValid())
       continue;
