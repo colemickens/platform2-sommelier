@@ -22,6 +22,7 @@
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
+#include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/policy_service.h"
@@ -38,7 +39,7 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
-class DeviceLocalAccountPolicyService;
+class DeviceLocalAccountManager;
 class InitDaemonController;
 class KeyGenerator;
 class LoginMetrics;
@@ -168,11 +169,10 @@ class SessionManagerImpl
 #endif  // USE_CHEETS
 
   // Tests can call this before Initialize() to inject their own objects.
-  void SetPolicyServicesForTest(
+  void SetPolicyServicesForTesting(
       std::unique_ptr<DevicePolicyService> device_policy,
       std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
-      std::unique_ptr<DeviceLocalAccountPolicyService>
-          device_local_account_policy);
+      std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager);
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
@@ -483,7 +483,8 @@ class SessionManagerImpl
 
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
-  std::unique_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
+  std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;
+
   RegenMitigator mitigator_;
 
   // Callbacks passed to RequestServerBackedStateKeys() while

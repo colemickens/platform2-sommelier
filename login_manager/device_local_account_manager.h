@@ -17,12 +17,6 @@
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest_prod.h>
 
-#include "login_manager/policy_service.h"
-
-namespace base {
-class MessageLoopProxy;
-}
-
 namespace enterprise_management {
 class ChromeDeviceSettingsProto;
 }
@@ -30,32 +24,20 @@ class ChromeDeviceSettingsProto;
 namespace login_manager {
 
 class PolicyKey;
+class PolicyService;
 
-// Manages policy blobs for device-local accounts, loading/storing them from/to
-// disk, making sure signature checks are performed on store operations and
-// restricting access to the accounts defined in device settings.
-class DeviceLocalAccountPolicyService {
+// Manages policy services for device-local accounts. Restricts access to
+// accounts defined in device settings.
+class DeviceLocalAccountManager {
  public:
   // Name of the subdirectory to store policy in.
   static const base::FilePath::CharType kPolicyDir[];
   // File name of the file within |kPolicyDir| that holds the policy blob.
   static const base::FilePath::CharType kPolicyFileName[];
 
-  DeviceLocalAccountPolicyService(
-      const base::FilePath& device_local_account_dir, PolicyKey* owner_key);
-  ~DeviceLocalAccountPolicyService();
-
-  // Store policy for |account_id|, return false if the device-local account is
-  // not defined in device policy.
-  bool Store(const std::string& account_id,
-             const std::vector<uint8_t>& policy_blob,
-             const PolicyService::Completion& completion);
-
-  // Load policy for a given |account_id| and places the result in
-  // |policy_blob|. Returns true if the account exists and policy could be read
-  // successfully, false otherwise.
-  bool Retrieve(const std::string& account_id,
-                std::vector<uint8_t>* policy_blob);
+  DeviceLocalAccountManager(const base::FilePath& state_dir,
+                            PolicyKey* owner_key);
+  ~DeviceLocalAccountManager();
 
   // Updates device settings, i.e. what device-local accounts are available.
   // This will purge any on-disk state for accounts that are no longer defined
@@ -65,15 +47,15 @@ class DeviceLocalAccountPolicyService {
   void UpdateDeviceSettings(
       const enterprise_management::ChromeDeviceSettingsProto& device_settings);
 
- private:
-  // Migrate uppercase local-account directories to their lowercase variants.
-  // This is to repair the damage caused by http://crbug.com/225472.
-  bool MigrateUppercaseDirs(void);
-
   // Obtains the PolicyService instance that manages disk storage for
   // |account_id| after checking that |account_id| is valid. The PolicyService
   // is lazily created on the fly if not present yet.
   PolicyService* GetPolicyService(const std::string& account_id);
+
+ private:
+  // Migrate uppercase local-account directories to their lowercase variants.
+  // This is to repair the damage caused by http://crbug.com/225472.
+  bool MigrateUppercaseDirs();
 
   // Returns the identifier for a given |account_id|. The value returned is safe
   // to use as a file system name. This may fail, in which case the returned
@@ -84,20 +66,20 @@ class DeviceLocalAccountPolicyService {
   bool IsValidAccountKey(const std::string& str);
 
   // The base path for storing device-local account information on disk.
-  const base::FilePath device_local_account_dir_;
+  base::FilePath state_dir_;
 
   // The policy key to verify signatures against.
   PolicyKey* owner_key_;
 
   // Keeps lazily-created instances of the device-local account policy services.
   // The keys present in this map are kept in sync with device policy. Entries
-  // that are not present are invalid, entries that contain a NULL pointer
-  // indicate the respective policy blob hasn't been pulled from disk yet.
+  // that are not present are invalid, entries that contain a nullptr indicate
+  // the respective policy blob hasn't been pulled from disk yet.
   std::map<std::string, std::unique_ptr<PolicyService>> policy_map_;
 
-  FRIEND_TEST(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs);
+  FRIEND_TEST(DeviceLocalAccountManagerTest, MigrateUppercaseDirs);
 
-  DISALLOW_COPY_AND_ASSIGN(DeviceLocalAccountPolicyService);
+  DISALLOW_COPY_AND_ASSIGN(DeviceLocalAccountManager);
 };
 
 }  // namespace login_manager

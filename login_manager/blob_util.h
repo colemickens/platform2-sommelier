@@ -12,6 +12,10 @@
 
 #include <base/strings/string_piece.h>
 
+namespace base {
+class FilePath;
+}
+
 namespace google {
 namespace protobuf {
 class MessageLite;
@@ -30,6 +34,11 @@ std::vector<uint8_t> StringToBlob(base::StringPiece str);
 
 // Returns string containing the same value of the given |blob|.
 std::string BlobToString(const std::vector<uint8_t>& blob);
+
+// Thin wrapper of base::WriteFile to adapt blob interface.
+// Returns true on success.
+bool WriteBlobToFile(const base::FilePath& filename,
+                     const std::vector<uint8_t>& blob);
 
 }  // namespace login_manager
 

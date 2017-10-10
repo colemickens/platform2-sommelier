@@ -50,6 +50,10 @@ class MockDevicePolicyService : public DevicePolicyService {
 
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
+
+  void OnPolicySuccessfullyPersisted() {
+    OnPolicyPersisted(Completion(), dbus_error::kNone);
+  }
 };
 }  // namespace login_manager
 

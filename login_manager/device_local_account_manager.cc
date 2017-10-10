@@ -4,21 +4,16 @@
 
 #include "login_manager/device_local_account_manager.h"
 
-#include <stdint.h>
-
 #include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "bindings/chrome_device_policy.pb.h"
-#include "login_manager/dbus_util.h"
-#include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"
 
@@ -26,45 +21,19 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-const base::FilePath::CharType DeviceLocalAccountPolicyService::kPolicyDir[] =
+// Device-local account state directory.
+constexpr base::FilePath::CharType DeviceLocalAccountManager::kPolicyDir[] =
     FILE_PATH_LITERAL("policy");
+constexpr base::FilePath::CharType
+    DeviceLocalAccountManager::kPolicyFileName[] = FILE_PATH_LITERAL("policy");
 
-const base::FilePath::CharType
-    DeviceLocalAccountPolicyService::kPolicyFileName[] =
-        FILE_PATH_LITERAL("policy");
+DeviceLocalAccountManager::DeviceLocalAccountManager(
+    const base::FilePath& state_dir, PolicyKey* owner_key)
+    : state_dir_(state_dir), owner_key_(owner_key) {}
 
-DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
-    const base::FilePath& device_local_account_dir, PolicyKey* owner_key)
-    : device_local_account_dir_(device_local_account_dir),
-      owner_key_(owner_key) {}
+DeviceLocalAccountManager::~DeviceLocalAccountManager() = default;
 
-DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() = default;
-
-bool DeviceLocalAccountPolicyService::Store(
-    const std::string& account_id,
-    const std::vector<uint8_t>& policy_blob,
-    const PolicyService::Completion& completion) {
-  PolicyService* service = GetPolicyService(account_id);
-  if (!service) {
-    completion.Run(CreateError(dbus_error::kInvalidAccount,
-                               "Invalid device-local account"));
-    return false;
-  }
-
-  return service->Store(policy_blob, PolicyService::KEY_NONE,
-                        SignatureCheck::kEnabled, completion);
-}
-
-bool DeviceLocalAccountPolicyService::Retrieve(
-    const std::string& account_id, std::vector<uint8_t>* policy_blob) {
-  PolicyService* service = GetPolicyService(account_id);
-  if (!service)
-    return false;
-
-  return service->Retrieve(policy_blob);
-}
-
-void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
+void DeviceLocalAccountManager::UpdateDeviceSettings(
     const em::ChromeDeviceSettingsProto& device_settings) {
   // Update the policy map.
   typedef google::protobuf::RepeatedPtrField<em::DeviceLocalAccountInfoProto>
@@ -90,7 +59,7 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   MigrateUppercaseDirs();
 
   // Purge all existing on-disk accounts that are no longer defined.
-  base::FileEnumerator enumerator(device_local_account_dir_, false,
+  base::FileEnumerator enumerator(state_dir_, false,
                                   base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
   while (!(subdir = enumerator.Next()).empty()) {
@@ -103,8 +72,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   }
 }
 
-bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
-  base::FileEnumerator enumerator(device_local_account_dir_, false,
+bool DeviceLocalAccountManager::MigrateUppercaseDirs() {
+  base::FileEnumerator enumerator(state_dir_, false,
                                   base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
 
@@ -122,26 +91,24 @@ bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
   return true;
 }
 
-PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
+PolicyService* DeviceLocalAccountManager::GetPolicyService(
     const std::string& account_id) {
   const std::string key = GetAccountKey(account_id);
   auto entry = policy_map_.find(key);
   if (entry == policy_map_.end())
-    return NULL;
+    return nullptr;
 
   // Lazily create and initialize the policy service instance.
   if (!entry->second) {
     const base::FilePath policy_path =
-        device_local_account_dir_.AppendASCII(key)
-            .Append(kPolicyDir)
-            .Append(kPolicyFileName);
+        state_dir_.AppendASCII(key).Append(kPolicyDir).Append(kPolicyFileName);
     if (!base::CreateDirectory(policy_path.DirName())) {
       LOG(ERROR) << "Failed to create directory for " << policy_path.value();
-      return NULL;
+      return nullptr;
     }
 
     auto store = std::make_unique<PolicyStore>(policy_path);
-    if (!store->LoadOrCreate()) {
+    if (store->LoadOrCreate()) {
       // This is non-fatal, the policy may not have been stored yet.
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
@@ -153,13 +120,12 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
   return entry->second.get();
 }
 
-std::string DeviceLocalAccountPolicyService::GetAccountKey(
+std::string DeviceLocalAccountManager::GetAccountKey(
     const std::string& account_id) {
   return brillo::cryptohome::home::SanitizeUserName(account_id);
 }
 
-bool DeviceLocalAccountPolicyService::IsValidAccountKey(
-    const std::string& str) {
+bool DeviceLocalAccountManager::IsValidAccountKey(const std::string& str) {
   return brillo::cryptohome::home::IsSanitizedUserName(str);
 }
 

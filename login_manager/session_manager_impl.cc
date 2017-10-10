@@ -23,7 +23,7 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
-#include <base/memory/ref_counted.h>
+#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
@@ -430,14 +430,13 @@ base::FilePath SessionManagerImpl::GetAndroidDataOldDirForUser(
 }
 #endif  // USE_CHEETS
 
-void SessionManagerImpl::SetPolicyServicesForTest(
+void SessionManagerImpl::SetPolicyServicesForTesting(
     std::unique_ptr<DevicePolicyService> device_policy,
     std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
-    std::unique_ptr<DeviceLocalAccountPolicyService>
-        device_local_account_policy) {
+    std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager) {
   device_policy_ = std::move(device_policy);
   user_policy_factory_ = std::move(user_policy_factory);
-  device_local_account_policy_ = std::move(device_local_account_policy);
+  device_local_account_manager_ = std::move(device_local_account_manager);
 }
 
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
@@ -465,26 +464,33 @@ bool SessionManagerImpl::Initialize() {
       base::Bind(&SessionManagerImpl::OnSystemClockServiceAvailable,
                  weak_ptr_factory_.GetWeakPtr()));
 
+  // Note: If SetPolicyServicesForTesting has been called, all services have
+  // already been set and initialized.
   if (!device_policy_) {
     device_policy_ =
         DevicePolicyService::Create(owner_key_, login_metrics_, &mitigator_,
                                     nss_, crossystem_, vpd_process_);
+    // Thinking about combining set_delegate() with the 'else' block below and
+    // moving it down? Note that device_policy_->Initialize() might call
+    // OnKeyPersisted() on the delegate, so be sure it's safe.
     device_policy_->set_delegate(this);
-
-    user_policy_factory_.reset(
-        new UserPolicyServiceFactory(getuid(), nss_, system_));
-    device_local_account_policy_.reset(new DeviceLocalAccountPolicyService(
-        base::FilePath(kDeviceLocalAccountStateDir), owner_key_));
-
-    if (!device_policy_->Initialize()) {
+    if (!device_policy_->Initialize())
       return false;
-    }
-    device_local_account_policy_->UpdateDeviceSettings(
+
+    DCHECK(!user_policy_factory_);
+    user_policy_factory_ =
+        std::make_unique<UserPolicyServiceFactory>(getuid(), nss_, system_);
+
+    device_local_account_manager_ = std::make_unique<DeviceLocalAccountManager>(
+        base::FilePath(kDeviceLocalAccountStateDir), owner_key_),
+    device_local_account_manager_->UpdateDeviceSettings(
         device_policy_->GetSettings());
-    if (device_policy_->MayUpdateSystemSettings()) {
+    if (device_policy_->MayUpdateSystemSettings())
       device_policy_->UpdateSystemSettings(PolicyService::Completion());
-    }
+  } else {
+    device_policy_->set_delegate(this);
   }
+
   return true;
 }
 
@@ -747,17 +753,36 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
   DCHECK(dbus_service_);
-  device_local_account_policy_->Store(
-      in_account_id, in_policy_blob,
-      dbus_service_->CreatePolicyServiceCompletionCallback(
-          std::move(response)));
+  PolicyService* policy_service =
+      device_local_account_manager_->GetPolicyService(in_account_id);
+
+  if (!policy_service) {
+    constexpr char kMessage[] = "Invalid device-local account";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kInvalidAccount, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  policy_service->Store(in_policy_blob, PolicyService::KEY_NONE,
+                        SignatureCheck::kEnabled,
+                        dbus_service_->CreatePolicyServiceCompletionCallback(
+                            std::move(response)));
 }
 
 bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
     std::vector<uint8_t>* out_policy_blob) {
-  if (!device_local_account_policy_->Retrieve(in_account_id, out_policy_blob)) {
+  PolicyService* policy_service =
+      device_local_account_manager_->GetPolicyService(in_account_id);
+  if (!policy_service) {
+    constexpr char kMessage[] = "Invalid device-local account";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kInvalidAccount, kMessage);
+    return false;
+  }
+  if (!policy_service->Retrieve(out_policy_blob)) {
     constexpr char kMessage[] = "Failed to retrieve policy data.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
@@ -1396,7 +1421,7 @@ bool SessionManagerImpl::RemoveArcDataInternal(
 #endif  // USE_CHEETS
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
-  device_local_account_policy_->UpdateDeviceSettings(
+  device_local_account_manager_->UpdateDeviceSettings(
       device_policy_->GetSettings());
   adaptor_.SendPropertyChangeCompleteSignal(ToSuccessSignal(success));
 }

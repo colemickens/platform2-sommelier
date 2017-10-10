@@ -34,6 +34,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/errors/error.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/bus.h>
@@ -97,13 +98,11 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
 
-using enterprise_management::ChromeDeviceSettingsProto;
-using enterprise_management::PolicyData;
-using enterprise_management::PolicyFetchResponse;
-
 using std::map;
 using std::string;
 using std::vector;
+
+namespace em = enterprise_management;
 
 namespace login_manager {
 
@@ -193,6 +192,8 @@ enum class OldDataDirType {
 };
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
+constexpr base::FilePath::CharType kDeviceLocalAccountsDir[] =
+    FILE_PATH_LITERAL("device_local_accounts");
 
 StartArcInstanceRequest CreateStartArcInstanceRequestForUser() {
   StartArcInstanceRequest request;
@@ -348,8 +349,12 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
     device_policy_store_ = new MockPolicyStore();
+    ON_CALL(*device_policy_store_, Get())
+        .WillByDefault(ReturnRef(device_policy_));
+
     device_policy_service_ = new MockDevicePolicyService(
         std::unique_ptr<MockPolicyStore>(device_policy_store_), &owner_key_);
+
     user_policy_service_factory_ =
         new testing::NiceMock<MockUserPolicyServiceFactory>();
     ON_CALL(*user_policy_service_factory_, Create(_))
@@ -358,14 +363,17 @@ class SessionManagerImplTest : public ::testing::Test,
     ON_CALL(*user_policy_service_factory_, CreateForHiddenUserHome(_))
         .WillByDefault(Invoke(
             this,
-            &SessionManagerImplTest::CreateUserPolicyServiceForHiddenUserHome));
-    auto device_local_account_policy =
-        std::make_unique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
-                                                          nullptr);
-    impl_->SetPolicyServicesForTest(
+            &SessionManagerImplTest::ReturnUserPolicyServiceForHiddenUserHome));
+
+    device_local_accounts_dir_ = tmpdir_.path().Append(kDeviceLocalAccountsDir);
+    auto device_local_account_manager =
+        std::make_unique<DeviceLocalAccountManager>(device_local_accounts_dir_,
+                                                    &owner_key_);
+
+    impl_->SetPolicyServicesForTesting(
         base::WrapUnique(device_policy_service_),
         base::WrapUnique(user_policy_service_factory_),
-        std::move(device_local_account_policy));
+        std::move(device_local_account_manager));
 
     EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(SaveArg<0>(&available_callback_));
@@ -520,13 +528,59 @@ class SessionManagerImplTest : public ::testing::Test,
     return policy_service;
   }
 
-  std::unique_ptr<PolicyService> CreateUserPolicyServiceForHiddenUserHome(
+  std::unique_ptr<PolicyService> ReturnUserPolicyServiceForHiddenUserHome(
       const string& username) {
     EXPECT_EQ(username, hidden_user_home_expected_username_);
     return std::move(hidden_user_home_policy_service_);
   }
 
+  void SetDevicePolicy(const em::ChromeDeviceSettingsProto& settings) {
+    em::PolicyData policy_data;
+    CHECK(settings.SerializeToString(policy_data.mutable_policy_value()));
+    CHECK(policy_data.SerializeToString(device_policy_.mutable_policy_data()));
+  }
+
+  // Stores a device policy with a device local account, which should add this
+  // account to SessionManagerImpl's device local account manager.
+  void SetupDeviceLocalAccount(const std::string& account_id) {
+    // Setup device policy with a device local account.
+    em::ChromeDeviceSettingsProto settings;
+    em::DeviceLocalAccountInfoProto* account =
+        settings.mutable_device_local_accounts()->add_account();
+    account->set_type(
+        em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION);
+    account->set_account_id(account_id);
+
+    // Make sure that SessionManagerImpl calls DeviceLocalAccountManager with
+    // the given |settings| to initialize the account.
+    SetDevicePolicy(settings);
+    EXPECT_CALL(*device_policy_store_, Get()).Times(1);
+    EXPECT_CALL(*exported_object(),
+                SendSignal(SignalEq(
+                    login_manager::kPropertyChangeCompleteSignal, "success")))
+        .Times(1);
+    device_policy_service_->OnPolicySuccessfullyPersisted();
+    VerifyAndClearExpectations();
+  }
+
+  // Creates a policy blob that can be serialized with a real PolicyService.
+  std::vector<uint8_t> CreatePolicyFetchResponseBlob() {
+    em::PolicyFetchResponse policy;
+    em::PolicyData policy_data;
+    policy_data.set_policy_value("fake policy");
+    CHECK(policy_data.SerializeToString(policy.mutable_policy_data()));
+    return StringToBlob(policy.SerializeAsString());
+  }
+
+  base::FilePath GetDeviceLocalAccountPolicyPath(
+      const std::string& account_id) {
+    return device_local_accounts_dir_.Append(SanitizeUserName(account_id))
+        .Append(DeviceLocalAccountManager::kPolicyDir)
+        .Append(DeviceLocalAccountManager::kPolicyFileName);
+  }
+
   void VerifyAndClearExpectations() {
+    Mock::VerifyAndClearExpectations(device_policy_store_);
     Mock::VerifyAndClearExpectations(device_policy_service_);
     for (auto& entry : user_policy_services_)
       Mock::VerifyAndClearExpectations(entry.second);
@@ -574,6 +628,7 @@ class SessionManagerImplTest : public ::testing::Test,
   // The policy service which shall be returned from
   // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
   std::unique_ptr<MockPolicyService> hidden_user_home_policy_service_;
+  em::PolicyFetchResponse device_policy_;
 
   scoped_refptr<FakeBus> bus_;
   MockKeyGenerator key_gen_;
@@ -595,6 +650,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
+  base::FilePath device_local_accounts_dir_;
 
 #if USE_CHEETS
   base::FilePath android_data_dir_;
@@ -1486,6 +1542,71 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   // Retrieval of policy without user session should not create a persistent
   // PolicyService.
   ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
+}
+
+TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {
+  const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
+  base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
+      policy_blob);
+  ASSERT_TRUE(capturer.response());
+  EXPECT_EQ(dbus_error::kInvalidAccount, capturer.response()->GetErrorName());
+  VerifyAndClearExpectations();
+
+  EXPECT_FALSE(base::PathExists(policy_path));
+}
+
+TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicySuccess) {
+  const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
+  base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
+  SetupDeviceLocalAccount(kSaneEmail);
+  EXPECT_FALSE(base::PathExists(policy_path));
+  EXPECT_CALL(owner_key_, Verify(_, _)).WillOnce(Return(true));
+
+  brillo::FakeMessageLoop io_loop(nullptr);
+  io_loop.SetAsCurrent();
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
+      policy_blob);
+  VerifyAndClearExpectations();
+
+  io_loop.Run();
+  EXPECT_TRUE(base::PathExists(policy_path));
+}
+
+TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicyNoAccount) {
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->RetrievePolicyEx(
+      &error,
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
+      &out_blob));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kInvalidAccount, error->GetCode());
+}
+
+TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicySuccess) {
+  const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
+  base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
+  SetupDeviceLocalAccount(kSaneEmail);
+  ASSERT_TRUE(base::CreateDirectory(policy_path.DirName()));
+  ASSERT_TRUE(WriteBlobToFile(policy_path, policy_blob));
+
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RetrievePolicyEx(
+      &error,
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
+      &out_blob));
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(policy_blob, out_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
@@ -2496,7 +2617,6 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     ON_CALL(vpd_process_, RunInBackground(_, _, _))
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
-    ON_CALL(*device_policy_store_, Get()).WillByDefault(ReturnRef(policy_));
 
     SetFileExists(SessionManagerImpl::kTPMFirmwareUpdateAvailableFile, true);
   }
@@ -2564,12 +2684,6 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
   void SetVpdStatus(bool status) { vpd_status_ = status; }
 
-  void SetPolicy(const ChromeDeviceSettingsProto& settings) {
-    PolicyData policy_data;
-    CHECK(settings.SerializeToString(policy_data.mutable_policy_value()));
-    CHECK(policy_data.SerializeToString(policy_.mutable_policy_data()));
-  }
-
   std::string update_mode_ = "first_boot";
   std::string existing_vpd_params_;
   std::string expected_vpd_params_ = "mode:first_boot";
@@ -2578,7 +2692,6 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   bool vpd_spawned_ = true;
   bool vpd_status_ = true;
   VpdProcess::CompletionCallback completion_;
-  PolicyFetchResponse policy_;
 };
 
 TEST_F(StartTPMFirmwareUpdateTest, Success_FirstBoot) {
@@ -2615,10 +2728,10 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseNotSet) {
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseAllowed) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
-  ChromeDeviceSettingsProto settings;
+  em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_powerwash(true);
-  SetPolicy(settings);
+  SetDevicePolicy(settings);
   ExpectDeviceRestart();
 }
 
