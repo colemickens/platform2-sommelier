@@ -64,6 +64,21 @@ def GetTouchFirmwareFiles(config):
     print(files.firmware)
     print(files.symlink)
 
+def GetAudioFiles(config):
+  """Print a list of audio files across all models
+
+  The output is one line for the source file and one line for the install file,
+  e.g.:
+     ucm-config/bxtda7219max.reef.BASKING/bxtda7219max.reef.BASKING.conf
+     /usr/share/alsa/ucm/bxtda7219max.basking/bxtda7219max.basking.conf
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetAudioFiles():
+    print(files.source)
+    print(files.dest)
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -104,8 +119,12 @@ def GetParser(description):
   subparsers.add_parser(
       'get-firmware-uris',
       help='Lists firmware uris for models. These uris can be used to fetch ' +
-      'firmware files.',
-      epilog='Each model will be printed on its own line.')
+      'firmware files.')
+  # Parser: get-audio-files
+  subparsers.add_parser(
+      'get-audio-files',
+      help='Lists pairs of audio files in sequence: first line is ' +
+      'the source file, second line is the full install pathname')
   return parser
 
 
@@ -148,6 +167,8 @@ def main(argv):
             '--help for more info.')
       return
     GetFirmwareUris(models)
+  elif opts.subcommand == 'get-audio-files':
+    GetAudioFiles(config)
 
 
 if __name__ == '__main__':

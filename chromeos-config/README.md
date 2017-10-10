@@ -33,6 +33,36 @@ properties.
 *   `family`: Provides family-level configuration settings, which apply to all
     models in the family.
 
+    *   `audio` (optional): Contains information about audio devices used by
+            this family. Each subnode is defined as a phandle that can be
+            referenced from the model-specific configuration using the
+            `audio-type` property.
+        *   `<audio-type>`: Node containing the audio config for one device
+                type. All filenames referenced are in relation to the
+                ${FILERDIR} directory of the ebuild containing them.
+            *   `cras-config-dir`: Directory to pass to cras for the location
+                    of its config files
+            *   `ucm-suffix`: Internal UCM suffix to pass to cras
+            *   `topology-name` (optional): Name of the topology firmware to
+                    use
+            *   `card`: Name of the audio 'card'
+            *   `volume`: Template filename of volume curve file
+            *   `dsp-ini`: Template filename of dsp.ini file
+            *   `hifi-conf`: Template filename of the HiFi.conf file
+            *   `alsa-conf`: Template filename of the card configuration file
+            *   `topology-xml` (optional): Template filename of the topology
+                    XML file
+            *   `topology-bin` (optional): Template filename of the topology
+                    firmware file
+        Template filenames may include the following fields, enclosed in
+        `${...}` defined by the audio node: `card`, `cras-config-dir`,
+        `topology-name`, `ucm-suffix` as well as `model` for the model name.
+        The expansion / interpretation happens in cros_config_host. Other users
+        should not attempt to implement this. The purpose is to avoid having to
+        repeat the filename in each model that uses a particular manufacturer's
+        card, since the naming convention is typically consistent for that
+        manufacturer.
+
     *   `firmware` (optional) : Contains information about firmware versions and
         files
         *   `script`: Updater script to use. See [the pack_dist
@@ -163,6 +193,23 @@ properties.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
+        *   `audio` (optional): Contains information about audio devices
+                used by this model.
+            *   `<audio_system>`: Contains information about a particular
+                audio device used by this model. Valid values for the package
+                name are:
+                *   `main`: The main audio system
+
+                For each of these:
+
+                *   `audio-type`: Phandle pointing to a subnode of the family
+                    audio configuration.
+
+                All properties defined by the family subnode can be used here.
+                Typically it is enough to define only `cras-config-dir`,
+                `ucm-suffix` and `topology-name`. The rest are generally defined
+                in terms of these, within the family configuration nodes.
+
         *   `brand-code`: (optional): Brand code of the model (also called RLZ
             code). See [list](go/chromeos-rlz) and
             [one-pager](gi/chromeos-rlz-onepager).
@@ -246,6 +293,17 @@ properties.
 ```
 chromeos {
     family {
+        audio {
+            audio_type: audio-type {
+                card = "bxtda7219max";
+                volume = "cras-config/${cras-config-dir}/${card}";
+                dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+                hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
+                alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
+                topology-xml = "topology/${topology-name}_topology.xml";
+                topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+            };
+        };
         firmware {
             script = "updater4.sh";
             shared: reef {
@@ -369,6 +427,12 @@ chromeos {
             powerd-prefs = "pyro_snappy";
             wallpaper = "alien_invasion";
             brand-code = "ABCE";
+            audio {
+                audio-type = <&audio_type>;
+                cras-config-dir = "pyro";
+                ucm-suffix = "pyro";
+                topology-name = "pyro";
+            };
             firmware {
                 bcs-overlay = "overlay-pyro-private";
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
@@ -390,6 +454,12 @@ chromeos {
             powerd-prefs = "pyro_snappy";
             wallpaper = "chocolate";
             brand-code = "ABCF";
+            audio {
+                audio-type = <&audio_type>;
+                cras-config-dir = "snappy";
+                ucm-suffix = "snappy";
+                topology-name = "snappy";
+            };
             firmware {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
@@ -445,6 +515,12 @@ chromeos {
             powerd-prefs = "reef";
             wallpaper = "coffee";
             brand-code = "ABCH";
+            audio {
+                audio-type = <&audio_type>;
+                cras-config-dir = "sand";
+                ucm-suffix = "sand";
+                topology-name = "sand";
+            };
             firmware {
                 shares = <&pinned_version>;
                 key-id = "SAND";

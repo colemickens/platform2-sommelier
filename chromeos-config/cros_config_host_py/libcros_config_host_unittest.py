@@ -12,7 +12,7 @@ import os
 import unittest
 
 import fdt_util
-from libcros_config_host import CrosConfig, TouchFile
+from libcros_config_host import AudioFile, CrosConfig, TouchFile
 
 DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken']
@@ -148,6 +148,35 @@ class CrosConfigHostTest(unittest.TestCase):
                      , ('vendor', 'elan'),
                      ('firmware-bin', '${vendor}/${pid}_${version}.bin'),
                      ('firmware-symlink', '${vendor}ts_i2c_${pid}.bin')]))
+
+  def testGetAudioFiles(self):
+    config = CrosConfig(self.file)
+    audio_files = config.GetAudioFiles()
+    self.assertEqual(
+        audio_files,
+        [AudioFile('cras-config/pyro/bxtda7219max',
+                   '/etc/cras/pyro/bxtda7219max'),
+         AudioFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
+         AudioFile('cras-config/reef-cras/bxtda7219max',
+                   '/etc/cras/reef-cras/bxtda7219max'),
+         AudioFile('cras-config/reef-cras/dsp.ini',
+                   '/etc/cras/reef-cras/dsp.ini'),
+         AudioFile('topology/5a98-reef-pyro-8-tplg.bin',
+                   '/lib/firmware/topology/5a98-reef-pyro-8-tplg.bin'),
+         AudioFile('topology/5a98-reef-reef-top-8-tplg.bin',
+                   '/lib/firmware/topology/5a98-reef-reef-top-8-tplg.bin'),
+         AudioFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
+         AudioFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
+                   '.conf'),
+         AudioFile('ucm-config/bxtda7219max.reef-ucm/HiFi.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/HiFi.conf'),
+         AudioFile('ucm-config/bxtda7219max.reef-ucm/bxtda7219max.reef-ucm' +
+                   '.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
+                   '.reef-ucm.conf')])
+
 
 if __name__ == '__main__':
   unittest.main()

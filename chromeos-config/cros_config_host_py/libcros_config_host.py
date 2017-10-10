@@ -12,6 +12,7 @@ for CLI access to this library.
 from __future__ import print_function
 
 from collections import namedtuple, OrderedDict
+import os
 
 import fdt
 
@@ -22,6 +23,15 @@ import fdt
 #       firmware. This is where Linux finds the firmware at runtime.
 TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 
+# Represents a single audio file which needs to be installed:
+#   source: Source filename within ${FILESDIR}
+#   dest: Destination filename in the root filesystem
+AudioFile = namedtuple('AudioFile', ['source', 'dest'])
+
+# Known directories for installation
+CRAS_CONFIG_DIR = '/etc/cras'
+UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
+LIB_FIRMWARE = '/lib/firmware'
 
 class CrosConfig(object):
   """The ChromeOS Configuration API for the host.
@@ -58,6 +68,20 @@ class CrosConfig(object):
         file_set.add(files)
 
     return sorted(file_set, key=lambda files: files.firmware)
+
+  def GetAudioFiles(self):
+    """Get a list of unique audio files for all models
+
+    Returns:
+      List of AudioFile objects representing all the audio files referenced
+      by all models
+    """
+    file_set = set()
+    for model in self.models.values():
+      for files in model.GetAudioFiles().values():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -209,9 +233,29 @@ class CrosConfig(object):
       return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname)
               for fname in file_names]
 
-    @staticmethod
-    def GetTouchFilename(node_path, props, fname_prop):
-      """Create a touch filename based on the given template and properties
+    @classmethod
+    def GetFilename(cls, node_path, props, fname_template):
+      """Create a filename based on the given template and properties
+
+      Args:
+        node_path: Path of the node generating this filename (for error
+            reporting only)
+        props: Dict of properties which can be used in the template:
+            key: Variable name
+            value: Value of that variable
+        fname_template: Filename template
+      """
+      template = fname_template.replace('$', '')
+      try:
+        return template.format(props, **props)
+      except KeyError as e:
+        raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
+                          "but lacks '%s'") %
+                         (node_path, template, props.keys(), e.message))
+
+    @classmethod
+    def GetPropFilename(cls, node_path, props, fname_prop):
+      """Create a filename based on the given template and properties
 
       Args:
         node_path: Path of the node generating this filename (for error
@@ -221,13 +265,8 @@ class CrosConfig(object):
             value: Value of that variable
         fname_prop: Name of property containing the template
       """
-      template = props[fname_prop].replace('$', '')
-      try:
-        return template.format(props, **props)
-      except KeyError as e:
-        raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
-                          "but lacks '%s'") %
-                         (node_path, template, props.keys(), e.message))
+      template = props[fname_prop]
+      return cls.GetFilename(node_path, props, template)
 
     def GetTouchFirmwareFiles(self):
       """Get a list of unique touch firmware files
@@ -244,9 +283,49 @@ class CrosConfig(object):
         # Add a special property for the capitalised model name
         props['MODEL'] = self.name.upper()
         files[device.name] = TouchFile(
-            self.GetTouchFilename(self._fdt_node.path, props, 'firmware-bin'),
-            self.GetTouchFilename(self._fdt_node.path, props,
-                                  'firmware-symlink'))
+            self.GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
+            self.GetPropFilename(self._fdt_node.path, props,
+                                 'firmware-symlink'))
+      return files
+
+    def GetAudioFiles(self):
+      """Get a list of audio files
+
+      Returns:
+        Dict of AudioFile objects representing the audio files referenced
+        by this model:
+          key: (model, property)
+          value: AudioFile object
+      """
+      def _AddAudioFile(prop_name, dirname, dest_template):
+        """Helper to add a single audio file
+
+        If present in the configuration, this adds an audio file containing the
+        source and destination file.
+        """
+        if prop_name in props:
+          files[self.name, prop_name] = AudioFile(
+              self.GetPropFilename(self._fdt_node.path, props, prop_name),
+              os.path.join(dirname, self.GetFilename(self._fdt_node.path, props,
+                                                     dest_template)))
+
+      files = {}
+      audio = self.ChildNodeFromPath('/audio')
+      if audio:
+        for card in audio.subnodes.values():
+          # First get all the property keys/values from the current node
+          props = card.GetMergedProperties('audio-type')
+
+          cras_dir = os.path.join(CRAS_CONFIG_DIR, props['cras-config-dir'])
+          _AddAudioFile('volume', cras_dir, '${card}')
+          _AddAudioFile('dsp-ini', cras_dir, 'dsp.ini')
+
+          _AddAudioFile('hifi-conf', UCM_CONFIG_DIR,
+                        '${card}.${ucm-suffix}/HiFi.conf')
+          _AddAudioFile('alsa-conf', UCM_CONFIG_DIR,
+                        '${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf')
+
+          _AddAudioFile('topology-bin', LIB_FIRMWARE, props.get('topology-bin'))
       return files
 
   class Property(object):

@@ -232,19 +232,19 @@ AUDIO = r'''
 &family {
   audio {
       audio_type: audio-type {
-        codec = "bxtda7219max";
-        volume = "cras-config/${cras-config-dir}/${codec}";
+        card = "bxtda7219max";
+        volume = "cras-config/${cras-config-dir}/${card}";
         dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-        hifi-conf = "ucm-config/${codec}.${ucm-suffix}/HiFi.conf";
-        alsa-conf = "ucm-config/${codec}.${ucm-suffix}/${codec}.${ucm-suffix}.conf";
+        hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
+        alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
         topology-xml = "topology/${topology-name}_topology.xml";
         topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
       };
       bad_audio_type: bad-audio-type {
-        volume = "cras-config/${cras-config-dir}/${codec}";
+        volume = "cras-config/${cras-config-dir}/${card}";
         dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-        hifi-conf = "ucm-config/${codec}.${ucm-suffix}/HiFi.conf";
-        alsa-conf = "ucm-config/${codec}.${ucm-suffix}/${codec}.${ucm-suffix}.conf";
+        hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
+        alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
         topology-xml = "topology/${topology-name}_topology.xml";
         topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
       };
@@ -256,10 +256,12 @@ AUDIO = r'''
     wallpaper = "alien_invasion";
     brand-code = "ABCE";
     audio {
-      audio-type = <&audio_type>;
-      cras-config-dir = "pyro";
-      ucm-suffix = "pyro";
-      topology-name = "pyro";
+      main {
+        audio-type = <&audio_type>;
+        cras-config-dir = "pyro";
+        ucm-suffix = "pyro";
+        topology-name = "pyro";
+      };
     };
   };
   pyro: pyro {
@@ -267,9 +269,11 @@ AUDIO = r'''
     wallpaper = "alien_invasion";
     brand-code = "ABCE";
     audio {
-      audio-type = <&audio_type>;
-      ucm-suffix = "pyro";
-      topology-name = "pyro";
+      main {
+        audio-type = <&audio_type>;
+        ucm-suffix = "pyro";
+        topology-name = "pyro";
+      };
     };
   };
   snappy: snappy {
@@ -277,9 +281,11 @@ AUDIO = r'''
     wallpaper = "chocolate";
     brand-code = "ABCF";
     audio {
-      cras-config-dir = "snappy";
-      ucm-suffix = "snappy";
-      topology-name = "snappy";
+      main {
+        cras-config-dir = "snappy";
+        ucm-suffix = "snappy";
+        topology-name = "snappy";
+      };
     };
   };
 };
@@ -425,12 +431,12 @@ class UnitTests(cros_test_lib.TestCase):
     """Test validation of the audio nodes"""
     result = self.Run(HEADER + MODELS + AUDIO)
     self._CheckAllIn([
-        "snappy/audio: Required property 'codec' missing",
-        "snappy/audio: Required property 'volume' missing",
-        "snappy/audio: Required property 'dsp-ini' missing",
-        "snappy/audio: Required property 'hifi-conf' missing",
-        "snappy/audio: Required property 'alsa-conf' missing",
-        "bad-audio-type: Required property 'codec' missing",
+        "snappy/audio/main: Required property 'card' missing",
+        "snappy/audio/main: Required property 'volume' missing",
+        "snappy/audio/main: Required property 'dsp-ini' missing",
+        "snappy/audio/main: Required property 'hifi-conf' missing",
+        "snappy/audio/main: Required property 'alsa-conf' missing",
+        "bad-audio-type: Required property 'card' missing",
         ], result)
 
 

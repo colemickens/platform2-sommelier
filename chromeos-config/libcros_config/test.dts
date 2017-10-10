@@ -17,6 +17,17 @@
 };
 
 &family {
+	audio {
+		audio_type: audio-type {
+			card = "bxtda7219max";
+			volume = "cras-config/${cras-config-dir}/${card}";
+			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+			hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
+			alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
+			topology-xml = "topology/${topology-name}_topology.xml";
+			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+		};
+	};
 	firmware {
 		shared: caroline {
 			bcs-overlay = "overlay-reef-private";
@@ -52,6 +63,14 @@
 	pyro {
 		wallpaper = "default";
 		string-list = "default", "more";
+		audio {
+			main {
+				audio-type = <&audio_type>;
+				cras-config-dir = "pyro";
+				ucm-suffix = "pyro";
+				topology-name = "pyro";
+			};
+		};
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
@@ -82,6 +101,14 @@
 	};
 	reef {
 		wallpaper = "epic";
+		audio {
+			main {
+				audio-type = <&audio_type>;
+				cras-config-dir = "reef-cras";
+				ucm-suffix = "reef-ucm";
+				topology-name = "reef-top";
+			};
+		};
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
