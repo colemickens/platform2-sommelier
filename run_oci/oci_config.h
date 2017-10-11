@@ -18,6 +18,8 @@
 
 #include <base/time/time.h>
 
+namespace run_oci {
+
 struct OciPlatform {
   std::string os;
   std::string arch;
@@ -150,5 +152,7 @@ struct OciConfig {
   OciLinux linux_config;  // Optional
   // Unused: annotations
 };
+
+}  // namespace run_oci
 
 #endif  // RUN_OCI_OCI_CONFIG_H_

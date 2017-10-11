@@ -39,12 +39,9 @@
 #include "run_oci/container_options.h"
 #include "run_oci/run_oci_utils.h"
 
-namespace {
+namespace run_oci {
 
-using run_oci::BindMount;
-using run_oci::BindMounts;
-using run_oci::ContainerOptions;
-using run_oci::OciConfigPtr;
+namespace {
 
 constexpr base::FilePath::CharType kRunContainersPath[] =
     FILE_PATH_LITERAL("/run/containers");
@@ -845,10 +842,12 @@ void print_help(const char *argv0) {
       argv0);
 }
 
-}  // anonymous namespace
+}  // namespace
+
+}  // namespace run_oci
 
 int main(int argc, char **argv) {
-  ContainerOptions container_options;
+  run_oci::ContainerOptions container_options;
   base::FilePath bundle_dir = base::MakeAbsoluteFilePath(base::FilePath("."));
   int c;
   int kill_signal = SIGTERM;
@@ -857,8 +856,8 @@ int main(int argc, char **argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 
-  while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", longopts, NULL)) !=
-         -1) {
+  while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", run_oci::longopts,
+                          NULL)) != -1) {
     switch (c) {
     case 'b': {
       std::istringstream ss(optarg);
@@ -867,17 +866,17 @@ int main(int argc, char **argv) {
       std::getline(ss, outside_path, ':');
       std::getline(ss, inside_path, ':');
       if (outside_path.empty() || inside_path.empty()) {
-        print_help(argv[0]);
+        run_oci::print_help(argv[0]);
         return -1;
       }
-      container_options.bind_mounts.push_back(
-          BindMount(base::FilePath(outside_path), base::FilePath(inside_path)));
+      container_options.bind_mounts.push_back(run_oci::BindMount(
+          base::FilePath(outside_path), base::FilePath(inside_path)));
       break;
     }
     case 'B':
       if (!base::HexStringToUInt64(optarg,
                                    &container_options.securebits_skip_mask)) {
-        print_help(argv[0]);
+        run_oci::print_help(argv[0]);
         return -1;
       }
       break;
@@ -894,8 +893,8 @@ int main(int argc, char **argv) {
       container_options.alt_syscall_table = optarg;
       break;
     case 'S': {
-      auto it = kSignalMap.find(optarg);
-      if (it == kSignalMap.end()) {
+      auto it = run_oci::kSignalMap.find(optarg);
+      if (it == run_oci::kSignalMap.end()) {
         LOG(ERROR) << "Invalid signal name '" << optarg << "'";
         return -1;
       }
@@ -906,33 +905,33 @@ int main(int argc, char **argv) {
       container_options.run_as_init = false;
       break;
     case 'h':
-      print_help(argv[0]);
+      run_oci::print_help(argv[0]);
       return 0;
     case 128:  // inplace
       inplace = true;
       break;
     default:
-      print_help(argv[0]);
+      run_oci::print_help(argv[0]);
       return 1;
     }
   }
 
   if (optind >= argc) {
     LOG(ERROR) << "Command is required.";
-    print_help(argv[0]);
+    run_oci::print_help(argv[0]);
     return -1;
   }
   std::string command(argv[optind++]);
 
   if (optind >= argc) {
     LOG(ERROR) << "Container id is required.";
-    print_help(argv[0]);
+    run_oci::print_help(argv[0]);
     return -1;
   }
   std::string container_id(argv[optind++]);
   if (container_id.find(base::FilePath::kSeparators[0]) != std::string::npos) {
     LOG(ERROR) << "Container ID cannot contain path separators.";
-    print_help(argv[0]);
+    run_oci::print_help(argv[0]);
     return -1;
   }
 
@@ -940,24 +939,18 @@ int main(int argc, char **argv) {
     container_options.extra_program_args.push_back(std::string(argv[optind]));
 
   if (command == "run") {
-    return RunOci(bundle_dir,
-                  container_id,
-                  container_options,
-                  true /*inplace*/,
-                  false /*detach_after_start*/);
+    return run_oci::RunOci(bundle_dir, container_id, container_options,
+                           true /*inplace*/, false /*detach_after_start*/);
   } else if (command == "start") {
-    return RunOci(bundle_dir,
-                  container_id,
-                  container_options,
-                  inplace,
-                  true /*detach_after_start*/);
+    return run_oci::RunOci(bundle_dir, container_id, container_options, inplace,
+                           true /*detach_after_start*/);
   } else if (command == "kill") {
-    return OciKill(container_id, kill_signal);
+    return run_oci::OciKill(container_id, kill_signal);
   } else if (command == "destroy") {
-    return OciDestroy(container_id);
+    return run_oci::OciDestroy(container_id);
   } else {
     LOG(ERROR) << "Unknown command '" << command << "'";
-    print_help(argv[0]);
+    run_oci::print_help(argv[0]);
     return -1;
   }
 }
