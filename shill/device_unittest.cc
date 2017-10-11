@@ -583,13 +583,6 @@ TEST_F(DeviceTest, Save) {
   EXPECT_TRUE(device_->Save(&storage));
 }
 
-TEST_F(DeviceTest, StorageIdGeneration) {
-  string to_process("/device/stuff/0");
-  ControlInterface::RpcIdToStorageId(&to_process);
-  EXPECT_TRUE(isalpha(to_process[0]));
-  EXPECT_EQ(string::npos, to_process.find('/'));
-}
-
 TEST_F(DeviceTest, SelectedService) {
   EXPECT_FALSE(device_->selected_service_.get());
   device_->SetServiceState(Service::kStateAssociating);

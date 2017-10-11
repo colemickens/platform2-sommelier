@@ -430,12 +430,7 @@ string Device::GetRpcIdentifier() const {
 }
 
 string Device::GetStorageIdentifier() const {
-  string id = GetRpcIdentifier();
-  ControlInterface::RpcIdToStorageId(&id);
-  size_t needle = id.find('_');
-  DLOG_IF(ERROR, needle == string::npos) << "No _ in storage id?!?!";
-  id.replace(id.begin() + needle + 1, id.end(), hardware_address_);
-  return id;
+  return "device_" + hardware_address_;
 }
 
 vector<GeolocationInfo> Device::GetGeolocationObjects() const {

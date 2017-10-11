@@ -221,13 +221,6 @@ class ControlInterface {
   virtual std::unique_ptr<WiMaxNetworkProxyInterface> CreateWiMaxNetworkProxy(
       const std::string& path) = 0;
 #endif  // DISABLE_WIMAX
-
-  static void RpcIdToStorageId(std::string* rpc_id) {
-    CHECK(rpc_id);
-    DCHECK_EQ(rpc_id->at(0), '/');
-    rpc_id->erase(0, 1);
-    std::replace(rpc_id->begin(), rpc_id->end(), '/', '_');
-  }
 };
 
 }  // namespace shill
