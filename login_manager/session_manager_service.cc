@@ -116,8 +116,7 @@ SessionManagerService::SessionManagerService(
       vpd_process_(utils),
 #if USE_ANDROID_MASTER_CONTAINER
       android_container_(std::make_unique<AndroidOciWrapper>(
-          utils,
-          base::FilePath(kContainerInstallDirectory))),
+          utils, base::FilePath(kContainerInstallDirectory))),
 #else   // USE_ANDROID_MASTER_CONTAINER
       android_container_(std::make_unique<AndroidContainerManagerImpl>(
           utils,
@@ -254,8 +253,7 @@ void SessionManagerService::AbortBrowser(int signal,
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
-    const std::vector<std::string>& args,
-    bool args_are_extra) {
+    const std::vector<std::string>& args, bool args_are_extra) {
   // Waiting for Chrome to shutdown takes too much time.
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
@@ -270,14 +268,12 @@ void SessionManagerService::RestartBrowserWithArgs(
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
-    const std::string& account_id,
-    const std::string& userhash) {
+    const std::string& account_id, const std::string& userhash) {
   browser_->StartSession(account_id, userhash);
 }
 
 void SessionManagerService::SetFlagsForUser(
-    const std::string& account_id,
-    const std::vector<std::string>& flags) {
+    const std::string& account_id, const std::vector<std::string>& flags) {
   browser_->SetExtraArguments(flags);
 }
 

@@ -18,10 +18,10 @@
 #include "login_manager/mock_process_manager_service.h"
 
 using ::base::TimeDelta;
+using ::testing::_;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrictMock;
-using ::testing::_;
 
 namespace login_manager {
 

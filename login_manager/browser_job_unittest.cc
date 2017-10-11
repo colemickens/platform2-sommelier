@@ -26,11 +26,11 @@
 
 namespace login_manager {
 
+using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::StrEq;
-using ::testing::_;
 
 class BrowserJobTest : public ::testing::Test {
  public:

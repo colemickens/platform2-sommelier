@@ -16,11 +16,11 @@
 #include <crypto/scoped_nss_types.h>
 
 namespace login_manager {
+using ::testing::_;
 using ::testing::ByMove;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
-using ::testing::_;
 
 using crypto::ScopedPK11Slot;
 

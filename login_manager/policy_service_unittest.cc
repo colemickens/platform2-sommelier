@@ -27,6 +27,7 @@
 
 namespace em = enterprise_management;
 
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
@@ -35,7 +36,6 @@ using ::testing::ReturnRef;
 using ::testing::Sequence;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
-using ::testing::_;
 
 namespace login_manager {
 

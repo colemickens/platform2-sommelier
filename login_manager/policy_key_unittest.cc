@@ -42,8 +42,7 @@ class PolicyKeyTest : public ::testing::Test {
   void StartUnowned() { base::DeleteFile(tmpfile_, false); }
 
   static std::unique_ptr<crypto::RSAPrivateKey> CreateRSAPrivateKey(
-      PK11SlotInfo* slot,
-      uint16_t num_bits) {
+      PK11SlotInfo* slot, uint16_t num_bits) {
     std::unique_ptr<crypto::RSAPrivateKey> key;
     crypto::ScopedSECKEYPublicKey public_key_obj;
     crypto::ScopedSECKEYPrivateKey private_key_obj;

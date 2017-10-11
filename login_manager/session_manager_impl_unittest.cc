@@ -71,6 +71,7 @@
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/system_utils_impl.h"
 
+using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::AtMost;
@@ -90,12 +91,11 @@ using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
-using ::testing::_;
 
 using brillo::cryptohome::home::GetRootPath;
+using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
-using brillo::cryptohome::home::kGuestUserName;
 
 using enterprise_management::ChromeDeviceSettingsProto;
 using enterprise_management::PolicyData;
@@ -257,10 +257,9 @@ class ResponseCapturer {
   DISALLOW_COPY_AND_ASSIGN(ResponseCapturer);
 };
 
-std::vector<uint8_t> MakePolicyDescriptor(
-    PolicyDescriptor::PolicyType type,
-    const std::string& account_id,
-    const std::string& component_id) {
+std::vector<uint8_t> MakePolicyDescriptor(PolicyDescriptor::PolicyType type,
+                                          const std::string& account_id,
+                                          const std::string& component_id) {
   PolicyDescriptor descriptor;
   descriptor.set_type(type);
   descriptor.set_account_id(account_id);
@@ -903,11 +902,10 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
   ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
                     SignatureCheck::kEnabled);
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
-      policy_blob);
+  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                       MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
+                                            kEmptyAccountId, kEmptyComponentId),
+                       policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
@@ -927,11 +925,10 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
                     PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
 
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
-      policy_blob);
+  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                       MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
+                                            kEmptyAccountId, kEmptyComponentId),
+                       policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
@@ -1018,8 +1015,9 @@ TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error, MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
-                                   kEmptyAccountId, kEmptyComponentId),
+      &error,
+      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
+                           kEmptyComponentId),
       &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
@@ -1101,11 +1099,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
 
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      policy_blob);
+  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                       MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
+                                            kSaneEmail, kEmptyComponentId),
+                       policy_blob);
   ASSERT_TRUE(capturer.response());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist,
             capturer.response()->GetErrorName());
@@ -1135,11 +1132,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
       .WillOnce(Return(true));
 
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      policy_blob);
+  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                       MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
+                                            kSaneEmail, kEmptyComponentId),
+                       policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
@@ -1204,11 +1200,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
 
   {
     ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                             kEmptyComponentId),
-        policy_blob);
+    impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
+                                              kSaneEmail, kEmptyComponentId),
+                         policy_blob);
     Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
   }
 
@@ -1216,11 +1211,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   constexpr char kEmail2[] = "user2@somewhere.com";
   {
     ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
-                             kEmptyComponentId),
-        policy_blob);
+    impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
+                                              kEmail2, kEmptyComponentId),
+                         policy_blob);
     ASSERT_TRUE(capturer.response());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist,
               capturer.response()->GetErrorName());
@@ -1238,11 +1232,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
       .WillOnce(Return(true));
   {
     ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
-                             kEmptyComponentId),
-        policy_blob);
+    impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
+                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
+                                              kEmail2, kEmptyComponentId),
+                         policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
@@ -1793,9 +1786,8 @@ TEST_F(SessionManagerImplTest, ContainerValidChars) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartContainer(&error, kContainerPath, kContainerName,
                                     kHashedUserName, false));
-  EXPECT_FALSE(impl_->StartContainer(&error, kContainerPath,
-                                     kInvalidContainerName, kHashedUserName,
-                                     false));
+  EXPECT_FALSE(impl_->StartContainer(
+      &error, kContainerPath, kInvalidContainerName, kHashedUserName, false));
   EXPECT_FALSE(impl_->StartContainer(&error, kInvalidContainerPath,
                                      kContainerName, kHashedUserName, false));
   EXPECT_FALSE(impl_->StartContainer(&error, kParentContainerPath,
@@ -2502,8 +2494,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     ON_CALL(vpd_process_, RunInBackground(_, _, _))
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
-    ON_CALL(*device_policy_store_, Get())
-        .WillByDefault(ReturnRef(policy_));
+    ON_CALL(*device_policy_store_, Get()).WillByDefault(ReturnRef(policy_));
 
     SetFileExists(SessionManagerImpl::kTPMFirmwareUpdateAvailableFile, true);
   }

@@ -38,10 +38,9 @@ class MockNssUtil : public NssUtil {
 
   crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) override;
-  MOCK_METHOD2(
-      GetPrivateKeyForUser,
-      std::unique_ptr<crypto::RSAPrivateKey>(const std::vector<uint8_t>&,
-                                             PK11SlotInfo*));
+  MOCK_METHOD2(GetPrivateKeyForUser,
+               std::unique_ptr<crypto::RSAPrivateKey>(
+                   const std::vector<uint8_t>&, PK11SlotInfo*));
   MOCK_METHOD1(GenerateKeyPairForUser,
                std::unique_ptr<crypto::RSAPrivateKey>(PK11SlotInfo*));
   MOCK_METHOD0(GetNssdbSubpath, base::FilePath());

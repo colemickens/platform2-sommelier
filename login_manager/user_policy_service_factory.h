@@ -38,8 +38,7 @@ class UserPolicyServiceFactory {
   // Creates a new user policy service instance operating in |policy_dir| and
   // persisting key copies in a directory keyed by sanitized |username|.
   std::unique_ptr<PolicyService> CreateInternal(
-      const std::string& username,
-      const base::FilePath& policy_dir);
+      const std::string& username, const base::FilePath& policy_dir);
 
   // UID to check for.
   uid_t uid_;

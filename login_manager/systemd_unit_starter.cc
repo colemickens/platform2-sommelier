@@ -35,14 +35,12 @@ std::unique_ptr<dbus::Response> CallEnvironmentMethod(
 }
 
 std::unique_ptr<dbus::Response> SetEnvironment(
-    dbus::ObjectProxy* proxy,
-    const std::vector<std::string>& args_keyvals) {
+    dbus::ObjectProxy* proxy, const std::vector<std::string>& args_keyvals) {
   return CallEnvironmentMethod(proxy, kSetEnvironmentMethodName, args_keyvals);
 }
 
 std::unique_ptr<dbus::Response> UnsetEnvironment(
-    dbus::ObjectProxy* proxy,
-    const std::vector<std::string>& args_keyvals) {
+    dbus::ObjectProxy* proxy, const std::vector<std::string>& args_keyvals) {
   std::vector<std::string> env_vars;
   env_vars.reserve(args_keyvals.size());
 

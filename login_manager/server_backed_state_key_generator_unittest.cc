@@ -23,8 +23,8 @@
 #include "login_manager/mock_metrics.h"
 #include "login_manager/system_utils_impl.h"
 
-using testing::SaveArg;
 using testing::_;
+using testing::SaveArg;
 
 namespace login_manager {
 

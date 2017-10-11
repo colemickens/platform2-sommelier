@@ -41,6 +41,7 @@ namespace em = enterprise_management;
 
 using google::protobuf::RepeatedPtrField;
 
+using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
@@ -51,7 +52,6 @@ using testing::ReturnRef;
 using testing::Sequence;
 using testing::StrictMock;
 using testing::WithArg;
-using testing::_;
 
 namespace {
 

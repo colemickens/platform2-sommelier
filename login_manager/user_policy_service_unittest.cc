@@ -28,13 +28,13 @@
 
 namespace em = enterprise_management;
 
+using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::Sequence;
 using ::testing::StrictMock;
-using ::testing::_;
 
 namespace login_manager {
 

@@ -39,8 +39,7 @@ namespace login_manager {
 MockDevicePolicyService::MockDevicePolicyService()
     : MockDevicePolicyService(nullptr, nullptr) {}
 MockDevicePolicyService::MockDevicePolicyService(
-    std::unique_ptr<MockPolicyStore> policy_store,
-    PolicyKey* policy_key)
+    std::unique_ptr<MockPolicyStore> policy_store, PolicyKey* policy_key)
     : DevicePolicyService(std::move(policy_store),
                           policy_key,
                           base::FilePath(),

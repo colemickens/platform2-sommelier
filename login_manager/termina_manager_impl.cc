@@ -97,8 +97,8 @@ void TerminaManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
 bool TerminaManagerImpl::StartVmContainer(const base::FilePath& image_path,
                                           const std::string& name,
                                           bool writable) {
-  LOG(INFO) << "Starting container " << image_path.value()
-            << " in termina VM " << name;
+  LOG(INFO) << "Starting container " << image_path.value() << " in termina VM "
+            << name;
 
   brillo::ProcessImpl vmtool;
   vmtool.AddArg(kVmLauncherPath);

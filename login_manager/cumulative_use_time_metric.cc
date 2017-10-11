@@ -126,8 +126,7 @@ void CumulativeUseTimeMetric::AccumulatedActiveTime::AddTime(
 }
 
 void CumulativeUseTimeMetric::AccumulatedActiveTime::Reset(
-    const base::TimeDelta& remaining_time,
-    int day) {
+    const base::TimeDelta& remaining_time, int day) {
   accumulated_time_ = remaining_time;
   start_day_ = day;
   WriteMetricsFile();

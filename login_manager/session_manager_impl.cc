@@ -68,8 +68,8 @@ using base::FilePath;
 using brillo::cryptohome::home::GetHashedUserPath;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
-using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::SanitizeUserName;
 
 namespace login_manager {  // NOLINT
 
@@ -390,8 +390,7 @@ bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
 #if USE_CHEETS
 // static
 bool SessionManagerImpl::ValidateStartArcInstanceRequest(
-    const StartArcInstanceRequest& request,
-    brillo::ErrorPtr* error) {
+    const StartArcInstanceRequest& request, brillo::ErrorPtr* error) {
   if (request.for_login_screen()) {
     // If this request is for login screen, following params are just
     // irrelevant so no value should be passed.
@@ -1414,8 +1413,7 @@ void SessionManagerImpl::OnKeyGenerated(const std::string& username,
 }
 
 void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
-    const std::string& username,
-    const base::FilePath& temp_key_file) {
+    const std::string& username, const base::FilePath& temp_key_file) {
   DLOG(INFO) << "Processing generated key at " << temp_key_file.value();
   std::string key;
   base::ReadFileToString(temp_key_file, &key);
@@ -1849,8 +1847,7 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
 }
 
 bool SessionManagerImpl::ContinueArcBoot(
-    const std::vector<std::string>& init_keyvals,
-    brillo::ErrorPtr* error_out) {
+    const std::vector<std::string>& init_keyvals, brillo::ErrorPtr* error_out) {
   if (!init_controller_->TriggerImpulse(
           kContinueArcBootImpulse, init_keyvals,
           InitDaemonController::TriggerMode::SYNC)) {
@@ -1869,9 +1866,7 @@ void SessionManagerImpl::OnContinueArcBootFailed() {
 }
 
 void SessionManagerImpl::OnAndroidContainerStopped(
-    const std::string& container_instance_id,
-    pid_t pid,
-    bool clean) {
+    const std::string& container_instance_id, pid_t pid, bool clean) {
   if (clean) {
     LOG(INFO) << "Android Container with pid " << pid << " stopped";
   } else {

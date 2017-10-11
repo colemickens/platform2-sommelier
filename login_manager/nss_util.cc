@@ -140,8 +140,7 @@ ScopedPK11Slot NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
 }
 
 std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
-    const std::vector<uint8_t>& public_key_der,
-    PK11SlotInfo* user_slot) {
+    const std::vector<uint8_t>& public_key_der, PK11SlotInfo* user_slot) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
     return nullptr;

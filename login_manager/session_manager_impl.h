@@ -155,8 +155,7 @@ class SessionManagerImpl
   // StartArcInstance input. Returns true on success. Otherwise false,
   // and brillo::Error instance is set to |error|.
   static bool ValidateStartArcInstanceRequest(
-      const StartArcInstanceRequest& request,
-      brillo::ErrorPtr* error);
+      const StartArcInstanceRequest& request, brillo::ErrorPtr* error);
 
   // Returns the Android data directory for |normalized_account_id|.
   static base::FilePath GetAndroidDataDirForUser(

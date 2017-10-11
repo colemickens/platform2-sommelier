@@ -34,8 +34,7 @@ class MockObjectProxy : public dbus::ObjectProxy {
   MOCK_METHOD2(MockCallMethodAndBlock,
                dbus::Response*(dbus::MethodCall* method_call, int timeout_ms));
   std::unique_ptr<dbus::Response> CallMethodAndBlock(
-      dbus::MethodCall* method_call,
-      int timeout_ms) override {
+      dbus::MethodCall* method_call, int timeout_ms) override {
     return std::unique_ptr<dbus::Response>(
         MockCallMethodAndBlock(method_call, timeout_ms));
   }

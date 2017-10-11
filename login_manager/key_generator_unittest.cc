@@ -32,10 +32,10 @@
 
 namespace login_manager {
 
+using ::testing::_;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrEq;
-using ::testing::_;
 
 using brillo::cryptohome::home::GetUserPathPrefix;
 using brillo::cryptohome::home::SetSystemSalt;

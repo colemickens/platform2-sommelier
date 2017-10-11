@@ -32,5 +32,4 @@ void FakeTerminaManager::RequestJobExit() {}
 
 void FakeTerminaManager::EnsureJobExit(base::TimeDelta timeout) {}
 
-
 }  // namespace login_manager

@@ -42,8 +42,7 @@ class DeviceLocalAccountPolicyService {
   static const base::FilePath::CharType kPolicyFileName[];
 
   DeviceLocalAccountPolicyService(
-      const base::FilePath& device_local_account_dir,
-      PolicyKey* owner_key);
+      const base::FilePath& device_local_account_dir, PolicyKey* owner_key);
   ~DeviceLocalAccountPolicyService();
 
   // Store policy for |account_id|, return false if the device-local account is

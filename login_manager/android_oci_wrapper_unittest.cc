@@ -18,6 +18,7 @@
 
 #include "login_manager/mock_system_utils.h"
 
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Ge;
 using ::testing::Invoke;
@@ -25,7 +26,6 @@ using ::testing::Le;
 using ::testing::Ne;
 using ::testing::Return;
 using ::testing::SetArgPointee;
-using ::testing::_;
 
 namespace login_manager {
 
@@ -198,9 +198,8 @@ TEST_F(AndroidOciWrapperTest, KillJobOnEnsure) {
   EXPECT_CALL(system_utils_, kill(container_pid_, _, SIGKILL))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(
-      system_utils_,
-      ProcessIsGone(container_pid_, Le(base::TimeDelta::FromSeconds(5))))
+  EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_,
+                                           Le(base::TimeDelta::FromSeconds(5))))
       .WillOnce(Return(true));
 
   ExpectDestroy(0 /* exit_code */);

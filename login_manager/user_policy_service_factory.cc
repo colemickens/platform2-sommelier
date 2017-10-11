@@ -80,8 +80,7 @@ UserPolicyServiceFactory::CreateForHiddenUserHome(const std::string& username) {
 }
 
 std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
-    const std::string& username,
-    const base::FilePath& policy_dir) {
+    const std::string& username, const base::FilePath& policy_dir) {
   auto key =
       std::make_unique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
   bool key_load_success = key->PopulateFromDiskIfPossible();

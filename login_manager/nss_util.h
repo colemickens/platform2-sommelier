@@ -42,8 +42,7 @@ class NssUtil {
       const base::FilePath& user_homedir) = 0;
 
   virtual std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
-      const std::vector<uint8_t>& public_key_der,
-      PK11SlotInfo* user_slot) = 0;
+      const std::vector<uint8_t>& public_key_der, PK11SlotInfo* user_slot) = 0;
 
   virtual std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
       PK11SlotInfo* user_slot) = 0;

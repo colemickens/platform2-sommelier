@@ -65,8 +65,7 @@ const int ServerBackedStateKeyGenerator::kDeviceStateKeyTimeQuantumPower;
 const int ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta;
 
 ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
-    SystemUtils* system_utils,
-    LoginMetrics* metrics)
+    SystemUtils* system_utils, LoginMetrics* metrics)
     : system_utils_(system_utils),
       metrics_(metrics),
       machine_info_available_(false) {}
@@ -75,8 +74,7 @@ ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {}
 
 // static
 bool ServerBackedStateKeyGenerator::ParseMachineInfo(
-    const std::string& data,
-    std::map<std::string, std::string>* params) {
+    const std::string& data, std::map<std::string, std::string>* params) {
   params->clear();
 
   // Parse the name-value pairs list. The return value of

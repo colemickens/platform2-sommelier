@@ -34,11 +34,11 @@
 #include "login_manager/system_utils_impl.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
+using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::Return;
 using ::testing::Sequence;
-using ::testing::_;
 
 namespace login_manager {
 
@@ -210,8 +210,7 @@ class HandleSuspendReadinessMethodMatcher
 };
 
 inline testing::Matcher<dbus::MethodCall*> HandleSuspendReadinessMethod(
-    int delay_id,
-    int suspend_id) {
+    int delay_id, int suspend_id) {
   return MakeMatcher(
       new HandleSuspendReadinessMethodMatcher(delay_id, suspend_id));
 }

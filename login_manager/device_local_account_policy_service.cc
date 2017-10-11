@@ -34,8 +34,7 @@ const base::FilePath::CharType
         FILE_PATH_LITERAL("policy");
 
 DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
-    const base::FilePath& device_local_account_dir,
-    PolicyKey* owner_key)
+    const base::FilePath& device_local_account_dir, PolicyKey* owner_key)
     : device_local_account_dir_(device_local_account_dir),
       owner_key_(owner_key) {}
 
@@ -57,8 +56,7 @@ bool DeviceLocalAccountPolicyService::Store(
 }
 
 bool DeviceLocalAccountPolicyService::Retrieve(
-    const std::string& account_id,
-    std::vector<uint8_t>* policy_blob) {
+    const std::string& account_id, std::vector<uint8_t>* policy_blob) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service)
     return false;
