@@ -1240,7 +1240,7 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
                                      download_rate_kbits_);
     } else {
       // Apply any existing network bandwidth throttling policy
-      throttler_->ApplyThrottleToNewInterface(to_manage->UniqueName());
+      throttler_->ApplyThrottleToNewInterface(to_manage->link_name());
     }
   }
 
@@ -2723,8 +2723,8 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
   for (const auto& device : devices_) {
     Technology::Identifier technology = device->technology();
     if (Technology::IsPrimaryConnectivityTechnology(technology)) {
-      interfaces.push_back(device->UniqueName());
-      SLOG(this, 4) << "Adding device: " << device->UniqueName();
+      interfaces.push_back(device->link_name());
+      SLOG(this, 4) << "Adding device: " << device->link_name();
     }
   }
   return interfaces;
