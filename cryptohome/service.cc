@@ -838,7 +838,10 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
   gboolean mounted = FALSE;
   bool is_mounted = (IsMounted(&mounted, NULL) && mounted);
   if (is_mounted && took_ownership && install_attrs_->is_first_install()) {
-    install_attrs_->Finalize();
+    scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
+    bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
+    if (!guest_mounted)
+      install_attrs_->Finalize();
   }
 }
 
