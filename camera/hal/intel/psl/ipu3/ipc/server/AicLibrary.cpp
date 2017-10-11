@@ -69,13 +69,14 @@ status_t AicLibrary::init(void* pData, int dataSize)
         tempISPPipes[i] = mIspPipes[i].get();
     }
 
-    mSkyCam = std::unique_ptr<KBL_AIC>(new KBL_AIC(tempISPPipes,
-                                                    numPipes,
-                                                    cmc,
-                                                    &aiqb,
-                                                    *params,
-                                                    dumpAicParameters,
-                                                    testFrameworkDump));
+    mSkyCam = nullptr;
+    mSkyCam.reset(new KBL_AIC(tempISPPipes,
+                                numPipes,
+                                cmc,
+                                &aiqb,
+                                *params,
+                                dumpAicParameters,
+                                testFrameworkDump));
 
     return OK;
 }
