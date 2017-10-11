@@ -21,6 +21,8 @@
     {
       'target_name': 'libhammerd',
       'type': 'static_library',
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'sources': [
         # TODO(crbug.com/649672): Upgrade to OpenSSL 1.1 support curve25519.
         'curve25519.c',
