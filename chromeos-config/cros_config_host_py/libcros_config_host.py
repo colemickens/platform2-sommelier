@@ -136,14 +136,24 @@ class CrosConfig(object):
         A list of (string) full firmware URIs, or an empty list on failure.
       """
       firmware = self.ChildNodeFromPath('/firmware')
-      if not firmware or 'bcs-overlay' not in firmware.properties:
+      if not firmware:
+        return []
+      props = OrderedDict((name, prop.value) for name, prop in
+                          firmware.properties.iteritems())
+      # Follow the phandle and add any new ones we find
+      shared_firmware = firmware._FollowPhandle('shares')
+      if shared_firmware:
+        for name, prop in shared_firmware.props.iteritems():
+          if name not in props:
+            props[name] = prop.value
+      if 'bcs-overlay' not in props:
         return []
       # Strip "overlay-" from bcs_overlay
-      bcs_overlay = firmware.properties['bcs-overlay'].value[8:]
-      valid_images = [p for n, p in firmware.properties.iteritems()
-                      if n.endswith('-image') and p.value.startswith('bcs://')]
+      bcs_overlay = props['bcs-overlay'][8:]
+      valid_images = [p for n, p in props.iteritems()
+                      if n.endswith('-image') and p.startswith('bcs://')]
       # Strip "bcs://" from bcs_from images (to get the file names only)
-      file_names = [p.value[6:] for p in valid_images]
+      file_names = [p[6:] for p in valid_images]
       uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
                     'chromeos-base/chromeos-firmware-{model}/{fname}')
       return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname)

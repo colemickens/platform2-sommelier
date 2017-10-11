@@ -17,10 +17,17 @@ DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken']
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
                'overlay-reef-private/chromeos-base/chromeos-firmware-pyro/')
+CAROLINE_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
+                   'overlay-reef-private/chromeos-base/'
+                   'chromeos-firmware-caroline/')
 PYRO_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
                        'Reef_PD.9042.87.1.tbz2',
                        'Reef.9042.87.1.tbz2',
                        'Reef.9042.110.0.tbz2']
+CAROLINE_FIRMWARE_FILES = ['Caroline_EC.2017.21.1.tbz2',
+                           'Caroline_PD.2017.21.1.tbz2',
+                           'Caroline.2017.21.1.tbz2',
+                           'Caroline.2017.41.0.tbz2']
 
 
 class CrosConfigHostTest(unittest.TestCase):
@@ -77,6 +84,12 @@ class CrosConfigHostTest(unittest.TestCase):
     firmware_uris = config.models['pyro'].GetFirmwareUris()
     self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
                                              fname in PYRO_FIRMWARE_FILES])
+
+  def testGetSharedFirmwareUris(self):
+    config = CrosConfig(self.file)
+    firmware_uris = config.models['caroline'].GetFirmwareUris()
+    self.assertSequenceEqual(firmware_uris, [CAROLINE_BUCKET + fname for
+                                             fname in CAROLINE_FIRMWARE_FILES])
 
   def testGetTouchFirmwareFiles(self):
     config = CrosConfig(self.file)

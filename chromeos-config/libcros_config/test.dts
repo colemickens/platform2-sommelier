@@ -19,13 +19,11 @@
 &family {
 	firmware {
 		shared: caroline {
-			firmware {
-				bcs-overlay = "overlay-reef-private";
-				ec-image = "bcs://Caroline_EC.2017.21.1.tbz2";
-				pd-image = "bcs://Caroline_PD.2017.21.1.tbz2";
-				main-image = "bcs://Caroline.2017.21.1.tbz2";
-				main-rw-image = "bcs://Caroline.2017.41.0.tbz2";
-			};
+			bcs-overlay = "overlay-reef-private";
+			ec-image = "bcs://Caroline_EC.2017.21.1.tbz2";
+			pd-image = "bcs://Caroline_PD.2017.21.1.tbz2";
+			main-image = "bcs://Caroline.2017.21.1.tbz2";
+			main-rw-image = "bcs://Caroline.2017.41.0.tbz2";
 		};
 	};
 	touch {
