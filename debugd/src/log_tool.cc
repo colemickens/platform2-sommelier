@@ -43,6 +43,9 @@ struct Log {
   const char *size_cap;  // passed as arg to 'tail'
 };
 
+#define CMD_KERNEL_MODULE_PARAMS(module_name) \
+    "cd /sys/module/" #module_name "/parameters 2> /dev/null && grep -sH ^ *"
+
 const Log kCommandLogs[] = {
   { "CLIENT_ID", "/usr/bin/metrics_client -i"},
   { "LOGDATE", "/bin/date" },
@@ -116,6 +119,10 @@ const Log kCommandLogs[] = {
   { "iw_dev", "/usr/sbin/iw dev" },
   // Hardware capabilities of the wiphy device.
   { "iw_list", "/usr/sbin/iw list" },
+#if USE_IWLWIFI_DUMP
+  { "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm) },
+  { "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi) },
+#endif  // USE_IWLWIFI_DUMP
   { "kernel-crashes",
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
   { "lsmod", "lsmod" },
