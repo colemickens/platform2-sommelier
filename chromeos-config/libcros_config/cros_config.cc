@@ -77,8 +77,12 @@ std::vector<std::string> CrosConfig::GetFirmwareUris() const {
   }
 
   // Get the bcs-overlay property in firmware
-  std::string bcs_overlay = static_cast<const char*>(
+  const char* bcs_overlay_ptr = static_cast<const char*>(
       fdt_getprop(blob, firmware, "bcs-overlay", NULL));
+  if (bcs_overlay_ptr == nullptr) {
+    return uris;
+  }
+  std::string bcs_overlay = bcs_overlay_ptr;
   if (bcs_overlay.empty()) {
     LOG(WARNING) << model_ << " lacks a bcs-overlay property in firmware.";
     return uris;
