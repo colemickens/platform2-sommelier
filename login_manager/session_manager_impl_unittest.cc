@@ -46,7 +46,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
-#include "login_manager/device_local_account_policy_service.h"
+#include "login_manager/device_local_account_manager.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/fake_termina_manager.h"

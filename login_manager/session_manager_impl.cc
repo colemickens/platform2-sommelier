@@ -47,7 +47,7 @@
 #include "login_manager/blob_util.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
-#include "login_manager/device_local_account_policy_service.h"
+#include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/init_daemon_controller.h"
 #include "login_manager/key_generator.h"

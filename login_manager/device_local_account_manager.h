@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_POLICY_SERVICE_H_
-#define LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_POLICY_SERVICE_H_
+#ifndef LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_MANAGER_H_
+#define LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_MANAGER_H_
 
 #include <stdint.h>
 
@@ -102,4 +102,4 @@ class DeviceLocalAccountPolicyService {
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_POLICY_SERVICE_H_
+#endif  // LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_MANAGER_H_
