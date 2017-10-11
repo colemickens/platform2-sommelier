@@ -242,8 +242,6 @@ class Device : public base::RefCounted<Device> {
   virtual const IPConfigRefPtr& dhcpv6_config() const { return dhcpv6_config_; }
   void set_ipconfig(const IPConfigRefPtr& config) { ipconfig_ = config; }
 
-  const std::string& FriendlyName() const;
-
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
   const std::string& UniqueName() const;

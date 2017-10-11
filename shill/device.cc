@@ -366,7 +366,7 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
   if (is_multi_homed == is_multi_homed_) {
     return;
   }
-  LOG(INFO) << "Device " << FriendlyName() << " multi-home state is now "
+  LOG(INFO) << "Device " << link_name() << " multi-home state is now "
             << is_multi_homed;
   is_multi_homed_ = is_multi_homed;
   if (is_multi_homed) {
@@ -444,10 +444,6 @@ vector<GeolocationInfo> Device::GetGeolocationObjects() const {
 
 string Device::GetTechnologyString(Error* /*error*/) {
   return Technology::NameFromIdentifier(technology());
-}
-
-const string& Device::FriendlyName() const {
-  return link_name_;
 }
 
 const string& Device::UniqueName() const {
@@ -902,7 +898,7 @@ void Device::HelpRegisterConstDerivedUint64(
 }
 
 void Device::ConnectionTesterCallback() {
-  LOG(INFO) << "Device " << FriendlyName() << ": Completed Connectivity Test";
+  LOG(INFO) << "Device " << link_name() << ": Completed Connectivity Test";
   return;
 }
 
@@ -1040,7 +1036,7 @@ void Device::PrependDNSServers(const IPAddress::Family family,
 void Device::ConnectionDiagnosticsCallback(
       const std::string& connection_issue,
       const std::vector<ConnectionDiagnostics::Event>& diagnostic_events) {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Completed Connection diagnostics";
   // TODO(samueltan): add connection diagnostics metrics.
 }
@@ -1307,33 +1303,33 @@ bool Device::RestartPortalDetection() {
 
 bool Device::RequestPortalDetection() {
   if (!selected_service_) {
-    SLOG(this, 2) << FriendlyName()
+    SLOG(this, 2) << link_name()
                   << ": No selected service, so no need for portal check.";
     return false;
   }
 
   if (!connection_.get()) {
-    SLOG(this, 2) << FriendlyName()
+    SLOG(this, 2) << link_name()
                   << ": No connection, so no need for portal check.";
     return false;
   }
 
   if (selected_service_->state() != Service::kStatePortal) {
-    SLOG(this, 2) << FriendlyName()
+    SLOG(this, 2) << link_name()
                   << ": Service is not in portal state.  "
                   << "No need to start check.";
     return false;
   }
 
   if (!connection_->IsDefault()) {
-    SLOG(this, 2) << FriendlyName()
+    SLOG(this, 2) << link_name()
                   << ": Service is not the default connection.  "
                   << "Don't start check.";
     return false;
   }
 
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
-    SLOG(this, 2) << FriendlyName()
+    SLOG(this, 2) << link_name()
                   << ": Portal detection is already running.";
     return true;
   }
@@ -1355,7 +1351,7 @@ bool Device::StartPortalDetection() {
       !manager_->IsPortalDetectionEnabled(technology())) {
     // If portal detection is disabled for this technology, immediately set
     // the service state to "Online".
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Portal detection is disabled; "
                   << "marking service online.";
     SetServiceConnectedState(Service::kStateOnline);
@@ -1366,7 +1362,7 @@ bool Device::StartPortalDetection() {
     // Services with HTTP proxy configurations should not be checked by the
     // connection manager, since we don't have the ability to evaluate
     // arbitrary proxy configs and their possible credentials.
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Service has proxy config; marking it online.";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
@@ -1377,20 +1373,20 @@ bool Device::StartPortalDetection() {
       dispatcher_,
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
   if (!portal_detector_->Start(manager_->GetPortalCheckURL())) {
-    LOG(ERROR) << "Device " << FriendlyName()
+    LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << manager_->GetPortalCheckURL();
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
 
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Portal detection has started.";
   return true;
 }
 
 void Device::StopPortalDetection() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Portal detection stopping.";
   portal_detector_.reset();
 }
@@ -1406,26 +1402,26 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
                                      weak_ptr_factory_.GetWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
       manager_->GetPortalCheckURL(), result)) {
-    LOG(ERROR) << "Device " << FriendlyName()
+    LOG(ERROR) << "Device " << link_name()
                << ": Connection diagnostics failed to start: likely bad URL: "
                << manager_->GetPortalCheckURL();
     connection_diagnostics_.reset();
     return false;
   }
 
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Connection diagnostics has started.";
   return true;
 }
 
 void Device::StopConnectionDiagnostics() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Connection diagnostics stopping.";
   connection_diagnostics_.reset();
 }
 
 bool Device::StartConnectivityTest() {
-  LOG(INFO) << "Device " << FriendlyName() << " starting connectivity test.";
+  LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
   connection_tester_.reset(new ConnectionTester(
       connection_,
@@ -1436,7 +1432,7 @@ bool Device::StartConnectivityTest() {
 }
 
 void Device::StopConnectivityTest() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Connectivity test stopping.";
   connection_tester_.reset();
 }
@@ -1447,13 +1443,13 @@ void Device::set_link_monitor(LinkMonitor* link_monitor) {
 
 bool Device::StartLinkMonitor() {
   if (!manager_->IsTechnologyLinkMonitorEnabled(technology())) {
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Link Monitoring is disabled.";
     return false;
   }
 
   if (selected_service_ && selected_service_->link_monitor_disabled()) {
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Link Monitoring is disabled for the selected service";
     return false;
   }
@@ -1467,19 +1463,19 @@ bool Device::StartLinkMonitor() {
                weak_ptr_factory_.GetWeakPtr())));
   }
 
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Link Monitor starting.";
   return link_monitor_->Start();
 }
 
 void Device::StopLinkMonitor() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Link Monitor stopping.";
   link_monitor_.reset();
 }
 
 void Device::OnUnreliableLink() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Link is unreliable.";
   selected_service_->set_unreliable(true);
   reliable_link_callback_.Cancel();
@@ -1488,14 +1484,14 @@ void Device::OnUnreliableLink() {
 }
 
 void Device::OnReliableLink() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Link is reliable.";
   selected_service_->set_unreliable(false);
   // TODO(zqiu): report signal strength to UMA.
 }
 
 void Device::OnLinkMonitorFailure() {
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Link Monitor indicates failure.";
   if (!selected_service_) {
     return;
@@ -1527,7 +1523,7 @@ bool Device::StartDNSTest(
     bool retry_until_success,
     const Callback<void(const DNSServerTester::Status)>& callback) {
   if (dns_server_tester_.get()) {
-    LOG(ERROR) << FriendlyName() << ": "
+    LOG(ERROR) << link_name() << ": "
                << "Failed to start DNS Test: current test still running";
     return false;
   }
@@ -1555,7 +1551,7 @@ void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
     // fallback.
     CHECK(selected_service_);
     if (selected_service_->is_dns_auto_fallback_allowed()) {
-      LOG(INFO) << "Device " << FriendlyName()
+      LOG(INFO) << "Device " << link_name()
                 << ": Switching to fallback DNS servers.";
       // Save the DNS servers from ipconfig.
       config_dns_servers_ = ipconfig_->properties().dns_servers;
@@ -1579,7 +1575,7 @@ void Device::ConfigDNSResultCallback(const DNSServerTester::Status status) {
   }
 
   // Switch back to the configured DNS servers.
-  LOG(INFO) << "Device " << FriendlyName()
+  LOG(INFO) << "Device " << link_name()
             << ": Switching back to configured DNS servers.";
   SwitchDNSServers(config_dns_servers_);
 }
@@ -1628,7 +1624,7 @@ void Device::StartTrafficMonitor() {
     return;
   }
 
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Traffic Monitor starting.";
   if (!traffic_monitor_.get()) {
     traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
@@ -1646,7 +1642,7 @@ void Device::StopTrafficMonitor() {
   }
 
   if (traffic_monitor_.get()) {
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Traffic Monitor stopping.";
     traffic_monitor_->Stop();
   }
@@ -1677,13 +1673,13 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
   if (!selected_service_.get()) {
-    LOG(ERROR) << FriendlyName() << ": "
+    LOG(ERROR) << link_name() << ": "
                << "Portal detection completed but no selected service exists!";
     return;
   }
 
   if (!selected_service_->IsConnected()) {
-    LOG(ERROR) << FriendlyName() << ": "
+    LOG(ERROR) << link_name() << ": "
                << "Portal detection completed but selected service "
                << selected_service_->unique_name()
                << " is in non-connected state.";
@@ -1696,17 +1692,17 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     if (!portal_detector_->StartAfterDelay(
             manager_->GetPortalCheckURL(),
             manager_->GetPortalCheckInterval())) {
-      LOG(ERROR) << "Device " << FriendlyName()
+      LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
                  << manager_->GetPortalCheckURL();
       SetServiceState(Service::kStateOnline);
       portal_detector_.reset();
       return;
     }
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Portal detection retrying.";
   } else {
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Portal will not retry.";
     portal_detector_.reset();
   }
@@ -1716,14 +1712,14 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
 
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   if (!result.final) {
-    SLOG(this, 2) << "Device " << FriendlyName()
+    SLOG(this, 2) << "Device " << link_name()
                   << ": Received non-final status: "
                   << ConnectivityTrial::StatusToString(
                       result.trial_result.status);
     return;
   }
 
-  SLOG(this, 2) << "Device " << FriendlyName()
+  SLOG(this, 2) << "Device " << link_name()
                 << ": Received final status: "
                 << ConnectivityTrial::StatusToString(
                     result.trial_result.status);

@@ -1203,7 +1203,7 @@ void Manager::RecordDarkResumeWakeReason(const string& wake_reason) {
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
-  LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
+  LOG(INFO) << "Device " << to_manage->link_name() << " registered.";
   // Manager is running in passive mode when default claimer is created, which
   // means devices are being managed by remote application. Only manage the
   // device if it was explicitly released by remote application through
@@ -1254,10 +1254,10 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
-  SLOG(this, 2) << __func__ << "(" << to_forget->FriendlyName() << ")";
+  SLOG(this, 2) << __func__ << "(" << to_forget->link_name() << ")";
   for (auto it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
-      SLOG(this, 2) << "Deregistered device: " << to_forget->UniqueName();
+      SLOG(this, 2) << "Deregistered device: " << to_forget->link_name();
       UpdateDevice(to_forget);
       to_forget->SetEnabled(false);
       devices_.erase(it);
@@ -1265,8 +1265,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       return;
     }
   }
-  SLOG(this, 2) << __func__ << " unknown device: "
-                << to_forget->UniqueName();
+  SLOG(this, 2) << __func__ << " unknown device: " << to_forget->link_name();
 }
 
 void Manager::DeregisterDeviceByLinkName(const string& link_name) {

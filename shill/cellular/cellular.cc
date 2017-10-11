@@ -143,7 +143,7 @@ Cellular::~Cellular() {
   // operation.
   // In that case, the termination action associated with this cellular object
   // may not have been removed.
-  manager()->RemoveTerminationAction(FriendlyName());
+  manager()->RemoveTerminationAction(link_name());
 
   home_provider_info()->RemoveObserver(mobile_operator_info_observer_.get());
   serving_operator_info()->RemoveObserver(
@@ -336,7 +336,7 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   // In case no termination action was executed (and TerminationActionComplete
   // was not invoked) in response to a suspend request, any registered
   // termination action needs to be removed explicitly.
-  manager()->RemoveTerminationAction(FriendlyName());
+  manager()->RemoveTerminationAction(link_name());
 }
 
 void Cellular::InitCapability(Type type) {
@@ -762,7 +762,7 @@ void Cellular::OnDisabled() {
 }
 
 void Cellular::OnEnabled() {
-  manager()->AddTerminationAction(FriendlyName(),
+  manager()->AddTerminationAction(link_name(),
                                   Bind(&Cellular::StartTermination,
                                        weak_ptr_factory_.GetWeakPtr()));
   SetEnabled(true);
@@ -1022,8 +1022,8 @@ void Cellular::StartTermination() {
 
 void Cellular::OnTerminationCompleted(const Error& error) {
   LOG(INFO) << __func__ << ": " << error;
-  manager()->TerminationActionComplete(FriendlyName());
-  manager()->RemoveTerminationAction(FriendlyName());
+  manager()->TerminationActionComplete(link_name());
+  manager()->RemoveTerminationAction(link_name());
 }
 
 bool Cellular::DisconnectCleanup() {
