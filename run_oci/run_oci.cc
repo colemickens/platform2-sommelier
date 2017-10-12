@@ -620,7 +620,7 @@ int RunOci(const base::FilePath& bundle_dir,
                  "stopped"));
 
   if (!oci_config->pre_chroot_hooks.empty()) {
-    config.AddHook(MINIJAIL_HOOK_EVENT_PRE_EXECVE,
+    config.AddHook(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
                    base::Bind(&SaveChildPidAndRunHooks,
                               base::ConstRef(oci_config->pre_chroot_hooks),
                               base::Unretained(&child_pid),
