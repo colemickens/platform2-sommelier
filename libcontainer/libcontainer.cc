@@ -468,6 +468,10 @@ bool ContainerCreateDevice(const struct container* c,
     return false;
 
   base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
+  if (!base::CreateDirectory(path.DirName())) {
+    PLOG(ERROR) << "Failed to create parent directory for " << path.value();
+    return false;
+  }
   if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) != 0 &&
       errno != EEXIST) {
     PLOG(ERROR) << "Failed to mknod " << path.value();
