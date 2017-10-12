@@ -221,7 +221,7 @@ struct container_config {
 struct container {
   std::unique_ptr<libcontainer::Cgroup> cgroup;
   ScopedMinijail jail;
-  pid_t init_pid;
+  pid_t init_pid = -1;
   base::FilePath config_root;
   base::FilePath runfs;
   base::FilePath rundir;
@@ -640,22 +640,30 @@ bool ContainerTeardown(struct container* c) {
       PLOG(ERROR) << "Failed to rmdir " << c->runfsroot.value();
       return false;
     }
+    c->runfsroot = base::FilePath();
   }
   if (!c->pid_file_path.empty()) {
     if (unlink(c->pid_file_path.value().c_str()) != 0) {
       PLOG(ERROR) << "Failed to unlink " << c->pid_file_path.value();
       return false;
     }
+    c->pid_file_path = base::FilePath();
   }
   if (!c->runfs.empty()) {
     if (rmdir(c->runfs.value().c_str()) != 0) {
       PLOG(ERROR) << "Failed to rmdir " << c->runfs.value();
       return false;
     }
+    c->runfs = base::FilePath();
   }
   return true;
 }
 
+void CancelContainerStart(struct container* c) {
+  if (c->init_pid != -1)
+    container_kill(c);
+  ContainerTeardown(c);
+}
 
 }  // namespace
 
@@ -1146,7 +1154,7 @@ int container_start(struct container* c,
 
   // This will run in all the error cases.
   base::ScopedClosureRunner teardown(
-      base::Bind(base::IgnoreResult(&ContainerTeardown), base::Unretained(c)));
+      base::Bind(&CancelContainerStart, base::Unretained(c)));
 
   if (!config->config_root.empty())
     c->config_root = config->config_root;
