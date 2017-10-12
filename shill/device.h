@@ -203,7 +203,7 @@ class Device : public base::RefCounted<Device> {
   virtual bool RequestPortalDetection();
 
   std::string GetRpcIdentifier() const;
-  std::string GetStorageIdentifier() const;
+  virtual std::string GetStorageIdentifier() const;
 
   // Returns a list of Geolocation objects. Each object is multiple
   // key-value pairs representing one entity that can be used for

@@ -633,7 +633,7 @@ class CellularTest : public testing::Test {
 };
 
 const char CellularTest::kTestDeviceName[] = "usb0";
-const char CellularTest::kTestDeviceAddress[] = "00:01:02:03:04:05";
+const char CellularTest::kTestDeviceAddress[] = "000102030405";
 const char CellularTest::kDBusService[] = "org.chromium.ModemManager";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
@@ -655,6 +655,21 @@ const Stringmaps CellularTest::kTestNetworksCellular =
       {kLongNameProperty, "some_long_name"},
       {kShortNameProperty, "short"}}};
 const int CellularTest::kStrength = 90;
+
+TEST_F(CellularTest, GetStorageIdentifier) {
+  // IMEI should be used if both IMEI and MEID are available.
+  device_->set_imei(kIMEI);
+  device_->set_meid(kMEID);
+  EXPECT_EQ("device_987654321098765", device_->GetStorageIdentifier());
+
+  // MEID should be used if IMEI is not available.
+  device_->set_imei("");
+  EXPECT_EQ("device_01234567EF8901", device_->GetStorageIdentifier());
+
+  // MAC address should be used as if neither IMEI nor MEID is available.
+  device_->set_meid("");
+  EXPECT_EQ("device_000102030405", device_->GetStorageIdentifier());
+}
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",

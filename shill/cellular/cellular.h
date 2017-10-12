@@ -101,6 +101,8 @@ class Cellular : public Device, public RPCTaskDelegate {
            const std::string& path);
   ~Cellular() override;
 
+  std::string GetStorageIdentifier() const override;
+
   // Load configuration for the device from |storage|.
   bool Load(StoreInterface* storage) override;
 
