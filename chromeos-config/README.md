@@ -125,6 +125,9 @@ properties.
                 disambiguate them. This is common when migrating legacy boards
                 to unified builds, but may also occur if the SKU ID mapping is
                 not used for some reason.
+                *   `platform-name`: Indicates the platform name for this
+                    platform. This is reported by 'mosys platform name'. It is
+                    typically the family name with the first letter capitalized.
                 *   `smbios-name-match` (optional) Indicates the smbios name
                     that this table mapping relates to. This map will be
                     ignored on models which don't have a matching smbios name.
@@ -280,6 +283,7 @@ chromeos {
             #size-cells = <0>;
             sku-map@0 {
                 reg = <0>;
+                platform-name = "Reef";
                 smbios-name-match = "reef";
                 /* This is an example! It does not match any real family */
                 simple-sku-map = <
@@ -290,16 +294,19 @@ chromeos {
             };
             sku-map@1 {
                 reg = <1>;
+                platform-name = "Pyro";
                 smbios-name-match = "pyro";
                 single-sku = <&pyro>;
             };
             sku-map@2 {
                 reg = <2>;
+                platform-name = "Snappy";
                 smbios-name-match = "snappy";
                 single-sku = <&snappy>;
             };
             sku-map@3 {
                 reg = <3>;
+                platform-name = "Sand";
                 smbios-name-match = "sand";
                 single-sku = <&sand>;
             };
