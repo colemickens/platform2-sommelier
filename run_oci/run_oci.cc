@@ -171,8 +171,17 @@ int SanitizeFlags(const std::string &type, int flags) {
     return sanitized_flags;
 }
 
+// Returns the path for |path| relative to |bundle_dir|.
+base::FilePath MakeAbsoluteFilePathRelativeTo(
+    const base::FilePath& bundle_dir, const base::FilePath& path) {
+  if (path.IsAbsolute())
+    return path;
+  return bundle_dir.Append(path);
+}
+
 // Adds the mounts specified in |mounts| to |config_out|.
 void ConfigureMounts(const std::vector<OciMount>& mounts,
+                     const base::FilePath& bundle_dir,
                      uid_t uid, gid_t gid,
                      container_config* config_out) {
   for (const auto& mount : mounts) {
@@ -182,10 +191,16 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                                             &verity_options);
     flags = SanitizeFlags(mount.type, flags);
 
+    base::FilePath source = mount.source;
+    if (mount.type == "bind") {
+      // libminijail disallows relative bind-mounts.
+      source = MakeAbsoluteFilePathRelativeTo(bundle_dir, mount.source);
+    }
+
     container_config_add_mount(
         config_out,
         "mount",
-        base::MakeAbsoluteFilePath(mount.source).value().c_str(),
+        source.value().c_str(),
         mount.destination.value().c_str(),
         mount.type.c_str(),
         options.empty() ? NULL : options.c_str(),
@@ -241,18 +256,15 @@ void ConfigureCgroupDevices(const std::vector<OciLinuxCgroupDevice>& devices,
 // Fills the libcontainer container_config struct given in |config_out| by
 // pulling the apropriate fields from the OCI configuration given in |oci|.
 bool ContainerConfigFromOci(const OciConfig& oci,
-                            const base::FilePath& container_root,
+                            const base::FilePath& bundle_dir,
                             const std::vector<std::string>& extra_args,
                             container_config* config_out) {
   // Process configuration
-  container_config_config_root(config_out, container_root.value().c_str());
+  container_config_config_root(config_out, bundle_dir.value().c_str());
   container_config_uid(config_out, oci.process.user.uid);
   container_config_gid(config_out, oci.process.user.gid);
-  base::FilePath root_dir;
-  if (oci.root.path.IsAbsolute())
-    root_dir = oci.root.path;
-  else
-    root_dir = container_root.Append(oci.root.path);
+  base::FilePath root_dir =
+      MakeAbsoluteFilePathRelativeTo(bundle_dir, oci.root.path);
   container_config_premounted_runfs(config_out, root_dir.value().c_str());
 
   std::vector<const char *> argv;
@@ -282,7 +294,7 @@ bool ContainerConfigFromOci(const OciConfig& oci,
     container_config_gid_map(config_out, gid_maps.c_str());
   }
 
-  ConfigureMounts(oci.mounts, oci.process.user.uid,
+  ConfigureMounts(oci.mounts, bundle_dir, oci.process.user.uid,
                   oci.process.user.gid, config_out);
   ConfigureDevices(oci.linux_config.devices, config_out);
   ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
@@ -523,12 +535,22 @@ int RunOci(const base::FilePath& bundle_dir,
         return -1;
       }
     } else {
-      LOG(ERROR)
-          << "Non-inplace mode not implemented yet. Please pass in --inplace.";
-      return -1;
+      // Not using base::CreateDirectory() since we want to error out when the
+      // directory exists a priori.
+      if (mkdir(container_dir.value().c_str(), 0755) != 0) {
+        PLOG(ERROR) << "Failed to create the container directory";
+        return -1;
+      }
     }
 
     cleanup.Reset(base::Bind(CleanUpContainer, container_dir));
+
+    if (!inplace &&
+        !base::CreateSymbolicLink(container_config_file,
+                                  container_dir.Append(kConfigJsonFilename))) {
+      PLOG(ERROR) << "Failed to create the config.json symlink";
+      return -1;
+    }
 
     // Create an empty file, just to tag this container as being
     // run_oci-managed.
@@ -537,13 +559,28 @@ int RunOci(const base::FilePath& bundle_dir,
       LOG(ERROR) << "Failed to create tag file: " << tag_file.value();
       return -1;
     }
+
+    // Create a symlink to quickly be able to navigate to the root of the
+    // container.
+    base::FilePath rootfs_path =
+        MakeAbsoluteFilePathRelativeTo(bundle_dir, oci_config->root.path);
+    base::FilePath rootfs_symlink =
+        container_dir.Append("mountpoints/container-root");
+    if (!base::CreateDirectory(rootfs_symlink.DirName())) {
+      PLOG(ERROR) << "Failed to create mountpoints directory";
+      return -1;
+    }
+    if (!base::CreateSymbolicLink(rootfs_path, rootfs_symlink)) {
+      PLOG(ERROR) << "Failed to create mountpoints/container-root symlink";
+      return -1;
+    }
   } else {
     container_dir = bundle_dir;
   }
 
   libcontainer::Config config;
   if (!ContainerConfigFromOci(*oci_config,
-                              container_dir,
+                              bundle_dir,
                               container_options.extra_program_args,
                               config.get())) {
     PLOG(ERROR) << "Failed to create container from oci config.";
@@ -870,7 +907,8 @@ int main(int argc, char **argv) {
         return -1;
       }
       container_options.bind_mounts.push_back(run_oci::BindMount(
-          base::FilePath(outside_path), base::FilePath(inside_path)));
+          base::MakeAbsoluteFilePath(base::FilePath(outside_path)),
+          base::FilePath(inside_path)));
       break;
     }
     case 'B':
