@@ -846,7 +846,6 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   bool running_;  // indicates whether the device is actually in operation
   const std::string link_name_;
-  const std::string unique_id_;
   ControlInterface* control_interface_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;

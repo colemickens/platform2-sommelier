@@ -150,7 +150,6 @@ Device::Device(ControlInterface* control_interface,
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
-      unique_id_(link_name),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -442,7 +441,7 @@ string Device::GetTechnologyString(Error* /*error*/) {
 }
 
 const string& Device::UniqueName() const {
-  return unique_id_;
+  return link_name_;
 }
 
 bool Device::Load(StoreInterface* storage) {
