@@ -1136,8 +1136,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(), kSaneEmail,
                             policy_blob);
   ASSERT_TRUE(capturer.response());
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist,
-            capturer.response()->GetErrorName());
+  EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
@@ -1148,8 +1147,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
                        MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
                        policy_blob);
   ASSERT_TRUE(capturer.response());
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist,
-            capturer.response()->GetErrorName());
+  EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
@@ -1207,8 +1205,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
     impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(), kEmail2,
                               policy_blob);
     ASSERT_TRUE(capturer.response());
-    EXPECT_EQ(dbus_error::kSessionDoesNotExist,
-              capturer.response()->GetErrorName());
+    EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
   }
 
   // Now start another session for the 2nd user.
@@ -1257,8 +1254,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
                          MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
                          policy_blob);
     ASSERT_TRUE(capturer.response());
-    EXPECT_EQ(dbus_error::kSessionDoesNotExist,
-              capturer.response()->GetErrorName());
+    EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
   }
 
   // Now start another session for the 2nd user.
@@ -1360,7 +1356,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
   ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+  EXPECT_EQ(dbus_error::kGetServiceFail, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
@@ -1369,7 +1365,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
   EXPECT_FALSE(impl_->RetrievePolicyEx(
       &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), &out_blob));
   ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+  EXPECT_EQ(dbus_error::kGetServiceFail, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
@@ -1423,7 +1419,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
     brillo::ErrorPtr error;
     EXPECT_FALSE(impl_->RetrievePolicyForUser(&error, kEmail2, &out_blob));
     ASSERT_TRUE(error.get());
-    EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+    EXPECT_EQ(dbus_error::kGetServiceFail, error->GetCode());
   }
 
   // Now start another session for the 2nd user.
@@ -1470,7 +1466,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
     EXPECT_FALSE(impl_->RetrievePolicyEx(
         &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2), &out_blob));
     ASSERT_TRUE(error.get());
-    EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
+    EXPECT_EQ(dbus_error::kGetServiceFail, error->GetCode());
   }
 
   // Now start another session for the 2nd user.
@@ -1554,7 +1550,7 @@ TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
       policy_blob);
   ASSERT_TRUE(capturer.response());
-  EXPECT_EQ(dbus_error::kInvalidAccount, capturer.response()->GetErrorName());
+  EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
   VerifyAndClearExpectations();
 
   EXPECT_FALSE(base::PathExists(policy_path));
@@ -1589,7 +1585,7 @@ TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicyNoAccount) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, kSaneEmail),
       &out_blob));
   ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kInvalidAccount, error->GetCode());
+  EXPECT_EQ(dbus_error::kGetServiceFail, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicySuccess) {

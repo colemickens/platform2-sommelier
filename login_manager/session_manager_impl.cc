@@ -23,7 +23,6 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
@@ -190,6 +189,12 @@ constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
 constexpr char kTPMFirmwareUpdateModeRecovery[] = "recovery";
 constexpr char kTPMFirmwareUpdateModeFirstBoot[] = "first_boot";
 
+// Policy storage constants.
+constexpr char kEmptyAccountId[] = "";
+constexpr char kCannotGetPolicyServiceFormat[] =
+    "Cannot get policy service for account type %i";
+constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
+
 bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
   return (lower_case_id == kGuestUserName) ||
@@ -211,6 +216,17 @@ bool IsInsideVm(SystemUtils* system) {
   return system->GetVmState() == VmState::INSIDE_VM;
 }
 #endif
+
+// TODO(crbug.com/765644): This and all users of this method will be removed
+// when Chrome has been switched to the new 'Ex' interface.
+std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
+                                          const std::string& account_id) {
+  PolicyDescriptor descriptor;
+  descriptor.set_account_type(account_type);
+  descriptor.set_account_id(account_id);
+  descriptor.set_domain(POLICY_DOMAIN_CHROME);
+  return StringToBlob(descriptor.SerializeAsString());
+}
 
 }  // namespace
 
@@ -653,143 +669,81 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
 void SessionManagerImpl::StorePolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyInternal(in_policy_blob, SignatureCheck::kEnabled,
-                      std::move(response));
+  StorePolicyEx(std::move(response),
+                MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
+                in_policy_blob);
 }
 
 void SessionManagerImpl::StoreUnsignedPolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<uint8_t>& in_policy_blob) {
-  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
-  if (error) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  StorePolicyInternal(in_policy_blob, SignatureCheck::kDisabled,
-                      std::move(response));
+  StoreUnsignedPolicyEx(
+      std::move(response),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
+      in_policy_blob);
 }
 
 bool SessionManagerImpl::RetrievePolicy(brillo::ErrorPtr* error,
                                         std::vector<uint8_t>* out_policy_blob) {
-  if (!device_policy_->Retrieve(out_policy_blob)) {
-    constexpr char kMessage[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
-    return false;
-  }
-
-  return true;
+  return RetrievePolicyEx(
+      error, MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
+      out_policy_blob);
 }
 
 void SessionManagerImpl::StorePolicyForUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyForUserInternal(in_account_id, in_policy_blob,
-                             SignatureCheck::kEnabled, std::move(response));
+  StorePolicyEx(std::move(response),
+                MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
+                in_policy_blob);
 }
 
 void SessionManagerImpl::StoreUnsignedPolicyForUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
-  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
-  if (error) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  StorePolicyForUserInternal(in_account_id, in_policy_blob,
-                             SignatureCheck::kDisabled, std::move(response));
+  StoreUnsignedPolicyEx(std::move(response),
+                        MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
+                        in_policy_blob);
 }
 
 bool SessionManagerImpl::RetrievePolicyForUser(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
     std::vector<uint8_t>* out_policy_blob) {
-  PolicyService* policy_service = GetPolicyService(in_account_id);
-  if (!policy_service) {
-    constexpr char kMessage[] =
-        "Cannot retrieve user policy before session is started.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
-    return false;
-  }
-  if (!policy_service->Retrieve(out_policy_blob)) {
-    constexpr char kMessage[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
-    return false;
-  }
-
-  return true;
+  return RetrievePolicyEx(
+      error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
+      out_policy_blob);
 }
 
 bool SessionManagerImpl::RetrievePolicyForUserWithoutSession(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
     std::vector<uint8_t>* out_policy_blob) {
-  std::unique_ptr<PolicyService> user_policy =
-      user_policy_factory_->CreateForHiddenUserHome(in_account_id);
-  if (!user_policy) {
-    constexpr char kMessage[] = "User policy failed to initialize.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kPolicyInitFail, kMessage);
-    return false;
-  }
-  if (!user_policy->Retrieve(out_policy_blob)) {
-    constexpr char kMessage[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
-    return false;
-  }
-
-  return true;
+  return RetrievePolicyEx(
+      error, MakePolicyDescriptor(ACCOUNT_TYPE_SESSIONLESS_USER, in_account_id),
+      out_policy_blob);
 }
 
 void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
-  DCHECK(dbus_service_);
-  PolicyService* policy_service =
-      device_local_account_manager_->GetPolicyService(in_account_id);
-
-  if (!policy_service) {
-    constexpr char kMessage[] = "Invalid device-local account";
-    LOG(ERROR) << kMessage;
-    auto error = CreateError(dbus_error::kInvalidAccount, kMessage);
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  policy_service->Store(in_policy_blob, PolicyService::KEY_NONE,
-                        SignatureCheck::kEnabled,
-                        dbus_service_->CreatePolicyServiceCompletionCallback(
-                            std::move(response)));
+  StorePolicyEx(
+      std::move(response),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, in_account_id),
+      in_policy_blob);
 }
 
 bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
     std::vector<uint8_t>* out_policy_blob) {
-  PolicyService* policy_service =
-      device_local_account_manager_->GetPolicyService(in_account_id);
-  if (!policy_service) {
-    constexpr char kMessage[] = "Invalid device-local account";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kInvalidAccount, kMessage);
-    return false;
-  }
-  if (!policy_service->Retrieve(out_policy_blob)) {
-    constexpr char kMessage[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
-    return false;
-  }
-
-  return true;
+  return RetrievePolicyEx(
+      error,
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, in_account_id),
+      out_policy_blob);
 }
 
 void SessionManagerImpl::StorePolicyEx(
@@ -824,21 +778,34 @@ bool SessionManagerImpl::RetrievePolicyEx(
     return false;
   }
 
-  // TODO(crbug.com/765644): Refactor error handling in Retrieve* methods to get
-  // rid of duplicate code.
-  switch (descriptor.account_type()) {
-    case login_manager::ACCOUNT_TYPE_USER:
-      return RetrievePolicyForUser(error, descriptor.account_id(),
-                                   out_policy_blob);
-    case login_manager::ACCOUNT_TYPE_SESSIONLESS_USER:
-      return RetrievePolicyForUserWithoutSession(error, descriptor.account_id(),
-                                                 out_policy_blob);
-    case login_manager::ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
-      return RetrieveDeviceLocalAccountPolicy(error, descriptor.account_id(),
-                                              out_policy_blob);
-    case login_manager::ACCOUNT_TYPE_DEVICE:
-      return RetrievePolicy(error, out_policy_blob);
+  // Special case for SESSIONLESS_USER_POLICY, which has a different lifetime
+  // management than all other cases (unique_ptr vs plain ptr).
+  // TODO(crbug.com/771638): Clean this up when the bug is fixed and sessionless
+  // users are handled differently.
+  std::unique_ptr<PolicyService> policy_service_ptr;
+  PolicyService* policy_service;
+  if (descriptor.account_type() == ACCOUNT_TYPE_SESSIONLESS_USER) {
+    policy_service_ptr =
+        user_policy_factory_->CreateForHiddenUserHome(descriptor.account_id());
+    policy_service = policy_service_ptr.get();
+  } else {
+    policy_service = GetPolicyService(descriptor);
   }
+  if (!policy_service) {
+    const std::string message =
+        base::StringPrintf(kCannotGetPolicyServiceFormat,
+                           static_cast<int>(descriptor.account_type()));
+    LOG(ERROR) << message;
+    *error = CreateError(dbus_error::kGetServiceFail, message);
+    return false;
+  }
+
+  if (!policy_service->Retrieve(out_policy_blob)) {
+    LOG(ERROR) << kSigEncodeFailMessage;
+    *error = CreateError(dbus_error::kSigEncodeFail, kSigEncodeFailMessage);
+    return false;
+  }
+  return true;
 }
 
 std::string SessionManagerImpl::RetrieveSessionState() {
@@ -1536,47 +1503,44 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
   return nullptr;
 }
 
-PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
-  UserSessionMap::const_iterator it = user_sessions_.find(user);
-  return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
-}
-
-void SessionManagerImpl::StorePolicyInternal(
-    const std::vector<uint8_t>& policy_blob,
-    SignatureCheck signature_check,
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  DCHECK(dbus_service_);
-
-  int flags = PolicyService::KEY_ROTATE;
-  if (!session_started_)
-    flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(policy_blob, flags, signature_check,
-                        dbus_service_->CreatePolicyServiceCompletionCallback(
-                            std::move(response)));
-}
-
-void SessionManagerImpl::StorePolicyForUserInternal(
-    const std::string& account_id,
-    const std::vector<uint8_t>& policy_blob,
-    SignatureCheck signature_check,
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  DCHECK(dbus_service_);
-
-  PolicyService* policy_service = GetPolicyService(account_id);
-  if (!policy_service) {
-    constexpr char kMessage[] =
-        "Cannot store user policy before session is started.";
-    LOG(ERROR) << kMessage;
-    auto error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
-    response->ReplyWithError(error.get());
-    return;
+PolicyService* SessionManagerImpl::GetPolicyService(
+    const PolicyDescriptor& descriptor) {
+  switch (descriptor.account_type()) {
+    case ACCOUNT_TYPE_DEVICE:
+      return device_policy_.get();
+    case ACCOUNT_TYPE_USER: {
+      UserSessionMap::const_iterator it =
+          user_sessions_.find(descriptor.account_id());
+      return it != user_sessions_.end() ? it->second->policy_service.get()
+                                        : nullptr;
+    }
+    case ACCOUNT_TYPE_SESSIONLESS_USER:
+      // This case is handled in RetrievePolicyEx directly because of lifetime
+      // management.
+      return nullptr;
+    case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
+      return device_local_account_manager_->GetPolicyService(
+          descriptor.account_id());
   }
+}
 
-  policy_service->Store(
-      policy_blob, PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
-      signature_check,
-      dbus_service_->CreatePolicyServiceCompletionCallback(
-          std::move(response)));
+int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
+  switch (descriptor.account_type()) {
+    case ACCOUNT_TYPE_DEVICE: {
+      int flags = PolicyService::KEY_ROTATE;
+      if (!session_started_)
+        flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
+      return flags;
+    }
+    case ACCOUNT_TYPE_USER:
+      return PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE;
+    case ACCOUNT_TYPE_SESSIONLESS_USER: {
+      NOTREACHED();  // Only supports retrieval, not storage.
+      return PolicyService::KEY_NONE;
+    }
+    case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
+      return PolicyService::KEY_NONE;
+  }
 }
 
 void SessionManagerImpl::StorePolicyInternalEx(
@@ -1593,32 +1557,23 @@ void SessionManagerImpl::StorePolicyInternalEx(
     return;
   }
 
-  // TODO(crbug.com/765644): Refactor Store* methods to get rid of duplicate
-  // code, e.g. by selecting the store by descriptor (requires deriving
-  // DeviceLocalAccountPolicyService from PolicyService like the others).
-  switch (descriptor.account_type()) {
-    case login_manager::ACCOUNT_TYPE_USER: {
-      StorePolicyForUserInternal(descriptor.account_id(), policy_blob,
-                                 signature_check, std::move(response));
-      break;
-    }
-    case login_manager::ACCOUNT_TYPE_SESSIONLESS_USER: {
-      brillo::ErrorPtr error = CreateError(
-          DBUS_ERROR_INVALID_ARGS,
-          "SESSIONLESS_USER_POLICY only allowed for policy retrieval.");
-      response->ReplyWithError(error.get());
-      break;
-    }
-    case login_manager::ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT: {
-      StoreDeviceLocalAccountPolicy(std::move(response),
-                                    descriptor.account_id(), policy_blob);
-      break;
-    }
-    case login_manager::ACCOUNT_TYPE_DEVICE: {
-      StorePolicyInternal(policy_blob, signature_check, std::move(response));
-      break;
-    }
+  PolicyService* policy_service = GetPolicyService(descriptor);
+  if (!policy_service) {
+    const std::string message =
+        base::StringPrintf(kCannotGetPolicyServiceFormat,
+                           static_cast<int>(descriptor.account_type()));
+    LOG(ERROR) << message;
+    auto error = CreateError(dbus_error::kGetServiceFail, message);
+    response->ReplyWithError(error.get());
+    return;
   }
+
+  int key_flags = GetKeyInstallFlags(descriptor);
+
+  DCHECK(dbus_service_);
+  policy_service->Store(policy_blob, key_flags, signature_check,
+                        dbus_service_->CreatePolicyServiceCompletionCallback(
+                            std::move(response)));
 }
 
 void SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated(

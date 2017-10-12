@@ -367,21 +367,13 @@ class SessionManagerImpl
   // reply to the D-Bus method call is returned.
   brillo::ErrorPtr VerifyUnsignedPolicyStore();
 
-  PolicyService* GetPolicyService(const std::string& account_id);
+  // Returns the appropriate PolicyService for the given |descriptor| or nullptr
+  // if no PolicyService could be found.
+  PolicyService* GetPolicyService(const PolicyDescriptor& descriptor);
 
-  // Shared implementation of StorePolicy() and StoreUnsignedPolicy().
-  void StorePolicyInternal(
-      const std::vector<uint8_t>& policy_blob,
-      SignatureCheck signature_check,
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
-
-  // Shared implementation of StorePolicyForUser() and
-  // StoreUnsignedPolicyForUser().
-  void StorePolicyForUserInternal(
-      const std::string& account_id,
-      const std::vector<uint8_t>& policy_blob,
-      SignatureCheck signature_check,
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+  // Returns the appropriate PolicyService::KeyInstallFlags for the given
+  // |descriptor|.
+  int GetKeyInstallFlags(const PolicyDescriptor& descriptor);
 
   // Shared implementation of StorePolicyEx() and StoreUnsignedPolicyEx().
   void StorePolicyInternalEx(
