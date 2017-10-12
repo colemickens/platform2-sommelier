@@ -47,6 +47,7 @@ class Component {
     std::vector<uint8_t> table_sha256;
     std::string version;
     FileSystem fs_type;
+    bool is_removable;
   };
 
   // Creates a Component. Returns nullptr if initialization and verification

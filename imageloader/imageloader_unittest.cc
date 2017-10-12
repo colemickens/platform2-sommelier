@@ -191,7 +191,7 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   ImageLoaderImpl loader(std::move(config));
 
   const std::string expected_path =
-      scoped_mount_dir.path().value() + "/ext4/1.6.10.10";
+      scoped_mount_dir.path().value() + "/ext4/9824.0.4";
   const std::string mnt_path = loader.LoadComponentAtPath(
       "ext4", GetTestDataPath("ext4_component"), helper_mock.get());
   EXPECT_EQ(expected_path, mnt_path);

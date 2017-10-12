@@ -46,6 +46,8 @@ constexpr char kManifestVersionField[] = "manifest-version";
 constexpr char kVersionField[] = "version";
 // The name of the field containing the image hash.
 constexpr char kImageHashField[] = "image-sha256-hash";
+// The name of the bool field indicating whether component is removable.
+constexpr char kIsRemovableField[] = "is-removable";
 // The name of the image file (squashfs).
 constexpr char kImageFileNameSquashFS[] = "image.squash";
 // The name of the image file (ext4).
@@ -280,6 +282,12 @@ bool Component::ParseManifest() {
       LOG(ERROR) << "Unsupported file system type: " << fs_type;
       return false;
     }
+  }
+
+  if (!manifest_dict->GetBoolean(kIsRemovableField,
+                                 &(manifest_.is_removable))) {
+    // If is_removable field does not exist, by default it is false.
+    manifest_.is_removable = false;
   }
 
   return true;
