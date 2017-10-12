@@ -64,8 +64,15 @@ class CameraAlgorithmBridgeFixture : public testing::Test {
  public:
   const size_t kShmBufferSize = 2048;
 
-  CameraAlgorithmBridgeFixture()
-      : bridge_(arc::CameraAlgorithmBridge::GetInstance()) {
+  CameraAlgorithmBridgeFixture() {
+    if (!bridge_) {
+      bridge_ = arc::CameraAlgorithmBridge::CreateInstance();
+      if (!bridge_ || bridge_->Initialize(
+                          libcab_test::CallbackSwitcher::GetInstance()) != 0) {
+        ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
+        return;
+      }
+    }
     CallbackSwitcher::GetInstance()->RegisterCallback(base::Bind(
         &CameraAlgorithmBridgeFixture::ReturnCallback, base::Unretained(this)));
     sem_init(&return_sem_, 0, 0);
@@ -85,7 +92,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test {
     sem_post(&return_sem_);
   }
 
-  arc::CameraAlgorithmBridge* bridge_;
+  static std::unique_ptr<arc::CameraAlgorithmBridge> bridge_;
 
   base::Lock request_set_lock_;
 
@@ -98,6 +105,9 @@ class CameraAlgorithmBridgeFixture : public testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmBridgeFixture);
 };
+
+std::unique_ptr<arc::CameraAlgorithmBridge>
+    CameraAlgorithmBridgeFixture::bridge_;
 
 TEST_F(CameraAlgorithmBridgeFixture, BasicOperation) {
   int fd = shm_open("/myshm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -275,12 +285,6 @@ int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
-
-  auto bridge = arc::CameraAlgorithmBridge::GetInstance();
-  if (bridge->Initialize(libcab_test::CallbackSwitcher::GetInstance()) != 0) {
-    ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
-    return EXIT_FAILURE;
-  }
 
   // Initialize and run all tests
   ::testing::InitGoogleTest(&argc, argv);

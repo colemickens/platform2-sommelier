@@ -8,6 +8,7 @@
 #define INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_H_
 
 #include <cinttypes>
+#include <memory>
 #include <vector>
 
 #include "arc/camera_algorithm.h"
@@ -34,11 +35,16 @@ namespace arc {
 
 class CameraAlgorithmBridge {
  public:
-  // This method returns the CameraAlgorithmBridge singleton.
+  // This method creates and returns the CameraAlgorithmBridge singleton. Only
+  // one client can create the singleton at the same time; the second client
+  // trying to create one will get a null pointer unless the first client has
+  // already freed it.
   //
   // Returns:
-  //    Pointer to singleton on success; nullptr on failure.
-  static CameraAlgorithmBridge* GetInstance();
+  //    Unique pointer to singleton on success; nullptr on failure.
+  static std::unique_ptr<CameraAlgorithmBridge> CreateInstance();
+
+  virtual ~CameraAlgorithmBridge() {}
 
   // This method is one-time initialization that registers a callback function
   // for the camera algorithm library to return a buffer handle. It must be
