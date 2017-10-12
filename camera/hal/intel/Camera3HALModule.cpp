@@ -164,6 +164,8 @@ static int hal_dev_close(hw_device_t* device)
         sInstances[id] = false;
     }
 
+    LOG1("%s, instance count %d", __FUNCTION__, sInstanceCount);
+
     return 0;
 }
 
