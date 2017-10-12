@@ -129,7 +129,7 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     return connection;
   }
 
-  LOG(INFO) << "Sending a " << method << " request to " << url;
+  VLOG(1) << "Sending a " << method << " request to " << url;
   CURLcode code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_URL, url);
 
   if (code == CURLE_OK) {
@@ -247,7 +247,7 @@ RequestID Transport::StartAsyncTransfer(http::Connection* connection,
     request_id_map_.erase(request_id);
     return 0;
   }
-  LOG(INFO) << "Started asynchronous HTTP request with ID " << request_id;
+  VLOG(1) << "Started asynchronous HTTP request with ID " << request_id;
   return request_id;
 }
 
@@ -444,9 +444,9 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
   auto p = async_requests_.find(connection);
   CHECK(p != async_requests_.end()) << "Unknown connection";
   AsyncRequestData* request_data = p->second.get();
-  LOG(INFO) << "HTTP request # " << request_data->request_id
-            << " has completed "
-            << (code == CURLE_OK ? "successfully" : "with an error");
+  VLOG(1) << "HTTP request # " << request_data->request_id
+          << " has completed "
+          << (code == CURLE_OK ? "successfully" : "with an error");
   if (code != CURLE_OK) {
     brillo::ErrorPtr error;
     AddEasyCurlError(&error, FROM_HERE, code, curl_interface_.get());
@@ -455,8 +455,10 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
                                 p->second->request_id,
                                 base::Owned(error.release())));
   } else {
-    LOG(INFO) << "Response: " << connection->GetResponseStatusCode() << " ("
-              << connection->GetResponseStatusText() << ")";
+    if (connection->GetResponseStatusCode() != status_code::Ok) {
+      LOG(INFO) << "Response: " << connection->GetResponseStatusCode() << " ("
+                << connection->GetResponseStatusText() << ")";
+    }
     brillo::ErrorPtr error;
     // Rewind the response data stream to the beginning so the clients can
     // read the data back.
