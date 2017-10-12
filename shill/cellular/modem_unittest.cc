@@ -16,6 +16,7 @@
 
 #include "shill/cellular/modem.h"
 
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -51,8 +52,8 @@ const int kTestInterfaceIndex = 5;
 const char kLinkName[] = "usb0";
 const char kService[] = "org.chromium.ModemManager";
 const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
-const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
-const char kAddressAsString[] = "000102030405";
+const unsigned char kAddress[] = {0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5};
+const char kAddressAsString[] = "A0B1C2D3E4F5";
 
 }  // namespace
 
@@ -155,6 +156,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   modem_->OnDeviceInfoAvailable(kLinkName);
 
   EXPECT_TRUE(modem_->device_.get());
+  EXPECT_EQ(base::ToLowerASCII(kAddressAsString), cellular->address());
 
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());
