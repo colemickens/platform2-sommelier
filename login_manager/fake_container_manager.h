@@ -5,6 +5,9 @@
 #ifndef LOGIN_MANAGER_FAKE_CONTAINER_MANAGER_H_
 #define LOGIN_MANAGER_FAKE_CONTAINER_MANAGER_H_
 
+#include <string>
+#include <vector>
+
 #include <base/callback.h>
 
 #include "login_manager/container_manager_interface.h"
@@ -24,7 +27,8 @@ class FakeContainerManager : public ContainerManagerInterface {
   void RequestJobExit() override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 
-  bool StartContainer(const ExitCallback& exit_callback) override;
+  bool StartContainer(const std::vector<std::string>& env,
+                      const ExitCallback& exit_callback) override;
   void SetStatefulMode(StatefulMode mode) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;

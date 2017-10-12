@@ -97,7 +97,8 @@ void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
   CleanUpContainer();
 }
 
-bool AndroidOciWrapper::StartContainer(const ExitCallback& exit_callback) {
+bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
+                                       const ExitCallback& exit_callback) {
   pid_t pid = system_utils_->fork();
 
   if (pid < 0) {
@@ -107,7 +108,7 @@ bool AndroidOciWrapper::StartContainer(const ExitCallback& exit_callback) {
 
   // This is the child process.
   if (pid == 0) {
-    ExecuteRunOciToStartContainer();
+    ExecuteRunOciToStartContainer(env);
 
     // Child process should never come down to this point, but we can't mimic
     // this behavior in unit tests, so add a return here to make unit tests
@@ -189,7 +190,8 @@ void AndroidOciWrapper::SetStatefulMode(StatefulMode mode) {
   stateful_mode_ = mode;
 }
 
-void AndroidOciWrapper::ExecuteRunOciToStartContainer() {
+void AndroidOciWrapper::ExecuteRunOciToStartContainer(
+    const std::vector<std::string>& env) {
   // Clear signal mask.
   if (!system_utils_->ChangeBlockedSignals(SIG_SETMASK, std::vector<int>()))
     PLOG(FATAL) << "Failed to clear blocked signals";
@@ -210,12 +212,17 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer() {
       containers_directory_.Append(kRunAndroidScriptPath);
   constexpr const char* const args[] = {"run_oci", kContainerId, nullptr};
 
+  std::vector<const char*> cstr_env;
+  cstr_env.reserve(env.size() + 2);
+  for (const std::string& keyval : env)
+    cstr_env.emplace_back(keyval.c_str());
   // This path is needed by run_android script to run. Container fails to launch
   // by taking out any one of them. Once we get rid of run_android script we
   // should be able to remove this PATH requirement.
-  constexpr static const char kPath[] = "PATH=/usr/bin:/bin";
-  constexpr const char* const envs[] = {kPath, nullptr};
-  if (system_utils_->execve(run_android_script_absolute_path, args, envs))
+  cstr_env.emplace_back("PATH=/usr/bin:/bin");
+  cstr_env.emplace_back(nullptr);
+  if (system_utils_->execve(run_android_script_absolute_path, args,
+                            cstr_env.data()))
     PLOG(FATAL) << "Failed to run run_oci";
 }
 

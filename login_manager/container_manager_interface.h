@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <vector>
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
@@ -36,7 +37,9 @@ class ContainerManagerInterface : public JobManagerInterface {
 
   // Starts the container. Returns true on success.
   // If successful, |exit_callback| will be notified when the process exits.
-  virtual bool StartContainer(const ExitCallback& exit_callback) = 0;
+  // |env| contains environment variables to be sent to the container.
+  virtual bool StartContainer(const std::vector<std::string>& env,
+                              const ExitCallback& exit_callback) = 0;
 
   // Set the container as stateful or stateless.
   // Stateless containers use a faster teardown procedure.

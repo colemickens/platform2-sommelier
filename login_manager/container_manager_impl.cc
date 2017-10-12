@@ -112,7 +112,8 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
   CleanUpContainer(pid);
 }
 
-bool ContainerManagerImpl::StartContainer(const ExitCallback& exit_callback) {
+bool ContainerManagerImpl::StartContainer(const std::vector<std::string>& env,
+                                          const ExitCallback& exit_callback) {
   // TODO(lhchavez): Make logging less verbose once we're comfortable that
   // everything works correctly. See b/29266253.
   LOG(INFO) << "Starting container " << name_;

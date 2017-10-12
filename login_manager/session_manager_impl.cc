@@ -1802,7 +1802,13 @@ std::string SessionManagerImpl::StartArcContainer(
       base::RandBytesAsString(kArcContainerInstanceIdLength);
   base::Base64Encode(container_instance_id, &container_instance_id);
 
+  // Pass in the same key/value pairs that were passed to arc-setup (through
+  // init, above) into the container invocation as environment values. When the
+  // container is started with run_oci, this allows for it to correctly
+  // propagate some information (such as the ANDROID_DATA_DIR) to the hooks so
+  // it can set itself up.
   if (!android_container_->StartContainer(
+          init_keyvals,
           base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
                      weak_ptr_factory_.GetWeakPtr(), container_instance_id))) {
     // Failed to start container. Thus, trigger stop-arc-instance impulse

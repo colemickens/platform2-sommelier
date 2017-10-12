@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_ANDROID_OCI_WRAPPER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 
@@ -33,7 +34,8 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   // ContainerManagerInterface:
-  bool StartContainer(const ExitCallback& exit_callback) override;
+  bool StartContainer(const std::vector<std::string>& env,
+                      const ExitCallback& exit_callback) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
   void SetStatefulMode(StatefulMode mode) override;
@@ -65,9 +67,10 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   constexpr static char kProcFdPath[] = "/proc/self/fd";
 
  private:
-  // Sets up execution environment to launch container and run run_oci. This is
-  // only called in child process. This function never returns.
-  void ExecuteRunOciToStartContainer();
+  // Sets up execution environment to launch container and run run_oci with
+  // |env| as its environment. This is only called in child process. This
+  // function never returns.
+  void ExecuteRunOciToStartContainer(const std::vector<std::string>& env);
 
   // Requests Android to shut down itself.
   bool RequestTermination();

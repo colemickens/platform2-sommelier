@@ -22,7 +22,8 @@ void FakeContainerManager::RequestJobExit() {
 
 void FakeContainerManager::EnsureJobExit(base::TimeDelta timeout) {}
 
-bool FakeContainerManager::StartContainer(const ExitCallback& exit_callback) {
+bool FakeContainerManager::StartContainer(const std::vector<std::string>& env,
+                                          const ExitCallback& exit_callback) {
   LOG_IF(FATAL, running_) << "Trying to start an already started container";
   exit_callback_ = exit_callback;
   running_ = true;
