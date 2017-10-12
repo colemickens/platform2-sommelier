@@ -100,8 +100,11 @@ int main(int argc, char** argv) {
         std::cout << path.value() << "\n";
       }
     }
-    LOG(ERROR) << "--unmount_all failed!";
-    return success ? 0 : 1;
+    if (!success) {
+      LOG(ERROR) << "--unmount_all failed!";
+      return 1;
+    }
+    return 0;
   }
 
   if (FLAGS_unmount) {
