@@ -53,7 +53,8 @@ Intel3AClient::Intel3AClient():
     mCallback = base::Bind(&Intel3AClient::callbackHandler, base::Unretained(this));
     Intel3AClient::return_callback = returnCallback;
 
-    mBridge = arc::CameraAlgorithmBridge::GetInstance();
+    mBridge = arc::CameraAlgorithmBridge::CreateInstance();
+    CheckError(!mBridge, VOID_VALUE, "@%s, mBridge is nullptr", __FUNCTION__);
     CheckError((mBridge->Initialize(this) != 0), VOID_VALUE, "@%s, call mBridge->Initialize fail", __FUNCTION__);
 
     mInitialized = true;

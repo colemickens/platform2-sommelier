@@ -54,7 +54,7 @@ private:
 private:
     static Intel3AClient* mInstance;
 
-    arc::CameraAlgorithmBridge* mBridge;
+    std::unique_ptr<arc::CameraAlgorithmBridge> mBridge;
     pthread_mutex_t mCbLock;
     pthread_cond_t mCbCond;
     bool mIsCallbacked;
