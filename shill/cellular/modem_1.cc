@@ -72,8 +72,8 @@ void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
       modem_props.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
   }
 
-  if ((capabilities & MM_MODEM_CAPABILITY_LTE) ||
-      (capabilities & MM_MODEM_CAPABILITY_GSM_UMTS)) {
+  if (capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE |
+                      MM_MODEM_CAPABILITY_LTE_ADVANCED)) {
     set_type(Cellular::kTypeUniversal);
   } else if (capabilities & MM_MODEM_CAPABILITY_CDMA_EVDO) {
     set_type(Cellular::kTypeUniversalCDMA);
