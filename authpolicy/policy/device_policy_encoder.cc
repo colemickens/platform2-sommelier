@@ -229,11 +229,10 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   EncodeBoolean(key::kDeviceAutoUpdateDisabled, [policy](bool value) {
     policy->mutable_auto_update_settings()->set_update_disabled(value);
   });
-  EncodeString(
-      key::kDeviceTargetVersionPrefix, [policy](const std::string& value) {
-        policy->mutable_auto_update_settings()->set_target_version_prefix(
-            value);
-      });
+  EncodeString(key::kDeviceTargetVersionPrefix, [policy](
+                                                    const std::string& value) {
+    policy->mutable_auto_update_settings()->set_target_version_prefix(value);
+  });
   // target_version_display_name is not actually a policy, but a display
   // string for target_version_prefix, so we ignore it. It seems to be
   // unreferenced as well.
@@ -392,11 +391,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     const base::ListValue* intervals = nullptr;
     const base::ListValue* ignored_policy_proto_tags = nullptr;
     std::string timezone;
-    bool is_error =
-        !dict_value || !dict_value->GetList("intervals", &intervals) ||
-        !dict_value->GetList("ignored_policy_proto_tags",
-                             &ignored_policy_proto_tags) ||
-        !dict_value->GetString("timezone", &timezone);
+    bool is_error = !dict_value ||
+                    !dict_value->GetList("intervals", &intervals) ||
+                    !dict_value->GetList("ignored_policy_proto_tags",
+                                         &ignored_policy_proto_tags) ||
+                    !dict_value->GetString("timezone", &timezone);
     auto proto = std::make_unique<em::DeviceOffHoursProto>();
     if (!is_error) {
       proto->set_timezone(timezone);

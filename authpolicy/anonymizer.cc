@@ -72,8 +72,8 @@ std::string Anonymizer::Process(const std::string& input) {
         const std::string& search_keyword = data.first;
         const std::string& replacement = data.second.replacement;
         const std::string& regex = data.second.regex;
-        if (FindTokenInLine(
-                line, kSeparator, search_keyword, &string_to_replace)) {
+        if (FindTokenInLine(line, kSeparator, search_keyword,
+                            &string_to_replace)) {
           if (regex.size() > 0)
             ApplyRegex(regex, &string_to_replace);
           SetReplacement(string_to_replace, replacement);
@@ -86,8 +86,8 @@ std::string Anonymizer::Process(const std::string& input) {
   // Now handle string replacements.
   std::string output = input;
   for (const auto& replacement : replacements_) {
-    base::ReplaceSubstringsAfterOffset(
-        &output, 0, replacement.first, replacement.second);
+    base::ReplaceSubstringsAfterOffset(&output, 0, replacement.first,
+                                       replacement.second);
   }
   return output;
 }

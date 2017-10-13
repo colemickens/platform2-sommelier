@@ -55,12 +55,9 @@ std::string FormatStubList(time_t valid_from,
   const std::string valid_from_str = FormatDateTime(valid_from);
   const std::string expires_str = FormatDateTime(expires);
   const std::string renew_until_str = FormatDateTime(renew_until);
-  return base::StringPrintf(kStubListFormat,
-                            valid_from_str.c_str(),
-                            expires_str.c_str(),
-                            renew_until_str.c_str(),
-                            valid_from_str.c_str(),
-                            expires_str.c_str(),
+  return base::StringPrintf(kStubListFormat, valid_from_str.c_str(),
+                            expires_str.c_str(), renew_until_str.c_str(),
+                            valid_from_str.c_str(), expires_str.c_str(),
                             renew_until_str.c_str());
 }
 

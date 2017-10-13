@@ -341,8 +341,8 @@ ErrorType SambaInterface::AuthenticateUser(
     ActiveDirectoryAccountInfo* account_info) {
   ReloadDebugFlags();
 
-  ErrorType error = AuthenticateUserInternal(
-      user_principal_name, account_id, password_fd, account_info);
+  ErrorType error = AuthenticateUserInternal(user_principal_name, account_id,
+                                             password_fd, account_info);
 
   last_auth_error_ = error;
   return error;
@@ -358,8 +358,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
-  if (!ParseUserPrincipalName(
-          user_principal_name, &user_name, &realm, &normalized_upn)) {
+  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+                              &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
   anonymizer_->SetReplacementAllCases(realm, kRealmPlaceholder);
@@ -376,8 +376,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     return error;
 
   // Get account info for the user.
-  error = GetAccountInfo(
-      user_name, normalized_upn, account_id, realm_info, account_info);
+  error = GetAccountInfo(user_name, normalized_upn, account_id, realm_info,
+                         account_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -390,8 +390,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   normalized_upn = account_info->sam_account_name() + "@" + realm;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  error = user_tgt_manager_.AcquireTgtWithPassword(
-      normalized_upn, password_fd, realm, realm_info.kdc_ip());
+  error = user_tgt_manager_.AcquireTgtWithPassword(normalized_upn, password_fd,
+                                                   realm, realm_info.kdc_ip());
   if (error != ERROR_NONE)
     return error;
 
@@ -427,11 +427,9 @@ ErrorType SambaInterface::GetUserStatus(
 
   // Get account info for the user.
   ActiveDirectoryAccountInfo account_info;
-  error = GetAccountInfo("" /* user_name unused */,
-                         "" /* normalized_upn unused */,
-                         account_id,
-                         realm_info,
-                         &account_info);
+  error =
+      GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
+                     account_id, realm_info, &account_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -467,8 +465,8 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
 
   // Split user principal name into parts.
   std::string user_name, realm, normalized_upn;
-  if (!ParseUserPrincipalName(
-          user_principal_name, &user_name, &realm, &normalized_upn)) {
+  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+                              &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
   AnonymizeRealm(realm);
@@ -493,20 +491,14 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   }
 
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd({paths_->Get(Path::NET),
-                           "ads",
-                           "join",
-                           "-U",
-                           normalized_upn,
-                           "-s",
-                           paths_->Get(Path::SMB_CONF),
-                           "-d",
-                           flags_.net_log_level()});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", "-U",
+                           normalized_upn, "-s", paths_->Get(Path::SMB_CONF),
+                           "-d", flags_.net_log_level()});
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kKrb5KTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
-  if (!jail_helper_.SetupJailAndRun(
-          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_JOIN)) {
+  if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
+                                    TIMER_NET_ADS_JOIN)) {
     Reset();
     return GetNetError(net_cmd, "join");
   }
@@ -563,15 +555,15 @@ ErrorType SambaInterface::FetchUserGpos(
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(
-      gpo_list, realm_info.dc_name(), PolicyScope::USER, &gpo_file_paths);
+  error = DownloadGpos(gpo_list, realm_info.dc_name(), PolicyScope::USER,
+                       &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
   // Parse GPOs and store them in a user+extension policy protobuf.
   std::string gpo_policy_data_blob;
-  error = ParseGposIntoProtobuf(
-      gpo_file_paths, kCmdParseUserPreg, &gpo_policy_data_blob);
+  error = ParseGposIntoProtobuf(gpo_file_paths, kCmdParseUserPreg,
+                                &gpo_policy_data_blob);
   if (error != ERROR_NONE)
     return error;
 
@@ -599,33 +591,31 @@ ErrorType SambaInterface::FetchDeviceGpos(
   // through the AD deployment.
   std::string machine_principal =
       config_->machine_name() + "$@" + config_->realm();
-  error = device_tgt_manager_.AcquireTgtWithKeytab(machine_principal,
-                                                   Path::MACHINE_KT_STATE,
-                                                   retry_machine_kinit_,
-                                                   config_->realm(),
-                                                   realm_info.kdc_ip());
+  error = device_tgt_manager_.AcquireTgtWithKeytab(
+      machine_principal, Path::MACHINE_KT_STATE, retry_machine_kinit_,
+      config_->realm(), realm_info.kdc_ip());
   retry_machine_kinit_ = false;
   if (error != ERROR_NONE)
     return error;
 
   // Get the list of GPOs for the machine.
   protos::GpoList gpo_list;
-  error = GetGpoList(
-      config_->machine_name() + "$", PolicyScope::MACHINE, &gpo_list);
+  error = GetGpoList(config_->machine_name() + "$", PolicyScope::MACHINE,
+                     &gpo_list);
   if (error != ERROR_NONE)
     return error;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(
-      gpo_list, realm_info.dc_name(), PolicyScope::MACHINE, &gpo_file_paths);
+  error = DownloadGpos(gpo_list, realm_info.dc_name(), PolicyScope::MACHINE,
+                       &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
   // Parse GPOs and store them in a device+extension policy protobuf.
   std::string gpo_policy_data_blob;
-  error = ParseGposIntoProtobuf(
-      gpo_file_paths, kCmdParseDevicePreg, &gpo_policy_data_blob);
+  error = ParseGposIntoProtobuf(gpo_file_paths, kCmdParseDevicePreg,
+                                &gpo_policy_data_blob);
   if (error != ERROR_NONE)
     return error;
 
@@ -639,20 +629,16 @@ void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
 }
 
 ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
-  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET),
-                                       "ads",
-                                       "info",
-                                       "-s",
-                                       paths_->Get(Path::SMB_CONF),
-                                       "-d",
+  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
+                                       "-s", paths_->Get(Path::SMB_CONF), "-d",
                                        flags_.net_log_level()});
   // Parse LDAP server name resp. domain controller name from the net_cmd output
   // immediately, see SearchAccountInfo for an explanation. The regex grabs
   // everything up to the first dot.
-  anonymizer_->ReplaceSearchArg(
-      kKeyLdapServerName, kServerNamePlaceholder, "(.+?)\\.");
-  anonymizer_->ReplaceSearchArg(
-      kKeyAdsDcName, kServerNamePlaceholder, "using server='(.+?)\\.");
+  anonymizer_->ReplaceSearchArg(kKeyLdapServerName, kServerNamePlaceholder,
+                                "(.+?)\\.");
+  anonymizer_->ReplaceSearchArg(kKeyAdsDcName, kServerNamePlaceholder,
+                                "using server='(.+?)\\.");
   const bool net_result = jail_helper_.SetupJailAndRun(
       &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO);
   anonymizer_->ResetSearchArgReplacements();
@@ -667,8 +653,8 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
   ProcessExecutor parse_cmd(
       {paths_->Get(Path::PARSER), kCmdParseRealmInfo, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
-  if (!jail_helper_.SetupJailAndRun(
-          &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
     LOG(ERROR) << "authpolicy_parser parse_realm_info failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
@@ -742,22 +728,18 @@ ErrorType SambaInterface::EnsureWorkgroup() {
   if (!workgroup_.empty())
     return ERROR_NONE;
 
-  ProcessExecutor net_cmd({paths_->Get(Path::NET),
-                           "ads",
-                           "workgroup",
-                           "-s",
-                           paths_->Get(Path::SMB_CONF),
-                           "-d",
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
+                           paths_->Get(Path::SMB_CONF), "-d",
                            flags_.net_log_level()});
   // Parse workgroup from the net_cmd output immediately, see SearchAccountInfo
   // for an explanation. Also replace a bunch of other server names.
   anonymizer_->ReplaceSearchArg(kKeyWorkgroup, kWorkgroupPlaceholder);
-  anonymizer_->ReplaceSearchArg(
-      kKeyAdsDnsParseRrSrv, kServerNamePlaceholder, "Parsed (.+?)\\.");
-  anonymizer_->ReplaceSearchArg(
-      kKeyPdcDnsName, kServerNamePlaceholder, "'(.+)'");
-  anonymizer_->ReplaceSearchArg(
-      kKeyAdsDcName, kServerNamePlaceholder, "using server='(.+?)\\.");
+  anonymizer_->ReplaceSearchArg(kKeyAdsDnsParseRrSrv, kServerNamePlaceholder,
+                                "Parsed (.+?)\\.");
+  anonymizer_->ReplaceSearchArg(kKeyPdcDnsName, kServerNamePlaceholder,
+                                "'(.+)'");
+  anonymizer_->ReplaceSearchArg(kKeyAdsDcName, kServerNamePlaceholder,
+                                "using server='(.+?)\\.");
   anonymizer_->ReplaceSearchArg(kKeyPdcName, kServerNamePlaceholder, "'(.+)'");
   anonymizer_->ReplaceSearchArg(kKeyServerSite, kSiteNamePlaceholder, "'(.+)'");
   anonymizer_->ReplaceSearchArg(kKeyClientSite, kSiteNamePlaceholder, "'(.+)'");
@@ -773,8 +755,8 @@ ErrorType SambaInterface::EnsureWorkgroup() {
   ProcessExecutor parse_cmd(
       {paths_->Get(Path::PARSER), kCmdParseWorkgroup, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
-  if (!jail_helper_.SetupJailAndRun(
-          &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
     LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
@@ -793,15 +775,12 @@ ErrorType SambaInterface::WriteSmbConf() const {
     return ERROR_NOT_JOINED;
   }
 
-  std::string data =
-      base::StringPrintf(kSmbConfData,
-                         config_->machine_name().c_str(),
-                         workgroup_.c_str(),
-                         config_->realm().c_str(),
-                         paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
-                         paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
-                         paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
-                         paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
+  std::string data = base::StringPrintf(
+      kSmbConfData, config_->machine_name().c_str(), workgroup_.c_str(),
+      config_->realm().c_str(), paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
+      paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
+      paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
+      paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
 
   const base::FilePath smbconf_path(paths_->Get(Path::SMB_CONF));
   const int data_size = static_cast<int>(data.size());
@@ -867,8 +846,8 @@ ErrorType SambaInterface::ReadConfiguration() {
   }
 
   std::string config_blob;
-  if (!base::ReadFileToStringWithMaxSize(
-          config_path, &config_blob, kConfigSizeLimit)) {
+  if (!base::ReadFileToStringWithMaxSize(config_path, &config_blob,
+                                         kConfigSizeLimit)) {
     PLOG(ERROR) << "Failed to read configuration file '" << config_path.value()
                 << "'";
     return ERROR_LOCAL_IO;
@@ -956,12 +935,9 @@ ErrorType SambaInterface::GetAccountInfo(
   // the user TGT).
   std::string machine_principal =
       config_->machine_name() + "$@" + config_->realm();
-  ErrorType error =
-      device_tgt_manager_.AcquireTgtWithKeytab(machine_principal,
-                                               Path::MACHINE_KT_STATE,
-                                               false,
-                                               config_->realm(),
-                                               realm_info.kdc_ip());
+  ErrorType error = device_tgt_manager_.AcquireTgtWithKeytab(
+      machine_principal, Path::MACHINE_KT_STATE, false, config_->realm(),
+      realm_info.kdc_ip());
   if (error != ERROR_NONE)
     return error;
 
@@ -996,21 +972,12 @@ ErrorType SambaInterface::SearchAccountInfo(
     const std::string& search_string,
     ActiveDirectoryAccountInfo* account_info) {
   // Call net ads search to find the user's account info.
-  ProcessExecutor net_cmd({paths_->Get(Path::NET),
-                           "ads",
-                           "search",
-                           search_string,
-                           kSearchObjectGUID,
-                           kSearchSAMAccountName,
-                           kSearchCommonName,
-                           kSearchDisplayName,
-                           kSearchGivenName,
-                           kSearchPwdLastSet,
-                           kSearchUserAccountControl,
-                           "-s",
-                           paths_->Get(Path::SMB_CONF),
-                           "-d",
-                           flags_.net_log_level()});
+  ProcessExecutor net_cmd(
+      {paths_->Get(Path::NET), "ads", "search", search_string,
+       kSearchObjectGUID, kSearchSAMAccountName, kSearchCommonName,
+       kSearchDisplayName, kSearchGivenName, kSearchPwdLastSet,
+       kSearchUserAccountControl, "-s", paths_->Get(Path::SMB_CONF), "-d",
+       flags_.net_log_level()});
   // Parse the search args from the net_cmd output immediately. This resolves
   // the chicken-egg-problem that replacement strings cannot be set before the
   // strings-to-replace are known, so the output of net_cmd would still contain
@@ -1035,12 +1002,11 @@ ErrorType SambaInterface::SearchAccountInfo(
 
   // Parse the output to find the account info proto blob. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER),
-                             kCmdParseAccountInfo,
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseAccountInfo,
                              SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
-  if (!jail_helper_.SetupJailAndRun(
-          &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     return ERROR_PARSE_FAILED;
   }
@@ -1085,21 +1051,15 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
             << " GPO list";
 
   // Machine names are names ending with $, anything else is a user name.
-  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET),
-                                       "ads",
-                                       "gpo",
-                                       "list",
-                                       user_or_machine_name,
-                                       "-s",
-                                       paths_->Get(Path::SMB_CONF),
-                                       "-d",
-                                       flags_.net_log_level()});
+  authpolicy::ProcessExecutor net_cmd(
+      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
+       paths_->Get(Path::SMB_CONF), "-d", flags_.net_log_level()});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(tgt_manager.GetCredentialCachePath()));
-  if (!jail_helper_.SetupJailAndRun(
-          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_GPO_LIST)) {
+  if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
+                                    TIMER_NET_ADS_GPO_LIST)) {
     return GetNetError(net_cmd, "gpo list");
   }
 
@@ -1112,8 +1072,8 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   ProcessExecutor parse_cmd(
       {paths_->Get(Path::PARSER), cmd, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
-  if (!jail_helper_.SetupJailAndRun(
-          &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
     // Log net output if it hasn't been done yet.
     net_cmd.LogOutputOnce();
     LOG(ERROR) << "Failed to parse GPO list";
@@ -1190,17 +1150,14 @@ ErrorType SambaInterface::DownloadGpos(
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
     error = SetFilePermissionsRecursive(
-        linux_dir_fp,
-        base::FilePath(paths_->Get(Path::SAMBA_DIR)),
+        linux_dir_fp, base::FilePath(paths_->Get(Path::SAMBA_DIR)),
         kFileMode_rwxrwx);
     if (error != ERROR_NONE)
       return error;
 
     // Build command for smbclient.
-    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;",
-                                      smb_dir.c_str(),
-                                      linux_dir.c_str(),
-                                      kPRegFileName);
+    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
+                                      linux_dir.c_str(), kPRegFileName);
 
     // Record output file paths.
     gpo_paths.push_back(GpoPaths(smb_dir + "\\" + kPRegFileName,
@@ -1229,12 +1186,8 @@ ErrorType SambaInterface::DownloadGpos(
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT),
-                                  service,
-                                  "-s",
-                                  paths_->Get(Path::SMB_CONF),
-                                  "-k",
-                                  "-c",
+  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
+                                  paths_->Get(Path::SMB_CONF), "-k", "-c",
                                   smb_command});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
@@ -1248,8 +1201,8 @@ ErrorType SambaInterface::DownloadGpos(
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
     }
-    if (jail_helper_.SetupJailAndRun(
-            &smb_client_cmd, Path::SMBCLIENT_SECCOMP, TIMER_SMBCLIENT)) {
+    if (jail_helper_.SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP,
+                                     TIMER_SMBCLIENT)) {
       error = ERROR_NONE;
       break;
     }
@@ -1311,8 +1264,8 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   ProcessExecutor parse_cmd(
       {paths_->Get(Path::PARSER), parser_cmd_string, SerializeFlags(flags_)});
   parse_cmd.SetInputString(gpo_file_paths_blob);
-  if (!jail_helper_.SetupJailAndRun(
-          &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
     LOG(ERROR) << "Failed to parse preg files";
     return ERROR_PARSE_PREG_FAILED;
   }

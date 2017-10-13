@@ -190,11 +190,9 @@ bool AuthPolicyFlags::LoadFromJsonFile(const base::FilePath& path) {
 
 void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
   std::string error_message;
-  std::unique_ptr<base::Value> root =
-      base::JSONReader::ReadAndReturnError(flags_json,
-                                           base::JSON_ALLOW_TRAILING_COMMAS,
-                                           nullptr /* error_code_out */,
-                                           &error_message);
+  std::unique_ptr<base::Value> root = base::JSONReader::ReadAndReturnError(
+      flags_json, base::JSON_ALLOW_TRAILING_COMMAS,
+      nullptr /* error_code_out */, &error_message);
   base::DictionaryValue* dict = nullptr;
   if (!root || !root->GetAsDictionary(&dict)) {
     LOG(ERROR) << "Fail to parse flags: "

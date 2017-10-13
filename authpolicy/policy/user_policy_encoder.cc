@@ -31,8 +31,8 @@ void UserPolicyEncoder::EncodePolicy(em::CloudPolicySettings* policy) const {
   EncodeList(policy, kBooleanPolicyAccess, &UserPolicyEncoder::EncodeBoolean);
   EncodeList(policy, kIntegerPolicyAccess, &UserPolicyEncoder::EncodeInteger);
   EncodeList(policy, kStringPolicyAccess, &UserPolicyEncoder::EncodeString);
-  EncodeList(
-      policy, kStringListPolicyAccess, &UserPolicyEncoder::EncodeStringList);
+  EncodeList(policy, kStringListPolicyAccess,
+             &UserPolicyEncoder::EncodeStringList);
 }
 
 void UserPolicyEncoder::SetPolicyOptions(em::PolicyOptions* options) const {

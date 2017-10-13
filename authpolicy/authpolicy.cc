@@ -68,8 +68,7 @@ ErrorType SerializeProto(ProtoType proto, std::vector<uint8_t>* proto_blob) {
 std::unique_ptr<DBusObject> AuthPolicy::GetDBusObject(
     brillo::dbus_utils::ExportedObjectManager* object_manager) {
   return std::make_unique<DBusObject>(
-      object_manager,
-      object_manager->GetBus(),
+      object_manager, object_manager->GetBus(),
       org::chromium::AuthPolicyAdaptor::GetObjectPath());
 }
 
@@ -117,8 +116,8 @@ void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
 
   authpolicy::ActiveDirectoryAccountInfo account_info;
-  ErrorType error = samba_.AuthenticateUser(
-      user_principal_name, account_id, password_fd.value(), &account_info);
+  ErrorType error = samba_.AuthenticateUser(user_principal_name, account_id,
+                                            password_fd.value(), &account_info);
   if (error == ERROR_NONE)
     error = SerializeProto(account_info, account_info_blob);
   PrintError("AuthenticateUser", error);
@@ -163,8 +162,8 @@ int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
   LOG(INFO) << "Received 'JoinADDomain' request";
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
-  ErrorType error = samba_.JoinMachine(
-      machine_name, user_principal_name, password_fd.value());
+  ErrorType error = samba_.JoinMachine(machine_name, user_principal_name,
+                                       password_fd.value());
   PrintError("JoinADDomain", error);
   metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
   return error;
@@ -188,8 +187,8 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   }
 
   // Send policy to Session Manager.
-  StorePolicy(
-      gpo_policy_data, &account_id_key, std::move(timer), std::move(callback));
+  StorePolicy(gpo_policy_data, &account_id_key, std::move(timer),
+              std::move(callback));
 }
 
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
@@ -268,13 +267,11 @@ void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(response_blob.data()),
       response_blob.size());
-  session_manager_proxy_->CallMethod(&method_call,
-                                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                                     base::Bind(&AuthPolicy::OnPolicyStored,
-                                                weak_ptr_factory_.GetWeakPtr(),
-                                                is_user_policy,
-                                                base::Passed(&timer),
-                                                base::Passed(&callback)));
+  session_manager_proxy_->CallMethod(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::Bind(&AuthPolicy::OnPolicyStored, weak_ptr_factory_.GetWeakPtr(),
+                 is_user_policy, base::Passed(&timer),
+                 base::Passed(&callback)));
 }
 
 void AuthPolicy::OnPolicyStored(
@@ -293,8 +290,7 @@ void AuthPolicy::OnPolicyStored(
   } else if (!ExtractMethodCallResults(response, &brillo_error)) {
     // Response is expected have no call results.
     msg = base::StringPrintf(
-        "Call to %s failed. %s",
-        method,
+        "Call to %s failed. %s", method,
         brillo_error ? brillo_error->GetMessage().c_str() : "Unknown error.");
   }
 

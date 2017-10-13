@@ -42,8 +42,8 @@ class SambaInterfaceTest : public ::testing::Test {
   std::string find_token_result_;
 
   bool FindToken(const char* in_str, char token_separator, const char* token) {
-    return ::authpolicy::FindToken(
-        in_str, token_separator, token, &find_token_result_);
+    return ::authpolicy::FindToken(in_str, token_separator, token,
+                                   &find_token_result_);
   }
 
   // Helpers for ParseGpoVersion

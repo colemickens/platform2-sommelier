@@ -132,8 +132,7 @@ AuthPolicyMetrics::~AuthPolicyMetrics() {
 void AuthPolicyMetrics::Report(MetricType metric_type, int sample) {
   DCHECK(metric_type >= 0 && metric_type < METRIC_COUNT);
   metrics_.SendToUMA(
-      MakeFullName(kMetricHistogramParams[metric_type].metric_name),
-      sample,
+      MakeFullName(kMetricHistogramParams[metric_type].metric_name), sample,
       kMetricHistogramParams[metric_type].min_sample,
       kMetricHistogramParams[metric_type].max_sample,
       kMetricHistogramParams[metric_type].num_buckets);

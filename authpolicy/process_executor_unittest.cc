@@ -172,8 +172,8 @@ TEST_F(ProcessExecutorTest, ReadFromStderr) {
   EXPECT_FALSE(cmd.Execute());
   EXPECT_NE(cmd.GetExitCode(), 0);
   EXPECT_TRUE(cmd.GetStdout().empty());
-  EXPECT_TRUE(base::StartsWith(
-      cmd.GetStderr(), kCmdGrep, base::CompareCase::SENSITIVE));
+  EXPECT_TRUE(base::StartsWith(cmd.GetStderr(), kCmdGrep,
+                               base::CompareCase::SENSITIVE));
 }
 
 // Reading large amounts of output from stdout to test piping (triggers pipe

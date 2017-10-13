@@ -251,11 +251,8 @@ ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
   if (!password_dup.is_valid())
     return ERROR_LOCAL_IO;
 
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
-                             principal,
-                             "-l",
-                             kRequestedTgtValidityLifetime,
-                             "-r",
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal, "-l",
+                             kRequestedTgtValidityLifetime, "-r",
                              kRequestedTgtRenewalLifetime});
   kinit_cmd.SetInputFile(password_fd);
   ErrorType error = RunKinit(&kinit_cmd, false /* propagation_retry */);
@@ -286,12 +283,8 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
   is_machine_principal_ = IsMachine(principal);
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
-                             principal,
-                             "-k",
-                             "-l",
-                             kRequestedTgtValidityLifetime,
-                             "-r",
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal, "-k", "-l",
+                             kRequestedTgtValidityLifetime, "-r",
                              kRequestedTgtRenewalLifetime});
   kinit_cmd.SetEnv(kKrb5KTEnvKey, kFilePrefix + paths_->Get(keytab_path));
   ErrorType error = RunKinit(&kinit_cmd, propagation_retry);
@@ -376,12 +369,10 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
 
   // Call klist -s to find out whether the TGT is still valid.
   {
-    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST),
-                               "-s",
-                               "-c",
+    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST), "-s", "-c",
                                paths_->Get(credential_cache_path_)});
-    if (!jail_helper_->SetupJailAndRun(
-            &klist_cmd, Path::KLIST_SECCOMP, TIMER_KLIST)) {
+    if (!jail_helper_->SetupJailAndRun(&klist_cmd, Path::KLIST_SECCOMP,
+                                       TIMER_KLIST)) {
       return GetKListError(klist_cmd);
     }
   }
@@ -391,19 +382,18 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
   {
     ProcessExecutor klist_cmd(
         {paths_->Get(Path::KLIST), "-c", paths_->Get(credential_cache_path_)});
-    if (!jail_helper_->SetupJailAndRun(
-            &klist_cmd, Path::KLIST_SECCOMP, TIMER_KLIST)) {
+    if (!jail_helper_->SetupJailAndRun(&klist_cmd, Path::KLIST_SECCOMP,
+                                       TIMER_KLIST)) {
       return GetKListError(klist_cmd);
     }
 
     // Parse the output to find the lifetime. Enclose in a sandbox for security
     // considerations.
-    ProcessExecutor parse_cmd({paths_->Get(Path::PARSER),
-                               kCmdParseTgtLifetime,
+    ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseTgtLifetime,
                                SerializeFlags(*flags_)});
     parse_cmd.SetInputString(klist_cmd.GetStdout());
-    if (!jail_helper_->SetupJailAndRun(
-            &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+    if (!jail_helper_->SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                       TIMER_NONE)) {
       LOG(ERROR) << "authpolicy_parser parse_tgt_lifetime failed with "
                  << "exit code " << parse_cmd.GetExitCode();
       return ERROR_PARSE_FAILED;
@@ -436,8 +426,8 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
           base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
     }
     SetupKinitTrace(kinit_cmd);
-    if (jail_helper_->SetupJailAndRun(
-            kinit_cmd, Path::KINIT_SECCOMP, TIMER_KINIT)) {
+    if (jail_helper_->SetupJailAndRun(kinit_cmd, Path::KINIT_SECCOMP,
+                                      TIMER_KINIT)) {
       error = ERROR_NONE;
       break;
     }
@@ -463,16 +453,16 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
 ErrorType TgtManager::WriteKrb5Conf() const {
   std::string data = base::StringPrintf(kKrb5ConfData, realm_.c_str());
   if (!kdc_ip_.empty())
-    data += base::StringPrintf(
-        kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(), kdc_ip_.c_str());
+    data += base::StringPrintf(kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(),
+                               kdc_ip_.c_str());
   const base::FilePath krbconf_path(paths_->Get(config_path_));
 
   // Only set kerberos_files_dirty_ if the config data has actually changed.
   // Otherwise, the KerberosFilesChanged signal gets triggered way too often,
   // causing the krb5cc in Chrome to reset all the time.
   std::string prev_data;
-  if (!base::ReadFileToStringWithMaxSize(
-          krbconf_path, &prev_data, kKrb5FileSizeLimit) ||
+  if (!base::ReadFileToStringWithMaxSize(krbconf_path, &prev_data,
+                                         kKrb5FileSizeLimit) ||
       data != prev_data) {
     const int data_size = static_cast<int>(data.size());
     if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
@@ -544,8 +534,7 @@ void TgtManager::UpdateTgtAutoRenewal() {
         tgt_renewal_callback_.Reset(
             base::Bind(&TgtManager::AutoRenewTgt, base::Unretained(this)));
         task_runner_->PostDelayedTask(
-            FROM_HERE,
-            tgt_renewal_callback_.callback(),
+            FROM_HERE, tgt_renewal_callback_.callback(),
             base::TimeDelta::FromSeconds(delay_seconds));
       }
     } else if (error == ERROR_KERBEROS_TICKET_EXPIRED) {

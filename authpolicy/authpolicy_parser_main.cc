@@ -190,8 +190,8 @@ int ParseAccountInfo(const std::string& net_out) {
       !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name) ||
       !FindToken(net_out, ':', kSearchCommonName, &common_name) ||
       !FindToken(net_out, ':', kSearchPwdLastSet, &pwd_last_set_str) ||
-      !FindToken(
-          net_out, ':', kSearchUserAccountControl, &user_account_control_str)) {
+      !FindToken(net_out, ':', kSearchUserAccountControl,
+                 &user_account_control_str)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
@@ -409,8 +409,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
     case PolicyScope::USER: {
       // Parse files into a user policy proto.
       em::CloudPolicySettings policy;
-      if (!policy::ParsePRegFilesIntoUserPolicy(
-              gpo_file_paths, &policy, flags.log_policy_values())) {
+      if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy,
+                                                flags.log_policy_values())) {
         return EXIT_CODE_PARSE_INPUT_FAILED;
       }
 
@@ -422,8 +422,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
     case PolicyScope::MACHINE: {
       // Parse files into a device policy proto.
       em::ChromeDeviceSettingsProto policy;
-      if (!policy::ParsePRegFilesIntoDevicePolicy(
-              gpo_file_paths, &policy, flags.log_policy_values())) {
+      if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy,
+                                                  flags.log_policy_values())) {
         return EXIT_CODE_PARSE_INPUT_FAILED;
       }
 
@@ -472,8 +472,8 @@ int ParseTgtLifetime(const std::string& klist_out) {
         ParseTgtDateTime(lines[n], kValidFromOffset, &valid_from) &&
         ParseTgtDateTime(lines[n], kExpiresOffset, &expires)) {
       if (n + 1 < lines.size() &&
-          base::StartsWith(
-              lines[n + 1], kRenewUntil, base::CompareCase::SENSITIVE) &&
+          base::StartsWith(lines[n + 1], kRenewUntil,
+                           base::CompareCase::SENSITIVE) &&
           ParseTgtDateTime(lines[n + 1], kRenewUntilOffset, &renew_until)) {
         ++n;
       }

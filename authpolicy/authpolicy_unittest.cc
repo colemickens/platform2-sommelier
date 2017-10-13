@@ -46,11 +46,11 @@ using dbus::MockObjectProxy;
 using dbus::ObjectPath;
 using dbus::ObjectProxy;
 using dbus::Response;
+using testing::_;
 using testing::AnyNumber;
 using testing::AtMost;
 using testing::Invoke;
 using testing::Return;
-using testing::_;
 
 namespace em = enterprise_management;
 
@@ -186,14 +186,12 @@ class TestMetrics : public AuthPolicyMetrics {
     std::string log_str;
     for (const auto& kv : metrics_report_count_) {
       log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, metrics_->GetNumMetricReports(%s));",
-          kv.second,
+          "\n  EXPECT_EQ(%i, metrics_->GetNumMetricReports(%s));", kv.second,
           metrics_str[kv.first]);
     }
     for (const auto& kv : dbus_report_count_) {
       log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, metrics_->GetNumDBusReports(%s));",
-          kv.second,
+          "\n  EXPECT_EQ(%i, metrics_->GetNumDBusReports(%s));", kv.second,
           dbus_str[kv.first]);
     }
     EXPECT_TRUE(log_str.empty()) << "Unexpected metrics activity. "
@@ -326,8 +324,7 @@ class AuthPolicyTest : public testing::Test {
 
     // Set up mock object proxy for session manager called from authpolicy.
     mock_session_manager_proxy_ = new MockObjectProxy(
-        mock_bus_.get(),
-        login_manager::kSessionManagerServiceName,
+        mock_bus_.get(), login_manager::kSessionManagerServiceName,
         dbus::ObjectPath(login_manager::kSessionManagerServicePath));
     EXPECT_CALL(*mock_bus_,
                 GetObjectProxy(login_manager::kSessionManagerServiceName,
@@ -369,8 +366,8 @@ class AuthPolicyTest : public testing::Test {
     std::vector<uint8_t> response_blob;
     brillo::ErrorPtr error;
     if (is_user_policy) {
-      EXPECT_TRUE(ExtractMethodCallResults(
-          method_call, &error, &account_id_key, &response_blob));
+      EXPECT_TRUE(ExtractMethodCallResults(method_call, &error, &account_id_key,
+                                           &response_blob));
     } else {
       EXPECT_TRUE(
           ExtractMethodCallResults(method_call, &error, &response_blob));
@@ -450,8 +447,8 @@ class AuthPolicyTest : public testing::Test {
     std::vector<uint8_t> account_info_blob;
     expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER]++;
     int prev_files_changed_count = user_kerberos_files_changed_count_;
-    authpolicy_->AuthenticateUser(
-        user_principal, account_id, password_fd, &error, &account_info_blob);
+    authpolicy_->AuthenticateUser(user_principal, account_id, password_fd,
+                                  &error, &account_info_blob);
     MaybeParseProto(error, account_info_blob, account_info);
     // At most one UserKerberosFilesChanged signal should have been fired.
     EXPECT_LE(user_kerberos_files_changed_count_, prev_files_changed_count + 1);
@@ -847,9 +844,8 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsExpiredPasswords) {
 TEST_F(AuthPolicyTest, GetUserStatusDontReportNeverExpirePasswords) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(
-      ERROR_NONE,
-      Auth(kUserPrincipal, kNeverExpirePasswordAccountId, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kNeverExpirePasswordAccountId,
+                             MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kNeverExpirePasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
             status.password_status());
@@ -968,16 +964,14 @@ TEST_F(AuthPolicyTest, JoinFailsBadUpn) {
 
 // Join fails for wrong password.
 TEST_F(AuthPolicyTest, JoinFailsBadPassword) {
-  EXPECT_EQ(
-      ERROR_BAD_PASSWORD,
-      Join(kMachineName, kUserPrincipal, MakeFileDescriptor(kWrongPassword)));
+  EXPECT_EQ(ERROR_BAD_PASSWORD, Join(kMachineName, kUserPrincipal,
+                                     MakeFileDescriptor(kWrongPassword)));
 }
 
 // Join fails with expired password.
 TEST_F(AuthPolicyTest, JoinFailsPasswordExpired) {
-  EXPECT_EQ(
-      ERROR_PASSWORD_EXPIRED,
-      Join(kMachineName, kUserPrincipal, MakeFileDescriptor(kExpiredPassword)));
+  EXPECT_EQ(ERROR_PASSWORD_EXPIRED, Join(kMachineName, kUserPrincipal,
+                                         MakeFileDescriptor(kExpiredPassword)));
 }
 
 // Join fails if user can't join a machine to the domain.
@@ -1051,8 +1045,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
   policy::PRegUserDevicePolicyWriter writer;
-  writer.AppendBoolean(policy::key::kSearchSuggestEnabled,
-                       kPolicyBool,
+  writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool,
                        policy::POLICY_LEVEL_RECOMMENDED);
   writer.AppendInteger(policy::key::kPolicyRefreshRate, kPolicyInt);
   writer.WriteToFile(stub_gpo1_path_);
@@ -1080,8 +1073,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
 TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
   policy::PRegUserDevicePolicyWriter writer1;
-  writer1.AppendBoolean(policy::key::kSearchSuggestEnabled,
-                        kPolicyBool,
+  writer1.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool,
                         policy::POLICY_LEVEL_MANDATORY);
   writer1.WriteToFile(stub_gpo1_path_);
 
@@ -1089,8 +1081,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // (DevicePolicyFetchGposOverwrite), but POLICY_LEVEL_RECOMMENDED does not
   // beat POLICY_LEVEL_MANDATORY.
   policy::PRegUserDevicePolicyWriter writer2;
-  writer2.AppendBoolean(policy::key::kSearchSuggestEnabled,
-                        kOtherPolicyBool,
+  writer2.AppendBoolean(policy::key::kSearchSuggestEnabled, kOtherPolicyBool,
                         policy::POLICY_LEVEL_RECOMMENDED);
   writer2.WriteToFile(stub_gpo2_path_);
 
@@ -1151,9 +1142,8 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
     EXPECT_FALSE(policy.has_searchsuggestenabled());
   };
-  EXPECT_EQ(
-      ERROR_NONE,
-      Join(kZeroUserVersionMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Join(kZeroUserVersionMachineName, kUserPrincipal,
+                             MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 
   // Validate the validation. GPO is actually taken if user version is > 0.
@@ -1180,9 +1170,8 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
     EXPECT_FALSE(policy.has_searchsuggestenabled());
   };
-  EXPECT_EQ(
-      ERROR_NONE,
-      Join(kDisableUserFlagMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Join(kDisableUserFlagMachineName, kUserPrincipal,
+                             MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 
   // Validate the validation. GPO is taken if the ignore flag is not set.
@@ -1216,9 +1205,8 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
 // User policy fetch fails if a file fails to download (unless it's missing,
 // see UserPolicyFetchSucceedsMissingFile).
 TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
-  EXPECT_EQ(
-      ERROR_NONE,
-      Join(kGpoDownloadErrorMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Join(kGpoDownloadErrorMachineName, kUserPrincipal,
+                             MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_SMBCLIENT_FAILED);
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
@@ -1248,9 +1236,8 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsBadMachineName) {
 // account hasn't propagated yet.
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
   validate_device_policy_ = &CheckDevicePolicyEmpty;
-  EXPECT_EQ(
-      ERROR_NONE,
-      Join(kPropagationRetryMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Join(kPropagationRetryMachineName, kUserPrincipal,
+                             MakePasswordFd()));
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(kNumPropagationRetries,

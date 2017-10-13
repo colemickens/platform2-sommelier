@@ -94,13 +94,13 @@ bool FindTokenInLine(const std::string& in_line,
     return false;
 
   std::string line_token;
-  base::TrimWhitespaceASCII(
-      in_line.substr(0, sep_pos), base::TRIM_ALL, &line_token);
+  base::TrimWhitespaceASCII(in_line.substr(0, sep_pos), base::TRIM_ALL,
+                            &line_token);
   if (line_token != token)
     return false;
 
-  base::TrimWhitespaceASCII(
-      in_line.substr(sep_pos + 1), base::TRIM_ALL, result);
+  base::TrimWhitespaceASCII(in_line.substr(sep_pos + 1), base::TRIM_ALL,
+                            result);
   return !result->empty();
 }
 

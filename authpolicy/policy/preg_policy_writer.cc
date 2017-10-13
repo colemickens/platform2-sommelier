@@ -48,8 +48,8 @@ PRegPolicyWriter::~PRegPolicyWriter() {
 void PRegPolicyWriter::AppendBoolean(const char* policy_name,
                                      bool value,
                                      PolicyLevel level) {
-  StartEntry(
-      GetKey(level), policy_name, kRegDwordLittleEndian, sizeof(uint32_t));
+  StartEntry(GetKey(level), policy_name, kRegDwordLittleEndian,
+             sizeof(uint32_t));
   AppendUnsignedInt(value ? 1 : 0);
   EndEntry();
 }
@@ -57,8 +57,8 @@ void PRegPolicyWriter::AppendBoolean(const char* policy_name,
 void PRegPolicyWriter::AppendInteger(const char* policy_name,
                                      uint32_t value,
                                      PolicyLevel level) {
-  StartEntry(
-      GetKey(level), policy_name, kRegDwordLittleEndian, sizeof(uint32_t));
+  StartEntry(GetKey(level), policy_name, kRegDwordLittleEndian,
+             sizeof(uint32_t));
   AppendUnsignedInt(value);
   EndEntry();
 }
@@ -68,9 +68,7 @@ void PRegPolicyWriter::AppendString(const char* policy_name,
                                     PolicyLevel level) {
   // size * 2 + 2 because of char16 and the 0-terminator.
   CHECK(value.size() <= (std::numeric_limits<uint32_t>::max() - 2) / 2);
-  StartEntry(GetKey(level),
-             policy_name,
-             kRegSz,
+  StartEntry(GetKey(level), policy_name, kRegSz,
              static_cast<uint32_t>(value.size()) * 2 + 2);
   AppendNullTerminatedString(value);
   EndEntry();
@@ -89,9 +87,7 @@ void PRegPolicyWriter::AppendStringList(const char* policy_name,
   CHECK(values.size() <= std::numeric_limits<int>::max());
   for (int n = 0; n < static_cast<int>(values.size()); ++n) {
     CHECK(values[n].size() <= (std::numeric_limits<uint32_t>::max() - 2) / 2);
-    StartEntry(key,
-               base::IntToString(n + 1),
-               kRegSz,
+    StartEntry(key, base::IntToString(n + 1), kRegSz,
                static_cast<uint32_t>(values[n].size()) * 2 + 2);
     AppendNullTerminatedString(values[n]);
     EndEntry();
@@ -172,8 +168,8 @@ PRegExtensionPolicyWriter::PRegExtensionPolicyWriter(
 
 void PRegExtensionPolicyWriter::SetExtensionId(
     const std::string& extension_id) {
-  std::string base_key = base::StringPrintf(
-      "%s\\%s\\", policy::kKeyExtensions, extension_id.c_str());
+  std::string base_key = base::StringPrintf("%s\\%s\\", policy::kKeyExtensions,
+                                            extension_id.c_str());
   SetMandatoryKey(base_key + kKeyMandatoryExtension);
   SetRecommendedKey(base_key + kKeyRecommended);
 }

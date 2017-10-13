@@ -159,8 +159,8 @@ TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
 
   // Encode preg file into policy.
   em::CloudPolicySettings policy;
-  EXPECT_TRUE(ParsePRegFilesIntoUserPolicy(
-      {preg_1_path_}, &policy, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoUserPolicy({preg_1_path_}, &policy,
+                                           false /* log_policy_values */));
 
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.searchsuggestenabled().value());
@@ -175,27 +175,27 @@ TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
 // Checks that a user GPO later in the list overrides prior GPOs for recommended
 // policies.
 TEST_F(PregPolicyEncoderTest, UserPolicyRecommendedOverridesRecommended) {
-  TestUserPolicyFileOverride(
-      POLICY_LEVEL_RECOMMENDED, POLICY_LEVEL_RECOMMENDED, SECOND_WINS);
+  TestUserPolicyFileOverride(POLICY_LEVEL_RECOMMENDED, POLICY_LEVEL_RECOMMENDED,
+                             SECOND_WINS);
 }
 
 // Checks that a user GPO later in the list overrides prior GPOs for mandatory
 // policies.
 TEST_F(PregPolicyEncoderTest, UserPolicyMandatoryOverridesMandatory) {
-  TestUserPolicyFileOverride(
-      POLICY_LEVEL_MANDATORY, POLICY_LEVEL_MANDATORY, SECOND_WINS);
+  TestUserPolicyFileOverride(POLICY_LEVEL_MANDATORY, POLICY_LEVEL_MANDATORY,
+                             SECOND_WINS);
 }
 
 // Verifies that a mandatory policy is not overridden by a recommended policy.
 TEST_F(PregPolicyEncoderTest, UserPolicyRecommendedDoesNotOverrideMandatory) {
-  TestUserPolicyFileOverride(
-      POLICY_LEVEL_MANDATORY, POLICY_LEVEL_RECOMMENDED, FIRST_WINS);
+  TestUserPolicyFileOverride(POLICY_LEVEL_MANDATORY, POLICY_LEVEL_RECOMMENDED,
+                             FIRST_WINS);
 }
 
 // Verifies that a mandatory policy overrides a recommended policy.
 TEST_F(PregPolicyEncoderTest, UserPolicyMandatoryOverridesRecommended) {
-  TestUserPolicyFileOverride(
-      POLICY_LEVEL_RECOMMENDED, POLICY_LEVEL_MANDATORY, SECOND_WINS);
+  TestUserPolicyFileOverride(POLICY_LEVEL_RECOMMENDED, POLICY_LEVEL_MANDATORY,
+                             SECOND_WINS);
 }
 
 // Encodes device policies of different types.
@@ -211,8 +211,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
 
   // Encode preg file into policy.
   em::ChromeDeviceSettingsProto policy;
-  EXPECT_TRUE(ParsePRegFilesIntoDevicePolicy(
-      {preg_1_path_}, &policy, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoDevicePolicy({preg_1_path_}, &policy,
+                                             false /* log_policy_values */));
 
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
@@ -275,20 +275,14 @@ TEST_F(PregPolicyEncoderTest, ExtensionPolicyEncodingWorks) {
 
   // Encode preg file into policy.
   ExtensionPolicies policies;
-  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
-      {preg_1_path_}, &policies, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy({preg_1_path_}, &policies,
+                                                false /* log_policy_values */));
 
   const std::string expected_json = base::StringPrintf(
       "{\"%s\":{\"%s\":1,\"%s\":%i,\"%s\":"
       "\"%s\",\"%s\":{\"1\":\"%s\",\"2\":\"%s\"}}}",
-      kKeyMandatoryExtension,
-      kExtensionPolicy1,
-      kExtensionPolicy2,
-      kPolicyInt,
-      kExtensionPolicy3,
-      kPolicyStr,
-      kExtensionPolicy4,
-      str_list[0].c_str(),
+      kKeyMandatoryExtension, kExtensionPolicy1, kExtensionPolicy2, kPolicyInt,
+      kExtensionPolicy3, kPolicyStr, kExtensionPolicy4, str_list[0].c_str(),
       str_list[1].c_str());
 
   // Check that policy has the same values as we wrote to the file.
@@ -310,8 +304,8 @@ TEST_F(PregPolicyEncoderTest, ExtensionPolicyIgnoresInvalidIds) {
 
   // Encode preg file into policy.
   ExtensionPolicies policies;
-  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
-      {preg_1_path_}, &policies, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy({preg_1_path_}, &policies,
+                                                false /* log_policy_values */));
 
   // Extensions with IDs kExtensionId and kOtherExtensionId should be in the
   // output, kInvalidExtensionId shouldn't.
@@ -337,18 +331,14 @@ TEST_F(PregPolicyEncoderTest, ExtensionPolicyRecommendedAndMandatory) {
 
   // Encode preg file into policy.
   ExtensionPolicies policies;
-  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy(
-      {preg_1_path_}, &policies, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoExtensionPolicy({preg_1_path_}, &policies,
+                                                false /* log_policy_values */));
 
   // Extensions with IDs kExtensionId and kOtherExtensionId should be in the
   // output, kInvalidExtensionId shouldn't.
-  const std::string expected_json =
-      base::StringPrintf("{\"%s\":{\"%s\":1},\"%s\":{\"%s\":%i}}",
-                         kKeyMandatoryExtension,
-                         kExtensionPolicy1,
-                         kKeyRecommended,
-                         kExtensionPolicy2,
-                         kPolicyInt);
+  const std::string expected_json = base::StringPrintf(
+      "{\"%s\":{\"%s\":1},\"%s\":{\"%s\":%i}}", kKeyMandatoryExtension,
+      kExtensionPolicy1, kKeyRecommended, kExtensionPolicy2, kPolicyInt);
 
   ASSERT_EQ(1, policies.size());
   EXPECT_EQ(kExtensionId, policies[0].id());

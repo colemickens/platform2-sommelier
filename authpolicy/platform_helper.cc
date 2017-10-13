@@ -255,11 +255,9 @@ bool SetSavedUserAndDropCaps(uid_t saved_uid) {
 
   // Clear capabilities.
   cap_t caps = cap_get_proc();
-  if (!caps ||
-      cap_clear_flag(caps, CAP_INHERITABLE) ||
+  if (!caps || cap_clear_flag(caps, CAP_INHERITABLE) ||
       cap_clear_flag(caps, CAP_EFFECTIVE) ||
-      cap_clear_flag(caps, CAP_PERMITTED) ||
-      cap_set_proc(caps)) {
+      cap_clear_flag(caps, CAP_PERMITTED) || cap_set_proc(caps)) {
     PLOG(ERROR) << "Clearing caps failed";
     return false;
   }

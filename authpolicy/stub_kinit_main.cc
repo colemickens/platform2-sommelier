@@ -146,9 +146,8 @@ int HandleCommandLine(const std::string& command_line) {
 
   // Stub non-existing account error.
   if (StartsWithCaseSensitive(command_line, kNonExistingUserPrincipal)) {
-    WriteOutput("",
-                base::StringPrintf(kNonExistingPrincipalErrorFormat,
-                                   kNonExistingUserPrincipal));
+    WriteOutput("", base::StringPrintf(kNonExistingPrincipalErrorFormat,
+                                       kNonExistingUserPrincipal));
     return kExitCodeError;
   }
 
@@ -229,10 +228,9 @@ int HandleCommandLine(const std::string& command_line) {
     if (TestMachinePrincipal(command_line, kPropagationRetryMachineName) &&
         !HasStubAccountPropagated()) {
       WriteOutput(
-          "",
-          base::StringPrintf(
-              kNonExistingPrincipalErrorFormat,
-              MakeMachinePrincipal(kPropagationRetryMachineName).c_str()));
+          "", base::StringPrintf(
+                  kNonExistingPrincipalErrorFormat,
+                  MakeMachinePrincipal(kPropagationRetryMachineName).c_str()));
       return kExitCodeError;
     }
 

@@ -145,15 +145,10 @@ class SearchBuilder {
  public:
   // Prints out a stub net ads search result with the set parameters.
   std::string GetResult() {
-    return base::StringPrintf(kStubSearchFormat,
-                              common_name_.c_str(),
-                              given_name_.c_str(),
-                              common_name_.c_str(),
-                              display_name_.c_str(),
-                              object_guid_.c_str(),
-                              user_account_control_,
-                              pwd_last_set_,
-                              sam_account_name_.c_str());
+    return base::StringPrintf(
+        kStubSearchFormat, common_name_.c_str(), given_name_.c_str(),
+        common_name_.c_str(), display_name_.c_str(), object_guid_.c_str(),
+        user_account_control_, pwd_last_set_, sam_account_name_.c_str());
   }
 
   // Sets the value of the givenName key.
@@ -229,18 +224,10 @@ std::string PrintGpo(const char* guid,
                      uint32_t version_machine,
                      int gpflags) {
   DCHECK(gpflags >= 0 && gpflags < kGpFlagCount);
-  return base::StringPrintf(kStubRemoteGpo,
-                            guid,
-                            (version_user << 16) | version_machine,
-                            version_user,
-                            version_machine,
-                            version_user,
-                            version_user,
-                            version_machine,
-                            version_machine,
-                            guid,
-                            guid,
-                            kGpFlagsStr[gpflags]);
+  return base::StringPrintf(
+      kStubRemoteGpo, guid, (version_user << 16) | version_machine,
+      version_user, version_machine, version_user, version_user,
+      version_machine, version_machine, guid, guid, kGpFlagsStr[gpflags]);
 }
 
 // Writes a fake keytab file.
@@ -334,11 +321,10 @@ int HandleJoin(const std::string& command_line,
 
   // Stub too long machine name error.
   if (machine_name.size() > kMaxMachineNameSize) {
-    WriteOutput(base::StringPrintf(kMachineNameTooLongError,
-                                   kMaxMachineNameSize,
-                                   machine_name.c_str(),
-                                   machine_name.size()),
-                "");
+    WriteOutput(
+        base::StringPrintf(kMachineNameTooLongError, kMaxMachineNameSize,
+                           machine_name.c_str(), machine_name.size()),
+        "");
     return kExitCodeError;
   }
 

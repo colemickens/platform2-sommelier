@@ -157,13 +157,8 @@ bool ProcessExecutor::Execute() {
   // Execute the command.
   pid_t pid = -1;
   int child_stdin = -1, child_stdout = -1, child_stderr = -1;
-  minijail_run_pid_pipes(jail.get(),
-                         args_ptr[0],
-                         args_ptr.data(),
-                         &pid,
-                         &child_stdin,
-                         &child_stdout,
-                         &child_stderr);
+  minijail_run_pid_pipes(jail.get(), args_ptr[0], args_ptr.data(), &pid,
+                         &child_stdin, &child_stdout, &child_stderr);
 
   // Make sure the pipes never block.
   if (!base::SetNonBlocking(child_stdin))
@@ -180,13 +175,9 @@ bool ProcessExecutor::Execute() {
 
   // Write to child_stdin and read from child_stdout and child_stderr while
   // there is still data to read/write.
-  bool io_success = PerformPipeIo(child_stdin,
-                                  child_stdout,
-                                  child_stderr,
-                                  input_fd_,
-                                  input_str_,
-                                  &out_data_,
-                                  &err_data_);
+  bool io_success =
+      PerformPipeIo(child_stdin, child_stdout, child_stderr, input_fd_,
+                    input_str_, &out_data_, &err_data_);
 
   // Wait for the process to exit.
   exit_code_ = minijail_wait(jail.get());

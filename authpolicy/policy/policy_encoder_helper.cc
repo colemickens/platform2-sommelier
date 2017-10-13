@@ -20,14 +20,8 @@ namespace {
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
-const char* const kTypeNames[] = {"null",
-                                  "boolean",
-                                  "integer",
-                                  "double",
-                                  "string",
-                                  "binary",
-                                  "dictionary",
-                                  "list"};
+const char* const kTypeNames[] = {"null",   "boolean", "integer",    "double",
+                                  "string", "binary",  "dictionary", "list"};
 static_assert(arraysize(kTypeNames) == base::Value::TYPE_LIST + 1,
               "kTypeNames Has Wrong Size");
 

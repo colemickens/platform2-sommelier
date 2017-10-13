@@ -54,6 +54,7 @@ class ScopedSwitchToSavedUid {
  public:
   ScopedSwitchToSavedUid();
   ~ScopedSwitchToSavedUid();
+
  private:
   uid_t real_and_effective_uid_ = -1;
   uid_t saved_uid_ = -1;
