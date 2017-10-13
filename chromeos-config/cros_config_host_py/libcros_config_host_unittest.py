@@ -80,6 +80,19 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertIsNone(pyro.ChildPropertyFromPath('/firmware', 'dne'))
     self.assertIsNone(pyro.ChildPropertyFromPath('/dne', 'ec-image'))
 
+  def testSinglePhandleFollowProperty(self):
+    config = CrosConfig(self.file)
+    caroline = config.models['caroline']
+    bcs_overlay = caroline.ChildPropertyFromPath('/firmware', 'bcs-overlay')
+    self.assertEqual(bcs_overlay.value, 'overlay-reef-private')
+
+  def testSinglePhandleFollowNode(self):
+    config = CrosConfig(self.file)
+    caroline = config.models['caroline']
+    target = caroline.ChildPropertyFromPath('/firmware/build-targets',
+                                            'coreboot')
+    self.assertEqual(target.value, 'caroline')
+
   def testGetFirmwareUris(self):
     config = CrosConfig(self.file)
     firmware_uris = config.models['pyro'].GetFirmwareUris()

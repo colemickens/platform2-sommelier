@@ -95,18 +95,29 @@ class CrosConfig(object):
       path_parts = [path for path in relative_path.split('/') if path]
       if not path_parts:
         return self
-      try:
-        sub_node = self.subnodes[path_parts[0]]
-        return sub_node.ChildNodeFromPath('/'.join(path_parts[1:]))
-      except (AttributeError, KeyError):
+      part = path_parts[0]
+      if part in self.subnodes:
+        sub_node = self.subnodes[part]
+
+      # Handle a 'shares' property, which means we can grab nodes / properties
+      # from the associated node.
+      elif 'shares' in self.properties:
+        shared = self._FollowPhandle('shares')
+        if part in shared.subnodes:
+          sub_node = shared.subnodes[part]
+      else:
         return None
+      return sub_node.ChildNodeFromPath('/'.join(path_parts[1:]))
 
     def ChildPropertyFromPath(self, relative_path, property_name):
-      try:
-        child_node = self.ChildNodeFromPath(relative_path)
-        return child_node.properties[property_name]
-      except (AttributeError, KeyError):
+      child_node = self.ChildNodeFromPath(relative_path)
+      if not child_node:
         return None
+      prop = child_node.properties.get(property_name)
+      if not prop and 'shares' in child_node.properties:
+        shared = child_node._FollowPhandle('shares')
+        prop = shared.properties.get(property_name)
+      return prop
 
     def _FollowPhandle(self, prop_name):
       """Follow a property's phandle
