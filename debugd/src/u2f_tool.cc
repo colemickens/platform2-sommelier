@@ -24,7 +24,7 @@ namespace {
 constexpr char kOverrideConfigDir[] = "/var/lib/u2f/force";
 constexpr char kJobName[] = "u2fd";
 
-const char* kKnownFlags[] = {"u2f", "g2f", "verbose"};
+const char* const kKnownFlags[] = {"u2f", "g2f", "verbose"};
 
 int ControlU2fd(bool start) {
   const char* action = start ? "start" : "stop";
