@@ -24,44 +24,52 @@ class PRegPolicyWriter {
   // policies and |recommended_key| for recommended policies.
   PRegPolicyWriter(const std::string& mandatory_key,
                    const std::string& recommended_key);
+
+  // Creates a new writer with empty keys. Must set the keys manually before
+  // Append* can be called.
+  PRegPolicyWriter();
+
   ~PRegPolicyWriter();
 
-  // Sets the registry key used for mandatory policies.
-  void SetMandatoryKey(const std::string& mandatory_key) {
-    mandatory_key_ = mandatory_key;
-  }
+  // Sets the registry key used for mandatory policies. Subsequent Append* calls
+  // will use this key.
+  void SetMandatoryKey(const std::string& mandatory_key);
 
-  // Sets the registry key used for recommended policies.
-  void SetRecommendedKey(const std::string& recommended_key) {
-    recommended_key_ = recommended_key;
-  }
+  // Sets the registry key used for recommended policies. Subsequent Append*
+  // calls will use this key.
+  void SetRecommendedKey(const std::string& recommended_key);
 
-  // Appends a boolean policy value.
+  // Sets registry keys suitable for writing user and device policy. Subsequent
+  // Append* calls will use these keys.
+  void SetKeysForUserDevicePolicy();
+
+  // Sets registry keys suitable for writing extension policy for an extension
+  // with the given 32-byte |extension_id|. Subsequent Append* calls will use
+  // these keys.
+  void SetKeysForExtensionPolicy(const std::string& extension_id);
+
+  // Appends a boolean policy value. Must set keys beforehand.
   void AppendBoolean(const char* policy_name,
                      bool value,
                      PolicyLevel level = POLICY_LEVEL_MANDATORY);
 
-  // Appends an integer policy value.
+  // Appends an integer policy value. Must set keys beforehand.
   void AppendInteger(const char* policy_name,
                      uint32_t value,
                      PolicyLevel level = POLICY_LEVEL_MANDATORY);
 
-  // Appends a string policy value.
+  // Appends a string policy value. Must set keys beforehand.
   void AppendString(const char* policy_name,
                     const std::string& value,
                     PolicyLevel level = POLICY_LEVEL_MANDATORY);
 
-  // Appends a string list policy value.
+  // Appends a string list policy value. Must set keys beforehand.
   void AppendStringList(const char* policy_name,
                         const std::vector<std::string>& values,
                         PolicyLevel level = POLICY_LEVEL_MANDATORY);
 
   // Writes the policy data to a file. Returns true on success.
   bool WriteToFile(const base::FilePath& path);
-
- protected:
-  // Constructor for derived classes that set custom registry keys.
-  PRegPolicyWriter();
 
  private:
   // Starts a policy entry. Entries have the shape '[key;value;type;size;data]'.
@@ -96,19 +104,16 @@ class PRegPolicyWriter {
   bool entry_started_ = false;
 };
 
-// Sets the proper keys for writing user and device policy.
+// Shortcut to create a writer and set keys for writing user and device policy.
 class PRegUserDevicePolicyWriter : public PRegPolicyWriter {
  public:
   PRegUserDevicePolicyWriter();
 };
 
-// Sets the proper keys for writing policy for extensions.
+// Shortcut to create a writer and set keys for writing extension policy.
 class PRegExtensionPolicyWriter : public PRegPolicyWriter {
  public:
   explicit PRegExtensionPolicyWriter(const std::string& extension_id);
-
-  // Updates registry keys for subsequent Append* calls to use |extension_id|.
-  void SetExtensionId(const std::string& extension_id);
 };
 
 }  // namespace policy

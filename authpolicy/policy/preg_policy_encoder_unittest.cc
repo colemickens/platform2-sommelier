@@ -296,9 +296,9 @@ TEST_F(PregPolicyEncoderTest, ExtensionPolicyIgnoresInvalidIds) {
   // Create a preg file with several valid and invalid extension ids.
   PRegExtensionPolicyWriter writer(kExtensionId);
   writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
-  writer.SetExtensionId(kInvalidExtensionId);
+  writer.SetKeysForExtensionPolicy(kInvalidExtensionId);
   writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
-  writer.SetExtensionId(kOtherExtensionId);
+  writer.SetKeysForExtensionPolicy(kOtherExtensionId);
   writer.AppendBoolean(kExtensionPolicy1, kPolicyBool);
   writer.WriteToFile(preg_1_path_);
 

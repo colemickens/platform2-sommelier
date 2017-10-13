@@ -26,6 +26,7 @@
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/path_service.h"
@@ -47,6 +48,7 @@ using dbus::MockObjectProxy;
 using dbus::ObjectPath;
 using dbus::ObjectProxy;
 using dbus::Response;
+using login_manager::PolicyDescriptor;
 using testing::_;
 using testing::AnyNumber;
 using testing::AtMost;
@@ -64,12 +66,21 @@ const int kDBusSerial = 123;
 // Some constants for policy testing.
 const bool kPolicyBool = true;
 const int kPolicyInt = 321;
+
 const bool kOtherPolicyBool = false;
 const int kOtherPolicyInt = 234;
 
-const char kHomepageUrl[] = "www.example.com";
-const char kTimezone[] = "Sankt Aldegund Central Time";
-const char kAltTimezone[] = "Alf Fabrik Central Time";
+constexpr char kPolicyStr[] = "Str";
+constexpr char kOtherPolicyStr[] = "OtherStr";
+
+constexpr char kExtensionId[] = "abcdeFGHabcdefghAbcdefGhabcdEfgh";
+constexpr char kOtherExtensionId[] = "ababababcdcdcdcdefefefefghghghgh";
+
+constexpr char kExtensionPolicy1[] = "Policy1";
+constexpr char kExtensionPolicy2[] = "Policy2";
+
+constexpr char kMandatoryKey[] = "Policy";
+constexpr char kRecommendedKey[] = "Recommended";
 
 // Error message when passing different account IDs to authpolicy.
 const char kMultiUserNotSupported[] = "Multi-user not supported";
@@ -357,32 +368,27 @@ class AuthPolicyTest : public testing::Test {
                                  int /* timeout_ms */,
                                  ObjectProxy::ResponseCallback callback) {
     // Safety check to make sure that old values are not carried along.
-    EXPECT_FALSE(store_policy_called_);
-    EXPECT_FALSE(validate_user_policy_called_);
-    EXPECT_FALSE(validate_device_policy_called_);
+    if (!store_policy_called_) {
+      EXPECT_FALSE(user_policy_validated_);
+      EXPECT_FALSE(device_policy_validated_);
+      EXPECT_EQ(0, extension_policy_validated_count_);
+    } else {
+      // The first policy stored is always user or device policy.
+      EXPECT_TRUE(user_policy_validated_ ^ device_policy_validated_);
+    }
     store_policy_called_ = true;
 
     // Based on the method name, check whether this is user or device policy.
     EXPECT_TRUE(method_call);
     EXPECT_TRUE(method_call->GetMember() ==
-                    login_manager::kSessionManagerStoreUnsignedPolicy ||
-                method_call->GetMember() ==
-                    login_manager::kSessionManagerStoreUnsignedPolicyForUser);
-    bool is_user_policy =
-        method_call->GetMember() ==
-        login_manager::kSessionManagerStoreUnsignedPolicyForUser;
+                login_manager::kSessionManagerStoreUnsignedPolicyEx);
 
     // Extract the policy blob from the method call.
-    std::string account_id_key;
+    std::vector<uint8_t> descriptor_blob;
     std::vector<uint8_t> response_blob;
     brillo::ErrorPtr error;
-    if (is_user_policy) {
-      EXPECT_TRUE(ExtractMethodCallResults(method_call, &error, &account_id_key,
-                                           &response_blob));
-    } else {
-      EXPECT_TRUE(
-          ExtractMethodCallResults(method_call, &error, &response_blob));
-    }
+    EXPECT_TRUE(ExtractMethodCallResults(method_call, &error, &descriptor_blob,
+                                         &response_blob));
 
     // Unwrap the three gazillion layers or policy.
     const std::string response_blob_str(response_blob.begin(),
@@ -391,25 +397,15 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_TRUE(policy_response.ParseFromString(response_blob_str));
     em::PolicyData policy_data;
     EXPECT_TRUE(policy_data.ParseFromString(policy_response.policy_data()));
-    const char* const expected_policy_type =
-        is_user_policy ? kChromeUserPolicyType : kChromeDevicePolicyType;
-    EXPECT_EQ(expected_policy_type, policy_data.policy_type());
 
-    if (is_user_policy) {
-      em::CloudPolicySettings policy;
-      EXPECT_TRUE(policy.ParseFromString(policy_data.policy_value()));
-      if (validate_user_policy_) {
-        validate_user_policy_(policy);
-        validate_user_policy_called_ = true;
-      }
-    } else {
-      em::ChromeDeviceSettingsProto policy;
-      EXPECT_TRUE(policy.ParseFromString(policy_data.policy_value()));
-      if (validate_device_policy_) {
-        validate_device_policy_(policy);
-        validate_device_policy_called_ = true;
-      }
-    }
+    // Unpack descriptor and check type.
+    PolicyDescriptor descriptor;
+    const std::string descriptor_blob_str(descriptor_blob.begin(),
+                                          descriptor_blob.end());
+    EXPECT_TRUE(descriptor.ParseFromString(descriptor_blob_str));
+
+    // Run the policy through the appropriate policy validator.
+    ValidatePolicy(descriptor, policy_data);
 
     // Answer authpolicy with an empty response to signal that policy has been
     // stored.
@@ -530,8 +526,9 @@ class AuthPolicyTest : public testing::Test {
                                  kAuthPolicyRefreshUserPolicy);
     method_call.SetSerial(kDBusSerial);
     store_policy_called_ = false;
-    validate_user_policy_called_ = false;
-    validate_device_policy_called_ = false;
+    user_policy_validated_ = false;
+    device_policy_validated_ = false;
+    extension_policy_validated_count_ = 0;
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
@@ -546,8 +543,10 @@ class AuthPolicyTest : public testing::Test {
     // If policy fetch fails, StubCallStorePolicyMethod() is not called, but
     // authpolicy calls CheckError directly.
     EXPECT_EQ(expected_error == ERROR_NONE, store_policy_called_);
-    EXPECT_EQ(expected_error == ERROR_NONE, validate_user_policy_called_);
-    EXPECT_FALSE(validate_device_policy_called_);
+    EXPECT_EQ(expected_error == ERROR_NONE, user_policy_validated_);
+    EXPECT_FALSE(expected_error != ERROR_NONE &&
+                 extension_policy_validated_count_ > 0);
+    EXPECT_FALSE(device_policy_validated_);
     EXPECT_TRUE(callback_was_called);  // Make sure CheckError() was called.
   }
 
@@ -560,8 +559,9 @@ class AuthPolicyTest : public testing::Test {
                                  kAuthPolicyRefreshDevicePolicy);
     method_call.SetSerial(kDBusSerial);
     store_policy_called_ = false;
-    validate_user_policy_called_ = false;
-    validate_device_policy_called_ = false;
+    user_policy_validated_ = false;
+    device_policy_validated_ = false;
+    extension_policy_validated_count_ = 0;
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
@@ -576,9 +576,49 @@ class AuthPolicyTest : public testing::Test {
     // If policy fetch fails, StubCallStorePolicyMethod() is not called, but
     // authpolicy calls CheckError directly.
     EXPECT_EQ(expected_error == ERROR_NONE, store_policy_called_);
-    EXPECT_EQ(expected_error == ERROR_NONE, validate_device_policy_called_);
-    EXPECT_FALSE(validate_user_policy_called_);
+    EXPECT_EQ(expected_error == ERROR_NONE, device_policy_validated_);
+    EXPECT_FALSE(expected_error != ERROR_NONE &&
+                 extension_policy_validated_count_ > 0);
+    EXPECT_FALSE(user_policy_validated_);
     EXPECT_TRUE(callback_was_called);  // Make sure CheckError() was called.
+  }
+
+  // Runs the policy stored in |policy_data| through the validator function
+  // for the corresponding policy type.
+  void ValidatePolicy(const PolicyDescriptor& descriptor,
+                      const em::PolicyData& policy_data) {
+    if (policy_data.policy_type() == kChromeUserPolicyType) {
+      EXPECT_EQ(descriptor.account_type(), login_manager::ACCOUNT_TYPE_USER);
+      EXPECT_FALSE(descriptor.account_id().empty());
+      EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_CHROME);
+      EXPECT_TRUE(descriptor.component_id().empty());
+      em::CloudPolicySettings policy;
+      EXPECT_TRUE(policy.ParseFromString(policy_data.policy_value()));
+      if (validate_user_policy_) {
+        validate_user_policy_(policy);
+        user_policy_validated_ = true;
+      }
+    } else if (policy_data.policy_type() == kChromeDevicePolicyType) {
+      EXPECT_EQ(descriptor.account_type(), login_manager::ACCOUNT_TYPE_DEVICE);
+      EXPECT_TRUE(descriptor.account_id().empty());
+      EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_CHROME);
+      EXPECT_TRUE(descriptor.component_id().empty());
+      em::ChromeDeviceSettingsProto policy;
+      EXPECT_TRUE(policy.ParseFromString(policy_data.policy_value()));
+      if (validate_device_policy_) {
+        validate_device_policy_(policy);
+        device_policy_validated_ = true;
+      }
+    } else if (policy_data.policy_type() == kChromeExtensionPolicyType) {
+      EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_EXTENSIONS);
+      EXPECT_FALSE(descriptor.component_id().empty());
+      if (validate_extension_policy_) {
+        // policy_value() is the raw JSON string here.
+        validate_extension_policy_(descriptor.component_id(),
+                                   policy_data.policy_value());
+        extension_policy_validated_count_++;
+      }
+    }
   }
 
   // Checks whether the user |policy| is empty.
@@ -592,6 +632,38 @@ class AuthPolicyTest : public testing::Test {
       const em::ChromeDeviceSettingsProto& policy) {
     em::ChromeDeviceSettingsProto empty_policy;
     EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
+  }
+
+  // Checks whether the extension |policy_json| is empty.
+  static void CheckExtensionPolicyEmpty(const std::string& /* extension_id */,
+                                        const std::string& policy_json) {
+    EXPECT_TRUE(policy_json.empty());
+  }
+
+  // Writes some default extension to the given writer.
+  static void WriteDefaultExtensionPolicy(policy::PRegPolicyWriter* writer) {
+    writer->SetKeysForExtensionPolicy(kExtensionId);
+    writer->AppendString(kExtensionPolicy1, kPolicyStr);
+    writer->SetKeysForExtensionPolicy(kOtherExtensionId);
+    writer->AppendBoolean(kExtensionPolicy2, kPolicyBool,
+                          policy::POLICY_LEVEL_RECOMMENDED);
+  }
+
+  // Checks some default extension |policy_json| we're using for this test.
+  static void CheckDefaultExtensionPolicy(const std::string& extension_id,
+                                          const std::string& policy_json) {
+    std::string expected_policy_json;
+    if (extension_id == kExtensionId) {
+      expected_policy_json =
+          base::StringPrintf("{\"%s\":{\"%s\":\"%s\"}}", kMandatoryKey,
+                             kExtensionPolicy1, kPolicyStr);
+    } else if (extension_id == kOtherExtensionId) {
+      expected_policy_json = base::StringPrintf(
+          "{\"%s\":{\"%s\":1}}", kRecommendedKey, kExtensionPolicy2);
+    } else {
+      FAIL() << "Unexpected extension id " << extension_id;
+    }
+    EXPECT_EQ(policy_json, expected_policy_json);
   }
 
   // Authpolicyd revokes write permissions on config.dat. Some tests perform two
@@ -612,7 +684,7 @@ class AuthPolicyTest : public testing::Test {
     policy::PRegUserDevicePolicyWriter writer;
     writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
     writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
-    writer.AppendString(policy::key::kSystemTimezone, kTimezone);
+    writer.AppendString(policy::key::kSystemTimezone, kPolicyStr);
     const std::vector<std::string> flags = {"flag1", "flag2"};
     writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
     writer.WriteToFile(gpo_path);
@@ -623,7 +695,7 @@ class AuthPolicyTest : public testing::Test {
       EXPECT_EQ(
           kPolicyInt,
           policy.device_policy_refresh_rate().device_policy_refresh_rate());
-      EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
+      EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
       const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
       EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
       for (int n = 0; n < flags_proto.flags_size(); ++n)
@@ -647,9 +719,10 @@ class AuthPolicyTest : public testing::Test {
   base::FilePath stub_gpo2_path_;
 
   // Markers to check whether various callbacks are actually called.
-  bool store_policy_called_ = false;            // StubCallStorePolicyMethod().
-  bool validate_user_policy_called_ = false;    // Policy validation
-  bool validate_device_policy_called_ = false;  //   callbacks below.
+  bool store_policy_called_ = false;          // StubCallStorePolicyMethod()
+  bool user_policy_validated_ = false;        // Policy validation
+  bool device_policy_validated_ = false;      //   callbacks
+  int extension_policy_validated_count_ = 0;  //   below.
 
   // How often the UserKerberosFilesChanged signal was fired.
   int user_kerberos_files_changed_count_ = 0;
@@ -660,6 +733,8 @@ class AuthPolicyTest : public testing::Test {
   std::function<void(const em::CloudPolicySettings&)> validate_user_policy_;
   std::function<void(const em::ChromeDeviceSettingsProto&)>
       validate_device_policy_;
+  std::function<void(const std::string&, const std::string&)>
+      validate_extension_policy_;
 
  private:
   void HandleUserKerberosFilesChanged(dbus::Signal* signal) {
@@ -1118,7 +1193,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   policy::PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.AppendInteger(policy::key::kPolicyRefreshRate, kPolicyInt);
-  writer.AppendString(policy::key::kHomepageLocation, kHomepageUrl);
+  writer.AppendString(policy::key::kHomepageLocation, kPolicyStr);
   const std::vector<std::string> apps = {"App1", "App2"};
   writer.AppendStringList(policy::key::kPinnedLauncherApps, apps);
   writer.WriteToFile(stub_gpo1_path_);
@@ -1129,7 +1204,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   validate_user_policy_ = [apps](const em::CloudPolicySettings& policy) {
     EXPECT_EQ(kPolicyBool, policy.searchsuggestenabled().value());
     EXPECT_EQ(kPolicyInt, policy.policyrefreshrate().value());
-    EXPECT_EQ(kHomepageUrl, policy.homepagelocation().value());
+    EXPECT_EQ(kPolicyStr, policy.homepagelocation().value());
     const em::StringList& apps_proto = policy.pinnedlauncherapps().value();
     EXPECT_EQ(apps_proto.entries_size(), static_cast<int>(apps.size()));
     for (int n = 0; n < apps_proto.entries_size(); ++n)
@@ -1138,6 +1213,29 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// Successful user policy fetch that also contains extension policy.
+TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithDataAndExtensions) {
+  // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
+  policy::PRegPolicyWriter writer;
+  writer.SetKeysForUserDevicePolicy();
+  writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
+  WriteDefaultExtensionPolicy(&writer);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
+    EXPECT_EQ(kPolicyBool, policy.searchsuggestenabled().value());
+  };
+  validate_extension_policy_ = &CheckDefaultExtensionPolicy;
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_EQ(2, extension_policy_validated_count_);
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
@@ -1215,7 +1313,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   policy::PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(policy::key::kPolicyRefreshRate, kPolicyBool);
   writer.AppendInteger(policy::key::kHomepageLocation, kPolicyInt);
-  writer.AppendString(policy::key::kPinnedLauncherApps, kHomepageUrl);
+  writer.AppendString(policy::key::kPinnedLauncherApps, kPolicyStr);
   const std::vector<std::string> apps = {"App1", "App2"};
   writer.AppendStringList(policy::key::kSearchSuggestEnabled, apps);
   writer.WriteToFile(stub_gpo1_path_);
@@ -1380,6 +1478,30 @@ TEST_F(AuthPolicyTest, CachesDevicePolicyWhenDeviceIsNotLocked) {
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
+// Successful device policy fetch that also contains extension policy.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithDataAndExtensions) {
+  // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
+  policy::PRegPolicyWriter writer;
+  writer.SetKeysForUserDevicePolicy();
+  writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
+  WriteDefaultExtensionPolicy(&writer);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  validate_device_policy_ = [](const em::ChromeDeviceSettingsProto& policy) {
+    EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
+  };
+  validate_extension_policy_ = &CheckDefaultExtensionPolicy;
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(2, extension_policy_validated_count_);
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
 // Completely empty GPO list fails. GPO lists should always contain at least
 // a "local policy" created by the Samba tool, independently of the server.
 TEST_F(AuthPolicyTest, DevicePolicyFetchFailsEmptyGpoList) {
@@ -1395,7 +1517,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   policy::PRegUserDevicePolicyWriter writer1;
   writer1.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
-  writer1.AppendString(policy::key::kSystemTimezone, kTimezone);
+  writer1.AppendString(policy::key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
   writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
   writer1.WriteToFile(stub_gpo1_path_);
@@ -1403,7 +1525,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   policy::PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(policy::key::kDevicePolicyRefreshRate, kOtherPolicyInt);
-  writer2.AppendString(policy::key::kSystemTimezone, kAltTimezone);
+  writer2.AppendString(policy::key::kSystemTimezone, kOtherPolicyStr);
   const std::vector<std::string> flags2 = {"flag4", "flag5"};
   writer2.AppendStringList(policy::key::kDeviceStartUpFlags, flags2);
   writer2.WriteToFile(stub_gpo2_path_);
@@ -1413,7 +1535,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
     EXPECT_EQ(kOtherPolicyInt,
               policy.device_policy_refresh_rate().device_policy_refresh_rate());
-    EXPECT_EQ(kAltTimezone, policy.system_timezone().timezone());
+    EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));
     for (int n = 0; n < flags_proto.flags_size(); ++n)

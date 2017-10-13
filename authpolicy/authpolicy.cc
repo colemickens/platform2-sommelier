@@ -13,6 +13,7 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
+#include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/path_service.h"
@@ -25,11 +26,13 @@ namespace em = enterprise_management;
 
 using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::ExtractMethodCallResults;
+using login_manager::PolicyDescriptor;
 
 namespace authpolicy {
 
 const char kChromeUserPolicyType[] = "google/chromeos/user";
 const char kChromeDevicePolicyType[] = "google/chromeos/device";
+const char kChromeExtensionPolicyType[] = "google/chrome/extension";
 
 namespace {
 
@@ -40,15 +43,9 @@ void PrintError(const char* msg, ErrorType error) {
     LOG(INFO) << msg << " failed with code " << error;
 }
 
-const char* GetSessionManagerStoreMethod(bool is_user_policy) {
-  return is_user_policy
-             ? login_manager::kSessionManagerStoreUnsignedPolicyForUser
-             : login_manager::kSessionManagerStoreUnsignedPolicy;
-}
-
-DBusCallType GetPolicyDBusCallType(bool is_user_policy) {
-  return is_user_policy ? DBUS_CALL_REFRESH_USER_POLICY
-                        : DBUS_CALL_REFRESH_DEVICE_POLICY;
+DBusCallType GetPolicyDBusCallType(bool is_refresh_user_policy) {
+  return is_refresh_user_policy ? DBUS_CALL_REFRESH_USER_POLICY
+                                : DBUS_CALL_REFRESH_DEVICE_POLICY;
 }
 
 // Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
@@ -73,6 +70,74 @@ ErrorType ParseProto(google::protobuf::MessageLite* proto,
 }
 
 }  // namespace
+
+// Tracks responses from D-Bus calls to Session Manager's StorePolicy during a
+// Refresh*Policy call to AuthPolicy. StorePolicy is called N + 1 times (once
+// for the main user/device policy and N times for extension policies, once per
+// extension). The Refresh*Policy response callback is only called after all
+// StorePolicy responses have been received. This class counts the responses and
+// calls the Refresh*Policy response callback after the last response has been
+// received. For tracking purposes, a failure to call StorePolicy (e.g. since
+// parameters failed to serialize) counts as received response.
+class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
+ public:
+  ResponseTracker(bool is_refresh_user_policy,
+                  int total_response_count,
+                  AuthPolicyMetrics* metrics,
+                  std::unique_ptr<ScopedTimerReporter> timer,
+                  AuthPolicy::PolicyResponseCallback callback)
+      : is_refresh_user_policy_(is_refresh_user_policy),
+        total_response_count_(total_response_count),
+        outstanding_response_count_(total_response_count),
+        metrics_(metrics),
+        timer_(std::move(timer)),
+        callback_(std::move(callback)) {}
+
+  // Should be called when a response finished either successfully or not or if
+  // the corresponding StorePolicy call was never made, e.g. due to an error on
+  // call parameter setup. If |error_message| is empty, assumes that the
+  // StorePolicy call succeeded.
+  void OnResponseFinished(const std::string error_message) {
+    const bool succeeded = error_message.empty();
+    if (!succeeded) {
+      all_responses_succeeded_ = false;
+      LOG(ERROR) << error_message;
+    }
+
+    // Don't use DCHECK here since bad policy store call counting could have
+    // security implications.
+    CHECK_GT(outstanding_response_count_, 0);
+    if (--outstanding_response_count_ == 0) {
+      // This is the last response, call the callback.
+      const DBusCallType call_type =
+          GetPolicyDBusCallType(is_refresh_user_policy_);
+      ErrorType error =
+          all_responses_succeeded_ ? ERROR_NONE : ERROR_STORE_POLICY_FAILED;
+      metrics_->ReportDBusResult(call_type, error);
+      callback_->Return(error);
+
+      if (all_responses_succeeded_) {
+        LOG(INFO) << "All " << total_response_count_ << " calls to "
+                  << login_manager::kSessionManagerStoreUnsignedPolicyEx
+                  << " succeeded.";
+      }
+
+      // Destroy the timer, which triggers the metric. It's going to be
+      // destroyed with this instance, anyway, but doing it here explicitly is
+      // easier to follow.
+      timer_.reset();
+    }
+  }
+
+ private:
+  bool is_refresh_user_policy_;
+  int total_response_count_;
+  int outstanding_response_count_;
+  AuthPolicyMetrics* metrics_;  // Not owned.
+  std::unique_ptr<ScopedTimerReporter> timer_;
+  AuthPolicy::PolicyResponseCallback callback_;
+  bool all_responses_succeeded_ = true;
+};
 
 // static
 std::unique_ptr<DBusObject> AuthPolicy::GetDBusObject(
@@ -310,84 +375,121 @@ void AuthPolicy::StorePolicy(
     const std::string* account_id_key,
     std::unique_ptr<ScopedTimerReporter> timer,
     PolicyResponseCallback callback) {
-  // Note: Only policy_value required here, the other data only impacts
-  // signature, but since we don't sign, we don't need it.
-  const bool is_user_policy = account_id_key != nullptr;
-  const char* const policy_type =
-      is_user_policy ? kChromeUserPolicyType : kChromeDevicePolicyType;
+  // Count total number of StorePolicy responses we're expecting and create a
+  // tracker object that counts the number of outstanding responses and keeps
+  // some unique pointers.
+  const bool is_refresh_user_policy = account_id_key != nullptr;
+  const int num_extensions = gpo_policy_data->extension_policies_size();
+  const int num_store_policy_calls = 1 + num_extensions;
+  scoped_refptr<ResponseTracker> response_tracker =
+      new ResponseTracker(is_refresh_user_policy, num_store_policy_calls,
+                          metrics_, std::move(timer), std::move(callback));
 
-  em::PolicyData em_policy_data;
-  em_policy_data.set_policy_value(gpo_policy_data->user_or_device_policy());
-  em_policy_data.set_policy_type(policy_type);
-  if (is_user_policy) {
-    em_policy_data.set_username(samba_.user_sam_account_name());
-    // Device id in the proto also could be used as an account/client id.
-    em_policy_data.set_device_id(samba_.user_account_id());
+  PolicyDescriptor descriptor;
+  const char* policy_type = nullptr;
+  if (is_refresh_user_policy) {
+    DCHECK(!account_id_key->empty());
+    descriptor.set_account_type(login_manager::ACCOUNT_TYPE_USER);
+    descriptor.set_account_id(*account_id_key);
+    policy_type = kChromeUserPolicyType;
   } else {
-    em_policy_data.set_device_id(samba_.machine_name());
+    descriptor.set_account_type(login_manager::ACCOUNT_TYPE_DEVICE);
+    policy_type = kChromeDevicePolicyType;
   }
-  em_policy_data.set_timestamp(base::Time::Now().ToJavaTime());
-  em_policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+
+  // For double checking we counted the number of store calls right.
+  int store_policy_call_count = 0;
+
+  // Store the user or device policy.
+  descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
+  StoreSinglePolicy(descriptor, policy_type,
+                    gpo_policy_data->user_or_device_policy(), response_tracker);
+  store_policy_call_count++;
+
+  // Store extension policies.
+  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
+  for (int n = 0; n < num_extensions; ++n) {
+    const protos::ExtensionPolicy& extension_policy =
+        gpo_policy_data->extension_policies(n);
+    descriptor.set_component_id(extension_policy.id());
+    StoreSinglePolicy(descriptor, kChromeExtensionPolicyType,
+                      extension_policy.json_data(), response_tracker);
+    store_policy_call_count++;
+  }
+
+  // Don't use DCHECK here since bad policy store call counting could have
+  // security implications.
+  CHECK(store_policy_call_count == num_store_policy_calls);
+}
+
+void AuthPolicy::StoreSinglePolicy(
+    const PolicyDescriptor& descriptor,
+    const char* policy_type,
+    const std::string& policy_blob,
+    scoped_refptr<ResponseTracker> response_tracker) {
+  // Wrap up the policy in a PolicyFetchResponse.
+  em::PolicyData policy_data;
+  policy_data.set_policy_value(policy_blob);
+  policy_data.set_policy_type(policy_type);
+  if (descriptor.account_type() == login_manager::ACCOUNT_TYPE_USER) {
+    policy_data.set_username(samba_.user_sam_account_name());
+    // Device id in the proto also could be used as an account/client id.
+    policy_data.set_device_id(samba_.user_account_id());
+  } else {
+    DCHECK(descriptor.account_type() == login_manager::ACCOUNT_TYPE_DEVICE);
+    policy_data.set_device_id(samba_.machine_name());
+  }
+  policy_data.set_timestamp(base::Time::Now().ToJavaTime());
+  policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+
   // Note: No signature required here, Active Directory policy is unsigned!
 
   em::PolicyFetchResponse policy_response;
   std::string response_blob;
-  if (!em_policy_data.SerializeToString(
-          policy_response.mutable_policy_data()) ||
+  if (!policy_data.SerializeToString(policy_response.mutable_policy_data()) ||
       !policy_response.SerializeToString(&response_blob)) {
-    LOG(ERROR) << "Failed to serialize policy data";
-    const DBusCallType call_type = GetPolicyDBusCallType(is_user_policy);
-    metrics_->ReportDBusResult(call_type, ERROR_STORE_POLICY_FAILED);
-    callback->Return(ERROR_STORE_POLICY_FAILED);
+    response_tracker->OnResponseFinished("Failed to serialize policy data");
     return;
   }
 
-  const char* const method = GetSessionManagerStoreMethod(is_user_policy);
-  dbus::MethodCall method_call(login_manager::kSessionManagerInterface, method);
+  const std::string descriptor_blob = descriptor.SerializeAsString();
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerStoreUnsignedPolicyEx);
   dbus::MessageWriter writer(&method_call);
-  if (account_id_key)
-    writer.AppendString(*account_id_key);
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(descriptor_blob.data()),
+      descriptor_blob.size());
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(response_blob.data()),
       response_blob.size());
   session_manager_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&AuthPolicy::OnPolicyStored, weak_ptr_factory_.GetWeakPtr(),
-                 is_user_policy, base::Passed(&timer),
-                 base::Passed(&callback)));
+                 descriptor, response_tracker));
 }
 
-void AuthPolicy::OnPolicyStored(
-    bool is_user_policy,
-    std::unique_ptr<ScopedTimerReporter> /* timer */,
-    PolicyResponseCallback callback,
-    dbus::Response* response) {
-  const char* const method = GetSessionManagerStoreMethod(is_user_policy);
+void AuthPolicy::OnPolicyStored(PolicyDescriptor descriptor,
+                                scoped_refptr<ResponseTracker> response_tracker,
+                                dbus::Response* response) {
   brillo::ErrorPtr brillo_error;
-  std::string msg;
+  std::string error_message;
   if (!response) {
     // In case of error, session_manager_proxy_ prints out the error string and
     // response is empty.
-    msg =
-        base::StringPrintf("Call to %s failed. No response or error.", method);
+    error_message =
+        base::StringPrintf("Call to %s failed. No response or error.",
+                           login_manager::kSessionManagerStoreUnsignedPolicyEx);
   } else if (!ExtractMethodCallResults(response, &brillo_error)) {
     // Response is expected have no call results.
-    msg = base::StringPrintf(
-        "Call to %s failed. %s", method,
+    error_message = base::StringPrintf(
+        "Call to %s failed. %s",
+        login_manager::kSessionManagerStoreUnsignedPolicyEx,
         brillo_error ? brillo_error->GetMessage().c_str() : "Unknown error.");
   }
 
-  ErrorType error;
-  if (!msg.empty()) {
-    LOG(ERROR) << msg;
-    error = ERROR_STORE_POLICY_FAILED;
-  } else {
-    LOG(INFO) << "Call to " << method << " succeeded.";
-    error = ERROR_NONE;
-  }
-  const DBusCallType call_type = GetPolicyDBusCallType(is_user_policy);
-  metrics_->ReportDBusResult(call_type, error);
-  callback->Return(error);
+  response_tracker->OnResponseFinished(error_message);
 }
 
 }  // namespace authpolicy

@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/memory/ref_counted.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
@@ -20,15 +21,21 @@
 
 using brillo::dbus_utils::AsyncEventSequencer;
 
+namespace login_manager {
+class PolicyDescriptor;
+}
+
 namespace authpolicy {
 
 class ActiveDirectoryAccountInfo;
 class Anonymizer;
 class AuthPolicyMetrics;
 class PathService;
+class ResponseTracker;
 
 extern const char kChromeUserPolicyType[];
 extern const char kChromeDevicePolicyType[];
+extern const char kChromeExtensionPolicyType[];
 
 // Implementation of authpolicy's D-Bus interface. Mainly routes stuff between
 // D-Bus and SambaInterface.
@@ -117,10 +124,17 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                    std::unique_ptr<ScopedTimerReporter> timer,
                    PolicyResponseCallback callback);
 
+  // Sends a single policy blob to Session Manager. |policy_type| is the policy
+  // type passed into enterprise_management::PolicyData. |response_tracker| is
+  // a data structure to track all responses from Session Manager.
+  void StoreSinglePolicy(const login_manager::PolicyDescriptor& descriptor,
+                         const char* policy_type,
+                         const std::string& policy_blob,
+                         scoped_refptr<ResponseTracker> response_tracker);
+
   // Response callback from SessionManager, logs the result and calls callback.
-  void OnPolicyStored(bool is_user_policy,
-                      std::unique_ptr<ScopedTimerReporter> timer,
-                      PolicyResponseCallback callback,
+  void OnPolicyStored(login_manager::PolicyDescriptor descriptor,
+                      scoped_refptr<ResponseTracker> response_tracker,
                       dbus::Response* response);
 
   AuthPolicyMetrics* metrics_;  // Not owned.
