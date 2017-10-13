@@ -24,8 +24,7 @@ def ListModels(config):
   Args:
     config: A CrosConfig instance
   """
-  model_names = [name for name, _ in config.models.iteritems()]
-  for model_name in sorted(model_names):
+  for model_name in config.models.keys():
     print(model_name)
 
 def GetProperty(models, path, prop):
