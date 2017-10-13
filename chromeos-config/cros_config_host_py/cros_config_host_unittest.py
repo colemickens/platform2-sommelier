@@ -16,6 +16,19 @@ import fdt_util
 CLI_FILE = './cros_config_host_py/cros_config_host.py'
 DTS_FILE = '../libcros_config/test.dts'
 MODELS = sorted(['pyro', 'caroline', 'reef', 'broken'])
+PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
+               'overlay-reef-private/chromeos-base/chromeos-firmware-pyro/')
+CAROLINE_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
+                   'overlay-reef-private/chromeos-base/'
+                   'chromeos-firmware-caroline/')
+PYRO_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
+                       'Reef_PD.9042.87.1.tbz2',
+                       'Reef.9042.87.1.tbz2',
+                       'Reef.9042.110.0.tbz2']
+CAROLINE_FIRMWARE_FILES = ['Caroline_EC.2017.21.1.tbz2',
+                           'Caroline_PD.2017.21.1.tbz2',
+                           'Caroline.2017.21.1.tbz2',
+                           'Caroline.2017.41.0.tbz2']
 
 
 class CrosConfigHostTest(unittest.TestCase):
@@ -74,6 +87,22 @@ class CrosConfigHostTest(unittest.TestCase):
     output = subprocess.check_output(call_args)
     self.assertEqual(output,
                      'default{ls}{ls}epic{ls}{ls}'.format(ls=os.linesep))
+
+  def testGetFirmwareUris(self):
+    call_args = '{} {} --model=pyro get-firmware-uris'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    expected = ' '.join([PYRO_BUCKET + fname for
+                         fname in PYRO_FIRMWARE_FILES]) + os.linesep
+    self.assertSequenceEqual(output, expected)
+
+  def testGetSharedFirmwareUris(self):
+    call_args = '{} {} --model=caroline get-firmware-uris'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    expected = ' '.join([CAROLINE_BUCKET + fname for
+                         fname in CAROLINE_FIRMWARE_FILES]) + os.linesep
+    self.assertSequenceEqual(output, expected)
 
 
 if __name__ == '__main__':

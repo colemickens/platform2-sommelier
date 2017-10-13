@@ -29,9 +29,26 @@ def ListModels(config):
     print(model_name)
 
 def GetProperty(models, path, prop):
+  """Prints a property from the config tree for all models in the list models.
+
+  Args:
+    models: List of CrosConfig.Model for which to print the given property.
+    path: The path (relative to a model) for the node containing the property.
+    prop: The property to get (by name).
+  """
   for model in models or []:
     config_prop = model.ChildPropertyFromPath(path, prop)
     print(config_prop.value if config_prop else '')
+
+
+def GetFirmwareUris(models):
+  """Prints space-separated firmware uris for all models in models.
+
+  Args:
+    models: List of CrosConfig.Model for which to print firmware URIs
+  """
+  for model in models or []:
+    print(' '.join(model.GetFirmwareUris()))
 
 def GetTouchFirmwareFiles(config):
   """Print a list of touch firmware files across all models
@@ -86,6 +103,11 @@ def GetParser(description):
       help='Lists groups of touch firmware files in sequence: first line is ' +
       'firmware file, second line is symlink name for /lib/firmware',
       epilog='Each model will be printed on its own line.')
+  subparsers.add_parser(
+      'get-firmware-uris',
+      help='Lists firmware uris for models. These uris can be used to fetch ' +
+      'firmware files.',
+      epilog='Each model will be printed on its own line.')
   return parser
 
 
@@ -122,6 +144,12 @@ def main(argv):
     GetProperty(models, opts.path, opts.prop)
   elif opts.subcommand == 'get-touch-firmware-files':
     GetTouchFirmwareFiles(config)
+  elif opts.subcommand == 'get-firmware-uris':
+    if not opts.model and not opts.all_models:
+      print('You must specify --model or --all-models for this command. See '
+            '--help for more info.')
+      return
+    GetFirmwareUris(models)
 
 
 if __name__ == '__main__':
