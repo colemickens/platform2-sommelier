@@ -65,16 +65,6 @@ int GetLogLevel(const string& log_level_value) {
   return log_level;
 }
 
-// Always logs to syslog and stderr when running in the foreground.
-void SetupLogging(bool foreground, int log_level) {
-  int log_flags = brillo::kLogToSyslog;
-  if (foreground)
-    log_flags |= brillo::kLogToStderr;
-
-  brillo::InitLog(log_flags);
-  logging::SetMinLogLevel(log_level);
-}
-
 // This callback will be invoked once there is a new device event that
 // should be processed by the Daemon::ProcessDeviceEvents().
 gboolean DeviceEventCallback(GIOChannel* source,
@@ -115,7 +105,8 @@ int main(int argc, char** argv) {
           ? GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel))
           : 0;
 
-  SetupLogging(foreground, log_level);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  logging::SetMinLogLevel(log_level);
 
   if (!foreground)
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
