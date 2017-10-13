@@ -214,6 +214,7 @@ const Log kCommandLogs[] = {
   { "uname", "/bin/uname -a" },
   { "update_engine.log", "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
                          " s.^./var/log/update_engine/.)" },
+  { "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime" },
   { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
   { "vmlog.1.LATEST", "/bin/cat /var/log/vmlog/vmlog.1.LATEST" },
   { "vmlog.1.PREVIOUS", "/bin/cat /var/log/vmlog/vmlog.1.PREVIOUS" },
