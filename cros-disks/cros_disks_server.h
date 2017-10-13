@@ -45,7 +45,6 @@ struct DeviceEvent;
 // At this point the server should be attached to the main loop.
 //
 class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
-                        public DBus::IntrospectableAdaptor,
                         public DBus::ObjectAdaptor,
                         public DeviceEventDispatcherInterface,
                         public FormatManagerObserverInterface,
