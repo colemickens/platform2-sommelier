@@ -100,12 +100,5 @@ class CrosConfigHostTest(unittest.TestCase):
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
 
-  def testGetSharedFirmwareUris(self):
-    call_args = '{} {} --model=caroline get-firmware-uris'.format(
-        CLI_FILE, self.dtb_file).split()
-    output = subprocess.check_output(call_args)
-    self.CheckManyLines(output)
-
-
 if __name__ == '__main__':
   unittest.main()
