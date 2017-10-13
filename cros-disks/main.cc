@@ -8,6 +8,8 @@
 #include <glib.h>
 #include <libudev.h>
 
+#include <algorithm>
+
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
@@ -15,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -24,46 +27,6 @@ using cros_disks::Daemon;
 using std::string;
 
 namespace {
-
-namespace switches {
-
-// Command line switch to run this daemon in foreground.
-const char kForeground[] = "foreground";
-// Command line switch to run without a session manager.
-const char kNoSessionManager[] = "no-session-manager";
-// Command line switch to show the help message and exit.
-const char kHelp[] = "help";
-// Command line switch to set the logging level:
-//   0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR)
-const char kLogLevel[] = "log-level";
-// Help message to show when the --help command line switch is specified.
-const char kHelpMessage[] =
-    "Chromium OS Disk Daemon\n"
-    "\n"
-    "Available Switches:\n"
-    "  --foreground\n"
-    "    Do not daemonize; run in foreground.\n"
-    "  --no-session-manager\n"
-    "    Runs without the expectation of a session manager.\n"
-    "  --log-level=N\n"
-    "    Logging level:\n"
-    "      0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR)\n"
-    "      -1: VLOG(1), -2: VLOG(2), etc\n"
-    "  --help\n"
-    "    Show this help.\n"
-    "\n";
-
-}  // namespace switches
-
-int GetLogLevel(const string& log_level_value) {
-  int log_level = 0;
-  if (!base::StringToInt(log_level_value, &log_level)) {
-    LOG(WARNING) << "Invalid log level '" << log_level_value << "'";
-  } else if (log_level >= logging::LOG_NUM_SEVERITIES) {
-    log_level = logging::LOG_NUM_SEVERITIES;
-  }
-  return log_level;
-}
 
 // This callback will be invoked once there is a new device event that
 // should be processed by the Daemon::ProcessDeviceEvents().
@@ -90,25 +53,18 @@ gboolean TerminationSignalCallback(gpointer data) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-
-  if (cl->HasSwitch(switches::kHelp)) {
-    LOG(INFO) << switches::kHelpMessage;
-    return 0;
-  }
-
-  bool foreground = cl->HasSwitch(switches::kForeground);
-  bool no_session_manager = cl->HasSwitch(switches::kNoSessionManager);
-  int log_level =
-      cl->HasSwitch(switches::kLogLevel)
-          ? GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel))
-          : 0;
+  DEFINE_bool(foreground, false, "Run in foreground");
+  DEFINE_bool(no_session_manager, false,
+              "run without the expectation of a session manager.");
+  DEFINE_int32(log_level, 0,
+               "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
+               "-1: VLOG(1), -2: VLOG(2), ...");
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Disk Daemon");
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  logging::SetMinLogLevel(log_level);
+  logging::SetMinLogLevel(FLAGS_log_level);
 
-  if (!foreground)
+  if (!FLAGS_foreground)
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
 
   LOG(INFO) << "Creating a GMainLoop";
@@ -129,7 +85,8 @@ int main(int argc, char** argv) {
   CHECK(server_conn.acquire_name(cros_disks::kCrosDisksServiceName))
       << "Failed to acquire D-Bus name " << cros_disks::kCrosDisksServiceName;
 
-  Daemon daemon(&server_conn, /* has_session_manager= */ !no_session_manager);
+  bool has_session_manager = !FLAGS_no_session_manager;
+  Daemon daemon(&server_conn, has_session_manager);
   daemon.Initialize();
 
   // Set up a monitor for handling device events.
