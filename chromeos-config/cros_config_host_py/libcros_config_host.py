@@ -116,6 +116,40 @@ class CrosConfig(object):
         return None
       return self._fdt.phandle_to_node[prop.GetPhandle()]
 
+    def _GetMergedProperties(self, phandle_prop):
+      """Obtain properties in two nodes linked by a phandle
+
+      This is used to create a dict of the properties in a main node along with
+      those found in a linked node. The link is provided by a property in the
+      main node containing a single phandle pointing to the linked node.
+
+      The result is a dict that combines both nodes' properties, with the
+      linked node filling in anything missing. The main node's properties take
+      precedence.
+
+      Phandle properties and 'reg' properties are not included.
+
+      Args:
+        phandle_prop: Name of the phandle property to follow
+
+      Returns:
+        dict containing property names and values from both nodes:
+          key: property name
+          value: property value
+      """
+      # First get all the property keys/values from the current node
+      props = OrderedDict((prop.name, prop.value)
+                          for prop in self.properties.values()
+                          if prop.name not in [phandle_prop, 'reg'])
+
+      # Follow the phandle and add any new ones we find
+      phandle_node = self._FollowPhandle(phandle_prop)
+      if phandle_node:
+        for name, prop in phandle_node.props.iteritems():
+          if name not in props and not name.endswith('phandle'):
+            props[name] = prop.value
+      return props
+
   class Model(Node):
     """Represents a ChromeOS Configuration Model.
 
@@ -138,14 +172,8 @@ class CrosConfig(object):
       firmware = self.ChildNodeFromPath('/firmware')
       if not firmware:
         return []
-      props = OrderedDict((name, prop.value) for name, prop in
-                          firmware.properties.iteritems())
-      # Follow the phandle and add any new ones we find
-      shared_firmware = firmware._FollowPhandle('shares')
-      if shared_firmware:
-        for name, prop in shared_firmware.props.iteritems():
-          if name not in props:
-            props[name] = prop.value
+      props = firmware._GetMergedProperties('shares')
+
       if 'bcs-overlay' not in props:
         return []
       # Strip "overlay-" from bcs_overlay
@@ -189,16 +217,7 @@ class CrosConfig(object):
       touch = self.ChildNodeFromPath('/touch')
       files = {}
       for device in touch.subnodes.values():
-        # First get all the property keys/values from the current node
-        props = dict((prop.name, prop.value)
-                     for prop in device.properties.values())
-
-        # Follow the phandle and add any new ones we find
-        touch_type = device._FollowPhandle('touch-type')
-        if touch_type:
-          for name, prop in touch_type.props.iteritems():
-            if name not in props:
-              props[name] = prop.value
+        props = device._GetMergedProperties('touch-type')
 
         # Add a special property for the capitalised model name
         props['MODEL'] = self.name.upper()

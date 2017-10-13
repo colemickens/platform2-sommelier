@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from collections import OrderedDict
 import os
 import unittest
 
@@ -109,6 +110,31 @@ class CrosConfigHostTest(unittest.TestCase):
                                    'elants_i2c_3062.bin'),
         'touchscreen@1': TouchFile('elan/306e_5611.bin',
                                    'elants_i2c_306e.bin')})
+
+  def testGetMergedPropertiesPyro(self):
+    config = CrosConfig(self.file)
+    pyro = config.models['pyro']
+    stylus = pyro.ChildNodeFromPath('touch/stylus')
+    props = stylus._GetMergedProperties('touch-type')
+    self.assertSequenceEqual(
+        props,
+        OrderedDict([('version', '4209'),
+                     ('vendor', 'wacom'),
+                     ('firmware-bin', 'wacom/${version}.hex'),
+                     ('firmware-symlink', 'wacom_firmware_${MODEL}.bin')]))
+
+  def testGetMergedPropertiesReef(self):
+    config = CrosConfig(self.file)
+    reef = config.models['reef']
+    touchscreen = reef.ChildNodeFromPath('touch/touchscreen@1')
+    props = touchscreen._GetMergedProperties('touch-type')
+    self.assertSequenceEqual(
+        props,
+        OrderedDict([('pid', '306e'),
+                     ('version', '5611')
+                     , ('vendor', 'elan'),
+                     ('firmware-bin', '${vendor}/${pid}_${version}.bin'),
+                     ('firmware-symlink', '${vendor}ts_i2c_${pid}.bin')]))
 
 if __name__ == '__main__':
   unittest.main()
