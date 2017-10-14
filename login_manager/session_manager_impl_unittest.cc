@@ -1504,7 +1504,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
 
   // Set up what MockUserPolicyServiceFactory will return.
   hidden_user_home_expected_username_ = kSaneEmail;
-  hidden_user_home_policy_service_ = base::MakeUnique<MockPolicyService>();
+  hidden_user_home_policy_service_ = std::make_unique<MockPolicyService>();
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
   EXPECT_CALL(*policy_service, Retrieve(_))
