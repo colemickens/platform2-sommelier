@@ -510,17 +510,19 @@ ControlUnit::handleNewRequest(Message &msg)
      * Use the latest valid stats for still capture,
      * it comes from video pipe (during still preview)
      */
-    if (mLatestRequestId > mCaptureUnit->getPipelineDepth()
-        || mLatestRequestId == -1
-        || reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) > 0
-        || (mLatestStatistics != nullptr && mLatestRequestId == mLatestStatistics->id)) {
-        mPendingRequests.erase(mPendingRequests.begin());
+    if (mLatestRequestId >= AWB_CONVERGENCE_WAIT_COUNT ||
+        mLatestRequestId == -1 ||
+        reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) > 0 ||
+        (mLatestStatistics != nullptr &&
+         mLatestRequestId == mLatestStatistics->id)) {
+      mPendingRequests.erase(mPendingRequests.begin());
 
-        status = processRequestForCapture(reqState, mLatestStatistics);
-        if (CC_UNLIKELY(status != OK)) {
-            LOGE("Failed to process req %d for capture [%d]", reqState->request->getId(), status);
-            // TODO: handle error !
-        }
+      status = processRequestForCapture(reqState, mLatestStatistics);
+      if (CC_UNLIKELY(status != OK)) {
+        LOGE("Failed to process req %d for capture [%d]",
+             reqState->request->getId(), status);
+        // TODO: handle error !
+      }
     }
 
     return status;

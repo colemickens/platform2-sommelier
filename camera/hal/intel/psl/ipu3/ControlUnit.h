@@ -212,6 +212,7 @@ private:  /* Members */
     bool mAfFirstRun;
     uint32_t mAfApplySequence;
     uint32_t mSofSequence;
+    static const int16_t AWB_CONVERGENCE_WAIT_COUNT = 2;
 };  // class ControlUnit
 
 }  // namespace camera2
