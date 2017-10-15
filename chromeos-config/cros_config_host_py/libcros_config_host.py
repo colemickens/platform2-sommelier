@@ -26,13 +26,19 @@ class CrosConfig(object):
   Properties:
     models: All models in the CrosConfig tree, in the form of a dictionary:
             <model name: string, model: CrosConfig.Model>
+    phandle_to_node: Map of phandles to the assocated CrosConfig.Node:
+        key: Integer phandle value (>= 1)
+        value: Associated CrosConfig.Node object
   """
   def __init__(self, infile):
     self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
     self.models = OrderedDict(
-        (n.name, CrosConfig.Model(self._fdt, n))
+        (n.name, CrosConfig.Model(self, n))
         for n in self._fdt.GetNode('/chromeos/models').subnodes)
+    self.phandle_to_node = dict(
+        (phandle, CrosConfig.Node(self, fdt_node))
+        for phandle, fdt_node in self._fdt.phandle_to_node.iteritems())
 
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files for all models
@@ -62,11 +68,11 @@ class CrosConfig(object):
       properties: All properties attached to this node in the form of a
                   dictionary: <name: string, property: CrosConfig.Property>
     """
-    def __init__(self, _fdt, fdt_node):
-      self._fdt = _fdt
+    def __init__(self, cros_config, fdt_node):
+      self.cros_config = cros_config
       self._fdt_node = fdt_node
       self.name = fdt_node.name
-      self.subnodes = OrderedDict((n.name, CrosConfig.Node(_fdt, n))
+      self.subnodes = OrderedDict((n.name, CrosConfig.Node(cros_config, n))
                                   for n in fdt_node.subnodes)
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
@@ -114,7 +120,7 @@ class CrosConfig(object):
       prop = self.properties.get(prop_name)
       if not prop:
         return None
-      return self._fdt.phandle_to_node[prop.GetPhandle()]
+      return self.cros_config.phandle_to_node[prop.GetPhandle()]
 
     def _GetMergedProperties(self, phandle_prop):
       """Obtain properties in two nodes linked by a phandle
@@ -145,7 +151,7 @@ class CrosConfig(object):
       # Follow the phandle and add any new ones we find
       phandle_node = self._FollowPhandle(phandle_prop)
       if phandle_node:
-        for name, prop in phandle_node.props.iteritems():
+        for name, prop in phandle_node.properties.iteritems():
           if name not in props and not name.endswith('phandle'):
             props[name] = prop.value
       return props
@@ -157,8 +163,8 @@ class CrosConfig(object):
     traversed in the same manner. It also exposes helper functions
     specific to ChromeOS Config models.
     """
-    def __init__(self, _fdt, fdt_node):
-      super(CrosConfig.Model, self).__init__(_fdt, fdt_node)
+    def __init__(self, cros_config, fdt_node):
+      super(CrosConfig.Model, self).__init__(cros_config, fdt_node)
 
     def GetFirmwareUris(self):
       """Returns a list of (string) firmware URIs.
