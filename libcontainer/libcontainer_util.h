@@ -120,6 +120,13 @@ HookCallback CreateExecveCallback(base::FilePath filename,
 HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
                                             std::vector<int> nstypes);
 
+// Similar to base::CreateDirectory, but allows specifying the created
+// directories' mode and owner.
+bool CreateDirectoryOwnedBy(const base::FilePath& full_path,
+                            mode_t mode,
+                            uid_t uid,
+                            gid_t gid);
+
 }  // namespace libcontainer
 
 #endif  // LIBCONTAINER_LIBCONTAINER_UTIL_H_

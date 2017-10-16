@@ -468,7 +468,8 @@ bool ContainerCreateDevice(const struct container* c,
     return false;
 
   base::FilePath path = GetPathInOuterNamespace(c->runfsroot, dev.path);
-  if (!base::CreateDirectory(path.DirName())) {
+  if (!libcontainer::CreateDirectoryOwnedBy(path.DirName(), 0755, uid_userns,
+                                            gid_userns)) {
     PLOG(ERROR) << "Failed to create parent directory for " << path.value();
     return false;
   }

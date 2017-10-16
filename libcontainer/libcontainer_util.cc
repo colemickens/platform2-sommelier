@@ -14,6 +14,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <memory>
 #include <utility>
@@ -22,6 +23,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback_helpers.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
@@ -557,6 +559,35 @@ HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
   return base::Bind(&RunInNamespacesHelper,
                     base::Passed(std::move(callback)),
                     base::Passed(std::move(nstypes)));
+}
+
+bool CreateDirectoryOwnedBy(const base::FilePath& full_path,
+                            mode_t mode,
+                            uid_t uid,
+                            gid_t gid) {
+  if (base::DirectoryExists(full_path))
+    return true;
+
+  // Collect a list of all missing directories.
+  base::FilePath last_path = full_path;
+  std::vector<base::FilePath> missing_subpaths{full_path};
+  for (base::FilePath path = full_path.DirName();
+       path != last_path && !base::DirectoryExists(path);
+       path = path.DirName()) {
+    missing_subpaths.push_back(path);
+    last_path = path;
+  }
+
+  // Iterate through the missing parents, creating them.
+  for (std::vector<base::FilePath>::reverse_iterator i =
+           missing_subpaths.rbegin();
+       i != missing_subpaths.rend(); ++i) {
+    if (mkdir(i->value().c_str(), mode) != 0)
+      return false;
+    if (chown(i->value().c_str(), uid, gid) != 0)
+      return false;
+  }
+  return true;
 }
 
 }  // namespace libcontainer
