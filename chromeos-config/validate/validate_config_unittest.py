@@ -180,6 +180,54 @@ MODEL_THERMAL = '''
 };
 '''
 
+TOUCH = r'''
+&family {
+  touch {
+    elan_touchscreen: elan-touchscreen {
+      vendor = "elan";
+      firmware-bin = "${vendor}/${pid}_${version}.bin";
+      firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+    };
+    weida_touchscreen: weida-touchscreen {
+        vendor = "weida";
+        firmware-bin = "weida/${pid}_${version}_${date-code}.bin";
+        firmware-symlink = "wdt87xx.bin";
+    };
+  };
+};
+&models {
+  reef {
+    touch {
+      #address-cells = <1>;
+      #size-cells = <0>;
+      present = "probe";
+      probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+      touchscreen@0 {
+        reg = <0>;
+        touch-type = <&elan_touchscreen>;
+        pid = "0a97";
+        version = "1012";
+      };
+      touchscreen@1 {
+        reg = <1>;
+        touch-type = <&shared>;
+        pid = "0b10";
+        version = "002n";
+      };
+      touchscreen@2 {
+        reg = <2>;
+        touch-type = <&weida_touchscreen>;
+        pid = "01017401";
+        version = "2082";
+        date-code = "0133c65b";
+      };
+      bad {
+      };
+    };
+  };
+};
+'''
+
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator"""
   def setUp(self):
@@ -195,6 +243,29 @@ class UnitTests(cros_test_lib.TestCase):
     if dts:
       os.unlink(dts.name)
     return []
+
+  def _CheckAllIn(self, err_msg_list, result_lines):
+    """Check that the given messages appear in the validation result
+
+    All messages must appear, and all lines must be matches.
+
+    Args:
+      result_lines: List of validation results to check, each a string
+      err_msg_list: List of error messages to check for
+    """
+    err_msg_set = set(err_msg_list)
+    for line in result_lines:
+      found = False
+      for err_msg in err_msg_set:
+        if err_msg in line:
+          err_msg_set.remove(err_msg)
+          found = True
+          break
+      if not found:
+        self.fail("Found unexpected result: %s" % line)
+    if err_msg_set:
+      self.fail("Expected '%s'\n but not found in result: %s" %
+                (err_msg_set.pop(), '\n'.join(result_lines)))
 
   def testBase(self):
     """Test a skeleton file"""
@@ -281,6 +352,17 @@ class UnitTests(cros_test_lib.TestCase):
         "/chromeos/models/snappy/thermal: 'dptf-dv' value 'reef/bad.dv' does " +
         "not match pattern '^\\w+/dptf.dv$'"
         ], self.Run(HEADER + MODELS + MODEL_THERMAL))
+
+  def testTouch(self):
+    """Test validation of the thermal node"""
+    result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + TOUCH)
+    self._CheckAllIn([
+        "Node name 'bad' does not match pattern",
+        "/bad: Required property 'version' missing",
+        "/bad: Required property 'firmware-bin' missing",
+        "/bad: Required property 'firmware-symlink' missing",
+        "/touchscreen@1: Phandle 'touch-type' targets node",
+        ], result)
 
 
 if __name__ == '__main__':

@@ -232,6 +232,8 @@ class NodeDesc(SchemaElement):
                      subnode_path)
         if m and name in submodel_list[m.group(1)]:
           return element
+      elif isinstance(element, NodeAny):
+        return element
     return None
 
   def GetNodes(self):
@@ -253,3 +255,20 @@ class NodeSubmodel(NodeDesc):
   """A generic node schema element (base class for nodes)"""
   def __init__(self, elements):
     super(NodeSubmodel, self).__init__('SUBMODEL', elements=elements)
+
+
+class NodeAny(NodeDesc):
+  """A generic node schema element (base class for nodes)"""
+  def __init__(self, name_pattern, elements):
+    super(NodeAny, self).__init__('ANY', elements=elements)
+    self.name_pattern = name_pattern
+
+  def Validate(self, val, node):
+    """Check the name with a regex"""
+    if not self.name_pattern:
+      return
+    pattern = '^' + self.name_pattern + '$'
+    m = re.match(pattern, node.name)
+    if not m:
+      val.Fail(node.path, "Node name '%s' does not match pattern '%s'" %
+               (node.name, pattern))

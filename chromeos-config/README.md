@@ -329,6 +329,7 @@ chromeos {
                 firmware-symlink = "wacom_firmware_${model}.bin";
             };
             weida_touchscreen: weida-touchscreen {
+                vendor = "weida";
                 firmware-bin = "weida/${pid}_${version}_${date-code}.bin";
                 firmware-symlink = "wdt87xx.bin";
             };
@@ -360,8 +361,6 @@ chromeos {
                     touch-type = <&elan_touchscreen>;
                     pid = "0a97";
                     version = "1012";
-                    firmware-bin = "${vendor}/${pid}_${version}.bin";
-                    firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
                 };
             };
         };
@@ -425,7 +424,6 @@ chromeos {
                     touch-type = <&elan_touchpad>;
                     pid = "97.0";
                     version = "6.0";
-                    firmware-symlink = "${vendor}_i2c_${pid}.bin";
                 };
                 touchscreen@0 {
                     reg = <0>;

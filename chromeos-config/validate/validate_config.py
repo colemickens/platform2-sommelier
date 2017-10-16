@@ -53,7 +53,7 @@ sys.path.append(os.path.join(our_path, '../cros_config_host_py'))
 from chromite.lib import commandline
 import fdt
 import fdt_util
-from validate_schema import NodeDesc, NodeModel, NodeSubmodel
+from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from validate_schema import PropDesc, PropString, PropStringList
 from validate_schema import PropPhandleTarget, PropPhandle
 
@@ -114,7 +114,15 @@ SCHEMA = NodeDesc('/', True, [
                     PropPhandleTarget(),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA),
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
+            ]),
+            NodeDesc('touch', False, [
+                NodeAny('', [
+                    PropPhandleTarget(),
+                    PropString('firmware-bin', True, ''),
+                    PropString('firmware-symlink', True, ''),
+                    PropString('vendor', True, ''),
                 ]),
+            ]),
         ]),
         NodeDesc('models', True, [
             NodeModel([
@@ -135,6 +143,24 @@ SCHEMA = NodeDesc('/', True, [
                 ]),
                 NodeDesc('thermal', False, [
                     PropString('dptf-dv', False, r'\w+/dptf.dv'),
+                ]),
+                NodeDesc('touch', False, [
+                    PropString('present', False, r'yes|no|probe'),
+                    # We want to validate that probe-regex is only present when
+                    # 'present' = 'probe', but have no way of doing this
+                    # currently.
+                    PropString('probe-regex', False, ''),
+                    NodeAny(r'(stylus|touchpad|touchscreen)(@[0-9])?', [
+                        PropString('pid', False),
+                        PropString('version', True),
+                        PropPhandle('touch-type', '/chromeos/family/touch/ANY',
+                                    False),
+                        PropString('firmware-bin', True, '',
+                                   {'touch-type': False}),
+                        PropString('firmware-symlink', True, '',
+                                   {'touch-type': False}),
+                        PropString('date-code', False),
+                    ]),
                 ]),
             ])
         ])
@@ -206,6 +232,7 @@ class CrosConfigValidator(object):
       node: fdt.Node where the property appears
       schema: NodeDesc containing schema for this node
     """
+    schema.Validate(self, node)
     prop_names = node.props.keys()
     schema_props = [e.name for e in schema.elements
                     if isinstance(e, PropDesc) and e.Present(prop_names)]
