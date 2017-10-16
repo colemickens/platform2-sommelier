@@ -74,8 +74,9 @@ class SchemaElement(object):
     This method is overridden by subclasses. It should call val.Fail() if there
     is a problem during validation.
 
-    val: CrosConfigValidator object
-    prop: Prop object of the property
+    Args:
+      val: CrosConfigValidator object
+      prop: Prop object of the property
     """
     pass
 
@@ -191,6 +192,29 @@ class PropPhandle(PropDesc):
       val.Fail(prop.node.path, "Phandle '%s' targets node '%s' which does not "
                "match pattern '%s'" % (prop.name, target.path,
                                        self.target_path_match))
+
+
+class PropCustom(PropDesc):
+  """A custom property with its own validator
+
+  Properties:
+    validator: Function to call to validate this property
+  """
+  def __init__(self, name, validator, required=False, conditional_props=None):
+    super(PropCustom, self).__init__(name, 'custom', required,
+                                     conditional_props)
+    self.validator = validator
+
+  def Validate(self, val, prop):
+    """Validator for this property
+
+    This should be a static method in CrosConfigValidator.
+
+    Args:
+      val: CrosConfigValidator object
+      prop: Prop object of the property
+    """
+    self.validator(val, prop)
 
 
 class NodeDesc(SchemaElement):
