@@ -277,6 +277,16 @@ BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
     PropString('libpayload', True),
 ], conditional_props={'shares': False})
 
+BASE_AUDIO_SCHEMA = [
+    PropString('card', True, '', {'audio-type': False}),
+    PropString('volume', True, '', {'audio-type': False}),
+    PropString('dsp-ini', True, '', {'audio-type': False}),
+    PropString('hifi-conf', True, '', {'audio-type': False}),
+    PropString('alsa-conf', True, '', {'audio-type': False}),
+    PropString('topology-xml', False, '', {'audio-type': False}),
+    PropString('topology-bin', False, '', {'audio-type': False}),
+]
+
 """This is the schema. It is a hierarchical set of nodes and properties, just
 like the device tree. If an object subclasses NodeDesc then it is a node,
 possibly with properties and subnodes.
@@ -287,6 +297,10 @@ hierarchical way.
 SCHEMA = NodeDesc('/', True, [
     NodeDesc('chromeos', True, [
         NodeDesc('family', True, [
+            NodeDesc('audio', elements=[
+                NodeAny('', [PropPhandleTarget()] +
+                    copy.deepcopy(BASE_AUDIO_SCHEMA)),
+            ]),
             NodeDesc('firmware', elements=[
                 PropString('script', True, r'updater4\.sh'),
                 NodeModel([
@@ -315,6 +329,15 @@ SCHEMA = NodeDesc('/', True, [
                 PropString('brand-code', False, '[A-Z]{4}'),
                 PropString('powerd-prefs'),
                 PropString('wallpaper', False, '[a-z_]+'),
+                NodeDesc('audio', False, [
+                  NodeAny(r'main', [
+                      PropPhandle('audio-type', '/chromeos/family/audio/ANY',
+                                  False),
+                      PropString('cras-config-dir', True, r'\w+'),
+                      PropString('ucm-suffix', True, r'\w+'),
+                      PropString('topology-name', False, r'\w+'),
+                  ] + copy.deepcopy(BASE_AUDIO_SCHEMA)),
+                ]),
                 NodeDesc('submodels', False, [
                     NodeSubmodel([
                         PropPhandleTarget()
