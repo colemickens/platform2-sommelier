@@ -23,7 +23,8 @@ namespace run_oci {
 namespace {
 
 // Gets a uint32 from the given dictionary.
-bool ParseUint32FromDict(const base::DictionaryValue& dict, const char *name,
+bool ParseUint32FromDict(const base::DictionaryValue& dict,
+                         const char* name,
                          uint32_t* val_out) {
   double double_val;
   if (!dict.GetDouble(name, &double_val)) {
@@ -34,7 +35,8 @@ bool ParseUint32FromDict(const base::DictionaryValue& dict, const char *name,
 }
 
 // Gets a uint64 from the given dictionary.
-bool ParseUint64FromDict(const base::DictionaryValue& dict, const char *name,
+bool ParseUint64FromDict(const base::DictionaryValue& dict,
+                         const char* name,
                          uint64_t* val_out) {
   double double_val;
   if (!dict.GetDouble(name, &double_val)) {
@@ -143,22 +145,14 @@ bool ParseCapabilitiesConfig(const base::DictionaryValue& capabilities_dict,
 const std::map<std::string, int> kRlimitMap = {
 #define RLIMIT_MAP_ENTRY(limit) \
   { "RLIMIT_" #limit, RLIMIT_##limit }
-    RLIMIT_MAP_ENTRY(CPU),
-    RLIMIT_MAP_ENTRY(FSIZE),
-    RLIMIT_MAP_ENTRY(DATA),
-    RLIMIT_MAP_ENTRY(STACK),
-    RLIMIT_MAP_ENTRY(CORE),
-    RLIMIT_MAP_ENTRY(RSS),
-    RLIMIT_MAP_ENTRY(NPROC),
-    RLIMIT_MAP_ENTRY(NOFILE),
-    RLIMIT_MAP_ENTRY(MEMLOCK),
-    RLIMIT_MAP_ENTRY(AS),
-    RLIMIT_MAP_ENTRY(LOCKS),
-    RLIMIT_MAP_ENTRY(SIGPENDING),
-    RLIMIT_MAP_ENTRY(MSGQUEUE),
-    RLIMIT_MAP_ENTRY(NICE),
-    RLIMIT_MAP_ENTRY(RTPRIO),
-    RLIMIT_MAP_ENTRY(RTTIME),
+    RLIMIT_MAP_ENTRY(CPU),      RLIMIT_MAP_ENTRY(FSIZE),
+    RLIMIT_MAP_ENTRY(DATA),     RLIMIT_MAP_ENTRY(STACK),
+    RLIMIT_MAP_ENTRY(CORE),     RLIMIT_MAP_ENTRY(RSS),
+    RLIMIT_MAP_ENTRY(NPROC),    RLIMIT_MAP_ENTRY(NOFILE),
+    RLIMIT_MAP_ENTRY(MEMLOCK),  RLIMIT_MAP_ENTRY(AS),
+    RLIMIT_MAP_ENTRY(LOCKS),    RLIMIT_MAP_ENTRY(SIGPENDING),
+    RLIMIT_MAP_ENTRY(MSGQUEUE), RLIMIT_MAP_ENTRY(NICE),
+    RLIMIT_MAP_ENTRY(RTPRIO),   RLIMIT_MAP_ENTRY(RTTIME),
 #undef RLIMIT_MAP_ENTRY
 };
 
@@ -496,8 +490,8 @@ bool ParseSeccompArgs(const base::DictionaryValue& syscall_dict,
       if (!ParseUint64FromDict(*args_dict, "value2", &this_arg.value2))
         return false;
       if (!args_dict->GetString("op", &this_arg.op)) {
-        LOG(ERROR) << "Failed to parse op for arg " << this_arg.index
-                   << " of " << syscall_out->name;
+        LOG(ERROR) << "Failed to parse op for arg " << this_arg.index << " of "
+                   << syscall_out->name;
         return false;
       }
       syscall_out->args.push_back(this_arg);
@@ -509,8 +503,7 @@ bool ParseSeccompArgs(const base::DictionaryValue& syscall_dict,
 // Parses the seccomp node if it is present.
 bool ParseSeccompInfo(const base::DictionaryValue& seccomp_dict,
                       OciSeccomp* seccomp_out) {
-  if (!seccomp_dict.GetString("defaultAction",
-                              &seccomp_out->defaultAction))
+  if (!seccomp_dict.GetString("defaultAction", &seccomp_out->defaultAction))
     return false;
 
   // Gets the list of architectures.
@@ -706,8 +699,8 @@ bool ParseHooks(const base::DictionaryValue& config_root_dict,
       return false;
   }
   if (hooks_config_dict->GetList("poststart", &hooks_list)) {
-    if (!ParseHooksList(
-            *hooks_list, &config_out->post_start_hooks, "poststart"))
+    if (!ParseHooksList(*hooks_list, &config_out->post_start_hooks,
+                        "poststart"))
       return false;
   }
   if (hooks_config_dict->GetList("poststop", &hooks_list)) {
@@ -776,12 +769,10 @@ bool ParseContainerConfig(const std::string& config_json_data,
                           OciConfigPtr const& config_out) {
   std::string error_msg;
   std::unique_ptr<const base::Value> config_root_val =
-      base::JSONReader::ReadAndReturnError(config_json_data,
-                                           base::JSON_PARSE_RFC,
-                                           nullptr /* error_code_out */,
-                                           &error_msg,
-                                           nullptr /* error_line_out */,
-                                           nullptr /* error_column_out */);
+      base::JSONReader::ReadAndReturnError(
+          config_json_data, base::JSON_PARSE_RFC, nullptr /* error_code_out */,
+          &error_msg, nullptr /* error_line_out */,
+          nullptr /* error_column_out */);
   if (!config_root_val) {
     LOG(ERROR) << "Fail to parse config.json: " << error_msg;
     return false;

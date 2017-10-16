@@ -412,8 +412,7 @@ namespace run_oci {
 
 TEST(OciConfigParserTest, TestBasicConfig) {
   OciConfigPtr basic_config(new OciConfig());
-  ASSERT_TRUE(ParseContainerConfig(kBasicJsonData,
-                                   basic_config));
+  ASSERT_TRUE(ParseContainerConfig(kBasicJsonData, basic_config));
 
   EXPECT_EQ(basic_config->ociVersion, "1.0.0-rc1");
   EXPECT_EQ(basic_config->platform.os, "linux");
@@ -444,7 +443,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
   // Devices
   ASSERT_EQ(3, basic_config->linux_config.devices.size());
-  OciLinuxDevice *dev = &basic_config->linux_config.devices[0];
+  OciLinuxDevice* dev = &basic_config->linux_config.devices[0];
   EXPECT_EQ(dev->type, "c");
   EXPECT_EQ(dev->path, base::FilePath("/dev/fuse"));
   EXPECT_EQ(dev->fileMode, 438);
@@ -466,13 +465,12 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->linux_config.namespaces[1].path, base::FilePath(""));
   // Namespace Maps
   ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
-  OciLinuxNamespaceMapping *id_map =
-          &basic_config->linux_config.uidMappings[0];
+  OciLinuxNamespaceMapping* id_map = &basic_config->linux_config.uidMappings[0];
   EXPECT_EQ(id_map->hostID, 1000);
   EXPECT_EQ(id_map->containerID, 0);
   EXPECT_EQ(id_map->size, 10);
   // seccomp
-  OciSeccomp *seccomp = &basic_config->linux_config.seccomp;
+  OciSeccomp* seccomp = &basic_config->linux_config.seccomp;
   EXPECT_EQ(seccomp->defaultAction, "SCP_ACT_KILL");
   EXPECT_EQ(seccomp->architectures[0], "SCP_ARCH_X86");
   EXPECT_EQ(seccomp->syscalls[0].name, "read");
@@ -491,7 +489,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
             (1ull << CAP_AUDIT_WRITE) | (1ull << CAP_KILL) |
                 (1ull << CAP_NET_BIND_SERVICE));
   // hooks
-  std::vector<OciHook> *pre_start_hooks = &basic_config->pre_start_hooks;
+  std::vector<OciHook>* pre_start_hooks = &basic_config->pre_start_hooks;
   EXPECT_EQ(pre_start_hooks->size(), 2);
   EXPECT_EQ((*pre_start_hooks)[0].path, base::FilePath("/usr/bin/fix-mounts"));
   EXPECT_EQ((*pre_start_hooks)[0].args,
@@ -508,14 +506,12 @@ TEST(OciConfigParserTest, TestBasicConfig) {
 
 TEST(OciConfigParserTest, TestStrippedConfig) {
   OciConfigPtr stripped_config(new OciConfig());
-  ASSERT_TRUE(ParseContainerConfig(kStrippedJsonData,
-                                   stripped_config));
+  ASSERT_TRUE(ParseContainerConfig(kStrippedJsonData, stripped_config));
 }
 
 TEST(OciConfigParserTest, TestInvalidHostnameConfig) {
   OciConfigPtr invalid_config(new OciConfig());
-  ASSERT_FALSE(ParseContainerConfig(kInvalidHostnameJsonData,
-                                    invalid_config));
+  ASSERT_FALSE(ParseContainerConfig(kInvalidHostnameJsonData, invalid_config));
 }
 
 }  // namespace run_oci

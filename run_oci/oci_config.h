@@ -76,11 +76,11 @@ struct OciLinuxNamespaceMapping {
 struct OciLinuxDevice {
   std::string type;
   base::FilePath path;
-  uint32_t major = 0;  // Optional
-  uint32_t minor = 0;  // Optional
-  uint32_t fileMode = 0000;  // Optional
-  uint32_t uid = 0;  // Optional
-  uint32_t gid = 0;  // Optional
+  uint32_t major = 0;         // Optional
+  uint32_t minor = 0;         // Optional
+  uint32_t fileMode = 0000;   // Optional
+  uint32_t uid = 0;           // Optional
+  uint32_t gid = 0;           // Optional
   bool dynamicMinor = false;  // Optional, Chrome OS extension.
 };
 
@@ -98,16 +98,16 @@ struct OciSeccompSyscall {
 };
 
 struct OciLinuxCgroupDevice {
-    bool allow;
-    std::string access;  // Optional
-    std::string type;  // Optional
-    uint32_t major = -1;  // Optional
-    uint32_t minor = -1;  // Optional
+  bool allow;
+  std::string access;   // Optional
+  std::string type;     // Optional
+  uint32_t major = -1;  // Optional
+  uint32_t minor = -1;  // Optional
 };
 
 struct OciLinuxResources {
-    std::vector<OciLinuxCgroupDevice> devices;
-    // Other fields remain unused.
+  std::vector<OciLinuxCgroupDevice> devices;
+  // Other fields remain unused.
 };
 
 struct OciSeccomp {
@@ -123,20 +123,20 @@ struct OciNamespace {
 
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
-  base::FilePath cgroupsPath;  // Optional
+  base::FilePath cgroupsPath;           // Optional
   std::vector<OciNamespace> namespaces;
-  OciLinuxResources resources;  // Optional
+  OciLinuxResources resources;                        // Optional
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional
-  OciSeccomp seccomp;  // Optional
+  OciSeccomp seccomp;                                 // Optional
   // Unused: maskedPaths, readonlyPaths, rootfsPropagation, mountLabel, sysctl
 };
 
 struct OciHook {
   base::FilePath path;
   std::vector<std::string> args;  // Optional
-  OciEnvironment env;  // Optional
-  base::TimeDelta timeout;  // Optional
+  OciEnvironment env;             // Optional
+  base::TimeDelta timeout;        // Optional
 };
 
 struct OciConfig {
@@ -144,12 +144,12 @@ struct OciConfig {
   OciPlatform platform;
   OciRoot root;
   OciProcess process;
-  std::string hostname;  // Optional
-  std::vector<OciMount> mounts;  // Optional
+  std::string hostname;                   // Optional
+  std::vector<OciMount> mounts;           // Optional
   std::vector<OciHook> pre_chroot_hooks;  // Optional, Chrome OS extension.
-  std::vector<OciHook> pre_start_hooks;  // Optional
+  std::vector<OciHook> pre_start_hooks;   // Optional
   std::vector<OciHook> post_start_hooks;  // Optional
-  std::vector<OciHook> post_stop_hooks;  // Optional
+  std::vector<OciHook> post_stop_hooks;   // Optional
   // json field name - linux
   OciLinux linux_config;  // Optional
   // Unused: annotations

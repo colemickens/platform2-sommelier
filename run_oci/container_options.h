@@ -25,14 +25,14 @@ struct ContainerOptions {
   bool use_current_user;
   bool run_as_init;
 
-  ContainerOptions() :
-    alt_syscall_table(),
-    bind_mounts(),
-    cgroup_parent(),
-    extra_program_args(),
-    securebits_skip_mask(0u),
-    use_current_user(false),
-    run_as_init(true) {}
+  ContainerOptions()
+      : alt_syscall_table(),
+        bind_mounts(),
+        cgroup_parent(),
+        extra_program_args(),
+        securebits_skip_mask(0u),
+        use_current_user(false),
+        run_as_init(true) {}
 };
 
 }  // namespace run_oci

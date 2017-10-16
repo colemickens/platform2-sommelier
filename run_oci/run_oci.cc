@@ -117,8 +117,9 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
 // Parses the options from the OCI mount in to either mount flags in |flags_out|
 // or a data string for mount(2) in |option_string_out|.
 std::string ParseMountOptions(const std::vector<std::string>& options,
-                              int* flags_out, int* loopback_out,
-                              std::string *verity_options) {
+                              int* flags_out,
+                              int* loopback_out,
+                              std::string* verity_options) {
   std::string option_string_out;
   *flags_out = 0;
   *loopback_out = 0;
@@ -158,24 +159,24 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
 }
 
 // Sanitize |flags| that can be used for filesystem of a given |type|.
-int SanitizeFlags(const std::string &type, int flags) {
-    int sanitized_flags = flags;
-    // Right now, only sanitize sysfs and procfs.
-    if (type != "sysfs" && type != "proc")
-        return flags;
+int SanitizeFlags(const std::string& type, int flags) {
+  int sanitized_flags = flags;
+  // Right now, only sanitize sysfs and procfs.
+  if (type != "sysfs" && type != "proc")
+    return flags;
 
-    // sysfs and proc should always have nodev, noexec, nosuid.
-    // Warn the user if these weren't specified, then turn them on.
-    sanitized_flags |= (MS_NODEV | MS_NOEXEC | MS_NOSUID);
-    if (flags ^ sanitized_flags)
-        LOG(WARNING) << "Sanitized mount of type " << type << ".";
+  // sysfs and proc should always have nodev, noexec, nosuid.
+  // Warn the user if these weren't specified, then turn them on.
+  sanitized_flags |= (MS_NODEV | MS_NOEXEC | MS_NOSUID);
+  if (flags ^ sanitized_flags)
+    LOG(WARNING) << "Sanitized mount of type " << type << ".";
 
-    return sanitized_flags;
+  return sanitized_flags;
 }
 
 // Returns the path for |path| relative to |bundle_dir|.
-base::FilePath MakeAbsoluteFilePathRelativeTo(
-    const base::FilePath& bundle_dir, const base::FilePath& path) {
+base::FilePath MakeAbsoluteFilePathRelativeTo(const base::FilePath& bundle_dir,
+                                              const base::FilePath& path) {
   if (path.IsAbsolute())
     return path;
   return bundle_dir.Append(path);
@@ -184,13 +185,14 @@ base::FilePath MakeAbsoluteFilePathRelativeTo(
 // Adds the mounts specified in |mounts| to |config_out|.
 void ConfigureMounts(const std::vector<OciMount>& mounts,
                      const base::FilePath& bundle_dir,
-                     uid_t uid, gid_t gid,
+                     uid_t uid,
+                     gid_t gid,
                      container_config* config_out) {
   for (const auto& mount : mounts) {
     int flags, loopback;
     std::string verity_options;
-    std::string options = ParseMountOptions(mount.options, &flags, &loopback,
-                                            &verity_options);
+    std::string options =
+        ParseMountOptions(mount.options, &flags, &loopback, &verity_options);
     flags = SanitizeFlags(mount.type, flags);
 
     base::FilePath source = mount.source;
@@ -203,20 +205,11 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
     bool mount_in_ns = !mount.perform_in_intermediate_namespace && !loopback;
 
     container_config_add_mount(
-        config_out,
-        "mount",
-        source.value().c_str(),
-        mount.destination.value().c_str(),
-        mount.type.c_str(),
+        config_out, "mount", source.value().c_str(),
+        mount.destination.value().c_str(), mount.type.c_str(),
         options.empty() ? nullptr : options.c_str(),
-        verity_options.empty() ? nullptr : verity_options.c_str(),
-        flags,
-        uid,
-        gid,
-        0750,
-        mount_in_ns,
-        true /* create */,
-        loopback);
+        verity_options.empty() ? nullptr : verity_options.c_str(), flags, uid,
+        gid, 0750, mount_in_ns, true /* create */, loopback);
   }
 }
 
@@ -224,18 +217,12 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
 void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
                       container_config* config_out) {
   for (const auto& device : devices) {
-    container_config_add_device(config_out,
-                                device.type.c_str()[0],
-                                device.path.value().c_str(),
-                                device.fileMode,
-                                device.major,
-                                device.dynamicMinor ? -1 : device.minor,
-                                device.dynamicMinor,
-                                device.uid,
-                                device.gid,
-                                0,  // Cgroup permission are now in 'resources'.
-                                0,
-                                0);
+    container_config_add_device(
+        config_out, device.type.c_str()[0], device.path.value().c_str(),
+        device.fileMode, device.major, device.dynamicMinor ? -1 : device.minor,
+        device.dynamicMinor, device.uid, device.gid,
+        0,  // Cgroup permission are now in 'resources'.
+        0, 0);
   }
 }
 
@@ -246,14 +233,9 @@ void ConfigureCgroupDevices(const std::vector<OciLinuxCgroupDevice>& devices,
     bool read_set = device.access.find('r') != std::string::npos;
     bool write_set = device.access.find('w') != std::string::npos;
     bool make_set = device.access.find('m') != std::string::npos;
-    container_config_add_cgroup_device(config_out,
-                                       device.allow,
-                                       device.type.c_str()[0],
-                                       device.major,
-                                       device.minor,
-                                       read_set,
-                                       write_set,
-                                       make_set);
+    container_config_add_cgroup_device(
+        config_out, device.allow, device.type.c_str()[0], device.major,
+        device.minor, read_set, write_set, make_set);
   }
 }
 
@@ -271,14 +253,14 @@ bool ContainerConfigFromOci(const OciConfig& oci,
       MakeAbsoluteFilePathRelativeTo(bundle_dir, oci.root.path);
   container_config_premounted_runfs(config_out, root_dir.value().c_str());
 
-  std::vector<const char *> argv;
+  std::vector<const char*> argv;
   for (const auto& arg : oci.process.args)
     argv.push_back(arg.c_str());
   for (const auto& arg : extra_args)
     argv.push_back(arg.c_str());
   container_config_program_argv(config_out, argv.data(), argv.size());
 
-  std::vector<const char *> namespaces;
+  std::vector<const char*> namespaces;
   for (const auto& ns : oci.linux_config.namespaces) {
     namespaces.push_back(ns.type.c_str());
   }
@@ -304,8 +286,8 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
 
   for (const auto& limit : oci.process.rlimits) {
-    if (container_config_add_rlimit(
-            config_out, limit.type, limit.soft, limit.hard)) {
+    if (container_config_add_rlimit(config_out, limit.type, limit.soft,
+                                    limit.hard)) {
       return false;
     }
   }
@@ -334,21 +316,12 @@ bool OciConfigFromFile(const base::FilePath& config_path,
 // Appends additional mounts specified in |bind_mounts| to the configuration
 // given in |config_out|.
 bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
-  for (auto & mount : bind_mounts) {
-    if (container_config_add_mount(config_out,
-                                   "mount",
-                                   mount.first.value().c_str(),
-                                   mount.second.value().c_str(),
-                                   "bind",
-                                   NULL,
-                                   NULL,
-                                   MS_MGC_VAL | MS_BIND,
-                                   0,
-                                   0,
-                                   0750,
-                                   1,
-                                   1,
-                                   0)) {
+  for (const auto& mount : bind_mounts) {
+    if (container_config_add_mount(
+            config_out, "mount", mount.first.value().c_str(),
+            mount.second.value().c_str(), "bind", nullptr /* data */,
+            nullptr /* verity */, MS_MGC_VAL | MS_BIND, 0, 0, 0750,
+            true /* mount_in_ns */, true /* create */, false /* loopback */)) {
       PLOG(ERROR) << "Failed to add mount of " << mount.first.value();
       return false;
     }
@@ -476,13 +449,8 @@ bool SaveChildPidAndRunHooks(const std::vector<OciHook>& hooks,
                              const std::string& status,
                              pid_t container_pid) {
   *child_pid = container_pid;
-  return RunHooks(hooks,
-                  child_pid,
-                  container_id,
-                  bundle_dir,
-                  container_dir,
-                  hook_stage,
-                  status);
+  return RunHooks(hooks, child_pid, container_id, bundle_dir, container_dir,
+                  hook_stage, status);
 }
 
 void CleanUpContainer(const base::FilePath& container_dir) {
@@ -493,8 +461,7 @@ void CleanUpContainer(const base::FilePath& container_dir) {
   // recursively can be achieved by traversing this list in inverse
   // lexicographic order.
   std::sort(
-      mountpoints.begin(),
-      mountpoints.end(),
+      mountpoints.begin(), mountpoints.end(),
       [](const base::FilePath& a, const base::FilePath& b) { return b < a; });
   for (const auto& mountpoint : mountpoints) {
     if (umount2(mountpoint.value().c_str(), MNT_DETACH))
@@ -606,8 +573,7 @@ int RunOci(const base::FilePath& bundle_dir,
   }
 
   libcontainer::Config config;
-  if (!ContainerConfigFromOci(*oci_config,
-                              bundle_dir,
+  if (!ContainerConfigFromOci(*oci_config, bundle_dir,
                               container_options.extra_program_args,
                               config.get())) {
     PLOG(ERROR) << "Failed to create container from oci config.";
@@ -623,8 +589,7 @@ int RunOci(const base::FilePath& bundle_dir,
   container_config_keep_fds_open(config.get());
   if (!oci_config->process.capabilities.empty()) {
     container_config_set_capmask(
-        config.get(),
-        oci_config->process.capabilities["effective"].to_ullong(),
+        config.get(), oci_config->process.capabilities["effective"].to_ullong(),
         oci_config->process.capabilities.find("ambient") !=
             oci_config->process.capabilities.end());
   }
@@ -643,9 +608,9 @@ int RunOci(const base::FilePath& bundle_dir,
 
   if (container_options.use_current_user) {
     OciLinuxNamespaceMapping single_map = {
-      getuid(),  // hostID
-      0,         // containerID
-      1          // size
+        getuid(),  // hostID
+        0,         // containerID
+        1          // size
     };
     std::string map_string = GetIdMapString(single_map);
     container_config_uid_map(config.get(), map_string.c_str());
@@ -670,37 +635,26 @@ int RunOci(const base::FilePath& bundle_dir,
   // to run if |child_pid| is -1, so we will always do the right thing.
   // The callback is run in the same stack, so base::ConstRef() is safe.
   pid_t child_pid = -1;
-  base::ScopedClosureRunner post_stop_hooks(
-      base::Bind(base::IgnoreResult(&RunHooks),
-                 base::ConstRef(oci_config->post_stop_hooks),
-                 base::Unretained(&child_pid),
-                 container_id,
-                 bundle_dir,
-                 container_dir,
-                 "poststop",
-                 "stopped"));
+  base::ScopedClosureRunner post_stop_hooks(base::Bind(
+      base::IgnoreResult(&RunHooks),
+      base::ConstRef(oci_config->post_stop_hooks), base::Unretained(&child_pid),
+      container_id, bundle_dir, container_dir, "poststop", "stopped"));
 
   if (!oci_config->pre_chroot_hooks.empty()) {
-    config.AddHook(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
-                   base::Bind(&SaveChildPidAndRunHooks,
-                              base::ConstRef(oci_config->pre_chroot_hooks),
-                              base::Unretained(&child_pid),
-                              container_id,
-                              bundle_dir,
-                              container_dir,
-                              "prechroot",
-                              "created"));
+    config.AddHook(
+        MINIJAIL_HOOK_EVENT_PRE_CHROOT,
+        base::Bind(&SaveChildPidAndRunHooks,
+                   base::ConstRef(oci_config->pre_chroot_hooks),
+                   base::Unretained(&child_pid), container_id, bundle_dir,
+                   container_dir, "prechroot", "created"));
   }
   if (!oci_config->pre_start_hooks.empty()) {
-    config.AddHook(MINIJAIL_HOOK_EVENT_PRE_EXECVE,
-                   base::Bind(&SaveChildPidAndRunHooks,
-                              base::ConstRef(oci_config->pre_start_hooks),
-                              base::Unretained(&child_pid),
-                              container_id,
-                              bundle_dir,
-                              container_dir,
-                              "prestart",
-                              "created"));
+    config.AddHook(
+        MINIJAIL_HOOK_EVENT_PRE_EXECVE,
+        base::Bind(&SaveChildPidAndRunHooks,
+                   base::ConstRef(oci_config->pre_start_hooks),
+                   base::Unretained(&child_pid), container_id, bundle_dir,
+                   container_dir, "prestart", "created"));
   }
 
   int rc;
@@ -716,8 +670,7 @@ int RunOci(const base::FilePath& bundle_dir,
     const base::FilePath container_pid_path =
         container_dir.Append(kContainerPidFilename);
     std::string child_pid_str = base::StringPrintf("%d\n", child_pid);
-    if (base::WriteFile(container_pid_path,
-                        child_pid_str.c_str(),
+    if (base::WriteFile(container_pid_path, child_pid_str.c_str(),
                         child_pid_str.size()) != child_pid_str.size()) {
       PLOG(ERROR) << "Failed to write the container PID to "
                   << container_pid_path.value();
@@ -725,13 +678,8 @@ int RunOci(const base::FilePath& bundle_dir,
     }
   }
 
-  if (!RunHooks(oci_config->post_start_hooks,
-                &child_pid,
-                container_id,
-                bundle_dir,
-                container_dir,
-                "poststart",
-                "running")) {
+  if (!RunHooks(oci_config->post_start_hooks, &child_pid, container_id,
+                bundle_dir, container_dir, "poststart", "running")) {
     LOG(ERROR) << "Error running poststart hooks";
     container_kill(container.get());
     return -1;
@@ -756,8 +704,8 @@ bool GetContainerPID(const std::string& container_id, pid_t* pid_out) {
       container_dir.Append(kContainerPidFilename);
 
   std::string container_pid_str;
-  if (!base::ReadFileToStringWithMaxSize(
-          container_pid_path, &container_pid_str, kMaxPidFileLength)) {
+  if (!base::ReadFileToStringWithMaxSize(container_pid_path, &container_pid_str,
+                                         kMaxPidFileLength)) {
     PLOG(ERROR) << "Failed to read " << container_pid_path.value();
     return false;
   }
@@ -827,12 +775,8 @@ int OciDestroy(const std::string& container_id) {
   }
 
   // We are committed to cleaning everything up now.
-  RunHooks(oci_config->post_stop_hooks,
-           &container_pid,
-           container_id,
-           GetBundlePath(container_config_file),
-           container_dir,
-           "poststop",
+  RunHooks(oci_config->post_stop_hooks, &container_pid, container_id,
+           GetBundlePath(container_config_file), container_dir, "poststop",
            "stopped");
   CleanUpContainer(container_dir);
 
@@ -840,19 +784,19 @@ int OciDestroy(const std::string& container_id) {
 }
 
 const struct option longopts[] = {
-  { "bind_mount", required_argument, NULL, 'b' },
-  { "help", no_argument, NULL, 'h' },
-  { "cgroup_parent", required_argument, NULL, 'p' },
-  { "alt_syscall", required_argument, NULL, 's' },
-  { "securebits_skip_mask", required_argument, NULL, 'B' },
-  { "use_current_user", no_argument, NULL, 'u' },
-  { "signal", required_argument, NULL, 'S' },
-  { "container_path", required_argument, NULL, 'c' },
-  { "inplace", no_argument, NULL, 128 },
-  { 0, 0, 0, 0 },
+    {"bind_mount", required_argument, nullptr, 'b'},
+    {"help", no_argument, nullptr, 'h'},
+    {"cgroup_parent", required_argument, nullptr, 'p'},
+    {"alt_syscall", required_argument, nullptr, 's'},
+    {"securebits_skip_mask", required_argument, nullptr, 'B'},
+    {"use_current_user", no_argument, nullptr, 'u'},
+    {"signal", required_argument, nullptr, 'S'},
+    {"container_path", required_argument, nullptr, 'c'},
+    {"inplace", no_argument, nullptr, 128},
+    {0, 0, 0, 0},
 };
 
-void print_help(const char *argv0) {
+void print_help(const char* argv0) {
   printf(
       "usage: %1$s [OPTIONS] <command> <container id>\n"
       "Commands:\n"
@@ -910,7 +854,7 @@ void print_help(const char *argv0) {
 
 }  // namespace run_oci
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   run_oci::ContainerOptions container_options;
   base::FilePath bundle_dir = base::MakeAbsoluteFilePath(base::FilePath("."));
   int c;
@@ -921,63 +865,63 @@ int main(int argc, char **argv) {
                   brillo::kLogToStderrIfTty);
 
   while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", run_oci::longopts,
-                          NULL)) != -1) {
+                          nullptr)) != -1) {
     switch (c) {
-    case 'b': {
-      std::istringstream ss(optarg);
-      std::string outside_path;
-      std::string inside_path;
-      std::getline(ss, outside_path, ':');
-      std::getline(ss, inside_path, ':');
-      if (outside_path.empty() || inside_path.empty()) {
+      case 'b': {
+        std::istringstream ss(optarg);
+        std::string outside_path;
+        std::string inside_path;
+        std::getline(ss, outside_path, ':');
+        std::getline(ss, inside_path, ':');
+        if (outside_path.empty() || inside_path.empty()) {
+          run_oci::print_help(argv[0]);
+          return -1;
+        }
+        container_options.bind_mounts.push_back(run_oci::BindMount(
+            base::MakeAbsoluteFilePath(base::FilePath(outside_path)),
+            base::FilePath(inside_path)));
+        break;
+      }
+      case 'B':
+        if (!base::HexStringToUInt64(optarg,
+                                     &container_options.securebits_skip_mask)) {
+          run_oci::print_help(argv[0]);
+          return -1;
+        }
+        break;
+      case 'c':
+        bundle_dir = base::MakeAbsoluteFilePath(base::FilePath(optarg));
+        break;
+      case 'u':
+        container_options.use_current_user = true;
+        break;
+      case 'p':
+        container_options.cgroup_parent = optarg;
+        break;
+      case 's':
+        container_options.alt_syscall_table = optarg;
+        break;
+      case 'S': {
+        auto it = run_oci::kSignalMap.find(optarg);
+        if (it == run_oci::kSignalMap.end()) {
+          LOG(ERROR) << "Invalid signal name '" << optarg << "'";
+          return -1;
+        }
+        kill_signal = it->second;
+        break;
+      }
+      case 'i':
+        container_options.run_as_init = false;
+        break;
+      case 'h':
         run_oci::print_help(argv[0]);
-        return -1;
-      }
-      container_options.bind_mounts.push_back(run_oci::BindMount(
-          base::MakeAbsoluteFilePath(base::FilePath(outside_path)),
-          base::FilePath(inside_path)));
-      break;
-    }
-    case 'B':
-      if (!base::HexStringToUInt64(optarg,
-                                   &container_options.securebits_skip_mask)) {
+        return 0;
+      case 128:  // inplace
+        inplace = true;
+        break;
+      default:
         run_oci::print_help(argv[0]);
-        return -1;
-      }
-      break;
-    case 'c':
-      bundle_dir = base::MakeAbsoluteFilePath(base::FilePath(optarg));
-      break;
-    case 'u':
-      container_options.use_current_user = true;
-      break;
-    case 'p':
-      container_options.cgroup_parent = optarg;
-      break;
-    case 's':
-      container_options.alt_syscall_table = optarg;
-      break;
-    case 'S': {
-      auto it = run_oci::kSignalMap.find(optarg);
-      if (it == run_oci::kSignalMap.end()) {
-        LOG(ERROR) << "Invalid signal name '" << optarg << "'";
-        return -1;
-      }
-      kill_signal = it->second;
-      break;
-    }
-    case 'i':
-      container_options.run_as_init = false;
-      break;
-    case 'h':
-      run_oci::print_help(argv[0]);
-      return 0;
-    case 128:  // inplace
-      inplace = true;
-      break;
-    default:
-      run_oci::print_help(argv[0]);
-      return 1;
+        return 1;
     }
   }
 
