@@ -972,6 +972,14 @@ bool Init::Setup() {
           .use_console = false,
           .wait_for_exit = false,
       },
+      {
+          .doc = "Wayland (virtwl) proxy",
+          .argv = {"virtwl_guest_proxy"},
+          .env = {{"XDG_RUNTIME_DIR", "/run"}},
+          .respawn = true,
+          .use_console = false,
+          .wait_for_exit = false,
+      },
   };
 
   // Spawn all the startup applications.
