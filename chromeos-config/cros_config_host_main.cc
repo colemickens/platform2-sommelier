@@ -20,10 +20,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(get_all, false,
       "Lists the string value at path + key for all models or a blank line "
       "if the property doesn't exist.");
-  DEFINE_bool(get_firmware_uris, false,
-      "List all firmware URIs (file parths in the cloud) and may include "
-      "duplicates. These are used for downloading firmware images for "
-      "packaging into a firmware updates.");
   DEFINE_bool(list_models, false, "Lists all models in the config file.");
   DEFINE_string(model, "", "Optionally specifies which model name to use.")
 
@@ -37,17 +33,14 @@ int main(int argc, char* argv[]) {
   base::CommandLine::StringVector args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
 
-  CHECK_EQ(args.size() < 1, false) << "Must pass in config_filepath.";
-
   CHECK_EQ(args.size() >= 3 && FLAGS_model.empty() && !FLAGS_get_all, false)
       << "Must pass in --model or --get_all to use [path + key] args.";
 
   CHECK_EQ(args.size() >= 3 && !FLAGS_model.empty() && FLAGS_get_all, false)
       << "Must pass in --model or --get_all, not both.";
 
-  CHECK_EQ(args.size() <= 2 && !FLAGS_list_models && !FLAGS_get_firmware_uris,
-      false) << "Must pass either --list_models, --get_firmware_uris or "
-      "[path + args].";
+  CHECK_EQ(args.size() <= 2 && !FLAGS_list_models, false)
+      << "Must pass either --list_models or [path + args].";
 
   CHECK_EQ(args.size() > 1 && FLAGS_list_models, false)
       << "Cannot pass --list_models and [path + key] at the same time.";
@@ -97,19 +90,6 @@ int main(int argc, char* argv[]) {
   if (FLAGS_list_models) {
     for (const auto& model : cros_config.GetModelNames()) {
       std::cout << model << std::endl;
-    }
-  }
-
-  if (FLAGS_get_firmware_uris) {
-    for (const auto& model : cros_config.GetModelNames()) {
-      if (!cros_config.InitForHost(base::FilePath(config_filepath), model)) {
-        std::cout << std::endl;
-        continue;
-      }
-      for (const auto& uri : cros_config.GetFirmwareUris()) {
-        std::cout << uri << " ";
-      }
-      std::cout << std::endl;
     }
   }
 

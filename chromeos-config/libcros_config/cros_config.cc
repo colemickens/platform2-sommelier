@@ -25,7 +25,6 @@ extern "C" {
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kModelNodePath[] = "/chromeos/models";
-const char kFirmwarePath[] = "firmware";
 }  // namespace
 
 namespace brillo {
@@ -61,58 +60,14 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
   return InitCommon(filepath, cmdline);
 }
 
-std::vector<std::string> CrosConfig::GetFirmwareUris() const {
-  std::vector<std::string> uris;
-  if (!InitCheck(true)) {
-    return uris;
-  }
-
-  const void* blob = blob_.c_str();
-
-  int firmware = fdt_subnode_offset(blob, model_offset_, kFirmwarePath);
-  if (firmware < 0) {
-    LOG(WARNING) << "Cannot find firmware for " << model_ << ": "
-      << fdt_strerror(firmware);
-    return uris;
-  }
-
-  // Get the bcs-overlay property in firmware
-  const char* bcs_overlay_ptr = static_cast<const char*>(
-      fdt_getprop(blob, firmware, "bcs-overlay", NULL));
-  if (bcs_overlay_ptr == nullptr) {
-    return uris;
-  }
-  std::string bcs_overlay = bcs_overlay_ptr;
-  if (bcs_overlay.empty()) {
-    LOG(WARNING) << model_ << " lacks a bcs-overlay property in firmware.";
-    return uris;
-  }
-  // Strip out the overlay- part
-  if (!base::StartsWith(bcs_overlay, "overlay-",
-        base::CompareCase::INSENSITIVE_ASCII)) {
-    LOG(WARNING) << "Expected bcs-overlay field in firmware for model "
-      << model_ << " to start with 'overlay-'. Skipping model!";
-    return uris;
-  }
-  bcs_overlay = bcs_overlay.substr(bcs_overlay.find_first_of("-") + 1);
-
-  int firmware_child;
-  fdt_for_each_property_offset(firmware_child, blob, firmware) {
-    const auto prop = fdt_get_property_by_offset(blob, firmware_child, NULL);
-    std::string name = fdt_string(blob, fdt32_to_cpu(prop->nameoff));
-    if (base::EndsWith(name, "-image", base::CompareCase::INSENSITIVE_ASCII)) {
-      uris.push_back("gs://chromeos-binaries/HOME/bcs-" +
-          bcs_overlay + "/overlay-" + bcs_overlay +
-          "/chromeos-base/chromeos-firmware-" + model_ + "/" +
-          std::string(prop->data).substr(6));
-    }
-  }
-  return uris;
-}
-
 bool CrosConfig::GetString(const std::string& path, const std::string& prop,
                            std::string* val) {
-  if (!InitCheck(true)) {
+  if (!InitCheck()) {
+    return false;
+  }
+
+  if (model_offset_ < 0) {
+    LOG(ERROR) << "Please specify the model to access.";
     return false;
   }
 
@@ -151,7 +106,7 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
 std::vector<std::string> CrosConfig::GetModelNames() const {
   std::vector<std::string> models;
 
-  if (!InitCheck(false)) {
+  if (!InitCheck()) {
     return models;
   }
 
@@ -222,13 +177,9 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   return true;
 }
 
-bool CrosConfig::InitCheck(bool check_for_model) const {
+bool CrosConfig::InitCheck() const {
   if (!inited_) {
     LOG(ERROR) << "Init*() must be called before accessing configuration";
-    return false;
-  }
-  if (check_for_model && model_offset_ < 0) {
-    LOG(ERROR) << "Please specify the model to access.";
     return false;
   }
   return true;

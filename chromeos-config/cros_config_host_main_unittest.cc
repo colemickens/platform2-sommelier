@@ -89,26 +89,6 @@ TEST(CrosConfigTest, GetStringForAll) {
   EXPECT_EQ("default\n\nepic\n\n", output);
 }
 
-TEST(CrosConfigTest, GetFirmwareUris) {
-  std::string bucket = "gs://chromeos-binaries/HOME/bcs-reef-private/"
-    "overlay-reef-private/chromeos-base";
-  std::string output;
-  bool success = base::GetAppOutput(
-      {base_command, "--get_firmware_uris", "test.dtb"}, &output);
-  EXPECT_TRUE(success);
-  EXPECT_EQ(
-      bucket + "/chromeos-firmware-pyro/Reef_EC.9042.87.1.tbz2 " +
-      bucket + "/chromeos-firmware-pyro/Reef_PD.9042.87.1.tbz2 " +
-      bucket + "/chromeos-firmware-pyro/Reef.9042.87.1.tbz2 " +
-      bucket + "/chromeos-firmware-pyro/Reef.9042.110.0.tbz2 \n" +
-      "\n" +
-      bucket + "/chromeos-firmware-reef/Reef_EC.9042.87.1.tbz2 " +
-      bucket + "/chromeos-firmware-reef/Reef.9042.87.1.tbz2 " +
-      bucket + "/chromeos-firmware-reef/Reef.9042.110.0.tbz2 \n" +
-      "\n",
-      output);
-}
-
 TEST(CrosConfigTest, StdinGetString) {
   std::string command = "cat test.dtb | " + std::string(base_command) +
     " --model=pyro - / wallpaper";
