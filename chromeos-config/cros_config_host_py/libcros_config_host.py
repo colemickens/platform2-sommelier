@@ -102,7 +102,7 @@ class CrosConfig(object):
       # Handle a 'shares' property, which means we can grab nodes / properties
       # from the associated node.
       elif 'shares' in self.properties:
-        shared = self._FollowPhandle('shares')
+        shared = self.FollowPhandle('shares')
         if part in shared.subnodes:
           sub_node = shared.subnodes[part]
       else:
@@ -115,11 +115,11 @@ class CrosConfig(object):
         return None
       prop = child_node.properties.get(property_name)
       if not prop and 'shares' in child_node.properties:
-        shared = child_node._FollowPhandle('shares')
+        shared = child_node.FollowPhandle('shares')
         prop = shared.properties.get(property_name)
       return prop
 
-    def _FollowPhandle(self, prop_name):
+    def FollowPhandle(self, prop_name):
       """Follow a property's phandle
 
       Args:
@@ -133,7 +133,7 @@ class CrosConfig(object):
         return None
       return self.cros_config.phandle_to_node[prop.GetPhandle()]
 
-    def _GetMergedProperties(self, phandle_prop):
+    def GetMergedProperties(self, phandle_prop):
       """Obtain properties in two nodes linked by a phandle
 
       This is used to create a dict of the properties in a main node along with
@@ -160,7 +160,7 @@ class CrosConfig(object):
                           if prop.name not in [phandle_prop, 'reg'])
 
       # Follow the phandle and add any new ones we find
-      phandle_node = self._FollowPhandle(phandle_prop)
+      phandle_node = self.FollowPhandle(phandle_prop)
       if phandle_node:
         for name, prop in phandle_node.properties.iteritems():
           if name not in props and not name.endswith('phandle'):
@@ -189,7 +189,7 @@ class CrosConfig(object):
       firmware = self.ChildNodeFromPath('/firmware')
       if not firmware:
         return []
-      props = firmware._GetMergedProperties('shares')
+      props = firmware.GetMergedProperties('shares')
 
       if 'bcs-overlay' not in props:
         return []
@@ -234,7 +234,7 @@ class CrosConfig(object):
       touch = self.ChildNodeFromPath('/touch')
       files = {}
       for device in touch.subnodes.values():
-        props = device._GetMergedProperties('touch-type')
+        props = device.GetMergedProperties('touch-type')
 
         # Add a special property for the capitalised model name
         props['MODEL'] = self.name.upper()
