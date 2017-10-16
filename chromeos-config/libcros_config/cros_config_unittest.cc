@@ -5,6 +5,7 @@
 /* Libary to provide access to the Chrome OS master configuration */
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <gtest/gtest.h>
 
@@ -91,6 +92,14 @@ int main(int argc, char **argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)
     return EXIT_FAILURE;
+
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_FILE;
+  settings.log_file = "log.test";
+  settings.lock_log = logging::DONT_LOCK_LOG_FILE;
+  settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(settings);
+
   testing::InitGoogleTest(&argc, argv);
 
   return RUN_ALL_TESTS();
