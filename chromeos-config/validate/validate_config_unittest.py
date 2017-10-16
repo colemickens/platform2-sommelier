@@ -247,7 +247,7 @@ class UnitTests(cros_test_lib.TestCase):
          "valid list is ()"], result)
 
   def testBrandCode(self):
-    """Test the model trying to specify nodes that should be shared"""
+    """Test validation of brand codes"""
     self.assertEqual([
         "/chromeos/models/pyro: 'brand-code' value 'abcd' does not match " +
         "pattern '^[A-Z]{4}$'",
