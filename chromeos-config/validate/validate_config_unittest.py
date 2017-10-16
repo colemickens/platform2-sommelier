@@ -30,11 +30,11 @@ HEADER = '''/dts-v1/;
 
 MODELS = '''
 &models {
-  reef {
+  reef: reef {
   };
-  pyro {
+  pyro: pyro {
   };
-  snappy {
+  snappy: snappy {
   };
 };
 '''
@@ -291,6 +291,54 @@ AUDIO = r'''
 };
 '''
 
+MAPPING = '''
+&family {
+  mapping {
+    #address-cells = <1>;
+    #size-cells = <0>;
+    sku-map@0 {
+      reg = <0>;
+      platform-name = "Reef";
+      smbios-name-match = "reef";
+      /* This is an example! It does not match any real family */
+      simple-sku-map = <
+        0 &reef
+        4 &reef_4
+        4 &snappy    /* duplicate */
+        5 &reef_5
+        8 &shared
+        256 &reef_5>;
+    };
+    sku-map@1 {
+      reg = <1>;
+      platform-name = "Pyro";
+      smbios-name-match = "pyro";
+      single-sku = <&pyro>;
+    };
+    sku-map@2 {
+      reg = <2>;
+      platform-name = "Snappy";
+      smbios-name-match = "snappy";
+      single-sku = <&snappy>;
+    };
+  };
+};
+&models {
+  reef {
+    /*
+     * We don't have submodel validation, but add this in here so that mapping
+     * validation is complete.
+     */
+    submodels {
+      reef_4: reef-touchscreen {
+      };
+      reef_5: reef-notouch {
+      };
+    };
+  };
+};
+'''
+
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator"""
   def setUp(self):
@@ -437,6 +485,16 @@ class UnitTests(cros_test_lib.TestCase):
         "snappy/audio/main: Required property 'hifi-conf' missing",
         "snappy/audio/main: Required property 'alsa-conf' missing",
         "bad-audio-type: Required property 'card' missing",
+        ], result)
+
+  def testMapping(self):
+    """Test validation of the mapping node"""
+    result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + MAPPING)
+    self._CheckAllIn([
+        'mapping/sku-map@0: Duplicate sku_id 4',
+        'mapping/sku-map@0: sku_id 256 out of range',
+        "mapping/sku-map@0: Phandle 'simple-sku-map' sku-id 8 must target a " +
+        'model or submodel',
         ], result)
 
 

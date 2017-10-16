@@ -44,6 +44,7 @@ Usage:
 from __future__ import print_function
 
 import copy
+import itertools
 import os
 import sys
 
@@ -54,8 +55,8 @@ from chromite.lib import commandline
 import fdt
 import fdt_util
 from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
-from validate_schema import PropDesc, PropString, PropStringList
-from validate_schema import PropPhandleTarget, PropPhandle
+from validate_schema import PropCustom, PropDesc, PropString, PropStringList
+from validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
 
 
 def ParseArgv(argv):
@@ -221,6 +222,26 @@ class CrosConfigValidator(object):
     for subnode in node.subnodes:
       self._ValidateTree(subnode, schema)
 
+  @staticmethod
+  def ValidateSkuMap(val, prop):
+    it = iter(prop.value)
+    sku_set = set()
+    for sku, phandle in itertools.izip(it, it):
+      sku_id = fdt_util.fdt32_to_cpu(sku)
+      if sku_id > 255:
+        val.Fail(prop.node.path, 'sku_id %d out of range' % sku_id)
+      if sku_id in sku_set:
+        val.Fail(prop.node.path, 'Duplicate sku_id %d' % sku_id)
+      sku_set.add(sku_id)
+      phandle_val = fdt_util.fdt32_to_cpu(phandle)
+      target = prop.fdt.LookupPhandle(phandle_val)
+      if (not CheckPhandleTarget(val, target, '/chromeos/models/MODEL') and
+          not CheckPhandleTarget(val, target,
+                                 '/chromeos/models/MODEL/submodels/SUBMODEL')):
+        val.Fail(prop.node.path,
+                 "Phandle '%s' sku-id %d must target a model or submodel'" %
+                 (prop.name, sku_id))
+
   def Start(self, fname, schema):
     """Start validating a master configuration file
 
@@ -314,6 +335,15 @@ SCHEMA = NodeDesc('/', True, [
                     PropString('firmware-bin', True, ''),
                     PropString('firmware-symlink', True, ''),
                     PropString('vendor', True, ''),
+                ]),
+            ]),
+            NodeDesc('mapping', False, [
+                NodeAny(r'sku-map(@[0-9])?', [
+                    PropString('platform-name', False, ''),
+                    PropString('smbios-name-match', False, ''),
+                    PropPhandle('single-sku', '/chromeos/models/MODEL', False),
+                    PropCustom('simple-sku-map',
+                               CrosConfigValidator.ValidateSkuMap, False),
                 ]),
             ]),
         ]),
