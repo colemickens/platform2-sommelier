@@ -160,6 +160,25 @@ MODEL_BRAND_CODE = '''
 };
 '''
 
+MODEL_THERMAL = '''
+&models {
+  reef {
+    thermal {
+      dptf-dv = "reef/dptf.dv";
+    };
+  };
+  pyro{
+    thermal {
+      dptf-dv = "dptf.dv";
+    };
+  };
+  snappy{
+    thermal {
+      dptf-dv = "reef/bad.dv";
+    };
+  };
+};
+'''
 
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator"""
@@ -253,6 +272,16 @@ class UnitTests(cros_test_lib.TestCase):
         "pattern '^[A-Z]{4}$'",
         "/chromeos/models/snappy: 'brand-code' value 'AB1' does not match " +
         "pattern '^[A-Z]{4}$'"], self.Run(HEADER + MODELS + MODEL_BRAND_CODE))
+
+  def testThermal(self):
+    """Test validation of the thermal node"""
+    self.assertEqual([
+        "/chromeos/models/pyro/thermal: 'dptf-dv' value 'dptf.dv' does not "
+        "match pattern '^\\w+/dptf.dv$'",
+        "/chromeos/models/snappy/thermal: 'dptf-dv' value 'reef/bad.dv' does " +
+        "not match pattern '^\\w+/dptf.dv$'"
+        ], self.Run(HEADER + MODELS + MODEL_THERMAL))
+
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)

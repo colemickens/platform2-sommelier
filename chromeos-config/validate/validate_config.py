@@ -132,7 +132,10 @@ SCHEMA = NodeDesc('/', True, [
                     NodeSubmodel([
                         PropPhandleTarget()
                     ])
-                ])
+                ]),
+                NodeDesc('thermal', False, [
+                    PropString('dptf-dv', False, r'\w+/dptf.dv'),
+                ]),
             ])
         ])
     ])
