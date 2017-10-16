@@ -83,6 +83,23 @@ class CrosConfig(object):
 
     return sorted(file_set, key=lambda files: files.source)
 
+  def GetFirmwareBuildTargets(self, target_type):
+    """Returns a list of all firmware build-targets of the given target type.
+
+    Args:
+      target_type: A string type for the build-targets to return
+
+    Returns:
+      A list of all build-targets of the given type, for all models.
+    """
+    build_targets = [model.ChildPropertyFromPath('/firmware/build-targets',
+                                                 target_type)
+                     for model in self.models.values()]
+    # De-duplicate
+    build_targets_dedup = {target.value if target else None
+                           for target in build_targets if target}
+    return list(build_targets_dedup)
+
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
 

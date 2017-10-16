@@ -178,5 +178,11 @@ class CrosConfigHostTest(unittest.TestCase):
                    '.reef-ucm.conf')])
 
 
+  def testGetFirmwareBuildTargets(self):
+    config = CrosConfig(self.file)
+    self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
+                             ['pyro', 'caroline'])
+
+
 if __name__ == '__main__':
   unittest.main()

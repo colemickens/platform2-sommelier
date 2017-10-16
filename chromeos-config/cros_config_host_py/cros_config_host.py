@@ -79,6 +79,16 @@ def GetAudioFiles(config):
     print(files.source)
     print(files.dest)
 
+def GetFirmwareBuildTargets(config, target_type):
+  """Lists all firmware build-targets of the given type, for all models.
+
+  Args:
+    config: A CrosConfig instance to load data from.
+    target_type: A string name for what target type to get build-targets for.
+  """
+  for target in config.GetFirmwareBuildTargets(target_type):
+    print(target)
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -125,6 +135,14 @@ def GetParser(description):
       'get-audio-files',
       help='Lists pairs of audio files in sequence: first line is ' +
       'the source file, second line is the full install pathname')
+  # Parser: get-firmware-build-targets
+  build_target_parser = subparsers.add_parser(
+      'get-firmware-build-targets',
+      help='Lists firmware build-targets for the given type, for all models.',
+      epilog='Each build-target will be printed on its own line.')
+  build_target_parser.add_argument(
+      'type',
+      help='The build-targets type to get (ex. coreboot, ec, depthcharge)')
   return parser
 
 
@@ -169,6 +187,8 @@ def main(argv):
     GetFirmwareUris(models)
   elif opts.subcommand == 'get-audio-files':
     GetAudioFiles(config)
+  elif opts.subcommand == 'get-firmware-build-targets':
+    GetFirmwareBuildTargets(config, opts.type)
 
 
 if __name__ == '__main__':

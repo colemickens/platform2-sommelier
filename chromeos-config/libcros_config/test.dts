@@ -77,6 +77,10 @@
 			pd-image = "bcs://Reef_PD.9042.87.1.tbz2";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+			build-targets {
+				coreboot = "pyro";
+				ec = "pyro";
+			};
 		};
 		touch {
 			present = "probe";

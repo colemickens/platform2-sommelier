@@ -27,9 +27,9 @@ class CrosConfigHostTest(unittest.TestCase):
     if self.temp_file is not None:
       os.remove(self.temp_file.name)
 
-  def CheckManyLinesWithoutSpaces(self, output):
+  def CheckManyLinesWithoutSpaces(self, output, lines=3):
     # Expect there to be a few lines
-    self.assertGreater(len(output.split()), 3)
+    self.assertGreater(len(output.split()), lines)
     # Expect each line to not have spaces in it
     for line in output.split():
       self.assertFalse(' ' in line)
@@ -37,9 +37,9 @@ class CrosConfigHostTest(unittest.TestCase):
     # Expect the last thing in the output to be a newline
     self.assertEqual(output[-1:], os.linesep)
 
-  def CheckManyLines(self, output):
+  def CheckManyLines(self, output, lines=3):
     # Expect there to be a few lines
-    self.assertGreater(len(output.split()), 3)
+    self.assertGreater(len(output.split()), lines)
     # Expect each line to not end in space
     for line in output.split():
       self.assertNotEqual(line[-1:], ' ')
@@ -99,6 +99,12 @@ class CrosConfigHostTest(unittest.TestCase):
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
+
+  def testGetFirmwareBuildTargets(self):
+    call_args = '{} {} get-firmware-build-targets coreboot'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.CheckManyLines(output, 1)
 
 if __name__ == '__main__':
   unittest.main()
