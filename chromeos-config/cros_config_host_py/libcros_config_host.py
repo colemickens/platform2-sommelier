@@ -15,6 +15,11 @@ from collections import namedtuple, OrderedDict
 
 import fdt
 
+# Represents a single touch firmware file which needs to be installed:
+#   firmware: source filename of firmware file. This is installed in a
+#       directory in the root filesystem
+#   symlink: name of symbolic link to put in LIB_FIRMWARE to point to the touch
+#       firmware. This is where Linux finds the firmware at runtime.
 TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 
 

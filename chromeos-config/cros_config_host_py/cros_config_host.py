@@ -100,8 +100,7 @@ def GetParser(description):
   subparsers.add_parser(
       'get-touch-firmware-files',
       help='Lists groups of touch firmware files in sequence: first line is ' +
-      'firmware file, second line is symlink name for /lib/firmware',
-      epilog='Each model will be printed on its own line.')
+      'firmware file, second line is symlink name for /lib/firmware')
   subparsers.add_parser(
       'get-firmware-uris',
       help='Lists firmware uris for models. These uris can be used to fetch ' +
