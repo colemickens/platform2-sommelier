@@ -329,15 +329,17 @@ class CrosConfigValidator(object):
 
 
 # Basic firmware schema, which is augmented depending on the situation.
+FW_COND = {'shares': False, '../whitelabel': False}
+
 BASE_FIRMWARE_SCHEMA = [
-    PropString('bcs-overlay', True, 'overlay-.*', {'shares': False}),
-    PropString('ec-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('main-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('main-rw-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('pd-image', False, r'bcs://.*\.tbz2', {'shares': False}),
+    PropString('bcs-overlay', True, 'overlay-.*', FW_COND),
+    PropString('ec-image', False, r'bcs://.*\.tbz2', FW_COND),
+    PropString('main-image', False, r'bcs://.*\.tbz2', FW_COND),
+    PropString('main-rw-image', False, r'bcs://.*\.tbz2', FW_COND),
+    PropString('pd-image', False, r'bcs://.*\.tbz2', FW_COND),
     PropStringList('extra', False,
                    r'(\${(FILESDIR|SYSROOT)}/[a-z/]+)|' +
-                   r'(bcs://[A-Za-z0-9\.]+\.tbz2)', {'shares': False}),
+                   r'(bcs://[A-Za-z0-9\.]+\.tbz2)', FW_COND),
     ]
 
 # Firmware build targets schema, defined here since it is used in a few places.
