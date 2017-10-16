@@ -20,13 +20,16 @@ def CheckPhandleTarget(val, target, target_path_match):
     val: Validator (used for model list, etc.)
     target: Target node path (string)
     target_path_match: Match string. This is the full path to the node that the
-        target must point to. One 'wildcard' node is supported in the path:
+        target must point to. Some 'wildcard' nodes are supported in the path:
 
            MODEL - matches any model node
+           SUBMODEL - matches any submodel when MODEL is earlier in the path
+           ANY - matches any node
 
   Returns:
     True if the target matches, False if not
   """
+  model = None
   parts = target_path_match.split('/')
   target_parts = target.path.split('/')
   ok = len(parts) == len(target_parts)
@@ -34,7 +37,13 @@ def CheckPhandleTarget(val, target, target_path_match):
     for i, part in enumerate(parts):
       if part == 'MODEL':
         if target_parts[i] in val.model_list:
+          model = target_parts[i]
           continue
+      if part == 'SUBMODEL' and model:
+        if target_parts[i] in val.submodel_list[model]:
+          continue
+      elif part == 'ANY':
+        continue
       if part != target_parts[i]:
         ok = False
   return ok
