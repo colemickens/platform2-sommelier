@@ -227,39 +227,6 @@ class NodeDesc(SchemaElement):
     for element in elements:
       element.parent = self
 
-  def GetElement(self, name, prop_names=None, subnode_path=None,
-                 model_list=None, submodel_list=None):
-    """Get an element from the schema by name
-
-    Args:
-      name: Name of element to find (string)
-      prop_names: List of names of all properties in this node
-      subnode_path: Full path of subnode containing schema, or None if not known
-      model_list: List of valid models in the config, or None
-      submodel_list: None, or dict of submodel names found in the config:
-          key: Model name
-          value: List of submodel names
-
-    Returns:
-      Schema for the given element, or None if not found
-    """
-    for element in self.elements:
-      if not element.Present(prop_names):
-        continue
-      if element.name == name:
-        return element
-      elif (model_list and isinstance(element, NodeModel) and
-            name in model_list):
-        return element
-      elif submodel_list and isinstance(element, NodeSubmodel):
-        m = re.match('/chromeos/models/([a-z0-9]+)/submodels/([a-z0-9]+)',
-                     subnode_path)
-        if m and name in submodel_list[m.group(1)]:
-          return element
-      elif isinstance(element, NodeAny):
-        return element
-    return None
-
   def GetNodes(self):
     """Get a list of schema elements which are nodes
 
