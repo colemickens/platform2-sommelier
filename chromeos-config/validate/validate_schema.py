@@ -13,6 +13,33 @@ from __future__ import print_function
 import re
 
 
+def CheckPhandleTarget(val, target, target_path_match):
+  """Check that the target of a phandle matches a pattern
+
+  Args:
+    val: Validator (used for model list, etc.)
+    target: Target node path (string)
+    target_path_match: Match string. This is the full path to the node that the
+        target must point to. One 'wildcard' node is supported in the path:
+
+           MODEL - matches any model node
+
+  Returns:
+    True if the target matches, False if not
+  """
+  parts = target_path_match.split('/')
+  target_parts = target.path.split('/')
+  ok = len(parts) == len(target_parts)
+  if ok:
+    for i, part in enumerate(parts):
+      if part == 'MODEL':
+        if target_parts[i] in val.model_list:
+          continue
+      if part != target_parts[i]:
+        ok = False
+  return ok
+
+
 class SchemaElement(object):
   """A schema element, either a property or a subnode
 
@@ -138,10 +165,8 @@ class PropPhandle(PropDesc):
 
   Properties:
     target_path_match: String to use to validate the target of this phandle.
-        It is the full path to the node that it must point to. One 'wildcard'
-        node is supported in the path:
-
-           MODEL - matches any model node
+        It is the full path to the node that it must point to. See
+        CheckPhandleTarget for details.
   """
   def __init__(self, name, target_path_match, required=False,
                conditional_props=None):
@@ -153,15 +178,7 @@ class PropPhandle(PropDesc):
     """Check that this phandle points to the correct place"""
     phandle = prop.GetPhandle()
     target = prop.fdt.LookupPhandle(phandle)
-    parts = self.target_path_match.split('/')
-    target_parts = target.path.split('/')
-    bad = len(parts) != len(target_parts)
-    if not bad:
-      for i, part in enumerate(parts):
-        if part == 'MODEL':
-          if target_parts[i] in val.model_list:
-            part = target_parts[i]
-    if bad:
+    if not CheckPhandleTarget(val, target, self.target_path_match):
       val.Fail(prop.node.path, "Phandle '%s' targets node '%s' which does not "
                "match pattern '%s'" % (prop.name, target.path,
                                        self.target_path_match))
