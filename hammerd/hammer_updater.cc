@@ -32,18 +32,38 @@ const base::FilePath GetUsbSysfsPath(int bus, int port) {
                                            bus, port));
 }
 
+const std::string HammerUpdater::TaskState::ToString() {
+  return base::StringPrintf("update_ro(%d) update_rw(%d) update_tp(%d) "
+                            "inject_entropy(%d) post_rw_jump(%d)",
+                            update_ro, update_rw, update_tp,
+                            inject_entropy, post_rw_jump);
+}
+
+HammerUpdater::UpdateCondition HammerUpdater::ToUpdateCondition(
+    const std::string& s) {
+  if (s == "critical")
+    return UpdateCondition::kCritical;
+  if (s == "newer")
+    return UpdateCondition::kNewer;
+  if (s == "always")
+    return UpdateCondition::kAlways;
+  return UpdateCondition::kUnknown;
+}
+
 HammerUpdater::HammerUpdater(const std::string& ec_image,
                              const std::string& touchpad_image,
                              const std::string& touchpad_product_id,
                              const std::string& touchpad_fw_ver,
                              uint16_t vendor_id, uint16_t product_id,
-                             int bus, int port, bool at_boot)
+                             int bus, int port, bool at_boot,
+                             UpdateCondition update_condition)
     : HammerUpdater(
         ec_image,
         touchpad_image,
         touchpad_product_id,
         touchpad_fw_ver,
         at_boot,
+        update_condition,
         GetUsbSysfsPath(bus, port),
         std::make_unique<FirmwareUpdater>(
             std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port)),
@@ -57,6 +77,7 @@ HammerUpdater::HammerUpdater(
     const std::string& touchpad_product_id,
     const std::string& touchpad_fw_ver,
     bool at_boot,
+    UpdateCondition update_condition,
     const base::FilePath& base_path,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
     std::unique_ptr<PairManagerInterface> pair_manager,
@@ -67,7 +88,9 @@ HammerUpdater::HammerUpdater(
       touchpad_product_id_(touchpad_product_id),
       touchpad_fw_ver_(touchpad_fw_ver),
       at_boot_(at_boot),
+      update_condition_(update_condition),
       base_path_(base_path),
+      task_(HammerUpdater::TaskState()),
       fw_updater_(std::move(fw_updater)),
       pair_manager_(std::move(pair_manager)),
       dbus_wrapper_(std::move(dbus_wrapper)),
@@ -124,13 +147,17 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   // Time it takes hammer to reset or jump to RW, before being
   // available for the next USB connection.
   constexpr unsigned int kResetTimeMs = 100;
-  bool post_rw_jump = false;
-  bool need_inject_entropy = false;
+  bool rollback_increased = false;
+  // Set all update flags if update mode is forced.
+  if (update_condition_ == UpdateCondition::kAlways) {
+      task_.update_ro = true;
+      task_.update_rw = true;
+      task_.update_tp = true;
+  }
 
   HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
     UsbConnectStatus connect_status = fw_updater_->TryConnectUsb();
-
     if (connect_status != UsbConnectStatus::kSuccess) {
       LOG(ERROR) << "Failed to connect USB.";
       fw_updater_->CloseUsb();
@@ -148,9 +175,17 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       return HammerUpdater::RunStatus::kNeedJump;
     }
 
-    status = RunOnce(post_rw_jump, need_inject_entropy);
-    post_rw_jump = false;
-    need_inject_entropy = false;
+    // If the rollback number is increased, then we need to update the firmware.
+    // This block is only run once at the first round of loop.
+    if (!rollback_increased && fw_updater_->CompareRollback() > 0) {
+      rollback_increased = true;
+      task_.update_ro = true;
+      task_.update_rw = true;
+    }
+
+    DLOG(INFO) << "Current task state: " << task_.ToString();
+    status = RunOnce();
+    task_.post_rw_jump = (status == HammerUpdater::RunStatus::kNeedJump);
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
@@ -183,7 +218,6 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         continue;
 
       case HammerUpdater::RunStatus::kNeedJump:
-        post_rw_jump = true;
         LOG(INFO) << "Jump to RW and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
         fw_updater_->CloseUsb();
@@ -191,17 +225,6 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         // the jump completes (or fails).
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
-        continue;
-
-      case HammerUpdater::RunStatus::kNeedInjectEntropy:
-        need_inject_entropy = true;
-        fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
-        fw_updater_->CloseUsb();
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kResetTimeMs));
-        // If it is the last run, we should treat it as kNeedReset because we
-        // just sent a kImmediateReset signal.
-        status = HammerUpdater::RunStatus::kNeedReset;
         continue;
 
       default:
@@ -215,8 +238,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   return status;
 }
 
-HammerUpdater::RunStatus HammerUpdater::RunOnce(
-    const bool post_rw_jump, const bool need_inject_entropy) {
+HammerUpdater::RunStatus HammerUpdater::RunOnce() {
   // The first time we use SendFirstPdu it is to gather information about
   // hammer's running EC. We should use SendDone right away to get the EC
   // back into a state where we can send a subcommand.
@@ -225,7 +247,6 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
     return HammerUpdater::RunStatus::kNeedReset;
   }
   fw_updater_->SendDone();
-
   LOG(INFO) << "### Current Section: "
             << ToString(fw_updater_->CurrentSection()) << " ###";
 
@@ -236,13 +257,22 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
     return HammerUpdater::RunStatus::kInvalidFirmware;
   }
 
+  // After sending first PDU, we get the information of current EC.
+  // Check if the firmware version is mismatched or not.
+  if (update_condition_ == UpdateCondition::kNewer) {
+    if (fw_updater_->VersionMismatch(SectionName::RW))
+      task_.update_rw = true;
+    if (fw_updater_->VersionMismatch(SectionName::RO))
+      task_.update_ro = true;
+  }
+
   // ********************** RW **********************
   // If EC already entered the RW section, then check if RW needs updating.
   // If an update is needed, request a hammer reset. Let the next invocation
   // of Run handle the update.
   if (fw_updater_->CurrentSection() == SectionName::RW) {
-    if (fw_updater_->VersionMismatch(SectionName::RW)) {
-      if (fw_updater_->ValidKey() && fw_updater_->ValidRollback()) {
+    if (task_.update_rw) {
+      if (fw_updater_->ValidKey() && fw_updater_->CompareRollback() >= 0) {
         LOG(INFO) << "RW section needs update. Rebooting to RO.";
         NotifyUpdateStarted();
         return HammerUpdater::RunStatus::kNeedReset;
@@ -258,18 +288,19 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   // ********************** RO **********************
   // Current section is now guaranteed to be RO.  If hammer:
   //   (1) failed to jump to RW after the last run; or
-  //   (2) RW section needs updating,
+  //   (2) need to inject entropy; or
+  //   (3) RW section needs and be able to update
   // then continue with the update procedure.
-  if (need_inject_entropy || post_rw_jump ||
-      (fw_updater_->VersionMismatch(SectionName::RW) &&
+  if (task_.post_rw_jump || task_.inject_entropy ||
+      (task_.update_rw &&
        fw_updater_->ValidKey() &&
-       fw_updater_->ValidRollback())) {
+       fw_updater_->CompareRollback() >= 0)) {
     NotifyUpdateStarted();
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
-    if (post_rw_jump) {
+    if (task_.post_rw_jump) {
       LOG(ERROR) << "Failed to jump to RW. Need to update RW section.";
-      if (!fw_updater_->ValidKey() || !fw_updater_->ValidRollback()) {
+      if (!fw_updater_->ValidKey() || fw_updater_->CompareRollback() < 0) {
         LOG(ERROR) << "RW section is unusable, but local image is "
                    << "incompatible. Giving up.";
         // If both key and rollback are invalid, only the key will be
@@ -292,9 +323,10 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
       return HammerUpdater::RunStatus::kNeedReset;
     }
 
-    if (need_inject_entropy) {
+    if (task_.inject_entropy) {
       bool ret = fw_updater_->InjectEntropy();
       if (ret) {
+        task_.inject_entropy = false;
         LOG(INFO) << "Successfully injected entropy.";
         return HammerUpdater::RunStatus::kNeedReset;
       }
@@ -310,6 +342,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 
     // Now RW section needs an update, and it is not locked. Let's update!
     bool ret = fw_updater_->TransferImage(SectionName::RW);
+    task_.update_rw = !ret;
     metrics_->SendEnumToUMA(
         kMetricRWUpdateResult,
         static_cast<int>(ret
@@ -335,7 +368,7 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Trigger the retry if update fails.
-  if (RunTouchpadUpdater() == HammerUpdater::RunStatus::kTouchpadUptodate) {
+  if (RunTouchpadUpdater() == HammerUpdater::RunStatus::kTouchpadUpToDate) {
     LOG(INFO) << "Touchpad update succeeded.";
   } else {
     LOG(INFO) << "Touchpad update failure.";
@@ -362,13 +395,14 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
     LOG(INFO) << "RO section is locked. Update infeasible.";
     return HammerUpdater::RunStatus::kNoUpdate;
   }
-  if (!fw_updater_->VersionMismatch(SectionName::RO)) {
+  if (!task_.update_ro) {
     LOG(INFO) << "RO section is unlocked, but update not needed.";
     return HammerUpdater::RunStatus::kNoUpdate;
   }
   LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
   NotifyUpdateStarted();
   bool ret = fw_updater_->TransferImage(SectionName::RO);
+  task_.update_ro = !ret;
   metrics_->SendEnumToUMA(
       kMetricROUpdateResult,
       static_cast<int>(ret
@@ -403,7 +437,8 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
           break;
         }
       }
-      ret = HammerUpdater::RunStatus::kNeedInjectEntropy;
+      task_.inject_entropy = true;
+      ret = HammerUpdater::RunStatus::kNeedReset;
       break;
 
     case ChallengeStatus::kChallengeFailed:
@@ -475,7 +510,7 @@ void HammerUpdater::NotifyUpdateStarted() {
 HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   if (!touchpad_image_.size()) {  // We are missing the touchpad file.
     LOG(INFO) << "Touchpad will remain unmodified as binary is not provided.";
-    return HammerUpdater::RunStatus::kTouchpadUptodate;
+    return HammerUpdater::RunStatus::kTouchpadUpToDate;
   }
 
   LOG(INFO) << "Loading touchpad firmware image.";
@@ -542,20 +577,24 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
     LOG(ERROR) << "product_id mismatch. Local: " << touchpad_product_id_;
     return HammerUpdater::RunStatus::kFatalError;
   }
-  // If fw_ver match, then we skip the update. Otherwise, flash it.
-  std::string base_fw_ver = base::StringPrintf(
-      kElanFormatString, response.elan.fw_version);
 
-  if (base_fw_ver == touchpad_fw_ver_) {
-    LOG(INFO) << "Local(" << touchpad_fw_ver_ << ")" << " is equal to "
-              << "Base(" << base_fw_ver << "). Skip update.";
-    return HammerUpdater::RunStatus::kTouchpadUptodate;
+  if (!task_.update_tp) {
+    // If fw_ver match, then we skip the update. Otherwise, flash it.
+    std::string base_fw_ver = base::StringPrintf(
+        kElanFormatString, response.elan.fw_version);
+    LOG(INFO) << base::StringPrintf(
+        "Checking touchpad firmware version: Local(%s) vs. Base(%s)",
+        touchpad_fw_ver_.c_str(), base_fw_ver.c_str());
+    if (base_fw_ver == touchpad_fw_ver_) {
+      LOG(INFO) << "Version matched, skip update.";
+      return HammerUpdater::RunStatus::kTouchpadUpToDate;
+    }
   }
-  LOG(INFO) << "Touchpad hash matched but version mismatch. Updating.";
   bool ret = fw_updater_->TransferTouchpadFirmware(
-        response.fw_address, response.fw_size);
-  return ret ? HammerUpdater::RunStatus::kTouchpadUptodate :
-               HammerUpdater::RunStatus::kFatalError;
+      response.fw_address, response.fw_size);
+  task_.update_tp = !ret;
+  return ret ? HammerUpdater::RunStatus::kTouchpadUpToDate
+             : HammerUpdater::RunStatus::kFatalError;
 }
 
 bool HammerUpdater::ParseTouchpadInfoFromFilename(

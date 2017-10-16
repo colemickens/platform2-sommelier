@@ -23,15 +23,46 @@ const base::FilePath GetUsbSysfsPath(int bus, int port);
 
 class HammerUpdater {
  public:
+  // The result of the Run, RunLoop, RunOnce, .. methods.
   enum class RunStatus {
     kNoUpdate,
     kFatalError,
     kNeedReset,
     kNeedJump,
-    kNeedInjectEntropy,
     kLostConnection,
     kInvalidFirmware,
-    kTouchpadUptodate
+    kTouchpadUpToDate
+  };
+
+  enum class UpdateCondition {
+    kCritical,
+    kNewer,
+    kAlways,
+    kUnknown,
+  };
+  static UpdateCondition ToUpdateCondition(const std::string& s);
+
+  // The internal state used for RunOnce method. Each flag indicates a task, or
+  // an expectation at the next round. If the task or expectation is satisfied,
+  // then reset the flag.
+  struct TaskState {
+    // Flags to indicate whether the sections should be updated. Reset them
+    // after update is finished.
+    bool update_ro;
+    bool update_rw;
+    bool update_tp;
+    // Set the flag when the EC lacks entropy. Reset it after the entropy is
+    // injected successfully.
+    bool inject_entropy;
+    // Set the flag when we jump to RW at the previous round.
+    bool post_rw_jump;
+
+    TaskState() : update_ro(false),
+                  update_rw(false),
+                  update_tp(false),
+                  inject_entropy(false),
+                  post_rw_jump(false) {}
+    const std::string ToString();
   };
 
   HammerUpdater(const std::string& ec_image,
@@ -42,7 +73,8 @@ class HammerUpdater {
                 uint16_t product_id,
                 int bus,
                 int port,
-                bool at_boot);
+                bool at_boot,
+                UpdateCondition update_condition);
   virtual ~HammerUpdater() = default;
 
   // Handle the whole update process, including pre-processing, main update
@@ -54,9 +86,7 @@ class HammerUpdater {
   virtual RunStatus RunLoop();
   // Handle the update logic from connecting to the EC to sending reset signal.
   // There is only one USB connection during each RunOnce() method call.
-  // |post_rw_jump| indicates whether we jumped to RW section last round.
-  virtual RunStatus RunOnce(const bool post_rw_jump,
-                            const bool need_inject_entropy);
+  virtual RunStatus RunOnce();
 
   // The post processing after the RW section is up to date.
   virtual RunStatus PostRWProcess();
@@ -79,6 +109,7 @@ class HammerUpdater {
                 const std::string& touchpad_product_id,
                 const std::string& touchpad_fw_ver,
                 bool at_boot,
+                UpdateCondition update_condition,
                 const base::FilePath& base_path,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
                 std::unique_ptr<PairManagerInterface> pair_manager,
@@ -97,17 +128,21 @@ class HammerUpdater {
 
  private:
   // The EC_image data to be updated.
-  std::string ec_image_;
+  const std::string ec_image_;
   // The touchpad image data to be updated.
-  std::string touchpad_image_;
+  const std::string touchpad_image_;
   // The touchpad firmware product id.
-  std::string touchpad_product_id_;
+  const std::string touchpad_product_id_;
   // The touchpad firmware version.
-  std::string touchpad_fw_ver_;
+  const std::string touchpad_fw_ver_;
   // Set this flag when hammerd is triggered at boot time.
-  bool at_boot_;
+  const bool at_boot_;
+  // The update mode.
+  const UpdateCondition update_condition_;
   // The sysfs path of the USB device.
-  base::FilePath base_path_;
+  const base::FilePath base_path_;
+  // The internal state used for RunOnce method.
+  HammerUpdater::TaskState task_;
   // The main firmware updater.
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
   // The pairing manager.

@@ -91,9 +91,9 @@ BRILLO_EXPORT bool FirmwareUpdater_ValidKey(
     FirmwareUpdater* updater) {
   return updater->ValidKey();
 }
-BRILLO_EXPORT bool FirmwareUpdater_ValidRollback(
+BRILLO_EXPORT int FirmwareUpdater_CompareRollback(
     FirmwareUpdater* updater) {
-  return updater->ValidRollback();
+  return updater->CompareRollback();
 }
 BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name) {

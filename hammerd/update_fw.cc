@@ -287,11 +287,15 @@ bool FirmwareUpdater::ValidKey() const {
   return targ_.key_version == local_section.key_version;
 }
 
-bool FirmwareUpdater::ValidRollback() const {
+int FirmwareUpdater::CompareRollback() const {
   SectionInfo local_section = sections_[static_cast<int>(SectionName::RW)];
-  LOG(INFO) << "ValidRollback: rollback [EC] " << targ_.min_rollback
+  LOG(INFO) << "CompareRollback: rollback [EC] " << targ_.min_rollback
             << " vs. " << local_section.rollback << " [update]";
-  return targ_.min_rollback <= local_section.rollback;
+  if (local_section.rollback > targ_.min_rollback)
+    return 1;
+  if (local_section.rollback < targ_.min_rollback)
+    return -1;
+  return 0;
 }
 
 bool FirmwareUpdater::VersionMismatch(SectionName section_name) const {
@@ -310,8 +314,6 @@ bool FirmwareUpdater::VersionMismatch(SectionName section_name) const {
   const char* version =
       section_name == SectionName::RW ? rw_version : ro_version;
 
-  // TODO(akahuang): We might still want to update even the version is
-  // identical. Add a flag if we have the request in the future.
   LOG(INFO) << "VersionMismatch: version [EC] " << version << " vs. "
             << local_section.version << " [update]";
   return strncmp(version, local_section.version,
@@ -568,7 +570,7 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
     endpoint_->Send(transfer_data_ptr, chunk_size);
     transfer_data_ptr += chunk_size;
     transfer_size += chunk_size;
-    DLOG(INFO) << "Send block data " << transfer_size << "/" << payload_size;
+    DLOG(INFO) << "Sent block data " << transfer_size << "/" << payload_size;
   }
 
   // Now get the reply.

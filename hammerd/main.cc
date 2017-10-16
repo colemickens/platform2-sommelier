@@ -38,8 +38,16 @@ int main(int argc, const char* argv[]) {
   DEFINE_int32(usb_port, -1, "USB port to search");
   DEFINE_int32(autosuspend_delay_ms, -1, "USB autosuspend delay time (ms)");
   DEFINE_bool(at_boot, false,
-              "Invoke proecess at boot time. "
+              "Invoke process at boot time. "
               "Exit if RW is up-to-date (no pairing)");
+  DEFINE_string(update_if, "critical",
+                "Update condition, one of: critical|newer|always.\n"
+                "    critical:\n"
+                "      Update if RW is broken or if rollback is increased\n"
+                "    newer:\n"
+                "      Update as long as newer firmware exists\n"
+                "    always:\n"
+                "      Update anyways, regardless of version");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
@@ -83,7 +91,12 @@ int main(int argc, const char* argv[]) {
                << "link as well).";
     return EXIT_FAILURE;
   }
-
+  hammerd::HammerUpdater::UpdateCondition update_condition =
+      hammerd::HammerUpdater::ToUpdateCondition(FLAGS_update_if);
+  if (update_condition == hammerd::HammerUpdater::UpdateCondition::kUnknown) {
+    LOG(ERROR) << "Unknown update condition: " << FLAGS_update_if;
+    return EXIT_FAILURE;
+  }
 
   // The message loop registers a task runner with the current thread, which
   // is used by DBusWrapper to send signals.
@@ -91,7 +104,7 @@ int main(int argc, const char* argv[]) {
   hammerd::HammerUpdater updater(
       ec_image, touchpad_image, touchpad_product_id, touchpad_fw_ver,
       FLAGS_vendor_id, FLAGS_product_id,
-      FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot);
+      FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot, update_condition);
   bool ret = updater.Run();
   if (ret && FLAGS_autosuspend_delay_ms >= 0) {
     LOG(INFO) << "Enable USB autosuspend with delay "

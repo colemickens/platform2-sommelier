@@ -243,9 +243,12 @@ class FirmwareUpdaterInterface {
   // (i.e. matches key version in RW section of EC).
   virtual bool ValidKey() const = 0;
 
-  // Returns whether the rollback version of the local image is valid
-  // (i.e. >= rollback stored in RB section of EC).
-  virtual bool ValidRollback() const = 0;
+  // Compare the rollback version of the local image with current EC. Following
+  // comparator function convention, it returns:
+  //   0 if the rollback is equal to current EC
+  //   1 if the rollback is higher than current EC (i.e. critical update)
+  //   -1 if the rollback is lower than current EC (i.e. disallow update)
+  virtual int CompareRollback() const = 0;
 
   // Determines whether the given section has a different firmware version
   // from that of the local file.
@@ -295,7 +298,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                                 size_t data_len) override;
   SectionName CurrentSection() const override;
   bool ValidKey() const override;
-  bool ValidRollback() const override;
+  int CompareRollback() const override;
   bool VersionMismatch(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
   bool UnlockSection(SectionName section_name) override;

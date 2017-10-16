@@ -70,7 +70,7 @@ BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_ValidKey(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_ValidRollback(
+BRILLO_EXPORT int FirmwareUpdater_CompareRollback(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name);

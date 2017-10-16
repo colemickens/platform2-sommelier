@@ -347,7 +347,7 @@ TEST_F(FirmwareUpdaterTest, CheckKeyRollback) {
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
   ASSERT_EQ(fw_updater_->ValidKey(), true);
-  ASSERT_EQ(fw_updater_->ValidRollback(), true);
+  ASSERT_EQ(fw_updater_->CompareRollback(), 0);
 
   // Version is different -- update should be possible.
   snprintf(fw_updater_->targ_.version,
@@ -356,7 +356,7 @@ TEST_F(FirmwareUpdaterTest, CheckKeyRollback) {
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
   ASSERT_EQ(fw_updater_->ValidKey(), true);
-  ASSERT_EQ(fw_updater_->ValidRollback(), true);
+  ASSERT_EQ(fw_updater_->CompareRollback(), 0);
 
   // Minimum rollback is larger than the updated image -- update not possible.
   snprintf(fw_updater_->targ_.version,
@@ -365,7 +365,7 @@ TEST_F(FirmwareUpdaterTest, CheckKeyRollback) {
   fw_updater_->targ_.min_rollback = 40;
   fw_updater_->targ_.key_version = 1;
   ASSERT_EQ(fw_updater_->ValidKey(), true);
-  ASSERT_EQ(fw_updater_->ValidRollback(), false);
+  ASSERT_EQ(fw_updater_->CompareRollback(), -1);
 
   // The key version is not the same -- update not possible.
   snprintf(fw_updater_->targ_.version,
@@ -374,7 +374,7 @@ TEST_F(FirmwareUpdaterTest, CheckKeyRollback) {
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 2;
   ASSERT_EQ(fw_updater_->ValidKey(), false);
-  ASSERT_EQ(fw_updater_->ValidRollback(), true);
+  ASSERT_EQ(fw_updater_->CompareRollback(), 0);
 }
 
 TEST_F(FirmwareUpdaterTest, VersionMismatch) {
