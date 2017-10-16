@@ -134,6 +134,28 @@ class CrosConfigValidator(object):
           return True
     return False
 
+  def ElementPresent(self, schema, sibling_names):
+    """Check whether a schema element should be present
+
+    This handles the conditional_props feature. The list of names of sibling
+    nodes/properties that are actually present is checked to see if any of them
+    conflict with the conditional properties for this node. If there is a
+    conflict, then this element is considered to be absent.
+
+    Args:
+      schema: Schema element to check
+      sibling_names: List of sibling node/property names
+
+    Returns:
+      True if this element is present, False if absent
+    """
+    if schema.conditional_props and sibling_names:
+      parent_props = [e.name for e in schema.parent.elements]
+      for name, value in schema.conditional_props.iteritems():
+        if name in parent_props and value != (name in sibling_names):
+          return False
+    return True
+
   def GetElement(self, schema, name, node):
     """Get an element from the schema by name
 
@@ -148,7 +170,7 @@ class CrosConfigValidator(object):
     """
     prop_names = node.props.keys()
     for element in schema.elements:
-      if not element.Present(prop_names):
+      if not self.ElementPresent(element, prop_names):
         continue
       if element.name == name:
         return element
@@ -176,7 +198,8 @@ class CrosConfigValidator(object):
     schema.Validate(self, node)
     prop_names = node.props.keys()
     schema_props = [e.name for e in schema.elements
-                    if isinstance(e, PropDesc) and e.Present(prop_names)]
+                    if isinstance(e, PropDesc) and
+                    self.ElementPresent(e, prop_names)]
 
     # Validate each property and check that there are no extra properties not
     # mentioned in the schema.
@@ -196,7 +219,8 @@ class CrosConfigValidator(object):
 
     # Check that there are no required properties which we don't have
     for element in schema.elements:
-      if not isinstance(element, PropDesc) or not element.Present(prop_names):
+      if (not isinstance(element, PropDesc) or
+          not self.ElementPresent(element, prop_names)):
         continue
       if element.required and element.name not in node.props.keys():
         self.Fail(node.path, "Required property '%s' missing" % element.name)
@@ -205,7 +229,7 @@ class CrosConfigValidator(object):
     subnode_names = [n.name for n in node.subnodes]
     for element in schema.elements:
       if (not isinstance(element, NodeDesc) or not element.required
-          or not element.Present(prop_names)):
+          or not self.ElementPresent(element, prop_names)):
         continue
       if element.name not in subnode_names:
         msg = "Missing subnode '%s'" % element.name
@@ -226,7 +250,7 @@ class CrosConfigValidator(object):
     schema = self.GetElement(parent_schema, node.name, node.parent)
     if schema is None:
       elements = [e.name for e in parent_schema.GetNodes()
-                  if e.Present(prop_names)]
+                  if self.ElementPresent(e, prop_names)]
       self.Fail(os.path.dirname(node.path),
                 "Unexpected subnode '%s', valid list is (%s)" %
                 (node.name, ', '.join(elements)))

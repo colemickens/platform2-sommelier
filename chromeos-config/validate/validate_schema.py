@@ -80,27 +80,6 @@ class SchemaElement(object):
     """
     pass
 
-  def Present(self, sibling_names):
-    """Check whether a schema element should be present
-
-    This handles the conditional_props feature. The list of names of sibling
-    nodes/properties that are actually present is checked to see if any of them
-    conflict with the conditional properties for this node. If there is a
-    conflict, then this element is considered to be absent.
-
-    Args:
-      sibling_names: List of sibling node/property names
-
-    Returns:
-      True if this element is present, False if absent
-    """
-    if self.conditional_props and sibling_names:
-      parent_props = [e.name for e in self.parent.elements]
-      for name, value in self.conditional_props.iteritems():
-        if name in parent_props and value != (name in sibling_names):
-          return False
-    return True
-
 
 class PropDesc(SchemaElement):
   """A generic property schema element (base class for properties)"""
