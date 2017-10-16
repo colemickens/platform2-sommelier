@@ -115,31 +115,31 @@ properties.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
 
-        *   `mapping`: (optional): Used to determine the model/sub-model for a
-            particular device. There can be any number of mappings. At present
-            only a `sku-map` is allowed.
-            *   `sku-map`: Provides a mapping from SKU ID to model/sub-model.
-                One of `simple-sku-map` or `single-sku` must be provided.
-                `smbios-name-match` is needed only if the family supports
-                models which have SKU ID conflicts and needs the SMBIOS name to
-                disambiguate them. This is common when migrating legacy boards
-                to unified builds, but may also occur if the SKU ID mapping is
-                not used for some reason.
-                *   `platform-name`: Indicates the platform name for this
-                    platform. This is reported by 'mosys platform name'. It is
-                    typically the family name with the first letter capitalized.
-                *   `smbios-name-match` (optional) Indicates the smbios name
-                    that this table mapping relates to. This map will be
-                    ignored on models which don't have a matching smbios name.
-                *   `simple-sku-map` (optional): Provides a simple mapping from
-                    SKU (an integer value) to model / sub-model. Each entry
-                    consists of a sku value (typically 0-255) and a phandle
-                    pointing to the model or sub-model.
-                *   `single-sku` (optional): Used in cases where only a single
-                    model is supported by this mapping. In other words, if the
-                    SMBIOS name matches, this is the model to use. The value is
-                    a phandle pointing to the model (it cannot point to a
-                    sub-model).
+    *   `mapping`: (optional): Used to determine the model/sub-model for a
+        particular device. There can be any number of mappings. At present
+        only a `sku-map` is allowed.
+        *   `sku-map`: Provides a mapping from SKU ID to model/sub-model.
+            One of `simple-sku-map` or `single-sku` must be provided.
+            `smbios-name-match` is needed only if the family supports
+            models which have SKU ID conflicts and needs the SMBIOS name to
+            disambiguate them. This is common when migrating legacy boards
+            to unified builds, but may also occur if the SKU ID mapping is
+            not used for some reason.
+            *   `platform-name`: Indicates the platform name for this
+                platform. This is reported by 'mosys platform name'. It is
+                typically the family name with the first letter capitalized.
+            *   `smbios-name-match` (optional) Indicates the smbios name
+                that this table mapping relates to. This map will be
+                ignored on models which don't have a matching smbios name.
+            *   `simple-sku-map` (optional): Provides a simple mapping from
+                SKU (an integer value) to model / sub-model. Each entry
+                consists of a sku value (typically 0-255) and a phandle
+                pointing to the model or sub-model.
+            *   `single-sku` (optional): Used in cases where only a single
+                model is supported by this mapping. In other words, if the
+                SMBIOS name matches, this is the model to use. The value is
+                a phandle pointing to the model (it cannot point to a
+                sub-model).
 
     *   `touch` (optional): Contains information about touch devices used by
         this family. Each node is defined as a Phandle that can be referenced
