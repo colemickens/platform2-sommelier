@@ -30,6 +30,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include <libcontainer/config.h>
 #include <libcontainer/container.h>
@@ -197,21 +199,23 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
       source = MakeAbsoluteFilePathRelativeTo(bundle_dir, mount.source);
     }
 
+    // Loopback devices have to be mounted outside.
+    bool mount_in_ns = !mount.perform_in_intermediate_namespace && !loopback;
+
     container_config_add_mount(
         config_out,
         "mount",
         source.value().c_str(),
         mount.destination.value().c_str(),
         mount.type.c_str(),
-        options.empty() ? NULL : options.c_str(),
-        verity_options.empty() ? NULL : verity_options.c_str(),
+        options.empty() ? nullptr : options.c_str(),
+        verity_options.empty() ? nullptr : verity_options.c_str(),
         flags,
         uid,
         gid,
         0750,
-        // Loopback devices have to be mounted outside.
-        !loopback,
-        1,
+        mount_in_ns,
+        true /* create */,
         loopback);
   }
 }
@@ -576,6 +580,29 @@ int RunOci(const base::FilePath& bundle_dir,
     }
   } else {
     container_dir = bundle_dir;
+  }
+
+  bool needs_intermediate_mount_ns = false;
+  for (const auto& mount : oci_config->mounts) {
+    if (!mount.perform_in_intermediate_namespace)
+      continue;
+    needs_intermediate_mount_ns = true;
+    break;
+  }
+  if (needs_intermediate_mount_ns) {
+    if (!HasCapSysAdmin()) {
+      PLOG(ERROR) << "Specifying 'performInIntermediateNamespace' for any "
+                     "mount requires having the CAP_SYS_ADMIN capability";
+      return -1;
+    }
+    ScopedMinijail jail(minijail_new());
+    if (!jail) {
+      PLOG(ERROR) << "Failed to create a minijail for the intermediate mount "
+                     "namespace.";
+      return -1;
+    }
+    minijail_namespace_vfs(jail.get());
+    minijail_enter(jail.get());
   }
 
   libcontainer::Config config;

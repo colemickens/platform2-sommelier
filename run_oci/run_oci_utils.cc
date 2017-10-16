@@ -6,8 +6,11 @@
 
 #include <mntent.h>
 #include <stdio.h>
+#include <sys/capability.h>
 
+#include <memory>
 #include <string>
+#include <type_traits>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -37,6 +40,25 @@ std::vector<base::FilePath> GetMountpointsUnder(
   }
 
   return mountpoints;
+}
+
+bool HasCapSysAdmin() {
+  if (!CAP_IS_SUPPORTED(CAP_SYS_ADMIN))
+    return false;
+
+  std::unique_ptr<std::remove_pointer_t<cap_t>, decltype(&cap_free)> caps(
+      cap_get_proc(), &cap_free);
+  if (!caps) {
+    PLOG(ERROR) << "Failed to get process' capabilities";
+    return false;
+  }
+
+  cap_flag_value_t cap_value;
+  if (cap_get_flag(caps.get(), CAP_SYS_ADMIN, CAP_EFFECTIVE, &cap_value) != 0) {
+    PLOG(ERROR) << "Failed to get the value of CAP_SYS_ADMIN";
+    return false;
+  }
+  return cap_value == CAP_SET;
 }
 
 }  // namespace run_oci

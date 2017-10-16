@@ -6,9 +6,10 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libcap',
         'libchrome-<(libbase_ver)',
-        'libbrillo-<(libbase_ver)',
+        'libminijail',
       ],
       'enable_exceptions': 1,
     },

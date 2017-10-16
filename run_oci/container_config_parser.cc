@@ -318,6 +318,10 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
       LOG(ERROR) << "Fail to get mount source for mount " << i;
       return false;
     }
+    if (!mount_dict->GetBoolean("performInIntermediateNamespace",
+                                &mount.perform_in_intermediate_namespace)) {
+      mount.perform_in_intermediate_namespace = false;  // Optional
+    }
     mount.source = base::FilePath(path);
 
     // |options| are owned by |mount_dict|

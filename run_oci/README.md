@@ -80,3 +80,52 @@ following:
             ]
         }
     }
+
+### Support for mounts in an intermediate mount namespace
+
+Most mounts can be done in the container's mount namespace, especially if a user
+namespace is also used, since that gives the caller the `CAP_SYS_ADMIN`
+capability inside the container. However, the interaction between the mount and
+user namespaces carry other restrictions. For instance, changing most mount
+flags does not work at all: any mount that is created in the container's
+namespace is completely invisible from the init namespace (so real root in the
+init mount+user namespace cannot modify it), and entering the mount namespace
+with [setns(2)](http://man7.org/linux/man-pages/man2/setns.2.html) still does
+not allow root to perform a remount since the user namespace associated with the
+namespace to be entered does not match the outer namespace.
+
+In order to overcome the above restriction, a new flag is added to objects in
+[**`mounts`**](https://github.com/opencontainers/runtime-spec/blob/master/config.md#mounts),
+that will cause `run_oci` to create an intermediate mount namespace that has the
+init user namespace associated with it. This way, privileged operations that
+require being in the init user namespace can still be carried out, and the
+mounts don't leak to the init mount namespace.
+
+The objects in the **`mounts`** array has been extended to also contain the
+following:
+
+* **`performInIntermediateNamespace`** *(boolean, OPTIONAL)* - creates an
+  intermediate [mount
+  namespace](http://man7.org/linux/man-pages/man7/mount_namespaces.7.html) in
+  which the mounts are performed. This namespace is associated with the init
+  user namespace, so privileged mounts that require having the `CAP_SYS_ADMIN`
+  capability in the init user namespace (such as non-bind remounts) can still be
+  performed. Defaults to false.
+
+#### Example (Chrome OS)
+
+    {
+        "mounts": [
+            {
+                "destination": "/",
+                "type": "bind",
+                "source": "",
+                "options": [
+                    "remount",
+                    "ro",
+                    "nodev"
+                ],
+                "performInIntermediateNamespace": true
+            }
+        ]
+    }

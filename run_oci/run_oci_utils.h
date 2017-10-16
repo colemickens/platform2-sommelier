@@ -15,6 +15,9 @@ namespace run_oci {
 std::vector<base::FilePath> GetMountpointsUnder(
     const base::FilePath& root, const base::FilePath& procSelfMountsPath);
 
+// Returns true if the process has the CAP_SYS_ADMIN capability.
+bool HasCapSysAdmin();
+
 }  // namespace run_oci
 
 #endif  // RUN_OCI_RUN_OCI_UTILS_H_

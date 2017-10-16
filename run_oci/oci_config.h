@@ -63,6 +63,8 @@ struct OciMount {
   std::string type;
   base::FilePath source;
   std::vector<std::string> options;  // Optional
+  bool perform_in_intermediate_namespace =
+      false;  // Optional, Chrome OS extension.
 };
 
 struct OciLinuxNamespaceMapping {
