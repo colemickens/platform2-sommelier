@@ -11,7 +11,7 @@ camera3_test_PC_DEPS := gbm libcamera_client libcamera_metadata libcbm \
 	libchrome-$(BASE_VER) libdrm libexif libsync libyuv
 camera3_test_CPPFLAGS := $(call get_pc_cflags,$(camera3_test_PC_DEPS))
 camera3_test_LDLIBS := $(call get_pc_libs,$(camera3_test_PC_DEPS)) -ldl \
-	$(shell gtest-config --libs) -ljpeg
+	-Wl,-Bstatic -lgtest -Wl,-Bdynamic -ljpeg -lpthread -pthread
 camera3_test_CXX_OBJECTS += \
 	common/future.o
 
