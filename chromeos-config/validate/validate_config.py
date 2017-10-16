@@ -78,96 +78,6 @@ def ParseArgv(argv):
   return parser.parse_args(argv)
 
 
-# Basic firmware schema, which is augmented depending on the situation.
-BASE_FIRMWARE_SCHEMA = [
-    PropString('bcs-overlay', True, 'overlay-.*', {'shares': False}),
-    PropString('ec-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('main-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('main-rw-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropString('pd-image', False, r'bcs://.*\.tbz2', {'shares': False}),
-    PropStringList('extra', False,
-                   r'(\${(FILESDIR|SYSROOT)}/[a-z/]+)|' +
-                   r'(bcs://[A-Za-z0-9\.]+\.tbz2)', {'shares': False}),
-    ]
-
-# Firmware build targets schema, defined here since it is used in a few places.
-BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
-    PropString('coreboot', True),
-    PropString('ec', True),
-    PropString('depthcharge', True),
-    PropString('libpayload', True),
-], conditional_props={'shares': False})
-
-"""This is the schema. It is a hierarchical set of nodes and properties, just
-like the device tree. If an object subclasses NodeDesc then it is a node,
-possibly with properties and subnodes.
-
-In this way it is possible to describe the schema in a fairly natural,
-hierarchical way.
-"""
-SCHEMA = NodeDesc('/', True, [
-    NodeDesc('chromeos', True, [
-        NodeDesc('family', True, [
-            NodeDesc('firmware', elements=[
-                PropString('script', True, r'updater4\.sh'),
-                NodeModel([
-                    PropPhandleTarget(),
-                    copy.deepcopy(BUILD_TARGETS_SCHEMA),
-                    ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
-            ]),
-            NodeDesc('touch', False, [
-                NodeAny('', [
-                    PropPhandleTarget(),
-                    PropString('firmware-bin', True, ''),
-                    PropString('firmware-symlink', True, ''),
-                    PropString('vendor', True, ''),
-                ]),
-            ]),
-        ]),
-        NodeDesc('models', True, [
-            NodeModel([
-                PropPhandleTarget(),
-                NodeDesc('firmware', False, [
-                    PropPhandle('shares', '/chromeos/family/firmware/MODEL',
-                                False),
-                    PropString('key-id', False, '[A-Z][A-Z0-9]+'),
-                    copy.deepcopy(BUILD_TARGETS_SCHEMA)
-                    ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
-                PropString('brand-code', False, '[A-Z]{4}'),
-                PropString('powerd-prefs'),
-                PropString('wallpaper', False, '[a-z_]+'),
-                NodeDesc('submodels', False, [
-                    NodeSubmodel([
-                        PropPhandleTarget()
-                    ])
-                ]),
-                NodeDesc('thermal', False, [
-                    PropString('dptf-dv', False, r'\w+/dptf.dv'),
-                ]),
-                NodeDesc('touch', False, [
-                    PropString('present', False, r'yes|no|probe'),
-                    # We want to validate that probe-regex is only present when
-                    # 'present' = 'probe', but have no way of doing this
-                    # currently.
-                    PropString('probe-regex', False, ''),
-                    NodeAny(r'(stylus|touchpad|touchscreen)(@[0-9])?', [
-                        PropString('pid', False),
-                        PropString('version', True),
-                        PropPhandle('touch-type', '/chromeos/family/touch/ANY',
-                                    False),
-                        PropString('firmware-bin', True, '',
-                                   {'touch-type': False}),
-                        PropString('firmware-symlink', True, '',
-                                   {'touch-type': False}),
-                        PropString('date-code', False),
-                    ]),
-                ]),
-            ])
-        ])
-    ])
-])
-
-
 class CrosConfigValidator(object):
   """Validator for the master configuration"""
   def __init__(self, raise_on_error):
@@ -311,13 +221,14 @@ class CrosConfigValidator(object):
     for subnode in node.subnodes:
       self._ValidateTree(subnode, schema)
 
-  def Start(self, fname):
+  def Start(self, fname, schema):
     """Start validating a master configuration file
 
     Args:
       fname: Filename containing the configuration. Supports compiled .dtb
           files, source .dts files and README.md (which has configuration
           source between ``` markers).
+      schema: Schema to use to validate the configuration (NodeDesc object)
     """
     tmpfile = None
     self.model_list = []
@@ -339,11 +250,101 @@ class CrosConfigValidator(object):
           self.submodel_list[model.name] = []
 
       # Validate the entire master configuration
-      self._ValidateTree(self._fdt.GetRoot(), SCHEMA)
+      self._ValidateTree(self._fdt.GetRoot(), schema)
     finally:
       if tmpfile:
         os.unlink(tmpfile.name)
     return self._errors
+
+
+# Basic firmware schema, which is augmented depending on the situation.
+BASE_FIRMWARE_SCHEMA = [
+    PropString('bcs-overlay', True, 'overlay-.*', {'shares': False}),
+    PropString('ec-image', False, r'bcs://.*\.tbz2', {'shares': False}),
+    PropString('main-image', False, r'bcs://.*\.tbz2', {'shares': False}),
+    PropString('main-rw-image', False, r'bcs://.*\.tbz2', {'shares': False}),
+    PropString('pd-image', False, r'bcs://.*\.tbz2', {'shares': False}),
+    PropStringList('extra', False,
+                   r'(\${(FILESDIR|SYSROOT)}/[a-z/]+)|' +
+                   r'(bcs://[A-Za-z0-9\.]+\.tbz2)', {'shares': False}),
+    ]
+
+# Firmware build targets schema, defined here since it is used in a few places.
+BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
+    PropString('coreboot', True),
+    PropString('ec', True),
+    PropString('depthcharge', True),
+    PropString('libpayload', True),
+], conditional_props={'shares': False})
+
+"""This is the schema. It is a hierarchical set of nodes and properties, just
+like the device tree. If an object subclasses NodeDesc then it is a node,
+possibly with properties and subnodes.
+
+In this way it is possible to describe the schema in a fairly natural,
+hierarchical way.
+"""
+SCHEMA = NodeDesc('/', True, [
+    NodeDesc('chromeos', True, [
+        NodeDesc('family', True, [
+            NodeDesc('firmware', elements=[
+                PropString('script', True, r'updater4\.sh'),
+                NodeModel([
+                    PropPhandleTarget(),
+                    copy.deepcopy(BUILD_TARGETS_SCHEMA),
+                    ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
+            ]),
+            NodeDesc('touch', False, [
+                NodeAny('', [
+                    PropPhandleTarget(),
+                    PropString('firmware-bin', True, ''),
+                    PropString('firmware-symlink', True, ''),
+                    PropString('vendor', True, ''),
+                ]),
+            ]),
+        ]),
+        NodeDesc('models', True, [
+            NodeModel([
+                PropPhandleTarget(),
+                NodeDesc('firmware', False, [
+                    PropPhandle('shares', '/chromeos/family/firmware/MODEL',
+                                False),
+                    PropString('key-id', False, '[A-Z][A-Z0-9]+'),
+                    copy.deepcopy(BUILD_TARGETS_SCHEMA)
+                    ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
+                PropString('brand-code', False, '[A-Z]{4}'),
+                PropString('powerd-prefs'),
+                PropString('wallpaper', False, '[a-z_]+'),
+                NodeDesc('submodels', False, [
+                    NodeSubmodel([
+                        PropPhandleTarget()
+                    ])
+                ]),
+                NodeDesc('thermal', False, [
+                    PropString('dptf-dv', False, r'\w+/dptf.dv'),
+                ]),
+                NodeDesc('touch', False, [
+                    PropString('present', False, r'yes|no|probe'),
+                    # We want to validate that probe-regex is only present when
+                    # 'present' = 'probe', but have no way of doing this
+                    # currently.
+                    PropString('probe-regex', False, ''),
+                    NodeAny(r'(stylus|touchpad|touchscreen)(@[0-9])?', [
+                        PropString('pid', False),
+                        PropString('version', True),
+                        PropPhandle('touch-type', '/chromeos/family/touch/ANY',
+                                    False),
+                        PropString('firmware-bin', True, '',
+                                   {'touch-type': False}),
+                        PropString('firmware-symlink', True, '',
+                                   {'touch-type': False}),
+                        PropString('date-code', False),
+                    ]),
+                ]),
+            ])
+        ])
+    ])
+])
 
 
 def Main(argv):
@@ -359,7 +360,7 @@ def Main(argv):
   validator = CrosConfigValidator(args.raise_on_error)
   found_errors = False
   for fname in args.config:
-    errors = validator.Start(fname)
+    errors = validator.Start(fname, SCHEMA)
     if errors:
       found_errors = True
       print('%s:' % fname)

@@ -237,7 +237,7 @@ class UnitTests(cros_test_lib.TestCase):
     dts = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
     dts.write(dts_source)
     dts.close()
-    errors = self.val.Start(dts.name)
+    errors = self.val.Start(dts.name, validate_config.SCHEMA)
     if errors:
       return errors
     if dts:
