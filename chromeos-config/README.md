@@ -14,7 +14,15 @@ published to chromium.org once the feature is complete and launched.
 ## Important classes
 
 See [CrosConfig](./libcros_config/cros_config.h) for the class to use to access
-configuration strings.
+configuration strings on a target. See
+[cros_config_host.py](./cros_config_host.py) for access to the config on a host
+or during a build.
+
+## CLI Usage
+
+There are two CLIs built for Chrome OS configuration access, cros_config for use
+on the target, and cros_config_host_py for use on the host/during building. See
+the --help for each tool respectively for help on usage.
 
 ## Binding
 
