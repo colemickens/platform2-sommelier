@@ -124,6 +124,18 @@ class CrosConfigHostTest(unittest.TestCase):
                                    'elants_i2c_3062.bin'),
         'touchscreen@1': TouchFile('elan/306e_5611.bin',
                                    'elants_i2c_306e.bin')})
+    touch_files = config.GetTouchFirmwareFiles()
+    self.assertEqual(set(touch_files), {
+        TouchFile('elan/0a97_1012.bin', 'elants_i2c_0a97.bin'),
+        TouchFile('elan/3062_5602.bin', 'elants_i2c_3062.bin'),
+        TouchFile('elan/306e_5611.bin', 'elants_i2c_306e.bin'),
+        TouchFile('elan/97.0_6.0.bin', 'elan_i2c_97.0.bin'),
+        TouchFile('wacom/4209.hex', 'wacom_firmware_REEF.bin'),
+        TouchFile('wacom/4209.hex', 'wacom_firmware_PYRO.bin'),
+        TouchFile('wacom/4209.hex', 'wacom_firmware_WHITETIP1.bin'),
+        TouchFile('wacom/4209.hex', 'wacom_firmware_WHITETIP.bin'),
+        TouchFile('wacom/4209.hex', 'wacom_firmware_WHITETIP2.bin'),
+    })
 
   def testGetMergedPropertiesPyro(self):
     config = CrosConfig(self.file)
