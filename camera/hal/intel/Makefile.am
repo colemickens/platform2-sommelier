@@ -91,8 +91,7 @@ JPEGSRC = common/jpeg/ExifCreater.cpp \
           common/jpeg/ImgEncoderCore.cpp \
           common/jpeg/ImgEncoder.cpp \
           common/jpeg/JpegMakerCore.cpp \
-          common/jpeg/JpegMaker.cpp \
-          common/jpeg/SWJpegEncoder.cpp
+          common/jpeg/JpegMaker.cpp
 
 GCSSSRC = common/gcss/graph_query_manager.cpp \
           common/gcss/gcss_item.cpp \
