@@ -1120,19 +1120,19 @@ TEST_F(MountManagerTest, GetMountEntries) {
   manager_.AddOrUpdateMountStateCache(kTestSourcePath, kTestMountPath, false);
   manager_.GetMountEntries(&mount_entries);
   ASSERT_EQ(1, mount_entries.size());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type());
-  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path());
-  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type());
-  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
+  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path);
+  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
+  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path);
 
   // A reserved mount entry is returned.
   manager_.ReserveMountPath(kTestMountPath, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   manager_.GetMountEntries(&mount_entries);
   ASSERT_EQ(1, mount_entries.size());
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type());
-  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path());
-  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type());
-  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path());
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type);
+  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path);
+  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
+  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path);
 }
 
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount

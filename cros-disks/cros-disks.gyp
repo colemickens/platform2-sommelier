@@ -57,7 +57,6 @@
         'fuse_mounter.cc',
         'glib_process.cc',
         'metrics.cc',
-        'mount_entry.cc',
         'mount_info.cc',
         'mount_manager.cc',
         'mount_options.cc',

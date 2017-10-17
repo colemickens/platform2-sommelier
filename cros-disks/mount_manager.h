@@ -19,12 +19,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
 
 namespace cros_disks {
 
 class Metrics;
-class MountEntry;
 class Platform;
 
 // A base class for managing mounted filesystems of certain kinds.

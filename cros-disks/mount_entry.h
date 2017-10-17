@@ -5,43 +5,32 @@
 #ifndef CROS_DISKS_MOUNT_ENTRY_H_
 #define CROS_DISKS_MOUNT_ENTRY_H_
 
-#include <stdint.h>
-
 #include <string>
-#include <vector>
 
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
 
 namespace cros_disks {
 
-using DBusMountEntry =
-    ::DBus::Struct<uint32_t, std::string, uint32_t, std::string>;
-using DBusMountEntries = std::vector<DBusMountEntry>;
-
-class MountEntry {
+struct MountEntry {
  public:
   MountEntry(MountErrorType error_type,
              const std::string& source_path,
              MountSourceType source_type,
              const std::string& mount_path,
-             bool is_read_only);
+             bool is_read_only)
+      : error_type(error_type),
+        source_path(source_path),
+        source_type(source_type),
+        mount_path(mount_path),
+        is_read_only(is_read_only) {}
+
   ~MountEntry() = default;
 
-  DBusMountEntry ToDBusFormat() const;
-
-  MountErrorType error_type() const { return error_type_; }
-  const std::string& source_path() const { return source_path_; }
-  MountSourceType source_type() const { return source_type_; }
-  const std::string& mount_path() const { return mount_path_; }
-  bool is_read_only() const { return is_read_only_; }
-
- private:
-  MountErrorType error_type_;
-  std::string source_path_;
-  MountSourceType source_type_;
-  std::string mount_path_;
-  bool is_read_only_;
+  MountErrorType error_type;
+  std::string source_path;
+  MountSourceType source_type;
+  std::string mount_path;
+  bool is_read_only;
 };
 
 }  // namespace cros_disks

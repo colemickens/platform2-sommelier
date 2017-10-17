@@ -106,7 +106,9 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
 
   // Returns a list of mount entries (<error type, source path, source type,
   // mount path>) that are currently managed by cros-disks.
-  DBusMountEntries EnumerateMountEntries(
+  using DBusMountEntry =
+      DBus::Struct<uint32_t, std::string, uint32_t, std::string>;
+  std::vector<DBusMountEntry> EnumerateMountEntries(
       DBus::Error& error) override;  // NOLINT
 
   // Returns properties of a disk device attached to the system.

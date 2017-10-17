@@ -17,7 +17,6 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
-#include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 
