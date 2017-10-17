@@ -375,20 +375,19 @@ void MountManager::UnreserveMountPath(const string& mount_path) {
   reserved_mount_paths_.erase(mount_path);
 }
 
-void MountManager::GetMountEntries(vector<MountEntry>* mount_entries) {
-  CHECK(mount_entries);
-
-  mount_entries->clear();
+vector<MountEntry> MountManager::GetMountEntries() const {
+  vector<MountEntry> mount_entries;
   for (const auto& entry : mount_states_) {
     const string& source_path = entry.first;
     const MountState& mount_state = entry.second;
     const string& mount_path = mount_state.mount_path;
     bool is_read_only = mount_state.is_read_only;
     MountErrorType error_type = GetMountErrorOfReservedMountPath(mount_path);
-    mount_entries->push_back(MountEntry(error_type, source_path,
-                                        GetMountSourceType(), mount_path,
-                                        is_read_only));
+    mount_entries.push_back(MountEntry(error_type, source_path,
+                                       GetMountSourceType(), mount_path,
+                                       is_read_only));
   }
+  return mount_entries;
 }
 
 bool MountManager::ExtractMountLabelFromOptions(

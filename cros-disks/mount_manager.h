@@ -167,9 +167,8 @@ class MountManager {
   // Removes |mount_path| from the set of reserved mount paths.
   void UnreserveMountPath(const std::string& mount_path);
 
-  // Gets the mount entries managed by this mount manager. |mount_entries| is
-  // overwritten to return the mount entries.
-  void GetMountEntries(std::vector<MountEntry>* mount_entries);
+  // Returns the mount entries managed by this mount manager.
+  std::vector<MountEntry> GetMountEntries() const;
 
  protected:
   // Type definition of a cache mapping a source path to its mount state of

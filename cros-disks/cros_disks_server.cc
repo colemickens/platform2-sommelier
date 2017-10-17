@@ -178,9 +178,7 @@ vector<CrosDisksServer::DBusMountEntry> CrosDisksServer::EnumerateMountEntries(
     DBus::Error& error) {  // NOLINT
   vector<DBusMountEntry> dbus_mount_entries;
   for (const auto& manager : mount_managers_) {
-    vector<MountEntry> mount_entries;
-    manager->GetMountEntries(&mount_entries);
-    for (const auto& mount_entry : mount_entries) {
+    for (const auto& mount_entry : manager->GetMountEntries()) {
       dbus_mount_entries.push_back(
           {mount_entry.error_type, mount_entry.source_path,
            mount_entry.source_type, mount_entry.mount_path});

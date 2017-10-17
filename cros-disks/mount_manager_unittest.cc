@@ -1104,21 +1104,13 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_CALL(manager_, GetMountSourceType())
       .WillRepeatedly(Return(MOUNT_SOURCE_REMOVABLE_DEVICE));
 
-  vector<MountEntry> mount_entries;
-
-  // No mount entries is returned.
-  manager_.GetMountEntries(&mount_entries);
-  EXPECT_TRUE(mount_entries.empty());
-
-  // Verify that |mount_entries| is overwritten.
-  mount_entries.push_back(
-      MountEntry(MOUNT_ERROR_NONE, "", MOUNT_SOURCE_ARCHIVE, "", false));
-  manager_.GetMountEntries(&mount_entries);
+  // No mount entry is returned.
+  vector<MountEntry> mount_entries = manager_.GetMountEntries();
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
   manager_.AddOrUpdateMountStateCache(kTestSourcePath, kTestMountPath, false);
-  manager_.GetMountEntries(&mount_entries);
+  mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
   EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path);
@@ -1127,7 +1119,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
 
   // A reserved mount entry is returned.
   manager_.ReserveMountPath(kTestMountPath, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  manager_.GetMountEntries(&mount_entries);
+  mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type);
   EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path);
