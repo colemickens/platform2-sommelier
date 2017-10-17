@@ -153,20 +153,22 @@ Cellular::~Cellular() {
   mobile_operator_info_observer_.reset();
 }
 
-string Cellular::GetStorageIdentifier() const {
-  string id = "device_";
+string Cellular::GetEquipmentIdentifier() const {
+  // 3GPP devices are uniquely identified by IMEI, which has 15 decimal digits.
   if (!imei_.empty())
-    // 3GPP devices are uniquely identified by IMEI, which has 15 decimal
-    // digits.
-    id += imei_;
-  else if (!meid_.empty())
-    // 3GPP2 devices are uniquely identified by MEID, which has 14 hexadecimal
-    // digits.
-    id += meid_;
-  else
-    // If neither IMEI nor MEID is available, fall back to MAC address.
-    id += address();
-  return id;
+    return imei_;
+
+  // 3GPP2 devices are uniquely identified by MEID, which has 14 hexadecimal
+  // digits.
+  if (!meid_.empty())
+    return meid_;
+
+  // If neither IMEI nor MEID is available, fall back to MAC address.
+  return address();
+}
+
+string Cellular::GetStorageIdentifier() const {
+  return "device_" + GetEquipmentIdentifier();
 }
 
 bool Cellular::Load(StoreInterface* storage) {

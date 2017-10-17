@@ -119,11 +119,11 @@ CellularService::CellularService(ModemInfo* modem_info,
   } else {
     service_id = friendly_name();
   }
-  storage_identifier_ =
-      SanitizeStorageIdentifier(base::StringPrintf("%s_%s_%s",
-                                                   kTypeCellular,
-                                                   device->address().c_str(),
-                                                   service_id.c_str()));
+  storage_identifier_ = SanitizeStorageIdentifier(
+      base::StringPrintf("%s_%s_%s",
+                         kTypeCellular,
+                         device->GetEquipmentIdentifier().c_str(),
+                         service_id.c_str()));
 
   // Assume we are not performing any out-of-credits detection.
   // The capability can reinitialize with the appropriate type later.

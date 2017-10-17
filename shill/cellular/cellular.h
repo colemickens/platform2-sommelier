@@ -101,6 +101,15 @@ class Cellular : public Device, public RPCTaskDelegate {
            const std::string& path);
   ~Cellular() override;
 
+  // Returns the equipment identifier of the device. If the device is a 3GPP
+  // device, its IMEI is returned. If the device is a 3GPP2 device, its MEID is
+  // returned. When neither IMEI nor MEID is available, the MAC address of the
+  // device is returned. IMEI and MEID are unique identifiers, while the MAC
+  // address may not be (e.g. some cellular devices of the same model may share
+  // the same MAC address, or some cellular devices may not have a MAC address
+  // and are assigned with a randomly generated MAC address by the kernel).
+  std::string GetEquipmentIdentifier() const;
+
   std::string GetStorageIdentifier() const override;
 
   // Load configuration for the device from |storage|.
