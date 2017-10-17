@@ -56,10 +56,10 @@ void CrosDisksServer::Format(const string& path,
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
     error_type = FORMAT_ERROR_INVALID_DEVICE_PATH;
-  } else if (disk.is_on_boot_device()) {
+  } else if (disk.is_on_boot_device) {
     error_type = FORMAT_ERROR_DEVICE_NOT_ALLOWED;
   } else {
-    error_type = format_manager_->StartFormatting(path, disk.device_file(),
+    error_type = format_manager_->StartFormatting(path, disk.device_file,
                                                   filesystem_type);
   }
 
@@ -77,11 +77,11 @@ void CrosDisksServer::Rename(const string& path,
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
     error_type = RENAME_ERROR_INVALID_DEVICE_PATH;
-  } else if (disk.is_on_boot_device() || disk.is_read_only()) {
+  } else if (disk.is_on_boot_device || disk.is_read_only) {
     error_type = RENAME_ERROR_DEVICE_NOT_ALLOWED;
   } else {
     error_type = rename_manager_->StartRenaming(
-        path, disk.device_file(), volume_name, disk.filesystem_type());
+        path, disk.device_file, volume_name, disk.filesystem_type);
   }
 
   if (error_type != RENAME_ERROR_NONE) {
@@ -157,8 +157,8 @@ vector<string> CrosDisksServer::DoEnumerateDevices(
   vector<string> devices;
   devices.reserve(disks.size());
   for (const auto& disk : disks) {
-    if (!auto_mountable_only || disk.is_auto_mountable()) {
-      devices.push_back(disk.native_path());
+    if (!auto_mountable_only || disk.is_auto_mountable) {
+      devices.push_back(disk.native_path);
     }
   }
   return devices;
@@ -187,15 +187,45 @@ vector<CrosDisksServer::DBusMountEntry> CrosDisksServer::EnumerateMountEntries(
   return dbus_mount_entries;
 }
 
-DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
-                                              DBus::Error& error) {  // NOLINT
+std::map<std::string, DBus::Variant> CrosDisksServer::GetDeviceProperties(
+    const string& device_path,
+    DBus::Error& error) {  // NOLINT
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
     string message = "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
     error.set(kCrosDisksServiceError, message.c_str());
   }
-  return disk.ToDBusFormat();
+
+  std::map<std::string, DBus::Variant> properties;
+  properties[kDeviceIsDrive].writer().append_bool(disk.is_drive);
+  properties[kDevicePresentationHide].writer().append_bool(disk.is_hidden);
+  properties[kDeviceIsMounted].writer().append_bool(disk.IsMounted());
+  properties[kDeviceIsMediaAvailable].writer().append_bool(
+      disk.is_media_available);
+  properties[kDeviceIsOnBootDevice].writer().append_bool(
+      disk.is_on_boot_device);
+  properties[kDeviceIsOnRemovableDevice].writer().append_bool(
+      disk.is_on_removable_device);
+  properties[kDeviceIsVirtual].writer().append_bool(disk.is_virtual);
+  properties[kNativePath].writer().append_string(disk.native_path.c_str());
+  properties[kDeviceFile].writer().append_string(disk.device_file.c_str());
+  properties[kIdUuid].writer().append_string(disk.uuid.c_str());
+  properties[kIdLabel].writer().append_string(disk.label.c_str());
+  properties[kVendorId].writer().append_string(disk.vendor_id.c_str());
+  properties[kVendorName].writer().append_string(disk.vendor_name.c_str());
+  properties[kProductId].writer().append_string(disk.product_id.c_str());
+  properties[kProductName].writer().append_string(disk.product_name.c_str());
+  properties[kDriveModel].writer().append_string(disk.drive_model.c_str());
+  properties[kDriveIsRotational].writer().append_bool(disk.is_rotational);
+  properties[kDeviceMediaType].writer().append_uint32(disk.media_type);
+  properties[kDeviceSize].writer().append_uint64(disk.device_capacity);
+  properties[kDeviceIsReadOnly].writer().append_bool(disk.is_read_only);
+  properties[kFileSystemType].writer().append_string(
+      disk.filesystem_type.c_str());
+  DBus::MessageIter iter = properties[kDeviceMountPaths].writer();
+  iter << disk.mount_paths;
+  return properties;
 }
 
 void CrosDisksServer::OnFormatCompleted(const string& device_path,

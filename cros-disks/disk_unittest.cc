@@ -16,31 +16,31 @@ class DiskTest : public ::testing::Test {
 };
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithLabel) {
-  disk_.set_label("My Disk");
-  EXPECT_EQ(disk_.label(), disk_.GetPresentationName());
+  disk_.label = "My Disk";
+  EXPECT_EQ(disk_.label, disk_.GetPresentationName());
 }
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithLabelWithSlashes) {
-  disk_.set_label("This/Is/My/Disk");
+  disk_.label = "This/Is/My/Disk";
   EXPECT_EQ("This_Is_My_Disk", disk_.GetPresentationName());
 }
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabel) {
   EXPECT_EQ("External Drive", disk_.GetPresentationName());
 
-  disk_.set_media_type(DEVICE_MEDIA_USB);
+  disk_.media_type = DEVICE_MEDIA_USB;
   EXPECT_EQ("USB Drive", disk_.GetPresentationName());
 
-  disk_.set_media_type(DEVICE_MEDIA_SD);
+  disk_.media_type = DEVICE_MEDIA_SD;
   EXPECT_EQ("SD Card", disk_.GetPresentationName());
 
-  disk_.set_media_type(DEVICE_MEDIA_OPTICAL_DISC);
+  disk_.media_type = DEVICE_MEDIA_OPTICAL_DISC;
   EXPECT_EQ("Optical Disc", disk_.GetPresentationName());
 
-  disk_.set_media_type(DEVICE_MEDIA_MOBILE);
+  disk_.media_type = DEVICE_MEDIA_MOBILE;
   EXPECT_EQ("Mobile Device", disk_.GetPresentationName());
 
-  disk_.set_media_type(DEVICE_MEDIA_DVD);
+  disk_.media_type = DEVICE_MEDIA_DVD;
   EXPECT_EQ("DVD", disk_.GetPresentationName());
 }
 

@@ -5,6 +5,7 @@
 #ifndef CROS_DISKS_CROS_DISKS_SERVER_H_
 #define CROS_DISKS_CROS_DISKS_SERVER_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -112,8 +113,9 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
       DBus::Error& error) override;  // NOLINT
 
   // Returns properties of a disk device attached to the system.
-  DBusDisk GetDeviceProperties(const std::string& device_path,
-                               DBus::Error& error) override;  // NOLINT
+  std::map<std::string, DBus::Variant> GetDeviceProperties(
+      const std::string& device_path,
+      DBus::Error& error) override;  // NOLINT
 
   // Implements the FormatManagerObserverInterface interface to handle
   // the event when a formatting operation has completed.

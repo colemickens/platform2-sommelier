@@ -352,22 +352,22 @@ TEST_F(UdevDeviceTest, ToDisk) {
   if (boot_device_) {
     UdevDevice device(boot_device_);
     Disk disk = device.ToDisk();
-    EXPECT_FALSE(disk.is_auto_mountable());
-    EXPECT_TRUE(disk.is_on_boot_device());
+    EXPECT_FALSE(disk.is_auto_mountable);
+    EXPECT_TRUE(disk.is_on_boot_device);
   }
   if (loop_device_) {
     UdevDevice device(loop_device_);
     Disk disk = device.ToDisk();
-    EXPECT_FALSE(disk.is_auto_mountable());
-    EXPECT_TRUE(disk.is_virtual());
+    EXPECT_FALSE(disk.is_auto_mountable);
+    EXPECT_TRUE(disk.is_virtual);
     EXPECT_EQ(kLoopDevicePrefix,
-              disk.device_file().substr(0, strlen(kLoopDevicePrefix)));
+              disk.device_file.substr(0, strlen(kLoopDevicePrefix)));
   }
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
     Disk disk = device.ToDisk();
     EXPECT_TRUE(disk.IsMounted());
-    EXPECT_FALSE(disk.mount_paths().empty());
+    EXPECT_FALSE(disk.mount_paths.empty());
   }
 }
 

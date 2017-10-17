@@ -22,27 +22,27 @@ const char kFallbackPresentationName[] = "External Drive";
 namespace cros_disks {
 
 Disk::Disk()
-    : is_drive_(false),
-      is_hidden_(false),
-      is_auto_mountable_(false),
-      is_media_available_(false),
-      is_on_boot_device_(true),
-      is_on_removable_device_(false),
-      is_rotational_(false),
-      is_read_only_(false),
-      is_virtual_(true),
-      media_type_(DEVICE_MEDIA_UNKNOWN),
-      device_capacity_(0),
-      bytes_remaining_(0) {}
+    : is_drive(false),
+      is_hidden(false),
+      is_auto_mountable(false),
+      is_media_available(false),
+      is_on_boot_device(true),
+      is_on_removable_device(false),
+      is_rotational(false),
+      is_read_only(false),
+      is_virtual(true),
+      media_type(DEVICE_MEDIA_UNKNOWN),
+      device_capacity(0),
+      bytes_remaining(0) {}
 
 string Disk::GetPresentationName() const {
-  if (!label_.empty()) {
-    string name = label_;
+  if (!label.empty()) {
+    string name = label;
     std::replace(name.begin(), name.end(), '/', '_');
     return name;
   }
 
-  switch (media_type_) {
+  switch (media_type) {
     case DEVICE_MEDIA_USB:
       return kUSBDriveName;
     case DEVICE_MEDIA_SD:
@@ -56,35 +56,6 @@ string Disk::GetPresentationName() const {
     default:
       return kFallbackPresentationName;
   }
-}
-
-DBusDisk Disk::ToDBusFormat() const {
-  DBusDisk disk;
-  disk[kDeviceIsDrive].writer().append_bool(is_drive());
-  disk[kDevicePresentationHide].writer().append_bool(is_hidden());
-  disk[kDeviceIsMounted].writer().append_bool(IsMounted());
-  disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
-  disk[kDeviceIsOnBootDevice].writer().append_bool(is_on_boot_device());
-  disk[kDeviceIsOnRemovableDevice].writer().append_bool(
-      is_on_removable_device());
-  disk[kDeviceIsVirtual].writer().append_bool(is_virtual());
-  disk[kNativePath].writer().append_string(native_path().c_str());
-  disk[kDeviceFile].writer().append_string(device_file().c_str());
-  disk[kIdUuid].writer().append_string(uuid().c_str());
-  disk[kIdLabel].writer().append_string(label().c_str());
-  disk[kVendorId].writer().append_string(vendor_id().c_str());
-  disk[kVendorName].writer().append_string(vendor_name().c_str());
-  disk[kProductId].writer().append_string(product_id().c_str());
-  disk[kProductName].writer().append_string(product_name().c_str());
-  disk[kDriveModel].writer().append_string(drive_model().c_str());
-  disk[kDriveIsRotational].writer().append_bool(is_rotational());
-  disk[kDeviceMediaType].writer().append_uint32(media_type());
-  disk[kDeviceSize].writer().append_uint64(device_capacity());
-  disk[kDeviceIsReadOnly].writer().append_bool(is_read_only());
-  disk[kFileSystemType].writer().append_string(filesystem_type().c_str());
-  DBus::MessageIter iter = disk[kDeviceMountPaths].writer();
-  iter << mount_paths();
-  return disk;
 }
 
 }  // namespace cros_disks

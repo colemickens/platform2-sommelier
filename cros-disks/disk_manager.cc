@@ -17,7 +17,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "cros-disks/disk.h"
 #include "cros-disks/exfat_mounter.h"
 #include "cros-disks/external_mounter.h"
 #include "cros-disks/filesystem.h"
@@ -422,29 +421,27 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
   mount_options.Initialize(extended_options, set_user_and_group_id,
                            default_user_id, default_group_id);
 
-  if (filesystem.is_mounted_read_only() || disk.is_read_only() ||
-      disk.is_optical_disk()) {
+  if (filesystem.is_mounted_read_only() || disk.is_read_only ||
+      disk.IsOpticalDisk()) {
     mount_options.SetReadOnlyOption();
   }
 
   const string& mounter_type = filesystem.mounter_type();
   if (mounter_type == SystemMounter::kMounterType)
-    return std::make_unique<SystemMounter>(disk.device_file(), target_path,
-                                           filesystem.mount_type(),
-                                           mount_options);
+    return std::make_unique<SystemMounter>(
+        disk.device_file, target_path, filesystem.mount_type(), mount_options);
 
   if (mounter_type == ExternalMounter::kMounterType)
-    return std::make_unique<ExternalMounter>(disk.device_file(), target_path,
-                                             filesystem.mount_type(),
-                                             mount_options);
+    return std::make_unique<ExternalMounter>(
+        disk.device_file, target_path, filesystem.mount_type(), mount_options);
 
   if (mounter_type == ExFATMounter::kMounterType)
-    return std::make_unique<ExFATMounter>(disk.device_file(), target_path,
+    return std::make_unique<ExFATMounter>(disk.device_file, target_path,
                                           filesystem.mount_type(),
                                           mount_options, platform());
 
   if (mounter_type == NTFSMounter::kMounterType)
-    return std::make_unique<NTFSMounter>(disk.device_file(), target_path,
+    return std::make_unique<NTFSMounter>(disk.device_file, target_path,
                                          filesystem.mount_type(), mount_options,
                                          platform());
 
@@ -477,15 +474,14 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
-  const string& device_file = disk.device_file();
-  if (device_file.empty()) {
+  if (disk.device_file.empty()) {
     LOG(ERROR) << "'" << source_path << "' does not have a device file";
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
   string device_filesystem_type =
-      filesystem_type.empty() ? disk.filesystem_type() : filesystem_type;
-  metrics()->RecordDeviceMediaType(disk.media_type());
+      filesystem_type.empty() ? disk.filesystem_type : filesystem_type;
+  metrics()->RecordDeviceMediaType(disk.media_type);
   metrics()->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
@@ -572,10 +568,10 @@ bool DiskManager::ShouldReserveMountPathOnError(
 
 bool DiskManager::ScheduleEjectOnUnmount(const string& mount_path,
                                          const Disk& disk) {
-  if (!disk.is_optical_disk())
+  if (!disk.IsOpticalDisk())
     return false;
 
-  devices_to_eject_on_unmount_[mount_path] = disk.device_file();
+  devices_to_eject_on_unmount_[mount_path] = disk.device_file;
   return true;
 }
 

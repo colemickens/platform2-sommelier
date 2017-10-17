@@ -20,12 +20,12 @@
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/device_event.h"
 #include "cros-disks/device_event_source_interface.h"
+#include "cros-disks/disk.h"
 #include "cros-disks/mount_manager.h"
 
 namespace cros_disks {
 
 class DeviceEjector;
-class Disk;
 class Filesystem;
 class Mounter;
 class Platform;

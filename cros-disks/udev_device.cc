@@ -408,57 +408,46 @@ vector<string> UdevDevice::GetMountPaths(const string& device_path) {
 Disk UdevDevice::ToDisk() {
   Disk disk;
 
-  disk.set_is_auto_mountable(IsAutoMountable());
-  disk.set_is_read_only(IsAttributeTrue(kAttributeReadOnly));
-  disk.set_is_drive(HasAttribute(kAttributeRange));
-  disk.set_is_rotational(HasProperty(kPropertyRotationRate));
-  disk.set_is_hidden(IsHidden());
-  disk.set_is_media_available(IsMediaAvailable());
-  disk.set_is_on_boot_device(IsOnBootDevice());
-  disk.set_is_on_removable_device(IsOnRemovableDevice());
-  disk.set_is_virtual(IsVirtual());
-  disk.set_media_type(GetDeviceMediaType());
-  disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
-  disk.set_native_path(NativePath());
+  disk.is_auto_mountable = IsAutoMountable();
+  disk.is_read_only = IsAttributeTrue(kAttributeReadOnly);
+  disk.is_drive = HasAttribute(kAttributeRange);
+  disk.is_rotational = HasProperty(kPropertyRotationRate);
+  disk.is_hidden = IsHidden();
+  disk.is_media_available = IsMediaAvailable();
+  disk.is_on_boot_device = IsOnBootDevice();
+  disk.is_on_removable_device = IsOnRemovableDevice();
+  disk.is_virtual = IsVirtual();
+  disk.media_type = GetDeviceMediaType();
+  disk.filesystem_type = GetPropertyFromBlkId(kPropertyBlkIdFilesystemType);
+  disk.native_path = NativePath();
 
   // Drive model and filesystem label may not be UTF-8 encoded, so we
   // need to ensure that they are either set to a valid UTF-8 string or
   // an empty string before later passed to a DBus message iterator.
-  disk.set_drive_model(EnsureUTF8String(GetProperty(kPropertyModel)));
-  disk.set_label(
-      EnsureUTF8String(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel)));
+  disk.drive_model = EnsureUTF8String(GetProperty(kPropertyModel));
+  disk.label =
+      EnsureUTF8String(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel));
 
-  string vendor_id, product_id;
-  if (GetVendorAndProductId(&vendor_id, &product_id)) {
-    disk.set_vendor_id(vendor_id);
-    disk.set_product_id(product_id);
-
-    string vendor_name, product_name;
+  if (GetVendorAndProductId(&disk.vendor_id, &disk.product_id)) {
     USBDeviceInfo info;
-    if (info.GetVendorAndProductName(kUSBIdentifierDatabase, vendor_id,
-                                     product_id, &vendor_name, &product_name)) {
-      disk.set_vendor_name(EnsureUTF8String(vendor_name));
-      disk.set_product_name(EnsureUTF8String(product_name));
-    }
+    info.GetVendorAndProductName(kUSBIdentifierDatabase, disk.vendor_id,
+                                 disk.product_id, &disk.vendor_name,
+                                 &disk.product_name);
   }
 
   // TODO(benchan): Add a proper unit test when fixing crbug.com/221380.
   string uuid_hash = base::SHA1HashString(
-      vendor_id + product_id + GetProperty(kPropertySerial) +
+      disk.vendor_id + disk.product_id + GetProperty(kPropertySerial) +
       GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
-  disk.set_uuid(base::HexEncode(uuid_hash.data(), uuid_hash.size()));
+  disk.uuid = base::HexEncode(uuid_hash.data(), uuid_hash.size());
 
   const char* dev_file = udev_device_get_devnode(dev_);
   if (dev_file)
-    disk.set_device_file(dev_file);
+    disk.device_file = dev_file;
 
-  vector<string> mount_paths = GetMountPaths();
-  disk.set_mount_paths(mount_paths);
+  disk.mount_paths = GetMountPaths();
 
-  uint64_t total_size, remaining_size;
-  GetSizeInfo(&total_size, &remaining_size);
-  disk.set_device_capacity(total_size);
-  disk.set_bytes_remaining(remaining_size);
+  GetSizeInfo(&disk.device_capacity, &disk.bytes_remaining);
 
   return disk;
 }

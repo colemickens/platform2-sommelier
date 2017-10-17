@@ -62,7 +62,7 @@ class DiskManagerTest : public ::testing::Test {
 
 TEST_F(DiskManagerTest, CreateExFATMounter) {
   Disk disk;
-  disk.set_device_file("/dev/sda1");
+  disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("exfat");
   filesystem.set_mounter_type(ExFATMounter::kMounterType);
@@ -74,14 +74,14 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file(), mounter->source_path());
+  EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, CreateExternalMounter) {
   Disk disk;
-  disk.set_device_file("/dev/sda1");
+  disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("fat");
   filesystem.set_mount_type("vfat");
@@ -94,14 +94,14 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file(), mounter->source_path());
+  EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, CreateNTFSMounter) {
   Disk disk;
-  disk.set_device_file("/dev/sda1");
+  disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("ntfs");
   filesystem.set_mounter_type(NTFSMounter::kMounterType);
@@ -113,14 +113,14 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file(), mounter->source_path());
+  EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, CreateSystemMounter) {
   Disk disk;
-  disk.set_device_file("/dev/sda1");
+  disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("vfat");
   filesystem.AddExtraMountOption("utf8");
@@ -133,7 +133,7 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file(), mounter->source_path());
+  EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("utf8,shortname=mixed,rw,nodev,noexec,nosuid",
             mounter->mount_options().ToString());
@@ -150,12 +150,12 @@ TEST_F(DiskManagerTest, GetDiskByDevicePath) {
   }
 
   for (const auto& found_disk : disks) {
-    string device_path = found_disk.device_file();
+    string device_path = found_disk.device_file;
     LOG(INFO) << "Using device_path: " << device_path << "\n";
 
     Disk disk;
     EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
-    EXPECT_EQ(device_path, disk.device_file());
+    EXPECT_EQ(device_path, disk.device_file);
   }
 }
 
@@ -281,15 +281,15 @@ TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
 TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
   string mount_path = "/media/removable/disk";
   Disk disk;
-  disk.set_device_file("/dev/sr0");
+  disk.device_file = "/dev/sr0";
   EXPECT_FALSE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
   EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 
-  disk.set_media_type(DEVICE_MEDIA_OPTICAL_DISC);
+  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
   EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
   EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 
-  disk.set_media_type(DEVICE_MEDIA_DVD);
+  disk.media_type = DEVICE_MEDIA_DVD;
   manager_.devices_to_eject_on_unmount_.clear();
   EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
   EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
