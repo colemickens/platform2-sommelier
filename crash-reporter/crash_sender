@@ -758,7 +758,7 @@ if ! grep -q '^NoNewPrivs:.*1$' /proc/$$/status; then
   # We use --ambient because crash_sender is a shell script and we run `rm`.
   # We need network access in order to upload things.
   # We don't use -i as the scheduler waits for the first process to exit.
-  exec /sbin/minijail0 -c 0x2 --ambient -n -l -p -r -v --uts -- \
+  exec /sbin/minijail0 -c 0x2 --ambient -n -l -p -r -v -t --uts -- \
     /sbin/crash_sender "$@"
 fi
 
