@@ -366,7 +366,7 @@ TEST_F(UdevDeviceTest, ToDisk) {
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
     Disk disk = device.ToDisk();
-    EXPECT_TRUE(disk.is_mounted());
+    EXPECT_TRUE(disk.IsMounted());
     EXPECT_FALSE(disk.mount_paths().empty());
   }
 }

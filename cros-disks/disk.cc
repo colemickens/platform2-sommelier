@@ -25,7 +25,6 @@ Disk::Disk()
     : is_drive_(false),
       is_hidden_(false),
       is_auto_mountable_(false),
-      is_mounted_(false),
       is_media_available_(false),
       is_on_boot_device_(true),
       is_on_removable_device_(false),
@@ -63,7 +62,7 @@ DBusDisk Disk::ToDBusFormat() const {
   DBusDisk disk;
   disk[kDeviceIsDrive].writer().append_bool(is_drive());
   disk[kDevicePresentationHide].writer().append_bool(is_hidden());
-  disk[kDeviceIsMounted].writer().append_bool(is_mounted());
+  disk[kDeviceIsMounted].writer().append_bool(IsMounted());
   disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
   disk[kDeviceIsOnBootDevice].writer().append_bool(is_on_boot_device());
   disk[kDeviceIsOnRemovableDevice].writer().append_bool(

@@ -453,7 +453,6 @@ Disk UdevDevice::ToDisk() {
     disk.set_device_file(dev_file);
 
   vector<string> mount_paths = GetMountPaths();
-  disk.set_is_mounted(!mount_paths.empty());
   disk.set_mount_paths(mount_paths);
 
   uint64_t total_size, remaining_size;

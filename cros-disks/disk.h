@@ -55,8 +55,7 @@ class Disk {
     is_auto_mountable_ = is_auto_mountable;
   }
 
-  bool is_mounted() const { return is_mounted_; }
-  void set_is_mounted(bool is_mounted) { is_mounted_ = is_mounted; }
+  bool IsMounted() const { return !mount_paths_.empty(); }
 
   bool is_media_available() const { return is_media_available_; }
   void set_is_media_available(bool is_media_available) {
@@ -153,7 +152,6 @@ class Disk {
   bool is_drive_;
   bool is_hidden_;
   bool is_auto_mountable_;
-  bool is_mounted_;
   bool is_media_available_;
   bool is_on_boot_device_;
   bool is_on_removable_device_;
