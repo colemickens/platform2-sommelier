@@ -298,15 +298,16 @@ class CrosConfig(object):
       """
       touch = self.ChildNodeFromPath('/touch')
       files = {}
-      for device in touch.subnodes.values():
-        props = device.GetMergedProperties('touch-type')
+      if touch:
+        for device in touch.subnodes.values():
+          props = device.GetMergedProperties('touch-type')
 
-        # Add a special property for the capitalised model name
-        props['MODEL'] = self.name.upper()
-        files[device.name] = TouchFile(
-            self.GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
-            self.GetPropFilename(self._fdt_node.path, props,
-                                 'firmware-symlink'))
+          # Add a special property for the capitalised model name
+          props['MODEL'] = self.name.upper()
+          files[device.name] = TouchFile(
+              self.GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
+              self.GetPropFilename(self._fdt_node.path, props,
+                                   'firmware-symlink'))
       return files
 
     def GetAudioFiles(self):
