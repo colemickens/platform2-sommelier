@@ -17,24 +17,30 @@
 #define LOG_TAG "ImgEncoderCore"
 static const unsigned char JPEG_MARKER_EOI[2] = {0xFF, 0xD9};  //  JPEG EndOfImage marker
 
-#include <assert.h>
-
+#include "PlatformData.h"
 #include "ImgEncoderCore.h"
 #include "LogHelper.h"
+#include <Utils.h>
 #include "Camera3V4l2Format.h"
 #include "ImageScalerCore.h"
 #include "Exif.h"
 
+#include "ColorConverter.h"
+#include <arc/jpeg_compressor.h>
+
 NAMESPACE_DECLARATION {
 ImgEncoderCore::ImgEncoderCore() :
-    mSwCompressor(nullptr)
-    ,mThumbOutBuf(nullptr)
-    ,mJpegDataBuf(nullptr)
-    ,mMainScaled(nullptr)
-    ,mThumbScaled(nullptr)
-    ,mJpegSetting(nullptr)
+    mThumbOutBuf(nullptr),
+    mJpegDataBuf(nullptr),
+    mMainScaled(nullptr),
+    mThumbScaled(nullptr),
+    mJpegSetting(nullptr)
 {
     LOG1("@%s", __FUNCTION__);
+
+    mInternalYU12Size =
+        RESOLUTION_14MP_WIDTH * RESOLUTION_14MP_HEIGHT * 3 / 2;
+    mInternalYU12.reset(new char[mInternalYU12Size]);
 }
 
 ImgEncoderCore::~ImgEncoderCore()
@@ -47,10 +53,6 @@ status_t ImgEncoderCore::init(void)
 {
     LOG1("@%s", __FUNCTION__);
 
-    if (mSwCompressor == nullptr) {
-        mSwCompressor = new SWJpegEncoder();
-    }
-
     mJpegSetting = new ExifMetaData::JpegSetting;
 
     return NO_ERROR;
@@ -60,10 +62,6 @@ void ImgEncoderCore::deInit(void)
 {
     LOG2("@%s", __FUNCTION__);
 
-    if (mSwCompressor) {
-        delete mSwCompressor;
-        mSwCompressor = nullptr;
-    }
     if (mJpegSetting) {
         delete mJpegSetting;
         mJpegSetting = nullptr;
@@ -289,7 +287,6 @@ status_t ImgEncoderCore::getJpegSettings(EncodePackage & pkg, ExifMetaData& meta
               mJpegSetting->thumbHeight,
               mJpegSetting->orientation);
 
-
     return status;
 }
 
@@ -300,28 +297,50 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
 {
     LOG2("@%s", __FUNCTION__);
 
-    SWJpegEncoder::InputBuffer inBuf;
-    SWJpegEncoder::OutputBuffer outBuf;
+    arc::JpegCompressor jpegCompressor;
 
-    inBuf.buf = (unsigned char*)srcBuf->data();
-    inBuf.width = srcBuf->width();
-    inBuf.height = srcBuf->height();
-    inBuf.fourcc = srcBuf->v4l2Fmt();
-    inBuf.size = srcBuf->size();
-    inBuf.stride = srcBuf->stride();
+    int width = srcBuf->width();
+    int height = srcBuf->height();
+    int stride = srcBuf->stride();
+    void* srcY = srcBuf->data();
+    void* srcUV = static_cast<unsigned char*>(srcBuf->data()) + stride * height;
 
-    outBuf.buf = (unsigned char*)destBuf->data() + destOffset;
-    outBuf.width = destBuf->width();
-    outBuf.height = destBuf->height();
-    outBuf.quality = quality;
-    outBuf.size = destBuf->size();
+    if (width * height * 3 / 2 > mInternalYU12Size) {
+        mInternalYU12Size = width * height * 3 / 2;
+        mInternalYU12.reset(new char[mInternalYU12Size]);
+    }
+    void* tempBuf = mInternalYU12.get();
 
+    switch (srcBuf->v4l2Fmt()) {
+    case V4L2_PIX_FMT_YUYV:
+        YUY2ToP411(width, height, stride, srcY, tempBuf);
+        break;
+    case V4L2_PIX_FMT_NV12:
+        NV12ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+        break;
+    case V4L2_PIX_FMT_NV21:
+        NV21ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+        break;
+    default:
+        LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
+        return 0;
+    }
+
+    uint32_t outSize = 0;
     nsecs_t startTime = systemTime();
-    int size = mSwCompressor->encode(inBuf, outBuf);
-    LOG1("%s: encoding %dx%d need %ums, jpeg size %d, quality %d)", __FUNCTION__,
-         destBuf->width(), destBuf->height(),
-        (unsigned)((systemTime() - startTime) / 1000000), size, quality);
-    return size;
+    void* pDst = static_cast<unsigned char*>(destBuf->data()) + destOffset;
+    bool ret = jpegCompressor.CompressImage(tempBuf,
+                                            width, height, quality,
+                                            nullptr, 0,
+                                            destBuf->size(), pDst,
+                                            &outSize);
+    LOG1("%s: encoding ret:%d, %dx%d need %" PRId64 "ms, jpeg size %u, quality %d)",
+         __FUNCTION__, ret, destBuf->width(), destBuf->height(),
+         (systemTime() - startTime) / 1000000, outSize, quality);
+    CheckError(ret == false, 0, "@%s, jpegCompressor.CompressImage() fails",
+               __FUNCTION__);
+
+    return outSize;
 }
 
 /**

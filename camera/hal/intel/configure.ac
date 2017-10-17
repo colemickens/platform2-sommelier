@@ -63,6 +63,7 @@ PKG_CHECK_MODULES([LIBCBM], [libcbm])
 PKG_CHECK_MODULES([LIBSYNC], [libsync])
 PKG_CHECK_MODULES([LIBYUV], [libyuv])
 PKG_CHECK_MODULES([IA_IMAGING], [ia_imaging])
+PKG_CHECK_MODULES([LIBCAMERA_JPEG], [libcamera_jpeg])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/ioctl.h unistd.h])

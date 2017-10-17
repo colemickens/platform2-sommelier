@@ -18,8 +18,8 @@
 #define _CAMERA3_HAL_IMG_ENCODER_CORE_H_
 
 #include <memory>
+#include <mutex>
 #include "CommonBuffer.h"
-#include "SWJpegEncoder.h"
 #include "EXIFMaker.h"
 
 NAMESPACE_DECLARATION {
@@ -112,7 +112,6 @@ private:  /* Methods */
     status_t getJpegSettings(EncodePackage & pkg, ExifMetaData& metaData);
 
 private:  /* Members */
-    SWJpegEncoder *mSwCompressor;
 
     std::shared_ptr<CommonBuffer> mThumbOutBuf;
     std::shared_ptr<CommonBuffer> mJpegDataBuf;
@@ -122,6 +121,12 @@ private:  /* Members */
     ExifMetaData::JpegSetting *mJpegSetting;
 
     std::mutex mEncodeLock; /* protect JPEG encoding progress */
+
+    // arc::JpegCompressor needs YU12 format
+    // and the ISP doesn't output YU12 directly.
+    // so a temporary intermediate buffer is needed.
+    std::unique_ptr<char[]> mInternalYU12;
+    unsigned int mInternalYU12Size;
 };
 
 } NAMESPACE_DECLARATION_END
