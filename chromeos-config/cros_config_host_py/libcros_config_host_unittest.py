@@ -131,7 +131,13 @@ class CrosConfigHostTest(unittest.TestCase):
         TouchFile(firmware='elan/306e_5611.bin', symlink='elants_i2c_306e.bin'),
         TouchFile(firmware='elan/97.0_6.0.bin', symlink='elan_i2c_97.0.bin'),
         TouchFile(firmware='wacom/4209.hex', symlink='wacom_firmware_REEF.bin'),
-        TouchFile(firmware='wacom/4209.hex', symlink='wacom_firmware_PYRO.bin')
+        TouchFile(firmware='wacom/4209.hex',
+                  symlink='wacom_firmware_WHITETIP2.bin'),
+        TouchFile(firmware='wacom/4209.hex',
+                  symlink='wacom_firmware_WHITETIP.bin'),
+        TouchFile(firmware='wacom/4209.hex', symlink='wacom_firmware_PYRO.bin'),
+        TouchFile(firmware='wacom/4209.hex',
+                  symlink='wacom_firmware_WHITETIP1.bin')
     ])
 
   def testGetMergedPropertiesPyro(self):
