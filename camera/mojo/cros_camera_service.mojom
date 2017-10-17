@@ -7,6 +7,7 @@
 module cros.mojom;
 
 import "mojo/camera_common.mojom";
+import "mojo/jda/jpeg_decode_accelerator.mojom";
 
 // The CrOS camera HAL v3 Mojo dispatcher.  The dispatcher acts as a proxy and
 // waits for the server and the clients to register.  There can only be one
@@ -15,7 +16,7 @@ import "mojo/camera_common.mojom";
 // channel to the server and pass the established Mojo channel to the client in
 // order to set up a Mojo channel between the client and the server.
 //
-// Next method ID: 2
+// Next method ID: 3
 interface CameraHalDispatcher {
   // A CameraHalServer calls RegisterServer to register itself with the
   // dispatcher.
@@ -24,6 +25,10 @@ interface CameraHalDispatcher {
   // A CameraHalClient calls RegisterClient to register itself with the
   // dispatcher.
   RegisterClient@1(CameraHalClient client);
+
+  // Get JpegDecodeAccelerator from dispatcher.
+  [MinVersion = 1] GetJpegDecodeAccelerator@2
+      (JpegDecodeAccelerator& accerlator_request);
 };
 
 // The CrOS camera HAL v3 Mojo server.

@@ -15,7 +15,10 @@ MOJOM_FILES := \
 	mojo/camera_common.mojom \
 	mojo/camera_metadata.mojom \
 	mojo/camera_metadata_tags.mojom \
-	mojo/algorithm/camera_algorithm.mojom
+	mojo/algorithm/camera_algorithm.mojom \
+	mojo/jda/geometry.mojom \
+	mojo/jda/jpeg_decode_accelerator.mojom \
+	mojo/jda/time.mojom
 
 mojo/mojo_templates:
 	$(QUIET)echo generate_mojo_templates: $(GEN_MOJO_TEMPLATES_DIR)

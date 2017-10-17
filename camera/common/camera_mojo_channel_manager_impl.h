@@ -25,6 +25,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
 
   bool Start();
 
+  void CreateJpegDecodeAccelerator(
+      mojom::JpegDecodeAcceleratorRequest request) final;
+
   // Handle IPC shutdown completion
   void OnShutdownComplete() final {}
 
@@ -32,6 +35,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
   // Ensure camera dispatcher Mojo channel connected.
   // It should be called for any public API that needs |dispatcher_|.
   void EnsureDispatcherConnectedOnIpcThread();
+
+  void CreateJpegDecodeAcceleratorOnIpcThread(
+      mojom::JpegDecodeAcceleratorRequest request);
 
   // Error handler for camera dispatcher Mojo channel.
   void OnDispatcherError();

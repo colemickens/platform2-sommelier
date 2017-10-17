@@ -60,6 +60,25 @@ bool CameraMojoChannelManagerImpl::Start() {
   return true;
 }
 
+void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
+    mojom::JpegDecodeAcceleratorRequest request) {
+  ipc_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread,
+          base::Unretained(this), base::Passed(std::move(request))));
+}
+
+void CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread(
+    mojom::JpegDecodeAcceleratorRequest request) {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (dispatcher_.is_bound()) {
+    dispatcher_->GetJpegDecodeAccelerator(std::move(request));
+  }
+}
+
 void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
