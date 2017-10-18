@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/reboot.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 
@@ -14,10 +15,14 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/scoped_file.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/thread.h>
 #include <grpc++/grpc++.h>
 
 #include "vm_tools/common/constants.h"
@@ -141,10 +146,53 @@ int main(int argc, char** argv) {
   std::unique_ptr<grpc::Server> server = builder.BuildAndStart();
   CHECK(server);
 
+  // Due to restrictions in the gRPC API, there is no way to stop a server from
+  // the same thread on which it is running.  It has to be stopped from a
+  // different thread.  So we spawn a new thread here that sits around doing
+  // nothing and give the maitre'd service a callback, which it will run when it
+  // receives a Shutdown rpc.  This callback will post a task to the idle thread
+  // to stop the gRPC server.  Once the server is stopped, it will return from
+  // the Wait() call below and we can shut down the whole system by issuing a
+  // reboot().
+  base::Thread shutdown_thread("shutdown thread");
+  CHECK(shutdown_thread.Start());
+
+  // The following line is very confusing but is equivalent to this code:
+  //
+  // maitred_service.set_shutdown_cb(base::Bind(
+  //     [](scoped_refptr<base::SingleThreadTaskRunner> runner,
+  //        grpc::Server* server) {
+  //       runner->PostTask(
+  //           FROM_HERE,
+  //           base::Bind([](grpc::Server* s) { s->Shutdown(); }, server));
+  //     },
+  //     shutdown_thread.task_runner(), server.get()));
+  //
+  // Admittedly, that's not much better but the only other option is to move
+  // the code into a separate function, which would break up the flow of logic
+  // and be arguably less readable than this code + comment.
+  //
+  // Once base::Bind in chrome os has been updated to handle lambdas, we should
+  // consider replacing this with the above code instead.
+  maitred_service.set_shutdown_cb(base::Bind(
+      &base::TaskRunner::PostTask, shutdown_thread.task_runner(), FROM_HERE,
+      base::Bind(
+          static_cast<void (grpc::Server::*)(void)>(&grpc::Server::Shutdown),
+          base::Unretained(server.get()))));
+
   LOG(INFO) << "Server listening on port " << vm_tools::kMaitredPort;
 
-  // The following call will never return.
+  // The following call will return once the server has been stopped.
   server->Wait();
+
+  LOG(INFO) << "Shutting down system NOW";
+
+  // Do a sync here to make sure any buffered data is flushed.  In theory all
+  // writable file systems should already have been unmounted but it doesn't
+  // hurt to do a sync anyway.
+  sync();
+
+  reboot(RB_AUTOBOOT);
 
   return 0;
 }

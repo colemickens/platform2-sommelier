@@ -68,6 +68,10 @@ class Init final {
              bool wait_for_exit,
              ProcessLaunchInfo* launch_info);
 
+  // Shuts down the system, killing all child processes first with SIGTERM and
+  // finally with SIGKILL.
+  void Shutdown();
+
  private:
   Init() = default;
   bool Setup();

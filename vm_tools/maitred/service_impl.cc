@@ -14,7 +14,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
-#include <sys/reboot.h>
 #include <sys/socket.h>
 
 #include <map>
@@ -208,8 +207,16 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
 grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
                                    const EmptyMessage* request,
                                    EmptyMessage* response) {
-  // TODO(chirantan): Give applications a chance to clean up.
-  reboot(RB_AUTOBOOT);
+  LOG(INFO) << "Received shutdown request";
+
+  if (!init_) {
+    return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
+  }
+
+  init_->Shutdown();
+
+  shutdown_cb_.Run();
+
   return grpc::Status::OK;
 }
 

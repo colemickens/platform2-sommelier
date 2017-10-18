@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <limits>
 #include <list>
+#include <set>
 #include <utility>
 
 #include <base/bind.h>
@@ -33,6 +34,10 @@
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 
 using std::string;
@@ -60,6 +65,10 @@ constexpr gid_t kChronosGid = 1000;
 constexpr size_t kMaxRespawnCount = 10;
 constexpr base::TimeDelta kRespawnWindowSeconds =
     base::TimeDelta::FromSeconds(30);
+
+// Number of seconds that we should wait before force-killing processes for
+// shutdown.
+constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(5);
 
 // Mounts that must be created on boot.
 constexpr struct {
@@ -501,6 +510,217 @@ void LogChildError(const struct ChildErrorInfo& child_info, int fd) {
   }
 }
 
+// Waits for all the processes in |pids| to exit.  Returns when all processes
+// have exited or when |deadline| is reached, whichever happens first.
+void WaitForChildren(std::set<pid_t> pids, base::Time deadline) {
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+
+  while (!pids.empty()) {
+    // First reap any child processes that have already exited.
+    while (true) {
+      pid_t child = waitpid(-1, nullptr, WNOHANG);
+      if (child < 0 && errno != ECHILD) {
+        PLOG(ERROR) << "Failed to wait for child processes";
+        return;
+      }
+
+      if (child <= 0) {
+        // Either there are no more children or they have not exited yet.
+        break;
+      }
+
+      pids.erase(child);
+    }
+
+    // We will not find out about all child processes.  For example some
+    // processes might set up custom SIGTERM handlers and then try to handle
+    // the termination of their own children, in which case we would not find
+    // out about those processes here.
+    for (auto iter = pids.begin(); iter != pids.end();) {
+      // If the process still exists then leave it in the set.  kill() with a
+      // signal value of 0 is explicitly documented as a way to check for the
+      // existence of a given process.
+      if (kill(*iter, 0) == 0) {
+        ++iter;
+        continue;
+      }
+
+      // If the process has already exited, then remove it from the set.
+      DCHECK_EQ(errno, ESRCH);
+      iter = pids.erase(iter);
+    }
+
+    // If there are no processes left then exit early.  Otherwise we will block
+    // for the full timeout duration in the sigtimedwait below.
+    if (pids.empty()) {
+      return;
+    }
+
+    // Check the deadline.
+    base::Time now = base::Time::Now();
+    if (now >= deadline) {
+      return;
+    }
+
+    // Wait for more processes to exit.
+    struct timespec ts = (deadline - now).ToTimeSpec();
+    int ret = sigtimedwait(&mask, nullptr, &ts);
+    if (ret == SIGCHLD) {
+      // One or more child processes have exited.
+      continue;
+    }
+
+    if (ret < 0 && errno == EAGAIN) {
+      // Deadline expired.
+      return;
+    }
+
+    if (ret < 0) {
+      PLOG(WARNING) << "Unable to wait for processes to exit";
+    } else {
+      LOG(WARNING) << "Unexpected return value from sigtimedwait(): "
+                   << strsignal(ret);
+    }
+  }
+
+  // Control should never reach here.
+  NOTREACHED();
+}
+
+// Cached pid of this process.  Starting from version 2.24, glibc stopped
+// caching the pid of the current process since the cache interacts in weird
+// ways with certain clone() and unshare() flags.  This value is only checked
+// and set in ShouldKillProcess().
+static pid_t cached_pid = 0;
+
+// Returns true if it is safe to kill |process| either with a SIGTERM or a
+// SIGKILL.  |path| must be the path to the process directory in /proc.
+bool ShouldKillProcess(pid_t process, const base::FilePath& path) {
+  if (cached_pid == 0) {
+    cached_pid = getpid();
+  }
+
+  if (process == 1 || process == cached_pid) {
+    // Probably not a good idea to kill ourselves.
+    return false;
+  }
+
+  // Get the process's UID.
+  uid_t uid = -1;
+  string status;
+  if (!base::ReadFileToString(path.Append("status"), &status)) {
+    PLOG(WARNING) << "Failed to read status for process " << process;
+
+    // Don't send a signal to this process just to be on the safe side.
+    return false;
+  }
+
+  for (const auto& line : base::SplitStringPiece(
+           status, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+    if (!line.starts_with("Uid:")) {
+      continue;
+    }
+
+    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
+        line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+    DCHECK_EQ(tokens.size(), 5);
+    if (!base::StringToUint(tokens[1], &uid)) {
+      LOG(WARNING) << "Failed to parse uid (" << tokens[1] << ") for process "
+                   << process;
+      return false;
+    }
+
+    break;
+  }
+
+  DCHECK_NE(uid, -1);
+  if (uid != 0) {
+    // All non-root processes can be killed.
+    return true;
+  }
+
+  // Check if this is a kernel process.
+  char buf;
+  if (readlink(path.Append("exe").value().c_str(), &buf, sizeof(buf)) < 0 &&
+      errno == ENOENT) {
+    // Kernel processes have no executable.
+    return false;
+  }
+
+  return true;
+}
+
+// Broadcast the signal |signo| to all processes.  |signo| must be either
+// SIGTERM or SIGKILL.  If |pids| is not nullptr, then it is filled with the
+// pids of the processes to which |signo| was successfully sent.
+void BroadcastSignal(int signo, std::set<pid_t>* pids) {
+  DCHECK(signo == SIGTERM || signo == SIGKILL);
+
+  // We are about to walk the process tree.  Pause all processes so that new
+  // processes don't appear or disappear while we're walking the tree.
+  // Additionally, pausing all the processes here means that we don't end up
+  // with unnecessary thrashing in the system.  For example, consider a
+  // pipeline of programs:
+  //
+  //     cmd1 | cmd2 | cmd3 | cmd4
+  //
+  // If cmd2 gets killed first, cmd3 might wake up from its read because its
+  // pipe is now closed and might end up doing some extra work even though we
+  // are going to be killing it very soon as well.  Pausing all processes
+  // avoids this problem and ensures that the signal is delivered atomically to
+  // all processes.
+  if (kill(-1, SIGSTOP) < 0 && errno != ESRCH) {
+    PLOG(WARNING) << "Unable to send SIGSTOP to all processes.  System "
+                  << "thrashing may occur";
+  }
+
+  base::FileEnumerator enumerator(base::FilePath("/proc"),
+                                  false /* recursive */,
+                                  base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    pid_t process;
+    if (!base::StringToInt(path.BaseName().value(), &process)) {
+      // Ignore anything that doesn't look like a pid.
+      continue;
+    }
+
+    if (!ShouldKillProcess(process, path)) {
+      continue;
+    }
+
+    if (kill(process, signo) < 0) {
+      PLOG(ERROR) << "Failed to send " << strsignal(signo) << " to process "
+                  << process;
+      continue;
+    }
+
+    // Now that we've sent the signal to the process wake it up.  This way we
+    // avoid a thundering herd problem if all the processes wake up at the same
+    // time later.
+    if (kill(process, SIGCONT) < 0 && errno != ESRCH) {
+      // It's possible the process is already gone (for example if signo was
+      // SIGKILL).  Only log an error if it's not that case.
+      PLOG(WARNING) << "Failed to wake up process " << process;
+    }
+
+    if (pids) {
+      pids->insert(process);
+    }
+  }
+
+  // Now restart any programs that may still be hanging around.  There shouldn't
+  // actually be any but just in case one of the attempts to send SIGCONT
+  // earlier failed we can try one more time here.
+  if (kill(-1, SIGCONT) < 0 && errno != ESRCH) {
+    PLOG(WARNING) << "Unable to send SIGCONT to all processes.  Some "
+                  << "processes may still be frozen";
+  }
+}
+
 }  // namespace
 
 class Init::Worker : public base::MessageLoopForIO::Watcher {
@@ -529,6 +749,12 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
   // |info.wait_for_exit| is true, then waits until the child process exits or
   // is killed before returning.
   void Spawn(struct ChildInfo info, int semfd, ProcessLaunchInfo* launch_info);
+
+  // Shuts down the system.  First broadcasts SIGTERM to all processes and
+  // waits for those processes to exit up to a deadline.  Then kills any
+  // remaining processes with SIGKILL.  |notify_fd| must be an eventfd, which
+  // is notified after all processes are killed.
+  void Shutdown(int notify_fd);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -685,6 +911,30 @@ void Init::Worker::Spawn(struct ChildInfo info,
 
   // Restore the signal mask.
   sigprocmask(SIG_SETMASK, &omask, nullptr);
+}
+
+void Init::Worker::Shutdown(int notify_fd) {
+  DCHECK_NE(notify_fd, -1);
+
+  // Stop watching for SIGCHLD.  We will do it manually here.
+  watcher_.StopWatchingFileDescriptor();
+  signal_fd_.reset();
+
+  // First send SIGTERM to all processes.
+  std::set<pid_t> pids;
+  BroadcastSignal(SIGTERM, &pids);
+
+  // Wait for those processes to terminate.
+  WaitForChildren(std::move(pids), base::Time::Now() + kShutdownTimeout);
+
+  // Kill anything left with SIGKILL.
+  BroadcastSignal(SIGKILL, nullptr);
+
+  // Signal the waiter.
+  uint64_t done = 1;
+  if (write(notify_fd, &done, sizeof(done)) != sizeof(done)) {
+    PLOG(ERROR) << "Failed to wake up shutdown waiter";
+  }
 }
 
 void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
@@ -847,6 +1097,29 @@ bool Init::Spawn(std::vector<string> argv,
   DCHECK_EQ(done, 1);
 
   return true;
+}
+
+void Init::Shutdown() {
+  base::ScopedFD notify_fd(eventfd(0 /*initval*/, EFD_CLOEXEC | EFD_SEMAPHORE));
+  if (!notify_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create eventfd";
+    return;
+  }
+
+  bool ret = worker_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Worker::Shutdown, base::Unretained(worker_.get()),
+                            notify_fd.get()));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post task to worker thread";
+    return;
+  }
+
+  uint64_t done = 0;
+  if (read(notify_fd.get(), &done, sizeof(done)) != sizeof(done)) {
+    PLOG(ERROR) << "Failed to read from eventfd";
+    return;
+  }
+  DCHECK_EQ(done, 1);
 }
 
 bool Init::Setup() {

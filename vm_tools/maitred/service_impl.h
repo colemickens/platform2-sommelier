@@ -6,7 +6,9 @@
 #define VM_TOOLS_MAITRED_SERVICE_IMPL_H_
 
 #include <memory>
+#include <utility>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <grpc++/grpc++.h>
 
@@ -21,6 +23,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
  public:
   explicit ServiceImpl(std::unique_ptr<Init> init);
   ~ServiceImpl() override = default;
+
+  void set_shutdown_cb(base::Callback<bool(void)> cb) {
+    shutdown_cb_ = std::move(cb);
+  }
 
   // Maitred::Service overrides.
   grpc::Status ConfigureNetwork(grpc::ServerContext* ctx,
@@ -39,6 +45,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
 
  private:
   std::unique_ptr<Init> init_;
+
+  // Callback used for shutting down the gRPC server.  Called when handling a
+  // Shutdown RPC.
+  base::Callback<bool(void)> shutdown_cb_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };
