@@ -119,14 +119,19 @@ void CountChromeCrash() {
 
 int Initialize(UserCollector *user_collector,
                UdevCollector *udev_collector) {
-  // Set up all the common crash state directories first.
+  // Set up all the common crash state directories first.  If we can't guarantee
+  // these basic paths, just give up & don't turn on anything else.
   if (!CrashCollector::InitializeSystemCrashDirectories())
     return 1;
 
-  user_collector->Enable();
-  udev_collector->Enable();
+  int ret = 0;
 
-  return 0;
+  if (!user_collector->Enable())
+    ret = 1;
+  if (!udev_collector->Enable())
+    ret = 1;
+
+  return ret;
 }
 
 int BootCollect(KernelCollector *kernel_collector,
@@ -398,9 +403,12 @@ int main(int argc, char *argv[]) {
   }
 
   if (FLAGS_clean_shutdown) {
-    unclean_shutdown_collector.Disable();
-    user_collector.Disable();
-    return 0;
+    int ret = 0;
+    if (!unclean_shutdown_collector.Disable())
+      ret = 1;
+    if (!user_collector.Disable())
+      ret = 1;
+    return ret;
   }
 
   if (!FLAGS_generate_kernel_signature.empty()) {
