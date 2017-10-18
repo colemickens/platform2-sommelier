@@ -311,22 +311,24 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
 
     TAGINFO(ANDROID_SYNC_FRAME_NUMBER, bogusValue);
 
+    // Default fps target range
+    int32_t fpsRange[] = {15, 30};
     camera_metadata_ro_entry fpsRangesEntry;
+
     fpsRangesEntry.count = 0;
-    int ret = find_camera_metadata_ro_entry(staticMeta,
-                          ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
-                          &fpsRangesEntry);
-
-    //Default fps target range
-    int32_t fpsRange[] = { 30, 30 };
-
+    find_camera_metadata_ro_entry(
+        staticMeta, ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+        &fpsRangesEntry);
     if ((fpsRangesEntry.count >= 2) && (fpsRangesEntry.count % 2 == 0)) {
-        //the first one in the entry list is used
-        fpsRange[0] = fpsRangesEntry.data.i32[0];
-        fpsRange[1] = fpsRangesEntry.data.i32[1];
+      // The first one in the entry list is used
+      fpsRange[0] = fpsRangesEntry.data.i32[0];
+      fpsRange[1] = fpsRangesEntry.data.i32[1];
     } else {
-        //Default value {30, 30} is used
-        LOGW("Error/No aeAvailableTargetFpsRanges is found in camera profile, [30,30] is used by default!");
+      LOGW("No AE FPS range found in profile, use default [15, 30]");
+    }
+    if (requestTemplate == ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD) {
+      // Stable range requried for video recording
+      fpsRange[0] = fpsRange[1];
     }
     TAGINFO_ARRAY(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
 
