@@ -60,6 +60,10 @@ BootLockbox::~BootLockbox() {}
 bool BootLockbox::Sign(const brillo::SecureBlob& data,
                        brillo::SecureBlob* signature) {
   CHECK(signature);
+  if (IsFinalized()) {
+    LOG(INFO) << "Can't sign: boot-lockbox is finalized.";
+    return false;
+  }
   brillo::SecureBlob key_blob;
   if (!GetKeyBlob(&key_blob)) {
     return false;
@@ -186,6 +190,10 @@ bool BootLockbox::CreateKey() {
   if (!tpm_->CreatePCRBoundKey(kPCRIndex, initial_pcr_value_, &key_blob,
                                &public_key, &creation_blob)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
+    return false;
+  }
+  if (IsFinalized()) {
+    LOG(WARNING) << "Boot-lockbox finalized while creating key: aborting.";
     return false;
   }
   key_.set_key_blob(key_blob.to_string());

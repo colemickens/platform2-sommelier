@@ -86,8 +86,6 @@ class BootLockboxTest : public testing::Test {
   }
 
   bool FakeCreate(brillo::SecureBlob* public_key) {
-    if (is_fake_extended_)
-      return false;
     if (rsa_) {
       RSA_free(rsa_);
       rsa_ = NULL;
@@ -168,6 +166,7 @@ TEST_F(BootLockboxTest, SignAfterFinalize) {
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_TRUE(lockbox_->FinalizeBoot());
+  EXPECT_CALL(tpm_, Sign(_, _, _, _)).Times(0);
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
 
@@ -175,7 +174,13 @@ TEST_F(BootLockboxTest, CreateAfterFinalize) {
   ASSERT_TRUE(lockbox_->FinalizeBoot());
   brillo::SecureBlob data(100);
   brillo::SecureBlob signature;
+  // Not only signing should fail, but a new key file should not be created
+  // or signing attempted, if already finalized.
+  ASSERT_EQ(0, fake_files_.size());
+  EXPECT_CALL(tpm_, Sign(_, _, _, _)).Times(0);
+  EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(_, _, _)).Times(0);
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
+  ASSERT_EQ(0, fake_files_.size());
 }
 
 TEST_F(BootLockboxTest, VerifyIsFinalized) {
