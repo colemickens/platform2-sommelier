@@ -48,47 +48,47 @@ class CrosConfigHostTest(unittest.TestCase):
 
 
   def testReadStdin(self):
-    call_args = '{} - list-models < {}'.format(CLI_FILE, self.dtb_file)
+    call_args = '{} -c - list-models < {}'.format(CLI_FILE, self.dtb_file)
     output = subprocess.check_output(call_args, shell=True)
     self.CheckManyLinesWithoutSpaces(output)
 
   def testListModels(self):
-    call_args = '{} {} list-models'.format(CLI_FILE, self.dtb_file).split()
+    call_args = '{} -c {} list-models'.format(CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLinesWithoutSpaces(output)
 
   def testListModelsInvalid(self):
-    call_args = '{} invalid.dtb list-models'.format(CLI_FILE).split()
+    call_args = '{} -c invalid.dtb list-models'.format(CLI_FILE).split()
     with open(os.devnull, 'w') as devnull:
       with self.assertRaises(subprocess.CalledProcessError):
         subprocess.check_call(call_args, stdout=devnull, stderr=devnull)
 
   def testGetPropSingle(self):
-    call_args = '{} {} --model=pyro get / wallpaper'.format(
+    call_args = '{} -c {} --model=pyro get / wallpaper'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, 'default' + os.linesep)
 
   def testGetPropSingleWrongModel(self):
-    call_args = '{} {} --model=dne get / wallpaper'.format(
+    call_args = '{} -c {} --model=dne get / wallpaper'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, '')
 
   def testGetPropSingleWrongPath(self):
-    call_args = '{} {} --model=pyro get /dne wallpaper'.format(
+    call_args = '{} -c {} --model=pyro get /dne wallpaper'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep)
 
   def testGetPropSingleWrongProp(self):
-    call_args = '{} {} --model=pyro get / dne'.format(
+    call_args = '{} -c {} --model=pyro get / dne'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep)
 
   def testGetPropAllModels(self):
-    call_args = '{} {} --all-models get / wallpaper'.format(
+    call_args = '{} -c {} --all-models get / wallpaper'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(
@@ -97,13 +97,13 @@ class CrosConfigHostTest(unittest.TestCase):
         format(ls=os.linesep))
 
   def testGetFirmwareUris(self):
-    call_args = '{} {} --model=pyro get-firmware-uris'.format(
+    call_args = '{} -c {} --model=pyro get-firmware-uris'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
 
   def testGetFirmwareBuildTargets(self):
-    call_args = '{} {} get-firmware-build-targets coreboot'.format(
+    call_args = '{} -c {} get-firmware-build-targets coreboot'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output, 1)

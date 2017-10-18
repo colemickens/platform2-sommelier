@@ -13,9 +13,12 @@ system to access configuration details for for a Chrome OS device.
 from __future__ import print_function
 
 import argparse
+import os
 import sys
 
 from libcros_config_host import CrosConfig
+
+UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
 
 
 def ListModels(config):
@@ -127,8 +130,9 @@ def GetParser(description):
     An ArgumentParser structured for the cros_config_host CLI.
   """
   parser = argparse.ArgumentParser(description)
-  parser.add_argument('filepath',
-                      help='The master config file path. Use - for stdin.')
+  parser.add_argument('-c', '--config',
+                      help='Override the master config file path. Use - for '
+                           'stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
   parser.add_argument('-a', '--all-models', action='store_true',
@@ -137,7 +141,7 @@ def GetParser(description):
   # Parser: list-models
   subparsers.add_parser(
       'list-models',
-      help='Lists all models in the Cros Configuration Database at <filepath>',
+      help='Lists all models in the Cros Configuration Database.',
       epilog='Each model will be printed on its own line.')
   # Parser: get
   get_parser = subparsers.add_parser(
@@ -196,11 +200,17 @@ def main(argv):
   parser = GetParser(__doc__)
   # Parse argv
   opts = parser.parse_args(argv)
-  config = None
-  if opts.filepath == '-':
+  if not opts.config:
+    if 'SYSROOT' not in os.environ:
+      print('You must specify a dtb file path with --config, or set SYSROOT. '
+            'See --help')
+      return
+    opts.config = os.path.join(os.environ['SYSROOT'],
+                               UNIBOARD_DTB_INSTALL_PATH)
+  if opts.config == '-':
     config = CrosConfig(sys.stdin)
   else:
-    with open(opts.filepath) as infile:
+    with open(opts.config) as infile:
       config = CrosConfig(infile)
   # Get all models we are invoking on (if any).
   models = None
