@@ -7,7 +7,7 @@
 
 namespace hammerd {
 
-#define DETACHABLE_BASE_PREFIX "DetachableBase."
+#define DETACHABLE_BASE_PREFIX "ChromeOS.DetachableBase."
 
 const char kMetricROUpdateResult[] = DETACHABLE_BASE_PREFIX "ROUpdateResult";
 const char kMetricRWUpdateResult[] = DETACHABLE_BASE_PREFIX "RWUpdateResult";
