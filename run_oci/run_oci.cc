@@ -569,6 +569,7 @@ int RunOci(const base::FilePath& bundle_dir,
       return -1;
     }
     minijail_namespace_vfs(jail.get());
+    minijail_skip_remount_private(jail.get());
     minijail_enter(jail.get());
   }
 

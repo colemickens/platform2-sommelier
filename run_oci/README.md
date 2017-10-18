@@ -110,12 +110,25 @@ following:
   which the mounts are performed. This namespace is associated with the init
   user namespace, so privileged mounts that require having the `CAP_SYS_ADMIN`
   capability in the init user namespace (such as non-bind remounts) can still be
-  performed. Defaults to false.
+  performed. Upon entering this namespace, mount propagation flags are not
+  modified, so an explicit mount propagation change (such as mounting `"/"` with
+  `"private"` and `"recursive"`) must be specified if desired. Defaults to
+  false.
 
 #### Example (Chrome OS)
 
     {
         "mounts": [
+            {
+                "destination": "/",
+                "type": "bind",
+                "source": "",
+                "options": [
+                    "private",
+                    "recursive"
+                ],
+                "performInIntermediateNamespace": true
+            },
             {
                 "destination": "/",
                 "type": "bind",
