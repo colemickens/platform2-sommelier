@@ -90,8 +90,10 @@ bool HammerUpdater::Run() {
     if (!base::PathExists(conf_path)) {
       LOG(INFO) << conf_path.value()
                 << " is not found, the base might not be attached.";
+      metrics_->SendBoolToUMA(kMetricAttachedOnBoot, false);
       return false;
     }
+    metrics_->SendBoolToUMA(kMetricAttachedOnBoot, true);
 
     std::string current_version;
     base::ReadFileToString(conf_path, &current_version);
