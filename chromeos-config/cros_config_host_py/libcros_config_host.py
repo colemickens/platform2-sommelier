@@ -106,22 +106,6 @@ class CrosConfig(object):
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
 
-    def FollowShare(self):
-      """Follow a node's shares property
-
-      Some nodes support sharing the properties of another node, e.g. firmware
-      and whitelabel. This follows that share if it can find it. We don't need
-      to be too careful to ignore invalid properties (e.g. whitelabel can only
-      be in a model node) since validation takes care of that.
-
-      Returns:
-        Node that the share points to, or None if none
-      """
-      share_prop = [i for i in ['shares', 'whitelabel'] if i in self.properties]
-      if share_prop:
-        return self.FollowPhandle(share_prop[0])
-      return None
-
     def ChildNodeFromPath(self, relative_path):
       """Returns the CrosConfig.Node at the relative path.
 
@@ -146,27 +130,22 @@ class CrosConfig(object):
 
       # Handle a 'shares' property, which means we can grab nodes / properties
       # from the associated node.
-      else:
-        shared = self.FollowShare()
-        if shared and part in shared.subnodes:
+      elif 'shares' in self.properties:
+        shared = self.FollowPhandle('shares')
+        if part in shared.subnodes:
           sub_node = shared.subnodes[part]
-        else:
-          return None
+      else:
+        return None
       return sub_node.ChildNodeFromPath('/'.join(path_parts[1:]))
 
     def ChildPropertyFromPath(self, relative_path, property_name):
       child_node = self.ChildNodeFromPath(relative_path)
       if not child_node:
-        shared = self.FollowShare()
-        if shared:
-          child_node = shared.ChildNodeFromPath(relative_path)
-      if not child_node:
         return None
       prop = child_node.properties.get(property_name)
-      if not prop:
-        shared = child_node.FollowShare()
-        if shared:
-          prop = shared.properties.get(property_name)
+      if not prop and 'shares' in child_node.properties:
+        shared = child_node.FollowPhandle('shares')
+        prop = shared.properties.get(property_name)
       return prop
 
     def FollowPhandle(self, prop_name):

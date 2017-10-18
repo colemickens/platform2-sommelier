@@ -265,15 +265,6 @@ properties.
             two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
             directory: `/[filename]_[small|large].jpg`. If these files are
             missing or the property does not exist, "default" is used.
-        *   `whitelabel` (optional): Sometimes models are so similar that we do
-            not want to have separate settings. This happens in particular with
-            'white-label' devices, where the same device is shipped by several
-            OEMs under difference brands. This is a phandle pointing to another
-            model whose configuration is shared. All settings (except for a very
-            few exceptions) will then come from the shares node. Currently if
-            this properly is used, then only the `firmware { key-id }`,
-            `brand-code` and  `wallpaper` propertles can be provided. All other
-            properties will come from the shared model.
         *   `firmware` (optional) : Contains information about firmware versions
             and files. The properties and nodes inside this node are exactly the
             same as family/firmware/shared. By convention, tools looking for
@@ -289,10 +280,7 @@ properties.
                 differences are small and we can detect the model from board ID
                 pins. At this time, only a phandle reference to a node at
                 family/firmware/shared is supported. The phandle target node
-                must be named with a valid model (e.g. 'reef'). Note that this
-                property cannot be provided if the model configuration is shared
-                at the model level (the `whitelabel` property under
-                `<model_name>`).
+                must be named with a valid model (e.g. 'reef').
             *   `key-id` (optional): Unique ID that matches which key
                 will be used in for firmware signing as part of vboot.
                 For context, see go/cros-unibuild-signing
@@ -546,31 +534,6 @@ chromeos {
             firmware {
                 shares = <&pinned_version>;
                 key-id = "ELECTRO";
-            };
-        };
-
-        /* Whitelabel model */
-        whitetip: whitetip {
-            firmware {
-                shares = <&shared>;
-            };
-        };
-
-        whitetip1 {
-            whitelabel = <&whitetip>;
-            wallpaper = "shark";
-            brand-code = "SHAR";
-            firmware {
-                key-id = "WHITELABEL1";
-            };
-        };
-
-        whitetip2 {
-            whitelabel = <&whitetip>;
-            wallpaper = "more_shark";
-            brand-code = "SHAQ";
-            firmware {
-                key-id = "WHITELABEL2";
             };
         };
     };

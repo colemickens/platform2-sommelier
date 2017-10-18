@@ -70,8 +70,7 @@ TEST(CrosConfigTest, ListModels) {
   bool success = base::GetAppOutput(
       {base_command, "--model=pyro", "--list_models", "test.dtb"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\nwhitetip\nwhitetip1\nwhitetip2\n",
-            output);
+  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\n", output);
 }
 
 TEST(CrosConfigTest, GetStringForAllMissing) {
@@ -79,7 +78,7 @@ TEST(CrosConfigTest, GetStringForAllMissing) {
   bool success = base::GetAppOutput(
       {base_command, "--get_all", "test.dtb", "/", "does_not_exist"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("\n\n\n\n\n\n\n", output);
+  EXPECT_EQ("\n\n\n\n", output);
 }
 
 TEST(CrosConfigTest, GetStringForAll) {
@@ -87,7 +86,7 @@ TEST(CrosConfigTest, GetStringForAll) {
   bool success = base::GetAppOutput(
       {base_command, "--get_all", "test.dtb", "/", "wallpaper"}, &output);
   EXPECT_TRUE(success);
-  EXPECT_EQ("default\n\nepic\n\n\nshark\nmore_shark\n", output);
+  EXPECT_EQ("default\n\nepic\n\n", output);
 }
 
 TEST(CrosConfigTest, StdinGetString) {
@@ -104,8 +103,7 @@ TEST(CrosConfigTest, StdinListModels) {
     " --list_models -";
   std::string output;
   bool success = base::GetAppOutput({"/bin/bash", "-c", command}, &output);
-  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\nwhitetip\nwhitetip1\nwhitetip2\n",
-            output);
+  EXPECT_EQ("pyro\ncaroline\nreef\nbroken\n", output);
   EXPECT_TRUE(success);
 }
 

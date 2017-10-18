@@ -75,7 +75,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   std::string model_;       // Model name for this device
   int models_offset_ = -1;  // Device tree offset of the models (plural) node
   int model_offset_ = -1;   // Device tree offset of the model's node
-  int whitelabel_offset_ = -1; // Device tree offset of the whitelabel node
   bool inited_ = false;     // true if the class is ready for use (Init*()ed)
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };

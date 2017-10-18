@@ -37,8 +37,7 @@ class FdtLibTest(unittest.TestCase):
   def testGetModels(self):
     models_node = self.test_fdt.GetNode('/chromeos/models')
     models = [m.name for m in models_node.subnodes]
-    self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken',
-                                      'whitetip', 'whitetip1', 'whitetip2'])
+    self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken'])
 
   def testPropertyOrder(self):
     firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
