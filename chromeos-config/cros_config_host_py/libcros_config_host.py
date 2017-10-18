@@ -33,6 +33,56 @@ CRAS_CONFIG_DIR = '/etc/cras'
 UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
 LIB_FIRMWARE = '/lib/firmware'
 
+
+class PathComponent(object):
+  """A component in a directory/file tree
+
+  Properties:
+    name: Name this component
+    children: Dict of children:
+      key: Name of child
+      value: PathComponent object for child
+  """
+  def __init__(self, name):
+    self.name = name
+    self.children = dict()
+
+  def AddPath(self, path):
+    parts = path.split('/', 1)
+    part = parts[0]
+    rest = parts[1] if len(parts) > 1 else ''
+    child = self.children.get(part)
+    if not child:
+      child = PathComponent(part)
+      self.children[part] = child
+    if rest:
+      child.AddPath(rest)
+
+  def ShowTree(self, base_path, path='', indent=0):
+    """Show a tree of file paths
+
+    This shows a component and all its children. Nodes can either be directories
+    or files. Each file is shown with its size, or 'missing' if not found.
+
+    Args:
+      base_path: Base path where the actual files can be found
+      path: Path of this component relative to the root (e.g. 'etc/cras/)
+      indent: Indent level we are up to (0 = first)
+    """
+    path = os.path.join(path, self.name)
+    fname = os.path.join(base_path, path)
+    if os.path.isdir(fname):
+      status = ''
+    elif os.path.exists(fname):
+      status = os.stat(fname).st_size
+    else:
+      status = 'missing'
+    print('%-10s%s%s%s' % (status, '   ' * indent, self.name,
+                           self.children and '/' or ''))
+    for child in sorted(self.children.keys()):
+      self.children[child].ShowTree(base_path, path, indent + 1)
+
+
 class CrosConfig(object):
   """The ChromeOS Configuration API for the host.
 
@@ -48,6 +98,7 @@ class CrosConfig(object):
   def __init__(self, infile):
     self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
+    # TODO(sjg@chromium.org): Consider calling GetFileTree() to init that here.
     self.models = OrderedDict(
         (n.name, CrosConfig.Model(self, n))
         for n in self._fdt.GetNode('/chromeos/models').subnodes)
@@ -99,6 +150,34 @@ class CrosConfig(object):
     build_targets_dedup = {target.value if target else None
                            for target in build_targets if target}
     return list(build_targets_dedup)
+
+  def ShowTree(self, base_path, tree):
+    print('%-10s%s' % ('Size', 'Path'))
+    tree.ShowTree(base_path)
+
+  def GetFileTree(self):
+    """Get a tree of all files installed by the config
+
+    This looks at all available config that installs files in the root and
+    returns them as a tree structure. This can be passed to ShowTree(), which
+    is the only feature currently implemented which uses this tree.
+
+    Returns:
+        PathComponent object containin the root component
+    """
+    paths = set()
+    for item in self.GetAudioFiles():
+      paths.add(item.dest)
+    for item in self.GetTouchFirmwareFiles():
+      # TODO(sjg@chromium.org): Move these constant paths into cros_config so
+      # that ebuilds do not need to specify them. crbug.com/769575
+      paths.add(os.path.join('/opt/google/touch/firmware', item.firmware))
+      paths.add(os.path.join(LIB_FIRMWARE, item.symlink))
+    root = PathComponent('')
+    for path in paths:
+      root.AddPath(path[1:])
+
+    return root
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.

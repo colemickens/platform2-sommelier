@@ -89,6 +89,19 @@ def GetFirmwareBuildTargets(config, target_type):
   for target in config.GetFirmwareBuildTargets(target_type):
     print(target)
 
+def FileTree(config, root):
+  """Print a tree showing all files installed for this config
+
+  The output is a tree structure printed one directory/file per line. Each file
+  is shown with its size, or missing it if is not present.
+
+  Args:
+    config: A CrosConfig instance
+    root: Path to the root directory for the board (e.g. '/build/reef-uni')
+  """
+  tree = config.GetFileTree()
+  config.ShowTree(tree, root)
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -143,6 +156,13 @@ def GetParser(description):
   build_target_parser.add_argument(
       'type',
       help='The build-targets type to get (ex. coreboot, ec, depthcharge)')
+  # Parser: file-tree
+  file_tree_parser = subparsers.add_parser(
+      'file-tree',
+      help='Shows all files installed by the BSP in a tree structure')
+  file_tree_parser.add_argument(
+      'root',
+      help='Part to the root directory for this board')
   return parser
 
 
@@ -189,6 +209,8 @@ def main(argv):
     GetAudioFiles(config)
   elif opts.subcommand == 'get-firmware-build-targets':
     GetFirmwareBuildTargets(config, opts.type)
+  elif opts.subcommand == 'file-tree':
+    FileTree(config, opts.root)
 
 
 if __name__ == '__main__':

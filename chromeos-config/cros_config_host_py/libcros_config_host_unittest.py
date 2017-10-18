@@ -8,7 +8,10 @@
 from __future__ import print_function
 
 from collections import OrderedDict
+from contextlib import contextmanager
+from io import BytesIO
 import os
+import sys
 import unittest
 
 import fdt_util
@@ -30,6 +33,20 @@ CAROLINE_FIRMWARE_FILES = ['Caroline_EC.2017.21.1.tbz2',
                            'Caroline_PD.2017.21.1.tbz2',
                            'Caroline.2017.21.1.tbz2',
                            'Caroline.2017.41.0.tbz2']
+
+
+# Use this to suppress stdout/stderr output:
+# with capture_sys_output() as (stdout, stderr)
+#   ...do something...
+@contextmanager
+def capture_sys_output():
+  capture_out, capture_err = BytesIO(), BytesIO()
+  old_out, old_err = sys.stdout, sys.stderr
+  try:
+    sys.stdout, sys.stderr = capture_out, capture_err
+    yield capture_out, capture_err
+  finally:
+    sys.stdout, sys.stderr = old_out, old_err
 
 
 class CrosConfigHostTest(unittest.TestCase):
@@ -218,6 +235,33 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
                              ['pyro', 'caroline'])
+
+  def testFileTree(self):
+    """Test that we can obtain a file tree"""
+    config = CrosConfig(self.file)
+    node = config.GetFileTree()
+    self.assertEqual(node.name, '')
+    self.assertEqual(sorted(node.children.keys()), ['etc', 'lib', 'opt', 'usr'])
+    etc = node.children['etc']
+    self.assertEqual(etc.name, 'etc')
+    cras = etc.children['cras']
+    self.assertEqual(cras.name, 'cras')
+    basking = cras.children['pyro']
+    self.assertEqual(sorted(basking.children.keys()),
+                     ['bxtda7219max', 'dsp.ini'])
+
+  def testShowTree(self):
+    """Test that we can show a file tree"""
+    config = CrosConfig(self.file)
+    tree = config.GetFileTree()
+    with capture_sys_output() as (stdout, stderr):
+      config.ShowTree('/', tree)
+    self.assertEqual(stderr.getvalue(), '')
+    lines = [line.strip() for line in stdout.getvalue().splitlines()]
+    self.assertEqual(lines[0].split(), ['Size', 'Path'])
+    self.assertEqual(lines[1], '/')
+    self.assertEqual(lines[2], 'etc/')
+    self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
 
 if __name__ == '__main__':
