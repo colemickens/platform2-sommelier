@@ -74,16 +74,6 @@
       <arg name="options" type="as" direction="in">
       </arg>
     </method>
-    <method name="IsAlive">
-      <tp:docstring>
-        Test method to verify that CrosDisks service is working.
-      </tp:docstring>
-      <arg name="result" type="b" direction="out">
-        <tp:docstring>
-          Boolean indicating whether CrosDisks service is alive.
-        </tp:docstring>
-      </arg>
-    </method>
     <method name="Rename">
       <arg name="path" type="s" direction="in">
       </arg>

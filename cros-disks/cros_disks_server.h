@@ -77,9 +77,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
               const std::string& volume_name,
               DBus::Error& error) override;  // NOLINT
 
-  // A method for checking if the daemon is running. Always returns true.
-  bool IsAlive(DBus::Error& error) override;  // NOLINT
-
   // Mounts a path when invoked.
   void Mount(const std::string& path,
              const std::string& filesystem_type,

@@ -44,10 +44,6 @@ void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
   mount_managers_.push_back(mount_manager);
 }
 
-bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
-  return true;
-}
-
 void CrosDisksServer::Format(const string& path,
                              const string& filesystem_type,
                              const vector<string>& options,
