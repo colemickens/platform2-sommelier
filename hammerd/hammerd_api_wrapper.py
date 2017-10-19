@@ -144,7 +144,7 @@ class FirmwareUpdater(object):
       ('UpdatePossible', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('VersionMismatch', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('IsSectionLocked', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
-      ('UnlockSection', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
+      ('UnlockRW', [ctypes.c_voidp], ctypes.c_bool),
       ('IsRollbackLocked', [ctypes.c_voidp], ctypes.c_bool),
       ('UnlockRollback', [ctypes.c_voidp], ctypes.c_bool),
       ('GetFirstResponsePdu',

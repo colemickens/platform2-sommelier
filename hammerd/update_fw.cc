@@ -321,18 +321,26 @@ bool FirmwareUpdater::VersionMismatch(SectionName section_name) const {
 }
 
 bool FirmwareUpdater::IsSectionLocked(SectionName section_name) const {
-  // TODO(akahuang): Implement this.
-  return false;
+  uint32_t mask;
+  if (section_name == SectionName::RO) {
+    mask = static_cast<uint32_t>(EcFlashProtect::kRONow);
+  } else if (section_name == SectionName::RW) {
+    mask = static_cast<uint32_t>(EcFlashProtect::kRWNow);
+  } else {
+    LOG(ERROR) << "Unsupported section for IsSectionLocked: "
+               << ToString(section_name);
+    return false;
+  }
+  return (targ_.flash_protection & mask) != 0;
 }
 
-bool FirmwareUpdater::UnlockSection(SectionName section_name) {
-  // TODO(akahuang): Implement this.
-  return false;
+bool FirmwareUpdater::UnlockRW() {
+  return SendSubcommand(UpdateExtraCommand::kUnlockRW);
 }
 
 bool FirmwareUpdater::IsRollbackLocked() const {
-  // TODO(akahuang): Implement this.
-  return false;
+  uint32_t mask = static_cast<uint32_t>(EcFlashProtect::kRollbackNow);
+  return (targ_.flash_protection & mask) != 0;
 }
 
 bool FirmwareUpdater::UnlockRollback() {

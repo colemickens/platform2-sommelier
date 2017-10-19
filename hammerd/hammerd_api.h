@@ -76,8 +76,8 @@ BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name);
 BRILLO_EXPORT bool FirmwareUpdater_IsSectionLocked(
     FirmwareUpdater* updater, SectionName section_name);
-BRILLO_EXPORT bool FirmwareUpdater_UnlockSection(
-    FirmwareUpdater* updater, SectionName section_name);
+BRILLO_EXPORT bool FirmwareUpdater_UnlockRW(
+    FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_IsRollbackLocked(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_UnlockRollback(

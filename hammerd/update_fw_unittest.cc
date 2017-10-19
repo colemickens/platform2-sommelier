@@ -38,6 +38,7 @@ class FirmwareUpdaterTest : public testing::Test {
             std::make_unique<MockFmap>()});
     endpoint_ = static_cast<MockUsbEndpoint*>(fw_updater_->endpoint_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
+    targ_ = &(fw_updater_->targ_);
 
     good_rpdu_.return_value = htobe32(0);
     good_rpdu_.header_type =
@@ -72,6 +73,7 @@ class FirmwareUpdaterTest : public testing::Test {
   std::unique_ptr<FirmwareUpdater> fw_updater_;
   MockUsbEndpoint* endpoint_;
   MockFmap* fmap_;
+  FirstResponsePdu* targ_;
 
   // Good response of first header.
   FirstResponsePdu good_rpdu_;
@@ -461,6 +463,26 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
   // TransferImage takes care of running SendFirstPdu, which sets maximum
   // PDU size to 0x80.
   ASSERT_EQ(fw_updater_->TransferImage(SectionName::RW), true);
+}
+
+// Tests IsSectionLocked and IsRollbackLocked.
+TEST_F(FirmwareUpdaterTest, IsSectionUnlocked) {
+  targ_->flash_protection = 0x000b;  // RO is locked.
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RO));
+  ASSERT_FALSE(fw_updater_->IsSectionLocked(SectionName::RW));
+  ASSERT_FALSE(fw_updater_->IsRollbackLocked());
+  targ_->flash_protection = 0x018b;  // RO and RW are locked.
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RO));
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RW));
+  ASSERT_FALSE(fw_updater_->IsRollbackLocked());
+  targ_->flash_protection = 0x060b;  // RO and Rollback are locked.
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RO));
+  ASSERT_FALSE(fw_updater_->IsSectionLocked(SectionName::RW));
+  ASSERT_TRUE(fw_updater_->IsRollbackLocked());
+  targ_->flash_protection = 0x07cf;  // All sections are locked.
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RO));
+  ASSERT_TRUE(fw_updater_->IsSectionLocked(SectionName::RW));
+  ASSERT_TRUE(fw_updater_->IsRollbackLocked());
 }
 
 }  // namespace hammerd

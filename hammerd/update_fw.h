@@ -85,6 +85,22 @@ enum class EcResponseStatus : uint8_t {
   kBusy = 16,  // Up but too busy.  Should retry
 };
 
+// Flash protection masks.
+// Defined at EC repository: include/ec_commands.h
+enum class EcFlashProtect : uint32_t {
+  kROAtBoot = 1 << 0,
+  kRONow = 1 << 1,
+  kAllNow = 1 << 2,
+  kGpioAsserted = 1 << 3,
+  kErrorStuck = 1 << 4,
+  kErrorInconsistent = 1 << 5,
+  kAllAtBoot = 1 << 6,
+  kRWAtBoot = 1 << 7,
+  kRWNow = 1 << 8,
+  kRollbackAtBoot = 1 << 9,
+  kRollbackNow = 1 << 10,
+};
+
 // This is the frame format the host uses when sending update PDUs over USB.
 //
 // The PDUs are up to 1K bytes in size, they are fragmented into USB chunks of
@@ -258,7 +274,7 @@ class FirmwareUpdaterInterface {
   virtual bool IsSectionLocked(SectionName section_name) const = 0;
 
   // Unlocks the section. Need to send "Reset" command afterward.
-  virtual bool UnlockSection(SectionName section_name) = 0;
+  virtual bool UnlockRW() = 0;
 
   // Determines the rollback is locked or not.
   virtual bool IsRollbackLocked() const = 0;
@@ -301,7 +317,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   int CompareRollback() const override;
   bool VersionMismatch(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
-  bool UnlockSection(SectionName section_name) override;
+  bool UnlockRW() override;
 
   bool IsRollbackLocked() const override;
   bool UnlockRollback() override;

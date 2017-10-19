@@ -459,7 +459,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, UnlockSection(SectionName::RW))
+    EXPECT_CALL(*fw_updater_, UnlockRW())
         .WillRepeatedly(Return(true));
   }
 
@@ -583,6 +583,61 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateCorruptRWIncompatibleKey) {
   task_->post_rw_jump = true;
   ASSERT_EQ(hammer_updater_->RunOnce(),
             HammerUpdater::RunStatus::kFatalError);
+}
+
+// Update locked RW section.
+// Condition:
+//   1. In RO section first.
+//   2. A valid update is available for RW.
+//   3. RW is locked.
+TEST_F(HammerUpdaterRWTest, Run_UpdateLockedRW) {
+  SectionName current_section = SectionName::RO;
+  bool is_rw_locked = true;
+
+  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
+  ON_CALL(*fw_updater_, CurrentSection())
+      .WillByDefault(ReturnPointee(&current_section));
+  ON_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
+      .WillByDefault(ReturnPointee(&is_rw_locked));
+
+  {
+    InSequence dummy;
+    // First round: Find RW is locked, send UnlockRW command and reset.
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW));
+    EXPECT_CALL(*fw_updater_, UnlockRW())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_,
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
+        .WillOnce(DoAll(Assign(&is_rw_locked, false),
+                        Return(true)));
+    // Second round: Update RW section, and reset again.
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW));
+    EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_,
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
+        .WillOnce(Return(true));
+    // Third round: Jump to RW.
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
+        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+                        Return(true)));
+    // Fourth round: Run PostRWProcess.
+    EXPECT_CALL(*hammer_updater_, PostRWProcess())
+        .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
+  }
+
+  task_->update_rw = true;
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
 }
 
 // Successfully Pair with Hammer.

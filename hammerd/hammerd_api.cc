@@ -103,9 +103,9 @@ BRILLO_EXPORT bool FirmwareUpdater_IsSectionLocked(
     FirmwareUpdater* updater, SectionName section_name) {
   return updater->IsSectionLocked(section_name);
 }
-BRILLO_EXPORT bool FirmwareUpdater_UnlockSection(
-    FirmwareUpdater* updater, SectionName section_name) {
-  return updater->UnlockSection(section_name);
+BRILLO_EXPORT bool FirmwareUpdater_UnlockRW(
+    FirmwareUpdater* updater) {
+  return updater->UnlockRW();
 }
 BRILLO_EXPORT bool FirmwareUpdater_IsRollbackLocked(
     FirmwareUpdater* updater) {

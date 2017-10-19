@@ -275,6 +275,9 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
       if (fw_updater_->ValidKey() && fw_updater_->CompareRollback() >= 0) {
         LOG(INFO) << "RW section needs update. Rebooting to RO.";
         NotifyUpdateStarted();
+        if (fw_updater_->IsSectionLocked(SectionName::RW)) {
+          fw_updater_->UnlockRW();
+        }
         return HammerUpdater::RunStatus::kNeedReset;
       } else {
         LOG(INFO) << "RW section needs update, but local image is "
@@ -336,7 +339,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
 
     if (fw_updater_->IsSectionLocked(SectionName::RW)) {
       LOG(INFO) << "Unlock RW section, and reset EC.";
-      fw_updater_->UnlockSection(SectionName::RW);
+      fw_updater_->UnlockRW();
       return HammerUpdater::RunStatus::kNeedReset;
     }
 
