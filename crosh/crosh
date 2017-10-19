@@ -189,7 +189,7 @@ shell_history_init() {
   # history so that new entries don't come after old ones.
   if [ ${IS_BASH} -eq 1 ]; then
     local f
-    for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
+    for f in $(registered_visible_commands); do
       # Do not add duplicates to avoid ballooning history.
       grep -qs "^${f} *$" "${HISTFILE}" || shell_history -s "${f}"
     done
@@ -233,6 +233,8 @@ cmd_help() (
     done
     ;;
   1)
+    # The ordering and relationship of variables here is subtle.
+    # Consult README.md for more details.
     cmd="$1"
     if ! registered_crosh_command "${cmd}"; then
       echo "help: unknown command '${cmd}'"
@@ -282,16 +284,14 @@ HELP_help_advanced='
   Display the help for more advanced commands, mainly used for debugging.
 '
 cmd_help_advanced() (
-  local cmd commands
+  local cmd
 
   if [ $# -ne 0 ]; then
     help "too many arguments"
     return 1
   fi
 
-  commands=$(set | grep -o '^HELP_[^=]*' | \
-             sed -e 's:^HELP_::' -e 's:=$::' | sort)
-  for cmd in ${commands}; do
+  for cmd in $(registered_visible_commands); do
     if check_command_available "${cmd}"; then
       cmd_help "${cmd}"
     fi
@@ -547,6 +547,8 @@ cmd_bt_console() (
   "${EXEC_bt_console}" "${1:+--agent=$1}"
 )
 
+# Set the help string so crosh can discover us automatically.
+HELP_ff_debug=''
 EXEC_ff_debug='/usr/bin/ff_debug'
 cmd_ff_debug() (
   debugd_shill ff_debug "$@"
@@ -555,6 +557,8 @@ help_ff_debug() (
   cmd_ff_debug --help
 )
 
+# Set the help string so crosh can discover us automatically.
+HELP_wpa_debug=''
 EXEC_wpa_debug='/usr/bin/wpa_debug'
 cmd_wpa_debug() (
   debugd_shill wpa_debug "$@"
@@ -659,6 +663,8 @@ chrome://net-internals/#chromeos   (Ctrl+Click to open)
 EOF
 )
 
+# Set the help string so crosh can discover us automatically.
+HELP_network_diag=''
 EXEC_network_diag='/usr/bin/network_diag'
 cmd_network_diag() (
   case " $* " in
@@ -1619,6 +1625,16 @@ substr() {
 is_shell_function() {
   local func="$1"
   type "${func}" 2>/dev/null | head -1 | grep -q 'function'
+}
+
+# Return all registered crosh commands intended for users.
+# This will not include "hidden" commands that lack help as those are not yet
+# meant for wider consumption, or they've been deprecated.
+registered_visible_commands() {
+  # Remember: Use a form that works under POSIX shell.  Since that does not
+  # offer any way of doing introspection on registered functions, we have to
+  # stick to probing the environment.
+  set | grep -o '^HELP_[^=]*' | sed -e 's:^HELP_::' -e 's:=$::' | sort
 }
 
 # Return true if the first arg is a valid crosh command.

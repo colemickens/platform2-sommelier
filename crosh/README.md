@@ -79,17 +79,79 @@ USAGE_foo='<some args>'
 HELP_foo='
   Extended description of this command.
 '
-cmd_foo() {
+cmd_foo() (
   # Implementation for the foo command.
   # You should sanity check $# and "$@" and process them first.
   # For invalid args, call the help function with an error message
   # before returning non-zero.
   ...foo code goes here!...
-}
+)
 ```
 
 See the design section below for more details on what and how to structure
 the new command.
+
+### Command Help
+
+If your crosh command simply calls out to an external program to do the
+processing, and that program already offers usage details, you probably
+don't want to have to duplicate things.  You can handle this scenario by
+defining a `help_foo` function that makes the respective call.
+
+```sh
+# Set the help string so crosh can discover us automatically.
+HELP_foo=''
+cmd_foo() (
+  ...
+)
+help_foo() (
+  /some/command --help
+)
+```
+
+Take note that we still set `HELP_foo`.  This is needed so crosh can discover
+us automatically and display us in the relevant user facing lists (like the
+`help_advanced` command).  We don't need to set `USAGE_foo` though since the
+`help_foo` function does that for us.
+
+## Hiding Commands
+
+If a command is not yet ready for "prime time", you might want to have it in
+crosh for early testing, but not have it show up in the `help` output where
+users can easily discover it (of course, the code is all public, so anyone
+reading the actual source can find it).  Here's how you do it.
+
+```sh
+# Set the vars to pass the unittests ...
+USAGE_vmc=''
+HELP_vmc=''
+# ... then unset them to hide the command from "help" output.
+unset USAGE_vmc HELP_vmc
+cmd_vmc() (
+  ...
+)
+```
+
+## Deprecating Commands
+
+If you want to replace a crosh command with some other UI (like a chrome://
+page), and you want to deprecate the command gracefully by leaving behind a
+friendly note if people try to use it, here's the form.
+
+```sh
+# Set the vars to pass the unittests ...
+USAGE_storage_status=''
+HELP_storage_status=''
+# ... then unset them to hide the command from "help" output.
+unset USAGE_storage_status HELP_storage_status
+cmd_storage_status() (
+  # TODO: Delete this after the R## release branch.
+  echo "Removed. See storage_info section in chrome://system"
+)
+```
+
+Make sure you add the TODO comment so people know in the future when it's OK
+to clean it up.
 
 ## Testing
 
