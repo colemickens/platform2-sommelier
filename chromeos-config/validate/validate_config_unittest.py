@@ -389,7 +389,21 @@ class UnitTests(cros_test_lib.TestCase):
     dts = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
     dts.write(dts_source)
     dts.close()
-    errors = self.val.Start(dts.name)
+    errors = self.val.Start([dts.name])
+    if errors:
+      return errors
+    if dts:
+      os.unlink(dts.name)
+    return []
+
+  def RunMultiple(self, dts_source_list):
+    dts_list = []
+    for source in dts_source_list:
+      dts = tempfile.NamedTemporaryFile(suffix='.dtsi', delete=False)
+      dts_list.append(dts)
+      dts.write(source)
+      dts.close()
+    errors = self.val.Start([dts.name for dts in dts_list], partial=True)
     if errors:
       return errors
     if dts:
@@ -544,6 +558,15 @@ class UnitTests(cros_test_lib.TestCase):
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
         "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
         ], result)
+
+  def testPartial(self):
+    """Test that we can validate config coming from multiple .dtsi files"""
+    result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL])
+    self._CheckAllIn([
+        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        ], result)
+
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)

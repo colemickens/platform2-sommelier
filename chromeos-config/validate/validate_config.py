@@ -75,11 +75,13 @@ def ParseArgv(argv):
   parser = commandline.ArgumentParser(description=__doc__, manual_debug=True)
   parser.add_argument('-d', '--debug', action='store_true',
                       help='Run in debug mode (full exception traceback)')
+  parser.add_argument('-p', '--partial', action='store_true',
+                      help='Validate a list partial files (.dtsi) individually')
   parser.add_argument('-r', '--raise-on-error', action='store_true',
                       help='Causes the validator to raise on the first ' +
                       'error it finds. This is useful for debugging.')
   parser.add_argument('config', type=str, nargs='+',
-                      help='Path to the config file (.dtb) to validated')
+                      help='Paths to the config files (.dtb) to validated')
   return parser.parse_args(argv)
 
 
@@ -343,21 +345,25 @@ class CrosConfigValidator(object):
         '/chromeos/models/MODEL%s/%s' % (path, prop_name))
     return element.target_dir
 
-  def Start(self, fname):
+  def Start(self, fnames, partial=False):
     """Start validating a master configuration file
 
     Args:
-      fname: Filename containing the configuration. Supports compiled .dtb
-          files, source .dts files and README.md (which has configuration
-          source between ``` markers).
-      schema: Schema to use to validate the configuration (NodeDesc object)
+      fnames: List of filenames containing the configuration to validate.
+          Supports compiled .dtb files, source .dts files and README.md (which
+          has configuration source between ``` markers). If partial is False
+          then there can be only one filename in the list.
+      partial: True to process a list of partial config files (.dtsi)
     """
     tmpfile = None
     self.model_list = []
     self.submodel_list = {}
     self._errors = []
     try:
-      dtb, tmpfile = fdt_util.EnsureCompiled(fname)
+      if partial:
+        dtb, tmpfile = fdt_util.CompileAll(fnames)
+      else:
+        dtb, tmpfile = fdt_util.EnsureCompiled(fnames[0])
       self._fdt = fdt.FdtScan(dtb)
 
       # Locate all the models and submodels before we start
@@ -542,13 +548,24 @@ def Main(argv):
   validator = CrosConfigValidator(SCHEMA, args.raise_on_error)
   found_errors = False
   try:
-    for fname in args.config:
-      errors = validator.Start(fname)
+    # If we are given partial files (.dtsi) then we compile them all into one
+    # .dtb and validate that.
+    if args.partial:
+      errors = validator.Start(args.config, partial=True)
+      fname = args.config[0]
       if errors:
+        ShowErrors(fname, errors)
         found_errors = True
+
+    # Otherwise process each file individually
+    else:
+      for fname in args.config:
+        errors = validator.Start([fname], SCHEMA)
         if errors:
-          ShowErrors(fname, errors)
           found_errors = True
+          if errors:
+            ShowErrors(fname, errors)
+            found_errors = True
   except cros_build_lib.RunCommandError as e:
     if args.debug:
       raise

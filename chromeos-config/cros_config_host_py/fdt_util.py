@@ -76,6 +76,23 @@ def GetBool(node, propname, default=False):
   return default
 
 
+def CompileDts(dts_input):
+  """Compiles a single .dts file
+
+  Args:
+    dts_input: Input filename
+
+  Returns:
+    Tuple:
+      Filename of resulting .dtb file
+  """
+  dtb_output = tempfile.NamedTemporaryFile(suffix='.dtb', delete=False)
+  args = ['-I', 'dts', '-o', dtb_output.name, '-O', 'dtb']
+  args.append(dts_input)
+  cros_build_lib.RunCommand(['dtc'] + args, quiet=True)
+  return dtb_output.name, dtb_output
+
+
 def EnsureCompiled(fname):
   """Compile an fdt .dts source file into a .dtb binary blob if needed.
 
@@ -84,7 +101,9 @@ def EnsureCompiled(fname):
       left alone
 
   Returns:
-    Filename of resulting .dtb file
+    Tuple:
+      Filename of resulting .dtb file
+      tempfile object to unlink after the caller is finished
   """
   out = None
   _, ext = os.path.splitext(fname)
@@ -106,16 +125,29 @@ def EnsureCompiled(fname):
     dts_input = out.name
   else:
     dts_input = fname
-  dtb_output = tempfile.NamedTemporaryFile(suffix='.dtb', delete=False)
-  search_paths = [os.path.join(os.getcwd(), 'include')]
-  # If we don't have a directory, put it in the tools tempdir
-  search_list = []
-  for path in search_paths:
-    search_list.extend(['-i', path])
-  args = ['-I', 'dts', '-o', dtb_output.name, '-O', 'dtb']
-  args.extend(search_list)
-  args.append(dts_input)
-  cros_build_lib.RunCommand(['dtc'] + args, quiet=True)
+  result = CompileDts(dts_input)
   if out:
     os.unlink(out.name)
-  return dtb_output.name, dtb_output
+  return result
+
+
+def CompileAll(fnames):
+  """Compile a selection of .dtsi files
+
+  This inserts the Chrome OS header and then includes the files one by one to
+  ensure that error messages quote the correct file/line number.
+
+  Args:
+    fnames: List of .dtsi files to compile
+  """
+  out = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
+  out.write('/dts-v1/;\n')
+  out.write('/ { chromeos { family: family { }; models: models { }; }; };\n')
+  for fname in fnames:
+    out.write('/include/ "%s"\n' % fname)
+  out.close()
+  dts_input = out.name
+  result = CompileDts(dts_input)
+  if out:
+    os.unlink(out.name)
+  return result
