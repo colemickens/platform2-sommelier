@@ -83,6 +83,16 @@ static int hal_get_number_of_cameras(void)
 
     PERFORMANCE_HAL_ATRACE();
 
+#ifdef REMOTE_3A_SERVER
+    // if the hal fails to connect the remote 3a,
+    // return camera number 0 makes camera service to reload hal.
+    Intel3AClient* client = Intel3AClient::getInstance();
+    if (client == nullptr) {
+        LOGE("@%s, Intel3AClient::getInstance() fails", __FUNCTION__);
+        return 0;
+    }
+#endif
+
     return PlatformData::numberOfCameras();
 }
 

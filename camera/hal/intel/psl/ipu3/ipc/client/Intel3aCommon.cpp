@@ -36,6 +36,7 @@ Intel3aCommon::~Intel3aCommon()
 bool Intel3aCommon::allocShmMem(std::string& name, int size, ShmMemInfo* shm)
 {
     LOG1("@%s", __FUNCTION__);
+    CheckError(mClient == nullptr, false, "@%s, mClient is nullptr", __FUNCTION__);
 
     shm->mName = name;
     shm->mSize = size;
@@ -51,12 +52,16 @@ bool Intel3aCommon::allocShmMem(std::string& name, int size, ShmMemInfo* shm)
 bool Intel3aCommon::requestSync(IPC_CMD cmd, int32_t handle)
 {
     LOG1("@%s", __FUNCTION__);
+    CheckError(mClient == nullptr, false, "@%s, mClient is nullptr", __FUNCTION__);
+
     return mClient->requestSync(cmd, handle) == OK ? true : false;
 }
 
 bool Intel3aCommon::requestSync(IPC_CMD cmd)
 {
     LOG1("@%s", __FUNCTION__);
+    CheckError(mClient == nullptr, false, "@%s, mClient is nullptr", __FUNCTION__);
+
     return mClient->requestSync(cmd) == OK ? true : false;
 }
 
@@ -64,6 +69,7 @@ void Intel3aCommon::freeShmMem(ShmMemInfo& shm)
 {
     LOG1("@%s, mHandle:%d, mFd:%d, mName:%s, mSize:%d, mAddr:%p",
         __FUNCTION__, shm.mHandle, shm.mFd, shm.mName.c_str(), shm.mSize, shm.mAddr);
+    CheckError(mClient == nullptr, VOID_VALUE, "@%s, mClient is nullptr", __FUNCTION__);
     if (shm.mHandle < 0 || shm.mFd < 0) {
         LOGE("@%s, mHandle:%d, mFd:%d, one of them < 0", __FUNCTION__, shm.mHandle, shm.mFd);
         return;
