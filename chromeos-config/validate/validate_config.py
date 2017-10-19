@@ -53,6 +53,7 @@ our_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(our_path, '../cros_config_host_py'))
 
 from chromite.lib import commandline
+from chromite.lib import cros_build_lib
 import fdt
 import fdt_util
 from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
@@ -71,7 +72,9 @@ def ParseArgv(argv):
   Returns:
     argparse.Namespace object containing the attributes.
   """
-  parser = commandline.ArgumentParser(description=__doc__)
+  parser = commandline.ArgumentParser(description=__doc__, manual_debug=True)
+  parser.add_argument('-d', '--debug', action='store_true',
+                      help='Run in debug mode (full exception traceback)')
   parser.add_argument('-r', '--raise-on-error', action='store_true',
                       help='Causes the validator to raise on the first ' +
                       'error it finds. This is useful for debugging.')
@@ -525,14 +528,20 @@ def Main(argv):
   args = ParseArgv(argv)
   validator = CrosConfigValidator(SCHEMA, args.raise_on_error)
   found_errors = False
-  for fname in args.config:
-    errors = validator.Start(fname)
-    if errors:
-      found_errors = True
-      print('%s:' % fname)
-      for error in errors:
-        print(error)
-      print()
+  try:
+    for fname in args.config:
+      errors = validator.Start(fname)
+      if errors:
+        found_errors = True
+        print('%s:' % fname)
+        for error in errors:
+          print(error)
+        print()
+  except cros_build_lib.RunCommandError as e:
+    if args.debug:
+      raise
+    print('Failed: %s' % e, file=sys.stderr)
+    found_errors = True
   if found_errors:
     sys.exit(2)
 
