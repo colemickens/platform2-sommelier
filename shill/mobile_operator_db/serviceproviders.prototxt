@@ -30,7 +30,6 @@ mno {
   data {
     uuid : "dc490885-2628-4b85-8ef5-0fdbd5438608"
     country : "ae"
-    provider_type : GSM
     localized_name {
       name : "Etisalat"
     }
@@ -60,7 +59,6 @@ mno {
   data {
     uuid : "a262a56f-1823-49ed-9559-e4ba134adf30"
     country : "ae"
-    provider_type : GSM
     localized_name {
       name : "du"
     }
@@ -75,7 +73,6 @@ mno {
   data {
     uuid : "d2d81c64-f6c8-4e12-a415-ece420235fd1"
     country : "af"
-    provider_type : GSM
     localized_name {
       name : "AWCC"
     }
@@ -92,7 +89,6 @@ mno {
   data {
     uuid : "1cb3046b-e6a2-4879-94da-ef2e3b7e9f56"
     country : "al"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -116,7 +112,6 @@ mno {
   data {
     uuid : "628b3ab2-393c-4b81-975f-5fba4a1cda7e"
     country : "am"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -133,7 +128,6 @@ mno {
   data {
     uuid : "83909445-bde5-4c93-81e7-a90ac408f2a8"
     country : "am"
-    provider_type : GSM
     localized_name {
       name : "Karabakh Telecom"
     }
@@ -151,7 +145,6 @@ mno {
   data {
     uuid : "025e4b69-e14b-4a4b-b0d8-eaf363df538e"
     country : "am"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -175,7 +168,6 @@ mno {
   data {
     uuid : "2ef1db58-b4a0-42da-bcbd-5d8743a5a67b"
     country : "am"
-    provider_type : GSM
     localized_name {
       name : "VivaCell/MTS"
     }
@@ -199,7 +191,6 @@ mno {
   data {
     uuid : "3499e4b5-11d1-4789-a53c-e223eea1ac24"
     country : "ao"
-    provider_type : CDMA
     localized_name {
       name : "Movinet"
     }
@@ -217,7 +208,6 @@ mno {
   data {
     uuid : "6bee70c8-5ff5-410d-9c8f-05bc6c328506"
     country : "ao"
-    provider_type : GSM
     localized_name {
       name : "Unitel"
     }
@@ -232,7 +222,6 @@ mno {
   data {
     uuid : "516e6279-d10c-4830-98e6-b28fc037ae2f"
     country : "ar"
-    provider_type : GSM
     localized_name {
       name : "Arnet"
     }
@@ -249,7 +238,6 @@ mno {
   data {
     uuid : "bbc61d5a-6e45-49b6-8ee2-6df298baf16f"
     country : "ar"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -281,7 +269,6 @@ mno {
   data {
     uuid : "c4288d9d-8c56-490f-9b1e-0107dbaa150d"
     country : "ar"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -310,7 +297,6 @@ mno {
   data {
     uuid : "4f8cff26-a5d9-4312-be77-4c23d6d44a2f"
     country : "ar"
-    provider_type : GSM
     localized_name {
       name : "Personal"
     }
@@ -341,7 +327,6 @@ mno {
   data {
     uuid : "244876ee-d7ea-4cd3-bcc0-e2587b524c24"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "A1/Telekom Austria"
     }
@@ -379,7 +364,6 @@ mno {
   data {
     uuid : "67a56202-0c63-47e8-bc7c-6036bf8a2f64"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "ABroadband"
     }
@@ -399,7 +383,6 @@ mno {
   data {
     uuid : "c7f16d42-d83e-4a51-9e65-d323eac80274"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "Bob"
     }
@@ -428,7 +411,6 @@ mno {
   data {
     uuid : "d6bfef7e-0e42-4cb1-a7d2-ecf286b5ef92"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "Drei (3)"
     }
@@ -448,7 +430,6 @@ mno {
   data {
     uuid : "5ecbd188-a5e5-44b6-beab-54beada4cfba"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -512,7 +493,6 @@ mno {
   data {
     uuid : "18da20c3-215f-45e2-8e06-54cf41c3b472"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -551,7 +531,6 @@ mno {
   data {
     uuid : "c4c26f9b-5631-4f6c-ba80-05c9b543870f"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "VOLmobil"
     }
@@ -566,7 +545,6 @@ mno {
   data {
     uuid : "ffb628e0-c7b1-4a3a-a6c2-0db46d2e305b"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "Yesss"
     }
@@ -581,7 +559,6 @@ mno {
   data {
     uuid : "04715230-6034-475d-8bda-3a3e75551d7b"
     country : "at"
-    provider_type : GSM
     localized_name {
       name : "tele.ring"
     }
@@ -603,7 +580,6 @@ mno {
   data {
     uuid : "aedef601-07cc-4796-a66d-8e884a216389"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Amaysim"
     }
@@ -618,7 +594,6 @@ mno {
   data {
     uuid : "7c5ac38f-8a97-41bc-bb54-4083243a82e5"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Apex Telecom"
     }
@@ -633,7 +608,6 @@ mno {
   data {
     uuid : "818a6464-9282-4961-91ec-d57d79c8c56a"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "BLiNK"
     }
@@ -657,7 +631,6 @@ mno {
   data {
     uuid : "00530a37-f89b-40bd-bbce-df7865cf6ad1"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Beagle"
     }
@@ -672,7 +645,6 @@ mno {
   data {
     uuid : "68490742-c9f8-442c-be97-cfcd12f01a40"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Crazy John's"
     }
@@ -699,7 +671,6 @@ mno {
   data {
     uuid : "444bd59b-63ab-4ab7-be9e-00cc19dedcfe"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Dodo"
     }
@@ -723,7 +694,6 @@ mno {
   data {
     uuid : "ba0a238a-8bec-4c4a-b409-b605876c7b24"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Escape Net"
     }
@@ -738,7 +708,6 @@ mno {
   data {
     uuid : "62c18797-ae15-458d-a11e-af8b21df6676"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Exetel"
     }
@@ -774,7 +743,6 @@ mno {
   data {
     uuid : "edaf26cb-b872-49ff-be8b-39ebed825b1b"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Exetel (Vodafone based)"
     }
@@ -792,7 +760,6 @@ mno {
   data {
     uuid : "bc63176b-ef05-40ca-b293-651e7b8a6390"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Highway1"
     }
@@ -807,7 +774,6 @@ mno {
   data {
     uuid : "85c1c75e-1afa-4618-bb38-a6efb876cc91"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Internode"
     }
@@ -831,7 +797,6 @@ mno {
   data {
     uuid : "5260a5a4-feb1-4e7c-9f12-fdfda55ff45c"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Optus"
     }
@@ -890,7 +855,6 @@ mno {
   data {
     uuid : "9624c1e5-809c-4fef-8440-5718e37d8319"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Pennytel"
     }
@@ -914,7 +878,6 @@ mno {
   data {
     uuid : "c1742ba6-fd14-49c5-9ba2-490d46c8f5c8"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Smelly Black Dog"
     }
@@ -929,7 +892,6 @@ mno {
   data {
     uuid : "efef4db6-9251-4a7a-b216-2c6f4441090f"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "TPG Mobile"
     }
@@ -959,7 +921,6 @@ mno {
   data {
     uuid : "7a3b4b2f-d308-466e-b26c-dc7e6567f942"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Telstra"
     }
@@ -1020,7 +981,6 @@ mno {
   data {
     uuid : "71ec5a49-8079-4d8f-af6d-391919fe2555"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Three"
     }
@@ -1049,7 +1009,6 @@ mno {
   data {
     uuid : "11e09952-384e-40b6-aeac-bb93147645ed"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Virgin Mobile"
     }
@@ -1076,7 +1035,6 @@ mno {
   data {
     uuid : "4f6c0d32-c58f-46a0-a211-9903ba7cb251"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -1109,7 +1067,6 @@ mno {
   data {
     uuid : "8a1f6c02-82d8-4fa8-b3f8-37b0d6a17c55"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "Westnet"
     }
@@ -1133,7 +1090,6 @@ mno {
   data {
     uuid : "feb51c01-8c9b-4bbd-a46b-ecdce125a6bd"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "iPrimus"
     }
@@ -1148,7 +1104,6 @@ mno {
   data {
     uuid : "56403f6d-0529-4226-ae6d-7450c8e81a76"
     country : "au"
-    provider_type : GSM
     localized_name {
       name : "iiNet"
     }
@@ -1163,7 +1118,6 @@ mno {
   data {
     uuid : "27ddfad7-ea71-4b1c-b2ea-0b7d3fb058fe"
     country : "az"
-    provider_type : GSM
     localized_name {
       name : "Azercell"
     }
@@ -1178,7 +1132,6 @@ mno {
   data {
     uuid : "2a268a12-80f1-4ad8-88f3-b18b563c3c6c"
     country : "az"
-    provider_type : GSM
     localized_name {
       name : "Azerfon"
     }
@@ -1193,7 +1146,6 @@ mno {
   data {
     uuid : "ea726124-9ed7-4671-95ee-6f503cf59430"
     country : "az"
-    provider_type : GSM
     localized_name {
       name : "Bakcell"
     }
@@ -1208,7 +1160,6 @@ mno {
   data {
     uuid : "28a580b8-9ab7-4404-ac2f-1349f6bd08bf"
     country : "ba"
-    provider_type : GSM
     localized_name {
       name : "BH GSM"
     }
@@ -1223,7 +1174,6 @@ mno {
   data {
     uuid : "6c157d14-9087-4954-89b7-644427b55ae8"
     country : "ba"
-    provider_type : GSM
     localized_name {
       name : "HT-ERONET"
     }
@@ -1238,7 +1188,6 @@ mno {
   data {
     uuid : "0b33ed88-f58c-4d7b-9c09-c6535d3bcf9b"
     country : "ba"
-    provider_type : GSM
     localized_name {
       name : "m:tel"
     }
@@ -1290,7 +1239,6 @@ mno {
   data {
     uuid : "a322984f-6f0e-46db-aa22-beffbed5a24f"
     country : "bb"
-    provider_type : GSM
     localized_name {
       name : "Digicel"
     }
@@ -1305,7 +1253,6 @@ mno {
   data {
     uuid : "9329f403-8243-4b24-9410-52af0fc7ade9"
     country : "bd"
-    provider_type : GSM
     localized_name {
       name : "Banglalink"
     }
@@ -1324,7 +1271,6 @@ mno {
   data {
     uuid : "63df5410-07ea-43cc-84d1-ae09cda7d37f"
     country : "bd"
-    provider_type : CDMA
     localized_name {
       name : "Citycell"
     }
@@ -1346,7 +1292,6 @@ mno {
   data {
     uuid : "0a901296-e961-4aec-b499-6e5da15eee8c"
     country : "bd"
-    provider_type : GSM
     localized_name {
       name : "GrameenPhone"
     }
@@ -1363,7 +1308,6 @@ mno {
   data {
     uuid : "399cd8bf-7eb5-47cb-a508-74bd2a5c253e"
     country : "bd"
-    provider_type : GSM
     localized_name {
       name : "Robi (AKTel)"
     }
@@ -1382,7 +1326,6 @@ mno {
   data {
     uuid : "077deee6-e7a0-41b1-8ce8-132af52d9252"
     country : "bd"
-    provider_type : GSM
     localized_name {
       name : "Warid"
     }
@@ -1401,7 +1344,6 @@ mno {
   data {
     uuid : "e6f985b8-f59c-45e0-aebd-a2fa2a8e127a"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Base"
     }
@@ -1420,7 +1362,6 @@ mno {
   data {
     uuid : "bb994594-0b20-4576-9e08-2be8eb39cc1a"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Mobile Vikings"
     }
@@ -1437,7 +1378,6 @@ mno {
   data {
     uuid : "0b85355e-7466-4977-ba8a-09d53de91b6e"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Mobistar"
     }
@@ -1486,7 +1426,6 @@ mno {
   data {
     uuid : "ad256c38-0dce-4905-b606-f1277ec78f7c"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -1501,7 +1440,6 @@ mno {
   data {
     uuid : "84368c8c-6698-43fc-a14e-0f0e5d8fc09a"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Proximus"
     }
@@ -1529,7 +1467,6 @@ mno {
   data {
     uuid : "8dc79866-23e5-4e62-8f00-ecfe85a660be"
     country : "be"
-    provider_type : GSM
     localized_name {
       name : "Telenet Mobile"
     }
@@ -1559,7 +1496,6 @@ mno {
   data {
     uuid : "139e4f84-c34a-4753-a26f-c7d68da21e39"
     country : "bf"
-    provider_type : GSM
     localized_name {
       name : "Airtel 3G"
     }
@@ -1574,7 +1510,6 @@ mno {
   data {
     uuid : "d8830461-c26f-439d-8b04-052f05dcff1e"
     country : "bg"
-    provider_type : GSM
     localized_name {
       name : "GloBul"
     }
@@ -1591,7 +1526,6 @@ mno {
   data {
     uuid : "9336e820-9fca-4915-a26c-ea445226ec76"
     country : "bg"
-    provider_type : GSM
     localized_name {
       name : "M-Tel"
     }
@@ -1608,7 +1542,6 @@ mno {
   data {
     uuid : "bc220bf1-ab55-4b1a-93e7-ec62e3d6d5bb"
     country : "bg"
-    provider_type : GSM
     localized_name {
       name : "Vivacom"
     }
@@ -1637,7 +1570,6 @@ mno {
   data {
     uuid : "8902a298-f21f-419a-a4b8-79b61bee7dca"
     country : "bh"
-    provider_type : GSM
     localized_name {
       name : "Batelco"
     }
@@ -1657,7 +1589,6 @@ mno {
   data {
     uuid : "ff621c40-018f-435f-ab4e-cf38222b5df5"
     country : "bh"
-    provider_type : GSM
     localized_name {
       name : "STC"
     }
@@ -1675,7 +1606,6 @@ mno {
   data {
     uuid : "945fe39e-d632-48d4-9a93-d1f6ceec560e"
     country : "bh"
-    provider_type : GSM
     localized_name {
       name : "Zain BH"
     }
@@ -1703,7 +1633,6 @@ mno {
   data {
     uuid : "96439db1-9360-4c39-87eb-503205239173"
     country : "bi"
-    provider_type : GSM
     localized_name {
       name : "Leo/UCom"
     }
@@ -1718,7 +1647,6 @@ mno {
   data {
     uuid : "3f1f325a-bf4e-462d-97e5-6d021fd059ab"
     country : "bi"
-    provider_type : GSM
     localized_name {
       name : "Tempo/Africell"
     }
@@ -1733,7 +1661,6 @@ mno {
   data {
     uuid : "259c2f3a-52de-4acd-97c0-181fd5ba8e49"
     country : "bn"
-    provider_type : GSM
     localized_name {
       name : "B-Mobile"
     }
@@ -1748,7 +1675,6 @@ mno {
   data {
     uuid : "9776df26-ba8f-4d46-82c0-7333109bc75c"
     country : "bn"
-    provider_type : GSM
     localized_name {
       name : "DSTCOM"
     }
@@ -1765,7 +1691,6 @@ mno {
   data {
     uuid : "6cd402e5-69dd-4c81-baf9-fa27b8182820"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "Brasil Telecom"
     }
@@ -1782,7 +1707,6 @@ mno {
   data {
     uuid : "93703916-3b59-416a-8dc2-09add9783377"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "CTBC"
     }
@@ -1802,7 +1726,6 @@ mno {
   data {
     uuid : "1ef48933-c547-41bb-960d-ef1b41223882"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -1827,7 +1750,6 @@ mno {
   data {
     uuid : "75fefc8e-5d86-41f2-a282-e4f8590bb0f5"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "Oi"
     }
@@ -1853,7 +1775,6 @@ mno {
   data {
     uuid : "a522d454-fd0a-4032-935c-aeebb7a4d255"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "TIM"
     }
@@ -1875,7 +1796,6 @@ mno {
   data {
     uuid : "ccdb9f4c-f254-46f3-83c6-c40e10f5c879"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "Velox"
     }
@@ -1892,7 +1812,6 @@ mno {
   data {
     uuid : "3467e583-9607-4b24-8a32-87757ee618aa"
     country : "br"
-    provider_type : GSM
     localized_name {
       name : "Vivo"
     }
@@ -1912,7 +1831,6 @@ mno {
   data {
     uuid : "4d9e8c60-4279-4036-bab1-1e105cc4dba5"
     country : "bs"
-    provider_type : GSM
     localized_name {
       name : "Batelco"
     }
@@ -1927,7 +1845,6 @@ mno {
   data {
     uuid : "9941b7e7-33e2-4e2a-bdc7-da5899b94a69"
     country : "bw"
-    provider_type : GSM
     localized_name {
       name : "Mascom Wireless"
     }
@@ -1942,7 +1859,6 @@ mno {
   data {
     uuid : "bd298a4e-67b3-42db-96ca-7304691f299a"
     country : "by"
-    provider_type : GSM
     localized_name {
       name : "MTS"
     }
@@ -1959,7 +1875,6 @@ mno {
   data {
     uuid : "6dd20044-d55e-4c48-bacd-9ddde194da6e"
     country : "by"
-    provider_type : GSM
     localized_name {
       name : "life:)"
     }
@@ -1974,7 +1889,6 @@ mno {
   data {
     uuid : "893a0979-6fda-48b6-9556-64fa0faea1ce"
     country : "by"
-    provider_type : GSM
     localized_name {
       name : "velcom"
     }
@@ -2050,7 +1964,6 @@ mno {
   data {
     uuid : "307d728a-b801-46e1-95ad-ee682b4961f9"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Bell Mobility"
     }
@@ -2083,7 +1996,6 @@ mno {
   data {
     uuid : "87cf1780-6c00-4cb7-9fc5-f9f38f1cb6e9"
     country : "ca"
-    provider_type : CDMA
     localized_name {
       name : "Bell Mobility"
     }
@@ -2119,7 +2031,6 @@ mno {
   data {
     uuid : "0ec6ad3b-fe9e-4e1c-898c-1aebb7b016c0"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Fido"
     }
@@ -2138,7 +2049,6 @@ mno {
   data {
     uuid : "5fb163e9-9beb-43f7-a4ea-0233e0955081"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Mobilicity"
     }
@@ -2162,7 +2072,6 @@ mno {
   data {
     uuid : "11235d80-6aae-4824-93fe-aeac357c1e18"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Rogers"
     }
@@ -2181,7 +2090,6 @@ mno {
   data {
     uuid : "b1d34a84-e80b-41e7-8284-28af4bc9c57c"
     country : "ca"
-    provider_type : CDMA
     localized_name {
       name : "SaskTel"
     }
@@ -2194,7 +2102,6 @@ mno {
   data {
     uuid : "bdf11fc4-eca0-4fe7-86c3-269284d91d8e"
     country : "ca"
-    provider_type : CDMA
     localized_name {
       name : "Telus Mobility"
     }
@@ -2212,7 +2119,6 @@ mno {
   data {
     uuid : "d256ee56-5319-4c6d-8e98-3cd7ebdd4bce"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Telus Mobility"
     }
@@ -2250,7 +2156,6 @@ mno {
   data {
     uuid : "d2d4ef9c-7acb-4ca5-96f3-722731882e8b"
     country : "ca"
-    provider_type : CDMA
     localized_name {
       name : "Telus Mobility"
     }
@@ -2268,7 +2173,6 @@ mno {
   data {
     uuid : "7e56684b-5231-490a-bf81-f3fa808bea11"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "Vidéotron"
     }
@@ -2293,7 +2197,6 @@ mno {
   data {
     uuid : "55ee24e9-d13e-4f26-87cc-16f4cc716f0e"
     country : "ca"
-    provider_type : CDMA
     localized_name {
       name : "Virgin Mobile"
     }
@@ -2304,7 +2207,6 @@ mno {
   data {
     uuid : "bc42e067-f424-4243-8779-1bede8fd0e38"
     country : "ca"
-    provider_type : GSM
     localized_name {
       name : "WIND Mobile"
     }
@@ -2328,7 +2230,6 @@ mno {
   data {
     uuid : "8cee7c28-4696-4ac0-8926-cf674baf647c"
     country : "cd"
-    provider_type : GSM
     localized_name {
       name : "Vodacom"
     }
@@ -2345,7 +2246,6 @@ mno {
   data {
     uuid : "f51eae48-2912-4ba4-8ba9-e7938e834515"
     country : "ch"
-    provider_type : GSM
     localized_name {
       name : "M-Budget"
     }
@@ -2363,7 +2263,6 @@ mno {
   data {
     uuid : "4f361ffe-4056-4224-8117-22ed9866a3d8"
     country : "ch"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -2403,7 +2302,6 @@ mno {
   data {
     uuid : "7d8be3cf-2744-410e-99a0-ff207ad6952c"
     country : "ch"
-    provider_type : GSM
     localized_name {
       name : "Sunrise"
     }
@@ -2432,7 +2330,6 @@ mno {
   data {
     uuid : "1c1c6970-c187-451d-911d-9d3e84950f30"
     country : "ch"
-    provider_type : GSM
     localized_name {
       name : "Swisscom"
     }
@@ -2467,7 +2364,6 @@ mno {
   data {
     uuid : "65917911-941f-410a-ba3f-2e8119f698c6"
     country : "ci"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -2483,7 +2379,6 @@ mno {
   data {
     uuid : "2bcaea68-b845-43e0-ad32-d7cb9bbf9eda"
     country : "cl"
-    provider_type : GSM
     localized_name {
       name : "Claro Chile"
     }
@@ -2516,7 +2411,6 @@ mno {
   data {
     uuid : "92bc02f2-53e8-47fe-87e8-bd3559fe557a"
     country : "cl"
-    provider_type : GSM
     localized_name {
       name : "Entel PCS"
     }
@@ -2544,7 +2438,6 @@ mno {
   data {
     uuid : "e456cd8d-2316-45f1-81c0-ee8843743d75"
     country : "cl"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -2572,7 +2465,6 @@ mno {
   data {
     uuid : "7a3031a4-4ff0-46ad-a130-b13b0256c1bf"
     country : "cm"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -2589,7 +2481,6 @@ mno {
   data {
     uuid : "43082681-babe-4a3a-93d5-31e4020e524d"
     country : "cm"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -2606,7 +2497,6 @@ mno {
   data {
     uuid : "fc065f05-bd29-4fe8-bf19-10d0284fd9d3"
     country : "cn"
-    provider_type : GSM
     localized_name {
       name : "China Mobile"
     }
@@ -2636,7 +2526,6 @@ mno {
   data {
     uuid : "e7d8f4f9-2bc5-448e-840a-c6d5d678cf5a"
     country : "cn"
-    provider_type : CDMA
     localized_name {
       name : "China Telecom"
     }
@@ -2657,7 +2546,6 @@ mno {
   data {
     uuid : "17803117-3b91-4420-a948-02761ab0ce55"
     country : "cn"
-    provider_type : GSM
     localized_name {
       name : "China Unicom"
     }
@@ -2673,7 +2561,6 @@ mno {
   data {
     uuid : "c3a85227-825e-49a9-b29f-5fce441d272c"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -2690,7 +2577,6 @@ mno {
   data {
     uuid : "62479d70-b014-4aee-aa17-22a22fbd54ef"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -2708,7 +2594,6 @@ mno {
   data {
     uuid : "10ccf101-96fa-43fc-bf78-bb6ac3e98e40"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -2724,7 +2609,6 @@ mno {
   data {
     uuid : "cc092bc8-75bf-4f0d-9673-2dd00f2afed9"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "UNE"
     }
@@ -2748,7 +2632,6 @@ mno {
   data {
     uuid : "5433f7d6-5f2d-4c11-9fa2-afc0ae84dcfc"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "Uff"
     }
@@ -2762,7 +2645,6 @@ mno {
   data {
     uuid : "150cf208-abfc-440c-8468-66307209f7f6"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "Virgin Mobile"
     }
@@ -2777,7 +2659,6 @@ mno {
   data {
     uuid : "d405252a-8ffe-48f9-9df0-7c5a6c1dc0df"
     country : "co"
-    provider_type : GSM
     localized_name {
       name : "eTb"
     }
@@ -2793,7 +2674,6 @@ mno {
   data {
     uuid : "f5c92d01-06dd-4f55-a442-a02315c60392"
     country : "cr"
-    provider_type : GSM
     localized_name {
       name : "IceCelular"
     }
@@ -2812,7 +2692,6 @@ mno {
   data {
     uuid : "0c6c25e3-283d-45f9-ba6f-bd1a47171e8d"
     country : "cr"
-    provider_type : GSM
     localized_name {
       name : "Kolbi"
     }
@@ -2830,7 +2709,6 @@ mno {
   data {
     uuid : "d889c776-4fdd-4c72-88cb-d74ae31bfbaf"
     country : "cy"
-    provider_type : GSM
     localized_name {
       name : "Cytamobile-Vodafone"
     }
@@ -2854,7 +2732,6 @@ mno {
   data {
     uuid : "0e2006ee-5b8a-4259-935d-48c73a022506"
     country : "cy"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -2871,7 +2748,6 @@ mno {
   data {
     uuid : "30edc150-f4d1-4c63-a710-7927594d3861"
     country : "cz"
-    provider_type : GSM
     localized_name {
       name : "O2"
     }
@@ -2899,7 +2775,6 @@ mno {
   data {
     uuid : "24c743a4-8394-462d-860f-c7e658356748"
     country : "cz"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -2916,7 +2791,6 @@ mno {
   data {
     uuid : "720357e3-d5de-41c3-896a-cd6995c0a203"
     country : "cz"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -2933,7 +2807,6 @@ mno {
   data {
     uuid : "ce5d89c2-8372-4109-aa51-d8b2b2b785ba"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "Alice"
     }
@@ -2953,7 +2826,6 @@ mno {
   data {
     uuid : "24b5058a-e896-4828-a774-ba5c1e4df463"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "Congstar"
     }
@@ -2975,7 +2847,6 @@ mno {
   data {
     uuid : "8727f2af-dc97-4efe-be27-f258ab8e076a"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "E-Plus"
     }
@@ -2998,7 +2869,6 @@ mno {
     data {
       uuid : "915a3b46-3ed8-4b2d-99fa-29c0cd6eecbb"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "AldiTalk/MedionMobile"
       }
@@ -3036,7 +2906,6 @@ mno {
     data {
       uuid : "00619b2d-dad1-4bd3-84be-df0a1ae0076d"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "NetCologne"
       }
@@ -3056,7 +2925,6 @@ mno {
     data {
       uuid : "0aa4f8a3-c2fa-452e-bbc1-3b7c4897b185"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "blau.de"
       }
@@ -3089,7 +2957,6 @@ mno {
     data {
       uuid : "9d531dfd-da39-4329-b8ec-acc9edac0202"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "simyo Internet"
       }
@@ -3111,7 +2978,6 @@ mno {
   data {
     uuid : "eaaa4526-1c2b-484f-a313-7c2e571ee733"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "FONIC"
     }
@@ -3130,7 +2996,6 @@ mno {
   data {
     uuid : "71100bdc-ffc5-4696-b9a8-62273c995165"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "Netzclub"
     }
@@ -3150,7 +3015,6 @@ mno {
   data {
     uuid : "eda63e8b-273d-4502-bebc-f74bbd451d35"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "O2"
     }
@@ -3189,7 +3053,6 @@ mno {
   data {
     uuid : "294269ce-b1f5-4a01-97fb-52e37039715a"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile(Telekom)"
     }
@@ -3216,7 +3079,6 @@ mno {
   data {
     uuid : "fc72a630-06ef-49fc-a7a3-0ce9085e2bbc"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "Tchibo-Mobil"
     }
@@ -3236,7 +3098,6 @@ mno {
   data {
     uuid : "0bbc0b13-8c69-414b-a9f9-6b08a7c98b68"
     country : "de"
-    provider_type : GSM
     localized_name {
       name : "Vodafone.de"
     }
@@ -3267,7 +3128,6 @@ mno {
     data {
       uuid : "32306a37-f32a-424e-b5be-dc0d935a508a"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "1&1"
       }
@@ -3298,7 +3158,6 @@ mno {
     data {
       uuid : "9b66b36b-80d8-44f8-b225-5b432805f5d6"
       country : "de"
-      provider_type : GSM
       localized_name {
         name : "Bild Mobil"
       }
@@ -3331,7 +3190,6 @@ mno {
   data {
     uuid : "e7c14c51-1c19-4182-b4a3-5309e02032a4"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "3"
     }
@@ -3369,7 +3227,6 @@ mno {
     data {
       uuid : "3475f47b-e78c-4a05-8a4d-78c1ad71b05f"
       country : "dk"
-      provider_type : GSM
       localized_name {
         name : "OiSTER"
       }
@@ -3394,7 +3251,6 @@ mno {
   data {
     uuid : "d89bca0e-f798-4303-90dd-dec9fa57b3ef"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "BiBoB"
     }
@@ -3409,7 +3265,6 @@ mno {
   data {
     uuid : "c3ce43b2-4b2a-451e-a162-4a439c130006"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "CBB Mobil"
     }
@@ -3425,7 +3280,6 @@ mno {
   data {
     uuid : "1e8d6a74-ccea-4322-ac93-663abfd899e2"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "Fullrate"
     }
@@ -3441,7 +3295,6 @@ mno {
   data {
     uuid : "f6222ae9-7bba-4610-a8b4-be34253ec942"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "TDC"
     }
@@ -3466,7 +3319,6 @@ mno {
     data {
       uuid : "bb973563-7ce2-406d-a419-39f198ccb47c"
       country : "dk"
-      provider_type : GSM
       localized_name {
         name : "Onfone Internet DK"
       }
@@ -3484,7 +3336,6 @@ mno {
     data {
       uuid : "603f6f2c-be57-48b6-b436-3a74c34bc15c"
       country : "dk"
-      provider_type : GSM
       localized_name {
         name : "Telmore"
       }
@@ -3504,7 +3355,6 @@ mno {
     data {
       uuid : "a5c12acc-1965-40c7-91b5-37af89823c05"
       country : "dk"
-      provider_type : GSM
       localized_name {
         name : "Unotel"
       }
@@ -3522,7 +3372,6 @@ mno {
     data {
       uuid : "017d6388-195b-47d5-bdcf-7d66beb13438"
       country : "dk"
-      provider_type : GSM
       localized_name {
         name : "happiimobil"
       }
@@ -3538,7 +3387,6 @@ mno {
   data {
     uuid : "e3da99a4-104a-4384-be09-cdd94a92763e"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -3557,7 +3405,6 @@ mno {
   data {
     uuid : "3c819ea7-b8e6-4def-9c98-615a018ab7c5"
     country : "dk"
-    provider_type : GSM
     localized_name {
       name : "Telia"
     }
@@ -3572,7 +3419,6 @@ mno {
   data {
     uuid : "477e55f6-21a6-4100-b30c-8c4b1384edd6"
     country : "dk"
-    provider_type : CDMA
     localized_name {
       name : "ice.net (Nordisk Mobiltelefon)"
     }
@@ -3591,7 +3437,6 @@ mno {
   data {
     uuid : "ca3c4157-1689-496e-b957-8a2dd82bf2dc"
     country : "do"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -3608,7 +3453,6 @@ mno {
   data {
     uuid : "8408614c-b959-4221-9714-ca693e44c7c9"
     country : "do"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -3623,7 +3467,6 @@ mno {
   data {
     uuid : "f64b41b7-f9e2-4dd1-9aeb-ef2a86e8df17"
     country : "do"
-    provider_type : GSM
     localized_name {
       name : "Viva"
     }
@@ -3640,7 +3483,6 @@ mno {
   data {
     uuid : "1186f07c-e57c-4a5a-b469-b1423cc12fb0"
     country : "dz"
-    provider_type : GSM
     localized_name {
       name : "Djezzy"
     }
@@ -3655,7 +3497,6 @@ mno {
   data {
     uuid : "52507313-8156-4deb-9a13-1e2f7bf4e8dd"
     country : "dz"
-    provider_type : GSM
     localized_name {
       name : "Mobilis"
     }
@@ -3672,7 +3513,6 @@ mno {
   data {
     uuid : "63c4a064-abf0-49c5-8d1e-e17492fa579d"
     country : "dz"
-    provider_type : GSM
     localized_name {
       name : "Nedjma"
     }
@@ -3692,7 +3532,6 @@ mno {
   data {
     uuid : "234d060d-5041-4a1e-8719-368cf47eeee3"
     country : "ec"
-    provider_type : GSM
     localized_name {
       name : "Movistar UMTS"
     }
@@ -3709,7 +3548,6 @@ mno {
   data {
     uuid : "ffdda764-56c0-466b-a2a9-1a0017a127de"
     country : "ec"
-    provider_type : GSM
     localized_name {
       name : "Porta 3G"
     }
@@ -3724,7 +3562,6 @@ mno {
   data {
     uuid : "2ef76adb-8d74-4f76-82c1-db036d2709cf"
     country : "ee"
-    provider_type : GSM
     localized_name {
       name : "EMT"
     }
@@ -3741,7 +3578,6 @@ mno {
   data {
     uuid : "ee911da9-4fac-4064-a347-8bb16c8b65fc"
     country : "ee"
-    provider_type : GSM
     localized_name {
       name : "Elisa"
     }
@@ -3757,7 +3593,6 @@ mno {
   data {
     uuid : "9a53949d-d75f-4d96-bb65-9ec07a60dca2"
     country : "ee"
-    provider_type : GSM
     localized_name {
       name : "Nordea"
     }
@@ -3772,7 +3607,6 @@ mno {
   data {
     uuid : "797afa2b-f2f7-47c7-805b-608651f24f8b"
     country : "ee"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -3789,7 +3623,6 @@ mno {
   data {
     uuid : "27ab2bdf-ba8b-4128-851b-5d9ab1495526"
     country : "eg"
-    provider_type : GSM
     localized_name {
       name : "Etisalat"
     }
@@ -3804,7 +3637,6 @@ mno {
   data {
     uuid : "83cdba5d-c44d-4ae0-8be5-e2ec3aeb9614"
     country : "eg"
-    provider_type : GSM
     localized_name {
       name : "MobiNil"
     }
@@ -3821,7 +3653,6 @@ mno {
   data {
     uuid : "4ec58363-720e-481e-bfc9-f883da5c8c08"
     country : "eg"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -3840,7 +3671,6 @@ mno {
   data {
     uuid : "10022903-5812-4f5b-a3ba-bb4238719fc1"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Amena"
     }
@@ -3857,7 +3687,6 @@ mno {
   data {
     uuid : "c35b5c24-56a9-4a21-aac8-917299f3ce20"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Carrefour Móvil"
     }
@@ -3871,7 +3700,6 @@ mno {
   data {
     uuid : "6e1c553a-46f6-4c10-a40b-bfbeca3543be"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Eroski Móvil"
     }
@@ -3891,7 +3719,6 @@ mno {
   data {
     uuid : "d5b5d2df-3d4a-4238-b710-7d3e86ba365a"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Euskaltel"
     }
@@ -3908,7 +3735,6 @@ mno {
   data {
     uuid : "60e8171a-004c-4e36-a96e-16136b3bd69b"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Jazztel"
     }
@@ -3925,7 +3751,6 @@ mno {
   data {
     uuid : "7a621d65-a7ab-42b5-9fa3-736c6b1ff6d3"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "LlamaYa móvil"
     }
@@ -3940,7 +3765,6 @@ mno {
   data {
     uuid : "29312b25-e5c7-47cc-b83c-32f9a10437d3"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Movistar (Telefónica)"
     }
@@ -3977,7 +3801,6 @@ mno {
     data {
       uuid : "8043b7a1-70a4-4fdd-b55a-36748cd50c18"
       country : "es"
-      provider_type : GSM
       localized_name {
         name : "Tuenti Móvil"
       }
@@ -3995,7 +3818,6 @@ mno {
   data {
     uuid : "a44316cc-ef43-40ae-af66-8933f1fc5299"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Másmovil"
     }
@@ -4010,7 +3832,6 @@ mno {
   data {
     uuid : "f571036e-c1dc-4ee8-ad11-65db4d6d652b"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "ONO"
     }
@@ -4027,7 +3848,6 @@ mno {
   data {
     uuid : "b0f48bbf-b268-4b6e-a9bc-d3eca7ecc875"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -4051,7 +3871,6 @@ mno {
   data {
     uuid : "01df2cc0-ef4f-4ead-9085-d6e01e44fd81"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Pepephone"
     }
@@ -4075,7 +3894,6 @@ mno {
   data {
     uuid : "668b62f8-ccce-4ad3-82be-03c7e8bdc0f4"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Simyo"
     }
@@ -4092,7 +3910,6 @@ mno {
   data {
     uuid : "577ec0ab-5fdd-4eb6-ad05-85d1b03165b8"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Telecable"
     }
@@ -4109,7 +3926,6 @@ mno {
   data {
     uuid : "f0ca6fa1-1953-47b2-83e5-ba7dc32b2bf0"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -4142,7 +3958,6 @@ mno {
   data {
     uuid : "84b6f439-e3ca-4962-bd56-257ea08fdfa3"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Yoigo"
     }
@@ -4159,7 +3974,6 @@ mno {
   data {
     uuid : "97bc2601-0f53-44ab-b3ff-03557a8e1616"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "Happy Móvil/moviData"
     }
@@ -4176,7 +3990,6 @@ mno {
   data {
     uuid : "1fb28046-9853-46bd-95df-6c7f156dba10"
     country : "es"
-    provider_type : GSM
     localized_name {
       name : "móbil R (Mundo-R)"
     }
@@ -4191,7 +4004,6 @@ mno {
   data {
     uuid : "f09980f3-4e74-468a-a42d-becfb6667ab2"
     country : "et"
-    provider_type : CDMA
     localized_name {
       name : "Ethio Telecom"
     }
@@ -4210,7 +4022,6 @@ mno {
   data {
     uuid : "4798c31e-1cfe-40d8-885f-7eae7493cda4"
     country : "et"
-    provider_type : GSM
     localized_name {
       name : "Ethio Telecom"
     }
@@ -4227,7 +4038,6 @@ mno {
   data {
     uuid : "fd0ed6b5-8f85-4082-8b1c-1b2a6e8b4550"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Dna"
     }
@@ -4247,7 +4057,6 @@ mno {
   data {
     uuid : "d88e91c4-5970-4282-ae62-1751e1d9a288"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Dna"
     }
@@ -4265,7 +4074,6 @@ mno {
   data {
     uuid : "5e0e798d-3f6b-4d57-882b-385ed6d76395"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Dna"
     }
@@ -4283,7 +4091,6 @@ mno {
   data {
     uuid : "0a55912f-cdc9-4226-a34f-5cc79ab1c70d"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Dna"
     }
@@ -4301,7 +4108,6 @@ mno {
   data {
     uuid : "4eb2f904-146c-409d-a38d-568b1c852801"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Elisa"
     }
@@ -4316,7 +4122,6 @@ mno {
   data {
     uuid : "71eb461e-d17b-4a02-8787-efee42da86cb"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Kuiri"
     }
@@ -4334,7 +4139,6 @@ mno {
   data {
     uuid : "71b0df7c-042e-438f-944c-84b8d7e8a445"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Saunalahti"
     }
@@ -4370,7 +4174,6 @@ mno {
   data {
     uuid : "02d6a374-d53d-4f2f-b93a-fd1ed18338ce"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Sonera"
     }
@@ -4395,7 +4198,6 @@ mno {
   data {
     uuid : "e1713703-f67c-40eb-83aa-4176952d2e32"
     country : "fi"
-    provider_type : GSM
     localized_name {
       name : "Welho"
     }
@@ -4412,7 +4214,6 @@ mno {
   data {
     uuid : "fcf0e7f0-fb4a-488e-a054-8de79c6552ad"
     country : "fj"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -4433,7 +4234,6 @@ mno {
   data {
     uuid : "878ba8c8-24b7-4323-9dd3-319e4c9eca4b"
     country : "fo"
-    provider_type : GSM
     localized_name {
       name : "Vodafone FO"
     }
@@ -4448,7 +4248,6 @@ mno {
   data {
     uuid : "f0e3b521-826a-4003-9a98-78035a96d1e2"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "A Mobile (Auchan Telecom)"
     }
@@ -4462,7 +4261,6 @@ mno {
   data {
     uuid : "e8f7409a-0ff4-44b9-974f-02266f8bf902"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "Bouygues Telecom"
     }
@@ -4510,7 +4308,6 @@ mno {
   data {
     uuid : "61a4d944-e4cf-49d3-b674-ab7fc4e82e69"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "Free Mobile"
     }
@@ -4536,7 +4333,6 @@ mno {
   data {
     uuid : "cbf0cb24-ecd4-4374-827b-fe19f233da39"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -4605,7 +4401,6 @@ mno {
     data {
       uuid : "a650fbb6-da7e-4b18-8aee-e20cdfa8da13"
       country : "fr"
-      provider_type : GSM
       localized_name {
         name : "TEN"
       }
@@ -4631,7 +4426,6 @@ mno {
   data {
     uuid : "59345436-718c-4462-8811-b9ac659b442d"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "SFR"
     }
@@ -4690,7 +4484,6 @@ mno {
   data {
     uuid : "78a5af23-1843-4cb5-8d20-d3ad32d870b3"
     country : "fr"
-    provider_type : GSM
     localized_name {
       name : "Transatel Telecom"
     }
@@ -4705,7 +4498,6 @@ mno {
   data {
     uuid : "655130aa-5cb7-45fb-8bfd-27ef7c55637b"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "3"
     }
@@ -4746,7 +4538,6 @@ mno {
   data {
     uuid : "efddf9a3-cc46-41da-905a-e943f17f8594"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "Asda Mobile"
     }
@@ -4763,7 +4554,6 @@ mno {
   data {
     uuid : "802f48f1-4c6b-48a7-b7ac-47279a736104"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "BT Mobile"
     }
@@ -4780,7 +4570,6 @@ mno {
   data {
     uuid : "8139d0cd-6b5f-498d-9b2d-101650d02551"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "O2"
     }
@@ -4849,7 +4638,6 @@ mno {
   data {
     uuid : "ce2b568e-210b-4714-898f-f8d986e09248"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -4915,7 +4703,6 @@ mno {
   data {
     uuid : "5b21ac02-3508-4c27-b8ef-b145e7a71ee7"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -4939,7 +4726,6 @@ mno {
   data {
     uuid : "b8239851-50ce-41cb-ad8e-6f3104e508d9"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "TalkTalk"
     }
@@ -4956,7 +4742,6 @@ mno {
   data {
     uuid : "99df9a24-8bd7-4220-bdb3-3d519ba4756c"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "Tesco Mobile"
     }
@@ -4976,7 +4761,6 @@ mno {
   data {
     uuid : "5d29ad43-a3ac-4475-95cc-80957d153b7c"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "Virgin Mobile"
     }
@@ -4998,7 +4782,6 @@ mno {
   data {
     uuid : "bd92670e-80a1-448e-bcd5-8ee750ff0f5c"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "Vodafone UK"
     }
@@ -5057,7 +4840,6 @@ mno {
   data {
     uuid : "811c6080-2c47-4786-ae21-5e4cfe9699aa"
     country : "gb"
-    provider_type : GSM
     localized_name {
       name : "giffgaff"
     }
@@ -5079,7 +4861,6 @@ mno {
   data {
     uuid : "d264b2f3-a7e8-4332-8b34-f034e762ba9f"
     country : "ge"
-    provider_type : GSM
     localized_name {
       name : "Geocell"
     }
@@ -5096,7 +4877,6 @@ mno {
   data {
     uuid : "3cb56264-03ee-4b8e-951f-d88cc09163f0"
     country : "gg"
-    provider_type : GSM
     localized_name {
       name : "Airtel-Vodaphone"
     }
@@ -5111,7 +4891,6 @@ mno {
   data {
     uuid : "bc721d7a-072c-4eb5-a94f-60ba0e617a37"
     country : "gg"
-    provider_type : GSM
     localized_name {
       name : "Sure (Cable & Wireless)"
     }
@@ -5135,7 +4914,6 @@ mno {
   data {
     uuid : "c403b6ab-ab5f-426d-8b53-991f03421e31"
     country : "gg"
-    provider_type : GSM
     localized_name {
       name : "Wave Telecom"
     }
@@ -5152,7 +4930,6 @@ mno {
   data {
     uuid : "0cc5676d-4872-4afe-966a-e1a756e4c6d6"
     country : "gh"
-    provider_type : GSM
     localized_name {
       name : "Airtel"
     }
@@ -5167,7 +4944,6 @@ mno {
   data {
     uuid : "0b3f6028-a379-4bc1-ac90-e07841e64126"
     country : "gh"
-    provider_type : CDMA
     localized_name {
       name : "Expresso"
     }
@@ -5186,7 +4962,6 @@ mno {
   data {
     uuid : "640272a1-5a1c-46d9-9649-0a7fc23b1d16"
     country : "gh"
-    provider_type : GSM
     localized_name {
       name : "GloGhana"
     }
@@ -5201,7 +4976,6 @@ mno {
   data {
     uuid : "97374fd5-9212-4a15-a536-80a471317b9d"
     country : "gh"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -5216,7 +4990,6 @@ mno {
   data {
     uuid : "72d67ad0-e2fb-4302-a659-28d98718c062"
     country : "gh"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -5232,7 +5005,6 @@ mno {
   data {
     uuid : "58688593-666b-4609-bbdc-8b451d75c2a5"
     country : "gh"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -5247,7 +5019,6 @@ mno {
   data {
     uuid : "42024d62-662e-4c7e-a9d9-362e2ae82428"
     country : "gl"
-    provider_type : GSM
     localized_name {
       name : "Tele Greenland A/S"
     }
@@ -5261,7 +5032,6 @@ mno {
   data {
     uuid : "f42861fc-0abd-41a3-91f3-3efa9342ea35"
     country : "gr"
-    provider_type : GSM
     localized_name {
       name : "Cosmote"
     }
@@ -5276,7 +5046,6 @@ mno {
   data {
     uuid : "3aee3497-0e4e-49f5-9c83-61bf0c876522"
     country : "gr"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -5302,7 +5071,6 @@ mno {
   data {
     uuid : "68e9bb1d-709a-4675-80be-a3c3d292e717"
     country : "gr"
-    provider_type : GSM
     localized_name {
       name : "Wind"
     }
@@ -5320,7 +5088,6 @@ mno {
   data {
     uuid : "4edcf818-13e9-462b-9ca0-7b80c419efbd"
     country : "gt"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -5335,7 +5102,6 @@ mno {
   data {
     uuid : "9c6abf94-a908-41f4-9e10-1836bb0684ae"
     country : "gt"
-    provider_type : GSM
     localized_name {
       name : "Comcel / Tigo"
     }
@@ -5352,7 +5118,6 @@ mno {
   data {
     uuid : "515d4043-fa1a-4450-ad44-6e4f57fb98f2"
     country : "gt"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -5369,7 +5134,6 @@ mno {
   data {
     uuid : "d5caa60d-63bc-42c3-98a9-3d9989002c33"
     country : "gy"
-    provider_type : GSM
     localized_name {
       name : "DigiCel"
     }
@@ -5386,7 +5150,6 @@ mno {
   data {
     uuid : "4c9feaeb-cab4-4116-8b8e-f73a175f4d26"
     country : "gy"
-    provider_type : GSM
     localized_name {
       name : "GT&T Cellink Plus"
     }
@@ -5403,7 +5166,6 @@ mno {
   data {
     uuid : "b4e27a53-6f03-4286-b572-073abca3be44"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "CSL"
     }
@@ -5421,7 +5183,6 @@ mno {
   data {
     uuid : "031b333e-e1d9-4d02-a295-a799f47b9708"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "China Mobile"
     }
@@ -5436,7 +5197,6 @@ mno {
   data {
     uuid : "4a6ea18d-8b41-49c8-9945-3e401d6e15b6"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "New World"
     }
@@ -5451,7 +5211,6 @@ mno {
   data {
     uuid : "b3e298a9-4b4d-4a46-b051-7049f39e464e"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -5466,7 +5225,6 @@ mno {
   data {
     uuid : "b5a1e90a-e4e9-4886-aa65-cbb2c5d6b295"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "PCCW (Sunday)"
     }
@@ -5497,7 +5255,6 @@ mno {
   data {
     uuid : "e5e2598d-2754-4b90-8d43-52fd6db51daa"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "SmarTone-Vodafone"
     }
@@ -5512,7 +5269,6 @@ mno {
   data {
     uuid : "e8fd9966-e71e-4382-9b34-51989763f6cf"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "Sunday"
     }
@@ -5527,7 +5283,6 @@ mno {
   data {
     uuid : "0dbf0f37-23e6-4745-9c98-332cf1e952c8"
     country : "hk"
-    provider_type : GSM
     localized_name {
       name : "Three"
     }
@@ -5543,7 +5298,6 @@ mno {
   data {
     uuid : "e52e25a0-aa17-4442-b7ec-2f7559009c1a"
     country : "hn"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -5558,7 +5312,6 @@ mno {
   data {
     uuid : "d91410e4-2ce5-47b6-9b95-99d7fea09b04"
     country : "hr"
-    provider_type : GSM
     localized_name {
       name : "CARNet Tele2"
     }
@@ -5575,7 +5328,6 @@ mno {
   data {
     uuid : "da87c5fc-2c15-4c8c-83e2-493133f36ec6"
     country : "hr"
-    provider_type : GSM
     localized_name {
       name : "CARNet VIPNET"
     }
@@ -5592,7 +5344,6 @@ mno {
   data {
     uuid : "da51869a-7636-4266-8fdc-1441e0734eab"
     country : "hr"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -5608,7 +5359,6 @@ mno {
   data {
     uuid : "279df9a3-8539-4666-b0c4-b52cb6f8bf68"
     country : "hr"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -5624,7 +5374,6 @@ mno {
   data {
     uuid : "b944e301-abbf-4fde-af83-23652d0903ba"
     country : "hr"
-    provider_type : GSM
     localized_name {
       name : "VIPNET"
     }
@@ -5670,7 +5419,6 @@ mno {
   data {
     uuid : "f7944fbe-84fc-458f-ac86-9e77bff121d6"
     country : "hu"
-    provider_type : GSM
     localized_name {
       name : "DIGI"
     }
@@ -5688,7 +5436,6 @@ mno {
   data {
     uuid : "f0a9128b-da1c-44d4-902c-4f6790c049b3"
     country : "hu"
-    provider_type : GSM
     localized_name {
       name : "Invitel"
     }
@@ -5705,7 +5452,6 @@ mno {
   data {
     uuid : "8f5d9b9f-5693-4d71-a0b3-3a411bf1f56c"
     country : "hu"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -5731,7 +5477,6 @@ mno {
   data {
     uuid : "4197b6cc-9629-4ffb-9343-c7490cb3dbea"
     country : "hu"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -5751,7 +5496,6 @@ mno {
   data {
     uuid : "270254ad-7772-43f8-95d3-4f95b496a600"
     country : "hu"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -5797,7 +5541,6 @@ mno {
   data {
     uuid : "ed358a7d-77c1-425e-b835-e38a32e9510a"
     country : "id"
-    provider_type : GSM
     localized_name {
       name : "3"
     }
@@ -5828,7 +5571,6 @@ mno {
   data {
     uuid : "d1745309-6af3-41f3-8aa3-b53fa0716407"
     country : "id"
-    provider_type : GSM
     localized_name {
       name : "AXIS"
     }
@@ -5845,7 +5587,6 @@ mno {
   data {
     uuid : "553d3044-0d8f-4413-af58-80d5f8694d68"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "Ceria"
     }
@@ -5864,7 +5605,6 @@ mno {
   data {
     uuid : "718d0984-224f-452e-a6b8-22f613855247"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "Esia"
     }
@@ -5876,7 +5616,6 @@ mno {
   data {
     uuid : "04588c1a-a0cf-4f5b-a513-aa48ad9ec9e3"
     country : "id"
-    provider_type : GSM
     localized_name {
       name : "Excelcomindo (XL)"
     }
@@ -5895,7 +5634,6 @@ mno {
   data {
     uuid : "a324c633-701e-41a6-b0a5-c77ce8c3c3d0"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "Fren"
     }
@@ -5915,7 +5653,6 @@ mno {
   data {
     uuid : "9bbca1bc-ad48-466b-a1aa-0bf1033e6ba7"
     country : "id"
-    provider_type : GSM
     localized_name {
       name : "Indosat"
     }
@@ -5952,7 +5689,6 @@ mno {
   data {
     uuid : "aeef7d31-1bdb-4252-8796-6cb2026c46c6"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "SMART"
     }
@@ -5972,7 +5708,6 @@ mno {
   data {
     uuid : "7c28d871-4cca-41c3-9a6f-c2d405dc1576"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "StarOne"
     }
@@ -5993,7 +5728,6 @@ mno {
   data {
     uuid : "759a5e5d-a9c2-4fd2-afbc-0758edf7e020"
     country : "id"
-    provider_type : CDMA
     localized_name {
       name : "Telkom Flexy"
     }
@@ -6013,7 +5747,6 @@ mno {
   data {
     uuid : "19f3bc92-9158-4b75-ac44-a416d7a6b6cc"
     country : "id"
-    provider_type : GSM
     localized_name {
       name : "Telkomsel"
     }
@@ -6049,7 +5782,6 @@ mno {
   data {
     uuid : "2de39b14-c3ba-4143-abb5-c67a390034ee"
     country : "ie"
-    provider_type : GSM
     requires_roaming : true
     localized_name {
       name : "Cubic"
@@ -6069,7 +5801,6 @@ mno {
   data {
     uuid : "1eadb2e5-384b-4f9e-b024-c05eed8725e2"
     country : "ie"
-    provider_type : GSM
     localized_name {
       name : "Meteor"
     }
@@ -6107,7 +5838,6 @@ mno {
     data {
       uuid : "660d2d0c-a60b-42be-aff6-2ed8a11ce766"
       country : "ie"
-      provider_type : GSM
       localized_name {
         name : "E-Mobile"
       }
@@ -6128,7 +5858,6 @@ mno {
   data {
     uuid : "76661079-5e13-424e-9fd4-d49e406a4a88"
     country : "ie"
-    provider_type : GSM
     localized_name {
       name : "O2"
     }
@@ -6166,7 +5895,6 @@ mno {
   data {
     uuid : "15f3d6f6-68d5-4d80-a762-4c222ef2f627"
     country : "ie"
-    provider_type : GSM
     localized_name {
       name : "Three Ireland"
     }
@@ -6183,7 +5911,6 @@ mno {
   data {
     uuid : "e0de4086-9706-470d-9230-4bf30673d4b9"
     country : "ie"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -6219,7 +5946,6 @@ mno {
   data {
     uuid : "54cc88ec-c63e-4e4b-b727-e6ecfa1f9116"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "CellCom"
     }
@@ -6234,7 +5960,6 @@ mno {
   data {
     uuid : "d08a78c0-9a77-4f20-bb6a-913075358178"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "GolanTelecom"
     }
@@ -6249,7 +5974,6 @@ mno {
   data {
     uuid : "84079bab-548b-4949-9f37-0f36686490ad"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "Home Cellular"
     }
@@ -6264,7 +5988,6 @@ mno {
   data {
     uuid : "3b7323fc-d397-4797-9c42-775b42f98bbf"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "Hot Mobile"
     }
@@ -6279,7 +6002,6 @@ mno {
   data {
     uuid : "75bf97b6-b1f0-4ca9-8bd8-fc6c168f21bd"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -6299,7 +6021,6 @@ mno {
   data {
     uuid : "dda6356b-609b-4669-ac52-e9a9aa58c0c1"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "Pelephone"
     }
@@ -6319,7 +6040,6 @@ mno {
   data {
     uuid : "3a6aa8d0-e199-46d8-9df9-56629ef61c10"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "Rami Levi"
     }
@@ -6336,7 +6056,6 @@ mno {
   data {
     uuid : "aec74303-7065-4eee-83ee-97a4339c3053"
     country : "il"
-    provider_type : GSM
     localized_name {
       name : "YouPhone 3G"
     }
@@ -6351,7 +6070,6 @@ mno {
   data {
     uuid : "16c4b372-7746-4930-b27b-8df7c4481be8"
     country : "im"
-    provider_type : GSM
     localized_name {
       name : "Manx Telecom"
     }
@@ -6366,7 +6084,6 @@ mno {
   data {
     uuid : "addce708-3bb8-45e1-ae56-afed97271b25"
     country : "im"
-    provider_type : GSM
     localized_name {
       name : "Sure (Cable & Wireless)"
     }
@@ -6391,7 +6108,6 @@ mno {
   data {
     uuid : "b435d2f3-2899-46a6-b11e-f46854fef102"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "AIRCEL"
     }
@@ -6446,7 +6162,6 @@ mno {
   data {
     uuid : "4854086c-46fe-411d-9267-8c346751568d"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Airtel"
     }
@@ -6485,7 +6200,6 @@ mno {
   data {
     uuid : "bdcdc85e-c97e-4b84-a9eb-44f9696e64e2"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "BSNL/CellOne"
     }
@@ -6569,7 +6283,6 @@ mno {
   data {
     uuid : "3233f8cb-1c5d-4720-b82e-e4d99b5dd0bd"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Idea Cellular"
     }
@@ -6598,7 +6311,6 @@ mno {
   data {
     uuid : "12f15f3e-de95-46b9-96e2-aba61517068d"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "MTNL"
     }
@@ -6649,7 +6361,6 @@ mno {
   data {
     uuid : "d9d788e1-7838-4167-aa96-d0926cb6ebad"
     country : "in"
-    provider_type : CDMA
     localized_name {
       name : "MTS"
     }
@@ -6663,7 +6374,6 @@ mno {
   data {
     uuid : "a1aba289-0825-43de-90b0-b7b4a9f5cdeb"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Reliance"
     }
@@ -6700,7 +6410,6 @@ mno {
   data {
     uuid : "5a17f4bf-1768-4ec3-9d36-1eefe1ec7ebd"
     country : "in"
-    provider_type : CDMA
     localized_name {
       name : "Reliance Netconnect"
     }
@@ -6732,7 +6441,6 @@ mno {
   data {
     uuid : "2613eb58-82ab-480e-8c1f-abf19cc2bea3"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Spice telecom"
     }
@@ -6756,7 +6464,6 @@ mno {
   data {
     uuid : "fd585f73-78e4-4cca-891b-0eb475c4c0fa"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Tata Docomo"
     }
@@ -6828,7 +6535,6 @@ mno {
   data {
     uuid : "9157d542-562f-45ea-b16f-8a360d12fe8b"
     country : "in"
-    provider_type : CDMA
     localized_name {
       name : "Tata Indicom (Photon+)"
     }
@@ -6848,7 +6554,6 @@ mno {
   data {
     uuid : "8b751fca-4080-446e-a402-a8ae9cc06f09"
     country : "in"
-    provider_type : CDMA
     localized_name {
       name : "Tata Indicom (Plug2Surf)"
     }
@@ -6867,7 +6572,6 @@ mno {
   data {
     uuid : "550e03f2-76f6-46d0-96e1-f541ecd4acbf"
     country : "in"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -6913,7 +6617,6 @@ mno {
   data {
     uuid : "7d897bb5-619f-49e3-8b6b-127423f21659"
     country : "iq"
-    provider_type : GSM
     localized_name {
       name : "Asia Cell"
     }
@@ -6928,7 +6631,6 @@ mno {
   data {
     uuid : "9e25f149-3ec1-4a18-9ae3-763fb4ed98f4"
     country : "iq"
-    provider_type : CDMA
     localized_name {
       name : "Itisaluna"
     }
@@ -6948,7 +6650,6 @@ mno {
   data {
     uuid : "d3704d0d-2598-4e9a-b0b1-669c8e6046b1"
     country : "iq"
-    provider_type : CDMA
     localized_name {
       name : "Kalimat Telecom"
     }
@@ -6960,7 +6661,6 @@ mno {
   data {
     uuid : "e87c10ad-98dc-4e64-b1ae-514e433425e2"
     country : "iq"
-    provider_type : GSM
     localized_name {
       name : "Korek"
     }
@@ -6977,7 +6677,6 @@ mno {
   data {
     uuid : "ddc4f279-2ada-44f2-b198-1cb9e767f1f3"
     country : "iq"
-    provider_type : CDMA
     localized_name {
       name : "Omnea Telecom"
     }
@@ -6996,7 +6695,6 @@ mno {
   data {
     uuid : "a5021ab9-d347-4aaa-ab52-8b2bf96ed1ba"
     country : "ir"
-    provider_type : GSM
     localized_name {
       name : "ایرانسل"
     }
@@ -7011,7 +6709,6 @@ mno {
   data {
     uuid : "b8e79205-1705-4a89-8f4c-184d134a5d7a"
     country : "ir"
-    provider_type : GSM
     localized_name {
       name : "همراه اول"
     }
@@ -7026,7 +6723,6 @@ mno {
   data {
     uuid : "0939e20a-7de1-4558-806f-d86c76e1e2c5"
     country : "is"
-    provider_type : GSM
     localized_name {
       name : "Nova"
     }
@@ -7043,7 +6739,6 @@ mno {
   data {
     uuid : "56076a6b-22c1-4330-8ac9-003072e83cc4"
     country : "is"
-    provider_type : GSM
     localized_name {
       name : "Síminn"
     }
@@ -7060,7 +6755,6 @@ mno {
   data {
     uuid : "05d30497-8bc9-404d-b999-10a88f29bc2f"
     country : "is"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -7078,7 +6772,6 @@ mno {
   data {
     uuid : "ad3e7cca-9869-48b6-a37d-5710251672d3"
     country : "it"
-    provider_type : GSM
     localized_name {
       name : "3"
     }
@@ -7106,7 +6799,6 @@ mno {
     data {
       uuid : "3929c458-ff6e-4f7b-a77e-a6bd27012a56"
       country : "it"
-      provider_type : GSM
       localized_name {
         name : "Bip"
       }
@@ -7127,7 +6819,6 @@ mno {
     data {
       uuid : "113bb76a-4a83-41b4-afd1-be8106fb55ea"
       country : "it"
-      provider_type : GSM
       localized_name {
         name : "Fastweb"
       }
@@ -7154,7 +6845,6 @@ mno {
   data {
     uuid : "670247cf-7801-41b4-bcfb-d6250fbb4ca3"
     country : "it"
-    provider_type : GSM
     localized_name {
       name : "Nòverca"
     }
@@ -7185,7 +6875,6 @@ mno {
   data {
     uuid : "1bacb5f6-cad0-4617-8685-7d63a79fa437"
     country : "it"
-    provider_type : GSM
     localized_name {
       name : "TIM"
     }
@@ -7216,7 +6905,6 @@ mno {
     data {
       uuid : "2614d4d0-cb01-4443-9917-929ff2e0acfc"
       country : "it"
-      provider_type : GSM
       localized_name {
         name : "CoopVoce"
       }
@@ -7237,7 +6925,6 @@ mno {
     data {
       uuid : "9d0a0879-d00b-4ac6-a895-3dffa841b830"
       country : "it"
-      provider_type : GSM
       localized_name {
         name : "Tiscali"
       }
@@ -7256,7 +6943,6 @@ mno {
   data {
     uuid : "201d03e2-af6c-45b7-8a06-1727050ae148"
     country : "it"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -7284,7 +6970,6 @@ mno {
     data {
       uuid : "8e0f9b70-d9b0-41ed-9e91-184c920bdd8b"
       country : "it"
-      provider_type : GSM
       localized_name {
         name : "PosteMobile"
       }
@@ -7300,7 +6985,6 @@ mno {
   data {
     uuid : "2dce2d99-ccfe-45a9-a050-415342727a6c"
     country : "it"
-    provider_type : GSM
     localized_name {
       name : "Wind"
     }
@@ -7332,7 +7016,6 @@ mno {
   data {
     uuid : "ca367f16-3e64-4676-bddf-8e94b6168294"
     country : "je"
-    provider_type : GSM
     localized_name {
       name : "Airtel-Vodaphone"
     }
@@ -7347,7 +7030,6 @@ mno {
   data {
     uuid : "d3c80251-0fc8-4c96-b791-a2dc42b167d0"
     country : "je"
-    provider_type : GSM
     localized_name {
       name : "Jersey Telecom"
     }
@@ -7366,7 +7048,6 @@ mno {
   data {
     uuid : "812c3f0a-e7b6-40a8-a07c-d0b5f2f8ce31"
     country : "je"
-    provider_type : GSM
     localized_name {
       name : "Sure (Cable & Wireless)"
     }
@@ -7390,7 +7071,6 @@ mno {
   data {
     uuid : "9c4c5441-df24-447d-b0e7-bb0b71dd93a5"
     country : "jm"
-    provider_type : GSM
     localized_name {
       name : "Cable & Wireless"
     }
@@ -7405,7 +7085,6 @@ mno {
   data {
     uuid : "5070c171-41b3-4eaf-acc3-a01a62ea04dc"
     country : "jm"
-    provider_type : GSM
     localized_name {
       name : "Digicel"
     }
@@ -7424,7 +7103,6 @@ mno {
   data {
     uuid : "b3753c48-9557-4022-b402-ac4a02d8f7f0"
     country : "jo"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -7444,7 +7122,6 @@ mno {
   data {
     uuid : "3bc51cf4-3b34-4428-986a-f94c474108ee"
     country : "jo"
-    provider_type : GSM
     localized_name {
       name : "Zain"
     }
@@ -7464,7 +7141,6 @@ mno {
   data {
     uuid : "3f8a62bb-8998-44a0-9feb-4986ed27e394"
     country : "jp"
-    provider_type : GSM
     localized_name {
       name : "NTTdocomo"
     }
@@ -7534,7 +7210,6 @@ mno {
     data {
       uuid : "186fd4e4-ca27-4ae9-8334-e095edd8ceaf"
       country : "jp"
-      provider_type : GSM
       localized_name {
         name : "b-mobile"
       }
@@ -7556,7 +7231,6 @@ mno {
   data {
     uuid : "06e5465c-1f7e-41c3-ac84-abb1446ad19a"
     country : "jp"
-    provider_type : GSM
     localized_name {
       name : "Softbank Mobile"
     }
@@ -7592,7 +7266,6 @@ mno {
   data {
     uuid : "3f473ca4-ec5a-49bf-9b0d-3643cccf6a3e"
     country : "jp"
-    provider_type : CDMA
     localized_name {
       name : "au(KDDI)"
     }
@@ -7613,7 +7286,6 @@ mno {
   data {
     uuid : "b32527a5-45e2-4c4d-8fb5-8b0a9162e9e4"
     country : "jp"
-    provider_type : GSM
     localized_name {
       name : "e-mobile"
     }
@@ -7630,7 +7302,6 @@ mno {
   data {
     uuid : "658734cd-156c-48f1-9242-a9f42bba2e2f"
     country : "ke"
-    provider_type : GSM
     localized_name {
       name : "Airtel"
     }
@@ -7645,7 +7316,6 @@ mno {
   data {
     uuid : "8d56cb7a-82e0-4e75-a669-e2555498651f"
     country : "ke"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -7660,7 +7330,6 @@ mno {
   data {
     uuid : "11e54406-bf07-4d3c-94e0-7bc0ea09cd81"
     country : "ke"
-    provider_type : CDMA
     localized_name {
       name : "Orange Fixed Plus"
     }
@@ -7671,7 +7340,6 @@ mno {
   data {
     uuid : "949215e4-b27b-4fd5-a263-4fc2a93cf7c9"
     country : "ke"
-    provider_type : GSM
     localized_name {
       name : "Safaricom"
     }
@@ -7706,7 +7374,6 @@ mno {
   data {
     uuid : "e63514fd-2fbd-4a8c-a634-ba436313dbe9"
     country : "ke"
-    provider_type : GSM
     localized_name {
       name : "yu (Econet)"
     }
@@ -7721,7 +7388,6 @@ mno {
   data {
     uuid : "5041427c-c73c-4cd2-9b80-3cd9f552407c"
     country : "kg"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -7736,7 +7402,6 @@ mno {
   data {
     uuid : "69a944ae-5e30-4493-8664-4b6b77032679"
     country : "kg"
-    provider_type : CDMA
     localized_name {
       name : "FONEX"
     }
@@ -7755,7 +7420,6 @@ mno {
   data {
     uuid : "3881429c-8b6d-4a16-9f00-5bfe3e6b8007"
     country : "kg"
-    provider_type : GSM
     localized_name {
       name : "MegaCom"
     }
@@ -7770,7 +7434,6 @@ mno {
   data {
     uuid : "353d6f96-819b-421d-8c47-afebf556cfeb"
     country : "kg"
-    provider_type : GSM
     localized_name {
       name : "O!"
     }
@@ -7785,7 +7448,6 @@ mno {
   data {
     uuid : "558e377d-8c1d-4f36-9957-e31b10359a61"
     country : "kg"
-    provider_type : CDMA
     localized_name {
       name : "nexi (kg)"
     }
@@ -7810,7 +7472,6 @@ mno {
   data {
     uuid : "b8927dc2-1c36-4129-8281-930cad0d91e6"
     country : "kg"
-    provider_type : CDMA
     localized_name {
       name : "nexi (mir+kg)"
     }
@@ -7835,7 +7496,6 @@ mno {
   data {
     uuid : "d5a915f6-ec98-45d0-8f5a-a31b97634bc1"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -7850,7 +7510,6 @@ mno {
   data {
     uuid : "bbd637b7-7c9a-428a-8e14-371bfe092e18"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Cellcard"
     }
@@ -7867,7 +7526,6 @@ mno {
   data {
     uuid : "2448014f-88ae-42f8-a9a9-6f60cd02aa61"
     country : "kh"
-    provider_type : CDMA
     localized_name {
       name : "Excell"
     }
@@ -7878,7 +7536,6 @@ mno {
   data {
     uuid : "bcd567db-8562-4ad2-83a8-46c5a895de6f"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Hello"
     }
@@ -7893,7 +7550,6 @@ mno {
   data {
     uuid : "b57e00ae-8fd1-4ee2-b3ff-ec6145547873"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Metfone"
     }
@@ -7908,7 +7564,6 @@ mno {
   data {
     uuid : "d17a7490-6a03-433e-9e69-d1afe0ee4311"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Mfone"
     }
@@ -7923,7 +7578,6 @@ mno {
   data {
     uuid : "a7671901-2ba1-4bb8-ab2a-d5f20dce747e"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "Smart Mobile"
     }
@@ -7938,7 +7592,6 @@ mno {
   data {
     uuid : "e1fa2421-19ab-4e71-898c-584cf040a169"
     country : "kh"
-    provider_type : GSM
     localized_name {
       name : "qb"
     }
@@ -7953,7 +7606,6 @@ mno {
   data {
     uuid : "59e7a5b4-5bfc-458b-b933-f03fe577c06b"
     country : "kr"
-    provider_type : CDMA
     localized_name {
       name : "KTF"
     }
@@ -7972,7 +7624,6 @@ mno {
   data {
     uuid : "1349247a-5352-46fb-8ef1-163e4d7c29d1"
     country : "kr"
-    provider_type : GSM
     localized_name {
       name : "KT"
     }
@@ -7996,7 +7647,6 @@ mno {
   data {
     uuid : "dd83ee11-37e9-406b-bf90-c4e6e92293d9"
     country : "kr"
-    provider_type : GSM
     localized_name {
       name : "LGUPlus"
     }
@@ -8011,7 +7661,6 @@ mno {
   data {
     uuid : "980f8e30-4b00-4e7b-a04c-fb5d432e6da2"
     country : "kr"
-    provider_type : CDMA
     localized_name {
       name : "LGUPlus"
     }
@@ -8022,7 +7671,6 @@ mno {
   data {
     uuid : "10795ffd-7192-4097-acfe-168357c085cf"
     country : "kr"
-    provider_type : CDMA
     localized_name {
       name : "SKTelecom"
     }
@@ -8040,7 +7688,6 @@ mno {
   data {
     uuid : "51e289c6-2153-4b9a-881c-e2a5fcc31cc3"
     country : "kr"
-    provider_type : GSM
     localized_name {
       name : "SKTelecom"
     }
@@ -8064,7 +7711,6 @@ mno {
   data {
     uuid : "9501deea-1f49-4c6c-ae0b-c45ed905f6e8"
     country : "kw"
-    provider_type : GSM
     localized_name {
       name : "Viva"
     }
@@ -8079,7 +7725,6 @@ mno {
   data {
     uuid : "6cbb935c-97e7-4cfa-b4f9-a880e16be362"
     country : "kw"
-    provider_type : GSM
     localized_name {
       name : "Wataniya"
     }
@@ -8094,7 +7739,6 @@ mno {
   data {
     uuid : "6f3d6a85-1ce0-4cbe-8640-375a3141b044"
     country : "kw"
-    provider_type : GSM
     localized_name {
       name : "Zain"
     }
@@ -8120,7 +7764,6 @@ mno {
   data {
     uuid : "b1469f38-3e2b-4f00-878d-a86388d7ed6e"
     country : "kz"
-    provider_type : GSM
     localized_name {
       name : "Activ"
     }
@@ -8135,7 +7778,6 @@ mno {
   data {
     uuid : "2485c2ff-d520-4fde-91eb-171e49d93bc3"
     country : "kz"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -8153,7 +7795,6 @@ mno {
   data {
     uuid : "611686eb-433a-4d33-997e-da390842accd"
     country : "kz"
-    provider_type : CDMA
     localized_name {
       name : "Dalacom"
     }
@@ -8172,7 +7813,6 @@ mno {
   data {
     uuid : "209f3c76-c3b0-43b4-8c0e-3b5cf64a82fc"
     country : "kz"
-    provider_type : GSM
     localized_name {
       name : "K'CELL"
     }
@@ -8187,7 +7827,6 @@ mno {
   data {
     uuid : "62030569-a86c-4c2b-83e2-332ae874791c"
     country : "kz"
-    provider_type : CDMA
     localized_name {
       name : "Pathword"
     }
@@ -8206,7 +7845,6 @@ mno {
   data {
     uuid : "f3a6d8d8-217c-42a7-bad3-d396ffa146e9"
     country : "kz"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -8221,7 +7859,6 @@ mno {
   data {
     uuid : "e0e71a0e-23c3-48c1-b415-5e04a5f98916"
     country : "la"
-    provider_type : GSM
     localized_name {
       name : "Beeline (Tigo)"
     }
@@ -8236,7 +7873,6 @@ mno {
   data {
     uuid : "d7273c79-33e6-46f7-8ebd-22b64df3416c"
     country : "la"
-    provider_type : GSM
     localized_name {
       name : "ETL"
     }
@@ -8252,7 +7888,6 @@ mno {
   data {
     uuid : "22b048f4-af0e-41aa-95bf-1594a5d29a50"
     country : "la"
-    provider_type : GSM
     localized_name {
       name : "Lao Telecom"
     }
@@ -8267,7 +7902,6 @@ mno {
   data {
     uuid : "4cc62603-d632-41c9-8de5-5cb5646908be"
     country : "la"
-    provider_type : GSM
     localized_name {
       name : "Unitel"
     }
@@ -8291,7 +7925,6 @@ mno {
   data {
     uuid : "2e02dda2-27b0-4952-ab9f-639139d147a1"
     country : "lb"
-    provider_type : GSM
     localized_name {
       name : "MTC Touch"
     }
@@ -8306,7 +7939,6 @@ mno {
   data {
     uuid : "a0a076e1-0dc1-462b-83b2-f295155b978a"
     country : "lc"
-    provider_type : GSM
     localized_name {
       name : "Cable & Wireless"
     }
@@ -8321,7 +7953,6 @@ mno {
   data {
     uuid : "9788fc63-e1b1-4377-8e5e-0981ed0c37aa"
     country : "lk"
-    provider_type : GSM
     localized_name {
       name : "Airtel"
     }
@@ -8336,7 +7967,6 @@ mno {
   data {
     uuid : "53005bd0-4d37-47b3-8cb0-4ac1571c22a0"
     country : "lk"
-    provider_type : GSM
     localized_name {
       name : "Dialog GSM"
     }
@@ -8372,7 +8002,6 @@ mno {
   data {
     uuid : "fbc9c4e7-a831-4376-9d66-d23a86eb8a72"
     country : "lk"
-    provider_type : GSM
     localized_name {
       name : "Hutch"
     }
@@ -8387,7 +8016,6 @@ mno {
   data {
     uuid : "85df7627-ce25-40ad-9a11-812b9ab71c37"
     country : "lk"
-    provider_type : GSM
     localized_name {
       name : "Mobitel"
     }
@@ -8402,7 +8030,6 @@ mno {
   data {
     uuid : "a7867c43-3e6d-4c24-a620-31fed508a0b6"
     country : "lk"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -8417,7 +8044,6 @@ mno {
   data {
     uuid : "4c170070-5597-4d91-ac41-c9a212ba7d4a"
     country : "ls"
-    provider_type : GSM
     localized_name {
       name : "Vodacom Lesotho"
     }
@@ -8432,7 +8058,6 @@ mno {
   data {
     uuid : "ba6fa2c1-87d9-4a85-a668-839e5fb82098"
     country : "lt"
-    provider_type : GSM
     localized_name {
       name : "Bite"
     }
@@ -8449,7 +8074,6 @@ mno {
   data {
     uuid : "1e9fd2e1-8a86-4c03-8617-d98ff7ed876a"
     country : "lt"
-    provider_type : GSM
     localized_name {
       name : "Omnitel (contract)"
     }
@@ -8479,7 +8103,6 @@ mno {
   data {
     uuid : "c5176f63-e3c6-4db5-b16d-d87ac92afb6c"
     country : "lt"
-    provider_type : GSM
     localized_name {
       name : "TELE2 GPRS"
     }
@@ -8494,7 +8117,6 @@ mno {
   data {
     uuid : "712bcc83-b6ba-4763-ab04-280f56b199d7"
     country : "lu"
-    provider_type : GSM
     localized_name {
       name : "LUXGSM"
     }
@@ -8511,7 +8133,6 @@ mno {
   data {
     uuid : "56e1c2f0-0f1b-4c0f-bd8d-9b7e2b99b228"
     country : "lu"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -8528,7 +8149,6 @@ mno {
   data {
     uuid : "c0fe0095-9298-4aa4-b094-ccd7773b25f8"
     country : "lu"
-    provider_type : GSM
     localized_name {
       name : "Tango"
     }
@@ -8558,7 +8178,6 @@ mno {
   data {
     uuid : "612723d3-46ea-451e-a81f-ea6ca147499b"
     country : "lu"
-    provider_type : GSM
     localized_name {
       name : "VOXmobile"
     }
@@ -8573,7 +8192,6 @@ mno {
   data {
     uuid : "1e3201fb-c712-4c00-be79-44066766e31d"
     country : "lv"
-    provider_type : GSM
     localized_name {
       name : "Bite"
     }
@@ -8597,7 +8215,6 @@ mno {
   data {
     uuid : "b70bfcd8-8a90-4d3a-892e-62f099fefe71"
     country : "lv"
-    provider_type : GSM
     localized_name {
       name : "LMT"
     }
@@ -8626,7 +8243,6 @@ mno {
   data {
     uuid : "21be6d08-3d09-4000-af8b-2cf731ac9b56"
     country : "lv"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -8662,7 +8278,6 @@ mno {
   data {
     uuid : "36f4de85-5361-4c72-8108-e371dd5de5e2"
     country : "ma"
-    provider_type : GSM
     localized_name {
       name : "Ittissalat Al Maghrib (IAM)"
     }
@@ -8686,7 +8301,6 @@ mno {
   data {
     uuid : "5a9d124a-09b9-4457-9c3e-c4fc9105e857"
     country : "ma"
-    provider_type : GSM
     localized_name {
       name : "Medi Telecom"
     }
@@ -8714,7 +8328,6 @@ mno {
   data {
     uuid : "f117ca96-ac0c-4e62-83af-e2095341b4eb"
     country : "ma"
-    provider_type : GSM
     localized_name {
       name : "WANA"
     }
@@ -8732,7 +8345,6 @@ mno {
   data {
     uuid : "7ec5918d-8a5d-4212-ba25-a8a43760a18a"
     country : "md"
-    provider_type : GSM
     localized_name {
       name : "Moldcell"
     }
@@ -8752,7 +8364,6 @@ mno {
   data {
     uuid : "d7b3084b-d073-4f0a-8df7-a583dc480aab"
     country : "md"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -8772,7 +8383,6 @@ mno {
   data {
     uuid : "30b93f77-de55-4965-a6ad-80fc1894d10f"
     country : "md"
-    provider_type : GSM
     localized_name {
       name : "Unité"
     }
@@ -8800,7 +8410,6 @@ mno {
   data {
     uuid : "9b14096e-4a33-4427-90ea-b99676b728d5"
     country : "me"
-    provider_type : GSM
     localized_name {
       name : "ProMonte GSM"
     }
@@ -8815,7 +8424,6 @@ mno {
   data {
     uuid : "1e5ae556-2315-4cc1-8063-f5f334ac49ec"
     country : "me"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -8855,7 +8463,6 @@ mno {
   data {
     uuid : "76c5837d-430d-43f1-b367-0206c2073a1d"
     country : "me"
-    provider_type : GSM
     localized_name {
       name : "m:tel"
     }
@@ -8870,7 +8477,6 @@ mno {
   data {
     uuid : "3f07fb27-8773-4bf4-991e-1999d4d80dea"
     country : "mg"
-    provider_type : GSM
     localized_name {
       name : "Airtel"
     }
@@ -8885,7 +8491,6 @@ mno {
   data {
     uuid : "14bb9cce-10d5-4617-bad5-301eaf790182"
     country : "mg"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -8902,7 +8507,6 @@ mno {
   data {
     uuid : "63648290-2acd-4735-b0ad-921542e79e1f"
     country : "mg"
-    provider_type : GSM
     localized_name {
       name : "Telma"
     }
@@ -8917,7 +8521,6 @@ mno {
   data {
     uuid : "f0b1c416-7414-4daf-bcf9-38895c2547fe"
     country : "mk"
-    provider_type : GSM
     localized_name {
       name : "One"
     }
@@ -8935,7 +8538,6 @@ mno {
   data {
     uuid : "4a890665-dbfb-4768-b679-9a2cdc7f27b5"
     country : "mk"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -8952,7 +8554,6 @@ mno {
   data {
     uuid : "65323ce7-7350-4a26-b0f0-63584185543e"
     country : "mk"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -8969,7 +8570,6 @@ mno {
   data {
     uuid : "505bda54-41ad-4d67-b4c9-6a5c36164d82"
     country : "ml"
-    provider_type : CDMA
     localized_name {
       name : "Internet Mobile+"
     }
@@ -8988,7 +8588,6 @@ mno {
   data {
     uuid : "79c13567-7381-45c7-b226-c2cb61e3f06f"
     country : "ml"
-    provider_type : GSM
     localized_name {
       name : "Malitel"
     }
@@ -9008,7 +8607,6 @@ mno {
   data {
     uuid : "1e0d374d-489e-47b9-8bda-a5218714bd12"
     country : "ml"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -9036,7 +8634,6 @@ mno {
   data {
     uuid : "5fc032d3-cf57-4cfa-bf27-19c176e97fb5"
     country : "mm"
-    provider_type : GSM
     localized_name {
       name : "MPT"
     }
@@ -9056,7 +8653,6 @@ mno {
   data {
     uuid : "683b96f4-f05e-44f4-8fc6-ed7817a2fb18"
     country : "mn"
-    provider_type : GSM
     localized_name {
       name : "MobiCom"
     }
@@ -9071,7 +8667,6 @@ mno {
   data {
     uuid : "0e15c7c1-18c5-403f-8aef-0be666eced38"
     country : "mo"
-    provider_type : GSM
     localized_name {
       name : "3 / Hutchison"
     }
@@ -9089,7 +8684,6 @@ mno {
   data {
     uuid : "55f90d03-5e4c-458a-a8b4-388347e426ff"
     country : "mo"
-    provider_type : GSM
     localized_name {
       name : "CTM"
     }
@@ -9105,7 +8699,6 @@ mno {
   data {
     uuid : "abe0717b-685f-4202-a948-aa87b2fcbfec"
     country : "mo"
-    provider_type : CDMA
     localized_name {
       name : "China Telecom"
     }
@@ -9116,7 +8709,6 @@ mno {
   data {
     uuid : "40ad4c57-15fc-4975-b4ec-ca5f39ddc4ba"
     country : "mt"
-    provider_type : GSM
     localized_name {
       name : "GO Mobile"
     }
@@ -9140,7 +8732,6 @@ mno {
   data {
     uuid : "5a7628e7-2dc0-4d84-aae8-03500e9b46b4"
     country : "mt"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -9159,7 +8750,6 @@ mno {
   data {
     uuid : "29cf8e53-b245-427b-aa7b-29836dd3c292"
     country : "mu"
-    provider_type : GSM
     localized_name {
       name : "Emtel"
     }
@@ -9174,7 +8764,6 @@ mno {
   data {
     uuid : "a6982262-db8c-481b-b73d-80bc0a1b3ca0"
     country : "mv"
-    provider_type : GSM
     localized_name {
       name : "Dhiraagu"
     }
@@ -9189,7 +8778,6 @@ mno {
   data {
     uuid : "95160a87-ef83-4a0f-a35c-122adedc14f7"
     country : "mv"
-    provider_type : GSM
     localized_name {
       name : "Wataniya"
     }
@@ -9204,7 +8792,6 @@ mno {
   data {
     uuid : "e1cb4a96-caa2-47b5-ab24-a6a6cb9898b6"
     country : "mw"
-    provider_type : GSM
     localized_name {
       name : "TNM"
     }
@@ -9219,7 +8806,6 @@ mno {
   data {
     uuid : "0d9b109e-3533-4c28-bfaf-ab67fd0e677e"
     country : "mx"
-    provider_type : CDMA
     localized_name {
       name : "Iusacell"
     }
@@ -9230,7 +8816,6 @@ mno {
   data {
     uuid : "07d16148-72e9-4f6b-b066-1dfcb5e7371f"
     country : "mx"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -9247,7 +8832,6 @@ mno {
   data {
     uuid : "a9fbade2-29c8-4da0-85b2-5bb3c7493e9e"
     country : "mx"
-    provider_type : GSM
     localized_name {
       name : "Telcel"
     }
@@ -9264,7 +8848,6 @@ mno {
   data {
     uuid : "476ff366-d0eb-4b83-8dd2-1080aeb57709"
     country : "my"
-    provider_type : GSM
     localized_name {
       name : "Celcom"
     }
@@ -9289,7 +8872,6 @@ mno {
   data {
     uuid : "38ef8245-3ed9-4ea9-b14e-3f98ff5378b9"
     country : "my"
-    provider_type : GSM
     localized_name {
       name : "DiGi"
     }
@@ -9315,7 +8897,6 @@ mno {
   data {
     uuid : "02bfff4e-6917-4668-981b-27a22fc754c8"
     country : "my"
-    provider_type : GSM
     localized_name {
       name : "Maxis"
     }
@@ -9354,7 +8935,6 @@ mno {
   data {
     uuid : "891ac591-82f5-43a1-bc48-5342cffbc905"
     country : "mz"
-    provider_type : GSM
     localized_name {
       name : "MCel"
     }
@@ -9373,7 +8953,6 @@ mno {
   data {
     uuid : "d76c70c1-3da5-4b62-8446-cddfe4a5861f"
     country : "mz"
-    provider_type : GSM
     localized_name {
       name : "Vodacom"
     }
@@ -9391,7 +8970,6 @@ mno {
   data {
     uuid : "07480125-8f3d-4e28-b11e-c1c247537f9b"
     country : "na"
-    provider_type : GSM
     localized_name {
       name : "Leo"
     }
@@ -9409,7 +8987,6 @@ mno {
   data {
     uuid : "46ebb0a4-5fa6-441e-83b1-bf9c9be1c1e9"
     country : "na"
-    provider_type : GSM
     localized_name {
       name : "MTC"
     }
@@ -9435,7 +9012,6 @@ mno {
   data {
     uuid : "55534d01-25b1-4d74-8ae0-9f1f30bd77d5"
     country : "na"
-    provider_type : CDMA
     localized_name {
       name : "switch"
     }
@@ -9453,7 +9029,6 @@ mno {
   data {
     uuid : "1077c7e2-0cf3-430e-bed5-6a4d3121088c"
     country : "ng"
-    provider_type : GSM
     localized_name {
       name : "Airtel NG"
     }
@@ -9471,7 +9046,6 @@ mno {
   data {
     uuid : "4bf9e5e8-2054-4318-a16d-985cf02b0774"
     country : "ng"
-    provider_type : GSM
     localized_name {
       name : "Etisalat"
     }
@@ -9489,7 +9063,6 @@ mno {
   data {
     uuid : "160f39eb-ecb0-45c2-8023-b91b3cc79861"
     country : "ng"
-    provider_type : GSM
     localized_name {
       name : "Glo Mobile"
     }
@@ -9518,7 +9091,6 @@ mno {
   data {
     uuid : "4cc9140d-49f9-4f21-a224-4ace2397fe0b"
     country : "ng"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -9536,7 +9108,6 @@ mno {
   data {
     uuid : "e1ca1c58-748a-45e3-976f-68eed103e26b"
     country : "ng"
-    provider_type : CDMA
     localized_name {
       name : "Multilinks"
     }
@@ -9547,7 +9118,6 @@ mno {
   data {
     uuid : "f662854b-d3c0-4856-a619-f3746ef5a59c"
     country : "ng"
-    provider_type : CDMA
     localized_name {
       name : "Starcomms"
     }
@@ -9567,7 +9137,6 @@ mno {
   data {
     uuid : "91608b60-2168-4e7e-b937-db1161d92cce"
     country : "ni"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -9612,7 +9181,6 @@ mno {
   data {
     uuid : "cb5b44f9-122b-41a4-9917-403b6d4ba650"
     country : "ni"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -9629,7 +9197,6 @@ mno {
   data {
     uuid : "52e56bd7-0035-4187-86ee-2fc7c65b1a49"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "KPN NL"
     }
@@ -9667,7 +9234,6 @@ mno {
     data {
       uuid : "cc41c769-a795-4d00-a650-e58255ae510d"
       country : "nl"
-      provider_type : GSM
       localized_name {
         name : "Galaxy"
       }
@@ -9685,7 +9251,6 @@ mno {
     data {
       uuid : "892dbe57-e79a-40c4-a5b9-2712e5120bc5"
       country : "nl"
-      provider_type : GSM
       localized_name {
         name : "Hi"
       }
@@ -9703,7 +9268,6 @@ mno {
     data {
       uuid : "a86f51b1-e203-44c3-8cf3-4501b982b2e4"
       country : "nl"
-      provider_type : GSM
       localized_name {
         name : "MEDIONmobile"
       }
@@ -9723,7 +9287,6 @@ mno {
   data {
     uuid : "1a51347d-c546-4adc-873a-27337d03bd2f"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "Lycamobile"
     }
@@ -9740,7 +9303,6 @@ mno {
   data {
     uuid : "cd37fef7-296e-4da8-b822-f41817a6f066"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -9757,7 +9319,6 @@ mno {
   data {
     uuid : "6864e27a-d529-4297-9273-17649eb21262"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -9776,7 +9337,6 @@ mno {
     data {
       uuid : "a97f1f0b-3304-47b5-b5fd-8127acaf2620"
       country : "nl"
-      provider_type : GSM
       localized_name {
         name : "Ben"
       }
@@ -9794,7 +9354,6 @@ mno {
   data {
     uuid : "014e3ffb-1560-4c03-83b7-2742a4532a8b"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -9809,7 +9368,6 @@ mno {
   data {
     uuid : "09166b23-b0e1-4fc3-9c70-632d52bcb937"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "Telfort"
     }
@@ -9826,7 +9384,6 @@ mno {
     data {
       uuid : "be304c19-e319-4918-bdb8-c120e5a8b7b2"
       country : "nl"
-      provider_type : GSM
       localized_name {
         name : "Lebara"
       }
@@ -9843,7 +9400,6 @@ mno {
   data {
     uuid : "7dbf0fff-cf7e-479c-9e8f-5f9eb0e791c6"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -9904,7 +9460,6 @@ mno {
   data {
     uuid : "d0fa2a12-baf4-403a-b84b-4e5ef186abaa"
     country : "nl"
-    provider_type : GSM
     localized_name {
       name : "XS4ALL Mobiel Internet"
     }
@@ -9920,7 +9475,6 @@ mno {
   data {
     uuid : "f32f282a-2705-4c7a-96ff-5524d2199f96"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Altibox"
     }
@@ -9934,7 +9488,6 @@ mno {
   data {
     uuid : "0d9a4f48-1108-4698-a641-b7dd2fcb2f17"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Ludo Mobil"
     }
@@ -9949,7 +9502,6 @@ mno {
   data {
     uuid : "ad3a642a-95ae-4d9c-b0aa-fc623db81b10"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Netcom"
     }
@@ -9970,7 +9522,6 @@ mno {
     data {
       uuid : "185bd85d-12ec-4077-b72e-f8015668fc73"
       country : "no"
-      provider_type : GSM
       localized_name {
         name : "Chess"
       }
@@ -9988,7 +9539,6 @@ mno {
   data {
     uuid : "e60cdda9-7f02-4843-8a17-a1fcc2998ac8"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Network Norway"
     }
@@ -10005,7 +9555,6 @@ mno {
     data {
       uuid : "85b9894e-1fa4-4c93-89a3-d0842a6b30ae"
       country : "no"
-      provider_type : GSM
       localized_name {
         name : "MyCall"
       }
@@ -10023,7 +9572,6 @@ mno {
     data {
       uuid : "c7063ad0-6f01-4c0a-aea5-55a1a2b1f7eb"
       country : "no"
-      provider_type : GSM
       localized_name {
         name : "Telipol"
       }
@@ -10041,7 +9589,6 @@ mno {
     data {
       uuid : "bbc5f574-b33f-4bd5-a722-0ac35f9a920e"
       country : "no"
-      provider_type : GSM
       localized_name {
         name : "OneCall"
       }
@@ -10058,7 +9605,6 @@ mno {
   data {
     uuid : "fb6e43ce-a5be-4e0c-9c92-7215f060be09"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "TDC"
     }
@@ -10075,7 +9621,6 @@ mno {
   data {
     uuid : "9395a1aa-de52-430d-890e-176c9a8c4d96"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -10099,7 +9644,6 @@ mno {
   data {
     uuid : "b0a3c04c-d783-4a11-ac43-63ebd7435401"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -10119,7 +9663,6 @@ mno {
   data {
     uuid : "0cfb5640-a94a-4269-ba65-b435e255b371"
     country : "no"
-    provider_type : GSM
     localized_name {
       name : "Ventelo"
     }
@@ -10134,7 +9677,6 @@ mno {
   data {
     uuid : "f43fa31e-d070-474b-a5e4-8c8baebce6cb"
     country : "no"
-    provider_type : CDMA
     localized_name {
       name : "ice.net (Nordisk Mobiltelefon)"
     }
@@ -10153,7 +9695,6 @@ mno {
   data {
     uuid : "cb9496ae-0d38-4452-a16b-86c7e5a6e6b7"
     country : "np"
-    provider_type : GSM
     localized_name {
       name : "Mero Mobile"
     }
@@ -10168,7 +9709,6 @@ mno {
   data {
     uuid : "a35285ad-2191-4c5f-92d6-3c0fa8590a94"
     country : "np"
-    provider_type : GSM
     localized_name {
       name : "Nepal Telecom"
     }
@@ -10183,7 +9723,6 @@ mno {
   data {
     uuid : "684ae886-af12-4d1c-a171-479a4b94c2f7"
     country : "nz"
-    provider_type : GSM
     localized_name {
       name : "2-Degrees"
     }
@@ -10209,7 +9748,6 @@ mno {
   data {
     uuid : "b83d7107-0dbe-4a32-aa05-f51223f50e9c"
     country : "nz"
-    provider_type : GSM
     localized_name {
       name : "Orcon"
     }
@@ -10226,7 +9764,6 @@ mno {
   data {
     uuid : "4772a3e1-0430-430d-ac85-cfaec97dea1a"
     country : "nz"
-    provider_type : GSM
     localized_name {
       name : "Telecom New Zealand"
     }
@@ -10267,7 +9804,6 @@ mno {
   data {
     uuid : "aa863deb-65e3-418d-9917-a3710fb0d822"
     country : "nz"
-    provider_type : GSM
     localized_name {
       name : "TelstraClear"
     }
@@ -10284,7 +9820,6 @@ mno {
   data {
     uuid : "d2cc0da2-11e0-4eb1-98cf-f86b2b34dba7"
     country : "nz"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -10324,7 +9859,6 @@ mno {
   data {
     uuid : "9cd31977-6694-4087-8cd2-8235264f9bbe"
     country : "om"
-    provider_type : GSM
     localized_name {
       name : "Nawras"
     }
@@ -10339,7 +9873,6 @@ mno {
   data {
     uuid : "68b6defc-ae2a-4ea0-9a3e-61c4c24a64ef"
     country : "om"
-    provider_type : GSM
     localized_name {
       name : "Oman Mobile"
     }
@@ -10365,7 +9898,6 @@ mno {
   data {
     uuid : "16e419ac-90c6-4512-8465-303c3ffb47ee"
     country : "pa"
-    provider_type : GSM
     localized_name {
       name : "Cable and Wireless"
     }
@@ -10380,7 +9912,6 @@ mno {
   data {
     uuid : "9542dc2f-1fcf-4626-84d8-b84a1de5fecb"
     country : "pa"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -10399,7 +9930,6 @@ mno {
   data {
     uuid : "a4485882-1a32-46f7-b4e0-1a9b5732fdff"
     country : "pe"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -10424,7 +9954,6 @@ mno {
   data {
     uuid : "90764ae8-1cd6-4f23-bcaa-abd95c56f8b4"
     country : "pe"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -10441,7 +9970,6 @@ mno {
   data {
     uuid : "d73855ed-574d-4324-96ae-a2990a571ced"
     country : "pe"
-    provider_type : GSM
     localized_name {
       name : "Nextel"
     }
@@ -10456,7 +9984,6 @@ mno {
   data {
     uuid : "d91ace23-0b86-4452-b065-91ced4055b85"
     country : "pf"
-    provider_type : GSM
     localized_name {
       name : "Vini"
     }
@@ -10471,7 +9998,6 @@ mno {
   data {
     uuid : "1214b69e-d008-4f33-8769-0ae26ac28c87"
     country : "pg"
-    provider_type : GSM
     localized_name {
       name : "Digicel"
     }
@@ -10491,7 +10017,6 @@ mno {
   data {
     uuid : "ff8074d3-bcf6-436b-a00c-ad1afac85170"
     country : "ph"
-    provider_type : GSM
     localized_name {
       name : "Digitel (Sun Cellular)"
     }
@@ -10506,7 +10031,6 @@ mno {
   data {
     uuid : "bcc0ca4e-1b70-454f-a10a-ac1f1fd28898"
     country : "ph"
-    provider_type : GSM
     localized_name {
       name : "Globe Telecom"
     }
@@ -10548,7 +10072,6 @@ mno {
   data {
     uuid : "a19038cc-9b0a-4286-b888-f74094a86637"
     country : "ph"
-    provider_type : GSM
     localized_name {
       name : "Smart"
     }
@@ -10567,7 +10090,6 @@ mno {
   data {
     uuid : "7c70c5b1-5f0a-4be6-ba08-195c37e2ce4b"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "Djuice"
     }
@@ -10584,7 +10106,6 @@ mno {
   data {
     uuid : "28bd2442-9a5f-4653-95c1-7f2d9a6d84d2"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "Mobilink"
     }
@@ -10608,7 +10129,6 @@ mno {
   data {
     uuid : "59952880-7c73-44fb-8fc3-44089756bb50"
     country : "pk"
-    provider_type : CDMA
     localized_name {
       name : "Ptcl EVO"
     }
@@ -10627,7 +10147,6 @@ mno {
   data {
     uuid : "31602bcf-0886-40dc-8b96-1e2e1b568964"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -10644,7 +10163,6 @@ mno {
   data {
     uuid : "3b62cb55-34f6-4d25-a4b4-b887bab5a652"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "Ufone"
     }
@@ -10661,7 +10179,6 @@ mno {
   data {
     uuid : "5be9e131-6094-4edf-9d69-e295bf8b70e4"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "Warid"
     }
@@ -10676,7 +10193,6 @@ mno {
   data {
     uuid : "be7861c0-9cd8-41d1-b022-d5ce13d41ab7"
     country : "pk"
-    provider_type : CDMA
     localized_name {
       name : "WorldCall Wireless"
     }
@@ -10687,7 +10203,6 @@ mno {
   data {
     uuid : "568e88fe-896d-4554-911b-73e60c3bfa6a"
     country : "pk"
-    provider_type : GSM
     localized_name {
       name : "ZONG"
     }
@@ -10702,7 +10217,6 @@ mno {
   data {
     uuid : "ca8c6457-b856-40db-8f92-6d17b2dc87a6"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "Cyfrowy Polsat"
     }
@@ -10717,7 +10231,6 @@ mno {
   data {
     uuid : "5fc2bd58-2fa7-4e15-b1c8-c80709b192c0"
     country : "pl"
-    provider_type : CDMA
     localized_name {
       name : "Multimo"
     }
@@ -10736,7 +10249,6 @@ mno {
   data {
     uuid : "630a507b-e435-4077-ad79-2f75bb334e51"
     country : "pl"
-    provider_type : CDMA
     localized_name {
       name : "Nordisk Polska"
     }
@@ -10755,7 +10267,6 @@ mno {
   data {
     uuid : "3c0341da-65f3-49f5-83c8-4d864b4e165e"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -10795,7 +10306,6 @@ mno {
     data {
       uuid : "1276572d-0c4b-4a39-946b-4c08902fb550"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Aster"
       }
@@ -10815,7 +10325,6 @@ mno {
     data {
       uuid : "c376e07b-a642-4750-984b-db30df30eca0"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "INEA"
       }
@@ -10834,7 +10343,6 @@ mno {
     data {
       uuid : "d4812dc9-9b81-46a1-852e-accdf747497a"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Multimo"
       }
@@ -10869,7 +10377,6 @@ mno {
   data {
     uuid : "bab14fa4-7043-4540-a8b6-b9a391089288"
     country : "pl"
-    provider_type : CDMA
     localized_name {
       name : "Orange"
     }
@@ -10888,7 +10395,6 @@ mno {
   data {
     uuid : "7bae15a6-e751-40a8-a4de-b18982252e43"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "Play Online"
     }
@@ -10905,7 +10411,6 @@ mno {
     data {
       uuid : "8fda5c2c-b02d-4bd2-b659-6303de227e4b"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Netia"
       }
@@ -10923,7 +10428,6 @@ mno {
     data {
       uuid : "728ff821-39a0-4d34-a10d-ca23e583aa77"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Vectra"
       }
@@ -10939,7 +10443,6 @@ mno {
   data {
     uuid : "31af2368-ed99-49b7-840f-9939444b476c"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "Plus"
     }
@@ -11013,7 +10516,6 @@ mno {
     data {
       uuid : "5b8cca1b-9ad3-403b-b6c8-0caa1cc13a25"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "FreeM"
       }
@@ -11031,7 +10533,6 @@ mno {
     data {
       uuid : "d0b3b4e7-777c-42c3-9d96-862357310d3c"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "GaduAIR"
       }
@@ -11049,7 +10550,6 @@ mno {
     data {
       uuid : "61b2698c-ce76-4279-b4d8-4953ed0aa826"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "SamiSwoi"
       }
@@ -11069,7 +10569,6 @@ mno {
     data {
       uuid : "dc978e7b-54d9-41cb-89db-ccff05f84c97"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "mBank mobile"
       }
@@ -11085,7 +10584,6 @@ mno {
   data {
     uuid : "798f2062-1493-4601-969d-2e49ed323586"
     country : "pl"
-    provider_type : CDMA
     localized_name {
       name : "Sferia"
     }
@@ -11104,7 +10602,6 @@ mno {
   data {
     uuid : "fdf5ef73-a04b-437d-a912-321c7e834dbc"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "T-mobile"
     }
@@ -11123,7 +10620,6 @@ mno {
     data {
       uuid : "ffa7dd61-7207-4f40-a55a-c30c04beae80"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Heyah"
       }
@@ -11145,7 +10641,6 @@ mno {
     data {
       uuid : "7e3c7261-1f55-4a13-9f04-1d21a5070b86"
       country : "pl"
-      provider_type : GSM
       localized_name {
         name : "Mobilking"
       }
@@ -11163,7 +10658,6 @@ mno {
   data {
     uuid : "0fd6e8ed-79ce-46e0-b67c-82d968ac0a6a"
     country : "pl"
-    provider_type : GSM
     localized_name {
       name : "aero2"
     }
@@ -11178,7 +10672,6 @@ mno {
   data {
     uuid : "fedd640e-3624-40fa-b704-d7737899c40f"
     country : "pt"
-    provider_type : GSM
     localized_name {
       name : "Clix"
     }
@@ -11193,7 +10686,6 @@ mno {
   data {
     uuid : "357a9e6b-4582-46ac-bad7-99d86543bae9"
     country : "pt"
-    provider_type : GSM
     localized_name {
       name : "Kanguru"
     }
@@ -11240,7 +10732,6 @@ mno {
   data {
     uuid : "d3ad35ff-a231-42f0-b6ce-b535ae47d396"
     country : "pt"
-    provider_type : GSM
     localized_name {
       name : "Optimus"
     }
@@ -11265,7 +10756,6 @@ mno {
   data {
     uuid : "609abfae-5299-4601-9d0c-3d434ae22b86"
     country : "pt"
-    provider_type : GSM
     localized_name {
       name : "TMN"
     }
@@ -11297,7 +10787,6 @@ mno {
   data {
     uuid : "f7d122f2-5a70-4cdb-bdbc-3304ade51706"
     country : "pt"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -11332,7 +10821,6 @@ mno {
     data {
       uuid : "f89995fb-f439-4e3b-9a61-ea954beb6da6"
       country : "pt"
-      provider_type : GSM
       localized_name {
         name : "ZON"
       }
@@ -11359,7 +10847,6 @@ mno {
   data {
     uuid : "84f6449d-7316-4a55-b100-3cc79228b67d"
     country : "py"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -11377,7 +10864,6 @@ mno {
   data {
     uuid : "7383a0fd-a60d-4fbf-b2ca-d86ff5bdba0d"
     country : "py"
-    provider_type : GSM
     localized_name {
       name : "Personal"
     }
@@ -11392,7 +10878,6 @@ mno {
   data {
     uuid : "f30ac778-ee67-49a2-9681-9b41a288ac1a"
     country : "py"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -11421,7 +10906,6 @@ mno {
   data {
     uuid : "de5a8bc0-ddd9-4fd0-acf4-c595afa3d469"
     country : "py"
-    provider_type : GSM
     localized_name {
       name : "VOX"
     }
@@ -11436,7 +10920,6 @@ mno {
   data {
     uuid : "b86fc02e-c8de-4a28-ae21-05a4005bc54b"
     country : "qa"
-    provider_type : GSM
     localized_name {
       name : "Q-Tel"
     }
@@ -11456,7 +10939,6 @@ mno {
   data {
     uuid : "23563b29-5687-4c2f-aea2-2b2c6023ef84"
     country : "qa"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -11480,7 +10962,6 @@ mno {
   data {
     uuid : "e8f68f8d-2bf1-4ffe-8839-8af51cf72c6c"
     country : "re"
-    provider_type : GSM
     localized_name {
       name : "SFR Réunion"
     }
@@ -11516,7 +10997,6 @@ mno {
   data {
     uuid : "b9ef3bd9-2bc3-4686-b2ad-08c85c5f6497"
     country : "ro"
-    provider_type : GSM
     localized_name {
       name : "Digi.Net Mobil"
     }
@@ -11540,7 +11020,6 @@ mno {
   data {
     uuid : "031f55a8-1275-417e-a5ce-84622780ae33"
     country : "ro"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -11557,7 +11036,6 @@ mno {
   data {
     uuid : "77f5f39d-ae96-4584-90d6-06e420e29e3c"
     country : "ro"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -11609,7 +11087,6 @@ mno {
   data {
     uuid : "e83cf8d2-da74-4f80-83e1-60cb81bedab5"
     country : "ro"
-    provider_type : CDMA
     localized_name {
       name : "Zapp"
     }
@@ -11628,7 +11105,6 @@ mno {
   data {
     uuid : "f0c407b1-8ea3-4496-bf62-f76be7601055"
     country : "rs"
-    provider_type : GSM
     localized_name {
       name : "Telekom Srbija"
     }
@@ -11646,7 +11122,6 @@ mno {
   data {
     uuid : "dbe425d3-42a5-4ff1-9db0-b9f064323fc1"
     country : "rs"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -11663,7 +11138,6 @@ mno {
   data {
     uuid : "32a5a25c-139c-41d6-bbd7-790fc898b375"
     country : "rs"
-    provider_type : GSM
     localized_name {
       name : "VIP Mobile"
     }
@@ -11680,7 +11154,6 @@ mno {
   data {
     uuid : "689c6926-8833-4868-8708-42d6a9e3878e"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "BaikalWestCom"
     }
@@ -11702,7 +11175,6 @@ mno {
   data {
     uuid : "29807014-eeb7-456a-a90e-4aa3c1daa4e9"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -11744,7 +11216,6 @@ mno {
   data {
     uuid : "aedae5a4-8b48-4bcb-a3af-9d97b40211dd"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "ETK"
     }
@@ -11759,7 +11230,6 @@ mno {
   data {
     uuid : "f147490b-a591-4786-9862-44a6bad0f119"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Enisey TeleCom"
     }
@@ -11780,7 +11250,6 @@ mno {
   data {
     uuid : "daae011a-4c98-4db6-a74c-f128321d90f8"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "MTS"
     }
@@ -11799,7 +11268,6 @@ mno {
   data {
     uuid : "c6570eb2-842f-49af-a632-4fd4481229cc"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Megafon"
     }
@@ -11825,7 +11293,6 @@ mno {
   data {
     uuid : "ace606a9-e7eb-45f7-8737-f8105809ffca"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Motiv"
     }
@@ -11846,7 +11313,6 @@ mno {
   data {
     uuid : "6efbaa25-cff9-457b-831e-83d5c08ecf27"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "NCC"
     }
@@ -11864,7 +11330,6 @@ mno {
   data {
     uuid : "26367c6b-53c1-473f-b4f7-4278110238e1"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "NTC"
     }
@@ -11881,7 +11346,6 @@ mno {
   data {
     uuid : "1edf9172-2443-42a8-b094-c1d6ef0940d2"
     country : "ru"
-    provider_type : CDMA
     localized_name {
       name : "Skylink"
     }
@@ -11997,7 +11461,6 @@ mno {
   data {
     uuid : "584cc131-7a52-44b6-a131-197769c556a3"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Tatincom"
     }
@@ -12018,7 +11481,6 @@ mno {
   data {
     uuid : "bdfd90b9-2cee-4b59-8653-3f7ab71a2630"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -12038,7 +11500,6 @@ mno {
   data {
     uuid : "261ef4c1-8779-4817-ada6-ea89dc061481"
     country : "ru"
-    provider_type : GSM
     localized_name {
       name : "U-tel"
     }
@@ -12053,7 +11514,6 @@ mno {
   data {
     uuid : "d40afeb1-ecc0-456e-ae29-30be15a61d8a"
     country : "rw"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -12068,7 +11528,6 @@ mno {
   data {
     uuid : "a7503b8b-93dd-4513-83ce-1f397121e344"
     country : "rw"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -12083,7 +11542,6 @@ mno {
   data {
     uuid : "701b8bdb-b8e5-4965-a961-996c2580f192"
     country : "sa"
-    provider_type : GSM
     localized_name {
       name : "Mobily"
     }
@@ -12107,7 +11565,6 @@ mno {
   data {
     uuid : "d1189ac7-22b1-415d-8d7b-94a571b5f0a5"
     country : "sa"
-    provider_type : GSM
     localized_name {
       name : "STC"
     }
@@ -12124,7 +11581,6 @@ mno {
   data {
     uuid : "6cd9d81a-6b97-4cc0-92ab-35276ced25a9"
     country : "sa"
-    provider_type : GSM
     localized_name {
       name : "Zain"
     }
@@ -12139,7 +11595,6 @@ mno {
   data {
     uuid : "cf86fa00-fd91-4f46-bf77-9a9675ad96c2"
     country : "sd"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -12154,7 +11609,6 @@ mno {
   data {
     uuid : "97fe3985-b0b4-4822-8f7a-695febcb80c6"
     country : "sd"
-    provider_type : CDMA
     localized_name {
       name : "Sudani"
     }
@@ -12173,7 +11627,6 @@ mno {
   data {
     uuid : "1d0ff8fa-42a5-4417-bb1e-fe7ac0937ea6"
     country : "sd"
-    provider_type : GSM
     localized_name {
       name : "Sudani"
     }
@@ -12190,7 +11643,6 @@ mno {
   data {
     uuid : "fa6da327-888b-45a4-b2ec-0648eab4416a"
     country : "sd"
-    provider_type : GSM
     localized_name {
       name : "Zain"
     }
@@ -12205,7 +11657,6 @@ mno {
   data {
     uuid : "359ecc90-333f-4d6c-9794-f1dfc5bd2c4d"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "3"
     }
@@ -12238,7 +11689,6 @@ mno {
     data {
       uuid : "4da01856-9052-4ef2-b203-e0e90d8dc771"
       country : "se"
-      provider_type : GSM
       localized_name {
         name : "Com Hem"
       }
@@ -12257,7 +11707,6 @@ mno {
     data {
       uuid : "a32903a9-e44e-4e72-a368-3aa06fa989b9"
       country : "se"
-      provider_type : GSM
       localized_name {
         name : "Telenor"
       }
@@ -12288,7 +11737,6 @@ mno {
   data {
     uuid : "f548b6b5-126c-46ce-8452-3601cdbbc746"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Comviq"
     }
@@ -12318,7 +11766,6 @@ mno {
   data {
     uuid : "09606112-356f-422d-9f25-b7b92e9c49a4"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Halebop"
     }
@@ -12333,7 +11780,6 @@ mno {
   data {
     uuid : "fcd4d43b-7ed0-426e-9da8-52c03de89eb0"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Multicom Security"
     }
@@ -12352,7 +11798,6 @@ mno {
   data {
     uuid : "c1357ed5-a29d-4fc6-a61c-636061e8fc5f"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Parlino"
     }
@@ -12367,7 +11812,6 @@ mno {
   data {
     uuid : "08f7fed7-9bc0-406c-bbf1-c4c28e3a2a79"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "TDC"
     }
@@ -12382,7 +11826,6 @@ mno {
   data {
     uuid : "4823a4bf-6768-463f-8d02-1a54b5139252"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Tele2"
     }
@@ -12408,7 +11851,6 @@ mno {
   data {
     uuid : "55ed9aa1-d663-46bc-bc73-1ba0fcc9a240"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Telenor"
     }
@@ -12445,7 +11887,6 @@ mno {
     data {
       uuid : "5d8a1f20-f5cb-4ac6-b3dd-8eec5ab2300b"
       country : "se"
-      provider_type : GSM
       localized_name {
         name : "Glocalnet"
       }
@@ -12470,7 +11911,6 @@ mno {
   data {
     uuid : "dea1e087-2575-42a2-83fb-f79ac09a8f8f"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Telia"
     }
@@ -12490,7 +11930,6 @@ mno {
   data {
     uuid : "6b97cd7b-4398-4fb6-a11d-a683d4c02318"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Teliasonera"
     }
@@ -12505,7 +11944,6 @@ mno {
   data {
     uuid : "50e48df2-5879-4b05-ab68-740f63ed7116"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "Universal Telecom"
     }
@@ -12528,7 +11966,6 @@ mno {
   data {
     uuid : "8589105a-74fc-483e-972c-6e3689607e11"
     country : "se"
-    provider_type : GSM
     localized_name {
       name : "djuice"
     }
@@ -12543,7 +11980,6 @@ mno {
   data {
     uuid : "b6288010-64f0-42a0-b6b7-e4b346fe5309"
     country : "se"
-    provider_type : CDMA
     localized_name {
       name : "ice.net (Nordisk Mobiltelefon)"
     }
@@ -12562,7 +11998,6 @@ mno {
   data {
     uuid : "2378bf16-c76f-4d9f-898d-f926b260479d"
     country : "sg"
-    provider_type : GSM
     localized_name {
       name : "M1"
     }
@@ -12611,7 +12046,6 @@ mno {
   data {
     uuid : "69e0aa4b-846e-498c-823d-556b8a0e8099"
     country : "sg"
-    provider_type : GSM
     localized_name {
       name : "SingTel"
     }
@@ -12629,7 +12063,6 @@ mno {
   data {
     uuid : "e29f1b72-3bd2-4b17-a6e7-1bdca53c45b4"
     country : "sg"
-    provider_type : GSM
     localized_name {
       name : "Starhub"
     }
@@ -12662,7 +12095,6 @@ mno {
   data {
     uuid : "8a191bd2-53a1-4946-8d28-8de883d4e02e"
     country : "si"
-    provider_type : GSM
     localized_name {
       name : "Mobitel"
     }
@@ -12691,7 +12123,6 @@ mno {
   data {
     uuid : "616c466b-ec02-476d-972f-2b368d514557"
     country : "si"
-    provider_type : GSM
     localized_name {
       name : "T-2"
     }
@@ -12706,7 +12137,6 @@ mno {
   data {
     uuid : "2bd6abd3-0ead-4b3f-b132-aa8db922c976"
     country : "si"
-    provider_type : GSM
     localized_name {
       name : "Vodafone / Simobil"
     }
@@ -12725,7 +12155,6 @@ mno {
   data {
     uuid : "fe314479-7f74-4824-bfd3-354cd6bbc305"
     country : "sk"
-    provider_type : GSM
     localized_name {
       name : "O2"
     }
@@ -12745,7 +12174,6 @@ mno {
   data {
     uuid : "f097df33-94e9-4f54-a0bb-0df3436fe601"
     country : "sk"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -12762,7 +12190,6 @@ mno {
   data {
     uuid : "61912a9b-78ed-48fe-b92e-53222c6f369c"
     country : "sk"
-    provider_type : GSM
     localized_name {
       name : "Slovak Telekom"
     }
@@ -12780,7 +12207,6 @@ mno {
   data {
     uuid : "ddc33781-a0ee-48ad-966f-960a81391b0e"
     country : "sn"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -12797,7 +12223,6 @@ mno {
   data {
     uuid : "e06f2f9d-ef1f-4d78-9c99-d662dedcc17f"
     country : "sv"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -12815,7 +12240,6 @@ mno {
   data {
     uuid : "63c58f16-e948-438e-bc48-9a81c648aaf4"
     country : "sv"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -12832,7 +12256,6 @@ mno {
   data {
     uuid : "d4ecd167-a851-4bbd-8ae3-5f336f0af77b"
     country : "sv"
-    provider_type : GSM
     localized_name {
       name : "Tigo"
     }
@@ -12847,7 +12270,6 @@ mno {
   data {
     uuid : "e79ad6bd-7d59-4736-99e6-570f8571964a"
     country : "sv"
-    provider_type : GSM
     localized_name {
       name : "digicel"
     }
@@ -12862,7 +12284,6 @@ mno {
   data {
     uuid : "12bd174b-d9d0-4da7-b4c1-c8ec55ad9abe"
     country : "th"
-    provider_type : GSM
     localized_name {
       name : "AIS"
     }
@@ -12879,7 +12300,6 @@ mno {
   data {
     uuid : "eb21ee37-4e9a-4776-a413-ae3ff56a64b4"
     country : "th"
-    provider_type : GSM
     localized_name {
       name : "DTAC"
     }
@@ -12896,7 +12316,6 @@ mno {
   data {
     uuid : "852e5af4-fea0-40a2-b16c-780f14bc52a6"
     country : "th"
-    provider_type : GSM
     localized_name {
       name : "TOT 3G"
     }
@@ -12911,7 +12330,6 @@ mno {
   data {
     uuid : "e91f4d3a-b324-490f-9093-5e566147c5f1"
     country : "th"
-    provider_type : GSM
     localized_name {
       name : "True Move"
     }
@@ -12928,7 +12346,6 @@ mno {
   data {
     uuid : "0541880c-456e-4105-b8ae-84d9784ba13d"
     country : "tn"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -12964,7 +12381,6 @@ mno {
   data {
     uuid : "b8ea7b25-e3bd-4890-82e8-f484511efadb"
     country : "tn"
-    provider_type : GSM
     localized_name {
       name : "Tunisiana"
     }
@@ -12984,7 +12400,6 @@ mno {
   data {
     uuid : "8b828126-756d-475a-9040-ef32a2aaade7"
     country : "tn"
-    provider_type : GSM
     localized_name {
       name : "Tunisie Télécom / TUNTEL"
     }
@@ -13018,7 +12433,6 @@ mno {
   data {
     uuid : "2cafc920-a765-49c3-a73a-8f4d46c7bb42"
     country : "tr"
-    provider_type : GSM
     localized_name {
       name : "Avea"
     }
@@ -13044,7 +12458,6 @@ mno {
   data {
     uuid : "29e04b57-95f1-4ba2-b5df-01e0c09b0de5"
     country : "tr"
-    provider_type : GSM
     localized_name {
       name : "Turkcell"
     }
@@ -13068,7 +12481,6 @@ mno {
   data {
     uuid : "33f811de-224d-43de-be11-5b858ef093ab"
     country : "tr"
-    provider_type : GSM
     localized_name {
       name : "Vodafone"
     }
@@ -13094,7 +12506,6 @@ mno {
   data {
     uuid : "f94cc92c-7600-44b7-8cdf-912af0ecff3b"
     country : "tt"
-    provider_type : GSM
     localized_name {
       name : "Digicel"
     }
@@ -13111,7 +12522,6 @@ mno {
   data {
     uuid : "ce2f2857-e7d1-4723-a4f7-60b490b731b2"
     country : "tt"
-    provider_type : GSM
     localized_name {
       name : "bmobile / TSTT"
     }
@@ -13128,7 +12538,6 @@ mno {
   data {
     uuid : "32070313-9dc1-454d-9e94-806b11c0f434"
     country : "tw"
-    provider_type : CDMA
     localized_name {
       name : "Asia Pacific Telecom (APBW)"
     }
@@ -13142,7 +12551,6 @@ mno {
   data {
     uuid : "f6118c58-54aa-4648-bd50-38056ab19ec5"
     country : "tw"
-    provider_type : GSM
     localized_name {
       name : "Chunghwa Telecom (emome)"
     }
@@ -13165,7 +12573,6 @@ mno {
   data {
     uuid : "1e38aae2-ed2c-4c96-882d-d1b095c84634"
     country : "tw"
-    provider_type : GSM
     localized_name {
       name : "Far EasTone / KGT"
     }
@@ -13183,7 +12590,6 @@ mno {
   data {
     uuid : "2fb5c2ec-486b-4a31-b8e8-98e296edf0b1"
     country : "tw"
-    provider_type : GSM
     localized_name {
       name : "TW Mobile"
     }
@@ -13201,7 +12607,6 @@ mno {
   data {
     uuid : "838969b4-b1cd-4646-a615-3790200f4b31"
     country : "tw"
-    provider_type : GSM
     localized_name {
       name : "TransAsia"
     }
@@ -13219,7 +12624,6 @@ mno {
   data {
     uuid : "505cc47e-d1d9-4f04-98ad-94f1875a868e"
     country : "tw"
-    provider_type : GSM
     localized_name {
       name : "Vibo Telecom / Aurora"
     }
@@ -13237,7 +12641,6 @@ mno {
   data {
     uuid : "4e8c88ac-f5ff-45b0-8b17-5a9d264c67ac"
     country : "tz"
-    provider_type : GSM
     localized_name {
       name : "Airtel Tanzania"
     }
@@ -13252,7 +12655,6 @@ mno {
   data {
     uuid : "a24f2ee5-cd68-4f5b-99b3-866fbb467727"
     country : "tz"
-    provider_type : CDMA
     localized_name {
       name : "Sasatel"
     }
@@ -13272,7 +12674,6 @@ mno {
   data {
     uuid : "a82b8f3d-0d9c-48f8-b992-0b44bc26f332"
     country : "tz"
-    provider_type : CDMA
     localized_name {
       name : "TTCL"
     }
@@ -13283,7 +12684,6 @@ mno {
   data {
     uuid : "6c26ae23-5dd0-4d8b-a8b2-be6d0f36d01d"
     country : "tz"
-    provider_type : GSM
     localized_name {
       name : "Vodacom"
     }
@@ -13298,7 +12698,6 @@ mno {
   data {
     uuid : "226c4a08-4bf3-4f62-87b1-31c4f4853923"
     country : "tz"
-    provider_type : GSM
     localized_name {
       name : "Zantel"
     }
@@ -13313,7 +12712,6 @@ mno {
   data {
     uuid : "ed260c17-f03e-4e14-a54e-bad045fa51c3"
     country : "tz"
-    provider_type : CDMA
     localized_name {
       name : "Zantel"
     }
@@ -13332,7 +12730,6 @@ mno {
   data {
     uuid : "5207e312-2d2c-400f-84ba-19c274e7bc24"
     country : "tz"
-    provider_type : GSM
     localized_name {
       name : "tiGO"
     }
@@ -13347,7 +12744,6 @@ mno {
   data {
     uuid : "dbce05ee-c8af-425b-b349-6947527cda28"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -13362,7 +12758,6 @@ mno {
   data {
     uuid : "87d2f216-d85a-4caa-8aec-2c04daf76703"
     country : "ua"
-    provider_type : CDMA
     localized_name {
       name : "CDMA Ukraine"
     }
@@ -13381,7 +12776,6 @@ mno {
   data {
     uuid : "2ea5e81a-b5b8-4e80-9d0d-3fdd317d96f3"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "Djuice"
     }
@@ -13411,7 +12805,6 @@ mno {
   data {
     uuid : "3025964e-0d7e-4537-829a-f41555398b14"
     country : "ua"
-    provider_type : CDMA
     localized_name {
       name : "InterTelecom"
     }
@@ -13431,7 +12824,6 @@ mno {
   data {
     uuid : "d006816d-d9c9-4530-8a92-98710b93149e"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "Jeans"
     }
@@ -13456,7 +12848,6 @@ mno {
   data {
     uuid : "dc1f3731-5cfe-4e1b-bc7d-f0ab7def9f7b"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "MTS"
     }
@@ -13497,7 +12888,6 @@ mno {
   data {
     uuid : "66aed04b-57e6-4d20-a2a7-7d58bab09f18"
     country : "ua"
-    provider_type : CDMA
     localized_name {
       name : "MTS Connect 3G"
     }
@@ -13517,7 +12907,6 @@ mno {
   data {
     uuid : "907a72ac-6600-4d6f-b96c-51a7462203a6"
     country : "ua"
-    provider_type : CDMA
     localized_name {
       name : "PEOPLEnet"
     }
@@ -13528,7 +12917,6 @@ mno {
   data {
     uuid : "00dcafd8-0518-4075-8cb3-b3e6bbd0f8ce"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "Utel"
     }
@@ -13543,7 +12931,6 @@ mno {
   data {
     uuid : "069b0ff5-5e0b-4483-b6a8-72437445dbdf"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "kyivstar"
     }
@@ -13575,7 +12962,6 @@ mno {
   data {
     uuid : "85854ca5-e14d-4a81-a848-ecb3c2b0679e"
     country : "ua"
-    provider_type : GSM
     localized_name {
       name : "life:)"
     }
@@ -13603,7 +12989,6 @@ mno {
   data {
     uuid : "edc31367-97b4-437b-beef-3f1896449bb9"
     country : "ug"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -13620,7 +13005,6 @@ mno {
   data {
     uuid : "26291ef9-e6da-46a2-917e-d192ad7f537a"
     country : "ug"
-    provider_type : GSM
     localized_name {
       name : "Orange"
     }
@@ -13635,7 +13019,6 @@ mno {
   data {
     uuid : "007e1a12-e6e6-4e1b-947e-60be1089b9d8"
     country : "ug"
-    provider_type : GSM
     localized_name {
       name : "UTL"
     }
@@ -13659,7 +13042,6 @@ mno {
   data {
     uuid : "8ee5b26c-8e97-4c97-b89a-65913f9ad9a3"
     country : "ug"
-    provider_type : GSM
     localized_name {
       name : "Warid"
     }
@@ -13674,7 +13056,6 @@ mno {
   data {
     uuid : "897472fa-b831-45d4-92b8-f2c04efb97c6"
     country : "ug"
-    provider_type : GSM
     localized_name {
       name : "Zain"
     }
@@ -13689,7 +13070,6 @@ mno {
   data {
     uuid : "f23f09a8-3416-4165-8654-25a59682af7a"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "AT&T"
     }
@@ -13732,7 +13112,6 @@ mno {
     data {
       uuid : "3133e0a8-8e4d-4947-ba78-3a8247f308db"
       country : "us"
-      provider_type : GSM
       localized_name {
         name : "Straight Talk"
       }
@@ -13751,7 +13130,6 @@ mno {
   data {
     uuid : "9f08a247-80f6-4cab-a7f2-8056289fac7a"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "GCI"
     }
@@ -13767,7 +13145,6 @@ mno {
   data {
     uuid : "ef2610a8-bb51-4f2d-a3aa-e53834482690"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Alltel"
     }
@@ -13987,7 +13364,6 @@ mno {
   data {
     uuid : "a05e9fc7-528e-4f76-8b18-eaa0eae93b36"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "Alltel"
     }
@@ -13999,7 +13375,6 @@ mno {
   data {
     uuid : "d949dabc-bc45-4c8e-9fc6-7596f68a174d"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "BendBroadband"
     }
@@ -14014,7 +13389,6 @@ mno {
   data {
     uuid : "565583a3-f4b7-44d0-8a63-dec3f8538512"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Boost Mobile (Prepaid)"
     }
@@ -14025,7 +13399,6 @@ mno {
   data {
     uuid : "c941c55f-4e40-4eab-8654-f40392f1df0d"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Cellular South"
     }
@@ -14041,7 +13414,6 @@ mno {
   data {
     uuid : "58713748-1691-44ec-9b0d-e8f3cb171833"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "Cincinnati Bell Wireless"
     }
@@ -14057,7 +13429,6 @@ mno {
   data {
     uuid : "996e2e3f-f8ea-415d-ba58-34b07b306612"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "Cricket Communications"
     }
@@ -14069,7 +13440,6 @@ mno {
   data {
     uuid : "e731b84c-0d3a-441b-b8ed-4d3fcbab608c"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Cricket Communications"
     }
@@ -14080,7 +13450,6 @@ mno {
   data {
     uuid : "aa464cfa-536b-4e0b-9226-2b5bc97a08cc"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Jump Mobile (Prepaid)"
     }
@@ -14091,7 +13460,6 @@ mno {
   data {
     uuid : "0c210bc9-4d59-4ab3-be24-28474a736012"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Leap Wireless"
     }
@@ -14102,7 +13470,6 @@ mno {
   data {
     uuid : "d277bcd0-18f4-4d17-8f9e-a1a417f5ef02"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "MTPCS (Cellular One)"
     }
@@ -14117,7 +13484,6 @@ mno {
   data {
     uuid : "a074dfe8-81de-4291-b441-ecd79b25ddf9"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "MetroPCS"
     }
@@ -14143,7 +13509,6 @@ mno {
   data {
     uuid : "113aa731-e27f-442d-a197-ed999da87b3b"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Mid-Rivers Cellular"
     }
@@ -14221,7 +13586,6 @@ mno {
   data {
     uuid : "2951dc13-6c90-4200-b450-666efc95fa01"
     country : "us"
-    provider_type : GSM
     localized_name {
       name : "T-Mobile"
     }
@@ -14279,7 +13643,6 @@ mno {
   data {
     uuid : "c454b68b-8df3-4631-a2dd-7f4c0786c27e"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "US Cellular"
     }
@@ -14356,7 +13719,6 @@ mno {
   data {
     uuid : "7342feb6-4bcb-4e23-8a46-a7b08cbba0b4"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Virgin Mobile / Helio"
     }
@@ -14623,7 +13985,6 @@ mno {
   data {
     uuid : "1c584f25-8388-4c35-b38a-f0956702f338"
     country : "uy"
-    provider_type : GSM
     localized_name {
       name : "Ancel"
     }
@@ -14660,7 +14021,6 @@ mno {
   data {
     uuid : "306c06f5-225e-423e-942a-e63deb9ff89e"
     country : "uy"
-    provider_type : GSM
     localized_name {
       name : "Claro"
     }
@@ -14688,7 +14048,6 @@ mno {
   data {
     uuid : "c7b08555-b8ab-4c7f-96b1-eb35c23d9ac1"
     country : "uy"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -14716,7 +14075,6 @@ mno {
   data {
     uuid : "5f354f36-57ce-431d-b360-bbe6c8ab9158"
     country : "uz"
-    provider_type : GSM
     localized_name {
       name : "Beeline"
     }
@@ -14733,7 +14091,6 @@ mno {
   data {
     uuid : "7f434714-7e08-4e5b-aec0-e0d64b69713f"
     country : "uz"
-    provider_type : GSM
     localized_name {
       name : "MTS (Uzdunrobita)"
     }
@@ -14750,7 +14107,6 @@ mno {
   data {
     uuid : "66f55d41-44eb-4f53-a060-b0536dbd582f"
     country : "uz"
-    provider_type : GSM
     localized_name {
       name : "Ucell"
     }
@@ -14767,7 +14123,6 @@ mno {
   data {
     uuid : "17e5d9b3-d960-4bb9-8b05-ab6c9f2d8f7c"
     country : "vc"
-    provider_type : GSM
     localized_name {
       name : "Digicel"
     }
@@ -14784,7 +14139,6 @@ mno {
   data {
     uuid : "a8de554f-79b0-4ed7-b0ae-d3a10a62b89a"
     country : "ve"
-    provider_type : GSM
     localized_name {
       name : "Digitel TIM"
     }
@@ -14802,7 +14156,6 @@ mno {
   data {
     uuid : "fa28d188-b169-460d-b156-aa440318d278"
     country : "ve"
-    provider_type : GSM
     localized_name {
       name : "Movilnet"
     }
@@ -14819,7 +14172,6 @@ mno {
   data {
     uuid : "87a1ea08-7768-4de9-a9bc-b6cb3a5bce9f"
     country : "ve"
-    provider_type : GSM
     localized_name {
       name : "Movistar"
     }
@@ -14836,7 +14188,6 @@ mno {
   data {
     uuid : "08936bdb-5622-4edf-8002-0a243b788dff"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "Beeline VN"
     }
@@ -14851,7 +14202,6 @@ mno {
   data {
     uuid : "fd28d583-4fd7-45ef-80b2-d51fedb8b8e1"
     country : "vn"
-    provider_type : CDMA
     localized_name {
       name : "EVNTelecom/E-Mobile"
     }
@@ -14870,7 +14220,6 @@ mno {
   data {
     uuid : "263e84f8-7ce0-432b-811a-a0a80b2913be"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "EVNTelecom/E-Mobile"
     }
@@ -14888,7 +14237,6 @@ mno {
   data {
     uuid : "a2378e8c-e7c9-4cca-9772-575697803271"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "MobiFone"
     }
@@ -14905,7 +14253,6 @@ mno {
   data {
     uuid : "ca71dcae-8f56-4ec0-a212-60c29e86ce1a"
     country : "vn"
-    provider_type : CDMA
     localized_name {
       name : "S-Fone"
     }
@@ -14924,7 +14271,6 @@ mno {
   data {
     uuid : "09ada9ce-32f5-451b-b2ff-f7e9a6b0bda1"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "Vietnamobile"
     }
@@ -14939,7 +14285,6 @@ mno {
   data {
     uuid : "0000c8f3-4c87-4e79-8c57-00ebb36552eb"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "Viettel Mobile"
     }
@@ -14963,7 +14308,6 @@ mno {
   data {
     uuid : "9d95adf8-0bf8-4624-b91c-8fb85b27abb7"
     country : "vn"
-    provider_type : GSM
     localized_name {
       name : "Vinaphone"
     }
@@ -14991,7 +14335,6 @@ mno {
   data {
     uuid : "048f7736-fb57-4059-b567-313ba76e52d3"
     country : "za"
-    provider_type : GSM
     localized_name {
       name : "8.ta"
     }
@@ -15006,7 +14349,6 @@ mno {
   data {
     uuid : "666c6300-77da-4a81-b59e-67e815c6cd34"
     country : "za"
-    provider_type : GSM
     localized_name {
       name : "Cell-c"
     }
@@ -15023,7 +14365,6 @@ mno {
   data {
     uuid : "12d636f9-748c-4387-b03d-81efff4ae247"
     country : "za"
-    provider_type : GSM
     localized_name {
       name : "MTN"
     }
@@ -15040,7 +14381,6 @@ mno {
   data {
     uuid : "8dd876dc-d6d5-487f-8185-35b72dd6b68c"
     country : "za"
-    provider_type : GSM
     localized_name {
       name : "Virgin Mobile"
     }
@@ -15057,7 +14397,6 @@ mno {
   data {
     uuid : "36712536-f434-4dbc-a752-0a1f94c0993a"
     country : "za"
-    provider_type : GSM
     localized_name {
       name : "Vodacom"
     }
@@ -15082,7 +14421,6 @@ mno {
   data {
     uuid : "d433d22c-02ac-43b5-b2b3-91f96c4b2d7a"
     country : "zz"
-    provider_type : GSM
     localized_name {
       name : "Test Network"
     }

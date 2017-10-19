@@ -69,13 +69,6 @@ message OnlinePortal {
 message Data {
   // A unique identifier for this M[V]NO.
   required string uuid = 1;
-
-  enum ProviderType {
-    GSM = 1;
-    CDMA = 2;
-  }
-  optional ProviderType provider_type = 2;
-
   optional string country = 3;
   // List of localized names for this provider.
   // If provided, the first is chosen as the default.

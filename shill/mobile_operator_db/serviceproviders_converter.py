@@ -453,8 +453,6 @@ class ServiceProvidersConverter(object):
         self._SpewString(u'country', country_node.get(u'code'))
 
         provider_node = node.find(u'provider')
-        provider_type = provider_node.get(u'type')
-        self._SpewEnum(u'provider_type', provider_type.upper())
         roaming_required = provider_node.get(u'roaming-required')
         if roaming_required is not None:
             self._SpewBool(u'requires_roaming', roaming_required)
