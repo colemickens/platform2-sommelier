@@ -99,7 +99,10 @@ class CrosConfigValidator(object):
     self._fdt = None
     self._raise_on_error = raise_on_error
     self._schema = schema
-    self.model_list = []
+
+    # This iniital value matches the standard schema object. This is
+    # overwritten by the real model list by Start().
+    self.model_list = ['MODEL']
     self.submodel_list = {}
 
   def Fail(self, location, msg):
@@ -145,12 +148,13 @@ class CrosConfigValidator(object):
 
     Args:
       schema: Schema element to check
-      parent_node: Parent fdt.Node containing this schema element
+      parent_node: Parent fdt.Node containing this schema element (or None if
+          this is not known)
 
     Returns:
       True if this element is present, False if absent
     """
-    if schema.conditional_props:
+    if schema.conditional_props and parent_node:
       for rel_name, value in schema.conditional_props.iteritems():
         name = rel_name
         schema_target = schema.parent
@@ -172,7 +176,7 @@ class CrosConfigValidator(object):
       schema: Schema element to check
       name: Name of element to find (string)
       node: Node containing the property (or for nodes, the parent node
-          containing the subnode) we are looking up
+          containing the subnode) we are looking up. None if none available
 
     Returns:
       Schema for the given element, or None if not found
@@ -185,13 +189,32 @@ class CrosConfigValidator(object):
       elif (self.model_list and isinstance(element, NodeModel) and
             name in self.model_list):
         return element
-      elif self.submodel_list and isinstance(element, NodeSubmodel):
+      elif self.submodel_list and isinstance(element, NodeSubmodel) and node:
         m = re.match('/chromeos/models/([a-z0-9]+)/submodels', node.path)
         if m and name in self.submodel_list[m.group(1)]:
           return element
       elif isinstance(element, NodeAny):
         return element
     return None
+
+  def GetElementByPath(self, path):
+    """Find a schema element given its full path
+
+    Args:
+      path: Full path to look up (e.g. '/chromeos/models/MODEL/thermal/dptf-dv')
+
+    Returns:
+      SchemaElement object for that path
+
+    Raises:
+      AttributeError if not found
+    """
+    parts = path.split('/')[1:]
+    schema = self._schema
+    for part in parts:
+      element = self.GetElement(schema, part, None)
+      schema = element
+    return schema
 
   def _ValidateSchema(self, node, schema):
     """Simple validation of properties.
@@ -299,6 +322,23 @@ class CrosConfigValidator(object):
         val.Fail(prop.node.path,
                  "Phandle '%s' sku-id %d must target a model or submodel'" %
                  (prop.name, sku_id))
+
+  def GetModelTargetDir(self, path, prop_name):
+    """Get the target directory for a given path and property
+
+    This looks up the model schema for a given path and property, and locates
+    the target directory for that property.
+
+    Args:
+      path: Path within model schema to examine (e.g. /thermal)
+      prop_name: Property name to examine (e.g. 'dptf-dv')
+
+    Returns:
+      target directory for that property (e.g. '/etc/dptf')
+    """
+    element = self.GetElementByPath(
+        '/chromeos/models/MODEL%s/%s' % (path, prop_name))
+    return element.target_dir
 
   def Start(self, fname):
     """Start validating a master configuration file
