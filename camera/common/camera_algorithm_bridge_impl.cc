@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include <memory>
 #include <string>
@@ -70,14 +71,42 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
     LOGF(ERROR) << "Failed to start IPC thread";
     return -EFAULT;
   }
-  auto future = internal::Future<int32_t>::Create(&relay_);
-  ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::InitializeOnIpcThread,
-                            base::Unretained(this), callback_ops,
-                            internal::GetFutureCallback(future)));
-  future->Wait();
+  const int32_t kInitializationRetryTimeoutMs = 3000;
+  const int32_t kInitializationRetrySleepUs = 100000;
+  auto get_elapsed_ms = [](struct timespec& start) {
+    struct timespec stop = {};
+    if (clock_gettime(CLOCK_MONOTONIC, &stop)) {
+      LOG(ERROR) << "Failed to get clock time";
+      return 0L;
+    }
+    return (stop.tv_sec - start.tv_sec) * 1000 +
+           (stop.tv_nsec - start.tv_nsec) / 1000000;
+  };
+  struct timespec start_ts = {};
+  if (clock_gettime(CLOCK_MONOTONIC, &start_ts)) {
+    LOG(ERROR) << "Failed to get clock time";
+  }
+  int ret = 0;
+  do {
+    int32_t elapsed_ms = get_elapsed_ms(start_ts);
+    if (elapsed_ms >= kInitializationRetryTimeoutMs) {
+      ret = -ETIMEDOUT;
+      break;
+    }
+    auto future = internal::Future<int32_t>::Create(&relay_);
+    ipc_thread_.task_runner()->PostTask(
+        FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::InitializeOnIpcThread,
+                              base::Unretained(this), callback_ops,
+                              internal::GetFutureCallback(future)));
+    future->Wait(kInitializationRetryTimeoutMs - elapsed_ms);
+    ret = future->Get();
+    if (ret == 0 || ret == -EINVAL) {
+      break;
+    }
+    usleep(kInitializationRetrySleepUs);
+  } while (1);
   VLOGF_EXIT();
-  return future->Get();
+  return ret;
 }
 
 int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
@@ -134,7 +163,7 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
   int fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd < 0) {
     LOGF(ERROR) << "Failed to create communication socket";
-    cb.Run(-1);
+    cb.Run(-EAGAIN);
     return;
   }
   base::ScopedFD socket_fd(fd);
@@ -146,7 +175,7 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
                            strlen(kArcCameraAlgoSocketPath) +
                                offsetof(struct sockaddr_un, sun_path))) == -1) {
     LOGF(ERROR) << "Failed to connect to the server";
-    cb.Run(-1);
+    cb.Run(-EAGAIN);
     return;
   }
 
@@ -169,7 +198,7 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
           mojo::edk::PlatformHandle(socket_fd.get()), &iov, 1, handles->data(),
           handles->size()) == -1) {
     LOGF(ERROR) << "Failed to send token and handle: " << strerror(errno);
-    cb.Run(-1);
+    cb.Run(-EAGAIN);
     return;
   }
   interface_ptr_.Bind(

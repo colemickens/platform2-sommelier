@@ -83,8 +83,8 @@ CXX_LIBRARY(common/libcam_algo.so): CPPFLAGS += $(fake_libcam_algo_CPPFLAGS)
 CXX_LIBRARY(common/libcam_algo.so): LDLIBS += $(fake_libcam_algo_LDLIBS)
 libcab_test_PC_DEPS := libcab libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_test_CPPFLAGS := $(call get_pc_cflags,$(libcab_test_PC_DEPS))
-libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -lgtest -lrt \
-	-pthread
+libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -Wl,-Bstatic \
+	-lgtest -Wl,-Bdynamic -lrt -pthread
 libcab_test_OBJS = common/libcab_test_main.o
 CXX_BINARY(common/libcab_test): CPPFLAGS += $(libcab_test_CPPFLAGS)
 CXX_BINARY(common/libcab_test): LDLIBS += $(libcab_test_LDLIBS)
