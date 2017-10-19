@@ -76,7 +76,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
                const std::string& rpc_id,
-               const KeyValueStore& properties);
+               const KeyValueStore& properties,
+               Metrics* metrics);
   virtual ~WiFiEndpoint();
 
   // Set up RPC channel. Broken out from the ctor, so that WiFi can
@@ -248,6 +249,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_wpa_property_;
   bool has_tethering_signature_;
   SecurityFlags security_flags_;
+  Metrics* metrics_;
 
   Ap80211krvSupport krv_support_;
   bool found_ft_cipher_;

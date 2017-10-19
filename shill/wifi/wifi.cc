@@ -1275,7 +1275,7 @@ void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
   WiFiEndpointRefPtr endpoint(
-      new WiFiEndpoint(control_interface(), this, path, properties));
+      new WiFiEndpoint(control_interface(), this, path, properties, metrics()));
   SLOG(this, 5) << "Found endpoint. "
                 << "RPC path: " << path << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "

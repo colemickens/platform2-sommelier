@@ -49,10 +49,12 @@ static string ObjectID(WiFiEndpoint* w) { return "(wifi_endpoint)"; }
 WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            const WiFiRefPtr& device,
                            const string& rpc_id,
-                           const KeyValueStore& properties)
+                           const KeyValueStore& properties,
+                           Metrics* metrics)
     : frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
+      metrics_(metrics),
       found_ft_cipher_(false),
       control_interface_(control_interface),
       device_(device),
@@ -304,8 +306,12 @@ WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ControlInterface* control_interface,
     args.SetKeyValueStore(WPASupplicant::kPropertyRSN, empty_args);
   }
 
-  return new WiFiEndpoint(
-      control_interface, wifi, bssid, args);  // |bssid| fakes an RPC ID
+  return new WiFiEndpoint(control_interface,
+                          wifi,
+                          bssid,  // |bssid| fakes an RPC ID
+                          args,
+                          nullptr);  // MakeEndpoint is only used for unit
+                                     // tests, where Metrics are not needed.
 }
 
 // static
