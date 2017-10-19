@@ -516,6 +516,19 @@ def GetValidator():
   return CrosConfigValidator(SCHEMA, raise_on_error=True)
 
 
+def ShowErrors(fname, errors):
+  """Show validation errors
+
+  Args:
+    fname: Filename containng the errors
+    errors: List of errors, each a string
+  """
+  print('%s:' % fname, file=sys.stderr)
+  for error in errors:
+    print(error, file=sys.stderr)
+  print(file=sys.stderr)
+
+
 def Main(argv):
   """Main program for validator
 
@@ -533,10 +546,9 @@ def Main(argv):
       errors = validator.Start(fname)
       if errors:
         found_errors = True
-        print('%s:' % fname)
-        for error in errors:
-          print(error)
-        print()
+        if errors:
+          ShowErrors(fname, errors)
+          found_errors = True
   except cros_build_lib.RunCommandError as e:
     if args.debug:
       raise
