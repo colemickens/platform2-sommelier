@@ -13,8 +13,14 @@ from __future__ import print_function
 
 from collections import namedtuple, OrderedDict
 import os
+import sys
 
 import fdt
+
+# Find the validator when running locally
+our_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(our_path, '../validate'))
+import validate_config
 
 # Represents a single touch firmware file which needs to be installed:
 #   firmware: source filename of firmware file. This is installed in a
@@ -105,6 +111,7 @@ class CrosConfig(object):
     self.phandle_to_node = dict(
         (phandle, CrosConfig.Node(self, fdt_node))
         for phandle, fdt_node in self._fdt.phandle_to_node.iteritems())
+    self.validator = validate_config.GetValidator()
 
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files for all models
