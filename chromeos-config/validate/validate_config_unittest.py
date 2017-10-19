@@ -382,13 +382,14 @@ WHITELABEL = '''
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator"""
   def setUp(self):
-    self.val = validate_config.CrosConfigValidator(False)
+    self.val = validate_config.CrosConfigValidator(validate_config.SCHEMA,
+                                                   False)
 
   def Run(self, dts_source):
     dts = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
     dts.write(dts_source)
     dts.close()
-    errors = self.val.Start(dts.name, validate_config.SCHEMA)
+    errors = self.val.Start(dts.name)
     if errors:
       return errors
     if dts:

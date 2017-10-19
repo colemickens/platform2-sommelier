@@ -82,7 +82,7 @@ def ParseArgv(argv):
 
 class CrosConfigValidator(object):
   """Validator for the master configuration"""
-  def __init__(self, raise_on_error):
+  def __init__(self, schema, raise_on_error):
     """Master configuration validator.
 
     Properties:
@@ -98,6 +98,7 @@ class CrosConfigValidator(object):
     self._errors = []
     self._fdt = None
     self._raise_on_error = raise_on_error
+    self._schema = schema
     self.model_list = []
     self.submodel_list = {}
 
@@ -299,7 +300,7 @@ class CrosConfigValidator(object):
                  "Phandle '%s' sku-id %d must target a model or submodel'" %
                  (prop.name, sku_id))
 
-  def Start(self, fname, schema):
+  def Start(self, fname):
     """Start validating a master configuration file
 
     Args:
@@ -328,7 +329,7 @@ class CrosConfigValidator(object):
           self.submodel_list[model.name] = []
 
       # Validate the entire master configuration
-      self._ValidateTree(self._fdt.GetRoot(), schema)
+      self._ValidateTree(self._fdt.GetRoot(), self._schema)
     finally:
       if tmpfile:
         os.unlink(tmpfile.name)
@@ -462,6 +463,15 @@ SCHEMA = NodeDesc('/', True, [
 ])
 
 
+def GetValidator():
+  """Get a schema validator for use by another module
+
+  Returns:
+    CrosConfigValidator object
+  """
+  return CrosConfigValidator(SCHEMA, raise_on_error=True)
+
+
 def Main(argv):
   """Main program for validator
 
@@ -472,10 +482,10 @@ def Main(argv):
     argv: Arguments to the problem (excluding argv[0])
   """
   args = ParseArgv(argv)
-  validator = CrosConfigValidator(args.raise_on_error)
+  validator = CrosConfigValidator(SCHEMA, args.raise_on_error)
   found_errors = False
   for fname in args.config:
-    errors = validator.Start(fname, SCHEMA)
+    errors = validator.Start(fname)
     if errors:
       found_errors = True
       print('%s:' % fname)
