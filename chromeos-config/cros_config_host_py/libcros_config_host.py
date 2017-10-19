@@ -23,10 +23,10 @@ import fdt
 #       firmware. This is where Linux finds the firmware at runtime.
 TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 
-# Represents a single audio file which needs to be installed:
+# Represents a single file which needs to be installed:
 #   source: Source filename within ${FILESDIR}
 #   dest: Destination filename in the root filesystem
-AudioFile = namedtuple('AudioFile', ['source', 'dest'])
+BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 
 # Known directories for installation
 CRAS_CONFIG_DIR = '/etc/cras'
@@ -124,7 +124,7 @@ class CrosConfig(object):
     """Get a list of unique audio files for all models
 
     Returns:
-      List of AudioFile objects representing all the audio files referenced
+      List of BaseFile objects representing all the audio files referenced
       by all models
     """
     file_set = set()
@@ -410,10 +410,10 @@ class CrosConfig(object):
       """Get a list of audio files
 
       Returns:
-        Dict of AudioFile objects representing the audio files referenced
+        Dict of BaseFile objects representing the audio files referenced
         by this model:
           key: (model, property)
-          value: AudioFile object
+          value: BaseFile object
       """
       def _AddAudioFile(prop_name, dirname, dest_template):
         """Helper to add a single audio file
@@ -422,7 +422,7 @@ class CrosConfig(object):
         source and destination file.
         """
         if prop_name in props:
-          files[self.name, prop_name] = AudioFile(
+          files[self.name, prop_name] = BaseFile(
               self.GetPropFilename(self._fdt_node.path, props, prop_name),
               os.path.join(dirname, self.GetFilename(self._fdt_node.path, props,
                                                      dest_template)))

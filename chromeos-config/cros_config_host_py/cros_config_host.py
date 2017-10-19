@@ -75,7 +75,7 @@ def GetAudioFiles(config):
   Args:
     config: A CrosConfig instance
   """
-  for files in config.GetAudioFiles():
+  for files in config.GetBaseFiles():
     print(files.source)
     print(files.dest)
 

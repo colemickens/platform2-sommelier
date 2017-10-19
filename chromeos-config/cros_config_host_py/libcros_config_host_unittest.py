@@ -15,7 +15,7 @@ import sys
 import unittest
 
 import fdt_util
-from libcros_config_host import AudioFile, CrosConfig, TouchFile
+from libcros_config_host import BaseFile, CrosConfig, TouchFile
 
 DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
@@ -184,28 +184,28 @@ class CrosConfigHostTest(unittest.TestCase):
     audio_files = config.GetAudioFiles()
     self.assertEqual(
         audio_files,
-        [AudioFile('cras-config/pyro/bxtda7219max',
-                   '/etc/cras/pyro/bxtda7219max'),
-         AudioFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-         AudioFile('cras-config/reef-cras/bxtda7219max',
-                   '/etc/cras/reef-cras/bxtda7219max'),
-         AudioFile('cras-config/reef-cras/dsp.ini',
-                   '/etc/cras/reef-cras/dsp.ini'),
-         AudioFile('topology/5a98-reef-pyro-8-tplg.bin',
-                   '/lib/firmware/topology/5a98-reef-pyro-8-tplg.bin'),
-         AudioFile('topology/5a98-reef-reef-top-8-tplg.bin',
-                   '/lib/firmware/topology/5a98-reef-reef-top-8-tplg.bin'),
-         AudioFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
-                   '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
-         AudioFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
-                   '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
-                   '.conf'),
-         AudioFile('ucm-config/bxtda7219max.reef-ucm/HiFi.conf',
-                   '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/HiFi.conf'),
-         AudioFile('ucm-config/bxtda7219max.reef-ucm/bxtda7219max.reef-ucm' +
-                   '.conf',
-                   '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
-                   '.reef-ucm.conf')])
+        [BaseFile('cras-config/pyro/bxtda7219max',
+                  '/etc/cras/pyro/bxtda7219max'),
+         BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
+         BaseFile('cras-config/reef-cras/bxtda7219max',
+                  '/etc/cras/reef-cras/bxtda7219max'),
+         BaseFile('cras-config/reef-cras/dsp.ini',
+                  '/etc/cras/reef-cras/dsp.ini'),
+         BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
+                  '/lib/firmware/topology/5a98-reef-pyro-8-tplg.bin'),
+         BaseFile('topology/5a98-reef-reef-top-8-tplg.bin',
+                  '/lib/firmware/topology/5a98-reef-reef-top-8-tplg.bin'),
+         BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
+         BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
+                  '.conf'),
+         BaseFile('ucm-config/bxtda7219max.reef-ucm/HiFi.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/HiFi.conf'),
+         BaseFile('ucm-config/bxtda7219max.reef-ucm/bxtda7219max.reef-ucm' +
+                  '.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
+                  '.reef-ucm.conf')])
 
   def testWhitelabel(self):
     # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
