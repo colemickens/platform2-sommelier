@@ -82,6 +82,9 @@
 				ec = "pyro";
 			};
 		};
+                thermal {
+                        dptf-dv = "pyro/dptf.dv";
+                };
 		touch {
 			present = "probe";
 			probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
@@ -119,6 +122,9 @@
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
 		};
+                thermal {
+                        dptf-dv = "reef/dptf.dv";
+                };
 		touch {
 			#address-cells = <1>;
 			#size-cells = <0>;

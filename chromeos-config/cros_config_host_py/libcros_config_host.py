@@ -158,6 +158,20 @@ class CrosConfig(object):
                            for target in build_targets if target}
     return list(build_targets_dedup)
 
+  def GetThermalFiles(self):
+    """Get a list of unique thermal files for all models
+
+    Returns:
+      List of BaseFile objects representing all the audio files referenced
+      by all models
+    """
+    file_set = set()
+    for model in self.models.values():
+      for files in model.GetThermalFiles().values():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
   def ShowTree(self, base_path, tree):
     print('%-10s%s' % ('Size', 'Path'))
     tree.ShowTree(base_path)
@@ -452,6 +466,27 @@ class CrosConfig(object):
 
           _AddAudioFile('topology-bin', LIB_FIRMWARE, props.get('topology-bin'))
       return files
+
+    def GetThermalFiles(self):
+      """Get a dict of thermal files
+
+      Returns:
+        Dict of BaseFile objects representing the thermal files referenced
+        by this model:
+          key: property
+          value: BaseFile object
+      """
+      files = {}
+      prop = 'dptf-dv'
+      thermal = self.ChildNodeFromPath('/thermal')
+      target_dir = self.cros_config.validator.GetModelTargetDir('/thermal',
+                                                                prop)
+      if thermal:
+        files['base'] = BaseFile(
+            thermal.properties[prop].value,
+            os.path.join(target_dir, thermal.properties[prop].value))
+      return files
+
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration.

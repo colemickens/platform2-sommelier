@@ -207,6 +207,14 @@ class CrosConfigHostTest(unittest.TestCase):
                   '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
                   '.reef-ucm.conf')])
 
+  def testGetThermalFiles(self):
+    config = CrosConfig(self.file)
+    thermal_files = config.GetThermalFiles()
+    self.assertEqual(
+        thermal_files,
+        [BaseFile(source='pyro/dptf.dv', dest='/etc/dptf/pyro/dptf.dv'),
+         BaseFile(source='reef/dptf.dv', dest='/etc/dptf/reef/dptf.dv')])
+
   def testWhitelabel(self):
     # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
     config = CrosConfig(self.file)

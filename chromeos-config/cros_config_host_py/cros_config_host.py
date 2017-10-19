@@ -89,6 +89,21 @@ def GetFirmwareBuildTargets(config, target_type):
   for target in config.GetFirmwareBuildTargets(target_type):
     print(target)
 
+def GetThermalFiles(config):
+  """Print a list of thermal files across all models
+
+  The output is one line for the source file (typically relative to ${FILESDIR})
+  and one line for the install file, e.g.:
+     astronaut/dptf.dv
+     /etc/dptf/astronaut/dptf.dv
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetThermalFiles():
+    print(files.source)
+    print(files.dest)
+
 def FileTree(config, root):
   """Print a tree showing all files installed for this config
 
@@ -156,6 +171,11 @@ def GetParser(description):
   build_target_parser.add_argument(
       'type',
       help='The build-targets type to get (ex. coreboot, ec, depthcharge)')
+  # Parser: get-thermal-files
+  subparsers.add_parser(
+      'get-thermal-files',
+      help='Lists pairs of thermal files in sequence: first line is ' +
+      'the relative source file file, second line is the full install pathname')
   # Parser: file-tree
   file_tree_parser = subparsers.add_parser(
       'file-tree',
@@ -209,6 +229,8 @@ def main(argv):
     GetAudioFiles(config)
   elif opts.subcommand == 'get-firmware-build-targets':
     GetFirmwareBuildTargets(config, opts.type)
+  elif opts.subcommand == 'get-thermal-files':
+    GetThermalFiles(config)
   elif opts.subcommand == 'file-tree':
     FileTree(config, opts.root)
 
