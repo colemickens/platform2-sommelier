@@ -5,8 +5,10 @@
 #include "vm_tools/syslog/collector.h"
 
 #include <fcntl.h>
+#include <signal.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
@@ -28,6 +30,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
 #include <grpc++/grpc++.h>
@@ -116,8 +119,9 @@ bool GetLastKernelSequence(base::ScopedFD* fd, uint64_t* sequence) {
 
 }  // namespace
 
-std::unique_ptr<Collector> Collector::Create() {
-  auto collector = base::WrapUnique<Collector>(new Collector());
+std::unique_ptr<Collector> Collector::Create(base::Closure shutdown_closure) {
+  auto collector =
+      base::WrapUnique<Collector>(new Collector(std::move(shutdown_closure)));
 
   if (!collector->Init()) {
     collector.reset();
@@ -127,6 +131,18 @@ std::unique_ptr<Collector> Collector::Create() {
 }
 
 void Collector::OnFileCanReadWithoutBlocking(int fd) {
+  if (fd == signal_fd_.get()) {
+    signalfd_siginfo info;
+    if (read(signal_fd_.get(), &info, sizeof(info)) != sizeof(info)) {
+      PLOG(ERROR) << "Failed to read from signalfd";
+    }
+    DCHECK_EQ(info.ssi_signo, SIGTERM);
+
+    FlushLogs();
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
+    return;
+  }
+
   DCHECK(fd == syslog_fd_.get() || fd == kmsg_fd_.get());
 
   // The use of base::Unretained is safe here because the callback does not
@@ -156,7 +172,8 @@ void Collector::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
-Collector::Collector() : weak_factory_(this) {}
+Collector::Collector(base::Closure shutdown_closure)
+    : shutdown_closure_(std::move(shutdown_closure)), weak_factory_(this) {}
 
 bool Collector::Init() {
   // Start listening on the syslog socket.
@@ -233,6 +250,28 @@ bool Collector::Init() {
     LOG(ERROR) << "Failed to watch kmsg file descriptor";
     return false;
   }
+
+  // Start listening for SIGTERM.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGTERM);
+
+  signal_fd_.reset(signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK));
+  if (!signal_fd_.is_valid()) {
+    PLOG(ERROR) << "Unable to create signalfd";
+    return false;
+  }
+  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
+      &signal_controller_, this);
+  if (!ret) {
+    LOG(ERROR) << "Failed to watch signal file descriptor";
+    return false;
+  }
+
+  // Block the standard SIGTERM handler since we will be getting it via the
+  // signalfd.
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
 
   // Figure out the boot time so that we can timestamp kernel logs.
   struct sysinfo info;
@@ -431,7 +470,7 @@ std::unique_ptr<Collector> Collector::CreateForTesting(
   CHECK(stub);
   CHECK(syslog_fd.is_valid());
   CHECK(kmsg_fd.is_valid());
-  auto collector = base::WrapUnique<Collector>(new Collector());
+  auto collector = base::WrapUnique<Collector>(new Collector(base::Closure()));
 
   if (!collector->InitForTesting(std::move(syslog_fd), std::move(kmsg_fd),
                                  boot_time, std::move(stub))) {

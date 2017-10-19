@@ -109,12 +109,13 @@ int main(int argc, char** argv) {
   }
 
   base::MessageLoopForIO message_loop;
+  base::RunLoop run_loop;
 
   std::unique_ptr<vm_tools::syslog::Collector> collector =
-      vm_tools::syslog::Collector::Create();
+      vm_tools::syslog::Collector::Create(run_loop.QuitClosure());
   CHECK(collector);
 
-  base::RunLoop().Run();
+  run_loop.Run();
 
   return 0;
 }

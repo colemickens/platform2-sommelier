@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -26,7 +27,7 @@ namespace syslog {
 class Collector : public base::MessageLoopForIO::Watcher {
  public:
   // Create a new, initialized Collector.
-  static std::unique_ptr<Collector> Create();
+  static std::unique_ptr<Collector> Create(base::Closure shutdown_closure);
   ~Collector() = default;
 
   // base::MessageLoopForIO::Watcher overrides.
@@ -42,7 +43,7 @@ class Collector : public base::MessageLoopForIO::Watcher {
  private:
   // Private default constructor.  Use the static factory function to create new
   // instances of this class.
-  Collector();
+  explicit Collector(base::Closure shutdown_closure);
 
   // Initializes this Collector.  Starts listening on the syslog socket
   // and sets up timers to periodically flush logs out.
@@ -74,6 +75,14 @@ class Collector : public base::MessageLoopForIO::Watcher {
   // File descriptor for listening to /dev/kmsg.
   base::ScopedFD kmsg_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher kmsg_controller_;
+
+  // File descriptor for receiving signals.
+  base::ScopedFD signal_fd_;
+  base::MessageLoopForIO::FileDescriptorWatcher signal_controller_;
+
+  // Closure for stopping the MessageLoop.  Posted to the thread's TaskRunner
+  // when this program receives a SIGTERM.
+  base::Closure shutdown_closure_;
 
   // Time that the VM booted.  Used to convert kernel timestamps to localtime.
   base::Time boot_time_;
