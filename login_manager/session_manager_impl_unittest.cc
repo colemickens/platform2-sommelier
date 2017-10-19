@@ -2111,6 +2111,43 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
   EXPECT_FALSE(server_socket_fd.is_valid());
 }
 
+TEST_F(SessionManagerImplTest, ArcStartInstance_ArcSetupFailure) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              StartsWith("ANDROID_DATA_DIR="),
+                              StartsWith("ANDROID_DATA_OLD_DIR="),
+                              std::string("CHROMEOS_USER=") + kSaneEmail,
+                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                              "ENABLE_VENDOR_PRIVILEGED=0"),
+                  InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(nullptr));
+  // After a failure, the StopArcInstance impulse must be sent to clean up the
+  // system's state.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                  InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+  ExpectStartArcInstance();
+  std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
+  EXPECT_FALSE(impl_->StartArcInstance(&error, SerializeAsBlob(request),
+                                       &container_instance_id,
+                                       &server_socket_fd));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kEmitFailed, error->GetCode());
+  EXPECT_TRUE(container_instance_id.empty());
+  EXPECT_FALSE(server_socket_fd.is_valid());
+}
+
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   ExpectAndRunStartSession(kSaneEmail);
 

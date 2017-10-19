@@ -1793,6 +1793,10 @@ std::string SessionManagerImpl::StartArcContainer(
   // TODO(cmtm): remove this for android P with b/67480541
   if (!init_controller_->TriggerImpulse(
           init_signal, init_keyvals, InitDaemonController::TriggerMode::SYNC)) {
+    // Failed to start container. Thus, trigger stop-arc-instance impulse
+    // manually for cleanup.
+    init_controller_->TriggerImpulse(kStopArcInstanceImpulse, {},
+                                     InitDaemonController::TriggerMode::SYNC);
     const std::string message = "Emitting " + init_signal + " impulse failed.";
     LOG(ERROR) << message;
     *error_out = CreateError(dbus_error::kEmitFailed, message);
