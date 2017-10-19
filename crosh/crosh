@@ -218,6 +218,12 @@ expand_var() {
   eval echo "\"\$${var}\""
 }
 
+# Determine whether the variable is set in the environment.
+var_is_set() {
+  local var="$1"
+  [ "$(expand_var "{${var}+set}")" = "set" ]
+}
+
 USAGE_help='[command]'
 HELP_help='
   Display general help, or details for a specific command.
@@ -243,20 +249,21 @@ cmd_help() (
       echo "help: command '${cmd}' is not available"
       return 1
     else
-      local usage="$(expand_var "USAGE_${cmd}")"
-      local help="$(expand_var "HELP_${cmd}")"
-
-      if [ -n "${usage}" ]; then
-        printf '%s %s' "${cmd}" "${usage}"
-      fi
-
-      if [ -n "${help}" ]; then
-        printf '  %s\n\n' "${help}"
-      fi
-
       # If the command has a custom help func, call it.
       if registered_crosh_command_help "${cmd}"; then
-        "help_${cmd}"
+        # Make sure the output is at least somewhat close to our standardized
+        # form below.  We always want the program name first and a blank line
+        # at the end.  This way `help_advanced` isn't completely ugly.
+        echo "${cmd}"
+        # The sed statement trims the first & last lines if they're blank.
+        "help_${cmd}" | sed -e '1{/^$/d}' -e '${/^$/d}'
+        echo
+
+      elif var_is_set "USAGE_${cmd}"; then
+        # Only show this function if the usage strings are actually set.
+        local usage="$(expand_var "USAGE_${cmd}")"
+        local help="$(expand_var "HELP_${cmd}")"
+        printf '%s %s  %s\n\n' "${cmd}" "${usage}" "${help}"
       fi
     fi
     ;;
