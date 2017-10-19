@@ -437,7 +437,8 @@ SCHEMA = NodeDesc('/', True, [
                     ])
                 ], conditional_props=NOT_WL),
                 NodeDesc('thermal', False, [
-                    PropString('dptf-dv', False, r'\w+/dptf.dv'),
+                    PropString('dptf-dv', False, r'\w+/dptf.dv',
+                               target_dir='/etc/dptf'),
                 ], conditional_props=NOT_WL),
                 NodeDesc('touch', False, [
                     PropString('present', False, r'yes|no|probe'),

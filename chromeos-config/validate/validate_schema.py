@@ -60,13 +60,19 @@ class SchemaElement(object):
        Dict:
          key: name of controlling property
          value: True if the property must be present, False if it must be absent
+    target_dir: Target directory in the filesystem for files from this
+        property (e.g. '/etc/cras'). This is used to set the install directory
+        and keep it consistent across ebuilds (which use cros_config_host) and
+        init scripts (which use cros_config).
   """
-  def __init__(self, name, prop_type, required=False, conditional_props=None):
+  def __init__(self, name, prop_type, required=False, conditional_props=None,
+               target_dir=None):
     self.name = name
     self.prop_type = prop_type
     self.required = required
     self.conditional_props = conditional_props
     self.parent = None
+    self.target_dir = target_dir
 
   def Validate(self, val, prop):
     """Validate the schema element against the given property.
@@ -83,8 +89,10 @@ class SchemaElement(object):
 
 class PropDesc(SchemaElement):
   """A generic property schema element (base class for properties)"""
-  def __init__(self, name, prop_type, required=False, conditional_props=None):
-    super(PropDesc, self).__init__(name, prop_type, required, conditional_props)
+  def __init__(self, name, prop_type, required=False, conditional_props=None,
+               target_dir=None):
+    super(PropDesc, self).__init__(name, prop_type, required, conditional_props,
+                                   target_dir)
 
 
 class PropString(PropDesc):
@@ -94,9 +102,9 @@ class PropString(PropDesc):
     str_pattern: Regex to use to validate the string
   """
   def __init__(self, name, required=False, str_pattern='',
-               conditional_props=None):
+               conditional_props=None, target_dir=None):
     super(PropString, self).__init__(name, 'string', required,
-                                     conditional_props)
+                                     conditional_props, target_dir)
     self.str_pattern = str_pattern
 
   def Validate(self, val, prop):
