@@ -2529,10 +2529,11 @@ mno {
     localized_name {
       name : "China Telecom"
     }
+    mccmnc : "46011"
     sid : "11296"
     sid : "11298"
     mobile_apn {
-      apn : ""
+      apn : "ctnet"
       localized_name {
         name : "China Telecom"
       }
