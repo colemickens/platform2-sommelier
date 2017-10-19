@@ -550,6 +550,8 @@ send_crashes() {
   # Consider any old files which still have no corresponding meta file
   # as orphaned, and remove them.
   for old_file in $(${FIND} "${dir}" -mindepth 1 \
+                    \! -name os-release \
+                    \! -name lsb-release \
                     -mmin +$((24 * 60)) -type f); do
     if [ ! -e "$(get_base "${old_file}").meta" ]; then
       lecho "Removing old orphaned file: ${old_file}."
