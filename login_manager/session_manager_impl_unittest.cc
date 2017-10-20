@@ -193,8 +193,6 @@ enum class OldDataDirType {
 };
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
-constexpr char kEmptyAccountId[] = "";
-constexpr char kEmptyComponentId[] = "";
 
 StartArcInstanceRequest CreateStartArcInstanceRequestForUser() {
   StartArcInstanceRequest request;
@@ -257,13 +255,14 @@ class ResponseCapturer {
   DISALLOW_COPY_AND_ASSIGN(ResponseCapturer);
 };
 
-std::vector<uint8_t> MakePolicyDescriptor(PolicyDescriptor::PolicyType type,
-                                          const std::string& account_id,
-                                          const std::string& component_id) {
+constexpr char kEmptyAccountId[] = "";
+
+std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
+                                          const std::string& account_id) {
   PolicyDescriptor descriptor;
-  descriptor.set_type(type);
+  descriptor.set_account_type(account_type);
   descriptor.set_account_id(account_id);
-  descriptor.set_component_id(component_id);
+  descriptor.set_domain(POLICY_DOMAIN_CHROME);
   return StringToBlob(descriptor.SerializeAsString());
 }
 
@@ -902,10 +901,9 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
   ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
                     SignatureCheck::kEnabled);
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
-                                            kEmptyAccountId, kEmptyComponentId),
-                       policy_blob);
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
@@ -925,10 +923,9 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
                     PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
 
   ResponseCapturer capturer;
-  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY,
-                                            kEmptyAccountId, kEmptyComponentId),
-                       policy_blob);
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
@@ -946,9 +943,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
@@ -968,9 +963,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
@@ -992,9 +985,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
@@ -1015,9 +1006,7 @@ TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error,
-      MakePolicyDescriptor(PolicyDescriptor::DEVICE_POLICY, kEmptyAccountId,
-                           kEmptyComponentId),
+      &error, MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
       &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
@@ -1100,8 +1089,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
-                                            kSaneEmail, kEmptyComponentId),
+                       MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
                        policy_blob);
   ASSERT_TRUE(capturer.response());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist,
@@ -1133,8 +1121,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
-                                            kSaneEmail, kEmptyComponentId),
+                       MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
                        policy_blob);
 }
 
@@ -1201,8 +1188,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   {
     ResponseCapturer capturer;
     impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
-                                              kSaneEmail, kEmptyComponentId),
+                         MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
                          policy_blob);
     Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
   }
@@ -1212,8 +1198,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   {
     ResponseCapturer capturer;
     impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
-                                              kEmail2, kEmptyComponentId),
+                         MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
                          policy_blob);
     ASSERT_TRUE(capturer.response());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist,
@@ -1233,8 +1218,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   {
     ResponseCapturer capturer;
     impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                         MakePolicyDescriptor(PolicyDescriptor::USER_POLICY,
-                                              kEmail2, kEmptyComponentId),
+                         MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
                          policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
@@ -1258,9 +1242,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
@@ -1283,9 +1265,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
@@ -1316,9 +1296,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterpriseAD) {
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      policy_blob);
+      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
@@ -1333,10 +1311,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->RetrievePolicyEx(
-      &error,
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      &out_blob));
+      &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), &out_blob));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
@@ -1363,10 +1338,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SessionStarted) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error,
-      MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                           kEmptyComponentId),
-      &out_blob));
+      &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -1427,9 +1399,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->RetrievePolicyEx(
-        &error,
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kSaneEmail,
-                             kEmptyComponentId),
+        &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
         &out_blob));
     EXPECT_FALSE(error.get());
     Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
@@ -1442,10 +1412,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
     EXPECT_FALSE(impl_->RetrievePolicyEx(
-        &error,
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
-                             kEmptyComponentId),
-        &out_blob));
+        &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2), &out_blob));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
   }
@@ -1461,10 +1428,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->RetrievePolicyEx(
-        &error,
-        MakePolicyDescriptor(PolicyDescriptor::USER_POLICY, kEmail2,
-                             kEmptyComponentId),
-        &out_blob));
+        &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2), &out_blob));
     EXPECT_FALSE(error.get());
     Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
     EXPECT_EQ(policy_blob, out_blob);
@@ -1514,9 +1478,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error,
-      MakePolicyDescriptor(PolicyDescriptor::SESSIONLESS_USER_POLICY,
-                           kSaneEmail, kEmptyComponentId),
+      &error, MakePolicyDescriptor(ACCOUNT_TYPE_SESSIONLESS_USER, kSaneEmail),
       &out_blob));
   Mock::VerifyAndClearExpectations(policy_service);
   EXPECT_FALSE(error.get());

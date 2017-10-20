@@ -495,10 +495,9 @@ void SessionManagerImpl::Finalize() {
   dbus_service_.reset();
 
   device_policy_->PersistPolicy(PolicyService::Completion());
-  for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end(); ++it) {
-    if (it->second)
-      it->second->policy_service->PersistPolicy(PolicyService::Completion());
+  for (const auto& kv : user_sessions_) {
+    if (kv.second)
+      kv.second->policy_service->PersistPolicy(PolicyService::Completion());
   }
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
@@ -802,23 +801,18 @@ bool SessionManagerImpl::RetrievePolicyEx(
 
   // TODO(crbug.com/765644): Refactor error handling in Retrieve* methods to get
   // rid of duplicate code.
-  switch (descriptor.type()) {
-    case PolicyDescriptor::USER_POLICY:
+  switch (descriptor.account_type()) {
+    case login_manager::ACCOUNT_TYPE_USER:
       return RetrievePolicyForUser(error, descriptor.account_id(),
                                    out_policy_blob);
-    case PolicyDescriptor::SESSIONLESS_USER_POLICY:
+    case login_manager::ACCOUNT_TYPE_SESSIONLESS_USER:
       return RetrievePolicyForUserWithoutSession(error, descriptor.account_id(),
                                                  out_policy_blob);
-    case PolicyDescriptor::DEVICE_LOCAL_ACCOUNT_POLICY:
+    case login_manager::ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
       return RetrieveDeviceLocalAccountPolicy(error, descriptor.account_id(),
                                               out_policy_blob);
-    case PolicyDescriptor::DEVICE_POLICY:
+    case login_manager::ACCOUNT_TYPE_DEVICE:
       return RetrievePolicy(error, out_policy_blob);
-    case PolicyDescriptor::EXTENSION_POLICY:
-      // TODO(crbug.com/735100)
-      *error = CreateError(DBUS_ERROR_INVALID_ARGS,
-                           "EXTENSION_POLICY not implemented yet");
-      return false;
   }
 }
 
@@ -1577,33 +1571,26 @@ void SessionManagerImpl::StorePolicyInternalEx(
   // TODO(crbug.com/765644): Refactor Store* methods to get rid of duplicate
   // code, e.g. by selecting the store by descriptor (requires deriving
   // DeviceLocalAccountPolicyService from PolicyService like the others).
-  switch (descriptor.type()) {
-    case PolicyDescriptor::USER_POLICY: {
+  switch (descriptor.account_type()) {
+    case login_manager::ACCOUNT_TYPE_USER: {
       StorePolicyForUserInternal(descriptor.account_id(), policy_blob,
                                  signature_check, std::move(response));
       break;
     }
-    case PolicyDescriptor::SESSIONLESS_USER_POLICY: {
+    case login_manager::ACCOUNT_TYPE_SESSIONLESS_USER: {
       brillo::ErrorPtr error = CreateError(
           DBUS_ERROR_INVALID_ARGS,
           "SESSIONLESS_USER_POLICY only allowed for policy retrieval.");
       response->ReplyWithError(error.get());
       break;
     }
-    case PolicyDescriptor::DEVICE_LOCAL_ACCOUNT_POLICY: {
+    case login_manager::ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT: {
       StoreDeviceLocalAccountPolicy(std::move(response),
                                     descriptor.account_id(), policy_blob);
       break;
     }
-    case PolicyDescriptor::DEVICE_POLICY: {
+    case login_manager::ACCOUNT_TYPE_DEVICE: {
       StorePolicyInternal(policy_blob, signature_check, std::move(response));
-      break;
-    }
-    case PolicyDescriptor::EXTENSION_POLICY: {
-      // TODO(crbug.com/735100)
-      brillo::ErrorPtr error = CreateError(
-          DBUS_ERROR_INVALID_ARGS, "EXTENSION_POLICY not implemented yet");
-      response->ReplyWithError(error.get());
       break;
     }
   }
