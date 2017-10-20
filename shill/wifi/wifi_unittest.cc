@@ -105,7 +105,7 @@ using ::testing::NiceMock;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnRef;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -584,13 +584,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
     wifi_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
     ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
-        .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
+        .WillByDefault(DoAll(SetArgPointee<1>(string("/default/path")),
                              Return(true)));
     ON_CALL(*supplicant_process_proxy_, GetInterface(_, _))
-        .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
+        .WillByDefault(DoAll(SetArgPointee<1>(string("/default/path")),
                              Return(true)));
     ON_CALL(*supplicant_interface_proxy_.get(), AddNetwork(_, _))
-        .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
+        .WillByDefault(DoAll(SetArgPointee<1>(string("/default/path")),
                              Return(true)));
     ON_CALL(*supplicant_interface_proxy_.get(), Disconnect())
         .WillByDefault(Return(true));
@@ -852,7 +852,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     if (!network_path.empty()) {
       EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
-          .WillOnce(DoAll(SetArgumentPointee<1>(network_path), Return(true)));
+          .WillOnce(DoAll(SetArgPointee<1>(network_path), Return(true)));
       EXPECT_CALL(*GetSupplicantInterfaceProxy(),
                   SetHT40Enable(network_path, true));
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(network_path));
@@ -2429,7 +2429,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelDebug))
       .Times(1);
@@ -2445,7 +2445,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   // level of supplicant debugging.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelInfo))
       .Times(1);
@@ -2740,8 +2740,8 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
   StartWiFi();
 
   EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(resume_time), Return(0)))
-      .WillOnce(DoAll(SetArgumentPointee<0>(scan_done_time), Return(0)));
+      .WillOnce(DoAll(SetArgPointee<0>(resume_time), Return(0)))
+      .WillOnce(DoAll(SetArgPointee<0>(scan_done_time), Return(0)));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               FlushBSS(WiFi::kMaxBSSResumeAgeSeconds + 5));
   OnAfterResume();
@@ -2982,7 +2982,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(0LL), Return(true)));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 
   Mock::VerifyAndClearExpectations(device_info());
@@ -2994,9 +2994,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   ReportConnected();
 
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(1LL), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(1LL), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(0LL), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(0LL), Return(true)));
 
   // If there was an increased byte-count while we were timing out DHCP,
   // this should be considered a DHCP failure and not a credential failure.
@@ -3485,7 +3485,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   Mock::VerifyAndClearExpectations(eap_state_handler_);
 
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailureOutOfRange),
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailureOutOfRange),
                 Return(false)));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
                                               _,
@@ -3497,7 +3497,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   const char kNetworkRpcId[] = "/service/network/rpcid";
   SetServiceNetworkRpcId(service, kNetworkRpcId);
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailurePinMissing),
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailurePinMissing),
                 Return(false)));
   // We need a real string object since it will be returned by reference below.
   const string kEmptyPin;
@@ -3508,7 +3508,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailurePinMissing),
+      .WillOnce(DoAll(SetArgPointee<2>(Service::kFailurePinMissing),
                 Return(false)));
   // We need a real string object since it will be returned by reference below.
   const string kPin("000000");
@@ -3585,7 +3585,7 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // check but not set the debug level if we return the "debug" level.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   StartWiFi();
@@ -3595,33 +3595,33 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // is set to some unmanaged level, WiFi should leave it alone.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelError)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelError)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelError)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelError)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelExcessive)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelExcessive)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelMsgDump)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelMsgDump)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelWarning)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(
+          DoAll(SetArgPointee<0>(
                     string(WPASupplicant::kDebugLevelWarning)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
@@ -3639,7 +3639,7 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // is turned on, WiFi should turn supplicant debugging off.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelInfo))
       .Times(1);
@@ -3650,7 +3650,7 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // is turned off, WiFi should turn supplicant debugging on.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelDebug))
       .Times(1);
@@ -3661,10 +3661,10 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // changed.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
+          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   ReportWiFiDebugScopeChanged(true);

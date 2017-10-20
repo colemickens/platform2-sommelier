@@ -32,7 +32,7 @@ using std::string;
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 
@@ -172,7 +172,7 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   for (const auto& it : kTDLSStatusMap) {
     error.Reset();
     EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(it.first), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(it.first), Return(true)));
     EXPECT_EQ(it.second,
               tdls_manager_.PerformOperation(
                   kPeer, kTDLSStatusOperation, &error));
@@ -185,7 +185,7 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   SetPeerDiscovered(kPeer);
   EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
       .WillOnce(
-          DoAll(SetArgumentPointee<1>(
+          DoAll(SetArgPointee<1>(
                     string(WPASupplicant::kTDLSStatePeerDoesNotExist)),
                 Return(true)));
   EXPECT_EQ(kTDLSDisconnectedState,

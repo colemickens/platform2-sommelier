@@ -36,7 +36,7 @@ using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 namespace shill {
@@ -287,7 +287,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededWakeNeeded) {
 
   const time_t kNowMonotonicSeconds = GetMinimumTimeBetweenWakesSeconds();
   EXPECT_CALL(time(), GetSecondsMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kNowMonotonicSeconds),
+      .WillOnce(DoAll(SetArgPointee<0>(kNowMonotonicSeconds),
                       Return(true)));
   EXPECT_CALL(*this, OnRepairHandler());
   AllowWakeQueuesIfNeededCommonCalls();
@@ -305,7 +305,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRateLimiting) {
 
   EXPECT_CALL(time(), GetSecondsMonotonic(_))
       .WillOnce(DoAll(
-          SetArgumentPointee<0>(GetMinimumTimeBetweenWakesSeconds() - 1),
+          SetArgPointee<0>(GetMinimumTimeBetweenWakesSeconds() - 1),
           Return(true)));
   EXPECT_CALL(*this, OnRepairHandler()).Times(0);
   AllowWakeQueuesIfNeededCommonCalls();

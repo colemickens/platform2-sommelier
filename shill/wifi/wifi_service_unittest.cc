@@ -62,7 +62,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrNe;
 using ::testing::StrictMock;
@@ -931,7 +931,7 @@ TEST_F(WiFiServiceTest, LoadHidden) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_store,
               GetBool(StrEq(storage_id), WiFiService::kStorageHiddenSSID, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_TRUE(service->Load(&mock_store));
   EXPECT_TRUE(service->hidden_ssid_);
 }
@@ -1020,7 +1020,7 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   EXPECT_CALL(mock_store,
               GetCryptedString(StrEq(kStorageId),
                                WiFiService::kStoragePassphrase, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPassphrase), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kPassphrase), Return(true)));
   EXPECT_CALL(mock_store,
               GetCryptedString(StrEq(kStorageId),
                                StrNe(WiFiService::kStoragePassphrase), _))
@@ -1057,14 +1057,14 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   EXPECT_CALL(mock_store,
               GetCryptedString(StrEq(kStorageId),
                                WiFiService::kStoragePassphrase, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPassphrase), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kPassphrase), Return(true)));
   EXPECT_CALL(mock_store,
               GetCryptedString(StrEq(kStorageId),
                                StrNe(WiFiService::kStoragePassphrase), _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_store,
               GetBool(kStorageId, Service::kStorageHasEverConnected, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHasEverConnected),
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kHasEverConnected),
                             Return(true)));
   // Set old passphrase for service
   EXPECT_TRUE(service->need_passphrase_);
@@ -2170,7 +2170,7 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPreferredDevice) {
   EXPECT_CALL(mock_store,
               GetString(StrEq(kStorageId),
                         WiFiService::kStoragePreferredDevice, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kDeviceName), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kDeviceName), Return(true)));
   EXPECT_CALL(mock_store,
               GetString(StrEq(kStorageId),
                         StrNe(WiFiService::kStoragePreferredDevice), _))
@@ -2267,10 +2267,10 @@ TEST_F(WiFiServiceTest, SaveLoadRoamThreshold) {
   service->roam_threshold_db_set_ = false;
   EXPECT_CALL(mock_store, GetUint64(StrEq(kStorageId),
                                     WiFiService::kStorageRoamThreshold, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kRoamThreshold), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kRoamThreshold), Return(true)));
   EXPECT_CALL(mock_store, GetBool(StrEq(kStorageId),
                                   WiFiService::kStorageRoamThresholdSet, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_TRUE(service->Load(&mock_store));
   EXPECT_EQ(kRoamThreshold, service->roam_threshold_db_);
   EXPECT_TRUE(service->roam_threshold_db_set_);

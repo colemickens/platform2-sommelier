@@ -55,7 +55,7 @@ using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
 
@@ -216,7 +216,7 @@ class WiFiProviderTest : public testing::Test {
                                    const string& key,
                                    const string& value) {
     EXPECT_CALL(*storage, GetString(id, key, _))
-        .WillRepeatedly(DoAll(SetArgumentPointee<2>(value),
+        .WillRepeatedly(DoAll(SetArgPointee<2>(value),
                               Return(true)));
   }
 
@@ -251,7 +251,7 @@ class WiFiProviderTest : public testing::Test {
     if (provide_hidden) {
       EXPECT_CALL(*profile_storage, GetBool(id, kWifiHiddenSsid, _))
           .WillRepeatedly(
-              DoAll(SetArgumentPointee<2>(is_hidden), Return(true)));
+              DoAll(SetArgPointee<2>(is_hidden), Return(true)));
     } else {
       EXPECT_CALL(*profile_storage, GetBool(id, kWifiHiddenSsid, _))
           .WillRepeatedly(Return(false));
