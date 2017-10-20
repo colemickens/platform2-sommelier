@@ -15,10 +15,21 @@
 #define CAMERA_ALGORITHM_MODULE_INFO_SYM_AS_STR "CAMI"
 
 extern "C" {
+
+typedef enum camera_algorithm_error_msg_code {
+  /**
+   * A serious failure occured. The client must free the bridge and create it
+   * again to use it.
+   */
+  CAMERA_ALGORITHM_MSG_IPC_ERROR = 1,
+} camera_algorithm_error_msg_code_t;
+
 typedef struct camera_algorithm_callback_ops {
   void (*return_callback)(const struct camera_algorithm_callback_ops* callback,
                           uint32_t status,
                           int32_t buffer_handle);
+  void (*notify)(const struct camera_algorithm_callback_ops* callback,
+                 camera_algorithm_error_msg_code_t msg);
 } camera_algorithm_callback_ops_t;
 
 typedef struct {

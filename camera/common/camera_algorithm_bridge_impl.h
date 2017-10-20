@@ -59,6 +59,8 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
       const camera_algorithm_callback_ops_t* callback_ops,
       base::Callback<void(int32_t)> cb);
 
+  void OnConnectionErrorOnIpcThread();
+
   void DestroyOnIpcThread();
 
   void RegisterBufferOnIpcThread(int buffer_fd,
@@ -74,6 +76,9 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
 
   // Singleton of bridge implementation
   static CameraAlgorithmBridgeImpl* bridge_impl_;
+
+  // Return callback registered by HAL
+  const camera_algorithm_callback_ops_t* callback_ops_;
 
   // Pointer to local proxy of remote CameraAlgorithmOps interface
   // implementation.

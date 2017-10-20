@@ -52,6 +52,8 @@ Intel3AClient::Intel3AClient():
 
     mCallback = base::Bind(&Intel3AClient::callbackHandler, base::Unretained(this));
     Intel3AClient::return_callback = returnCallback;
+    // TODO(liang.l.yang@intel.com): handle IPC error message
+    Intel3AClient::notify = nullptr;
 
     mBridge = arc::CameraAlgorithmBridge::CreateInstance();
     CheckError(!mBridge, VOID_VALUE, "@%s, mBridge is nullptr", __FUNCTION__);
@@ -141,6 +143,7 @@ int Intel3AClient::waitCallback()
     pthread_mutex_lock(&mCbLock);
     if (!mIsCallbacked) {
         int ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
+        pthread_mutex_unlock(&mCbLock);
         CheckError(ret != 0, UNKNOWN_ERROR, "@%s, call pthread_cond_timedwait fail, ret:%d", __FUNCTION__, ret);
     }
     mIsCallbacked = false;

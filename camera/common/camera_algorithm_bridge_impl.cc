@@ -50,7 +50,7 @@ CameraAlgorithmBridgeImpl::CreateInstance() {
 }
 
 CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl()
-    : ipc_thread_("IPC thread") {}
+    : callback_ops_(nullptr), ipc_thread_("IPC thread") {}
 
 CameraAlgorithmBridgeImpl::~CameraAlgorithmBridgeImpl() {
   VLOGF_ENTER();
@@ -203,12 +203,25 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
   }
   interface_ptr_.Bind(
       mojom::CameraAlgorithmOpsPtrInfo(std::move(parent_pipe), 0u));
-  interface_ptr_.set_connection_error_handler(base::Bind(
-      &CameraAlgorithmBridgeImpl::DestroyOnIpcThread, base::Unretained(this)));
+  interface_ptr_.set_connection_error_handler(
+      base::Bind(&CameraAlgorithmBridgeImpl::OnConnectionErrorOnIpcThread,
+                 base::Unretained(this)));
   cb_impl_.reset(new CameraAlgorithmCallbackOpsImpl(ipc_thread_.task_runner(),
                                                     callback_ops));
   interface_ptr_->Initialize(cb_impl_->CreateInterfacePtr(),
                              mojo::Callback<void(int32_t)>(cb));
+  callback_ops_ = callback_ops;
+  VLOGF_EXIT();
+}
+
+void CameraAlgorithmBridgeImpl::OnConnectionErrorOnIpcThread() {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(callback_ops_);
+  VLOGF_ENTER();
+  DestroyOnIpcThread();
+  if (callback_ops_->notify) {
+    callback_ops_->notify(callback_ops_, CAMERA_ALGORITHM_MSG_IPC_ERROR);
+  }
   VLOGF_EXIT();
 }
 
@@ -225,8 +238,12 @@ void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
     int buffer_fd,
     base::Callback<void(int32_t)> cb) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
+  if (!interface_ptr_.is_bound()) {
+    LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
+    cb.Run(-ECONNRESET);
+    return;
+  }
   int dup_fd = dup(buffer_fd);
   if (dup_fd < 0) {
     PLOGF(ERROR) << "Failed to dup fd: ";
@@ -250,8 +267,11 @@ void CameraAlgorithmBridgeImpl::RequestOnIpcThread(
     mojo::Array<uint8_t> req_header,
     int32_t buffer_handle) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
+  if (!interface_ptr_.is_bound()) {
+    LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
+    return;
+  }
   interface_ptr_->Request(std::move(req_header), buffer_handle);
   VLOGF_EXIT();
 }
@@ -259,8 +279,11 @@ void CameraAlgorithmBridgeImpl::RequestOnIpcThread(
 void CameraAlgorithmBridgeImpl::DeregisterBuffersOnIpcThread(
     mojo::Array<int32_t> buffer_handles) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
+  if (!interface_ptr_.is_bound()) {
+    LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
+    return;
+  }
   interface_ptr_->DeregisterBuffers(std::move(buffer_handles));
 }
 
