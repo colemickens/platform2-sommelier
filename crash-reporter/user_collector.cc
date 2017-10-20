@@ -49,6 +49,10 @@ const char kChromeProductName[] = "Chrome_ChromeOS";
 // Process type for chrome --mash crashes.
 const char kMashProcessType[] = "mash";
 
+// Flag must be kept in sync with chrome's switches::kMashServiceName, see
+// src/chrome/common/chrome_switches.cc
+const char kMashServiceName[] = "--mash-service-name";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string &exec);
@@ -279,11 +283,14 @@ bool UserCollector::RunFilter(pid_t pid) {
 
 bool UserCollector::IsChromeMashProcess(int pid) const {
   std::vector<std::string> args = GetCommandLine(pid);
-  // Flags must be kept in sync with chrome's switches::kMash and kMus, see
-  // src/chrome/common/chrome_switches.cc.
-  static const char kMashFlag[] = "--mash";  // "ash" process
-  static const char kMusFlag[] = "--mus";  // "mus-ws" and "mus-gpu" processes
-  return ContainsValue(args, kMashFlag) || ContainsValue(args, kMusFlag);
+  return std::any_of(args.begin(), args.end(), [](const std::string& arg) {
+    // A mash process for service 'foo' has an arg "--mash-service-name=foo".
+    // Scan the entire string because some chrome child process have a single
+    // arg with the switches glued together with spaces. This happens because
+    // the zygote uses setproctitle() to change the command from /proc/self/exe
+    // to /opt/google/chrome.
+    return arg.find(kMashServiceName) != std::string::npos;
+  });
 }
 
 bool UserCollector::ShouldDump(pid_t pid,
