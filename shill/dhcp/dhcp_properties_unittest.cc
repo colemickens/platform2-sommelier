@@ -28,7 +28,7 @@ using testing::_;
 using testing::DoAll;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -168,10 +168,10 @@ TEST_F(DhcpPropertiesTest, LoadEmpty) {
 TEST_F(DhcpPropertiesTest, Load) {
   MockStore storage;
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
                       Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kHostname)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kHostname)),
                       Return(true)));
   dhcp_properties_.Load(&storage, kStorageID);
   EXPECT_EQ(kVendorClass,
@@ -184,7 +184,7 @@ TEST_F(DhcpPropertiesTest, LoadWithValuesSetAndClearRequired) {
   dhcp_properties_.properties_.SetString("Hostname", kHostname);
 
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
                       Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
       .WillOnce(Return(false));

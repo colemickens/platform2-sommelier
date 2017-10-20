@@ -50,7 +50,7 @@ using testing::DoAll;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -132,7 +132,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
   DhcpProperties dhcp_props;
   if (!hostname.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(string(kHostName)),
+        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)),
                         Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
@@ -140,7 +140,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
   }
   if (!vendorclass.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
                         Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
@@ -167,7 +167,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
   DhcpProperties dhcp_props;
   if (!hostname.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(string(kHostName)),
+        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)),
                         Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
@@ -175,7 +175,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
   }
   if (!vendorclass.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
                         Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
