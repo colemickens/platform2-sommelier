@@ -61,7 +61,7 @@ using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrEq;
 using testing::StrictMock;
 
@@ -186,7 +186,7 @@ class EthernetTest : public testing::Test {
     MockSupplicantInterfaceProxy* interface_proxy =
         ExpectCreateSupplicantInterfaceProxy();
     EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(string(kInterfacePath)),
+        .WillOnce(DoAll(SetArgPointee<1>(string(kInterfacePath)),
                         Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
@@ -453,7 +453,7 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
       .WillOnce(
-          DoAll(SetArgumentPointee<1>(string(kInterfacePath)), Return(true)));
+          DoAll(SetArgPointee<1>(string(kInterfacePath)), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
@@ -500,7 +500,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   const char kFirstNetworkPath[] = "/network/first-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(
-          DoAll(SetArgumentPointee<1>(string(kFirstNetworkPath)),
+          DoAll(SetArgPointee<1>(string(kFirstNetworkPath)),
                 Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
@@ -520,7 +520,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   const char kSecondNetworkPath[] = "/network/second-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(
-          DoAll(SetArgumentPointee<1>(string(kSecondNetworkPath)),
+          DoAll(SetArgPointee<1>(string(kSecondNetworkPath)),
                 Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
