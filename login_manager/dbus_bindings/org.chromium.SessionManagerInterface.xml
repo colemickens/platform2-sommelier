@@ -372,6 +372,17 @@
     </method>
 
     <!--
+        IsGuestSessionActive:
+        @is_guest: Whether a guest session is active and running.
+
+        Check whether a guest session is active.
+    -->
+    <method name="IsGuestSessionActive">
+      <arg type="b" name="is_guest" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
 	HandleSupervisedUserCreationStarting:
 
         Handle notification from Chrome that creation of a supervised user is

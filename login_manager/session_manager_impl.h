@@ -264,6 +264,7 @@ class SessionManagerImpl
 
   std::string RetrieveSessionState() override;
   std::map<std::string, std::string> RetrieveActiveSessions() override;
+  bool IsGuestSessionActive() override;
 
   void HandleSupervisedUserCreationStarting() override;
   void HandleSupervisedUserCreationFinished() override;

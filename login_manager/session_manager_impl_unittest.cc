@@ -1557,6 +1557,14 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   }
 }
 
+TEST_F(SessionManagerImplTest, IsGuestSessionActive) {
+  EXPECT_FALSE(impl_->IsGuestSessionActive());
+  ExpectAndRunGuestSession();
+  EXPECT_TRUE(impl_->IsGuestSessionActive());
+  ExpectAndRunStartSession(kSaneEmail);
+  EXPECT_FALSE(impl_->IsGuestSessionActive());
+}
+
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->RestartJob(&error, dbus::FileDescriptor(), {}));

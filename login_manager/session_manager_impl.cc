@@ -841,6 +841,10 @@ SessionManagerImpl::RetrieveActiveSessions() {
   return result;
 }
 
+bool SessionManagerImpl::IsGuestSessionActive() {
+  return !user_sessions_.empty() && AllSessionsAreIncognito();
+}
+
 void SessionManagerImpl::HandleSupervisedUserCreationStarting() {
   supervised_user_creation_ongoing_ = true;
 }
