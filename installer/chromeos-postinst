@@ -11,7 +11,7 @@
 INSTALL_ROOT=$(dirname "$0")
 
 # Set up the mount points userland needs/expects.
-MOUNTS="/proc /dev /sys /tmp /run /var /mnt"
+MOUNTS="/proc /dev /sys /tmp /run /var /mnt/stateful_partition"
 
 cleanup() {
   local d
