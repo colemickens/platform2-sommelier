@@ -36,6 +36,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD0(InitializeTpm, TPM_RC());
   MOCK_METHOD0(CheckState, TPM_RC());
   MOCK_METHOD1(AllocatePCR, TPM_RC(const std::string&));
+  MOCK_METHOD0(PrepareForOwnership, TPM_RC());
   MOCK_METHOD3(TakeOwnership,
                TPM_RC(const std::string&,
                       const std::string&,

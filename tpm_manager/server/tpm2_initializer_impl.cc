@@ -58,6 +58,16 @@ Tpm2InitializerImpl::Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
       local_data_store_(local_data_store),
       tpm_status_(tpm_status) {}
 
+bool Tpm2InitializerImpl::PreInitializeTpm() {
+  TPM_RC result = trunks_factory_.GetTpmUtility()->PrepareForOwnership();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Pre-initializing TPM2.0 failed.";
+    return false;
+  }
+
+  return true;
+}
+
 bool Tpm2InitializerImpl::InitializeTpm() {
   if (!SeedTpmRng()) {
     return false;

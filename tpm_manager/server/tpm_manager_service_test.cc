@@ -96,6 +96,7 @@ class TpmManagerServiceTest_NoWaitForOwnership : public TpmManagerServiceTest {
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -103,6 +104,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
 }

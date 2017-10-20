@@ -55,6 +55,7 @@ class Tpm2InitializerImpl : public TpmInitializer {
 
   // TpmInitializer methods.
   bool InitializeTpm() override;
+  bool PreInitializeTpm() override;
   void VerifiedBootHelper() override;
   bool ResetDictionaryAttackLock() override;
 

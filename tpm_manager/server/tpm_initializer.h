@@ -31,6 +31,15 @@ class TpmInitializer {
   // the process picks up where it left off.
   virtual bool InitializeTpm() = 0;
 
+  // Performs actions that can be done on uninitialized TPM before
+  // receiving a signal that taking ownership can be attempted.
+  // This is an optional optimization: InitializeTpm() doesn't rely on
+  // it to be called first and runs pre-initialization steps, if necessary,
+  // itself.
+  // If the TPM is already initialized, does nothing.
+  // Returns an error if pre-initialization is attempted but failed.
+  virtual bool PreInitializeTpm() = 0;
+
   // This will be called when the service is initializing. It is an early
   // opportunity to perform tasks related to verified boot.
   virtual void VerifiedBootHelper() = 0;

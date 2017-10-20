@@ -53,6 +53,11 @@ TpmInitializerImpl::TpmInitializerImpl(LocalDataStore* local_data_store,
                                        TpmStatus* tpm_status)
     : local_data_store_(local_data_store), tpm_status_(tpm_status) {}
 
+bool TpmInitializerImpl::PreInitializeTpm() {
+  // No pre-initialization steps are performed for 1.2.
+  return true;
+}
+
 bool TpmInitializerImpl::InitializeTpm() {
   if (tpm_status_->IsTpmOwned() && !TestTpmAuth(GetDefaultOwnerPassword())) {
     // Tpm is already owned, so we do not need to do anything.

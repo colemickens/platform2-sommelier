@@ -76,6 +76,13 @@ class TRUNKS_EXPORT TpmUtility {
   // NOTE: This command needs platform authorization and PP assertion.
   virtual TPM_RC AllocatePCR(const std::string& platform_password) = 0;
 
+  // Performs steps needed for taking ownership, which can be done before
+  // a signal that an ownership can be attempted is received.
+  // This operation is an optional optimization: if PrepareForOwnership
+  // is not called, TakeOwnership will later run through those preparational
+  // steps, if needed.
+  virtual TPM_RC PrepareForOwnership() = 0;
+
   // Synchronously takes ownership of the TPM with the given passwords as
   // authorization values.
   virtual TPM_RC TakeOwnership(const std::string& owner_password,

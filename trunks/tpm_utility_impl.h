@@ -47,6 +47,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC CheckState() override;
   TPM_RC InitializeTpm() override;
   TPM_RC AllocatePCR(const std::string& platform_password) override;
+  TPM_RC PrepareForOwnership() override;
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
@@ -174,6 +175,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
   uint32_t vendor_id_;
+
+  // This methods sets the well-known owner authorization and creates SRK and
+  // the salting key with it. Only succeeds if owner authorization was not set
+  // yet. These are the common operations done (1) by pre-initialization when
+  // the owner authorization is not set yet, and (2) when taking ownership,
+  // which repeats them in case (pre-)initialization was interrupted earlier.
+  TPM_RC CreateStorageAndSaltingKeys();
 
   // This method sets a known owner password in the TPM_RH_OWNER hierarchy.
   TPM_RC SetKnownOwnerPassword(const std::string& known_owner_password);

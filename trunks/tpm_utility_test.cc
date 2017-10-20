@@ -294,6 +294,33 @@ TEST_F(TpmUtilityTest, AllocatePCRTpmFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility_.AllocatePCR(""));
 }
 
+TEST_F(TpmUtilityTest, PrepareForOwnershipSuccess) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.PrepareForOwnership());
+}
+
+TEST_F(TpmUtilityTest, PrepareForOwnershipFailure) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.PrepareForOwnership());
+}
+
+TEST_F(TpmUtilityTest, PrepareForOwnershipAlreadyOwned) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(_, _, _, _))
+      .Times(0);
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.PrepareForOwnership());
+}
+
 TEST_F(TpmUtilityTest, TakeOwnershipSuccess) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));

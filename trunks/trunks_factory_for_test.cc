@@ -160,6 +160,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->AllocatePCR(platform_password);
   }
 
+  TPM_RC PrepareForOwnership() override {
+    return target_->PrepareForOwnership();
+  }
+
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override {

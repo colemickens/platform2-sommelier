@@ -298,13 +298,27 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
-                                     const std::string& endorsement_password,
-                                     const std::string& lockout_password) {
+TPM_RC TpmUtilityImpl::PrepareForOwnership() {
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TPM_RC result = tpm_state->Initialize();
+  if (result) {
+    LOG(ERROR) << __func__ << ": Error initializing state: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (tpm_state->IsOwnerPasswordSet()) {
+    VLOG(1) << __func__ << ": Nothing to do. Owner password is already set.";
+    return TPM_RC_SUCCESS;
+  }
+  result = CreateStorageAndSaltingKeys();
+  LOG_IF(INFO, result == TPM_RC_SUCCESS) << __func__ << ": done.";
+  return result;
+}
+
+TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
   // First we set the storage hierarchy authorization to the well know default
   // password.
-  TPM_RC result = TPM_RC_SUCCESS;
-  result = SetKnownOwnerPassword(kWellKnownPassword);
+  TPM_RC result = result = SetKnownOwnerPassword(kWellKnownPassword);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error injecting known password: "
                << GetErrorString(result);
@@ -317,6 +331,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
                << ": Error creating SRKs: " << GetErrorString(result);
     return result;
   }
+
   result = CreateSaltingKey(kWellKnownPassword);
   if (result) {
     LOG(ERROR) << __func__
@@ -324,6 +339,16 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
 
+  return result;
+}
+
+TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
+                                     const std::string& endorsement_password,
+                                     const std::string& lockout_password) {
+  TPM_RC result = CreateStorageAndSaltingKeys();
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
   std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
   result = session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {

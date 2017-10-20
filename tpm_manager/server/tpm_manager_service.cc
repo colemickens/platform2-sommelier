@@ -115,6 +115,9 @@ void TpmManagerService::InitializeTask() {
       LOG(WARNING) << __func__ << ": TPM initialization failed.";
       return;
     }
+  } else {
+    VLOG(1) << "Pre-initializing TPM.";
+    tpm_initializer_->PreInitializeTpm();
   }
 }
 
