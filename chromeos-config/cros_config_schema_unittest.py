@@ -202,7 +202,7 @@ class MainTests(unittest.TestCase):
         './cros_config_schema_example.yaml',
         output)
     with open(output, 'r') as output_stream:
-      with open('./test/cros_config_schema_example.json') as expected_stream:
+      with open('./cros_config_schema_example.json') as expected_stream:
         self.assertEqual(expected_stream.read(), output_stream.read())
 
     os.remove(output)

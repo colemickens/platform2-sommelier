@@ -9,12 +9,13 @@ from __future__ import print_function
 
 import os
 import subprocess
+import sys
 import unittest
 
-import fdt_util
+from libcros_config_host import fdt_util
 
-CLI_FILE = './cros_config_host_py/cros_config_host.py'
-DTS_FILE = '../libcros_config/test.dts'
+CLI_FILE = './cros_config_host.py'
+DTS_FILE = './libcros_config/test.dts'
 
 
 class CrosConfigHostTest(unittest.TestCase):

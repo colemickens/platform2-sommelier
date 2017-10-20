@@ -19,7 +19,7 @@ import fdt
 
 # Find the validator when running locally
 our_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(our_path, '../validate'))
+sys.path.append(os.path.join(our_path, '..'))
 import validate_config
 
 # Represents a single touch firmware file which needs to be installed:

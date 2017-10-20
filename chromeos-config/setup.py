@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""The setuptools setup file."""
+
+from __future__ import print_function
+
 from setuptools import setup
 
 setup(
@@ -10,9 +14,9 @@ setup(
     author='Simon Glass',
     author_email='sjg@chromium.org',
     url='README.md',
-    packages=['cros_config_host_py'],
-    py_modules=['cros_config_host_py.fdt',
-                'cros_config_host_py.libcros_config_host',
-                'cros_config_host_py.cros_config_host'],
+    packages=['cros_config_host'],
+    py_modules=['libcros_config_host.fdt',
+                'libcros_config_host.libcros_config_host',
+                'cros_config_host'],
     description='Access to the master configuration from the host',
 )

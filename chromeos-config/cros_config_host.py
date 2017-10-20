@@ -16,7 +16,7 @@ import argparse
 import os
 import sys
 
-from libcros_config_host import CrosConfig
+from libcros_config_host.libcros_config_host import CrosConfig
 
 UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
 

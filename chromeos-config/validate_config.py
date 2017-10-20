@@ -27,7 +27,7 @@ the presence of one element conflicts with the presence of others.
 Usage:
   The validator can be run like this (set PYTHONPATH to your chromium dir):
 
-  PYTHONPATH=~/cosarm ./validate/validate_config \
+  PYTHONPATH=~/cosarm ./validate_config \
       ~/cosarm/chroot/build/coral/usr/share/chromeos-config/config.dtb \
       ~/cosarm/chroot/build/reef-uni/usr/share/chromeos-config/config.dtb \
       README.md
@@ -38,7 +38,7 @@ Usage:
 
   Unit tests can be run like this:
 
-  PYTHONPATH=~/cosarm python validate/validate_config_unittest.py
+  PYTHONPATH=~/cosarm python validate_config_unittest.py
 """
 
 from __future__ import print_function
@@ -49,13 +49,10 @@ import os
 import re
 import sys
 
-our_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(our_path, '../cros_config_host_py'))
-
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
-import fdt
-import fdt_util
+from libcros_config_host import fdt
+from libcros_config_host import fdt_util
 from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from validate_schema import PropCustom, PropDesc, PropString, PropStringList
 from validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
