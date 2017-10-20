@@ -66,40 +66,6 @@ class MetricsLibraryTest : public testing::Test {
   policy::MockDevicePolicy* device_policy_;  // Not owned.
 };
 
-TEST_F(MetricsLibraryTest, IsDeviceMounted) {
-  static const char kTestContents[] =
-      "0123456789abcde 0123456789abcde\nguestfs foo bar\n";
-  char buffer[1024];
-  int block_sizes[] = {1, 2, 3, 4, 5, 6, 8, 12, 14, 16, 32, 1024};
-  bool result;
-  EXPECT_FALSE(
-      lib_.IsDeviceMounted("guestfs", "nonexistent", buffer, 1, &result));
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(kTestMounts), kTestContents, strlen(kTestContents)));
-  EXPECT_FALSE(
-      lib_.IsDeviceMounted("guestfs", kTestMounts, buffer, 0, &result));
-  for (size_t i = 0; i < arraysize(block_sizes); ++i) {
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "0123456789abcde", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "guestfs", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "0123456", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "9abcde", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "foo", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted(
-        "bar", kTestMounts, buffer, block_sizes[i], &result));
-    EXPECT_FALSE(result);
-  }
-}
-
 // Reject symlinks even if they're to normal files.
 TEST_F(MetricsLibraryTest, ConsentIdInvalidSymlinkPath) {
   std::string id;

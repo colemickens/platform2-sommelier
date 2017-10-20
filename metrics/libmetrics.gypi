@@ -4,6 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libsession_manager-client',
       ],
     },
     'cflags_cc': [

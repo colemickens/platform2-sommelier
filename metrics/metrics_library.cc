@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <errno.h>
+#include <session_manager/dbus-proxies.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 
@@ -21,6 +22,8 @@
 #include "metrics/serialization/serialization_utils.h"
 
 #include "policy/device_policy.h"
+
+using org::chromium::SessionManagerInterfaceProxy;
 
 namespace {
 
@@ -72,68 +75,22 @@ bool MetricsLibrary::cached_enabled_ = false;
 MetricsLibrary::MetricsLibrary() : consent_file_(kConsentFile) {}
 MetricsLibrary::~MetricsLibrary() {}
 
-// We take buffer and buffer_size as parameters in order to simplify testing
-// of various alignments of the |device_name| with |buffer_size|.
-bool MetricsLibrary::IsDeviceMounted(const char* device_name,
-                                     const char* mounts_file,
-                                     char* buffer,
-                                     int buffer_size,
-                                     bool* result) {
-  if (buffer == nullptr || buffer_size < 1)
-    return false;
-  int mounts_fd = open(mounts_file, O_RDONLY);
-  if (mounts_fd < 0)
-    return false;
-  // match_offset describes:
-  //   -1 -- not beginning of line
-  //   0..strlen(device_name)-1 -- this offset in device_name is next to match
-  //   strlen(device_name) -- matched full name, just need a space.
-  int match_offset = 0;
-  bool match = false;
-  while (!match) {
-    int read_size = read(mounts_fd, buffer, buffer_size);
-    if (read_size <= 0) {
-      if (errno == -EINTR)
-        continue;
-      break;
-    }
-    for (int i = 0; i < read_size; ++i) {
-      if (buffer[i] == '\n') {
-        match_offset = 0;
-        continue;
-      }
-      if (match_offset < 0) {
-        continue;
-      }
-      if (device_name[match_offset] == '\0') {
-        if (buffer[i] == ' ') {
-          match = true;
-          break;
-        }
-        match_offset = -1;
-        continue;
-      }
-
-      if (buffer[i] == device_name[match_offset]) {
-        ++match_offset;
-      } else {
-        match_offset = -1;
-      }
-    }
-  }
-  close(mounts_fd);
-  *result = match;
-  return true;
-}
 
 bool MetricsLibrary::IsGuestMode() {
-  char buffer[256];
-  bool result = false;
-  if (!IsDeviceMounted(
-          "guestfs", "/proc/mounts", buffer, sizeof(buffer), &result)) {
+  // Shortcut check whether there is any logged-in user.
+  if (access("/run/state/logged-in", F_OK) != 0)
     return false;
-  }
-  return result && (access("/run/state/logged-in", F_OK) == 0);
+
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  CHECK(bus->Connect());
+
+  brillo::ErrorPtr error;
+  bool is_guest = false;
+  SessionManagerInterfaceProxy session_manager_interface(bus);
+  session_manager_interface.IsGuestSessionActive(&is_guest, &error);
+  return is_guest;
 }
 
 bool MetricsLibrary::ConsentId(std::string* id) {

@@ -47,7 +47,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   void Init() override;
 
   // Returns whether or not the machine is running in guest mode.
-  bool IsGuestMode();
+  virtual bool IsGuestMode();
 
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
@@ -152,16 +152,6 @@ class MetricsLibrary : public MetricsLibraryInterface {
  private:
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
-  FRIEND_TEST(MetricsLibraryTest, IsDeviceMounted);
-
-  // Sets |*result| to whether or not the |mounts_file| indicates that
-  // the |device_name| is currently mounted.  Uses |buffer| of
-  // |buffer_size| to read the file.  Returns false if any error.
-  bool IsDeviceMounted(const char* device_name,
-                       const char* mounts_file,
-                       char* buffer,
-                       int buffer_size,
-                       bool* result);
 
   // This function is used by tests only to mock the device policies.
   void SetPolicyProvider(policy::PolicyProvider* provider);
