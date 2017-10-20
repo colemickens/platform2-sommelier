@@ -30,7 +30,7 @@ using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using Result = chaps::ObjectPool::Result;
 

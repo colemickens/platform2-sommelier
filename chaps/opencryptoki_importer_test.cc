@@ -31,7 +31,7 @@ using testing::AnyNumber;
 using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Values;
 
 namespace chaps {
@@ -153,9 +153,9 @@ class TestImporterBase {
     // Set expectations for the TPM utility mock.
     EXPECT_CALL(tpm_, Unbind(_, _, _)).WillRepeatedly(Invoke(MockUnbind));
     EXPECT_CALL(tpm_, LoadKey(_, _, _, _))
-        .WillRepeatedly(DoAll(SetArgumentPointee<3>(1), Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<3>(1), Return(true)));
     EXPECT_CALL(tpm_, LoadKeyWithParent(_, _, _, _, _))
-        .WillRepeatedly(DoAll(SetArgumentPointee<4>(1), Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<4>(1), Return(true)));
 
     // Set expectations for the factory mock.
     EXPECT_CALL(factory_, CreateObject())

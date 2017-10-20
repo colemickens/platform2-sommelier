@@ -28,7 +28,7 @@ using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using Result = chaps::ObjectPool::Result;
 
 namespace chaps {
@@ -140,11 +140,11 @@ TEST_F(TestObjectPool, Init) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<0>(persistent_objects),
+      .WillRepeatedly(DoAll(SetArgPointee<0>(persistent_objects),
                             Return(true)));
   EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<0>(persistent_objects),
+      .WillRepeatedly(DoAll(SetArgPointee<0>(persistent_objects),
                             Return(true)));
   EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
       .WillOnce(Return(false))
@@ -206,7 +206,7 @@ TEST_F(TestObjectPool, InsertFindUpdateDelete) {
   PreparePools();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(3), Return(true)));
   EXPECT_CALL(*store_, UpdateObjectBlob(3, _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -261,7 +261,7 @@ TEST_F(TestObjectPool, DuplicateObject) {
   PreparePools();
   Object* o = CreateObjectMock();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(3), Return(true)));
   EXPECT_EQ(Result::Success, pool_->Insert(o));
   EXPECT_NE(Result::Success, pool_->Insert(o));
   Object* o2 = CreateObjectMock();
@@ -272,7 +272,7 @@ TEST_F(TestObjectPool, DuplicateObject) {
 TEST_F(TestObjectPool, DeleteAll) {
   PreparePools();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(3), Return(true)));
   EXPECT_CALL(*store_, DeleteAllObjectBlobs())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -340,7 +340,7 @@ TEST_F(TestObjectPool, UnloadedPrivateObjects) {
   Object* public_obj = CreateObjectMock();
   public_obj->SetAttributeBool(CKA_PRIVATE, false);
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(117), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(117), Return(true)));
   EXPECT_EQ(Result::Success, pool_->Insert(public_obj));
 }
 

@@ -22,7 +22,7 @@ using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 namespace chaps {
 
@@ -98,7 +98,7 @@ TEST_F(TestService, GetSlotInfo) {
   EXPECT_CALL(slot_manager_, IsTokenAccessible(ic_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetSlotInfo(ic_, 0, _))
-    .WillRepeatedly(SetArgumentPointee<2>(test_info));
+    .WillRepeatedly(SetArgPointee<2>(test_info));
 
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSlotInfo(ic_, 0, nullptr));
@@ -122,7 +122,7 @@ TEST_F(TestService, GetTokenInfo) {
     .WillOnce(Return(false))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetTokenInfo(ic_, 0, _))
-    .WillRepeatedly(SetArgumentPointee<2>(test_info));
+    .WillRepeatedly(SetArgPointee<2>(test_info));
 
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetTokenInfo(ic_, 0, nullptr));
@@ -211,7 +211,7 @@ TEST_F(TestService, InitToken) {
 TEST_F(TestService, InitPIN) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 0, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->InitPIN(ic_, 0, NULL));
   EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, service_->InitPIN(ic_, 0, NULL));
 }
@@ -219,7 +219,7 @@ TEST_F(TestService, InitPIN) {
 TEST_F(TestService, SetPIN) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 0, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SetPIN(ic_, 0, NULL, NULL));
   EXPECT_EQ(CKR_PIN_INVALID, service_->SetPIN(ic_, 0, NULL, NULL));
 }
@@ -274,7 +274,7 @@ TEST_F(TestService, CloseAllSessions) {
 TEST_F(TestService, GetSessionInfo) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetSlot())
     .WillRepeatedly(Return(15));
   EXPECT_CALL(session_, GetState())
@@ -297,7 +297,7 @@ TEST_F(TestService, GetSessionInfo) {
 TEST_F(TestService, GetOperationState) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, IsOperationActive(_))
     .WillRepeatedly(Return(false));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetOperationState(ic_, 1, NULL));
@@ -315,7 +315,7 @@ TEST_F(TestService, GetOperationState) {
 TEST_F(TestService, SetOperationState) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   vector<uint8_t> state;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->SetOperationState(ic_, 1, state, 0, 0));
@@ -326,7 +326,7 @@ TEST_F(TestService, SetOperationState) {
 TEST_F(TestService, Login) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, IsPrivateLoaded()).WillRepeatedly(Return(true));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->Login(ic_, 1, CKU_USER, NULL));
@@ -340,7 +340,7 @@ TEST_F(TestService, Login) {
 
 TEST_F(TestService, LoginNoPrivate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, IsPrivateLoaded()).WillRepeatedly(Return(false));
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
             service_->Login(ic_, 1, CKU_USER, NULL));
@@ -349,7 +349,7 @@ TEST_F(TestService, LoginNoPrivate) {
 TEST_F(TestService, Logout) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->Logout(ic_, 1));
   EXPECT_EQ(CKR_OK, service_->Logout(ic_, 1));
 }
@@ -357,10 +357,10 @@ TEST_F(TestService, Logout) {
 TEST_F(TestService, CreateObject) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, CreateObject(_, 1, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(2), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(2), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CreateObject(ic_, 1, good_attributes_, NULL));
   uint64_t object_handle;
@@ -378,10 +378,10 @@ TEST_F(TestService, CreateObject) {
 TEST_F(TestService, CopyObject) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, CopyObject(_, 1, 2, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<3>(3), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CopyObject(ic_, 1, 2, good_attributes_, NULL));
   uint64_t object_handle;
@@ -399,7 +399,7 @@ TEST_F(TestService, CopyObject) {
 TEST_F(TestService, DestroyObject) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, DestroyObject(_))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -411,10 +411,10 @@ TEST_F(TestService, DestroyObject) {
 TEST_F(TestService, GetObjectSize) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(2, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(object_, GetSize())
     .WillRepeatedly(Return(3));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetObjectSize(ic_, 1, 2, NULL));
@@ -430,10 +430,10 @@ TEST_F(TestService, GetObjectSize) {
 TEST_F(TestService, GetAttributeValue) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(2, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(object_, GetAttributes(_, 1))
     .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
     .WillOnce(Return(CKR_ATTRIBUTE_SENSITIVE))
@@ -470,10 +470,10 @@ TEST_F(TestService, GetAttributeValue) {
 TEST_F(TestService, SetAttributeValue) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetModifiableObject(2, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, FlushModifiableObject(_))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -497,7 +497,7 @@ TEST_F(TestService, SetAttributeValue) {
 TEST_F(TestService, FindObjectsInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, FindObjectsInit(_, 1))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -515,10 +515,10 @@ TEST_F(TestService, FindObjects) {
   vector<int> objects_mock(12, 12);
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, FindObjects(2, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(objects_mock), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(objects_mock), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(ic_, 1, 2, NULL));
   vector<uint64_t> objects(1, 1);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(ic_, 1, 2, &objects));
@@ -533,7 +533,7 @@ TEST_F(TestService, FindObjects) {
 TEST_F(TestService, FindObjectsFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, FindObjectsFinal())
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -545,10 +545,10 @@ TEST_F(TestService, FindObjectsFinal) {
 TEST_F(TestService, EncryptInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(3, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, OperationInit(kEncrypt, 2, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -562,10 +562,10 @@ TEST_F(TestService, EncryptInit) {
 TEST_F(TestService, Encrypt) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationSinglePart(kEncrypt, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Encrypt(ic_, 1, data, 2, NULL, &data));
@@ -581,10 +581,10 @@ TEST_F(TestService, Encrypt) {
 TEST_F(TestService, EncryptUpdate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kEncrypt, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
@@ -602,10 +602,10 @@ TEST_F(TestService, EncryptUpdate) {
 TEST_F(TestService, EncryptFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationFinal(kEncrypt, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptFinal(ic_, 1, 2, NULL, &data));
@@ -621,10 +621,10 @@ TEST_F(TestService, EncryptFinal) {
 TEST_F(TestService, DecryptInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(3, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, OperationInit(kDecrypt, 2, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -638,10 +638,10 @@ TEST_F(TestService, DecryptInit) {
 TEST_F(TestService, Decrypt) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationSinglePart(kDecrypt, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Decrypt(ic_, 1, data, 2, NULL, &data));
@@ -657,10 +657,10 @@ TEST_F(TestService, Decrypt) {
 TEST_F(TestService, DecryptUpdate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kDecrypt, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
@@ -678,10 +678,10 @@ TEST_F(TestService, DecryptUpdate) {
 TEST_F(TestService, DecryptFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationFinal(kDecrypt, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptFinal(ic_, 1, 2, NULL, &data));
@@ -697,7 +697,7 @@ TEST_F(TestService, DecryptFinal) {
 TEST_F(TestService, DigestInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationInit(kDigest, 2, _, NULL))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -710,10 +710,10 @@ TEST_F(TestService, DigestInit) {
 TEST_F(TestService, Digest) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationSinglePart(kDigest, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Digest(ic_, 1, data, 2, NULL, &data));
@@ -729,7 +729,7 @@ TEST_F(TestService, Digest) {
 TEST_F(TestService, DigestUpdate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kDigest, _, NULL, NULL))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -742,10 +742,10 @@ TEST_F(TestService, DigestUpdate) {
 TEST_F(TestService, DigestFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationFinal(kDigest, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DigestFinal(ic_, 1, 2, NULL, &data));
@@ -760,10 +760,10 @@ TEST_F(TestService, DigestFinal) {
 TEST_F(TestService, SignInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(3, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, OperationInit(kSign, 2, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -777,10 +777,10 @@ TEST_F(TestService, SignInit) {
 TEST_F(TestService, Sign) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationSinglePart(kSign, _, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Sign(ic_, 1, data, 2, NULL, &data));
@@ -795,7 +795,7 @@ TEST_F(TestService, Sign) {
 TEST_F(TestService, SignUpdate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kSign, _, NULL, NULL))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -808,10 +808,10 @@ TEST_F(TestService, SignUpdate) {
 TEST_F(TestService, SignFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationFinal(kSign, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
   uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->SignFinal(ic_, 1, 2, NULL, &data));
@@ -826,10 +826,10 @@ TEST_F(TestService, SignFinal) {
 TEST_F(TestService, VerifyInit) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GetObject(3, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(&object_), Return(true)));
   EXPECT_CALL(session_, OperationInit(kVerify, 2, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -843,7 +843,7 @@ TEST_F(TestService, VerifyInit) {
 TEST_F(TestService, Verify) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kVerify, _, NULL, NULL))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -860,7 +860,7 @@ TEST_F(TestService, Verify) {
 TEST_F(TestService, VerifyUpdate) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, OperationUpdate(kVerify, _, NULL, NULL))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -873,7 +873,7 @@ TEST_F(TestService, VerifyUpdate) {
 TEST_F(TestService, VerifyFinal) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, VerifyFinal(_))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(Return(CKR_OK));
@@ -886,10 +886,10 @@ TEST_F(TestService, VerifyFinal) {
 TEST_F(TestService, GenerateKey) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GenerateKey(2, _, _, 1, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<4>(3), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgPointee<4>(3), Return(CKR_OK)));
   vector<uint8_t> param;
   uint64_t handle;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -906,11 +906,11 @@ TEST_F(TestService, GenerateKey) {
 TEST_F(TestService, GenerateKeyPair) {
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GenerateKeyPair(2, _, _, 1, _, 1, _, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<6>(3),
-                          SetArgumentPointee<7>(4),
+    .WillRepeatedly(DoAll(SetArgPointee<6>(3),
+                          SetArgPointee<7>(4),
                           Return(CKR_OK)));
   vector<uint8_t> param;
   uint64_t handle[2];
@@ -945,7 +945,7 @@ TEST_F(TestService, SeedRandom) {
   string seed_str("AAA");
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, SeedRandom(seed_str)).WillRepeatedly(Return(CKR_OK));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SeedRandom(ic_, 1, seed));
   EXPECT_EQ(CKR_OK, service_->SeedRandom(ic_, 1, seed));
@@ -956,9 +956,9 @@ TEST_F(TestService, GenerateRandom) {
   string random_data_str("BBB");
   EXPECT_CALL(slot_manager_, GetSession(ic_, 1, _))
     .WillOnce(Return(false))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(&session_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(&session_), Return(true)));
   EXPECT_CALL(session_, GenerateRandom(8, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(random_data_str),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(random_data_str),
                           Return(CKR_OK)));
   vector<uint8_t> output;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,

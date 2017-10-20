@@ -31,7 +31,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 namespace chaps {
@@ -53,16 +53,16 @@ SecureBlob MakeBlob(const char* auth_data_str) {
 ObjectPool* CreateObjectPoolMock() {
   ObjectPoolMock* object_pool = new ObjectPoolMock();
   EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedAuthKey, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("auth_key_blob")),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string("auth_key_blob")),
                             Return(true)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedMasterKey, _))
       .WillRepeatedly(
-          DoAll(SetArgumentPointee<1>(string("encrypted_master_key")),
+          DoAll(SetArgPointee<1>(string("encrypted_master_key")),
                 Return(true)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kImportedTracker, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string()), Return(false)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string()), Return(false)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kAuthDataHash, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("\x01\xCE")),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string("\x01\xCE")),
                 Return(true)));
   EXPECT_CALL(*object_pool,
               SetInternalBlob(kEncryptedAuthKey, string("auth_key_blob")))
@@ -91,7 +91,7 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                                  string("auth_key_blob"),
                                  string("encrypted_master_key"),
                                  _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<4>(MakeBlob("master_key")),
+      .WillRepeatedly(DoAll(SetArgPointee<4>(MakeBlob("master_key")),
                             Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_,
                                    Sha1(MakeBlob(kAuthData)),
@@ -99,21 +99,21 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                                    string("auth_key_blob"),
                                    _))
       .WillRepeatedly(
-          DoAll(SetArgumentPointee<4>(string("new_auth_key_blob")),
+          DoAll(SetArgPointee<4>(string("new_auth_key_blob")),
                 Return(true)));
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("master_key")),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string("master_key")),
                             Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
   EXPECT_CALL(*tpm, GenerateKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("auth_key_blob")),
-                            SetArgumentPointee<5>(1),
+      .WillRepeatedly(DoAll(SetArgPointee<4>(string("auth_key_blob")),
+                            SetArgPointee<5>(1),
                             Return(true)));
   EXPECT_CALL(*tpm, Bind(1,
                          string("master_key"),
                          _))
       .WillRepeatedly(
-          DoAll(SetArgumentPointee<2>(string("encrypted_master_key")),
+          DoAll(SetArgPointee<2>(string("encrypted_master_key")),
                 Return(true)));
   EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
@@ -369,7 +369,7 @@ TEST_F(TestSlotManager, TestDefaultIsolate) {
 
 TEST_F(TestSlotManager, TestOpenIsolate) {
   EXPECT_CALL(tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(string("567890")), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
 
   // Check that trying to open an invalid isolate creates new isolate.
   SecureBlob isolate("invalid");
@@ -386,8 +386,8 @@ TEST_F(TestSlotManager, TestOpenIsolate) {
 
 TEST_F(TestSlotManager, TestCloseIsolate) {
   EXPECT_CALL(tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(string("abcdef")), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(string("ghijkl")), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(string("abcdef")), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(string("ghijkl")), Return(true)));
 
   SecureBlob isolate;
   bool new_isolate_created;
@@ -433,8 +433,8 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
 
   // Ensure different credentials are created for each isolate.
   EXPECT_CALL(tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(string("123456")), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(string("567890")), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(string("123456")), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
 
   bool new_isolate_created;
   int slot_id;
