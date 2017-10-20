@@ -40,7 +40,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -200,15 +200,15 @@ TEST_F(VPNDriverTest, Load) {
   EXPECT_CALL(storage, GetStringList(_, kOTPProperty, _)).Times(0);
   vector<string> kCaCerts{ "cert0", "cert1" };
   EXPECT_CALL(storage, GetStringList(kStorageID, kEapCaCertPemProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kCaCerts), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kCaCerts), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, kPortProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPort)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kPort)), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, kPINProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPIN)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kPIN)), Return(true)));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPSKProperty, _))
       .WillOnce(Return(false));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPasswordProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPassword)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kPassword)), Return(true)));
   EXPECT_TRUE(driver_.Load(&storage, kStorageID));
   EXPECT_TRUE(GetArgs()->ContainsStrings(kEapCaCertPemProperty));
   if (GetArgs()->ContainsStrings(kEapCaCertPemProperty)) {

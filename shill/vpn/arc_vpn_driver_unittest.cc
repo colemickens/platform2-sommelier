@@ -35,7 +35,7 @@ using testing::_;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace shill {
 
@@ -102,12 +102,12 @@ class ArcVpnDriverTest : public testing::Test {
 
     EXPECT_CALL(store_, GetString(kStorageId, kProviderHostProperty, _))
         .WillOnce(
-            DoAll(SetArgumentPointee<2>(kProviderHostValue), Return(true)));
+            DoAll(SetArgPointee<2>(kProviderHostValue), Return(true)));
     EXPECT_CALL(store_, GetString(kStorageId, kProviderTypeProperty, _))
         .WillOnce(
-            DoAll(SetArgumentPointee<2>(kProviderTypeValue), Return(true)));
+            DoAll(SetArgPointee<2>(kProviderTypeValue), Return(true)));
     EXPECT_CALL(store_, GetString(kStorageId, kArcVpnTunnelChromeProperty, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(tunnel_chrome ? "true" : "false"),
+        .WillOnce(DoAll(SetArgPointee<2>(tunnel_chrome ? "true" : "false"),
                         Return(true)));
     driver_->Load(&store_, kStorageId);
   }

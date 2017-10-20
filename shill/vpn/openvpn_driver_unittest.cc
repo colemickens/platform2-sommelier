@@ -60,7 +60,7 @@ using testing::Mock;
 using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace shill {
 
@@ -340,7 +340,7 @@ TEST_F(OpenVPNDriverTest, Connect) {
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
   const string interface = kInterfaceName;
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(interface), Return(true)));
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());

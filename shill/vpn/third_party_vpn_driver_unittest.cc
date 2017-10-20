@@ -37,7 +37,7 @@ using testing::_;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace shill {
 
@@ -99,7 +99,7 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
 
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring)).Times(1);
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(interface), Return(true)));
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -134,7 +134,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   int fd = 1;
 
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(interface), Return(true)));
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -197,7 +197,7 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
   int fd = 1;
 
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(interface), Return(true)));
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
