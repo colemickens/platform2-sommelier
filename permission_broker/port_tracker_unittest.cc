@@ -13,7 +13,7 @@
 
 using ::testing::_;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 namespace permission_broker {
 
@@ -58,21 +58,21 @@ class PortTrackerTest : public testing::Test {
 TEST_F(PortTrackerTest, ProcessTcpPortSuccess) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessUdpPortSuccess) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessTcpPortTwice) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
   ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 }
@@ -80,7 +80,7 @@ TEST_F(PortTrackerTest, ProcessTcpPortTwice) {
 TEST_F(PortTrackerTest, ProcessUdpPortTwice) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
   ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 }
@@ -89,7 +89,7 @@ TEST_F(PortTrackerTest, ProcessTcpPortDBusFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(false)));
   ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 }
 
@@ -97,7 +97,7 @@ TEST_F(PortTrackerTest, ProcessUdpPortDBusFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(false)));
   ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 }
 
@@ -105,7 +105,7 @@ TEST_F(PortTrackerTest, ProcessTcpPortEpollFailure) {
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ON_CALL(firewalld, PunchTcpHole(tcp_port, _, _, _, _))
-      .WillByDefault(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 }
 
@@ -113,7 +113,7 @@ TEST_F(PortTrackerTest, ProcessUdpPortEpollFailure) {
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ON_CALL(firewalld, PunchUdpHole(udp_port, _, _, _, _))
-      .WillByDefault(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 }
 
@@ -121,13 +121,13 @@ TEST_F(PortTrackerTest, ReleaseTcpPortSuccess) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   EXPECT_CALL(firewalld, PlugTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ReleaseTcpPort(tcp_port, interface));
 }
 
@@ -135,13 +135,13 @@ TEST_F(PortTrackerTest, ReleaseUdpPortSuccess) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   EXPECT_CALL(firewalld, PlugUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ReleaseUdpPort(udp_port, interface));
 }
 
@@ -149,14 +149,14 @@ TEST_F(PortTrackerTest, ReleaseTcpPortDbusFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PlugTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(false)));
   ASSERT_FALSE(port_tracker.ReleaseTcpPort(tcp_port, interface));
 }
 
@@ -164,14 +164,14 @@ TEST_F(PortTrackerTest, ReleaseUdpPortDbusFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PlugUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(false)));
   ASSERT_FALSE(port_tracker.ReleaseUdpPort(udp_port, interface));
 }
 
@@ -179,14 +179,14 @@ TEST_F(PortTrackerTest, ReleaseTcpPortEpollFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, interface, dbus_fd));
 
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(false));
   EXPECT_CALL(firewalld, PlugTcpHole(tcp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_FALSE(port_tracker.ReleaseTcpPort(tcp_port, interface));
 }
 
@@ -194,14 +194,14 @@ TEST_F(PortTrackerTest, ReleaseUdpPortEpollFailure) {
   EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd))
       .WillOnce(Return(tracked_fd));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, interface, dbus_fd));
 
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(false));
   EXPECT_CALL(firewalld, PlugUdpHole(udp_port, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_FALSE(port_tracker.ReleaseUdpPort(udp_port, interface));
 }
 
@@ -211,7 +211,7 @@ TEST_F(PortTrackerTest, RequestVpnSetupSuccess) {
   const int kInvalidHandle = -1;
 
   EXPECT_CALL(firewalld, RequestVpnSetup(usernames, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
   ASSERT_TRUE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
   ASSERT_EQ(port_tracker.vpn_usernames_, usernames);
@@ -221,7 +221,7 @@ TEST_F(PortTrackerTest, RequestVpnSetupSuccess) {
   ASSERT_FALSE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
 
   EXPECT_CALL(firewalld, RemoveVpnSetup(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   ASSERT_TRUE(port_tracker.RemoveVpnSetup());
   ASSERT_EQ(port_tracker.vpn_usernames_.size(), 0);
   ASSERT_EQ(port_tracker.vpn_interface_.size(), 0);
@@ -236,7 +236,7 @@ TEST_F(PortTrackerTest, RequestVpnSetupFailure) {
   const int kInvalidHandle = -1;
 
   EXPECT_CALL(firewalld, RequestVpnSetup(usernames, interface, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(false)));
   ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
   ASSERT_FALSE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
   ASSERT_EQ(port_tracker.vpn_usernames_.size(), 0);
