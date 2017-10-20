@@ -6,10 +6,13 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <mntent.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/eventfd.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
@@ -17,11 +20,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// These usually need to come after the sys/ includes.
+#include <linux/dm-ioctl.h>
+#include <linux/loop.h>
+
 #include <algorithm>
 #include <limits>
 #include <list>
 #include <set>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -783,6 +791,126 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
   }
 }
 
+// Detaches all loopback devices.
+void DetachLoopback() {
+  LOG(INFO) << "Detaching loopback devices";
+
+  const base::FilePath kDev("/dev");
+
+  base::FileEnumerator enumerator(
+      base::FilePath("/sys/block"), false /*recursive*/,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS,
+      "loop*" /*pattern*/);
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    const base::FilePath backing_file =
+        path.Append("loop").Append("backing_file");
+    if (!base::PathExists(backing_file)) {
+      continue;
+    }
+
+    const base::FilePath dev_path = kDev.Append(path.BaseName());
+
+    LOG(INFO) << "Detaching " << dev_path.value();
+
+    base::ScopedFD loopdev(open(dev_path.value().c_str(), O_RDWR | O_CLOEXEC));
+    if (!loopdev.is_valid()) {
+      PLOG(ERROR) << "Unable to open " << dev_path.value();
+      continue;
+    }
+
+    if (ioctl(loopdev.get(), LOOP_CLR_FD, 0) != 0) {
+      PLOG(ERROR) << "Failed to remove backing file for /dev/"
+                  << path.BaseName().value();
+    }
+  }
+}
+
+// Removes all device mapper devices.
+void RemoveDevMapper() {
+  LOG(INFO) << "Removing device mapper devices";
+
+  const base::FilePath kDMControl("/dev/mapper/control");
+
+  base::ScopedFD dm_control(
+      open(kDMControl.value().c_str(), O_RDWR | O_CLOEXEC));
+  if (!dm_control.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kDMControl.value();
+    return;
+  }
+
+  struct dm_ioctl param = {
+      // clang-format off
+      .version = {
+          DM_VERSION_MAJOR,
+          DM_VERSION_MINOR,
+          DM_VERSION_PATCHLEVEL,
+      },
+      // clang-format on
+      .data_size = sizeof(struct dm_ioctl),
+      .data_start = sizeof(struct dm_ioctl),
+      .flags = DM_DEFERRED_REMOVE,
+  };
+  if (ioctl(dm_control.get(), DM_REMOVE_ALL, &param) != 0) {
+    PLOG(ERROR) << "Failed to remove device mapper devices";
+  }
+}
+
+// Returns true if |mount_point| should not be unmounted even during the
+// shutdown sequence.
+bool IsProtectedMount(const string& mount_point) {
+  const char* const kProtectedMounts[] = {
+      "/dev",
+      "/proc",
+      "/sys",
+  };
+
+  if (mount_point == "/") {
+    return true;
+  }
+
+  for (const char* mount : kProtectedMounts) {
+    if (mount == mount_point ||
+        base::FilePath(mount).IsParent(base::FilePath(mount_point))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Unmounts all non-essential filesystems.
+void UnmountFilesystems() {
+  LOG(INFO) << "Unmounting filesystems";
+
+  base::ScopedFILE mountinfo(fopen("/proc/self/mounts", "r"));
+  if (!mountinfo) {
+    PLOG(ERROR) << "Failed to open /proc/self/mounts";
+    return;
+  }
+
+  // Parse all the mounts into a vector since we need to unmount them in
+  // reverse order.
+  std::vector<string> mount_points;
+  char buf[1024 + 4];
+  struct mntent entry;
+  while (getmntent_r(mountinfo.get(), &entry, buf, sizeof(buf)) != nullptr) {
+    mount_points.emplace_back(entry.mnt_dir);
+  }
+
+  for (auto iter = mount_points.rbegin(), end = mount_points.rend();
+       iter != end; ++iter) {
+    if (IsProtectedMount(*iter)) {
+      continue;
+    }
+
+    LOG(INFO) << "Unmounting " << *iter;
+    if (umount(iter->c_str()) != 0) {
+      PLOG(ERROR) << "Failed to unmount " << *iter;
+    }
+  }
+}
+
 }  // namespace
 
 class Init::Worker : public base::MessageLoopForIO::Watcher {
@@ -991,6 +1119,18 @@ void Init::Worker::Shutdown(int notify_fd) {
 
   // Kill anything left with SIGKILL.
   BroadcastSignal(SIGKILL, nullptr);
+
+  // Detach loopback devices.
+  DetachLoopback();
+
+  // Remove any device-mapper devices.
+  RemoveDevMapper();
+
+  // Unmount all non-essential file systems.
+  UnmountFilesystems();
+
+  // Final sync to flush anything left.
+  sync();
 
   // Signal the waiter.
   uint64_t done = 1;

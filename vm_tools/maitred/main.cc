@@ -187,11 +187,6 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Shutting down system NOW";
 
-  // Do a sync here to make sure any buffered data is flushed.  In theory all
-  // writable file systems should already have been unmounted but it doesn't
-  // hurt to do a sync anyway.
-  sync();
-
   reboot(RB_AUTOBOOT);
 
   return 0;
