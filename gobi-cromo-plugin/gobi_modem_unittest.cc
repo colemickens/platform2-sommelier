@@ -21,7 +21,7 @@ using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::SetArrayArgument;
 using ::testing::StrEq;
 using ::testing::_;
@@ -109,7 +109,7 @@ INT8 SignalStrengthSdk::dbms_[] = {-60, -50, -70, -20};
 
 static void SetupSignalMocks(SignalStrengthSdk *sdk) {
   EXPECT_CALL(*sdk, GetSignalStrengths(_, _, _)).WillOnce(DoAll(
-      SetArgumentPointee<0>(3),  // Caller should ignore 4th elements returned
+      SetArgPointee<0>(3),  // Caller should ignore 4th elements returned
       SetArrayArgument<1>(sdk->dbms_, sdk->dbms_ + 4),
       SetArrayArgument<2>(sdk->interfaces_, sdk->interfaces_ + 4),
       Return(0)));
@@ -126,7 +126,7 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
-      SetArgumentPointee<0>(gobi::kDisconnected),
+      SetArgPointee<0>(gobi::kDisconnected),
       Return(0)));
 
   int master;
@@ -151,12 +151,12 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
-      SetArgumentPointee<0>(gobi::kConnected),
+      SetArgPointee<0>(gobi::kConnected),
       Return(0)));
 
   // gobi::kDataBearerHsdpaDlHsupaUl translates to kRfiUmts
   EXPECT_CALL(sdk, GetDataBearerTechnology(_)).WillOnce(DoAll(
-      SetArgumentPointee<0>(gobi::kDataBearerHsdpaDlHsupaUl),
+      SetArgPointee<0>(gobi::kDataBearerHsdpaDlHsupaUl),
       Return(0)));
 
   int master;
