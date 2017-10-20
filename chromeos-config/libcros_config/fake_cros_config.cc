@@ -39,8 +39,4 @@ bool FakeCrosConfig::GetString(const std::string& path, const std::string& prop,
   return true;
 }
 
-std::vector<std::string> FakeCrosConfig::GetModelNames() const {
-  return std::vector<std::string>{"reef", "pyro"};
-}
-
 }  // namespace brillo

@@ -44,14 +44,6 @@ bool CrosConfig::InitModel() {
   return InitCommon(base::FilePath(kConfigDtbPath), cmdline);
 }
 
-bool CrosConfig::InitForHost(const base::FilePath& filepath,
-                             const std::string& model) {
-  const base::FilePath::CharType* const argv[] = {"echo", model.c_str()};
-  base::CommandLine cmdline(arraysize(argv), argv);
-
-  return InitCommon(filepath, cmdline);
-}
-
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& model) {
   const base::FilePath::CharType* const argv[] = {"echo", model.c_str()};
@@ -122,23 +114,6 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   return true;
 }
 
-std::vector<std::string> CrosConfig::GetModelNames() const {
-  std::vector<std::string> models;
-
-  if (!InitCheck()) {
-    return models;
-  }
-
-  const void* blob = blob_.c_str();
-
-  int model_node;
-  fdt_for_each_subnode(model_node, blob, models_offset_) {
-    models.push_back(fdt_get_name(blob, model_node, NULL));
-  }
-
-  return models;
-}
-
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
   // Check if filepath is - for stdin support, otherwise load from file
@@ -176,14 +151,14 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
-  models_offset_ = fdt_path_offset(blob, kModelNodePath);
-  if (models_offset_ < 0) {
+  int models_offset = fdt_path_offset(blob, kModelNodePath);
+  if (models_offset < 0) {
     LOG(ERROR) << "Cannot find " << kModelNodePath << " node: "
-               << fdt_strerror(models_offset_);
+               << fdt_strerror(models_offset);
     return false;
   }
   if (!model_.empty()) {
-    int node = fdt_subnode_offset(blob, models_offset_, model_.c_str());
+    int node = fdt_subnode_offset(blob, models_offset, model_.c_str());
     if (node < 0) {
       LOG(ERROR) << "Cannot find " << model_ << " node: " << fdt_strerror(node);
       return false;

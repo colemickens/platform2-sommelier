@@ -38,9 +38,6 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  std::string* val_out) override;
 
-  // CrosConfigInterface:
-  std::vector<std::string> GetModelNames() const override;
-
  private:
   using PathProp = std::pair<std::string, std::string>;
 

@@ -36,13 +36,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Alias for the above, since this is used by several clients.
   bool Init();
 
-  // Prepares the configuration system for use accessing a given model (used by
-  // the host build system). Note that - can be used to read from stdin.
-  // @filepath: Path to configuration .dtb file.
-  // @model: Model name (e.g. 'reef') or empty string.
-  // @return true if OK, false on error.
-  bool InitForHost(const base::FilePath& filepath, const std::string& model);
-
   // Prepare the configuration system for testing.
   // This reads in the given configuration file and selects the supplied
   // model name.
@@ -56,9 +49,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  std::string* val_out) override;
 
-  // CrosConfigInterface:
-  std::vector<std::string> GetModelNames() const override;
-
  private:
   // Common init function for both production and test code.
   // @filepath: path to configuration .dtb file.
@@ -71,12 +61,11 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool InitCheck() const;
 
-  std::string blob_;        // Device tree binary blob
-  std::string model_;       // Model name for this device
-  int models_offset_ = -1;  // Device tree offset of the models (plural) node
-  int model_offset_ = -1;   // Device tree offset of the model's node
-  int whitelabel_offset_ = -1; // Device tree offset of the whitelabel node
-  bool inited_ = false;     // true if the class is ready for use (Init*()ed)
+  std::string blob_;            // Device tree binary blob
+  std::string model_;           // Model name for this device
+  int model_offset_ = -1;       // Device tree offset of the model's node
+  int whitelabel_offset_ = -1;  // Device tree offset of the whitelabel node
+  bool inited_ = false;         // true if the class is ready for use (Init*ed)
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };
 
