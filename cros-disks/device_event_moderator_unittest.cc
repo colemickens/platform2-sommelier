@@ -16,7 +16,7 @@
 using testing::DoAll;
 using testing::InSequence;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::_;
 
 namespace cros_disks {
@@ -66,14 +66,14 @@ TEST_F(DeviceEventModeratorTest, EventsProcessedNoSessionManager) {
 
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
       .WillOnce(Return(false))
       .RetiresOnSaturation();
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
@@ -86,9 +86,9 @@ TEST_F(DeviceEventModeratorTest, EventsProcessedNoSessionManager) {
 TEST_F(DeviceEventModeratorTest, OnScreenIsLocked) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
 
   moderator_->OnScreenIsLocked();
@@ -101,9 +101,9 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsLocked) {
 TEST_F(DeviceEventModeratorTest, OnScreenIsLockedAndThenUnlocked) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
@@ -119,14 +119,14 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsLockedAndThenUnlocked) {
 TEST_F(DeviceEventModeratorTest, OnScreenIsUnlocked) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
       .WillOnce(Return(false))
       .RetiresOnSaturation();
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
@@ -140,14 +140,14 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsUnlocked) {
 TEST_F(DeviceEventModeratorTest, OnSessionStarted) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
       .WillOnce(Return(false))
       .RetiresOnSaturation();
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)))
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
@@ -161,9 +161,9 @@ TEST_F(DeviceEventModeratorTest, OnSessionStarted) {
 TEST_F(DeviceEventModeratorTest, OnSessionStopped) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
 
   moderator_->OnSessionStopped();
@@ -176,9 +176,9 @@ TEST_F(DeviceEventModeratorTest, OnSessionStopped) {
 TEST_F(DeviceEventModeratorTest, OnSessionStoppedAndThenStarted) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(event_list1_), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
@@ -194,7 +194,7 @@ TEST_F(DeviceEventModeratorTest, OnSessionStoppedAndThenStarted) {
 TEST_F(DeviceEventModeratorTest, GetDeviceEventsReturningMultipleEvents) {
   InSequence sequence;
   EXPECT_CALL(event_source_, GetDeviceEvents(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(event_list3_), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(event_list3_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
