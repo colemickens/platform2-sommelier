@@ -49,7 +49,7 @@ using std::string;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 namespace shill {
 
@@ -254,39 +254,39 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
                                       _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageHostName,
                                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(host_name), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(host_name), Return(true)));
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageOfflineMode,
                                       _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   const string portal_list("technology1,technology2");
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageCheckPortalList,
                                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(portal_list), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(portal_list), Return(true)));
   const string ignored_paths("chromium.org,google.com");
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageIgnoredDNSSearchPaths,
                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(ignored_paths), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(ignored_paths), Return(true)));
   const string link_monitor_technologies("ethernet,wimax");
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageLinkMonitorTechnologies,
                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(link_monitor_technologies),
+      .WillOnce(DoAll(SetArgPointee<2>(link_monitor_technologies),
                       Return(true)));
   const string no_auto_connect_technologies("wifi,cellular");
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageNoAutoConnectTechnologies,
                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(no_auto_connect_technologies),
+      .WillOnce(DoAll(SetArgPointee<2>(no_auto_connect_technologies),
                       Return(true)));
   const string portal_check_interval_string("10");
   const int portal_check_interval_int = 10;
@@ -294,14 +294,14 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStoragePortalCheckInterval,
                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(portal_check_interval_string),
+      .WillOnce(DoAll(SetArgPointee<2>(portal_check_interval_string),
                       Return(true)));
   const string prohibited_technologies("vpn,wimax");
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageProhibitedTechnologies,
                         _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(prohibited_technologies),
+      .WillOnce(DoAll(SetArgPointee<2>(prohibited_technologies),
                       Return(true)));
   profile_->set_storage(storage.release());
   Manager::Properties manager_props;

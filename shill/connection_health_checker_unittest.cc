@@ -54,7 +54,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::Sequence;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::_;
@@ -264,7 +264,7 @@ class ConnectionHealthCheckerTest : public Test {
                          &ConnectionHealthCheckerTest::GetSockName));
     EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
         .InSequence(seq_)
-        .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+        .WillOnce(DoAll(SetArgPointee<0>(info_list),
                         Return(true)));
   }
   void ExpectSuccessfulStart() {
@@ -491,7 +491,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+      .WillOnce(DoAll(SetArgPointee<0>(info_list),
                       Return(true)));
   EXPECT_FALSE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   Mock::VerifyAndClearExpectations(socket_);
@@ -503,7 +503,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+      .WillOnce(DoAll(SetArgPointee<0>(info_list),
                       Return(true)));
   EXPECT_FALSE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   Mock::VerifyAndClearExpectations(socket_);
@@ -516,7 +516,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+      .WillOnce(DoAll(SetArgPointee<0>(info_list),
                       Return(true)));
   EXPECT_TRUE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   EXPECT_TRUE(CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown)
@@ -532,7 +532,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+      .WillOnce(DoAll(SetArgPointee<0>(info_list),
                       Return(true)));
   EXPECT_TRUE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   EXPECT_TRUE(CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown)
@@ -547,7 +547,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
+      .WillOnce(DoAll(SetArgPointee<0>(info_list),
                       Return(true)));
   EXPECT_TRUE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   EXPECT_TRUE(CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown)

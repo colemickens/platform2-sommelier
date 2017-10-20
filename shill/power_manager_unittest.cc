@@ -40,7 +40,7 @@ using testing::IgnoreResult;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -121,7 +121,7 @@ class PowerManagerTest : public Test {
                                                   bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 RegisterSuspendDelay(kTimeout, kDescription, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(delay_id), Return(return_value)));
+        .WillOnce(DoAll(SetArgPointee<2>(delay_id), Return(return_value)));
   }
 
   void AddProxyExpectationForUnregisterSuspendDelay(int delay_id,
@@ -148,7 +148,7 @@ class PowerManagerTest : public Test {
                                                       bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 RegisterDarkSuspendDelay(kTimeout, kDarkDescription, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(delay_id), Return(return_value)));
+        .WillOnce(DoAll(SetArgPointee<2>(delay_id), Return(return_value)));
   }
 
   void AddProxyExpectationForReportDarkSuspendReadiness(int delay_id,

@@ -29,7 +29,7 @@ using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 namespace shill {
 
@@ -196,7 +196,7 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kMeidGroupId, kEntry, _))
       .WillOnce(DoAll(
-          SetArgumentPointee<2>(
+          SetArgPointee<2>(
               static_cast<int>(PendingActivationStore::kStateMax)),
           Return(true)));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
@@ -204,7 +204,7 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
                                       kEntry));
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kMeidGroupId, kEntry, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(0), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
                                       kEntry));
@@ -213,13 +213,13 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
   // All enum values
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kIccidGroupId, kEntry, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(1), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(1), Return(true)));
   EXPECT_EQ(PendingActivationStore::kStatePending,
             store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
                                       kEntry));
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kIccidGroupId, kEntry, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(2), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(2), Return(true)));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
             store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
                                       kEntry));

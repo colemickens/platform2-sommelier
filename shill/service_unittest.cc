@@ -69,7 +69,7 @@ using testing::Return;
 using testing::ReturnNull;
 using testing::ReturnRef;
 using testing::StrictMock;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 using testing::Values;
 
@@ -459,21 +459,21 @@ TEST_F(ServiceTest, Load) {
   EXPECT_CALL(storage, GetString(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage, GetInt(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageCheckPortal, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kCheckPortal), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kCheckPortal), Return(true)));
   EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageGUID, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kGUID), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kGUID), Return(true)));
   EXPECT_CALL(storage, GetInt(storage_id_, Service::kStoragePriority, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPriority), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kPriority), Return(true)));
   EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageProxyConfig, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProxyConfig), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kProxyConfig), Return(true)));
   EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageUIData, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kUIData), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kUIData), Return(true)));
   EXPECT_CALL(storage, GetBool(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageSaveCredentials, _));
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageHasEverConnected, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHasEverConnected),
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kHasEverConnected),
                             Return(true)));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
@@ -552,22 +552,22 @@ TEST_F(ServiceTest, LoadAutoConnect) {
       .WillOnce(Return(false))
       .WillOnce(Return(false))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageFavorite, _))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 
   // AutoConnect is unset, Favorite is unset.
   EXPECT_TRUE(service_->Load(&storage));
@@ -740,10 +740,10 @@ TEST_F(ServiceTest, Unload) {
   static const string string_value("value");
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .Times(AtLeast(1))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(string_value), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(string_value), Return(true)));
   EXPECT_CALL(storage, GetBool(storage_id_, _, _))
       .Times(AtLeast(1))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_FALSE(service_->explicitly_disconnected_);
   service_->explicitly_disconnected_ = true;
   EXPECT_FALSE(service_->has_ever_connected_);

@@ -48,7 +48,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 
@@ -160,7 +160,7 @@ class ActiveLinkMonitorTest : public Test {
     time_val_.tv_sec = 0;
     time_val_.tv_usec = 0;
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
     EXPECT_TRUE(local_ip_.SetAddressFromString(kLocalIPAddress));
     EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(local_ip_));
     EXPECT_TRUE(gateway_ip_.SetAddressFromString(kRemoteIPAddress));
@@ -186,7 +186,7 @@ class ActiveLinkMonitorTest : public Test {
       static_cast<time_t>((time_ms % 1000) * 1000) };
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
   }
 
   string HardwareAddressToString(const ByteString& address) {
@@ -263,7 +263,7 @@ class ActiveLinkMonitorTest : public Test {
   }
   void StartMonitor() {
     EXPECT_CALL(device_info_, GetMACAddress(0, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(local_mac_), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(local_mac_), Return(true)));
     EXPECT_CALL(*client_, StartReplyListener()).WillOnce(Return(true));
     EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(1);
     EXPECT_TRUE(monitor_.Start(

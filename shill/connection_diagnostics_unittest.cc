@@ -51,7 +51,7 @@ using testing::ByMove;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace {
@@ -565,7 +565,7 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(device_info_, GetMACAddress(connection_->interface_index(), _))
         .WillOnce(
-            DoAll(SetArgumentPointee<1>(local_mac_address_), Return(true)));
+            DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
     EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
     // We should send an ARP probe request for our own local IP address.
     EXPECT_CALL(*arp_client_, TransmitRequest(IsArpRequest(

@@ -38,7 +38,7 @@ using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrEq;
 
 namespace shill {
@@ -170,7 +170,7 @@ TEST_F(ProcessManagerTest,
                                  &stdin_fd,
                                  &stdout_fd,
                                  &stderr_fd))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPid), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kPid), Return(true)));
   pid_t actual_pid =
       process_manager_->StartProcessInMinijailWithPipes(
           FROM_HERE,

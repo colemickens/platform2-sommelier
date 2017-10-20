@@ -29,7 +29,7 @@ using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 
@@ -339,27 +339,27 @@ TEST_F(StaticIPParametersTest, Profile) {
   StrictMock<MockStore> store;
   const string kID = "storage_id";
   EXPECT_CALL(store, GetString(kID, "StaticIP.Address", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kAddress)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kAddress)), Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.Gateway", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kGateway)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kGateway)), Return(true)));
   EXPECT_CALL(store, GetInt(kID, "StaticIP.Mtu", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kMtu), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kMtu), Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.NameServers", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kNameServers)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kNameServers)),
                       Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.SearchDomains", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kSearchDomains)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kSearchDomains)),
                       Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.PeerAddress", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPeerAddress)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kPeerAddress)),
                       Return(true)));
   EXPECT_CALL(store, GetInt(kID, "StaticIP.Prefixlen", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPrefixLen), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kPrefixLen), Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.ExcludedRoutes", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kExcludedRoutes)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kExcludedRoutes)),
                       Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.IncludedRoutes", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string(kIncludedRoutes)),
+      .WillOnce(DoAll(SetArgPointee<2>(string(kIncludedRoutes)),
                       Return(true)));
   static_params_.Load(&store, kID);
   static_params_.ApplyTo(&ipconfig_props_);

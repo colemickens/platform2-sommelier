@@ -44,7 +44,7 @@ using testing::Return;
 using testing::ReturnArg;
 using testing::ReturnNew;
 using testing::Test;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrEq;
 using testing::StrictMock;
 
@@ -81,7 +81,7 @@ class DNSClientTest : public Test {
 
   virtual void SetUp() {
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
     SetInActive();
   }
 
@@ -97,7 +97,7 @@ class DNSClientTest : public Test {
     struct timeval adv_time = { time_ms/1000, (time_ms % 1000) * 1000 };
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
   }
 
   void CallReplyCB() {
@@ -135,10 +135,10 @@ class DNSClientTest : public Test {
   void SetActive() {
     // Returns that socket kAresFd is readable.
     EXPECT_CALL(ares_, GetSock(_, _, _))
-        .WillRepeatedly(DoAll(SetArgumentPointee<1>(kAresFd), Return(1)));
+        .WillRepeatedly(DoAll(SetArgPointee<1>(kAresFd), Return(1)));
     EXPECT_CALL(ares_, Timeout(_, _, _))
         .WillRepeatedly(
-            DoAll(SetArgumentPointee<2>(ares_timeout_), ReturnArg<2>()));
+            DoAll(SetArgPointee<2>(ares_timeout_), ReturnArg<2>()));
   }
 
   void SetInActive() {
@@ -154,7 +154,7 @@ class DNSClientTest : public Test {
     CreateClient(dns_servers, kAresTimeoutMS);
     // These expectations are fulfilled when dns_client_->Start() is called.
     EXPECT_CALL(ares_, InitOptions(_, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<0>(kAresChannel),
+        .WillOnce(DoAll(SetArgPointee<0>(kAresChannel),
                         Return(ARES_SUCCESS)));
     EXPECT_CALL(ares_, SetServersCsv(_, _))
         .WillOnce(Return(ARES_SUCCESS));
@@ -341,8 +341,8 @@ TEST_F(DNSClientTest, TimeoutFirstRefresh) {
   struct timeval init_time_val = time_val_;
   AdvanceTime(kAresTimeoutMS);
   EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(init_time_val), Return(0)))
-      .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+      .WillOnce(DoAll(SetArgPointee<0>(init_time_val), Return(0)))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
   EXPECT_CALL(callback_target_, CallTarget(Not(IsSuccess()), _))
       .Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));

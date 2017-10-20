@@ -38,7 +38,7 @@ using testing::AnyNumber;
 using testing::DoAll;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace shill {
 
@@ -268,15 +268,15 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
   const string kIdentity("Purple Onion");
   EXPECT_CALL(store, GetCryptedString(
       kId, EapCredentials::kStorageEapIdentity, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kIdentity), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kIdentity), Return(true)));
   const string kManagement("Shave and a Haircut");
   EXPECT_CALL(store, GetString(
       kId, EapCredentials::kStorageEapKeyManagement, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kManagement), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kManagement), Return(true)));
   const string kPassword("Two Bits");
   EXPECT_CALL(store, GetCryptedString(
       kId, EapCredentials::kStorageEapPassword, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPassword), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(kPassword), Return(true)));
 
   eap_.Load(&store, kId);
   Mock::VerifyAndClearExpectations(&store);

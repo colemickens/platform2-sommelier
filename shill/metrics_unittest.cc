@@ -41,7 +41,7 @@ using testing::DoAll;
 using testing::Ge;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -229,7 +229,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_)).
-      WillOnce(DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
+      WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   metrics_.NotifySuspendDone();
   metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
@@ -594,7 +594,7 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_time_to_scan_timer);
   EXPECT_CALL(*mock_time_to_scan_timer, Stop()).WillOnce(Return(true));
   EXPECT_CALL(*mock_time_to_scan_timer, GetElapsedTime(_)).
-      WillOnce(DoAll(SetArgumentPointee<0>(large_time_delta), Return(true)));
+      WillOnce(DoAll(SetArgPointee<0>(large_time_delta), Return(true)));
   EXPECT_CALL(library_, SendToUMA(_, _, _, _, _)).Times(0);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
@@ -893,7 +893,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
   metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
+          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(library_,
@@ -917,7 +917,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
   metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
+          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(library_,
@@ -945,7 +945,7 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
   metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
+          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(
@@ -984,7 +984,7 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
   metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
       .WillOnce(
-          DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
+          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(

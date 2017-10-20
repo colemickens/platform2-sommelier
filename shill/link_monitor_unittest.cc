@@ -42,7 +42,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 
@@ -104,7 +104,7 @@ class LinkMonitorTest : public Test {
     time_val_.tv_sec = 0;
     time_val_.tv_usec = 0;
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
     EXPECT_CALL(*connection_, technology())
         .WillRepeatedly(Return(Technology::kEthernet));
   }
@@ -115,7 +115,7 @@ class LinkMonitorTest : public Test {
       static_cast<time_t>((time_ms % 1000) * 1000) };
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
+        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
   }
 
   void SetGatewayMacAddress(const ByteString& gateway_mac_address) {
