@@ -40,7 +40,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrEq;
 using testing::Test;
 
@@ -112,7 +112,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   properties[MM_MODEM_INTERFACE].SetUint(kSentinel, kSentinelValue);
 
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
-      SetArgumentPointee<1>(string(kLinkName)),
+      SetArgPointee<1>(string(kLinkName)),
       Return(true)));
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).
       WillRepeatedly(Return(kTestInterfaceIndex));
@@ -129,7 +129,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   // On the second time, we allow GetMACAddress to succeed.  Now we
   // expect a device to be built
   EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
-      WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
 
   // modem will take ownership
@@ -185,7 +185,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   // Link name, but no ifindex: no device created
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(string(kLinkName)),
+      SetArgPointee<1>(string(kLinkName)),
       Return(true)));
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).WillOnce(
       Return(-1));
@@ -194,12 +194,12 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   // The params are good, but the device is blacklisted.
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(string(kLinkName)),
+      SetArgPointee<1>(string(kLinkName)),
       Return(true)));
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
       .WillOnce(Return(kTestInterfaceIndex));
   EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+      .WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                       Return(true)));
   EXPECT_CALL(device_info_, IsDeviceBlackListed(kLinkName))
       .WillRepeatedly(Return(true));
@@ -267,7 +267,7 @@ TEST_F(ModemTest, GetDeviceParams) {
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
   EXPECT_CALL(device_info_, GetMACAddress(2, _)).
-      WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
   EXPECT_TRUE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(2, interface_index);

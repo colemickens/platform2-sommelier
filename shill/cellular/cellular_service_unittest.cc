@@ -40,7 +40,7 @@ using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrEq;
 
 namespace shill {
@@ -461,13 +461,13 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
       if (change_username) {
         EXPECT_CALL(storage,
                     GetString(_, CellularService::kStoragePPPUsername, _))
-            .WillOnce(DoAll(SetArgumentPointee<2>(kNewUser), Return(true)))
+            .WillOnce(DoAll(SetArgPointee<2>(kNewUser), Return(true)))
             .RetiresOnSaturation();
       }
       if (change_password) {
         EXPECT_CALL(storage,
                     GetString(_, CellularService::kStoragePPPPassword, _))
-            .WillOnce(DoAll(SetArgumentPointee<2>(kNewPass), Return(true)))
+            .WillOnce(DoAll(SetArgPointee<2>(kNewPass), Return(true)))
             .RetiresOnSaturation();
       }
       EXPECT_TRUE(service_->Load(&storage));

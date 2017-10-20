@@ -39,7 +39,7 @@ using testing::_;
 using testing::ByMove;
 using testing::DoAll;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -92,7 +92,7 @@ void Modem1Test::SetUp() {
   EXPECT_CALL(*modem_info_.mock_manager(), device_info())
       .WillRepeatedly(Return(&device_info_));
   EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
-      WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
 }
 

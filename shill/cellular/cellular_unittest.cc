@@ -80,7 +80,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace shill {
 
@@ -796,7 +796,7 @@ TEST_F(CellularTest, StartConnected) {
 
 TEST_F(CellularTest, StartLinked) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->set_meid(kMEID);
@@ -2113,7 +2113,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
@@ -2163,7 +2163,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());
