@@ -34,7 +34,7 @@ using ::testing::Mock;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::Sequence;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 namespace login_manager {

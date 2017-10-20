@@ -87,7 +87,7 @@ using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
@@ -500,7 +500,7 @@ class SessionManagerImplTest : public ::testing::Test,
         .WillOnce(Invoke(this, &SessionManagerImplTest::CreateDummyHandle));
     EXPECT_CALL(utils_,
                 GetGroupInfo(SessionManagerImpl::kArcBridgeSocketGroup, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(getgid()), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(getgid()), Return(true)));
     EXPECT_CALL(
         utils_,
         ChangeOwner(base::FilePath(SessionManagerImpl::kArcBridgeSocketPath),
@@ -618,7 +618,7 @@ class SessionManagerImplTest : public ::testing::Test,
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
                 CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(for_owner), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(for_owner), Return(true)));
     // Confirm that the key is present.
     EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(false));
 
@@ -648,7 +648,7 @@ class SessionManagerImplTest : public ::testing::Test,
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
                 CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)));
 
     // Indicate that there is no owner key in order to trigger a new one to be
     // generated.
@@ -1000,7 +1000,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicy(&error, &out_blob));
@@ -1011,7 +1011,7 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
 TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
@@ -1345,7 +1345,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -1358,7 +1358,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -1378,7 +1378,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   // Retrieve policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1404,7 +1404,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
   // Retrieving policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[kEmail2], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1422,7 +1422,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
   // Retrieve policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1456,7 +1456,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
 
   // Retrieving policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[kEmail2], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1482,7 +1482,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
   EXPECT_CALL(*policy_service, Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
 
   // Retrieve policy for a user who does not have a session.
   std::vector<uint8_t> out_blob;
@@ -1508,7 +1508,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
   EXPECT_CALL(*policy_service, Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
 
   // Retrieve policy for a user who does not have a session.
   std::vector<uint8_t> out_blob;
