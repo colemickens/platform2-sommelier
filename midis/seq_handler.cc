@@ -140,8 +140,8 @@ void SeqHandler::ProcessAlsaClientFd() {
   int remaining;
   do {
     snd_seq_event_t* event;
-    int err = snd_seq_event_input(in_client_.get(), &event);
-    remaining = snd_seq_event_input_pending(in_client_.get(), 0);
+    int err = SndSeqEventInput(in_client_.get(), &event);
+    remaining = SndSeqEventInputPending(in_client_.get(), 0);
 
     if (err == -ENOSPC) {
       // Handle out of space error.
@@ -414,6 +414,15 @@ void SeqHandler::ProcessMidiEvent(snd_seq_event_t* event) {
 int SeqHandler::SndSeqEventOutputDirect(snd_seq_t* out_client,
                                         snd_seq_event_t* event) {
   return snd_seq_event_output_direct(out_client, event);
+}
+
+int SeqHandler::SndSeqEventInput(snd_seq_t* in_client, snd_seq_event_t** ev) {
+  return snd_seq_event_input(in_client, ev);
+}
+
+int SeqHandler::SndSeqEventInputPending(snd_seq_t* in_client,
+                                        int fetch_sequencer) {
+  return snd_seq_event_input_pending(in_client, fetch_sequencer);
 }
 
 void SeqHandler::EnumerateExistingDevices() {

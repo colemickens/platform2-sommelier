@@ -120,6 +120,9 @@ class SeqHandler : public SeqHandlerInterface {
   // in unit tests.
   virtual int SndSeqEventOutputDirect(snd_seq_t* out_client,
                                       snd_seq_event_t* event);
+  virtual int SndSeqEventInput(snd_seq_t* in_client, snd_seq_event_t** ev);
+  virtual int SndSeqEventInputPending(snd_seq_t* in_client,
+                                      int fetch_sequencer);
 
  protected:
   // For testing purposes.
@@ -128,6 +131,7 @@ class SeqHandler : public SeqHandlerInterface {
  private:
   friend class SeqHandlerTest;
   FRIEND_TEST(SeqHandlerTest, TestEncodeBytes);
+  FRIEND_TEST(SeqHandlerTest, TestProcessAlsaClientFdPositive);
 
   // Enumerates all clients which are already connected to the ALSA Sequencer.
   void EnumerateExistingDevices();
