@@ -84,6 +84,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, SendCpuThrottleMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetricsOld);
+  FRIEND_TEST(MetricsDaemonTest, GetDetachableBaseTimes);
 
   // State for disk stats collector callback.
   enum StatsState {
@@ -137,6 +138,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const int kMetricStatsShortInterval;
   static const int kMetricStatsLongInterval;
   static const int kMetricMeminfoInterval;
+  static const int kMetricDetachableBaseInterval;
   static const int kMetricSectorsIOMax;
   static const int kMetricSectorsBuckets;
   static const int kMetricPageFaultsMax;
@@ -145,7 +147,20 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const char kMetricsVmStatsPath[];
   static const char kMetricsProcStatFileName[];
   static const int kMetricsProcStatFirstLineItemsCount;
+  static const char kMetricDetachableBaseActivePercentName[];
   static const char kMetricCroutonStarted[];
+
+  // Detachable base USB autosuspend sysfs entries.
+  //
+  // udev detects the base; hammerd validates, updates, enables
+  // USB autosuspend, and writes the sysfs path to /var/cache for
+  // consumption by other programs.  ("hammer" is the code name of
+  // the original device in this class.)
+  static const char kHammerSysfsPathPath[];
+  static const char kDetachableBaseSysfsLevelName[];
+  static const char kDetachableBaseSysfsLevelValue[];
+  static const char kDetachableBaseSysfsActiveTimeName[];
+  static const char kDetachableBaseSysfsSuspendedTimeName[];
 
   // Returns the active time since boot (uptime minus sleep time) in seconds.
   double GetActiveTime();
@@ -232,6 +247,18 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Reports memory statistics.  Reschedules callback on success.
   void MeminfoCallback(base::TimeDelta wait);
 
+  // Schedules detachable base collection callback.
+  void ScheduleDetachableBaseCallback(int wait);
+
+  // Reports detachable base statistics.  Reschedules callback on success.
+  void DetachableBaseCallback(const base::FilePath sysfs_path_path,
+                              base::TimeDelta wait);
+
+  // Retrieves current active and suspended times for detachable base.
+  // active_time and suspended_time are only valid if the function returns true.
+  bool GetDetachableBaseTimes(const base::FilePath sysfs_path_path,
+                              uint64_t* active_time, uint64_t* suspended_time);
+
   // Parses content of /proc/meminfo and sends fields of interest to UMA.
   // Returns false on errors.  |meminfo_raw| contains the content of
   // /proc/meminfo.
@@ -282,7 +309,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   bool ReportZram(const base::FilePath& zram_dir);
 
   // Reads a string from a file and converts it to uint64_t.
-  static bool ReadFileToUint64(const base::FilePath& path, uint64_t* value);
+  static bool ReadFileToUint64(const base::FilePath& path, uint64_t* value,
+                               bool warn_on_read_failure = true);
 
   // Reads /sys/devices/virtual/block/zram0/mm_stat.
   static bool ReadMMStat(const base::FilePath& zram_dir,
@@ -332,6 +360,12 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Used internally by GetIncrementalCpuUse() to return the CPU utilization
   // between calls.
   uint64_t latest_cpu_use_ticks_;
+
+  // Keeps track of the last active and suspended times for detachable
+  // base autosuspend.  Active and suspended states are toggled by an
+  // autosuspend idle time.
+  uint64_t detachable_base_active_time_;
+  uint64_t detachable_base_suspended_time_;
 
   // Persistent values and accumulators for crash statistics.
   std::unique_ptr<PersistentInteger> daily_cycle_;

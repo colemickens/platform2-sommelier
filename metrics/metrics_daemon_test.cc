@@ -403,6 +403,47 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
 }
 
+TEST_F(MetricsDaemonTest, GetDetachableBaseTimes) {
+  EXPECT_TRUE(daemon_.testing_);
+
+  base::FilePath temp_dir;
+  EXPECT_TRUE(base::CreateNewTempDirectory("", &temp_dir));
+
+  base::FilePath hammer_sysfs_path = temp_dir.Append("hammer_sysfs_path");
+  base::FilePath level_path =
+      temp_dir.Append(MetricsDaemon::kDetachableBaseSysfsLevelName);
+  base::FilePath active_time_path =
+      temp_dir.Append(MetricsDaemon::kDetachableBaseSysfsActiveTimeName);
+  base::FilePath suspended_time_path =
+      temp_dir.Append(MetricsDaemon::kDetachableBaseSysfsSuspendedTimeName);
+
+  // Assume all sysfs files are located within the same subdirectory.
+  EXPECT_TRUE(CreateDirectory(level_path.DirName()));
+
+  uint64_t active_time, suspended_time;
+
+  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(
+      hammer_sysfs_path, &active_time, &suspended_time));
+
+  EXPECT_TRUE(base::WriteFile(
+      hammer_sysfs_path, temp_dir.value().c_str(),
+      temp_dir.value().length()));
+  EXPECT_TRUE(base::WriteFile(
+      level_path, MetricsDaemon::kDetachableBaseSysfsLevelValue,
+      strlen(MetricsDaemon::kDetachableBaseSysfsLevelValue)));
+
+  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(
+      hammer_sysfs_path, &active_time, &suspended_time));
+
+  CreateUint64ValueFile(active_time_path, 10);
+  CreateUint64ValueFile(suspended_time_path, 20);
+
+  EXPECT_TRUE(daemon_.GetDetachableBaseTimes(
+      hammer_sysfs_path, &active_time, &suspended_time));
+  EXPECT_EQ(active_time, 10);
+  EXPECT_EQ(suspended_time, 20);
+}
+
 }  // namespace chromeos_metrics
 
 int main(int argc, char** argv) {

@@ -96,10 +96,10 @@ const char MetricsDaemon::kMetricReadSectorsShortName[] =
 const char MetricsDaemon::kMetricWriteSectorsShortName[] =
     "Platform.WriteSectorsShort";
 
-const int MetricsDaemon::kMetricStatsShortInterval = 1;  // seconds
-const int MetricsDaemon::kMetricStatsLongInterval = 30;  // seconds
-
-const int MetricsDaemon::kMetricMeminfoInterval = 30;  // seconds
+const int MetricsDaemon::kMetricStatsShortInterval = 1;        // seconds
+const int MetricsDaemon::kMetricStatsLongInterval = 30;        // seconds
+const int MetricsDaemon::kMetricMeminfoInterval = 30;          // seconds
+const int MetricsDaemon::kMetricDetachableBaseInterval =  30;  // seconds
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -150,6 +150,24 @@ const char MetricsDaemon::kOrigDataSizeName[] = "orig_data_size";
 const char MetricsDaemon::kZeroPagesName[] = "zero_pages";
 const char MetricsDaemon::kMMStatName[] = "mm_stat";
 
+// Detachable base autosuspend metrics.
+
+const char MetricsDaemon::kMetricDetachableBaseActivePercentName[] =
+    "Platform.DetachableBase.ActivePercent";
+
+// Detachable base autosuspend sysfs entries.
+
+const char MetricsDaemon::kHammerSysfsPathPath[] =
+    "/run/hammer_sysfs_path";
+const char MetricsDaemon::kDetachableBaseSysfsLevelName[] =
+    "power/level";
+const char MetricsDaemon::kDetachableBaseSysfsLevelValue[] =
+    "auto";
+const char MetricsDaemon::kDetachableBaseSysfsActiveTimeName[] =
+    "power/runtime_active_time";
+const char MetricsDaemon::kDetachableBaseSysfsSuspendedTimeName[] =
+    "power/runtime_suspended_time";
+
 // crouton metrics
 
 const char MetricsDaemon::kMetricCroutonStarted[] = "Platform.Crouton.Started";
@@ -163,7 +181,9 @@ MetricsDaemon::MetricsDaemon()
       stats_state_(kStatsShort),
       stats_initial_time_(0),
       ticks_per_second_(0),
-      latest_cpu_use_ticks_(0) {}
+      latest_cpu_use_ticks_(0),
+      detachable_base_active_time_(0),
+      detachable_base_suspended_time_(0) {}
 
 MetricsDaemon::~MetricsDaemon() {}
 
@@ -313,6 +333,9 @@ int MetricsDaemon::OnInit() {
   ScheduleMeminfoCallback(kMetricMeminfoInterval);
   memuse_final_time_ = GetActiveTime() + kMemuseIntervals[0];
   ScheduleMemuseCallback(kMemuseIntervals[0]);
+
+  // Start collecting detachable base stats.
+  ScheduleDetachableBaseCallback(kMetricDetachableBaseInterval);
 
   if (testing_)
     return EX_OK;
@@ -783,15 +806,14 @@ void MetricsDaemon::StatsCallback() {
 }
 
 void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
-  if (testing_) {
+  if (testing_)
     return;
-  }
-  base::TimeDelta waitDelta = base::TimeDelta::FromSeconds(wait);
+  base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
       base::Bind(
-          &MetricsDaemon::MeminfoCallback, base::Unretained(this), waitDelta),
-      waitDelta);
+          &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait_delta),
+      wait_delta);
 }
 
 void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
@@ -816,12 +838,104 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
   }
 }
 
+void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
+  if (testing_)
+    return;
+
+  base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
+                 base::FilePath{kHammerSysfsPathPath}, wait_delta),
+      wait_delta);
+}
+
+void MetricsDaemon::DetachableBaseCallback(
+    const base::FilePath sysfs_path_path, base::TimeDelta wait) {
+  uint64_t active_time, suspended_time;
+
+  if (GetDetachableBaseTimes(sysfs_path_path, &active_time, &suspended_time)) {
+    // Edge case: disconnected and reconnected since the last callback.
+    if (active_time < detachable_base_active_time_ ||
+        suspended_time < detachable_base_suspended_time_) {
+      DLOG(INFO) << "Detachable base removed (or time counter overflow)";
+      detachable_base_active_time_ = active_time;
+      detachable_base_suspended_time_ = suspended_time;
+    }
+
+    if (detachable_base_active_time_ == 0 &&
+        detachable_base_suspended_time_ == 0)
+      DLOG(INFO) << "Detachable base detected, start reporting activity";
+
+    uint64_t delta_active = active_time - detachable_base_active_time_;
+    uint64_t delta_suspended = suspended_time - detachable_base_suspended_time_;
+
+    if ((delta_active + delta_suspended) > 0) {
+      double active_ratio = static_cast<double>(delta_active) /
+              (delta_active + delta_suspended);
+
+      DLOG(INFO) << "Detachable base active_ratio: "
+                 << base::StringPrintf("%.8f", active_ratio);
+
+      // Linear scale, min=0, max=100, buckets=101.
+      SendLinearSample(kMetricDetachableBaseActivePercentName,
+                       active_ratio * 100, 100, 101);
+    }
+  } else {
+    if (detachable_base_active_time_ != 0 &&
+        detachable_base_suspended_time_ != 0)
+      DLOG(INFO) << "Detachable base removed";
+    active_time = 0;
+    suspended_time = 0;
+  }
+
+  detachable_base_active_time_ = active_time;
+  detachable_base_suspended_time_ = suspended_time;
+
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
+                 sysfs_path_path, wait),
+      wait);
+}
+
+bool MetricsDaemon::GetDetachableBaseTimes(
+    const base::FilePath sysfs_path_path,
+    uint64_t* active_time, uint64_t* suspended_time) {
+  base::FilePath sysfs_path;
+  std::string content;
+
+  if (!base::ReadFileToString(sysfs_path_path, &content))
+    return false;
+  base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
+
+  sysfs_path = base::FilePath(FILE_PATH_LITERAL(content));
+  if (!base::ReadFileToString(sysfs_path.Append(
+      kDetachableBaseSysfsLevelName), &content))
+    return false;
+  base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
+
+  if (content != "auto")
+    return false;
+
+  bool r1 = ReadFileToUint64(sysfs_path.Append(
+      kDetachableBaseSysfsActiveTimeName), active_time, false);
+  bool r2 = ReadFileToUint64(sysfs_path.Append(
+      kDetachableBaseSysfsSuspendedTimeName), suspended_time, false);
+  if (!r1 || !r2)
+    return false;
+
+  return true;
+}
+
 // static
 bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
-                                     uint64_t* value) {
+                                     uint64_t* value,
+                                     bool warn_on_read_failure) {
   std::string content;
   if (!base::ReadFileToString(path, &content)) {
-    PLOG(WARNING) << "cannot read " << path.MaybeAsASCII();
+    if (warn_on_read_failure)
+      PLOG(WARNING) << "cannot read " << path.MaybeAsASCII();
     return false;
   }
   // Remove final newline.
