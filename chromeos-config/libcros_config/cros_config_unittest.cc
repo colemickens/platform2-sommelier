@@ -112,6 +112,21 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
                                       &val));
 }
 
+TEST_F(CrosConfigTest, CheckAbsPath) {
+  InitConfig("pyro");
+  std::string val;
+
+  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
+  ASSERT_EQ("/etc/dptf/pyro/dptf.dv", val);
+
+  // This is not a PropFile.
+  ASSERT_FALSE(cros_config_.GetAbsPath("/", "wallpaper", &val));
+
+  // GetString() should still return the raw value.
+  ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
+  ASSERT_EQ("pyro/dptf.dv", val);
+}
+
 int main(int argc, char **argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)

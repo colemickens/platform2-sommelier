@@ -25,6 +25,7 @@ extern "C" {
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kModelNodePath[] = "/chromeos/models";
+const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
 }  // namespace
 
 namespace brillo {
@@ -124,6 +125,33 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   return true;
 }
 
+bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
+                            std::string* val_out) {
+  const void* blob = blob_.c_str();
+  std::string val;
+  if (!GetString(path, prop, &val)) {
+    return false;
+  }
+
+  if (target_dirs_offset_ == -1) {
+    LOG(ERROR) << "Absolute path requested at path " << path << " property "
+               << prop  << " but no target-dirs are available";
+    return false;
+  }
+  int len;
+  const char* ptr = static_cast<const char*>(
+      fdt_getprop(blob, target_dirs_offset_, prop.c_str(), &len));
+
+  if (!ptr) {
+    LOG(ERROR) << "Absolute path requested at path " << path << " property "
+               << prop  << ": " << fdt_strerror(len);
+    return false;
+  }
+  *val_out = std::string(ptr) + "/" + val;
+
+  return true;
+}
+
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
   // Check if filepath is - for stdin support, otherwise load from file
@@ -160,6 +188,13 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     LOG(ERROR) << "Config file " << filepath.MaybeAsASCII() << " is invalid: "
                << fdt_strerror(ret);
     return false;
+  }
+  int target_dirs_offset = fdt_path_offset(blob, kTargetDirsPath);
+  if (target_dirs_offset >= 0) {
+    target_dirs_offset_ = target_dirs_offset;
+  } else if (target_dirs_offset < 0) {
+    LOG(WARNING) << "Cannot find " << kTargetDirsPath << " node: "
+               << fdt_strerror(target_dirs_offset);
   }
   int models_offset = fdt_path_offset(blob, kModelNodePath);
   if (models_offset < 0) {

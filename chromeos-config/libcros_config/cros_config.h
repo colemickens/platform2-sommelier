@@ -49,6 +49,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  std::string* val_out) override;
 
+  // CrosConfigInterface:
+  bool GetAbsPath(const std::string& path, const std::string& prop,
+                  std::string* val_out) override;
+
  private:
   // Common init function for both production and test code.
   // @filepath: path to configuration .dtb file.
@@ -61,11 +65,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool InitCheck() const;
 
-  std::string blob_;            // Device tree binary blob
-  std::string model_;           // Model name for this device
-  int model_offset_ = -1;       // Device tree offset of the model's node
-  int whitelabel_offset_ = -1;  // Device tree offset of the whitelabel node
-  bool inited_ = false;         // true if the class is ready for use (Init*ed)
+  std::string blob_;             // Device tree binary blob
+  std::string model_;            // Model name for this device
+  int model_offset_ = -1;        // Device tree offset of the model's node
+  int whitelabel_offset_ = -1;   // Device tree offset of the whitelabel node
+  int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
+  bool inited_ = false;          // true if the class is ready for use (Init*ed)
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };
 

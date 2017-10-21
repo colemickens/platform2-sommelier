@@ -14,6 +14,7 @@
 #include "chromeos-config/libcros_config/cros_config.h"
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(abspath, false, "Show the property value as an absolute path.");
   DEFINE_string(test_database,
                 "",
                 "Override path to system config database for testing.");
@@ -48,7 +49,13 @@ int main(int argc, char* argv[]) {
   std::string property = args[1];
 
   std::string value;
-  if (!cros_config.GetString(path, property, &value)) {
+  bool result;
+  if (FLAGS_abspath) {
+    result = cros_config.GetAbsPath(path, property, &value);
+  } else {
+    result = cros_config.GetString(path, property, &value);
+  }
+  if (!result) {
     return 1;
   }
 

@@ -56,6 +56,26 @@ TEST(CrosConfigTest, GetStringNonRoot) {
   EXPECT_EQ("overlay-reef-private", val);
 }
 
+TEST(CrosConfigTest, GetAbsPath) {
+  std::string val;
+  bool success =
+      base::GetAppOutput(GetCrosConfigCommand({"/thermal", "dptf-dv"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("pyro/dptf.dv", val);
+
+  success = base::GetAppOutput(GetCrosConfigCommand(
+      {"--abspath", "/thermal", "dptf-dv"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("/etc/dptf/pyro/dptf.dv", val);
+
+  // We are not allowed to request an absolute path on something that is not
+  // a PropFile.
+  success = base::GetAppOutput(GetCrosConfigCommand(
+      {"--abspath", "/", "wallpaper"}), &val);
+  EXPECT_FALSE(success);
+  EXPECT_EQ("", val);
+}
+
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)
