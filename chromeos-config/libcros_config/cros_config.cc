@@ -20,6 +20,7 @@ extern "C" {
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 namespace {
@@ -53,8 +54,85 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
   return InitCommon(filepath, cmdline);
 }
 
+std::string CrosConfig::GetFullPath(int offset) {
+  const void* blob = blob_.c_str();
+  char buf[256];
+  int err;
+
+  err = fdt_get_path(blob, offset, buf, sizeof(buf));
+  if (err) {
+    LOG(WARNING) << "Cannot get full path: " << fdt_strerror(err);
+    return "unknown";
+  }
+
+  return std::string(buf);
+}
+
+int CrosConfig::GetPathOffset(int base_offset, const std::string& path) {
+  const void* blob = blob_.c_str();
+  auto parts = base::SplitString(path.substr(1), "/", base::KEEP_WHITESPACE,
+                                 base::SPLIT_WANT_ALL);
+  int offset = base_offset;
+  for (auto part : parts) {
+    offset = fdt_subnode_offset(blob, offset, part.c_str());
+    if (offset < 0) {
+      break;
+    }
+  }
+  return offset;
+}
+
+bool CrosConfig::GetString(int base_offset, const std::string& path,
+                           const std::string& prop, std::string* val_out) {
+  const void* blob = blob_.c_str();
+
+  int subnode = GetPathOffset(base_offset, path);
+  int wl_subnode = -1;
+  if (whitelabel_offset_ != -1) {
+    wl_subnode = GetPathOffset(whitelabel_offset_, path);
+    if (subnode < 0 && wl_subnode >= 0) {
+      LOG(INFO) << "The path " << path << " does not exist. Falling back to "
+                << "whitelabel path";
+      subnode = wl_subnode;
+    }
+  }
+  if (subnode < 0) {
+    LOG(ERROR) << "The path " << path << " does not exist.";
+    return false;
+  }
+
+  int len = 0;
+  const char* ptr = static_cast<const char*>(
+      fdt_getprop(blob, subnode, prop.c_str(), &len));
+  if (!ptr && wl_subnode >= 0) {
+    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode, prop.c_str(),
+                                               &len));
+    LOG(INFO) << "The property " << prop << " does not exist. Falling back to "
+              << "whitelabel property";
+  }
+  if (!ptr || len < 0) {
+    LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
+                 << "full path " << GetFullPath(subnode) << ": "
+                 << fdt_strerror(len);
+    return false;
+  }
+
+  // We must have a normally terminated string. This guards against a string
+  // list being used, or perhaps a property that does not contain a valid
+  // string at all.
+  if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
+    LOG(ERROR) << "String at path " << path << " property " << prop
+               << " is invalid";
+    return false;
+  }
+
+  val_out->assign(ptr);
+
+  return true;
+}
+
 bool CrosConfig::GetString(const std::string& path, const std::string& prop,
-                           std::string* val) {
+                           std::string* val_out) {
   if (!InitCheck()) {
     return false;
   }
@@ -74,55 +152,7 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  const void* blob = blob_.c_str();
-
-  std::string full_path = kModelNodePath + std::string("/") + model_ + path;
-  std::string wl_full_path;
-  int subnode = fdt_path_offset(blob, full_path.c_str());
-  int wl_subnode = -1;
-  if (whitelabel_offset_ != -1) {
-    wl_full_path = kModelNodePath + std::string("/") +
-        std::string(fdt_get_name(blob, whitelabel_offset_, NULL) + path);
-    wl_subnode = fdt_path_offset(blob, wl_full_path.c_str());
-    if (subnode < 0 && wl_subnode >= 0) {
-      LOG(INFO) << "The path " << path << " does not exist. Falling back to "
-                << "whitelabel path";
-      subnode = wl_subnode;
-      full_path = wl_full_path;
-    }
-  }
-  if (subnode < 0) {
-    LOG(ERROR) << "The path " << path << " does not exist.";
-    return false;
-  }
-
-  int len = 0;
-  const char* ptr = static_cast<const char*>(
-      fdt_getprop(blob, subnode, prop.c_str(), &len));
-  if (!ptr && wl_subnode >= 0) {
-    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode, prop.c_str(),
-                                               &len));
-    LOG(INFO) << "The property " << prop << " does not exist. Falling back to "
-              << "whitelabel property";
-  }
-  if (!ptr || len < 0) {
-    LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
-                 << "full path " << full_path << ": " << fdt_strerror(len);
-    return false;
-  }
-
-  // We must have a normally terminated string. This guards against a string
-  // list being used, or perhaps a property that does not contain a valid
-  // string at all.
-  if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
-    LOG(ERROR) << "String at path " << path << " property " << prop
-               << " is invalid";
-    return false;
-  }
-
-  val->assign(ptr);
-
-  return true;
+  return GetString(model_offset_, path, prop, val_out);
 }
 
 bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,

@@ -65,6 +65,28 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool InitCheck() const;
 
+  // Obtain the full path for the node at a given offset.
+  // @offset: offset of the node to check.
+  // @return path to node, or "unknown" if it 256 characters or more (due to
+  // limited buffer space). This is much longer than any expected length so
+  // should not happen.
+  std::string GetFullPath(int offset);
+
+  // Obtain offset of a given path, relative to the base node.
+  // @base_offset: offset of base node.
+  // @path: Path to locate (relative to @base). Must start with "/".
+  // @return node offset of the node found, or negative value on error.
+  int GetPathOffset(int base_offset, const std::string& path);
+
+  // Internal function to obtain a property value based on a node offset
+  // This looks up a property for a path, relative to a given base node offset.
+  // @base_offset: offset of base node for the search.
+  // @path: Path to locate (relative to @base). Must start with "/".
+  // @prop: Property name to look up
+  // val_out: returns the string value found, if any
+  bool GetString(int base_offset, const std::string& path,
+                 const std::string& prop, std::string* val_out);
+
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
   int model_offset_ = -1;        // Device tree offset of the model's node
