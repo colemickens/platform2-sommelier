@@ -182,6 +182,35 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
+bool CrosConfig::LookupPhandle(std::string prop_name, int *offsetp) {
+  const void* blob = blob_.c_str();
+  int len;
+  const fdt32_t* ptr = static_cast<const fdt32_t*>(
+      fdt_getprop(blob, model_offset_, prop_name.c_str(), &len));
+
+  // We probably don't need all these checks since validation will ensure that
+  // the config is correct. But this is a critical tool and we want to avoid
+  // crashes in any situation.
+  *offsetp = -1;
+  if (ptr) {
+    if (len != sizeof(fdt32_t)) {
+      LOG(ERROR) << prop_name << " phandle for model " << model_
+                  << " is of size " << len << " but should be "
+                  << sizeof(fdt32_t);
+      return false;
+    }
+    int phandle = fdt32_to_cpu(*ptr);
+    int offset = fdt_node_offset_by_phandle(blob, phandle);
+    if (offset < 0) {
+      LOG(ERROR) << prop_name << "lookup for model " << model_ << " failed: "
+                  << fdt_strerror(offset);
+      return false;
+    }
+    *offsetp = offset;
+  }
+  return true;
+}
+
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
   // Check if filepath is - for stdin support, otherwise load from file
@@ -240,29 +269,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     }
     model_offset_ = node;
 
-    // See if there is a whitelabel config for this model. We probably don't
-    // need all these checks since validation will ensure that the config is
-    // correct. But this is a critical tool and we want to avoid crashes in any
-    // situation.
-    int len;
-    const fdt32_t* wl_ptr = static_cast<const fdt32_t*>(
-        fdt_getprop(blob, model_offset_, "whitelabel", &len));
-    if (wl_ptr) {
-      if (len != sizeof(fdt32_t)) {
-        LOG(ERROR) << "Whitelabel phandle for model " << model_
-                   << " is of size " << len << " but should be "
-                   << sizeof(fdt32_t);
-        return false;
-      }
-      int phandle = fdt32_to_cpu(*wl_ptr);
-      int offset = fdt_node_offset_by_phandle(blob, phandle);
-      if (offset < 0) {
-        LOG(ERROR) << "Whitelabel lookup for model " << model_ << " failed: "
-                   << fdt_strerror(offset);
-        return false;
-      }
-      whitelabel_offset_ = offset;
-    }
+    // See if there is a whitelabel config for this model.
+    LookupPhandle("whitelabel", &whitelabel_offset_);
 
     LOG(INFO) << "Using master configuration for model " << model_;
   }

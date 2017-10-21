@@ -87,6 +87,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool GetString(int base_offset, const std::string& path,
                  const std::string& prop, std::string* val_out);
 
+  // Look up a phandle in the model node.
+  // Looks up a phandle with the given property name in the model node for the
+  // current model.
+  // @prop_name: Name of property to look up.
+  // @offsetp: Returns the offset of the node the phandle points to, if found.
+  // @return true if found, false if not.
+  bool LookupPhandle(std::string prop_name, int *offsetp);
+
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
   int model_offset_ = -1;        // Device tree offset of the model's node
