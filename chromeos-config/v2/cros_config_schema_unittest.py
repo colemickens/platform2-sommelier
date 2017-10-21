@@ -115,7 +115,7 @@ models:
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
-    with open('./cros_config_schema.json', 'r') as schema_stream:
+    with open('v2/cros_config_schema.json', 'r') as schema_stream:
       self._schema = schema_stream.read()
 
   def testBasicSchemaValidation(self):
@@ -198,11 +198,11 @@ class MainTests(unittest.TestCase):
   def testMainWithExample(self):
     output = tempfile.mktemp()
     cros_config_schema.Main(
-        './cros_config_schema.json',
-        './cros_config_schema_example.yaml',
+        'v2/cros_config_schema.json',
+        'v2/cros_config_schema_example.yaml',
         output)
     with open(output, 'r') as output_stream:
-      with open('./cros_config_schema_example.json') as expected_stream:
+      with open('v2/cros_config_schema_example.json') as expected_stream:
         self.assertEqual(expected_stream.read(), output_stream.read())
 
     os.remove(output)
