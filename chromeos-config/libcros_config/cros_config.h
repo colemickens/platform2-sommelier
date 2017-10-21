@@ -100,6 +100,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   int model_offset_ = -1;        // Device tree offset of the model's node
   int whitelabel_offset_ = -1;   // Device tree offset of the whitelabel node
   int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
+  int default_offset_ = -1;      // Device tree offset of the default mode
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };

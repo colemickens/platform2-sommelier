@@ -152,7 +152,13 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  return GetString(model_offset_, path, prop, val_out);
+  if (!GetString(model_offset_, path, prop, val_out)) {
+    if (default_offset_ != -1) {
+      return GetString(default_offset_, path, prop, val_out);
+    }
+    return false;
+  }
+  return true;
 }
 
 bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
@@ -271,6 +277,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
 
     // See if there is a whitelabel config for this model.
     LookupPhandle("whitelabel", &whitelabel_offset_);
+    LookupPhandle("default", &default_offset_);
 
     LOG(INFO) << "Using master configuration for model " << model_;
   }

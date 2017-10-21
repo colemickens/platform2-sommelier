@@ -127,6 +127,22 @@ TEST_F(CrosConfigTest, CheckAbsPath) {
   ASSERT_EQ("pyro/dptf.dv", val);
 }
 
+TEST_F(CrosConfigTest, CheckDefault) {
+  // These mirror the tests in libcros_config_host_unittest testWhitelabel()
+  InitConfig("caroline");
+  std::string val;
+
+  // These are defined by caroline itself.
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("caroline", val);
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "cras-config-dir", &val));
+  ASSERT_EQ("caroline", val);
+
+  // This relies on a default property
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_EQ("pyro", val);
+}
+
 int main(int argc, char **argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)
