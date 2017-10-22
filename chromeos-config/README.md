@@ -221,6 +221,14 @@ properties.
         *   `brand-code`: (optional): Brand code of the model (also called RLZ
             code). See [list](go/chromeos-rlz) and
             [one-pager](gi/chromeos-rlz-onepager).
+        *   `default` (optional): Indicates that all of the nodes and properties
+            of this model should default to the same as another model. The value
+            is a phandle pointing to the model. It is not possible to 'remove'
+            nodes / properties defined by the other model. It is only possible
+            to change properties or add new ones.
+            Note: This is an experimental feature which will be evaluated in
+            December 2017 to determine its usefulness versus the potential
+            confusion it can cause.
         *   `thermal`(optional): Contains information about thermel properties
             and settings.
             *   `dptf-dv`: Filename of the .dv file containing DPTF (Dynamic

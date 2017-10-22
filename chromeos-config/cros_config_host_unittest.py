@@ -94,7 +94,7 @@ class CrosConfigHostTest(unittest.TestCase):
     output = subprocess.check_output(call_args)
     self.assertEqual(
         output,
-        'default{ls}{ls}epic{ls}{ls}{ls}shark{ls}more_shark{ls}'.
+        'default{ls}caroline{ls}epic{ls}{ls}{ls}shark{ls}more_shark{ls}'.
         format(ls=os.linesep))
 
   def testGetFirmwareUris(self):

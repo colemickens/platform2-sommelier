@@ -65,7 +65,7 @@
 };
 
 &models {
-	pyro {
+	pyro: pyro {
 		wallpaper = "default";
 		string-list = "default", "more";
 		audio {
@@ -107,6 +107,13 @@
 		};
 	};
 	caroline {
+		default = <&pyro>;
+		wallpaper = "caroline";
+		audio {
+			main {
+				cras-config-dir = "caroline";
+			};
+		};
 		firmware {
 			shares = < &shared >;
 		};
@@ -116,9 +123,9 @@
 		audio {
 			main {
 				audio-type = <&audio_type>;
-				cras-config-dir = "reef-cras";
-				ucm-suffix = "reef-ucm";
-				topology-name = "reef-top";
+				cras-config-dir = "reefcras";
+				ucm-suffix = "reefucm";
+				topology-name = "reeftop";
 			};
 		};
 		firmware {

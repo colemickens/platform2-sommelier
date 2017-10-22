@@ -104,12 +104,12 @@ class CrosConfig(object):
     self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
     # TODO(sjg@chromium.org): Consider calling GetFileTree() to init that here.
-    self.models = OrderedDict(
-        (n.name, CrosConfig.Model(self, n))
-        for n in self._fdt.GetNode('/chromeos/models').subnodes)
     self.phandle_to_node = dict(
         (phandle, CrosConfig.Node(self, fdt_node))
         for phandle, fdt_node in self._fdt.phandle_to_node.iteritems())
+    self.models = OrderedDict(
+        (n.name, CrosConfig.Model(self, n))
+        for n in self._fdt.GetNode('/chromeos/models').subnodes)
     self.validator = validate_config.GetValidator()
 
   def GetTouchFirmwareFiles(self):
@@ -233,6 +233,7 @@ class CrosConfig(object):
                                   for n in fdt_node.subnodes)
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
+      self.default = None
 
     def FollowShare(self):
       """Follow a node's shares property
@@ -288,14 +289,17 @@ class CrosConfig(object):
         shared = self.FollowShare()
         if shared:
           child_node = shared.ChildNodeFromPath(relative_path)
-      if not child_node:
-        return None
-      prop = child_node.properties.get(property_name)
-      if not prop:
-        shared = child_node.FollowShare()
-        if shared:
-          prop = shared.properties.get(property_name)
-      return prop
+      if child_node:
+        prop = child_node.properties.get(property_name)
+        if not prop:
+          shared = child_node.FollowShare()
+          if shared:
+            prop = shared.properties.get(property_name)
+        if prop:
+          return prop
+      if self.default:
+        return self.default.ChildPropertyFromPath(relative_path, property_name)
+      return None
 
     def FollowPhandle(self, prop_name):
       """Follow a property's phandle
@@ -311,7 +315,15 @@ class CrosConfig(object):
         return None
       return self.cros_config.phandle_to_node[prop.GetPhandle()]
 
-    def GetMergedProperties(self, phandle_prop):
+    @staticmethod
+    def MergeProperties(props, node, ignore=''):
+      if node:
+        for name, prop in node.properties.iteritems():
+          if (name not in props and not name.endswith('phandle') and
+              name != ignore):
+            props[name] = prop.value
+
+    def GetMergedProperties(self, _, phandle_prop):
       """Obtain properties in two nodes linked by a phandle
 
       This is used to create a dict of the properties in a main node along with
@@ -338,11 +350,7 @@ class CrosConfig(object):
                           if prop.name not in [phandle_prop, 'reg'])
 
       # Follow the phandle and add any new ones we find
-      phandle_node = self.FollowPhandle(phandle_prop)
-      if phandle_node:
-        for name, prop in phandle_node.properties.iteritems():
-          if name not in props and not name.endswith('phandle'):
-            props[name] = prop.value
+      self.MergeProperties(props, self.FollowPhandle(phandle_prop))
       return props
 
   class Model(Node):
@@ -354,6 +362,20 @@ class CrosConfig(object):
     """
     def __init__(self, cros_config, fdt_node):
       super(CrosConfig.Model, self).__init__(cros_config, fdt_node)
+      self.default = self.FollowPhandle('default')
+
+    def GetMergedProperties(self, node, phandle_prop):
+      props = node.GetMergedProperties(None, phandle_prop)
+      if self.default:
+        # Get the path of this node relative to its model. For example:
+        # '/chromeos/models/pyro/thermal' will return '/thermal' in subpath.
+        # Once crbug.com/775229 is completed, we will be able to do this in a
+        # nicer way.
+        _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
+        default_node = self.default.ChildNodeFromPath(subpath)
+        self.MergeProperties(props, default_node, phandle_prop)
+        self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
+      return props
 
     def GetFirmwareUris(self):
       """Returns a list of (string) firmware URIs.
@@ -367,7 +389,7 @@ class CrosConfig(object):
       firmware = self.ChildNodeFromPath('/firmware')
       if not firmware:
         return []
-      props = firmware.GetMergedProperties('shares')
+      props = self.GetMergedProperties(firmware, 'shares')
 
       if 'bcs-overlay' not in props:
         return []
@@ -428,7 +450,7 @@ class CrosConfig(object):
       files = {}
       if touch:
         for device in touch.subnodes.values():
-          props = device.GetMergedProperties('touch-type')
+          props = self.GetMergedProperties(device, 'touch-type')
 
           # Add a special property for the capitalised model name
           props['MODEL'] = self.name.upper()
@@ -447,6 +469,7 @@ class CrosConfig(object):
           key: (model, property)
           value: BaseFile object
       """
+      card = None  # To keep pylint happy since we use it in this function:
       def _AddAudioFile(prop_name, dest_template, dirname=''):
         """Helper to add a single audio file
 
@@ -456,6 +479,10 @@ class CrosConfig(object):
         if prop_name in props:
           target_dir = self.cros_config.validator.GetModelTargetDir(
               '/audio/ANY', prop_name)
+          if not target_dir:
+            raise ValueError(("node '%s': Property '%s' does not have a " +
+                              "target directory (internal error)") %
+                             (card.name, prop_name))
           files[self.name, prop_name] = BaseFile(
               self.GetPropFilename(self._fdt_node.path, props, prop_name),
               os.path.join(
@@ -468,7 +495,7 @@ class CrosConfig(object):
       if audio:
         for card in audio.subnodes.values():
           # First get all the property keys/values from the current node
-          props = card.GetMergedProperties('audio-type')
+          props = self.GetMergedProperties(card, 'audio-type')
           props['model'] = self.name
 
           cras_dir = props['cras-config-dir']

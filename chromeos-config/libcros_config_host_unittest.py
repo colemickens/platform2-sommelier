@@ -159,7 +159,7 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
     stylus = pyro.ChildNodeFromPath('touch/stylus')
-    props = stylus.GetMergedProperties('touch-type')
+    props = stylus.GetMergedProperties(None, 'touch-type')
     self.assertSequenceEqual(
         props,
         OrderedDict([('version', '4209'),
@@ -171,7 +171,7 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     reef = config.models['reef']
     touchscreen = reef.ChildNodeFromPath('touch/touchscreen@1')
-    props = touchscreen.GetMergedProperties('touch-type')
+    props = touchscreen.GetMergedProperties(None, 'touch-type')
     self.assertSequenceEqual(
         props,
         OrderedDict([('pid', '306e'),
@@ -180,34 +180,58 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('firmware-bin', '${vendor}/${pid}_${version}.bin'),
                      ('firmware-symlink', '${vendor}ts_i2c_${pid}.bin')]))
 
+  def testGetMergedPropertiesDefault(self):
+    config = CrosConfig(self.file)
+    caroline = config.models['caroline']
+    audio = caroline.ChildNodeFromPath('/audio/main')
+    props = caroline.GetMergedProperties(audio, 'audio-type')
+    self.assertSequenceEqual(
+        props,
+        OrderedDict([('cras-config-dir', 'caroline'),
+                     ('ucm-suffix', 'pyro'),
+                     ('topology-name', 'pyro'),
+                     ('card', 'bxtda7219max'),
+                     ('volume', 'cras-config/${cras-config-dir}/${card}'),
+                     ('dsp-ini', 'cras-config/${cras-config-dir}/dsp.ini'),
+                     ('hifi-conf',
+                      'ucm-config/${card}.${ucm-suffix}/HiFi.conf'),
+                     ('alsa-conf',
+                      'ucm-config/${card}.${ucm-suffix}/${card}.' +
+                      '${ucm-suffix}.conf'),
+                     ('topology-xml',
+                      'topology/${topology-name}_topology.xml'),
+                     ('topology-bin',
+                      'topology/5a98-reef-${topology-name}-8-tplg.bin')]))
+
   def testGetAudioFiles(self):
     config = CrosConfig(self.file)
     audio_files = config.GetAudioFiles()
     self.assertEqual(
         audio_files,
-        [BaseFile('cras-config/pyro/bxtda7219max',
+        [BaseFile('cras-config/caroline/bxtda7219max',
+                  '/etc/cras/caroline/bxtda7219max'),
+         BaseFile('cras-config/caroline/dsp.ini', '/etc/cras/caroline/dsp.ini'),
+         BaseFile('cras-config/pyro/bxtda7219max',
                   '/etc/cras/pyro/bxtda7219max'),
          BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-         BaseFile('cras-config/reef-cras/bxtda7219max',
-                  '/etc/cras/reef-cras/bxtda7219max'),
-         BaseFile('cras-config/reef-cras/dsp.ini',
-                  '/etc/cras/reef-cras/dsp.ini'),
+         BaseFile('cras-config/reefcras/bxtda7219max',
+                  '/etc/cras/reefcras/bxtda7219max'),
+         BaseFile('cras-config/reefcras/dsp.ini', '/etc/cras/reefcras/dsp.ini'),
          BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
                   '/lib/firmware/topology/5a98-reef-pyro-8-tplg.bin'),
-         BaseFile('topology/5a98-reef-reef-top-8-tplg.bin',
-                  '/lib/firmware/topology/5a98-reef-reef-top-8-tplg.bin'),
+         BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
+                  '/lib/firmware/topology/5a98-reef-reeftop-8-tplg.bin'),
          BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
          BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
                   '.conf'),
-         BaseFile('ucm-config/bxtda7219max.reef-ucm/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/HiFi.conf'),
-         BaseFile('ucm-config/bxtda7219max.reef-ucm/bxtda7219max.reef-ucm' +
+         BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
+         BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
                   '.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
-                  '.reef-ucm.conf')])
-
+                  '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
+                  '.reefucm.conf')])
   def testGetThermalFiles(self):
     config = CrosConfig(self.file)
     thermal_files = config.GetThermalFiles()
@@ -272,12 +296,29 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(lines[2], 'etc/')
     self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
+
   def testWriteTargetDirectories(self):
     """Test that we can write out a list of file paths"""
     config = CrosConfig(self.file)
     target_dirs = config.GetTargetDirectories()
     self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
     self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
+
+  def testDefault(self):
+    """Test the 'default' property"""
+    config = CrosConfig(self.file)
+    caroline = config.models['caroline']
+
+    # These are defined by caroline itself
+    self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
+    self.assertEqual(
+        caroline.ChildPropertyFromPath('/audio/main', 'cras-config-dir').value,
+        'caroline')
+
+    # This relies on a default property
+    self.assertEqual(
+        caroline.ChildPropertyFromPath('/audio/main', 'ucm-suffix').value,
+        'pyro')
 
 
 if __name__ == '__main__':
