@@ -34,6 +34,7 @@
 		};
 	};
 	firmware {
+		script = "updater4.sh";
 		shared: caroline {
 			bcs-overlay = "overlay-reef-private";
 			ec-image = "bcs://Caroline_EC.2017.21.1.tbz2";
@@ -42,6 +43,9 @@
 			main-rw-image = "bcs://Caroline.2017.41.0.tbz2";
 			build-targets {
 				coreboot = "caroline";
+				ec = "caroline";
+				depthcharge = "caroline";
+				libpayload = "caroline";
 			};
 		};
 	};
@@ -85,11 +89,13 @@
 			build-targets {
 				coreboot = "pyro";
 				ec = "pyro";
+				depthcharge = "pyro";
+				libpayload = "pyro";
 			};
 		};
-                thermal {
-                        dptf-dv = "pyro/dptf.dv";
-                };
+		thermal {
+			dptf-dv = "pyro/dptf.dv";
+		};
 		touch {
 			present = "probe";
 			probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
@@ -101,8 +107,6 @@
 				touch-type = <&elan_touchscreen>;
 				pid = "0a97";
 				version = "1012";
-				firmware-bin = "${vendor}/${pid}_${version}.bin";
-				firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
 			};
 		};
 	};
@@ -133,10 +137,16 @@
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+			build-targets {
+				coreboot = "pyro";
+				ec = "pyro";
+				depthcharge = "pyro";
+				libpayload = "pyro";
+			};
 		};
-                thermal {
-                        dptf-dv = "reef/dptf.dv";
-                };
+		thermal {
+			dptf-dv = "reef/dptf.dv";
+		};
 		touch {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -149,7 +159,6 @@
 				touch-type = <&elan_touchpad>;
 				pid = "97.0";
 				version = "6.0";
-				firmware-symlink = "${vendor}_i2c_${pid}.bin";
 			};
 			touchscreen@0 {
 				reg = <0>;
@@ -167,7 +176,7 @@
 	};
 	broken {
 		firmware {
-			bcs-overlay = "-reef-private";
+			bcs-overlay = "overlay-reef-private";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
 		};
 	};
