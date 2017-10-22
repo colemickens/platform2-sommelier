@@ -62,6 +62,20 @@
             'cros_config_main_unittest.cc',
           ],
         },
+        {
+          'target_name': 'fake_cros_config_unittest',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'include_dirs': [
+            'libcros_config',
+          ],
+          'dependencies': [
+            'libcros_config',
+          ],
+          'sources': [
+            'libcros_config/fake_cros_config_unittest.cc',
+          ],
+        },
       ],
     }],
   ],
