@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/* Libary to provide access to the Chrome OS master configuration */
+/*
+ * Tests for the CrosConfig library, which provides access to the Chrome OS
+ * master configuration.
+ */
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
