@@ -60,19 +60,13 @@ class SchemaElement(object):
        Dict:
          key: name of controlling property
          value: True if the property must be present, False if it must be absent
-    target_dir: Target directory in the filesystem for files from this
-        property (e.g. '/etc/cras'). This is used to set the install directory
-        and keep it consistent across ebuilds (which use cros_config_host) and
-        init scripts (which use cros_config).
   """
-  def __init__(self, name, prop_type, required=False, conditional_props=None,
-               target_dir=None):
+  def __init__(self, name, prop_type, required=False, conditional_props=None):
     self.name = name
     self.prop_type = prop_type
     self.required = required
     self.conditional_props = conditional_props
     self.parent = None
-    self.target_dir = target_dir
 
   def Validate(self, val, prop):
     """Validate the schema element against the given property.
@@ -89,10 +83,8 @@ class SchemaElement(object):
 
 class PropDesc(SchemaElement):
   """A generic property schema element (base class for properties)"""
-  def __init__(self, name, prop_type, required=False, conditional_props=None,
-               target_dir=None):
-    super(PropDesc, self).__init__(name, prop_type, required, conditional_props,
-                                   target_dir)
+  def __init__(self, name, prop_type, required=False, conditional_props=None):
+    super(PropDesc, self).__init__(name, prop_type, required, conditional_props)
 
 
 class PropString(PropDesc):
@@ -102,9 +94,9 @@ class PropString(PropDesc):
     str_pattern: Regex to use to validate the string
   """
   def __init__(self, name, required=False, str_pattern='',
-               conditional_props=None, target_dir=None):
+               conditional_props=None):
     super(PropString, self).__init__(name, 'string', required,
-                                     conditional_props, target_dir)
+                                     conditional_props)
     self.str_pattern = str_pattern
 
   def Validate(self, val, prop):
@@ -116,6 +108,25 @@ class PropString(PropDesc):
     if not m:
       val.Fail(prop.node.path, "'%s' value '%s' does not match pattern '%s'" %
                (prop.name, prop.value, pattern))
+
+
+class PropFile(PropString):
+  """A file property
+
+  This represents a file to be installed on the filesystem.
+
+  Properties:
+    target_dir: Target directory in the filesystem for files from this
+        property (e.g. '/etc/cras'). This is used to set the install directory
+        and keep it consistent across ebuilds (which use cros_config_host) and
+        init scripts (which use cros_config). The actual file written will be
+        relative to this.
+  """
+  def __init__(self, name, required=False, str_pattern='',
+               conditional_props=None, target_dir=None):
+    super(PropFile, self).__init__(name, 'string', required, conditional_props)
+    self.str_pattern = str_pattern
+    self.target_dir = target_dir
 
 
 class PropStringList(PropDesc):

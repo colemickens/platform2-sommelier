@@ -56,6 +56,7 @@ from libcros_config_host import fdt_util
 from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from validate_schema import PropCustom, PropDesc, PropString, PropStringList
 from validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
+from validate_schema import PropFile
 
 
 def ParseArgv(argv):
@@ -483,8 +484,8 @@ SCHEMA = NodeDesc('/', True, [
                     ])
                 ], conditional_props=NOT_WL),
                 NodeDesc('thermal', False, [
-                    PropString('dptf-dv', False, r'\w+/dptf.dv',
-                               target_dir='/etc/dptf'),
+                    PropFile('dptf-dv', False, r'\w+/dptf.dv',
+                             target_dir='/etc/dptf'),
                 ], conditional_props=NOT_WL),
                 NodeDesc('touch', False, [
                     PropString('present', False, r'yes|no|probe'),
