@@ -557,7 +557,7 @@ def Main(argv):
     # Otherwise process each file individually
     else:
       for fname in args.config:
-        errors = validator.Start([fname], SCHEMA)
+        errors = validator.Start([fname])
         if errors:
           found_errors = True
           if errors:
