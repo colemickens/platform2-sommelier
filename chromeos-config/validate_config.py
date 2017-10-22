@@ -383,6 +383,11 @@ class CrosConfigValidator(object):
     return self._errors
 
 
+# Known directories for installation
+CRAS_CONFIG_DIR = '/etc/cras'
+UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
+LIB_FIRMWARE = '/lib/firmware'
+
 # Basic firmware schema, which is augmented depending on the situation.
 FW_COND = {'shares': False, '../whitelabel': False}
 
@@ -407,12 +412,12 @@ BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
 
 BASE_AUDIO_SCHEMA = [
     PropString('card', True, '', {'audio-type': False}),
-    PropString('volume', True, '', {'audio-type': False}),
-    PropString('dsp-ini', True, '', {'audio-type': False}),
-    PropString('hifi-conf', True, '', {'audio-type': False}),
-    PropString('alsa-conf', True, '', {'audio-type': False}),
+    PropFile('volume', True, '', {'audio-type': False}, CRAS_CONFIG_DIR),
+    PropFile('dsp-ini', True, '', {'audio-type': False}, CRAS_CONFIG_DIR),
+    PropFile('hifi-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
+    PropFile('alsa-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
     PropString('topology-xml', False, '', {'audio-type': False}),
-    PropString('topology-bin', False, '', {'audio-type': False}),
+    PropFile('topology-bin', False, '', {'audio-type': False}, LIB_FIRMWARE),
 ]
 
 NOT_WL = {'whitelabel': False}

@@ -110,7 +110,7 @@ class PropString(PropDesc):
                (prop.name, prop.value, pattern))
 
 
-class PropFile(PropString):
+class PropFile(PropDesc):
   """A file property
 
   This represents a file to be installed on the filesystem.
@@ -124,9 +124,19 @@ class PropFile(PropString):
   """
   def __init__(self, name, required=False, str_pattern='',
                conditional_props=None, target_dir=None):
-    super(PropFile, self).__init__(name, 'string', required, conditional_props)
+    super(PropFile, self).__init__(name, 'file', required, conditional_props)
     self.str_pattern = str_pattern
     self.target_dir = target_dir
+
+  def Validate(self, val, prop):
+    """Check the filename with a regex"""
+    if not self.str_pattern:
+      return
+    pattern = '^' + self.str_pattern + '$'
+    m = re.match(pattern, prop.value)
+    if not m:
+      val.Fail(prop.node.path, "'%s' value '%s' does not match pattern '%s'" %
+               (prop.name, prop.value, pattern))
 
 
 class PropStringList(PropDesc):

@@ -35,8 +35,7 @@ TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 
 # Known directories for installation
-CRAS_CONFIG_DIR = '/etc/cras'
-UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
+# TODO(sjg@chromium.org): Move these to the schema
 LIB_FIRMWARE = '/lib/firmware'
 
 
@@ -436,17 +435,21 @@ class CrosConfig(object):
           key: (model, property)
           value: BaseFile object
       """
-      def _AddAudioFile(prop_name, dirname, dest_template):
+      def _AddAudioFile(prop_name, dest_template, dirname=''):
         """Helper to add a single audio file
 
         If present in the configuration, this adds an audio file containing the
         source and destination file.
         """
         if prop_name in props:
+          target_dir = self.cros_config.validator.GetModelTargetDir(
+              '/audio/ANY', prop_name)
           files[self.name, prop_name] = BaseFile(
               self.GetPropFilename(self._fdt_node.path, props, prop_name),
-              os.path.join(dirname, self.GetFilename(self._fdt_node.path, props,
-                                                     dest_template)))
+              os.path.join(
+                  target_dir,
+                  dirname,
+                  self.GetFilename(self._fdt_node.path, props, dest_template)))
 
       files = {}
       audio = self.ChildNodeFromPath('/audio')
@@ -454,17 +457,17 @@ class CrosConfig(object):
         for card in audio.subnodes.values():
           # First get all the property keys/values from the current node
           props = card.GetMergedProperties('audio-type')
+          props['model'] = self.name
 
-          cras_dir = os.path.join(CRAS_CONFIG_DIR, props['cras-config-dir'])
-          _AddAudioFile('volume', cras_dir, '${card}')
-          _AddAudioFile('dsp-ini', cras_dir, 'dsp.ini')
+          cras_dir = props['cras-config-dir']
+          _AddAudioFile('volume', '${card}', cras_dir)
+          _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
-          _AddAudioFile('hifi-conf', UCM_CONFIG_DIR,
-                        '${card}.${ucm-suffix}/HiFi.conf')
-          _AddAudioFile('alsa-conf', UCM_CONFIG_DIR,
+          _AddAudioFile('hifi-conf', '${card}.${ucm-suffix}/HiFi.conf')
+          _AddAudioFile('alsa-conf',
                         '${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf')
 
-          _AddAudioFile('topology-bin', LIB_FIRMWARE, props.get('topology-bin'))
+          _AddAudioFile('topology-bin', props.get('topology-bin'))
       return files
 
     def GetThermalFiles(self):
