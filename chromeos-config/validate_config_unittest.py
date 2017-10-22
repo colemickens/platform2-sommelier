@@ -8,6 +8,7 @@
 from __future__ import print_function
 
 import os
+import subprocess
 import tempfile
 
 from chromite.lib import cros_test_lib
@@ -380,30 +381,80 @@ WHITELABEL = '''
 '''
 
 class UnitTests(cros_test_lib.TestCase):
-  """Unit tests for CrosConfigValidator"""
+  """Unit tests for CrosConfigValidator
+
+  Properties:
+    val: Validator to use
+    returncode: Holds the return code for the case where the validator is called
+        through its command-line interface
+  """
   def setUp(self):
     self.val = validate_config.CrosConfigValidator(validate_config.SCHEMA,
                                                    False)
+    self.returncode = 0
 
-  def Run(self, dts_source):
+  def Run(self, dts_source, use_command_line=False, extra_options=None):
+    """Run the validator with a single source file
+
+    Args:
+      dts_source: String containing the device-tree source to process
+      use_command_line: True to run through the command-line interface.
+          Otherwise the imported validator class is used directly. When using
+          the command-line interface, the return code is available in
+          self.returncode, since only one test needs it.
+      extra_options: Extra command-line arguments to pass
+    """
     dts = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
     dts.write(dts_source)
     dts.close()
-    errors = self.val.Start([dts.name])
+    self.returncode = 0
+    if use_command_line:
+      call_args = ['python', 'validate_config.py', '-d', dts.name]
+      if extra_options:
+        call_args += extra_options
+      try:
+        output = subprocess.check_output(call_args, stderr=subprocess.STDOUT)
+      except subprocess.CalledProcessError as e:
+        output = e.output
+        self.returncode = e.returncode
+      errors = output.strip().splitlines()
+    else:
+      errors = self.val.Start([dts.name])
     if errors:
       return errors
     if dts:
       os.unlink(dts.name)
     return []
 
-  def RunMultiple(self, dts_source_list):
+  def RunMultiple(self, dts_source_list, use_command_line=False):
+    """Run the validator with a list of .dtsi fragments
+
+    Args:
+      dts_source_list: List of strings, containing the device-tree source to
+          process for each fragment
+      use_command_line: True to run through the command-line interface.
+          Otherwise the imported validator class is used directly. When using
+          the command-line interface, the return code is available in
+          self.returncode, since only one test needs it.
+    """
     dts_list = []
     for source in dts_source_list:
       dts = tempfile.NamedTemporaryFile(suffix='.dtsi', delete=False)
       dts_list.append(dts)
       dts.write(source)
       dts.close()
-    errors = self.val.Start([dts.name for dts in dts_list], partial=True)
+    fnames = [dts.name for dts in dts_list]
+    self.returncode = 0
+    if use_command_line:
+      call_args = ['python', 'validate_config.py', '-d', '-p'] + fnames
+      try:
+        output = subprocess.check_output(call_args, stderr=subprocess.STDOUT)
+      except subprocess.CalledProcessError as e:
+        output = e.output
+        self.returncode = e.returncode
+      errors = output.strip().splitlines()
+    else:
+      errors = self.val.Start(fnames, partial=True)
     if errors:
       return errors
     if dts:
@@ -563,6 +614,33 @@ class UnitTests(cros_test_lib.TestCase):
     """Test that we can validate config coming from multiple .dtsi files"""
     result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL])
     self._CheckAllIn([
+        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        ], result)
+
+  def testComanndLine(self):
+    """Test that the command-line interface works correctly"""
+    self.assertEqual([], self.Run(HEADER, True))
+
+    output = self.Run(HEADER, True, ['--invalid-option'])
+    self.assertEqual(self.returncode, 2)
+    self._CheckAllIn([
+        'usage: validate_config.py',
+        'error: unrecognized arguments: --invalid-option'
+        ], output)
+
+    result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + WHITELABEL, True)
+    self.assertEqual(self.returncode, 1)
+    self._CheckAllIn([
+        '/tmp/',
+        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        ], result)
+
+    result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL], True)
+    self.assertEqual(self.returncode, 1)
+    self._CheckAllIn([
+        '/tmp/',
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
         "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
         ], result)

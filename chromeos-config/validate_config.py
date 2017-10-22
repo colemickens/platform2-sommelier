@@ -569,7 +569,7 @@ def Main(argv):
     print('Failed: %s' % e, file=sys.stderr)
     found_errors = True
   if found_errors:
-    sys.exit(2)
+    sys.exit(1)
 
 
 if __name__ == "__main__":
