@@ -43,13 +43,13 @@ Usage:
 
 from __future__ import print_function
 
+import argparse
 import copy
 import itertools
 import os
 import re
 import sys
 
-from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 from libcros_config_host import fdt
 from libcros_config_host import fdt_util
@@ -69,7 +69,7 @@ def ParseArgv(argv):
   Returns:
     argparse.Namespace object containing the attributes.
   """
-  parser = commandline.ArgumentParser(description=__doc__, manual_debug=True)
+  parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-d', '--debug', action='store_true',
                       help='Run in debug mode (full exception traceback)')
   parser.add_argument('-p', '--partial', action='store_true',
