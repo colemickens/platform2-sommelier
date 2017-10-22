@@ -103,6 +103,18 @@ class CrosConfigHostTest(unittest.TestCase):
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
 
+  def testGetTouchFirmwareFiles(self):
+    call_args = '{} -c {} get-touch-firmware-files'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.CheckManyLines(output, 10)
+
+  def testGetAudioFiles(self):
+    call_args = '{} -c {} get-audio-files'.format(
+        CLI_FILE, self.dtb_file).split()
+    output = subprocess.check_output(call_args)
+    self.CheckManyLines(output, 10)
+
   def testGetFirmwareBuildTargets(self):
     call_args = '{} -c {} get-firmware-build-targets coreboot'.format(
         CLI_FILE, self.dtb_file).split()
