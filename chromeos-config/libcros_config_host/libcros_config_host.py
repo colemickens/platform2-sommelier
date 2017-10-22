@@ -199,6 +199,18 @@ class CrosConfig(object):
 
     return root
 
+  @staticmethod
+  def GetTargetDirectories():
+    """Gets a dict of directory targets for each PropFile property
+
+    Returns:
+      Dict:
+        key: Property name
+        value: Ansolute path for this property
+    """
+    validator = validate_config.GetValidator()
+    return validator.GetTargetDirectories()
+
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
 

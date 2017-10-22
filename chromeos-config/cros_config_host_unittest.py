@@ -8,8 +8,8 @@
 from __future__ import print_function
 
 import os
+import re
 import subprocess
-import sys
 import unittest
 
 from libcros_config_host import fdt_util
@@ -120,6 +120,21 @@ class CrosConfigHostTest(unittest.TestCase):
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output, 1)
+
+  def testWriteTargetDirectories(self):
+    """Test that we can write out a list of file paths"""
+    call_args = '{} write-target-dirs'.format(CLI_FILE).split()
+    output = subprocess.check_output(call_args)
+    lines = [line for line in output.splitlines()]
+    # Just check for one line, of the form:
+    #   alsa-conf = "/usr/share/alsa/ucm";
+    alsa_lines = [line for line in lines if 'alsa-conf' in line]
+    self.assertEqual(len(alsa_lines), 1)
+    m = re.match(r'\s+([-a-z]+) = "(.*)";', alsa_lines[0])
+    name, value = m.groups()
+    self.assertEqual(name, 'alsa-conf')
+    self.assertEqual(value, '/usr/share/alsa/ucm')
+
 
 if __name__ == '__main__':
   unittest.main()

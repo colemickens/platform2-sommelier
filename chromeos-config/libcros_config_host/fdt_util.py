@@ -142,7 +142,8 @@ def CompileAll(fnames):
   """
   out = tempfile.NamedTemporaryFile(suffix='.dts', delete=False)
   out.write('/dts-v1/;\n')
-  out.write('/ { chromeos { family: family { }; models: models { }; }; };\n')
+  out.write('/ { chromeos { family: family { }; models: models { };')
+  out.write('schema { target-dirs { }; }; }; };\n')
   for fname in fnames:
     out.write('/include/ "%s"\n' % fname)
   out.close()

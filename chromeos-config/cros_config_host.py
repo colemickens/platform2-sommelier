@@ -120,6 +120,28 @@ def FileTree(config, root):
   tree = config.GetFileTree()
   config.ShowTree(tree, root)
 
+def WriteTargetDirectories():
+  """Writes out a file containing the directory target info"""
+  target_dirs = CrosConfig.GetTargetDirectories()
+  print('''/*
+ * This is a generated file, DO NOT EDIT!'
+ *
+ * This provides a map from property name to target directory for all PropFile
+ * objects defined in the schema.
+ */
+
+/ {
+\tchromeos {
+\t\tschema {
+\t\t\ttarget-dirs {''')
+  for name in sorted(target_dirs.keys()):
+    print('\t\t\t\t%s = "%s";' % (name, target_dirs[name]))
+  print('''\t\t\t};
+\t\t};
+\t};
+};
+''')
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -187,6 +209,10 @@ def GetParser(description):
   file_tree_parser.add_argument(
       'root',
       help='Part to the root directory for this board')
+  # Parser: write-target-dirs
+  file_tree_parser = subparsers.add_parser(
+      'write-target-dirs',
+      help='Writes out a list of target directories for each PropFile element')
   return parser
 
 
@@ -200,6 +226,9 @@ def main(argv):
   parser = GetParser(__doc__)
   # Parse argv
   opts = parser.parse_args(argv)
+  if opts.subcommand == 'write-target-dirs':
+    WriteTargetDirectories()
+    return
   if not opts.config:
     if 'SYSROOT' not in os.environ:
       print('You must specify a dtb file path with --config, or set SYSROOT. '

@@ -13,6 +13,11 @@
 		};
 		models: models {
 		};
+		schema {
+			target-dirs {
+				dptf-dv = "/etc/dptf";
+			};
+		};
 	};
 };
 

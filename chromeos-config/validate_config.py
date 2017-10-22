@@ -382,6 +382,32 @@ class CrosConfigValidator(object):
         os.unlink(tmpfile.name)
     return self._errors
 
+  @classmethod
+  def AddElementTargetDirectories(cls, target_dirs, parent):
+    if isinstance(parent, PropFile):
+      if parent.name in target_dirs:
+        if target_dirs[parent.name] != parent.target_dir:
+          raise ValueError(
+              "Path for element '%s' is inconsistent with previous path '%s'" %
+              (parent.target_dir, target_dirs[parent.name]))
+      else:
+        target_dirs[parent.name] = parent.target_dir
+    if isinstance(parent, NodeDesc):
+      for element in parent.elements:
+        cls.AddElementTargetDirectories(target_dirs, element)
+
+  def GetTargetDirectories(self):
+    """Gets a dict of directory targets for each PropFile property
+
+    Returns:
+      Dict:
+        key: Property name
+        value: Ansolute path for this property
+    """
+    target_dirs = {}
+    self.AddElementTargetDirectories(target_dirs, self._schema)
+    return target_dirs
+
 
 # Known directories for installation
 CRAS_CONFIG_DIR = '/etc/cras'
@@ -510,6 +536,11 @@ SCHEMA = NodeDesc('/', True, [
                         PropString('date-code', False),
                     ]),
                 ], conditional_props=NOT_WL),
+            ])
+        ]),
+        NodeDesc('schema', False, [
+            NodeDesc('target-dirs', False, [
+                PropAny(),
             ])
         ])
     ])

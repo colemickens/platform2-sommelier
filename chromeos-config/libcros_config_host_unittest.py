@@ -272,6 +272,13 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(lines[2], 'etc/')
     self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
+  def testWriteTargetDirectories(self):
+    """Test that we can write out a list of file paths"""
+    config = CrosConfig(self.file)
+    target_dirs = config.GetTargetDirectories()
+    self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
+    self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
+
 
 if __name__ == '__main__':
   unittest.main()

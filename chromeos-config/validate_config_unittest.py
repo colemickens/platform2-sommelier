@@ -25,6 +25,11 @@ HEADER = '''/dts-v1/;
 
     models: models {
     };
+    schema {
+      target-dirs {
+        dptf-dv = "/etc/dptf";
+      };
+    };
   };
 };
 '''
