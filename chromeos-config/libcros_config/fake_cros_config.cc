@@ -19,15 +19,6 @@ void FakeCrosConfig::SetString(const std::string& path, const std::string& prop,
 
 bool FakeCrosConfig::GetString(const std::string& path, const std::string& prop,
                                std::string* val) {
-  // TODO(sjg): Handle non-root nodes. For now this is disabled since the
-  // real implmenetation (CrosConfig) does not support it and we want to keep
-  // the Fake in sync. We can delete this code block once CrosConfig supports
-  // non-root notes.
-  if (path != "/") {
-    LOG(ERROR) << "Cannot access non-root node " << path;
-    return false;
-  }
-
   auto it = values_.find(PathProp{path, prop});
   if (it == values_.end()) {
     LOG(WARNING) << "Cannot get path " << path << " property " << prop

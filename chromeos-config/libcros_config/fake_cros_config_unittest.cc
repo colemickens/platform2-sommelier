@@ -22,9 +22,9 @@ TEST_F(FakeCrosConfigTest, CheckGetString) {
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("testing", val);
 
-  // Non-root nodes are not supported.
+  // Try a non-root node.
   cros_config_.SetString("/thermal", "dptf-dv", "testing");
-  ASSERT_FALSE(cros_config_.GetString("/thermal", "dptf-dv", &val));
+  ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
 }
 
 int main(int argc, char **argv) {
