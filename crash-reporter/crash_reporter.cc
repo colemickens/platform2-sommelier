@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_collector.h"
+#include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
@@ -47,6 +48,7 @@ enum CrashKinds {
   kCrashKindEC = 6,
   kCrashKindServiceFailure = 7,
   kCrashKindSELinuxViolation = 8,
+  kCrashKindBERT = 9,
   kCrashKindMax
 };
 
@@ -67,6 +69,10 @@ void SendCrashMetrics(CrashKinds type, const char* name) {
 
 void CountECCrash() {
   SendCrashMetrics(kCrashKindEC, "ec");
+}
+
+void CountBERTCrash() {
+  SendCrashMetrics(kCrashKindBERT, "bert");
 }
 
 void CountKernelCrash() {
@@ -141,12 +147,16 @@ int Initialize(UserCollector* user_collector, UdevCollector* udev_collector) {
 
 int BootCollect(KernelCollector* kernel_collector,
                 ECCollector* ec_collector,
+                BERTCollector* bert_collector,
                 UncleanShutdownCollector* unclean_shutdown_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
 
   /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
   ec_collector->Collect();
+
+  // Invoke to collect firmware bert dump.
+  bert_collector->Collect();
 
   kernel_collector->Enable();
   if (kernel_collector->is_enabled()) {
@@ -402,6 +412,8 @@ int main(int argc, char* argv[]) {
   kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);
   ECCollector ec_collector;
   ec_collector.Initialize(CountECCrash, IsFeedbackAllowed);
+  BERTCollector bert_collector;
+  bert_collector.Initialize(CountBERTCrash, IsFeedbackAllowed);
   UserCollector user_collector;
   UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
 #if USE_CHEETS
@@ -442,7 +454,7 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_boot_collect) {
     return BootCollect(&kernel_collector, &ec_collector,
-                       &unclean_shutdown_collector);
+                       &bert_collector, &unclean_shutdown_collector);
   }
 
   if (FLAGS_clean_shutdown) {

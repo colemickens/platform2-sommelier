@@ -53,6 +53,7 @@ pkg_config("libcrash_reporter_config") {
 static_library("libcrash_reporter") {
   all_dependent_configs = [ ":libcrash_reporter_config" ]
   sources = [
+    "bert_collector.cc",
     "chrome_collector.cc",
     "crash_collector.cc",
     "ec_collector.cc",
@@ -203,6 +204,7 @@ if (use.test) {
       ":crash_reporter_test_config",
     ]
     sources = [
+      "bert_collector_test.cc",
       "chrome_collector_test.cc",
       "crash_collector_test.cc",
       "crash_collector_test.h",

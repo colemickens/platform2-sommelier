@@ -52,7 +52,7 @@ void ShowUsageAndExit() {
 // TODO(satorux): Move collector constants to a common file.
 bool IsKnownKind(const std::string& kind) {
   return (kind == "minidump" || kind == "kcrash" || kind == "log" ||
-          kind == "devcore" || kind == "eccrash");
+          kind == "devcore" || kind == "eccrash" || kind == "bertdump");
 }
 
 // Returns true if the given key is valid for crash metadata.

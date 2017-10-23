@@ -1,0 +1,54 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CRASH_REPORTER_BERT_COLLECTOR_H_
+#define CRASH_REPORTER_BERT_COLLECTOR_H_
+
+#include <base/files/file_path.h>
+#include <base/macros.h>
+
+#include "crash-reporter/crash_collector.h"
+
+#define ACPI_NAME_SIZE 4
+#define ACPI_SIG_BERT "BERT"
+#define ACPI_BERT_REGION_STRUCT_SIZE (5 * sizeof(uint32_t))
+
+// BERT (Boot Error Record Table) as defined in ACPI spec, APEI chapter at
+// http://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf.
+struct acpi_table_bert {
+  char signature[ACPI_NAME_SIZE];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  char oem_id[6];
+  char oem_table_id[8];
+  uint32_t oem_revision;
+  char asl_compiler_id[ACPI_NAME_SIZE];
+  uint32_t asl_compiler_revision;
+  uint32_t region_length;
+  uint64_t address;
+};
+
+static_assert(sizeof(acpi_table_bert) == 48,
+              "acpi_table_bert size is not correct");
+
+// Firmware Error Bert dump collector.
+class BERTCollector : public CrashCollector {
+ public:
+  BERTCollector();
+
+  ~BERTCollector() override;
+
+  // Collect Bert dump.
+  bool Collect();
+
+ private:
+  friend class BERTCollectorTest;
+
+  base::FilePath acpitable_path_;
+
+  DISALLOW_COPY_AND_ASSIGN(BERTCollector);
+};
+
+#endif  // CRASH_REPORTER_BERT_COLLECTOR_H_

@@ -29,6 +29,19 @@ They are triggered via the [crash-boot-collect.conf] init service.
 They do not, by design, block the boot of the system.
 They are run in the background as a non-critical service.
 
+## bert_collector
+
+This collects Boot Error Record Table ([BERT]) failures.
+
+The dump collected might be referred to as `bertdump`.
+
+*   Unhandled firmware errors that occurred in the previous boot are stored in
+    the boot error region.
+*   The Kernel ACPI sysfs interface generates the BERT table at
+    `/sys/firmware/acpi/tables/BERT` and BERT data at
+    `/sys/firmware/acpi/tables/data/BERT`.
+*   During boot, if a BERT report exists, read them and create a report.
+
 ## ec_collector
 
 This collects [EC] (Chrome OS Embedded Controller) failures.
@@ -292,6 +305,7 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [anomaly_collector] does not try to confirm that the kill is successful.
 
 [ARC++]: ../../arc/
+[BERT]: https://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf
 [EC]: https://chromium.googlesource.com/chromiumos/platform/ec
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
 [memd]: ../../metrics/memd/
@@ -303,6 +317,7 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [anomaly_collector]: ../anomaly_collector.cc
 [anomaly-collector.conf]: ../init/anomaly-collector.conf
 [arc_collector]: ../arc_collector.cc
+[bert_collector]: ../bert_collector.cc
 [chrome_collector]: ../chrome_collector.cc
 [chromeos_shutdown]: ../../init/chromeos_shutdown
 [core_collector]: ../core-collector/
