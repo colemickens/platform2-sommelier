@@ -1716,6 +1716,7 @@ usage() {
 Usage: crosh [options]
 
 Options:
+  --dash        Force running through dash.
   --dev         Force dev mode.
   --removable   Force removable (USB) mode.
   --usb         Same as above.
@@ -1738,6 +1739,9 @@ main() {
 
   while [ $# -gt 0 ]; do
     case $1 in
+    --dash)
+      # This was handled above in try_bash.
+      ;;
     --dev)
       CROSH_DEVMODE="1"
       ;;
