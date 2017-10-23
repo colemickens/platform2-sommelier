@@ -48,6 +48,7 @@ pipe2: 1
 poll: 1
 read: 1
 recvmsg: 1
+rt_sigprocmask: 1
 sendmsg: 1
 # Allow socket(domain == AF_UNIX)
 socket: arg0 == 0x1
