@@ -175,6 +175,8 @@ USB_IDS += [
   "18d1:5025",
   # Google USB-C to 3.5mm Digital Headphone Jack Adapter "Mir" (HID only)
   "18d1:5029",
+  # Libratone Q Adapt In-Ear USB-C Earphones, Made for Google
+  "03eb:2433",
 ]
 
 # List of PCI devices (vendorid:deviceid) for which it is safe to enable
