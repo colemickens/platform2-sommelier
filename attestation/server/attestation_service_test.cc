@@ -41,7 +41,7 @@ using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace attestation {
 
@@ -636,7 +636,7 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccess) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
 
   // Set expectations on the outputs.
   auto callback = [this](const GetKeyInfoReply& reply) {
@@ -832,13 +832,13 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
   if (kTpmVersionUnderTest == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
                 ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+        .WillOnce(DoAll(SetArgPointee<5>(std::string("certificate")),
                         Return(true)));
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
         ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
-        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+        .WillOnce(DoAll(SetArgPointee<5>(std::string("certificate")),
                         Return(true)));
   }
   // Set expectations on the outputs.
@@ -869,13 +869,13 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   if (kTpmVersionUnderTest == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
                 ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+        .WillOnce(DoAll(SetArgPointee<5>(std::string("certificate")),
                         Return(true)));
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
         ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
-        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+        .WillOnce(DoAll(SetArgPointee<5>(std::string("certificate")),
                         Return(true)));
   }
   // Set expectations on the outputs.
@@ -958,9 +958,9 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccess) {
       mock_tpm_utility_,
       CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
       .WillOnce(
-          DoAll(SetArgumentPointee<5>(std::string("public_key")),
-                SetArgumentPointee<7>(std::string("certify_info")),
-                SetArgumentPointee<8>(std::string("certify_info_signature")),
+          DoAll(SetArgPointee<5>(std::string("public_key")),
+                SetArgPointee<7>(std::string("certify_info")),
+                SetArgPointee<8>(std::string("certify_info_signature")),
                 Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
@@ -987,9 +987,9 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
       mock_tpm_utility_,
       CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
       .WillOnce(
-          DoAll(SetArgumentPointee<5>(std::string("public_key")),
-                SetArgumentPointee<7>(std::string("certify_info")),
-                SetArgumentPointee<8>(std::string("certify_info_signature")),
+          DoAll(SetArgPointee<5>(std::string("public_key")),
+                SetArgPointee<7>(std::string("certify_info")),
+                SetArgPointee<8>(std::string("certify_info_signature")),
                 Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
@@ -1254,7 +1254,7 @@ TEST_F(AttestationServiceTest, RegisterSuccess) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
   // Cardinality is verified here to verify various steps are performed and to
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
@@ -1321,7 +1321,7 @@ TEST_F(AttestationServiceTest, RegisterSuccessWithCertificates) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
   // Cardinality is verified here to verify various steps are performed and to
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
@@ -1414,7 +1414,7 @@ TEST_F(AttestationServiceTest, RegisterFailure) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
   EXPECT_CALL(mock_key_store_, Register(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
@@ -1437,7 +1437,7 @@ TEST_F(AttestationServiceTest, RegisterIntermediateFailure) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
   EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
@@ -1461,7 +1461,7 @@ TEST_F(AttestationServiceTest, RegisterAdditionalFailure) {
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
   EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
@@ -1750,7 +1750,7 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestServerFailure) {
 
 TEST_F(AttestationServiceTest, SignSimpleChallengeSuccess) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(std::string("signature")),
+      .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
                       Return(true)));
   auto callback = [this](const SignSimpleChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -1795,10 +1795,10 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
   EXPECT_CALL(mock_crypto_utility_,
               EncryptDataForGoogle(key_info_str, _, _, _))
       .WillRepeatedly(
-          DoAll(SetArgumentPointee<3>(MockEncryptedData(key_info_str)),
+          DoAll(SetArgPointee<3>(MockEncryptedData(key_info_str)),
                 Return(true)));
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(std::string("signature")),
+      .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
                       Return(true)));
   auto callback = [this](const SignEnterpriseChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());

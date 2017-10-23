@@ -35,7 +35,7 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 namespace {
 
@@ -144,9 +144,9 @@ class KeyStoreTest : public testing::Test {
   void SetUp() override {
     std::vector<uint64_t> slot_list = {0, 1};
     ON_CALL(pkcs11_, GetSlotList(_, _, _))
-        .WillByDefault(DoAll(SetArgumentPointee<2>(slot_list), Return(0)));
+        .WillByDefault(DoAll(SetArgPointee<2>(slot_list), Return(0)));
     ON_CALL(pkcs11_, OpenSession(_, _, _, _))
-        .WillByDefault(DoAll(SetArgumentPointee<3>(kSession), Return(0)));
+        .WillByDefault(DoAll(SetArgPointee<3>(kSession), Return(0)));
     ON_CALL(pkcs11_, CloseSession(_, _)).WillByDefault(Return(0));
     ON_CALL(pkcs11_, CreateObject(_, _, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::CreateObject));
@@ -163,11 +163,11 @@ class KeyStoreTest : public testing::Test {
     ON_CALL(pkcs11_, FindObjectsFinal(_, _)).WillByDefault(Return(0));
     base::FilePath system_path("/var/lib/chaps");
     ON_CALL(token_manager_, GetTokenPath(_, 0, _))
-        .WillByDefault(DoAll(SetArgumentPointee<2>(system_path), Return(true)));
+        .WillByDefault(DoAll(SetArgPointee<2>(system_path), Return(true)));
     base::FilePath user_path(
         brillo::cryptohome::home::GetDaemonPath(kDefaultUser, "chaps"));
     ON_CALL(token_manager_, GetTokenPath(_, 1, _))
-        .WillByDefault(DoAll(SetArgumentPointee<2>(user_path), Return(true)));
+        .WillByDefault(DoAll(SetArgPointee<2>(user_path), Return(true)));
   }
 
   // Stores a new labeled object, only CKA_LABEL and CKA_VALUE are relevant.
@@ -446,7 +446,7 @@ TEST_F(KeyStoreTest, FindFail) {
 TEST_F(KeyStoreTest, FindNoObjects) {
   std::vector<uint64_t> empty;
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(empty), Return(CKR_OK)));
+      .WillRepeatedly(DoAll(SetArgPointee<3>(empty), Return(CKR_OK)));
   Pkcs11KeyStore key_store(&token_manager_);
   std::string blob;
   EXPECT_TRUE(key_store.Write(kDefaultUser, "test", "test_data"));

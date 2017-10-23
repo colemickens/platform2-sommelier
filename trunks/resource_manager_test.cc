@@ -35,7 +35,7 @@ using testing::Field;
 using testing::InSequence;
 using testing::Return;
 using testing::ReturnPointee;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::StrictMock;
 
 namespace {
@@ -699,7 +699,7 @@ TEST_F(ResourceManagerTest, ExternalContext) {
               ContextLoadSync(Field(&TPMS_CONTEXT::sequence, Eq(1u)), _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(tpm_, ContextSaveSync(kArbitrarySessionHandle, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(CreateContext(2)),
+      .WillOnce(DoAll(SetArgPointee<2>(CreateContext(2)),
                       Return(TPM_RC_SUCCESS)));
   std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
                                       kNoAuthorization, kNoParameters);
