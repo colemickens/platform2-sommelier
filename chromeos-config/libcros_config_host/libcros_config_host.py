@@ -152,6 +152,10 @@ class CrosConfig(object):
     build_targets = [model.ChildPropertyFromPath('/firmware/build-targets',
                                                  target_type)
                      for model in self.models.values()]
+    if target_type == 'ec':
+      build_targets += [model.ChildPropertyFromPath('/firmware/build-targets',
+                                                    'cr50')
+                        for model in self.models.values()]
     # De-duplicate
     build_targets_dedup = {target.value if target else None
                            for target in build_targets if target}

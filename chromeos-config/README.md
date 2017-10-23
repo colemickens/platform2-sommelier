@@ -102,6 +102,10 @@ properties.
                     compile phase within the depthcharge ebuild.
                 *   `libpayload`: Not currently used as the libpayload ebuild is
                     not yet unibuild-aware.
+                *   `cr50` (optional): Defines the model target to build cr50,
+                    if this is used on the platform. This is actually a build
+                    target for the EC but is specified separately to make it
+                    clear that it is a build for a separate device.
             *   `main-image`: Main image location. This must start with `bcs://`
                 . It refers to a file available in BCS. The file will be
                 unpacked to produce a firmware binary image.
@@ -360,6 +364,7 @@ chromeos {
                     ec = "reef";
                     depthcharge = "reef";
                     libpayload = "reef";
+                    cr50 = "cr50";
                 };
             };
             pinned_version: sand {
