@@ -7,6 +7,7 @@ access: 1
 brk: 1
 clock_getres: 1
 close: 1
+connect: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
@@ -48,6 +49,7 @@ poll: 1
 read: 1
 recvmsg: 1
 sendmsg: 1
+sendto: 1
 # Allow socket(domain == AF_UNIX)
 socket: arg0 == 0x1
 socketpair: 1
