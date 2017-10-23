@@ -1251,15 +1251,6 @@ cmd_storage_test_2() (
   debugd_poll Badblocks "fd:1"
 )
 
-# Set the vars to pass the unittests ...
-USAGE_storage_status=''
-HELP_storage_status=''
-# ... then unset them to hide the command from "help" output.
-unset USAGE_storage_status HELP_storage_status
-cmd_storage_status() (
-  echo "Removed. See storage_info section in chrome://system"
-)
-
 USAGE_memory_test=''
 HELP_memory_test='
   Performs extensive memory testing on the available free memory.
