@@ -16,8 +16,9 @@
 
 #include "attestation/common/tpm_utility_v2.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
@@ -184,9 +185,9 @@ bool TpmUtilityV2::Initialize() {
     tpm_manager_thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind([this, &event]() {
           default_tpm_owner_ =
-              base::MakeUnique<tpm_manager::TpmOwnershipDBusProxy>();
+              std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
           default_tpm_nvram_ =
-              base::MakeUnique<tpm_manager::TpmNvramDBusProxy>();
+              std::make_unique<tpm_manager::TpmNvramDBusProxy>();
           if (default_tpm_owner_->Initialize()) {
             tpm_owner_ = default_tpm_owner_.get();
           }
@@ -202,7 +203,7 @@ bool TpmUtilityV2::Initialize() {
     return false;
   }
   if (!trunks_factory_) {
-    default_trunks_factory_ = base::MakeUnique<trunks::TrunksFactoryImpl>();
+    default_trunks_factory_ = std::make_unique<trunks::TrunksFactoryImpl>();
     if (!default_trunks_factory_->Initialize()) {
       LOG(ERROR) << "Failed to initialize trunks.";
       return false;

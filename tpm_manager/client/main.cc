@@ -24,7 +24,6 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/bind_lambda.h>
 #if defined(USE_BINDER_IPC)
@@ -176,14 +175,14 @@ class ClientLoop : public ClientLoopBase {
       return EX_UNAVAILABLE;
     }
     std::unique_ptr<TpmNvramBinderProxy> nvram_proxy =
-        base::MakeUnique<TpmNvramBinderProxy>();
+        std::make_unique<TpmNvramBinderProxy>();
     std::unique_ptr<TpmOwnershipBinderProxy> ownership_proxy =
-        base::MakeUnique<TpmOwnershipBinderProxy>();
+        std::make_unique<TpmOwnershipBinderProxy>();
 #else
     std::unique_ptr<TpmNvramDBusProxy> nvram_proxy =
-        base::MakeUnique<TpmNvramDBusProxy>();
+        std::make_unique<TpmNvramDBusProxy>();
     std::unique_ptr<TpmOwnershipDBusProxy> ownership_proxy =
-        base::MakeUnique<TpmOwnershipDBusProxy>();
+        std::make_unique<TpmOwnershipDBusProxy>();
 #endif
     if (!nvram_proxy->Initialize()) {
       LOG(ERROR) << "Error initializing nvram proxy.";

@@ -18,7 +18,6 @@
 
 #include <memory>
 
-#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 
 #include "trunks/authorization_delegate.h"
@@ -624,39 +623,39 @@ Tpm* TrunksFactoryForTest::GetTpm() const {
 }
 
 std::unique_ptr<TpmState> TrunksFactoryForTest::GetTpmState() const {
-  return base::MakeUnique<TpmStateForwarder>(tpm_state_);
+  return std::make_unique<TpmStateForwarder>(tpm_state_);
 }
 
 std::unique_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {
-  return base::MakeUnique<TpmUtilityForwarder>(tpm_utility_);
+  return std::make_unique<TpmUtilityForwarder>(tpm_utility_);
 }
 
 std::unique_ptr<AuthorizationDelegate>
 TrunksFactoryForTest::GetPasswordAuthorization(
     const std::string& password) const {
-  return base::MakeUnique<AuthorizationDelegateForwarder>(
+  return std::make_unique<AuthorizationDelegateForwarder>(
       password_authorization_delegate_);
 }
 
 std::unique_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager()
     const {
-  return base::MakeUnique<SessionManagerForwarder>(session_manager_);
+  return std::make_unique<SessionManagerForwarder>(session_manager_);
 }
 
 std::unique_ptr<HmacSession> TrunksFactoryForTest::GetHmacSession() const {
-  return base::MakeUnique<HmacSessionForwarder>(hmac_session_);
+  return std::make_unique<HmacSessionForwarder>(hmac_session_);
 }
 
 std::unique_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
-  return base::MakeUnique<PolicySessionForwarder>(policy_session_);
+  return std::make_unique<PolicySessionForwarder>(policy_session_);
 }
 
 std::unique_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
-  return base::MakeUnique<PolicySessionForwarder>(trial_session_);
+  return std::make_unique<PolicySessionForwarder>(trial_session_);
 }
 
 std::unique_ptr<BlobParser> TrunksFactoryForTest::GetBlobParser() const {
-  return base::MakeUnique<BlobParserForwarder>(blob_parser_);
+  return std::make_unique<BlobParserForwarder>(blob_parser_);
 }
 
 }  // namespace trunks

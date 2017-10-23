@@ -16,6 +16,8 @@
 
 #include "tpm_manager/server/tpm_manager_service.h"
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <brillo/bind_lambda.h>
@@ -85,22 +87,22 @@ void TpmManagerService::InitializeTask() {
     }
     local_data_store_ = &default_local_data_store_;
     default_tpm_status_ =
-        base::MakeUnique<Tpm2StatusImpl>(default_trunks_factory_);
+        std::make_unique<Tpm2StatusImpl>(default_trunks_factory_);
     tpm_status_ = default_tpm_status_.get();
-    default_tpm_initializer_ = base::MakeUnique<Tpm2InitializerImpl>(
+    default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
         default_trunks_factory_, local_data_store_, tpm_status_);
     tpm_initializer_ = default_tpm_initializer_.get();
-    default_tpm_nvram_ = base::MakeUnique<Tpm2NvramImpl>(
+    default_tpm_nvram_ = std::make_unique<Tpm2NvramImpl>(
         default_trunks_factory_, local_data_store_);
     tpm_nvram_ = default_tpm_nvram_.get();
 #else
     default_tpm_status_ =
-        base::MakeUnique<TpmStatusImpl>();
+        std::make_unique<TpmStatusImpl>();
     tpm_status_ = default_tpm_status_.get();
     default_tpm_initializer_ =
-        base::MakeUnique<TpmInitializerImpl>(local_data_store_, tpm_status_);
+        std::make_unique<TpmInitializerImpl>(local_data_store_, tpm_status_);
     tpm_initializer_ = default_tpm_initializer_.get();
-    default_tpm_nvram_ = base::MakeUnique<TpmNvramImpl>(local_data_store_);
+    default_tpm_nvram_ = std::make_unique<TpmNvramImpl>(local_data_store_);
     tpm_nvram_ = default_tpm_nvram_.get();
 #endif
   }

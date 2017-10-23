@@ -16,8 +16,9 @@
 
 #include "trunks/trunks_factory_impl.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 
 #include "trunks/blob_parser.h"
 #include "trunks/error_codes.h"
@@ -175,36 +176,36 @@ Tpm* TrunksFactoryImpl::GetTpm() const {
 }
 
 std::unique_ptr<TpmState> TrunksFactoryImpl::GetTpmState() const {
-  return base::MakeUnique<TpmStateImpl>(*this);
+  return std::make_unique<TpmStateImpl>(*this);
 }
 
 std::unique_ptr<TpmUtility> TrunksFactoryImpl::GetTpmUtility() const {
-  return base::MakeUnique<TpmUtilityImpl>(*this);
+  return std::make_unique<TpmUtilityImpl>(*this);
 }
 
 std::unique_ptr<AuthorizationDelegate>
 TrunksFactoryImpl::GetPasswordAuthorization(const std::string& password) const {
-  return base::MakeUnique<PasswordAuthorizationDelegate>(password);
+  return std::make_unique<PasswordAuthorizationDelegate>(password);
 }
 
 std::unique_ptr<SessionManager> TrunksFactoryImpl::GetSessionManager() const {
-  return base::MakeUnique<SessionManagerImpl>(*this);
+  return std::make_unique<SessionManagerImpl>(*this);
 }
 
 std::unique_ptr<HmacSession> TrunksFactoryImpl::GetHmacSession() const {
-  return base::MakeUnique<HmacSessionImpl>(*this);
+  return std::make_unique<HmacSessionImpl>(*this);
 }
 
 std::unique_ptr<PolicySession> TrunksFactoryImpl::GetPolicySession() const {
-  return base::MakeUnique<PolicySessionImpl>(*this, TPM_SE_POLICY);
+  return std::make_unique<PolicySessionImpl>(*this, TPM_SE_POLICY);
 }
 
 std::unique_ptr<PolicySession> TrunksFactoryImpl::GetTrialSession() const {
-  return base::MakeUnique<PolicySessionImpl>(*this, TPM_SE_TRIAL);
+  return std::make_unique<PolicySessionImpl>(*this, TPM_SE_TRIAL);
 }
 
 std::unique_ptr<BlobParser> TrunksFactoryImpl::GetBlobParser() const {
-  return base::MakeUnique<BlobParser>();
+  return std::make_unique<BlobParser>();
 }
 
 void TrunksFactoryImpl::set_max_command_retries(int max_command_retries) {
