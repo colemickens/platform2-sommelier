@@ -333,6 +333,8 @@ bool CrosVM::BuildCrosVMCommandLine(const base::FilePath& container_disk,
   base::FilePath socket_path = instance_runtime_dir_.Append("crosvm.sock");
   vm_process_->AddStringOption("--socket", socket_path.value());
 
+  vm_process_->AddStringOption("--wayland-sock", "/run/chrome/wayland-0");
+
   vm_process_->AddArg(vm_kernel_.value());
 
   return true;
