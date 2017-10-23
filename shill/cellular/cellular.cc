@@ -1563,6 +1563,9 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   if (!operator_info->country().empty()) {
     home_provider[kOperatorCountryKey] = operator_info->country();
   }
+  if (!operator_info->uuid().empty()) {
+    home_provider[kOperatorUuidKey] = operator_info->uuid();
+  }
   set_home_provider(home_provider);
 
   Stringmaps apn_list_dict;
@@ -1618,6 +1621,9 @@ void Cellular::UpdateServingOperator(
   }
   if (!operator_info->country().empty()) {
     serving_operator[kOperatorCountryKey] = operator_info->country();
+  }
+  if (!operator_info->uuid().empty()) {
+    serving_operator[kOperatorUuidKey] = operator_info->uuid();
   }
   service()->set_serving_operator(serving_operator);
 
