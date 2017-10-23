@@ -44,6 +44,7 @@ const char kAVFSSeccompFilterPolicyFile[] =
     "/opt/google/cros-disks/avfsd-seccomp.policy";
 const char kAVFSMountProgram[] = "/usr/bin/avfsd";
 const char kAVFSRootDirectory[] = "/run/avfsroot";
+const mode_t kAVFSDirectoryPermissions = 0770;  // rwx by avfs user and group
 const char kAVFSLogFile[] = "/run/avfsroot/avfs.log";
 const char kAVFSMediaDirectory[] = "/run/avfsroot/media";
 const char kAVFSUsersDirectory[] = "/run/avfsroot/users";
@@ -260,13 +261,22 @@ bool ArchiveManager::StartAVFS() {
   if (avfs_started_)
     return true;
 
-  uid_t user_id;
-  gid_t group_id;
-  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, &group_id) ||
-      !platform()->CreateDirectory(kAVFSRootDirectory) ||
-      !platform()->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
-      !platform()->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
-    platform()->RemoveEmptyDirectory(kAVFSRootDirectory);
+  // As cros-disks is now an non-privileged process, the directory tree under
+  // |kAVFSRootDirectory| is created by the pre-start script of the cros-disks
+  // upstart job. We simply check to make sure the directory tree is created
+  // with the expected file ownership and permissions.
+  uid_t avfs_user_id, dir_user_id;
+  gid_t avfs_group_id, dir_group_id;
+  mode_t dir_mode;
+  if (!base::PathExists(FilePath(kAVFSRootDirectory)) ||
+      !platform()->GetUserAndGroupId(kAVFSMountUser, &avfs_user_id,
+                                     &avfs_group_id) ||
+      !platform()->GetOwnership(kAVFSRootDirectory, &dir_user_id,
+                                &dir_group_id) ||
+      !platform()->GetPermissions(kAVFSRootDirectory, &dir_mode) ||
+      (dir_user_id != avfs_user_id) || (dir_group_id != avfs_group_id) ||
+      ((dir_mode & 07777) != kAVFSDirectoryPermissions)) {
+    LOG(ERROR) << kAVFSRootDirectory << " isn't created properly";
     return false;
   }
 
@@ -280,12 +290,15 @@ bool ArchiveManager::StartAVFS() {
 
   avfs_started_ = true;
   for (const auto& mapping : kAVFSPathMapping) {
-    bool base_path_exists = base::PathExists(FilePath(mapping.base_path));
     const string& avfs_path = mapping.avfs_path;
-    if (!base_path_exists || !platform()->CreateDirectory(avfs_path) ||
-        !platform()->SetOwnership(avfs_path, user_id, group_id) ||
-        !platform()->SetPermissions(avfs_path, S_IRWXU) ||
+    if (!base::PathExists(FilePath(mapping.base_path)) ||
+        !base::PathExists(FilePath(avfs_path)) ||
+        !platform()->GetOwnership(avfs_path, &dir_user_id, &dir_group_id) ||
+        !platform()->GetPermissions(avfs_path, &dir_mode) ||
+        (dir_user_id != avfs_user_id) || (dir_group_id != avfs_group_id) ||
+        ((dir_mode & 07777) != kAVFSDirectoryPermissions) ||
         !MountAVFSPath(mapping.base_path, avfs_path)) {
+      LOG(ERROR) << avfs_path << " isn't created properly";
       StopAVFS();
       return false;
     }
@@ -307,9 +320,7 @@ bool ArchiveManager::StopAVFS() {
 
     if (!platform()->Unmount(path))
       all_unmounted = false;
-    platform()->RemoveEmptyDirectory(path);
   }
-  platform()->RemoveEmptyDirectory(kAVFSRootDirectory);
   return all_unmounted;
 }
 
