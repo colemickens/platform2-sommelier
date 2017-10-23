@@ -28,7 +28,7 @@ using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::ReturnNew;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 namespace apmanager {
 
 namespace {
@@ -369,7 +369,7 @@ TEST_F(ConfigTest, 80211nConfig) {
   Error error;
   std::string ht_capab_5ghz(k5GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k5GHzChannel, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_5ghz), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(ht_capab_5ghz), Return(true)));
   EXPECT_TRUE(config_->GenerateConfigFile(&error, &ghz5_config_content));
   EXPECT_NE(std::string::npos, ghz5_config_content.find(
                                    kExpected80211n5GHzConfigContent))
@@ -385,7 +385,7 @@ TEST_F(ConfigTest, 80211nConfig) {
   error.Reset();
   std::string ht_capab_24ghz(k24GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k24GHzChannel, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_24ghz), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(ht_capab_24ghz), Return(true)));
   EXPECT_TRUE(config_->GenerateConfigFile(&error, &ghz24_config_content));
   EXPECT_NE(std::string::npos, ghz24_config_content.find(
                                    kExpected80211n24GHzConfigContent))
