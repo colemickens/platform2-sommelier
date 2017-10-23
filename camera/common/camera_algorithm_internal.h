@@ -9,7 +9,7 @@
 
 namespace arc {
 
-const char kArcCameraAlgoSocketPath[] = "/var/run/camera/camera-algo.sock";
+const char kArcCameraAlgoSocketPath[] = "/run/camera/camera-algo.sock";
 
 }  // namespace arc
 

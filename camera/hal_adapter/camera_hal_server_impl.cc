@@ -37,7 +37,7 @@ namespace arc {
 
 namespace {
 
-const base::FilePath kArcCamera3SocketPath("/var/run/camera/camera3.sock");
+const base::FilePath kArcCamera3SocketPath("/run/camera/camera3.sock");
 
 const char kCameraHalDllName[] = "camera_hal.so";
 
