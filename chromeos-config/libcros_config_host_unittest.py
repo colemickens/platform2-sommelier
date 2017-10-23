@@ -320,6 +320,17 @@ class CrosConfigHostTest(unittest.TestCase):
         caroline.ChildPropertyFromPath('/audio/main', 'ucm-suffix').value,
         'pyro')
 
+  def testSubmodel(self):
+    """Test that we can read properties from the submodel"""
+    config = CrosConfig(self.file)
+    reef = config.models['reef']
+    self.assertEqual(
+        reef.GetSubmodelProp('touch', '/audio/main', 'ucm-suffix').value,
+        'front')
+    self.assertEqual(reef.GetSubmodelProp('touch', '/touch', 'present').value,
+                     'yes')
+    self.assertEqual(reef.GetSubmodelProp('notouch', '/touch', 'present').value,
+                     'no')
 
 if __name__ == '__main__':
   unittest.main()

@@ -363,6 +363,26 @@ class CrosConfig(object):
     def __init__(self, cros_config, fdt_node):
       super(CrosConfig.Model, self).__init__(cros_config, fdt_node)
       self.default = self.FollowPhandle('default')
+      self.submodels = {}
+      if 'submodels' in self.subnodes.keys():
+        for name, subnode in self.subnodes['submodels'].subnodes.iteritems():
+          self.submodels[name] = subnode
+
+    def GetSubmodelProp(self, submodel_name, relative_path, property_name):
+      """Reads a property from a submodel.
+
+      Args:
+        submodel_name: Submodel to read from
+        relative_path: A relative path string separated by '/'.
+        property_name: Name of property to read
+
+      Returns:
+        Value of property as a string, or None if not found
+      """
+      submodel = self.submodels.get(submodel_name)
+      if not submodel:
+        return None
+      return submodel.ChildPropertyFromPath(relative_path, property_name)
 
     def GetMergedProperties(self, node, phandle_prop):
       props = node.GetMergedProperties(None, phandle_prop)
