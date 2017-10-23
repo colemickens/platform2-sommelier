@@ -225,6 +225,29 @@ class PropCustom(PropDesc):
     self.validator(val, prop)
 
 
+class PropAny(PropDesc):
+  """A placeholder for any property name
+
+  Properties:
+    validator: Function to call to validate this property
+  """
+  def __init__(self, validator=None):
+    super(PropAny, self).__init__('ANY', 'any')
+    self.validator = validator
+
+  def Validate(self, val, prop):
+    """Validator for this property
+
+    This should be a static method in CrosConfigValidator.
+
+    Args:
+      val: CrosConfigValidator object
+      prop: Prop object of the property
+    """
+    if self.validator:
+      self.validator(val, prop)
+
+
 class NodeDesc(SchemaElement):
   """A generic node schema element (base class for nodes)"""
   def __init__(self, name, required=False, elements=None,

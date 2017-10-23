@@ -56,7 +56,7 @@ from libcros_config_host import fdt_util
 from validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from validate_schema import PropCustom, PropDesc, PropString, PropStringList
 from validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
-from validate_schema import PropFile
+from validate_schema import PropAny, PropFile
 
 
 def ParseArgv(argv):
@@ -196,7 +196,7 @@ class CrosConfigValidator(object):
         m = re.match('/chromeos/models/([a-z0-9]+)/submodels', node.path)
         if m and name in self.submodel_list[m.group(1)]:
           return element
-      elif isinstance(element, NodeAny):
+      elif isinstance(element, NodeAny) or isinstance(element, PropAny):
         return element
     return None
 
