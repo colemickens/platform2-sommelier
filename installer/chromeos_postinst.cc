@@ -352,8 +352,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   string install_completed = string(kStatefulMount) + "/.install_completed";
   if (!Touch(install_completed)) {
     printf("Touch(%s) FAILED\n", install_completed.c_str());
-    if (is_factory_install)
-      return false;
   }
 
   // If present, remove firmware checking completion file to force a disk
