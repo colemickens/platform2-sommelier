@@ -34,6 +34,14 @@ class EXPORTED CameraBufferMapperImpl final : public CameraBufferMapper {
 
   // CameraBufferMapper implementation.
   ~CameraBufferMapperImpl() final;
+  int Allocate(size_t width,
+               size_t height,
+               uint32_t format,
+               uint32_t usage,
+               BufferType type,
+               buffer_handle_t* out_buffer,
+               uint32_t* out_stride) final;
+  int Free(buffer_handle_t buffer) final;
   int Register(buffer_handle_t buffer) final;
   int Deregister(buffer_handle_t buffer) final;
   int Lock(buffer_handle_t buffer,
@@ -58,6 +66,24 @@ class EXPORTED CameraBufferMapperImpl final : public CameraBufferMapper {
 
   // Allow unit tests to call constructor directly.
   friend class tests::CameraBufferMapperImplTest;
+
+  // Revoles the HAL pixel format |hal_format| to the actual DRM format, based
+  // on the gralloc usage flags set in |usage|.
+  uint32_t ResolveFormat(uint32_t hal_format, uint32_t usage);
+
+  int AllocateGrallocBuffer(size_t width,
+                            size_t height,
+                            uint32_t format,
+                            uint32_t usage,
+                            buffer_handle_t* out_buffer,
+                            uint32_t* out_stride);
+
+  int AllocateShmBuffer(size_t width,
+                        size_t height,
+                        uint32_t format,
+                        uint32_t usage,
+                        buffer_handle_t* out_buffer,
+                        uint32_t* out_stride);
 
   // Maps |buffer| and returns the mapped address.
   //

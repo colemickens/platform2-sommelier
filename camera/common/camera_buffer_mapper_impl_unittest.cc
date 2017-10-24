@@ -39,9 +39,13 @@ static std::function<struct gbm_device*()> _create_gbm_device;
 static std::function<int(struct gbm_device*)> _gbm_device_get_fd;
 static std::function<void(struct gbm_device*)> _gbm_device_destroy;
 static std::function<struct gbm_bo*(struct gbm_device* device,
-                                    uint32_t type,
-                                    void* buffer,
-                                    uint32_t usage)>
+                                    uint32_t width,
+                                    uint32_t height,
+                                    uint32_t format,
+                                    uint32_t flags)>
+    _gbm_bo_create;
+static std::function<struct gbm_bo*(
+    struct gbm_device* device, uint32_t type, void* buffer, uint32_t usage)>
     _gbm_bo_import;
 static std::function<void*(struct gbm_bo* bo,
                            uint32_t x,
@@ -54,6 +58,12 @@ static std::function<void*(struct gbm_bo* bo,
                            size_t plane)>
     _gbm_bo_map;
 static std::function<void(struct gbm_bo* bo, void* map_data)> _gbm_bo_unmap;
+static std::function<size_t(struct gbm_bo* bo)> _gbm_bo_get_num_planes;
+static std::function<int(struct gbm_bo* bo, size_t plane)> _gbm_bo_get_plane_fd;
+static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
+    _gbm_bo_get_plane_offset;
+static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
+    _gbm_bo_get_plane_stride;
 static std::function<void(struct gbm_bo* bo)> _gbm_bo_destroy;
 static std::function<
     void*(void* addr, size_t length, int prot, int flags, int fd, off_t offset)>
@@ -80,6 +90,12 @@ struct MockGbm {
       GbmDeviceDestroy(device);
     };
 
+    EXPECT_EQ(_gbm_bo_create, nullptr);
+    _gbm_bo_create = [this](struct gbm_device* device, uint32_t width,
+                            uint32_t height, uint32_t format, uint32_t flags) {
+      return GbmBoCreate(device, width, height, format, flags);
+    };
+
     EXPECT_EQ(_gbm_bo_import, nullptr);
     _gbm_bo_import = [this](struct gbm_device* device, uint32_t type,
                             void* buffer, uint32_t usage) {
@@ -98,6 +114,26 @@ struct MockGbm {
     EXPECT_EQ(_gbm_bo_unmap, nullptr);
     _gbm_bo_unmap = [this](struct gbm_bo* bo, void* map_data) {
       GbmBoUnmap(bo, map_data);
+    };
+
+    EXPECT_EQ(_gbm_bo_get_num_planes, nullptr);
+    _gbm_bo_get_num_planes = [this](struct gbm_bo* bo) {
+      return GbmBoGetNumPlanes(bo);
+    };
+
+    EXPECT_EQ(_gbm_bo_get_plane_fd, nullptr);
+    _gbm_bo_get_plane_fd = [this](struct gbm_bo* bo, size_t plane) {
+      return GbmBoGetPlaneFd(bo, plane);
+    };
+
+    EXPECT_EQ(_gbm_bo_get_plane_offset, nullptr);
+    _gbm_bo_get_plane_offset = [this](struct gbm_bo* bo, size_t plane) {
+      return GbmBoGetPlaneOffset(bo, plane);
+    };
+
+    EXPECT_EQ(_gbm_bo_get_plane_stride, nullptr);
+    _gbm_bo_get_plane_stride = [this](struct gbm_bo* bo, size_t plane) {
+      return GbmBoGetPlaneStride(bo, plane);
     };
 
     EXPECT_EQ(_gbm_bo_destroy, nullptr);
@@ -125,9 +161,14 @@ struct MockGbm {
     _create_gbm_device = nullptr;
     _gbm_device_get_fd = nullptr;
     _gbm_device_destroy = nullptr;
+    _gbm_bo_create = nullptr;
     _gbm_bo_import = nullptr;
     _gbm_bo_map = nullptr;
     _gbm_bo_unmap = nullptr;
+    _gbm_bo_get_num_planes = nullptr;
+    _gbm_bo_get_plane_fd = nullptr;
+    _gbm_bo_get_plane_offset = nullptr;
+    _gbm_bo_get_plane_stride = nullptr;
     _gbm_bo_destroy = nullptr;
     _mmap = nullptr;
     _munmap = nullptr;
@@ -138,6 +179,12 @@ struct MockGbm {
   MOCK_METHOD0(CreateGbmDevice, struct gbm_device*());
   MOCK_METHOD1(GbmDeviceGetFd, int(struct gbm_device* device));
   MOCK_METHOD1(GbmDeviceDestroy, void(struct gbm_device* device));
+  MOCK_METHOD5(GbmBoCreate,
+               struct gbm_bo*(struct gbm_device* device,
+                              uint32_t width,
+                              uint32_t height,
+                              uint32_t format,
+                              uint32_t flags));
   MOCK_METHOD4(GbmBoImport,
                struct gbm_bo*(struct gbm_device* device,
                               uint32_t type,
@@ -154,6 +201,10 @@ struct MockGbm {
                      void** map_data,
                      size_t plane));
   MOCK_METHOD2(GbmBoUnmap, void(struct gbm_bo* bo, void* map_data));
+  MOCK_METHOD1(GbmBoGetNumPlanes, size_t(struct gbm_bo* bo));
+  MOCK_METHOD2(GbmBoGetPlaneFd, int(struct gbm_bo* bo, size_t plane));
+  MOCK_METHOD2(GbmBoGetPlaneOffset, uint32_t(struct gbm_bo* bo, size_t plane));
+  MOCK_METHOD2(GbmBoGetPlaneStride, uint32_t(struct gbm_bo* bo, size_t plane));
   MOCK_METHOD1(GbmBoDestroy, void(struct gbm_bo* bo));
   MOCK_METHOD6(Mmap,
                void*(void* addr,
@@ -182,6 +233,14 @@ int gbm_device_get_fd(struct gbm_device* device) {
 
 void gbm_device_destroy(struct gbm_device* device) {
   return _gbm_device_destroy(device);
+}
+
+struct gbm_bo* gbm_bo_create(struct gbm_device* device,
+                             uint32_t width,
+                             uint32_t height,
+                             uint32_t format,
+                             uint32_t flags) {
+  return _gbm_bo_create(device, width, height, format, flags);
 }
 
 struct gbm_bo* gbm_bo_import(struct gbm_device* device,
@@ -222,6 +281,22 @@ void* mmap(void* addr,
 
 int munmap(void* addr, size_t length) {
   return _munmap(addr, length);
+}
+
+size_t gbm_bo_get_num_planes(struct gbm_bo* bo) {
+  return _gbm_bo_get_num_planes(bo);
+}
+
+int gbm_bo_get_plane_fd(struct gbm_bo* bo, size_t plane) {
+  return _gbm_bo_get_plane_fd(bo, plane);
+}
+
+uint32_t gbm_bo_get_plane_offset(struct gbm_bo* bo, size_t plane) {
+  return _gbm_bo_get_plane_offset(bo, plane);
+}
+
+uint32_t gbm_bo_get_plane_stride(struct gbm_bo* bo, size_t plane) {
+  return _gbm_bo_get_plane_stride(bo, plane);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
@@ -389,6 +464,48 @@ class CameraBufferMapperImplTest : public ::testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(CameraBufferMapperImplTest);
 };
+
+TEST_F(CameraBufferMapperImplTest, AllocateTest) {
+  const uint32_t kBufferWidth = 1280, kBufferHeight = 720,
+                 usage = GRALLOC_USAGE_FORCE_I420;
+  buffer_handle_t buffer_handle;
+  uint32_t stride;
+
+  EXPECT_CALL(gbm_, GbmBoCreate(&dummy_device, kBufferWidth, kBufferHeight,
+                                DRM_FORMAT_YUV420,
+                                GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ |
+                                    GBM_BO_USE_CAMERA_WRITE))
+      .Times(1)
+      .WillOnce(Return(&dummy_bo));
+  EXPECT_CALL(gbm_, GbmBoGetNumPlanes(&dummy_bo)).Times(1).WillOnce(Return(3));
+  for (size_t plane = 0; plane < 3; ++plane) {
+    EXPECT_CALL(gbm_, GbmBoGetPlaneFd(&dummy_bo, plane))
+        .Times(1)
+        .WillOnce(Return(dummy_fd));
+    EXPECT_CALL(gbm_, GbmBoGetPlaneOffset(&dummy_bo, plane))
+        .Times(1)
+        .WillOnce(Return(0));
+    EXPECT_CALL(gbm_, GbmBoGetPlaneStride(&dummy_bo, plane))
+        .Times(1)
+        .WillOnce(Return(0));
+  }
+  EXPECT_EQ(cbm_->Allocate(kBufferWidth, kBufferHeight,
+                           HAL_PIXEL_FORMAT_YCbCr_420_888, usage, GRALLOC,
+                           &buffer_handle, &stride),
+            0);
+
+  for (size_t plane = 0; plane < 3; ++plane) {
+    EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight,
+                               GBM_BO_TRANSFER_READ_WRITE, A<uint32_t*>(),
+                               A<void**>(), plane))
+        .Times(1)
+        .WillOnce(Return(dummy_addr));
+  }
+  struct android_ycbcr ycbcr;
+  EXPECT_EQ(cbm_->LockYCbCr(buffer_handle, 0, 0, 0, kBufferWidth, kBufferHeight,
+                            &ycbcr),
+            0);
+}
 
 TEST_F(CameraBufferMapperImplTest, LockTest) {
   // Create a dummy buffer.

@@ -25,13 +25,6 @@ struct android_ycbcr;
 
 namespace arc {
 
-// The enum definition here should match |Camera3DeviceOps::BufferType| in
-// hal_adapter/arc_camera3.mojom.
-enum BufferType {
-  GRALLOC = 0,
-  SHM = 1,
-};
-
 // This class wraps gbm_device for sharing it with tests
 class EXPORTED GbmDevice {
  public:

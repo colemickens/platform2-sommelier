@@ -6,6 +6,7 @@
 
 #include "common/camera_buffer_mapper_impl.h"
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -14,6 +15,7 @@
 
 #include <drm_fourcc.h>
 #include <gbm.h>
+#include <hardware/gralloc.h>
 #include <system/graphics.h>
 
 #include "arc/common.h"
@@ -22,6 +24,32 @@
 #include "common/camera_buffer_mapper_typedefs.h"
 
 namespace arc {
+
+namespace {
+
+std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+     {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888}},
+    {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
+};
+
+uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
+  // The default GBM flags for camera buffers.
+  uint32_t flags =
+      GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
+  if (usage & GRALLOC_USAGE_HW_TEXTURE) {
+    flags |= GBM_BO_USE_TEXTURING;
+  }
+  if (usage & GRALLOC_USAGE_HW_RENDER) {
+    flags |= GBM_BO_USE_RENDERING;
+  }
+  if (usage & GRALLOC_USAGE_HW_COMPOSER) {
+    flags |= GBM_BO_USE_SCANOUT | GBM_BO_USE_TEXTURING;
+  }
+  return flags;
+}
+
+}  // namespace
 
 GbmDevice::GbmDevice() : device_(internal::CreateGbmDevice()) {}
 
@@ -212,6 +240,38 @@ CameraBufferMapperImpl::CameraBufferMapperImpl()
     : gbm_device_(new GbmDevice()) {}
 
 CameraBufferMapperImpl::~CameraBufferMapperImpl() {}
+
+int CameraBufferMapperImpl::Allocate(size_t width,
+                                     size_t height,
+                                     uint32_t format,
+                                     uint32_t usage,
+                                     BufferType type,
+                                     buffer_handle_t* out_buffer,
+                                     uint32_t* out_stride) {
+  if (type == GRALLOC) {
+    return AllocateGrallocBuffer(width, height, format, usage, out_buffer,
+                                 out_stride);
+  } else if (type == SHM) {
+    return AllocateShmBuffer(width, height, format, usage, out_buffer,
+                             out_stride);
+  } else {
+    NOTREACHED() << "Invalid buffer type: " << type;
+    return -EINVAL;
+  }
+}
+
+int CameraBufferMapperImpl::Free(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+
+  if (handle->type == GRALLOC) {
+    Deregister(buffer);
+    delete handle;
+    return 0;
+  } else {
+    // TODO(jcliang): Implement deletion of SharedMemory.
+    return -EINVAL;
+  }
+}
 
 int CameraBufferMapperImpl::Register(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
@@ -441,6 +501,96 @@ int CameraBufferMapperImpl::Unlock(buffer_handle_t buffer) {
 
 GbmDevice* CameraBufferMapperImpl::GetGbmDevice() {
   return gbm_device_.get();
+}
+
+uint32_t CameraBufferMapperImpl::ResolveFormat(uint32_t hal_format,
+                                               uint32_t usage) {
+  if (usage & GRALLOC_USAGE_FORCE_I420) {
+    if (hal_format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
+      LOGF(ERROR) << "GRALLOC_USAGE_FORCE_I420 is only valid with "
+                     "HAL_PIXEL_FORMAT_YCbCr_420_888";
+      return 0;
+    }
+    return DRM_FORMAT_YUV420;
+  }
+  if (hal_format == HAL_PIXEL_FORMAT_BLOB) {
+    return DRM_FORMAT_R8;
+  }
+  if (kSupportedHalFormats.find(hal_format) == kSupportedHalFormats.end()) {
+    LOGF(ERROR) << "Unsupported HAL pixel format";
+    return 0;
+  }
+  uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
+  for (uint32_t drm_format : kSupportedHalFormats[hal_format]) {
+    if (gbm_device_is_format_supported(gbm_device_->device_, drm_format,
+                                       gbm_flags)) {
+      return drm_format;
+    }
+  }
+  LOGF(ERROR) << "Cannot resolve the actual format of HAL pixel format "
+              << hal_format;
+  return 0;
+}
+
+int CameraBufferMapperImpl::AllocateGrallocBuffer(size_t width,
+                                                  size_t height,
+                                                  uint32_t format,
+                                                  uint32_t usage,
+                                                  buffer_handle_t* out_buffer,
+                                                  uint32_t* out_stride) {
+  base::AutoLock l(lock_);
+
+  uint32_t drm_format = ResolveFormat(format, usage);
+  uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
+  if (!drm_format) {
+    return -EINVAL;
+  }
+
+  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
+  buffer_context->bo =
+      gbm_bo_create(gbm_device_->device_, width, height, drm_format, gbm_flags);
+  if (!buffer_context->bo) {
+    LOGF(ERROR) << "Failed to create GBM bo";
+    return -ENOMEM;
+  }
+
+  std::unique_ptr<camera_buffer_handle_t> handle(new camera_buffer_handle_t());
+  handle->base.version = sizeof(handle->base);
+  handle->base.numInts = kCameraBufferHandleNumInts;
+  handle->base.numFds = kCameraBufferHandleNumFds;
+  handle->magic = kCameraBufferMagic;
+  handle->buffer_id = reinterpret_cast<uint64_t>(buffer_context->bo);
+  handle->type = GRALLOC;
+  handle->drm_format = drm_format;
+  handle->hal_pixel_format = format;
+  handle->width = width;
+  handle->height = height;
+  size_t num_planes = gbm_bo_get_num_planes(buffer_context->bo);
+  for (size_t i = 0; i < num_planes; ++i) {
+    handle->fds[i].reset(gbm_bo_get_plane_fd(buffer_context->bo, i));
+    handle->strides[i] = gbm_bo_get_plane_stride(buffer_context->bo, i);
+    handle->offsets[i] = gbm_bo_get_plane_offset(buffer_context->bo, i);
+  }
+
+  if (num_planes == 1) {
+    *out_stride = handle->strides[0];
+  } else {
+    *out_stride = 0;
+  }
+  *out_buffer = reinterpret_cast<buffer_handle_t>(handle.release());
+  buffer_context->usage = 1;
+  buffer_context_[*out_buffer] = std::move(buffer_context);
+  return 0;
+}
+
+int CameraBufferMapperImpl::AllocateShmBuffer(size_t width,
+                                              size_t height,
+                                              uint32_t format,
+                                              uint32_t usage,
+                                              buffer_handle_t* out_buffer,
+                                              uint32_t* out_stride) {
+  // TODO(jcliang): Implement allocation of SharedMemory.
+  return -EINVAL;
 }
 
 void* CameraBufferMapperImpl::Map(buffer_handle_t buffer,

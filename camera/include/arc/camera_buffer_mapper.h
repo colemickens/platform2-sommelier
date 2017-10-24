@@ -15,11 +15,23 @@
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
 #define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
 
+// A private gralloc usage flag to force allocation of YUV420 buffer.  This
+// usage flag is only valid when allocating HAL_PIXEL_FORMAT_YCbCr_420_888
+// flexible YUV buffers.
+const uint32_t GRALLOC_USAGE_FORCE_I420 = 0x10000000U;
+
 #define EXPORTED __attribute__((__visibility__("default")))
 
 namespace arc {
 
 class GbmDevice;
+
+// The enum definition here should match |Camera3DeviceOps::BufferType| in
+// hal_adapter/arc_camera3.mojom.
+enum BufferType {
+  GRALLOC = 0,
+  SHM = 1,
+};
 
 // Generic camera buffer mapper.  The class is for a camera HAL to map and unmap
 // the buffer handles received in camera3_stream_buffer_t.
@@ -33,12 +45,26 @@ class GbmDevice;
 //  if (!mapper) {
 //    /* Error handling */
 //  }
+//
+//  /* Register and use a buffer received from IPC */
+//
 //  mapper->Register(buffer_handle);
 //  void* addr;
 //  mapper->Lock(buffer_handle, ..., &addr);
 //  /* Access the buffer mapped to |addr| */
 //  mapper->Unlock(buffer_handle);
 //  mapper->Deregister(buffer_handle);
+//
+//  /* Allocate locally and use a buffer */
+//
+//  buffer_handle_t buffer_handle;
+//  int stride;
+//  mapper->Allocate(..., &buffer_handle, &stride);
+//  void* addr;
+//  mapper->Lock(buffer_handle, ..., &addr);
+//  /* Access the buffer mapped to |addr| */
+//  mapper->Unlock(buffer_handle);
+//  mapper->Free(buffer_handle);
 
 class EXPORTED CameraBufferMapper {
  public:
@@ -48,8 +74,40 @@ class EXPORTED CameraBufferMapper {
 
   virtual ~CameraBufferMapper() {}
 
+  // Allocates a buffer for a frame.
+  //
+  // Args:
+  //    |width|: The width of the frame.
+  //    |height|: The height of the frame.
+  //    |format|: The HAL pixel format of the frame.
+  //    |usage|: The gralloc usage of the buffer.
+  //    |type|: Type of the buffer: GRALLOC or SHM.
+  //    |out_buffer|: The handle to the allocated buffer.
+  //    |out_stride|: The stride of the allocated buffer. |out_stride| is 0 for
+  //                  YUV buffers.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  virtual int Allocate(size_t width,
+                       size_t height,
+                       uint32_t format,
+                       uint32_t usage,
+                       BufferType type,
+                       buffer_handle_t* out_buffer,
+                       uint32_t* out_stride) = 0;
+
+  // Frees |buffer| allocated with CameraBufferMapper::Allocate().
+  //
+  // Args:
+  //    |buffer|: The buffer to free.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  virtual int Free(buffer_handle_t buffer) = 0;
+
   // This method is analogous to the register() function in Android gralloc
-  // module.  This method needs to be called before |buffer| can be mapped.
+  // module.  This method needs to be called for buffers that are not allocated
+  // with Allocate() before |buffer| can be mapped.
   //
   // Args:
   //    |buffer|: The buffer handle to register.
