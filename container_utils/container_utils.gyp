@@ -19,6 +19,7 @@
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
+          'libimageloader-client',
         ],
       },
       'sources': [

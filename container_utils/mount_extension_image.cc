@@ -22,6 +22,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+#include <imageloader/dbus-proxies.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace {
@@ -139,67 +140,6 @@ std::vector<ContainerInfo> FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
   return container_infos;
 }
 
-// D-Bus calls to imageloader.
-std::string GetComponentVersion(dbus::ObjectProxy* proxy,
-                                const std::string& name) {
-  dbus::MethodCall method_call(imageloader::kImageLoaderServiceInterface,
-                               imageloader::kGetComponentVersion);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(name);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response)
-    return "";
-
-  std::string version;
-  dbus::MessageReader reader(response.get());
-  if (!reader.PopString(&version))
-    return "";
-
-  return version;
-}
-
-bool RegisterComponent(dbus::ObjectProxy* proxy,
-                       const std::string& name,
-                       const std::string& version,
-                       const std::string& component_dir) {
-  dbus::MethodCall method_call(imageloader::kImageLoaderServiceInterface,
-                               imageloader::kRegisterComponent);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(name);
-  writer.AppendString(version);
-  writer.AppendString(component_dir);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response)
-    return false;
-
-  bool succeeded;
-  dbus::MessageReader reader(response.get());
-  if (!reader.PopBool(&succeeded))
-    return false;
-
-  return succeeded;
-}
-
-std::string LoadComponent(dbus::ObjectProxy* proxy, const std::string& name) {
-  dbus::MethodCall method_call(imageloader::kImageLoaderServiceInterface,
-                               imageloader::kLoadComponent);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(name);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response)
-    return "";
-
-  std::string mount_dir;
-  dbus::MessageReader reader(response.get());
-  if (!reader.PopString(&mount_dir))
-    return "";
-
-  return mount_dir;
-}
-
 bool CopyImageDirectory(const base::FilePath& from_dir,
                         const base::FilePath& to_dir) {
   if (!base::SetPosixFilePermissions(to_dir, 0755))
@@ -231,16 +171,13 @@ base::FilePath MountImage(scoped_refptr<dbus::Bus> bus,
                           const std::string& name,
                           const std::string& version,
                           const base::FilePath& component_dir) {
-  dbus::ObjectProxy* proxy = bus->GetObjectProxy(
-      imageloader::kImageLoaderServiceName,
-      dbus::ObjectPath(imageloader::kImageLoaderServicePath));
-  if (!proxy)
-    return base::FilePath();
+  org::chromium::ImageLoaderInterfaceProxy proxy(bus);
 
   // If imageloader has this version already, we can skip registration
   // and just ask it to load the component.
-  std::string current_version = GetComponentVersion(proxy, name);
-  if (current_version != version) {
+  std::string current_version;
+  if (!proxy.GetComponentVersion(name, &current_version, nullptr) ||
+      current_version != version) {
     // This temporary directory ensures imageloader can see the
     // image files.
     base::FilePath temp_dir;
@@ -258,13 +195,19 @@ base::FilePath MountImage(scoped_refptr<dbus::Bus> bus,
       return base::FilePath();
     }
 
-    if (!RegisterComponent(proxy, name, version, temp_dir.value())) {
+    bool success;
+    if (!proxy.RegisterComponent(
+        name, version, temp_dir.value(), &success, nullptr) || !success) {
       LOG(ERROR) << "Registering component failed";
       return base::FilePath();
     }
   }
 
-  return base::FilePath(LoadComponent(proxy, name));
+  std::string mount_point;
+  if (!proxy.LoadComponent(name, &mount_point, nullptr))
+    return base::FilePath();
+
+  return base::FilePath(mount_point);
 }
 
 }  // namespace
