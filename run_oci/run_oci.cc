@@ -202,7 +202,7 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
     }
 
     // Loopback devices have to be mounted outside.
-    bool mount_in_ns = !mount.perform_in_intermediate_namespace && !loopback;
+    bool mount_in_ns = !mount.performInIntermediateNamespace && !loopback;
 
     container_config_add_mount(
         config_out, "mount", source.value().c_str(),
@@ -551,7 +551,7 @@ int RunOci(const base::FilePath& bundle_dir,
 
   bool needs_intermediate_mount_ns = false;
   for (const auto& mount : oci_config->mounts) {
-    if (!mount.perform_in_intermediate_namespace)
+    if (!mount.performInIntermediateNamespace)
       continue;
     needs_intermediate_mount_ns = true;
     break;

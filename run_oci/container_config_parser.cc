@@ -313,8 +313,8 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
       return false;
     }
     if (!mount_dict->GetBoolean("performInIntermediateNamespace",
-                                &mount.perform_in_intermediate_namespace)) {
-      mount.perform_in_intermediate_namespace = false;  // Optional
+                                &mount.performInIntermediateNamespace)) {
+      mount.performInIntermediateNamespace = false;  // Optional
     }
     mount.source = base::FilePath(path);
 
