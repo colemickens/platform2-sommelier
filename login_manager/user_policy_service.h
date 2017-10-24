@@ -23,7 +23,7 @@ class SystemUtils;
 // Policy service implementation for user policy.
 class UserPolicyService : public PolicyService {
  public:
-  UserPolicyService(std::unique_ptr<PolicyStore> policy_store,
+  UserPolicyService(const base::FilePath& policy_dir,
                     std::unique_ptr<PolicyKey> policy_key,
                     const base::FilePath& key_copy_path,
                     SystemUtils* system_utils);
@@ -37,7 +37,8 @@ class UserPolicyService : public PolicyService {
   // this override allows storage of policy blobs that indiciate the user is
   // unmanaged even if they are unsigned. If a non-signed blob gets installed,
   // we also clear the signing key.
-  bool Store(const std::vector<uint8_t>& policy_blob,
+  bool Store(const PolicyNamespace& ns,
+             const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
              const Completion& completion) override;

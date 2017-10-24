@@ -102,7 +102,7 @@ class DevicePolicyService : public PolicyService {
 
   // Returns whether system settings can be updated by checking that PolicyKey
   // is populated and the device is running on Chrome OS firmware.
-  bool MayUpdateSystemSettings();
+  virtual bool MayUpdateSystemSettings();
 
   // Updates the system settings flags in NVRAM and in VPD. A failure in NVRAM
   // update is not considered a fatal error because new functionality relies on
@@ -111,20 +111,23 @@ class DevicePolicyService : public PolicyService {
   // started succesfully and is running in a separate process. In this case,
   // |vpd_process_| is responsible for running |completion|; otherwise,
   // OnPolicyPersisted() is.
-  bool UpdateSystemSettings(const Completion& completion);
+  virtual bool UpdateSystemSettings(const Completion& completion);
 
   // PolicyService:
-  bool Store(const std::vector<uint8_t>& policy_blob,
+  bool Store(const PolicyNamespace& ns,
+             const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
              const Completion& completion) override;
-  void PersistPolicy(const Completion& completion) override;
+  void PersistPolicy(const PolicyNamespace& ns,
+                     const Completion& completion) override;
 
-  static const char kPolicyPath[];
+  static const char kPolicyDir[];
   static const char kSerialRecoveryFlagFile[];
 
   // Format of this string is documented in device_management_backend.proto.
   static const char kDevicePolicyType[];
+  static const char kExtensionPolicyType[];
 
   // These are defined in Chromium source at
   // chrome/browser/chromeos/policy/enterprise_install_attributes.cc.  Sadly,
@@ -136,9 +139,11 @@ class DevicePolicyService : public PolicyService {
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
   FRIEND_TEST_ALL_PREFIXES(DevicePolicyServiceTest, GivenUserIsOwner);
+  FRIEND_TEST_ALL_PREFIXES(DevicePolicyServiceTest,
+                           PersistPolicyMultipleNamespaces);
 
   // Takes ownership of |policy_store|.
-  DevicePolicyService(std::unique_ptr<PolicyStore> policy_store,
+  DevicePolicyService(const base::FilePath& policy_dir,
                       PolicyKey* owner_key,
                       const base::FilePath& install_attributes_file,
                       LoginMetrics* metrics,
@@ -174,6 +179,9 @@ class DevicePolicyService : public PolicyService {
       const std::vector<uint8_t>& key,
       PK11SlotInfo* module,
       brillo::ErrorPtr* error);
+
+  // Helper to return the policy store for the Chrome domain.
+  PolicyStore* GetChromeStore();
 
   const base::FilePath install_attributes_file_;
   LoginMetrics* metrics_;

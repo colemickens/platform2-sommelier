@@ -55,7 +55,7 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
         temp_dir_.path()
             .Append(brillo::cryptohome::home::SanitizeUserName(fake_account_))
             .Append(DeviceLocalAccountManager::kPolicyDir)
-            .Append(DeviceLocalAccountManager::kPolicyFileName);
+            .Append(PolicyService::kChromePolicyFileName);
 
     manager_ =
         std::make_unique<DeviceLocalAccountManager>(temp_dir_.path(), &key_);
@@ -108,8 +108,8 @@ TEST_F(DeviceLocalAccountManagerTest, GetPolicyServiceSucceeds) {
   ASSERT_TRUE(service);
 
   // Also check  if policy is stored at the proper path.
-  ASSERT_TRUE(service->Store(GetTestPolicyBlob(), PolicyService::KEY_NONE,
-                             SignatureCheck::kEnabled,
+  ASSERT_TRUE(service->Store(MakeChromePolicyNamespace(), GetTestPolicyBlob(),
+                             PolicyService::KEY_NONE, SignatureCheck::kEnabled,
                              MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));

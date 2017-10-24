@@ -25,16 +25,16 @@ typedef struct PK11SlotInfoStr PK11SlotInfo;
 class MockDevicePolicyService : public DevicePolicyService {
  public:
   MockDevicePolicyService();
-  MockDevicePolicyService(std::unique_ptr<MockPolicyStore> policy_store,
-                          PolicyKey* policy_key);
+  explicit MockDevicePolicyService(PolicyKey* policy_key);
   ~MockDevicePolicyService() override;
 
-  MOCK_METHOD4(Store,
-               bool(const std::vector<uint8_t>&,
+  MOCK_METHOD5(Store,
+               bool(const PolicyNamespace&,
+                    const std::vector<uint8_t>&,
                     int,
                     SignatureCheck,
                     const Completion&));
-  MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
+  MOCK_METHOD2(Retrieve, bool(const PolicyNamespace&, std::vector<uint8_t>*));
   MOCK_METHOD4(
       CheckAndHandleOwnerLogin,
       bool(const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*));

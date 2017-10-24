@@ -32,8 +32,6 @@ class DeviceLocalAccountManager {
  public:
   // Name of the subdirectory to store policy in.
   static const base::FilePath::CharType kPolicyDir[];
-  // File name of the file within |kPolicyDir| that holds the policy blob.
-  static const base::FilePath::CharType kPolicyFileName[];
 
   DeviceLocalAccountManager(const base::FilePath& state_dir,
                             PolicyKey* owner_key);
@@ -51,6 +49,9 @@ class DeviceLocalAccountManager {
   // |account_id| after checking that |account_id| is valid. The PolicyService
   // is lazily created on the fly if not present yet.
   PolicyService* GetPolicyService(const std::string& account_id);
+
+  // Persists policy for accounts and namespaces.
+  void PersistAllPolicy();
 
  private:
   // Migrate uppercase local-account directories to their lowercase variants.

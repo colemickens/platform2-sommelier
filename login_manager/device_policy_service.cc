@@ -106,9 +106,12 @@ const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
 }  // namespace
 
 // static
-const char DevicePolicyService::kPolicyPath[] = "/var/lib/whitelist/policy";
+const char DevicePolicyService::kPolicyDir[] = "/var/lib/whitelist";
 // static
 const char DevicePolicyService::kDevicePolicyType[] = "google/chromeos/device";
+// static
+const char DevicePolicyService::kExtensionPolicyType[] =
+    "google/chrome/extension";
 // static
 const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
 // static
@@ -124,10 +127,10 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     NssUtil* nss,
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
-  return base::WrapUnique(new DevicePolicyService(
-      std::make_unique<PolicyStore>(base::FilePath(kPolicyPath)), owner_key,
-      base::FilePath(kInstallAttributesPath), metrics, mitigator, nss,
-      crossystem, vpd_process));
+  return base::WrapUnique(
+      new DevicePolicyService(base::FilePath(kPolicyDir), owner_key,
+                              base::FilePath(kInstallAttributesPath), metrics,
+                              mitigator, nss, crossystem, vpd_process));
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -136,8 +139,9 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     bool* is_owner,
     brillo::ErrorPtr* error) {
   // Record metrics around consumer usage of user whitelisting.
-  if (IsConsumerPolicy(store()->Get()))
-    metrics_->SendConsumerAllowsNewUsers(PolicyAllowsNewUsers(store()->Get()));
+  const em::PolicyFetchResponse& policy = GetChromeStore()->Get();
+  if (IsConsumerPolicy(policy))
+    metrics_->SendConsumerAllowsNewUsers(PolicyAllowsNewUsers(policy));
 
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
@@ -148,7 +152,7 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and they DON'T have the private half of the
   // public key, we must mitigate.
-  *is_owner = GivenUserIsOwner(store()->Get(), current_user);
+  *is_owner = GivenUserIsOwner(policy, current_user);
   if (*is_owner && !signing_key.get()) {
     if (!mitigator_->Mitigate(current_user)) {
       *error = std::move(key_error);
@@ -180,14 +184,14 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
     if (!key()->PopulateFromBuffer(pub_key))
       return false;
     // Clear policy in case we're re-establishing ownership.
-    store()->Set(em::PolicyFetchResponse());
+    GetChromeStore()->Set(em::PolicyFetchResponse());
   }
 
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
   if (StoreOwnerProperties(current_user, signing_key.get())) {
     PostPersistKeyTask();
-    PostPersistPolicyTask(Completion());
+    PostPersistPolicyTask(MakeChromePolicyNamespace(), Completion());
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
@@ -195,7 +199,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
-    std::unique_ptr<PolicyStore> policy_store,
+    const base::FilePath& policy_dir,
     PolicyKey* policy_key,
     const base::FilePath& install_attributes_file,
     LoginMetrics* metrics,
@@ -203,7 +207,7 @@ DevicePolicyService::DevicePolicyService(
     NssUtil* nss,
     Crossystem* crossystem,
     VpdProcess* vpd_process)
-    : PolicyService(std::move(policy_store), policy_key),
+    : PolicyService(policy_dir, policy_key),
       install_attributes_file_(install_attributes_file),
       metrics_(metrics),
       mitigator_(mitigator),
@@ -224,14 +228,15 @@ bool DevicePolicyService::Initialize() {
   if (!key_success)
     LOG(ERROR) << "Failed to load device policy key from disk.";
 
-  bool policy_success = store()->LoadOrCreate();
+  bool policy_success = GetChromeStore()->EnsureLoadedOrCreated();
   if (!policy_success)
     LOG(WARNING) << "Failed to load device policy data, continuing anyway.";
 
-  if (!key_success && policy_success && store()->Get().has_new_public_key()) {
+  if (!key_success && policy_success &&
+      GetChromeStore()->Get().has_new_public_key()) {
     LOG(WARNING) << "Recovering missing owner key from policy blob!";
     key_success = key()->PopulateFromBuffer(
-        StringToBlob(store()->Get().new_public_key()));
+        StringToBlob(GetChromeStore()->Get().new_public_key()));
     if (key_success)
       PostPersistKeyTask();
   }
@@ -240,14 +245,15 @@ bool DevicePolicyService::Initialize() {
   return key_success;
 }
 
-bool DevicePolicyService::Store(const std::vector<uint8_t>& policy_blob,
+bool DevicePolicyService::Store(const PolicyNamespace& ns,
+                                const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
                                 SignatureCheck signature_check,
                                 const Completion& completion) {
-  bool result =
-      PolicyService::Store(policy_blob, key_flags, signature_check, completion);
+  bool result = PolicyService::Store(ns, policy_blob, key_flags,
+                                     signature_check, completion);
 
-  if (result) {
+  if (result && ns == MakeChromePolicyNamespace()) {
     // Flush the settings cache, the next read will decode the new settings.
     settings_.reset();
   }
@@ -275,7 +281,7 @@ void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
     status.policy_file_state = LoginMetrics::MALFORMED;
   } else {
     std::string serialized;
-    if (!store()->Get().SerializeToString(&serialized))
+    if (!GetChromeStore()->Get().SerializeToString(&serialized))
       status.policy_file_state = LoginMetrics::MALFORMED;
     else if (serialized == "")
       status.policy_file_state = LoginMetrics::NOT_PRESENT;
@@ -283,7 +289,7 @@ void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
       status.policy_file_state = LoginMetrics::GOOD;
   }
 
-  if (store()->DefunctPrefsFilePresent())
+  if (GetChromeStore()->DefunctPrefsFilePresent())
     status.defunct_prefs_file_state = LoginMetrics::GOOD;
 
   metrics_->SendPolicyFilesStatus(status);
@@ -319,7 +325,7 @@ const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
     settings_.reset(new em::ChromeDeviceSettingsProto());
 
     em::PolicyData policy_data;
-    if (!policy_data.ParseFromString(store()->Get().policy_data()) ||
+    if (!policy_data.ParseFromString(GetChromeStore()->Get().policy_data()) ||
         !settings_->ParseFromString(policy_data.policy_value())) {
       LOG(ERROR) << "Failed to parse device settings, using empty defaults.";
     }
@@ -380,7 +386,7 @@ bool DevicePolicyService::GivenUserIsOwner(
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
                                                RSAPrivateKey* signing_key) {
   CHECK(signing_key);
-  const em::PolicyFetchResponse& policy(store()->Get());
+  const em::PolicyFetchResponse& policy = GetChromeStore()->Get();
   em::PolicyData poldata;
   if (policy.has_policy_data())
     poldata.ParseFromString(policy.policy_data());
@@ -433,7 +439,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   new_policy.set_policy_data(new_data);
   new_policy.set_policy_data_signature(BlobToString(sig));
   new_policy.set_new_public_key(BlobToString(key()->public_key_der()));
-  store()->Set(new_policy);
+  GetChromeStore()->Set(new_policy);
   return true;
 }
 
@@ -453,8 +459,15 @@ std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
   return result;
 }
 
-void DevicePolicyService::PersistPolicy(const Completion& completion) {
-  if (!store()->Persist()) {
+void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
+                                        const Completion& completion) {
+  // Run base method for everything other than Chrome device policy.
+  if (ns != MakeChromePolicyNamespace()) {
+    PolicyService::PersistPolicy(ns, completion);
+    return;
+  }
+
+  if (!GetOrCreateStore(ns)->Persist()) {
     OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
     return;
   }
@@ -560,6 +573,10 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   return vpd_process_->RunInBackground(
       updates, false,
       base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
+}
+
+PolicyStore* DevicePolicyService::GetChromeStore() {
+  return GetOrCreateStore(MakeChromePolicyNamespace());
 }
 
 }  // namespace login_manager

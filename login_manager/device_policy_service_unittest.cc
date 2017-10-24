@@ -53,6 +53,8 @@ using testing::Sequence;
 using testing::StrictMock;
 using testing::WithArg;
 
+namespace login_manager {
+
 namespace {
 
 constexpr char kTestUser[] = "user@example.com";
@@ -61,9 +63,33 @@ ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
 }
 
-}  // namespace
+PolicyNamespace MakeExtensionPolicyNamespace() {
+  return std::make_pair(POLICY_DOMAIN_EXTENSIONS,
+                        "ababababcdcdcdcdefefefefghghghgh");
+}
 
-namespace login_manager {
+void InitPolicyFetchResponse(const std::string& policy_value_str,
+                             const char* policy_type,
+                             const std::string& owner,
+                             const std::vector<uint8_t>& signature,
+                             const std::string& request_token,
+                             em::PolicyFetchResponse* policy_proto) {
+  em::PolicyData policy_data;
+  policy_data.set_policy_type(policy_type);
+  policy_data.set_policy_value(policy_value_str);
+  if (!owner.empty())
+    policy_data.set_username(owner);
+  if (!request_token.empty())
+    policy_data.set_request_token(request_token);
+  std::string policy_data_str;
+  ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
+
+  policy_proto->Clear();
+  policy_proto->set_policy_data(policy_data_str);
+  policy_proto->set_policy_data_signature(BlobToString(signature));
+}
+
+}  // namespace
 
 class DevicePolicyServiceTest : public ::testing::Test {
  public:
@@ -82,20 +108,9 @@ class DevicePolicyServiceTest : public ::testing::Test {
                   const std::string& request_token) {
     std::string settings_str;
     ASSERT_TRUE(settings.SerializeToString(&settings_str));
-
-    em::PolicyData policy_data;
-    policy_data.set_policy_type(DevicePolicyService::kDevicePolicyType);
-    policy_data.set_policy_value(settings_str);
-    if (!owner.empty())
-      policy_data.set_username(owner);
-    if (!request_token.empty())
-      policy_data.set_request_token(request_token);
-    std::string policy_data_str;
-    ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
-
-    policy_proto_.Clear();
-    policy_proto_.set_policy_data(policy_data_str);
-    policy_proto_.set_policy_data_signature(BlobToString(signature));
+    ASSERT_NO_FATAL_FAILURE(InitPolicyFetchResponse(
+        settings_str, DevicePolicyService::kDevicePolicyType, owner, signature,
+        request_token, &policy_proto_));
   }
 
   void InitEmptyPolicy(const std::string& owner,
@@ -106,12 +121,15 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void InitService(NssUtil* nss) {
-    store_ = new StrictMock<MockPolicyStore>();
+    auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
+    store_ = store_ptr.get();
     metrics_ = std::make_unique<MockMetrics>();
     mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
-        base::WrapUnique(store_), &key_, install_attributes_file_,
-        metrics_.get(), mitigator_.get(), nss, &crossystem_, &vpd_process_));
+        tmpdir_.path(), &key_, install_attributes_file_, metrics_.get(),
+        mitigator_.get(), nss, &crossystem_, &vpd_process_));
+    service_->SetStoreForTesting(MakeChromePolicyNamespace(),
+                                 std::move(store_ptr));
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
@@ -141,12 +159,35 @@ class DevicePolicyServiceTest : public ::testing::Test {
     service->set_policy_key_for_test(key);
   }
 
+  void SetExpectationsAndStorePolicy(
+      const PolicyNamespace& ns,
+      MockPolicyStore* store,
+      const em::PolicyFetchResponse& policy_proto) {
+    // Make sure that no policy other than Chrome policy triggers
+    // [May]UpdateSystemSettings(). This is done by making sure that
+    // IsPopulated() isn't run, which is called by MayUpdateSystemSettings().
+    if (ns == MakeChromePolicyNamespace())
+      EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
+    else
+      EXPECT_CALL(key_, IsPopulated()).Times(0);
+    EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
+
+    EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
+    EXPECT_CALL(*store, Set(_)).Times(AnyNumber());
+    EXPECT_CALL(*store, Get()).WillRepeatedly(ReturnRef(policy_proto));
+    EXPECT_TRUE(service_->Store(
+        ns, SerializeAsBlob(policy_proto), PolicyService::KEY_CLOBBER,
+        SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
+    fake_loop_.Run();
+  }
+
   bool UpdateSystemSettings(DevicePolicyService* service) {
     return service->UpdateSystemSettings(MockPolicyService::CreateDoNothing());
   }
 
   void PersistPolicy(DevicePolicyService* service) {
-    service->PersistPolicy(MockPolicyService::CreateDoNothing());
+    service->PersistPolicy(MakeChromePolicyNamespace(),
+                           MockPolicyService::CreateDoNothing());
   }
 
   void RecordNewPolicy(const em::PolicyFetchResponse& policy) {
@@ -636,8 +677,9 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
-  MockDevicePolicyService service(std::unique_ptr<MockPolicyStore>(store),
-                                  &key);
+  MockDevicePolicyService service(&key);
+  service.SetStoreForTesting(MakeChromePolicyNamespace(),
+                             std::unique_ptr<MockPolicyStore>(store));
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
@@ -672,8 +714,9 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 
   MockPolicyKey key;
   MockPolicyStore* store = new MockPolicyStore();
-  MockDevicePolicyService service(std::unique_ptr<MockPolicyStore>(store),
-                                  &key);
+  MockDevicePolicyService service(&key);
+  service.SetStoreForTesting(MakeChromePolicyNamespace(),
+                             std::unique_ptr<MockPolicyStore>(store));
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
@@ -906,7 +949,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   EXPECT_CALL(key_, ClobberCompromisedKey(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, Persist()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadOrCreate()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, EnsureLoadedOrCreated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillRepeatedly(Return(false));
   EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
@@ -933,15 +976,8 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   // Storing new policy should cause the settings to update as well.
   settings.mutable_metrics_enabled()->set_metrics_enabled(true);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t"));
-  EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
-      SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
-  fake_loop_.Run();
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
 }
@@ -961,15 +997,8 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("-");
   settings.mutable_start_up_flags()->add_flags("--");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
-  EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
-      SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
-  fake_loop_.Run();
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
 
   std::vector<std::string> flags = service_->GetStartUpFlags();
   EXPECT_EQ(6, flags.size());
@@ -979,6 +1008,51 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   EXPECT_EQ("-c", flags[3]);
   EXPECT_EQ("--d", flags[4]);
   EXPECT_EQ("--policy-switches-end", flags[5]);
+}
+
+TEST_F(DevicePolicyServiceTest, PersistPolicyMultipleNamespaces) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  // Set up store for extension policy.
+  auto extension_store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
+  StrictMock<MockPolicyStore>* extension_store = extension_store_ptr.get();
+  service_->SetStoreForTesting(MakeExtensionPolicyNamespace(),
+                               std::move(extension_store_ptr));
+
+  // Set up device policy.
+  em::ChromeDeviceSettingsProto settings;
+  settings.mutable_metrics_enabled()->set_metrics_enabled(true);
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t"));
+
+  // Set up extension policy.
+  em::PolicyFetchResponse extension_policy_proto;
+  ASSERT_NO_FATAL_FAILURE(InitPolicyFetchResponse(
+      "fake_extension_policy", DevicePolicyService::kExtensionPolicyType,
+      owner_, fake_sig_, "t", &extension_policy_proto));
+
+  // Store and retrieve device policy.
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  EXPECT_EQ(service_->GetSettings().SerializeAsString(),
+            settings.SerializeAsString());
+  Mock::VerifyAndClearExpectations(&key_);
+  Mock::VerifyAndClearExpectations(store_);
+
+  // Store and retrieve extension policy.
+  SetExpectationsAndStorePolicy(MakeExtensionPolicyNamespace(), extension_store,
+                                extension_policy_proto);
+  std::vector<uint8_t> extension_policy_blob;
+  EXPECT_TRUE(service_->Retrieve(MakeExtensionPolicyNamespace(),
+                                 &extension_policy_blob));
+  EXPECT_EQ(BlobToString(extension_policy_blob),
+            extension_policy_proto.SerializeAsString());
+
+  // Storing extension policy should not wipe or modify the cached device
+  // settings.
+  EXPECT_NE(nullptr, service_->settings_);
+  EXPECT_EQ(service_->settings_->SerializeAsString(),
+            settings.SerializeAsString());
 }
 
 }  // namespace login_manager

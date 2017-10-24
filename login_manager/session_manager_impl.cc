@@ -465,11 +465,13 @@ void SessionManagerImpl::Finalize() {
   // having been run (http://crbug.com/638774, http://crbug.com/725734).
   dbus_service_.reset();
 
-  device_policy_->PersistPolicy(PolicyService::Completion());
+  device_policy_->PersistAllPolicy();
   for (const auto& kv : user_sessions_) {
     if (kv.second)
-      kv.second->policy_service->PersistPolicy(PolicyService::Completion());
+      kv.second->policy_service->PersistAllPolicy();
   }
+  device_local_account_manager_->PersistAllPolicy();
+
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
   android_container_->RequestJobExit();
@@ -753,7 +755,9 @@ bool SessionManagerImpl::RetrievePolicyEx(
     return false;
   }
 
-  if (!policy_service->Retrieve(out_policy_blob)) {
+  PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
+
+  if (!policy_service->Retrieve(ns, out_policy_blob)) {
     LOG(ERROR) << kSigEncodeFailMessage;
     *error = CreateError(dbus_error::kSigEncodeFail, kSigEncodeFailMessage);
     return false;
@@ -1520,9 +1524,10 @@ void SessionManagerImpl::StorePolicyInternalEx(
   }
 
   int key_flags = GetKeyInstallFlags(descriptor);
+  PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
 
   DCHECK(dbus_service_);
-  policy_service->Store(policy_blob, key_flags, signature_check,
+  policy_service->Store(ns, policy_blob, key_flags, signature_check,
                         dbus_service_->CreatePolicyServiceCompletionCallback(
                             std::move(response)));
 }

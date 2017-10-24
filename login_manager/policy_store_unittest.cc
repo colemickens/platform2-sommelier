@@ -53,7 +53,7 @@ TEST_F(PolicyStoreTest, InitialEmptyStore) {
 
 TEST_F(PolicyStoreTest, CreateEmptyStore) {
   PolicyStore store(tmpfile_);
-  ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty policy.
+  ASSERT_TRUE(store.EnsureLoadedOrCreated());  // Should create an empty policy.
   CheckExpectedPolicy(&store, em::PolicyFetchResponse());
 }
 
@@ -61,7 +61,7 @@ TEST_F(PolicyStoreTest, FailBrokenStore) {
   base::FilePath bad_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &bad_file));
   PolicyStore store(bad_file);
-  ASSERT_FALSE(store.LoadOrCreate());
+  ASSERT_FALSE(store.EnsureLoadedOrCreated());
 }
 
 TEST_F(PolicyStoreTest, VerifyPolicyStorage) {
@@ -94,7 +94,7 @@ TEST_F(PolicyStoreTest, LoadStoreFromDisk) {
   CheckExpectedPolicy(&store, policy);
 
   PolicyStore store2(tmpfile_);
-  ASSERT_TRUE(store2.LoadOrCreate());
+  ASSERT_TRUE(store2.EnsureLoadedOrCreated());
   CheckExpectedPolicy(&store2, policy);
 }
 

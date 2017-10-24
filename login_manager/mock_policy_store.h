@@ -13,7 +13,7 @@ class MockPolicyStore : public PolicyStore {
   MockPolicyStore();
   virtual ~MockPolicyStore();
   MOCK_METHOD0(DefunctPrefsFilePresent, bool(void));
-  MOCK_METHOD0(LoadOrCreate, bool(void));
+  MOCK_METHOD0(EnsureLoadedOrCreated, bool(void));
   MOCK_CONST_METHOD0(Get,
                      const enterprise_management::PolicyFetchResponse&(void));
   MOCK_METHOD0(Persist, bool(void));

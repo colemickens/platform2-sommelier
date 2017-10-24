@@ -34,8 +34,6 @@ namespace {
 const char kDaemonName[] = "session_manager";
 // Name of the subdirectory to store policy in.
 const base::FilePath::CharType kPolicyDir[] = FILE_PATH_LITERAL("policy");
-// The policy protobuffer blob is written to this file.
-const base::FilePath::CharType kPolicyDataFile[] = FILE_PATH_LITERAL("policy");
 // Holds the public key for policy signing.
 const base::FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
 
@@ -89,19 +87,13 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
     return NULL;
   }
 
-  auto store =
-      std::make_unique<PolicyStore>(policy_dir.Append(kPolicyDataFile));
-  bool policy_success = store->LoadOrCreate();
-  if (!policy_success)  // Non-fatal, so log, and keep going.
-    LOG(WARNING) << "Failed to load user policy data, continuing anyway.";
-
   using brillo::cryptohome::home::SanitizeUserName;
   const std::string sanitized(SanitizeUserName(username));
   const base::FilePath key_copy_file(base::StringPrintf(
       "%s/%s/%s", kPolicyKeyCopyDir, sanitized.c_str(), kPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
-      std::make_unique<UserPolicyService>(std::move(store), std::move(key),
+      std::make_unique<UserPolicyService>(policy_dir, std::move(key),
                                           key_copy_file, system_utils_);
   service->PersistKeyCopy();
   return service;

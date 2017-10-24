@@ -352,8 +352,10 @@ class SessionManagerImplTest : public ::testing::Test,
     ON_CALL(*device_policy_store_, Get())
         .WillByDefault(ReturnRef(device_policy_));
 
-    device_policy_service_ = new MockDevicePolicyService(
-        std::unique_ptr<MockPolicyStore>(device_policy_store_), &owner_key_);
+    device_policy_service_ = new MockDevicePolicyService(&owner_key_);
+    device_policy_service_->SetStoreForTesting(
+        MakeChromePolicyNamespace(),
+        std::unique_ptr<MockPolicyStore>(device_policy_store_));
 
     user_policy_service_factory_ =
         new testing::NiceMock<MockUserPolicyServiceFactory>();
@@ -473,12 +475,13 @@ class SessionManagerImplTest : public ::testing::Test,
                          const std::vector<uint8_t>& policy_blob,
                          int flags,
                          SignatureCheck signature_check) {
-    EXPECT_CALL(*service, Store(policy_blob, flags, signature_check, _))
+    EXPECT_CALL(*service, Store(MakeChromePolicyNamespace(), policy_blob, flags,
+                                signature_check, _))
         .WillOnce(Return(true));
   }
 
   void ExpectNoStorePolicy(MockDevicePolicyService* service) {
-    EXPECT_CALL(*service, Store(_, _, _, _)).Times(0);
+    EXPECT_CALL(*service, Store(_, _, _, _, _)).Times(0);
   }
 
   void ExpectAndRunStartSession(const string& email) {
@@ -576,7 +579,7 @@ class SessionManagerImplTest : public ::testing::Test,
       const std::string& account_id) {
     return device_local_accounts_dir_.Append(SanitizeUserName(account_id))
         .Append(DeviceLocalAccountManager::kPolicyDir)
-        .Append(DeviceLocalAccountManager::kPolicyFileName);
+        .Append(PolicyService::kChromePolicyFileName);
   }
 
   void VerifyAndClearExpectations() {
@@ -1046,8 +1049,8 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*device_policy_service_, Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*device_policy_service_, Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicy(&error, &out_blob));
@@ -1057,8 +1060,8 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
 
 TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*device_policy_service_, Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*device_policy_service_, Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
@@ -1154,7 +1157,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1168,7 +1171,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1186,7 +1189,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   // Store policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1214,7 +1217,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Storing policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[kEmail2],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1233,7 +1236,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   // Store policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1263,7 +1266,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
 
   // Storing policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[kEmail2],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
@@ -1279,7 +1282,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
@@ -1289,7 +1293,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
@@ -1301,7 +1306,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
@@ -1312,7 +1318,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _)).Times(0);
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
@@ -1325,7 +1332,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise_ad");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kDisabled, _))
       .WillOnce(Return(true));
@@ -1340,7 +1347,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterpriseAD) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise_ad");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(policy_blob,
+              Store(MakeChromePolicyNamespace(), policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
                     SignatureCheck::kDisabled, _))
       .WillOnce(Return(true));
@@ -1371,8 +1378,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -1384,8 +1392,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
 TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -1401,8 +1410,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
   // Retrieve policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1427,8 +1437,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   ASSERT_TRUE(user_policy_services_[kEmail2]);
 
   // Retrieving policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[kEmail2], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kEmail2],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1445,8 +1456,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
 
   // Retrieve policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1474,8 +1486,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
   ASSERT_TRUE(user_policy_services_[kEmail2]);
 
   // Retrieving policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[kEmail2], Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*user_policy_services_[kEmail2],
+              Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
@@ -1497,8 +1510,8 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
   hidden_user_home_policy_service_ = std::make_unique<MockPolicyService>();
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
-  EXPECT_CALL(*policy_service, Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*policy_service, Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
 
   // Retrieve policy for a user who does not have a session.
   std::vector<uint8_t> out_blob;
@@ -1523,8 +1536,8 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   hidden_user_home_policy_service_ = std::make_unique<MockPolicyService>();
   MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
 
-  EXPECT_CALL(*policy_service, Retrieve(_))
-      .WillOnce(DoAll(SetArgPointee<0>(policy_blob), Return(true)));
+  EXPECT_CALL(*policy_service, Retrieve(MakeChromePolicyNamespace(), _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
 
   // Retrieve policy for a user who does not have a session.
   std::vector<uint8_t> out_blob;

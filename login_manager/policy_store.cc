@@ -23,8 +23,18 @@ bool PolicyStore::DefunctPrefsFilePresent() {
   return base::PathExists(policy_path_.DirName().Append(kPrefsFileName));
 }
 
+bool PolicyStore::EnsureLoadedOrCreated() {
+  if (load_result_ == NOT_LOADED)
+    load_result_ = LoadOrCreate() ? LOAD_SUCCEEDED : LOAD_FAILED;
+
+  return load_result_ == LOAD_SUCCEEDED;
+}
+
 bool PolicyStore::LoadOrCreate() {
   if (!base::PathExists(policy_path_)) {
+    // This is non-fatal, the policy may not have been stored yet.
+    LOG(WARNING) << "Policy file at " << policy_path_.value()
+                 << " does not exist. Continuing anyway.";
     cached_policy_data_.clear();
     return true;
   }
@@ -36,7 +46,8 @@ bool PolicyStore::LoadOrCreate() {
     return false;
   }
   if (!policy_.ParseFromString(polstr)) {
-    LOG(ERROR) << "Policy on disk could not be parsed and will be deleted!";
+    LOG(ERROR) << "Policy on disk at " << policy_path_.value()
+               << "could not be parsed and will be deleted!";
     base::DeleteFile(policy_path_, false);
     cached_policy_data_.clear();
     return false;

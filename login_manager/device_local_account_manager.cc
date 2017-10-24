@@ -24,8 +24,6 @@ namespace login_manager {
 // Device-local account state directory.
 constexpr base::FilePath::CharType DeviceLocalAccountManager::kPolicyDir[] =
     FILE_PATH_LITERAL("policy");
-constexpr base::FilePath::CharType
-    DeviceLocalAccountManager::kPolicyFileName[] = FILE_PATH_LITERAL("policy");
 
 DeviceLocalAccountManager::DeviceLocalAccountManager(
     const base::FilePath& state_dir, PolicyKey* owner_key)
@@ -100,24 +98,23 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
 
   // Lazily create and initialize the policy service instance.
   if (!entry->second) {
-    const base::FilePath policy_path =
-        state_dir_.AppendASCII(key).Append(kPolicyDir).Append(kPolicyFileName);
-    if (!base::CreateDirectory(policy_path.DirName())) {
-      LOG(ERROR) << "Failed to create directory for " << policy_path.value();
+    const base::FilePath policy_dir =
+        state_dir_.AppendASCII(key).Append(kPolicyDir);
+    if (!base::CreateDirectory(policy_dir)) {
+      LOG(ERROR) << "Failed to create device-local account policy directory "
+                 << policy_dir.value();
       return nullptr;
     }
 
-    auto store = std::make_unique<PolicyStore>(policy_path);
-    if (store->LoadOrCreate()) {
-      // This is non-fatal, the policy may not have been stored yet.
-      LOG(WARNING) << "Failed to load policy for device-local account "
-                   << account_id;
-    }
-    entry->second =
-        std::make_unique<PolicyService>(std::move(store), owner_key_);
+    entry->second = std::make_unique<PolicyService>(policy_dir, owner_key_);
   }
 
   return entry->second.get();
+}
+
+void DeviceLocalAccountManager::PersistAllPolicy() {
+  for (const auto& kv : policy_map_)
+    kv.second->PersistAllPolicy();
 }
 
 std::string DeviceLocalAccountManager::GetAccountKey(

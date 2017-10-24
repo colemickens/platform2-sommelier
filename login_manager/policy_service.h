@@ -7,14 +7,19 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include "login_manager/proto_bindings/policy_descriptor.pb.h"
 
 namespace enterprise_management {
 class PolicyFetchResponse;
@@ -28,11 +33,28 @@ class PolicyStore;
 // Whether policy signature must be checked in PolicyService::Store().
 enum class SignatureCheck { kEnabled, kDisabled };
 
-// Manages policy storage and retrieval from an underlying PolicyStore, thereby
+// Policies are namespaced by domain and component id.
+using PolicyNamespace = std::pair<PolicyDomain, std::string>;
+
+// Returns the namespace for Chrome policies.
+extern PolicyNamespace MakeChromePolicyNamespace();
+
+// Manages policy storage and retrieval from underlying PolicyStores, thereby
 // enforcing policy signatures against a given policy key. Also handles key
 // rotations in case a new policy payload comes with an updated policy key.
+// Policies are namespaced to allow storing different policy types (Chrome,
+// extensions) with the same service. There is one store per namespace.
 class PolicyService {
  public:
+  // File name of Chrome policy.
+  static const base::FilePath::CharType kChromePolicyFileName[];
+  // Prefix of the filename of extension policy. The full file name is suffixed
+  // by the extension id.
+  static const base::FilePath::CharType kExtensionsPolicyFileNamePrefix[];
+  // Prefix of the filename of sign-in extension policy. The full file name is
+  // suffixed by the extension id.
+  static const base::FilePath::CharType kSignInExtensionsPolicyFileNamePrefix[];
+
   // Flags determining what do to with new keys in Store().
   enum KeyInstallFlags {
     KEY_NONE = 0,         // No key changes allowed.
@@ -54,30 +76,42 @@ class PolicyService {
     virtual void OnKeyPersisted(bool success) = 0;
   };
 
-  PolicyService(std::unique_ptr<PolicyStore> policy_store,
-                PolicyKey* policy_key);
+  // Constructor. |policy_dir| is the directory where policy is stored.
+  // |policy_key| is the key for policy validation.
+  PolicyService(const base::FilePath& policy_dir, PolicyKey* policy_key);
   virtual ~PolicyService();
 
-  // Stores a new policy. If mandated by |signature_check|, verifies the
-  // passed-in policy blob against the policy key (if it exists), takes care of
-  // key rotation if required and persists everything to disk. The |key_flags|
-  // parameter determines what to do with a new key present in the policy, see
-  // KeyInstallFlags for possible values.
+  // Stores a new policy under the namespace |ns|. If mandated by
+  // |signature_check|, verifies the passed-in policy blob against the policy
+  // key (if it exists), takes care of key rotation if required and persists
+  // everything to disk. The |key_flags| parameter determines what to do with a
+  // new key present in the policy, see KeyInstallFlags for possible values.
   //
   // Returns false on immediate errors. Otherwise, returns true and reports the
   // status of the operation through |completion|.
-  virtual bool Store(const std::vector<uint8_t>& policy_blob,
+  virtual bool Store(const PolicyNamespace& ns,
+                     const std::vector<uint8_t>& policy_blob,
                      int key_flags,
                      SignatureCheck signature_check,
                      const Completion& completion);
 
-  // Retrieves the current policy blob (does not verify the signature). Returns
-  // true if successful, false otherwise.
-  virtual bool Retrieve(std::vector<uint8_t>* policy_blob);
+  // Retrieves the current policy blob (does not verify the signature) from the
+  // namespace |ns|. Returns true if successful, false otherwise.
+  virtual bool Retrieve(const PolicyNamespace& ns,
+                        std::vector<uint8_t>* policy_blob);
 
-  // Persists policy to disk synchronously and passes |completion| and the
-  // result to OnPolicyPersisted().
-  virtual void PersistPolicy(const Completion& completion);
+  // Persists policy of the namespace |ns| to disk synchronously and passes
+  // |completion| and the result to OnPolicyPersisted().
+  virtual void PersistPolicy(const PolicyNamespace& ns,
+                             const Completion& completion);
+
+  // Persists policy for all namespaces.
+  virtual void PersistAllPolicy();
+
+  // Sets the policystore for namespace |ns|. Deletes the previous store if it
+  // exists.
+  void SetStoreForTesting(const PolicyNamespace& ns,
+                          std::unique_ptr<PolicyStore> store);
 
   // Accessors for the delegate. PolicyService doesn't own the delegate, thus
   // client code must make sure that the delegate pointer stays valid.
@@ -87,7 +121,10 @@ class PolicyService {
  protected:
   friend class PolicyServiceTest;
 
-  PolicyStore* store() { return policy_store_.get(); }
+  // Returns a pointer to the policy store for the given namespace |ns|. Creates
+  // the store if it does not exist yet and makes sure it's loaded or created.
+  PolicyStore* GetOrCreateStore(const PolicyNamespace& ns);
+
   PolicyKey* key() { return policy_key_; }
   void set_policy_key_for_test(PolicyKey* key) { policy_key_ = key; }
 
@@ -95,12 +132,14 @@ class PolicyService {
   void PostPersistKeyTask();
 
   // Posts a task to run PersistPolicy().
-  void PostPersistPolicyTask(const Completion& completion);
+  void PostPersistPolicyTask(const PolicyNamespace& ns,
+                             const Completion& completion);
 
-  // Store a policy blob. This does the heavy lifting for Store(), making the
-  // signature checks, taking care of key changes and persisting policy and key
-  // data to disk.
-  bool StorePolicy(const enterprise_management::PolicyFetchResponse& policy,
+  // Store a policy blob under the namespace |ns|. This does the heavy lifting
+  // for Store(), making the signature checks, taking care of key changes and
+  // persisting policy and key data to disk.
+  bool StorePolicy(const PolicyNamespace& ns,
+                   const enterprise_management::PolicyFetchResponse& policy,
                    int key_flags,
                    SignatureCheck signature_check,
                    const Completion& completion);
@@ -121,8 +160,14 @@ class PolicyService {
   // OnKeyPersisted().
   void PersistKey();
 
+  // Returns the file path of the policy for the given namespace |ns|.
+  base::FilePath GetPolicyPath(const PolicyNamespace& ns);
+
  private:
-  std::unique_ptr<PolicyStore> policy_store_;
+  using PolicyStoreMap =
+      std::map<PolicyNamespace, std::unique_ptr<PolicyStore>>;
+  PolicyStoreMap policy_stores_;
+  base::FilePath policy_dir_;
   PolicyKey* policy_key_;
   Delegate* delegate_;
 

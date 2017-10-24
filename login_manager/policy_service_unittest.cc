@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -37,6 +39,13 @@ using ::testing::Sequence;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
+namespace {
+
+constexpr char kPolicyValue1[] = "fake_policy1";
+constexpr char kPolicyValue2[] = "fake_policy2";
+
+}  // namespace
+
 namespace login_manager {
 
 class PolicyServiceTest : public testing::Test {
@@ -46,8 +55,9 @@ class PolicyServiceTest : public testing::Test {
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_ = std::make_unique<PolicyService>(
-        std::unique_ptr<PolicyStore>(store_), &key_);
+    service_ = std::make_unique<PolicyService>(base::FilePath(), &key_);
+    service_->SetStoreForTesting(MakeChromePolicyNamespace(),
+                                 std::unique_ptr<PolicyStore>(store_));
     service_->set_delegate(&delegate_);
   }
 
@@ -112,14 +122,11 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
 
-    EXPECT_FALSE(
-        service_->Store(SerializeAsBlob(policy_proto_), flags, signature_check,
-                        MockPolicyService::CreateExpectFailureCallback()));
+    EXPECT_FALSE(service_->Store(
+        MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), flags,
+        signature_check, MockPolicyService::CreateExpectFailureCallback()));
     fake_loop_.Run();
   }
-
-  PolicyStore* store() { return service_->store(); }
-  PolicyKey* key() { return service_->key(); }
 
   static const int kAllKeyFlags;
   static const char kSignalSuccess[];
@@ -166,7 +173,8 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -180,7 +188,8 @@ TEST_F(PolicyServiceTest, StoreUnsigned) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kDisabled,
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kDisabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -246,7 +255,8 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -266,10 +276,10 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_),
-                      PolicyService::KEY_CLOBBER, SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_CLOBBER, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -286,7 +296,8 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -318,7 +329,8 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -338,10 +350,10 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_),
-                      PolicyService::KEY_CLOBBER, SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_CLOBBER, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -388,20 +400,158 @@ TEST_F(PolicyServiceTest, Retrieve) {
   EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto_));
 
   std::vector<uint8_t> out_policy_blob;
-  EXPECT_TRUE(service_->Retrieve(&out_policy_blob));
+  EXPECT_TRUE(
+      service_->Retrieve(MakeChromePolicyNamespace(), &out_policy_blob));
   EXPECT_EQ(SerializeAsBlob(policy_proto_), out_policy_blob);
 }
 
 TEST_F(PolicyServiceTest, PersistPolicySuccess) {
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
   EXPECT_CALL(delegate_, OnPolicyPersisted(true)).Times(1);
-  service_->PersistPolicy(PolicyService::Completion());
+  service_->PersistPolicy(MakeChromePolicyNamespace(),
+                          PolicyService::Completion());
 }
 
 TEST_F(PolicyServiceTest, PersistPolicyFailure) {
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(false));
   EXPECT_CALL(delegate_, OnPolicyPersisted(false)).Times(1);
-  service_->PersistPolicy(PolicyService::Completion());
+  service_->PersistPolicy(MakeChromePolicyNamespace(),
+                          PolicyService::Completion());
+}
+
+// Tests PolicyService with multiple namespace and a real PolicyStore.
+class PolicyServiceNamespaceTest : public testing::Test {
+ public:
+  PolicyServiceNamespaceTest() = default;
+
+  virtual void SetUp() {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    fake_loop_.SetAsCurrent();
+    service_ = std::make_unique<PolicyService>(temp_dir_.path(), nullptr);
+
+    const std::string extension_id = "abcdefghijklmnopabcdefghijklmnop";
+    ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
+    ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, extension_id);
+
+    policy_path1_ =
+        temp_dir_.path().Append(PolicyService::kChromePolicyFileName);
+    policy_path2_ = temp_dir_.path().Append(
+        PolicyService::kExtensionsPolicyFileNamePrefix + extension_id);
+  }
+
+ protected:
+  std::vector<uint8_t> PolicyValueToBlob(const std::string& policy_value) {
+    em::PolicyFetchResponse policy_response;
+    em::PolicyData policy_data;
+    policy_data.set_policy_value(policy_value);
+    EXPECT_TRUE(
+        policy_data.SerializeToString(policy_response.mutable_policy_data()));
+    return StringToBlob(policy_response.SerializeAsString());
+  }
+
+  std::string BlobToPolicyValue(const std::vector<uint8_t>& policy_blob) {
+    em::PolicyFetchResponse policy_response;
+    em::PolicyData policy_data;
+    EXPECT_TRUE(
+        policy_response.ParseFromArray(policy_blob.data(), policy_blob.size()));
+    EXPECT_TRUE(policy_data.ParseFromString(policy_response.policy_data()));
+    return policy_data.policy_value();
+  }
+
+  // Stores policy with value |policy_value| in the namespace |ns|.
+  void StorePolicy(const std::string& policy_value, const PolicyNamespace& ns) {
+    const std::vector<uint8_t> policy_blob = PolicyValueToBlob(policy_value);
+    EXPECT_TRUE(service_->Store(
+        ns, policy_blob, PolicyService::KEY_NONE, SignatureCheck::kDisabled,
+        MockPolicyService::CreateExpectSuccessCallback()));
+  }
+
+  // Retrieves the policy value from namespace |ns|. Returns an empty string on
+  // error.
+  std::string RetrievePolicy(const PolicyNamespace& ns) {
+    std::vector<uint8_t> policy_blob;
+    if (!service_->Retrieve(ns, &policy_blob))
+      return std::string();
+    return BlobToPolicyValue(policy_blob);
+  }
+
+  // Loads a policy value from disk and returns the policy value string. Returns
+  // an empty string on error.
+  std::string LoadPolicyFromFile(const base::FilePath& policy_path) {
+    std::string policy_blob;
+    if (!base::ReadFileToString(policy_path, &policy_blob))
+      return std::string();
+    return BlobToPolicyValue(StringToBlob(policy_blob));
+  }
+
+  // Saves a policy value to disk embedded in a PolicyFetchResponse.
+  void SavePolicyToFile(const base::FilePath& policy_path,
+                        const std::string& policy_value) {
+    EXPECT_TRUE(WriteBlobToFile(policy_path, PolicyValueToBlob(policy_value)));
+  }
+
+  brillo::FakeMessageLoop fake_loop_{nullptr};
+  std::unique_ptr<PolicyService> service_;
+  base::ScopedTempDir temp_dir_;
+  PolicyNamespace ns1_;
+  PolicyNamespace ns2_;
+  base::FilePath policy_path1_;
+  base::FilePath policy_path2_;
+};
+
+TEST_F(PolicyServiceNamespaceTest, Store) {
+  EXPECT_FALSE(base::PathExists(policy_path1_));
+  StorePolicy(kPolicyValue1, ns1_);
+  // The file is stored in a "background" task.
+  fake_loop_.Run();
+  EXPECT_TRUE(base::PathExists(policy_path1_));
+  std::string actual_value = LoadPolicyFromFile(policy_path1_);
+  EXPECT_EQ(kPolicyValue1, actual_value);
+}
+
+TEST_F(PolicyServiceNamespaceTest, StoreMultiple) {
+  EXPECT_FALSE(base::PathExists(policy_path1_));
+  StorePolicy(kPolicyValue1, ns1_);
+  fake_loop_.Run();
+  EXPECT_TRUE(base::PathExists(policy_path1_));
+
+  EXPECT_FALSE(base::PathExists(policy_path2_));
+  StorePolicy(kPolicyValue2, ns2_);
+  fake_loop_.Run();
+  EXPECT_TRUE(base::PathExists(policy_path2_));
+
+  std::string actual_value1 = LoadPolicyFromFile(policy_path1_);
+  std::string actual_value2 = LoadPolicyFromFile(policy_path2_);
+
+  EXPECT_EQ(kPolicyValue1, actual_value1);
+  EXPECT_EQ(kPolicyValue2, actual_value2);
+}
+
+TEST_F(PolicyServiceNamespaceTest, StoreRetrieveMultiple) {
+  EXPECT_FALSE(base::PathExists(policy_path1_));
+  EXPECT_FALSE(base::PathExists(policy_path2_));
+
+  StorePolicy(kPolicyValue1, ns1_);
+  StorePolicy(kPolicyValue2, ns2_);
+
+  std::string actual_value1 = RetrievePolicy(ns1_);
+  std::string actual_value2 = RetrievePolicy(ns2_);
+
+  EXPECT_EQ(kPolicyValue1, actual_value1);
+  EXPECT_EQ(kPolicyValue2, actual_value2);
+
+  // The files are stored in a "background" task.
+  fake_loop_.Run();
+
+  EXPECT_TRUE(base::PathExists(policy_path1_));
+  EXPECT_TRUE(base::PathExists(policy_path2_));
+}
+
+TEST_F(PolicyServiceNamespaceTest, LoadPolicyFromDisk) {
+  // Makes sure that policy is loaded from disk on first access.
+  SavePolicyToFile(policy_path1_, kPolicyValue1);
+  const std::string actual_value = RetrievePolicy(ns1_);
+  EXPECT_EQ(kPolicyValue1, actual_value);
 }
 
 }  // namespace login_manager

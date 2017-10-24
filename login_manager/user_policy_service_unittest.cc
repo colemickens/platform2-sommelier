@@ -8,10 +8,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/run_loop.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -24,6 +26,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/policy_service.h"
 #include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
@@ -38,6 +41,31 @@ using ::testing::StrictMock;
 
 namespace login_manager {
 
+namespace {
+
+PolicyNamespace MakeExtensionPolicyNamespace() {
+  return std::make_pair(POLICY_DOMAIN_EXTENSIONS,
+                        "ababababcdcdcdcdefefefefghghghgh");
+}
+
+void InitPolicyFetchResponse(const std::string& policy_value_str,
+                             em::PolicyData::AssociationState state,
+                             const std::string& signature,
+                             em::PolicyFetchResponse* policy_proto) {
+  em::PolicyData policy_data;
+  policy_data.set_state(state);
+  policy_data.set_policy_value(policy_value_str);
+  std::string policy_data_str;
+  ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
+
+  policy_proto->Clear();
+  policy_proto->set_policy_data(policy_data_str);
+  if (!signature.empty())
+    policy_proto->set_policy_data_signature(signature);
+}
+
+}  // namespace
+
 class UserPolicyServiceTest : public ::testing::Test {
  public:
   UserPolicyServiceTest() = default;
@@ -49,21 +77,17 @@ class UserPolicyServiceTest : public ::testing::Test {
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(std::unique_ptr<PolicyStore>(store_),
+    service_.reset(new UserPolicyService(tmpdir_.path(),
                                          std::unique_ptr<PolicyKey>(key_),
                                          key_copy_file_, &system_utils_));
+    service_->SetStoreForTesting(MakeChromePolicyNamespace(),
+                                 std::unique_ptr<PolicyStore>(store_));
   }
 
   void InitPolicy(em::PolicyData::AssociationState state,
                   const std::string& signature) {
-    em::PolicyData policy_data;
-    policy_data.set_state(state);
-
-    policy_proto_.Clear();
-    ASSERT_TRUE(
-        policy_data.SerializeToString(policy_proto_.mutable_policy_data()));
-    if (!signature.empty())
-      policy_proto_.set_policy_data_signature(signature);
+    ASSERT_NO_FATAL_FAILURE(InitPolicyFetchResponse(
+        "" /* policy_value */, state, signature, &policy_proto_));
   }
 
   void ExpectStorePolicy(const Sequence& sequence) {
@@ -101,10 +125,10 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   EXPECT_CALL(*key_, Verify(_, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 }
 
@@ -115,10 +139,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   EXPECT_CALL(*key_, Verify(_, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 }
 
@@ -138,10 +162,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
   EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 
   EXPECT_TRUE(base::PathExists(key_copy_file_));
@@ -159,10 +183,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
-  EXPECT_TRUE(
-      service_->Store(SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
@@ -173,10 +197,10 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InSequence s;
   EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(
-      service_->Store(SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      SignatureCheck::kEnabled,
-                      MockPolicyService::CreateExpectFailureCallback()));
+  EXPECT_FALSE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectFailureCallback()));
 
   fake_loop_.Run();
 }
@@ -199,6 +223,44 @@ TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
   service_->PersistKeyCopy();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
+}
+
+TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
+  // Set up store for extension policy.
+  auto extension_store = new StrictMock<MockPolicyStore>;
+  service_->SetStoreForTesting(MakeExtensionPolicyNamespace(),
+                               base::WrapUnique(extension_store));
+
+  // Set up user policy.
+  InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
+
+  // Set up extension policy.
+  em::PolicyFetchResponse extension_policy_proto;
+  ASSERT_NO_FATAL_FAILURE(
+      InitPolicyFetchResponse("fake_extension_policy", em::PolicyData::ACTIVE,
+                              fake_signature_, &extension_policy_proto));
+
+  // Store user policy.
+  EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)));
+  EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
+  fake_loop_.Run();
+  testing::Mock::VerifyAndClearExpectations(&key_);
+  testing::Mock::VerifyAndClearExpectations(store_);
+
+  // Store extension policy.
+  EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*extension_store, Set(ProtoEq(extension_policy_proto)));
+  EXPECT_CALL(*extension_store, Persist()).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Store(
+      MakeExtensionPolicyNamespace(), SerializeAsBlob(extension_policy_proto),
+      PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
+  fake_loop_.Run();
 }
 
 }  // namespace login_manager

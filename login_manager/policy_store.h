@@ -31,9 +31,9 @@ class PolicyStore {
 
   virtual bool DefunctPrefsFilePresent();
 
-  // Load the signed policy off of disk into |policy_|.
-  // Returns true unless there is a policy on disk and loading it fails.
-  virtual bool LoadOrCreate();
+  // Call LoadOrCreate() if it hasn't been called already. Returns the
+  // (possibly cached) result from the LoadOrCreate() call.
+  virtual bool EnsureLoadedOrCreated();
 
   virtual const enterprise_management::PolicyFetchResponse& Get() const;
 
@@ -44,8 +44,14 @@ class PolicyStore {
   // Clobber the stored policy with new data.
   virtual void Set(const enterprise_management::PolicyFetchResponse& policy);
 
+  const base::FilePath policy_path() const { return policy_path_; }
+
  private:
   static const char kPrefsFileName[];
+
+  // Load the signed policy off of disk into |policy_|. Returns true unless
+  // there is a policy on disk and loading it fails.
+  bool LoadOrCreate();
 
   // The cached policy data from |policy_path_|. It is kept up to date whenever
   // the contents in the file are updated by this object.
@@ -53,6 +59,9 @@ class PolicyStore {
 
   enterprise_management::PolicyFetchResponse policy_;
   const base::FilePath policy_path_;
+
+  enum LoadResult { NOT_LOADED, LOAD_SUCCEEDED, LOAD_FAILED };
+  LoadResult load_result_ = NOT_LOADED;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyStore);
 };

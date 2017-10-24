@@ -25,12 +25,13 @@ class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
   ~MockPolicyService() override;
-  MOCK_METHOD4(Store,
-               bool(const std::vector<uint8_t>&,
+  MOCK_METHOD5(Store,
+               bool(const PolicyNamespace&,
+                    const std::vector<uint8_t>&,
                     int,
                     SignatureCheck,
                     const Completion&));
-  MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
+  MOCK_METHOD2(Retrieve, bool(const PolicyNamespace&, std::vector<uint8_t>*));
 
   static Completion CreateDoNothing() {
     return base::Bind(&MockPolicyService::DoNothingWithError);
