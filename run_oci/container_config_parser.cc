@@ -6,6 +6,7 @@
 
 #include <linux/securebits.h>
 #include <sys/capability.h>
+#include <sys/mount.h>
 #include <sys/resource.h>
 #include <unistd.h>
 
@@ -551,6 +552,25 @@ bool ParseSeccompInfo(const base::DictionaryValue& seccomp_dict,
   return true;
 }
 
+constexpr std::pair<const char*, int> kMountPropagationMapping[] = {
+    {"rprivate", MS_PRIVATE | MS_REC}, {"private", MS_PRIVATE},
+    {"rslave", MS_SLAVE | MS_REC},     {"slave", MS_SLAVE},
+    {"rshared", MS_SHARED | MS_REC},   {"shared", MS_SHARED},
+    {"", MS_SLAVE | MS_REC},  // Default value.
+};
+
+bool ParseMountPropagationFlags(const std::string& propagation,
+                                int* propagation_flags_out) {
+  for (const auto& entry : kMountPropagationMapping) {
+    if (propagation == entry.first) {
+      *propagation_flags_out = entry.second;
+      return true;
+    }
+  }
+  LOG(ERROR) << "Unrecognized mount propagation flags: " << propagation;
+  return false;
+}
+
 constexpr std::pair<const char*, uint64_t> kSecurebitsMapping[] = {
 #define SECUREBIT_MAP_ENTRY(secbit) \
   { #secbit, SECBIT_##secbit }
@@ -634,6 +654,15 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
   if (linux_dict->GetDictionary("seccomp", &seccomp_dict)) {
     if (!ParseSeccompInfo(*seccomp_dict, &config_out->linux_config.seccomp))
       return false;
+  }
+
+  std::string rootfs_propagation_string;
+  if (!linux_dict->GetString("rootfsPropagation", &rootfs_propagation_string))
+    rootfs_propagation_string = std::string();  // Optional
+  if (!ParseMountPropagationFlags(
+          rootfs_propagation_string,
+          &config_out->linux_config.rootfsPropagation)) {
+    return false;
   }
 
   std::string cgroups_path_string;

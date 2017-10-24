@@ -182,6 +182,7 @@ const char kBasicJsonData[] = R"json(
             ]
         },
         "linux": {
+            "rootfsPropagation": "rprivate",
             "altSyscall": "android",
             "cgroupsPath": "/session_manager_containers",
             "skipSecurebits": [
@@ -448,6 +449,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->mounts[0].options.size(), 0);
   EXPECT_EQ(basic_config->mounts[1].destination, base::FilePath("/dev"));
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
+  EXPECT_EQ(MS_PRIVATE | MS_REC, basic_config->linux_config.rootfsPropagation);
   EXPECT_EQ("android", basic_config->linux_config.altSyscall);
   EXPECT_EQ(base::FilePath("/session_manager_containers"),
             basic_config->linux_config.cgroupsPath);

@@ -600,6 +600,17 @@ int RunOci(const base::FilePath& bundle_dir,
     minijail_namespace_vfs(jail.get());
     minijail_skip_remount_private(jail.get());
     minijail_enter(jail.get());
+
+    DCHECK_EQ(oci_config->linux_config.rootfsPropagation &
+                  ~(MS_SHARED | MS_SLAVE | MS_PRIVATE | MS_UNBINDABLE | MS_REC),
+              0);
+    // TODO(lhchavez): Also support rootfsPropagation for the
+    // non-intermediate-namespace case.
+    if (mount(nullptr, "/", nullptr, oci_config->linux_config.rootfsPropagation,
+              nullptr) == -1) {
+      PLOG(ERROR) << "Failed to set the root propagation flags";
+      return -1;
+    }
   }
 
   libcontainer::Config config;
