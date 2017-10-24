@@ -1162,6 +1162,15 @@ bool Service::Compare(Manager* manager,
   return a->serial_number_ < b->serial_number_;
 }
 
+// static
+string Service::SanitizeStorageIdentifier(string identifier) {
+  std::replace_if(identifier.begin(),
+                  identifier.end(),
+                  [](unsigned char c) { return !std::isalnum(c); },
+                  '_');
+  return identifier;
+}
+
 const ProfileRefPtr& Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr& p) { profile_ = p; }

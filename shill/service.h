@@ -452,6 +452,11 @@ class Service : public base::RefCounted<Service> {
                       const std::vector<Technology::Identifier>& tech_order,
                       const char** reason);
 
+  // Returns a sanitized version of |identifier| for use as a service storage
+  // identifier by replacing any character in |identifier| that is not
+  // alphanumeric or '_' with '_'.
+  static std::string SanitizeStorageIdentifier(std::string identifier);
+
   // These are defined in service.cc so that we don't have to include profile.h
   // TODO(cmasone): right now, these are here only so that we can get the
   // profile name as a property.  Can we store just the name, and then handle
@@ -569,12 +574,6 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnBusy[];
 
   virtual ~Service();
-
-  // Returns true if a character is allowed to be in a service storage id.
-  static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
-
-  // Returns true if a character is disallowed to be in a service storage id.
-  static bool IllegalChar(char a) { return !LegalChar(a); }
 
   bool GetVisibleProperty(Error* error);
 

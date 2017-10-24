@@ -2297,4 +2297,18 @@ TEST_F(ServiceTest, Compare) {
                              kDoNotCompareConnectivityState));
 }
 
+TEST_F(ServiceTest, SanitizeStorageIdentifier) {
+  EXPECT_EQ("", Service::SanitizeStorageIdentifier(""));
+
+  for (int c = 0; c < 256; ++c) {
+    std::string identifier(1, c);
+    std::string sanitized_identifier = std::isalnum(c) ? identifier : "_";
+    EXPECT_EQ(sanitized_identifier,
+              Service::SanitizeStorageIdentifier(identifier));
+  }
+
+  EXPECT_EQ("service_1_2_3_2_Dummy_Net_",
+            Service::SanitizeStorageIdentifier("service_1-2:3.2_Dummy^Net!"));
+}
+
 }  // namespace shill

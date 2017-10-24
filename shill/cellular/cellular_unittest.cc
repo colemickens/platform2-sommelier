@@ -1071,10 +1071,6 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorCountry);
 }
 
-static bool IllegalChar(char a) {
-  return !(isalnum(a) || a == '_');
-}
-
 TEST_F(CellularTest, StorageIdentifier) {
   // Test that the storage identifier name used by the service is sensible under
   // different scenarios w.r.t. information about the mobile network operator.
@@ -1085,10 +1081,8 @@ TEST_F(CellularTest, StorageIdentifier) {
   CHECK(mock_serving_operator_info_);
 
   // See cellular_service.cc
-  string prefix = string(kTypeCellular) + "_" +
-                  string(kTestDeviceAddress) + "_";
-  // Service replaces ':' with '_'
-  std::replace_if(prefix.begin(), prefix.end(), &IllegalChar, '_');
+  string prefix = Service::SanitizeStorageIdentifier(
+      string(kTypeCellular) + "_" + string(kTestDeviceAddress) + "_");
   const string kUuidHomeProvider = "uuidHomeProvider";
   const string kUuidServingOperator = "uuidServingOperator";
   const string kSimIdentifier = "12345123451234512345";
