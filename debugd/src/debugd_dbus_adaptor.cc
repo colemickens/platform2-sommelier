@@ -356,7 +356,7 @@ bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
   return true;
 }
 
-std::string DebugdDBusAdaptor::SwapEnable(uint32_t size, bool change_now) {
+std::string DebugdDBusAdaptor::SwapEnable(int32_t size, bool change_now) {
   return swap_tool_->SwapEnable(size, change_now);
 }
 
@@ -374,7 +374,7 @@ std::string DebugdDBusAdaptor::SwapStatus() {
 
 std::string DebugdDBusAdaptor::SwapSetParameter(
     const std::string& parameter_name,
-    uint32_t parameter_value) {
+    int32_t parameter_value) {
   return swap_tool_->SwapSetParameter(parameter_name, parameter_value);
 }
 

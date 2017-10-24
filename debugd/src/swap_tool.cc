@@ -27,11 +27,11 @@ std::string RunSwapHelper(const ProcessWithOutput::ArgList& arguments,
 
 }  // namespace
 
-std::string SwapTool::SwapEnable(uint32_t size, bool change_now) const {
+std::string SwapTool::SwapEnable(int32_t size, bool change_now) const {
   int result;
   std::string output, buf;
 
-  buf = base::StringPrintf("%u", size);
+  buf = base::StringPrintf("%d", size);
   output = RunSwapHelper({"enable", buf}, &result);
   if (result != EXIT_SUCCESS)
     return output;
@@ -78,11 +78,11 @@ std::string SwapTool::SwapStatus() const {
 }
 
 std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
-                                       uint32_t parameter_value) const {
+                                       int32_t parameter_value) const {
   int result;
   std::string buf;
 
-  buf = base::StringPrintf("%u", parameter_value);
+  buf = base::StringPrintf("%d", parameter_value);
   return RunSwapHelper({"set_parameter", parameter_name, buf}, &result);
 }
 

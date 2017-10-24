@@ -147,12 +147,12 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool EnableDevCoredumpUpload(brillo::ErrorPtr* error) override;
   bool DisableDevCoredumpUpload(brillo::ErrorPtr* error) override;
   std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores) override;
-  std::string SwapEnable(uint32_t size, bool change_now) override;
+  std::string SwapEnable(int32_t size, bool change_now) override;
   std::string SwapDisable(bool change_now) override;
   std::string SwapStartStop(bool on) override;
   std::string SwapStatus() override;
   std::string SwapSetParameter(const std::string& parameter_name,
-                               uint32_t parameter_value) override;
+                               int32_t parameter_value) override;
   std::string SetU2fFlags(const std::string& flags) override;
   void ContainerStarted() override;
   void ContainerStopped() override;

@@ -443,25 +443,28 @@ USAGE_swap='[ enable <size (MB)> | disable | start | stop | status
  | set_margin <discard threshold (MB)> | set_extra_free <amount (MB)>
  | set_min_filelist <amount (MB)> ]'
 HELP_swap='
-  Manage the system swap file.
+  Change kernel memory manager parameters
+  (FOR EXPERIMENTS ONLY --- USE AT OWN RISK)
 
-  The enable/disable options update the config file settings and will take
-  effect at the next boot.
+  "swap status" (also "swap" with no arguments) shows the values of various
+  memory manager parameters and related statistics.
 
-  The start/stop options will turn swap on/off immediately, but leave the config
-  file settings alone (so next boot will revert back).
+  The enable/disable options enable or disable compressed swap (zram)
+  persistently across reboots, and take effect at the next boot.  The enable
+  option takes the size of the swap area (in megabytes before compression).
+  If the size is omitted, the factory default is chosen.
 
-  Warning: If swap is heavily used, then turning it off might cause the system
-  to hang while the kernel tries to release pages and free up memory.  In some
-  extreme situations, this can take a long time to finish.
+  The start/stop options turn swap on/off immediately, but leave the settings
+  alone, so that the original behavior is restored at the next boot.
 
-  The set_margin option changes the low-memory warning margin immediately and
-  persistently to the chosen amount (in MiB).  A value of 0, or the string
-  "default", restore the default behavior.  The current value is shown with
-  "swap status".
+  WARNING: if swap is in use, turning it off can cause the system to
+  temporarily hang while the kernel frees up memory.  This can take
+  a long time to finish.
 
-  Similarly, the set_min_filelist and set_extra_free change obscure kernel
-  parameters (which are similarly named) in the same way.
+  The set_margin, set_min_filelist, and set_extra_free options change
+  kernel parameters with similar names.  The change is immediate and
+  persistent across reboots.  Using the string "default" as the value
+  restores the factory default behavior.
 '
 cmd_swap() (
   local cmd="${1:-}"
@@ -496,11 +499,14 @@ cmd_swap() (
   # Then actually process the request.
   case "${cmd}" in
   "enable")
-    local size="${1:-}"
-    if [ "${size}" ] && ! is_numeric "${size}"; then
+    local size="${1:-default}"
+    if [ "${size}" = "default" ]; then
+      size=-1
+    elif ! is_numeric "${size}"; then
       help "'${size}' is not a valid number"
+      return 1
     fi
-    debugd SwapEnable "uint32:${size}" "boolean:false"
+    debugd SwapEnable "int32:${size}" "boolean:false"
     ;;
   "disable")
     debugd SwapDisable "boolean:false"
@@ -514,13 +520,13 @@ cmd_swap() (
   "set_margin"|"set_extra_free"|"set_min_filelist")
     local amount="$1"
     if [ "${amount}" = "default" ]; then
-      amount=0
-    fi
-    if ! is_numeric "${amount}"; then
-      help "${cmd} takes an integer argument"
+      # Special value requesting use of the factory default value.
+      amount=-1
+    elif ! is_numeric "${amount}"; then
+      help "${cmd} takes a positive integer argument"
       return 1
     fi
-    debugd SwapSetParameter "string:${cmd#set_}" "uint32:${amount}"
+    debugd SwapSetParameter "string:${cmd#set_}" "int32:${amount}"
     ;;
   "status"|"")
     debugd SwapStatus

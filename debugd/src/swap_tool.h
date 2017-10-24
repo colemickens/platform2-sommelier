@@ -16,12 +16,12 @@ class SwapTool {
   SwapTool() = default;
   ~SwapTool() = default;
 
-  std::string SwapEnable(uint32_t size, bool change_now) const;
+  std::string SwapEnable(int32_t size, bool change_now) const;
   std::string SwapDisable(bool change_now) const;
   std::string SwapStartStop(bool on) const;
   std::string SwapStatus() const;
   std::string SwapSetParameter(const std::string& parameter_name,
-                               uint32_t parameter_value) const;
+                               int32_t parameter_value) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);

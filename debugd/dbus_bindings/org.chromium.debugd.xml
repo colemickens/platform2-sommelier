@@ -747,7 +747,7 @@
       <arg name="status" type="s" direction="out">
         Free-form text reporting status.
       </arg>
-      <arg name="size" type="u" direction="in">
+      <arg name="size" type="i" direction="in">
         <tp:docstring>
           Size (in MB) for the swap file.
         </tp:docstring>
@@ -808,7 +808,7 @@
           The name of the swap subcommand, usually set_something.
         </tp:docstring>
       </arg>
-      <arg name="value" type="u" direction="in">
+      <arg name="value" type="i" direction="in">
         <tp:docstring>
           The unsigned integer value that some parameter is set to.
         </tp:docstring>
