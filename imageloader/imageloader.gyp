@@ -38,23 +38,6 @@
       'includes': ['../../platform2/common-mk/generate-dbus-adaptors.gypi'],
     },
     {
-      'target_name': 'imageloader-proxies',
-      'type': 'none',
-      'actions': [
-        {
-          'action_name': 'imageloader-dbus-client',
-          'variables': {
-        'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
-        'proxy_output_file': 'include/dbus_adaptors/dbus-proxies.h',
-          },
-          'sources': [
-        'dbus_adaptors/org.chromium.ImageLoaderInterface.xml',
-          ],
-          'includes': ['../../platform2/common-mk/generate-dbus-proxies.gypi'],
-        },
-      ],
-    },
-    {
       'target_name': 'libimageloader_static',
       'type': 'static_library',
       'dependencies': [
