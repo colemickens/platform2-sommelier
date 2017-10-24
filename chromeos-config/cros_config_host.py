@@ -43,14 +43,13 @@ def GetProperty(models, path, prop):
     print(config_prop.value if config_prop else '')
 
 
-def GetFirmwareUris(models):
+def GetFirmwareUris(config):
   """Prints space-separated firmware uris for all models in models.
 
   Args:
-    models: List of CrosConfig.Model for which to print firmware URIs
+    config: A CrosConfig instance
   """
-  for model in models or []:
-    print(' '.join(model.GetFirmwareUris()))
+  print(' '.join(config.GetFirmwareUris()))
 
 def GetTouchFirmwareFiles(config):
   """Print a list of touch firmware files across all models
@@ -259,11 +258,7 @@ def main(argv):
   elif opts.subcommand == 'get-touch-firmware-files':
     GetTouchFirmwareFiles(config)
   elif opts.subcommand == 'get-firmware-uris':
-    if not opts.model and not opts.all_models:
-      print('You must specify --model or --all-models for this command. See '
-            '--help for more info.')
-      return
-    GetFirmwareUris(models)
+    GetFirmwareUris(config)
   elif opts.subcommand == 'get-audio-files':
     GetAudioFiles(config)
   elif opts.subcommand == 'get-firmware-build-targets':

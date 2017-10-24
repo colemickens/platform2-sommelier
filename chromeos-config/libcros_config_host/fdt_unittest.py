@@ -48,7 +48,7 @@ class FdtLibTest(unittest.TestCase):
   def testGetStringProperty(self):
     firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
     bcs_overlay = firmware.props['bcs-overlay'].value
-    self.assertEqual(bcs_overlay, 'overlay-reef-private')
+    self.assertEqual(bcs_overlay, 'overlay-pyro-private')
 
   def testLookupPhandle(self):
     firmware = self.test_fdt.GetNode('/chromeos/models/caroline/firmware')

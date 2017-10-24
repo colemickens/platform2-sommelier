@@ -53,7 +53,7 @@ TEST(CrosConfigTest, GetStringNonRoot) {
   bool success = base::GetAppOutput(
       GetCrosConfigCommand({"/firmware", "bcs-overlay"}), &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("overlay-reef-private", val);
+  EXPECT_EQ("overlay-pyro-private", val);
 }
 
 TEST(CrosConfigTest, GetAbsPath) {

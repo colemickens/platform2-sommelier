@@ -70,7 +70,7 @@ TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
   InitConfig();
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/firmware", "bcs-overlay", &val));
-  ASSERT_EQ("overlay-reef-private", val);
+  ASSERT_EQ("overlay-pyro-private", val);
 }
 
 TEST_F(CrosConfigTest, CheckEmptyPathError) {

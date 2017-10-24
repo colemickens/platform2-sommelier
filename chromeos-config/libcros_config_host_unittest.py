@@ -21,20 +21,27 @@ from libcros_config_host.libcros_config_host import TouchFile
 DTS_FILE = 'libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
           'whitetip2', ]
-PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
-               'overlay-reef-private/chromeos-base/chromeos-firmware-pyro/')
+PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
+               'overlay-pyro-private/chromeos-base/chromeos-firmware-pyro/')
+REEF_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
+               'overlay-reef-private/chromeos-base/chromeos-firmware-reef/')
 CAROLINE_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
                    'overlay-reef-private/chromeos-base/'
                    'chromeos-firmware-caroline/')
-PYRO_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
-                       'Reef_PD.9042.87.1.tbz2',
+REEF_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
                        'Reef.9042.87.1.tbz2',
                        'Reef.9042.110.0.tbz2']
+PYRO_FIRMWARE_FILES = ['Pyro_EC.9042.87.1.tbz2',
+                       'Pyro_PD.9042.87.1.tbz2',
+                       'Pyro.9042.87.1.tbz2',
+                       'Pyro.9042.110.0.tbz2']
 CAROLINE_FIRMWARE_FILES = ['Caroline_EC.2017.21.1.tbz2',
                            'Caroline_PD.2017.21.1.tbz2',
                            'Caroline.2017.21.1.tbz2',
                            'Caroline.2017.41.0.tbz2']
-
+BROKEN_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
+                 'overlay-reef-private/chromeos-base/chromeos-firmware-broken/')
+BROKEN_FIRMWARE_FILES = ['Reef.9042.87.1.tbz2']
 
 # Use this to suppress stdout/stderr output:
 # with capture_sys_output() as (stdout, stderr)
@@ -91,7 +98,7 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
     ec_image = pyro.ChildPropertyFromPath('/firmware', 'ec-image')
-    self.assertEqual(ec_image.value, 'bcs://Reef_EC.9042.87.1.tbz2')
+    self.assertEqual(ec_image.value, 'bcs://Pyro_EC.9042.87.1.tbz2')
 
   def testBadChildPropertyFromPath(self):
     config = CrosConfig(self.file)
@@ -120,9 +127,14 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testGetSharedFirmwareUris(self):
     config = CrosConfig(self.file)
-    firmware_uris = config.models['caroline'].GetFirmwareUris()
-    self.assertSequenceEqual(firmware_uris, [CAROLINE_BUCKET + fname for
-                                             fname in CAROLINE_FIRMWARE_FILES])
+    firmware_uris = config.GetFirmwareUris()
+    expected = sorted(
+        [CAROLINE_BUCKET + fname for fname in CAROLINE_FIRMWARE_FILES] +
+        [PYRO_BUCKET + fname for fname in PYRO_FIRMWARE_FILES] +
+        [REEF_BUCKET + fname for fname in REEF_FIRMWARE_FILES] +
+        [BROKEN_BUCKET + fname for fname in BROKEN_FIRMWARE_FILES]
+        )
+    self.assertSequenceEqual(firmware_uris, expected)
 
   def testGetTouchFirmwareFiles(self):
     config = CrosConfig(self.file)

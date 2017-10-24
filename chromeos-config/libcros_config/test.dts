@@ -106,11 +106,11 @@
 			};
 		};
 		firmware {
-			bcs-overlay = "overlay-reef-private";
-			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
-			pd-image = "bcs://Reef_PD.9042.87.1.tbz2";
-			main-image = "bcs://Reef.9042.87.1.tbz2";
-			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
+			bcs-overlay = "overlay-pyro-private";
+			ec-image = "bcs://Pyro_EC.9042.87.1.tbz2";
+			pd-image = "bcs://Pyro_PD.9042.87.1.tbz2";
+			main-image = "bcs://Pyro.9042.87.1.tbz2";
+			main-rw-image = "bcs://Pyro.9042.110.0.tbz2";
 			build-targets {
 				coreboot = "pyro";
 				ec = "pyro";

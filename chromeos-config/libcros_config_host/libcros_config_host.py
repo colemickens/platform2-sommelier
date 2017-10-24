@@ -112,6 +112,20 @@ class CrosConfig(object):
         for n in self._fdt.GetNode('/chromeos/models').subnodes)
     self.validator = validate_config.GetValidator()
 
+  def GetFirmwareUris(self):
+    """Returns a list of (string) firmware URIs.
+
+    Generates and returns a list of firmeware URIs for all model. These URIs
+    can be used to pull down remote firmware packages.
+
+    Returns:
+      A list of (string) full firmware URIs, or an empty list on failure.
+    """
+    uris = set()
+    for model in self.models.values():
+      uris.update(set(model.GetFirmwareUris()))
+    return sorted(list(uris))
+
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files for all models
 
@@ -413,7 +427,12 @@ class CrosConfig(object):
       firmware = self.ChildNodeFromPath('/firmware')
       if not firmware:
         return []
+      shared = firmware.FollowPhandle('shares')
       props = self.GetMergedProperties(firmware, 'shares')
+      if shared:
+        base_model = shared.name
+      else:
+        base_model = self.name
 
       if 'bcs-overlay' not in props:
         return []
@@ -424,8 +443,9 @@ class CrosConfig(object):
       # Strip "bcs://" from bcs_from images (to get the file names only)
       file_names = [p[6:] for p in valid_images]
       uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
-                    'chromeos-base/chromeos-firmware-{model}/{fname}')
-      return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname)
+                    'chromeos-base/chromeos-firmware-{base_model}/{fname}')
+      return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname,
+                                base_model=base_model)
               for fname in file_names]
 
     @classmethod
