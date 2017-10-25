@@ -667,28 +667,6 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ = new CellularService(modem_info_, this);
   capability_->OnServiceCreated();
-
-  // Storage identifier must be set only once, and before registering the
-  // service with the manager, since we key off of this identifier to
-  // determine the profile to load.
-  string service_id;
-  if (!home_provider_info_->uuid().empty()) {
-    service_id = home_provider_info_->uuid();
-  } else if (!serving_operator_info_->uuid().empty()) {
-    service_id = serving_operator_info_->uuid();
-  } else if (!sim_identifier().empty()) {
-    service_id = sim_identifier();
-  } else if (!meid().empty()) {
-    service_id = meid();
-  }
-
-  if (!service_id.empty()) {
-    string storage_id = base::StringPrintf(
-        "%s_%s_%s",
-        kTypeCellular, address().c_str(), service_id.c_str());
-    service()->SetStorageIdentifier(storage_id);
-  }
-
   manager()->RegisterService(service_);
 
   // We might have missed a property update because the service wasn't created

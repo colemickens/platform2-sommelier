@@ -127,7 +127,6 @@ class CellularCapabilityClassic : public CellularCapability {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetProxy);
-  FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);

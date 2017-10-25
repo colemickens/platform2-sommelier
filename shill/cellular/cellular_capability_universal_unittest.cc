@@ -126,7 +126,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   void CreateService() {
     // The following constants are never directly accessed by the tests.
-    const char kStorageIdentifier[] = "default_test_storage_id";
     const char kFriendlyServiceName[] = "default_test_service_name";
     const char kOperatorCode[] = "10010";
     const char kOperatorName[] = "default_test_operator_name";
@@ -134,7 +133,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
     // Simulate all the side-effects of Cellular::CreateService
     auto service = new CellularService(&modem_info_, cellular_);
-    service->SetStorageIdentifier(kStorageIdentifier);
     service->SetFriendlyName(kFriendlyServiceName);
 
     Stringmap serving_operator;

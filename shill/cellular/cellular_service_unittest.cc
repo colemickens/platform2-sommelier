@@ -170,14 +170,6 @@ TEST_F(CellularServiceTest, SetRoamingState) {
   service_->SetRoamingState(kRoamingStateHome);
 }
 
-TEST_F(CellularServiceTest, SetStorageIdentifier) {
-  EXPECT_EQ(string(kTypeCellular) + "_" +
-            kAddress + "_" + GetFriendlyName(),
-            service_->GetStorageIdentifier());
-  service_->SetStorageIdentifier("a b c");
-  EXPECT_EQ("a_b_c", service_->GetStorageIdentifier());
-}
-
 TEST_F(CellularServiceTest, SetServingOperator) {
   static const char kCode[] = "123456";
   static const char kName[] = "Some Cellular Operator";

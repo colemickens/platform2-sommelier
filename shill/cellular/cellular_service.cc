@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -105,8 +106,25 @@ CellularService::CellularService(ModemInfo* modem_info,
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
-  SetStorageIdentifier(string(kTypeCellular) + "_" +
-                       cellular_->address() + "_" + friendly_name());
+
+  string service_id;
+  if (!device->home_provider_info()->uuid().empty()) {
+    service_id = device->home_provider_info()->uuid();
+  } else if (!device->serving_operator_info()->uuid().empty()) {
+    service_id = device->serving_operator_info()->uuid();
+  } else if (!device->sim_identifier().empty()) {
+    service_id = device->sim_identifier();
+  } else if (!device->meid().empty()) {
+    service_id = device->meid();
+  } else {
+    service_id = friendly_name();
+  }
+  storage_identifier_ =
+      SanitizeStorageIdentifier(base::StringPrintf("%s_%s_%s",
+                                                   kTypeCellular,
+                                                   device->address().c_str(),
+                                                   service_id.c_str()));
+
   // Assume we are not performing any out-of-credits detection.
   // The capability can reinitialize with the appropriate type later.
   InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);
@@ -396,11 +414,6 @@ void CellularService::CompleteCellularActivation(Error* error) {
 void CellularService::SetState(ConnectState new_state) {
   out_of_credits_detector_->NotifyServiceStateChanged(state(), new_state);
   Service::SetState(new_state);
-}
-
-void CellularService::SetStorageIdentifier(const string& identifier) {
-  SLOG(this, 3) << __func__ << ": " << identifier;
-  storage_identifier_ = SanitizeStorageIdentifier(identifier);
 }
 
 string CellularService::GetStorageIdentifier() const {

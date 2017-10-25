@@ -59,7 +59,6 @@ class CellularService : public Service {
   void SetState(ConnectState new_state) override;
 
   std::string GetStorageIdentifier() const override;
-  void SetStorageIdentifier(const std::string& identifier);
 
   const CellularRefPtr& cellular() const { return cellular_; }
 
