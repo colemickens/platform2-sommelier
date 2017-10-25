@@ -37,7 +37,11 @@ NAMESPACE_DECLARATION {
 #define RESULT_DATA_CAP 73728
 
 
-Camera3Request::Camera3Request(): mCallback(nullptr), mRequestId(0), mCameraId(-1)
+Camera3Request::Camera3Request():
+        mCallback(nullptr),
+        mRequestId(0),
+        mCameraId(-1),
+        mSeqenceId(-1)
 {
     LOG1("@%s Creating request with pointer %p", __FUNCTION__, this);
     deInit();

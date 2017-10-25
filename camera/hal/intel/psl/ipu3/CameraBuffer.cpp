@@ -47,6 +47,8 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mInit(false),
                                 mLocked(false),
                                 mType(BUF_TYPE_HANDLE),
+                                mGbmBufferManager(nullptr),
+                                mHandlePtr(nullptr),
                                 mOwner(nullptr),
                                 mDataPtr(nullptr),
                                 mRequestID(0),
@@ -56,6 +58,7 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
     LOG1("%s default constructor for buf %p", __FUNCTION__, this);
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
+    CLEAR(mHandle);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 
@@ -159,6 +162,7 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
     mInit = true;
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
+    CLEAR(mHandle);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 
