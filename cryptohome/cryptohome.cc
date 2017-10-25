@@ -395,7 +395,7 @@ void ParseBaseReply(GArray* reply_ary, cryptohome::BaseReply* reply) {
     return;
   if (!reply->ParseFromArray(reply_ary->data, reply_ary->len)) {
     printf("Failed to parse reply.\n");
-    exit(-1);
+    exit(1);
   }
   reply->PrintDebugString();
 }
@@ -497,7 +497,7 @@ class ClientLoop {
                   GError* error) {
     if (error && error->message) {
       printf("Call error: %s\n", error->message);
-      exit(-1);
+      exit(1);
     }
     ParseBaseReply(reply_ary, &reply_);
     g_main_loop_quit(loop_);
@@ -719,10 +719,10 @@ int main(int argc, char **argv) {
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
     if (!BuildAuthorization(cl, proxy, &auth))
-      return -1;
+      return 1;
 
     cryptohome::MountRequest mount_req;
     mount_req.set_require_ephemeral(
@@ -742,7 +742,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -757,7 +757,7 @@ int main(int argc, char **argv) {
                                  &ClientLoop::ParseReplyThunk,
                                  static_cast<gpointer>(&loop));
       if (!call)
-        return -1;
+        return 1;
       loop.Run();
       reply = loop.reply();
     } else {
@@ -769,7 +769,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("MountEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -903,10 +903,10 @@ int main(int argc, char **argv) {
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
     if (!BuildAuthorization(cl, proxy, &auth))
-      return -1;
+      return 1;
 
     cryptohome::RemoveKeyRequest remove_req;
     cryptohome::KeyData* data = remove_req.mutable_key()->mutable_data();
@@ -916,7 +916,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -932,7 +932,7 @@ int main(int argc, char **argv) {
                &ClientLoop::ParseReplyThunk,
                static_cast<gpointer>(&loop));
       if (!call)
-        return -1;
+        return 1;
       loop.Run();
       reply = loop.reply();
     } else {
@@ -944,7 +944,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("RemoveKeyEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -957,7 +957,7 @@ int main(int argc, char **argv) {
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id)) {
-      return -1;
+      return 1;
     }
     cryptohome::AuthorizationRequest auth;
     cryptohome::GetKeyDataRequest key_data_req;
@@ -965,7 +965,7 @@ int main(int argc, char **argv) {
       cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
     if (label.empty()) {
       printf("No key_label specified.\n");
-      return -1;
+      return 1;
     }
     key_data_req.mutable_key()->mutable_data()->set_label(label);
 
@@ -973,7 +973,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      return -1;
+      return 1;
     }
 
     cryptohome::BaseReply reply;
@@ -990,7 +990,7 @@ int main(int argc, char **argv) {
                &ClientLoop::ParseReplyThunk,
                static_cast<gpointer>(&loop));
       if (!call) {
-        return -1;
+        return 1;
       }
       loop.Run();
       reply = loop.reply();
@@ -1003,7 +1003,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("GetKeyDataEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -1015,7 +1015,7 @@ int main(int argc, char **argv) {
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
 
     cryptohome::ListKeysRequest list_keys_req;
@@ -1024,7 +1024,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1040,7 +1040,7 @@ int main(int argc, char **argv) {
                &ClientLoop::ParseReplyThunk,
                static_cast<gpointer>(&loop));
       if (!call) {
-        return -1;
+        return 1;
       }
       loop.Run();
       reply = loop.reply();
@@ -1053,7 +1053,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("ListKeysEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -1063,7 +1063,7 @@ int main(int argc, char **argv) {
     }
     if (!reply.HasExtension(cryptohome::ListKeysReply::reply)) {
       printf("ListKeysReply missing.\n");
-      return -1;
+      return 1;
     }
     cryptohome::ListKeysReply list_keys_reply =
         reply.GetExtension(cryptohome::ListKeysReply::reply);
@@ -1074,10 +1074,10 @@ int main(int argc, char **argv) {
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
     if (!BuildAuthorization(cl, proxy, &auth))
-      return -1;
+      return 1;
 
     cryptohome::CheckKeyRequest check_req;
     // TODO(wad) Add a privileges cl interface
@@ -1086,7 +1086,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1102,7 +1102,7 @@ int main(int argc, char **argv) {
                &ClientLoop::ParseReplyThunk,
                static_cast<gpointer>(&loop));
       if (!call)
-        return -1;
+        return 1;
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1114,7 +1114,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("CheckKeyEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -1233,10 +1233,10 @@ int main(int argc, char **argv) {
                 &new_password);
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
     if (!BuildAuthorization(cl, proxy, &auth))
-      return -1;
+      return 1;
 
     cryptohome::AddKeyRequest key_req;
     key_req.set_clobber_if_exists(cl->HasSwitch(switches::kForceSwitch));
@@ -1272,7 +1272,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1287,7 +1287,7 @@ int main(int argc, char **argv) {
                                  &ClientLoop::ParseReplyThunk,
                                  static_cast<gpointer>(&loop));
       if (!call)
-        return -1;
+        return 1;
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1299,7 +1299,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("AddKeyEx call failed: %s", error->message);
-        return -1;
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -1316,10 +1316,10 @@ int main(int argc, char **argv) {
                 &new_password);
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
     cryptohome::AuthorizationRequest auth;
     if (!BuildAuthorization(cl, proxy, &auth))
-      return -1;
+      return 1;
 
     cryptohome::UpdateKeyRequest key_req;
     cryptohome::Key* key = key_req.mutable_changes();
@@ -1355,7 +1355,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1371,7 +1371,7 @@ int main(int argc, char **argv) {
               &ClientLoop::ParseReplyThunk,
               static_cast<gpointer>(&loop));
       if (!call)
-        return -1;
+        return 1;
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1424,6 +1424,7 @@ int main(int argc, char **argv) {
         &done,
         &brillo::Resetter(&error).lvalue())) {
       printf("Unmount call failed: %s.\n", error->message);
+      return 1;
     }
     if (!done) {
       printf("Unmount failed.\n");
@@ -1617,11 +1618,11 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(get_tpm_status),
                            DBUS_METHOD(get_tpm_status_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     if (!reply.HasExtension(cryptohome::GetTpmStatusReply::reply)) {
       printf("GetTpmStatusReply missing.\n");
-      return -1;
+      return 1;
     }
     printf("GetTpmStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
@@ -2304,11 +2305,11 @@ int main(int argc, char **argv) {
                              DBUS_METHOD(get_endorsement_info),
                              DBUS_METHOD(get_endorsement_info_async),
                              cl, &proxy, request, &reply)) {
-        return -1;
+        return 1;
       }
       if (!reply.HasExtension(cryptohome::GetEndorsementInfoReply::reply)) {
         printf("GetEndorsementInfoReply missing.\n");
-        return -1;
+        return 1;
       }
       printf("GetEndorsmentInfo (protobuf) success.\n");
     } else {
@@ -2402,12 +2403,12 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(sign_boot_lockbox),
                            DBUS_METHOD(sign_boot_lockbox_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
 
     if (!reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
       printf("SignBootLockboxReply missing.\n");
-      return -1;
+      return 1;
     }
     std::string signature =
         reply.GetExtension(cryptohome::SignBootLockboxReply::reply).signature();
@@ -2437,7 +2438,7 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(verify_boot_lockbox),
                            DBUS_METHOD(verify_boot_lockbox_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("VerifyBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_FINALIZE_LOCKBOX],
@@ -2448,7 +2449,7 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(finalize_boot_lockbox),
                            DBUS_METHOD(finalize_boot_lockbox_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("FinalizeBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_BOOT_ATTRIBUTE],
@@ -2466,11 +2467,11 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(get_boot_attribute),
                            DBUS_METHOD(get_boot_attribute_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     if (!reply.HasExtension(cryptohome::GetBootAttributeReply::reply)) {
       printf("GetBootAttributeReply missing.\n");
-      return -1;
+      return 1;
     }
     std::string value =
         reply.GetExtension(cryptohome::GetBootAttributeReply::reply).value();
@@ -2496,7 +2497,7 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(set_boot_attribute),
                            DBUS_METHOD(set_boot_attribute_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("SetBootAttribute success.\n");
   } else if (!strcmp(switches::kActions[
@@ -2507,7 +2508,7 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(flush_and_sign_boot_attributes),
                            DBUS_METHOD(flush_and_sign_boot_attributes_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("FlushAndSignBootAttributes success.\n");
   } else if (!strcmp(
@@ -2519,11 +2520,11 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(get_login_status),
                            DBUS_METHOD(get_login_status_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     if (!reply.HasExtension(cryptohome::GetLoginStatusReply::reply)) {
       printf("GetLoginStatusReply missing.\n");
-      return -1;
+      return 1;
     }
     printf("GetLoginStatus success.\n");
   } else if (!strcmp(
@@ -2535,7 +2536,7 @@ int main(int argc, char **argv) {
                            DBUS_METHOD(initialize_cast_key),
                            DBUS_METHOD(initialize_cast_key_async),
                            cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("InitializeCastKey success.\n");
   } else if (!strcmp(
@@ -2548,12 +2549,12 @@ int main(int argc, char **argv) {
         DBUS_METHOD(get_firmware_management_parameters),
         DBUS_METHOD(get_firmware_management_parameters_async),
         cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     if (!reply.HasExtension(
         cryptohome::GetFirmwareManagementParametersReply::reply)) {
       printf("GetFirmwareManagementParametersReply missing.\n");
-      return -1;
+      return 1;
     }
     cryptohome::GetFirmwareManagementParametersReply get_fwmp_reply =
         reply.GetExtension(
@@ -2603,7 +2604,7 @@ int main(int argc, char **argv) {
         DBUS_METHOD(set_firmware_management_parameters),
         DBUS_METHOD(set_firmware_management_parameters_async),
         cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("SetFirmwareManagementParameters success.\n");
   } else if (!strcmp(
@@ -2618,25 +2619,25 @@ int main(int argc, char **argv) {
         DBUS_METHOD(remove_firmware_management_parameters),
         DBUS_METHOD(remove_firmware_management_parameters_async),
         cl, &proxy, request, &reply)) {
-      return -1;
+      return 1;
     }
     printf("RemoveFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
-      return -1;
+      return 1;
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     if (!account_ary.get())
-      return -1;
+      return 1;
 
     cryptohome::MigrateToDircryptoRequest request;
     request.set_minimal_migration(cl->HasSwitch(switches::kMinimalMigration));
 
     brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
     if (!request_ary.get())
-      return -1;
+      return 1;
 
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto_ex(
@@ -2645,7 +2646,7 @@ int main(int argc, char **argv) {
             request_ary.get(),
             &brillo::Resetter(&error).lvalue())) {
       printf("MigrateToDircrypto call failed: %s\n", error->message);
-      return -1;
+      return 1;
     }
     printf("MigrateToDircrypto call succeeded.\n");
   } else if (!strcmp(
@@ -2659,7 +2660,7 @@ int main(int argc, char **argv) {
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     if (!account_ary.get())
-      return -1;
+      return 1;
 
     brillo::glib::ScopedError error;
     gboolean needs_migration = false;
