@@ -185,7 +185,7 @@ Device::Device(ControlInterface* control_interface,
   // kMdnProperty: Registered in Cellular
   // kMeidProperty: Registered in Cellular
   // kMinProperty: Registered in Cellular
-  // kModelIDProperty: Registered in Cellular
+  // kModelIdProperty: Registered in Cellular
   // kFirmwareRevisionProperty: Registered in Cellular
   // kHardwareRevisionProperty: Registered in Cellular
   // kPRLVersionProperty: Registered in Cellular

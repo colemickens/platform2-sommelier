@@ -1259,7 +1259,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kMeidProperty, &meid_);
   store->RegisterConstString(kMinProperty, &min_);
   store->RegisterConstString(kManufacturerProperty, &manufacturer_);
-  store->RegisterConstString(kModelIDProperty, &model_id_);
+  store->RegisterConstString(kModelIdProperty, &model_id_);
   store->RegisterConstBool(kScanningProperty, &scanning_);
 
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
@@ -1390,7 +1390,7 @@ void Cellular::set_model_id(const string& model_id) {
     return;
 
   model_id_ = model_id;
-  adaptor()->EmitStringChanged(kModelIDProperty, model_id_);
+  adaptor()->EmitStringChanged(kModelIdProperty, model_id_);
 }
 
 void Cellular::set_mm_plugin(const string& mm_plugin) {
