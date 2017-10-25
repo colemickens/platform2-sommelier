@@ -712,9 +712,9 @@ int main(int argc, char **argv) {
     }
     if (!done) {
       printf("Mount failed.\n");
-    } else {
-      printf("Mount succeeded.\n");
+      return 1;
     }
+    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX],
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
@@ -807,9 +807,9 @@ int main(int argc, char **argv) {
     }
     if (!done) {
       printf("Mount failed.\n");
-    } else {
-      printf("Mount succeeded.\n");
+      return 1;
     }
+    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_PUBLIC],
                      action.c_str())) {
     std::string account_id;
@@ -852,9 +852,9 @@ int main(int argc, char **argv) {
     }
     if (!done) {
       printf("Mount failed.\n");
-    } else {
-      printf("Mount succeeded.\n");
+      return 1;
     }
+    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_TEST_AUTH],
                      action.c_str())) {
     std::string account_id, password;
@@ -1413,9 +1413,9 @@ int main(int argc, char **argv) {
     }
     if (!done) {
       printf("Remove failed.\n");
-    } else {
-      printf("Remove succeeded.\n");
+      return 1;
     }
+    printf("Remove succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
     brillo::glib::ScopedError error;
