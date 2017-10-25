@@ -6,7 +6,7 @@
 
 #include <hardware/camera3.h>
 
-#include "arc/camera_buffer_mapper.h"
+#include "arc/camera_buffer_manager.h"
 #include "hal_adapter/mojo/arc_camera3.mojom.h"
 
 namespace arc {

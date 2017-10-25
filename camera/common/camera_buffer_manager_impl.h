@@ -4,36 +4,107 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_BUFFER_MAPPER_IMPL_H_
-#define COMMON_CAMERA_BUFFER_MAPPER_IMPL_H_
+#ifndef COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
+#define COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
 
-#include "arc/camera_buffer_mapper.h"
+#include "arc/camera_buffer_manager.h"
 
 #include <memory>
+#include <unordered_map>
+#include <utility>
+
+#include <gbm.h>
 
 #include <base/synchronization/lock.h>
-
-#include "common/camera_buffer_mapper_typedefs.h"
 
 // A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
 // corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
 #define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
 
+struct native_handle;
+typedef const native_handle* buffer_handle_t;
+struct android_ycbcr;
+
 namespace arc {
 
 namespace tests {
 
-class CameraBufferMapperImplTest;
+class CameraBufferManagerImplTest;
 
 }  // namespace tests
 
-class CameraBufferMapperImpl final : public CameraBufferMapper {
- public:
-  CameraBufferMapperImpl();
+struct BufferContext {
+  // ** The following fields are used for gralloc buffers only. **
+  // The GBM bo of the gralloc buffer.
+  struct gbm_bo* bo;
+  // ** End of gralloc buffer fields. **
 
-  // CameraBufferMapper implementation.
-  ~CameraBufferMapperImpl() final;
+  // ** The following fields are used for shm buffers only. **
+  // The mapped address of the shared memory buffer.
+  void* mapped_addr;
+
+  // The size of the shared memory buffer.
+  size_t shm_buffer_size;
+  // ** End of shm buffer fields. **
+
+  uint32_t usage;
+
+  BufferContext()
+      : bo(nullptr), mapped_addr(nullptr), shm_buffer_size(0), usage(0) {}
+
+  ~BufferContext() {
+    if (bo) {
+      gbm_bo_destroy(bo);
+    }
+  }
+};
+
+typedef std::unordered_map<buffer_handle_t,
+                           std::unique_ptr<struct BufferContext>>
+    BufferContextCache;
+
+struct MappedGrallocBufferInfo {
+  // The gbm_bo associated with the imported buffer (for gralloc buffer only).
+  struct gbm_bo* bo;
+  // The per-bo data returned by gbm_bo_map() (for gralloc buffer only).
+  void* map_data;
+  // The mapped virtual address.
+  void* addr;
+  // For refcounting.
+  uint32_t usage;
+
+  MappedGrallocBufferInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
+
+  ~MappedGrallocBufferInfo() {
+    if (bo && map_data) {
+      gbm_bo_unmap(bo, map_data);
+    }
+  }
+};
+
+typedef std::pair<buffer_handle_t, uint32_t> MappedBufferInfoKeyType;
+
+struct MappedBufferInfoKeyHash {
+  size_t operator()(const MappedBufferInfoKeyType& key) const {
+    // The key is (buffer_handle_t pointer, plane number).  Plane number is less
+    // than 4, so shifting the pointer value left by 8 and filling the lowest
+    // byte with the plane number gives us a unique value to represent a key.
+    return (reinterpret_cast<size_t>(key.first) << 8 | key.second);
+  }
+};
+
+typedef std::unordered_map<MappedBufferInfoKeyType,
+                           std::unique_ptr<MappedGrallocBufferInfo>,
+                           struct MappedBufferInfoKeyHash>
+    MappedGrallocBufferInfoCache;
+
+class CameraBufferManagerImpl final : public CameraBufferManager {
+ public:
+  CameraBufferManagerImpl();
+
+  // CameraBufferManager implementation.
+  ~CameraBufferManagerImpl() final;
   int Allocate(size_t width,
                size_t height,
                uint32_t format,
@@ -61,10 +132,10 @@ class CameraBufferMapperImpl final : public CameraBufferMapper {
   int Unlock(buffer_handle_t buffer) final;
 
  private:
-  friend class CameraBufferMapper;
+  friend class CameraBufferManager;
 
   // Allow unit tests to call constructor directly.
-  friend class tests::CameraBufferMapperImplTest;
+  friend class tests::CameraBufferManagerImplTest;
 
   // Revoles the HAL pixel format |hal_format| to the actual DRM format, based
   // on the gralloc usage flags set in |usage|.
@@ -129,9 +200,9 @@ class CameraBufferMapperImpl final : public CameraBufferMapper {
 
   // ** End of lock_ scope **
 
-  DISALLOW_COPY_AND_ASSIGN(CameraBufferMapperImpl);
+  DISALLOW_COPY_AND_ASSIGN(CameraBufferManagerImpl);
 };
 
 }  // namespace arc
 
-#endif  // COMMON_CAMERA_BUFFER_MAPPER_IMPL_H_
+#endif  // COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_

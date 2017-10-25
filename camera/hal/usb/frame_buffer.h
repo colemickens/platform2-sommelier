@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <arc/camera_buffer_mapper.h>
+#include <arc/camera_buffer_manager.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
@@ -121,7 +121,7 @@ class V4L2FrameBuffer : public FrameBuffer {
 };
 
 // GrallocFrameBuffer is used for the buffer from Android framework. Uses
-// CameraBufferMapper to lock and unlock the buffer.
+// CameraBufferManager to lock and unlock the buffer.
 class GrallocFrameBuffer : public FrameBuffer {
  public:
   // Fill |width_| and |height_| according to the parameters.
@@ -137,7 +137,7 @@ class GrallocFrameBuffer : public FrameBuffer {
   buffer_handle_t buffer_;
 
   // Used to import gralloc buffer.
-  CameraBufferMapper* buffer_mapper_;
+  CameraBufferManager* buffer_manager_;
 
   bool is_mapped_;
 

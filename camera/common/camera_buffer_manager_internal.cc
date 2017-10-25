@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "common/camera_buffer_mapper_internal.h"
+#include "common/camera_buffer_manager_internal.h"
 
 #include <xf86drm.h>
 

@@ -4,23 +4,20 @@
  * found in the LICENSE file.
  */
 
-#include "common/camera_buffer_mapper_impl.h"
+#include "common/camera_buffer_manager_impl.h"
 
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include <linux/videodev2.h>
 #include <sys/mman.h>
 
 #include <drm_fourcc.h>
-#include <gbm.h>
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
 
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
-#include "common/camera_buffer_mapper_internal.h"
+#include "common/camera_buffer_manager_internal.h"
 
 namespace arc {
 
@@ -51,17 +48,17 @@ uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
 }  // namespace
 
 // static
-CameraBufferMapper* CameraBufferMapper::GetInstance() {
-  static CameraBufferMapperImpl instance;
+CameraBufferManager* CameraBufferManager::GetInstance() {
+  static CameraBufferManagerImpl instance;
   if (!instance.gbm_device_) {
-    LOGF(ERROR) << "Failed to create GBM device for CameraBufferMapper";
+    LOGF(ERROR) << "Failed to create GBM device for CameraBufferManager";
     return nullptr;
   }
   return &instance;
 }
 
 // static
-uint32_t CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
+uint32_t CameraBufferManager::GetNumPlanes(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return 0;
@@ -129,7 +126,7 @@ uint32_t CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
 }
 
 // static
-uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
+uint32_t CameraBufferManager::GetV4L2PixelFormat(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return 0;
@@ -171,8 +168,8 @@ uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
 }
 
 // static
-size_t CameraBufferMapper::GetPlaneStride(buffer_handle_t buffer,
-                                          size_t plane) {
+size_t CameraBufferManager::GetPlaneStride(buffer_handle_t buffer,
+                                           size_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return 0;
@@ -187,7 +184,7 @@ size_t CameraBufferMapper::GetPlaneStride(buffer_handle_t buffer,
 #define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
 
 // static
-size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
+size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return 0;
@@ -211,23 +208,23 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
           DIV_ROUND_UP(handle->height, vertical_subsampling));
 }
 
-CameraBufferMapperImpl::CameraBufferMapperImpl()
+CameraBufferManagerImpl::CameraBufferManagerImpl()
     : gbm_device_(internal::CreateGbmDevice()) {}
 
-CameraBufferMapperImpl::~CameraBufferMapperImpl() {
+CameraBufferManagerImpl::~CameraBufferManagerImpl() {
   if (gbm_device_) {
     close(gbm_device_get_fd(gbm_device_));
     gbm_device_destroy(gbm_device_);
   }
 }
 
-int CameraBufferMapperImpl::Allocate(size_t width,
-                                     size_t height,
-                                     uint32_t format,
-                                     uint32_t usage,
-                                     BufferType type,
-                                     buffer_handle_t* out_buffer,
-                                     uint32_t* out_stride) {
+int CameraBufferManagerImpl::Allocate(size_t width,
+                                      size_t height,
+                                      uint32_t format,
+                                      uint32_t usage,
+                                      BufferType type,
+                                      buffer_handle_t* out_buffer,
+                                      uint32_t* out_stride) {
   if (type == GRALLOC) {
     return AllocateGrallocBuffer(width, height, format, usage, out_buffer,
                                  out_stride);
@@ -240,7 +237,7 @@ int CameraBufferMapperImpl::Allocate(size_t width,
   }
 }
 
-int CameraBufferMapperImpl::Free(buffer_handle_t buffer) {
+int CameraBufferManagerImpl::Free(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
 
   if (handle->type == GRALLOC) {
@@ -253,7 +250,7 @@ int CameraBufferMapperImpl::Free(buffer_handle_t buffer) {
   }
 }
 
-int CameraBufferMapperImpl::Register(buffer_handle_t buffer) {
+int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;
@@ -324,7 +321,7 @@ int CameraBufferMapperImpl::Register(buffer_handle_t buffer) {
   return 0;
 }
 
-int CameraBufferMapperImpl::Deregister(buffer_handle_t buffer) {
+int CameraBufferManagerImpl::Deregister(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;
@@ -367,13 +364,13 @@ int CameraBufferMapperImpl::Deregister(buffer_handle_t buffer) {
   }
 }
 
-int CameraBufferMapperImpl::Lock(buffer_handle_t buffer,
-                                 uint32_t flags,
-                                 uint32_t x,
-                                 uint32_t y,
-                                 uint32_t width,
-                                 uint32_t height,
-                                 void** out_addr) {
+int CameraBufferManagerImpl::Lock(buffer_handle_t buffer,
+                                  uint32_t flags,
+                                  uint32_t x,
+                                  uint32_t y,
+                                  uint32_t width,
+                                  uint32_t height,
+                                  void** out_addr) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;
@@ -395,13 +392,13 @@ int CameraBufferMapperImpl::Lock(buffer_handle_t buffer,
   return 0;
 }
 
-int CameraBufferMapperImpl::LockYCbCr(buffer_handle_t buffer,
-                                      uint32_t flags,
-                                      uint32_t x,
-                                      uint32_t y,
-                                      uint32_t width,
-                                      uint32_t height,
-                                      struct android_ycbcr* out_ycbcr) {
+int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
+                                       uint32_t flags,
+                                       uint32_t x,
+                                       uint32_t y,
+                                       uint32_t width,
+                                       uint32_t height,
+                                       struct android_ycbcr* out_ycbcr) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;
@@ -469,7 +466,7 @@ int CameraBufferMapperImpl::LockYCbCr(buffer_handle_t buffer,
   return 0;
 }
 
-int CameraBufferMapperImpl::Unlock(buffer_handle_t buffer) {
+int CameraBufferManagerImpl::Unlock(buffer_handle_t buffer) {
   for (size_t i = 0; i < GetNumPlanes(buffer); ++i) {
     int ret = Unmap(buffer, i);
     if (ret) {
@@ -479,8 +476,8 @@ int CameraBufferMapperImpl::Unlock(buffer_handle_t buffer) {
   return 0;
 }
 
-uint32_t CameraBufferMapperImpl::ResolveFormat(uint32_t hal_format,
-                                               uint32_t usage) {
+uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
+                                                uint32_t usage) {
   if (usage & GRALLOC_USAGE_FORCE_I420) {
     if (hal_format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
       LOGF(ERROR) << "GRALLOC_USAGE_FORCE_I420 is only valid with "
@@ -507,12 +504,12 @@ uint32_t CameraBufferMapperImpl::ResolveFormat(uint32_t hal_format,
   return 0;
 }
 
-int CameraBufferMapperImpl::AllocateGrallocBuffer(size_t width,
-                                                  size_t height,
-                                                  uint32_t format,
-                                                  uint32_t usage,
-                                                  buffer_handle_t* out_buffer,
-                                                  uint32_t* out_stride) {
+int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
+                                                   size_t height,
+                                                   uint32_t format,
+                                                   uint32_t usage,
+                                                   buffer_handle_t* out_buffer,
+                                                   uint32_t* out_stride) {
   base::AutoLock l(lock_);
 
   uint32_t drm_format = ResolveFormat(format, usage);
@@ -558,19 +555,19 @@ int CameraBufferMapperImpl::AllocateGrallocBuffer(size_t width,
   return 0;
 }
 
-int CameraBufferMapperImpl::AllocateShmBuffer(size_t width,
-                                              size_t height,
-                                              uint32_t format,
-                                              uint32_t usage,
-                                              buffer_handle_t* out_buffer,
-                                              uint32_t* out_stride) {
+int CameraBufferManagerImpl::AllocateShmBuffer(size_t width,
+                                               size_t height,
+                                               uint32_t format,
+                                               uint32_t usage,
+                                               buffer_handle_t* out_buffer,
+                                               uint32_t* out_stride) {
   // TODO(jcliang): Implement allocation of SharedMemory.
   return -EINVAL;
 }
 
-void* CameraBufferMapperImpl::Map(buffer_handle_t buffer,
-                                  uint32_t flags,
-                                  uint32_t plane) {
+void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
+                                   uint32_t flags,
+                                   uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return MAP_FAILED;
@@ -657,7 +654,7 @@ void* CameraBufferMapperImpl::Map(buffer_handle_t buffer,
   }
 }
 
-int CameraBufferMapperImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
+int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;

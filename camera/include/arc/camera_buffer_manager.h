@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_BUFFER_MAPPER_H_
-#define INCLUDE_ARC_CAMERA_BUFFER_MAPPER_H_
+#ifndef INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_
+#define INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_
 
 #include <stdint.h>
 #include <system/window.h>
@@ -33,46 +33,48 @@ enum BufferType {
   SHM = 1,
 };
 
-// Generic camera buffer mapper.  The class is for a camera HAL to map and unmap
-// the buffer handles received in camera3_stream_buffer_t.
+// Generic camera buffer manager.  The class is for a camera HAL to map and
+// unmap the buffer handles received in camera3_stream_buffer_t.
 //
 // The class is thread-safe.
 //
 // Example usage:
 //
-//  #include <arc/camera_buffer_mapper.h>
-//  CameraBufferMapper* mapper = CameraBufferMapper::GetInstance();
-//  if (!mapper) {
+//  #include <arc/camera_buffer_manager.h>
+//  CameraBufferManager* manager = CameraBufferManager::GetInstance();
+//  if (!manager) {
 //    /* Error handling */
 //  }
 //
 //  /* Register and use a buffer received from IPC */
 //
-//  mapper->Register(buffer_handle);
+//  manager->Register(buffer_handle);
 //  void* addr;
-//  mapper->Lock(buffer_handle, ..., &addr);
+//  manager->Lock(buffer_handle, ..., &addr);
 //  /* Access the buffer mapped to |addr| */
-//  mapper->Unlock(buffer_handle);
-//  mapper->Deregister(buffer_handle);
+//  manager->Unlock(buffer_handle);
+//  manager->Deregister(buffer_handle);
+//
+//  One can also allocate buffers directly from the camera buffer manager:
 //
 //  /* Allocate locally and use a buffer */
 //
 //  buffer_handle_t buffer_handle;
 //  int stride;
-//  mapper->Allocate(..., &buffer_handle, &stride);
+//  manager->Allocate(..., &buffer_handle, &stride);
 //  void* addr;
-//  mapper->Lock(buffer_handle, ..., &addr);
+//  manager->Lock(buffer_handle, ..., &addr);
 //  /* Access the buffer mapped to |addr| */
-//  mapper->Unlock(buffer_handle);
-//  mapper->Free(buffer_handle);
+//  manager->Unlock(buffer_handle);
+//  manager->Free(buffer_handle);
 
-class EXPORTED CameraBufferMapper {
+class EXPORTED CameraBufferManager {
  public:
   // Gets the singleton instance.  Returns nullptr if any error occurrs during
   // instance creation.
-  static CameraBufferMapper* GetInstance();
+  static CameraBufferManager* GetInstance();
 
-  virtual ~CameraBufferMapper() {}
+  virtual ~CameraBufferManager() {}
 
   // Allocates a buffer for a frame.
   //
@@ -96,7 +98,7 @@ class EXPORTED CameraBufferMapper {
                        buffer_handle_t* out_buffer,
                        uint32_t* out_stride) = 0;
 
-  // Frees |buffer| allocated with CameraBufferMapper::Allocate().
+  // Frees |buffer| allocated with CameraBufferManager::Allocate().
   //
   // Args:
   //    |buffer|: The buffer to free.
@@ -243,4 +245,4 @@ class EXPORTED CameraBufferMapper {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_BUFFER_MAPPER_H_
+#endif  // INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_

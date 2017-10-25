@@ -17,7 +17,7 @@
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "arc/camera_buffer_mapper.h"
+#include "arc/camera_buffer_manager.h"
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/mojo/arc_camera3.mojom.h"

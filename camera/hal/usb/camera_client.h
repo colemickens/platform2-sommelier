@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <arc/camera_buffer_mapper.h>
+#include <arc/camera_buffer_manager.h>
 #include <base/bind.h>
 #include <base/macros.h>
 #include <base/synchronization/lock.h>

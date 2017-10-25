@@ -15,30 +15,30 @@ CXX_BINARY(common/future_unittest): LDLIBS += $(future_unittest_LIBS)
 clean: CLEAN(common/future_unittest)
 tests: CXX_BINARY(common/future_unittest)
 
-camera_buffer_mapper_unittest_OBJS = \
-	common/camera_buffer_mapper_impl.o \
-	common/camera_buffer_mapper_impl_unittest.o
-camera_buffer_mapper_unittest_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
-camera_buffer_mapper_unittest_CPPFLAGS = \
-	$(call get_pc_cflags,$(camera_buffer_mapper_unittest_PC_DEPS))
-camera_buffer_mapper_unittest_LIBS = \
-	$(call get_pc_libs,$(camera_buffer_mapper_unittest_PC_DEPS)) \
+camera_buffer_manager_unittest_OBJS = \
+	common/camera_buffer_manager_impl.o \
+	common/camera_buffer_manager_impl_unittest.o
+camera_buffer_manager_unittest_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
+camera_buffer_manager_unittest_CPPFLAGS = \
+	$(call get_pc_cflags,$(camera_buffer_manager_unittest_PC_DEPS))
+camera_buffer_manager_unittest_LIBS = \
+	$(call get_pc_libs,$(camera_buffer_manager_unittest_PC_DEPS)) \
 	-lgmock -lgtest -lpthread
-CXX_BINARY(common/camera_buffer_mapper_unittest): \
-	$(camera_buffer_mapper_unittest_OBJS)
-CXX_BINARY(common/camera_buffer_mapper_unittest): \
-	CPPFLAGS += $(camera_buffer_mapper_unittest_CPPFLAGS)
-CXX_BINARY(common/camera_buffer_mapper_unittest): \
-	LDLIBS += $(camera_buffer_mapper_unittest_LIBS)
-clean: CLEAN(common/camera_buffer_mapper_unittest)
-tests: CXX_BINARY(common/camera_buffer_mapper_unittest)
+CXX_BINARY(common/camera_buffer_manager_unittest): \
+	$(camera_buffer_manager_unittest_OBJS)
+CXX_BINARY(common/camera_buffer_manager_unittest): \
+	CPPFLAGS += $(camera_buffer_manager_unittest_CPPFLAGS)
+CXX_BINARY(common/camera_buffer_manager_unittest): \
+	LDLIBS += $(camera_buffer_manager_unittest_LIBS)
+clean: CLEAN(common/camera_buffer_manager_unittest)
+tests: CXX_BINARY(common/camera_buffer_manager_unittest)
 
 libcbm_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
 libcbm_CPPFLAGS := $(call get_pc_cflags,$(libcbm_PC_DEPS))
 libcbm_LDLIBS := $(call get_pc_libs,$(libcbm_PC_DEPS))
 libcbm_OBJS = \
-	common/camera_buffer_mapper_impl.o \
-	common/camera_buffer_mapper_internal.o
+	common/camera_buffer_manager_impl.o \
+	common/camera_buffer_manager_internal.o
 CXX_LIBRARY(common/libcbm.so): $(libcbm_OBJS)
 CXX_LIBRARY(common/libcbm.so): CPPFLAGS += $(libcbm_CPPFLAGS)
 CXX_LIBRARY(common/libcbm.so): LDLIBS += $(libcbm_LDLIBS)

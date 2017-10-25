@@ -8,7 +8,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include <arc/camera_buffer_mapper.h>
+#include <arc/camera_buffer_manager.h>
 #include <base/synchronization/lock.h>
 #include <gbm.h>
 #include <xf86drm.h>
@@ -115,7 +115,7 @@ class Camera3TestGralloc {
   // Lock to protect the singleton creation
   static base::Lock lock_;
 
-  arc::CameraBufferMapper* buffer_mapper_;
+  arc::CameraBufferManager* buffer_manager_;
 };
 
 }  // namespace camera3_test

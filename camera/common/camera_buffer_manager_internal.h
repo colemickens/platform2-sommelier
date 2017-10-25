@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_BUFFER_MAPPER_INTERNAL_H_
-#define COMMON_CAMERA_BUFFER_MAPPER_INTERNAL_H_
+#ifndef COMMON_CAMERA_BUFFER_MANAGER_INTERNAL_H_
+#define COMMON_CAMERA_BUFFER_MANAGER_INTERNAL_H_
 
 #include <gbm.h>
 
@@ -19,4 +19,4 @@ struct gbm_device* CreateGbmDevice();
 
 }  // namespace arc
 
-#endif  // COMMON_CAMERA_BUFFER_MAPPER_INTERNAL_H_
+#endif  // COMMON_CAMERA_BUFFER_MANAGER_INTERNAL_H_

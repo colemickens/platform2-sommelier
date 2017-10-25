@@ -9,14 +9,14 @@
 
 #include <algorithm>
 
-#include <arc/camera_buffer_mapper.h>
+#include <arc/camera_buffer_manager.h>
 #include <base/files/file_util.h>
 
 namespace camera3_test {
 
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   if (handle) {
-    auto* cbm = arc::CameraBufferMapper::GetInstance();
+    auto* cbm = arc::CameraBufferManager::GetInstance();
     if (cbm) {
       cbm->Free(*handle);
     }
@@ -40,10 +40,10 @@ Camera3TestGralloc* Camera3TestGralloc::GetInstance() {
 }
 
 Camera3TestGralloc::Camera3TestGralloc()
-    : buffer_mapper_(arc::CameraBufferMapper::GetInstance()) {}
+    : buffer_manager_(arc::CameraBufferManager::GetInstance()) {}
 
 bool Camera3TestGralloc::Initialize() {
-  if (!buffer_mapper_) {
+  if (!buffer_manager_) {
     LOG(ERROR) << "Failed to get buffer mapper";
     return false;
   }
@@ -54,13 +54,13 @@ BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
                                                    int32_t height,
                                                    int32_t format,
                                                    int32_t usage) {
-  if (!buffer_mapper_) {
+  if (!buffer_manager_) {
     return BufferHandleUniquePtr(nullptr);
   }
   BufferHandleUniquePtr handle(new buffer_handle_t);
   uint32_t stride;
-  if (buffer_mapper_->Allocate(width, height, format, usage, arc::GRALLOC,
-                               handle.get(), &stride)) {
+  if (buffer_manager_->Allocate(width, height, format, usage, arc::GRALLOC,
+                                handle.get(), &stride)) {
     return BufferHandleUniquePtr(nullptr);
   }
   return handle;
@@ -73,7 +73,7 @@ int Camera3TestGralloc::Lock(buffer_handle_t buffer,
                              uint32_t width,
                              uint32_t height,
                              void** out_addr) {
-  return buffer_mapper_->Lock(buffer, flags, x, y, width, height, out_addr);
+  return buffer_manager_->Lock(buffer, flags, x, y, width, height, out_addr);
 }
 
 int Camera3TestGralloc::LockYCbCr(buffer_handle_t buffer,
@@ -83,12 +83,12 @@ int Camera3TestGralloc::LockYCbCr(buffer_handle_t buffer,
                                   uint32_t width,
                                   uint32_t height,
                                   struct android_ycbcr* out_ycbcr) {
-  return buffer_mapper_->LockYCbCr(buffer, flags, x, y, width, height,
-                                   out_ycbcr);
+  return buffer_manager_->LockYCbCr(buffer, flags, x, y, width, height,
+                                    out_ycbcr);
 }
 
 int Camera3TestGralloc::Unlock(buffer_handle_t buffer) {
-  return buffer_mapper_->Unlock(buffer);
+  return buffer_manager_->Unlock(buffer);
 }
 
 // static
@@ -99,7 +99,7 @@ int Camera3TestGralloc::GetFormat(buffer_handle_t buffer) {
 
 // static
 uint32_t Camera3TestGralloc::GetV4L2PixelFormat(buffer_handle_t buffer) {
-  return arc::CameraBufferMapper::GetInstance()->GetV4L2PixelFormat(buffer);
+  return arc::CameraBufferManager::GetInstance()->GetV4L2PixelFormat(buffer);
 }
 
 }  // namespace camera3_test

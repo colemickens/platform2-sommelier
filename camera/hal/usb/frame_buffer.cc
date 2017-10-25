@@ -186,17 +186,17 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
                                        uint32_t width,
                                        uint32_t height)
     : buffer_(buffer),
-      buffer_mapper_(CameraBufferMapper::GetInstance()),
+      buffer_manager_(CameraBufferManager::GetInstance()),
       is_mapped_(false) {
-  int ret = buffer_mapper_->Register(buffer_);
+  int ret = buffer_manager_->Register(buffer_);
   if (ret) {
     LOGF(ERROR) << "Failed to register buffer";
     return;
   }
   width_ = width;
   height_ = height;
-  fourcc_ = buffer_mapper_->GetV4L2PixelFormat(buffer);
-  num_planes_ = buffer_mapper_->GetNumPlanes(buffer);
+  fourcc_ = buffer_manager_->GetV4L2PixelFormat(buffer);
+  num_planes_ = buffer_manager_->GetNumPlanes(buffer);
   data_.resize(num_planes_, nullptr);
   stride_.resize(num_planes_, 0);
 }
@@ -206,7 +206,7 @@ GrallocFrameBuffer::~GrallocFrameBuffer() {
     LOGF(ERROR) << "Unmap failed";
   }
 
-  int ret = buffer_mapper_->Deregister(buffer_);
+  int ret = buffer_manager_->Deregister(buffer_);
   if (ret) {
     LOGF(ERROR) << "Failed to unregister buffer";
   }
@@ -221,20 +221,20 @@ int GrallocFrameBuffer::Map() {
 
   buffer_size_ = 0;
   for (size_t i = 0; i < num_planes_; i++) {
-    buffer_size_ += buffer_mapper_->GetPlaneSize(buffer_, i);
+    buffer_size_ += buffer_manager_->GetPlaneSize(buffer_, i);
   }
 
   void* addr;
   int ret;
   switch (fourcc_) {
     case V4L2_PIX_FMT_JPEG:
-      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, buffer_size_, 1, &addr);
+      ret = buffer_manager_->Lock(buffer_, 0, 0, 0, buffer_size_, 1, &addr);
       if (!ret) {
         data_[0] = static_cast<uint8_t*>(addr);
       }
       break;
     case V4L2_PIX_FMT_RGBX32: {
-      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
+      ret = buffer_manager_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
       if (!ret) {
         data_[0] = static_cast<uint8_t*>(addr);
         stride_[0] = width_ * 4;
@@ -245,7 +245,7 @@ int GrallocFrameBuffer::Map() {
     case V4L2_PIX_FMT_YVU420M: {
       struct android_ycbcr ycbcr;
       ret =
-          buffer_mapper_->LockYCbCr(buffer_, 0, 0, 0, width_, height_, &ycbcr);
+          buffer_manager_->LockYCbCr(buffer_, 0, 0, 0, width_, height_, &ycbcr);
       if (!ret) {
         data_[YPLANE] = static_cast<uint8_t*>(ycbcr.y);
         data_[UPLANE] = static_cast<uint8_t*>(ycbcr.cb);
@@ -271,7 +271,7 @@ int GrallocFrameBuffer::Map() {
 
 int GrallocFrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (is_mapped_ && buffer_mapper_->Unlock(buffer_)) {
+  if (is_mapped_ && buffer_manager_->Unlock(buffer_)) {
     LOGF(ERROR) << "Failed to unmap buffer";
     return -EINVAL;
   }
