@@ -579,7 +579,6 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
       "MockParseScanResult");
   capability_->mobile_operator_info_.reset(mock_mobile_operator_info);
 
-  mock_mobile_operator_info->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_mobile_operator_info, UpdateMCCMNC(kID));
   EXPECT_CALL(*mock_mobile_operator_info, IsMobileNetworkOperatorKnown()).
       WillOnce(Return(true));

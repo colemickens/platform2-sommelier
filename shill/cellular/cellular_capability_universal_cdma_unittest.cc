@@ -275,8 +275,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
   cellular_->set_mdn("10123456789");
   cellular_->set_meid("4");
 
-
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
@@ -293,7 +291,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
             vzw_olp[kPaymentPortalPostData]);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
 
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
@@ -326,7 +323,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
   Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*cdma_proxy, Activate(_, _, _, _)).Times(0);
   capability_->ActivateAutomatic();
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);

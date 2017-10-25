@@ -48,10 +48,6 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD1(UpdateNID, void(const std::string&));
   MOCK_METHOD1(UpdateOperatorName, void(const std::string&));
 
-  // Sets up the mock object to return empty strings/vectors etc for all
-  // propeties.
-  void SetEmptyDefaultsForProperties();
-
  private:
   std::string empty_mccmnc_;
   std::vector<MobileOperatorInfo::OnlinePortal> empty_olp_list_;

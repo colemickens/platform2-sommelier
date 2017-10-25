@@ -848,7 +848,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->CreateService();
   // Now emulate an event for updated home provider information.
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
@@ -868,7 +867,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->CreateService();
   // Now emulate an event for updated serving operator information.
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
@@ -888,7 +886,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->CreateService();
   // Now emulate an event for updated home provider information.
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
@@ -896,7 +893,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->mobile_operator_info_observer_->OnOperatorChanged();
   // Now emulate an event for updated serving operator information.
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
@@ -916,7 +912,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->CreateService();
   // Now emulate an event for updated serving operator information.
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
@@ -924,7 +919,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
   device_->mobile_operator_info_observer_->OnOperatorChanged();
   // Now emulate an event for updated home provider information.
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
@@ -937,8 +931,6 @@ TEST_F(CellularTest, FriendlyServiceName) {
 
   // (6) Serving operator known, home provider known, and then service created
   //     => Name is serving operator.
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -981,7 +973,6 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   // When home provider is not known, serving operator proxies in.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, mccmnc())
@@ -1011,7 +1002,6 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   // When serving operator is not known, home provider proxies in.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, mccmnc())
@@ -1038,7 +1028,6 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   device_->DestroyService();
 
   // (4) Serving operator known, home provider known.
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, mccmnc())
@@ -1047,7 +1036,6 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
       .WillRepeatedly(ReturnRef(kHomeProviderName));
   EXPECT_CALL(*mock_home_provider_info_, country())
       .WillRepeatedly(ReturnRef(kHomeProviderCountry));
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, mccmnc())
@@ -1075,8 +1063,6 @@ TEST_F(CellularTest, StorageIdentifier) {
   // Test that the storage identifier name used by the service is sensible under
   // different scenarios w.r.t. information about the mobile network operator.
   SetMockMobileOperatorInfoObjects();
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   CHECK(mock_home_provider_info_);
   CHECK(mock_serving_operator_info_);
 
@@ -1095,8 +1081,6 @@ TEST_F(CellularTest, StorageIdentifier) {
 
   // (1) Service created, both home provider and serving operator known =>
   // home provider used.
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, uuid())
@@ -1126,7 +1110,6 @@ TEST_F(CellularTest, StorageIdentifier) {
   device_->DestroyService();
 
   // (3) Service created, serving operator known, uuid known.
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, uuid())
@@ -1138,7 +1121,6 @@ TEST_F(CellularTest, StorageIdentifier) {
   device_->DestroyService();
 
   // (4) Service created, serving operator known, uuid not known, iccid known.
-  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   device_->set_sim_identifier(kSimIdentifier);

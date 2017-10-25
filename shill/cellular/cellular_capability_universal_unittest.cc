@@ -1466,7 +1466,6 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   MockMobileOperatorInfo mock_operator_info(&dispatcher_,
                                             "MobileOperatorInfo");
 
-  mock_operator_info.SetEmptyDefaultsForProperties();
   EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kVzwUUID));
@@ -1486,7 +1485,6 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
   Mock::VerifyAndClearExpectations(&mock_operator_info);
 
-  mock_operator_info.SetEmptyDefaultsForProperties();
   EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kFooUUID));
@@ -1514,7 +1512,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
   cellular_->set_min("5");
   cellular_->set_sim_identifier("6");
 
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
@@ -1531,7 +1528,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
             vzw_olp[kPaymentPortalPostData]);
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
 
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
