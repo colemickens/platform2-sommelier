@@ -333,6 +333,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnMdnChanged(const std::string& mdn);
   void OnModemRevisionChanged(const std::string& revision);
   void OnModemHardwareRevisionChanged(const std::string& hardware_revision);
+  void OnModemDevicePathChanged(const std::string& path);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32_t access_technologies);
   void OnSupportedModesChanged(const std::vector<ModemModes>& supported_modes);

@@ -188,6 +188,7 @@ Device::Device(ControlInterface* control_interface,
   // kModelIdProperty: Registered in Cellular
   // kFirmwareRevisionProperty: Registered in Cellular
   // kHardwareRevisionProperty: Registered in Cellular
+  // kDeviceIdProperty: Registered in Cellular
   // kPRLVersionProperty: Registered in Cellular
   // kSIMLockStatusProperty: Registered in Cellular
   // kFoundNetworksProperty: Registered in Cellular

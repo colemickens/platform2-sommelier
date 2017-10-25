@@ -462,6 +462,7 @@
         'default_profile.cc',
         'device.cc',
         'device_claimer.cc',
+        'device_id.cc',
         'device_info.cc',
         'dhcp/dhcp_config.cc',
         'dhcp/dhcp_properties.cc',

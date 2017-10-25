@@ -240,6 +240,10 @@ string Cellular::GetTechnologyFamily(Error* error) {
   return capability_->GetTypeString();
 }
 
+string Cellular::GetDeviceId(Error* error) {
+  return device_id_ ? device_id_->AsString() : "";
+}
+
 void Cellular::SetState(State state) {
   SLOG(this, 2) << GetStateString(state_) << " -> "
                 << GetStateString(state);
@@ -1208,6 +1212,8 @@ void Cellular::RegisterProperties() {
   // TODO(pprabhu): Decide whether these need their own custom setters.
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
                                  &Cellular::GetTechnologyFamily);
+  HelpRegisterConstDerivedString(kDeviceIdProperty,
+                                 &Cellular::GetDeviceId);
   HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
                           &Cellular::GetAllowRoaming,
                           &Cellular::SetAllowRoaming);
@@ -1265,6 +1271,10 @@ void Cellular::set_hardware_revision(const string& hardware_revision) {
 
   hardware_revision_ = hardware_revision;
   adaptor()->EmitStringChanged(kHardwareRevisionProperty, hardware_revision_);
+}
+
+void Cellular::set_device_id(std::unique_ptr<DeviceId> device_id) {
+  device_id_ = std::move(device_id);
 }
 
 // TODO(armansito): The following methods should probably log their argument

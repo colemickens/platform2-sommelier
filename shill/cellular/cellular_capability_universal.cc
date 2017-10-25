@@ -34,6 +34,7 @@
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
+#include "shill/device_id.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/pending_activation_store.h"
@@ -1229,8 +1230,10 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (properties.ContainsString(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
     OnModemHardwareRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_HARDWAREREVISION));
   }
+  if (properties.ContainsString(MM_MODEM_PROPERTY_DEVICE)) {
+    OnModemDevicePathChanged(properties.GetString(MM_MODEM_PROPERTY_DEVICE));
+  }
   // not needed: MM_MODEM_PROPERTY_DEVICEIDENTIFIER
-  // not needed: MM_MODEM_PROPERTY_DEVICE
   // not needed: MM_MODEM_PROPERTY_DRIVER
   // not needed: MM_MODEM_PROPERTY_PLUGIN
   // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
@@ -1410,6 +1413,10 @@ void CellularCapabilityUniversal::OnModemRevisionChanged(
 void CellularCapabilityUniversal::OnModemHardwareRevisionChanged(
     const string& hardware_revision) {
   cellular()->set_hardware_revision(hardware_revision);
+}
+
+void CellularCapabilityUniversal::OnModemDevicePathChanged(const string& path) {
+  cellular()->set_device_id(ReadDeviceIdFromSysfs(base::FilePath(path)));
 }
 
 void CellularCapabilityUniversal::OnModemStateChanged(

@@ -30,6 +30,7 @@
 #include "shill/cellular/modem_info.h"
 #include "shill/cellular/modem_proxy_interface.h"
 #include "shill/device.h"
+#include "shill/device_id.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
@@ -234,6 +235,7 @@ class Cellular : public Device,
   void OnDisconnected();
   void OnDisconnectFailed();
   std::string GetTechnologyFamily(Error* error);
+  std::string GetDeviceId(Error* error);
   void OnModemStateChanged(ModemState new_state);
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
 
@@ -268,6 +270,7 @@ class Cellular : public Device,
   const std::string& esn() const { return esn_; }
   const std::string& firmware_revision() const { return firmware_revision_; }
   const std::string& hardware_revision() const { return hardware_revision_; }
+  const DeviceId* device_id() const { return device_id_.get(); }
   const std::string& imei() const { return imei_; }
   const std::string& imsi() const { return imsi_; }
   const std::string& mdn() const { return mdn_; }
@@ -295,6 +298,7 @@ class Cellular : public Device,
   void set_esn(const std::string& esn);
   void set_firmware_revision(const std::string& firmware_revision);
   void set_hardware_revision(const std::string& hardware_revision);
+  void set_device_id(std::unique_ptr<DeviceId> device_id);
   void set_imei(const std::string& imei);
   void set_imsi(const std::string& imsi);
   void set_mdn(const std::string& mdn);
@@ -532,6 +536,7 @@ class Cellular : public Device,
   std::string esn_;
   std::string firmware_revision_;
   std::string hardware_revision_;
+  std::unique_ptr<DeviceId> device_id_;
   std::string imei_;
   std::string imsi_;
   std::string manufacturer_;
