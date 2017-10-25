@@ -254,6 +254,9 @@ camera_metadata_t* Camera3HAL::construct_default_request_settings(int type)
     LOG2("@%s, type:%d", __FUNCTION__, type);
     camera_metadata_t * meta;
 
+    if (type < CAMERA3_TEMPLATE_PREVIEW || type >= CAMERA3_TEMPLATE_COUNT)
+        return nullptr;
+
     status_t status = mRequestThread->constructDefaultRequest(type, &meta);
     if (status != NO_ERROR)
         return nullptr;
