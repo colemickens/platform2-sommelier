@@ -35,17 +35,8 @@ const char kNoActions[] = "";
 // was asked to perform.
 class TestDelegate : public Suspender::Delegate, public ActionRecorder {
  public:
-  TestDelegate()
-      : lid_closed_(false),
-        report_success_for_read_wakeup_count_(true),
-        suspend_result_(SuspendResult::SUCCESS),
-        wakeup_count_(0),
-        suspend_announced_(false),
-        suspend_wakeup_count_(0),
-        suspend_wakeup_count_valid_(false),
-        suspend_was_successful_(false),
-        num_suspend_attempts_(0),
-        suspend_canceled_while_in_dark_resume_(false) {}
+  TestDelegate() = default;
+  ~TestDelegate() override = default;
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
   void set_report_success_for_read_wakeup_count(bool success) {
@@ -156,17 +147,17 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
 
   // Value returned by IsLidClosedForSuspend().
-  bool lid_closed_;
+  bool lid_closed_ = false;
 
   // Should ReadSuspendWakeupCount() and DoSuspend() report success?
-  bool report_success_for_read_wakeup_count_;
-  SuspendResult suspend_result_;
+  bool report_success_for_read_wakeup_count_ = true;
+  SuspendResult suspend_result_ = SuspendResult::SUCCESS;
 
   // Count that should be returned by ReadSuspendWakeupCount().
-  uint64_t wakeup_count_;
+  uint64_t wakeup_count_ = 0;
 
   // Updated by SetSuspendAnnounced() and returned by GetSuspendAnnounced().
-  bool suspend_announced_;
+  bool suspend_announced_ = false;
 
   // Callback that will be run once (if non-null) when DoSuspend() is called.
   base::Closure suspend_callback_;
@@ -179,14 +170,14 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   base::Closure shutdown_callback_;
 
   // Arguments passed to last invocation of DoSuspend().
-  uint64_t suspend_wakeup_count_;
-  bool suspend_wakeup_count_valid_;
+  uint64_t suspend_wakeup_count_ = 0;
+  bool suspend_wakeup_count_valid_ = false;
   base::TimeDelta suspend_duration_;
 
   // Arguments passed to last invocation of UndoPrepareToSuspend().
-  bool suspend_was_successful_;
-  int num_suspend_attempts_;
-  bool suspend_canceled_while_in_dark_resume_;
+  bool suspend_was_successful_ = false;
+  int num_suspend_attempts_ = 0;
+  bool suspend_canceled_while_in_dark_resume_ = false;
 
   // Dark resume wake data provided to GenerateDarkResumeMetrics().
   std::vector<Suspender::DarkResumeInfo> dark_resume_wake_durations_;

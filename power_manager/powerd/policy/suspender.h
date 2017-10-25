@@ -326,9 +326,9 @@ class Suspender : public SuspendDelayObserver {
   // dark resume.
   void EmitDarkSuspendImminentSignal(int dark_suspend_id);
 
-  Delegate* delegate_;                          // weak
-  system::DBusWrapperInterface* dbus_wrapper_;  // weak
-  system::DarkResumeInterface* dark_resume_;    // weak
+  Delegate* delegate_ = nullptr;                          // weak
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
+  system::DarkResumeInterface* dark_resume_ = nullptr;    // weak
 
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;
@@ -336,33 +336,33 @@ class Suspender : public SuspendDelayObserver {
 
   // Current state of the object, updated just before returning control to the
   // event loop.
-  State state_;
+  State state_ = State::IDLE;
 
   // True if HandleEvent() is currently handling an event.
-  bool handling_event_;
+  bool handling_event_ = false;
 
   // True if HandleEvent() is currently processing |queued_events_|.
-  bool processing_queued_events_;
+  bool processing_queued_events_ = false;
 
   // Unhandled events that were received while |handling_event_| was true.
   std::queue<Event> queued_events_;
 
   // Unique ID associated with the current suspend request.
-  int suspend_request_id_;
+  int suspend_request_id_ = 0;
 
   // Unique ID associated with the current dark suspend request.
-  int dark_suspend_id_;
+  int dark_suspend_id_ = 0;
 
   // An optional wakeup count supplied via
   // RequestSuspendWithExternalWakeupCount().
-  bool suspend_request_supplied_wakeup_count_;
-  uint64_t suspend_request_wakeup_count_;
+  bool suspend_request_supplied_wakeup_count_ = false;
+  uint64_t suspend_request_wakeup_count_ = 0;
 
   // Number of wakeup events received at the start of the current suspend
   // attempt. Passed to the kernel to cancel an attempt if user activity is
   // received while powerd's event loop isn't running.
-  uint64_t wakeup_count_;
-  bool wakeup_count_valid_;
+  uint64_t wakeup_count_ = 0;
+  bool wakeup_count_valid_ = false;
 
   // Wall time at which the suspend request started.
   base::Time suspend_request_start_time_;
@@ -372,17 +372,17 @@ class Suspender : public SuspendDelayObserver {
 
   // Maximum number of times to retry after a failed suspend attempt before
   // giving up and shutting down the system.
-  int64_t max_retries_;
+  int64_t max_retries_ = 0;
 
   // Number of suspend attempts made in the current series. Up to |max_retries_|
   // additional attempts are made after a failure, but this counter is reset
   // after waking into dark resume.
-  int current_num_attempts_;
+  int current_num_attempts_ = 0;
 
   // Number of suspend attempts made in the first series after the
   // RequestSuspend() call. |current_num_attempts_| is copied here when doing a
   // dark resume.
-  int initial_num_attempts_;
+  int initial_num_attempts_ = 0;
 
   // The time at which the system entered dark resume.
   base::Time dark_resume_start_time_;

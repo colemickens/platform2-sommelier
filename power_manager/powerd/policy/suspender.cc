@@ -50,25 +50,10 @@ std::string Suspender::TestApi::GetDefaultWakeReason() const {
 }
 
 Suspender::Suspender()
-    : delegate_(NULL),
-      dbus_wrapper_(NULL),
-      dark_resume_(NULL),
-      clock_(new Clock),
-      state_(State::IDLE),
-      handling_event_(false),
-      processing_queued_events_(false),
-      suspend_request_id_(0),
-      dark_suspend_id_(0),
-      suspend_request_supplied_wakeup_count_(false),
-      suspend_request_wakeup_count_(0),
-      wakeup_count_(0),
-      wakeup_count_valid_(false),
-      max_retries_(0),
-      current_num_attempts_(0),
-      initial_num_attempts_(0),
+    : clock_(std::make_unique<Clock>()),
       last_dark_resume_wake_reason_(kDefaultWakeReason) {}
 
-Suspender::~Suspender() {}
+Suspender::~Suspender() = default;
 
 void Suspender::Init(Delegate* delegate,
                      system::DBusWrapperInterface* dbus_wrapper,
