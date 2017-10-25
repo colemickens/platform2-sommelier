@@ -50,6 +50,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
@@ -227,6 +228,14 @@ class Daemon::StateControllerDelegate
     proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
     daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
         kIdleActionImminentSignal, proto);
+  }
+
+  void EmitScreenIdleStateChanged(bool dimmed, bool off) override {
+    ScreenIdleState proto;
+    proto.set_dimmed(dimmed);
+    proto.set_off(off);
+    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
+        kScreenIdleStateChangedSignal, proto);
   }
 
   void EmitIdleActionDeferred() override {

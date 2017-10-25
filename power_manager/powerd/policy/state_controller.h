@@ -79,6 +79,10 @@ class StateController : public PrefsObserver {
     // mode" and on if the system isn't in docked mode.
     virtual void UpdatePanelForDockedMode(bool docked) = 0;
 
+    // Announces that the screen's dimmed- or off-for-inactivity state has
+    // changed.
+    virtual void EmitScreenIdleStateChanged(bool dimmed, bool off) = 0;
+
     // Announces that the idle action will be performed after
     // |time_until_idle_action|.
     virtual void EmitIdleActionImminent(

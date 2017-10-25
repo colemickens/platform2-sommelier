@@ -36,6 +36,10 @@ const char kShutDown[] = "shut_down";
 const char kDocked[] = "docked";
 const char kUndocked[] = "undocked";
 const char kIdleDeferred[] = "idle_deferred";
+const char kScreenIdleStateDimmedOff[] = "screen_idle(dim,off)";
+const char kScreenIdleStateDimmedOn[] = "screen_idle(dim,on)";
+const char kScreenIdleStateUndimmedOff[] = "screen_idle(undim,off)";
+const char kScreenIdleStateUndimmedOn[] = "screen_idle(undim,on)";
 const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
@@ -50,17 +54,14 @@ std::string GetIdleImminentAction(base::TimeDelta time_until_idle_action) {
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate, public ActionRecorder {
  public:
-  TestDelegate()
-      : record_metrics_actions_(false),
-        usb_input_device_connected_(false),
-        oobe_completed_(true),
-        hdmi_audio_active_(false),
-        headphone_jack_plugged_(false),
-        lid_state_(LidState::OPEN) {}
-  virtual ~TestDelegate() {}
+  TestDelegate() = default;
+  ~TestDelegate() override = default;
 
   void set_record_metrics_actions(bool record) {
     record_metrics_actions_ = record;
+  }
+  void set_record_screen_idle_state_actions(bool record) {
+    record_screen_idle_state_actions_ = record;
   }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -91,6 +92,16 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void UpdatePanelForDockedMode(bool docked) override {
     AppendAction(docked ? kDocked : kUndocked);
   }
+  void EmitScreenIdleStateChanged(bool dimmed, bool off) override {
+    if (!record_screen_idle_state_actions_)
+      return;
+    if (dimmed) {
+      AppendAction(off ? kScreenIdleStateDimmedOff : kScreenIdleStateDimmedOn);
+    } else {
+      AppendAction(off ? kScreenIdleStateUndimmedOff
+                       : kScreenIdleStateUndimmedOn);
+    }
+  }
   void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
     AppendAction(GetIdleImminentAction(time_until_idle_action));
   }
@@ -101,24 +112,26 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   }
 
  private:
-  // Should calls to ReportUserActivityMetrics() be recorded in |actions_|?
-  // These are noisy, so by default, they aren't recorded.
-  bool record_metrics_actions_;
+  // Should calls to ReportUserActivityMetrics() and EmitScreenIdleStateChanged
+  // be recorded in |actions_|? These are noisy, so by default, they aren't
+  // recorded.
+  bool record_metrics_actions_ = false;
+  bool record_screen_idle_state_actions_ = false;
 
   // Should IsUsbInputDeviceConnected() return true?
-  bool usb_input_device_connected_;
+  bool usb_input_device_connected_ = false;
 
   // Should IsOobeCompleted() return true?
-  bool oobe_completed_;
+  bool oobe_completed_ = true;
 
   // Should IsHdmiAudioActive() return true?
-  bool hdmi_audio_active_;
+  bool hdmi_audio_active_ = false;
 
   // Should IsHeadphoneJackPlugged() return true?
-  bool headphone_jack_plugged_;
+  bool headphone_jack_plugged_ = false;
 
   // Lid state to be returned by QueryLidState().
-  LidState lid_state_;
+  LidState lid_state_ = LidState::OPEN;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
@@ -279,20 +292,25 @@ class StateControllerTest : public testing::Test {
 
 // Tests the basic operation of the different delays.
 TEST_F(StateControllerTest, BasicDelays) {
+  delegate_.set_record_screen_idle_state_actions(true);
   Init();
 
   // The screen should be dimmed after the configured interval and then undimmed
   // in response to user activity.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
+            delegate_.GetActions());
   controller_.HandleUserActivity();
-  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenIdleStateUndimmedOn, nullptr),
+            delegate_.GetActions());
 
   // The system should eventually suspend if the user is inactive.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenOff, kScreenIdleStateDimmedOff, nullptr),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -302,11 +320,14 @@ TEST_F(StateControllerTest, BasicDelays) {
   // When the system resumes, the screen should be undimmed and turned back
   // on.
   controller_.HandleResume();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  EXPECT_EQ(
+      JoinActions(kScreenUndim, kScreenOn, kScreenIdleStateUndimmedOn, nullptr),
+      delegate_.GetActions());
 
   // The screen should be dimmed again after the screen-dim delay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
+            delegate_.GetActions());
 }
 
 // Tests that the screen isn't dimmed while video is detected.

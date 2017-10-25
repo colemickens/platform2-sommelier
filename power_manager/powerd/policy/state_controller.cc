@@ -894,6 +894,11 @@ void StateController::UpdateState() {
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
               base::Closure(), "Locking screen", "", &requested_screen_lock_);
 
+  if (screen_dimmed_ != screen_was_dimmed ||
+      screen_turned_off_ != screen_was_turned_off) {
+    delegate_->EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
+  }
+
   // The idle-imminent signal is only emitted if an idle action is set.
   if (delays_.idle_warning > base::TimeDelta() &&
       idle_duration >= delays_.idle_warning &&
