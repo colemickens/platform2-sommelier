@@ -1517,7 +1517,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
   EXPECT_CALL(*mock_home_provider_info_, uuid())
-      .WillOnce(ReturnRef(kUuidVzw));
+      .WillRepeatedly(ReturnRef(kUuidVzw));
   CreateService();
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
@@ -1533,7 +1533,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
   EXPECT_CALL(*mock_home_provider_info_, uuid())
-      .WillOnce(ReturnRef(kUuidFoo));
+      .WillRepeatedly(ReturnRef(kUuidFoo));
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
   Stringmap olp = cellular_->service()->olp();

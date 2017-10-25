@@ -280,7 +280,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
   EXPECT_CALL(*mock_serving_operator_info_, uuid())
-      .WillOnce(ReturnRef(kUuidVzw));
+      .WillRepeatedly(ReturnRef(kUuidVzw));
   SetService();
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
@@ -296,7 +296,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
   EXPECT_CALL(*mock_serving_operator_info_, uuid())
-      .WillOnce(ReturnRef(kUuidFoo));
+      .WillRepeatedly(ReturnRef(kUuidFoo));
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
   Stringmap olp = cellular_->service()->olp();

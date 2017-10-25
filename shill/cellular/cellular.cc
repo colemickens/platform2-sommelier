@@ -671,35 +671,15 @@ void Cellular::CreateService() {
   // Storage identifier must be set only once, and before registering the
   // service with the manager, since we key off of this identifier to
   // determine the profile to load.
-  //
-  // TODO(benchan): Use a simpler scheme for generating the storage identifier
-  // once we no longer depend on it to locate a profile.
   string service_id;
-  if (home_provider_info_->IsMobileNetworkOperatorKnown() &&
-      !home_provider_info_->uuid().empty()) {
+  if (!home_provider_info_->uuid().empty()) {
     service_id = home_provider_info_->uuid();
-  } else if (serving_operator_info_->IsMobileNetworkOperatorKnown() &&
-             !serving_operator_info_->uuid().empty()) {
+  } else if (!serving_operator_info_->uuid().empty()) {
     service_id = serving_operator_info_->uuid();
-  } else {
-    switch (type_) {
-      case kTypeGSM:
-      case kTypeUniversal:
-        if (!sim_identifier().empty()) {
-          service_id = sim_identifier();
-        }
-        break;
-
-      case kTypeCDMA:
-      case kTypeUniversalCDMA:
-        if (!meid().empty()) {
-          service_id = meid();
-        }
-        break;
-
-      default:
-        NOTREACHED();
-    }
+  } else if (!sim_identifier().empty()) {
+    service_id = sim_identifier();
+  } else if (!meid().empty()) {
+    service_id = meid();
   }
 
   if (!service_id.empty()) {
