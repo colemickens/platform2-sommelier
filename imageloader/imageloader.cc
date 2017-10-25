@@ -134,4 +134,14 @@ bool ImageLoader::RemoveComponent(
   return true;
 }
 
+bool ImageLoader::GetComponentMetadata(
+    brillo::ErrorPtr* err,
+    const std::string& name,
+    std::map<std::string, std::string>* out_metadata) {
+  if (!impl_.GetComponentMetadata(name, out_metadata))
+    out_metadata->clear();
+  PostponeShutdown();
+  return true;
+}
+
 }  // namespace imageloader

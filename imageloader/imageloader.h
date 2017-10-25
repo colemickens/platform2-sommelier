@@ -60,6 +60,11 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   bool RemoveComponent(brillo::ErrorPtr* err, const std::string& name,
                        bool* out_success) override;
 
+  bool GetComponentMetadata(
+      brillo::ErrorPtr* err,
+      const std::string& name,
+      std::map<std::string, std::string>* out_metadata) override;
+
   // Sandboxes the runtime environment, using minijail. This is publicly exposed
   // so that imageloader_main.cc can sandbox when not running as a daemon.
   static void EnterSandbox();

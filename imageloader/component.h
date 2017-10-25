@@ -15,6 +15,7 @@
 #ifndef IMAGELOADER_COMPONENT_H_
 #define IMAGELOADER_COMPONENT_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,6 +49,7 @@ class Component {
     std::string version;
     FileSystem fs_type;
     bool is_removable;
+    std::map<std::string, std::string> metadata;
   };
 
   // Creates a Component. Returns nullptr if initialization and verification

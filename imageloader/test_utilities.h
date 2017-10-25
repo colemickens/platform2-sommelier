@@ -47,8 +47,16 @@ constexpr uint8_t kOciDevPublicKey[] = {
 constexpr char kTestOciComponentName[] = "adb";
 constexpr char kTestOciComponentVersion[] = "5.1.1.13";
 
+// Equivalent component but with metadata in the manifest.
+constexpr char kMetadataComponentName[] = "adb-with-metadata";
+constexpr char kBadMetadataComponentName[] = "adb-with-bad-metadata";
+constexpr char kNonDictMetadataComponentName[] = "adb-with-non-dict-metadata";
+
 // Get the path of the test OCI component in the test data folder.
 base::FilePath GetTestOciComponentPath();
+base::FilePath GetMetadataComponentPath();
+base::FilePath GetBadMetadataComponentPath();
+base::FilePath GetNonDictMetadataComponentPath();
 
 // Enumerate all files in a directory and return them as a list of filenames.
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files);

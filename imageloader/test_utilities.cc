@@ -44,6 +44,18 @@ base::FilePath GetTestOciComponentPath() {
   return GetTestDataPath(kTestOciComponentName);
 }
 
+base::FilePath GetMetadataComponentPath() {
+  return GetTestDataPath(kMetadataComponentName);
+}
+
+base::FilePath GetBadMetadataComponentPath() {
+  return GetTestDataPath(kBadMetadataComponentName);
+}
+
+base::FilePath GetNonDictMetadataComponentPath() {
+  return GetTestDataPath(kNonDictMetadataComponentName);
+}
+
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files) {
   base::FileEnumerator file_enum(dir, false, base::FileEnumerator::FILES);
   for (base::FilePath name = file_enum.Next(); !name.empty();

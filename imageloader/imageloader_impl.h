@@ -4,6 +4,7 @@
 #ifndef IMAGELOADER_IMAGELOADER_IMPL_H_
 #define IMAGELOADER_IMAGELOADER_IMPL_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,10 @@ class ImageLoaderImpl {
 
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name);
+
+  // Get component metadata given component name.
+  bool GetComponentMetadata(const std::string& name,
+                            std::map<std::string, std::string>* out_metadata);
 
   // Load the specified component. This returns the mount point or an empty
   // string on failure.

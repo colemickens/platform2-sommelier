@@ -102,5 +102,20 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="GetComponentMetadata">
+    <tp:docstring>
+      Get the metadata for a registered component.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+      <tp:docstring>
+        The name of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="metadata" type="a{ss}" direction="out">
+      <tp:docstring>
+        The metadata associated with this component.
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

@@ -329,4 +329,47 @@ TEST_F(ImageLoaderTest, SecondKey) {
   ASSERT_TRUE(base::DirectoryExists(version_dir));
 }
 
+TEST_F(ImageLoaderTest, GetMetadata) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+  ASSERT_TRUE(loader.RegisterComponent(kMetadataComponentName,
+                                       kTestOciComponentVersion,
+                                       GetMetadataComponentPath().value()));
+
+  // We shouldn't need to load the component to get the metadata.
+  std::map<std::string, std::string> metadata;
+  ASSERT_TRUE(loader.GetComponentMetadata(kMetadataComponentName, &metadata));
+  std::map<std::string, std::string> expected_metadata{
+    {"foo", "bar"},
+    {"baz", "quux"},
+  };
+  ASSERT_EQ(expected_metadata, metadata);
+}
+
+TEST_F(ImageLoaderTest, GetEmptyMetadata) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+  ASSERT_TRUE(loader.RegisterComponent(kTestOciComponentName,
+                                       kTestOciComponentVersion,
+                                       GetTestOciComponentPath().value()));
+
+  // If there's no metadata, we should get nothing.
+  std::map<std::string, std::string> metadata;
+  ASSERT_TRUE(loader.GetComponentMetadata(kTestOciComponentName, &metadata));
+  ASSERT_TRUE(metadata.empty());
+}
+
+TEST_F(ImageLoaderTest, MetadataFailure) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+  // Metadata is optional, but malformed metadata should not be present in the
+  // manifest. If it is, fail to load the component.
+  ASSERT_FALSE(loader.RegisterComponent(kBadMetadataComponentName,
+                                        kTestOciComponentVersion,
+                                        GetBadMetadataComponentPath().value()));
+
+  ASSERT_FALSE(loader.RegisterComponent(
+      kNonDictMetadataComponentName,
+      kTestOciComponentVersion,
+      GetNonDictMetadataComponentPath().value()));
+
+}
+
 }   // namespace imageloader

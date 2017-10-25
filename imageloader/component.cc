@@ -48,6 +48,8 @@ constexpr char kVersionField[] = "version";
 constexpr char kImageHashField[] = "image-sha256-hash";
 // The name of the bool field indicating whether component is removable.
 constexpr char kIsRemovableField[] = "is-removable";
+// The name of the metadata field.
+constexpr char kMetadataField[] = "metadata";
 // The name of the image file (squashfs).
 constexpr char kImageFileNameSquashFS[] = "image.squash";
 // The name of the image file (ext4).
@@ -157,6 +159,30 @@ bool GetAndVerifyTable(const base::FilePath& path,
   }
 
   out_table->assign(table);
+  return true;
+}
+
+// Ensure the metadata entry is a dictionary mapping strings to strings and
+// parse it into |out_metadata| and return true if so.
+bool ParseMetadata(const base::Value* metadata_element,
+                   std::map<std::string, std::string>* out_metadata) {
+  DCHECK(out_metadata);
+
+  const base::DictionaryValue* metadata_dict = nullptr;
+  if (!metadata_element->GetAsDictionary(&metadata_dict))
+    return false;
+
+  base::DictionaryValue::Iterator it(*metadata_dict);
+  for (; !it.IsAtEnd(); it.Advance()) {
+    std::string parsed_value;
+    if (!it.value().GetAsString(&parsed_value)) {
+      LOG(ERROR) << "Key \"" << it.key() << "\" did not map to string value";
+      return false;
+    }
+
+    (*out_metadata)[it.key()] = std::move(parsed_value);
+  }
+
   return true;
 }
 
@@ -288,6 +314,15 @@ bool Component::ParseManifest() {
                                  &(manifest_.is_removable))) {
     // If is_removable field does not exist, by default it is false.
     manifest_.is_removable = false;
+  }
+
+  // Copy out the metadata, if it's there.
+  const base::Value* metadata = nullptr;
+  if (manifest_dict->Get(kMetadataField, &metadata)) {
+    if (!ParseMetadata(metadata, &(manifest_.metadata))) {
+      LOG(ERROR) << "Manifest metadata was malformed";
+      return false;
+    }
   }
 
   return true;

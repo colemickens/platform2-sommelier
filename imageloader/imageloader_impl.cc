@@ -15,7 +15,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
+#include <base/values.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -225,6 +227,23 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
   if (!component) return kBadResult;
 
   return component->manifest().version;
+}
+
+bool ImageLoaderImpl::GetComponentMetadata(
+     const std::string& name,
+     std::map<std::string, std::string>* out_metadata) {
+  base::FilePath component_path;
+  if (!GetPathToCurrentComponentVersion(name, &component_path)) {
+    return false;
+  }
+
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, config_.keys);
+  if (!component)
+    return false;
+
+  *out_metadata = component->manifest().metadata;
+  return true;
 }
 
 base::FilePath ImageLoaderImpl::GetLatestVersionFilePath(
