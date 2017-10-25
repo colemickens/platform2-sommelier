@@ -6616,6 +6616,44 @@ mno {
 
 mno {
   data {
+    uuid : "758e1b4f-d9eb-495e-9c1e-b178099fa744"
+    country : "in"
+    localized_name {
+      name : "Jio"
+    }
+    mccmnc : "405840"
+    mccmnc : "405854"
+    mccmnc : "405855"
+    mccmnc : "405856"
+    mccmnc : "405857"
+    mccmnc : "405858"
+    mccmnc : "405859"
+    mccmnc : "405860"
+    mccmnc : "405861"
+    mccmnc : "405862"
+    mccmnc : "405863"
+    mccmnc : "405864"
+    mccmnc : "405865"
+    mccmnc : "405866"
+    mccmnc : "405867"
+    mccmnc : "405868"
+    mccmnc : "405869"
+    mccmnc : "405870"
+    mccmnc : "405871"
+    mccmnc : "405872"
+    mccmnc : "405873"
+    mccmnc : "405874"
+    mobile_apn {
+      apn : "jionet"
+      localized_name {
+        name : "Jio 4G"
+      }
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "7d897bb5-619f-49e3-8b6b-127423f21659"
     country : "iq"
     localized_name {
