@@ -104,16 +104,11 @@ bool SeqHandler::InitSeq() {
     return false;
   }
 
-  // Initialize decoder.
-  snd_midi_event_t* tmp_decoder = nullptr;
-  snd_midi_event_new(0, &tmp_decoder);
-  ScopedMidiEventPtr decoder(tmp_decoder);
-  tmp_decoder = nullptr;
-  snd_midi_event_no_status(decoder.get(), 1);
+  in_client_ = std::move(in_client);
+  out_client_ = std::move(out_client);
 
-  in_client_.reset(in_client.release());
-  out_client_.reset(out_client.release());
-  decoder_.reset(decoder.release());
+  // Initialize decoder.
+  decoder_ = CreateMidiEvent(0);
 
   EnumerateExistingDevices();
 
@@ -446,6 +441,16 @@ void SeqHandler::EnumerateExistingDevices() {
       AddSeqPort(device_id, port_id);
     }
   }
+}
+
+SeqHandler::ScopedMidiEventPtr SeqHandler::CreateMidiEvent(size_t buf_size) {
+  snd_midi_event_t* tmp = nullptr;
+  snd_midi_event_new(buf_size, &tmp);
+  ScopedMidiEventPtr ev(tmp);
+  tmp = nullptr;
+  snd_midi_event_no_status(ev.get(), 1);
+
+  return ev;
 }
 
 }  // namespace midis

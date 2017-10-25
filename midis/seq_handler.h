@@ -132,9 +132,14 @@ class SeqHandler : public SeqHandlerInterface {
   friend class SeqHandlerTest;
   FRIEND_TEST(SeqHandlerTest, TestEncodeBytes);
   FRIEND_TEST(SeqHandlerTest, TestProcessAlsaClientFdPositive);
+  FRIEND_TEST(SeqHandlerTest, TestProcessMidiEventsPositive);
+  FRIEND_TEST(SeqHandlerTest, TestProcessMidiEventsNegative);
 
   // Enumerates all clients which are already connected to the ALSA Sequencer.
   void EnumerateExistingDevices();
+
+  // Creates a MIDI event wrapped in a ScopedMidiEventPtr.
+  static ScopedMidiEventPtr CreateMidiEvent(size_t buf_size);
 
   std::unique_ptr<snd_seq_t, SeqDeleter> in_client_;
   std::unique_ptr<snd_seq_t, SeqDeleter> out_client_;
