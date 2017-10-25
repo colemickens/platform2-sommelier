@@ -24,63 +24,38 @@
 
 namespace libcab_test {
 
-// This class helps to forward the callback to test cases because
-// CameraAlgorithmBridge accepts initialization and callback registration once
-// and only once.
-class CallbackSwitcher : public camera_algorithm_callback_ops_t {
- public:
-  static CallbackSwitcher* GetInstance() {
-    static CallbackSwitcher switcher;
-    return &switcher;
-  }
-
-  void RegisterCallback(base::Callback<void(uint32_t, int32_t)> callback) {
-    callback_ = callback;
-  }
-
- private:
-  CallbackSwitcher() {
-    CallbackSwitcher::return_callback =
-        CallbackSwitcher::ReturnCallbackForwarder;
-  }
-
-  static void ReturnCallbackForwarder(
-      const camera_algorithm_callback_ops_t* callback_ops,
-      uint32_t status,
-      int32_t buffer_handle) {
-    if (callback_ops) {
-      auto s = const_cast<CallbackSwitcher*>(
-          static_cast<const CallbackSwitcher*>(callback_ops));
-      s->callback_.Run(status, buffer_handle);
-    }
-  }
-
-  base::Callback<void(uint32_t, int32_t)> callback_;
-};
-
 // This test should be run against the fake libcam_algo.so created with
 // fake_libcam_algo.cc.
-class CameraAlgorithmBridgeFixture : public testing::Test {
+class CameraAlgorithmBridgeFixture : public testing::Test,
+                                     public camera_algorithm_callback_ops_t {
  public:
   const size_t kShmBufferSize = 2048;
 
   CameraAlgorithmBridgeFixture() {
-    if (!bridge_) {
-      bridge_ = arc::CameraAlgorithmBridge::CreateInstance();
-      if (!bridge_ || bridge_->Initialize(
-                          libcab_test::CallbackSwitcher::GetInstance()) != 0) {
-        ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
-        return;
-      }
+    CameraAlgorithmBridgeFixture::return_callback =
+        CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
+    bridge_ = arc::CameraAlgorithmBridge::CreateInstance();
+    if (!bridge_ || bridge_->Initialize(this) != 0) {
+      ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
+      return;
     }
-    CallbackSwitcher::GetInstance()->RegisterCallback(base::Bind(
-        &CameraAlgorithmBridgeFixture::ReturnCallback, base::Unretained(this)));
     sem_init(&return_sem_, 0, 0);
   }
 
   ~CameraAlgorithmBridgeFixture() { sem_destroy(&return_sem_); }
 
  protected:
+  static void ReturnCallbackForwarder(
+      const camera_algorithm_callback_ops_t* callback_ops,
+      uint32_t status,
+      int32_t buffer_handle) {
+    if (callback_ops) {
+      auto s = const_cast<CameraAlgorithmBridgeFixture*>(
+          static_cast<const CameraAlgorithmBridgeFixture*>(callback_ops));
+      s->ReturnCallback(status, buffer_handle);
+    }
+  }
+
   virtual void ReturnCallback(uint32_t status, int32_t buffer_handle) {
     base::AutoLock l(request_set_lock_);
     if (request_set_.find(buffer_handle) == request_set_.end()) {
@@ -92,7 +67,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test {
     sem_post(&return_sem_);
   }
 
-  static std::unique_ptr<arc::CameraAlgorithmBridge> bridge_;
+  std::unique_ptr<arc::CameraAlgorithmBridge> bridge_;
 
   base::Lock request_set_lock_;
 
@@ -105,9 +80,6 @@ class CameraAlgorithmBridgeFixture : public testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmBridgeFixture);
 };
-
-std::unique_ptr<arc::CameraAlgorithmBridge>
-    CameraAlgorithmBridgeFixture::bridge_;
 
 TEST_F(CameraAlgorithmBridgeFixture, BasicOperation) {
   int fd = shm_open("/myshm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -234,8 +206,6 @@ class CameraAlgorithmBridgeStatusFixture : public CameraAlgorithmBridgeFixture {
 
   // Stores hashcode generated from |req_header| of the Request calls.
   std::vector<uint32_t> hash_codes_;
-
-  sem_t return_sem_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmBridgeStatusFixture);

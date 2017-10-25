@@ -11,6 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -72,6 +73,7 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
     return -EFAULT;
   }
   const int32_t kInitializationRetryTimeoutMs = 3000;
+  const int32_t kInitializationWaitConnectionMs = 300;
   const int32_t kInitializationRetrySleepUs = 100000;
   auto get_elapsed_ms = [](struct timespec& start) {
     struct timespec stop = {};
@@ -98,10 +100,12 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
         FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::InitializeOnIpcThread,
                               base::Unretained(this), callback_ops,
                               internal::GetFutureCallback(future)));
-    future->Wait(kInitializationRetryTimeoutMs - elapsed_ms);
-    ret = future->Get();
-    if (ret == 0 || ret == -EINVAL) {
-      break;
+    if (future->Wait(std::min(kInitializationWaitConnectionMs,
+                              kInitializationRetryTimeoutMs - elapsed_ms))) {
+      ret = future->Get();
+      if (ret == 0 || ret == -EINVAL) {
+        break;
+      }
     }
     usleep(kInitializationRetrySleepUs);
   } while (1);
@@ -154,9 +158,9 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
     return;
   }
   if (cb_impl_) {
-    LOGF(ERROR) << "Camera algorithm bridge is already initialized";
-    cb.Run(-EALREADY);
-    return;
+    LOGF(WARNING)
+        << "Camera algorithm bridge is already initialized. Reinitializing...";
+    DestroyOnIpcThread();
   }
 
   // Creat unix socket to send the adapter token and connection handle
