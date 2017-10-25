@@ -285,11 +285,12 @@ class Daemon : public policy::BacklightControllerObserver,
 
   std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 
-  dbus::ObjectProxy* session_manager_dbus_proxy_;  // owned by |dbus_wrapper_|
+  // ObjectProxy objects are owned by |dbus_wrapper_|.
+  dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
   // May be null if |kUseCrasPref| is false.
-  dbus::ObjectProxy* update_engine_dbus_proxy_;  // owned by |dbus_wrapper_|
+  dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
   // May be null if the TPM status is not needed.
-  dbus::ObjectProxy* cryptohomed_dbus_proxy_;  // owned by |dbus_wrapper_|
+  dbus::ObjectProxy* cryptohomed_dbus_proxy_ = nullptr;
 
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
   std::unique_ptr<MetricsSenderInterface> metrics_sender_;
@@ -327,11 +328,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // True if the kFactoryModePref pref indicates that the system is running in
   // the factory, implying that much of powerd's functionality should be
   // disabled.
-  bool factory_mode_;
+  bool factory_mode_ = false;
 
   // True once the shutdown process has started. Remains true until the
   // system has powered off.
-  bool shutting_down_;
+  bool shutting_down_ = false;
 
   // Recurring timer that's started if a shutdown request is deferred due to a
   // firmware update. ShutDown() is called repeatedly so the system will
@@ -374,21 +375,21 @@ class Daemon : public policy::BacklightControllerObserver,
   base::FilePath suspend_announced_path_;
 
   // Last session state that we have been informed of. Initialized as stopped.
-  SessionState session_state_;
+  SessionState session_state_ = SessionState::STOPPED;
 
   // Set to true if powerd touched a file for crash-reporter before
   // suspending. If true, the file will be unlinked after resuming.
-  bool created_suspended_state_file_;
+  bool created_suspended_state_file_ = false;
 
   // True if the "mosys" command should be used to record suspend and resume
   // timestamps in eventlog.
-  bool log_suspend_with_mosys_eventlog_;
+  bool log_suspend_with_mosys_eventlog_ = false;
 
   // True if the system should suspend to idle.
-  bool suspend_to_idle_;
+  bool suspend_to_idle_ = false;
 
   // Set wifi transmit power for tablet mode.
-  bool set_wifi_transmit_power_for_tablet_mode_;
+  bool set_wifi_transmit_power_for_tablet_mode_ = false;
 
   // Used to log video, user, and audio activity and hovering.
   std::unique_ptr<PeriodicActivityLogger> video_activity_logger_;
