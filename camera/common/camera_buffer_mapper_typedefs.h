@@ -7,51 +7,17 @@
 #ifndef COMMON_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
 #define COMMON_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
 
-#include <unistd.h>
-
 #include <memory>
 #include <unordered_map>
 #include <utility>
 
 #include <gbm.h>
 
-#include <base/macros.h>
-
-#define EXPORTED __attribute__((__visibility__("default")))
-
 struct native_handle;
 typedef const native_handle* buffer_handle_t;
 struct android_ycbcr;
 
 namespace arc {
-
-// This class wraps gbm_device for sharing it with tests
-class EXPORTED GbmDevice {
- public:
-  int IsFormatSupported(uint32_t format, uint32_t usage);
-
-  struct gbm_bo* CreateBo(uint32_t width,
-                          uint32_t height,
-                          uint32_t format,
-                          uint32_t flags);
-
-  operator bool() const { return device_ != nullptr; }
-
- private:
-  friend class CameraBufferMapperImpl;
-
-  GbmDevice();
-
-  ~GbmDevice();
-
-  struct Deleter {
-    void operator()(GbmDevice* device);
-  };
-
-  struct gbm_device* device_;
-
-  DISALLOW_COPY_AND_ASSIGN(GbmDevice);
-};
 
 struct BufferContext {
   // ** The following fields are used for gralloc buffers only. **

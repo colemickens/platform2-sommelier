@@ -28,7 +28,7 @@ class CameraBufferMapperImplTest;
 
 }  // namespace tests
 
-class EXPORTED CameraBufferMapperImpl final : public CameraBufferMapper {
+class CameraBufferMapperImpl final : public CameraBufferMapper {
  public:
   CameraBufferMapperImpl();
 
@@ -59,7 +59,6 @@ class EXPORTED CameraBufferMapperImpl final : public CameraBufferMapper {
                 uint32_t height,
                 struct android_ycbcr* out_ycbcr) final;
   int Unlock(buffer_handle_t buffer) final;
-  GbmDevice* GetGbmDevice() final;
 
  private:
   friend class CameraBufferMapper;
@@ -112,7 +111,7 @@ class EXPORTED CameraBufferMapperImpl final : public CameraBufferMapper {
   // ** Start of lock_ scope **
 
   // The handle to the opened GBM device.
-  std::unique_ptr<GbmDevice, GbmDevice::Deleter> gbm_device_;
+  struct gbm_device* gbm_device_;
 
   // A cache which stores all the context of the registered buffers.
   // For gralloc buffers the context stores the imported GBM buffer objects.

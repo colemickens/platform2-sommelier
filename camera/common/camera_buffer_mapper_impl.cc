@@ -21,7 +21,6 @@
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "common/camera_buffer_mapper_internal.h"
-#include "common/camera_buffer_mapper_typedefs.h"
 
 namespace arc {
 
@@ -50,30 +49,6 @@ uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
 }
 
 }  // namespace
-
-GbmDevice::GbmDevice() : device_(internal::CreateGbmDevice()) {}
-
-GbmDevice::~GbmDevice() {
-  if (device_) {
-    close(gbm_device_get_fd(device_));
-    gbm_device_destroy(device_);
-  }
-}
-
-int GbmDevice::IsFormatSupported(uint32_t format, uint32_t usage) {
-  return gbm_device_is_format_supported(device_, format, usage);
-}
-
-struct gbm_bo* GbmDevice::CreateBo(uint32_t width,
-                                   uint32_t height,
-                                   uint32_t format,
-                                   uint32_t flags) {
-  return gbm_bo_create(device_, width, height, format, flags);
-}
-
-void GbmDevice::Deleter::operator()(GbmDevice* device) {
-  delete device;
-}
 
 // static
 CameraBufferMapper* CameraBufferMapper::GetInstance() {
@@ -237,9 +212,14 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
 }
 
 CameraBufferMapperImpl::CameraBufferMapperImpl()
-    : gbm_device_(new GbmDevice()) {}
+    : gbm_device_(internal::CreateGbmDevice()) {}
 
-CameraBufferMapperImpl::~CameraBufferMapperImpl() {}
+CameraBufferMapperImpl::~CameraBufferMapperImpl() {
+  if (gbm_device_) {
+    close(gbm_device_get_fd(gbm_device_));
+    gbm_device_destroy(gbm_device_);
+  }
+}
 
 int CameraBufferMapperImpl::Allocate(size_t width,
                                      size_t height,
@@ -308,8 +288,8 @@ int CameraBufferMapperImpl::Register(buffer_handle_t buffer) {
 
     uint32_t usage =
         GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
-    buffer_context->bo = gbm_bo_import(
-        gbm_device_->device_, GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
+    buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_PLANAR,
+                                       &import_data, usage);
     if (!buffer_context->bo) {
       LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
                   << handle->buffer_id;
@@ -499,10 +479,6 @@ int CameraBufferMapperImpl::Unlock(buffer_handle_t buffer) {
   return 0;
 }
 
-GbmDevice* CameraBufferMapperImpl::GetGbmDevice() {
-  return gbm_device_.get();
-}
-
 uint32_t CameraBufferMapperImpl::ResolveFormat(uint32_t hal_format,
                                                uint32_t usage) {
   if (usage & GRALLOC_USAGE_FORCE_I420) {
@@ -522,8 +498,7 @@ uint32_t CameraBufferMapperImpl::ResolveFormat(uint32_t hal_format,
   }
   uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
   for (uint32_t drm_format : kSupportedHalFormats[hal_format]) {
-    if (gbm_device_is_format_supported(gbm_device_->device_, drm_format,
-                                       gbm_flags)) {
+    if (gbm_device_is_format_supported(gbm_device_, drm_format, gbm_flags)) {
       return drm_format;
     }
   }
@@ -548,7 +523,7 @@ int CameraBufferMapperImpl::AllocateGrallocBuffer(size_t width,
 
   std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
   buffer_context->bo =
-      gbm_bo_create(gbm_device_->device_, width, height, drm_format, gbm_flags);
+      gbm_bo_create(gbm_device_, width, height, drm_format, gbm_flags);
   if (!buffer_context->bo) {
     LOGF(ERROR) << "Failed to create GBM bo";
     return -ENOMEM;

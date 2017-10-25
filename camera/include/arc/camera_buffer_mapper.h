@@ -239,10 +239,6 @@ class EXPORTED CameraBufferMapper {
   // Returns:
   //    The size of the specified plane; 0 on error.
   static size_t GetPlaneSize(buffer_handle_t buffer, size_t plane);
-
-  // Gets the gbm device. This method is only for testing; normal client should
-  // never use it.
-  virtual GbmDevice* GetGbmDevice() = 0;
 };
 
 }  // namespace arc
