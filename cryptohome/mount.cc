@@ -1621,7 +1621,6 @@ void Mount::RemovePkcs11Token() {
 
 void Mount::MigrateToUserHome(const FilePath& vault_path) const {
   std::vector<FilePath> ent_list;
-  std::vector<FilePath>::iterator ent_iter;
   FilePath user_path(VaultPathToUserPath(vault_path));
   FilePath root_path(VaultPathToRootPath(vault_path));
   struct stat st;
