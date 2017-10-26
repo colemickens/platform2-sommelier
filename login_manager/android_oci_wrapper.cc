@@ -24,10 +24,10 @@ constexpr char AndroidOciWrapper::kContainerId[];
 constexpr char AndroidOciWrapper::kRootFsPath[];
 constexpr char AndroidOciWrapper::kContainerPidName[];
 constexpr char AndroidOciWrapper::kRunOciPath[];
+constexpr char AndroidOciWrapper::kRunOciStartCommand[];
 constexpr char AndroidOciWrapper::kRunOciKillCommand[];
 constexpr char AndroidOciWrapper::kRunOciKillSignal[];
 constexpr char AndroidOciWrapper::kRunOciDestroyCommand[];
-constexpr char AndroidOciWrapper::kRunAndroidScriptPath[];
 constexpr char AndroidOciWrapper::kProcFdPath[];
 
 AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
@@ -208,21 +208,15 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer(
   if (system_utils_->setsid() < 0)
     PLOG(FATAL) << "Failed to create a new session";
 
-  base::FilePath run_android_script_absolute_path =
-      containers_directory_.Append(kRunAndroidScriptPath);
-  constexpr const char* const args[] = {"run_oci", kContainerId, nullptr};
+  constexpr const char* const args[] = {kRunOciPath, kRunOciStartCommand,
+                                        kContainerId, nullptr};
 
   std::vector<const char*> cstr_env;
-  cstr_env.reserve(env.size() + 2);
+  cstr_env.reserve(env.size() + 1);
   for (const std::string& keyval : env)
     cstr_env.emplace_back(keyval.c_str());
-  // This path is needed by run_android script to run. Container fails to launch
-  // by taking out any one of them. Once we get rid of run_android script we
-  // should be able to remove this PATH requirement.
-  cstr_env.emplace_back("PATH=/usr/bin:/bin");
   cstr_env.emplace_back(nullptr);
-  if (system_utils_->execve(run_android_script_absolute_path, args,
-                            cstr_env.data()))
+  if (system_utils_->execve(base::FilePath(kRunOciPath), args, cstr_env.data()))
     PLOG(FATAL) << "Failed to run run_oci";
 }
 

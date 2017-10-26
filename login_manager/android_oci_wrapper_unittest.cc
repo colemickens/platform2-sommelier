@@ -256,9 +256,8 @@ TEST_F(AndroidOciWrapperTest, StartContainerChildProcess) {
 
   EXPECT_CALL(system_utils_, setsid()).WillOnce(Return(0));
 
-  base::FilePath run_android_script_path =
-      containers_directory_->path().Append("android/run_android");
-  EXPECT_CALL(system_utils_, execve(run_android_script_path, _, _));
+  EXPECT_CALL(system_utils_,
+              execve(base::FilePath(AndroidOciWrapper::kRunOciPath), _, _));
 
   CallStartContainer();
 }

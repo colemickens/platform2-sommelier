@@ -54,14 +54,14 @@ class AndroidOciWrapper : public ContainerManagerInterface {
 
   // run_oci path and arguments.
   constexpr static char kRunOciPath[] = "/usr/bin/run_oci";
+  // Command sent to run_oci to start the container.
+  constexpr static char kRunOciStartCommand[] = "start";
   // Command sent to run_oci to shut down container.
   constexpr static char kRunOciKillCommand[] = "kill";
   // Argument sent to run_oci kill command to forcefully shut down a container.
   constexpr static char kRunOciKillSignal[] = "--signal=KILL";
   // Command sent to run_oci to clean up container.
   constexpr static char kRunOciDestroyCommand[] = "destroy";
-  // Path to run_android script
-  constexpr static char kRunAndroidScriptPath[] = "android/run_android";
 
   // Path to folder that contains all FDs this process opens.
   constexpr static char kProcFdPath[] = "/proc/self/fd";
