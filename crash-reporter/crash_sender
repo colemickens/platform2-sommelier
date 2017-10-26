@@ -15,6 +15,9 @@ CRASH_SENDER_LOCK="/run/lock/crash_sender"
 # The base directory where we keep various state flags.
 CRASH_RUN_STATE_DIR="/run/crash_reporter"
 
+# The directory where crash_reporter stores files.
+CRASH_LIB_STATE_DIR="/var/lib/crash_reporter"
+
 # Path to file that indicates a crash test is currently running.
 CRASH_TEST_IN_PROGRESS_FILE="${CRASH_RUN_STATE_DIR}/crash-test-in-progress"
 
@@ -70,7 +73,7 @@ SECONDS_SEND_SPREAD=${SECONDS_SEND_SPREAD:-600}
 
 # Set this to 1 to allow uploading of device coredumps.
 DEVCOREDUMP_UPLOAD_FLAG_FILE=\
-"/var/lib/crash_reporter/device_coredump_upload_allowed"
+"${CRASH_LIB_STATE_DIR}/device_coredump_upload_allowed"
 
 # The syslog tag for all logging we emit.
 TAG="$(basename $0)[$$]"
@@ -241,22 +244,33 @@ get_key_value() {
   echo "${value:-undefined}"
 }
 
-# Try to find $key in a cached version of $file, then look in /etc
-# if not found.  Return "undefined" if $key is not found in either.
+# Try to find $key in a cached version of $file in this order:
+#   1. /var/lib/crash_reporter
+#   2. /var/spool/crash
+#   3. /etc
+# Return "undefined" if $key is not found in any path.
 get_cached_key_value() {
   local file="$1" key="$2"
 
-  local value=$(get_key_value "${CRASH_SPOOL}/${file}" "${key}")
-  if [ "${value}" = "undefined" ]; then
-    value=$(get_key_value "/etc/${file}" "${key}")
-  fi
+  # TODO(bmgordon): Remove $CRASH_SPOOL around 2019-01-01.  By then, all
+  # machines should have upgraded to at least one build that writes cached files
+  # into $CRASH_LIB_STATE_DIR.
+  local d
+  for d in "${CRASH_LIB_STATE_DIR}" "${CRASH_SPOOL}" "/etc"; do
+    local value=$(get_key_value "${d}/${file}" "${key}")
+    if [ "${value}" != "undefined" ]; then
+      echo "${value}"
+      return
+    fi
+  done
 
-  echo "${value}"
+  echo "undefined"
 }
 
-# Try to find a value in a cached version of os-release, then look in /etc if
-# not found.  Try each key in the arguments in order (looking in both files for
-# each one), and return "undefined" if neither file contains a value for any
+# Try to find a value in a cached version of os-release in the same search
+# order as get_cached_key_value.
+# Try each key in the arguments in order (looking in each file for
+# each one), and return "undefined" if no file contains a value for any
 # key.
 get_os_key_value() {
   # TODO(bmgordon): This should also look in os-release.d.  See
