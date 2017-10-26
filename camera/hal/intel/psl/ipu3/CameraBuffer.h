@@ -20,7 +20,7 @@
 #include <utils/Errors.h>
 #include <hardware/camera3.h>
 #include "UtilityMacros.h"
-#include <camera_buffer_mapper.h>
+#include <camera_buffer_manager.h>
 #include <memory>
 
 NAMESPACE_DECLARATION {
@@ -115,7 +115,7 @@ private:
     bool            mLocked;         /*!< Use to track the lock status */
 
     BufferType mType;
-    arc::CameraBufferMapper* mGbmBufferMapper;
+    arc::CameraBufferManager* mGbmBufferManager;
     buffer_handle_t mHandle;
     buffer_handle_t* mHandlePtr;
     CameraStream *mOwner;             /*!< Stream this buffer belongs to */

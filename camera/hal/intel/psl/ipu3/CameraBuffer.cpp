@@ -97,7 +97,7 @@ CameraBuffer::CameraBuffer(int w,
         mCameraId(cameraId),
         mHandle(nullptr),
         mHandlePtr(nullptr),
-        mGbmBufferMapper(nullptr),
+        mGbmBufferManager(nullptr),
         mDmaBufFd(-1)
 {
     LOG1("%s create malloc camera buffer %p", __FUNCTION__, this);
@@ -151,7 +151,7 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
         mCameraId(-1),
         mHandle(nullptr),
         mHandlePtr(nullptr),
-        mGbmBufferMapper(nullptr),
+        mGbmBufferManager(nullptr),
         mDmaBufFd(dmaBufFd)
 {
     LOG1("%s create mmap camera buffer %p", __FUNCTION__, this);
@@ -181,15 +181,15 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
 status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
 {
     mType = BUF_TYPE_HANDLE;
-    mGbmBufferMapper = arc::CameraBufferMapper::GetInstance();
+    mGbmBufferManager = arc::CameraBufferManager::GetInstance();
     mHandle = *aBuffer->buffer;
     mHandlePtr = aBuffer->buffer;
     mWidth = aBuffer->stream->width;
     mHeight = aBuffer->stream->height;
     mFormat = aBuffer->stream->format;
-    mV4L2Fmt = mGbmBufferMapper->GetV4L2PixelFormat(mHandle);
+    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
     // Use actual width from platform native handle for stride
-    mStride = mGbmBufferMapper->GetPlaneStride(*aBuffer->buffer, 0);
+    mStride = mGbmBufferManager->GetPlaneStride(*aBuffer->buffer, 0);
     mSize = 0;
     mLocked = false;
     mOwner = static_cast<CameraStream*>(aBuffer->stream->priv);
@@ -201,7 +201,7 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     LOG2("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d",
         __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride);
 
-    int ret = mGbmBufferMapper->Register(mHandle);
+    int ret = mGbmBufferManager->Register(mHandle);
     if (ret) {
         LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
         return UNKNOWN_ERROR;
@@ -287,14 +287,14 @@ status_t CameraBuffer::lock(int flags)
     mDataPtr = nullptr;
     mSize = 0;
     int ret = 0;
-    uint32_t planeNum = mGbmBufferMapper->GetNumPlanes(mHandle);
+    uint32_t planeNum = mGbmBufferManager->GetNumPlanes(mHandle);
     LOG2("@%s, planeNum:%d, mHandle:%p, mFormat:%d", __FUNCTION__, planeNum, mHandle, mFormat);
 
     if (planeNum == 1) {
         void* data = nullptr;
         ret = (mFormat == HAL_PIXEL_FORMAT_BLOB)
-                ? mGbmBufferMapper->Lock(mHandle, 0, 0, 0, mStride, 1, &data)
-                : mGbmBufferMapper->Lock(mHandle, 0, 0, 0, mWidth, mHeight, &data);
+                ? mGbmBufferManager->Lock(mHandle, 0, 0, 0, mStride, 1, &data)
+                : mGbmBufferManager->Lock(mHandle, 0, 0, 0, mWidth, mHeight, &data);
         if (ret) {
             LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mHandle);
             return UNKNOWN_ERROR;
@@ -302,7 +302,7 @@ status_t CameraBuffer::lock(int flags)
         mDataPtr = data;
     } else if (planeNum > 1) {
         struct android_ycbcr ycbrData;
-        ret = mGbmBufferMapper->LockYCbCr(mHandle, 0, 0, 0, mWidth, mHeight, &ycbrData);
+        ret = mGbmBufferManager->LockYCbCr(mHandle, 0, 0, 0, mWidth, mHeight, &ycbrData);
         if (ret) {
             LOGE("@%s: call LockYCbCr fail, mHandle:%p", __FUNCTION__, mHandle);
             return UNKNOWN_ERROR;
@@ -318,7 +318,7 @@ status_t CameraBuffer::lock(int flags)
     }
 
     for (int i = 0; i < planeNum; i++) {
-        mSize += mGbmBufferMapper->GetPlaneSize(mHandle, i);
+        mSize += mGbmBufferManager->GetPlaneSize(mHandle, i);
     }
     LOG2("@%s, mDataPtr:%p, mSize:%d", __FUNCTION__, mDataPtr, mSize);
     if (!mSize) {
@@ -374,13 +374,13 @@ status_t CameraBuffer::unlock()
     }
 
     if (mLocked) {
-        int ret = mGbmBufferMapper->Unlock(mHandle);
+        int ret = mGbmBufferManager->Unlock(mHandle);
         if (ret) {
             LOGE("@%s: call Unlock fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
             return UNKNOWN_ERROR;
         }
 
-        ret = mGbmBufferMapper->Deregister(mHandle);
+        ret = mGbmBufferManager->Deregister(mHandle);
         if (ret) {
             LOGE("@%s: call Deregister fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
             return UNKNOWN_ERROR;
