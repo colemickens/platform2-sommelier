@@ -133,7 +133,7 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
 TEST_F(BrowserJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(NULL))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
-  for (uint32_t i = 0; i < BrowserJob::kRestartTries - 1; ++i)
+  for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i)
     job_->RecordTime();
   // We haven't yet saturated the list of start times, so...
   EXPECT_FALSE(job_->ShouldStop());
@@ -150,6 +150,20 @@ TEST_F(BrowserJobTest, ShouldNotStopTest) {
       .WillOnce(Return(3 * BrowserJob::kRestartWindowSeconds));
   job_->RecordTime();
   EXPECT_FALSE(job_->ShouldStop());
+}
+
+TEST_F(BrowserJobTest, ShouldDropExtraArgumentsTest) {
+  EXPECT_CALL(utils_, time(NULL))
+      .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
+
+  // Simulate restart kUseExtraArgsRuns - 1 times and no dropping.
+  for (int i = 0; i < BrowserJob::kUseExtraArgsRuns - 1; ++i)
+    job_->RecordTime();
+  EXPECT_FALSE(job_->ShouldDropExtraArguments());
+
+  // One more restart and extra arguments should be dropped.
+  job_->RecordTime();
+  EXPECT_TRUE(job_->ShouldDropExtraArguments());
 }
 
 TEST_F(BrowserJobTest, ShouldNotRunTest) {

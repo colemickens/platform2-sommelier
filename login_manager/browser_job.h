@@ -11,8 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <deque>
 #include <map>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -105,13 +105,21 @@ class BrowserJob : public BrowserJobInterface {
   // Export a copy of the current argv.
   std::vector<std::string> ExportArgv() const;
 
+  // Whether to drop extra arguments when starting the job.
+  bool ShouldDropExtraArguments() const;
+
   // Flag passed to Chrome the first time Chrome is started after the
   // system boots. Not passed when Chrome is restarted after signout.
   static const char kFirstExecAfterBootFlag[];
 
+  // DeviceStartUpFlags policy and user flags are set as |extra_arguments_|.
+  // After kUseExtraArgsRuns in kRestartWindowSeconds, drop |extra_arguments_|
+  // in the restarted job in the hope that the startup crash stops.
+  static const int kUseExtraArgsRuns;
+
   // After kRestartTries in kRestartWindowSeconds, the BrowserJob will indicate
   // that it should be stopped.
-  static const uint32_t kRestartTries;
+  static const int kRestartTries;
   static const time_t kRestartWindowSeconds;
 
  private:
@@ -142,7 +150,7 @@ class BrowserJob : public BrowserJobInterface {
 
   // FIFO of job-start timestamps. Used to determine if we've restarted too many
   // times too quickly.
-  std::queue<time_t> start_times_;
+  std::deque<time_t> start_times_;
 
   // Indicates if we removed login manager flag when session started so we
   // add it back when session stops.

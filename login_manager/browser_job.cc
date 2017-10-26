@@ -31,25 +31,27 @@
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
-// static
+
 const char BrowserJobInterface::kLoginManagerFlag[] = "--login-manager";
-// static
 const char BrowserJobInterface::kLoginUserFlag[] = "--login-user=";
-// static
 const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 
-// static
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
-// static
-const uint32_t BrowserJob::kRestartTries = 4;
-// static
+
+const int BrowserJob::kUseExtraArgsRuns = 3;
+static_assert(BrowserJob::kUseExtraArgsRuns > 1,
+              "kUseExtraArgsRuns should be greater than 1 because extra "
+              "arguments could need one restart to apply them.");
+
+const int BrowserJob::kRestartTries = BrowserJob::kUseExtraArgsRuns + 2;
 const time_t BrowserJob::kRestartWindowSeconds = 60;
 
 namespace {
 
-constexpr const char kVmoduleFlag[] = "--vmodule=";
-constexpr const char kEnableFeaturesFlag[] = "--enable-features=";
-constexpr const char kDisableFeaturesFlag[] = "--disable-features=";
+constexpr char kVmoduleFlag[] = "--vmodule=";
+constexpr char kEnableFeaturesFlag[] = "--enable-features=";
+constexpr char kDisableFeaturesFlag[] = "--disable-features=";
+constexpr char kSafeModeFlag[] = "--safe-mode";
 
 // Erases all occurrences of |arg| within |args|. Returns true if any entries
 // were removed or false otherwise.
@@ -125,13 +127,14 @@ bool BrowserJob::ShouldRunBrowser() {
 }
 
 bool BrowserJob::ShouldStop() const {
-  return (system_->time(NULL) - start_times_.front() < kRestartWindowSeconds);
+  return (system_->time(nullptr) - start_times_.front() <
+          kRestartWindowSeconds);
 }
 
 void BrowserJob::RecordTime() {
-  start_times_.push(system_->time(NULL));
-  start_times_.pop();
-  DCHECK(start_times_.size() == kRestartTries);
+  start_times_.push_back(system_->time(nullptr));
+  start_times_.pop_front();
+  DCHECK_EQ(kRestartTries, start_times_.size());
 }
 
 bool BrowserJob::RunInBackground() {
@@ -235,8 +238,15 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
   to_return.insert(to_return.end(), login_arguments_.begin(),
                    login_arguments_.end());
-  to_return.insert(to_return.end(), extra_arguments_.begin(),
-                   extra_arguments_.end());
+
+  if (ShouldDropExtraArguments()) {
+    LOG(WARNING) << "Dropping extra arguments and setting safe-mode switch due "
+                    "to crashy browser.";
+    to_return.emplace_back(kSafeModeFlag);
+  } else {
+    to_return.insert(to_return.end(), extra_arguments_.begin(),
+                     extra_arguments_.end());
+  }
 
   if (!extra_one_time_arguments_.empty()) {
     to_return.insert(to_return.end(), extra_one_time_arguments_.begin(),
@@ -258,6 +268,16 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                 true /* keep_existing */);
 
   return to_return;
+}
+
+bool BrowserJob::ShouldDropExtraArguments() const {
+  // Check start_time_with_extra_args != 0 so that test cases such as
+  // SetExtraArguments and ExportArgv pass without mocking time().
+  const time_t start_time_with_extra_args =
+      start_times_[kRestartTries - kUseExtraArgsRuns];
+  return (start_time_with_extra_args != 0 &&
+          system_->time(nullptr) - start_time_with_extra_args <
+              kRestartWindowSeconds);
 }
 
 }  // namespace login_manager
