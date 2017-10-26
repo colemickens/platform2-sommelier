@@ -31,6 +31,8 @@ public:
                       IPU3NodeNames nodeName, size_t pipelineDepth);
     virtual ~OutputFrameWorker();
 
+    void addListener(camera3_stream_t* stream);
+    void clearListeners();
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);
     status_t prepareRun(std::shared_ptr<DeviceMessage> msg);
     status_t run();
@@ -84,6 +86,11 @@ private:
     };
 
 private:
+    std::shared_ptr<CameraBuffer> findBuffer(Camera3Request* request,
+                                             camera3_stream_t* stream);
+    status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
+
+private:
     std::shared_ptr<CameraBuffer> mOutputBuffer;
     std::shared_ptr<CameraBuffer> mWorkingBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
@@ -92,6 +99,10 @@ private:
     IPU3NodeNames mNodeName;
 
     SWPostProcessor mProcessor;
+
+    // For listeners
+    std::vector<camera3_stream_t*> mListeners;
+    std::vector<std::unique_ptr<SWPostProcessor> > mListenerProcessors;
 };
 
 } /* namespace camera2 */

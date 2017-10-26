@@ -49,6 +49,19 @@ OutputFrameWorker::~OutputFrameWorker()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
 
+void OutputFrameWorker::addListener(camera3_stream_t* stream)
+{
+    if (stream != nullptr) {
+        LOG1("stream %p has listener %p", mStream, stream);
+        mListeners.push_back(stream);
+    }
+}
+
+void OutputFrameWorker::clearListeners()
+{
+    mListeners.clear();
+}
+
 status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
@@ -90,6 +103,15 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             "@%s failed to allocate internal buffer.", __FUNCTION__);
     }
 
+    mListenerProcessors.clear();
+    for (size_t i = 0; i < mListeners.size(); i++) {
+        camera3_stream_t* listener = mListeners[i];
+        std::unique_ptr<SWPostProcessor> processor(new SWPostProcessor(mCameraId));
+        processor->configure(listener, mFormat.width(),
+                             mFormat.height());
+        mListenerProcessors.push_back(std::move(processor));
+    }
+
     return OK;
 }
 
@@ -98,91 +120,61 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     mMsg = msg;
     status_t status = NO_ERROR;
-    CameraStream *stream = nullptr;
-    std::shared_ptr<CameraBuffer> buffer = nullptr;
 
     Camera3Request* request = mMsg->cbMetadataMsg.request;
-    const std::vector<camera3_stream_buffer>* outBufs = request->getOutputBuffers();
-    if (CC_UNLIKELY(outBufs == nullptr)) {
-        LOGE("No output buffers in request - BUG"); // should never happen
-        return UNKNOWN_ERROR;
+    std::shared_ptr<CameraBuffer> buffer = nullptr;
+    if (mStream) {
+        buffer = findBuffer(request, mStream);
     }
-
-    bool notFound = true;
-    for (camera3_stream_buffer outputBuffer : *outBufs) {
-        stream = reinterpret_cast<CameraStream *>(outputBuffer.stream->priv);
-
-        if (!mStream) {
-            LOG2("@%s, mStream is nullptr", __FUNCTION__);
-            break;
-        }
-
-        LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__, stream->getStream(), mStream);
-        if (stream->getStream() == mStream) {
-            buffer = request->findBuffer(stream, false);
-            if (CC_UNLIKELY(buffer == nullptr)) {
-                LOGD("buffer not found for stream");
-                return UNKNOWN_ERROR;
-            }
-
-            if (!buffer->isLocked()) {
-                status = buffer->lock();
-                if (CC_UNLIKELY(status != NO_ERROR)) {
-                    LOGE("Could not lock the buffer error %d", status);
-                    return status;
-                }
-            }
-
-            status = buffer->waitOnAcquireFence();
-            if (CC_UNLIKELY(status != NO_ERROR)) {
-                LOGW("Wait on fence for buffer %p timed out", buffer.get());
-            }
-
-            /*
-             * store the buffer in a map where the key is the terminal UID
-             */
-            mOutputBuffer = buffer;
-            mAllDone = false;
-            mPollMe = true;
-
-            if (!mNeedPostProcess) {
-                // Use stream buffer for zero-copy
-                mBuffers[mIndex].bytesused(mFormat.sizeimage());
-                unsigned long userptr;
-                switch (mNode->getMemoryType()) {
-                case V4L2_MEMORY_USERPTR:
-                    userptr = reinterpret_cast<unsigned long>(buffer->data());
-                    mBuffers[mIndex].userptr(userptr);
-                    LOG2("%s mBuffers[%d].userptr: 0x%lx",
-                        __FUNCTION__, mIndex, mBuffers[mIndex].userptr());
-                    break;
-                case V4L2_MEMORY_DMABUF:
-                    mBuffers[mIndex].setFd(buffer->dmaBufFd(), 0);
-                    LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].fd());
-                    break;
-                case V4L2_MEMORY_MMAP:
-                    LOG2("%s mBuffers[%d].offset: 0x%x",
-                        __FUNCTION__, mIndex, mBuffers[mIndex].offset());
-                    break;
-                default:
-                    LOGE("%s unsupported memory type.", __FUNCTION__);
-                    return BAD_VALUE;
-                }
-                mWorkingBuffer = buffer;
-            }
-            status |= mNode->putFrame(mBuffers[mIndex]);
-
-            notFound = false;
-            break;
-        }
-    }
-
-    if (notFound) {
+    if (buffer.get() == nullptr) {
         LOG1("No work for this worker mStream: %p", mStream);
         mAllDone = true;
         mOutputBuffer = nullptr;
         mPollMe = false;
+        return NO_ERROR;
     }
+    LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__,
+         buffer->getOwner()->getStream(), mStream);
+
+    status = prepareBuffer(buffer);
+    if (status != NO_ERROR) {
+        LOGE("prepare buffer error!");
+        return status;
+    }
+
+    /*
+     * store the buffer in a map where the key is the terminal UID
+     */
+    mOutputBuffer = buffer;
+    mAllDone = false;
+    mPollMe = true;
+
+    if (!mNeedPostProcess) {
+        // Use stream buffer for zero-copy
+        mBuffers[mIndex].bytesused(mFormat.sizeimage());
+        unsigned long userptr;
+        switch (mNode->getMemoryType()) {
+        case V4L2_MEMORY_USERPTR:
+            userptr = reinterpret_cast<unsigned long>(buffer->data());
+            mBuffers[mIndex].userptr(userptr);
+            LOG2("%s mBuffers[%d].userptr: 0x%lx",
+                __FUNCTION__, mIndex, mBuffers[mIndex].userptr());
+            break;
+        case V4L2_MEMORY_DMABUF:
+            mBuffers[mIndex].setFd(buffer->dmaBufFd(), 0);
+            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].fd());
+            break;
+        case V4L2_MEMORY_MMAP:
+            LOG2("%s mBuffers[%d].offset: 0x%x",
+                __FUNCTION__, mIndex, mBuffers[mIndex].offset());
+            break;
+        default:
+            LOGE("%s unsupported memory type.", __FUNCTION__);
+            return BAD_VALUE;
+        }
+        mWorkingBuffer = buffer;
+    }
+    status |= mNode->putFrame(mBuffers[mIndex]);
 
     return (status < 0) ? status : OK;
 }
@@ -228,6 +220,8 @@ status_t OutputFrameWorker::postRun()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = OK;
+    CameraStream *stream;
+    Camera3Request* request = nullptr;
 
     if (mMsg == nullptr) {
         LOGE("Message null - Fix the bug");
@@ -235,23 +229,51 @@ status_t OutputFrameWorker::postRun()
         goto exit;
     }
 
-    Camera3Request* request;
-    CameraStream *stream;
-
     request = mMsg->cbMetadataMsg.request;
+    if (request == nullptr) {
+        LOGE("No request provided for captureDone");
+        status = UNKNOWN_ERROR;
+        goto exit;
+    }
 
     if (mAllDone) {
         mAllDone = false;
         goto exit;
     }
 
+    // Handle for listeners at first
+    for (size_t i = 0; i < mListeners.size(); i++) {
+        camera3_stream_t* listener = mListeners[i];
+        std::shared_ptr<CameraBuffer> listenerBuf = findBuffer(request, listener);
+        if (listenerBuf.get() == nullptr) {
+            continue;
+        }
+
+        stream = listenerBuf->getOwner();
+        if (NO_ERROR != prepareBuffer(listenerBuf)) {
+            LOGE("prepare listener buffer error!");
+            goto exit;
+        }
+        if (mListenerProcessors[i]->needPostProcess()) {
+            status = mListenerProcessors[i]->processFrame(
+                                                 mWorkingBuffer,
+                                                 listenerBuf,
+                                                 mMsg->pMsg.processingSettings,
+                                                 request);
+            if (status != OK) {
+                LOGE("@%s, process for listener %p failed! [%d]!", __FUNCTION__,
+                     listener, status);
+                goto exit;
+            }
+        } else {
+            MEMCPY_S(listenerBuf->data(), listenerBuf->size(),
+                     mWorkingBuffer->data(), mWorkingBuffer->size());
+        }
+        stream->captureDone(listenerBuf, request);
+    }
+
     if (mOutputBuffer == nullptr) {
         LOGE("No buffer provided for captureDone");
-        status = UNKNOWN_ERROR;
-        goto exit;
-    }
-    if (request == nullptr) {
-        LOGE("No request provided for captureDone");
         status = UNKNOWN_ERROR;
         goto exit;
     }
@@ -291,6 +313,54 @@ exit:
     mIndex = (mIndex + 1) % mPipelineDepth;
 
     return status;
+}
+
+status_t
+OutputFrameWorker::prepareBuffer(std::shared_ptr<CameraBuffer>& buffer)
+{
+    CheckError((buffer.get() == nullptr), UNKNOWN_ERROR, "null buffer!");
+
+    status_t status = NO_ERROR;
+    if (!buffer->isLocked()) {
+        status = buffer->lock();
+        if (CC_UNLIKELY(status != NO_ERROR)) {
+            LOGE("Could not lock the buffer error %d", status);
+            return UNKNOWN_ERROR;
+        }
+    }
+    status = buffer->waitOnAcquireFence();
+    if (CC_UNLIKELY(status != NO_ERROR)) {
+        LOGW("Wait on fence for buffer %p timed out", buffer.get());
+    }
+    return status;
+}
+
+std::shared_ptr<CameraBuffer>
+OutputFrameWorker::findBuffer(Camera3Request* request,
+                              camera3_stream_t* stream)
+{
+    CheckError((request == nullptr || stream == nullptr), nullptr,
+                "null request/stream!");
+
+    CameraStream *s = nullptr;
+    std::shared_ptr<CameraBuffer> buffer = nullptr;
+    const std::vector<camera3_stream_buffer>* outBufs =
+                                        request->getOutputBuffers();
+    for (camera3_stream_buffer outputBuffer : *outBufs) {
+        s = reinterpret_cast<CameraStream *>(outputBuffer.stream->priv);
+        if (s->getStream() == stream) {
+            buffer = request->findBuffer(s, false);
+            if (CC_UNLIKELY(buffer == nullptr)) {
+                LOGW("buffer not found for stream");
+            }
+            break;
+        }
+    }
+
+    if (buffer.get() == nullptr) {
+        LOG2("No buffer for stream %p in req %d", stream, request->getId());
+    }
+    return buffer;
 }
 
 OutputFrameWorker::SWPostProcessor::SWPostProcessor(int cameraId) :
