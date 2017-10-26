@@ -19,6 +19,7 @@ const int kGpFlagAllDisabled = 0x03;
 const int kGpFlagCount = 0x04;
 const int kGpFlagInvalid = 0x04;
 
+extern const char kActiveDirectoryPrefix[];
 extern const char* const kGpFlagsStr[];
 
 // Parses user_name@some.realm into its components and normalizes (uppercases)
@@ -68,9 +69,9 @@ std::string GuidToOctetString(const std::string& guid);
 // empty string on error.
 std::string OctetStringToGuidForTesting(const std::string& octet_str);
 
-// Converts an |account_id| string (aka objectGUID) to an account id key by
-// prepending a prefix.
-std::string GetAccountIdKey(const std::string& account_id);
+// Converts an |account_id_key| string to an account id (aka objectGUID) by
+// deleting a prefix.
+std::string GetAccountId(const std::string& account_id_key);
 
 // Logs |str| to INFO, prepending |header|. Splits |str| into lines and logs the
 // lines. This works around a restriction of syslog of 8kb per log and fixes

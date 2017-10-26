@@ -102,6 +102,10 @@ dbus::FileDescriptor MakePasswordFd() {
 // Stub completion callback for RegisterAsync().
 void DoNothing(bool /* unused */) {}
 
+std::string GetAccountIdKey(const std::string& account_id) {
+  return kActiveDirectoryPrefix + account_id;
+}
+
 // If |error| is ERROR_NONE, parses |proto_blob| into the |proto| if given.
 // Otherwise, makes sure |proto_blob| is empty.
 template <typename T>
@@ -615,7 +619,8 @@ class AuthPolicyTest : public testing::Test {
 
 // Can't fetch user policy if the user is not logged in.
 TEST_F(AuthPolicyTest, UserPolicyFailsNotLoggedIn) {
-  FetchAndValidateUserPolicy("account_id_key", ERROR_NOT_LOGGED_IN);
+  FetchAndValidateUserPolicy(GetAccountIdKey("account_id_key"),
+                             ERROR_NOT_LOGGED_IN);
 }
 
 // Can't fetch device policy if the device is not joined.

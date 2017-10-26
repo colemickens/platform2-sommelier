@@ -122,6 +122,12 @@ class SambaInterface {
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
 
+  const std::string& user_account_id() const { return user_account_id_; }
+  const std::string& user_sam_account_name() const {
+    return user_sam_account_name_;
+  }
+  const std::string& machine_name() const { return config_->machine_name(); }
+
  private:
   // Actual implementation of AuthenticateUser() (see above). The method is
   // wrapped in order to catch and memorize the returned error.
@@ -236,8 +242,10 @@ class SambaInterface {
   // file does not exist, so this is no performance concern.
   void ReloadDebugFlags();
 
-  // User account_id (aka objectGUID) prefixed by "a-".
-  std::string user_account_id_key_;
+  // User account_id (aka objectGUID).
+  std::string user_account_id_;
+  // TODO(ljusten): Should contain username with realm after crbug.com/765411 is
+  // fixed.
   // User logon name.
   std::string user_sam_account_name_;
   // Timestamp of last password change on server.

@@ -244,6 +244,13 @@ void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
   em::PolicyData em_policy_data;
   em_policy_data.set_policy_value(gpo_policy_data.user_or_device_policy());
   em_policy_data.set_policy_type(policy_type);
+  if (is_user_policy) {
+    em_policy_data.set_username(samba_.user_sam_account_name());
+    // Device id in the proto also could be used as an account/client id.
+    em_policy_data.set_device_id(samba_.user_account_id());
+  } else {
+    em_policy_data.set_device_id(samba_.machine_name());
+  }
   em_policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
   // Note: No signature required here, Active Directory policy is unsigned!
 

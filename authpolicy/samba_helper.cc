@@ -35,13 +35,13 @@ const int octet_pos_map[16][2] = {  // Maps GUID position to octet position.
 const size_t kGuidSize = 36;   // 16 bytes, xx each byte, plus 4 '-'.
 const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
 
-// Prefix for Active Directory account ids. A prefixed |account_id| is usually
-// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
-const char kActiveDirectoryPrefix[] = "a-";
-
 }  // namespace
 
 namespace authpolicy {
+
+// Prefix for Active Directory account ids. A prefixed |account_id| is usually
+// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
+const char kActiveDirectoryPrefix[] = "a-";
 
 // Flags for parsing GPO.
 const char* const kGpFlagsStr[] = {
@@ -161,8 +161,10 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
   return guid;
 }
 
-std::string GetAccountIdKey(const std::string& account_id) {
-  return kActiveDirectoryPrefix + account_id;
+std::string GetAccountId(const std::string& account_id_key) {
+  DCHECK_EQ(kActiveDirectoryPrefix,
+            account_id_key.substr(0, strlen(kActiveDirectoryPrefix)));
+  return account_id_key.substr(strlen(kActiveDirectoryPrefix));
 }
 
 void LogLongString(const std::string& header,

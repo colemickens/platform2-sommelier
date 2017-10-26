@@ -354,7 +354,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     int password_fd,
     ActiveDirectoryAccountInfo* account_info) {
   if (!account_id.empty())
-    SetUser(GetAccountIdKey(account_id));
+    SetUser(account_id);
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
@@ -382,7 +382,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     return error;
 
   if (account_id.empty())
-    SetUser(GetAccountIdKey(account_info->account_id()));
+    SetUser(account_info->account_id());
 
   // Update normalized_upn. This handles the situation when the user name
   // changes on the server and the user logs in with their old user name (e.g.
@@ -412,7 +412,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
 ErrorType SambaInterface::GetUserStatus(
     const std::string& account_id, ActiveDirectoryUserStatus* user_status) {
   ReloadDebugFlags();
-  SetUser(GetAccountIdKey(account_id));
+  SetUser(account_id);
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -454,7 +454,7 @@ ErrorType SambaInterface::GetUserStatus(
 ErrorType SambaInterface::GetUserKerberosFiles(const std::string& account_id,
                                                KerberosFiles* files) {
   ReloadDebugFlags();
-  SetUser(GetAccountIdKey(account_id));
+  SetUser(account_id);
   return user_tgt_manager_.GetKerberosFiles(files);
 }
 
@@ -525,7 +525,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
 ErrorType SambaInterface::FetchUserGpos(
     const std::string& account_id_key, protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
-  SetUser(account_id_key);
+  SetUser(GetAccountId(account_id_key));
 
   if (!user_logged_in_) {
     LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
@@ -1273,12 +1273,12 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   return ERROR_NONE;
 }
 
-void SambaInterface::SetUser(const std::string& account_id_key) {
+void SambaInterface::SetUser(const std::string& account_id) {
   // Don't allow authenticating multiple users. Chrome should prevent that.
-  CHECK(!account_id_key.empty());
-  CHECK(user_account_id_key_.empty() || user_account_id_key_ == account_id_key)
+  CHECK(!account_id.empty());
+  CHECK(user_account_id_.empty() || user_account_id_ == account_id)
       << "Multi-user not supported";
-  user_account_id_key_ = account_id_key;
+  user_account_id_ = account_id;
 }
 
 void SambaInterface::AnonymizeRealm(const std::string& realm) {
@@ -1291,7 +1291,7 @@ void SambaInterface::AnonymizeRealm(const std::string& realm) {
 }
 
 void SambaInterface::Reset() {
-  user_account_id_key_.clear();
+  user_account_id_.clear();
   user_sam_account_name_.clear();
   user_pwd_last_set_ = 0;
   user_logged_in_ = false;
