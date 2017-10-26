@@ -78,7 +78,7 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
 }
 
 int CachedFrame::ConvertToYU12(bool test_pattern) {
-  yu12_frame_->SetFourcc(V4L2_PIX_FMT_YUV420M);
+  yu12_frame_->SetFourcc(V4L2_PIX_FMT_YUV420);
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 

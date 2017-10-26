@@ -185,6 +185,7 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
     }
     uint32_t v4l2_format = arc::CameraBufferManager::GetV4L2PixelFormat(handle);
     switch (v4l2_format) {
+      case V4L2_PIX_FMT_NV12:
       case V4L2_PIX_FMT_NV12M:
         if ((format == ImageFormat::IMAGE_FORMAT_I420 &&
              libyuv::NV12ToI420(
@@ -204,6 +205,7 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
           out_buffer.reset();
         }
         break;
+      case V4L2_PIX_FMT_NV21:
       case V4L2_PIX_FMT_NV21M:
         if ((format == ImageFormat::IMAGE_FORMAT_I420 &&
              libyuv::NV21ToI420(
@@ -223,7 +225,9 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
           out_buffer.reset();
         }
         break;
+      case V4L2_PIX_FMT_YUV420:
       case V4L2_PIX_FMT_YUV420M:
+      case V4L2_PIX_FMT_YVU420:
       case V4L2_PIX_FMT_YVU420M:
         if ((format == ImageFormat::IMAGE_FORMAT_I420 &&
              libyuv::I420Copy(

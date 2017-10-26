@@ -132,6 +132,23 @@ uint32_t CameraBufferManager::GetV4L2PixelFormat(buffer_handle_t buffer) {
     return 0;
   }
 
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
+    return 0;
+  }
+
+  bool is_mplane = false;
+  if (num_planes > 1) {
+    // Check if the buffer has multiple physical planes by checking the offsets
+    // of each plane.  If any of the offsets is zero, then we assume the buffer
+    // is of multi-planar format.
+    for (size_t i = 1; i < num_planes; ++i) {
+      if (!handle->offsets[i]) {
+        is_mplane = true;
+      }
+    }
+  }
+
   switch (handle->drm_format) {
     case DRM_FORMAT_ARGB8888:
       return V4L2_PIX_FMT_ABGR32;
@@ -151,15 +168,15 @@ uint32_t CameraBufferManager::GetV4L2PixelFormat(buffer_handle_t buffer) {
 
     // Semi-planar formats.
     case DRM_FORMAT_NV12:
-      return V4L2_PIX_FMT_NV12M;
+      return is_mplane ? V4L2_PIX_FMT_NV12M : V4L2_PIX_FMT_NV12;
     case DRM_FORMAT_NV21:
-      return V4L2_PIX_FMT_NV21M;
+      return is_mplane ? V4L2_PIX_FMT_NV21M : V4L2_PIX_FMT_NV21;
 
     // Multi-planar formats.
     case DRM_FORMAT_YUV420:
-      return V4L2_PIX_FMT_YUV420M;
+      return is_mplane ? V4L2_PIX_FMT_YUV420M : V4L2_PIX_FMT_YUV420;
     case DRM_FORMAT_YVU420:
-      return V4L2_PIX_FMT_YVU420M;
+      return is_mplane ? V4L2_PIX_FMT_YVU420M : V4L2_PIX_FMT_YVU420;
   }
 
   LOGF(ERROR) << "Could not convert format "

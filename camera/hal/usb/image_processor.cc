@@ -35,11 +35,11 @@ namespace arc {
  * may be backed by different types of buffers depending on the platform.
  *
  * HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
- *                                = V4L2_PIX_FMT_NV12M   = FOURCC_NV12
+ *                                = V4L2_PIX_FMT_NV12    = FOURCC_NV12
  *                                = V4L2_PIX_FMT_RGBX32  = FOURCC_ABGR
  *
- * HAL_PIXEL_FORMAT_YCbCr_420_888 = V4L2_PIX_FMT_NV12M   = FOURCC_NV12
- *                                = V4L2_PIX_FMT_YVU420M = FOURCC_YV12
+ * HAL_PIXEL_FORMAT_YCbCr_420_888 = V4L2_PIX_FMT_NV12    = FOURCC_NV12
+ *                                = V4L2_PIX_FMT_YVU420  = FOURCC_YV12
  *
  * Camera device generates FOURCC_YUYV and FOURCC_MJPG.
  * At the Android side:
@@ -78,7 +78,9 @@ size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
   }
 
   switch (frame.GetFourcc()) {
+    case V4L2_PIX_FMT_YVU420:
     case V4L2_PIX_FMT_YVU420M:  // YM21, multiple planes YV12
+    case V4L2_PIX_FMT_YUV420:
     case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
       if (frame.GetNumPlanes() != 3) {
         LOGF(ERROR) << "Stride is not set correctly";
@@ -87,6 +89,7 @@ size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
       return frame.GetStride(FrameBuffer::YPLANE) * frame.GetHeight() +
              frame.GetStride(FrameBuffer::UPLANE) * frame.GetHeight() / 2 +
              frame.GetStride(FrameBuffer::VPLANE) * frame.GetHeight() / 2;
+    case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M:  // NV12, multiple planes
       if (frame.GetNumPlanes() != 2) {
         LOGF(ERROR) << "Stride is not set correctly";
@@ -126,6 +129,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
 
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUYV) {
     switch (out_frame->GetFourcc()) {
+      case V4L2_PIX_FMT_YUV420:   // YU12
       case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
       {
         int res =
@@ -146,11 +150,13 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
                     << " is unsupported for YUYV source format.";
         return -EINVAL;
     }
-  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420M) {
+  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420 ||
+             in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420M) {
     // V4L2_PIX_FMT_YVU420 is YV12. I420 is usually referred to YU12
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
     switch (out_frame->GetFourcc()) {
+      case V4L2_PIX_FMT_YVU420:     // YV12
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
         int res =
             libyuv::I420Copy(in_frame.GetData(FrameBuffer::YPLANE),
@@ -174,6 +180,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
                in_frame.GetDataSize());
         return 0;
       }
+      case V4L2_PIX_FMT_NV12:     // NV12
       case V4L2_PIX_FMT_NV12M: {  // NM12
         int res = libyuv::I420ToNV12(in_frame.GetData(FrameBuffer::YPLANE),
                                      in_frame.GetStride(FrameBuffer::YPLANE),
@@ -215,6 +222,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
     switch (out_frame->GetFourcc()) {
+      case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M: {  // YM12, multiple planes YU12
         int res =
             libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
@@ -243,7 +251,8 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
 }
 
 int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
-  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420 &&
+      in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
                 << " is unsupported.";
     return -EINVAL;
@@ -281,7 +290,8 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
 int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
                                   FrameBuffer* out_frame,
                                   int rotate_degree) {
-  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420 &&
+      in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
                 << " is unsupported.";
     return -EINVAL;

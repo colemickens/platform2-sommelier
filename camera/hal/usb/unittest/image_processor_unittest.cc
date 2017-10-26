@@ -29,7 +29,7 @@ TEST_F(ImageProcessorTest, GetConvertedSize) {
   std::unique_ptr<AllocatedFrameBuffer> frame(new AllocatedFrameBuffer(0));
   // Size should be 0 if format, width, and height are not set up correctly.
   EXPECT_EQ(ImageProcessor::GetConvertedSize(*frame.get()), 0);
-  frame->SetFourcc(V4L2_PIX_FMT_YUV420M);
+  frame->SetFourcc(V4L2_PIX_FMT_YUV420);
   EXPECT_EQ(ImageProcessor::GetConvertedSize(*frame.get()), 0);
   frame->SetWidth(1280);
   EXPECT_EQ(ImageProcessor::GetConvertedSize(*frame.get()), 0);

@@ -98,7 +98,8 @@ int AllocatedFrameBuffer::SetDataSize(size_t size) {
 
 void AllocatedFrameBuffer::SetData() {
   switch (fourcc_) {
-    case V4L2_PIX_FMT_YUV420M:  // YU12, multiple planes
+    case V4L2_PIX_FMT_YUV420:   // YU12
+    case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
       if (num_planes_ != 3) {
         LOGF(ERROR) << "Stride is not set correctly";
         return;
@@ -122,7 +123,8 @@ void AllocatedFrameBuffer::SetStride() {
     return;
   }
   switch (fourcc_) {
-    case V4L2_PIX_FMT_YUV420M:  // YU12, multiple planes
+    case V4L2_PIX_FMT_YUV420:   // YU12
+    case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
       num_planes_ = 3;
       stride_.resize(num_planes_, 0);
       stride_[YPLANE] = width_;
@@ -241,7 +243,9 @@ int GrallocFrameBuffer::Map() {
       }
       break;
     }
+    case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M:
+    case V4L2_PIX_FMT_YVU420:
     case V4L2_PIX_FMT_YVU420M: {
       struct android_ycbcr ycbcr;
       ret =
