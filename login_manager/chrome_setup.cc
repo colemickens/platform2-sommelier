@@ -396,6 +396,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--enable-touchview");
   if (builder->UseFlagIsSet("internal_stylus"))
     builder->AddArg("--has-internal-stylus");
+  if (builder->UseFlagIsSet("touchscreen_wakeup"))
+    builder->AddArg("--touchscreen-usable-while-screen-off");
 
   if (builder->UseFlagIsSet("voice_interaction"))
     builder->AddArg("--enable-voice-interaction");
