@@ -312,6 +312,20 @@ properties.
             *   `key-id` (optional): Unique ID that matches which key
                 will be used in for firmware signing as part of vboot.
                 For context, see go/cros-unibuild-signing
+            *   `sig-id-in-customization-id` (optional): Indicates that this
+                model cannot be decoded by the mapping table. Instead the model
+                is stored in the VPD (Vital Product Data) region in the
+                customization_id property. This allows us to determine the
+                model to use in the factory during the finalization stage. Note
+                that if the VPD is wiped then the model will be lost. This may
+                mean that the device will revert back to a generic model, or
+                may not work. It is not possible in general to test whether the
+                model in the VPD is correct at run-time. We simply assume that
+                it is. The advantage of using this property is that no hardware
+                changes are needed to change one model into another. For example
+                we can create 20 different whitelabel boards, all with the same
+                hardware, just by changing the customization_id that is written
+                into SPI flash.
         *   `powerd-prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
@@ -587,6 +601,24 @@ chromeos {
             brand-code = "SHAQ";
             firmware {
                 key-id = "WHITELABEL2";
+            };
+        };
+        zt_whitelabel: zero-touch-whitelabel {
+            firmware {
+                sig-id-in-customization-id;
+                shares = <&shared>;
+            };
+        };
+        zt1 {
+            whitelabel = <&zt_whitelabel>;
+            firmware {
+                key-id = "ZT1";
+            };
+        };
+        zt2 {
+            whitelabel = <&zt_whitelabel>;
+            firmware {
+                key-id = "ZT2";
             };
         };
     };

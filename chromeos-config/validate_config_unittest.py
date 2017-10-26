@@ -548,7 +548,7 @@ class UnitTests(cros_test_lib.TestCase):
                       MODEL_FIRMWARE_SHARE_EXTRA_PROPS)
     self.assertEqual(
         ["/chromeos/models/reef/firmware: Unexpected property 'bcs-overlay', "
-         "valid list is (shares, key-id)"], result)
+         "valid list is (shares, sig-id-in-customization-id, key-id)"], result)
 
   def testFamilyFirmwareSharedExtraNodes(self):
     """Test the model trying to specify nodes that should be shared"""

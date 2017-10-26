@@ -494,6 +494,8 @@ SCHEMA = NodeDesc('/', True, [
                 NodeDesc('firmware', False, [
                     PropPhandle('shares', '/chromeos/family/firmware/MODEL',
                                 False, {'../whitelabel': False}),
+                    PropString(('sig-id-in-customization-id'),
+                               conditional_props={'../whitelabel': False}),
                     PropString('key-id', False, '[A-Z][A-Z0-9]+'),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA)
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
