@@ -183,6 +183,7 @@ const char kBasicJsonData[] = R"json(
         },
         "linux": {
             "altSyscall": "android",
+            "cgroupsPath": "/session_manager_containers",
             "skipSecurebits": [
                 "KEEP_CAPS",
                 "KEEP_CAPS_LOCKED"
@@ -448,6 +449,8 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->mounts[1].destination, base::FilePath("/dev"));
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
   EXPECT_EQ("android", basic_config->linux_config.altSyscall);
+  EXPECT_EQ(base::FilePath("/session_manager_containers"),
+            basic_config->linux_config.cgroupsPath);
   EXPECT_EQ(SECBIT_KEEP_CAPS | SECBIT_KEEP_CAPS_LOCKED,
             basic_config->linux_config.skipSecurebits);
   // Devices

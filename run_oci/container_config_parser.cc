@@ -636,6 +636,10 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
       return false;
   }
 
+  std::string cgroups_path_string;
+  if (linux_dict->GetString("cgroupsPath", &cgroups_path_string))
+    config_out->linux_config.cgroupsPath = base::FilePath(cgroups_path_string);
+
   if (!linux_dict->GetString("altSyscall",
                              &config_out->linux_config.altSyscall)) {
     config_out->linux_config.altSyscall = std::string();  // Optional

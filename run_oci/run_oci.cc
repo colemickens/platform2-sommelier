@@ -513,6 +513,12 @@ int RunOci(const base::FilePath& bundle_dir,
   // Inject options passed in from the commandline.
   if (oci_config->linux_config.altSyscall.empty())
     oci_config->linux_config.altSyscall = container_options.alt_syscall_table;
+  if (oci_config->linux_config.cgroupsPath.empty()) {
+    // The OCI spec says that absolute paths for |cgroupsPath| are treated as
+    // relative to the root of the cgroup hierarchy.
+    oci_config->linux_config.cgroupsPath =
+        base::FilePath("/" + container_options.cgroup_parent);
+  }
   if (!oci_config->linux_config.skipSecurebits) {
     oci_config->linux_config.skipSecurebits =
         container_options.securebits_skip_mask;
@@ -623,9 +629,16 @@ int RunOci(const base::FilePath& bundle_dir,
         config.get(), oci_config->process.selinuxLabel.c_str());
   }
 
-  if (container_options.cgroup_parent.length() > 0) {
-    container_config_set_cgroup_parent(config.get(),
-                                       container_options.cgroup_parent.c_str(),
+  // The OCI spec says that absolute paths for |cgroupsPath| must be treated as
+  // relative to the cgroups mount point, and relative paths may be interepreted
+  // to being relative to a runtime-determined point in the hierarchy. We choose
+  // to interpret both cases as relative to the cgroups mount point for the time
+  // being.
+  std::string cgroup_parent = oci_config->linux_config.cgroupsPath.value();
+  if (oci_config->linux_config.cgroupsPath.IsAbsolute())
+    cgroup_parent = cgroup_parent.substr(1);
+  if (!cgroup_parent.empty()) {
+    container_config_set_cgroup_parent(config.get(), cgroup_parent.c_str(),
                                        container_config_get_uid(config.get()),
                                        container_config_get_gid(config.get()));
   }
