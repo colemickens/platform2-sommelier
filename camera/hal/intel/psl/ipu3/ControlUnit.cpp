@@ -328,6 +328,12 @@ void RequestCtrlState::init(Camera3Request *req,
         aaaControls.controlMode = entry.data.u8[0];
         ctrlUnitResult->update(ANDROID_CONTROL_MODE, entry.data.u8, entry.count);
     }
+
+    entry = settings->find(ANDROID_CONTROL_AE_MODE);
+    if (entry.count == 1) {
+        aaaControls.ae.aeMode = entry.data.u8[0];
+        ctrlUnitResult->update(ANDROID_CONTROL_AE_MODE, entry.data.u8, entry.count);
+    }
 }
 
 ControlUnit::~ControlUnit()
