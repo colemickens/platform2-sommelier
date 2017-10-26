@@ -35,7 +35,7 @@
 namespace android {
 namespace camera2 {
 
-class SWOutputFrameWorker;
+class OutputFrameWorker;
 class ImguUnit: public IMessageHandler,
                 public IPollEventListener {
 
@@ -73,9 +73,9 @@ private:
     status_t requestExitAndWait();
     status_t mapStreamWithDeviceNode();
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
+    void setStreamListeners(IPU3NodeNames nodeName,
+                            std::shared_ptr<OutputFrameWorker>& source);
     status_t checkAndSwitchPipe(Camera3Request* request);
-    std::shared_ptr<SWOutputFrameWorker> createSwOutputFrameWork(IPU3NodeNames nodeName,
-                                                                 ICaptureEventSource* source);
     status_t kickstart();
     void clearWorkers();
 
@@ -125,7 +125,7 @@ private:
     bool mFirstRequest;
 
     std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
-    std::map<IPU3NodeNames, camera3_stream_t *> mStreamListenerMapping;
+    std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;
 
     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> mAfFilterBuffPool; /* 3A statistics buffers */
     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;

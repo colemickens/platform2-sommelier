@@ -206,12 +206,6 @@ status_t OutputFrameWorker::run()
     V4L2BufferInfo outBuf;
 
     status = mNode->grabFrame(&outBuf);
-
-    ICaptureEventListener::CaptureMessage outMsg;
-    outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
-    outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_YUV;
-    outMsg.data.event.yuvBuffer = mWorkingBuffer;
-    notifyListeners(&outMsg);
     return (status < 0) ? status : OK;
 }
 

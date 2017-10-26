@@ -41,7 +41,6 @@ PSLSRC = \
     psl/ipu3/workers/FrameWorker.cpp \
     psl/ipu3/workers/InputFrameWorker.cpp \
     psl/ipu3/workers/OutputFrameWorker.cpp \
-    psl/ipu3/workers/SWOutputFrameWorker.cpp \
     psl/ipu3/workers/StatisticsWorker.cpp \
     psl/ipu3/workers/ParameterWorker.cpp \
     psl/ipu3/workers/IPU3AicToFwEncoder.cpp \

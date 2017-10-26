@@ -23,7 +23,6 @@
 #include "IPU3CapturedStatistics.h"
 #include "workers/InputFrameWorker.h"
 #include "workers/OutputFrameWorker.h"
-#include "workers/SWOutputFrameWorker.h"
 #include "workers/StatisticsWorker.h"
 #include "CameraMetadataHelper.h"
 
@@ -349,7 +348,7 @@ status_t ImguUnit::mapStreamWithDeviceNode()
     }
 
     if (listenerIdx >= 0) {
-        mStreamListenerMapping[listenToNode] = availableStreams[listenerIdx];
+        mStreamListenerMapping[availableStreams[listenerIdx]] = listenToNode;
         LOG1("@%s (%dx%d 0x%x), %p listen to 0x%x", __FUNCTION__,
              availableStreams[listenerIdx]->width, availableStreams[listenerIdx]->height,
              availableStreams[listenerIdx]->format, availableStreams[listenerIdx], listenToNode);
@@ -406,7 +405,6 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     mCurPipeConfig = videoConfig;
     std::shared_ptr<OutputFrameWorker> vfWorker = nullptr;
     std::shared_ptr<OutputFrameWorker> pvWorker = nullptr;
-    std::shared_ptr<SWOutputFrameWorker> pvListenerWorker = nullptr;
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
     camera_metadata_ro_entry entry;
     CLEAR(entry);
@@ -441,17 +439,15 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             videoConfig->deviceWorkers.push_back(outWorker);
             videoConfig->pollableWorkers.push_back(outWorker);
             videoConfig->nodes.push_back(outWorker->getNode());
-            if (it.first == IMGU_NODE_VIDEO) {
-                createSwOutputFrameWork(it.first, outWorker.get());
-            }
+            setStreamListeners(it.first, outWorker);
         } else if (it.first == IMGU_NODE_VF_PREVIEW) {
             vfWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
                 mStreamNodeMapping[it.first], it.first, pipelineDepth);
-            createSwOutputFrameWork(it.first, vfWorker.get());
+            setStreamListeners(it.first, vfWorker);
         } else if (it.first == IMGU_NODE_PV_PREVIEW) {
             pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
                 mStreamNodeMapping[it.first], it.first, pipelineDepth);
-            pvListenerWorker = createSwOutputFrameWork(it.first, pvWorker.get());
+            setStreamListeners(it.first, pvWorker);
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("Not implemented"); // raw
             continue;
@@ -479,8 +475,8 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         videoConfig->nodes.insert(videoConfig->nodes.begin(), vfWorker->getNode());
 
         // vf node provides source frame during still preview instead of pv node.
-        if (pvListenerWorker.get()) {
-            vfWorker->attachListener(pvListenerWorker.get());
+        if (pvWorker.get()) {
+            setStreamListeners(IMGU_NODE_PV_PREVIEW, vfWorker);
         }
     }
 
@@ -504,22 +500,16 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     return OK;
 }
 
-std::shared_ptr<SWOutputFrameWorker>
-ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName, ICaptureEventSource* source)
+void ImguUnit::setStreamListeners(IPU3NodeNames nodeName,
+                                  std::shared_ptr<OutputFrameWorker>& source)
 {
-    LOG1("@%s nodeName 0x%x, mapping len %lu",  __FUNCTION__, nodeName, mStreamListenerMapping.size());
-    std::map<IPU3NodeNames, camera3_stream_t *>::iterator it;
-    it = mStreamListenerMapping.find(nodeName);
-    if (it != mStreamListenerMapping.end()) {
-        LOG1("@%s stream %p listen to nodeName 0x%x", __FUNCTION__, it->second, nodeName);
-        std::shared_ptr<SWOutputFrameWorker> tmp = nullptr;
-        tmp = std::make_shared<SWOutputFrameWorker>(mCameraId, it->second);
-        source->attachListener(tmp.get());
-        mCurPipeConfig->deviceWorkers.push_back(tmp);
-        return tmp;
+    for (const auto &it : mStreamListenerMapping) {
+        if (it.second == nodeName) {
+            LOG1("@%s stream %p listen to nodeName 0x%x",
+                 __FUNCTION__, it.first, nodeName);
+            source->addListener(it.first);
+        }
     }
-
-    return nullptr;
 }
 
 void
