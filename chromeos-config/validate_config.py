@@ -168,6 +168,7 @@ class CrosConfigValidator(object):
           name = name[3:]
         parent_props = [e.name for e in schema_target.elements]
         sibling_names = node_target.props.keys()
+        sibling_names += [n.name for n in node_target.subnodes]
         if name in parent_props and value != (name in sibling_names):
           return False
     return True
