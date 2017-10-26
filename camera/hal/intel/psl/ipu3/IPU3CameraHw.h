@@ -64,6 +64,7 @@ class IPU3CameraHw: public ICameraHw {
     void deInit();
     status_t  initStaticMetadata();
     status_t checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams);
+    status_t checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams);
 
     bool requireStreamWithLargeSize(Camera3Request* request) const;
     status_t reconfigureStreams(bool configLargeSizeStream, uint32_t operation_mode);

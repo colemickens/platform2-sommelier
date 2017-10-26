@@ -210,6 +210,22 @@ status_t IPU3CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &activeSt
     return OK;
 }
 
+status_t IPU3CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams)
+{
+    for (const auto* stream : activeStreams) {
+        if (stream->stream_type != CAMERA3_STREAM_OUTPUT)
+            continue;
+
+        if (stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0
+            && stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_90
+            && stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_270) {
+            LOGE("Invalid rotation value %d", stream->crop_rotate_scale_degrees);
+            return BAD_VALUE;
+        }
+    }
+
+    return OK;
+}
 
 status_t
 IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
@@ -225,6 +241,9 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     mStreamsWithSmallSize.clear();
 
     if (checkStreamSizes(activeStreams) != OK)
+        return BAD_VALUE;
+
+    if (checkStreamRotation(activeStreams) != OK)
         return BAD_VALUE;
 
     maxBufs = mPipelineDepth;  /* value from XML static metadata */
