@@ -453,6 +453,22 @@ bool SaveChildPidAndRunHooks(const std::vector<OciHook>& hooks,
                   hook_stage, status);
 }
 
+int SetEnvironment(void* payload) {
+  const OciEnvironment* env = reinterpret_cast<const OciEnvironment*>(payload);
+  if (clearenv() != 0) {
+    PLOG(ERROR) << "Failed to clear environment";
+    return -errno;
+  }
+  for (const auto& entry : *env) {
+    if (setenv(entry.first.c_str(), entry.second.c_str(), true) != 0) {
+      PLOG(ERROR) << "Failed to set " << entry.first << "=" << entry.second;
+      return -errno;
+    }
+  }
+
+  return 0;
+}
+
 void CleanUpContainer(const base::FilePath& container_dir) {
   std::vector<base::FilePath> mountpoints = run_oci::GetMountpointsUnder(
       container_dir, base::FilePath(kProcSelfMountsPath));
@@ -663,6 +679,11 @@ int RunOci(const base::FilePath& bundle_dir,
                    base::ConstRef(oci_config->pre_start_hooks),
                    base::Unretained(&child_pid), container_id, bundle_dir,
                    container_dir, "prestart", "created"));
+  }
+  if (!oci_config->process.env.empty()) {
+    // This needs to run in the context of the container process.
+    container_config_set_pre_execve_hook(config.get(), &SetEnvironment,
+                                         &oci_config->process.env);
   }
 
   int rc;
