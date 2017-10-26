@@ -592,6 +592,11 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
       return false;
   }
 
+  if (!linux_dict->GetString("altSyscall",
+                             &config_out->linux_config.altSyscall)) {
+    config_out->linux_config.altSyscall = std::string();  // Optional
+  }
+
   return true;
 }
 

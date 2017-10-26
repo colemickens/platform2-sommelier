@@ -129,6 +129,7 @@ struct OciLinux {
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional
   OciSeccomp seccomp;                                 // Optional
+  std::string altSyscall;  // Optional, Chrome OS extension.
   // Unused: maskedPaths, readonlyPaths, rootfsPropagation, mountLabel, sysctl
 };
 

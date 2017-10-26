@@ -181,6 +181,7 @@ const char kBasicJsonData[] = R"json(
             ]
         },
         "linux": {
+            "altSyscall": "android",
             "devices": [
                 {
                     "path": "/dev/fuse",
@@ -441,6 +442,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->mounts[0].options.size(), 0);
   EXPECT_EQ(basic_config->mounts[1].destination, base::FilePath("/dev"));
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
+  EXPECT_EQ("android", basic_config->linux_config.altSyscall);
   // Devices
   ASSERT_EQ(3, basic_config->linux_config.devices.size());
   OciLinuxDevice* dev = &basic_config->linux_config.devices[0];

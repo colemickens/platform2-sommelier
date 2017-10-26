@@ -142,3 +142,32 @@ following:
             }
         ]
     }
+
+### Alternate Syscall Table
+
+The Chromium OS kernel has infrastructure for changing syscall tables using the
+[alt-syscall](https://chromium.googlesource.com/chromiumos/third_party/kernel/+/4ee2ed4d5903c2354c3ded9ee8eef663c403e457/security/chromiumos/Kconfig#28)
+infrastructure.  This allows containers to further reduce the kernel attack
+surface area by not even exposing some system calls, and is also faster than
+using [seccomp(2)](http://man7.org/linux/man-pages/man2/seccomp.2.html) BPF
+filters.
+
+The
+[**`linux`**](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md)
+object has been extended to also contain the following:
+
+* **`altSyscall`**: *(string, OPTIONAL)* - changes the system call table for the
+  container to the one specified.  Support for the chosen alt-syscall must be
+  built into the kernel.  Please refer to the `whitelists` table in
+  [alt-syscall.c](https://chromium.git.corp.google.com/chromiumos/third_party/kernel/+/chromeos-4.4/security/chromiumos/alt-syscall.c)
+  for the full list of supported values.
+
+#### Example (Chrome OS)
+
+    {
+        "linux": [
+            {
+                "altSyscall": "android"
+            }
+        ]
+    }
