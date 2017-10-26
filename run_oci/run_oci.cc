@@ -497,6 +497,10 @@ int RunOci(const base::FilePath& bundle_dir,
   // Inject options passed in from the commandline.
   if (oci_config->linux_config.altSyscall.empty())
     oci_config->linux_config.altSyscall = container_options.alt_syscall_table;
+  if (!oci_config->linux_config.skipSecurebits) {
+    oci_config->linux_config.skipSecurebits =
+        container_options.securebits_skip_mask;
+  }
 
   base::ScopedClosureRunner cleanup;
   if (detach_after_start) {
@@ -626,9 +630,9 @@ int RunOci(const base::FilePath& bundle_dir,
         config.get(), oci_config->linux_config.altSyscall.c_str());
   }
 
-  if (container_options.securebits_skip_mask) {
+  if (oci_config->linux_config.skipSecurebits) {
     container_config_set_securebits_skip_mask(
-        config.get(), container_options.securebits_skip_mask);
+        config.get(), oci_config->linux_config.skipSecurebits);
   }
 
   container_config_set_run_as_init(config.get(), container_options.run_as_init);

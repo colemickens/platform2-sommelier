@@ -4,6 +4,7 @@
 
 #include "run_oci/container_config_parser.h"
 
+#include <linux/securebits.h>
 #include <sys/capability.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -550,6 +551,49 @@ bool ParseSeccompInfo(const base::DictionaryValue& seccomp_dict,
   return true;
 }
 
+constexpr std::pair<const char*, uint64_t> kSecurebitsMapping[] = {
+#define SECUREBIT_MAP_ENTRY(secbit) \
+  { #secbit, SECBIT_##secbit }
+    SECUREBIT_MAP_ENTRY(NOROOT), SECUREBIT_MAP_ENTRY(NOROOT_LOCKED),
+    SECUREBIT_MAP_ENTRY(NO_SETUID_FIXUP),
+    SECUREBIT_MAP_ENTRY(NO_SETUID_FIXUP_LOCKED), SECUREBIT_MAP_ENTRY(KEEP_CAPS),
+    SECUREBIT_MAP_ENTRY(KEEP_CAPS_LOCKED),
+#if defined(SECBIT_NO_CAP_AMBIENT_RAISE)
+    // Kernels < v4.4 do not have this.
+    SECUREBIT_MAP_ENTRY(NO_CAP_AMBIENT_RAISE),
+    SECUREBIT_MAP_ENTRY(NO_CAP_AMBIENT_RAISE_LOCKED),
+#endif  // SECBIT_NO_CAP_AMBIENT_RAISE
+#undef SECUREBIT_MAP_ENTRY
+};
+
+bool ParseSecurebit(const std::string& securebit_name, uint64_t* mask_out) {
+  for (const auto& entry : kSecurebitsMapping) {
+    if (securebit_name == entry.first) {
+      *mask_out = entry.second;
+      return true;
+    }
+  }
+  LOG(ERROR) << "Unrecognized securebit name: " << securebit_name;
+  return false;
+}
+
+bool ParseSkipSecurebitsMask(const base::ListValue& skip_securebits_list,
+                             uint64_t* securebits_mask_out) {
+  size_t num_securebits = skip_securebits_list.GetSize();
+  for (size_t i = 0; i < num_securebits; ++i) {
+    std::string securebit_name;
+    if (!skip_securebits_list.GetString(i, &securebit_name)) {
+      LOG(ERROR) << "Fail to get securebit name " << i;
+      return false;
+    }
+    uint64_t mask = 0;
+    if (!ParseSecurebit(securebit_name, &mask))
+      return false;
+    *securebits_mask_out |= mask;
+  }
+  return true;
+}
+
 // Parses the linux node which has information about setting up a user
 // namespace, and the list of devices for the container.
 bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
@@ -595,6 +639,16 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
   if (!linux_dict->GetString("altSyscall",
                              &config_out->linux_config.altSyscall)) {
     config_out->linux_config.altSyscall = std::string();  // Optional
+  }
+
+  const base::ListValue* skip_securebits_list;
+  if (linux_dict->GetList("skipSecurebits", &skip_securebits_list)) {
+    if (!ParseSkipSecurebitsMask(*skip_securebits_list,
+                                 &config_out->linux_config.skipSecurebits)) {
+      return false;
+    }
+  } else {
+    config_out->linux_config.skipSecurebits = 0;  // Optional
   }
 
   return true;

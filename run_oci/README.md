@@ -171,3 +171,32 @@ object has been extended to also contain the following:
             }
         ]
     }
+
+### Securebits
+
+`run_oci` by default sets all [securebits](https://lwn.net/Articles/280279/)
+(except `NO_CAP_AMBIENT_RAISE` and `NO_CAP_AMBIENT_RAISE_LOCKED`) when starting
+the container.  Some containers might want to leave more securebits not set
+(e.g. so that processes can retain their capabilities after transitioning to a
+non-root user).
+
+The
+[**`linux`**](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md)
+object has been extended to also contain the following:
+
+* **`skipSecurebits`**: *(array of strings, OPTIONAL)* - adds additional securebits
+  to not be set in the container process.  Please refer to the
+  `linux/securebits.h` header for an updated list of supported securebits.
+
+#### Example (Chrome OS)
+
+    {
+        "linux": [
+            {
+                "skipSecurebits": [
+                    "KEEP_CAPS",
+                    "KEEP_CAPS_LOCKED"
+                ]
+            }
+        ]
+    }
