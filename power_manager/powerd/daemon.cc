@@ -200,7 +200,18 @@ class Daemon::StateControllerDelegate
         base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
-  void Suspend() override { daemon_->Suspend(false, 0); }
+  void Suspend(policy::StateController::ActionReason reason) override {
+    SuspendImminent::Reason suspend_reason = SuspendImminent_Reason_OTHER;
+    switch (reason) {
+      case policy::StateController::ActionReason::IDLE:
+        suspend_reason = SuspendImminent_Reason_IDLE;
+        break;
+      case policy::StateController::ActionReason::LID_CLOSED:
+        suspend_reason = SuspendImminent_Reason_LID_CLOSED;
+        break;
+    }
+    daemon_->Suspend(suspend_reason, false, 0);
+  }
 
   void StopSession() override {
     // This session manager method takes a string argument, although it
@@ -1215,7 +1226,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
                           .c_str()
                     : "")
             << " from " << method_call->GetSender();
-  Suspend(got_external_wakeup_count, external_wakeup_count);
+  Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
+          external_wakeup_count);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1591,17 +1603,20 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 }
 
-void Daemon::Suspend(bool use_external_wakeup_count,
+void Daemon::Suspend(SuspendImminent::Reason reason,
+                     bool use_external_wakeup_count,
                      uint64_t external_wakeup_count) {
   if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
   }
 
-  if (use_external_wakeup_count)
-    suspender_->RequestSuspendWithExternalWakeupCount(external_wakeup_count);
-  else
-    suspender_->RequestSuspend();
+  if (use_external_wakeup_count) {
+    suspender_->RequestSuspendWithExternalWakeupCount(reason,
+                                                      external_wakeup_count);
+  } else {
+    suspender_->RequestSuspend(reason);
+  }
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {

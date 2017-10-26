@@ -28,6 +28,14 @@ namespace policy {
 // perform various actions.
 class StateController : public PrefsObserver {
  public:
+  // Reasons that actions are performed.
+  enum class ActionReason {
+    // The user was inactive for long enough that the idle timeout was reached.
+    IDLE,
+    // The system's lid was closed.
+    LID_CLOSED,
+  };
+
   // Interface for classes that perform the actions requested by
   // StateController (or otherwise help it interact with the real world).
   class Delegate {
@@ -67,7 +75,7 @@ class StateController : public PrefsObserver {
     virtual void LockScreen() = 0;
 
     // Suspends the system.
-    virtual void Suspend() = 0;
+    virtual void Suspend(ActionReason reason) = 0;
 
     // Stops the current session, logging the currently-logged-in user out.
     virtual void StopSession() = 0;
@@ -265,8 +273,8 @@ class StateController : public PrefsObserver {
   // |pref_*| and then applies externally-provided settings from |policy_|.
   void UpdateSettingsAndState();
 
-  // Instructs |delegate_| to perform |action|.
-  void PerformAction(Action action);
+  // Instructs |delegate_| to perform |action| for |reason|.
+  void PerformAction(Action action, ActionReason reason);
 
   // Ensures that the system is in the correct state, given the times at which
   // activity was last seen, the lid state, the currently-set delays, etc.

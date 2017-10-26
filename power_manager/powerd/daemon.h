@@ -25,6 +25,7 @@
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace dbus {
 class ObjectProxy;
@@ -267,7 +268,9 @@ class Daemon : public policy::BacklightControllerObserver,
   // Starts the suspend process. If |use_external_wakeup_count| is true,
   // passes |external_wakeup_count| to
   // policy::Suspender::RequestSuspendWithExternalWakeupCount();
-  void Suspend(bool use_external_wakeup_count, uint64_t external_wakeup_count);
+  void Suspend(SuspendImminent::Reason reason,
+               bool use_external_wakeup_count,
+               uint64_t external_wakeup_count);
 
   // Updates state in |all_backlight_controllers_|.
   void SetBacklightsDimmedForInactivity(bool dimmed);

@@ -841,10 +841,10 @@ void StateController::UpdateSettingsAndState() {
   UpdateState();
 }
 
-void StateController::PerformAction(Action action) {
+void StateController::PerformAction(Action action, ActionReason reason) {
   switch (action) {
     case Action::SUSPEND:
-      delegate_->Suspend();
+      delegate_->Suspend(reason);
       break;
     case Action::STOP_SESSION:
       delegate_->StopSession();
@@ -983,15 +983,17 @@ void StateController::UpdateState() {
   if (idle_action_to_perform == Action::SHUT_DOWN ||
       lid_closed_action_to_perform == Action::SHUT_DOWN) {
     // If either of the actions is shutting down, don't perform the other.
-    PerformAction(Action::SHUT_DOWN);
+    PerformAction(Action::SHUT_DOWN, idle_action_to_perform == Action::SHUT_DOWN
+                                         ? ActionReason::IDLE
+                                         : ActionReason::LID_CLOSED);
   } else if (idle_action_to_perform == lid_closed_action_to_perform) {
     // If both actions are the same, only perform it once.
-    PerformAction(idle_action_to_perform);
+    PerformAction(idle_action_to_perform, ActionReason::IDLE);
   } else {
     // Otherwise, perform both actions.  Note that one or both may be
     // DO_NOTHING.
-    PerformAction(idle_action_to_perform);
-    PerformAction(lid_closed_action_to_perform);
+    PerformAction(idle_action_to_perform, ActionReason::IDLE);
+    PerformAction(lid_closed_action_to_perform, ActionReason::LID_CLOSED);
   }
 
   ScheduleActionTimeout(now);

@@ -89,13 +89,16 @@ void Suspender::Init(Delegate* delegate,
   }
 }
 
-void Suspender::RequestSuspend() {
+void Suspender::RequestSuspend(SuspendImminent::Reason reason) {
+  suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = false;
   suspend_request_wakeup_count_ = 0;
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 
-void Suspender::RequestSuspendWithExternalWakeupCount(uint64_t wakeup_count) {
+void Suspender::RequestSuspendWithExternalWakeupCount(
+    SuspendImminent::Reason reason, uint64_t wakeup_count) {
+  suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = true;
   suspend_request_wakeup_count_ = wakeup_count;
   HandleEvent(Event::SUSPEND_REQUESTED);
@@ -404,7 +407,11 @@ void Suspender::StartRequest() {
   suspend_delay_controller_->PrepareForSuspend(suspend_request_id_);
   dark_resume_->PrepareForSuspendRequest();
   delegate_->SetSuspendAnnounced(true);
-  EmitSuspendImminentSignal(suspend_request_id_);
+
+  SuspendImminent proto;
+  proto.set_suspend_id(suspend_request_id_);
+  proto.set_reason(suspend_request_reason_);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
 void Suspender::FinishRequest(bool success) {
@@ -549,7 +556,7 @@ Suspender::State Suspender::Suspend() {
       LOG(INFO) << "Notifying registered dark suspend delays about "
                 << dark_suspend_id_;
       dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
-      EmitDarkSuspendImminentSignal(dark_suspend_id_);
+      EmitDarkSuspendImminentSignal();
     } else {
       wakeup_count_ = 0;
       wakeup_count_valid_ = false;
@@ -588,12 +595,6 @@ void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
                  Event::READY_TO_RESUSPEND));
 }
 
-void Suspender::EmitSuspendImminentSignal(int suspend_request_id) {
-  SuspendImminent proto;
-  proto.set_suspend_id(suspend_request_id);
-  dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
-}
-
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
                                       const base::TimeDelta& suspend_duration) {
   SuspendDone proto;
@@ -602,9 +603,9 @@ void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 
-void Suspender::EmitDarkSuspendImminentSignal(int dark_suspend_id) {
+void Suspender::EmitDarkSuspendImminentSignal() {
   SuspendImminent proto;
-  proto.set_suspend_id(dark_suspend_id);
+  proto.set_suspend_id(dark_suspend_id_);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal,
                                               proto);
 }

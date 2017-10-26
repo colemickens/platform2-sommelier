@@ -206,14 +206,17 @@ class Suspender : public SuspendDelayObserver {
 
   // Starts the suspend process. Note that suspending happens
   // asynchronously.
-  void RequestSuspend();
+  void RequestSuspend(SuspendImminent::Reason reason);
 
   // Like RequestSuspend(), but aborts the suspend attempt immediately if
   // the current wakeup count reported by the kernel exceeds
   // |wakeup_count|. Autotests can pass an external wakeup count to ensure
   // that machines in the test cluster don't sleep indefinitely (see
   // http://crbug.com/218175).
-  void RequestSuspendWithExternalWakeupCount(uint64_t wakeup_count);
+  // TODO(derat): Delete this and add a base::Optional<uint64_t> arg to
+  // RequestSuspend once base::Optional is available.
+  void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
+                                             uint64_t wakeup_count);
 
   // Handlers for D-Bus messages.
   void RegisterSuspendDelay(
@@ -317,14 +320,13 @@ class Suspender : public SuspendDelayObserver {
   // Starts |resuspend_timer_| to send EVENT_READY_TO_RESUSPEND after |delay|.
   void ScheduleResuspend(const base::TimeDelta& delay);
 
-  // Emits D-Bus signals announcing the beginning or end of a suspend request.
-  void EmitSuspendImminentSignal(int suspend_request_id);
+  // Emits D-Bus signal announcing the end of a suspend request.
   void EmitSuspendDoneSignal(int suspend_request_id,
                              const base::TimeDelta& suspend_duration);
 
   // Emits a D-Bus signal announcing that the system will soon resuspend from
-  // dark resume.
-  void EmitDarkSuspendImminentSignal(int dark_suspend_id);
+  // dark resume. |dark_resume_id_| is used as the request ID.
+  void EmitDarkSuspendImminentSignal();
 
   Delegate* delegate_ = nullptr;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
@@ -352,6 +354,10 @@ class Suspender : public SuspendDelayObserver {
 
   // Unique ID associated with the current dark suspend request.
   int dark_suspend_id_ = 0;
+
+  // The reason that was supplied for the current suspend request.
+  SuspendImminent::Reason suspend_request_reason_ =
+      SuspendImminent_Reason_OTHER;
 
   // An optional wakeup count supplied via
   // RequestSuspendWithExternalWakeupCount().
