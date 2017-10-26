@@ -61,6 +61,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.path();
     test_crash_spool_ = test_dir_.Append("crash");
+    test_crash_lib_dir_ = test_dir_.Append("var_lib_crash_reporter");
   }
 
  protected:
@@ -73,6 +74,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
   FilePath test_unclean_;
   FilePath test_dir_;
   FilePath test_crash_spool_;
+  FilePath test_crash_lib_dir_;
   base::ScopedTempDir scoped_temp_dir_;
 };
 
@@ -146,6 +148,7 @@ TEST_F(UncleanShutdownCollectorTest, CantDisable) {
 
 TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
   ASSERT_TRUE(base::CreateDirectory(test_crash_spool_));
+  ASSERT_TRUE(base::CreateDirectory(test_crash_lib_dir_));
   FilePath lsb_release = test_dir_.Append("lsb-release");
   const char kLsbContents[] =
       "CHROMEOS_RELEASE_BOARD=lumpy\n"
@@ -163,12 +166,16 @@ TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
   collector_.set_lsb_release_for_test(lsb_release);
   collector_.set_os_release_for_test(os_release);
   collector_.set_crash_directory_for_test(test_crash_spool_);
+  collector_.set_reporter_state_directory_for_test(test_crash_lib_dir_);
   ASSERT_TRUE(collector_.SaveVersionData());
 
   std::string contents;
-  base::ReadFileToString(test_crash_spool_.Append("lsb-release"), &contents);
+  base::ReadFileToString(test_crash_lib_dir_.Append("lsb-release"), &contents);
   ASSERT_EQ(contents, kLsbContents);
 
-  base::ReadFileToString(test_crash_spool_.Append("os-release"), &contents);
+  base::ReadFileToString(test_crash_lib_dir_.Append("os-release"), &contents);
   ASSERT_EQ(contents, kOsContents);
+
+  ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("lsb-release")));
+  ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("os-release")));
 }

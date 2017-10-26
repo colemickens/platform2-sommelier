@@ -78,11 +78,7 @@ bool UncleanShutdownCollector::Disable() {
 }
 
 bool UncleanShutdownCollector::SaveVersionData() {
-  FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
-    return false;
-  }
-
+  FilePath crash_directory(crash_reporter_state_path_);
   FilePath saved_lsb_release =
       crash_directory.Append(lsb_release_.BaseName());
   if (!base::CopyFile(lsb_release_, saved_lsb_release)) {

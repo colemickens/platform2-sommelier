@@ -37,6 +37,13 @@ class CrashCollector {
     forced_crash_directory_ = forced_directory;
   }
 
+  // For testing, set the directory where cached files are stored instead of
+  // kCrashReporterStatePath.
+  void set_reporter_state_directory_for_test(const base::FilePath
+                                             &forced_directory) {
+    crash_reporter_state_path_ = forced_directory;
+  }
+
   // Initialize the crash collector for detection of crashes, given a
   // crash counting function, and metrics collection enabled oracle.
   void Initialize(CountCrashFunction count_crash,
@@ -201,6 +208,7 @@ class CrashCollector {
   base::FilePath forced_crash_directory_;
   base::FilePath lsb_release_;
   base::FilePath system_crash_path_;
+  base::FilePath crash_reporter_state_path_;
   base::FilePath log_config_path_;
   size_t max_log_size_;
 

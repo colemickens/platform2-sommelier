@@ -34,6 +34,7 @@ namespace {
 const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
 const char kCrashTestInProgressPath[] = "crash-test-in-progress";
+const char kCrashReporterStatePath[] = "/var/lib/crash_reporter";
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kLeaveCoreFile[] = "/root/.leave_core";
@@ -69,6 +70,9 @@ const mode_t kSystemCrashPathMode = 01755;
 // Directory mode of the run time state directory.
 // Since we place flag files in here for checking by tests, we make it readable.
 constexpr mode_t kSystemRunStatePathMode = 0755;
+
+// Directory mode of /var/lib/crash_reporter.
+constexpr mode_t kCrashReporterStatePathMode = 0700;
 
 const uid_t kRootGroup = 0;
 
@@ -155,6 +159,7 @@ CrashCollector::CrashCollector()
 CrashCollector::CrashCollector(bool force_user_crash_dir)
     : lsb_release_(kLsbRelease),
       system_crash_path_(kSystemCrashPath),
+      crash_reporter_state_path_(kCrashReporterStatePath),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
       force_user_crash_dir_(force_user_crash_dir) {
@@ -628,7 +633,14 @@ std::string CrashCollector::GetVersion() const {
     LOG(WARNING) << "Problem parsing " << lsb_release_.value();
     // Even though there was some failure, take as much as we could read.
   }
-  FilePath saved_lsb = system_crash_path_.Append(lsb_release_.BaseName());
+  FilePath saved_lsb =
+      crash_reporter_state_path_.Append(lsb_release_.BaseName());
+  if (!base::PathExists(saved_lsb)) {
+    // TODO(bmgordon): Remove this fallback here and in crash_sender around
+    // 2019-01-01.  By then, all machines should have upgraded to at least one
+    // build that writes cached files in crash_reporter_state_path_.
+    saved_lsb = system_crash_path_.Append(lsb_release_.BaseName());
+  }
   if (!store.Load(saved_lsb)) {
     if (base::PathExists(saved_lsb)) {
       LOG(WARNING) << "Unable to parse " << saved_lsb.value();
@@ -731,6 +743,11 @@ bool CrashCollector::InitializeSystemCrashDirectories() {
 
   if (!CreateDirectoryWithSettings(
       FilePath(kSystemRunStatePath), kSystemRunStatePathMode, kRootUid,
+      kRootGroup))
+    return false;
+
+  if (!CreateDirectoryWithSettings(
+      FilePath(kCrashReporterStatePath), kCrashReporterStatePathMode, kRootUid,
       kRootGroup))
     return false;
 
