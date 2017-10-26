@@ -37,39 +37,61 @@ public:
     status_t postRun();
 
 private:
-    enum PostProcessType {
-        PROCESS_NONE = 0,      // pipe outputs directly, don't need any SW process
-        PROCESS_JPEG_ENCODING = 1<<0,
-        PROCESS_ROTATE = 1<<1,
-        PROCESS_SCALING= 1<<2
+    class SWPostProcessor {
+    public:
+        enum PostProcessType {
+            // Processe frame in order
+            PROCESS_NONE = 0,
+            PROCESS_ROTATE = 1<<0,
+            PROCESS_SCALING= 1<<1,
+            PROCESS_JPEG_ENCODING = 1<<2
+        };
+
+    public:
+        SWPostProcessor(int cameraId);
+        ~SWPostProcessor();
+
+        status_t configure(camera3_stream_t* outStream, int inputW, int inputH,
+                           int inputFmt = V4L2_PIX_FMT_NV12);
+        bool needPostProcess() const {
+            return (mProcessType != PROCESS_NONE);
+        };
+        status_t processFrame(std::shared_ptr<CameraBuffer>& input,
+                              std::shared_ptr<CameraBuffer>& output,
+                              std::shared_ptr<ProcUnitSettings>& settings,
+                              Camera3Request* request);
+
+    private:
+        int getRotationDegrees(camera3_stream_t* stream) const;
+        status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
+                            std::shared_ptr<CameraBuffer> output);
+        status_t rotateFrame(std::shared_ptr<CameraBuffer> input,
+                             std::shared_ptr<CameraBuffer> output,
+                             int angle);
+        status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
+                             std::shared_ptr<CameraBuffer> jpegBuffer,
+                             Camera3Request *request);
+
+    private:
+        int mCameraId;
+        int mProcessType;
+        camera3_stream_t* mStream;
+        /* Working buffers for post-processing*/
+        std::vector<uint8_t> mRotateBuffer;
+        std::vector<std::shared_ptr<CameraBuffer>> mPostProcessBufs;
+
+        std::unique_ptr<JpegEncodeTask> mJpegTask;
     };
-
-private:
-    std::unique_ptr<JpegEncodeTask> mJpegTask;
-    int needRotation();
-    status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
-                        std::shared_ptr<CameraBuffer> output);
-    status_t rotateFrame(std::shared_ptr<CameraBuffer> input,
-                         std::shared_ptr<CameraBuffer> output,
-                         int angle);
-    status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
-                         std::shared_ptr<CameraBuffer> jpegBuffer,
-                         Camera3Request *request);
-    /* remove after isp is working end here */
-
 
 private:
     std::shared_ptr<CameraBuffer> mOutputBuffer;
     std::shared_ptr<CameraBuffer> mWorkingBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
     bool mAllDone;
-    int mPostProcessType;
+    bool mNeedPostProcess;
     IPU3NodeNames mNodeName;
 
-    /* OutputFrameWorker has the ownership of this rotate working buffer */
-    std::vector<uint8_t> mRotateBuffer;
-    /* Working buffers for post-processing*/
-    std::vector<std::shared_ptr<CameraBuffer>> mPostProcessBufs;
+    SWPostProcessor mProcessor;
 };
 
 } /* namespace camera2 */
