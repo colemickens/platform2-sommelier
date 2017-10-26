@@ -14,9 +14,9 @@
 
 class CrosConfigTest : public testing::Test {
  protected:
-  void InitConfig(const std::string model = "pyro") {
+  void InitConfig(const std::string name = "Pyro", int sku_id = -1) {
     base::FilePath filepath("test.dtb");
-    ASSERT_TRUE(cros_config_.InitForTest(filepath, model));
+    ASSERT_TRUE(cros_config_.InitForTest(filepath, name, sku_id));
   }
 
   brillo::CrosConfig cros_config_;
@@ -24,22 +24,22 @@ class CrosConfigTest : public testing::Test {
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath("invalid-file");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyro"));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1));
 }
 
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyro"));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1));
 }
 
 TEST_F(CrosConfigTest, CheckBadStruct) {
   base::FilePath filepath("test_bad_struct.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto"));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath("test.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model"));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model", -1));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
@@ -89,7 +89,7 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
 
 TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // These mirror the tests in libcros_config_host_unittest testWhitelabel()
-  InitConfig("whitetip1");
+  InitConfig("Reef", 9);
   std::string val;
 
   // These are defined by whitetip1 itself.
@@ -113,7 +113,7 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
 }
 
 TEST_F(CrosConfigTest, CheckAbsPath) {
-  InitConfig("pyro");
+  InitConfig("Pyro");
   std::string val;
 
   ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
@@ -129,7 +129,7 @@ TEST_F(CrosConfigTest, CheckAbsPath) {
 
 TEST_F(CrosConfigTest, CheckDefault) {
   // These mirror the tests in libcros_config_host_unittest testWhitelabel()
-  InitConfig("caroline");
+  InitConfig("Reef", 20);
   std::string val;
 
   // These are defined by caroline itself.

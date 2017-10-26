@@ -18,14 +18,15 @@ int main(int argc, char* argv[]) {
   DEFINE_string(test_database,
                 "",
                 "Override path to system config database for testing.");
-  DEFINE_string(test_model, "", "Override system model name for testing.");
+  DEFINE_string(test_name, "", "Override platform name for testing.");
+  DEFINE_int32(test_sku_id, -1, "Override SKU ID for testing.");
 
   std::string usage = "Chrome OS Model Configuration\n\nUsage: " +
                       std::string(argv[0]) + " [flags] <path> <key>";
   brillo::FlagHelper::Init(argc, argv, usage);
 
-  CHECK_EQ(FLAGS_test_database.empty(), FLAGS_test_model.empty())
-      << "You must pass both --test_database and --test_model or neither.";
+  CHECK_EQ(FLAGS_test_database.empty(), FLAGS_test_name.empty())
+      << "You must pass both --test_database and --test_name or neither.";
 
   brillo::CrosConfig cros_config;
   if (FLAGS_test_database.empty()) {
@@ -34,7 +35,7 @@ int main(int argc, char* argv[]) {
     }
   } else {
     if (!cros_config.InitForTest(base::FilePath(FLAGS_test_database),
-                                 FLAGS_test_model)) {
+                                 FLAGS_test_name, FLAGS_test_sku_id)) {
       return 1;
     }
   }

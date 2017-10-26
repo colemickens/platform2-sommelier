@@ -49,6 +49,26 @@
 			};
 		};
 	};
+	mapping {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		sku-map@0 {
+			reg = <0>;
+			platform-name = "Reef";
+			smbios-name-match = "Reef";
+			/* This is an example! It does not match any real family */
+			simple-sku-map = <
+				8 &whitetip
+				9 &whitetip1
+				20 &caroline>;
+		};
+		sku-map@1 {
+			reg = <1>;
+			platform-name = "Pyro";
+			smbios-name-match = "Pyro";
+			single-sku = <&pyro>;
+		};
+	};
 	touch {
 		elan_touchscreen: elan-touchscreen {
 			vendor = "elan";
@@ -110,7 +130,7 @@
 			};
 		};
 	};
-	caroline {
+	caroline: caroline {
 		default = <&pyro>;
 		wallpaper = "caroline";
 		audio {
@@ -206,7 +226,7 @@
 		};
 	};
 
-	whitetip1 {
+	whitetip1: whitetip1 {
 		whitelabel = <&whitetip>;
 		wallpaper = "shark";
 		brand-code = "SHAR";

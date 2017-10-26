@@ -29,7 +29,7 @@ std::vector<std::string> GetCrosConfigCommand(
   std::vector<std::string> cmd = {
       base::StringPrintf("%s/cros_config", installed_dir),
       "--test_database=test.dtb",
-      "--test_model=pyro"};
+      "--test_name=Pyro"};
   cmd.insert(cmd.end(), params.begin(), params.end());
   return cmd;
 }

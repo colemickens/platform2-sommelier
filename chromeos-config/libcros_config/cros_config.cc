@@ -20,12 +20,12 @@ extern "C" {
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
-const char kModelNodePath[] = "/chromeos/models";
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
 }  // namespace
 
@@ -40,15 +40,18 @@ bool CrosConfig::Init() {
 }
 
 bool CrosConfig::InitModel() {
-  const base::FilePath::CharType* const argv[] = {"mosys", "platform", "model"};
+  const base::FilePath::CharType* const argv[] = {
+      "mosys", "-k", "platform", "id"};
   base::CommandLine cmdline(arraysize(argv), argv);
 
   return InitCommon(base::FilePath(kConfigDtbPath), cmdline);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
-                             const std::string& model) {
-  const base::FilePath::CharType* const argv[] = {"echo", model.c_str()};
+                             const std::string& name, int sku_id) {
+  std::string output = base::StringPrintf("name=\"%s\"\\nsku=\"%d\"",
+      name.c_str(), sku_id);
+  const base::FilePath::CharType* const argv[] = {"echo", "-e", output.c_str()};
   base::CommandLine cmdline(arraysize(argv), argv);
 
   return InitCommon(filepath, cmdline);
@@ -188,7 +191,7 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offsetp) {
+bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offset_out) {
   const void* blob = blob_.c_str();
   int len;
   const fdt32_t* ptr = static_cast<const fdt32_t*>(
@@ -197,7 +200,7 @@ bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offsetp) {
   // We probably don't need all these checks since validation will ensure that
   // the config is correct. But this is a critical tool and we want to avoid
   // crashes in any situation.
-  *offsetp = -1;
+  *offset_out = -1;
   if (ptr) {
     if (len != sizeof(fdt32_t)) {
       LOG(ERROR) << prop_name << " phandle for model " << model_
@@ -212,7 +215,35 @@ bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offsetp) {
                   << fdt_strerror(offset);
       return false;
     }
-    *offsetp = offset;
+    *offset_out = offset;
+  }
+  return true;
+}
+
+bool CrosConfig::DecodeIdentifiers(const std::string &output,
+                                   std::string* name_out, int* sku_id_out) {
+  *sku_id_out = -1;
+  std::istringstream ss(output);
+  std::string line;
+  base::StringPairs pairs;
+  if (!base::SplitStringIntoKeyValuePairs(output, '=', '\n', &pairs)) {
+    LOG(ERROR) << "Cannot decode mosys output " << output;
+    return false;
+  }
+  for (const auto &pair : pairs) {
+    if (pair.second.length() < 2) {
+      LOG(ERROR) << "Cannot decode mosys value " << pair.second;
+      return false;
+    }
+    std::string value = pair.second.substr(1, pair.second.length() - 2);
+    if (pair.first == "name") {
+      *name_out = value;
+    } else if (pair.first == "sku") {
+      *sku_id_out = std::stoi(value);
+    } else {
+      LOG(WARNING) << "Unknown key " << pair.first << " in mosys output";
+      continue;
+    }
   }
   return true;
 }
@@ -235,8 +266,12 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
     return false;
   }
-  base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &model_);
-
+  std::string name;
+  int sku_id;
+  if (!DecodeIdentifiers(output, &name, &sku_id)) {
+    LOG(ERROR) << "Could not decode output " << output;
+    return false;
+  }
   const void* blob = blob_.c_str();
   int ret = fdt_check_header(blob);
   if (ret) {
@@ -244,6 +279,11 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
+  if (!SelectModelConfigByIDs(name, sku_id)) {
+    LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
+    return false;
+  }
+
   int target_dirs_offset = fdt_path_offset(blob, kTargetDirsPath);
   if (target_dirs_offset >= 0) {
     target_dirs_offset_ = target_dirs_offset;
@@ -251,26 +291,13 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     LOG(WARNING) << "Cannot find " << kTargetDirsPath << " node: "
                << fdt_strerror(target_dirs_offset);
   }
-  int models_offset = fdt_path_offset(blob, kModelNodePath);
-  if (models_offset < 0) {
-    LOG(ERROR) << "Cannot find " << kModelNodePath << " node: "
-               << fdt_strerror(models_offset);
-    return false;
-  }
-  if (!model_.empty()) {
-    int node = fdt_subnode_offset(blob, models_offset, model_.c_str());
-    if (node < 0) {
-      LOG(ERROR) << "Cannot find " << model_ << " node: " << fdt_strerror(node);
-      return false;
-    }
-    model_offset_ = node;
+  // See if there is a whitelabel config for this model.
+  LookupPhandle("whitelabel", &whitelabel_offset_);
+  LookupPhandle("default", &default_offset_);
 
-    // See if there is a whitelabel config for this model.
-    LookupPhandle("whitelabel", &whitelabel_offset_);
-    LookupPhandle("default", &default_offset_);
-
-    LOG(INFO) << "Using master configuration for model " << model_;
-  }
+  LOG(INFO) << "Using master configuration for model " << model_name_
+            << ", submodel "
+            << (submodel_name_.empty() ? "(none)" : submodel_name_);
   inited_ = true;
 
   return true;

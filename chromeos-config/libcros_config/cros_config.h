@@ -40,9 +40,11 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // This reads in the given configuration file and selects the supplied
   // model name.
   // @filepath: Path to configuration .dtb file.
-  // @model: Model name (e.g. 'reef').
+  // @name: Platform name as returned by 'mosys platform id'.
+  // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @return true if OK, false on error.
-  bool InitForTest(const base::FilePath& filepath, const std::string& model);
+  bool InitForTest(const base::FilePath& filepath, const std::string& name,
+                   int sku_id);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
@@ -83,7 +85,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @base_offset: offset of base node for the search.
   // @path: Path to locate (relative to @base). Must start with "/".
   // @prop: Property name to look up
-  // val_out: returns the string value found, if any
+  // @val_out: returns the string value found, if any
+  // @return true if found, false if not found
   bool GetString(int base_offset, const std::string& path,
                  const std::string& prop, std::string* val_out);
 
@@ -140,6 +143,15 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // node or a submodel node
   // @return model node for this phandle, or negative on error
   int FollowPhandle(int phandle, int* target_out);
+
+  // Decode the device identifiers to resolve the model / submodel
+  // The decodes the output from 'mosys platform id' into the two fields
+  // @output: Output string from mosys
+  // @name: Returns the platform name (which may be an exmpty string)
+  // @sku_id: Returns the SKU ID (which may be -1 if there is none)
+  // @return true on success, false on failure
+  bool DecodeIdentifiers(const std::string &output, std::string* name,
+                         int* sku_id_out);
 
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
