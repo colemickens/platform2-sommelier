@@ -470,10 +470,12 @@ chromeos {
             wallpaper = "alien_invasion";
             brand-code = "ABCE";
             audio {
-                audio-type = <&audio_type>;
-                cras-config-dir = "pyro";
-                ucm-suffix = "pyro";
-                topology-name = "pyro";
+                main {
+                    audio-type = <&audio_type>;
+                    cras-config-dir = "pyro";
+                    ucm-suffix = "pyro";
+                    topology-name = "pyro";
+                };
             };
             firmware {
                 bcs-overlay = "overlay-pyro-private";
@@ -497,10 +499,12 @@ chromeos {
             wallpaper = "chocolate";
             brand-code = "ABCF";
             audio {
-                audio-type = <&audio_type>;
-                cras-config-dir = "snappy";
-                ucm-suffix = "snappy";
-                topology-name = "snappy";
+                main {
+                    audio-type = <&audio_type>;
+                    cras-config-dir = "snappy";
+                    ucm-suffix = "snappy";
+                    topology-name = "snappy";
+                };
             };
             firmware {
                 bcs-overlay = "overlay-snappy-private";
@@ -558,10 +562,12 @@ chromeos {
             wallpaper = "coffee";
             brand-code = "ABCH";
             audio {
-                audio-type = <&audio_type>;
-                cras-config-dir = "sand";
-                ucm-suffix = "sand";
-                topology-name = "sand";
+                main {
+                    audio-type = <&audio_type>;
+                    cras-config-dir = "sand";
+                    ucm-suffix = "sand";
+                    topology-name = "sand";
+                };
             };
             firmware {
                 shares = <&pinned_version>;
