@@ -13,6 +13,7 @@
       'sources': [
         'libcros_config/cros_config.cc',
         'libcros_config/fake_cros_config.cc',
+        'libcros_config/lookup.cc',
       ],
       'link_settings': {
         'libraries': [

@@ -188,7 +188,7 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::LookupPhandle(std::string prop_name, int *offsetp) {
+bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offsetp) {
   const void* blob = blob_.c_str();
   int len;
   const fdt32_t* ptr = static_cast<const fdt32_t*>(
