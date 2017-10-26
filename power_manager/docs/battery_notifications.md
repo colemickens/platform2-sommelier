@@ -62,4 +62,4 @@ difficult to reason about or write tests for and the estimates were even noisier
 
 [PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto
 [PowerSupply]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/power_supply.h
-[ash::TrayPower]: https://chromium.googlesource.com/chromium/src/+/master/ash/common/system/chromeos/power/tray_power.cc
+[ash::TrayPower]: https://chromium.googlesource.com/chromium/src/+/master/ash/system/power/tray_power.cc
