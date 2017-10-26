@@ -156,6 +156,10 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   }
 
   if (!GetString(model_offset_, path, prop, val_out)) {
+    if (submodel_offset_ != -1 &&
+        GetString(submodel_offset_, path, prop, val_out)) {
+      return true;
+    }
     if (default_offset_ != -1) {
       return GetString(default_offset_, path, prop, val_out);
     }

@@ -56,8 +56,13 @@
 			reg = <0>;
 			platform-name = "Reef";
 			smbios-name-match = "Reef";
-			/* This is an example! It does not match any real family */
+			/*
+			 * This is an example! It does not match any real
+			 * family.
+			 */
 			simple-sku-map = <
+				4 &reef_touch
+				5 &reef_notouch
 				8 &whitetip
 				9 &whitetip1
 				20 &caroline>;
@@ -144,14 +149,6 @@
 	};
 	reef {
 		wallpaper = "epic";
-		audio {
-			main {
-				audio-type = <&audio_type>;
-				cras-config-dir = "reefcras";
-				ucm-suffix = "reefucm";
-				topology-name = "reeftop";
-			};
-		};
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
@@ -164,13 +161,40 @@
 				libpayload = "pyro";
 			};
 		};
+		submodels {
+			reef_touch: touch {
+				touch {
+					present = "yes";
+				};
+				audio {
+					main {
+						audio-type = <&audio_type>;
+						cras-config-dir = "front";
+						ucm-suffix = "front";
+						topology-name = "front";
+					};
+				};
+			};
+			reef_notouch: notouch {
+				touch {
+					present = "no";
+				};
+				audio {
+					main {
+						audio-type = <&audio_type>;
+						cras-config-dir = "rear";
+						ucm-suffix = "rear";
+						topology-name = "rear";
+					};
+				};
+			};
+		};
 		thermal {
 			dptf-dv = "reef/dptf.dv";
 		};
 		touch {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			present = "yes";
 			stylus {
 				touch-type = <&wacom_stylus>;
 				version = "4209";

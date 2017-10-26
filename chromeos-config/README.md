@@ -450,8 +450,30 @@ chromeos {
             };
             submodels {
                 reef_4: reef-touchscreen {
+                    touch {
+                        present = "yes";
+                    };
+                    audio {
+                        main {
+                            audio-type = <&audio_type>;
+                            cras-config-dir = "front";
+                            ucm-suffix = "front";
+                            topology-name = "front";
+                        };
+                    };
                 };
                 reef_5: reef-notouch {
+                    touch {
+                        present = "no";
+                    };
+                    audio {
+                        main {
+                            audio-type = <&audio_type>;
+                            cras-config-dir = "rear";
+                            ucm-suffix = "rear";
+                            topology-name = "rear";
+                        };
+                    };
                 };
             };
             touch {

@@ -143,6 +143,21 @@ TEST_F(CrosConfigTest, CheckDefault) {
   ASSERT_EQ("pyro", val);
 }
 
+TEST_F(CrosConfigTest, CheckSubmodel) {
+  InitConfig("Reef", 4);
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("yes", val);
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_EQ("front", val);
+
+  InitConfig("Reef", 5);
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("no", val);
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_EQ("rear", val);
+}
+
 int main(int argc, char **argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)

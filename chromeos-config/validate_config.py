@@ -453,6 +453,15 @@ BASE_AUDIO_SCHEMA = [
     PropFile('topology-bin', False, '', {'audio-type': False}, LIB_FIRMWARE),
 ]
 
+BASE_AUDIO_NODE = [
+    NodeAny(r'main', [
+        PropPhandle('audio-type', '/chromeos/family/audio/ANY',
+                    False),
+        PropString('cras-config-dir', True, r'\w+'),
+        PropString('ucm-suffix', True, r'\w+'),
+        PropString('topology-name', False, r'\w+'),
+    ] + BASE_AUDIO_SCHEMA)
+]
 NOT_WL = {'whitelabel': False}
 
 """This is the schema. It is a hierarchical set of nodes and properties, just
@@ -509,18 +518,17 @@ SCHEMA = NodeDesc('/', True, [
                 PropString('brand-code', False, '[A-Z]{4}'),
                 PropString('powerd-prefs', conditional_props=NOT_WL),
                 PropString('wallpaper', False, '[a-z_]+'),
-                NodeDesc('audio', False, [
-                    NodeAny(r'main', [
-                        PropPhandle('audio-type', '/chromeos/family/audio/ANY',
-                                    False),
-                        PropString('cras-config-dir', True, r'\w+'),
-                        PropString('ucm-suffix', True, r'\w+'),
-                        PropString('topology-name', False, r'\w+'),
-                    ] + copy.deepcopy(BASE_AUDIO_SCHEMA)),
-                ], conditional_props=NOT_WL),
+                NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
+                         conditional_props=NOT_WL),
                 NodeDesc('submodels', False, [
                     NodeSubmodel([
-                        PropPhandleTarget()
+                        PropPhandleTarget(),
+                        NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
+                                 conditional_props={'../../audio': False}),
+                        NodeDesc('touch', False, [
+                            PropString('present', False, r'yes|no|probe'),
+                            PropString('probe-regex', False, ''),
+                        ]),
                     ])
                 ], conditional_props=NOT_WL),
                 NodeDesc('thermal', False, [
