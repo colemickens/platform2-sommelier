@@ -24,13 +24,10 @@
 using std::string;
 using std::vector;
 using testing::ElementsAre;
-using testing::Test;
 
 namespace shill {
 
-class TechnologyTest : public Test {};
-
-TEST_F(TechnologyTest, IdentifierFromName) {
+TEST(TechnologyTest, IdentifierFromName) {
   EXPECT_EQ(Technology::kEthernet, Technology::IdentifierFromName("ethernet"));
   EXPECT_EQ(Technology::kEthernetEap,
             Technology::IdentifierFromName("etherneteap"));
@@ -46,7 +43,7 @@ TEST_F(TechnologyTest, IdentifierFromName) {
   EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromName(""));
 }
 
-TEST_F(TechnologyTest, NameFromIdentifier) {
+TEST(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("ethernet", Technology::NameFromIdentifier(Technology::kEthernet));
   EXPECT_EQ("etherneteap",
             Technology::NameFromIdentifier(Technology::kEthernetEap));
@@ -61,7 +58,7 @@ TEST_F(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("unknown", Technology::NameFromIdentifier(Technology::kUnknown));
 }
 
-TEST_F(TechnologyTest, IdentifierFromStorageGroup) {
+TEST(TechnologyTest, IdentifierFromStorageGroup) {
   EXPECT_EQ(Technology::kVPN, Technology::IdentifierFromStorageGroup("vpn"));
   EXPECT_EQ(Technology::kVPN, Technology::IdentifierFromStorageGroup("vpn_a"));
   EXPECT_EQ(Technology::kVPN, Technology::IdentifierFromStorageGroup("vpn__a"));
@@ -73,7 +70,7 @@ TEST_F(TechnologyTest, IdentifierFromStorageGroup) {
   EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromStorageGroup(""));
 }
 
-TEST_F(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
+TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
   vector<Technology::Identifier> technologies;
   Error error;
 
@@ -101,8 +98,7 @@ TEST_F(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_F(TechnologyTest,
-       GetTechnologyVectorFromStringWithInvalidTechnologyNames) {
+TEST(TechnologyTest, GetTechnologyVectorFromStringWithInvalidTechnologyNames) {
   vector<Technology::Identifier> technologies;
   Error error;
 
@@ -122,8 +118,8 @@ TEST_F(TechnologyTest,
   EXPECT_EQ("foo is an unknown technology name", error.message());
 }
 
-TEST_F(TechnologyTest,
-       GetTechnologyVectorFromStringWithDuplicateTechnologyNames) {
+TEST(TechnologyTest,
+     GetTechnologyVectorFromStringWithDuplicateTechnologyNames) {
   vector<Technology::Identifier> technologies;
   Error error;
 

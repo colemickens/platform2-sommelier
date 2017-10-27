@@ -21,46 +21,42 @@
 #include <brillo/errors/error_codes.h>
 #include <gtest/gtest.h>
 
-using testing::Test;
-
 namespace shill {
 
-class ErrorTest : public Test {};
-
-TEST_F(ErrorTest, ConstructorDefault) {
+TEST(ErrorTest, ConstructorDefault) {
   Error e;
   EXPECT_EQ(Error::kSuccess, e.type());
   EXPECT_EQ(Error::GetDefaultMessage(Error::kSuccess), e.message());
 }
 
-TEST_F(ErrorTest, ConstructorDefaultMessage) {
+TEST(ErrorTest, ConstructorDefaultMessage) {
   Error e(Error::kAlreadyExists);
   EXPECT_EQ(Error::kAlreadyExists, e.type());
   EXPECT_EQ(Error::GetDefaultMessage(Error::kAlreadyExists), e.message());
 }
 
-TEST_F(ErrorTest, ConstructorCustomMessage) {
+TEST(ErrorTest, ConstructorCustomMessage) {
   static const char kMessage[] = "Custom error message";
   Error e(Error::kInProgress, kMessage);
   EXPECT_EQ(Error::kInProgress, e.type());
   EXPECT_EQ(kMessage, e.message());
 }
 
-TEST_F(ErrorTest, Reset) {
+TEST(ErrorTest, Reset) {
   Error e(Error::kAlreadyExists);
   e.Reset();
   EXPECT_EQ(Error::kSuccess, e.type());
   EXPECT_EQ(Error::GetDefaultMessage(Error::kSuccess), e.message());
 }
 
-TEST_F(ErrorTest, PopulateDefaultMessage) {
+TEST(ErrorTest, PopulateDefaultMessage) {
   Error e;
   e.Populate(Error::kInternalError);
   EXPECT_EQ(Error::kInternalError, e.type());
   EXPECT_EQ(Error::GetDefaultMessage(Error::kInternalError), e.message());
 }
 
-TEST_F(ErrorTest, PopulateCustomMessage) {
+TEST(ErrorTest, PopulateCustomMessage) {
   static const char kMessage[] = "Another custom error message";
   Error e;
   e.Populate(Error::kInvalidArguments, kMessage);
@@ -68,7 +64,7 @@ TEST_F(ErrorTest, PopulateCustomMessage) {
   EXPECT_EQ(kMessage, e.message());
 }
 
-TEST_F(ErrorTest, CopyFrom) {
+TEST(ErrorTest, CopyFrom) {
   Error e(Error::kInvalidArguments, "Some message");
   Error copy;
   copy.CopyFrom(e);
@@ -76,7 +72,7 @@ TEST_F(ErrorTest, CopyFrom) {
   EXPECT_EQ(e.message(), copy.message());
 }
 
-TEST_F(ErrorTest, ToChromeosError) {
+TEST(ErrorTest, ToChromeosError) {
   brillo::ErrorPtr chromeos_error;
   EXPECT_EQ(nullptr, chromeos_error.get());
   Error().ToChromeosError(&chromeos_error);
@@ -89,14 +85,14 @@ TEST_F(ErrorTest, ToChromeosError) {
   EXPECT_EQ(kMessage, chromeos_error->GetMessage());
 }
 
-TEST_F(ErrorTest, IsSuccessFailure) {
+TEST(ErrorTest, IsSuccessFailure) {
   EXPECT_TRUE(Error().IsSuccess());
   EXPECT_FALSE(Error().IsFailure());
   EXPECT_FALSE(Error(Error::kInvalidNetworkName).IsSuccess());
   EXPECT_TRUE(Error(Error::kInvalidPassphrase).IsFailure());
 }
 
-TEST_F(ErrorTest, GetDBusResult) {
+TEST(ErrorTest, GetDBusResult) {
   // Make sure the Error::Type enum matches up to the Error::Info array.
   EXPECT_EQ(kErrorResultSuccess, Error::GetDBusResult(Error::kSuccess));
   EXPECT_EQ(kErrorResultFailure, Error::GetDBusResult(Error::kOperationFailed));
@@ -145,7 +141,7 @@ TEST_F(ErrorTest, GetDBusResult) {
   EXPECT_EQ(kErrorResultWrongState, Error::GetDBusResult(Error::kWrongState));
 }
 
-TEST_F(ErrorTest, GetDefaultMessage) {
+TEST(ErrorTest, GetDefaultMessage) {
   // Check the last error code to try to prevent off-by-one bugs when adding or
   // removing error types.
   ASSERT_EQ(Error::kWrongState, Error::kNumErrors - 1);
