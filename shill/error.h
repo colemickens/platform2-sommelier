@@ -103,13 +103,6 @@ class Error {
                              const std::string& message);
 
  private:
-  struct Info {
-    const char* dbus_result;  // Error type name.
-    const char* message;  // Default Error type message.
-  };
-
-  static const Info kInfos[kNumErrors];
-
   Type type_;
   std::string message_;
   tracked_objects::Location location_;

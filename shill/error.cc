@@ -27,36 +27,44 @@ using std::string;
 
 namespace shill {
 
-// static
-const Error::Info Error::kInfos[kNumErrors] = {
-  { kErrorResultSuccess, "Success (no error)" },
-  { kErrorResultFailure, "Operation failed (no other information)" },
-  { kErrorResultAlreadyConnected, "Already connected" },
-  { kErrorResultAlreadyExists, "Already exists" },
-  { kErrorResultIncorrectPin, "Incorrect PIN" },
-  { kErrorResultInProgress, "In progress" },
-  { kErrorResultInternalError, "Internal error" },
-  { kErrorResultInvalidApn, "Invalid APN" },
-  { kErrorResultInvalidArguments, "Invalid arguments" },
-  { kErrorResultInvalidNetworkName, "Invalid network name" },
-  { kErrorResultInvalidPassphrase, "Invalid passphrase" },
-  { kErrorResultInvalidProperty, "Invalid property" },
-  { kErrorResultNoCarrier, "No carrier" },
-  { kErrorResultNotConnected, "Not connected" },
-  { kErrorResultNotFound, "Not found" },
-  { kErrorResultNotImplemented, "Not implemented" },
-  { kErrorResultNotOnHomeNetwork, "Not on home network" },
-  { kErrorResultNotRegistered, "Not registered" },
-  { kErrorResultNotSupported, "Not supported" },
-  { kErrorResultOperationAborted, "Operation aborted" },
-  { kErrorResultOperationInitiated, "Operation initiated" },
-  { kErrorResultOperationTimeout, "Operation timeout" },
-  { kErrorResultPassphraseRequired, "Passphrase required" },
-  { kErrorResultPermissionDenied, "Permission denied" },
-  { kErrorResultPinBlocked, "SIM PIN is blocked"},
-  { kErrorResultPinRequired, "SIM PIN is required"},
-  { kErrorResultWrongState, "Wrong state" }
+namespace {
+
+struct Info {
+  const char* dbus_result;  // Error type name
+  const char* message;      // Default error type message
 };
+
+const Info kInfos[Error::kNumErrors] = {
+    {kErrorResultSuccess, "Success (no error)"},
+    {kErrorResultFailure, "Operation failed (no other information)"},
+    {kErrorResultAlreadyConnected, "Already connected"},
+    {kErrorResultAlreadyExists, "Already exists"},
+    {kErrorResultIncorrectPin, "Incorrect PIN"},
+    {kErrorResultInProgress, "In progress"},
+    {kErrorResultInternalError, "Internal error"},
+    {kErrorResultInvalidApn, "Invalid APN"},
+    {kErrorResultInvalidArguments, "Invalid arguments"},
+    {kErrorResultInvalidNetworkName, "Invalid network name"},
+    {kErrorResultInvalidPassphrase, "Invalid passphrase"},
+    {kErrorResultInvalidProperty, "Invalid property"},
+    {kErrorResultNoCarrier, "No carrier"},
+    {kErrorResultNotConnected, "Not connected"},
+    {kErrorResultNotFound, "Not found"},
+    {kErrorResultNotImplemented, "Not implemented"},
+    {kErrorResultNotOnHomeNetwork, "Not on home network"},
+    {kErrorResultNotRegistered, "Not registered"},
+    {kErrorResultNotSupported, "Not supported"},
+    {kErrorResultOperationAborted, "Operation aborted"},
+    {kErrorResultOperationInitiated, "Operation initiated"},
+    {kErrorResultOperationTimeout, "Operation timeout"},
+    {kErrorResultPassphraseRequired, "Passphrase required"},
+    {kErrorResultPermissionDenied, "Permission denied"},
+    {kErrorResultPinBlocked, "SIM PIN is blocked"},
+    {kErrorResultPinRequired, "SIM PIN is required"},
+    {kErrorResultWrongState, "Wrong state"},
+};
+
+}  // namespace
 
 Error::Error() {
   Reset();
