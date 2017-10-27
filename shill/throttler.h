@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef THROTTLER_H_
-#define THROTTLER_H_
+#ifndef SHILL_THROTTLER_H_
+#define SHILL_THROTTLER_H_
 
 #include <memory>
 #include <string>
@@ -130,4 +130,4 @@ class Throttler : public base::SupportsWeakPtr<Throttler> {
 
 }  // namespace shill
 
-#endif  // THROTTLER_H_
+#endif  // SHILL_THROTTLER_H_
