@@ -116,6 +116,9 @@ remove_old_files /var/log/power_manager "power*"
 # Remove old vmlog logs (written by metrics_daemon)
 remove_old_files /var/log/vmlog "vmlog.*"
 
+# Remove old Android logs
+remove_old_files /var/log/android "*"
+
 # Rotate other logs
 rotate_logs
 
