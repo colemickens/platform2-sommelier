@@ -115,5 +115,13 @@ BRILLO_EXPORT bool FirmwareUpdater_UnlockRollback(
     FirmwareUpdater* updater) {
   return updater->UnlockRollback();
 }
+BRILLO_EXPORT const FirstResponsePdu* FirmwareUpdater_GetFirstResponsePdu(
+    FirmwareUpdater* updater) {
+  return updater->GetFirstResponsePdu();
+}
+BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
+    FirmwareUpdater* updater, SectionName section_name) {
+  return updater->GetSectionVersion(section_name).c_str();
+}
 
 }  // extern "C"

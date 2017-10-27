@@ -588,4 +588,19 @@ std::string FirmwareUpdater::GetEcImageVersion() const {
   return sections_[0].version;
 }
 
+const FirstResponsePdu* FirmwareUpdater::GetFirstResponsePdu() const {
+  return &targ_;
+}
+
+std::string FirmwareUpdater::GetSectionVersion(SectionName section_name) const {
+  if (section_name == SectionName::Invalid ||
+      CurrentSection() == SectionName::Invalid) {
+    return "Unknown";
+  }
+  if (section_name == CurrentSection()) {
+    return version_;
+  }
+  return std::string(targ_.version);
+}
+
 }  // namespace hammerd

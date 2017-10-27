@@ -304,6 +304,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool UnlockRollback() override;
 
   std::string GetEcImageVersion() const override;
+  const FirstResponsePdu* GetFirstResponsePdu() const;
+  std::string GetSectionVersion(SectionName section_name) const;
 
  protected:
   // Used in unit tests to inject mocks.

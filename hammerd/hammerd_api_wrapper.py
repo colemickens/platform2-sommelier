@@ -24,6 +24,7 @@ class UpdateExtraCommand(object):
   UnlockRollback = 4
   InjectEntropy = 5
   PairChallenge = 6
+  TouchpadInfo = 7
 
 
 class SectionName(object):
@@ -31,6 +32,26 @@ class SectionName(object):
   RO = 0
   RW = 1
   Invalid = 2
+
+
+class FirstResponsePdu(ctypes.Structure):
+  """Struct of response of first PDU from src/platform/ec/include/update_fw.h"""
+  _pack_ = 1
+  _fields_ = [("return_value", ctypes.c_uint32),
+              ("header_type", ctypes.c_uint16),
+              ("protocol_version", ctypes.c_uint16),
+              ("maximum_pdu_size", ctypes.c_uint32),
+              ("flash_protection", ctypes.c_uint32),
+              ("offset", ctypes.c_uint32),
+              ("version", ctypes.c_ubyte * 32),
+              ("min_rollback", ctypes.c_int32),
+              ("key_version", ctypes.c_uint32)]
+
+  def __str__(self):
+    ret = ''
+    for field_name, unused_field_type in self._fields_:
+      ret += '%s: %s\n' % (field_name, getattr(self, field_name))
+    return ret
 
 
 class ByteString(ctypes.Structure):
@@ -126,6 +147,9 @@ class FirmwareUpdater(object):
       ('UnlockSection', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('IsRollbackLocked', [ctypes.c_voidp], ctypes.c_bool),
       ('UnlockRollback', [ctypes.c_voidp], ctypes.c_bool),
+      ('GetFirstResponsePdu',
+       [ctypes.c_voidp], ctypes.POINTER(FirstResponsePdu)),
+      ('GetSectionVersion', [ctypes.c_voidp, ctypes.c_int], ctypes.c_char_p),
   ]
 
   def __init__(self, vendor_id, product_id, bus=-1, port=-1):
@@ -143,10 +167,16 @@ def main():
   with open('/lib/firmware/hammer.fw', 'rb') as f:
     ec_image = f.read()
   updater.LoadEcImage(ec_image)
-  # Jump back to RO.
   updater.TryConnectUsb()
   updater.SendFirstPdu()
   updater.SendDone()
+
+  # Print information.
+  print('PDU Response: %s' % updater.GetFirstResponsePdu().contents)
+  print('RO version: %s' % updater.GetSectionVersion(SectionName.RO))
+  print('RW version: %s' % updater.GetSectionVersion(SectionName.RW))
+
+  # Jump back to RO.
   updater.SendSubcommand(UpdateExtraCommand.ImmediateReset)
   updater.CloseUsb()
 

@@ -22,6 +22,7 @@ using hammerd::FirmwareUpdater;
 using hammerd::SectionName;
 using hammerd::UpdateExtraCommand;
 using hammerd::UsbConnectStatus;
+using hammerd::FirstResponsePdu;
 
 // The intermediary type for converting Python string to C++ std::string.
 // It is used to store either a normal string ending with '\0' or binary data.
@@ -81,6 +82,10 @@ BRILLO_EXPORT bool FirmwareUpdater_IsRollbackLocked(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_UnlockRollback(
     FirmwareUpdater* updater);
+BRILLO_EXPORT const FirstResponsePdu* FirmwareUpdater_GetFirstResponsePdu(
+    FirmwareUpdater* updater);
+BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
+    FirmwareUpdater* updater, SectionName section_name);
 
 }  // extern "C"
 #endif  // HAMMERD_HAMMERD_API_H_
