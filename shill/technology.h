@@ -76,13 +76,6 @@ class Technology {
   // Returns true if |technology| is a primary connectivity technology, i.e.
   // Ethernet, Cellular, WiFi, WiMAX, or PPPoE.
   static bool IsPrimaryConnectivityTechnology(Identifier technology);
-
- private:
-  static const char kLoopbackName[];
-  static const char kTunnelName[];
-  static const char kPPPName[];
-  static const char kPPPoEName[];
-  static const char kUnknownName[];
 };
 
 }  // namespace shill

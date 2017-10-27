@@ -33,10 +33,14 @@ using std::set;
 using std::string;
 using std::vector;
 
-const char Technology::kLoopbackName[] = "loopback";
-const char Technology::kTunnelName[] = "tunnel";
-const char Technology::kPPPName[] = "ppp";
-const char Technology::kUnknownName[] = "unknown";
+namespace {
+
+constexpr char kLoopbackName[] = "loopback";
+constexpr char kTunnelName[] = "tunnel";
+constexpr char kPPPName[] = "ppp";
+constexpr char kUnknownName[] = "unknown";
+
+}  // namespace
 
 // static
 Technology::Identifier Technology::IdentifierFromName(const string& name) {
