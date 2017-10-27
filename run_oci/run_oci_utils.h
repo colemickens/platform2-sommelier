@@ -18,6 +18,9 @@ std::vector<base::FilePath> GetMountpointsUnder(
 // Returns true if the process has the CAP_SYS_ADMIN capability.
 bool HasCapSysAdmin();
 
+// Redirects all logging and stdout/stdio to |log_file|.
+bool RedirectLoggingAndStdio(const base::FilePath& log_file);
+
 }  // namespace run_oci
 
 #endif  // RUN_OCI_RUN_OCI_UTILS_H_

@@ -4,9 +4,13 @@
 
 #include "run_oci/run_oci_utils.h"
 
+#include <fcntl.h>
 #include <mntent.h>
 #include <stdio.h>
 #include <sys/capability.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <memory>
 #include <string>
@@ -15,6 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/string_split.h>
+#include <brillo/syslog_logging.h>
 
 namespace run_oci {
 
@@ -59,6 +64,28 @@ bool HasCapSysAdmin() {
     return false;
   }
   return cap_value == CAP_SET;
+}
+
+bool RedirectLoggingAndStdio(const base::FilePath& log_file) {
+  base::ScopedFD log_fd(HANDLE_EINTR(
+      open(log_file.value().c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644)));
+  if (!log_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open log file '" << log_file.value() << "'";
+    return false;
+  }
+  // Redirecting stdout/stderr for the hooks' benefit.
+  if (dup2(log_fd.get(), STDOUT_FILENO) == -1) {
+    PLOG(ERROR) << "Failed to redirect stdout";
+    return false;
+  }
+  if (dup2(log_fd.get(), STDERR_FILENO) == -1) {
+    PLOG(ERROR) << "Failed to redirect stderr";
+    return false;
+  }
+  brillo::SetLogFlags(brillo::kLogHeader | brillo::kLogToStderr);
+  logging::SetLogItems(true /* pid */, false /* tid */, true /* timestamp */,
+                       false /* tick_count */);
+  return true;
 }
 
 }  // namespace run_oci

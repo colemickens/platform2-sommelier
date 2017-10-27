@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/callback_forward.h>
 #include <base/callback_helpers.h>
@@ -29,6 +30,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -57,6 +59,7 @@ constexpr base::FilePath::CharType kConfigJsonFilename[] =
     FILE_PATH_LITERAL("config.json");
 constexpr base::FilePath::CharType kRunOciFilename[] =
     FILE_PATH_LITERAL(".run_oci");
+constexpr base::FilePath::CharType kLogFilename[] = FILE_PATH_LITERAL("log");
 
 // PIDs can be up to 8 characters, plus the terminating NUL byte. Rounding it up
 // to the next power-of-two.
@@ -509,6 +512,8 @@ int RunOci(const base::FilePath& bundle_dir,
            const std::string& container_id,
            const ContainerOptions& container_options,
            bool detach_after_start) {
+  LOG(INFO) << "Starting container " << container_id;
+
   base::FilePath container_dir;
   const base::FilePath container_config_file =
       bundle_dir.Append(kConfigJsonFilename);
@@ -564,6 +569,11 @@ int RunOci(const base::FilePath& bundle_dir,
     if (!base::CreateSymbolicLink(rootfs_path, rootfs_symlink)) {
       PLOG(ERROR) << "Failed to create mountpoints/container-root symlink";
       return -1;
+    }
+    if (!container_options.log_file.empty() &&
+        !base::CreateSymbolicLink(container_options.log_file,
+                                  container_dir.Append(kLogFilename))) {
+      PLOG(ERROR) << "Failed to create log symlink";
     }
   } else {
     container_dir = bundle_dir;
@@ -727,6 +737,8 @@ int RunOci(const base::FilePath& bundle_dir,
     return -1;
   }
 
+  LOG(INFO) << "Container " << container_id << " running";
+
   if (detach_after_start) {
     // The container has reached a steady state. We can now return and let the
     // container keep running. We don't want to run the post-stop hooks now, but
@@ -737,6 +749,22 @@ int RunOci(const base::FilePath& bundle_dir,
   }
 
   return container_wait(container.get());
+}
+
+// If this invocation of run_oci is operating on a pre-existing container,
+// attempt to perform the same log redirection that was performed in the initial
+// start so that all the logging statements appear in the same file and are
+// easily correlated.
+bool RestoreLogRedirection(const std::string& container_id) {
+  const base::FilePath container_dir =
+      base::FilePath(kRunContainersPath).Append(container_id);
+
+  const base::FilePath log_file = container_dir.Append(kLogFilename);
+  if (!base::PathExists(log_file)) {
+    // No redirection needed.
+    return true;
+  }
+  return !run_oci::RedirectLoggingAndStdio(log_file);
 }
 
 bool GetContainerPID(const std::string& container_id, pid_t* pid_out) {
@@ -771,6 +799,10 @@ bool GetContainerPID(const std::string& container_id, pid_t* pid_out) {
 }
 
 int OciKill(const std::string& container_id, int kill_signal) {
+  RestoreLogRedirection(container_id);
+  LOG(INFO) << "Sending signal " << kill_signal << " to container "
+            << container_id;
+
   pid_t container_pid;
   if (!GetContainerPID(container_id, &container_pid))
     return -1;
@@ -793,6 +825,9 @@ base::FilePath GetBundlePath(const base::FilePath& container_config_file) {
 }
 
 int OciDestroy(const std::string& container_id) {
+  RestoreLogRedirection(container_id);
+  LOG(INFO) << "Destroying container " << container_id;
+
   const base::FilePath container_dir =
       base::FilePath(kRunContainersPath).Append(container_id);
   const base::FilePath container_config_file =
@@ -818,6 +853,8 @@ int OciDestroy(const std::string& container_id) {
            "stopped");
   CleanUpContainer(container_dir);
 
+  LOG(INFO) << "Container " << container_id << " destroyed";
+
   return 0;
 }
 
@@ -828,6 +865,7 @@ const struct option longopts[] = {
     {"use_current_user", no_argument, nullptr, 'u'},
     {"signal", required_argument, nullptr, 'S'},
     {"container_path", required_argument, nullptr, 'c'},
+    {"log_dir", required_argument, nullptr, 'l'},
     {0, 0, 0, 0},
 };
 
@@ -849,6 +887,9 @@ void print_help(const char* argv0) {
       "\n"
       "Global options:\n"
       "  -h, --help                     Print this message and exit.\n"
+      "  -l, --log_dir=<PATH>           Write logging messages to a file\n"
+      "                                 in <PATH> instead of syslog.\n"
+      "                                 Also redirects hooks' stdout/stderr.\n"
       "\n"
       "run/start:\n"
       "\n"
@@ -881,6 +922,8 @@ void print_help(const char* argv0) {
 }  // namespace run_oci
 
 int main(int argc, char** argv) {
+  base::AtExitManager exit_manager;
+
   run_oci::ContainerOptions container_options;
   base::FilePath bundle_dir = base::MakeAbsoluteFilePath(base::FilePath("."));
   int c;
@@ -889,7 +932,9 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 
-  while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", run_oci::longopts,
+  base::FilePath log_dir;
+
+  while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uUl:", run_oci::longopts,
                           nullptr)) != -1) {
     switch (c) {
       case 'b': {
@@ -928,6 +973,19 @@ int main(int argc, char** argv) {
       case 'i':
         container_options.run_as_init = false;
         break;
+      case 'l':
+        log_dir = base::FilePath(optarg);
+        // Can't use base::MakeAbsoluteFilePath since |log_dir| might not yet
+        // exist.
+        if (!log_dir.IsAbsolute()) {
+          base::FilePath current_directory;
+          if (!base::GetCurrentDirectory(&current_directory)) {
+            PLOG(ERROR) << "Failed to get current directory";
+            return -1;
+          }
+          log_dir = current_directory.Append(log_dir);
+        }
+        break;
       case 'h':
         run_oci::print_help(argv[0]);
         return 0;
@@ -959,9 +1017,30 @@ int main(int argc, char** argv) {
   for (; optind < argc; optind++)
     container_options.extra_program_args.push_back(std::string(argv[optind]));
 
+  // If the user has specified a value for |log_dir|, ensure the directory,
+  // create a unique(-ish) file and redirect logging and output to it.
+  if (!log_dir.empty()) {
+    if (!base::DirectoryExists(log_dir)) {
+      // Not using base::CreateDirectory() since we want to set more relaxed
+      // permissions.
+      if (mkdir(log_dir.value().c_str(), 0755) != 0) {
+        PLOG(ERROR) << "Failed to create log directory '" << log_dir.value()
+                    << "'";
+        return -1;
+      }
+    }
+    container_options.log_file = log_dir.Append(base::StringPrintf(
+        "%s.%s", container_id.c_str(),
+        brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
+    if (!run_oci::RedirectLoggingAndStdio(container_options.log_file))
+      return -1;
+  }
+
   if (command == "run") {
-    return run_oci::RunOci(bundle_dir, container_id, container_options,
-                           false /*detach_after_start*/);
+    int result = run_oci::RunOci(bundle_dir, container_id, container_options,
+                                 false /*detach_after_start*/);
+    LOG(INFO) << "Container " << container_id << " finished";
+    return result;
   } else if (command == "start") {
     return run_oci::RunOci(bundle_dir, container_id, container_options,
                            true /*detach_after_start*/);

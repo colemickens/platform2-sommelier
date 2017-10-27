@@ -22,13 +22,15 @@ struct ContainerOptions {
   std::vector<std::string> extra_program_args;
   bool use_current_user;
   bool run_as_init;
+  base::FilePath log_file;
 
   ContainerOptions()
       : bind_mounts(),
         cgroup_parent(),
         extra_program_args(),
         use_current_user(false),
-        run_as_init(true) {}
+        run_as_init(true),
+        log_file() {}
 };
 
 }  // namespace run_oci
