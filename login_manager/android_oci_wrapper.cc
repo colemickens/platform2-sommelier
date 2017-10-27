@@ -23,6 +23,7 @@ constexpr char AndroidOciWrapper::kContainerPath[];
 constexpr char AndroidOciWrapper::kContainerId[];
 constexpr char AndroidOciWrapper::kContainerPidName[];
 constexpr char AndroidOciWrapper::kRunOciPath[];
+constexpr char AndroidOciWrapper::kRunOciLogging[];
 constexpr char AndroidOciWrapper::kRunOciStartCommand[];
 constexpr char AndroidOciWrapper::kRunOciKillCommand[];
 constexpr char AndroidOciWrapper::kRunOciKillSignal[];
@@ -196,8 +197,8 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer(
   if (system_utils_->setsid() < 0)
     PLOG(FATAL) << "Failed to create a new session";
 
-  constexpr const char* const args[] = {kRunOciPath, kRunOciStartCommand,
-                                        kContainerId, nullptr};
+  constexpr const char* const args[] = {
+      kRunOciPath, kRunOciLogging, kRunOciStartCommand, kContainerId, nullptr};
 
   std::vector<const char*> cstr_env;
   cstr_env.reserve(env.size() + 1);
