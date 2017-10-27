@@ -510,6 +510,7 @@ SCHEMA = NodeDesc('/', True, [
         NodeDesc('models', True, [
             NodeModel([
                 PropPhandleTarget(),
+                PropPhandle('default', '/chromeos/models/MODEL', False),
                 PropPhandle('whitelabel', '/chromeos/models/MODEL', False),
                 NodeDesc('firmware', False, [
                     PropPhandle('shares', '/chromeos/family/firmware/MODEL',

@@ -385,6 +385,15 @@ WHITELABEL = '''
 };
 '''
 
+DEFAULT_MODEL = '''
+&models {
+  /* Model which gets most of its settings from another */
+  other {
+    default = <&reef>;
+  };
+};
+'''
+
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator
 
@@ -650,6 +659,9 @@ class UnitTests(cros_test_lib.TestCase):
         "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
         ], result)
 
+  def testDefault(self):
+    result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + DEFAULT_MODEL)
+    self.assertEqual([], result)
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)
