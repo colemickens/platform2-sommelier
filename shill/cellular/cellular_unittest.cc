@@ -556,8 +556,6 @@ class CellularTest : public testing::Test {
    private:
     CellularTest* test_;
   };
-  void StartRTNLHandler();
-  void StopRTNLHandler();
 
   void AllowCreateGSMCardProxyFromFactory() {
     create_gsm_card_proxy_from_factory_ = true;
