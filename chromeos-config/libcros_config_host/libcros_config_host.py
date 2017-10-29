@@ -562,6 +562,10 @@ class CrosConfig(object):
                                 base_model=base_model)
               for fname in file_names]
 
+    def SetupModelProps(self, props):
+      props['model'] = self.name
+      props['MODEL'] = self.name.upper()
+
     def GetTouchFirmwareFiles(self):
       """Get a list of unique touch firmware files
 
@@ -576,7 +580,7 @@ class CrosConfig(object):
           props = self.GetMergedProperties(device, 'touch-type')
 
           # Add a special property for the capitalised model name
-          props['MODEL'] = self.name.upper()
+          self.SetupModelProps(props)
           files[device.name] = TouchFile(
               GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
               GetPropFilename(self._fdt_node.path, props, 'firmware-symlink'))
@@ -618,7 +622,7 @@ class CrosConfig(object):
         for card in audio.subnodes.values():
           # First get all the property keys/values from the current node
           props = self.GetMergedProperties(card, 'audio-type')
-          props['model'] = self.name
+          self.SetupModelProps(props)
 
           cras_dir = props['cras-config-dir']
           _AddAudioFile('volume', '${card}', cras_dir)
