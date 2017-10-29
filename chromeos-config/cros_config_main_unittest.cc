@@ -68,6 +68,16 @@ TEST(CrosConfigTest, GetAbsPath) {
   EXPECT_TRUE(success);
   EXPECT_EQ("/etc/dptf/pyro/dptf.dv", val);
 
+  success = base::GetAppOutput(GetCrosConfigCommand(
+      {"/audio/main", "cras-config-dir"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("pyro", val);
+
+  success = base::GetAppOutput(GetCrosConfigCommand(
+      {"--abspath", "/audio/main", "cras-config-dir"}), &val);
+  EXPECT_TRUE(success);
+  EXPECT_EQ("/etc/cras/pyro", val);
+
   // We are not allowed to request an absolute path on something that is not
   // a PropFile.
   success = base::GetAppOutput(GetCrosConfigCommand(

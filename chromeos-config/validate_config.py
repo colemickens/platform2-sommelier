@@ -458,7 +458,7 @@ BASE_AUDIO_NODE = [
     NodeAny(r'main', [
         PropPhandle('audio-type', '/chromeos/family/audio/ANY',
                     False),
-        PropString('cras-config-dir', True, r'\w+'),
+        PropFile('cras-config-dir', True, r'\w+', target_dir=CRAS_CONFIG_DIR),
         PropString('ucm-suffix', True, r'\w+'),
         PropString('topology-name', False, r'\w+'),
     ] + BASE_AUDIO_SCHEMA)

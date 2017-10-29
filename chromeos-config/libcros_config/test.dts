@@ -13,11 +13,6 @@
 		};
 		models: models {
 		};
-		schema {
-			target-dirs {
-				dptf-dv = "/etc/dptf";
-			};
-		};
 	};
 };
 
@@ -268,3 +263,5 @@
 		};
 	};
 };
+
+/include/ "target_dirs.dtsi"

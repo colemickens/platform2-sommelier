@@ -311,6 +311,10 @@ class CrosConfigHostTest(unittest.TestCase):
     target_dirs = config.GetTargetDirectories()
     self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
     self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
+    self.assertEqual(target_dirs['alsa-conf'], '/usr/share/alsa/ucm')
+    self.assertEqual(target_dirs['volume'], '/etc/cras')
+    self.assertEqual(target_dirs['dsp-ini'], '/etc/cras')
+    self.assertEqual(target_dirs['cras-config-dir'], '/etc/cras')
 
   def testDefault(self):
     """Test the 'default' property"""
