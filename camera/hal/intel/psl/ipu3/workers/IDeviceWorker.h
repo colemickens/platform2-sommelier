@@ -47,7 +47,7 @@ public:
 class MessagePollEvent {
 public:
     int requestId;
-    std::shared_ptr<V4L2VideoNode> *activeDevices;
+    std::shared_ptr<cros::V4L2VideoNode> *activeDevices;
     int polledDevices;
     int numDevices;
     IPollEventListener::PollEventMessageId pollMsgId;
@@ -73,7 +73,7 @@ public:
 class IDeviceWorker
 {
 public:
-    explicit IDeviceWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
+    explicit IDeviceWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId) :
                                            mNode(node), mCameraId(cameraId) {}
     virtual ~IDeviceWorker() {}
 
@@ -84,13 +84,13 @@ public:
     virtual status_t run() = 0;
     virtual status_t postRun() = 0;
     virtual bool needPolling() = 0;
-    virtual std::shared_ptr<V4L2VideoNode> getNode() const { return mNode; }
-    virtual const char *name() { return mNode->name(); }
+    virtual std::shared_ptr<cros::V4L2VideoNode> getNode() const { return mNode; }
+    virtual const char *name() { return mNode->Name().c_str(); }
 
 protected:
     std::shared_ptr<DeviceMessage> mMsg; /*!Set in prepareRun and should be valid until
                            postRun is called */
-    std::shared_ptr<V4L2VideoNode> mNode;
+    std::shared_ptr<cros::V4L2VideoNode> mNode;
     int mCameraId;
 private:
     IDeviceWorker();

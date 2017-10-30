@@ -55,10 +55,6 @@ AALSRC = AAL/Camera3HAL.cpp \
          AAL/ResultProcessor.h \
          AAL/IErrorCallback.h
 
-V4L2SRC = common/v4l2dev/v4l2devicebase.cpp \
-          common/v4l2dev/v4l2subdevice.cpp \
-          common/v4l2dev/v4l2videonode.cpp
-
 PLATFORMDATASRC = common/platformdata/CameraConf.cpp \
                   common/platformdata/CameraMetadataHelper.cpp \
                   common/platformdata/CameraProfiles.cpp \
@@ -100,7 +96,6 @@ GCSSSRC = common/gcss/graph_query_manager.cpp \
 
 libcamerahal_la_SOURCES = $(3ASRC) \
                           $(AALSRC) \
-                          $(V4L2SRC) \
                           $(PLATFORMDATASRC) \
                           $(MEDIACONTROLLERSRC) \
                           $(IMAGEPROCESSSRC) \
@@ -133,6 +128,7 @@ libcamerahal_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ android
 libcamerahal_la_CPPFLAGS += $(CROS_CAMERA_ANDROID_HEADERS_CFLAGS) \
                             $(LIBCAMERA_CLIENT_CFLAGS) \
                             $(LIBCAMERA_METADATA_CFLAGS) \
+                            $(LIBCAMERA_V4L2_DEVICE_CFLAGS) \
                             $(LIBCBM_CFLAGS) \
                             $(LIBCHROME_CFLAGS) \
                             $(LIBSYNC_CFLAGS) \
@@ -150,7 +146,6 @@ ALLINCLUDES = \
     -I$(top_srcdir)/common/platformdata/gc \
     -I$(top_srcdir)/common/3a \
     -I$(top_srcdir)/common/mediacontroller \
-    -I$(top_srcdir)/common/v4l2dev \
     -I$(top_srcdir)/AAL \
     -I$(top_srcdir)/common/imageProcess \
     -I$(top_srcdir)/common/jpeg \
@@ -172,6 +167,7 @@ UTIL_LIBS =  $(PSLLIBS) \
           $(LIBIACSS_LIBS)
 STATIC_LIBS = $(LIBCAMERA_CLIENT_LIBS) \
               $(LIBCAMERA_METADATA_LIBS) \
+              $(LIBCAMERA_V4L2_DEVICE_LIBS) \
               $(LIBSYNC_LIBS)
 OTHER_LIBS = -ldl
 libcamerahal_la_LIBADD = $(EXTERNAL_LIBS) $(UTIL_LIBS) $(STATIC_LIBS) $(OTHER_LIBS)

@@ -152,14 +152,14 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
     // setting all the selections
     for (auto& it :mMediaCtlConfig->mSelectionVideoParams) {
         std::shared_ptr<MediaEntity> entity;
-        std::shared_ptr<V4L2VideoNode> vNode;
+        std::shared_ptr<cros::V4L2VideoNode> vNode;
 
         status = mMediaCtl->getMediaEntity(entity, it.entityName.c_str());
         if (status != NO_ERROR) {
             LOGE("Cannot get media entity (ret = %d)", status);
             return status;
         }
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&)vNode);
+        status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&)vNode);
         if (status != NO_ERROR) {
             LOGE("Cannot get media entity device (ret = %d)", status);
             return status;
@@ -284,7 +284,7 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
     LOG1("@%s: %s, node: %d", __FUNCTION__, entityName, isysNodeName);
     status_t status = UNKNOWN_ERROR;
     std::shared_ptr<MediaEntity> entity = nullptr;
-    std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
+    std::shared_ptr<cros::V4L2VideoNode> videoNode = nullptr;
 
     if (entityName != nullptr) {
         status = mMediaCtl->getMediaEntity(entity, entityName);
@@ -293,7 +293,7 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
             return status;
         }
 
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode);
+        status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) videoNode);
         if (status != NO_ERROR) {
             LOGE("Error opening device \"%s\"", entityName);
             return status;
@@ -316,7 +316,7 @@ status_t MediaCtlHelper::closeVideoNodes()
     status_t status = NO_ERROR;
 
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
-        status = mConfiguredNodes[i]->close();
+        status = mConfiguredNodes[i]->Close();
         if (status != NO_ERROR)
             LOGW("Error in closing video node (%zu)", i);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace camera2 {
 class InputFrameWorker : public FrameWorker
 {
 public:
-    InputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, size_t pipelineDepth);
+    InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId, size_t pipelineDepth);
     virtual ~InputFrameWorker();
 
     status_t configure(std::shared_ptr<GraphConfig> &config);

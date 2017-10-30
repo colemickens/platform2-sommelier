@@ -21,8 +21,8 @@
 #include <vector>
 
 #include <cros-camera/camera_thread.h>
-
-#include "v4l2device.h"
+#include <cros-camera/v4l2_device.h>
+#include <utils/Errors.h>
 
 NAMESPACE_DECLARATION {
 
@@ -44,9 +44,9 @@ public:
     };
 
     struct PollEventMessageData {
-        const std::vector<std::shared_ptr<V4L2DeviceBase>> *activeDevices;
-        const std::vector<std::shared_ptr<V4L2DeviceBase>> *inactiveDevices;
-        std::vector<std::shared_ptr<V4L2DeviceBase>> *polledDevices; // NOTE: notified entity is allowed to change this!
+        const std::vector<std::shared_ptr<cros::V4L2Device>> *activeDevices;
+        const std::vector<std::shared_ptr<cros::V4L2Device>> *inactiveDevices;
+        std::vector<std::shared_ptr<cros::V4L2Device>> *polledDevices; // NOTE: notified entity is allowed to change this!
         int reqId;
         int pollStatus;
     };
@@ -68,12 +68,12 @@ public:
     ~PollerThread();
 
     // Public Methods
-    status_t init(std::vector<std::shared_ptr<V4L2DeviceBase>> &devices,
+    status_t init(std::vector<std::shared_ptr<cros::V4L2Device>> &devices,
                   IPollEventListener *observer,
                   int events = POLLPRI | POLLIN | POLLERR,
                   bool makeRealtime = true);
     status_t pollRequest(int reqId, int timeout = EVENT_POLL_TIMEOUT,
-                         std::vector<std::shared_ptr<V4L2DeviceBase>> *devices = nullptr);
+                         std::vector<std::shared_ptr<cros::V4L2Device>> *devices = nullptr);
     status_t flush(bool sync = false, bool clear = false);
     status_t requestExitAndWait();
 
@@ -83,7 +83,7 @@ private:
         IPollEventListener *observer;
         int events;
         bool makeRealtime;
-        std::vector<std::shared_ptr<V4L2DeviceBase>> devices;
+        std::vector<std::shared_ptr<cros::V4L2Device>> devices;
     };
 
     struct MessageFlush {
@@ -93,12 +93,12 @@ private:
     struct MessagePollRequest {
         unsigned int reqId;
         unsigned int timeout;
-        std::vector<std::shared_ptr<V4L2DeviceBase>> devices;
+        std::vector<std::shared_ptr<cros::V4L2Device>> devices;
     };
 
-    std::vector<std::shared_ptr<V4L2DeviceBase>> mPollingDevices;
-    std::vector<std::shared_ptr<V4L2DeviceBase>> mActiveDevices;
-    std::vector<std::shared_ptr<V4L2DeviceBase>> mInactiveDevices;
+    std::vector<std::shared_ptr<cros::V4L2Device>> mPollingDevices;
+    std::vector<std::shared_ptr<cros::V4L2Device>> mActiveDevices;
+    std::vector<std::shared_ptr<cros::V4L2Device>> mInactiveDevices;
 
     std::string mName;
     cros::CameraThread mCameraThread;

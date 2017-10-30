@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,13 @@
 
 #include <string>
 #include "LensHw.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "MediaController.h"
 #include "MediaEntity.h"
 #include "LogHelper.h"
 #include "Camera3GFXFormat.h"
 #include "IPU3CameraCapInfo.h"
+#include "Utils.h"
 
 namespace android {
 namespace camera2 {
@@ -80,8 +81,8 @@ status_t LensHw::setLens(std::shared_ptr<MediaEntity> entity)
         LOGE("%s is not sensor subdevice", entity->getName());
         return BAD_VALUE;
     }
-    std::shared_ptr<V4L2Subdevice> lens;
-    entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) lens);
+    std::shared_ptr<cros::V4L2Subdevice> lens;
+    entity->getDevice((std::shared_ptr<cros::V4L2Device>&) lens);
     mLensSubdev = lens;
 
     return NO_ERROR;
@@ -95,21 +96,19 @@ int LensHw::moveFocusToPosition(int position)   // focus with absolute value
     // the statistics are provided. This is a monotonic clock in microsenconds
     mLensMovementStartTime = systemTime()/1000;
 
-    return mLensSubdev->setControl(V4L2_CID_FOCUS_ABSOLUTE,
-                                    position, "focus absolute");
+    return mLensSubdev->SetControl(V4L2_CID_FOCUS_ABSOLUTE, position);
 }
 
 int LensHw::moveFocusToBySteps(int steps)      // focus with relative value
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_FOCUS_RELATIVE,
-                                    steps, "focus steps");
+    return mLensSubdev->SetControl(V4L2_CID_FOCUS_RELATIVE, steps);
 }
 
 int LensHw::getFocusPosition(int &position)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->getControl(V4L2_CID_FOCUS_ABSOLUTE, &position);
+    return mLensSubdev->GetControl(V4L2_CID_FOCUS_ABSOLUTE, &position);
 }
 
 int LensHw::getFocusStatus(int &status)
@@ -123,61 +122,57 @@ int LensHw::getFocusStatus(int &status)
 int LensHw::startAutoFocus(void)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_AUTO_FOCUS_START, 1, "af start");
+    return mLensSubdev->SetControl(V4L2_CID_AUTO_FOCUS_START, 1);
 }
 
 int LensHw::stopAutoFocus(void)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_AUTO_FOCUS_STOP, 0, "af stop");
+    return mLensSubdev->SetControl(V4L2_CID_AUTO_FOCUS_STOP, 0);
 }
 
 int LensHw::getAutoFocusStatus(int &status)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->getControl(V4L2_CID_AUTO_FOCUS_STATUS,
+    return mLensSubdev->GetControl(V4L2_CID_AUTO_FOCUS_STATUS,
                                     reinterpret_cast<int*>(&status));
 }
 
 int LensHw::setAutoFocusRange(int value)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_AUTO_FOCUS_RANGE,
-                                    value, "set af range");
+    return mLensSubdev->SetControl(V4L2_CID_AUTO_FOCUS_RANGE, value);
 }
 
 int LensHw::getAutoFocusRange(int &value)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->getControl(V4L2_CID_AUTO_FOCUS_RANGE, &value);
+    return mLensSubdev->GetControl(V4L2_CID_AUTO_FOCUS_RANGE, &value);
 }
 
 // ZOOM
 int LensHw::moveZoomToPosition(int position)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_ZOOM_ABSOLUTE,
-                                    position, "zoom absolute");
+    return mLensSubdev->SetControl(V4L2_CID_ZOOM_ABSOLUTE, position);
 }
 
 int LensHw::moveZoomToBySteps(int steps)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_ZOOM_RELATIVE,
-                                    steps, "zoom steps");
+    return mLensSubdev->SetControl(V4L2_CID_ZOOM_RELATIVE, steps);
 }
 
 int LensHw::getZoomPosition(int &position)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->getControl(V4L2_CID_ZOOM_ABSOLUTE, &position);
+    return mLensSubdev->GetControl(V4L2_CID_ZOOM_ABSOLUTE, &position);
 }
 
 int LensHw::moveZoomContinuous(int position)
 {
     LOG2("@%s", __FUNCTION__);
-    return mLensSubdev->setControl(V4L2_CID_ZOOM_CONTINUOUS,
-                                    position, "continuous zoom");
+    return mLensSubdev->SetControl(V4L2_CID_ZOOM_CONTINUOUS, position);
 }
 
 int LensHw::getCurrentCameraId(void)
@@ -203,8 +198,7 @@ int LensHw::enableOis(bool enable)
     }
 
     LOG1("@%s  %s", __FUNCTION__, enable ? "ON" : "OFF");
-    mLensSubdev->setControl(V4L2_CID_IMAGE_STABILIZATION,
-                            enable ? 1 : 0, "optical image stabilization");
+    mLensSubdev->SetControl(V4L2_CID_IMAGE_STABILIZATION, enable ? 1 : 0);
     // ignore error to avoid constant update of the control.
     mCurrentOisState = enable;
     return OK;

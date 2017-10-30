@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Intel Corporation
+# Copyright (C) 2017-2018 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,7 +92,6 @@ libhalcommon_include_HEADERS = \
     AtomFifo.h \
     ItemPool.h \
     3ATypes.h \
-    FrameInfo.h \
     ISYSTypes.h \
     MemoryDumper.h \
     PollerThread.h \
@@ -113,7 +112,6 @@ libhalcommon_include_HEADERS = \
     platformdata/gc/GraphConfig.h \
     platformdata/gc/GraphConfigManager.h \
     platformdata/gc/platform_gcss_keys.h \
-    v4l2dev/v4l2device.h \
     mediacontroller/MediaCtlPipeConfig.h \
     mediacontroller/MediaEntity.h \
     mediacontroller/MediaController.h \

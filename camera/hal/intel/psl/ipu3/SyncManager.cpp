@@ -67,7 +67,7 @@ SyncManager::~SyncManager()
     if (mFrameSyncSource != FRAME_SYNC_NA) {
         // both EOF and SOF are from the ISYS receiver
         if (mIsysReceiverSubdev != nullptr)
-            mIsysReceiverSubdev->unsubscribeEvent(mFrameSyncSource);
+            mIsysReceiverSubdev->UnsubscribeEvent(mFrameSyncSource);
 
         mFrameSyncSource = FRAME_SYNC_NA;
     }
@@ -93,8 +93,8 @@ status_t SyncManager::setSubdev(std::shared_ptr<MediaEntity> entity, sensorEntit
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    std::shared_ptr<V4L2Subdevice> subdev = nullptr;
-    entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) subdev);
+    std::shared_ptr<cros::V4L2Subdevice> subdev = nullptr;
+    entity->getDevice((std::shared_ptr<cros::V4L2Device>&) subdev);
 
     switch (type) {
     case SUBDEV_PIXEL_ARRAY:
@@ -479,7 +479,7 @@ status_t SyncManager::handleSOF(MessageFrameEvent msg)
     }
     // Poll again
     mPollerThread->pollRequest(0, 1000,
-                              (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
+                              (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
 
     if (CC_UNLIKELY(mQueuedSettings.empty())) {
         LOG2("SOF[%d] Arrived and sensor does not have settings queued",
@@ -639,7 +639,7 @@ status_t SyncManager::handleStart()
     }
     // Start to poll
     mPollerThread->pollRequest(0, 1000,
-                              (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
+                              (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
     mStarted = true;
     return OK;
 }
@@ -779,14 +779,14 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
 
         // Poll again
         mPollerThread->pollRequest(0, 1000,
-                           (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
+                           (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
     } else if (pollEventMsg->data.activeDevices->empty()) {
         LOG1("%s Polling from Flush: succeeded", __FUNCTION__);
         // TODO flush actions.
     } else {
         //cannot be anything else than event if ending up here.
         do {
-            status = mIsysReceiverSubdev->dequeueEvent(&event);
+            status = mIsysReceiverSubdev->DequeueEvent(&event);
             if (status < 0) {
                 LOGE("dequeueing event failed");
                 break;
@@ -854,10 +854,10 @@ status_t SyncManager::initSynchronization()
      *  timing on how to apply the parameters and doesn't include any
      *  calculation.
      */
-    status = mIsysReceiverSubdev->subscribeEvent(FRAME_SYNC_SOF);
+    status = mIsysReceiverSubdev->SubscribeEvent(FRAME_SYNC_SOF);
     if (status != NO_ERROR) {
         LOG1("SOF event not supported on ISYS receiver node, trying EOF");
-        status = mIsysReceiverSubdev->subscribeEvent(FRAME_SYNC_EOF);
+        status = mIsysReceiverSubdev->SubscribeEvent(FRAME_SYNC_EOF);
         if (status != NO_ERROR) {
             LOGE("EOF event not existing on ISYS receiver node, FAIL");
             return status;
@@ -873,7 +873,7 @@ status_t SyncManager::initSynchronization()
 
     mPollerThread.reset(new PollerThread("SensorPollerThread"));
 
-    status = mPollerThread->init((std::vector<std::shared_ptr<V4L2DeviceBase>>&)mDevicesToPoll,
+    status = mPollerThread->init((std::vector<std::shared_ptr<cros::V4L2Device>>&)mDevicesToPoll,
                                  this, POLLPRI | POLLIN | POLLERR, false);
     if (status != NO_ERROR)
         LOGE("Failed to init PollerThread in sync manager");
@@ -894,8 +894,8 @@ status_t SyncManager::deInitSynchronization()
 {
     if (mIsysReceiverSubdev) {
         if (mFrameSyncSource != FRAME_SYNC_NA)
-            mIsysReceiverSubdev->unsubscribeEvent(mFrameSyncSource);
-        mIsysReceiverSubdev->close();
+            mIsysReceiverSubdev->UnsubscribeEvent(mFrameSyncSource);
+        mIsysReceiverSubdev->Close();
         mIsysReceiverSubdev.reset();
         mFrameSyncSource = FRAME_SYNC_NA;
     }

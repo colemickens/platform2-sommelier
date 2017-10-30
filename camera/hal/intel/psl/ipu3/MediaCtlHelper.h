@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 #include "GraphConfigManager.h"
 #include "MediaController.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include <ia_aiq_types.h>
 #include "NodeTypes.h"
 
@@ -32,7 +32,7 @@ public:
     class IOpenCallBack {
     public:
         virtual status_t opened(IPU3NodeNames isysNodeName,
-                std::shared_ptr<V4L2VideoNode> videoNode) = 0;
+                std::shared_ptr<cros::V4L2VideoNode> videoNode) = 0;
     };
 
     MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
@@ -50,7 +50,7 @@ public:
     }
     status_t configureImguNodes(IStreamConfigProvider &graphConfigMgr);
 
-    std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> getConfiguredNodesPerName()
+    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> getConfiguredNodesPerName()
     {
         return mConfiguredNodesPerName;
     }
@@ -96,8 +96,8 @@ private:
     const MediaCtlConfig *mPipeConfig;
     IStreamConfigProvider::MediaType mConfigedPipeType;
 
-    std::vector<std::shared_ptr<V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
-    std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;
+    std::vector<std::shared_ptr<cros::V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
+    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
 };
 
 } /* namespace camera2 */

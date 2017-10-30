@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 #include "CameraBuffer.h"
 #include <vector>
-#include <v4l2device.h>
+#include <cros-camera/v4l2_device.h>
 
 namespace android {
 namespace camera2 {
@@ -40,7 +40,7 @@ public:
  */
 struct CaptureBuffer {
     int                     reqId;
-    V4L2Buffer              v4l2Buf;
+    cros::V4L2Buffer              v4l2Buf;
     std::shared_ptr<CameraBuffer>        buf;
     IBufferOwner*           owner;
     std::vector<std::shared_ptr<CameraBuffer>> mPlaneBufs; // For MPLANE V4L2 bufs

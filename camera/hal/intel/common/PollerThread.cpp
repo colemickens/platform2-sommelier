@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include "PollerThread.h"
 #include "LogHelper.h"
+#include "PerformanceTraces.h"
 
 NAMESPACE_DECLARATION {
 
@@ -65,7 +66,7 @@ PollerThread::~PollerThread()
  * \return status
  *
  */
-status_t PollerThread::init(std::vector<std::shared_ptr<V4L2DeviceBase>> &devices,
+status_t PollerThread::init(std::vector<std::shared_ptr<cros::V4L2Device>> &devices,
                             IPollEventListener *observer,
                             int events,
                             bool makeRealtime)
@@ -146,7 +147,7 @@ status_t PollerThread::handleInit(MessageInit msg)
  *
  */
 status_t PollerThread::pollRequest(int reqId, int timeout,
-                                   std::vector<std::shared_ptr<V4L2DeviceBase>> *devices)
+                                   std::vector<std::shared_ptr<cros::V4L2Device>> *devices)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     MessagePollRequest msg;
@@ -173,16 +174,30 @@ status_t PollerThread::handlePollRequest(MessagePollRequest msg)
         mPollingDevices = msg.devices;
 
     do {
-        ret = V4L2DeviceBase::pollDevices(mPollingDevices, mActiveDevices,
-                                          mInactiveDevices,
-                                          msg.timeout, mFlushFd[0],
-                                          mEvents);
+        std::vector<cros::V4L2Device*> polling_devices;
+        for (const auto& it : mPollingDevices) {
+          polling_devices.push_back(it.get());
+        }
+        std::vector<cros::V4L2Device*> active_devices;
+        ret = cros::V4L2DevicePoller(polling_devices, mFlushFd[0]).Poll(
+                                     msg.timeout, mEvents, &active_devices);
         if (ret <= 0) {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_ERROR;
         } else {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_EVENT;
         }
         outMsg.data.reqId = msg.reqId;
+        mActiveDevices.clear();
+        mInactiveDevices.clear();
+        for (const auto& it : mPollingDevices) {
+          if (std::find(active_devices.begin(), active_devices.end(), it.get()) !=
+              active_devices.end()) {
+            mActiveDevices.push_back(it);
+          }
+          else {
+            mInactiveDevices.push_back(it);
+          }
+        }
         outMsg.data.activeDevices = &mActiveDevices;
         outMsg.data.inactiveDevices = &mInactiveDevices;
         outMsg.data.polledDevices = &mPollingDevices;

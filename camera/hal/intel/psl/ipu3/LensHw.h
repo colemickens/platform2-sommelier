@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 #include "ICameraIPU3HwControls.h"
 #include "PlatformData.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 
 namespace android {
 namespace camera2 {
@@ -77,7 +77,7 @@ private:
 private:
     int mCameraId;
     std::shared_ptr<MediaController> mMediaCtl;
-    std::shared_ptr<V4L2Subdevice> mLensSubdev;
+    std::shared_ptr<cros::V4L2Subdevice> mLensSubdev;
     struct lensInfo mLensInput;
     int mLastLensPosition;
     bool mCurrentOisState;

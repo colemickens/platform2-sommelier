@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ class SkyCamProxy;
 class ParameterWorker: public FrameWorker
 {
 public:
-    ParameterWorker(std::shared_ptr<V4L2VideoNode> node, const StreamConfig& activeStreams, int cameraId);
+    ParameterWorker(std::shared_ptr<cros::V4L2VideoNode> node, const StreamConfig& activeStreams, int cameraId);
     virtual ~ParameterWorker();
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);

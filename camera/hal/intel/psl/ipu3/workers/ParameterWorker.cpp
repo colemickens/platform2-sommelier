@@ -35,7 +35,7 @@ namespace camera2 {
 
 const unsigned int PARA_WORK_BUFFERS = 1;
 
-ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node,
+ParameterWorker::ParameterWorker(std::shared_ptr<cros::V4L2VideoNode> node,
                                  const StreamConfig& activeStreams,
                                  int cameraId) :
         FrameWorker(node, cameraId, PARA_WORK_BUFFERS, "ParameterWorker"),
@@ -212,7 +212,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[mIndex]->data();
     IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
-    status_t status = mNode->putFrame(mBuffers[mIndex]);
+    status_t status = mNode->PutFrame(&mBuffers[mIndex]);
     if (status != OK) {
         LOGE("putFrame failed");
         return UNKNOWN_ERROR;
@@ -233,9 +233,9 @@ status_t ParameterWorker::run()
         return OK;
     }
 
-    V4L2BufferInfo outBuf;
+    cros::V4L2Buffer outBuf;
 
-    status_t status = mNode->grabFrame(&outBuf);
+    status_t status = mNode->GrabFrame(&outBuf);
     if (status < 0) {
         LOGE("grabFrame failed");
         return UNKNOWN_ERROR;

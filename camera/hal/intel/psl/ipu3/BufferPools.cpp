@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,8 +50,7 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         std::shared_ptr<InputSystem> isys)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_RAW);
-    FrameInfo frameInfo;
+    std::shared_ptr<cros::V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_RAW);
     status_t status = NO_ERROR;
 
     CheckError((node.get() == nullptr), UNKNOWN_ERROR,
@@ -63,13 +62,12 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
      * V4L2 buffers that are registered to the V4L2 device.
      */
     mCaptureItemsPool.init(mBufferPoolSize);
-    node->getConfig(frameInfo);
-    V4L2Format aFormat;
-    node->getFormat(aFormat);
+    cros::V4L2Format aFormat;
+    node->GetFormat(&aFormat);
     LOG1("@%s: creating capture buffer pool (size: %d) format: %s",
-        __FUNCTION__, mBufferPoolSize, v4l2Fmt2Str(frameInfo.format));
+        __FUNCTION__, mBufferPoolSize, v4l2Fmt2Str(aFormat.PixelFormat()));
 
-    std::vector<V4L2Buffer> v4l2Buffers;
+    std::vector<cros::V4L2Buffer> v4l2Buffers;
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
         std::shared_ptr<CaptureBuffer> captureBufPtr = nullptr;
         mCaptureItemsPool.acquireItem(captureBufPtr);
@@ -87,6 +85,13 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         return status;
     }
 
+    FrameInfo frameInfo = {};
+    frameInfo.format = aFormat.PixelFormat();
+    frameInfo.width = aFormat.Width();
+    frameInfo.height = aFormat.Height();
+    frameInfo.stride = bytesToPixels(frameInfo.format, aFormat.BytesPerLine(0));
+    frameInfo.size =
+        frameSize(frameInfo.format, frameInfo.stride, frameInfo.height);
     status = allocateCaptureBuffers(node, frameInfo, numSkips, v4l2Buffers);
     if (status != NO_ERROR) {
         LOGE("Failed to allocate capture buffer in ISYS status: 0x%X", status);
@@ -116,9 +121,9 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
  * \return status of execution
  */
 status_t BufferPools::allocateCaptureBuffers(
-        std::shared_ptr<V4L2VideoNode> node,
+        std::shared_ptr<cros::V4L2VideoNode> node,
         const FrameInfo &frameInfo,
-        int numSkips, std::vector<V4L2Buffer> &v4l2Buffers)
+        int numSkips, std::vector<cros::V4L2Buffer> &v4l2Buffers)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
@@ -137,7 +142,7 @@ status_t BufferPools::allocateCaptureBuffers(
         return BAD_VALUE;
     }
 
-    uint32_t dataSizeOverride = v4l2Buffers[0].length();
+    uint32_t dataSizeOverride = v4l2Buffers[0].Length(0);
     unsigned int numBufs = mBufferPoolSize - numSkips;
     LOG2("numBufs: %d numSkips: %d", numBufs, numSkips);
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
@@ -155,12 +160,12 @@ status_t BufferPools::allocateCaptureBuffers(
         }
         captureBuf->buf = tmpBuf;
         captureBuf->v4l2Buf = v4l2Buffers[i];
-        if (v4l2Buffers[i].memory() == V4L2_MEMORY_USERPTR) {
+        if (v4l2Buffers[i].Memory() == V4L2_MEMORY_USERPTR) {
             unsigned long userptr = reinterpret_cast<unsigned long>(captureBuf->buf->data());
-            captureBuf->v4l2Buf.setUserptr(userptr);
-            LOG2("captureBuf->v4l2Buf.m.userptr: %p", (void*)captureBuf->v4l2Buf.userptr());
+            captureBuf->v4l2Buf.SetUserptr(userptr, 0);
+            LOG2("captureBuf->v4l2Buf.m.userptr: %p", (void*)captureBuf->v4l2Buf.Userptr(0));
         }
-        LOG2("captureBuf->v4l2Buf.index: %d", captureBuf->v4l2Buf.index());
+        LOG2("captureBuf->v4l2Buf.index: %d", captureBuf->v4l2Buf.Index());
 
         if (i >= numBufs)
             mCaptureSkipBuffers.push_back(captureBuf);
@@ -170,17 +175,17 @@ status_t BufferPools::allocateCaptureBuffers(
 }
 
 
-std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(std::shared_ptr<V4L2VideoNode> node,
+std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(std::shared_ptr<cros::V4L2VideoNode> node,
                                              const FrameInfo &frameInfo,
                                              int mCameraId,
-                                             V4L2Buffer &v4l2Buf,
+                                             cros::V4L2Buffer &v4l2Buf,
                                              size_t dataSizeOverride)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     std::shared_ptr<CameraBuffer> buf = nullptr;
-    int dmaBufFd;
+    std::vector<int> dmaBufFds;
     LOG2("@%s allocate format: %s", __func__, v4l2Fmt2Str(frameInfo.format));
-    switch (v4l2Buf.memory()) {
+    switch (v4l2Buf.Memory()) {
     case V4L2_MEMORY_USERPTR:
         buf = MemoryUtils::allocateHeapBuffer(frameInfo.width,
                                               frameInfo.height,
@@ -191,15 +196,20 @@ std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(std::shared_ptr<V4L2Vi
         memset(buf->data(), 0, buf->size());
         break;
     case V4L2_MEMORY_MMAP:
-        dmaBufFd = node->exportFrame(v4l2Buf.index());
+        if (node->ExportFrame(v4l2Buf.Index(), &dmaBufFds) != 0  ||
+            dmaBufFds.empty()) {
+            LOGE("Failed to export buffer");
+            return nullptr;
+        }
         buf = std::make_shared<CameraBuffer>(frameInfo.width,
                                              frameInfo.height,
                                              frameInfo.stride,
-                                             node->getFd(),
-                                             dmaBufFd,
-                                             dataSizeOverride,
+                                             *node,
+                                             v4l2Buf.Index(),
+                                             dmaBufFds[0],
                                              frameInfo.format,
-                                             v4l2Buf.offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
+                                             dataSizeOverride,
+                                             PROT_READ | PROT_WRITE, MAP_SHARED);
         break;
     default:
         LOGE("Unsupported memory type.");
@@ -238,8 +248,8 @@ status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &c
     if (mCaptureSkipBuffers.empty() == false) {
         capBuffer = mCaptureSkipBuffers.at(0);
         mCaptureSkipBuffers.erase(mCaptureSkipBuffers.begin());
-        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, capBuffer->v4l2Buf.userptr());
-        LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, capBuffer->v4l2Buf.index());
+        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, capBuffer->v4l2Buf.Userptr(0));
+        LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, capBuffer->v4l2Buf.Index());
         return OK;
     }
     return UNKNOWN_ERROR;

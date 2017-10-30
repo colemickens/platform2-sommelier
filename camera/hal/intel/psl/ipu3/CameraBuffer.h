@@ -23,6 +23,7 @@
 #include "base/macros.h"
 #include <camera_buffer_manager.h>
 #include <memory>
+#include <cros-camera/v4l2_device.h>
 
 NAMESPACE_DECLARATION {
 
@@ -64,8 +65,9 @@ public:
      * These are used via the utility methods in the MemoryUtils namespace
      */
     CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride = 0);
-    CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length, int v4l2fmt,
-                 int offset, int prot, int flags);
+    CameraBuffer(int w, int h, int s, cros::V4L2VideoNode& node,
+                 unsigned int index, int dmaBufFd, int v4l2fmt, int length,
+                 int prot, int flags);
     /**
      * initialization for the wrapper around the framework buffers
      */

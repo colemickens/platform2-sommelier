@@ -28,7 +28,7 @@
 namespace android {
 namespace camera2 {
 
-OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
                 camera3_stream_t* stream, IPU3NodeNames nodeName, size_t pipelineDepth) :
                 FrameWorker(node, cameraId, pipelineDepth, "OutputFrameWorker"),
                 mOutputBuffer(nullptr),
@@ -41,7 +41,7 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mNode)
-        LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->name());
+        LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->Name().c_str());
 }
 
 OutputFrameWorker::~OutputFrameWorker()
@@ -69,17 +69,17 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    status_t ret = mNode->getFormat(mFormat);
+    status_t ret = mNode->GetFormat(&mFormat);
     if (ret != OK)
         return ret;
 
-    LOG1("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
-            mFormat.sizeimage(),
-            mFormat.width(),
-            mFormat.height());
+    LOG1("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.PixelFormat()),
+            mFormat.SizeImage(0),
+            mFormat.Width(),
+            mFormat.Height());
 
-    ret = mProcessor.configure(mStream, mFormat.width(),
-                               mFormat.height());
+    ret = mProcessor.configure(mStream, mFormat.Width(),
+                               mFormat.Height());
     CheckError((ret != OK), ret, "@%s mProcessor.configure failed %d",
                __FUNCTION__, ret);
     mNeedPostProcess = mProcessor.needPostProcess();
@@ -95,21 +95,21 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 
     // Allocate internal buffer.
     if (mNeedPostProcess) {
-        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.width(),
-                mFormat.height(),
-                mFormat.bytesperline(),
-                mNode->getFd(), -1, // dmabuf fd is not required.
-                mBuffers[0].length(),
-                mFormat.pixelformat(),
-                mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
+        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.Width(),
+                mFormat.Height(),
+                mFormat.BytesPerLine(0),
+                *mNode, 0, -1, // dmabuf fd is not required.
+                mFormat.PixelFormat(),
+                mBuffers[0].Length(0),
+                PROT_READ | PROT_WRITE, MAP_SHARED);
     }
 
     mListenerProcessors.clear();
     for (size_t i = 0; i < mListeners.size(); i++) {
         camera3_stream_t* listener = mListeners[i];
         std::unique_ptr<SWPostProcessor> processor(new SWPostProcessor(mCameraId));
-        processor->configure(listener, mFormat.width(),
-                             mFormat.height());
+        processor->configure(listener, mFormat.Width(),
+                             mFormat.Height());
         mListenerProcessors.push_back(std::move(processor));
     }
 
@@ -170,20 +170,20 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             CheckError((buffer.get() == nullptr), UNKNOWN_ERROR,
                        "failed to allocate listener buffer");
         }
-        switch (mNode->getMemoryType()) {
+        switch (mNode->GetMemoryType()) {
         case V4L2_MEMORY_USERPTR:
             userptr = reinterpret_cast<unsigned long>(buffer->data());
-            mBuffers[mIndex].userptr(userptr);
+            mBuffers[mIndex].SetUserptr(userptr, 0);
             LOG2("%s mBuffers[%d].userptr: 0x%lx",
-                __FUNCTION__, mIndex, mBuffers[mIndex].userptr());
+                __FUNCTION__, mIndex, mBuffers[mIndex].Userptr(0));
             break;
         case V4L2_MEMORY_DMABUF:
-            mBuffers[mIndex].setFd(buffer->dmaBufFd(), 0);
-            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].fd());
+            mBuffers[mIndex].SetFd(buffer->dmaBufFd(), 0);
+            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].Fd(0));
             break;
         case V4L2_MEMORY_MMAP:
             LOG2("%s mBuffers[%d].offset: 0x%x",
-                __FUNCTION__, mIndex, mBuffers[mIndex].offset());
+                __FUNCTION__, mIndex, mBuffers[mIndex].Offset(0));
             break;
         default:
             LOGE("%s unsupported memory type.", __FUNCTION__);
@@ -191,14 +191,13 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         }
         mWorkingBuffer = buffer;
     }
-    status |= mNode->putFrame(mBuffers[mIndex]);
+    status |= mNode->PutFrame(&mBuffers[mIndex]);
 
     return (status < 0) ? status : OK;
 }
 
 status_t OutputFrameWorker::run()
 {
-    status_t status = NO_ERROR;
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     if (mMsg == nullptr) {
         LOGE("Message not found - Fix the bug");
@@ -210,9 +209,8 @@ status_t OutputFrameWorker::run()
         return OK;
     }
 
-    V4L2BufferInfo outBuf;
-
-    status = mNode->grabFrame(&outBuf);
+    cros::V4L2Buffer outBuf;
+    status_t status = mNode->GrabFrame(&outBuf);
     return (status < 0) ? status : OK;
 }
 
@@ -393,32 +391,32 @@ OutputFrameWorker::getOutputBufferForListener()
     // and only allocated once
     if (mOutputForListener.get() == nullptr) {
         // Allocate buffer for listeners
-        if (mNode->getMemoryType() == V4L2_MEMORY_DMABUF) {
+        if (mNode->GetMemoryType() == V4L2_MEMORY_DMABUF) {
             mOutputForListener = MemoryUtils::allocateHandleBuffer(
-                    mFormat.width(),
-                    mFormat.height(),
+                    mFormat.Width(),
+                    mFormat.Height(),
                     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                     GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
                     mCameraId);
-        } else if (mNode->getMemoryType() == V4L2_MEMORY_MMAP) {
+        } else if (mNode->GetMemoryType() == V4L2_MEMORY_MMAP) {
             mOutputForListener = std::make_shared<CameraBuffer>(
-                    mFormat.width(),
-                    mFormat.height(),
-                    mFormat.bytesperline(),
-                    mNode->getFd(), -1, // dmabuf fd is not required.
-                    mBuffers[0].length(),
-                    mFormat.pixelformat(),
-                    mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
-        } else if (mNode->getMemoryType() == V4L2_MEMORY_USERPTR) {
+                    mFormat.Width(),
+                    mFormat.Height(),
+                    mFormat.BytesPerLine(0),
+                    *mNode, -1, // dmabuf fd is not required.
+                    mBuffers[0].Length(0),
+                    mFormat.PixelFormat(),
+                    mBuffers[0].Offset(0), PROT_READ | PROT_WRITE, MAP_SHARED);
+        } else if (mNode->GetMemoryType() == V4L2_MEMORY_USERPTR) {
             mOutputForListener = MemoryUtils::allocateHeapBuffer(
-                    mFormat.width(),
-                    mFormat.height(),
-                    mFormat.bytesperline(),
-                    mFormat.pixelformat(),
+                    mFormat.Width(),
+                    mFormat.Height(),
+                    mFormat.BytesPerLine(0),
+                    mFormat.PixelFormat(),
                     mCameraId,
-                    mBuffers[0].length());
+                    mBuffers[0].Length(0));
         } else {
-            LOGE("bad type for stream buffer %d", mNode->getMemoryType());
+            LOGE("bad type for stream buffer %d", mNode->GetMemoryType());
             return nullptr;
         }
         CheckError((mOutputForListener.get() == nullptr), nullptr,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,18 +94,6 @@
  * For Linux, the same folder is used.
  */
 #define CAMERA_OPERATION_FOLDER "/tmp/"
-
-#define V4L2_TYPE_IS_VALID(type) \
-    ((type) == V4L2_BUF_TYPE_VIDEO_CAPTURE \
-     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT \
-     || (type) == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE \
-     || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE \
-     || (type) == V4L2_BUF_TYPE_META_OUTPUT \
-     || (type) == V4L2_BUF_TYPE_META_CAPTURE)
-
-#define V4L2_TYPE_IS_META(type) \
-    ((type) == V4L2_BUF_TYPE_META_OUTPUT \
-     || (type) == V4L2_BUF_TYPE_META_CAPTURE)
 
 /**
  * \macro UNUSED

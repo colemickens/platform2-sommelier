@@ -23,7 +23,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <v4l2device.h>
+#include <cros-camera/v4l2_device.h>
 #include "IPU3Types.h"
 #include "LogHelper.h"
 #include "GraphConfigManager.h"

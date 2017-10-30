@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
  */
 #define LOG_TAG "MediaEntity"
 
+#include <string.h>
 #include <unistd.h>
 #include <sstream>
 #include "MediaEntity.h"
 #include "LogHelper.h"
+#include <fcntl.h>
 
 NAMESPACE_DECLARATION {
 MediaEntity::MediaEntity(struct media_entity_desc &entity, struct media_link_desc *links,
@@ -55,24 +57,24 @@ MediaEntity::MediaEntity(struct media_entity_desc &entity, struct media_link_des
 MediaEntity::~MediaEntity()
 {
     LOG1("@%s", __FUNCTION__);
-    CLEAR(mInfo);
+    mInfo = {};
     mLinks.clear();
     mPads.clear();
 
     if (mDevice != nullptr) {
-        if (mDevice->isOpen())
-            mDevice->close();
+        if (mDevice->IsOpened())
+            mDevice->Close();
         mDevice.reset();
         mDevice = nullptr;
     }
 }
 
-status_t MediaEntity::getDevice(std::shared_ptr<V4L2DeviceBase> &device)
+status_t MediaEntity::getDevice(std::shared_ptr<cros::V4L2Device> &device)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    if (mDevice == nullptr || !mDevice->isOpen()) {
+    if (mDevice == nullptr || !mDevice->IsOpened()) {
         LOG1("Opening device");
         status = openDevice(mDevice);
     }
@@ -84,7 +86,7 @@ status_t MediaEntity::getDevice(std::shared_ptr<V4L2DeviceBase> &device)
     return status;
 }
 
-status_t MediaEntity::openDevice(std::shared_ptr<V4L2DeviceBase> &device)
+status_t MediaEntity::openDevice(std::shared_ptr<cros::V4L2Device> &device)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = UNKNOWN_ERROR;
@@ -113,11 +115,11 @@ status_t MediaEntity::openDevice(std::shared_ptr<V4L2DeviceBase> &device)
 
         device.reset();
         if (mInfo.type == MEDIA_ENT_T_DEVNODE_V4L) {
-            device = std::make_shared<V4L2VideoNode>(devname);
+            device = std::make_shared<cros::V4L2VideoNode>(devname);
         } else {
-            device = std::make_shared<V4L2Subdevice>(devname);
+            device = std::make_shared<cros::V4L2Subdevice>(devname);
         }
-        status = device->open();
+        status = device->Open(O_RDWR);
         if (status != NO_ERROR) {
             LOGE("Failed to open device %s", devname);
             device.reset();

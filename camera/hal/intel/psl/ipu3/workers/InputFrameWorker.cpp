@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 namespace android {
 namespace camera2 {
 
-InputFrameWorker::InputFrameWorker(std::shared_ptr<V4L2VideoNode> node,
+InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         int cameraId, size_t pipelineDepth) :
         /* Keep the same number of buffers as ISYS. */
         FrameWorker(node, cameraId, pipelineDepth + 1, "InputFrameWorker")
@@ -42,7 +42,7 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    status_t ret = mNode->getFormat(mFormat);
+    status_t ret = mNode->GetFormat(&mFormat);
     if (ret != OK)
         return ret;
 
@@ -57,25 +57,25 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
-    int memType = mNode->getMemoryType();
-    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.index();
+    int memType = mNode->GetMemoryType();
+    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.Index();
 
     if (memType == V4L2_MEMORY_USERPTR) {
         unsigned long userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
-        mBuffers[index].userptr(userptr);
+        mBuffers[index].Userptr(userptr);
     } else if (memType == V4L2_MEMORY_DMABUF) {
         int fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
-        mBuffers[index].setFd(fd, 0);
-        CheckError((mBuffers[index].fd() < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
-            __func__, mBuffers[index].fd());
+        mBuffers[index].SetFd(fd, 0);
+        CheckError((mBuffers[index].Fd(0) < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
+            __func__, mBuffers[index].Fd(0));
     } else {
         LOGE("@%s unsupported memory type %d.", __func__, memType);
         return BAD_VALUE;
     }
-    status |= mNode->putFrame(mBuffers[index]);
+    status |= mNode->PutFrame(&mBuffers[index]);
 
-    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence());
-    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence());
+    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence());
+    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence());
 
     return status;
 }
@@ -89,9 +89,8 @@ status_t InputFrameWorker::run()
 status_t InputFrameWorker::postRun()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    V4L2BufferInfo outBuf;
-    status_t status = OK;
-    status = mNode->grabFrame(&outBuf);
+    cros::V4L2Buffer outBuf;
+    status_t status = mNode->GrabFrame(&outBuf);
 
     return (status < 0) ? status : OK;
 }

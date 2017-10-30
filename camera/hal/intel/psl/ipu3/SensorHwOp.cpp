@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #define LOG_TAG "SensorHwOp"
 
 #include "SensorHwOp.h"
+#include "LogHelper.h"
 
 namespace android {
 namespace camera2 {
@@ -30,7 +31,7 @@ namespace camera2 {
  * also SMIAPP sensor class operation
  */
 
-SensorHwOp::SensorHwOp(std::shared_ptr<V4L2Subdevice> pixelArraySubdev):
+SensorHwOp::SensorHwOp(std::shared_ptr<cros::V4L2Subdevice> pixelArraySubdev):
    pPixelArraySubdev(pixelArraySubdev),
    pPixelRate(0),
    pHorzBlank(0),
@@ -67,7 +68,7 @@ int SensorHwOp::getActivePixelArraySize(int &width,
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int status = BAD_VALUE;
 
-    status = pPixelArraySubdev->getPadFormat(0, width, height, code);
+    status = pPixelArraySubdev->GetPadFormat(0, &width, &height, &code);
 
     return status;
 }
@@ -97,14 +98,14 @@ status_t SensorHwOp::updateMembers()
     }
 
     control.id = V4L2_CID_HBLANK;
-    status = pPixelArraySubdev->queryControl(control);
+    status = pPixelArraySubdev->QueryControl(&control);
     if (status == NO_ERROR && (control.flags & V4L2_CTRL_FLAG_READ_ONLY)) {
         pHBlankReadOnly = true;
         LOG1("HBLANK is readonly");
     }
 
     control.id = V4L2_CID_VBLANK;
-    status = pPixelArraySubdev->queryControl(control);
+    status = pPixelArraySubdev->QueryControl(&control);
     if (status == NO_ERROR && (control.flags & V4L2_CTRL_FLAG_READ_ONLY)) {
         pVBlankReadOnly = true;
         LOG1("VBLANK is readonly");
@@ -128,7 +129,7 @@ int SensorHwOp::getSensorOutputSize(int &width, int &height, int &code)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int status = BAD_VALUE;
 
-    status = pPixelArraySubdev->getPadFormat(0, width, height, code);
+    status = pPixelArraySubdev->GetPadFormat(0, &width, &height, &code);
 
     return status;
 }
@@ -144,7 +145,7 @@ int SensorHwOp::getPixelRate(int &pixel_rate)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
-    return pPixelArraySubdev->getControl(V4L2_CID_PIXEL_RATE, &pixel_rate);
+    return pPixelArraySubdev->GetControl(V4L2_CID_PIXEL_RATE, &pixel_rate);
 }
 
 /**
@@ -158,7 +159,7 @@ int SensorHwOp::getLinkFreq(int &link_freq)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
-    return pPixelArraySubdev->getControl(V4L2_CID_LINK_FREQ, &link_freq);
+    return pPixelArraySubdev->GetControl(V4L2_CID_LINK_FREQ, &link_freq);
 }
 
 /**
@@ -176,13 +177,13 @@ int SensorHwOp::getPixelClock(int64_t &pixel_clock)
     v4l2_querymenu menu;
     CLEAR(menu);
 
-    ret = pPixelArraySubdev->getControl(V4L2_CID_LINK_FREQ, &link_freq);
+    ret = pPixelArraySubdev->GetControl(V4L2_CID_LINK_FREQ, &link_freq);
     if (ret != NO_ERROR)
         return ret;
 
     menu.id = V4L2_CID_LINK_FREQ;
     menu.index = link_freq;
-    ret = pPixelArraySubdev->queryMenu(menu);
+    ret = pPixelArraySubdev->QueryMenu(&menu);
     if (ret != NO_ERROR)
         return ret;
 
@@ -205,8 +206,7 @@ int SensorHwOp::setExposure(int coarse_exposure, int fine_exposure)
     UNUSED(fine_exposure);
     int ret = BAD_VALUE;
 
-    ret = pPixelArraySubdev->setControl(V4L2_CID_EXPOSURE,
-                                    coarse_exposure, "Exposure Time");
+    ret = pPixelArraySubdev->SetControl(V4L2_CID_EXPOSURE, coarse_exposure);
     // TODO: Need fine_exposure whenever supported on kernel.
     return ret;
 }
@@ -226,7 +226,7 @@ int SensorHwOp::getExposure(int &coarse_exposure, int &fine_exposure)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int ret = BAD_VALUE;
 
-    ret = pPixelArraySubdev->getControl(V4L2_CID_EXPOSURE, &coarse_exposure);
+    ret = pPixelArraySubdev->GetControl(V4L2_CID_EXPOSURE, &coarse_exposure);
     // TODO: Need fine exposure whenever supported in kernel.
     fine_exposure = -1;
 
@@ -253,7 +253,7 @@ int SensorHwOp::getExposureRange(int &exposure_min, int &exposure_max, int &expo
 
     exposure.id = V4L2_CID_EXPOSURE;
 
-    ret = pPixelArraySubdev->queryControl(exposure);
+    ret = pPixelArraySubdev->QueryControl(&exposure);
     if (ret != NO_ERROR) {
         LOGE("Couldn't get exposure Range");
         return ret;
@@ -279,11 +279,9 @@ int SensorHwOp::setGains(int analog_gain, int digital_gain)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int ret = BAD_VALUE;
 
-    ret = pPixelArraySubdev->setControl(V4L2_CID_ANALOGUE_GAIN,
-                                        analog_gain, "Analog Gain");
+    ret = pPixelArraySubdev->SetControl(V4L2_CID_ANALOGUE_GAIN, analog_gain);
     if (digital_gain != 0) {
-        ret = pPixelArraySubdev->setControl(V4L2_CID_GAIN,
-                                            digital_gain, "Digital Gain");
+        ret = pPixelArraySubdev->SetControl(V4L2_CID_GAIN, digital_gain);
     }
     return ret;
 }
@@ -303,7 +301,7 @@ int SensorHwOp::getGains(int &analog_gain, int &digital_gain)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int ret = BAD_VALUE;
 
-    ret = pPixelArraySubdev->getControl(V4L2_CID_ANALOGUE_GAIN, &analog_gain);
+    ret = pPixelArraySubdev->GetControl(V4L2_CID_ANALOGUE_GAIN, &analog_gain);
     // XXX: Need digital_gain whenever defined in V4L2.
     digital_gain = -1;
 
@@ -330,16 +328,14 @@ status_t SensorHwOp::setFrameDuration(unsigned int llp, unsigned int fll)
     /* only calculate when not 0 */
     if (llp && !pHBlankReadOnly) {
         horzBlank = llp - pCropWidth;
-        statusH = pPixelArraySubdev->setControl(V4L2_CID_HBLANK,
-                                                horzBlank, "Horizontal Blanking");
+        statusH = pPixelArraySubdev->SetControl(V4L2_CID_HBLANK, horzBlank);
         if (statusH != OK)
             LOGE("Failed to set hblank");
     }
 
     if (fll && !pVBlankReadOnly) {
         vertBlank = fll - pCropHeight;
-        statusV = pPixelArraySubdev->setControl(V4L2_CID_VBLANK,
-                                                vertBlank, "Vertical Blanking");
+        statusV = pPixelArraySubdev->SetControl(V4L2_CID_VBLANK, vertBlank);
         if (statusV != OK)
             LOGE("Failed to set vblank");
     }
@@ -371,9 +367,9 @@ status_t SensorHwOp::getMinimumFrameDuration(unsigned int &llp, unsigned int &fl
     v4l2_queryctrl sensorModeControl;
     CLEAR(sensorModeControl);
     sensorModeControl.id = V4L2_CID_HBLANK;
-    statusH = pPixelArraySubdev->queryControl(sensorModeControl);
+    statusH = pPixelArraySubdev->QueryControl(&sensorModeControl);
     horzBlank = sensorModeControl.minimum;
-    LOG2("%s, queryControl statusH: %d, horzBlank: %d", __FUNCTION__, statusH, horzBlank);
+    LOG2("%s, QueryControl statusH: %d, horzBlank: %d", __FUNCTION__, statusH, horzBlank);
     if (statusH == OK)
         llp = horzBlank + pCropWidth;
     else
@@ -381,9 +377,9 @@ status_t SensorHwOp::getMinimumFrameDuration(unsigned int &llp, unsigned int &fl
 
     CLEAR(sensorModeControl);
     sensorModeControl.id = V4L2_CID_VBLANK;
-    statusV = pPixelArraySubdev->queryControl(sensorModeControl);
+    statusV = pPixelArraySubdev->QueryControl(&sensorModeControl);
     vertBlank = sensorModeControl.minimum;
-    LOG2("%s, queryControl statusV: %d, vertBlank, %d", __FUNCTION__, statusV, vertBlank);
+    LOG2("%s, QueryControl statusV: %d, vertBlank, %d", __FUNCTION__, statusV, vertBlank);
     if (statusV == OK)
         fll = vertBlank + pCropHeight;
     else
@@ -437,7 +433,7 @@ int SensorHwOp::getHBlank(unsigned int &hblank)
 int SensorHwOp::getAperture(int &aperture)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    return pPixelArraySubdev->getControl(V4L2_CID_IRIS_ABSOLUTE, &aperture);
+    return pPixelArraySubdev->GetControl(V4L2_CID_IRIS_ABSOLUTE, &aperture);
 }
 
 /**
@@ -483,7 +479,7 @@ status_t SensorHwOp::setSensorFT(int width, int height)
  */
 int SensorHwOp::getTestPattern(int *mode)
 {
-    return pPixelArraySubdev->getControl(V4L2_CID_TEST_PATTERN, mode);
+    return pPixelArraySubdev->GetControl(V4L2_CID_TEST_PATTERN, mode);
 }
 
 /**
@@ -498,8 +494,7 @@ int SensorHwOp::getTestPattern(int *mode)
  */
 int SensorHwOp::setTestPattern(int mode)
 {
-    return pPixelArraySubdev->setControl(V4L2_CID_TEST_PATTERN,
-                                  mode, "Test Pattern");
+    return pPixelArraySubdev->SetControl(V4L2_CID_TEST_PATTERN, mode);
 }
 
 /*

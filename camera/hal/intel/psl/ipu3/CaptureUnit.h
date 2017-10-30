@@ -17,7 +17,7 @@
 #include <utils/Errors.h>
 #include <vector>
 
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "CaptureBuffer.h"
 #include "CaptureUnitSettings.h"
 #include "IPU3CapturedStatistics.h"
@@ -194,7 +194,7 @@ private:
 
     struct MessageBuffer {
         CaptureBuffer* captureBufPtr;
-        V4L2BufferInfo v4l2Buf;
+        cros::V4L2Buffer v4l2Buf;
         IPU3NodeNames isysNodeName;
         int requestId;
 

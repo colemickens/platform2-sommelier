@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ namespace camera2 {
 class StatisticsWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
-    StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+    StatisticsWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool);
     virtual ~StatisticsWorker();

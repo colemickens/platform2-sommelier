@@ -18,7 +18,7 @@
 #define PSL_IPU3_WORKERS_FRAMEWORKER_H_
 
 #include "IDeviceWorker.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 
 namespace android {
 namespace camera2 {
@@ -26,7 +26,7 @@ namespace camera2 {
 class FrameWorker : public IDeviceWorker
 {
 public:
-    FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+    FrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
                 size_t pipelineDepth, std::string name = "FrameWorker");
     virtual ~FrameWorker();
 
@@ -41,14 +41,14 @@ public:
 protected:
     status_t allocateWorkerBuffers();
     status_t setWorkerDeviceFormat(FrameInfo &frame);
-    status_t setWorkerDeviceBuffers(int memType);
+    status_t setWorkerDeviceBuffers(enum v4l2_memory memType);
 
 protected:
-    std::vector<V4L2Buffer> mBuffers;
+    std::vector<cros::V4L2Buffer> mBuffers;
     unsigned int mIndex;
     std::vector<std::shared_ptr<CameraBuffer>> mCameraBuffers;
 
-    V4L2Format mFormat;
+    cros::V4L2Format mFormat;
     bool mPollMe;
     size_t mPipelineDepth;
 };

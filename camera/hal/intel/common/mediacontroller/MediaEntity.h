@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
 #ifndef CAMERA3_HAL_MEDIAENTITY_H_
 #define CAMERA3_HAL_MEDIAENTITY_H_
 
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
+#include <memory>
 #include <vector>
 #include <linux/media.h>
+
+#include "utils/Errors.h"
 
 NAMESPACE_DECLARATION {
 enum V4L2DeviceType {
@@ -50,7 +53,7 @@ public:
                     struct media_pad_desc *pads);
     ~MediaEntity();
 
-    status_t getDevice(std::shared_ptr<V4L2DeviceBase> &device);
+    status_t getDevice(std::shared_ptr<cros::V4L2Device> &device);
     void updateLinks(const struct media_link_desc *links);
     V4L2DeviceType getType();
     void getLinkDesc(std::vector<media_link_desc>  &links) const { links = mLinks; }
@@ -59,14 +62,14 @@ public:
     const char* getName() const { return mInfo.name; }
 
 private:
-    status_t openDevice(std::shared_ptr<V4L2DeviceBase> &device);
+    status_t openDevice(std::shared_ptr<cros::V4L2Device> &device);
 
 private:
     struct media_entity_desc        mInfo;       /*!< media entity descriptor info */
     std::vector<struct media_link_desc>  mLinks;      /*!< media entity links */
     std::vector<struct media_pad_desc>   mPads;       /*!< media entity pads */
 
-    std::shared_ptr<V4L2DeviceBase>              mDevice;     /*!< V4L2 video node or subdevice */
+    std::shared_ptr<cros::V4L2Device>              mDevice;     /*!< V4L2 video node or subdevice */
 
 }; // class MediaEntity
 

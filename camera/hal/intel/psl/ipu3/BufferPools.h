@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include "utils/Errors.h"
 #include "CaptureBuffer.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "ItemPool.h"
 #include "FrameInfo.h"
 #include "SharedItemPool.h"
@@ -48,14 +48,14 @@ public:
     void freeBuffers();
 
 private:
-    status_t allocateCaptureBuffers(std::shared_ptr<V4L2VideoNode> node,
+    status_t allocateCaptureBuffers(std::shared_ptr<cros::V4L2VideoNode> node,
                                     const FrameInfo &frameInfo,
                                     int numSkips,
-                                    std::vector<V4L2Buffer> &v4l2Buffers);
-    std::shared_ptr<CameraBuffer> allocateBuffer(std::shared_ptr<V4L2VideoNode> node,
+                                    std::vector<cros::V4L2Buffer> &v4l2Buffers);
+    std::shared_ptr<CameraBuffer> allocateBuffer(std::shared_ptr<cros::V4L2VideoNode> node,
                                     const FrameInfo &frameInfo,
                                     int mCameraId,
-                                    V4L2Buffer &v4l2Buf,
+                                    cros::V4L2Buffer &v4l2Buf,
                                     size_t dataSizeOverride);
 
 private:

@@ -18,7 +18,7 @@
 #define CAMERA3_HAL_CSS2600ISYS_H_
 
 #include "PollerThread.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "MediaCtlPipeConfig.h"
 #include <linux/media.h>
 #include <poll.h>
@@ -57,7 +57,7 @@ public:
     struct IsysMessageEvent {
         int requestId;
         IPU3NodeNames isysNodeName;
-        V4L2BufferInfo *buffer;
+        cros::V4L2Buffer *buffer;
     };
 
     // For MESSAGE_ID_ERROR
@@ -84,7 +84,7 @@ class InputSystem : public IPollEventListener,
                     public MediaCtlHelper::IOpenCallBack
 {
 public: /* types */
-   typedef std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> ConfiguredNodesPerName;
+   typedef std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> ConfiguredNodesPerName;
 
 public:
     InputSystem(IISysObserver *observer, std::shared_ptr<MediaController> mediaCtl);
@@ -94,14 +94,14 @@ public:
                        MediaCtlHelper::ConfigurationResults &outData);
 
     status_t start();
-    status_t stop(bool keepBuffers = false);
+    status_t stop();
     bool isStarted();
 
-    status_t putFrame(IPU3NodeNames isysNodeName, const V4L2Buffer *buf, int32_t reqId);
-    status_t setBufferPool(IPU3NodeNames isysNodeName, std::vector<V4L2Buffer> &pool, bool cached);
+    status_t putFrame(IPU3NodeNames isysNodeName, cros::V4L2Buffer *buf, int32_t reqId);
+    status_t setBufferPool(IPU3NodeNames isysNodeName, std::vector<cros::V4L2Buffer> &pool, bool cached);
     status_t releaseBufferPools();
     status_t getOutputNodes(ConfiguredNodesPerName **nodes, int &nodeCount);
-    std::shared_ptr<V4L2VideoNode> findOutputNode(IPU3NodeNames isysNodeName);
+    std::shared_ptr<cros::V4L2VideoNode> findOutputNode(IPU3NodeNames isysNodeName);
     status_t enqueueMediaRequest(int32_t requestId);
     status_t capture(int requestId);
     status_t flush();
@@ -114,9 +114,9 @@ public:
     status_t requestExitAndWait();
 
 private: /* methods */
-    status_t grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf);
+    status_t grabFrame(IPU3NodeNames isysNodeName, cros::V4L2Buffer *buf);
     status_t pollNextRequest();
-    status_t getIsysNodeName(std::shared_ptr<V4L2VideoNode> node, IPU3NodeNames &isysNodeName);
+    status_t getIsysNodeName(std::shared_ptr<cros::V4L2VideoNode> node, IPU3NodeNames &isysNodeName);
 
     struct MessageConfigure {
         IStreamConfigProvider *streamConfigProv;
@@ -126,12 +126,12 @@ private: /* methods */
     struct MessageFrame {
         int32_t reqId;
         IPU3NodeNames isysNodeName;
-        const V4L2Buffer *buf;
+        cros::V4L2Buffer *buf;
     };
 
     struct MessageBufferPool {
         IPU3NodeNames isysNodeName;
-        std::vector<V4L2Buffer> *pool;
+        std::vector<cros::V4L2Buffer> *pool;
         bool cached;
     };
 
@@ -154,7 +154,7 @@ private: /* methods */
 
     struct MessagePollEvent {
         int requestId;
-        std::shared_ptr<V4L2VideoNode> *activeDevices;
+        std::shared_ptr<cros::V4L2VideoNode> *activeDevices;
         int polledDevices;
         int numDevices;
         PollEventMessageId pollMsgId;
@@ -179,7 +179,7 @@ private: /* methods */
     status_t handleExit();
 
     status_t opened(IPU3NodeNames isysNodeName,
-                    std::shared_ptr<V4L2VideoNode> videoNode);
+                    std::shared_ptr<cros::V4L2VideoNode> videoNode);
 private: /* members */
     IISysObserver*      mObserver; /* InputSystem doesn't own mObserver */
     std::shared_ptr<MediaController> mMediaCtl;
@@ -187,14 +187,14 @@ private: /* members */
 
     bool                mStarted;
 
-    std::vector<std::shared_ptr<V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
+    std::vector<std::shared_ptr<cros::V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
     ConfiguredNodesPerName mConfiguredNodesPerName; /**< Configured video nodes, Key: ISYS node name */
 
     struct IsysRequest {
         int32_t requestId;
         uint32_t mediaRequestId;
         uint8_t numNodesForRequest;
-        std::vector<std::shared_ptr<V4L2VideoNode>> configuredNodesForRequest; /**< Configured video Node for request */
+        std::vector<std::shared_ptr<cros::V4L2VideoNode>> configuredNodesForRequest; /**< Configured video Node for request */
     };
 
     SharedItemPool<IsysRequest>  mIsysRequestPool;

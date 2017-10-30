@@ -100,10 +100,10 @@ private:
     ISofListener *mSofListener; /* SyncManager doesn't own mSofListener */
     std::unique_ptr<PollerThread> mPollerThread;
 
-    std::shared_ptr<V4L2Subdevice> mPixelArraySubdev;
-    std::shared_ptr<V4L2Subdevice> mIsysReceiverSubdev;
+    std::shared_ptr<cros::V4L2Subdevice> mPixelArraySubdev;
+    std::shared_ptr<cros::V4L2Subdevice> mIsysReceiverSubdev;
 
-    std::vector<std::shared_ptr<V4L2Subdevice>> mDevicesToPoll;
+    std::vector<std::shared_ptr<cros::V4L2Subdevice>> mDevicesToPoll;
 
     SensorType                      mSensorType;
     std::shared_ptr<SensorHwOp>     mSensorOp;

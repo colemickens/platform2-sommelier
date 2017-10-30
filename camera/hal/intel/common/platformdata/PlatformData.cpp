@@ -20,14 +20,16 @@
 #include "PlatformData.h"
 #include "CameraProfiles.h"
 #include "CameraMetadataHelper.h"
-#include "v4l2dev/v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "UtilityMacros.h"
 #include "ChromeCameraProfiles.h"
 
 #include <linux/media.h>   // media controller
 #include <linux/kdev_t.h>  // MAJOR(), MINOR()
 #include <sstream>
+#include <sys/ioctl.h>
 #include <fstream>
+#include <fcntl.h>
 
 // TODO this should come from the crl header file
 // crl is a common code module in sensor driver, which contains
@@ -1147,9 +1149,9 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
         sDevName = stringStream.str();
     }
     devname = sDevName.c_str();
-    std::shared_ptr<V4L2Subdevice> device = std::make_shared<V4L2Subdevice>(devname);
+    std::shared_ptr<cros::V4L2Subdevice> device = std::make_shared<cros::V4L2Subdevice>(devname);
 
-    ret = device->open();
+    ret = device->Open(O_RDWR);
     if (ret != NO_ERROR) {
         LOGE("Error opening device (%s)", devname);
         return ret;
@@ -1159,10 +1161,10 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
     v4l2_queryctrl sensorModeControl;
     CLEAR(sensorModeControl);
     sensorModeControl.id = CRL_CID_SENSOR_MODE;
-    ret = device->queryControl(sensorModeControl);
+    ret = device->QueryControl(&sensorModeControl);
     if (ret != NO_ERROR) {
         LOGE("Couldn't get sensor mode range");
-        device->close();
+        device->Close();
         return UNKNOWN_ERROR;
     }
     uint32_t max = sensorModeControl.maximum;
@@ -1172,7 +1174,7 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
 
     // Loop through menu and add indexes and names to vector
     for (menu.index = 0; menu.index <= max; menu.index++) {
-        ret = (device->queryMenu(menu));
+        ret = (device->QueryMenu(&menu));
         if (ret != NO_ERROR) {
             LOGE("Error opening query menu at index: %d", menu.index);
         } else {
@@ -1180,7 +1182,7 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
                                   reinterpret_cast<char *>(menu.name)));
         }
     }
-    ret = device->close();
+    ret = device->Close();
     if (ret != NO_ERROR)
         LOGE("Error closing device (%s)", devname);
 

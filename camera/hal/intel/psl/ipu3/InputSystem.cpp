@@ -130,7 +130,7 @@ status_t InputSystem::handleConfigure(MessageConfigure msg)
         return status;
     }
 
-    status = mPollerThread->init((std::vector<std::shared_ptr<V4L2DeviceBase>>&) mConfiguredNodes,
+    status = mPollerThread->init((std::vector<std::shared_ptr<cros::V4L2Device>>&) mConfiguredNodes,
                                  this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
     if (status != NO_ERROR) {
         LOGE("PollerThread init failed (ret = %d)", status);
@@ -144,7 +144,7 @@ status_t InputSystem::handleConfigure(MessageConfigure msg)
 }
 
 status_t InputSystem::opened(IPU3NodeNames isysNodeName,
-        std::shared_ptr<V4L2VideoNode> videoNode)
+        std::shared_ptr<cros::V4L2VideoNode> videoNode)
 {
     LOG1("@%s: isysNodeName:%d", __FUNCTION__, isysNodeName);
     mConfiguredNodes.push_back(videoNode);
@@ -172,9 +172,9 @@ status_t InputSystem::handleStart()
     int ret = 0;
 
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
-        ret = mConfiguredNodes[i]->start(0);
+        ret = mConfiguredNodes[i]->Start();
         if (ret < 0) {
-            LOGE("STREAMON failed (%s)", mConfiguredNodes[i]->name());
+            LOGE("STREAMON failed (%s)", mConfiguredNodes[i]->Name().c_str());
             status = UNKNOWN_ERROR;
             MessageStop msg;
             msg.stop = false;
@@ -187,13 +187,13 @@ status_t InputSystem::handleStart()
     return status;
 }
 
-status_t InputSystem::stop(bool keepBuffers)
+status_t InputSystem::stop()
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
     MessageStop msg;
-    msg.stop = keepBuffers;
+    msg.stop = true;
     base::Callback<status_t()> closure =
             base::Bind(&InputSystem::handleStop, base::Unretained(this),
                        base::Passed(std::move(msg)));
@@ -206,22 +206,20 @@ status_t InputSystem::handleStop(MessageStop msg)
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
     int ret = 0;
-    bool keepBuffers = msg.stop;
     mBufferSeqNbr = 0;
 
     mPollerThread->flush(true);
 
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
-        ret = mConfiguredNodes[i]->stop(keepBuffers);
+        ret = mConfiguredNodes[i]->Stop();
         if (ret < 0) {
-            LOGE("STREAMOFF failed (%s)", mConfiguredNodes[i]->name());
+            LOGE("STREAMOFF failed (%s)", mConfiguredNodes[i]->Name().c_str());
             status = UNKNOWN_ERROR;
         }
     }
 
     // Video nodes will really stop after the buffer pools released
-    if (!keepBuffers)
-        mStarted = false;
+    mStarted = false;
 
     return status;
 }
@@ -249,7 +247,7 @@ status_t InputSystem::handleReleaseBufferPools()
     // buffers require unmapping between STREAMOFF and releasing
     // buffer pool. This method allows doing these steps separately.
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
-        ret = mConfiguredNodes[i]->stop(false);
+        ret = mConfiguredNodes[i]->Stop();
         if (ret < 0) {
             LOGE("Failed (%zu)", i);
             status = UNKNOWN_ERROR;
@@ -295,7 +293,7 @@ status_t InputSystem::handleIsStarted(MessageBoolQuery msg)
 }
 
 status_t InputSystem::putFrame(IPU3NodeNames isysNodeName,
-                               const V4L2Buffer *buf, int32_t reqId)
+                               cros::V4L2Buffer *buf, int32_t reqId)
 {
     LOG2("@%s", __FUNCTION__);
 
@@ -319,7 +317,7 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
     status_t status = NO_ERROR;
     bool newReq = false;
     IPU3NodeNames isysNodeName = msg.isysNodeName;
-    const V4L2Buffer *buf = msg.buf;
+    cros::V4L2Buffer *buf = msg.buf;
     const int32_t reqId = msg.reqId;
 
     /* first checking if existing mediaRequest created */
@@ -353,10 +351,10 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
         LOGE("ISYS putframe - node (%d) not found!", isysNodeName);
         return BAD_VALUE;
     }
-    std::shared_ptr<V4L2VideoNode> videoNode = it->second;
-    int ret = videoNode->putFrame(*buf);
+    std::shared_ptr<cros::V4L2VideoNode> videoNode = it->second;
+    int ret = videoNode->PutFrame(buf);
     if (ret < 0) {
-        LOGE("isys putframe failed for dev: %s", videoNode->name());
+        LOGE("isys putframe failed for dev: %s", videoNode->Name().c_str());
         return UNKNOWN_ERROR;
     }
 
@@ -371,7 +369,7 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
     return NO_ERROR;
 }
 
-status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf)
+status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, cros::V4L2Buffer *buf)
 {
     LOG2("@%s", __FUNCTION__);
     ConfiguredNodesPerName::iterator it =
@@ -380,8 +378,8 @@ status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf)
         LOGE("ISYS node (%d) not found!", isysNodeName);
         return BAD_VALUE;
     }
-    std::shared_ptr<V4L2VideoNode> videoNode = it->second;
-    int ret = videoNode->grabFrame(buf);
+    std::shared_ptr<cros::V4L2VideoNode> videoNode = it->second;
+    int ret = videoNode->GrabFrame(buf);
     if (ret < 0) {
         LOGE("@%s failed", __FUNCTION__);
         return UNKNOWN_ERROR;
@@ -390,7 +388,7 @@ status_t InputSystem::grabFrame(IPU3NodeNames isysNodeName, V4L2BufferInfo *buf)
 }
 
 status_t InputSystem::setBufferPool(IPU3NodeNames isysNodeName,
-                                    std::vector<V4L2Buffer> &pool,
+                                    std::vector<cros::V4L2Buffer> &pool,
                                     bool cached)
 {
     LOG2("@%s", __FUNCTION__);
@@ -414,11 +412,12 @@ status_t InputSystem::handleSetBufferPool(MessageBufferPool msg)
     status_t status = NO_ERROR;
 
     IPU3NodeNames isysNodeName = msg.isysNodeName;
-    std::vector<V4L2Buffer> *pool = msg.pool;
+    std::vector<cros::V4L2Buffer> *pool = msg.pool;
+    size_t num_buffers = pool->size();
     bool cached = msg.cached;
-    std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
+    std::shared_ptr<cros::V4L2VideoNode> videoNode = nullptr;
 
-    int memType = getDefaultMemoryType(ISYS_NODE_RAW);
+    enum v4l2_memory memType = getDefaultMemoryType(ISYS_NODE_RAW);
 
     ConfiguredNodesPerName::iterator it =
                             mConfiguredNodesPerName.find(isysNodeName);
@@ -427,7 +426,8 @@ status_t InputSystem::handleSetBufferPool(MessageBufferPool msg)
         return BAD_VALUE;
     }
     videoNode = it->second;
-    status = videoNode->setBufferPool(*pool, cached, memType);
+    pool->clear();
+    status = videoNode->SetupBuffers(num_buffers, cached, memType, pool);
     if (status != NO_ERROR) {
         LOGE("Failed setting buffer poll into the device.");
         return status;
@@ -452,7 +452,7 @@ status_t InputSystem::getOutputNodes(ConfiguredNodesPerName **nodes,
     return status;
 }
 
-std::shared_ptr<V4L2VideoNode> InputSystem::findOutputNode(IPU3NodeNames isysNodeName)
+std::shared_ptr<cros::V4L2VideoNode> InputSystem::findOutputNode(IPU3NodeNames isysNodeName)
 {
     auto it = mConfiguredNodesPerName.find(isysNodeName);
     if (it == mConfiguredNodesPerName.end()) {
@@ -592,9 +592,9 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
             return OK;
         }
 
-        msg.activeDevices = new std::shared_ptr<V4L2VideoNode>[numDevices];
+        msg.activeDevices = new std::shared_ptr<cros::V4L2VideoNode>[numDevices];
         for (int i = 0; i < numDevices; i++) {
-            msg.activeDevices[i] = (std::shared_ptr<V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
+            msg.activeDevices[i] = (std::shared_ptr<cros::V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
         }
         msg.numDevices = numDevices;
         msg.polledDevices = numPolledDevices;
@@ -626,12 +626,12 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
     return OK;
 }
 
-status_t InputSystem::getIsysNodeName(std::shared_ptr<V4L2VideoNode> node, IPU3NodeNames &isysNodeName)
+status_t InputSystem::getIsysNodeName(std::shared_ptr<cros::V4L2VideoNode> node, IPU3NodeNames &isysNodeName)
 {
     LOG2("@%s", __FUNCTION__);
 
     for (const auto &configNode : mConfiguredNodesPerName) {
-        if (configNode.second->getFd() == node->getFd()) {
+        if (configNode.second.get() == node.get()) {
             isysNodeName = configNode.first;
             return NO_ERROR;
         }
@@ -644,8 +644,8 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
 {
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
-    V4L2BufferInfo outBuf;
-    std::shared_ptr<V4L2VideoNode> *activeNodes;
+    cros::V4L2Buffer outBuf;
+    std::shared_ptr<cros::V4L2VideoNode> *activeNodes;
     IPU3NodeNames isysNodeName = IMGU_NODE_NULL;
     uint8_t nodeCount = mCaptureInProgress->numNodesForRequest;
     int activeNodecount = 0;
@@ -669,7 +669,7 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
         // Poll again
         status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
                    IPU3_EVENT_POLL_TIMEOUT,
-                   (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
+                   (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
         return status;
     }
 
@@ -685,7 +685,7 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
             // Poll again
             status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
                        IPU3_EVENT_POLL_TIMEOUT,
-                       (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
+                       (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
             return status;
         }
 
@@ -701,7 +701,7 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
             // Poll again
             status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
                        IPU3_EVENT_POLL_TIMEOUT,
-                       (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
+                       (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
             return status;
         }
 
@@ -709,13 +709,13 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
         // store the sequence number. All buffers should
         // have the same sequence number.
         if (mBufferSeqNbr == 0) {
-            mBufferSeqNbr = outBuf.vbuffer.sequence();
-        } else if (mBufferSeqNbr != outBuf.vbuffer.sequence()) {
+            mBufferSeqNbr = outBuf.Sequence();
+        } else if (mBufferSeqNbr != outBuf.Sequence()) {
             LOGW("Sequence number mismatch, expecting %d but received %d",
-                  mBufferSeqNbr, outBuf.vbuffer.sequence());
-            mBufferSeqNbr = outBuf.vbuffer.sequence();
+                  mBufferSeqNbr, outBuf.Sequence());
+            mBufferSeqNbr = outBuf.Sequence();
         }
-        LOG2("input system outBuf.vbuffer.sequence %u", outBuf.vbuffer.sequence());
+        LOG2("input system outBuf.sequence %u", outBuf.Sequence());
         mBuffersReceived++;
 
         // Notify observer
@@ -769,7 +769,7 @@ status_t InputSystem::pollNextRequest()
 
     status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
                                         IPU3_EVENT_POLL_TIMEOUT,
-                                        (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
+                                        (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
 
     return status;
 }

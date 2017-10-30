@@ -26,7 +26,7 @@ namespace camera2 {
 
 const unsigned int STAT_WORK_BUFFERS = 1;
 
-StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+StatisticsWorker::StatisticsWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool):
         FrameWorker(node, cameraId, STAT_WORK_BUFFERS, "StatisticsWorker"),
@@ -63,7 +63,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    if (mCameraBuffers[0]->size() < mFormat.sizeimage()) {
+    if (mCameraBuffers[0]->size() < mFormat.SizeImage(0)) {
         LOGE("Stats buffer is not big enough");
         return UNKNOWN_ERROR;
     }
@@ -80,7 +80,7 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
     status_t status = OK;
 
-    status |= mNode->putFrame(mBuffers[mIndex]);
+    status |= mNode->PutFrame(&mBuffers[mIndex]);
 
     if (status != OK) {
         LOGE("Failed to queue buffer to statistics device");
@@ -103,9 +103,9 @@ status_t StatisticsWorker::run()
     #define DUMP_INTERVAL 10
     status_t status = OK;
 
-    V4L2BufferInfo buf;
+    cros::V4L2Buffer buf;
 
-    status = mNode->grabFrame(&buf);
+    status = mNode->GrabFrame(&buf);
 
     if (status < 0) {
         LOGE("Failed to dequeue buffer from statistics device");
@@ -160,11 +160,11 @@ status_t StatisticsWorker::run()
     stats->aiqStatsInputParams.depth_grids  = nullptr;
     stats->aiqStatsInputParams.num_depth_grids = 0;
 
-    stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence();
+    stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence();
     stats->aiqStatsInputParams.frame_timestamp
-        = (buf.vbuffer.timestamp().tv_sec * 1000000) + buf.vbuffer.timestamp().tv_usec;
+        = (buf.Timestamp().tv_sec * 1000000) + buf.Timestamp().tv_usec;
 
-    stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence();
+    stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence();
     LOG2("sensor frame sequence %u", stats->frameSequence);
 
     outMsg.data.event.stats = stats;
@@ -173,13 +173,13 @@ status_t StatisticsWorker::run()
         if (gRgbsGridDump) {
             std::string filename = CAMERA_OPERATION_FOLDER;
             filename += "rgbs_grid";
-            writeRgbsGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence());
+            writeRgbsGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.Sequence());
         }
 
         if (gAfGridDump) {
             std::string filename = CAMERA_OPERATION_FOLDER;
             filename += "af_grid";
-            writeAfGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence());
+            writeAfGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.Sequence());
         }
     }
 

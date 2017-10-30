@@ -17,12 +17,14 @@
 
 #include "MediaController.h"
 #include "MediaEntity.h"
-#include "v4l2device.h"
+#include "cros-camera/v4l2_device.h"
 #include "LogHelper.h"
 #include "SysCall.h"
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+#include "Camera3V4l2Format.h"
 
 NAMESPACE_DECLARATION {
 
@@ -31,7 +33,7 @@ MediaController::MediaController(const char *path) :
     mFd(-1)
 {
     LOG1("@%s", __FUNCTION__);
-    CLEAR(mDeviceInfo);
+    mDeviceInfo = {};
     mEntities.clear();
     mEntityDesciptors.clear();
 }
@@ -143,7 +145,7 @@ int MediaController::xioctl(int request, void *arg) const
 status_t MediaController::getDeviceInfo()
 {
     LOG1("@%s", __FUNCTION__);
-    CLEAR(mDeviceInfo);
+    mDeviceInfo = {};
     int ret = xioctl(MEDIA_IOC_DEVICE_INFO, &mDeviceInfo);
     if (ret < 0) {
         LOGE("Failed to get media device information");
@@ -168,7 +170,7 @@ status_t MediaController::findEntities()
 
     // Loop until all media entities are found
     for (int i = 0; ; i++) {
-        CLEAR(entity);
+        entity = {};
         status = findMediaEntityById(i | MEDIA_ENT_ID_FLAG_NEXT, entity);
         if (status != NO_ERROR) {
             LOGD("@%s: %d media entities found", __FUNCTION__, i);
@@ -275,7 +277,7 @@ status_t MediaController::findMediaEntityById(int index, struct media_entity_des
 {
     LOG1("@%s", __FUNCTION__);
     int ret = 0;
-    CLEAR(mediaEntityDesc);
+    mediaEntityDesc = {};
     mediaEntityDesc.id = index;
     ret = xioctl(MEDIA_IOC_ENUM_ENTITIES, &mediaEntityDesc);
     if (ret < 0) {
@@ -301,31 +303,35 @@ status_t MediaController::setFormat(const MediaCtlFormatParams &formatParams)
         return status;
     }
     if (entity->getType() == DEVICE_VIDEO) {
-        std::shared_ptr<V4L2VideoNode> node;
-        FrameInfo config;
+        std::shared_ptr<cros::V4L2VideoNode> node;
+        cros::V4L2Format v4l2_fmt;
+        v4l2_fmt.SetPixelFormat(formatParams.formatCode);
+        v4l2_fmt.SetWidth(formatParams.width);
+        v4l2_fmt.SetHeight(formatParams.height);
+        v4l2_fmt.SetBytesPerLine(pixelsToBytes(formatParams.formatCode, formatParams.stride), 0);
+        v4l2_fmt.SetField(formatParams.field);
 
-        config.format = formatParams.formatCode;
-        config.width = formatParams.width;
-        config.height = formatParams.height;
-        config.stride = formatParams.stride;
-        config.field = formatParams.field;
-
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) node);
+        status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) node);
         if (!node || status != NO_ERROR) {
             LOGE("@%s: error opening device \"%s\"", __FUNCTION__, entityName);
             return status;
         }
-        status = node->setFormat(config);
+        status = node->SetFormat(v4l2_fmt);
     } else {
-        std::shared_ptr<V4L2Subdevice> subdev;
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) subdev);
+        std::shared_ptr<cros::V4L2Subdevice> subdev;
+        status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) subdev);
         if (!subdev || status != NO_ERROR) {
             LOGE("@%s: error opening device \"%s\"", __FUNCTION__, entityName);
             return status;
         }
-        status = subdev->setFormat(formatParams.pad, formatParams.width,
-                                   formatParams.height, formatParams.formatCode,
-                                   formatParams.field);
+        struct v4l2_subdev_format format = {};
+        format.pad = formatParams.pad;
+        format.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+        format.format.code = formatParams.formatCode;
+        format.format.width = formatParams.width;
+        format.format.height = formatParams.height;
+        format.format.field = formatParams.field;
+        status = subdev->SetFormat(format);
     }
     return status;
 }
@@ -335,19 +341,28 @@ status_t MediaController::setSelection(const char* entityName, int pad, int targ
     LOG1("@%s, entity %s, pad:%d, top:%d, left:%d, width:%d, height:%d", __FUNCTION__,
          entityName, pad, top, left, width, height);
     std::shared_ptr<MediaEntity> entity;
-    std::shared_ptr<V4L2Subdevice> subdev;
+    std::shared_ptr<cros::V4L2Subdevice> subdev;
 
     status_t status = getMediaEntity(entity, entityName);
     if (status != NO_ERROR) {
         LOGE("@%s: getting MediaEntity \"%s\" failed", __FUNCTION__, entityName);
         return status;
     }
-    status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) subdev);
+    status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) subdev);
     if (!subdev || status != NO_ERROR) {
         LOGE("@%s: error opening device \"%s\"", __FUNCTION__, entityName);
         return status;
     }
-    return subdev->setSelection(pad, target, top, left, width, height);
+    struct v4l2_subdev_selection selection = {};
+    selection.pad = pad;
+    selection.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+    selection.target = target;
+    selection.flags = 0;
+    selection.r.top = top;
+    selection.r.left = left;
+    selection.r.width = width;
+    selection.r.height = height;
+    return subdev->SetSelection(selection);
 }
 
 status_t MediaController::setControl(const char* entityName, int controlId, int value, const char *controlName)
@@ -356,19 +371,19 @@ status_t MediaController::setControl(const char* entityName, int controlId, int 
                                                          entityName, controlId,
                                                          value,controlName);
     std::shared_ptr<MediaEntity> entity = nullptr;
-    std::shared_ptr<V4L2Subdevice> subdev = nullptr;
+    std::shared_ptr<cros::V4L2Subdevice> subdev = nullptr;
 
     status_t status = getMediaEntity(entity, entityName);
     if (status != NO_ERROR) {
         LOGE("@%s: getting MediaEntity \"%s\" failed", __FUNCTION__, entityName);
         return status;
     }
-    status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) subdev);
+    status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) subdev);
     if (!subdev || status != NO_ERROR) {
         LOGE("@%s: error opening device \"%s\"", __FUNCTION__, entityName);
         return status;
     }
-    return subdev->setControl(controlId, value, controlName);
+    return subdev->SetControl(controlId, value);
 }
 
 /**
@@ -399,9 +414,9 @@ status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
              __FUNCTION__, linkParams.sinkName.c_str());
         return status;
     }
-    CLEAR(linkDesc);
-    CLEAR(srcPadDesc);
-    CLEAR(sinkPadDesc);
+    linkDesc = {};
+    srcPadDesc = {};
+    sinkPadDesc = {};
     srcEntity->getPadDesc(srcPadDesc, linkParams.srcPad);
     sinkEntity->getPadDesc(sinkPadDesc, linkParams.sinkPad);
 
@@ -423,8 +438,8 @@ status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
     if (status == NO_ERROR) {
         struct media_entity_desc entityDesc;
         struct media_links_enum linksEnum;
-        CLEAR(entityDesc);
-        CLEAR(linksEnum);
+        entityDesc = {};
+        linksEnum = {};
         struct media_link_desc *links = nullptr;
 
         srcEntity->getEntityDesc(entityDesc);
@@ -468,8 +483,8 @@ status_t MediaController::resetLinks()
     for (const auto &entityDesciptors : mEntityDesciptors) {
         struct media_entity_desc entityDesc;
         struct media_links_enum linksEnum;
-        CLEAR(entityDesc);
-        CLEAR(linksEnum);
+        entityDesc = {};
+        linksEnum = {};
         struct media_link_desc *links = nullptr;
 
         entityDesc = entityDesciptors.second;
@@ -507,8 +522,8 @@ status_t MediaController::getMediaEntity(std::shared_ptr<MediaEntity> &entity, c
     std::string entityName(name);
     struct media_entity_desc entityDesc;
     struct media_links_enum linksEnum;
-    CLEAR(entityDesc);
-    CLEAR(linksEnum);
+    entityDesc = {};
+    linksEnum = {};
     struct media_link_desc *links = nullptr;
     struct media_pad_desc *pads = nullptr;
 

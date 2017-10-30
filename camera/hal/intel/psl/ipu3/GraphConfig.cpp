@@ -24,7 +24,7 @@
 #include "Camera3GFXFormat.h"
 #include "PlatformData.h"
 #include <GCSSParser.h>
-#include <v4l2device.h>
+#include <cros-camera/v4l2_device.h>
 #include <linux/v4l2-subdev.h>
 #include <algorithm>
 

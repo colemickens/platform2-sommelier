@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@
 #ifndef CAMERA3_HAL_SENSORHWOP_H_
 #define CAMERA3_HAL_SENSORHWOP_H_
 
-#include "v4l2device.h"
+#include <memory>
+#include "cros-camera/v4l2_device.h"
 #include "UtilityMacros.h"
+#include "utils/Errors.h"
 
 namespace android {
 namespace camera2 {
@@ -27,7 +29,7 @@ namespace camera2 {
 class SensorHwOp {
 
 public:
-    SensorHwOp(std::shared_ptr<V4L2Subdevice> pixelArraySubdev);
+    SensorHwOp(std::shared_ptr<cros::V4L2Subdevice> pixelArraySubdev);
 
     virtual ~SensorHwOp();
 
@@ -59,7 +61,7 @@ protected:
     virtual status_t getActivePixelArraySize(int &width, int &height,
                                              int &code);
 protected:
-    std::shared_ptr<V4L2Subdevice> pPixelArraySubdev;
+    std::shared_ptr<cros::V4L2Subdevice> pPixelArraySubdev;
 
     int pPixelRate;
     int pHorzBlank;

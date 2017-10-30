@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 namespace android {
 namespace camera2 {
 
-int getDefaultMemoryType(IPU3NodeNames node)
+enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node)
 {
     /*
      * According to V4L2 framework, the video device that exports dmabuf

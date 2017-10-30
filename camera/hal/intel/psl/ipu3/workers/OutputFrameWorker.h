@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace camera2 {
 class OutputFrameWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
-    OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream,
+    OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId, camera3_stream_t* stream,
                       IPU3NodeNames nodeName, size_t pipelineDepth);
     virtual ~OutputFrameWorker();
 

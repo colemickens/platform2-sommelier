@@ -92,7 +92,7 @@ private:
     struct PipeConfiguration {
         std::vector<std::shared_ptr<IDeviceWorker>> deviceWorkers;
         std::vector<std::shared_ptr<FrameWorker>> pollableWorkers;
-        std::vector<std::shared_ptr<V4L2DeviceBase>> nodes; /* PollerThread owns this */
+        std::vector<std::shared_ptr<cros::V4L2Device>> nodes; /* PollerThread owns this */
     };
 
 private:
@@ -120,7 +120,7 @@ private:
 
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesPending; // Keep copy of message until workers start to handle it
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it
-    std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;
+    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
     bool mFirstRequest;
     bool mFirstPollCallbacked;
     pthread_mutex_t mFirstLock;

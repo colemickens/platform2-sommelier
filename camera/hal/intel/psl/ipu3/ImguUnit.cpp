@@ -795,7 +795,7 @@ ImguUnit::kickstart(Camera3Request* request)
         }
     }
 
-    std::vector<std::shared_ptr<V4L2DeviceBase>> firstNodes;
+    std::vector<std::shared_ptr<cros::V4L2Device>> firstNodes;
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator firstit = mFirstWorkers.begin();
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
@@ -943,9 +943,9 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
             return OK;
         }
 
-        msg.pollEvent.activeDevices = new std::shared_ptr<V4L2VideoNode>[numDevices];
+        msg.pollEvent.activeDevices = new std::shared_ptr<cros::V4L2VideoNode>[numDevices];
         for (int i = 0; i < numDevices; i++) {
-            msg.pollEvent.activeDevices[i] = (std::shared_ptr<V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
+            msg.pollEvent.activeDevices[i] = (std::shared_ptr<cros::V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
         }
         msg.pollEvent.numDevices = numDevices;
         msg.pollEvent.polledDevices = numPolledDevices;

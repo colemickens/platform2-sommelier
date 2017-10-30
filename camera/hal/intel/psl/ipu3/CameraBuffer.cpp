@@ -137,19 +137,20 @@ CameraBuffer::CameraBuffer(int w,
  * \param w [IN] width
  * \param h [IN] height
  * \param s [IN] stride
- * \param fd [IN] File descriptor to map
+ * \param node [IN] V4L2 video node to map
+ * \param index [IN] number of buffer
  * \param dmaBufFd [IN] File descriptor for dmabuf
- * \param length [IN] amount of data to map
  * \param v4l2fmt [IN] Pixel format in V4L2 enum
- * \param offset [IN] offset from the begining of the file (mmap param)
+ * \param length [IN] amount of data to map
  * \param prot [IN] memory protection (mmap param)
  * \param flags [IN] flags (mmap param)
  *
  * Success of the mmap can be queried by checking the size of the resulting
  * buffer
  */
-CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length,
-                           int v4l2fmt, int offset, int prot, int flags):
+CameraBuffer::CameraBuffer(int w, int h, int s, cros::V4L2VideoNode& node,
+                           unsigned int index, int dmaBufFd, int v4l2fmt,
+                           int length, int prot, int flags):
         mWidth(w),
         mHeight(h),
         mSize(length),
@@ -179,12 +180,14 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 
-    mDataPtr = mmap(nullptr, length, prot, flags, fd, offset);
-    if (CC_UNLIKELY(mDataPtr == MAP_FAILED)) {
+    std::vector<void*> mapped;
+    int ret = node.MapMemory(index, prot, flags, &mapped);
+    if (CC_UNLIKELY(ret != 0 || mapped.empty() || mapped[0] == MAP_FAILED)) {
         LOGE("Failed to MMAP the buffer %s", strerror(errno));
         mDataPtr = nullptr;
         return;
     }
+    mDataPtr = mapped[0];
     LOG1("mmaped address for %p length %d", mDataPtr, mSize);
 }
 
