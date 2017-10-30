@@ -310,8 +310,10 @@ bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
         PLOG(ERROR) << "statfs";
         return false;
       }
-      if (st_fs.f_type != SQUASHFS_MAGIC || !(st_fs.f_flags & ST_NODEV) ||
-          !(st_fs.f_flags & ST_NOSUID) || !(st_fs.f_flags & ST_RDONLY)) {
+      if ((st_fs.f_type != SQUASHFS_MAGIC && st_fs.f_type != EXT4_SUPER_MAGIC)
+          || !(st_fs.f_flags & ST_NODEV)
+          || !(st_fs.f_flags & ST_NOSUID)
+          || !(st_fs.f_flags & ST_RDONLY)) {
         LOG(ERROR) << "File system is not the expected type.";
         return false;
       }
