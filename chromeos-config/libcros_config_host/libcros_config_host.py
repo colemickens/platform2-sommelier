@@ -103,14 +103,34 @@ class CrosConfig(object):
   def __init__(self, infile):
     self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
-    # TODO(sjg@chromium.org): Consider calling GetFileTree() to init that here.
-    self.phandle_to_node = dict(
-        (phandle, CrosConfig.Node(self, fdt_node))
-        for phandle, fdt_node in self._fdt.phandle_to_node.iteritems())
-    self.models = OrderedDict(
-        (n.name, CrosConfig.Model(self, n))
-        for n in self._fdt.GetNode('/chromeos/models').subnodes)
+    self.phandle_to_node = {}
+    self.models = OrderedDict()
+    self.nodes = CrosConfig.MakeNode(self, self._fdt.GetRoot()).subnodes
     self.validator = validate_config.GetValidator()
+
+  @staticmethod
+  def MakeNode(cros_config, fdt_node):
+    """Make a new Node in the tree
+
+    This create a new Node or Model object in the tree and recursively adds all
+    subnodes to it. Any phandles found update the phandle_to_node map.
+
+    Args:
+      cros_config: CrosConfig object
+      fdt_node: fdt.Node object containing the device-tree node
+    """
+    if fdt_node.parent and fdt_node.parent.name == 'models':
+      node = CrosConfig.Model(cros_config, fdt_node)
+      cros_config.models[node.name] = node
+    else:
+      node = CrosConfig.Node(cros_config, fdt_node)
+    if 'phandle' in node.properties:
+      phandle = fdt_node.props['phandle'].GetPhandle()
+      cros_config.phandle_to_node[phandle] = node
+    for subnode in fdt_node.subnodes:
+      node.subnodes[subnode.name] = CrosConfig.MakeNode(cros_config, subnode)
+    node.ScanSubnodes()
+    return node
 
   def GetFirmwareUris(self):
     """Returns a list of (string) firmware URIs.
@@ -247,11 +267,15 @@ class CrosConfig(object):
       self.cros_config = cros_config
       self._fdt_node = fdt_node
       self.name = fdt_node.name
-      self.subnodes = OrderedDict((n.name, CrosConfig.Node(cros_config, n))
-                                  for n in fdt_node.subnodes)
+      # Subnodes are set up in Model.ScanSubnodes()
+      self.subnodes = OrderedDict()
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
       self.default = None
+
+    def ScanSubnodes(self):
+      """Do any post-processing needed after the node's subnodes are present"""
+      pass
 
     def FollowShare(self):
       """Follow a node's shares property
@@ -382,6 +406,9 @@ class CrosConfig(object):
       super(CrosConfig.Model, self).__init__(cros_config, fdt_node)
       self.default = self.FollowPhandle('default')
       self.submodels = {}
+
+    def ScanSubnodes(self):
+      """Collect a list of submodels"""
       if 'submodels' in self.subnodes.keys():
         for name, subnode in self.subnodes['submodels'].subnodes.iteritems():
           self.submodels[name] = subnode
