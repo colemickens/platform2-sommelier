@@ -345,6 +345,7 @@ void EnterSandbox(bool write_proc) {
   }
 
   minijail_enter(j);
+  minijail_destroy(j);
 }
 
 }  // namespace
