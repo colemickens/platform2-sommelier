@@ -222,6 +222,14 @@ properties.
         uses a particular manufacturer's touchscreen, since the naming
         convention is typically consistent for that manufacturer.
 
+        In addition, a `bcs` node can be provided, to allow files to be
+        downloaded from BCS (Binary Cloud Storage):
+        *   `overlay`: Name of overlay to download from
+        *   `package`: Package subdirectory to download from
+        *   `version`: Tarfile version to download
+        *   `tarball`: Template for tarball to download. This can include
+            `{package}` and `{version}`.
+
 *   `models`: Sub-nodes of this define models supported by this board.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
@@ -449,6 +457,12 @@ chromeos {
         };
 
         touch {
+            bcs {
+                overlay = "overlay-reef-private";
+                package = "chromeos-touch-firmware-reef";
+                tarball = "chromeos-base/{package}/{package}-{version}.tbz2";
+                version = "1.0-r9";
+            };
             elan_touchscreen: elan-touchscreen {
                 vendor = "elan";
                 firmware-bin = "{vendor}/{pid}_{version}.bin";

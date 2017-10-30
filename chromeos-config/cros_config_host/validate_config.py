@@ -517,6 +517,12 @@ SCHEMA = NodeDesc('/', True, [
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
             ]),
             NodeDesc('touch', False, [
+                NodeDesc('bcs', False, [
+                    PropString('overlay', False, 'overlay-.*'),
+                    PropString('package'),
+                    PropString('tarball'),
+                    PropString('version', False, '[-.0-9r]+'),
+                ]),
                 NodeAny('', [
                     PropPhandleTarget(),
                     PropString('firmware-bin', True, ''),

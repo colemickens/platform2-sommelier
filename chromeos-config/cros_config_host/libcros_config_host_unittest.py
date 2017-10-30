@@ -439,6 +439,15 @@ class CrosConfigHostTest(unittest.TestCase):
                                         have_image=False, sig_id='whitetip2'))
         ]))
 
+  def testGetBspUris(self):
+    """Test access to the BSP URIs"""
+    config = CrosConfig(self.file)
+    uris = config.GetBspUris()
+    self.assertSequenceEqual(uris, [
+        'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
+        'chromeos-base/chromeos-touch-firmware-reef/'
+        'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -103,6 +103,12 @@
 		};
 	};
 	touch {
+		bcs {
+			overlay = "overlay-reef-private";
+			package = "chromeos-touch-firmware-reef";
+			tarball = "chromeos-base/{package}/{package}-{version}.tbz2";
+			version = "1.0-r9";
+		};
 		elan_touchscreen: elan-touchscreen {
 			vendor = "elan";
 			firmware-bin = "{vendor}/{pid}_{version}.bin";
@@ -117,6 +123,12 @@
 			vendor = "wacom";
 			firmware-bin = "wacom/{version}.hex";
 			firmware-symlink = "wacom_firmware_{MODEL}.bin";
+		};
+		/* Example of how to put firmware in BCS */
+		elan_touchscreen_bcs: elan-touchscreen-bcs {
+			vendor = "elan";
+			firmware-bin = "${vendor}/${pid}_${version}.bin";
+			firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
 		};
 	};
 };

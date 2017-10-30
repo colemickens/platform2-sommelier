@@ -259,6 +259,24 @@ class CrosConfig(object):
 
     return sorted(file_set, key=lambda files: files.firmware)
 
+  def GetBcsUri(self, overlay, path):
+    """Form a valid BCS URI for downloading files.
+
+    Args:
+      overlay: Name of overlay (e.g. 'reef-private')
+      path: Path to file in overlay (e.g. 'chromeos-base/'
+        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
+
+    Returns:
+      Valid BCS URI to download from
+    """
+    if not overlay.startswith('overlay'):
+      return None
+    # Strip "overlay-" from bcs_overlay.
+    bcs_overlay = overlay[8:]
+    return ('gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s' %
+            {'bcs': bcs_overlay, 'path': path})
+
   def GetAudioFiles(self):
     """Get a list of unique audio files for all models
 
@@ -367,6 +385,39 @@ class CrosConfig(object):
     for name in self.GetModelList():
       firmware_info.update(self.models[name].GetFirmwareInfo())
     return firmware_info
+
+  def GetTouchBspUri(self):
+    """Get the touch firmware BSP file URI
+
+    Returns:
+      URI of touch firmware file to use, or None if none
+    """
+    touch = self.GetFamilyNode('touch/bcs')
+    if not touch:
+      return None
+    props = touch.GetMergedProperties(None, None)
+    if not 'tarball' in props:
+      return None
+    tarball = GetPropFilename(touch._fdt_node.path, props, 'tarball')
+    return self.GetBcsUri(props['overlay'], tarball)
+
+  def GetBspUris(self):
+    """Gets a list of URIs containing files required by the BSP
+
+    This looks through the subsystems which support BCS (Binary Component
+    Server) storage and returns a list of URIs that the config needs. Each is
+    a tar file which is downloaded from BCS using the SRC_URI mechanism in the
+    ebuild. Once it is downloaded, individual files within the archive can
+    be accessed and installed.
+
+    Returns:
+      List of URIs found (which may be empty)
+    """
+    uris = []
+    touch = self.GetTouchBspUri()
+    if touch:
+      uris.append(touch)
+    return uris
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.

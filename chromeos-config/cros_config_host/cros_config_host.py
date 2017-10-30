@@ -117,6 +117,24 @@ def FileTree(config, root):
   tree = config.GetFileTree()
   config.ShowTree(tree, root)
 
+def GetBspUris(config):
+  """Get the URIs needed for the BSP
+
+  Boards have a BSP (Board Supprt Package) ebuild which installs a set of files.
+  Some of these come from BCS (Binary Cloud Storage) since they are too large
+  to put in the git repo. This returns a list of these URIs, which should be
+  downloaded before the BSP ebuild can work.
+
+  Args:
+    config: A CrosConfig instance
+
+  Returns:
+    List of URIs, each a string (e.g. ['gs://chromeos-binaries/HOME/'
+        'bcs-reef-private/overlay-reef-private/chromeos-base/'
+        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2']
+  """
+  print(' '.join(config.GetBspUris()))
+
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
   target_dirs = CrosConfig.GetTargetDirectories()
@@ -179,8 +197,8 @@ def GetParser(description):
       'firmware file, second line is symlink name for /lib/firmware')
   subparsers.add_parser(
       'get-firmware-uris',
-      help='Lists firmware uris for models. These uris can be used to fetch ' +
-      'firmware files.')
+      help='Lists AP firmware URIs for models. These URIs can be used to '
+           'fetch firmware files for the chromeos-firmware-xxx ebuilds.')
   # Parser: get-audio-files
   subparsers.add_parser(
       'get-audio-files',
@@ -210,6 +228,13 @@ def GetParser(description):
   file_tree_parser = subparsers.add_parser(
       'write-target-dirs',
       help='Writes out a list of target directories for each PropFile element')
+  # Parser: get-bsp-uris
+  subparsers.add_parser(
+      'get-bsp-uris',
+      help='Writes out a list of URIs needed to obtain the BSP files. Note '
+           'that this does not include AP firmware URIs, as used by the '
+           'chromeos-firmware-xxx ebuilds. Future work will relationalise this '
+           'command with get-firmware-uris.')
   return parser
 
 
@@ -262,6 +287,8 @@ def main(argv=None):
     GetThermalFiles(config)
   elif opts.subcommand == 'file-tree':
     FileTree(config, opts.root)
+  elif opts.subcommand == 'get-bsp-uris':
+    GetBspUris(config)
 
 
 if __name__ == '__main__':
