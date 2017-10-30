@@ -383,13 +383,19 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     status = mMediaCtlHelper.configure(mGCM, IStreamConfigProvider::IMGU_COMMON);
     if (status != OK)
         return UNKNOWN_ERROR;
-    status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_STILL, true);
-    if (status != OK)
-        return UNKNOWN_ERROR;
+    if (mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_STILL)) {
+        status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_STILL, true);
+        if (status != OK)
+            return UNKNOWN_ERROR;
+        mCurPipeConfig = &mPipeConfigs[PIPE_STILL_INDEX];
+    }
     // Set video pipe by default
-    status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_VIDEO, true);
-    if (status != OK)
-        return UNKNOWN_ERROR;
+    if (mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_VIDEO)) {
+        status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_VIDEO, true);
+        if (status != OK)
+            return UNKNOWN_ERROR;
+        mCurPipeConfig = &mPipeConfigs[PIPE_VIDEO_INDEX];
+    }
 
     mConfiguredNodesPerName = mMediaCtlHelper.getConfiguredNodesPerName();
     if (mConfiguredNodesPerName.size() == 0) {
@@ -402,7 +408,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
 
     PipeConfiguration* videoConfig = &(mPipeConfigs[PIPE_VIDEO_INDEX]);
     PipeConfiguration* stillConfig = &(mPipeConfigs[PIPE_STILL_INDEX]);
-    mCurPipeConfig = videoConfig;
+
     std::shared_ptr<OutputFrameWorker> vfWorker = nullptr;
     std::shared_ptr<OutputFrameWorker> pvWorker = nullptr;
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
@@ -458,14 +464,16 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     }
 
     if (pvWorker.get()) {
-        LOG1("%s: configure postview in advance", __FUNCTION__);
-        pvWorker->configure(graphConfig);
-
         // Copy common part for still pipe, then add pv
         *stillConfig = *videoConfig;
         stillConfig->deviceWorkers.insert(stillConfig->deviceWorkers.begin(), pvWorker);
         stillConfig->pollableWorkers.insert(stillConfig->pollableWorkers.begin(), pvWorker);
         stillConfig->nodes.insert(stillConfig->nodes.begin(), pvWorker->getNode());
+
+        if (mCurPipeConfig == videoConfig) {
+            LOG1("%s: configure postview in advance", __FUNCTION__);
+            pvWorker->configure(graphConfig);
+        }
     }
 
     // Prepare for video pipe
@@ -477,6 +485,11 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         // vf node provides source frame during still preview instead of pv node.
         if (pvWorker.get()) {
             setStreamListeners(IMGU_NODE_PV_PREVIEW, vfWorker);
+        }
+
+        if (mCurPipeConfig == stillConfig) {
+            LOG1("%s: configure preview in advance", __FUNCTION__);
+            vfWorker->configure(graphConfig);
         }
     }
 
@@ -681,8 +694,9 @@ status_t ImguUnit::processNextRequest()
 
 status_t ImguUnit::checkAndSwitchPipe(Camera3Request* request)
 {
-    // Has still pipe config?
-    if (mPipeConfigs[PIPE_STILL_INDEX].deviceWorkers.empty()) {
+    // Has 2 pipe configs?
+    if (!(mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_STILL)
+            && mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_VIDEO)) ) {
         return OK;
     }
 

@@ -45,7 +45,7 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mControlUnit(nullptr),
         mCaptureUnit(nullptr),
         mGCM(cameraId),
-        mStreamsConfiguredWithLargeSize(false),
+        mUseCase(USECASE_VIDEO),
         mOperationMode(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
@@ -227,6 +227,34 @@ status_t IPU3CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> 
     return OK;
 }
 
+camera3_stream_t*
+IPU3CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
+{
+    camera3_stream_t* jpegStream = nullptr;
+    std::vector<camera3_stream_t*> yuvStreams;
+    for (auto* s : streams) {
+        if (s->width * s->height > CONFIGURE_LARGE_SIZE) {
+            return s;
+        }
+
+        if (s->format == HAL_PIXEL_FORMAT_BLOB) {
+            jpegStream = s;
+        } else if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
+            || s->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+            yuvStreams.push_back(s);
+        }
+    }
+
+    if (jpegStream && yuvStreams.size() >= 2) {
+        // Check if it is video snapshot case
+        int jpegSize = jpegStream->width * jpegStream->height;
+        if (jpegSize == yuvStreams[0]->width * yuvStreams[0]->height
+            || jpegSize == yuvStreams[1]->width * yuvStreams[1]->height)
+            return nullptr;
+    }
+    return jpegStream;
+}
+
 status_t
 IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
                             uint32_t operation_mode)
@@ -237,8 +265,8 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     bool configChanged = true;
 
     mOperationMode = operation_mode;
-    mStreamsAll.clear();
-    mStreamsWithSmallSize.clear();
+    mStreamsStill.clear();
+    mStreamsVideo.clear();
 
     if (checkStreamSizes(activeStreams) != OK)
         return BAD_VALUE;
@@ -258,17 +286,21 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
             GRALLOC_USAGE_SW_WRITE_NEVER |
             GRALLOC_USAGE_HW_CAMERA_WRITE;
 
+    camera3_stream_t* stillStream = findStreamForStillCapture(activeStreams);
     for (unsigned int i = 0; i < activeStreams.size(); i++) {
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
-        mStreamsAll.push_back(activeStreams[i]);
 
-        if (activeStreams[i]->width * activeStreams[i]->height <= CONFIGURE_LARGE_SIZE) {
-            mStreamsWithSmallSize.push_back(activeStreams[i]);
+        if (activeStreams[i] != stillStream) {
+            mStreamsVideo.push_back(activeStreams[i]);
+            mStreamsStill.push_back(activeStreams[i]);
+        } else if (stillStream) {
+            // always insert BLOB as fisrt stream if exists
+            LOG1("%s: find still stream %dx%d, 0x%x", __FUNCTION__, stillStream->width,
+                  stillStream->height, stillStream->format);
+            mStreamsStill.insert(mStreamsStill.begin(), stillStream);
         }
     }
-    mStreamsConfiguredWithLargeSize = (mStreamsAll.size() > mStreamsWithSmallSize.size());
-
 
     /* Flush to make sure we return all graph config objects to the pool before
        next stream config. */
@@ -276,19 +308,29 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     mImguUnit->flush();
     mControlUnit->flush();
 
-    status = mGCM.configStreams(mStreamsAll, operation_mode);
+    mUseCase = USECASE_VIDEO; // Configure video pipe by default
+    if (mStreamsVideo.empty()) {
+        mUseCase = USECASE_STILL;
+    }
+    LOG1("%s: select usecase %d, video/still stream num: %lu/%lu", __FUNCTION__,
+            mUseCase, mStreamsVideo.size(), mStreamsStill.size());
+
+    std::vector<camera3_stream_t*> &configuredStreams =
+            (mUseCase == USECASE_STILL) ? mStreamsStill : mStreamsVideo;
+
+    status = mGCM.configStreams(configuredStreams, operation_mode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;
     }
 
-    status = mCaptureUnit->configStreams(activeStreams, configChanged);
+    status = mCaptureUnit->configStreams(configuredStreams, configChanged);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream");
         return status;
     }
 
-    status = mImguUnit->configStreams(activeStreams);
+    status = mImguUnit->configStreams(configuredStreams);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream for ImguUnit");
         return status;
@@ -329,15 +371,15 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
 
     status_t status = NO_ERROR;
     // Check reconfiguration
-    bool hasLargeSize = requireStreamWithLargeSize(request);
-    if (hasLargeSize != mStreamsConfiguredWithLargeSize) {
-        LOG1("%s: request %d need reconfigure, infilght %d", __FUNCTION__,
-                request->getId(), inFlightCount);
+    UseCase newUseCase = checkUseCase(request);
+    if (newUseCase != mUseCase) {
+        LOG1("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
+                request->getId(), inFlightCount, mUseCase, newUseCase);
         if (inFlightCount > 1) {
             return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
         }
 
-        status = reconfigureStreams(hasLargeSize, mOperationMode);
+        status = reconfigureStreams(newUseCase, mOperationMode);
     }
 
     if (status == NO_ERROR) {
@@ -347,24 +389,25 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
     return status;
 }
 
-bool IPU3CameraHw::requireStreamWithLargeSize(Camera3Request* request) const
+IPU3CameraHw::UseCase IPU3CameraHw::checkUseCase(Camera3Request* request) const
 {
+    if (mStreamsStill.size() == mStreamsVideo.size()) {
+        return USECASE_VIDEO;
+    }
     const std::vector<camera3_stream_buffer>* buffers = request->getOutputBuffers();
     for (const auto & buf : *buffers) {
-        if (buf.stream->width * buf.stream->height > CONFIGURE_LARGE_SIZE) {
-            return true;
+        if (buf.stream == mStreamsStill[0]) {
+            return USECASE_STILL;
         }
     }
-
-    return false;
+    return USECASE_VIDEO;
 }
 
-status_t IPU3CameraHw::reconfigureStreams(bool configLargeSizeStream, uint32_t operation_mode)
+status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase, uint32_t operation_mode)
 {
-    LOG1("%s: config streams with large size? %d", __FUNCTION__, configLargeSizeStream);
-    mStreamsConfiguredWithLargeSize = configLargeSizeStream;
-    std::vector<camera3_stream_t*>& streams = configLargeSizeStream ?
-                                              mStreamsAll : mStreamsWithSmallSize;
+    mUseCase = newUseCase;
+    std::vector<camera3_stream_t*>& streams = (mUseCase == USECASE_STILL) ?
+                                              mStreamsStill : mStreamsVideo;
 
     /* Flush to make sure we return all graph config objects to the pool before
        next stream config. */
