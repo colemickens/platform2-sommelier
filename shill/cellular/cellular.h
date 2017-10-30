@@ -321,7 +321,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityTest;
+  friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityUniversalTest;
@@ -330,12 +330,12 @@ class Cellular : public Device, public RPCTaskDelegate {
   friend class ModemTest;
   friend class SubscriptionStateOutOfCreditsDetectorTest;
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
-  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
-  FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
-  FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);
+  FRIEND_TEST(CellularCapabilityClassicTest, EnableModemSucceed);
+  FRIEND_TEST(CellularCapabilityClassicTest, FinishEnable);
+  FRIEND_TEST(CellularCapabilityClassicTest, GetModemInfo);
+  FRIEND_TEST(CellularCapabilityClassicTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);

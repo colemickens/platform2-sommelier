@@ -296,7 +296,7 @@ class CellularCapability {
 
  private:
   friend class CellularCapabilityGSMTest;
-  friend class CellularCapabilityTest;
+  friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularTest;

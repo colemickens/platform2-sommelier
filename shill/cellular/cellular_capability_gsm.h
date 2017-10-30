@@ -106,7 +106,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
  private:
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
-  friend class CellularCapabilityTest;
+  friend class CellularCapabilityClassicTest;
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
@@ -123,8 +123,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, OnPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityTest, TryApns);
+  FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);

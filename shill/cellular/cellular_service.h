@@ -130,7 +130,7 @@ class CellularService : public Service {
   friend class ContainsCellularPropertiesMatcherP2;
 
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
-  FRIEND_TEST(CellularCapabilityTest, TryApns);
+  FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);

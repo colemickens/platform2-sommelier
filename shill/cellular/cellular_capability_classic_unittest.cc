@@ -46,9 +46,9 @@ using testing::_;
 
 namespace shill {
 
-class CellularCapabilityTest : public testing::Test {
+class CellularCapabilityClassicTest : public testing::Test {
  public:
-  CellularCapabilityTest()
+  CellularCapabilityClassicTest()
       : control_interface_(this),
         modem_info_(&control_interface_, &dispatcher_, nullptr, nullptr),
         create_gsm_card_proxy_from_factory_(false),
@@ -71,7 +71,7 @@ class CellularCapabilityTest : public testing::Test {
                             Technology::kCellular);
   }
 
-  ~CellularCapabilityTest() override {
+  ~CellularCapabilityClassicTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
@@ -160,7 +160,7 @@ class CellularCapabilityTest : public testing::Test {
 
   class TestControl : public MockControl {
    public:
-    explicit TestControl(CellularCapabilityTest* test) : test_(test) {}
+    explicit TestControl(CellularCapabilityClassicTest* test) : test_(test) {}
 
     std::unique_ptr<ModemProxyInterface> CreateModemProxy(
         const string& /*path*/,
@@ -205,7 +205,7 @@ class CellularCapabilityTest : public testing::Test {
     }
 
    private:
-    CellularCapabilityTest* test_;
+    CellularCapabilityClassicTest* test_;
   };
 
   void SetProxy() {
@@ -248,60 +248,63 @@ class CellularCapabilityTest : public testing::Test {
   CellularRefPtr cellular_;
 };
 
-const char CellularCapabilityTest::kTestMobileProviderDBPath[] =
+const char CellularCapabilityClassicTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
-const char CellularCapabilityTest::kTestCarrier[] = "The Cellular Carrier";
-const char CellularCapabilityTest::kManufacturer[] = "Company";
-const char CellularCapabilityTest::kModelID[] = "Gobi 2000";
-const char CellularCapabilityTest::kHWRev[] = "A00B1234";
+const char CellularCapabilityClassicTest::kTestCarrier[] =
+    "The Cellular Carrier";
+const char CellularCapabilityClassicTest::kManufacturer[] = "Company";
+const char CellularCapabilityClassicTest::kModelID[] = "Gobi 2000";
+const char CellularCapabilityClassicTest::kHWRev[] = "A00B1234";
 
-TEST_F(CellularCapabilityTest, GetModemStatus) {
+TEST_F(CellularCapabilityClassicTest, GetModemStatus) {
   SetCellularType(Cellular::kTypeCDMA);
   EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, _, CellularCapability::kTimeoutDefault)).
-      WillOnce(Invoke(this, &CellularCapabilityTest::InvokeGetModemStatus));
+              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(
+          Invoke(this, &CellularCapabilityClassicTest::InvokeGetModemStatus));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetSimpleProxy();
   ResultCallback callback =
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this));
   capability_->GetModemStatus(callback);
   EXPECT_EQ(kTestCarrier, cellular_->carrier());
 }
 
-TEST_F(CellularCapabilityTest, GetModemInfo) {
+TEST_F(CellularCapabilityClassicTest, GetModemInfo) {
   EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeGetModemInfo));
+      .WillOnce(
+          Invoke(this, &CellularCapabilityClassicTest::InvokeGetModemInfo));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetProxy();
   ResultCallback callback =
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this));
   capability_->GetModemInfo(callback);
   EXPECT_EQ(kManufacturer, cellular_->manufacturer());
   EXPECT_EQ(kModelID, cellular_->model_id());
   EXPECT_EQ(kHWRev, cellular_->hardware_revision());
 }
 
-TEST_F(CellularCapabilityTest, EnableModemSucceed) {
+TEST_F(CellularCapabilityClassicTest, EnableModemSucceed) {
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeEnable));
+      .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   ResultCallback callback =
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this));
   SetProxy();
   capability_->EnableModem(callback);
 }
 
-TEST_F(CellularCapabilityTest, EnableModemFail) {
+TEST_F(CellularCapabilityClassicTest, EnableModemFail) {
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeEnableFail));
+      .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeEnableFail));
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   ResultCallback callback =
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this));
   SetProxy();
   capability_->EnableModem(callback);
 }
 
-TEST_F(CellularCapabilityTest, FinishEnable) {
+TEST_F(CellularCapabilityClassicTest, FinishEnable) {
   EXPECT_CALL(*gsm_network_proxy_,
               GetRegistrationInfo(nullptr, _,
                                   CellularCapability::kTimeoutDefault));
@@ -311,20 +314,20 @@ TEST_F(CellularCapabilityTest, FinishEnable) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetGSMNetworkProxy();
   capability_->FinishEnable(
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
 }
 
-TEST_F(CellularCapabilityTest, UnsupportedOperation) {
+TEST_F(CellularCapabilityClassicTest, UnsupportedOperation) {
   Error error;
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(0);
   capability_->CellularCapability::Reset(
       &error,
-      Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
-TEST_F(CellularCapabilityTest, AllowRoaming) {
+TEST_F(CellularCapabilityClassicTest, AllowRoaming) {
   EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
   cellular_->SetAllowRoaming(false, nullptr);
   EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
@@ -345,7 +348,7 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   EXPECT_EQ(Cellular::kStateConnected, cellular_->state_);
 
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
-      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeDisconnect));
+      .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeDisconnect));
   SetProxy();
   cellular_->state_ = Cellular::kStateConnected;
   cellular_->SetAllowRoaming(false, nullptr);
@@ -353,17 +356,17 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
 }
 
-TEST_F(CellularCapabilityTest, SetCarrier) {
+TEST_F(CellularCapabilityClassicTest, SetCarrier) {
   static const char kCarrier[] = "Generic UMTS";
   EXPECT_CALL(
       *gobi_proxy_,
       SetCarrier(kCarrier, _, _,
                  CellularCapabilityClassic::kTimeoutSetCarrierMilliseconds))
-      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeSetCarrier));
+      .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeSetCarrier));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   Error error;
   capability_->SetCarrier(kCarrier, &error,
-                          Bind(&CellularCapabilityTest::TestCallback,
+                          Bind(&CellularCapabilityClassicTest::TestCallback,
                                Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -376,7 +379,7 @@ MATCHER(HasNoApn, "") {
   return !arg.ContainsString(kApnProperty);
 }
 
-TEST_F(CellularCapabilityTest, TryApns) {
+TEST_F(CellularCapabilityClassicTest, TryApns) {
   static const string kLastGoodApn("remembered.apn");
   static const string kLastGoodUsername("remembered.user");
   static const string kSuppliedApn("my.apn");
@@ -475,39 +478,41 @@ TEST_F(CellularCapabilityTest, TryApns) {
   EXPECT_EQ(0, gsm_capability->apn_try_list_.size());
 }
 
-TEST_F(CellularCapabilityTest, StopModemDisconnectSuccess) {
+TEST_F(CellularCapabilityClassicTest, StopModemDisconnectSuccess) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityTest::InvokeDisconnect));
+                       &CellularCapabilityClassicTest::InvokeDisconnect));
   EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityTest::InvokeEnable));
+                       &CellularCapabilityClassicTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetProxy();
 
   Error error;
   capability_->StopModem(
-      &error, Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+      &error,
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
+TEST_F(CellularCapabilityClassicTest, StopModemDisconnectFail) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityTest::InvokeDisconnectFail));
+                       &CellularCapabilityClassicTest::InvokeDisconnectFail));
   EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityTest::InvokeEnable));
+                       &CellularCapabilityClassicTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetProxy();
 
   Error error;
   capability_->StopModem(
-      &error, Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+      &error,
+      Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityTest, DisconnectNoProxy) {
+TEST_F(CellularCapabilityClassicTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
