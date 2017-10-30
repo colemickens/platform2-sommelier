@@ -139,8 +139,9 @@ class CrosConfig(object):
     self._fdt.Scan()
     self.phandle_to_node = {}
     self.models = OrderedDict()
-    self.nodes = CrosConfig.MakeNode(self, self._fdt.GetRoot()).subnodes
+    self.root = CrosConfig.MakeNode(self, self._fdt.GetRoot())
     self.validator = validate_config.GetValidator()
+    self.family = self.root.subnodes['chromeos'].subnodes['family']
 
   @staticmethod
   def MakeNode(cros_config, fdt_node):
@@ -165,6 +166,33 @@ class CrosConfig(object):
       node.subnodes[subnode.name] = CrosConfig.MakeNode(cros_config, subnode)
     node.ScanSubnodes()
     return node
+
+  def _GetProperty(self, absolute_path, property_name):
+    """Internal function to read a property from anywhere in the tree
+
+    Args:
+      absolute_path: within the root node (e.g. '/chromeos/family/firmware')
+      property_name: Name of property to get
+
+    Returns:
+      Property object, or None if not found
+    """
+    return self.root.PathProperty(absolute_path, property_name)
+
+  def GetFamilyNode(self, relative_path):
+    return self.family.PathNode(relative_path)
+
+  def GetFamilyProperty(self, relative_path, property_name):
+    """Read a property from a family node
+
+    Args:
+      relative_path: Relative path within the family (e.g. '/firmware')
+      property_name: Name of property to get
+
+    Returns:
+      Property object, or None if not found
+    """
+    return self.family.PathProperty(relative_path, property_name)
 
   def GetFirmwareUris(self):
     """Returns a list of (string) firmware URIs.
@@ -356,6 +384,20 @@ class CrosConfig(object):
         else:
           return None
       return sub_node.PathNode('/'.join(path_parts[1:]))
+
+    def Property(self, property_name):
+      """Get a property from a node
+
+      This is a trivial function but it does provide some insulation against our
+      internal data structures.
+
+      Args:
+        property_name: Name of property to find
+
+      Returns:
+        CrosConfig.Property object that waws found, or None if none
+      """
+      return self.properties.get(property_name)
 
     def PathProperty(self, relative_path, property_name):
       """Returns the value of a property relatative to this node

@@ -18,6 +18,7 @@ from libcros_config_host import fdt_util
 from libcros_config_host.libcros_config_host import BaseFile, CrosConfig
 from libcros_config_host.libcros_config_host import TouchFile
 
+
 DTS_FILE = 'libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
           'whitetip2', ]
@@ -85,6 +86,8 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
     self.assertEqual(pyro.properties['wallpaper'].value, 'default')
+    self.assertEqual(pyro.Property('wallpaper').value, 'default')
+    self.assertIsNone(pyro.Property('missing'))
 
   def testPathNode(self):
     config = CrosConfig(self.file)
@@ -342,6 +345,19 @@ class CrosConfigHostTest(unittest.TestCase):
         reef.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
     self.assertEqual(
         reef.SubmodelPathProperty('notouch', '/touch', 'present').value, 'no')
+
+  def testGetProperty(self):
+    """Test that we can read properties from non-model nodes"""
+    config = CrosConfig(self.file)
+    # pylint: disable=protected-access
+    self.assertEqual(config._GetProperty('/chromeos/family/firmware',
+                                         'script').value, 'updater4.sh')
+    firmware = config.GetFamilyNode('/firmware')
+    self.assertEqual(firmware.name, 'firmware')
+    self.assertEqual(firmware.Property('script').value, 'updater4.sh')
+    self.assertEqual(
+        config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
+
 
 if __name__ == '__main__':
   unittest.main()
