@@ -38,6 +38,8 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 # TODO(sjg@chromium.org): Move these to the schema
 LIB_FIRMWARE = '/lib/firmware'
 
+UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
+
 
 class PathComponent(object):
   """A component in a directory/file tree
@@ -134,8 +136,16 @@ class CrosConfig(object):
         key: Integer phandle value (>= 1)
         value: Associated CrosConfig.Node object
   """
-  def __init__(self, infile):
-    self._fdt = fdt.Fdt(infile)
+  def __init__(self, infile=None):
+    if not infile:
+      if 'SYSROOT' not in os.environ:
+        raise ValueError('No master configuration is available outside the '
+                         'ebuild environemnt. You must specify one')
+      fname = os.path.join(os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_PATH)
+      with open(fname) as infile:
+        self._fdt = fdt.Fdt(infile)
+    else:
+      self._fdt = fdt.Fdt(infile)
     self._fdt.Scan()
     self.phandle_to_node = {}
     self.models = OrderedDict()

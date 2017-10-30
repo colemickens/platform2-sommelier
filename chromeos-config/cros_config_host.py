@@ -13,12 +13,9 @@ system to access configuration details for for a Chrome OS device.
 from __future__ import print_function
 
 import argparse
-import os
 import sys
 
 from libcros_config_host.libcros_config_host import CrosConfig
-
-UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
 
 
 def ListModels(config):
@@ -228,18 +225,13 @@ def main(argv):
   if opts.subcommand == 'write-target-dirs':
     WriteTargetDirectories()
     return
-  if not opts.config:
-    if 'SYSROOT' not in os.environ:
-      print('You must specify a dtb file path with --config, or set SYSROOT. '
-            'See --help')
-      return
-    opts.config = os.path.join(os.environ['SYSROOT'],
-                               UNIBOARD_DTB_INSTALL_PATH)
   if opts.config == '-':
     config = CrosConfig(sys.stdin)
-  else:
+  elif opts.config:
     with open(opts.config) as infile:
       config = CrosConfig(infile)
+  else:
+    config = CrosConfig()
   # Get all models we are invoking on (if any).
   models = None
   if opts.model and opts.model in config.models:

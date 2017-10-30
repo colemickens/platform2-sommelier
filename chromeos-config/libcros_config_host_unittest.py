@@ -358,6 +358,15 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(
         config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
 
+  def testDefaultConfig(self):
+    with self.assertRaisesRegexp(ValueError,
+                                 'No master configuration is available'):
+      CrosConfig()
+
+    os.environ['SYSROOT'] = 'fred'
+    with self.assertRaises(IOError) as e:
+      CrosConfig()
+    self.assertIn('fred/usr/share/chromeos-config/config.dtb', str(e.exception))
 
 if __name__ == '__main__':
   unittest.main()
