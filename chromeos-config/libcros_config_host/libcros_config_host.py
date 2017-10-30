@@ -88,6 +88,40 @@ class PathComponent(object):
       self.children[child].ShowTree(base_path, path, indent + 1)
 
 
+def GetFilename(node_path, props, fname_template):
+  """Create a filename based on the given template and properties
+
+  Args:
+    node_path: Path of the node generating this filename (for error
+        reporting only)
+    props: Dict of properties which can be used in the template:
+        key: Variable name
+        value: Value of that variable
+    fname_template: Filename template
+  """
+  template = fname_template.replace('$', '')
+  try:
+    return template.format(props, **props)
+  except KeyError as e:
+    raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
+                      "but lacks '%s'") %
+                     (node_path, template, props.keys(), e.message))
+
+def GetPropFilename(node_path, props, fname_prop):
+  """Create a filename based on the given template and properties
+
+  Args:
+    node_path: Path of the node generating this filename (for error
+        reporting only)
+    props: Dict of properties which can be used in the template:
+        key: Variable name
+        value: Value of that variable
+    fname_prop: Name of property containing the template
+  """
+  template = props[fname_prop]
+  return GetFilename(node_path, props, template)
+
+
 class CrosConfig(object):
   """The ChromeOS Configuration API for the host.
 
@@ -486,41 +520,6 @@ class CrosConfig(object):
                                 base_model=base_model)
               for fname in file_names]
 
-    @classmethod
-    def GetFilename(cls, node_path, props, fname_template):
-      """Create a filename based on the given template and properties
-
-      Args:
-        node_path: Path of the node generating this filename (for error
-            reporting only)
-        props: Dict of properties which can be used in the template:
-            key: Variable name
-            value: Value of that variable
-        fname_template: Filename template
-      """
-      template = fname_template.replace('$', '')
-      try:
-        return template.format(props, **props)
-      except KeyError as e:
-        raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
-                          "but lacks '%s'") %
-                         (node_path, template, props.keys(), e.message))
-
-    @classmethod
-    def GetPropFilename(cls, node_path, props, fname_prop):
-      """Create a filename based on the given template and properties
-
-      Args:
-        node_path: Path of the node generating this filename (for error
-            reporting only)
-        props: Dict of properties which can be used in the template:
-            key: Variable name
-            value: Value of that variable
-        fname_prop: Name of property containing the template
-      """
-      template = props[fname_prop]
-      return cls.GetFilename(node_path, props, template)
-
     def GetTouchFirmwareFiles(self):
       """Get a list of unique touch firmware files
 
@@ -537,9 +536,8 @@ class CrosConfig(object):
           # Add a special property for the capitalised model name
           props['MODEL'] = self.name.upper()
           files[device.name] = TouchFile(
-              self.GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
-              self.GetPropFilename(self._fdt_node.path, props,
-                                   'firmware-symlink'))
+              GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
+              GetPropFilename(self._fdt_node.path, props, 'firmware-symlink'))
       return files
 
     def GetAudioFiles(self):
@@ -566,11 +564,11 @@ class CrosConfig(object):
                               "target directory (internal error)") %
                              (card.name, prop_name))
           files[self.name, prop_name] = BaseFile(
-              self.GetPropFilename(self._fdt_node.path, props, prop_name),
+              GetPropFilename(self._fdt_node.path, props, prop_name),
               os.path.join(
                   target_dir,
                   dirname,
-                  self.GetFilename(self._fdt_node.path, props, dest_template)))
+                  GetFilename(self._fdt_node.path, props, dest_template)))
 
       files = {}
       audio = self.PathNode('/audio')
