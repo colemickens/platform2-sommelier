@@ -401,14 +401,12 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     ResolutionItem res;
 
     if (needEnableStill) {
+        // use postview node only for still pipe due to FOV issue
+        // Select settings only according to jpeg stream
+        LOG1(" select settings according %p", availableStreams[0]);
         stillStreamCnt++;
         handleStillStream(res, streamKey);
-        handleMap(availableStreams[mainOutputIndex], res, streamKey);
-        if (secondaryOutputIndex >= 0) {
-            stillStreamCnt++;
-            handleStillStream(res, streamKey);
-            handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
-        }
+        handleMap(availableStreams[0], res, streamKey);
     } else {
         videoStreamCnt++;
         handleVideoStream(res, streamKey);

@@ -292,6 +292,7 @@ status_t ImguUnit::mapStreamWithDeviceNode()
     int videoIdx = -1;
     int previewIdx = -1;
     int listenerIdx = -1;
+    bool isVideoSnapshot = false;
     IPU3NodeNames listenToNode = IMGU_NODE_NULL;
 
     if (streamNum == 1) {
@@ -309,6 +310,7 @@ status_t ImguUnit::mapStreamWithDeviceNode()
             previewIdx = (videoIdx == 1) ? 2 : 1; // For preview stream
             listenerIdx = 0; // For jpeg stream
             listenToNode = IMGU_NODE_VIDEO;
+            isVideoSnapshot = true;
         } else {
             previewIdx = (streamSizeGT(availableStreams[1], availableStreams[2])) ? 1
                        : (streamSizeGT(availableStreams[2], availableStreams[1])) ? 2
@@ -328,6 +330,17 @@ status_t ImguUnit::mapStreamWithDeviceNode()
     } else {
         LOGE("@%s, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
         return UNKNOWN_ERROR;
+    }
+
+    // W/A: use postview node only for still pipe due to FOV issue
+    // Select settings only according to jpeg stream
+    if (blobNum && !isVideoSnapshot) {
+        LOG1("still case: map %p to pv node", mActiveStreams.blobStreams[0]);
+        mStreamNodeMapping[IMGU_NODE_PV_PREVIEW] = mActiveStreams.blobStreams[0];
+        for (auto* s : mActiveStreams.yuvStreams) {
+            mStreamListenerMapping[s] = IMGU_NODE_PV_PREVIEW;
+        }
+        return OK;
     }
 
     mStreamNodeMapping[IMGU_NODE_VF_PREVIEW] = availableStreams[previewIdx];
