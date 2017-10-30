@@ -9,6 +9,6 @@ After=system-services.target
 [Service]
 Restart=always
 Environment="MTPD_MINLOGLEVEL=1"
-ExecStart=/sbin/minijail0 -i -I -p -e -l -r -v -u mtp -g mtp -G \
+ExecStart=/sbin/minijail0 -i -I -p -l -r -v -u mtp -g mtp -G \
 	-n -S /opt/google/mtpd/mtpd-seccomp.policy -- \
 	/opt/google/mtpd/mtpd -minloglevel="${MTPD_MINLOGLEVEL}"
