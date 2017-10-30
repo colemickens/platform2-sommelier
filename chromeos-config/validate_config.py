@@ -186,27 +186,33 @@ class CrosConfigValidator(object):
           if either is fine.
 
     Returns:
-      Schema for the given element, or None if not found
+      Tuple:
+        Schema for the node, or None if none found
+        True if the node should have schema, False if it can be ignored
+            (because it is internal to the device-tree format)
     """
     for element in schema.elements:
       if not self.ElementPresent(element, node):
         continue
       if element.name == name:
-        return element
+        return element, True
       elif (self.model_list and isinstance(element, NodeModel) and
             name in self.model_list):
-        return element
+        return element, True
       elif self.submodel_list and isinstance(element, NodeSubmodel) and node:
         m = re.match('/chromeos/models/([a-z0-9]+)/submodels', node.path)
         if m and name in self.submodel_list[m.group(1)]:
-          return element
+          return element, True
       elif ((expected is None or expected == NodeDesc) and
             isinstance(element, NodeAny)):
-        return element
+        return element, True
       elif ((expected is None or expected == PropDesc) and
             isinstance(element, PropAny)):
-        return element
-    return None
+        return element, True
+    if expected == PropDesc:
+      if name == 'linux,phandle' or self._IsBuiltInProperty(node, name):
+        return None, False
+    return None, True
 
   def GetElementByPath(self, path):
     """Find a schema element given its full path
@@ -223,7 +229,7 @@ class CrosConfigValidator(object):
     parts = path.split('/')[1:]
     schema = self._schema
     for part in parts:
-      element = self.GetElement(schema, part, None)
+      element, _ = self.GetElement(schema, part, None)
       schema = element
     return schema
 
@@ -247,7 +253,7 @@ class CrosConfigValidator(object):
     for prop_name in node.props.keys():
       if prop_name == 'linux,phandle':  # Ignore this (use 'phandle' instead)
         continue
-      element = self.GetElement(schema, prop_name, node, PropDesc)
+      element, _ = self.GetElement(schema, prop_name, node, PropDesc)
       if not element or not isinstance(element, PropDesc):
         if prop_name == 'phandle':
           self.Fail(node.path, 'phandle target not valid for this node')
@@ -285,9 +291,13 @@ class CrosConfigValidator(object):
     Args:
       node: fdt.Node whose schema we are searching for
       parent_schema: Schema for the parent node, which contains that schema
+
+    Returns:
+      Schema for the node, or None if none found
     """
-    schema = self.GetElement(parent_schema, node.name, node.parent, NodeDesc)
-    if schema is None:
+    schema, needed = self.GetElement(parent_schema, node.name, node.parent,
+                                     NodeDesc)
+    if not schema and needed:
       elements = [e.name for e in parent_schema.GetNodes()
                   if self.ElementPresent(e, node.parent)]
       self.Fail(os.path.dirname(node.path),
