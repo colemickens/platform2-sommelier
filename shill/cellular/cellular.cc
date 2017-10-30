@@ -136,6 +136,8 @@ Cellular::Cellular(ModemInfo* modem_info,
 }
 
 Cellular::~Cellular() {
+  StopLocationPolling();
+
   // Under certain conditions, Cellular::StopModem may not be
   // called before the Cellular device is destroyed. This happens if the dbus
   // modem exported by the modem-manager daemon disappears soon after the modem
