@@ -46,7 +46,8 @@ using testing::_;
 
 namespace shill {
 
-class CellularCapabilityClassicTest : public testing::Test {
+class CellularCapabilityClassicTest
+    : public testing::TestWithParam<Cellular::Type> {
  public:
   CellularCapabilityClassicTest()
       : control_interface_(this),
@@ -64,7 +65,7 @@ class CellularCapabilityClassicTest : public testing::Test {
                                "",
                                "",
                                0,
-                               Cellular::kTypeGSM,
+                               GetParam(),
                                "",
                                "")) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
@@ -85,6 +86,15 @@ class CellularCapabilityClassicTest : public testing::Test {
     device_adaptor_ =
         static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     ASSERT_NE(nullptr, device_adaptor_);;
+  }
+
+  // TODO(benchan): Instead of conditionally enabling many tests for specific
+  // capability types via IsCellularTypeUnderTestOneOf, migrate more tests to
+  // work under all capability types and proboably migrate those tests for
+  // specific capability types into their own test fixture subclasses.
+  bool IsCellularTypeUnderTestOneOf(
+      const std::set<Cellular::Type>& valid_types) const {
+    return ContainsValue(valid_types, GetParam());
   }
 
   void CreateService() {
@@ -222,12 +232,6 @@ class CellularCapabilityClassicTest : public testing::Test {
     gsm_capability->network_proxy_ = std::move(gsm_network_proxy_);
   }
 
-  void SetCellularType(Cellular::Type type) {
-    cellular_->InitCapability(type);
-    capability_ = static_cast<CellularCapabilityClassic*>(
-        cellular_->capability_.get());
-  }
-
   void AllowCreateGSMCardProxyFromFactory() {
     create_gsm_card_proxy_from_factory_ = true;
   }
@@ -256,8 +260,7 @@ const char CellularCapabilityClassicTest::kManufacturer[] = "Company";
 const char CellularCapabilityClassicTest::kModelID[] = "Gobi 2000";
 const char CellularCapabilityClassicTest::kHWRev[] = "A00B1234";
 
-TEST_F(CellularCapabilityClassicTest, GetModemStatus) {
-  SetCellularType(Cellular::kTypeCDMA);
+TEST_P(CellularCapabilityClassicTest, GetModemStatus) {
   EXPECT_CALL(*simple_proxy_,
               GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(
@@ -270,7 +273,11 @@ TEST_F(CellularCapabilityClassicTest, GetModemStatus) {
   EXPECT_EQ(kTestCarrier, cellular_->carrier());
 }
 
-TEST_F(CellularCapabilityClassicTest, GetModemInfo) {
+TEST_P(CellularCapabilityClassicTest, GetModemInfo) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+    return;
+  }
+
   EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(
           Invoke(this, &CellularCapabilityClassicTest::InvokeGetModemInfo));
@@ -284,7 +291,7 @@ TEST_F(CellularCapabilityClassicTest, GetModemInfo) {
   EXPECT_EQ(kHWRev, cellular_->hardware_revision());
 }
 
-TEST_F(CellularCapabilityClassicTest, EnableModemSucceed) {
+TEST_P(CellularCapabilityClassicTest, EnableModemSucceed) {
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
@@ -294,7 +301,7 @@ TEST_F(CellularCapabilityClassicTest, EnableModemSucceed) {
   capability_->EnableModem(callback);
 }
 
-TEST_F(CellularCapabilityClassicTest, EnableModemFail) {
+TEST_P(CellularCapabilityClassicTest, EnableModemFail) {
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularCapabilityClassicTest::InvokeEnableFail));
   EXPECT_CALL(*this, TestCallback(IsFailure()));
@@ -304,7 +311,11 @@ TEST_F(CellularCapabilityClassicTest, EnableModemFail) {
   capability_->EnableModem(callback);
 }
 
-TEST_F(CellularCapabilityClassicTest, FinishEnable) {
+TEST_P(CellularCapabilityClassicTest, FinishEnable) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+    return;
+  }
+
   EXPECT_CALL(*gsm_network_proxy_,
               GetRegistrationInfo(nullptr, _,
                                   CellularCapability::kTimeoutDefault));
@@ -317,7 +328,7 @@ TEST_F(CellularCapabilityClassicTest, FinishEnable) {
       Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
 }
 
-TEST_F(CellularCapabilityClassicTest, UnsupportedOperation) {
+TEST_P(CellularCapabilityClassicTest, UnsupportedOperation) {
   Error error;
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(0);
   capability_->CellularCapability::Reset(
@@ -327,7 +338,11 @@ TEST_F(CellularCapabilityClassicTest, UnsupportedOperation) {
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
-TEST_F(CellularCapabilityClassicTest, AllowRoaming) {
+TEST_P(CellularCapabilityClassicTest, AllowRoaming) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+    return;
+  }
+
   EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
   cellular_->SetAllowRoaming(false, nullptr);
   EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
@@ -356,7 +371,7 @@ TEST_F(CellularCapabilityClassicTest, AllowRoaming) {
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
 }
 
-TEST_F(CellularCapabilityClassicTest, SetCarrier) {
+TEST_P(CellularCapabilityClassicTest, SetCarrier) {
   static const char kCarrier[] = "Generic UMTS";
   EXPECT_CALL(
       *gobi_proxy_,
@@ -379,7 +394,11 @@ MATCHER(HasNoApn, "") {
   return !arg.ContainsString(kApnProperty);
 }
 
-TEST_F(CellularCapabilityClassicTest, TryApns) {
+TEST_P(CellularCapabilityClassicTest, TryApns) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+    return;
+  }
+
   static const string kLastGoodApn("remembered.apn");
   static const string kLastGoodUsername("remembered.user");
   static const string kSuppliedApn("my.apn");
@@ -478,7 +497,7 @@ TEST_F(CellularCapabilityClassicTest, TryApns) {
   EXPECT_EQ(0, gsm_capability->apn_try_list_.size());
 }
 
-TEST_F(CellularCapabilityClassicTest, StopModemDisconnectSuccess) {
+TEST_P(CellularCapabilityClassicTest, StopModemDisconnectSuccess) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
                        &CellularCapabilityClassicTest::InvokeDisconnect));
@@ -495,7 +514,7 @@ TEST_F(CellularCapabilityClassicTest, StopModemDisconnectSuccess) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityClassicTest, StopModemDisconnectFail) {
+TEST_P(CellularCapabilityClassicTest, StopModemDisconnectFail) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
                        &CellularCapabilityClassicTest::InvokeDisconnectFail));
@@ -512,7 +531,7 @@ TEST_F(CellularCapabilityClassicTest, StopModemDisconnectFail) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityClassicTest, DisconnectNoProxy) {
+TEST_P(CellularCapabilityClassicTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
@@ -520,5 +539,10 @@ TEST_F(CellularCapabilityClassicTest, DisconnectNoProxy) {
   ReleaseCapabilityProxies();
   capability_->Disconnect(&error, disconnect_callback);
 }
+
+INSTANTIATE_TEST_CASE_P(CellularCapabilityClassicTest,
+                        CellularCapabilityClassicTest,
+                        testing::Values(Cellular::kTypeGSM,
+                                        Cellular::kTypeCDMA));
 
 }  // namespace shill
