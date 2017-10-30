@@ -65,6 +65,10 @@ libcamera_timezone: common/libcamera_timezone
 
 .PHONY: libcamera_timezone
 
+libcamera_v4l2_device: common/v4l2_device/libcamera_v4l2_device
+
+.PHONY: libcamera_v4l2_device
+
 libcbm: common/libcbm
 
 .PHONY: libcbm
