@@ -13,6 +13,7 @@
 
 #include <bitset>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -50,6 +51,7 @@ struct OciProcess {
   std::map<std::string, CapSet> capabilities;  // Optional
   std::vector<OciProcessRlimit> rlimits;       // Optional
   std::string selinuxLabel;
+  mode_t umask = 0022;  // Optional, Chrome OS extension
   // Unused: apparmorProfile, noNewPrivileges
 };
 

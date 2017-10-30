@@ -259,6 +259,11 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     return false;
   }
   config_out->process.cwd = base::FilePath(path);
+  int umask_int;
+  if (process_dict->GetInteger("umask", &umask_int))
+    config_out->process.umask = static_cast<mode_t>(umask_int);
+  else
+    config_out->process.umask = 0022;  // Optional
 
   // selinuxLabel is optional.
   process_dict->GetString("selinuxLabel", &config_out->process.selinuxLabel);

@@ -190,3 +190,26 @@ object has been extended to also contain the following:
             }
         ]
     }
+
+### Initial file mode creation mask
+
+The file mode creation mask (`umask`) is inherited from its parent process.  The
+default value for this is `18` (or `0022` in octal), but some containers need it
+to be `0`.
+
+The
+[**`process`**](https://github.com/opencontainers/runtime-spec/blob/master/config.md#posix-process)
+object has been extended to also contain the following:
+
+* **`umask`**: *(uint32, OPTIONAL)* - sets the initial file mode creation mask
+  ([`umask`](http://man7.org/linux/man-pages/man2/umask.2.html)) for the
+  container process. Defaults to `18`, which corresponds to `0022` in numeric
+  notation (octal) and `----w--w-` in symbolic notation.
+
+#### Example (Chrome OS)
+
+    {
+        "process": {
+            "umask": 0
+        ]
+    }

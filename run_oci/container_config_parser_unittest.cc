@@ -78,7 +78,8 @@ const char kBasicJsonData[] = R"json(
                     "soft": 11
                 }
             ],
-            "noNewPrivileges": true
+            "noNewPrivileges": true,
+            "umask": 0
         },
         "hostname": "tester",
         "mounts": [
@@ -444,6 +445,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->process.rlimits[0].type, RLIMIT_NICE);
   EXPECT_EQ(basic_config->process.rlimits[0].soft, 11);
   EXPECT_EQ(basic_config->process.rlimits[0].hard, 12);
+  EXPECT_EQ(basic_config->process.umask, 0);
   EXPECT_EQ(basic_config->hostname, "tester");
   ASSERT_EQ(basic_config->mounts.size(), 7);
   EXPECT_EQ(basic_config->mounts[0].options.size(), 0);
