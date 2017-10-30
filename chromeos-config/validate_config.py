@@ -350,6 +350,20 @@ class CrosConfigValidator(object):
         '/chromeos/models/MODEL%s/%s' % (path, prop_name))
     return element.target_dir
 
+  def Prepare(self, _fdt):
+    """Locate all the models and submodels before we start"""
+    self._fdt = _fdt
+    models = self._fdt.GetNode('/chromeos/models')
+    for model in models.subnodes.values():
+      self.model_list.append(model.name)
+      sub_models = model.FindNode('submodels')
+      if sub_models:
+        self.submodel_list[model.name] = (
+            [sm.name for sm in sub_models.subnodes.values()])
+      else:
+        self.submodel_list[model.name] = []
+
+
   def Start(self, fnames, partial=False):
     """Start validating a master configuration file
 
@@ -369,18 +383,7 @@ class CrosConfigValidator(object):
         dtb, tmpfile = fdt_util.CompileAll(fnames)
       else:
         dtb, tmpfile = fdt_util.EnsureCompiled(fnames[0])
-      self._fdt = fdt.FdtScan(dtb)
-
-      # Locate all the models and submodels before we start
-      models = self._fdt.GetNode('/chromeos/models')
-      for model in models.subnodes.values():
-        self.model_list.append(model.name)
-        sub_models = model.FindNode('submodels')
-        if sub_models:
-          self.submodel_list[model.name] = (
-              [sm.name for sm in sub_models.subnodes.values()])
-        else:
-          self.submodel_list[model.name] = []
+      self.Prepare(fdt.FdtScan(dtb))
 
       # Validate the entire master configuration
       self._ValidateTree(self._fdt.GetRoot(), self._schema)
