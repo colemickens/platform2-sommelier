@@ -319,6 +319,14 @@ class CrosConfig(object):
     validator = validate_config.GetValidator()
     return validator.GetTargetDirectories()
 
+  def GetModelList(self):
+    """Return a list of models
+
+    Returns:
+      List of model names, each a string
+    """
+    return sorted(self.models.keys())
+
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
 
@@ -665,7 +673,6 @@ class CrosConfig(object):
             thermal.properties[prop].value,
             os.path.join(target_dir, thermal.properties[prop].value))
       return files
-
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration.

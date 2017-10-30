@@ -368,5 +368,13 @@ class CrosConfigHostTest(unittest.TestCase):
       CrosConfig()
     self.assertIn('fred/usr/share/chromeos-config/config.dtb', str(e.exception))
 
+  def testModelList(self):
+    """Test that we can obtain a model list"""
+    config = CrosConfig(self.file)
+    self.assertEqual(
+        ['broken', 'caroline', 'pyro', 'reef', 'whitetip', 'whitetip1',
+         'whitetip2'], config.GetModelList())
+
+
 if __name__ == '__main__':
   unittest.main()

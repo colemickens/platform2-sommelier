@@ -23,8 +23,9 @@ def ListModels(config):
 
   Args:
     config: A CrosConfig instance
+    whitelabels: True to include whitelabel devices in the list
   """
-  for model_name in config.models.keys():
+  for model_name in config.GetModelList():
     print(model_name)
 
 def GetProperty(models, path, prop):
