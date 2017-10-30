@@ -102,9 +102,11 @@ void GraphConfigManager::initStreamResolutionIds()
     mVideoStreamKeys.clear();
     mStillStreamKeys.clear();
 
+    // Will map streams in this order
+    mVideoStreamKeys.push_back(GCSS_KEY_IMGU_VIDEO);
     mVideoStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_VIDEO);
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_RAW);
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_STILL);
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
 
     for (size_t i = 0; i < mVideoStreamKeys.size(); i++) {
         ItemUID w = {mVideoStreamKeys[i], GCSS_KEY_WIDTH};
@@ -318,34 +320,34 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     }
 
     // Don't support RAW currently
+    // Keep streams in order: BLOB, IMPL, YUV...
     std::vector<camera3_stream_t *> availableStreams;
+    camera3_stream_t * blobStream = nullptr;
     int yuvNum = 0;
     int blobNum = 0;
-
-    // Keep streams in order: BLOB, IMPL, YUV...
     for (int i = 0; i < streams.size(); i++) {
         switch (streams[i]->format) {
             case HAL_PIXEL_FORMAT_BLOB:
-                 // Process later
-                 break;
+                blobNum++;
+                blobStream = streams[i];
+                break;
             case HAL_PIXEL_FORMAT_YCbCr_420_888:
-                 yuvNum++;
-                 availableStreams.push_back(streams[i]);
-                 break;
+                yuvNum++;
+                availableStreams.push_back(streams[i]);
+                break;
             case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-                 yuvNum++;
-                 availableStreams.insert(availableStreams.begin(), streams[i]);
-                 break;
+                yuvNum++;
+                availableStreams.insert(availableStreams.begin(), streams[i]);
+                break;
             default:
                 LOGE("Unsupported stream format %d", streams.at(i)->format);
                 return BAD_VALUE;
         }
     }
-    for (int i = 0; i < streams.size(); i++) {
-        if (streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
-            blobNum++;
-            availableStreams.insert(availableStreams.begin(), streams[i]);
-        }
+
+    // Current only one BLOB stream supported and always insert as fisrt stream
+    if (blobStream) {
+        availableStreams.insert(availableStreams.begin(), blobStream);
     }
     LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
 
@@ -398,24 +400,24 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     PlatformGraphConfigKey streamKey;
     ResolutionItem res;
 
-    stillStreamCnt++;
-    handleStillStream(res, streamKey);
-    handleMap(availableStreams[mainOutputIndex], res, streamKey);
-    LOG2("@%s, stream size still: %dx%d, format 0x%x, %s", __FUNCTION__,
-         availableStreams[mainOutputIndex]->width,
-         availableStreams[mainOutputIndex]->height,
-         availableStreams[mainOutputIndex]->format,
-         METAID2STR(android_scaler_availableFormats_values, availableStreams[mainOutputIndex]->format));
-
-    if (secondaryOutputIndex >= 0) {
+    if (needEnableStill) {
+        stillStreamCnt++;
+        handleStillStream(res, streamKey);
+        handleMap(availableStreams[mainOutputIndex], res, streamKey);
+        if (secondaryOutputIndex >= 0) {
+            stillStreamCnt++;
+            handleStillStream(res, streamKey);
+            handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
+        }
+    } else {
         videoStreamCnt++;
         handleVideoStream(res, streamKey);
-        handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
-        LOG2("@%s, stream size video: %dx%d, format 0x%x, %s", __FUNCTION__,
-             availableStreams[secondaryOutputIndex]->width,
-             availableStreams[secondaryOutputIndex]->height,
-             availableStreams[secondaryOutputIndex]->format,
-             METAID2STR(android_scaler_availableFormats_values, availableStreams[secondaryOutputIndex]->format));
+        handleMap(availableStreams[mainOutputIndex], res, streamKey);
+        if (secondaryOutputIndex >= 0) {
+            videoStreamCnt++;
+            handleVideoStream(res, streamKey);
+            handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
+        }
     }
 
     return OK;
@@ -454,9 +456,6 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
             MAX_NUM_STREAMS, streams.size());
         return BAD_VALUE;
     }
-    // W/A: Only support 2 streams in GC due to ISP pipe outputs.
-    int streamNum = (streams.size() > 2) ? 2 : streams.size();
-    mQuery[streamCount] = std::to_string(streamNum);
     /*
      * regenerate the stream resolutions vector if needed
      * We do this because we consume this vector for each stream configuration.
@@ -471,6 +470,14 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     if (ret != OK) {
         LOGE("@%s, call mapStreamToKey fail, ret:%d", __FUNCTION__, ret);
         return ret;
+    }
+    // W/A: Only support 2 streams in GC due to ISP pipe outputs.
+    int streamNum = (streams.size() > 2) ? 2 : streams.size();
+    mQuery[streamCount] = std::to_string(streamNum);
+    // W/A: only pv node is used due to FOV issue,
+    // so here consider one stream only for still case
+    if(needEnableStill) {
+       mQuery[streamCount] = std::to_string(1);
     }
 
     /**
