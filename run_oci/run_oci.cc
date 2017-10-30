@@ -491,8 +491,8 @@ void CleanUpContainer(const base::FilePath& container_dir) {
 }
 
 // Runs an OCI image with the configuration found at |bundle_dir|.
-// If |inplace| is true, |bundle_dir| will also be used to mount the rootfs.
-// Otherwise, a new directory under kRunContainersPath will be created.
+// If |detach_after_start| is true, a new directory under kRunContainersPath
+// will be created to store the state of the container.
 // If |detach_after_start| is true, blocks until the program specified in
 // config.json exits, otherwise blocks until after the post-start hooks have
 // finished.
@@ -500,7 +500,6 @@ void CleanUpContainer(const base::FilePath& container_dir) {
 int RunOci(const base::FilePath& bundle_dir,
            const std::string& container_id,
            const ContainerOptions& container_options,
-           bool inplace,
            bool detach_after_start) {
   base::FilePath container_dir;
   const base::FilePath container_config_file =
@@ -511,42 +510,26 @@ int RunOci(const base::FilePath& bundle_dir,
     return -1;
 
   // Inject options passed in from the commandline.
-  if (oci_config->linux_config.altSyscall.empty())
-    oci_config->linux_config.altSyscall = container_options.alt_syscall_table;
   if (oci_config->linux_config.cgroupsPath.empty()) {
     // The OCI spec says that absolute paths for |cgroupsPath| are treated as
     // relative to the root of the cgroup hierarchy.
     oci_config->linux_config.cgroupsPath =
         base::FilePath("/" + container_options.cgroup_parent);
   }
-  if (!oci_config->linux_config.skipSecurebits) {
-    oci_config->linux_config.skipSecurebits =
-        container_options.securebits_skip_mask;
-  }
 
   base::ScopedClosureRunner cleanup;
   if (detach_after_start) {
     container_dir = base::FilePath(kRunContainersPath).Append(container_id);
-    if (inplace) {
-      if (container_dir != bundle_dir) {
-        LOG(ERROR) << "With --inplace, the directory where config.json is "
-                      "located must be "
-                   << container_dir.value();
-        return -1;
-      }
-    } else {
-      // Not using base::CreateDirectory() since we want to error out when the
-      // directory exists a priori.
-      if (mkdir(container_dir.value().c_str(), 0755) != 0) {
-        PLOG(ERROR) << "Failed to create the container directory";
-        return -1;
-      }
+    // Not using base::CreateDirectory() since we want to error out when the
+    // directory exists a priori.
+    if (mkdir(container_dir.value().c_str(), 0755) != 0) {
+      PLOG(ERROR) << "Failed to create the container directory";
+      return -1;
     }
 
     cleanup.Reset(base::Bind(CleanUpContainer, container_dir));
 
-    if (!inplace &&
-        !base::CreateSymbolicLink(container_config_file,
+    if (!base::CreateSymbolicLink(container_config_file,
                                   container_dir.Append(kConfigJsonFilename))) {
       PLOG(ERROR) << "Failed to create the config.json symlink";
       return -1;
@@ -795,10 +778,6 @@ int OciKill(const std::string& container_id, int kill_signal) {
 }
 
 base::FilePath GetBundlePath(const base::FilePath& container_config_file) {
-  if (!base::IsLink(container_config_file)) {
-    // If the config.json is not a symlink, it was created using --inplace.
-    return container_config_file.DirName();
-  }
   base::FilePath bundle_path;
   if (!base::ReadSymbolicLink(container_config_file, &bundle_path)) {
     PLOG(ERROR) << "Failed to read symlink " << container_config_file.value();
@@ -840,12 +819,9 @@ const struct option longopts[] = {
     {"bind_mount", required_argument, nullptr, 'b'},
     {"help", no_argument, nullptr, 'h'},
     {"cgroup_parent", required_argument, nullptr, 'p'},
-    {"alt_syscall", required_argument, nullptr, 's'},
-    {"securebits_skip_mask", required_argument, nullptr, 'B'},
     {"use_current_user", no_argument, nullptr, 'u'},
     {"signal", required_argument, nullptr, 'S'},
     {"container_path", required_argument, nullptr, 'c'},
-    {"inplace", no_argument, nullptr, 128},
     {0, 0, 0, 0},
 };
 
@@ -877,17 +853,8 @@ void print_help(const char* argv0) {
       "                                 Defaults to $PWD.\n"
       "  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n"
       "  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n"
-      "  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n"
-      "  -B, --securebits_skip_mask=<MASK> Skips setting securebits in\n"
-      "                                 <mask> when restricting caps.\n"
       "  -u, --use_current_user         Map the current user/group only.\n"
       "  -i, --dont_run_as_init         Do not run the command as init.\n"
-      "\n"
-      "Options for start:\n"
-      "  --inplace                      The container path is the same\n"
-      "                                 as the state path. Useful if the\n"
-      "                                 config.json file needs to be\n"
-      "                                 modified prior to running.\n"
       "\n"
       "kill:\n"
       "\n"
@@ -912,7 +879,6 @@ int main(int argc, char** argv) {
   base::FilePath bundle_dir = base::MakeAbsoluteFilePath(base::FilePath("."));
   int c;
   int kill_signal = SIGTERM;
-  bool inplace = false;
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
@@ -935,13 +901,6 @@ int main(int argc, char** argv) {
             base::FilePath(inside_path)));
         break;
       }
-      case 'B':
-        if (!base::HexStringToUInt64(optarg,
-                                     &container_options.securebits_skip_mask)) {
-          run_oci::print_help(argv[0]);
-          return -1;
-        }
-        break;
       case 'c':
         bundle_dir = base::MakeAbsoluteFilePath(base::FilePath(optarg));
         break;
@@ -950,9 +909,6 @@ int main(int argc, char** argv) {
         break;
       case 'p':
         container_options.cgroup_parent = optarg;
-        break;
-      case 's':
-        container_options.alt_syscall_table = optarg;
         break;
       case 'S': {
         auto it = run_oci::kSignalMap.find(optarg);
@@ -969,9 +925,6 @@ int main(int argc, char** argv) {
       case 'h':
         run_oci::print_help(argv[0]);
         return 0;
-      case 128:  // inplace
-        inplace = true;
-        break;
       default:
         run_oci::print_help(argv[0]);
         return 1;
@@ -1002,9 +955,9 @@ int main(int argc, char** argv) {
 
   if (command == "run") {
     return run_oci::RunOci(bundle_dir, container_id, container_options,
-                           true /*inplace*/, false /*detach_after_start*/);
+                           false /*detach_after_start*/);
   } else if (command == "start") {
-    return run_oci::RunOci(bundle_dir, container_id, container_options, inplace,
+    return run_oci::RunOci(bundle_dir, container_id, container_options,
                            true /*detach_after_start*/);
   } else if (command == "kill") {
     return run_oci::OciKill(container_id, kill_signal);
