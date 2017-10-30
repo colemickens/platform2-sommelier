@@ -33,10 +33,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_bearer.h"
-#include "shill/cellular/cellular_capability_cdma.h"
-#include "shill/cellular/cellular_capability_gsm.h"
-#include "shill/cellular/cellular_capability_universal.h"
-#include "shill/cellular/cellular_capability_universal_cdma.h"
+#include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/control_interface.h"
@@ -113,6 +110,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       prl_version_(0),
       modem_info_(modem_info),
       type_(type),
+      capability_(CellularCapability::Create(type, this, modem_info)),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()),
       allow_roaming_(false),
@@ -121,7 +119,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
-  InitCapability(type);
+  mobile_operator_info_observer_->set_capability(capability_.get());
 
   // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the
   // costly database, and lighter objects that |Cellular| can own.
@@ -357,29 +355,6 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   // was not invoked) in response to a suspend request, any registered
   // termination action needs to be removed explicitly.
   manager()->RemoveTerminationAction(link_name());
-}
-
-void Cellular::InitCapability(Type type) {
-  // TODO(petkov): Consider moving capability construction into a factory that's
-  // external to the Cellular class.
-  SLOG(this, 2) << __func__ << "(" << type << ")";
-  switch (type) {
-    case kTypeGSM:
-      capability_.reset(new CellularCapabilityGSM(this, modem_info_));
-      break;
-    case kTypeCDMA:
-      capability_.reset(new CellularCapabilityCDMA(this, modem_info_));
-      break;
-    case kTypeUniversal:
-      capability_.reset(new CellularCapabilityUniversal(this, modem_info_));
-      break;
-    case kTypeUniversalCDMA:
-      capability_.reset(new CellularCapabilityUniversalCDMA(this, modem_info_));
-      break;
-    default:
-      NOTREACHED();
-  }
-  mobile_operator_info_observer_->set_capability(capability_.get());
 }
 
 void Cellular::Activate(const string& carrier,

@@ -529,8 +529,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   };
   LocationInfo location_info_;
 
-  std::unique_ptr<CellularCapability> capability_;
-
   // Operator info objects. These objects receive updates as we receive
   // information about the network operators from the SIM or OTA. In turn, they
   // send out updates through their observer interfaces whenever the identity of
@@ -585,6 +583,9 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   ModemInfo* modem_info_;
   const Type type_;
+
+  std::unique_ptr<CellularCapability> capability_;
+
   PPPDeviceFactory* ppp_device_factory_;
 
   ProcessManager* process_manager_;

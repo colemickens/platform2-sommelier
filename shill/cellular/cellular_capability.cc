@@ -16,10 +16,16 @@
 
 #include "shill/cellular/cellular_capability.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/cellular.h"
+#include "shill/cellular/cellular_capability_cdma.h"
+#include "shill/cellular/cellular_capability_gsm.h"
+#include "shill/cellular/cellular_capability_universal.h"
+#include "shill/cellular/cellular_capability_universal_cdma.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/property_accessor.h"
@@ -47,6 +53,30 @@ const int CellularCapability::kTimeoutRegister = 90000;
 const int CellularCapability::kTimeoutReset = 90000;
 const int CellularCapability::kTimeoutScan = 120000;
 const int CellularCapability::kTimeoutSetupLocation = 45000;
+
+// static
+std::unique_ptr<CellularCapability> CellularCapability::Create(
+    Cellular::Type type, Cellular* cellular, ModemInfo* modem_info) {
+  switch (type) {
+    case Cellular::kTypeGSM:
+      return std::make_unique<CellularCapabilityGSM>(cellular, modem_info);
+
+    case Cellular::kTypeCDMA:
+      return std::make_unique<CellularCapabilityCDMA>(cellular, modem_info);
+
+    case Cellular::kTypeUniversal:
+      return std::make_unique<CellularCapabilityUniversal>(cellular,
+                                                           modem_info);
+
+    case Cellular::kTypeUniversalCDMA:
+      return std::make_unique<CellularCapabilityUniversalCDMA>(cellular,
+                                                               modem_info);
+
+    default:
+      NOTREACHED();
+      return nullptr;
+  }
+}
 
 CellularCapability::CellularCapability(Cellular* cellular,
                                        ModemInfo* modem_info)

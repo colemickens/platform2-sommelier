@@ -17,6 +17,7 @@
 #ifndef SHILL_CELLULAR_CELLULAR_CAPABILITY_H_
 #define SHILL_CELLULAR_CELLULAR_CAPABILITY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -79,6 +80,10 @@ class CellularCapability {
   static const int kTimeoutSetupLocation;
 
   static const char kModemPropertyIMSI[];
+
+  static std::unique_ptr<CellularCapability> Create(Cellular::Type type,
+                                                    Cellular* cellular,
+                                                    ModemInfo* modem_info);
 
   virtual ~CellularCapability();
 
