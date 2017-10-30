@@ -31,8 +31,14 @@ std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
 
 uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
   // The default GBM flags for camera buffers.
-  uint32_t flags = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
-                   GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+  uint32_t flags = GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+
+  if (usage & GRALLOC_USAGE_HW_CAMERA_READ) {
+    flags |= GBM_BO_USE_CAMERA_READ;
+  }
+  if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
+    flags |= GBM_BO_USE_CAMERA_WRITE;
+  }
   if (usage & GRALLOC_USAGE_HW_TEXTURE) {
     flags |= GBM_BO_USE_TEXTURING;
   }

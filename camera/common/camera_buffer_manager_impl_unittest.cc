@@ -456,8 +456,7 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
   EXPECT_CALL(
       gbm_,
       GbmBoCreate(&dummy_device, kBufferWidth, kBufferHeight, DRM_FORMAT_YUV420,
-                  GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
-                      GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN))
+                  GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN))
       .Times(1)
       .WillOnce(Return(&dummy_bo));
   EXPECT_CALL(gbm_, GbmBoGetNumPlanes(&dummy_bo)).Times(1).WillOnce(Return(3));
