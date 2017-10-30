@@ -36,7 +36,7 @@ class FdtLibTest(unittest.TestCase):
 
   def testGetModels(self):
     models_node = self.test_fdt.GetNode('/chromeos/models')
-    models = [m.name for m in models_node.subnodes]
+    models = [m.name for m in models_node.subnodes.values()]
     self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken',
                                       'whitetip', 'whitetip1', 'whitetip2'])
 

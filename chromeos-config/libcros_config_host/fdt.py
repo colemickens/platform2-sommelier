@@ -159,7 +159,7 @@ class Node(object):
     self.offset = offset
     self.name = name
     self.path = path
-    self.subnodes = []
+    self.subnodes = OrderedDict()
     self.props = OrderedDict()
 
   def FindNode(self, name):
@@ -171,7 +171,7 @@ class Node(object):
     Returns:
       Node object if found, else None
     """
-    for subnode in self.subnodes:
+    for subnode in self.subnodes.values():
       if subnode.name == name:
         return subnode
     return None
@@ -203,7 +203,7 @@ class Node(object):
       name = self.fdt.fdt_obj.get_name(offset)
       path = self.path + sep + name
       node = Node(self.fdt, self, offset, name, path)
-      self.subnodes.append(node)
+      self.subnodes[name] = node
 
       node.Scan()
       offset = libfdt.fdt_next_subnode(self.fdt.GetFdt(), offset)
@@ -218,7 +218,7 @@ class Node(object):
       #print '%s: %d -> %d\n' % (self.path, self._offset, my_offset)
       self.offset = my_offset
     offset = libfdt.fdt_first_subnode(self.fdt.GetFdt(), self.offset)
-    for subnode in self.subnodes:
+    for subnode in self.subnodes.values():
       subnode.Refresh(offset)
       offset = libfdt.fdt_next_subnode(self.fdt.GetFdt(), offset)
 

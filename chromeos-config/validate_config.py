@@ -136,7 +136,7 @@ class CrosConfigValidator(object):
     if prop_name == 'reg' and '@' in node.name:
       return True
     if prop_name in ['#address-cells', '#size-cells']:
-      for subnode in node.subnodes:
+      for subnode in node.subnodes.values():
         if '@' in subnode.name:
           return True
     return False
@@ -168,7 +168,7 @@ class CrosConfigValidator(object):
           name = name[3:]
         parent_props = [e.name for e in schema_target.elements]
         sibling_names = node_target.props.keys()
-        sibling_names += [n.name for n in node_target.subnodes]
+        sibling_names += [n.name for n in node_target.subnodes.values()]
         if name in parent_props and value != (name in sibling_names):
           return False
     return True
@@ -266,7 +266,7 @@ class CrosConfigValidator(object):
         self.Fail(node.path, "Required property '%s' missing" % element.name)
 
     # Check that any required subnodes are present
-    subnode_names = [n.name for n in node.subnodes]
+    subnode_names = [n.name for n in node.subnodes.values()]
     for element in schema.elements:
       if (not isinstance(element, NodeDesc) or not element.required
           or not self.ElementPresent(element, node)):
@@ -310,7 +310,7 @@ class CrosConfigValidator(object):
         return
 
     self._ValidateSchema(node, schema)
-    for subnode in node.subnodes:
+    for subnode in node.subnodes.values():
       self._ValidateTree(subnode, schema)
 
   @staticmethod
@@ -373,12 +373,12 @@ class CrosConfigValidator(object):
 
       # Locate all the models and submodels before we start
       models = self._fdt.GetNode('/chromeos/models')
-      for model in models.subnodes:
+      for model in models.subnodes.values():
         self.model_list.append(model.name)
         sub_models = model.FindNode('submodels')
         if sub_models:
           self.submodel_list[model.name] = (
-              [sm.name for sm in sub_models.subnodes])
+              [sm.name for sm in sub_models.subnodes.values()])
         else:
           self.submodel_list[model.name] = []
 

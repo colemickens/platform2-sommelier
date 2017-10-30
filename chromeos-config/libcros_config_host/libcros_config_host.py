@@ -172,7 +172,7 @@ class CrosConfig(object):
     if 'phandle' in node.properties:
       phandle = fdt_node.props['phandle'].GetPhandle()
       cros_config.phandle_to_node[phandle] = node
-    for subnode in fdt_node.subnodes:
+    for subnode in fdt_node.subnodes.values():
       node.subnodes[subnode.name] = CrosConfig.MakeNode(cros_config, subnode)
     node.ScanSubnodes()
     return node
