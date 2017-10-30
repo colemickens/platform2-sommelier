@@ -39,7 +39,7 @@ def GetProperty(models, path, prop):
     prop: The property to get (by name).
   """
   for model in models or []:
-    config_prop = model.ChildPropertyFromPath(path, prop)
+    config_prop = model.PathProperty(path, prop)
     print(config_prop.value if config_prop else '')
 
 

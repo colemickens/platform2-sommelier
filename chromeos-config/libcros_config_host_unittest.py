@@ -86,37 +86,36 @@ class CrosConfigHostTest(unittest.TestCase):
     pyro = config.models['pyro']
     self.assertEqual(pyro.properties['wallpaper'].value, 'default')
 
-  def testChildNodeFromPath(self):
+  def testPathNode(self):
     config = CrosConfig(self.file)
-    self.assertIsNotNone(config.models['pyro'].ChildNodeFromPath('/firmware'))
+    self.assertIsNotNone(config.models['pyro'].PathNode('/firmware'))
 
-  def testBadChildNodeFromPath(self):
+  def testBadPathNode(self):
     config = CrosConfig(self.file)
-    self.assertIsNone(config.models['pyro'].ChildNodeFromPath('/dne'))
+    self.assertIsNone(config.models['pyro'].PathNode('/dne'))
 
-  def testChildPropertyFromPath(self):
+  def testPathProperty(self):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
-    ec_image = pyro.ChildPropertyFromPath('/firmware', 'ec-image')
+    ec_image = pyro.PathProperty('/firmware', 'ec-image')
     self.assertEqual(ec_image.value, 'bcs://Pyro_EC.9042.87.1.tbz2')
 
-  def testBadChildPropertyFromPath(self):
+  def testBadPathProperty(self):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
-    self.assertIsNone(pyro.ChildPropertyFromPath('/firmware', 'dne'))
-    self.assertIsNone(pyro.ChildPropertyFromPath('/dne', 'ec-image'))
+    self.assertIsNone(pyro.PathProperty('/firmware', 'dne'))
+    self.assertIsNone(pyro.PathProperty('/dne', 'ec-image'))
 
   def testSinglePhandleFollowProperty(self):
     config = CrosConfig(self.file)
     caroline = config.models['caroline']
-    bcs_overlay = caroline.ChildPropertyFromPath('/firmware', 'bcs-overlay')
+    bcs_overlay = caroline.PathProperty('/firmware', 'bcs-overlay')
     self.assertEqual(bcs_overlay.value, 'overlay-reef-private')
 
   def testSinglePhandleFollowNode(self):
     config = CrosConfig(self.file)
     caroline = config.models['caroline']
-    target = caroline.ChildPropertyFromPath('/firmware/build-targets',
-                                            'coreboot')
+    target = caroline.PathProperty('/firmware/build-targets', 'coreboot')
     self.assertEqual(target.value, 'caroline')
 
   def testGetFirmwareUris(self):
@@ -170,7 +169,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetMergedPropertiesPyro(self):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
-    stylus = pyro.ChildNodeFromPath('touch/stylus')
+    stylus = pyro.PathNode('touch/stylus')
     props = stylus.GetMergedProperties(None, 'touch-type')
     self.assertSequenceEqual(
         props,
@@ -182,7 +181,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetMergedPropertiesReef(self):
     config = CrosConfig(self.file)
     reef = config.models['reef']
-    touchscreen = reef.ChildNodeFromPath('touch/touchscreen@1')
+    touchscreen = reef.PathNode('touch/touchscreen@1')
     props = touchscreen.GetMergedProperties(None, 'touch-type')
     self.assertSequenceEqual(
         props,
@@ -195,7 +194,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetMergedPropertiesDefault(self):
     config = CrosConfig(self.file)
     caroline = config.models['caroline']
-    audio = caroline.ChildNodeFromPath('/audio/main')
+    audio = caroline.PathNode('/audio/main')
     props = caroline.GetMergedProperties(audio, 'audio-type')
     self.assertSequenceEqual(
         props,
@@ -260,20 +259,17 @@ class CrosConfigHostTest(unittest.TestCase):
     # These are defined by whitetip1 itself
     self.assertEqual(whitetip1.properties['wallpaper'].value, 'shark')
     self.assertEqual(
-        whitetip1.ChildPropertyFromPath('/firmware', 'key-id').value,
-        'WHITETIP1')
+        whitetip1.PathProperty('/firmware', 'key-id').value, 'WHITETIP1')
 
     # This is in a subnode defined by whitetip
-    self.assertEqual(whitetip1.ChildPropertyFromPath('/touch', 'present').value,
-                     'yes')
+    self.assertEqual(whitetip1.PathProperty('/touch', 'present').value, 'yes')
 
     # This is in the main node, but defined by whitetip
-    self.assertEqual(whitetip1.ChildPropertyFromPath('/', 'powerd-prefs').value,
+    self.assertEqual(whitetip1.PathProperty('/', 'powerd-prefs').value,
                      'whitetip')
 
     # This is defined by whitetip's shared firmware
-    target = whitetip1.ChildPropertyFromPath('/firmware/build-targets',
-                                             'coreboot')
+    target = whitetip1.PathProperty('/firmware/build-targets', 'coreboot')
     self.assertEqual(target.value, 'caroline')
 
   def testGetFirmwareBuildTargets(self):
@@ -324,25 +320,24 @@ class CrosConfigHostTest(unittest.TestCase):
     # These are defined by caroline itself
     self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
     self.assertEqual(
-        caroline.ChildPropertyFromPath('/audio/main', 'cras-config-dir').value,
+        caroline.PathProperty('/audio/main', 'cras-config-dir').value,
         'caroline')
 
     # This relies on a default property
     self.assertEqual(
-        caroline.ChildPropertyFromPath('/audio/main', 'ucm-suffix').value,
-        'pyro')
+        caroline.PathProperty('/audio/main', 'ucm-suffix').value, 'pyro')
 
   def testSubmodel(self):
     """Test that we can read properties from the submodel"""
     config = CrosConfig(self.file)
     reef = config.models['reef']
     self.assertEqual(
-        reef.GetSubmodelProp('touch', '/audio/main', 'ucm-suffix').value,
+        reef.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
         'front')
-    self.assertEqual(reef.GetSubmodelProp('touch', '/touch', 'present').value,
-                     'yes')
-    self.assertEqual(reef.GetSubmodelProp('notouch', '/touch', 'present').value,
-                     'no')
+    self.assertEqual(
+        reef.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
+    self.assertEqual(
+        reef.SubmodelPathProperty('notouch', '/touch', 'present').value, 'no')
 
 if __name__ == '__main__':
   unittest.main()

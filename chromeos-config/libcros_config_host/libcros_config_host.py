@@ -183,12 +183,10 @@ class CrosConfig(object):
     Returns:
       A list of all build-targets of the given type, for all models.
     """
-    build_targets = [model.ChildPropertyFromPath('/firmware/build-targets',
-                                                 target_type)
+    build_targets = [model.PathProperty('/firmware/build-targets', target_type)
                      for model in self.models.values()]
     if target_type == 'ec':
-      build_targets += [model.ChildPropertyFromPath('/firmware/build-targets',
-                                                    'cr50')
+      build_targets += [model.PathProperty('/firmware/build-targets', 'cr50')
                         for model in self.models.values()]
     # De-duplicate
     build_targets_dedup = {target.value if target else None
@@ -293,7 +291,7 @@ class CrosConfig(object):
         return self.FollowPhandle(share_prop[0])
       return None
 
-    def ChildNodeFromPath(self, relative_path):
+    def PathNode(self, relative_path):
       """Returns the CrosConfig.Node at the relative path.
 
       This method is useful for accessing a nested child object at a relative
@@ -301,7 +299,7 @@ class CrosConfig(object):
       delimiters. Return None if the path is invalid.
 
       Args:
-        relative_path: A relative path string separated by '/'.
+        relative_path: A relative path string separated by '/', '/thermal'
 
       Returns:
         A CrosConfig.Node at the path, or None if it doesn't exist.
@@ -323,14 +321,27 @@ class CrosConfig(object):
           sub_node = shared.subnodes[part]
         else:
           return None
-      return sub_node.ChildNodeFromPath('/'.join(path_parts[1:]))
+      return sub_node.PathNode('/'.join(path_parts[1:]))
 
-    def ChildPropertyFromPath(self, relative_path, property_name):
-      child_node = self.ChildNodeFromPath(relative_path)
+    def PathProperty(self, relative_path, property_name):
+      """Returns the value of a property relatative to this node
+
+      This function honours the 'shared' property, by following the phandle and
+      searching there, at any component of the path. It also honours the
+      'default' property which is defined for nodes.
+
+      Args:
+        relative_path: A relative path string separated by '/', e.g. '/thermal'
+        property_name: Name of property to look up, e.g 'dptf-dv'
+
+      Returns:
+        String value of property, or None if not found
+      """
+      child_node = self.PathNode(relative_path)
       if not child_node:
         shared = self.FollowShare()
         if shared:
-          child_node = shared.ChildNodeFromPath(relative_path)
+          child_node = shared.PathNode(relative_path)
       if child_node:
         prop = child_node.properties.get(property_name)
         if not prop:
@@ -340,7 +351,7 @@ class CrosConfig(object):
         if prop:
           return prop
       if self.default:
-        return self.default.ChildPropertyFromPath(relative_path, property_name)
+        return self.default.PathProperty(relative_path, property_name)
       return None
 
     def FollowPhandle(self, prop_name):
@@ -413,7 +424,7 @@ class CrosConfig(object):
         for name, subnode in self.subnodes['submodels'].subnodes.iteritems():
           self.submodels[name] = subnode
 
-    def GetSubmodelProp(self, submodel_name, relative_path, property_name):
+    def SubmodelPathProperty(self, submodel_name, relative_path, property_name):
       """Reads a property from a submodel.
 
       Args:
@@ -427,7 +438,7 @@ class CrosConfig(object):
       submodel = self.submodels.get(submodel_name)
       if not submodel:
         return None
-      return submodel.ChildPropertyFromPath(relative_path, property_name)
+      return submodel.PathProperty(relative_path, property_name)
 
     def GetMergedProperties(self, node, phandle_prop):
       props = node.GetMergedProperties(None, phandle_prop)
@@ -437,7 +448,7 @@ class CrosConfig(object):
         # Once crbug.com/775229 is completed, we will be able to do this in a
         # nicer way.
         _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
-        default_node = self.default.ChildNodeFromPath(subpath)
+        default_node = self.default.PathNode(subpath)
         self.MergeProperties(props, default_node, phandle_prop)
         self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
       return props
@@ -451,7 +462,7 @@ class CrosConfig(object):
       Returns:
         A list of (string) full firmware URIs, or an empty list on failure.
       """
-      firmware = self.ChildNodeFromPath('/firmware')
+      firmware = self.PathNode('/firmware')
       if not firmware:
         return []
       shared = firmware.FollowPhandle('shares')
@@ -517,7 +528,7 @@ class CrosConfig(object):
         List of TouchFile objects representing the touch firmware referenced
         by this model
       """
-      touch = self.ChildNodeFromPath('/touch')
+      touch = self.PathNode('/touch')
       files = {}
       if touch:
         for device in touch.subnodes.values():
@@ -562,7 +573,7 @@ class CrosConfig(object):
                   self.GetFilename(self._fdt_node.path, props, dest_template)))
 
       files = {}
-      audio = self.ChildNodeFromPath('/audio')
+      audio = self.PathNode('/audio')
       if audio:
         for card in audio.subnodes.values():
           # First get all the property keys/values from the current node
@@ -592,7 +603,7 @@ class CrosConfig(object):
       """
       files = {}
       prop = 'dptf-dv'
-      thermal = self.ChildNodeFromPath('/thermal')
+      thermal = self.PathNode('/thermal')
       target_dir = self.cros_config.validator.GetModelTargetDir('/thermal',
                                                                 prop)
       if thermal:
