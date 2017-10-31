@@ -126,15 +126,12 @@ class CellularCapabilityClassic : public CellularCapability {
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityGSMTest;
-  FRIEND_TEST(CellularCapabilityGSMTest, SetProxy);
-  FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemSucceed);
   FRIEND_TEST(CellularCapabilityClassicTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
-  FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -145,7 +142,6 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ConnectSuccessNoService);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
-  FRIEND_TEST(CellularTest, DisconnectWithCallback);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 

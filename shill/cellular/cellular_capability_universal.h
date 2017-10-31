@@ -190,14 +190,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              ActivationWaitForRegisterTimeout);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              DisconnectWithDeferredCallback);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, ExtractPcoValue);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);
@@ -216,8 +211,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Reset);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
@@ -232,7 +225,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               StopModemAltairDeleteBearerFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               TerminationActionRemovedByStopModem);
@@ -247,9 +239,6 @@ class CellularCapabilityUniversal : public CellularCapability {
               UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceOLP);
   FRIEND_TEST(CellularCapabilityUniversalTimerTest, CompleteActivation);
-  FRIEND_TEST(CellularTest, EnableTrafficMonitor);
-  FRIEND_TEST(CellularTest,
-              HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
   FRIEND_TEST(CellularTest, OnPPPDied);
 

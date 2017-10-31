@@ -80,7 +80,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
-  FRIEND_TEST(CellularTest, CreateService);
 
   static const char kPhoneNumber[];
 

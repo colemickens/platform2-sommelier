@@ -307,7 +307,6 @@ class CellularCapability {
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, TearDown);
 
   Cellular* cellular_;
   ModemInfo* modem_info_;

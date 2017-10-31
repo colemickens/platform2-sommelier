@@ -74,18 +74,15 @@ class Modem {
  private:
   friend class ModemTest;
   friend class Modem1Test;
-  FRIEND_TEST(Modem1Test, Init);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
   FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerClassicTest, StartStop);
-  FRIEND_TEST(ModemManagerCoreTest, ShouldAddModem);
   FRIEND_TEST(ModemTest, CreateDeviceEarlyFailures);
   FRIEND_TEST(ModemTest, CreateDevicePPP);
   FRIEND_TEST(ModemTest, EarlyDeviceProperties);
   FRIEND_TEST(ModemTest, GetDeviceParams);
-  FRIEND_TEST(ModemTest, Init);
   FRIEND_TEST(ModemTest, PendingDevicePropertiesAndCreate);
 
   // Constants associated with fake network devices for PPP dongles.

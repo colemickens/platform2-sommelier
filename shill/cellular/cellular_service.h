@@ -129,14 +129,11 @@ class CellularService : public Service {
   template <typename key_type, typename value_type>
   friend class ContainsCellularPropertiesMatcherP2;
 
-  FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
-  FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
@@ -147,17 +144,6 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, LoadResetsPPPAuthFailure);
   FRIEND_TEST(CellularServiceTest, Save);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
-  FRIEND_TEST(CellularServiceTest,
-              OutOfCreditsDetectionNotSkippedAfterSlowResume);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume);
-  FRIEND_TEST(CellularServiceTest,
-              OutOfCreditsDetectionSkippedAlreadyOutOfCredits);
-  FRIEND_TEST(CellularServiceTest,
-              OutOfCreditsDetectionSkippedExplicitDisconnect);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotEnforced);
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
 
   static const char kAutoConnActivating[];

@@ -342,41 +342,31 @@ class Cellular : public Device,
   FRIEND_TEST(CellularCapabilityClassicTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemStatus);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateRegistrationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateRegistrationStateModemNotConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
-  FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, ConnectSuccessNoService);
   FRIEND_TEST(CellularTest, CustomSetterNoopChange);
-  FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
-  FRIEND_TEST(CellularTest, DisconnectWithCallback);
   FRIEND_TEST(CellularTest, DropConnection);
   FRIEND_TEST(CellularTest, DropConnectionPPP);
-  FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest, EstablishLinkDHCP);
   FRIEND_TEST(CellularTest, EstablishLinkPPP);
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
   FRIEND_TEST(CellularTest, FriendlyServiceName);
-  FRIEND_TEST(CellularTest,
-              HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
   FRIEND_TEST(CellularTest, IsRoamingAllowedOrRequired);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
@@ -392,7 +382,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantDisabled);
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
   FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
-  FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularTest, OnPPPDied);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
@@ -406,7 +395,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StopModemCallback);
   FRIEND_TEST(CellularTest, StopModemCallbackFail);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
-  FRIEND_TEST(CellularTest, StopPPPOnTermination);
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
@@ -415,11 +403,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartPPP);
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
-  FRIEND_TEST(CellularTest, UpdateScanning);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
   FRIEND_TEST(CellularTest, GetGeolocationObjects);
-  FRIEND_TEST(CellularTest, PollLocationFailure);
-  FRIEND_TEST(CellularTest, PollLocationSuccess);
 
   // Names of properties in storage
   static const char kAllowRoaming[];

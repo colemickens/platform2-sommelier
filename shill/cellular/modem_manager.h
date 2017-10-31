@@ -93,7 +93,6 @@ class ModemManager {
   FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
   FRIEND_TEST(ModemManagerCoreTest, ConnectDisconnect);
-  FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
 
   const std::string service_;
   const std::string path_;

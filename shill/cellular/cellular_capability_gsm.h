@@ -107,7 +107,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityClassicTest;
-  FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSIFails);
@@ -129,7 +128,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
   FRIEND_TEST(CellularTest, StartGSMRegister);
-  FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.
