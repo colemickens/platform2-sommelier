@@ -32,7 +32,7 @@ As of M41, if the lock screen is displayed, the screen will be dimmed after just
 Several events can result in the above delays being lengthened (specifically,
 the screen-dimming delay is doubled and the other delays' distances from the
 dimming delay are maintained; for example, on battery, the delays are changed to
-10/11/16 minutes):
+10/11/15 minutes):
 
 -   An external monitor is connected
 -   User activity occurs while the screen is dimmed or soon after it is turned
