@@ -7,7 +7,7 @@
 
 # Prints an error message to stderr.
 error() {
-  echo "ERROR: $@" >/dev/stderr
+  echo "ERROR: $@" 1>&2
 }
 
 # Prints an error message to stderr and exits with a status code 1.
