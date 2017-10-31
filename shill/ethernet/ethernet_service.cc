@@ -59,7 +59,7 @@ EthernetService::EthernetService(ControlInterface* control_interface,
   // observers with our current state, and emit the appropriate change
   // notifications. (Initial observer state may have been set in our base
   // class.)
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
 }
 
 EthernetService::EthernetService(ControlInterface* control_interface,
@@ -134,7 +134,7 @@ bool EthernetService::IsAutoConnectable(const char** reason) const {
 }
 
 void EthernetService::OnVisibilityChanged() {
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
 }
 
 string EthernetService::GetTethering(Error* /*error*/) const {

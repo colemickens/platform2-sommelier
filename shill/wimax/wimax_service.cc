@@ -71,7 +71,7 @@ WiMaxService::WiMaxService(ControlInterface* control,
   // Now that |this| is a fully constructed WiMaxService, synchronize observers
   // with our current state, and emit the appropriate change notifications.
   // (Initial observer state may have been set in our base class.)
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
 }
 
 WiMaxService::~WiMaxService() {}
@@ -98,7 +98,7 @@ void WiMaxService::Stop() {
     SetDevice(nullptr);
   }
   UpdateConnectable();
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
 }
 
 bool WiMaxService::Start(std::unique_ptr<WiMaxNetworkProxyInterface> proxy) {
@@ -135,7 +135,7 @@ bool WiMaxService::Start(std::unique_ptr<WiMaxNetworkProxyInterface> proxy) {
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
   proxy_ = std::move(proxy);
   UpdateConnectable();
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();
   return true;
 }

@@ -40,7 +40,6 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
-#include "shill/service_property_change_notifier.h"
 #include "shill/store_interface.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -143,6 +142,7 @@ Service::Service(ControlInterface* control_interface,
       failure_(kFailureUnknown),
       auto_connect_(false),
       retain_auto_connect_(false),
+      was_visible_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
       error_(ConnectFailureToString(failure_)),
@@ -173,8 +173,6 @@ Service::Service(ControlInterface* control_interface,
       unique_name_(base::UintToString(serial_number_)),
       friendly_name_(unique_name_),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
-      property_change_notifier_(
-          new ServicePropertyChangeNotifier(adaptor_.get())),
       metrics_(metrics),
       manager_(manager),
       time_(Time::GetInstance()),
@@ -270,10 +268,10 @@ Service::Service(ControlInterface* control_interface,
   store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
 
-  HelpRegisterObservedDerivedBool(kVisibleProperty,
-                                  &Service::GetVisibleProperty,
-                                  nullptr,
-                                  nullptr);
+  HelpRegisterDerivedBool(kVisibleProperty,
+                          &Service::GetVisibleProperty,
+                          nullptr,
+                          nullptr);
 
   store_.RegisterConstString(kPortalDetectionFailedPhaseProperty,
                              &portal_detection_failure_phase_);
@@ -1399,17 +1397,6 @@ void Service::HelpRegisterConstDerivedString(
       StringAccessor(new CustomReadOnlyAccessor<Service, string>(this, get)));
 }
 
-void Service::HelpRegisterObservedDerivedBool(
-    const string& name,
-    bool(Service::*get)(Error* error),
-    bool(Service::*set)(const bool&, Error*),
-    void(Service::*clear)(Error*)) {
-  BoolAccessor accessor(
-      new CustomAccessor<Service, bool>(this, get, set, clear));
-  store_.RegisterDerivedBool(name, accessor);
-  property_change_notifier_->AddBoolPropertyObserver(name, accessor);
-}
-
 // static
 void Service::LoadString(StoreInterface* storage,
                          const string& id,
@@ -1637,8 +1624,11 @@ bool Service::SetProxyConfig(const string& proxy_config, Error* error) {
   return true;
 }
 
-void Service::NotifyPropertyChanges() {
-  property_change_notifier_->UpdatePropertyObservers();
+void Service::NotifyIfVisibilityChanged() {
+  const bool is_visible = IsVisible();
+  if (was_visible_ != is_visible)
+    adaptor_->EmitBoolChanged(kVisibleProperty, is_visible);
+  was_visible_ = is_visible;
 }
 
 Strings Service::GetDisconnectsProperty(Error* /*error*/) const {

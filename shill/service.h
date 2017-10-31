@@ -59,7 +59,6 @@ class Metrics;
 class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;
-class ServicePropertyChangeNotifier;
 class StoreInterface;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -618,14 +617,6 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterConstDerivedString(
       const std::string& name, std::string(Service::*get)(Error* error) const);
 
-  // HelpRegisterObservedDerived*: Expose an property over RPC, with the
-  // name |name|, for which property changes are automatically generated.
-  //
-  void HelpRegisterObservedDerivedBool(
-      const std::string& name,
-      bool(Service::*get)(Error* error),
-      bool(Service::*set)(const bool& value, Error* error),
-      void(Service::*clear)(Error* error));
   ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -670,7 +661,7 @@ class Service : public base::RefCounted<Service> {
   void SetSecurity(CryptoAlgorithm crypt, bool rotation, bool endpoint_auth);
 
   // Emit property change notifications for all observed properties.
-  void NotifyPropertyChanges();
+  void NotifyIfVisibilityChanged();
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -846,6 +837,10 @@ class Service : public base::RefCounted<Service> {
   // from the UI.
   bool retain_auto_connect_;
 
+  // True if the device was visible on the last call to
+  // NotifyIfVisibilityChanged().
+  bool was_visible_;
+
   std::string check_portal_;
   bool connectable_;
   std::string error_;
@@ -903,7 +898,6 @@ class Service : public base::RefCounted<Service> {
   std::vector<std::string> remote_certification_;
 
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
-  std::unique_ptr<ServicePropertyChangeNotifier> property_change_notifier_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
   Metrics* metrics_;

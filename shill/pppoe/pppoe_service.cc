@@ -70,7 +70,7 @@ PPPoEService::PPPoEService(ControlInterface* control_interface,
   set_friendly_name("PPPoE");
   SetConnectable(true);
   SetAutoConnect(true);
-  NotifyPropertyChanges();
+  NotifyIfVisibilityChanged();
 }
 
 PPPoEService::~PPPoEService() {}
