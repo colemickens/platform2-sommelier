@@ -286,7 +286,8 @@ public:
 
     status_t runSa(ia_aiq_statistics_input_params *ispStatistics,
                    ia_aiq_sa_input_params *saInputParams,
-                   ia_aiq_sa_results *saResults);
+                   ia_aiq_sa_results *saResults,
+                   bool forceUpdated = false);
 
     status_t getMakerNote(ia_mkn_trg aTarget, ia_binary_data &aBlob);
 
@@ -332,7 +333,9 @@ public:
     static status_t deepCopyGBCEResults(ia_aiq_gbce_results *dst,
                                  const ia_aiq_gbce_results *src);
     static status_t deepCopyPAResults(ia_aiq_pa_results *dst, const ia_aiq_pa_results *src);
-    static status_t deepCopySAResults(ia_aiq_sa_results *dst, const ia_aiq_sa_results *src);
+    static status_t deepCopySAResults(ia_aiq_sa_results *dst,
+                                      const ia_aiq_sa_results *src,
+                                      bool forceUpdated = false);
 
     const ia_cmc_t* getCmc() const { return mCmc ? mCmc->getCmc() : nullptr; }
     char mapUiImageEnhancement2Aiq(int uiValue);

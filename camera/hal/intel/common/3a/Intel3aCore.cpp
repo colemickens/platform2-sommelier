@@ -698,7 +698,8 @@ status_t Intel3aCore::runPa(ia_aiq_statistics_input_params *ispStatistics,
  */
 status_t Intel3aCore::runSa(ia_aiq_statistics_input_params *ispStatistics,
                             ia_aiq_sa_input_params *saInputParams,
-                            ia_aiq_sa_results *saResults)
+                            ia_aiq_sa_results *saResults,
+                            bool forceUpdated)
 {
     LOG2("@%s", __FUNCTION__);
 
@@ -733,7 +734,7 @@ status_t Intel3aCore::runSa(ia_aiq_statistics_input_params *ispStatistics,
     }
 
     //storing results;
-    status = deepCopySAResults(saResults, new_sa_results);
+    status = deepCopySAResults(saResults, new_sa_results, forceUpdated);
 
     if (CC_UNLIKELY(status != NO_ERROR)) {
        LOGE("Error running SA %d",status);
@@ -999,7 +1000,8 @@ status_t Intel3aCore::deepCopyPAResults(ia_aiq_pa_results *dst,
 }
 
 status_t Intel3aCore::deepCopySAResults(ia_aiq_sa_results *dst,
-                                        const ia_aiq_sa_results *src)
+                                        const ia_aiq_sa_results *src,
+                                        bool forceUpdated)
 {
     /**
      * lets check that all the pointers are there
@@ -1026,7 +1028,12 @@ status_t Intel3aCore::deepCopySAResults(ia_aiq_sa_results *dst,
     dst->height = src->height;
     dst->lsc_update = src->lsc_update;
 
-    if (src->lsc_update) {
+    if (forceUpdated) {
+        LOG2("%s, force updating lsc table", __FUNCTION__);
+        dst->lsc_update = true;
+    }
+
+    if (dst->lsc_update) {
         uint32_t memCopySize = src->width * src->height * sizeof(float);
         STDCOPY((int8_t *) dst->channel_r, (int8_t *) src->channel_r, memCopySize);
         STDCOPY((int8_t *) dst->channel_gr, (int8_t *) src->channel_gr, memCopySize);
