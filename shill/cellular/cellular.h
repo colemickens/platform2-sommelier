@@ -582,7 +582,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   // ///////////////////////////////////////////////////////////////////////////
 
   ModemInfo* modem_info_;
-  const Type type_;
 
   std::unique_ptr<CellularCapability> capability_;
 
