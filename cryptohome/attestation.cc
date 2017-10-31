@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -22,6 +23,7 @@
 #include <brillo/mime_utils.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <google/protobuf/descriptor.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/aes.h>
 #include <openssl/evp.h>
@@ -55,9 +57,46 @@ class ScopedBool {
   bool reset_value_;
 };
 
+std::string GetPCAName(cryptohome::Attestation::PCAType pca_type) {
+  switch (pca_type) {
+    case cryptohome::Attestation::kDefaultPCA:
+      return "the default PCA";
+    case cryptohome::Attestation::kTestPCA:
+      return "the test PCA";
+    default: {
+      std::ostringstream stream;
+      stream << "PCA " << pca_type;
+      return stream.str();
+    }
+  }
+}
+
+std::string GetIdentityFeaturesNames(int identity_features) {
+  std::ostringstream stream;
+  if (identity_features == cryptohome::NO_IDENTITY_FEATURES) {
+    stream << cryptohome::IdentityFeatures_Name(
+        cryptohome::NO_IDENTITY_FEATURES);
+  } else {
+    const google::protobuf::EnumDescriptor* desc =
+        cryptohome::IdentityFeatures_descriptor();
+    for (int i = 0, count = desc->value_count(); i < count; ++i) {
+      const google::protobuf::EnumValueDescriptor* value_desc = desc->value(i);
+      if (identity_features & value_desc->number()) {
+        if (stream.tellp() > 0) {
+          stream << ", ";
+        }
+        stream << value_desc->name();
+      }
+    }
+  }
+  return stream.str();
+}
+
 }  // namespace
 
 namespace cryptohome {
+
+using QuoteMap = google::protobuf::Map<int, Quote>;
 
 // Indexes of PCRs which the created TPM delegate should be bound to.
 const uint32_t kDelegateBoundPcrs[] = {0};
@@ -118,8 +157,7 @@ const char Attestation::kTestPCAWebOrigin[] =
     "https://asbestos-qa.corp.google.com";
 
 #ifdef USE_TEST_PCA
-#error "Do not compile with USE_TEST_PCA"
-       " but provide the right PCA_type in calls."
+#error "Do not compile with USE_TEST_PCA, pass the right PCA type in calls."
 #endif
 
 const char Attestation::kDefaultEnterpriseSigningPublicKey[] =
@@ -356,6 +394,11 @@ Attestation::~Attestation() {
   ClearDatabase();
 }
 
+void Attestation::set_default_identity_features_for_test(
+    int default_identity_features) {
+  default_identity_features_ = default_identity_features;
+}
+
 void Attestation::Initialize(Tpm* tpm,
                              TpmInit* tpm_init,
                              Platform* platform,
@@ -388,9 +431,14 @@ void Attestation::Initialize(Tpm* tpm,
       return;
     }
     if (!DecryptDatabase(serial_encrypted_db, &database_pb_)) {
-      LOG(WARNING) << "Attestation: Attestation data invalid.  "
+      LOG(WARNING) << "Attestation: Attestation data invalid. "
                       "This is normal if the TPM has been cleared.";
       return;
+    }
+    if (MigrateAttestationDatabase()) {
+      if (!PersistDatabaseChanges()) {
+        LOG(WARNING) << "Attestation: Failed to persist database changes.";
+      }
     }
     FinalizeEndorsementData();
     LOG(INFO) << "Attestation: Valid attestation data exists.";
@@ -405,15 +453,32 @@ bool Attestation::IsPreparedForEnrollment() {
   if (!database_pb_.has_credentials()) {
     return false;
   }
-  return (database_pb_.credentials().has_endorsement_credential() ||
-          database_pb_.credentials()
-              .has_default_encrypted_endorsement_credential());
+  return database_pb_.credentials().has_endorsement_credential() ||
+         kMaxPCAType == database_pb_.credentials()
+             .encrypted_endorsement_credentials().size();
 }
 
 bool Attestation::IsEnrolled() {
   base::AutoLock lock(lock_);
-  return database_pb_.has_identity_key() &&
-      database_pb_.identity_key().has_identity_credential();
+  return HasIdentityCertificate(kFirstIdentity, kDefaultPCA) ||
+         HasIdentityCertificate(kFirstIdentity, kTestPCA);
+}
+
+Attestation::IdentityCertificateMap::iterator
+Attestation::FindIdentityCertificate(int identity, PCAType pca_type) {
+  auto end = database_pb_.mutable_identity_certificates()->end();
+  for (auto it = database_pb_.mutable_identity_certificates()->begin();
+       it != end; ++it) {
+    if (it->second.identity() == identity && it->second.aca() == pca_type) {
+      return it;
+    }
+  }
+  return end;
+}
+
+bool Attestation::HasIdentityCertificate(int identity, PCAType pca_type) {
+  return FindIdentityCertificate(identity, pca_type) !=
+         database_pb_.mutable_identity_certificates()->end();
 }
 
 void Attestation::PrepareForEnrollment() {
@@ -432,8 +497,11 @@ void Attestation::PrepareForEnrollment() {
   // If there is no TPM, we have no work to do.
   if (!IsTPMReady())
     return;
+
+  // If we are prepared for enrollment, we are done.
   if (IsPreparedForEnrollment())
     return;
+
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
   SecureBlob ek_public_key;
@@ -441,7 +509,85 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to get EK public key.";
     return;
   }
-  // Create an AIK.
+
+  base::AutoLock lock(lock_);
+
+  // Compute and store the device EID if needed.
+  if (!database_pb_.has_enrollment_id()) {
+    ComputeEnterpriseEnrollmentId(&enterprise_enrollment_id_);
+    database_pb_.set_enrollment_id(enterprise_enrollment_id_.data(),
+                                   enterprise_enrollment_id_.size());
+  }
+
+  // Create a new AIK and PCR quotes for the first identity with default
+  // identity features.
+  if (CreateIdentity(default_identity_features_, ek_public_key) < 0) {
+    return;
+  }
+
+  // Encrypt the endorsement credential for all the PCAs we know of.
+  TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
+  SecureBlob endorsement_credential(credentials_pb->endorsement_credential());
+  for (int pca = kDefaultPCA; pca < kMaxPCAType; ++pca) {
+    PCAType pca_type = static_cast<PCAType>(pca);
+    LOG(INFO) << "Attestation: Encrypting endorsement credential for "
+              << GetPCAName(pca_type) << ".";
+    if (!EncryptEndorsementCredential(
+            pca_type, endorsement_credential,
+            &(*credentials_pb
+                   ->mutable_encrypted_endorsement_credentials())[pca_type])) {
+      LOG(ERROR) << "Attestation: Failed to encrypt EK cert for "
+                 << GetPCAName(pca_type) << ".";
+      return;
+    }
+  }
+
+  // Create a delegate so we can activate the AIKs later.
+  const std::set<uint32_t> bound_pcrs(std::begin(kDelegateBoundPcrs),
+                                      std::end(kDelegateBoundPcrs));
+  SecureBlob delegate_blob;
+  SecureBlob delegate_secret;
+  if (!tpm_->CreateDelegate(bound_pcrs, Tpm::kDefaultDelegateFamilyLabel,
+                            Tpm::kDefaultDelegateLabel, &delegate_blob,
+                            &delegate_secret)) {
+    LOG(ERROR) << "Attestation: Failed to create delegate.";
+    return;
+  }
+
+  Delegation* delegate_pb = database_pb_.mutable_delegate();
+  delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
+  delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
+  delegate_pb->set_has_reset_lock_permissions(true);
+
+  if (!PersistDatabaseChanges())
+    return;
+
+  tpm_init_->RemoveTpmOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency::kAttestation);
+  base::TimeDelta delta = (base::TimeTicks::Now() - start);
+  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
+            << " ms).";
+}
+
+int Attestation::CreateIdentity(int identity_features) {
+  if (!IsPreparedForEnrollment()) {
+    return -1;
+  }
+  SecureBlob ek_public_key;
+  if (!GetEndorsementPublicKey(&ek_public_key)) {
+    return -1;
+  }
+  return CreateIdentity(identity_features, ek_public_key);
+}
+
+int Attestation::CreateIdentity(int identity_features,
+                                const SecureBlob& ek_public_key) {
+  // The identity we're creating will have the next index in identities.
+  const int identity = database_pb_.identities().size();
+  LOG(INFO) << "Attestation: Creating identity " << identity
+            << " with identity feature(s) "
+            << GetIdentityFeaturesNames(identity_features) << ".";
+  // Create the AIK.
   SecureBlob identity_public_key_der;
   SecureBlob identity_public_key;
   SecureBlob identity_key_blob;
@@ -460,15 +606,16 @@ void Attestation::PrepareForEnrollment() {
                           &endorsement_credential,
                           &platform_credential,
                           &conformance_credential)) {
-    LOG(ERROR) << "Attestation: Failed to make AIK.";
-    return;
+    LOG(ERROR) << "Attestation: Failed to make AIK for identity " << identity
+               << ".";
+    return -1;
   }
 
   // Quote PCR0.
   SecureBlob external_data;
   if (!tpm_->GetRandomDataSecureBlob(kQuoteExternalDataSize, &external_data)) {
     LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
-    return;
+    return -1;
   }
   SecureBlob quoted_pcr_value0;
   SecureBlob quoted_data0;
@@ -479,9 +626,11 @@ void Attestation::PrepareForEnrollment() {
                       &quoted_pcr_value0,
                       &quoted_data0,
                       &quote0)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote.";
-    return;
+    LOG(ERROR) << "Attestation: Failed to generate PCR0 quote for identity "
+               << identity << ".";
+    return -1;
   }
+
   // Quote PCR1.
   SecureBlob quoted_pcr_value1;
   SecureBlob quoted_data1;
@@ -492,53 +641,40 @@ void Attestation::PrepareForEnrollment() {
                       &quoted_pcr_value1,
                       &quoted_data1,
                       &quote1)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote.";
-    return;
+    LOG(ERROR) << "Attestation: Failed to generate PCR1 quote for identity "
+               << identity << ".";
+    return -1;
   }
 
-  // Create a delegate so we can activate the AIK later.
-  const std::set<uint32_t> bound_pcrs(std::begin(kDelegateBoundPcrs),
-                                      std::end(kDelegateBoundPcrs));
-  SecureBlob delegate_blob;
-  SecureBlob delegate_secret;
-  if (!tpm_->CreateDelegate(bound_pcrs, Tpm::kDefaultDelegateFamilyLabel,
-                            Tpm::kDefaultDelegateLabel, &delegate_blob,
-                            &delegate_secret)) {
-    LOG(ERROR) << "Attestation: Failed to create delegate.";
-    return;
-  }
-
-  // Assemble a protobuf to store locally.
-  base::AutoLock lock(lock_);
+  // This only needs to be done once when we haven't stored credentials yet.
   TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
-  credentials_pb->set_endorsement_public_key(ek_public_key.data(),
-                                             ek_public_key.size());
-  credentials_pb->set_endorsement_credential(endorsement_credential.data(),
-                                             endorsement_credential.size());
-  credentials_pb->set_platform_credential(platform_credential.data(),
-                                          platform_credential.size());
-  credentials_pb->set_conformance_credential(conformance_credential.data(),
-                                             conformance_credential.size());
-  if (!EncryptEndorsementCredential(
-      kDefaultPCA,
-      endorsement_credential,
-      credentials_pb->mutable_default_encrypted_endorsement_credential())) {
-    LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
-    return;
+  if (!credentials_pb->has_endorsement_credential()) {
+    credentials_pb->set_endorsement_public_key(ek_public_key.data(),
+                                               ek_public_key.size());
+    credentials_pb->set_endorsement_credential(endorsement_credential.data(),
+                                               endorsement_credential.size());
+    credentials_pb->set_platform_credential(platform_credential.data(),
+                                            platform_credential.size());
+    credentials_pb->set_conformance_credential(conformance_credential.data(),
+                                               conformance_credential.size());
   }
-  if (!EncryptEndorsementCredential(
-      kTestPCA,
-      endorsement_credential,
-      credentials_pb->mutable_test_encrypted_endorsement_credential())) {
-    LOG(ERROR) << "Attestation: Failed to encrypt EK cert (test).";
-    return;
-  }
-  IdentityKey* key_pb = database_pb_.mutable_identity_key();
+
+  AttestationDatabase::Identity* identity_data =
+      database_pb_.mutable_identities()->Add();
+
+  identity_data->set_features(identity_features);
+
+  IdentityKey* key_pb = identity_data->mutable_identity_key();
   key_pb->set_identity_public_key(identity_public_key_der.data(),
                                   identity_public_key_der.size());
   key_pb->set_identity_key_blob(identity_key_blob.data(),
                                 identity_key_blob.size());
-  IdentityBinding* binding_pb = database_pb_.mutable_identity_binding();
+
+  if (identity_features && IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+    key_pb->set_enrollment_id(database_pb_.enrollment_id());
+  }
+
+  IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
   binding_pb->set_identity_binding(identity_binding.data(),
                                    identity_binding.size());
   binding_pb->set_identity_public_key_der(identity_public_key_der.data(),
@@ -547,36 +683,52 @@ void Attestation::PrepareForEnrollment() {
                                       identity_public_key.size());
   binding_pb->set_identity_label(identity_label.data(), identity_label.size());
   binding_pb->set_pca_public_key(pca_public_key.data(), pca_public_key.size());
-  Quote* quote_pb0 = database_pb_.mutable_pcr0_quote();
-  quote_pb0->set_quote(quote0.data(), quote0.size());
-  quote_pb0->set_quoted_data(quoted_data0.data(), quoted_data0.size());
-  quote_pb0->set_quoted_pcr_value(quoted_pcr_value0.data(),
-                                  quoted_pcr_value0.size());
-  Quote* quote_pb1 = database_pb_.mutable_pcr1_quote();
-  quote_pb1->set_quote(quote1.data(), quote1.size());
-  quote_pb1->set_quoted_data(quoted_data1.data(), quoted_data1.size());
-  quote_pb1->set_quoted_pcr_value(quoted_pcr_value1.data(),
-                                  quoted_pcr_value1.size());
-  quote_pb1->set_pcr_source_hint(platform_->GetHardwareID());
-  Delegation* delegate_pb = database_pb_.mutable_delegate();
-  delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
-  delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
-  delegate_pb->set_has_reset_lock_permissions(true);
 
-  std::string serial_encrypted_db;
-  if (!EncryptDatabase(database_pb_, &serial_encrypted_db)) {
-    LOG(ERROR) << "Attestation: Failed to encrypt db.";
-    return;
+  // Store PCR quotes in the identity.
+  auto* map = identity_data->mutable_pcr_quotes();
+
+  Quote quote_pb0;
+  quote_pb0.set_quote(quote0.data(), quote0.size());
+  quote_pb0.set_quoted_data(quoted_data0.data(), quoted_data0.size());
+  quote_pb0.set_quoted_pcr_value(quoted_pcr_value0.data(),
+                                 quoted_pcr_value0.size());
+  auto in0 = map->insert(QuoteMap::value_type(0, quote_pb0));
+  if (!in0.second) {
+    LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
+               << identity << ".";
+    return false;
   }
-  if (!StoreDatabase(serial_encrypted_db)) {
-    LOG(ERROR) << "Attestation: Failed to store db.";
-    return;
+
+  Quote quote_pb1;
+  quote_pb1.set_quote(quote1.data(), quote1.size());
+  quote_pb1.set_quoted_data(quoted_data1.data(), quoted_data1.size());
+  quote_pb1.set_quoted_pcr_value(quoted_pcr_value1.data(),
+                                 quoted_pcr_value1.size());
+  quote_pb1.set_pcr_source_hint(platform_->GetHardwareID());
+
+  auto in1 = map->insert(QuoteMap::value_type(1, quote_pb1));
+  if (!in1.second) {
+    LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
+               << identity << ".";
+    return false;
   }
-  tpm_init_->RemoveTpmOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kAttestation);
-  base::TimeDelta delta = (base::TimeTicks::Now() - start);
-  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
-            << "ms).";
+
+  // Return the index of the newly created identity.
+  return database_pb_.identities().size() - 1;
+}
+
+int Attestation::GetIdentitiesCount() const {
+  return database_pb_.identities().size();
+}
+
+int Attestation::GetIdentityFeatures(int identity) const {
+  return database_pb_.identities().Get(identity).features();
+}
+
+Attestation::IdentityCertificateMap Attestation::GetIdentityCertificateMap()
+    const {
+  base::AutoLock lock(lock_);
+  return database_pb_.identity_certificates();
 }
 
 void Attestation::PrepareForEnrollmentAsync() {
@@ -621,17 +773,20 @@ bool Attestation::Verify(bool is_cros_core) {
     LOG(ERROR) << "Attestation: Bad endorsement credential.";
     return false;
   }
-  if (!VerifyIdentityBinding(database_pb_.identity_binding())) {
+  // Verify() is only used with the first identity.
+  const AttestationDatabase::Identity& identity_data =
+      database_pb_.identities().Get(kFirstIdentity);
+  if (!VerifyIdentityBinding(identity_data.identity_binding())) {
     LOG(ERROR) << "Attestation: Bad identity binding.";
     return false;
   }
-  SecureBlob aik_public_key = SecureBlob(
-      database_pb_.identity_binding().identity_public_key_der());
-  if (!VerifyPCR0Quote(aik_public_key, database_pb_.pcr0_quote())) {
+  SecureBlob aik_public_key =
+      SecureBlob(identity_data.identity_binding().identity_public_key_der());
+  if (!VerifyPCR0Quote(aik_public_key, identity_data.pcr_quotes().at(0))) {
     LOG(ERROR) << "Attestation: Bad PCR0 quote.";
     return false;
   }
-  if (!VerifyPCR1Quote(aik_public_key, database_pb_.pcr1_quote())) {
+  if (!VerifyPCR1Quote(aik_public_key, identity_data.pcr_quotes().at(1))) {
     // Don't fail because many devices don't use PCR1.
     LOG(WARNING) << "Attestation: Bad PCR1 quote.";
   }
@@ -640,7 +795,8 @@ bool Attestation::Verify(bool is_cros_core) {
     LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
-  SecureBlob identity_key_blob(database_pb_.identity_key().identity_key_blob());
+  SecureBlob identity_key_blob(
+      identity_data.identity_key().identity_key_blob());
   SecureBlob public_key;
   SecureBlob public_key_der;
   SecureBlob key_blob;
@@ -659,10 +815,9 @@ bool Attestation::Verify(bool is_cros_core) {
   SecureBlob delegate_blob(database_pb_.delegate().blob());
   SecureBlob delegate_secret(database_pb_.delegate().secret());
   SecureBlob aik_public_key_tpm(
-      database_pb_.identity_binding().identity_public_key());
-  if (!VerifyActivateIdentity(delegate_blob, delegate_secret,
-                              identity_key_blob, aik_public_key_tpm,
-                              ek_public_key)) {
+      identity_data.identity_binding().identity_public_key());
+  if (!VerifyActivateIdentity(delegate_blob, delegate_secret, identity_key_blob,
+                              aik_public_key_tpm, ek_public_key)) {
     LOG(ERROR) << "Attestation: Failed to verify owner delegation.";
     return false;
   }
@@ -696,21 +851,19 @@ bool Attestation::VerifyEK(bool is_cros_core) {
 }
 
 bool Attestation::GetEnterpriseEnrollmentId(
-    brillo::SecureBlob* enterprise_enrollment_id) {
+    SecureBlob* enterprise_enrollment_id) {
   if (!enterprise_enrollment_id_.empty()) {
     *enterprise_enrollment_id = enterprise_enrollment_id_;
     return true;
   }
-  if (database_pb_.has_identity_key() &&
-      database_pb_.identity_key().has_enrollment_id()) {
-    enterprise_enrollment_id_ =
-        SecureBlob(database_pb_.identity_key().enrollment_id());
+  if (database_pb_.has_enrollment_id()) {
+    enterprise_enrollment_id_ = SecureBlob(database_pb_.enrollment_id());
     *enterprise_enrollment_id = enterprise_enrollment_id_;
     return true;
   }
   if (ComputeEnterpriseEnrollmentId(enterprise_enrollment_id) &&
       !enterprise_enrollment_id->empty()) {
-    // Cache the computed value
+    // Cache the computed value.
     enterprise_enrollment_id_ = *enterprise_enrollment_id;
     return true;
   }
@@ -719,30 +872,43 @@ bool Attestation::GetEnterpriseEnrollmentId(
 
 bool Attestation::CreateEnrollRequest(PCAType pca_type,
                                       SecureBlob* pca_request) {
+  const int identity = kFirstIdentity;
   if (!IsTPMReady())
     return false;
   if (!IsPreparedForEnrollment()) {
-    LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
-               << "does not exist.";
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data"
+               " does not exist.";
+    return false;
+  }
+  if (database_pb_.identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
+               << identity << " does not exist.";
     return false;
   }
   base::AutoLock lock(lock_);
   AttestationEnrollmentRequest request_pb;
   *request_pb.mutable_encrypted_endorsement_credential() =
-      GetEncryptedEndorsementCredential(pca_type);
+      database_pb_.credentials().encrypted_endorsement_credentials().at(
+          pca_type);
+  const AttestationDatabase::Identity& identity_data =
+      database_pb_.identities().Get(identity);
   request_pb.set_identity_public_key(
-      database_pb_.identity_binding().identity_public_key());
-  *request_pb.mutable_pcr0_quote() = database_pb_.pcr0_quote();
-  *request_pb.mutable_pcr1_quote() = database_pb_.pcr1_quote();
-  SecureBlob enterprise_enrollment_nonce;
-  if (!ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce)) {
-    LOG(ERROR) << "Attestation: Failed to compute enterprise enrollment nonce.";
-    return false;
-  }
-  if (!enterprise_enrollment_nonce.empty()) {
-    request_pb.set_enterprise_enrollment_nonce(
-        enterprise_enrollment_nonce.data(),
-        enterprise_enrollment_nonce.size());
+      identity_data.identity_binding().identity_public_key());
+  *request_pb.mutable_pcr0_quote() = identity_data.pcr_quotes().at(0);
+  *request_pb.mutable_pcr1_quote() = identity_data.pcr_quotes().at(1);
+
+  if (identity_data.features() & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+    SecureBlob enterprise_enrollment_nonce;
+    if (!ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce)) {
+      LOG(ERROR)
+          << "Attestation: Failed to compute enterprise enrollment nonce.";
+      return false;
+    }
+    if (!enterprise_enrollment_nonce.empty()) {
+      request_pb.set_enterprise_enrollment_nonce(
+          enterprise_enrollment_nonce.data(),
+          enterprise_enrollment_nonce.size());
+    }
   }
 
   std::string tmp;
@@ -756,8 +922,14 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
 
 bool Attestation::Enroll(PCAType pca_type,
                          const SecureBlob& pca_response) {
+  const int identity = kFirstIdentity;
   if (!IsTPMReady())
     return false;
+  if (database_pb_.identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
+               << identity << " does not exist.";
+    return false;
+  }
   AttestationEnrollmentResponse response_pb;
   if (!response_pb.ParseFromArray(pca_response.data(), pca_response.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
@@ -771,7 +943,10 @@ bool Attestation::Enroll(PCAType pca_type,
   base::AutoLock lock(lock_);
   SecureBlob delegate_blob(database_pb_.delegate().blob());
   SecureBlob delegate_secret(database_pb_.delegate().secret());
-  SecureBlob aik_blob(database_pb_.identity_key().identity_key_blob());
+  SecureBlob aik_blob(database_pb_.identities()
+                          .Get(identity)
+                          .identity_key()
+                          .identity_key_blob());
   SecureBlob encrypted_asym(
       response_pb.encrypted_identity_credential().asym_ca_contents());
   SecureBlob encrypted_sym(
@@ -780,18 +955,45 @@ bool Attestation::Enroll(PCAType pca_type,
   if (!tpm_->ActivateIdentity(delegate_blob, delegate_secret,
                               aik_blob, encrypted_asym, encrypted_sym,
                               &aik_credential)) {
-    LOG(ERROR) << __func__ << ": Failed to activate identity.";
+    LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
+               << ".";
     return false;
   }
-  ComputeEnterpriseEnrollmentId(&enterprise_enrollment_id_);
-  IdentityKey* key_pb = database_pb_.mutable_identity_key();
-  key_pb->set_identity_credential(aik_credential.to_string());
-  key_pb->set_enrollment_id(enterprise_enrollment_id_.to_string());
+
+  // Find an identity certificate to reuse or create a new one.
+  int index;
+  AttestationDatabase_IdentityCertificate* identity_certificate;
+  auto found = FindIdentityCertificate(identity, pca_type);
+  if (found == database_pb_.mutable_identity_certificates()->end()) {
+    index = identity == kFirstIdentity
+                ? pca_type
+                : std::max(static_cast<size_t>(kMaxPCAType),
+                           database_pb_.identity_certificates().size());
+    AttestationDatabase::IdentityCertificate new_identity_certificate;
+    new_identity_certificate.set_identity(identity);
+    new_identity_certificate.set_aca(pca_type);
+    auto* map = database_pb_.mutable_identity_certificates();
+    auto in = map->insert(
+        IdentityCertificateMap::value_type(index, new_identity_certificate));
+    if (!in.second) {
+      return false;
+    }
+    found = in.first;
+  } else {
+    index = found->first;
+  }
+  identity_certificate = &found->second;
+
+  // Set the credential obtained when activating the identity with the response.
+  identity_certificate->set_identity_credential(aik_credential.to_string());
+
   if (!PersistDatabaseChanges()) {
     LOG(ERROR) << __func__ << ": Failed to persist database changes.";
     return false;
   }
-  LOG(INFO) << "Attestation: Enrollment complete.";
+  LOG(INFO) << "Attestation: Enrollment of identity " << identity << " with "
+            << GetPCAName(pca_type) << " complete. Certificate #" << index <<
+            ".";
   return true;
 }
 
@@ -802,17 +1004,21 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
                                     SecureBlob* pca_request) {
   if (!IsTPMReady())
     return false;
-  if (!IsEnrolled()) {
-    LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
+  base::AutoLock lock(lock_);
+  auto found = FindIdentityCertificate(kFirstIdentity, pca_type);
+  if (found == database_pb_.mutable_identity_certificates()->end()) {
+    LOG(ERROR) << __func__ << ": Identity " << kFirstIdentity
+               << " is not enrolled for attestation with "
+               << GetPCAName(pca_type) << ".";
     return false;
   }
-  base::AutoLock lock(lock_);
+  const auto& identity_certificate = found->second;
   AttestationCertificateRequest request_pb;
+  request_pb.set_identity_credential(
+      identity_certificate.identity_credential());
   SecureBlob message_id(kNonceSize);
   CryptoLib::GetSecureRandom(message_id.data(), message_id.size());
   request_pb.set_message_id(message_id.to_string());
-  request_pb.set_identity_credential(
-      database_pb_.identity_key().identity_credential());
   request_pb.set_profile(profile);
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
@@ -824,16 +1030,18 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
-  SecureBlob identity_key_blob(
-      database_pb_.identity_key().identity_key_blob());
+  SecureBlob identity_key_blob(database_pb_.identities()
+                                   .Get(identity_certificate.identity())
+                                   .identity_key()
+                                   .identity_key_blob());
   SecureBlob public_key;
   SecureBlob public_key_der;
   SecureBlob key_blob;
   SecureBlob key_info;
   SecureBlob proof;
-  if (!tpm_->CreateCertifiedKey(identity_key_blob, nonce,
-                                &public_key, &public_key_der,
-                                &key_blob, &key_info, &proof)) {
+  if (!tpm_->CreateCertifiedKey(identity_key_blob, nonce, &public_key,
+                                &public_key_der, &key_blob, &key_info,
+                                &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create certified key.";
     return false;
   }
@@ -1210,9 +1418,11 @@ bool Attestation::GetIdentityResetRequest(const std::string& reset_token,
   base::AutoLock lock(lock_);
   AttestationResetRequest proto;
   proto.set_token(reset_token);
-  // This only works with the default PCA right now.
+  // This only works with the default PCA right now because the method does
+  // note take a PCA type. As far as we know, this call isn't supported either.
   *proto.mutable_encrypted_endorsement_credential() =
-      database_pb_.credentials().default_encrypted_endorsement_credential();
+      (*database_pb_.mutable_credentials()
+            ->mutable_encrypted_endorsement_credentials())[kDefaultPCA];
   std::string serial;
   if (!proto.SerializeToString(&serial)) {
     LOG(ERROR) << __func__ << "Failed to serialize protobuf.";
@@ -1317,17 +1527,27 @@ bool Attestation::StoreDatabase(const std::string& serial_encrypted_db) {
 bool Attestation::LoadDatabase(std::string* serial_encrypted_db) {
   CheckDatabasePermissions();
   if (!platform_->ReadFileToString(database_path_, serial_encrypted_db)) {
-    PLOG(ERROR) << "Failed to read db";
+    PLOG(ERROR) << "Failed to read db.";
     return false;
   }
   return true;
 }
 
 bool Attestation::PersistDatabaseChanges() {
+  return PersistDatabase(database_pb_);
+}
+
+bool Attestation::PersistDatabase(const AttestationDatabase& db) {
   std::string serial_encrypted_db;
-  if (!EncryptDatabase(database_pb_, &serial_encrypted_db))
+  if (!EncryptDatabase(db, &serial_encrypted_db)) {
+    LOG(ERROR) << "Attestation: Failed to encrypt db.";
     return false;
-  return StoreDatabase(serial_encrypted_db);
+  }
+  if (!StoreDatabase(serial_encrypted_db)) {
+    LOG(ERROR) << "Attestation: Failed to store db.";
+    return false;
+  }
+  return true;
 }
 
 void Attestation::CheckDatabasePermissions() {
@@ -1605,16 +1825,96 @@ bool Attestation::VerifySignature(const SecureBlob& public_key,
   return true;
 }
 
+bool Attestation::MigrateIdentityData() {
+  if (database_pb_.identities().size() > 0) {
+    // We already migrated identity data.
+    return false;
+  }
+
+  bool error = false;
+
+  // The identity we're creating will have the next index in identities.
+  LOG(INFO) << "Attestation: Migrating existing identity into identity "
+            << database_pb_.identities().size() << ".";
+  CHECK(database_pb_.identities().size() == kFirstIdentity);
+  AttestationDatabase::Identity* identity_data =
+      database_pb_.mutable_identities()->Add();
+  identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
+  if (database_pb_.has_identity_binding()) {
+    identity_data->mutable_identity_binding()->CopyFrom(
+        database_pb_.identity_binding());
+  }
+  if (database_pb_.has_identity_key()) {
+    identity_data->mutable_identity_key()->CopyFrom(
+        database_pb_.identity_key());
+    identity_data->mutable_identity_key()->clear_identity_credential();
+    if (database_pb_.identity_key().has_identity_credential()) {
+      // Create an identity certificate for this identity and the default PCA.
+      AttestationDatabase::IdentityCertificate identity_certificate;
+      identity_certificate.set_identity(kFirstIdentity);
+      identity_certificate.set_aca(kDefaultPCA);
+      identity_certificate.set_identity_credential(
+          database_pb_.identity_key().identity_credential());
+      auto* map = database_pb_.mutable_identity_certificates();
+      auto in = map->insert(IdentityCertificateMap::value_type(
+          kDefaultPCA, identity_certificate));
+      if (!in.second) {
+        LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+        error = true;
+      }
+    }
+    if (database_pb_.identity_key().has_enrollment_id()) {
+      database_pb_.set_enrollment_id(
+          database_pb_.identity_key().enrollment_id());
+    }
+  }
+
+  if (database_pb_.has_pcr0_quote()) {
+    auto in = identity_data->mutable_pcr_quotes()->insert(
+        QuoteMap::value_type(0, database_pb_.pcr0_quote()));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+      error = true;
+    }
+  } else {
+    LOG(ERROR) << "Attestation: missing PCR0 quote in existing database.";
+    error = true;
+  }
+  if (database_pb_.has_pcr1_quote()) {
+    auto in = identity_data->mutable_pcr_quotes()->insert(
+        QuoteMap::value_type(1, database_pb_.pcr1_quote()));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+      error = true;
+    }
+  } else {
+    LOG(ERROR) << "Attestation: missing PCR0 quote in existing database.";
+    error = true;
+  }
+
+  if (error) {
+    database_pb_.mutable_identities()->RemoveLast();
+    database_pb_.mutable_identity_certificates()->erase(kDefaultPCA);
+  }
+
+  return !error;
+}
+
 void Attestation::ClearDatabase() {
   TPMCredentials* credentials = database_pb_.mutable_credentials();
   ClearString(credentials->mutable_endorsement_public_key());
   ClearString(credentials->mutable_endorsement_credential());
   ClearString(credentials->mutable_platform_credential());
   ClearString(credentials->mutable_conformance_credential());
-  ClearIdentity(database_pb_.mutable_identity_binding(),
-                database_pb_.mutable_identity_key());
-  ClearQuote(database_pb_.mutable_pcr0_quote());
-  ClearQuote(database_pb_.mutable_pcr1_quote());
+  ClearString(database_pb_.mutable_enrollment_id());
+  for (auto it = database_pb_.mutable_identities()->begin();
+       it != database_pb_.mutable_identities()->end(); ++it) {
+    ClearIdentity(&*it);
+  }
+  for (auto it = database_pb_.mutable_identity_certificates()->begin();
+       it != database_pb_.mutable_identity_certificates()->end(); ++it) {
+    ClearIdentityCertificate(&it->second);
+  }
   Delegation* delegate = database_pb_.mutable_delegate();
   ClearString(delegate->mutable_blob());
   ClearString(delegate->mutable_secret());
@@ -1628,15 +1928,29 @@ void Attestation::ClearQuote(Quote* quote) {
   ClearString(quote->mutable_pcr_source_hint());
 }
 
-void Attestation::ClearIdentity(IdentityBinding* binding, IdentityKey* key) {
+void Attestation::ClearIdentityCertificate(
+    AttestationDatabase::IdentityCertificate* identity_certificate) {
+  ClearString(identity_certificate->mutable_identity_credential());
+}
+
+void Attestation::ClearIdentity(AttestationDatabase::Identity* identity) {
+  auto binding = identity->mutable_identity_binding();
   ClearString(binding->mutable_identity_binding());
   ClearString(binding->mutable_identity_public_key_der());
   ClearString(binding->mutable_identity_public_key());
   ClearString(binding->mutable_identity_label());
   ClearString(binding->mutable_pca_public_key());
+
+  auto key = identity->mutable_identity_key();
   ClearString(key->mutable_identity_public_key());
   ClearString(key->mutable_identity_key_blob());
   ClearString(key->mutable_identity_credential());
+  ClearString(key->mutable_enrollment_id());
+
+  auto end = identity->mutable_pcr_quotes()->end();
+  for (auto it = identity->mutable_pcr_quotes()->begin(); it != end; ++it) {
+    ClearQuote(&it->second);
+  }
 }
 
 void Attestation::ClearString(std::string* s) {
@@ -1740,22 +2054,6 @@ bool Attestation::EncryptEndorsementCredential(
     return false;
   }
   return EncryptData(credential, rsa.get(), key_id, encrypted_credential);
-}
-
-const EncryptedData& Attestation::GetEncryptedEndorsementCredential(
-    PCAType pca_type) const {
-  switch (pca_type) {
-    case kDefaultPCA:
-    default:
-      return database_pb_.credentials()
-          .default_encrypted_endorsement_credential();
-      break;
-
-    case kTestPCA:
-      return database_pb_.credentials()
-          .test_encrypted_endorsement_credential();
-      break;
-  }
 }
 
 bool Attestation::AddDeviceKey(const std::string& key_name,
@@ -2229,6 +2527,40 @@ int Attestation::ChooseTemporalIndex(const std::string& user,
   return least_used_index;
 }
 
+bool Attestation::MigrateAttestationDatabase() {
+  bool migrated = false;
+
+  if (database_pb_.has_credentials()) {
+    if (!database_pb_.credentials().encrypted_endorsement_credentials().count(
+            kDefaultPCA) &&
+        database_pb_.credentials()
+            .has_default_encrypted_endorsement_credential()) {
+      LOG(INFO) << "Attestation: Migrating endorsement credential for "
+                << GetPCAName(kDefaultPCA) << ".";
+      (*database_pb_.mutable_credentials()
+            ->mutable_encrypted_endorsement_credentials())[kDefaultPCA] =
+          database_pb_.credentials().default_encrypted_endorsement_credential();
+      migrated = true;
+    }
+    if (!database_pb_.credentials().encrypted_endorsement_credentials().count(
+            kTestPCA) &&
+        database_pb_.credentials()
+            .has_test_encrypted_endorsement_credential()) {
+      LOG(INFO) << "Attestation: Migrating endorsement credential for "
+                << GetPCAName(kTestPCA) << ".";
+      (*database_pb_.mutable_credentials()
+            ->mutable_encrypted_endorsement_credentials())[kTestPCA] =
+          database_pb_.credentials().test_encrypted_endorsement_credential();
+      migrated = true;
+    }
+  }
+
+  // Migrate identity data if needed.
+  migrated |= MigrateIdentityData();
+
+  return migrated;
+}
+
 void Attestation::FinalizeEndorsementData() {
   if (retain_endorsement_data_) {
     return;
@@ -2244,24 +2576,19 @@ void Attestation::FinalizeEndorsementData() {
   if (!credentials->has_endorsement_credential()) {
     return;
   }
-  if (!credentials->has_default_encrypted_endorsement_credential()) {
-    LOG(INFO) << "Attestation: Migrating default endorsement data.";
-    if (!EncryptEndorsementCredential(
-        kDefaultPCA,
-        SecureBlob(credentials->endorsement_credential()),
-        credentials->mutable_default_encrypted_endorsement_credential())) {
-      LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
-      return;
-    }
-  }
-  if (!credentials->has_test_encrypted_endorsement_credential()) {
-    LOG(INFO) << "Attestation: Migrating endorsement data (test).";
-    if (!EncryptEndorsementCredential(
-        kTestPCA,
-        SecureBlob(credentials->endorsement_credential()),
-        credentials->mutable_test_encrypted_endorsement_credential())) {
-      LOG(ERROR) << "Attestation: Failed to encrypt EK cert (test).";
-      return;
+  for (int pca = kDefaultPCA; pca < kMaxPCAType; ++pca) {
+    if (!credentials->mutable_encrypted_endorsement_credentials()->count(pca)) {
+      LOG(INFO) << "Attestation: Migrating endorsement data for "
+                << GetPCAName(static_cast<PCAType>(pca)) << ".";
+      if (!EncryptEndorsementCredential(
+              static_cast<PCAType>(pca),
+              SecureBlob(credentials->endorsement_credential()),
+              &(*credentials
+                     ->mutable_encrypted_endorsement_credentials())[pca])) {
+        LOG(ERROR) << "Attestation: Failed to encrypt EK cert for "
+                   << GetPCAName(static_cast<PCAType>(pca)) << ".";
+        return;
+      }
     }
   }
   LOG(INFO) << "Attestation: Clearing endorsement data.";
@@ -2277,7 +2604,7 @@ void Attestation::FinalizeEndorsementData() {
 bool Attestation::GetDelegateCredentials(brillo::SecureBlob* blob,
                                          brillo::SecureBlob* secret,
                                          bool* has_reset_lock_permissions) {
-  if (!IsPreparedForEnrollment()) {
+  if (!database_pb_.has_delegate()) {
     return false;
   }
   SecureBlob tmp_blob(database_pb_.delegate().blob());
@@ -2349,7 +2676,7 @@ void Attestation::ExtendPCR1IfClear() {
   }
   std::string hwid = platform_->GetHardwareID();
   LOG(WARNING) << "Extending PCR1.";
-  // Take the first 20 bytes of a SHA-256 hash because this is what firmware
+  // Take the first n bytes of a SHA-256 hash because this is what firmware
   // would do. (Using SHA-256 allows a single precomputed hash to be stored
   // along with the HWID for both TPM 1.2 and 2.0 platforms).
   SecureBlob hwid_hash = CryptoLib::Sha256(SecureBlob(hwid));
@@ -2392,6 +2719,9 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
     case kDefaultPCA:
       url = kDefaultPCAWebOrigin;
       break;
+    case kTestPCA:
+      url = kTestPCAWebOrigin;
+      break;
     default:
       NOTREACHED();
   }
@@ -2426,40 +2756,50 @@ bool Attestation::ComputeEnterpriseEnrollmentNonce(
   return true;
 }
 
+bool Attestation::GetEndorsementPublicKey(SecureBlob* ek_public_key) const {
+  if (database_pb_.has_delegate()) {
+    SecureBlob delegate_blob(database_pb_.delegate().blob());
+    SecureBlob delegate_secret(database_pb_.delegate().secret());
+    if (!tpm_->GetEndorsementPublicKeyWithDelegate(ek_public_key, delegate_blob,
+                                                   delegate_secret)) {
+      ek_public_key->clear();
+      return false;
+    }
+  } else {
+    if (!tpm_->GetEndorsementPublicKey(ek_public_key)) {
+      ek_public_key->clear();
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Attestation::ComputeEnterpriseEnrollmentId(
     brillo::SecureBlob* enterprise_enrollment_id) {
   brillo::SecureBlob den;
-  if (!ComputeEnterpriseEnrollmentNonce(&den))
+  if (!ComputeEnterpriseEnrollmentNonce(&den)) {
     return false;
+  }
   if (den.empty()) {
     enterprise_enrollment_id->clear();
     return true;
   }
 
-  brillo::SecureBlob pubek;
-  if (database_pb_.has_delegate()) {
-    SecureBlob delegate_blob(database_pb_.delegate().blob());
-    SecureBlob delegate_secret(database_pb_.delegate().secret());
-    if (!tpm_->GetEndorsementPublicKeyWithDelegate(
-            &pubek, delegate_blob, delegate_secret)) {
-      return false;
-    }
-  } else {
-    if (!tpm_->GetEndorsementPublicKey(&pubek)) {
-      return false;
-    }
+  SecureBlob ek_public_key;
+  if (!GetEndorsementPublicKey(&ek_public_key)) {
+    return false;
   }
 
-  if (pubek.empty()) {
+  if (ek_public_key.empty()) {
     enterprise_enrollment_id->clear();
     return true;
   }
 
   // Extract the modulus from the public key.
   const unsigned char* asn1_ptr =
-      reinterpret_cast<const unsigned char*>(pubek.data());
+      reinterpret_cast<const unsigned char*>(ek_public_key.data());
   crypto::ScopedRSA public_key(
-      d2i_RSAPublicKey(nullptr, &asn1_ptr, pubek.size()));
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, ek_public_key.size()));
   if (!public_key.get()) {
     LOG(ERROR) << "Attestation: Failed to decode public endorsement key.";
     return false;

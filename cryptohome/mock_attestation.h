@@ -31,6 +31,7 @@ class MockAttestation : public Attestation {
                                 bool));
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
   MOCK_METHOD0(IsEnrolled, bool());
+  MOCK_METHOD1(IsFirstIdentityEnrolledWith, bool(Attestation::PCAType));
   MOCK_METHOD0(PrepareForEnrollment, void());
   MOCK_METHOD0(CacheEndorsementData, void());
   MOCK_METHOD0(PrepareForEnrollmentAsync, void());

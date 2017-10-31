@@ -144,6 +144,20 @@ int DumpStatus() {
                          true /* retain_endorsement_data */);
   status.set_attestation_prepared(attestation.IsPreparedForEnrollment());
   status.set_attestation_enrolled(attestation.IsEnrolled());
+  for (int i = 0, count = attestation.GetIdentitiesCount(); i < count; ++i) {
+    GetTpmStatusReply::Identity* identity = status.mutable_identities()->Add();
+    identity->set_features(attestation.GetIdentityFeatures(i));
+  }
+  Attestation::IdentityCertificateMap map =
+      attestation.GetIdentityCertificateMap();
+  for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+    GetTpmStatusReply::IdentityCertificate identity_certificate;
+    identity_certificate.set_identity(it->second.identity());
+    identity_certificate.set_aca(it->second.aca());
+    status.mutable_identity_certificates()->insert(
+        google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
+            value_type(it->first, identity_certificate));
+  }
   status.set_verified_boot_measured(attestation.IsPCR0VerifiedMode());
 
   cryptohome::BootLockbox boot_lockbox(tpm, &platform, &crypto);

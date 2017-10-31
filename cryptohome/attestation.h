@@ -1,4 +1,3 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +17,7 @@
 #include <base/threading/platform_thread.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/secure_blob.h>
+#include <google/protobuf/map.h>
 #include <openssl/evp.h>
 
 #include "cryptohome/crypto.h"
@@ -41,20 +41,28 @@ class TpmInit;
 class Attestation : public base::PlatformThread::Delegate,
                     public InstallAttributes::Observer {
  public:
+  using IdentityCertificateMap = google::protobuf::
+      Map<int, cryptohome::AttestationDatabase_IdentityCertificate>;
+
+  static constexpr int kFirstIdentity = 0;
+
   enum PCAType {
-    kDefaultPCA,    // The Google-operated Privacy CA.
-    kTestPCA,       // The test version of the Google-operated Privacy CA.
+    kDefaultPCA,  // The Google-operated Privacy CA.
+    kTestPCA,     // The test version of the Google-operated Privacy CA.
     kMaxPCAType
   };
+
   enum PCARequestType {
     kEnroll,          // Enrolls a device, certifying an identity key.
     kGetCertificate,  // Issues a certificate for a TPM-backed key.
   };
+
   enum VAType {
     kDefaultVA,     // Verified Access servers.
     kTestVA,        // Test version of the Verified Access servers.
     kMaxVAType
   };
+
   Attestation();
   virtual ~Attestation();
 
@@ -75,8 +83,29 @@ class Attestation : public base::PlatformThread::Delegate,
   // Returns true if the attestation enrollment blobs already exist.
   virtual bool IsPreparedForEnrollment();
 
-  // Returns true if an AIK certificate exists.
+  // Returns true if an AIK certificate exist for one of the Privacy CAs.
   virtual bool IsEnrolled();
+
+  // Returns an iterator pointing to the identity certificate for the given
+  // |identity| and given Privacy CA.
+  virtual IdentityCertificateMap::iterator FindIdentityCertificate(
+      int identity, PCAType pca_type);
+
+  // Returns whether there is an identity certificate for the given |identity|
+  // and given Privacy CA.
+  virtual bool HasIdentityCertificate(int identity, PCAType pca_type);
+
+  // Creates a new identity and returns its index, or -1 if it could not be
+  // created.
+  virtual int CreateIdentity(int identity_features);
+
+  // Returns the count of identities in the attestation database.
+  virtual int GetIdentitiesCount() const;
+  // Returns the identity features of |identity|.
+  virtual int GetIdentityFeatures(int identity) const;
+
+  // Returns a copy of the identity certificate map.
+  virtual IdentityCertificateMap GetIdentityCertificateMap() const;
 
   // Creates attestation enrollment blobs if they do not already exist. This
   // includes extracting the EK information from the TPM and generating an AIK
@@ -95,8 +124,8 @@ class Attestation : public base::PlatformThread::Delegate,
   // is endorsed for that configuration.
   virtual bool VerifyEK(bool is_cros_core);
 
-  // Populates the enrollment id in |enterprise_enrollment_id|. The result is
-  // taken from cache or computed if not available. Returns true on success.
+  // Retrieves the EID for the device.  The EID is cached as needed.
+  // Returns true on success.
   virtual bool GetEnterpriseEnrollmentId(
       brillo::SecureBlob* enterprise_enrollment_id);
 
@@ -121,7 +150,10 @@ class Attestation : public base::PlatformThread::Delegate,
   virtual bool CreateEnrollRequest(PCAType pca_type,
                                    brillo::SecureBlob* pca_request);
 
-  // Finishes the enrollment process. On success, IsEnrolled() will return true.
+  // Finishes the enrollment process. On success, IsEnrolled() will return true
+  // and GetIdentityCertificate(kFirstIdentity, |pca_type|) will return a
+  // non null value.
+  //
   // The response from the Privacy CA is a serialized
   // AttestationEnrollmentResponse protobuf. This method recovers the AIK
   // certificate by calling TPM_ActivateIdentity and stores this certificate to
@@ -143,7 +175,8 @@ class Attestation : public base::PlatformThread::Delegate,
   // the Privacy CA. The PCA verifies the information and issues a certificate
   // for the certified key. The certificate request process can be finished by
   // calling FinishCertRequest() with the response from the Privacy CA. This
-  // method can only succeed if IsEnrolled() returns true.
+  // method can succeed iff GetIdentityCertificate(kFirstIdentity, |pca_type|)
+  // returns a non-null value.
   //
   // Parameters
   //   pca_type - Specifies to which Privacy CA the request will be sent.
@@ -160,12 +193,12 @@ class Attestation : public base::PlatformThread::Delegate,
                                  const std::string& origin,
                                  brillo::SecureBlob* pca_request);
 
-  // Finishes the certificate request process.  The |pca_response| from the PCA
-  // is a serialized AttestationCertificateResponse protobuf. This final step
-  // verifies the PCA operation succeeded and extracts the certificate for the
-  // certified key.  The certificate is stored with the key in association with
-  // the |key_name|.  If the key is a user-specific key it is stored in
-  // association with the currently signed-in user.
+  // Finishes the certificate request process. The |pca_response| from the
+  // Privacy CA is a serialized AttestationCertificateResponse protobuf. This
+  // final step verifies that the Privacy CA operation succeeded and extracts
+  // the certificate for the certified key. The certificate is stored with the
+  // key in association with the |key_name|. If the key is a user-specific key
+  // it is stored in association with the currently signed-in user.
   //
   // Parameters
   //   pca_response - The Privacy CA's response to a certificate request as
@@ -387,6 +420,10 @@ class Attestation : public base::PlatformThread::Delegate,
   // value shows a verified boot measurement.
   virtual bool IsPCR0VerifiedMode();
 
+  // Creates or migrates the default identity and other data. Returns whether
+  // data were migrated or not.
+  virtual bool MigrateAttestationDatabase();
+
   // Ensures all endorsement data which uniquely identifies the device no longer
   // exists in the attestation database unencrypted.  Encrypted endorsement data
   // cannot be decrypted locally.
@@ -453,6 +490,9 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // InstallAttributes::Observer interface.
   virtual void OnFinalized() { PrepareForEnrollmentAsync(); }
+
+  // Used by test.
+  void set_default_identity_features_for_test(int default_identity_features);
 
  private:
   typedef std::map<std::string, brillo::SecureBlob> CertRequestMap;
@@ -526,7 +566,7 @@ class Attestation : public base::PlatformThread::Delegate,
   brillo::SecureBlob abe_data_;
   // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
   // a worker thread.
-  base::Lock lock_;
+  mutable base::Lock lock_;
   brillo::SecureBlob database_key_;
   brillo::SecureBlob sealed_database_key_;
   brillo::SecureBlob enterprise_enrollment_id_;
@@ -550,10 +590,14 @@ class Attestation : public base::PlatformThread::Delegate,
   // User and group for ownership of the database file.
   uid_t attestation_user_;
   gid_t attestation_group_;
+  // Default identity features for newly created identities.
+  int default_identity_features_ =
+      cryptohome::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
 
   // Serializes and encrypts an attestation database.
-  bool EncryptDatabase(const AttestationDatabase& db,
-                       std::string* serial_encrypted_db);
+  bool
+  EncryptDatabase(const AttestationDatabase& db,
+                  std::string* serial_encrypted_db);
 
   // Decrypts and parses an attestation database.
   bool DecryptDatabase(const std::string& serial_encrypted_db,
@@ -568,8 +612,16 @@ class Attestation : public base::PlatformThread::Delegate,
   // Persists any changes made to database_pb_.
   bool PersistDatabaseChanges();
 
+  // Persists a specific database. Useful for unit tests to set state.
+  bool PersistDatabase(const AttestationDatabase& db);
+
   // Ensures permissions of the database file are correct.
   void CheckDatabasePermissions();
+
+  // Creates a new identity and returns its index, or -1 if it could not be
+  // created.
+  int CreateIdentity(const int identity_features,
+                     const brillo::SecureBlob& ek_public_key);
 
   // Verifies an endorsement credential against known Chrome OS issuers. If
   // |is_cros_core| is true, checks that the EK is endorsed for that
@@ -610,14 +662,26 @@ class Attestation : public base::PlatformThread::Delegate,
                        const brillo::SecureBlob& signed_data,
                        const brillo::SecureBlob& signature);
 
+  // Finds the index of the first identity certificate for a PCA. Returns
+  // the number of identity certificates if not found.
+  int GetIndexOfFirstIdentityCertificate(PCAType pca_type);
+
+  // Copies the deprecated identity-related data into the first identity.
+  // Returns whether data were migrated or not.
+  bool MigrateIdentityData();
+
   // Clears the memory of the database protobuf.
   void ClearDatabase();
 
   // Clears the memory of a Quote protobuf.
   void ClearQuote(Quote* quote);
 
-  // Clears the memory of Identity protobufs.
-  void ClearIdentity(IdentityBinding* binding, IdentityKey* key);
+  // Clears the memory of all identity-related data.
+  void ClearIdentity(AttestationDatabase::Identity* identity);
+
+  // Clears the memory of an identity certificate.
+  void ClearIdentityCertificate(
+      AttestationDatabase::IdentityCertificate* identity_certificate);
 
   // Clears the memory of a std::string.
   void ClearString(std::string* s);
@@ -731,14 +795,13 @@ class Attestation : public base::PlatformThread::Delegate,
   // a fallback if the device firmware does not already do this.
   void ExtendPCR1IfClear();
 
-  // Returns the encrypted endorsement credential for a given |pca_type|.
-  const EncryptedData& GetEncryptedEndorsementCredential(PCAType pca_type)
-      const;
-
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
 
-  // Compute the enterprise DEN for attestation-based enrollment and
+  // Retrieves the endorsement public key.
+  bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) const;
+
+  // Computes the enterprise DEN for attestation-based enrollment and
   // stores it in |enterprise_enrollment_nonce|.
   bool ComputeEnterpriseEnrollmentNonce(
       brillo::SecureBlob* enterprise_enrollment_nonce);
@@ -746,7 +809,12 @@ class Attestation : public base::PlatformThread::Delegate,
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }
 
-  friend class AttestationTest;
+  friend class AttestationBaseTest;
+  FRIEND_TEST(AttestationBaseTest, MigrateAttestationDatabase);
+  FRIEND_TEST(AttestationBaseTest,
+              MigrateAttestationDatabaseWithCorruptedFields);
+  FRIEND_TEST(AttestationBaseTest,
+              MigrateAttestationDatabaseAllEndorsementCredentials);
   FRIEND_TEST(AttestationEnrollmentIdTest,
               ComputeEnterpriseEnrollmentIdHasDelegate);
 

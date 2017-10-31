@@ -103,6 +103,20 @@ void ServiceMonolithic::AttestationInitializeTpmComplete() {
 void ServiceMonolithic::AttestationGetTpmStatus(GetTpmStatusReply* reply) {
   reply->set_attestation_prepared(attestation_->IsPreparedForEnrollment());
   reply->set_attestation_enrolled(attestation_->IsEnrolled());
+  for (int i = 0, count = attestation_->GetIdentitiesCount(); i < count; ++i) {
+    GetTpmStatusReply::Identity* identity = reply->mutable_identities()->Add();
+    identity->set_features(attestation_->GetIdentityFeatures(i));
+  }
+  Attestation::IdentityCertificateMap map =
+      attestation_->GetIdentityCertificateMap();
+  for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+    GetTpmStatusReply::IdentityCertificate identity_certificate;
+    identity_certificate.set_identity(it->second.identity());
+    identity_certificate.set_aca(it->second.aca());
+    reply->mutable_identity_certificates()->insert(
+        google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
+            value_type(it->first, identity_certificate));
+  }
   reply->set_verified_boot_measured(attestation_->IsPCR0VerifiedMode());
 }
 
