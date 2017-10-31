@@ -97,8 +97,6 @@ Cellular::Cellular(ModemInfo* modem_info,
           new MobileOperatorInfo(modem_info->dispatcher(), "HomeProvider")),
       serving_operator_info_(
           new MobileOperatorInfo(modem_info->dispatcher(), "ServingOperator")),
-      mobile_operator_info_observer_(
-          new Cellular::MobileOperatorInfoObserver(this)),
       dbus_service_(service),
       dbus_path_(path),
       scanning_supported_(false),
@@ -118,15 +116,14 @@ Cellular::Cellular(ModemInfo* modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
-  mobile_operator_info_observer_->set_capability(capability_.get());
 
   // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the
   // costly database, and lighter objects that |Cellular| can own.
   // crbug.com/363874
   home_provider_info_->Init();
   serving_operator_info_->Init();
-  home_provider_info()->AddObserver(mobile_operator_info_observer_.get());
-  serving_operator_info()->AddObserver(mobile_operator_info_observer_.get());
+  home_provider_info_->AddObserver(this);
+  serving_operator_info_->AddObserver(this);
 
   SLOG(this, 2) << "Cellular device " << this->link_name()
                 << " initialized.";
@@ -144,12 +141,11 @@ Cellular::~Cellular() {
   // may not have been removed.
   manager()->RemoveTerminationAction(link_name());
 
-  home_provider_info()->RemoveObserver(mobile_operator_info_observer_.get());
-  serving_operator_info()->RemoveObserver(
-      mobile_operator_info_observer_.get());
-  // Explicitly delete the observer to ensure that it is destroyed before the
-  // handle to |capability_| that it holds.
-  mobile_operator_info_observer_.reset();
+  // Explicitly removes this object from being an observer to
+  // |home_provider_info_| and |serving_operator_info_| to avoid them from
+  // calling into this object while this object is being destructed.
+  home_provider_info_->RemoveObserver(this);
+  serving_operator_info_->RemoveObserver(this);
 }
 
 string Cellular::GetEquipmentIdentifier() const {
@@ -650,7 +646,7 @@ void Cellular::CreateService() {
   // We might have missed a property update because the service wasn't created
   // ealier.
   UpdateScanning();
-  mobile_operator_info_observer_->OnOperatorChanged();
+  OnOperatorChanged();
 }
 
 void Cellular::DestroyService() {
@@ -1610,51 +1606,33 @@ vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
   return {geolocation_info};
 }
 
-// /////////////////////////////////////////////////////////////////////////////
-// MobileOperatorInfoObserver implementation.
-Cellular::MobileOperatorInfoObserver::MobileOperatorInfoObserver(
-    Cellular* cellular)
-  : cellular_(cellular),
-    capability_(nullptr) {}
-
-Cellular::MobileOperatorInfoObserver::~MobileOperatorInfoObserver() {}
-
-void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
-  SLOG(cellular_, 3) << __func__;
+void Cellular::OnOperatorChanged() {
+  SLOG(this, 3) << __func__;
 
   // Give the capabilities a chance to hook in and update their state.
-  // Some tests set |capability_| to nullptr avoid having to expect the full
-  // behaviour caused by this call.
-  if (capability_) {
-    capability_->OnOperatorChanged();
-  }
-
-  const MobileOperatorInfo* home_provider_info =
-      cellular_->home_provider_info();
-  const MobileOperatorInfo* serving_operator_info =
-      cellular_->serving_operator_info();
+  capability_->OnOperatorChanged();
 
   const bool home_provider_known =
-      home_provider_info->IsMobileNetworkOperatorKnown();
+      home_provider_info_->IsMobileNetworkOperatorKnown();
   const bool serving_operator_known =
-      serving_operator_info->IsMobileNetworkOperatorKnown();
+      serving_operator_info_->IsMobileNetworkOperatorKnown();
 
   if (home_provider_known) {
-    cellular_->UpdateHomeProvider(home_provider_info);
+    UpdateHomeProvider(home_provider_info_.get());
   } else if (serving_operator_known) {
-    SLOG(cellular_, 2) << "Serving provider proxying in for home provider.";
-    cellular_->UpdateHomeProvider(serving_operator_info);
+    SLOG(this, 2) << "Serving provider proxying in for home provider.";
+    UpdateHomeProvider(serving_operator_info_.get());
   }
 
   if (serving_operator_known) {
     if (home_provider_known) {
-      cellular_->UpdateServingOperator(serving_operator_info,
-                                       home_provider_info);
+      UpdateServingOperator(serving_operator_info_.get(),
+                            home_provider_info_.get());
     } else {
-      cellular_->UpdateServingOperator(serving_operator_info, nullptr);
+      UpdateServingOperator(serving_operator_info_.get(), nullptr);
     }
   } else if (home_provider_known) {
-    cellular_->UpdateServingOperator(home_provider_info, home_provider_info);
+    UpdateServingOperator(home_provider_info_.get(), home_provider_info_.get());
   }
 }
 

@@ -841,9 +841,6 @@ TEST_P(CellularTest, FriendlyServiceName) {
   CHECK(mock_home_provider_info_);
   CHECK(mock_serving_operator_info_);
 
-  // We are not testing the behaviour of capabilities here.
-  device_->mobile_operator_info_observer_->set_capability(nullptr);
-
   // (1) Service created, MNO not known => Default name.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
@@ -871,7 +868,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
       .WillRepeatedly(ReturnRef(kHomeProviderName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   EXPECT_EQ(kHomeProviderName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
@@ -890,7 +887,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
       .WillRepeatedly(ReturnRef(kServingOperatorName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
@@ -909,14 +906,14 @@ TEST_P(CellularTest, FriendlyServiceName) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
       .WillRepeatedly(ReturnRef(kHomeProviderName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   // Now emulate an event for updated serving operator information.
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
       .WillRepeatedly(ReturnRef(kServingOperatorName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
@@ -935,14 +932,14 @@ TEST_P(CellularTest, FriendlyServiceName) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, operator_name())
       .WillRepeatedly(ReturnRef(kServingOperatorName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   // Now emulate an event for updated home provider information.
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, operator_name())
       .WillRepeatedly(ReturnRef(kHomeProviderName));
-  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->OnOperatorChanged();
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
@@ -1096,8 +1093,6 @@ TEST_P(CellularTest, StorageIdentifier) {
   const string kUuidServingOperator = "uuidServingOperator";
   const string kSimIdentifier = "12345123451234512345";
 
-  // We are not testing the behaviour of capabilities here.
-  device_->mobile_operator_info_observer_->set_capability(nullptr);
   ON_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillByDefault(Return(false));
 

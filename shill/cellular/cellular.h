@@ -44,7 +44,9 @@ class GeolocationInfo;
 class PPPDeviceFactory;
 class ProcessManager;
 
-class Cellular : public Device, public RPCTaskDelegate {
+class Cellular : public Device,
+                 public RPCTaskDelegate,
+                 public MobileOperatorInfo::Observer {
  public:
   enum Type {
     kTypeGSM,
@@ -415,28 +417,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, PollLocationFailure);
   FRIEND_TEST(CellularTest, PollLocationSuccess);
 
-  class MobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
-   public:
-    // |cellular| must have lifespan longer than this object. In practice this
-    // is enforced because |cellular| owns this object.
-    explicit MobileOperatorInfoObserver(Cellular* cellular);
-    ~MobileOperatorInfoObserver() override;
-
-    void set_capability(CellularCapability* capability) {
-      capability_ = capability;
-    }
-
-    // Inherited from MobileOperatorInfo::Observer
-    void OnOperatorChanged() override;
-
-   private:
-    Cellular* const cellular_;
-    // Owned by |Cellular|.
-    CellularCapability* capability_;
-
-    DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserver);
-  };
-
   // Names of properties in storage
   static const char kAllowRoaming[];
 
@@ -516,6 +496,9 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   void PollLocationTask();
 
+  // Implements MobileOperatorInfo::Observer:
+  void OnOperatorChanged() override;
+
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   State state_;
@@ -536,8 +519,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   // changes.
   std::unique_ptr<MobileOperatorInfo> home_provider_info_;
   std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
-  // Observer object to listen to updates from the operator info objects.
-  std::unique_ptr<MobileOperatorInfoObserver> mobile_operator_info_observer_;
 
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.
