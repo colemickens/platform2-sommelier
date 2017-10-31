@@ -37,11 +37,6 @@ static auto kModuleLogScope = ScopeLogger::kModem;
 static string ObjectID(Modem* m) { return m->path().c_str(); }
 }
 
-// TODO(petkov): Consider generating these in mm/mm-modem.h.
-const char Modem::kPropertyLinkName[] = "Device";
-const char Modem::kPropertyIPMethod[] = "IpMethod";
-const char Modem::kPropertyType[] = "Type";
-
 // statics
 constexpr char Modem::kFakeDevNameFormat[];
 const char Modem::kFakeDevAddress[] = "000000000000";

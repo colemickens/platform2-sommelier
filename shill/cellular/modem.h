@@ -59,10 +59,6 @@ class Modem {
   void set_type(Cellular::Type type) { type_ = type; }
 
  protected:
-  static const char kPropertyLinkName[];
-  static const char kPropertyIPMethod[];
-  static const char kPropertyType[];
-
   virtual void Init();
 
   CellularRefPtr device() const { return device_; }

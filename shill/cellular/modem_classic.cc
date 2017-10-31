@@ -24,6 +24,14 @@ using std::string;
 
 namespace shill {
 
+namespace {
+
+constexpr char kPropertyLinkName[] = "Device";
+constexpr char kPropertyIPMethod[] = "IpMethod";
+constexpr char kPropertyType[] = "Type";
+
+}  // namespace
+
 ModemClassic::ModemClassic(const string& service,
                            const string& path,
                            ModemInfo* modem_info)
