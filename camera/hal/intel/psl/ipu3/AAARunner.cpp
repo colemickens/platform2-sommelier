@@ -114,7 +114,7 @@ AAARunner::~AAARunner()
  *\param [IN] reqState: Pointer to the request control structure to process
  *\return NO_ERROR
  */
-status_t AAARunner::run2A(RequestCtrlState &reqState)
+status_t AAARunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
@@ -262,7 +262,8 @@ status_t AAARunner::run2A(RequestCtrlState &reqState)
         saInput->sensor_frame_params = mSettingsProcessor->getCurrentFrameParams();
         status = m3aWrapper->runSa(nullptr,
                                    saInput,
-                                   &reqState.captureSettings->aiqResults.saResults);
+                                   &reqState.captureSettings->aiqResults.saResults,
+                                   forceUpdated);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Failed to run SA for request of id %d", reqId);
         }

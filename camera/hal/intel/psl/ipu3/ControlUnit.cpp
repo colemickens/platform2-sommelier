@@ -576,7 +576,8 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
         LOG2("%s, stats frame sequence %u", __FUNCTION__, stats->frameSequence);
     }
 
-    status = m3ARunner->run2A(*reqState);
+    bool forceUpdated = (mLatestRequestId < 0 ? true : false);
+    status = m3ARunner->run2A(*reqState, forceUpdated);
     if (status != NO_ERROR) {
        LOGE("Error in running run2AandCapture for request %d", reqId);
        return status;
