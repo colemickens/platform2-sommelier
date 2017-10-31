@@ -93,7 +93,8 @@ void ChromeosModemCDMAProxy::Activate(const string& carrier,
                  callback),
       base::Bind(&ChromeosModemCDMAProxy::OnActivateFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemCDMAProxy::GetRegistrationState(
@@ -107,7 +108,8 @@ void ChromeosModemCDMAProxy::GetRegistrationState(
                  callback),
       base::Bind(&ChromeosModemCDMAProxy::OnGetRegistrationStateFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemCDMAProxy::GetSignalQuality(
@@ -119,7 +121,8 @@ void ChromeosModemCDMAProxy::GetSignalQuality(
                  callback),
       base::Bind(&ChromeosModemCDMAProxy::OnGetSignalQualityFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 const string ChromeosModemCDMAProxy::MEID() {

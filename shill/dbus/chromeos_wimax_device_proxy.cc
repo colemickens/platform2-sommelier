@@ -88,7 +88,7 @@ ChromeosWiMaxDeviceProxy::~ChromeosWiMaxDeviceProxy() {
 
 void ChromeosWiMaxDeviceProxy::Enable(Error* /*error*/,
                                       const ResultCallback& callback,
-                                      int /*timeout*/) {
+                                      int timeout) {
   proxy_->EnableAsync(
       base::Bind(&ChromeosWiMaxDeviceProxy::OnSuccess,
                  weak_factory_.GetWeakPtr(),
@@ -97,12 +97,13 @@ void ChromeosWiMaxDeviceProxy::Enable(Error* /*error*/,
       base::Bind(&ChromeosWiMaxDeviceProxy::OnFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosWiMaxDeviceProxy::Disable(Error* /*error*/,
                                        const ResultCallback& callback,
-                                       int /*timeout*/) {
+                                       int timeout) {
   proxy_->DisableAsync(
       base::Bind(&ChromeosWiMaxDeviceProxy::OnSuccess,
                  weak_factory_.GetWeakPtr(),
@@ -111,12 +112,13 @@ void ChromeosWiMaxDeviceProxy::Disable(Error* /*error*/,
       base::Bind(&ChromeosWiMaxDeviceProxy::OnFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosWiMaxDeviceProxy::ScanNetworks(Error* /*error*/,
                                             const ResultCallback& callback,
-                                            int /*timeout*/) {
+                                            int timeout) {
   proxy_->ScanNetworksAsync(
       base::Bind(&ChromeosWiMaxDeviceProxy::OnSuccess,
                  weak_factory_.GetWeakPtr(),
@@ -125,14 +127,15 @@ void ChromeosWiMaxDeviceProxy::ScanNetworks(Error* /*error*/,
       base::Bind(&ChromeosWiMaxDeviceProxy::OnFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosWiMaxDeviceProxy::Connect(const RpcIdentifier& network,
                                        const KeyValueStore& parameters,
                                        Error* /*error*/,
                                        const ResultCallback& callback,
-                                       int /*timeout*/) {
+                                       int timeout) {
   proxy_->ConnectAsync(
       dbus::ObjectPath(network),
       parameters.properties(),
@@ -143,12 +146,13 @@ void ChromeosWiMaxDeviceProxy::Connect(const RpcIdentifier& network,
       base::Bind(&ChromeosWiMaxDeviceProxy::OnFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosWiMaxDeviceProxy::Disconnect(Error* /*error*/,
                                           const ResultCallback& callback,
-                                          int /*timeout*/) {
+                                          int timeout) {
   proxy_->DisconnectAsync(
       base::Bind(&ChromeosWiMaxDeviceProxy::OnSuccess,
                  weak_factory_.GetWeakPtr(),
@@ -157,7 +161,8 @@ void ChromeosWiMaxDeviceProxy::Disconnect(Error* /*error*/,
       base::Bind(&ChromeosWiMaxDeviceProxy::OnFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosWiMaxDeviceProxy::set_networks_changed_callback(

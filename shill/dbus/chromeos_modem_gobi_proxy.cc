@@ -53,7 +53,8 @@ void ChromeosModemGobiProxy::SetCarrier(const string& carrier,
                  callback),
       base::Bind(&ChromeosModemGobiProxy::OnSetCarrierFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemGobiProxy::OnSetCarrierSuccess(

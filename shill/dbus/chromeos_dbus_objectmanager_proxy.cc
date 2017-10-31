@@ -84,7 +84,8 @@ void ChromeosDBusObjectManagerProxy::GetManagedObjects(
                  callback),
       base::Bind(&ChromeosDBusObjectManagerProxy::OnGetManagedObjectsFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosDBusObjectManagerProxy::OnServiceAvailable(bool available) {

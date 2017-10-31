@@ -61,7 +61,8 @@ void ChromeosModemProxy::Enable(bool enable,
                       base::Bind(&ChromeosModemProxy::OnOperationFailure,
                                  weak_factory_.GetWeakPtr(),
                                  callback,
-                                 __func__));
+                                 __func__),
+                      timeout);
 }
 
 void ChromeosModemProxy::CreateBearer(
@@ -79,7 +80,8 @@ void ChromeosModemProxy::CreateBearer(
                  callback),
       base::Bind(&ChromeosModemProxy::OnCreateBearerFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemProxy::DeleteBearer(const string& bearer,
@@ -95,7 +97,8 @@ void ChromeosModemProxy::DeleteBearer(const string& bearer,
                             base::Bind(&ChromeosModemProxy::OnOperationFailure,
                                        weak_factory_.GetWeakPtr(),
                                        callback,
-                                       __func__));
+                                       __func__),
+                            timeout);
 }
 
 void ChromeosModemProxy::Reset(Error* error,
@@ -109,7 +112,8 @@ void ChromeosModemProxy::Reset(Error* error,
                      base::Bind(&ChromeosModemProxy::OnOperationFailure,
                                 weak_factory_.GetWeakPtr(),
                                 callback,
-                                __func__));
+                                __func__),
+                     timeout);
 }
 
 void ChromeosModemProxy::FactoryReset(const std::string& code,
@@ -125,7 +129,8 @@ void ChromeosModemProxy::FactoryReset(const std::string& code,
                             base::Bind(&ChromeosModemProxy::OnOperationFailure,
                                        weak_factory_.GetWeakPtr(),
                                        callback,
-                                       __func__));
+                                       __func__),
+                            timeout);
 }
 
 void ChromeosModemProxy::SetCurrentCapabilities(uint32_t capabilities,
@@ -142,7 +147,8 @@ void ChromeosModemProxy::SetCurrentCapabilities(uint32_t capabilities,
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::SetCurrentModes(uint32_t allowed_modes,
@@ -162,7 +168,8 @@ void ChromeosModemProxy::SetCurrentModes(uint32_t allowed_modes,
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
@@ -179,7 +186,8 @@ void ChromeosModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::Command(const std::string& cmd,
@@ -195,7 +203,8 @@ void ChromeosModemProxy::Command(const std::string& cmd,
                                   callback),
                        base::Bind(&ChromeosModemProxy::OnCommandFailure,
                                   weak_factory_.GetWeakPtr(),
-                                  callback));
+                                  callback),
+                       timeout);
 }
 
 void ChromeosModemProxy::SetPowerState(uint32_t power_state,
@@ -212,7 +221,8 @@ void ChromeosModemProxy::SetPowerState(uint32_t power_state,
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::StateChanged(

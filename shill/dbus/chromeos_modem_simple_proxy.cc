@@ -50,7 +50,8 @@ void ChromeosModemSimpleProxy::GetModemStatus(
                  callback),
       base::Bind(&ChromeosModemSimpleProxy::OnGetStatusFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemSimpleProxy::Connect(const KeyValueStore& properties,
@@ -67,7 +68,8 @@ void ChromeosModemSimpleProxy::Connect(const KeyValueStore& properties,
                  callback),
       base::Bind(&ChromeosModemSimpleProxy::OnConnectFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemSimpleProxy::OnGetStatusSuccess(

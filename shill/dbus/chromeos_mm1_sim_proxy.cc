@@ -54,7 +54,8 @@ void ChromeosSimProxy::SendPin(const string& pin,
                        base::Bind(&ChromeosSimProxy::OnOperationFailure,
                                   weak_factory_.GetWeakPtr(),
                                   callback,
-                                  __func__));
+                                  __func__),
+                       timeout);
 }
 
 void ChromeosSimProxy::SendPuk(const string& puk,
@@ -73,7 +74,8 @@ void ChromeosSimProxy::SendPuk(const string& puk,
                        base::Bind(&ChromeosSimProxy::OnOperationFailure,
                                   weak_factory_.GetWeakPtr(),
                                   callback,
-                                  __func__));
+                                  __func__),
+                       timeout);
 }
 
 void ChromeosSimProxy::EnablePin(const string& pin,
@@ -92,7 +94,8 @@ void ChromeosSimProxy::EnablePin(const string& pin,
                          base::Bind(&ChromeosSimProxy::OnOperationFailure,
                                     weak_factory_.GetWeakPtr(),
                                     callback,
-                                    __func__));
+                                    __func__),
+                         timeout);
 }
 
 void ChromeosSimProxy::ChangePin(const string& old_pin,
@@ -111,7 +114,8 @@ void ChromeosSimProxy::ChangePin(const string& old_pin,
                       base::Bind(&ChromeosSimProxy::OnOperationFailure,
                                  weak_factory_.GetWeakPtr(),
                                  callback,
-                                 __func__));
+                                 __func__),
+                      timeout);
 }
 
 void ChromeosSimProxy::OnOperationSuccess(const ResultCallback& callback,

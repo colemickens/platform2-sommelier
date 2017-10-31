@@ -52,7 +52,8 @@ void ChromeosModemModem3gppProxy::Register(const std::string& operator_id,
                  callback),
       base::Bind(&ChromeosModemModem3gppProxy::OnRegisterFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemModem3gppProxy::Scan(Error* error,
@@ -64,7 +65,8 @@ void ChromeosModemModem3gppProxy::Scan(Error* error,
                                callback),
                     base::Bind(&ChromeosModemModem3gppProxy::OnScanFailure,
                                weak_factory_.GetWeakPtr(),
-                               callback));
+                               callback),
+                    timeout);
 }
 
 void ChromeosModemModem3gppProxy::OnRegisterSuccess(

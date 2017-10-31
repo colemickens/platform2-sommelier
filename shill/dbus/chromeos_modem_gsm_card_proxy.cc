@@ -78,7 +78,8 @@ void ChromeosModemGSMCardProxy::GetIMEI(
       base::Bind(&ChromeosModemGSMCardProxy::OnGetGSMIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 "IMEI"));
+                 "IMEI"),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::GetIMSI(Error* error,
@@ -93,7 +94,8 @@ void ChromeosModemGSMCardProxy::GetIMSI(Error* error,
       base::Bind(&ChromeosModemGSMCardProxy::OnGetGSMIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 "IMSI"));
+                 "IMSI"),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::GetSPN(Error* error,
@@ -108,7 +110,8 @@ void ChromeosModemGSMCardProxy::GetSPN(Error* error,
       base::Bind(&ChromeosModemGSMCardProxy::OnGetGSMIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 "SPN"));
+                 "SPN"),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::GetMSISDN(Error* error,
@@ -123,7 +126,8 @@ void ChromeosModemGSMCardProxy::GetMSISDN(Error* error,
       base::Bind(&ChromeosModemGSMCardProxy::OnGetGSMIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 "MSIDN"));
+                 "MSIDN"),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::EnablePIN(const string& pin, bool enabled,
@@ -142,7 +146,8 @@ void ChromeosModemGSMCardProxy::EnablePIN(const string& pin, bool enabled,
       base::Bind(&ChromeosModemGSMCardProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::SendPIN(const string& pin,
@@ -160,7 +165,8 @@ void ChromeosModemGSMCardProxy::SendPIN(const string& pin,
       base::Bind(&ChromeosModemGSMCardProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::SendPUK(const string& puk, const string& pin,
@@ -179,7 +185,8 @@ void ChromeosModemGSMCardProxy::SendPUK(const string& puk, const string& pin,
       base::Bind(&ChromeosModemGSMCardProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemGSMCardProxy::ChangePIN(const string& old_pin,
@@ -199,7 +206,8 @@ void ChromeosModemGSMCardProxy::ChangePIN(const string& old_pin,
       base::Bind(&ChromeosModemGSMCardProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 uint32_t ChromeosModemGSMCardProxy::EnabledFacilityLocks() {

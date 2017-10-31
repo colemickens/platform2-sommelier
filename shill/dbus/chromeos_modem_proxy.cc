@@ -56,7 +56,8 @@ void ChromeosModemProxy::Enable(
                                  callback),
                       base::Bind(&ChromeosModemProxy::OnEnableFailure,
                                  weak_factory_.GetWeakPtr(),
-                                 callback));
+                                 callback),
+                      timeout);
 }
 
 void ChromeosModemProxy::Disconnect(
@@ -67,7 +68,8 @@ void ChromeosModemProxy::Disconnect(
                                      callback),
                           base::Bind(&ChromeosModemProxy::OnDisconnectFailure,
                                      weak_factory_.GetWeakPtr(),
-                                     callback));
+                                     callback),
+                          timeout);
 }
 
 void ChromeosModemProxy::GetModemInfo(
@@ -78,7 +80,8 @@ void ChromeosModemProxy::GetModemInfo(
                                   callback),
                        base::Bind(&ChromeosModemProxy::OnGetInfoFailure,
                                   weak_factory_.GetWeakPtr(),
-                                  callback));
+                                  callback),
+                       timeout);
 }
 
 void ChromeosModemProxy::StateChanged(

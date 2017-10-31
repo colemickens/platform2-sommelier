@@ -94,7 +94,8 @@ void ChromeosModemGSMNetworkProxy::GetRegistrationInfo(
                  callback),
       base::Bind(&ChromeosModemGSMNetworkProxy::OnGetRegistrationInfoFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemGSMNetworkProxy::GetSignalQuality(
@@ -108,7 +109,8 @@ void ChromeosModemGSMNetworkProxy::GetSignalQuality(
                  callback),
       base::Bind(&ChromeosModemGSMNetworkProxy::OnGetSignalQualityFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemGSMNetworkProxy::Register(const string& network_id,
@@ -123,7 +125,8 @@ void ChromeosModemGSMNetworkProxy::Register(const string& network_id,
                  callback),
       base::Bind(&ChromeosModemGSMNetworkProxy::OnRegisterFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 void ChromeosModemGSMNetworkProxy::Scan(Error* error,
@@ -136,7 +139,8 @@ void ChromeosModemGSMNetworkProxy::Scan(Error* error,
                  callback),
       base::Bind(&ChromeosModemGSMNetworkProxy::OnScanFailure,
                  weak_factory_.GetWeakPtr(),
-                 callback));
+                 callback),
+      timeout);
 }
 
 uint32_t ChromeosModemGSMNetworkProxy::AccessTechnology() {

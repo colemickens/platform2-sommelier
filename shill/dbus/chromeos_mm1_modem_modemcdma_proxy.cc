@@ -61,7 +61,8 @@ void ChromeosModemModemCdmaProxy::Activate(const std::string& carrier,
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemModemCdmaProxy::ActivateManual(
@@ -81,7 +82,8 @@ void ChromeosModemModemCdmaProxy::ActivateManual(
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
-                 __func__));
+                 __func__),
+      timeout);
 }
 
 void ChromeosModemModemCdmaProxy::ActivationStateChanged(

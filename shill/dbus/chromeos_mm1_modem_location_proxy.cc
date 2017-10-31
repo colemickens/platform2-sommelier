@@ -65,7 +65,8 @@ void ChromeosModemLocationProxy::GetLocation(Error* error,
       base::Bind(&ChromeosModemLocationProxy::OnGetLocationSuccess,
                  weak_factory_.GetWeakPtr(), callback),
       base::Bind(&ChromeosModemLocationProxy::OnGetLocationFailure,
-                 weak_factory_.GetWeakPtr(), callback));
+                 weak_factory_.GetWeakPtr(), callback),
+      timeout);
 }
 
 void ChromeosModemLocationProxy::OnSetupSuccess(
