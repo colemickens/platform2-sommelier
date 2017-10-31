@@ -79,7 +79,6 @@ CellularService::CellularService(ModemInfo* modem_info,
     : Service(modem_info->control_interface(), modem_info->dispatcher(),
               modem_info->metrics(), modem_info->manager(),
               Technology::kCellular),
-      weak_ptr_factory_(this),
       activation_type_(kActivationTypeUnknown),
       cellular_(device),
       is_auto_connecting_(false) {

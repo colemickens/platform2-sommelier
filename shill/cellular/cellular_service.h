@@ -228,8 +228,6 @@ class CellularService : public Service {
   // For unit test.
   void set_out_of_credits_detector(OutOfCreditsDetector* detector);
 
-  base::WeakPtrFactory<CellularService> weak_ptr_factory_;
-
   // Properties
   ActivationType activation_type_;
   std::string activation_state_;
