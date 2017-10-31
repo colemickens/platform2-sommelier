@@ -371,6 +371,7 @@
           'sources': [
             'brillo/asynchronous_signal_handler_unittest.cc',
             'brillo/data_encoding_unittest.cc',
+            'brillo/enum_flags_unittest.cc',
             'brillo/errors/error_codes_unittest.cc',
             'brillo/errors/error_unittest.cc',
             'brillo/file_utils_unittest.cc',
