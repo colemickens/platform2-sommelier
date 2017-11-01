@@ -858,6 +858,15 @@ void Camera3SimpleCaptureFrames::GetWaiverKeys(
     waiver_keys->insert(ANDROID_SENSOR_NOISE_PROFILE);
   }
 
+  // Keys for depth output capability
+  if (!cam_device_.GetStaticInfo()->IsCapabilitySupported(
+          ANDROID_REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT)) {
+    waiver_keys->insert(ANDROID_LENS_POSE_ROTATION);
+    waiver_keys->insert(ANDROID_LENS_POSE_TRANSLATION);
+    waiver_keys->insert(ANDROID_LENS_INTRINSIC_CALIBRATION);
+    waiver_keys->insert(ANDROID_LENS_RADIAL_DISTORTION);
+  }
+
   if (cam_device_.GetStaticInfo()->GetAeMaxRegions() == 0) {
     waiver_keys->insert(ANDROID_CONTROL_AE_REGIONS);
   }
