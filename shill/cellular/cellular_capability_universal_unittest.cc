@@ -529,10 +529,8 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   capability_->InitProxies();
 
   const char kBearerDBusPath[] = "/bearer/dbus/path";
-  capability_->set_active_bearer(
-      new CellularBearer(&control_interface_,
-                         kBearerDBusPath,
-                         cellular_->dbus_service()));  // Passes ownership.
+  capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
+      &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
   cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
@@ -576,10 +574,8 @@ TEST_F(CellularCapabilityUniversalMainTest,
   capability_->InitProxies();
 
   const char kBearerDBusPath[] = "/bearer/dbus/path";
-  capability_->set_active_bearer(
-      new CellularBearer(&control_interface_,
-                         kBearerDBusPath,
-                         cellular_->dbus_service()));  // Passes ownership.
+  capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
+      &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
   cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
@@ -620,7 +616,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
-  capability_->set_active_bearer(nullptr);
+  capability_->set_active_bearer_for_test(nullptr);
   cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
   Error error;

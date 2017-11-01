@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -393,9 +394,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Returns the out-of-credits detection algorithm to be used on this modem.
   OutOfCreditsDetector::OOCType GetOutOfCreditsDetectionType() const;
 
-  // For unit tests.
-  void set_active_bearer(CellularBearer* bearer) {
-    active_bearer_.reset(bearer);  // Takes ownership
+  void set_active_bearer_for_test(std::unique_ptr<CellularBearer> bearer) {
+    active_bearer_ = std::move(bearer);
   }
 
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
