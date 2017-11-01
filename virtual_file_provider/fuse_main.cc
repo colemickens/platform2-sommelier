@@ -13,6 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "virtual_file_provider/operation_throttle.h"
 #include "virtual_file_provider/util.h"
 
 namespace virtual_file_provider {
@@ -21,8 +22,22 @@ namespace {
 
 constexpr char kFileSystemName[] = "virtual-file-provider";
 
+// Maximum number of operations running at the same time.
+constexpr int kMaxOperationCount = 1024;
+
+struct FusePrivateData {
+  FuseMainDelegate* delegate;
+  OperationThrottle* operation_throttle;
+};
+
 FuseMainDelegate* GetDelegate() {
-  return static_cast<FuseMainDelegate*>(fuse_get_context()->private_data);
+  return static_cast<FusePrivateData*>(fuse_get_context()->private_data)
+      ->delegate;
+}
+
+OperationThrottle* GetOperationThrottle() {
+  return static_cast<FusePrivateData*>(fuse_get_context()->private_data)
+      ->operation_throttle;
 }
 
 int GetAttr(const char* path, struct stat* stat) {
@@ -56,6 +71,8 @@ int Read(const char* path,
          size_t size,
          off_t off,
          struct fuse_file_info* fi) {
+  auto operation_reference = GetOperationThrottle()->StartOperation();
+
   DCHECK_EQ('/', path[0]);
   // File name is the ID.
   std::string id(path + 1);
@@ -133,9 +150,6 @@ int FuseMain(const base::FilePath& mount_path, FuseMainDelegate* delegate) {
       kFileSystemName,
       path_str.c_str(),
       "-f",  // "-f" for foreground.
-      // "-s" for single thread, as multi-threading may allow misbehaving
-      // applications to exhaust finite resource of this process.
-      "-s",
   };
   constexpr struct fuse_operations operations = {
       .getattr = GetAttr,
@@ -145,11 +159,12 @@ int FuseMain(const base::FilePath& mount_path, FuseMainDelegate* delegate) {
       .readdir = ReadDir,
       .init = Init,
   };
-  void* private_data = delegate;
-  return fuse_main(arraysize(fuse_argv),
-                   const_cast<char**>(fuse_argv),
-                   &operations,
-                   private_data);
+  OperationThrottle operation_throttle(kMaxOperationCount);
+  FusePrivateData private_data;
+  private_data.delegate = delegate;
+  private_data.operation_throttle = &operation_throttle;
+  return fuse_main(arraysize(fuse_argv), const_cast<char**>(fuse_argv),
+                   &operations, &private_data);
 }
 
 }  // namespace virtual_file_provider

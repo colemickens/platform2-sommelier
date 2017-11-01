@@ -19,14 +19,10 @@
       'deps': [
         'libcap',
       ],
-      'defines': [
-        'FUSE_USE_VERSION=26',
+      'dependencies': [
+        'libvirtual-file-provider',
       ],
       'sources': [
-        'fuse_main.cc',
-        'service.cc',
-        'size_map.cc',
-        'util.cc',
         'virtual_file_provider.cc',
       ],
       'variables': {
@@ -35,6 +31,20 @@
           'fuse',
         ],
       },
+    },
+    {
+      'target_name': 'libvirtual-file-provider',
+      'type': 'static_library',
+      'defines': [
+        'FUSE_USE_VERSION=26',
+      ],
+      'sources': [
+        'fuse_main.cc',
+        'operation_throttle.cc',
+        'service.cc',
+        'size_map.cc',
+        'util.cc',
+      ],
     },
     {
       'target_name': 'rootfs.squashfs',
@@ -85,5 +95,23 @@
         },
       ],
     },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'virtual-file-provider_testrunner',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'libvirtual-file-provider',
+          ],
+          'sources': [
+            'operation_throttle_unittest.cc',
+            'virtual_file_provider_testrunner.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
