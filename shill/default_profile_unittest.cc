@@ -91,7 +91,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
   set<string> empty_group_set;
   EXPECT_CALL(*storage.get(), GetGroups())
       .WillRepeatedly(Return(empty_group_set));
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
 
   Error error(Error::kInvalidProperty, "");
   {
@@ -171,7 +171,7 @@ TEST_F(DefaultProfileTest, Save) {
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Save(_, _));
   manager()->dhcp_properties_ = std::move(dhcp_props);
@@ -228,7 +228,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
 
   profile_->LoadManagerProperties(&manager_props,
                                   manager()->dhcp_properties_.get());
@@ -303,7 +303,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         _))
       .WillOnce(DoAll(SetArgPointee<2>(prohibited_technologies),
                       Return(true)));
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
   Manager::Properties manager_props;
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
@@ -361,7 +361,7 @@ TEST_F(DefaultProfileTest, ConfigureService) {
   EXPECT_CALL(*ethernet_service, Save(storage.get()))
       .WillOnce(Return(true));
 
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
   EXPECT_FALSE(profile_->ConfigureService(unknown_service));
   EXPECT_TRUE(profile_->ConfigureService(ethernet_service));
 }
@@ -372,7 +372,7 @@ TEST_F(DefaultProfileTest, UpdateDevice) {
   EXPECT_CALL(*device_, Save(storage.get()))
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  profile_->set_storage(storage.release());
+  profile_->SetStorageForTest(std::move(storage));
   EXPECT_TRUE(profile_->UpdateDevice(device_));
   EXPECT_FALSE(profile_->UpdateDevice(device_));
 }
@@ -385,7 +385,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
     auto storage = std::make_unique<MockStore>();
     EXPECT_CALL(*storage, Flush()).Times(0);
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(false));
-    profile_->set_storage(storage.release());
+    profile_->SetStorageForTest(std::move(storage));
     EXPECT_FALSE(profile_->UpdateWiFiProvider(wifi_provider));
   }
 
@@ -393,7 +393,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
     auto storage = std::make_unique<MockStore>();
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(false));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
-    profile_->set_storage(storage.release());
+    profile_->SetStorageForTest(std::move(storage));
     EXPECT_FALSE(profile_->UpdateWiFiProvider(wifi_provider));
   }
 
@@ -401,7 +401,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
     auto storage = std::make_unique<MockStore>();
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
-    profile_->set_storage(storage.release());
+    profile_->SetStorageForTest(std::move(storage));
     EXPECT_TRUE(profile_->UpdateWiFiProvider(wifi_provider));
   }
 }

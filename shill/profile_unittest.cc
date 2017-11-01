@@ -55,7 +55,7 @@ class ProfileTest : public PropertyStoreTest {
     // Install a FakeStore by default. In tests that actually care
     // about the interaction between Profile and StoreInterface, we'll
     // replace this with a MockStore.
-    profile_->set_storage(new FakeStore());
+    profile_->SetStorageForTest(std::make_unique<FakeStore>());
   }
 
   MockService* CreateMockService() {
@@ -93,8 +93,9 @@ TEST_F(ProfileTest, DeleteEntry) {
       control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
-  MockStore* storage(new StrictMock<MockStore>());
-  profile_->storage_.reset(storage);  // Passes ownership
+  auto mock_storage = std::make_unique<StrictMock<MockStore>>();
+  MockStore* storage = mock_storage.get();
+  profile_->SetStorageForTest(std::move(mock_storage));
   const string kEntryName("entry_name");
 
   // If entry does not appear in storage, DeleteEntry() should return an error.

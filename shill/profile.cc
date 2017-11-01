@@ -142,13 +142,13 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
         base::StringPrintf("Profile %s:%s", name_.user.c_str(),
                            name_.identifier.c_str()));
   }
-  set_storage(storage.release());
+  storage_ = std::move(storage);
   manager_->OnProfileStorageInitialized(this);
   return true;
 }
 
 void Profile::InitStubStorage() {
-  set_storage(new StubStorage());
+  storage_ = std::make_unique<StubStorage>();
 }
 
 bool Profile::RemoveStorage(Error* error) {
@@ -177,8 +177,8 @@ string Profile::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-void Profile::set_storage(StoreInterface* storage) {
-  storage_.reset(storage);
+void Profile::SetStorageForTest(std::unique_ptr<StoreInterface> storage) {
+  storage_ = std::move(storage);
 }
 
 bool Profile::AdoptService(const ServiceRefPtr& service) {

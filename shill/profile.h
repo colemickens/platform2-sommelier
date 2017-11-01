@@ -89,7 +89,7 @@ class Profile : public base::RefCounted<Profile> {
 
   // Remove the persistent storage for this Profile.  It is an error to
   // do so while the underlying storage is open via InitStorage() or
-  // set_storage().
+  // SetStorageForTest().
   bool RemoveStorage(Error* error);
 
   virtual std::string GetFriendlyName() const;
@@ -99,9 +99,8 @@ class Profile : public base::RefCounted<Profile> {
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
 
-  // Set the storage inteface.  This is used for testing purposes.  It
-  // takes ownership of |storage|.
-  void set_storage(StoreInterface* storage);
+  // Set the storage inteface.  This is used for testing purposes.
+  void SetStorageForTest(std::unique_ptr<StoreInterface> storage);
 
   // Begin managing the persistence of |service|.
   // Returns true if |service| is new to this profile and was added,

@@ -226,7 +226,7 @@ class ManagerTest : public PropertyStoreTest {
       return nullptr;
     Profile* profile(new Profile(
         control_interface(), metrics(), manager, id, FilePath(), false));
-    profile->set_storage(storage.release());  // Passes ownership of "storage".
+    profile->SetStorageForTest(std::move(storage));
     return profile;  // Passes ownership of "profile".
   }
 
@@ -867,13 +867,13 @@ TEST_F(ManagerTest, MoveService) {
     Profile::Identifier id("irrelevant");
     ProfileRefPtr profile(new Profile(
         control_interface(), metrics(), &manager, id, FilePath(), false));
-    MockStore* storage = new MockStore;
+    auto storage = std::make_unique<MockStore>();
     EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*storage, Flush())
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
-    profile->set_storage(storage);
+    profile->SetStorageForTest(std::move(storage));
     AdoptProfile(&manager, profile);
   }
   // Create a profile that already has |s2| in it.
