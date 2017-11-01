@@ -749,91 +749,6 @@ TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert", "")));
 }
 
-TEST_F(AttestationTest, AlternatePCADisabled) {
-  // Prepare without alternate PCA configuration.
-  attestation_.PrepareForEnrollment();
-  // Expect no alternate PCA data to be available.
-  AttestationDatabase db = GetPersistentDatabase();
-  EXPECT_FALSE(db.has_alternate_identity_binding() ||
-               db.has_alternate_identity_key() ||
-               db.has_alternate_pcr0_quote() ||
-               db.credentials().
-                  has_alternate_encrypted_endorsement_credential());
-}
-
-TEST_F(AttestationTest, AlternatePCAEnabled) {
-  // Prepare with alternate PCA configuration.
-  EXPECT_CALL(install_attributes_, Get(_, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
-                            Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
-      .WillRepeatedly(Return(true));
-  attestation_.PrepareForEnrollment();
-  // Expect all alternate PCA data to be available.
-  AttestationDatabase db = GetPersistentDatabase();
-  EXPECT_TRUE(db.has_alternate_identity_binding() &&
-              db.has_alternate_identity_key() &&
-              db.has_alternate_pcr0_quote() &&
-              db.credentials().
-                 has_alternate_encrypted_endorsement_credential());
-}
-
-TEST_F(AttestationTest, AlternatePCAEnroll) {
-  EXPECT_CALL(install_attributes_, Get(_, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
-                            Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
-      .WillRepeatedly(Return(true));
-
-  SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateEnrollRequest(Attestation::kAlternatePCA,
-                                                &blob));
-  attestation_.PrepareForEnrollment();
-  EXPECT_FALSE(attestation_.IsEnrolled());
-  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
-                                               &blob));
-  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
-  EXPECT_FALSE(attestation_.IsEnrolled());
-  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kAlternatePCA,
-                                               &blob));
-  EXPECT_TRUE(attestation_.Enroll(Attestation::kAlternatePCA, GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.IsEnrolled());
-}
-
-TEST_F(AttestationTest, AlternatePCACertRequest) {
-  EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(GetPKCS1PublicKey()),
-                            Return(true)));
-  EXPECT_CALL(install_attributes_, Get(_, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
-                            Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
-      .WillRepeatedly(Return(true));
-
-  SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
-                                              ENTERPRISE_USER_CERTIFICATE, "",
-                                              "", &blob));
-  attestation_.PrepareForEnrollment();
-  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
-                                              ENTERPRISE_USER_CERTIFICATE, "",
-                                              "", &blob));
-  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
-  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
-                                              ENTERPRISE_USER_CERTIFICATE, "",
-                                              "", &blob));
-  EXPECT_TRUE(attestation_.Enroll(Attestation::kAlternatePCA, GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
-                                             ENTERPRISE_USER_CERTIFICATE, "",
-                                             "", &blob));
-}
-
 TEST_F(AttestationTest, IdentityResetRequest) {
   SecureBlob blob;
   EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
@@ -868,26 +783,6 @@ TEST_F(AttestationTest, PCARequest_GetCertificate) {
   SecureBlob response;
   EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                                   Attestation::kGetCertificate,
-                                                  SecureBlob("request"),
-                                                  &response));
-  EXPECT_TRUE(CompareBlob(response, "response"));
-}
-
-TEST_F(AttestationTest, AlternatePCARequest) {
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_url", _))
-      .WillRepeatedly(DoAll(
-          SetArgPointee<1>(SecureBlob("https://alternate")),
-          Return(true)));
-  std::string expected_url = "https://alternate/enroll";
-  http_transport_->AddSimpleReplyHandler(
-      expected_url,
-      brillo::http::request_type::kPost,
-      brillo::http::status_code::Ok,
-      "response",
-      brillo::mime::application::kOctet_stream);
-  SecureBlob response;
-  EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kAlternatePCA,
-                                                  Attestation::kEnroll,
                                                   SecureBlob("request"),
                                                   &response));
   EXPECT_TRUE(CompareBlob(response, "response"));

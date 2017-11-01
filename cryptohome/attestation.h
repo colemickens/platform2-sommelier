@@ -43,7 +43,6 @@ class Attestation : public base::PlatformThread::Delegate,
   enum PCAType {
     kDefaultPCA,    // The Google-operated Privacy CA.
     kTestPCA,       // The test version of the Google-operated Privacy CA.
-    kAlternatePCA,  // An alternate Privacy CA specified by enterprise policy.
     kMaxPCAType
   };
   enum PCARequestType {

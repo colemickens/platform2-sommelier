@@ -277,13 +277,6 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
 
 const int Attestation::kNumTemporalValues = 5;
 
-const char Attestation::kAlternatePCAKeyAttributeName[] =
-    "enterprise.alternate_pca_key";
-const char Attestation::kAlternatePCAKeyIDAttributeName[] =
-    "enterprise.alternate_pca_key_id";
-const char Attestation::kAlternatePCAUrlAttributeName[] =
-    "enterprise.alternate_pca_url";
-
 const char Attestation::kAttestationBasedEnterpriseEnrollmentContextName[] =
     "attestation_based_enrollment";
 
@@ -361,15 +354,9 @@ bool Attestation::IsPreparedForEnrollment() {
 }
 
 bool Attestation::IsEnrolled() {
-  bool enable_alternate_pca =
-      install_attributes_->Get(kAlternatePCAKeyAttributeName, NULL);
   base::AutoLock lock(lock_);
-  bool default_enrolled = database_pb_.has_identity_key() &&
-                          database_pb_.identity_key().has_identity_credential();
-  bool alternate_enrolled =
-      database_pb_.has_alternate_identity_key() &&
-      database_pb_.alternate_identity_key().has_identity_credential();
-  return default_enrolled && (alternate_enrolled || !enable_alternate_pca);
+  return database_pb_.has_identity_key() &&
+      database_pb_.identity_key().has_identity_credential();
 }
 
 void Attestation::PrepareForEnrollment() {
@@ -390,13 +377,6 @@ void Attestation::PrepareForEnrollment() {
     return;
   if (IsPreparedForEnrollment())
     return;
-  if (install_attributes_->is_first_install()) {
-    // We'll proceed now but we'll pick the default PCA as a result.
-    LOG(WARNING) << "Attestation: Using default PCA. Alternate PCA will not be"
-                    " available.";
-  }
-  bool enable_alternate_pca =
-      install_attributes_->Get(kAlternatePCAKeyAttributeName, NULL);
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
   SecureBlob ek_public_key;
@@ -458,51 +438,6 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to generate quote.";
     return;
   }
-  // Create an AIK and quotes for the alternate PCA.
-  SecureBlob alternate_identity_public_key_der;
-  SecureBlob alternate_identity_public_key;
-  SecureBlob alternate_identity_key_blob;
-  SecureBlob alternate_identity_binding;
-  SecureBlob alternate_identity_label;
-  SecureBlob alternate_pca_public_key;
-  SecureBlob alternate_quoted_pcr_value0;
-  SecureBlob alternate_quoted_data0;
-  SecureBlob alternate_quote0;
-  SecureBlob alternate_quoted_pcr_value1;
-  SecureBlob alternate_quoted_data1;
-  SecureBlob alternate_quote1;
-  if (enable_alternate_pca) {
-    if (!tpm_->MakeIdentity(&alternate_identity_public_key_der,
-                            &alternate_identity_public_key,
-                            &alternate_identity_key_blob,
-                            &alternate_identity_binding,
-                            &alternate_identity_label,
-                            &alternate_pca_public_key,
-                            &endorsement_credential,
-                            &platform_credential,
-                            &conformance_credential)) {
-      LOG(ERROR) << "Attestation: Failed to make AIK.";
-      return;
-    }
-    if (!tpm_->QuotePCR(0,
-                        alternate_identity_key_blob,
-                        external_data,
-                        &alternate_quoted_pcr_value0,
-                        &alternate_quoted_data0,
-                        &alternate_quote0)) {
-      LOG(ERROR) << "Attestation: Failed to generate quote.";
-      return;
-    }
-    if (!tpm_->QuotePCR(1,
-                        alternate_identity_key_blob,
-                        external_data,
-                        &alternate_quoted_pcr_value1,
-                        &alternate_quoted_data1,
-                        &alternate_quote1)) {
-      LOG(ERROR) << "Attestation: Failed to generate quote.";
-      return;
-    }
-  }
 
   // Create a delegate so we can activate the AIK later.
   SecureBlob delegate_blob;
@@ -538,15 +473,6 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to encrypt EK cert (test).";
     return;
   }
-  if (enable_alternate_pca) {
-    if (!EncryptEndorsementCredential(
-        kAlternatePCA,
-        endorsement_credential,
-        credentials_pb->mutable_alternate_encrypted_endorsement_credential())) {
-      LOG(ERROR) << "Attestation: Failed to encrypt EK cert (alternate).";
-      return;
-    }
-  }
   IdentityKey* key_pb = database_pb_.mutable_identity_key();
   key_pb->set_identity_public_key(identity_public_key_der.data(),
                                   identity_public_key_der.size());
@@ -572,46 +498,6 @@ void Attestation::PrepareForEnrollment() {
   quote_pb1->set_quoted_pcr_value(quoted_pcr_value1.data(),
                                   quoted_pcr_value1.size());
   quote_pb1->set_pcr_source_hint(platform_->GetHardwareID());
-  if (enable_alternate_pca) {
-    IdentityKey* alternate_key_pb =
-        database_pb_.mutable_alternate_identity_key();
-    alternate_key_pb->set_identity_public_key(
-        alternate_identity_public_key_der.data(),
-        alternate_identity_public_key_der.size());
-    alternate_key_pb->set_identity_key_blob(alternate_identity_key_blob.data(),
-                                            alternate_identity_key_blob.size());
-    IdentityBinding* alternate_binding_pb =
-        database_pb_.mutable_alternate_identity_binding();
-    alternate_binding_pb->set_identity_binding(
-        alternate_identity_binding.data(),
-        alternate_identity_binding.size());
-    alternate_binding_pb->set_identity_public_key_der(
-        alternate_identity_public_key_der.data(),
-        alternate_identity_public_key_der.size());
-    alternate_binding_pb->set_identity_public_key(
-        alternate_identity_public_key.data(),
-        alternate_identity_public_key.size());
-    alternate_binding_pb->set_identity_label(alternate_identity_label.data(),
-                                             alternate_identity_label.size());
-    alternate_binding_pb->set_pca_public_key(alternate_pca_public_key.data(),
-                                             alternate_pca_public_key.size());
-    Quote* alternate_quote_pb0 = database_pb_.mutable_alternate_pcr0_quote();
-    alternate_quote_pb0->set_quote(alternate_quote0.data(),
-                                   alternate_quote0.size());
-    alternate_quote_pb0->set_quoted_data(alternate_quoted_data0.data(),
-                                         alternate_quoted_data0.size());
-    alternate_quote_pb0->set_quoted_pcr_value(
-        alternate_quoted_pcr_value0.data(),
-        alternate_quoted_pcr_value0.size());
-    Quote* alternate_quote_pb1 = database_pb_.mutable_alternate_pcr1_quote();
-    alternate_quote_pb1->set_quote(alternate_quote1.data(),
-                                   alternate_quote1.size());
-    alternate_quote_pb1->set_quoted_data(alternate_quoted_data1.data(),
-                                         alternate_quoted_data1.size());
-    alternate_quote_pb1->set_quoted_pcr_value(
-        alternate_quoted_pcr_value1.data(),
-        alternate_quoted_pcr_value1.size());
-  }
   Delegation* delegate_pb = database_pb_.mutable_delegate();
   delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
   delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
@@ -762,16 +648,10 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   AttestationEnrollmentRequest request_pb;
   *request_pb.mutable_encrypted_endorsement_credential() =
       GetEncryptedEndorsementCredential(pca_type);
-  bool use_alternate_pca = (pca_type == kAlternatePCA);
-  request_pb.set_identity_public_key(use_alternate_pca ?
-      database_pb_.alternate_identity_binding().identity_public_key() :
+  request_pb.set_identity_public_key(
       database_pb_.identity_binding().identity_public_key());
-  *request_pb.mutable_pcr0_quote() = use_alternate_pca ?
-      database_pb_.alternate_pcr0_quote() :
-      database_pb_.pcr0_quote();
-  *request_pb.mutable_pcr1_quote() = use_alternate_pca ?
-      database_pb_.alternate_pcr1_quote() :
-      database_pb_.pcr1_quote();
+  *request_pb.mutable_pcr0_quote() = database_pb_.pcr0_quote();
+  *request_pb.mutable_pcr1_quote() = database_pb_.pcr1_quote();
   SecureBlob enterprise_enrollment_nonce;
   if (!ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce)) {
     LOG(ERROR) << "Attestation: Failed to compute enterprise enrollment nonce.";
@@ -809,10 +689,7 @@ bool Attestation::Enroll(PCAType pca_type,
   base::AutoLock lock(lock_);
   SecureBlob delegate_blob(database_pb_.delegate().blob());
   SecureBlob delegate_secret(database_pb_.delegate().secret());
-  bool use_alternate_pca = (pca_type == kAlternatePCA);
-  SecureBlob aik_blob(use_alternate_pca ?
-      database_pb_.alternate_identity_key().identity_key_blob() :
-      database_pb_.identity_key().identity_key_blob());
+  SecureBlob aik_blob(database_pb_.identity_key().identity_key_blob());
   SecureBlob encrypted_asym(
       response_pb.encrypted_identity_credential().asym_ca_contents());
   SecureBlob encrypted_sym(
@@ -824,11 +701,8 @@ bool Attestation::Enroll(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Failed to activate identity.";
     return false;
   }
-  IdentityKey* key_pb = use_alternate_pca ?
-      database_pb_.mutable_alternate_identity_key() :
-      database_pb_.mutable_identity_key();
-  key_pb->set_identity_credential(
-      aik_credential.to_string());
+  IdentityKey* key_pb = database_pb_.mutable_identity_key();
+  key_pb->set_identity_credential(aik_credential.to_string());
   if (!PersistDatabaseChanges()) {
     LOG(ERROR) << __func__ << ": Failed to persist database changes.";
     return false;
@@ -848,14 +722,12 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
     return false;
   }
-  bool use_alternate_pca = (pca_type == kAlternatePCA);
   base::AutoLock lock(lock_);
   AttestationCertificateRequest request_pb;
   SecureBlob message_id(kNonceSize);
   CryptoLib::GetSecureRandom(message_id.data(), message_id.size());
   request_pb.set_message_id(message_id.to_string());
-  request_pb.set_identity_credential(use_alternate_pca ?
-      database_pb_.alternate_identity_key().identity_credential() :
+  request_pb.set_identity_credential(
       database_pb_.identity_key().identity_credential());
   request_pb.set_profile(profile);
   if (!origin.empty() &&
@@ -869,8 +741,6 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     return false;
   }
   SecureBlob identity_key_blob(
-      use_alternate_pca ?
-      database_pb_.alternate_identity_key().identity_key_blob() :
       database_pb_.identity_key().identity_key_blob());
   SecureBlob public_key;
   SecureBlob public_key_der;
@@ -1648,10 +1518,6 @@ void Attestation::ClearDatabase() {
   Delegation* delegate = database_pb_.mutable_delegate();
   ClearString(delegate->mutable_blob());
   ClearString(delegate->mutable_secret());
-  ClearIdentity(database_pb_.mutable_alternate_identity_binding(),
-                database_pb_.mutable_alternate_identity_key());
-  ClearQuote(database_pb_.mutable_alternate_pcr0_quote());
-  ClearQuote(database_pb_.mutable_alternate_pcr1_quote());
   database_pb_.Clear();
 }
 
@@ -1766,22 +1632,6 @@ bool Attestation::EncryptEndorsementCredential(
       key_id = std::string(kTestPCAPublicKeyID,
                            arraysize(kTestPCAPublicKeyID) - 1);
       break;
-    case kAlternatePCA:
-      {
-        brillo::Blob pca_key;
-        if (!install_attributes_->Get(kAlternatePCAKeyAttributeName,
-                                      &pca_key)) {
-          LOG(ERROR) << __func__ << "Alternate PCA key does not exist.";
-          return false;
-        }
-        const unsigned char* asn1_ptr = pca_key.data();
-        rsa.reset(d2i_RSA_PUBKEY(NULL, &asn1_ptr, pca_key.size()));
-        brillo::SecureBlob key_id_blob;
-        // Ignore result, an empty ID is ok.
-        install_attributes_->Get(kAlternatePCAKeyIDAttributeName, &key_id_blob);
-        key_id = key_id_blob.to_string();
-      }
-      break;
     default:
       NOTREACHED();
   }
@@ -1805,10 +1655,6 @@ const EncryptedData& Attestation::GetEncryptedEndorsementCredential(
       return database_pb_.credentials()
           .test_encrypted_endorsement_credential();
       break;
-
-    case kAlternatePCA:
-      return database_pb_.credentials()
-          .alternate_encrypted_endorsement_credential();
   }
 }
 
@@ -2295,17 +2141,6 @@ void Attestation::FinalizeEndorsementData() {
       return;
     }
   }
-  if (!credentials->has_alternate_encrypted_endorsement_credential() &&
-      install_attributes_->Get(kAlternatePCAKeyAttributeName, NULL)) {
-    LOG(INFO) << "Attestation: Migrating endorsement data (alternate).";
-    if (!EncryptEndorsementCredential(
-        kAlternatePCA,
-        SecureBlob(credentials->endorsement_credential()),
-        credentials->mutable_alternate_encrypted_endorsement_credential())) {
-      LOG(ERROR) << "Attestation: Failed to encrypt EK cert (alternate).";
-      return;
-    }
-  }
   LOG(INFO) << "Attestation: Clearing endorsement data.";
   ClearString(credentials->mutable_endorsement_public_key());
   credentials->clear_endorsement_public_key();
@@ -2433,17 +2268,6 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
   switch (pca_type) {
     case kDefaultPCA:
       url = kDefaultPCAWebOrigin;
-      break;
-    case kAlternatePCA:
-      {
-        brillo::SecureBlob url_blob;
-        if (!install_attributes_->Get(kAlternatePCAUrlAttributeName,
-                                      &url_blob)) {
-          LOG(ERROR) << "Cannot find alternate PCA URL.";
-          return std::string();
-        }
-        url = url_blob.to_string();
-      }
       break;
     default:
       NOTREACHED();
