@@ -211,8 +211,10 @@ class CellularService : public Service {
                            Stringmap* apn_info);
   bool IsOutOfCredits(Error* /*error*/);
 
-  // For unit test.
-  void set_out_of_credits_detector(OutOfCreditsDetector* detector);
+  void set_out_of_credits_detector_for_test(
+      std::unique_ptr<OutOfCreditsDetector> detector) {
+    out_of_credits_detector_ = std::move(detector);
+  }
 
   // Properties
   ActivationType activation_type_;

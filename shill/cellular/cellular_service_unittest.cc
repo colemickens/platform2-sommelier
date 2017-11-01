@@ -72,9 +72,10 @@ class CellularServiceTest : public testing::Test {
   void SetUp() override {
     adaptor_ =
         static_cast<ServiceMockAdaptor*>(service_->adaptor());
-    out_of_credits_detector_ = new MockOutOfCreditsDetector(service_.get());
-    // Passes ownership.
-    service_->set_out_of_credits_detector(out_of_credits_detector_);
+
+    auto detector = std::make_unique<MockOutOfCreditsDetector>(service_.get());
+    out_of_credits_detector_ = detector.get();
+    service_->set_out_of_credits_detector_for_test(std::move(detector));
   }
 
   CellularCapabilityCDMA* GetCapabilityCDMA() {

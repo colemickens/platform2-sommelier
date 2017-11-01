@@ -373,11 +373,6 @@ bool CellularService::IsOutOfCredits(Error* /*error*/) {
   return out_of_credits_detector_->out_of_credits();
 }
 
-void CellularService::set_out_of_credits_detector(
-    OutOfCreditsDetector* detector) {
-  out_of_credits_detector_.reset(detector);
-}
-
 void CellularService::SignalOutOfCreditsChanged(bool state) const {
   adaptor()->EmitBoolChanged(kOutOfCreditsProperty, state);
 }
