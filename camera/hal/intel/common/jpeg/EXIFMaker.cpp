@@ -259,9 +259,6 @@ void EXIFMaker::pictureTaken(ExifMetaData& exifmetadata)
     else if (270 == rotation)
         exifAttributes.orientation = EXIF_ORIENTATION_270;
 
-    if (rotation % 180 == 90)
-        std::swap(exifAttributes.width, exifAttributes.height);
-
     exifAttributes.zoom_ratio.num = exifmetadata.mZoomRatio;
     exifAttributes.zoom_ratio.den = 100;
     // the unit of subjectDistance is meter, focus distance from 3A is mm.
