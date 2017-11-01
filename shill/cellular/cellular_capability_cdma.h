@@ -106,7 +106,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnGetSignalQualityReply(uint32_t strength, const Error& error);
 
   std::unique_ptr<ModemCDMAProxyInterface> proxy_;
-  base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   // Helper method to extract the online portal information from properties.
   void UpdateOnlinePortal(const KeyValueStore& properties);
@@ -119,6 +118,8 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32_t registration_state_evdo_;
   uint32_t registration_state_1x_;
   std::string usage_url_;
+
+  base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);
 };

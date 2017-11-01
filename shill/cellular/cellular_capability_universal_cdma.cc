@@ -56,12 +56,12 @@ const char kPropertyConnectNumber[] = "number";
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
     Cellular* cellular, ModemInfo* modem_info)
     : CellularCapabilityUniversal(cellular, modem_info),
-      weak_cdma_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       cdma_1x_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       cdma_evdo_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       nid_(0),
-      sid_(0) {
+      sid_(0),
+      weak_cdma_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: Universal CDMA";
   // TODO(armansito): Update PRL for activation over cellular.
   // See crbug.com/197330.

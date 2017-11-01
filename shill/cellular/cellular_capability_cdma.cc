@@ -48,11 +48,11 @@ const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular* cellular,
                                                ModemInfo* modem_info)
     : CellularCapabilityClassic(cellular, modem_info),
-      weak_ptr_factory_(this),
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
+      weak_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: CDMA";
 }
 

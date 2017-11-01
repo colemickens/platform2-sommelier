@@ -206,7 +206,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   std::unique_ptr<ModemGSMCardProxyInterface> card_proxy_;
   std::unique_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
-  base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
   // once the context has been separated out. (crbug.com/363874)
@@ -228,6 +227,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Properties.
   std::deque<Stringmap> apn_try_list_;
   SimLockStatus sim_lock_status_;
+
+  base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
 };

@@ -90,7 +90,6 @@ Cellular::Cellular(ModemInfo* modem_info,
              address,
              interface_index,
              Technology::kCellular),
-      weak_ptr_factory_(this),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
       home_provider_info_(
@@ -114,7 +113,8 @@ Cellular::Cellular(ModemInfo* modem_info,
       proposed_scan_in_progress_(false),
       explicit_disconnect_(false),
       is_ppp_authenticating_(false),
-      scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
+      scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds),
+      weak_ptr_factory_(this) {
   RegisterProperties();
 
   // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the

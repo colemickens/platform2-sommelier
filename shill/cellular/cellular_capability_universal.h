@@ -408,8 +408,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // once the context has been separated out. (crbug.com/363874)
   std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
 
-  base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
-
   MMModem3gppRegistrationState registration_state_;
 
   // Bits based on MMModemCapabilities
@@ -442,6 +440,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // a little to smooth over temporary registration loss.
   base::CancelableClosure registration_dropped_update_callback_;
   int64_t registration_dropped_update_timeout_milliseconds_;
+
+  base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversal);
 };

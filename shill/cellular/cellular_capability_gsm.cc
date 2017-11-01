@@ -67,14 +67,14 @@ const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
                                              ModemInfo* modem_info)
     : CellularCapabilityClassic(cellular, modem_info),
-      weak_ptr_factory_(this),
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_info_(nullptr),
       get_imsi_retries_(0),
-      get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds) {
+      get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
+      weak_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: GSM";
   mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(

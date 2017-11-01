@@ -161,9 +161,9 @@ class CellularCapabilityClassic : public CellularCapability {
                              const Error& error);
 
   Cellular* cellular_;
-  base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
   std::unique_ptr<ModemProxyInterface> proxy_;
   std::unique_ptr<ModemGobiProxyInterface> gobi_proxy_;
+  base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityClassic);
 };

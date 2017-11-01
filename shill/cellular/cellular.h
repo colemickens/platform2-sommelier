@@ -488,8 +488,6 @@ class Cellular : public Device,
   // Implements MobileOperatorInfo::Observer:
   void OnOperatorChanged() override;
 
-  base::WeakPtrFactory<Cellular> weak_ptr_factory_;
-
   State state_;
   ModemState modem_state_;
 
@@ -581,6 +579,8 @@ class Cellular : public Device,
   // This callback sets it to |false| after a timeout period has passed.
   base::CancelableClosure scanning_timeout_callback_;
   int64_t scanning_timeout_milliseconds_;
+
+  base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

@@ -147,7 +147,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
     : CellularCapability(cellular, modem_info),
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
-      weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
@@ -155,7 +154,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
       subscription_state_(kSubscriptionStateUnknown),
       reset_done_(false),
       registration_dropped_update_timeout_milliseconds_(
-          kRegistrationDroppedUpdateTimeoutMilliseconds) {
+          kRegistrationDroppedUpdateTimeoutMilliseconds),
+      weak_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: Universal";
   mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(

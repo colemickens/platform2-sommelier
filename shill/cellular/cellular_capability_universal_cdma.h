@@ -123,9 +123,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   static std::string GetActivationErrorString(uint32_t error);
 
   std::unique_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
-  // TODO(armansito): Should probably call this |weak_ptr_factory_| after
-  // 3gpp refactor
-  base::WeakPtrFactory<CellularCapabilityUniversalCDMA> weak_cdma_ptr_factory_;
 
   // CDMA ActivationState property.
   MMModemCdmaActivationState activation_state_;
@@ -135,6 +132,10 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   uint32_t nid_;
   uint32_t sid_;
+
+  // TODO(armansito): Should probably call this |weak_ptr_factory_| after
+  // 3gpp refactor
+  base::WeakPtrFactory<CellularCapabilityUniversalCDMA> weak_cdma_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversalCDMA);
 };
