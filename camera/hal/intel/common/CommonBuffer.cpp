@@ -202,40 +202,5 @@ status_t CommonBuffer::allocMemory()
     return NO_ERROR;
 }
 
-/**
- * dump this image to default dir
- */
- #ifdef DUMP_IMAGE
-void CommonBuffer::dump(const char *name) const
-{
-    static unsigned int count = 0;
-
-    if (!mInit || !mDataPtr || !mSize) {
-        LOGE("error: buffer is invalid");
-        return;
-    }
-
-    std::ostringstream ssCount;
-    ssCount << std::setfill('0') << std::setw(3) << count++;
-    std::ostringstream stringStream;
-    stringStream << gDumpPath << "dump_" << mWidth << "x" << mHeight
-            << "_s" << mStride << "_" << ssCount.str() << "_" << name;
-
-    std::string str = stringStream.str();
-    const char *fileName = str.c_str();
-    FILE *fp = fopen (fileName, "w+");
-    if (fp == nullptr) {
-        LOGE("open file failed");
-        return;
-    }
-
-    LOG1("Begin write image %s", fileName);
-    if ((fwrite(mDataPtr, mSize, 1, fp)) != 1)
-        LOGW("Error or short count writing %d bytes to %s", mSize, fileName);
-
-    fclose (fp);
-}
-#endif
-
 } NAMESPACE_DECLARATION_END
 

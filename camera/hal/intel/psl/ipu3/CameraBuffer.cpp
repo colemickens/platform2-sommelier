@@ -422,6 +422,7 @@ void CameraBuffer::dumpImage(const char *name) const
 void CameraBuffer::dumpImage(const void *data, const int size, int width, int height,
                                  const char *name) const
 {
+#ifdef DUMP_IMAGE
     static unsigned int count = 0;
     count++;
 
@@ -442,6 +443,7 @@ void CameraBuffer::dumpImage(const void *data, const int size, int width, int he
     if ((fwrite(data, size, 1, fp)) != 1)
         LOGW("Error or short count writing %d bytes to %s", size, fileName.data());
     fclose (fp);
+#endif
 }
 
 /**

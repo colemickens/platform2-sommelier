@@ -61,8 +61,7 @@ libhalcommon_la_SOURCES = $(HAL_COMMON_SRC)
 #cpphacks
 CPPHACKS = -std=c++11 \
     -DPAGESIZE=4096 \
-    -DCAMERA_HAL_DEBUG \
-    -DDUMP_IMAGE
+    -DCAMERA_HAL_DEBUG
 
 libhalcommon_la_CPPFLAGS = $(CPPHACKS)
 

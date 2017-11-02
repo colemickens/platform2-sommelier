@@ -87,9 +87,6 @@ public:
     virtual int type() const { return mType; }
     virtual unsigned int size() const {return mSize; }
     virtual int v4l2Fmt() const {return mV4L2Fmt; }
-#ifdef DUMP_IMAGE
-    virtual void dump(const char *name) const;
-#endif
 
 protected:
     int             mWidth;
