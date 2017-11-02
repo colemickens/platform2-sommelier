@@ -450,9 +450,9 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
             result.num_output_buffers = 1;
         }
         result.frame_number = reqState->reqId;
-        buf.status = OK;
-        buf.stream =  pendingBuf->getOwner()->getStream();
-        buf.buffer =  pendingBuf->getBufferHandle();
+        buf.status = pendingBuf->status();
+        buf.stream = pendingBuf->getOwner()->getStream();
+        buf.buffer = pendingBuf->getBufferHandle();
         pendingBuf->getFence(&buf);
         result.result = nullptr;
         if (request->isInputBuffer(pendingBuf)) {

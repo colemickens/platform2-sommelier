@@ -209,9 +209,16 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     LOG2("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d",
         __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride);
 
+    if (mHandle == nullptr) {
+        LOGE("@%s: invalid buffer handle", __FUNCTION__);
+        mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+        return BAD_VALUE;
+    }
+
     int ret = mGbmBufferManager->Register(mHandle);
     if (ret) {
         LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
+        mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
         return UNKNOWN_ERROR;
     }
 
@@ -283,20 +290,22 @@ status_t CameraBuffer::waitOnAcquireFence()
 {
     const int WAIT_TIME_OUT_MS = 300;
     const int BUFFER_READY = -1;
+
     if (mUserBuffer.acquire_fence != BUFFER_READY) {
         LOG2("%s: Fence in HAL is %d", __FUNCTION__, mUserBuffer.acquire_fence);
         int ret = sync_wait(mUserBuffer.acquire_fence, WAIT_TIME_OUT_MS);
         if (ret) {
             mUserBuffer.release_fence = mUserBuffer.acquire_fence;
+            mUserBuffer.acquire_fence = -1;
+            mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
             LOGE("Buffer sync_wait fail!");
+            return TIMED_OUT;
         } else {
             close(mUserBuffer.acquire_fence);
         }
         mUserBuffer.acquire_fence = BUFFER_READY;
-
-        if (ret)
-            return TIMED_OUT;
     }
+
     return NO_ERROR;
 }
 
@@ -403,6 +412,9 @@ status_t CameraBuffer::lock()
     }
 
     status = lock(lockMode);
+    if (status != NO_ERROR) {
+        mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+    }
 
     return status;
 }

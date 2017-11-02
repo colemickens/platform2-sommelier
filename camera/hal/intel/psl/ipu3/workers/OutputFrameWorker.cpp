@@ -139,6 +139,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     status = prepareBuffer(buffer);
     if (status != NO_ERROR) {
         LOGE("prepare buffer error!");
+        buffer->getOwner()->captureDone(buffer, request);
         return status;
     }
 

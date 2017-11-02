@@ -105,6 +105,7 @@ public:
     int requestId() {return mRequestID; }
     status_t getFence(camera3_stream_buffer* buf);
     int dmaBufFd() {return mType == BUF_TYPE_HANDLE ? mHandle->data[0] : mDmaBufFd;}
+    int status() { return mUserBuffer.status; }
 
 private:
     camera3_stream_buffer_t mUserBuffer; /*!< Original structure passed by request */
