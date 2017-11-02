@@ -32,13 +32,6 @@ bool FakeContainerManager::StartContainer(const std::vector<std::string>& env,
 
 void FakeContainerManager::SetStatefulMode(StatefulMode mode) {}
 
-bool FakeContainerManager::GetRootFsPath(base::FilePath* path_out) const {
-  if (!running_)
-    return false;
-  *path_out = base::FilePath();
-  return true;
-}
-
 bool FakeContainerManager::GetContainerPID(pid_t* pid_out) const {
   if (!running_)
     return false;

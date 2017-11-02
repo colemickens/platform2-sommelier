@@ -136,19 +136,6 @@ TEST_F(AndroidOciWrapperTest, ContainerIsManaged) {
   EXPECT_TRUE(impl_->IsManagedJob(container_pid_));
 }
 
-TEST_F(AndroidOciWrapperTest, GetRootFsPath) {
-  StartContainerAsParent();
-
-  base::FilePath path =
-      base::FilePath(ContainerManagerInterface::kContainerRunPath)
-          .Append(AndroidOciWrapper::kContainerId)
-          .Append(AndroidOciWrapper::kRootFsPath);
-
-  base::FilePath actual_path;
-  ASSERT_TRUE(impl_->GetRootFsPath(&actual_path));
-  EXPECT_EQ(path, actual_path);
-}
-
 TEST_F(AndroidOciWrapperTest, GetContainerPID) {
   StartContainerAsParent();
 

@@ -21,7 +21,6 @@ namespace login_manager {
 
 constexpr char AndroidOciWrapper::kContainerPath[];
 constexpr char AndroidOciWrapper::kContainerId[];
-constexpr char AndroidOciWrapper::kRootFsPath[];
 constexpr char AndroidOciWrapper::kContainerPidName[];
 constexpr char AndroidOciWrapper::kRunOciPath[];
 constexpr char AndroidOciWrapper::kRunOciStartCommand[];
@@ -164,17 +163,6 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
   exit_callback_ = exit_callback;
   clean_exit_ = false;
 
-  return true;
-}
-
-bool AndroidOciWrapper::GetRootFsPath(base::FilePath* path_out) const {
-  pid_t pid;
-  if (!GetContainerPID(&pid))
-    return false;
-
-  *path_out = base::FilePath(ContainerManagerInterface::kContainerRunPath)
-                  .Append(kContainerId)
-                  .Append(kRootFsPath);
   return true;
 }
 

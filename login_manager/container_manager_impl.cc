@@ -176,13 +176,6 @@ void ContainerManagerImpl::SetStatefulMode(StatefulMode mode) {
   stateful_mode_ = mode;
 }
 
-bool ContainerManagerImpl::GetRootFsPath(base::FilePath* path_out) const {
-  if (!container_)
-    return false;
-  *path_out = base::FilePath(container_root(container_.get()));
-  return true;
-}
-
 bool ContainerManagerImpl::GetContainerPID(pid_t* pid_out) const {
   if (!container_)
     return false;

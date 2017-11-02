@@ -1821,10 +1821,8 @@ std::string SessionManagerImpl::StartArcContainer(
 }
 
 bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
-  base::FilePath root_path;
   pid_t pid = 0;
-  if (!android_container_->GetRootFsPath(&root_path) ||
-      !android_container_->GetContainerPID(&pid)) {
+  if (!android_container_->GetContainerPID(&pid)) {
     constexpr char kMessage[] = "Getting Android container info failed.";
     LOG(ERROR) << kMessage;
     *error_out = CreateError(dbus_error::kContainerStartupFail, kMessage);
@@ -1835,7 +1833,6 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
   init_controller_->TriggerImpulse(
       kStartArcNetworkImpulse,
       {"CONTAINER_NAME=" + std::string(kArcContainerName),
-       "CONTAINER_PATH=" + root_path.value(),
        "CONTAINER_PID=" + std::to_string(pid)},
       InitDaemonController::TriggerMode::ASYNC);
   return true;

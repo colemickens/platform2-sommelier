@@ -45,9 +45,6 @@ class ContainerManagerInterface : public JobManagerInterface {
   // Stateless containers use a faster teardown procedure.
   virtual void SetStatefulMode(StatefulMode mode) = 0;
 
-  // Gets the path of the rootfs of the container.
-  virtual bool GetRootFsPath(base::FilePath* path_out) const = 0;
-
   // Gets the process ID of the container.
   virtual bool GetContainerPID(pid_t* pid_out) const = 0;
 };

@@ -36,16 +36,12 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // ContainerManagerInterface:
   bool StartContainer(const std::vector<std::string>& env,
                       const ExitCallback& exit_callback) override;
-  bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
   void SetStatefulMode(StatefulMode mode) override;
 
   // Relative path to container from |containers_directory_|.
   constexpr static char kContainerPath[] = "android";
   constexpr static char kContainerId[] = "android-master-run_oci";
-  // Relative path to rootfs from container root under
-  // |ContainerManagerInterface::kContainerRunPath|.
-  constexpr static char kRootFsPath[] = "rootfs";
 
   // Name of file containing container PID in container root under
   // |ContainerManagerInterface::kContainerRunPath|. run_oci writes init

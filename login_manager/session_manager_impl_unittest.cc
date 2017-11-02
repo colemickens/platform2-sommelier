@@ -1869,7 +1869,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
                   SessionManagerImpl::kStartArcNetworkImpulse,
                   ElementsAre(std::string("CONTAINER_NAME=") +
                                   SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PATH=",
                               "CONTAINER_PID=" + std::to_string(kAndroidPid)),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
@@ -1971,7 +1970,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
                   SessionManagerImpl::kStartArcNetworkImpulse,
                   ElementsAre(std::string("CONTAINER_NAME=") +
                                   SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PATH=",
                               "CONTAINER_PID=" + std::to_string(kAndroidPid)),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
@@ -2139,7 +2137,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                   SessionManagerImpl::kStartArcNetworkImpulse,
                   ElementsAre(std::string("CONTAINER_NAME=") +
                                   SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PATH=",
                               "CONTAINER_PID=" + std::to_string(kAndroidPid)),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
@@ -2329,7 +2326,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
                   SessionManagerImpl::kStartArcNetworkImpulse,
                   ElementsAre(std::string("CONTAINER_NAME=") +
                                   SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PATH=",
                               "CONTAINER_PID=" + std::to_string(kAndroidPid)),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
@@ -2380,7 +2376,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                   SessionManagerImpl::kStartArcNetworkImpulse,
                   ElementsAre(std::string("CONTAINER_NAME=") +
                                   SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PATH=",
                               "CONTAINER_PID=" + std::to_string(kAndroidPid)),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
