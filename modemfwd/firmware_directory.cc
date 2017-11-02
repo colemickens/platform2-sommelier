@@ -66,12 +66,17 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                                    FirmwareFileInfo* out_info) {
     DCHECK(out_info);
     for (const CarrierFirmware& file_info : manifest_.carrier_firmware()) {
-      if (file_info.device_id() == device_id &&
-          file_info.carrier_id() == carrier_id &&
-          !file_info.filename().empty() && !file_info.version().empty()) {
-        out_info->firmware_path = directory_.Append(file_info.filename());
-        out_info->version = file_info.version();
-        return true;
+      if (file_info.device_id() != device_id ||
+          file_info.filename().empty() || file_info.version().empty()) {
+        continue;
+      }
+
+      for (const std::string& supported_carrier : file_info.carrier_id()) {
+        if (supported_carrier == carrier_id) {
+          out_info->firmware_path = directory_.Append(file_info.filename());
+          out_info->version = file_info.version();
+          return true;
+        }
       }
     }
 

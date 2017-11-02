@@ -16,7 +16,7 @@ message MainFirmware {
 message CarrierFirmware {
   string filename = 1;
   string device_id = 2;
-  string carrier_id = 3;
+  repeated string carrier_id = 3;
   string version = 4;
 }
 

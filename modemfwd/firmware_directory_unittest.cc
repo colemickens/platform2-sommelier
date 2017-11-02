@@ -28,6 +28,8 @@ constexpr char kCarrierB[] = "CarrierB";
 constexpr char kCarrierFirmwareFile2[] = "Custom_B_50_60.fls";
 constexpr char kCarrierFirmwareVersion2[] = "50.60.70.80";
 
+constexpr char kCarrierC[] = "CarrierC";
+
 constexpr char kGenericCarrierFirmwareFile[] = "Generic_V1.59.3.fls";
 constexpr char kGenericCarrierFirmwareVersion[] = "V1.59.3";
 
@@ -103,6 +105,16 @@ std::vector<char> kSpecificBeforeGenericManifest{
   0x76, 0x69, 0x63, 0x65, 0x2d, 0x69, 0x64, 0x1a, 0x08, 0x43, 0x61, 0x72,
   0x72, 0x69, 0x65, 0x72, 0x41, 0x22, 0x0b, 0x34, 0x30, 0x2e, 0x33, 0x30,
   0x2e, 0x32, 0x30, 0x2e, 0x31, 0x30
+};
+
+// generated from two_carrier_firmware.prototxt
+std::vector<char> kTwoCarrierFirmwareManifest{
+  0x12, 0x46, 0x0a, 0x18, 0x43, 0x61, 0x72, 0x72, 0x69, 0x65, 0x72, 0x41,
+  0x5f, 0x34, 0x30, 0x2e, 0x33, 0x30, 0x2e, 0x32, 0x30, 0x2e, 0x31, 0x30,
+  0x2e, 0x66, 0x6c, 0x73, 0x12, 0x09, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65,
+  0x2d, 0x69, 0x64, 0x1a, 0x08, 0x43, 0x61, 0x72, 0x72, 0x69, 0x65, 0x72,
+  0x41, 0x1a, 0x08, 0x43, 0x61, 0x72, 0x72, 0x69, 0x65, 0x72, 0x42, 0x22,
+  0x0b, 0x34, 0x30, 0x2e, 0x33, 0x30, 0x2e, 0x32, 0x30, 0x2e, 0x31, 0x30
 };
 
 // generated from malformed_main_firmware.prototxt
@@ -227,6 +239,29 @@ TEST_F(FirmwareDirectoryTest, SpecificBeforeGeneric) {
   EXPECT_EQ(kCarrierA, carrier_a);
   EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+}
+
+TEST_F(FirmwareDirectoryTest, FirmwareSupportsTwoCarriers) {
+  SetUpDirectory(kTwoCarrierFirmwareManifest);
+
+  FirmwareFileInfo info;
+  std::string carrier_a(kCarrierA);
+  EXPECT_TRUE(
+      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  EXPECT_EQ(kCarrierA, carrier_a);
+  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+
+  std::string carrier_b(kCarrierB);
+  EXPECT_TRUE(
+      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_b, &info));
+  EXPECT_EQ(kCarrierB, carrier_b);
+  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+
+  std::string carrier_c(kCarrierC);
+  EXPECT_FALSE(
+      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_c, &info));
 }
 
 TEST_F(FirmwareDirectoryTest, MalformedMainEntry) {
