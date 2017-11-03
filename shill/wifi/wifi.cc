@@ -1539,6 +1539,16 @@ string WiFi::GetServiceLeaseName(const WiFiService& service) {
   return service.GetStorageIdentifier();
 }
 
+const WiFiEndpointConstRefPtr WiFi::GetCurrentEndpoint() const {
+  EndpointMap::const_iterator endpoint_it =
+      endpoint_by_rpcid_.find(supplicant_bss_);
+  if (endpoint_it == endpoint_by_rpcid_.end()) {
+    return nullptr;
+  }
+
+  return endpoint_it->second.get();
+}
+
 void WiFi::DestroyServiceLease(const WiFiService& service) {
   DestroyIPConfigLease(GetServiceLeaseName(service));
 }

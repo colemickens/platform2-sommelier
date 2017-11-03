@@ -1887,6 +1887,17 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
   RemoveBSS(bss_path);
 }
 
+TEST_F(WiFiMainTest, GetCurrentEndpoint) {
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  string bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService("", &endpoint, &bss_path));
+  const WiFiEndpointConstRefPtr current_endpoint = wifi()->GetCurrentEndpoint();
+  EXPECT_NE(nullptr, current_endpoint);
+  EXPECT_EQ(current_endpoint->bssid_string(), endpoint->bssid_string());
+}
+
 TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
   StartWiFi();
   WiFiEndpointRefPtr endpoint;

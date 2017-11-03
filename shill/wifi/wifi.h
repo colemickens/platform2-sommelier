@@ -222,6 +222,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return service.get() == current_service_.get();
   }
 
+  const WiFiEndpointConstRefPtr GetCurrentEndpoint() const;
+
   // Overridden from Device superclass
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
