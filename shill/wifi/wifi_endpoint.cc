@@ -125,6 +125,22 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     }
   }
 
+  if (properties.ContainsUint16(WPASupplicant::kBSSPropertyFrequency)) {
+    uint16_t new_frequency =
+        properties.GetUint16(WPASupplicant::kBSSPropertyFrequency);
+    if (new_frequency != frequency_) {
+      if (metrics_) {
+        metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
+      }
+      if (device_->GetCurrentEndpoint().get() == this) {
+        SLOG(this, 2) << "Current WiFiEndpoint " << bssid_string_
+                      << " frequency " << frequency_ << " -> " << new_frequency;
+      }
+      frequency_ = new_frequency;
+      should_notify = true;
+    }
+  }
+
   const char* new_security_mode = ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
     set_security_mode(new_security_mode);

@@ -1032,6 +1032,20 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
   EXPECT_EQ(kModeAdhoc, endpoint->network_mode());
 }
 
+TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  KeyValueStore changed_properties;
+  uint16_t frequency = 2412;
+
+  EXPECT_NE(frequency, endpoint->frequency());
+  changed_properties.SetUint16(WPASupplicant::kBSSPropertyFrequency, frequency);
+
+  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
+  endpoint->PropertiesChanged(changed_properties);
+  EXPECT_EQ(frequency, endpoint->frequency());
+}
+
 TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
