@@ -58,8 +58,6 @@ properties.
             *   `dsp-ini`: Template filename of dsp.ini file
             *   `hifi-conf`: Template filename of the HiFi.conf file
             *   `alsa-conf`: Template filename of the card configuration file
-            *   `topology-xml` (optional): Template filename of the topology
-                    XML file
             *   `topology-bin` (optional): Template filename of the topology
                     firmware file
         Template filenames may include the following fields, enclosed in
@@ -346,7 +344,6 @@ chromeos {
                 dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
                 hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
                 alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
-                topology-xml = "topology/${topology-name}_topology.xml";
                 topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
             };
         };

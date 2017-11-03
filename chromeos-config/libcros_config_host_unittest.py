@@ -212,8 +212,6 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('alsa-conf',
                       'ucm-config/${card}.${ucm-suffix}/${card}.' +
                       '${ucm-suffix}.conf'),
-                     ('topology-xml',
-                      'topology/${topology-name}_topology.xml'),
                      ('topology-bin',
                       'topology/5a98-reef-${topology-name}-8-tplg.bin')]))
 

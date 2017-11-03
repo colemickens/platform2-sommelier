@@ -463,7 +463,6 @@ BASE_AUDIO_SCHEMA = [
     PropFile('dsp-ini', True, '', {'audio-type': False}, CRAS_CONFIG_DIR),
     PropFile('hifi-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
     PropFile('alsa-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
-    PropString('topology-xml', False, '', {'audio-type': False}),
     PropString('topology-name', False, r'\w+'),
     PropFile('topology-bin', False, '', {'audio-type': False}, LIB_FIRMWARE),
 
