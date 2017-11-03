@@ -152,7 +152,6 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
     if (!mNeedPostProcess) {
         // Use stream buffer for zero-copy
-        mBuffers[mIndex].bytesused(mFormat.sizeimage());
         unsigned long userptr;
         switch (mNode->getMemoryType()) {
         case V4L2_MEMORY_USERPTR:
