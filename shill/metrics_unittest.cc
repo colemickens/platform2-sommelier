@@ -318,6 +318,15 @@ TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5826));
 }
 
+TEST_F(MetricsTest, ChannelToFrequencyRange) {
+  EXPECT_EQ(Metrics::kWiFiFrequencyRangeUndef,
+            metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannelUndef));
+  EXPECT_EQ(Metrics::kWiFiFrequencyRange24,
+            metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel2484));
+  EXPECT_EQ(Metrics::kWiFiFrequencyRange5,
+            metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel5620));
+}
+
 TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   chromeos_metrics::TimerMock* mock_time_online_timer =
       new chromeos_metrics::TimerMock;
@@ -1183,6 +1192,38 @@ TEST_F(MetricsTest, NotifyAp80211vBSSTransitionSupport) {
                             Metrics::kWiFiAp80211vBSSTransition,
                             Metrics::kWiFiAp80211vBSSTransitionMax));
   metrics_.NotifyAp80211vBSSTransitionSupport(bss_transition_supported);
+}
+
+TEST_F(MetricsTest, NotifyApChannelSwitch) {
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                            Metrics::kWiFiApChannelSwitch24To24,
+                            Metrics::kWiFiApChannelSwitchMax));
+  metrics_.NotifyApChannelSwitch(2417, 2472);
+
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                            Metrics::kWiFiApChannelSwitch24To5,
+                            Metrics::kWiFiApChannelSwitchMax));
+  metrics_.NotifyApChannelSwitch(2462, 5805);
+
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                            Metrics::kWiFiApChannelSwitch5To24,
+                            Metrics::kWiFiApChannelSwitchMax));
+  metrics_.NotifyApChannelSwitch(5210, 2422);
+
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                            Metrics::kWiFiApChannelSwitch5To5,
+                            Metrics::kWiFiApChannelSwitchMax));
+  metrics_.NotifyApChannelSwitch(5500, 5320);
+
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                            Metrics::kWiFiApChannelSwitchUndef,
+                            Metrics::kWiFiApChannelSwitchMax));
+  metrics_.NotifyApChannelSwitch(3000, 3000);
 }
 
 #ifndef NDEBUG

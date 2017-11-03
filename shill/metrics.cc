@@ -273,6 +273,10 @@ const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
     LinkMonitor::kFailureThreshold + 1;
 
 // static
+const char Metrics::kMetricApChannelSwitch[] =
+    "Network.Shill.WiFi.ApChannelSwitch";
+
+// static
 const char Metrics::kMetricAp80211kSupport[] =
     "Network.Shill.WiFi.Ap80211kSupport";
 const char Metrics::kMetricAp80211rSupport[] =
@@ -525,6 +529,18 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
                   << " to enum bucket " << channel;
 
   return channel;
+}
+
+// static
+Metrics::WiFiFrequencyRange Metrics::WiFiChannelToFrequencyRange(
+    Metrics::WiFiChannel channel) {
+  if (channel >= kWiFiChannelMin24 && channel <= kWiFiChannelMax24) {
+    return kWiFiFrequencyRange24;
+  } else if (channel >= kWiFiChannelMin5 && channel <= kWiFiChannelMax5) {
+    return kWiFiFrequencyRange5;
+  } else {
+    return kWiFiFrequencyRangeUndef;
+  }
 }
 
 // static
@@ -1036,6 +1052,29 @@ void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
             kMetricLinkMonitorResponseTimeSampleMin,
             kMetricLinkMonitorResponseTimeSampleMax,
             kMetricLinkMonitorResponseTimeSampleNumBuckets);
+}
+
+void Metrics::NotifyApChannelSwitch(uint16_t frequency,
+                                    uint16_t new_frequency) {
+  WiFiChannel channel = WiFiFrequencyToChannel(frequency);
+  WiFiChannel new_channel = WiFiFrequencyToChannel(new_frequency);
+  WiFiFrequencyRange range = WiFiChannelToFrequencyRange(channel);
+  WiFiFrequencyRange new_range = WiFiChannelToFrequencyRange(new_channel);
+  WiFiApChannelSwitch channel_switch = kWiFiApChannelSwitchUndef;
+  if (range == kWiFiFrequencyRange24 && new_range == kWiFiFrequencyRange24) {
+    channel_switch = kWiFiApChannelSwitch24To24;
+  } else if (range == kWiFiFrequencyRange24 &&
+             new_range == kWiFiFrequencyRange5) {
+    channel_switch = kWiFiApChannelSwitch24To5;
+  } else if (range == kWiFiFrequencyRange5 &&
+             new_range == kWiFiFrequencyRange24) {
+    channel_switch = kWiFiApChannelSwitch5To24;
+  } else if (range == kWiFiFrequencyRange5 &&
+             new_range == kWiFiFrequencyRange5) {
+    channel_switch = kWiFiApChannelSwitch5To5;
+  }
+  SendEnumToUMA(
+      kMetricApChannelSwitch, channel_switch, kWiFiApChannelSwitchMax);
 }
 
 void Metrics::NotifyAp80211kSupport(bool neighbor_list_supported) {

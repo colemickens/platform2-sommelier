@@ -45,6 +45,7 @@ class Metrics {
   enum WiFiChannel {
     kWiFiChannelUndef = 0,
     kWiFiChannel2412 = 1,
+    kWiFiChannelMin24 = kWiFiChannel2412,
     kWiFiChannel2417 = 2,
     kWiFiChannel2422 = 3,
     kWiFiChannel2427 = 4,
@@ -58,8 +59,10 @@ class Metrics {
     kWiFiChannel2467 = 12,
     kWiFiChannel2472 = 13,
     kWiFiChannel2484 = 14,
+    kWiFiChannelMax24 = kWiFiChannel2484,
 
     kWiFiChannel5180 = 15,
+    kWiFiChannelMin5 = kWiFiChannel5180,
     kWiFiChannel5200 = 16,
     kWiFiChannel5220 = 17,
     kWiFiChannel5240 = 18,
@@ -90,10 +93,19 @@ class Metrics {
     kWiFiChannel5190 = 40,
     kWiFiChannel5210 = 41,
     kWiFiChannel5230 = 42,
+    kWiFiChannelMax5 = kWiFiChannel5230,
 
     /* NB: ignore old 11b bands 2312..2372 and 2512..2532 */
     /* NB: ignore regulated bands 4920..4980 and 5020..5160 */
     kWiFiChannelMax
+  };
+
+  enum WiFiFrequencyRange {
+    kWiFiFrequencyRangeUndef = 0,
+    kWiFiFrequencyRange24 = 1,
+    kWiFiFrequencyRange5 = 2,
+
+    kWiFiFrequencyRangeMax
   };
 
   enum WiFiNetworkPhyMode {
@@ -176,6 +188,16 @@ class Metrics {
     kLinkMonitorFailureThresholdReached = 3,
 
     kLinkMonitorFailureMax
+  };
+
+  enum WiFiApChannelSwitch {
+    kWiFiApChannelSwitchUndef = 0,
+    kWiFiApChannelSwitch24To24 = 1,
+    kWiFiApChannelSwitch24To5 = 2,
+    kWiFiApChannelSwitch5To24 = 3,
+    kWiFiApChannelSwitch5To5 = 4,
+
+    kWiFiApChannelSwitchMax
   };
 
   enum WiFiAp80211kSupport {
@@ -685,6 +707,8 @@ class Metrics {
   static const char kMetricLinkClientDisconnectType[];
   static const char kMetricLinkApDisconnectType[];
 
+  static const char kMetricApChannelSwitch[];
+
   // Shill termination action statistics.
   static const char kMetricTerminationActionTimeTaken[];
   static const char kMetricTerminationActionResult[];
@@ -847,6 +871,9 @@ class Metrics {
   // Converts the WiFi frequency into the associated UMA channel enumerator.
   static WiFiChannel WiFiFrequencyToChannel(uint16_t frequency);
 
+  // Converts WiFi Channel to the associated frequency range.
+  static WiFiFrequencyRange WiFiChannelToFrequencyRange(WiFiChannel channel);
+
   // Converts a flimflam security string into its UMA security enumerator.
   static WiFiSecurity WiFiSecurityStringToEnum(const std::string& security);
 
@@ -996,6 +1023,9 @@ class Metrics {
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
 #endif  // DISABLE_WIFI
+
+  // Notifies this object that an AP has switched channels.
+  void NotifyApChannelSwitch(uint16_t frequency, uint16_t new_frequency);
 
   // Registers a device with this object so the device can use the timers to
   // track state transition metrics.
