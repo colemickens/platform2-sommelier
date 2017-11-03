@@ -177,6 +177,7 @@
                 'TEST_SERVICE_FAILURE',
                 'TEST_WARNING',
                 'TEST_WARNING_OLD',
+                'TEST_WARNING_OLD_ARM64',
                 'anomaly_collector_test.sh',
                 'anomaly_collector_test_reporter.sh',
               ],

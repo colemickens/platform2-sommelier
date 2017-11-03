@@ -25,6 +25,8 @@ cleanup() {
 
 check_log() {
   local n_expected=$1
+  local pattern=$2
+
   if [[ ! -f ${TESTLOG} ]]; then
     fail "${TESTLOG} was not created"
   fi
@@ -34,6 +36,11 @@ $(<"${TESTLOG}")"
   fi
   if egrep -qv '^[0-9a-f]{8}' "${TESTLOG}"; then
     fail "found bad lines in ${TESTLOG}:
+$(<"${TESTLOG}")"
+  fi
+  if [[ ! -z "${pattern}" ]] &&
+     tail -n1 "${TESTLOG}" | egrep -qv "${pattern}"; then
+    fail "pattern ${pattern} not found at end of ${TESTLOG}:
 $(<"${TESTLOG}")"
   fi
 }
@@ -104,6 +111,14 @@ check_log 7
 if [[ ! -f "wifi-warning" ]]; then
   fail "wifi-warning was not generated."
 fi
+
+# Emit a kernel warning in old arm64 format.  This was close enough to trigger
+# collection but wasn't quite the format that we expected (we're fixing it in
+# the kernel).  We'll use this as a test for the "unknown-function" fallback
+# when we don't quite recognize the warning format.
+cat "${SRC}/TEST_WARNING_OLD_ARM64" >> messages
+sleep 1
+check_log 8 '\-unknown\-function$'
 
 # Success!
 exit 0

@@ -219,7 +219,7 @@ int KernelWarnStart(void) {
 
   spacep = index(yytext, ' ');
   if (spacep == NULL || spacep[1] == '\0')
-    spacep = "unknown-function";
+    spacep = " unknown-function";
   fprintf(yyout, "%08x-%s\n", hash, spacep + 1);
   return 1;
 }
