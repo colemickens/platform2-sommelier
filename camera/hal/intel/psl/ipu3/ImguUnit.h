@@ -21,7 +21,6 @@
 
 #include "GraphConfigManager.h"
 #include "CaptureUnit.h"
-#include "MessageThread.h"
 #include "IPU3CameraHw.h"
 #include "tasks/ITaskEventSource.h"
 #include "tasks/ICaptureEventSource.h"
@@ -32,12 +31,13 @@
 #include "workers/ParameterWorker.h"
 #include <linux/intel-ipu3.h>
 
+#include <arc/camera_thread.h>
+
 namespace android {
 namespace camera2 {
 
 class OutputFrameWorker;
-class ImguUnit: public IMessageHandler,
-                public IPollEventListener {
+class ImguUnit : public IPollEventListener {
 
 public:
     ImguUnit(int cameraId, GraphConfigManager &gcm,
@@ -56,11 +56,10 @@ public:
     virtual status_t notifyPollEvent(PollEventMessage *msg);
 
 private:
-    status_t configureVideoNodes(std::shared_ptr<GraphConfig> graphConfig);
-    status_t handleMessageCompleteReq(DeviceMessage &msg);
+    status_t handleCompleteReq(DeviceMessage msg);
     status_t processNextRequest();
-    status_t handleMessagePoll(DeviceMessage msg);
-    status_t handleMessageFlush(void);
+    status_t handlePoll(DeviceMessage msg);
+    status_t handleFlush(void);
     status_t updateProcUnitResults(Camera3Request &request,
                                    std::shared_ptr<ProcUnitSettings> settings);
     status_t startProcessing();
@@ -68,9 +67,6 @@ private:
                             std::shared_ptr<const ProcUnitSettings> settings) const;
     void updateDVSMetadata(CameraMetadata &result,
                            std::shared_ptr<const ProcUnitSettings> settings) const;
-    virtual void messageThreadLoop(void);
-    status_t handleMessageExit(void);
-    status_t requestExitAndWait();
     status_t mapStreamWithDeviceNode();
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
     void setStreamListeners(IPU3NodeNames nodeName,
@@ -104,9 +100,12 @@ private:
 
     int mCameraId;
     GraphConfigManager &mGCM;
-    bool mThreadRunning;
-    std::unique_ptr<MessageThread> mMessageThread;
-    MessageQueue<DeviceMessage, DeviceMessageId> mMessageQueue;
+
+    /**
+     * Thread control members
+     */
+    arc::CameraThread mCameraThread;
+
     StreamConfig mActiveStreams;
     std::vector<std::shared_ptr<ITaskEventListener>> mListeningTasks;   // Tasks that listen for events from another task.
 

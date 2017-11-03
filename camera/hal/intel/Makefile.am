@@ -77,7 +77,6 @@ COMMONSRC = common/SysCall.cpp \
             common/Camera3V4l2Format.cpp \
             common/CameraWindow.cpp \
             common/LogHelper.cpp \
-            common/MessageThread.cpp \
             common/PerformanceTraces.cpp \
             common/PollerThread.cpp \
             common/Utils.cpp \
@@ -166,7 +165,8 @@ endif
 libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
 # libs
-EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) $(LIBYUV_LIBS) $(LIBCAMERA_JPEG_LIBS)
+EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) \
+          $(LIBYUV_LIBS) $(LIBCAMERA_JPEG_LIBS) $(LIBCAMERA_COMMON_LIBS)
 UTIL_LIBS =  $(PSLLIBS) \
           $(IA_IMAGING_LIBS) \
           $(LIBIACSS_LIBS)

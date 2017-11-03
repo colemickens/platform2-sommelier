@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,25 +27,22 @@ NAMESPACE_DECLARATION {
 ResultProcessor::ResultProcessor(RequestThread * aReqThread,
                                  const camera3_callback_ops_t * cbOps) :
     mRequestThread(aReqThread),
-    mMessageQueue("ResultProcessor", MESSAGE_ID_MAX),
-    mMessageThread(new MessageThread(this,"ResultProcessor")),
+    mCameraThread("ResultProcessor"),
     mCallbackOps(cbOps),
-    mThreadRunning(true),
     mPartialResultCount(0),
     mNextRequestId(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mReqStatePool.init(MAX_REQUEST_IN_TRANSIT);
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+    }
 }
 
 ResultProcessor::~ResultProcessor()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
     mRequestsPendingMetaReturn.clear();
     mRequestsInTransit.clear();
 }
@@ -59,21 +56,20 @@ ResultProcessor::~ResultProcessor()
 status_t ResultProcessor::requestExitAndWait(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
-    status |= mMessageThread->requestExitAndWait();
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&ResultProcessor::handleExit, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
-status_t ResultProcessor::handleMessageExit(void)
+
+status_t ResultProcessor::handleExit(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     while ((mRequestsInTransit.size()) != 0) {
         recycleRequest((mRequestsInTransit.begin()->second)->request);
     }
-    mThreadRunning = false;
-    mMessageQueue.reply(MESSAGE_ID_EXIT, OK);
-    return NO_ERROR;
+    return OK;
 }
 
 /**
@@ -95,13 +91,17 @@ status_t ResultProcessor::handleMessageExit(void)
 status_t ResultProcessor::registerRequest(Camera3Request *request)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
-    Message msg;
-    msg.id = MESSAGE_ID_REGISTER_REQUEST;
+    MessageRegisterRequest msg;
     msg.request = request;
-    return mMessageQueue.send(&msg, MESSAGE_ID_REGISTER_REQUEST);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&ResultProcessor::handleRegisterRequest,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
-status_t ResultProcessor::handleRegisterRequest(Message &msg)
+status_t ResultProcessor::handleRegisterRequest(MessageRegisterRequest msg)
 {
     status_t status = NO_ERROR;
     RequestState_t* reqState;
@@ -134,57 +134,22 @@ status_t ResultProcessor::handleRegisterRequest(Message &msg)
     return status;
 }
 
-void ResultProcessor::messageThreadLoop(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-        Message msg;
-        mMessageQueue.receive(&msg);
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            status = handleMessageExit();
-            break;
-        case MESSAGE_ID_SHUTTER_DONE:
-            status = handleShutterDone(msg);
-            break;
-        case MESSAGE_ID_METADATA_DONE:
-            status = handleMetadataDone(msg);
-            break;
-        case MESSAGE_ID_BUFFER_DONE:
-            status = handleBufferDone(msg);
-            break;
-        case MESSAGE_ID_REGISTER_REQUEST:
-            status = handleRegisterRequest(msg);
-            break;
-        case MESSAGE_ID_DEVICE_ERROR:
-            handleDeviceError();
-            break;
-        default:
-           LOGE("Wrong message id %d", msg.id);
-           status = BAD_VALUE;
-           break;
-        }
-        mMessageQueue.reply(msg.id, status);
-    }
-}
-
 status_t ResultProcessor::shutterDone(Camera3Request* request,
                                       int64_t timestamp)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
-    Message msg;
-    msg.id = MESSAGE_ID_SHUTTER_DONE;
+    MessageShutterDone msg;
     msg.request = request;
-    msg.data.shutter.time = timestamp;
+    msg.time = timestamp;
 
-    return mMessageQueue.send(&msg);
+    base::Callback<status_t()> closure =
+            base::Bind(&ResultProcessor::handleShutterDone,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
-status_t ResultProcessor::handleShutterDone(Message &msg)
+status_t ResultProcessor::handleShutterDone(MessageShutterDone msg)
 {
     status_t status = NO_ERROR;
     int reqId = 0;
@@ -200,7 +165,7 @@ status_t ResultProcessor::handleShutterDone(Message &msg)
         return BAD_VALUE;
     }
 
-    reqState->shutterTime = msg.data.shutter.time;
+    reqState->shutterTime = msg.time;
     if (mNextRequestId != reqId) {
         LOGW("shutter done received ahead of time, expecting %d got %d Or discontinuities requests received.",
                 mNextRequestId, reqId);
@@ -253,15 +218,18 @@ status_t ResultProcessor::metadataDone(Camera3Request* request,
                                        int resultIndex)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
-    Message msg;
-    msg.id = MESSAGE_ID_METADATA_DONE;
+    MessageMetadataDone msg;
     msg.request = request;
-    msg.data.meta.resultIndex = resultIndex;
+    msg.resultIndex = resultIndex;
 
-    return mMessageQueue.send(&msg);
+    base::Callback<status_t()> closure =
+            base::Bind(&ResultProcessor::handleMetadataDone,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
-status_t ResultProcessor::handleMetadataDone(Message &msg)
+status_t ResultProcessor::handleMetadataDone(MessageMetadataDone msg)
 {
     status_t status = NO_ERROR;
     Camera3Request* request = msg.request;
@@ -275,7 +243,7 @@ status_t ResultProcessor::handleMetadataDone(Message &msg)
         return BAD_VALUE;
     }
 
-    if (msg.data.meta.resultIndex >= 0) {
+    if (msg.resultIndex >= 0) {
         /**
          * New Partial metadata result path. The result buffer is not the
          * settings but a separate buffer stored in the request.
@@ -285,7 +253,7 @@ status_t ResultProcessor::handleMetadataDone(Message &msg)
          * result and buffers. We do not need to store the partials either.
          * we can return them directly
          */
-        status = returnResult(reqState, msg.data.meta.resultIndex);
+        status = returnResult(reqState, msg.resultIndex);
 
         bool allMetadataDone = (reqState->partialResultReturned == mPartialResultCount);
         bool allBuffersDone = (reqState->buffersReturned == reqState->buffersToReturn);
@@ -364,12 +332,15 @@ status_t ResultProcessor::bufferDone(Camera3Request* request,
                                      std::shared_ptr<CameraBuffer> buffer)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
-    Message msg;
-    msg.id = MESSAGE_ID_BUFFER_DONE;
+    MessageBufferDone msg;
     msg.request = request;
     msg.buffer = buffer;
 
-    return  mMessageQueue.send(&msg);
+    base::Callback<status_t()> closure =
+            base::Bind(&ResultProcessor::handleBufferDone,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
 /**
@@ -380,7 +351,7 @@ status_t ResultProcessor::bufferDone(Camera3Request* request,
  * we need to hold it until shutter event has been received.
  * \param msg [IN] Contains the buffer produced by PSL
  */
-status_t ResultProcessor::handleBufferDone(Message &msg)
+status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
     status_t status = NO_ERROR;
@@ -610,10 +581,11 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
 status_t ResultProcessor::deviceError(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
-    Message msg;
-    msg.id = MESSAGE_ID_DEVICE_ERROR;
-
-    return  mMessageQueue.send(&msg);
+    base::Callback<void()> closure =
+            base::Bind(&ResultProcessor::handleDeviceError,
+                       base::Unretained(this));
+    mCameraThread.PostTaskAsync<void>(FROM_HERE, closure);
+    return OK;
 }
 
 void ResultProcessor::handleDeviceError(void)

@@ -40,7 +40,7 @@ public:
     status_t processRequestSettings(const CameraMetadata &settings,
                                     RequestCtrlState &aiqCfg);
 
-    status_t handleNewSensorDescriptor(ControlUnit::Message &msg);
+    status_t handleNewSensorDescriptor(ControlUnit::MessageSensorMode &msg);
 
     ia_aiq_frame_params *getCurrentFrameParams() { return &mCurrentFrameParams; }
     int getLSCMapWidth() { return mStaticMetadataCache.lensShadingMapSize.data.i32[0]; }

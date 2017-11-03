@@ -17,8 +17,6 @@
 #ifndef CAMERA3_HAL_CSS2600ISYS_H_
 #define CAMERA3_HAL_CSS2600ISYS_H_
 
-#include "MessageQueue.h"
-#include "MessageThread.h"
 #include "PollerThread.h"
 #include "v4l2device.h"
 #include "MediaCtlPipeConfig.h"
@@ -34,6 +32,8 @@
 #include <utils/Errors.h>
 #include "MediaCtlHelper.h"
 #include "NodeTypes.h"
+
+#include <arc/camera_thread.h>
 
 /**
  * Forward declarations to avoid includes
@@ -79,8 +79,7 @@ public:
     virtual ~IISysObserver() {};
 };
 
-class InputSystem:  public IMessageHandler,
-                    public IPollEventListener,
+class InputSystem : public IPollEventListener,
                     public ISettingsSyncListener,
                     public MediaCtlHelper::IOpenCallBack
 {
@@ -119,24 +118,6 @@ private: /* methods */
     status_t pollNextRequest();
     status_t getIsysNodeName(std::shared_ptr<V4L2VideoNode> node, IPU3NodeNames &isysNodeName);
 
-    // thread message IDs
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,
-        MESSAGE_ID_CONFIGURE,
-        MESSAGE_ID_START,
-        MESSAGE_ID_STOP,
-        MESSAGE_ID_IS_STARTED,
-        MESSAGE_ID_PUT_FRAME,
-        MESSAGE_ID_SET_BUFFER_POOL,
-        MESSAGE_ID_GET_NODES,
-        MESSAGE_ID_ENQUEUE_MEDIA_REQUEST,
-        MESSAGE_ID_CAPTURE,
-        MESSAGE_ID_FLUSH,
-        MESSAGE_ID_POLL,
-        MESSAGE_ID_RELEASE_BUFFER_POOLS,
-        MESSAGE_ID_MAX
-    };
-
     struct MessageConfigure {
         IStreamConfigProvider *streamConfigProv;
         MediaCtlHelper::ConfigurationResults *result;
@@ -171,13 +152,6 @@ private: /* methods */
         bool *value;
     };
 
-    struct MessagePSysStats {
-        int requestId;
-        CaptureBuffer*  rawBuffer;
-        CaptureBuffer*  yuvBuffer;
-        CaptureBuffer*  statsBuffer;
-    };
-
     struct MessagePollEvent {
         int requestId;
         std::shared_ptr<V4L2VideoNode> *activeDevices;
@@ -186,48 +160,23 @@ private: /* methods */
         PollEventMessageId pollMsgId;
     };
 
-    struct MessageIsaConfig {
-        int enabledBlocks;
-        int pgSize;
-        int payloadSize;
+    struct MessageStop {
+        bool stop;
     };
 
-    union MessageData {
-        MessageFrame                    frame;
-        MessageBufferPool               bufferPool;
-        MessageNodes                    nodes;
-        MessageConfigure                config;
-        MessageEnqueueMediaRequest      enqueueMediaRequest;
-        MessageCapture                  capture;
-        MessagePollEvent                pollEvent;
-        MessageIsaConfig                isaConfig;
-        bool                            stop;
-        MessageBoolQuery                query;
-    };
-
-    struct Message {
-        MessageId id;
-        MessageData data;
-    };
-
-    /* IMessageHandler overloads */
-    virtual void messageThreadLoop(void);
-
-    status_t handleMessageConfigure(Message &msg);
-    status_t handleMessageStart();
-    status_t handleMessageStop(Message &msg);
-    status_t handleMessageIsStarted(Message &msg);
-    status_t handleMessagePutFrame(Message &msg);
-    status_t handleMessageSetBufferPool(Message &msg);
-    status_t handleMessageReleaseBufferPools();
-    status_t handleMessageGetOutputNodes(Message &msg);
-    status_t handleMessageEnqueueMediaRequest(Message &msg);
-    status_t handleMessageCapture(Message &msg);
-    status_t handleMessagePollEvent(Message &msg);
-    status_t handleMessageFlush();
-    status_t handleMessageSetIsaConfig(Message &msg);
-    status_t handleMessageSetIsaFormat(Message &msg);
-    status_t handleMessageSetStatsFormat(Message &msg);
+    status_t handleConfigure(MessageConfigure msg);
+    status_t handleStart();
+    status_t handleStop(MessageStop msg);
+    status_t handleIsStarted(MessageBoolQuery msg);
+    status_t handlePutFrame(MessageFrame msg);
+    status_t handleSetBufferPool(MessageBufferPool msg);
+    status_t handleReleaseBufferPools();
+    status_t handleGetOutputNodes(MessageNodes msg);
+    status_t handleEnqueueMediaRequest(MessageEnqueueMediaRequest msg);
+    status_t handleCapture(MessageCapture msg);
+    status_t handlePollEvent(MessagePollEvent msg);
+    status_t handleFlush();
+    status_t handleExit();
 
     status_t opened(IPU3NodeNames isysNodeName,
                     std::shared_ptr<V4L2VideoNode> videoNode);
@@ -258,9 +207,7 @@ private: /* members */
     /**
      * Thread control members
      */
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::shared_ptr<MessageThread> mMessageThread;
-    bool mThreadRunning;
+    arc::CameraThread mCameraThread;
 
     std::unique_ptr<PollerThread> mPollerThread;
     std::vector<int> mCaptureQueue;

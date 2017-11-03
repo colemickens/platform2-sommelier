@@ -18,8 +18,6 @@
 #include <vector>
 
 #include "v4l2device.h"
-#include "MessageQueue.h"
-#include "MessageThread.h"
 #include "CaptureBuffer.h"
 #include "CaptureUnitSettings.h"
 #include "IPU3CapturedStatistics.h"
@@ -29,6 +27,8 @@
 #include "SyncManager.h"
 #include "LensHw.h"
 #include <linux/intel-ipu3.h>
+
+#include <arc/camera_thread.h>
 
 #ifndef __CAPTURE_UNIT_H__
 #define __CAPTURE_UNIT_H__
@@ -125,10 +125,8 @@ public:
 }; // ICaptureEventListener
 
 
-class CaptureUnit :
-    public IMessageHandler,
-    public IISysObserver,
-    public ISofListener
+class CaptureUnit : public IISysObserver,
+                    public ISofListener
 {
 // public methods
 public:
@@ -147,9 +145,6 @@ public:
                        std::shared_ptr<GraphConfig> graphConfig);
     LensHw* getLensControlInterface();
 
-    /* IMessageHandler overloads */
-    virtual void messageThreadLoop(void);
-
     /* IISysObserver interface */
     virtual void notifyIsysEvent(IsysMessage &msg);
 
@@ -164,26 +159,6 @@ public:
     /* ISofListener interface */
     virtual bool notifySofEvent(uint32_t sequence);
 private:
-    // thread message IDs
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,
-        MESSAGE_ID_CAPTURE,
-        MESSAGE_ID_CONFIGSTREAM,
-        MESSAGE_ID_GET_SCALED_OUTPUT_CONFIG,
-        MESSAGE_ID_GET_NON_SCALED_OUTPUT_CONFIG,
-        MESSAGE_ID_FLUSH,
-        MESSAGE_ID_RETURN_BUFFER,
-        MESSAGE_ID_ISYS_EVENT,
-        MESSAGE_ID_PSYS_EVENT,
-        MESSAGE_ID_MAX
-    };
-
-    struct MessageSensorData {
-        ia_aiq_exposure_sensor_descriptor *descriptor;
-
-        MessageSensorData() : descriptor(nullptr) {}
-    };
-
     /**
      * Similar state structure for a request than the one in control unit.
      * It is stored in a pool.
@@ -240,46 +215,13 @@ private:
             activeStreams(nullptr) {}
     };
 
-    struct MessageOutputConfig {
-        FrameInfo *frameInfo; // output parameter
-
-        MessageOutputConfig() :
-            frameInfo(nullptr) {}
-    };
-
-    struct MessageMediaInfo {
-        media_device_info *mediaInfo;
-
-        MessageMediaInfo() :
-            mediaInfo(nullptr) {}
-    };
-
-    struct MessageData {
-        MessageSensorData sensorData;
-        MessageRequest request;
-        MessageBuffer  buffer;
-        MessageOutputConfig outputConfig;
-        MessageConfig config;
-        MessageMediaInfo info;
-
-        MessageData() {};
-    };
-
-    struct Message {
-        MessageId id;
-        MessageData data;
-
-        Message() :
-            id(MESSAGE_ID_MAX) {}
-    };
-
 private:
-    status_t handleMessageFlush(Message &msg);
-    status_t handleMessageConfigStreams(Message &msg);
-    status_t handleMessageCapture(Message &msg);
-    status_t handleMessageIsysEvent(Message &msg);
+    status_t handleFlush();
+    status_t handleConfigStreams(MessageConfig msg);
+    status_t handleCapture(MessageRequest msg);
+    status_t handleIsysEvent(MessageBuffer msg);
 
-    status_t processIsysBuffer(Message &msg);
+    status_t processIsysBuffer(MessageBuffer &msg);
 
     status_t notifyListeners(ICaptureEventListener::CaptureMessage *msg);
 
@@ -297,22 +239,20 @@ private:
 
 private:
     friend class std::shared_ptr<InflightRequestState>;
-    int     mCameraId;
+    int mCameraId;
     int mActiveIsysNodes; /**< A bitmask value records the IPU3NodeNames of all active ISYS nodes */
 
-    std::shared_ptr<MediaController>             mMediaCtl;
+    std::shared_ptr<MediaController> mMediaCtl;
 
     /**
      * Thread control members
      */
-    bool mThreadRunning;
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::unique_ptr<MessageThread> mMessageThread;
+    arc::CameraThread mCameraThread;
     /*
      * Stream config provider
      */
     IStreamConfigProvider &mStreamCfgProvider;
-    std::vector<camera3_stream_t *>      mActiveStreams; /* mActiveStreams doesn't own camera3_stream_t objects */
+    std::vector<camera3_stream_t *> mActiveStreams; /* mActiveStreams doesn't own camera3_stream_t objects */
 
     /* Input system event listeners */
     std::mutex   mListenerLock;  /* Protects mListeners */
@@ -323,8 +263,8 @@ private:
     SettingsProcessor *mSettingProcessor; /* CaptureUnit doesn't own mSettingProcessor */
     uint8_t mPipelineDepth;
 
-    std::shared_ptr<InputSystem>                 mIsys;
-    std::shared_ptr<SyncManager>    mSyncManager;
+    std::shared_ptr<InputSystem> mIsys;
+    std::shared_ptr<SyncManager> mSyncManager;
 
     /* Queue of requests */
     std::map<int, std::shared_ptr<InflightRequestState>> mInflightRequests;

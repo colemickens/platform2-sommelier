@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,11 @@
 #include "PollerThread.h"
 #include "LogHelper.h"
 
-
 NAMESPACE_DECLARATION {
 
-PollerThread::PollerThread(const char* name,
-                            int priority):
+PollerThread::PollerThread(const char* name):
     mName(name),
-    mPriority(priority),
-    mThreadRunning(false),
-    mMessageQueue("PollThread", static_cast<int>(MESSAGE_ID_MAX)),
-    mMessageThread(new MessageThread(this, mName.c_str(), mPriority)),
+    mCameraThread(mName.c_str()),
     mListener (nullptr),
     mEvents(POLLPRI | POLLIN | POLLERR)
 {
@@ -39,7 +34,9 @@ PollerThread::PollerThread(const char* name,
     mFlushFd[0] = -1;
     mFlushFd[1] = -1;
     mPid = getpid();
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+    }
 }
 
 PollerThread::~PollerThread()
@@ -54,10 +51,7 @@ PollerThread::~PollerThread()
     // detach Listener
     mListener = nullptr;
 
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
 }
 
 /**
@@ -77,18 +71,22 @@ status_t PollerThread::init(std::vector<std::shared_ptr<V4L2DeviceBase>> &device
                             bool makeRealtime)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
+    MessageInit msg;
 
-    msg.id = MESSAGE_ID_INIT;
     msg.devices = devices; // copy the vector
-    msg.data.init.observer = observer;
-    msg.data.init.events = events;
-    msg.data.init.makeRealtime = makeRealtime;
+    msg.observer = observer;
+    msg.events = events;
+    msg.makeRealtime = makeRealtime;
 
-    return mMessageQueue.send(&msg, MESSAGE_ID_INIT);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&PollerThread::handleInit, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
-status_t PollerThread::handleInit(Message &msg)
+status_t PollerThread::handleInit(MessageInit msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
@@ -103,8 +101,7 @@ status_t PollerThread::handleInit(Message &msg)
     status = pipe(mFlushFd);
     if (status < 0) {
         LOGE("Failed to create Flush pipe: %s", strerror(errno));
-        status = NO_INIT;
-        goto exitInit;
+        return NO_INIT;
     }
 
     /**
@@ -115,35 +112,30 @@ status_t PollerThread::handleInit(Message &msg)
     status = fcntl(mFlushFd[0],F_SETFL,O_NONBLOCK);
     if (status < 0) {
         LOGE("Fail to set flush pipe flag: %s", strerror(errno));
-        status = NO_INIT;
-        goto exitInit;
+        return NO_INIT;
     }
 
-    if (msg.data.init.makeRealtime) {
+    if (msg.makeRealtime) {
         // Request to change request asynchronously
         LOGW("Real time thread priority change is not supported");
     }
 
     if (msg.devices.size() == 0) {
         LOGE("%s, No devices provided", __FUNCTION__);
-        status = BAD_VALUE;
-        goto exitInit;
+        return BAD_VALUE;
     }
 
-    if (msg.data.init.observer == nullptr)
+    if (msg.observer == nullptr)
     {
         LOGE("%s, No observer provided", __FUNCTION__);
-        status = BAD_VALUE;
-        goto exitInit;
+        return BAD_VALUE;
     }
 
     mPollingDevices = msg.devices;
-    mEvents = msg.data.init.events;
+    mEvents = msg.events;
 
     //attach listener.
-    mListener = msg.data.init.observer;
-exitInit:
-    mMessageQueue.reply(MESSAGE_ID_INIT, status);
+    mListener = msg.observer;
     return status;
 }
 
@@ -157,17 +149,20 @@ status_t PollerThread::pollRequest(int reqId, int timeout,
                                    std::vector<std::shared_ptr<V4L2DeviceBase>> *devices)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    Message msg;
-    msg.id = MESSAGE_ID_POLL_REQUEST;
-    msg.data.request.reqId = reqId;
-    msg.data.request.timeout = timeout;
+    MessagePollRequest msg;
+    msg.reqId = reqId;
+    msg.timeout = timeout;
     if (devices)
         msg.devices = *devices;
 
-    return mMessageQueue.send(&msg);
+    base::Callback<status_t()> closure =
+            base::Bind(&PollerThread::handlePollRequest, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
-status_t PollerThread::handlePollRequest(Message &msg)
+status_t PollerThread::handlePollRequest(MessagePollRequest msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
@@ -180,14 +175,14 @@ status_t PollerThread::handlePollRequest(Message &msg)
     do {
         ret = V4L2DeviceBase::pollDevices(mPollingDevices, mActiveDevices,
                                           mInactiveDevices,
-                                          msg.data.request.timeout, mFlushFd[0],
+                                          msg.timeout, mFlushFd[0],
                                           mEvents);
         if (ret <= 0) {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_ERROR;
         } else {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_EVENT;
         }
-        outMsg.data.reqId = msg.data.request.reqId;
+        outMsg.data.reqId = msg.reqId;
         outMsg.data.activeDevices = &mActiveDevices;
         outMsg.data.inactiveDevices = &mInactiveDevices;
         outMsg.data.polledDevices = &mPollingDevices;
@@ -214,12 +209,8 @@ status_t PollerThread::handlePollRequest(Message &msg)
 status_t PollerThread::flush(bool sync, bool clear)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_FLUSH;
-    msg.data.flush.sync = sync;
-    msg.data.flush.clearVectors = clear;
-
-    mMessageQueue.remove(MESSAGE_ID_POLL_REQUEST);
+    MessageFlush msg;
+    msg.clearVectors = clear;
 
     if (mFlushFd[1] != -1) {
         char buf = 0xf;  // random value to write to flush fd.
@@ -228,89 +219,48 @@ status_t PollerThread::flush(bool sync, bool clear)
             LOGW("Flush write not completed");
     }
 
-    if (sync)
-        return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
-    else
-        return mMessageQueue.send(&msg);
+    if (sync) {
+        status_t status = NO_ERROR;
+        base::Callback<status_t()> closure =
+                base::Bind(&PollerThread::handleFlush, base::Unretained(this),
+                           base::Passed(std::move(msg)));
+        mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+        return status;
+    } else {
+        base::Callback<status_t()> closure =
+                base::Bind(&PollerThread::handleFlush, base::Unretained(this),
+                           base::Passed(std::move(msg)));
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+        return OK;
+    }
 }
 
-void PollerThread::messageThreadLoop()
+status_t PollerThread::handleFlush(MessageFlush msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mThreadRunning = true;
-
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-        Message msg;
-
-        mMessageQueue.receive(&msg);
-
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            status = handleMessageExit();
-            break;
-
-        case MESSAGE_ID_INIT:
-            status = handleInit(msg);
-            break;
-
-        case MESSAGE_ID_POLL_REQUEST:
-            status = handlePollRequest(msg);
-            break;
-
-        case MESSAGE_ID_FLUSH:
-        {
-            /**
-             * read the pipe just in case there was nothing to flush.
-             * this ensures that the pipe is empty for the next try.
-             * this is safe because the reading end is non blocking.
-             */
-            if (msg.data.flush.clearVectors) {
-                mPollingDevices.clear();
-                mActiveDevices.clear();
-                mInactiveDevices.clear();
-            }
-            char readbuf;
-            if (mFlushFd[0] != -1) {
-                unsigned int size = read(mFlushFd[0], (void*) &readbuf, sizeof(char));
-                if (size != sizeof(char))
-                    LOGW("Flush read not completed.");
-            }
-
-            if (msg.data.flush.sync)
-                mMessageQueue.reply(MESSAGE_ID_FLUSH, OK);
-
-            break;
-        }
-        default:
-            LOGE("error in handling message: %d, unknown message",
-                static_cast<int>(msg.id));
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d", status, (int)msg.id);
+    /**
+     * read the pipe just in case there was nothing to flush.
+     * this ensures that the pipe is empty for the next try.
+     * this is safe because the reading end is non blocking.
+     */
+    if (msg.clearVectors) {
+        mPollingDevices.clear();
+        mActiveDevices.clear();
+        mInactiveDevices.clear();
     }
+    char readbuf;
+    if (mFlushFd[0] != -1) {
+        unsigned int size = read(mFlushFd[0], (void*) &readbuf, sizeof(char));
+        if (size != sizeof(char))
+            LOGW("Flush read not completed.");
+    }
+
+    return OK;
 }
 
 status_t PollerThread::requestExitAndWait(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_EXIT;
-    msg.data.request.reqId = 0;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
-    status |= mMessageThread->requestExitAndWait();
-    return status;
-}
-
-status_t PollerThread::handleMessageExit(void)
-{
-    status_t status = NO_ERROR;
-    mThreadRunning = false;
-    mMessageQueue.reply(MESSAGE_ID_EXIT, status);
-    return status;
+    mCameraThread.Stop();
+    return NO_ERROR;
 }
 
 /** Listener Methods **/

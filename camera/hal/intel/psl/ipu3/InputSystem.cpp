@@ -39,16 +39,16 @@ InputSystem::InputSystem(IISysObserver *observer, std::shared_ptr<MediaControlle
     mIsysRequestPool("IsysRequestPool"),
     mBuffersReceived(0),
     mBufferSeqNbr(0),
-    mMessageQueue("Camera_InputSystem", (int)MESSAGE_ID_MAX),
-    mMessageThread(new MessageThread(this, "InputSystem")),
-    mThreadRunning(false),
+    mCameraThread("InputSystem"),
     mPollerThread(new PollerThread("IsysPollerThread")),
     mRequestDone(true)
 {
     LOG1("@%s", __FUNCTION__);
     mIsysRequestPool.init(MAX_REQUEST_IN_PROCESS_NUM);
     mPendingIsysRequests.clear();
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+    }
 }
 
 InputSystem::~InputSystem()
@@ -56,14 +56,6 @@ InputSystem::~InputSystem()
     LOG1("@%s", __FUNCTION__);
 
     requestExitAndWait();
-
-    // stop streaming before closing devices
-    if (mStarted) {
-        Message msg;
-        CLEAR(msg);
-        msg.data.stop = false;
-        handleMessageStop(msg);
-    }
 
     mConfiguredNodesPerName.clear();
 
@@ -77,20 +69,19 @@ status_t InputSystem::requestExitAndWait()
     LOG1("@%s", __FUNCTION__);
     status_t status = OK;
 
+    if (mStarted) {
+        status_t ret = NO_ERROR;
+        base::Callback<status_t()> closure =
+                base::Bind(&InputSystem::handleExit, base::Unretained(this));
+        mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &ret);
+        status |= ret;
+    }
+
     if (mPollerThread) {
         status |= mPollerThread->requestExitAndWait();
         mPollerThread.reset();
     }
-
-    if (mMessageThread != nullptr) {
-        Message msg;
-        msg.id = MESSAGE_ID_EXIT;
-        status |= mMessageQueue.send(&msg);
-        status |= mMessageThread->requestExitAndWait();
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
-
+    mCameraThread.Stop();
     return status;
 }
 
@@ -100,25 +91,27 @@ status_t InputSystem::configure(IStreamConfigProvider &streamConfigMgr,
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
     CLEAR(outData);
-    Message msg;
-    msg.id = MESSAGE_ID_CONFIGURE;
-    msg.data.config.streamConfigProv = &streamConfigMgr;
-    msg.data.config.result = &outData;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_CONFIGURE);
+    MessageConfigure msg;
+    msg.streamConfigProv = &streamConfigMgr;
+    msg.result = &outData;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleConfigure, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t InputSystem::handleMessageConfigure(Message &msg)
+status_t InputSystem::handleConfigure(MessageConfigure msg)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
     FrameInfo videoNodeInfo;
-    IStreamConfigProvider &graphConfigMgr = *msg.data.config.streamConfigProv;
+    IStreamConfigProvider &graphConfigMgr = *msg.streamConfigProv;
     std::shared_ptr<GraphConfig> gc = graphConfigMgr.getBaseGraphConfig();
 
     if (CC_UNLIKELY(gc.get() == nullptr)) {
         LOGE("ERROR: Graph config is nullptr");
-        goto exit;
+        return status;
     }
 
     mConfiguredNodesPerName.clear(); // in the mMediaCtlHelper.configure, the mConfiguredNodesPerName will be triggered to be regenerated.
@@ -134,21 +127,19 @@ status_t InputSystem::handleMessageConfigure(Message &msg)
     status = gc->getSensorFrameParams(mMediaCtlHelper.getConfigResults().sensorFrameParams);
     if (status != NO_ERROR) {
         LOGE("Failed to calculate Frame Params, status:%d", status);
-        goto exit;
+        return status;
     }
 
     status = mPollerThread->init((std::vector<std::shared_ptr<V4L2DeviceBase>>&) mConfiguredNodes,
                                  this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
     if (status != NO_ERROR) {
-       LOGE("PollerThread init failed (ret = %d)", status);
-       goto exit;
+        LOGE("PollerThread init failed (ret = %d)", status);
+        return status;
     }
 
-    if (msg.data.config.result)
-        *msg.data.config.result = mMediaCtlHelper.getConfigResults();
+    if (msg.result)
+        *msg.result = mMediaCtlHelper.getConfigResults();
 
-exit:
-    mMessageQueue.reply(MESSAGE_ID_CONFIGURE, status);
     return status;
 }
 
@@ -168,14 +159,13 @@ status_t InputSystem::start()
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_START;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_START);
-
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleStart, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t InputSystem::handleMessageStart()
+status_t InputSystem::handleStart()
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
@@ -186,16 +176,14 @@ status_t InputSystem::handleMessageStart()
         if (ret < 0) {
             LOGE("STREAMON failed (%s)", mConfiguredNodes[i]->name());
             status = UNKNOWN_ERROR;
-            Message msg;
-            msg.id = MESSAGE_ID_STOP;
-            msg.data.stop = false;
-            handleMessageStop(msg);
+            MessageStop msg;
+            msg.stop = false;
+            handleStop(msg);
             break;
         }
     }
     if (status == NO_ERROR)
         mStarted = true;
-    mMessageQueue.reply(MESSAGE_ID_START, status);
     return status;
 }
 
@@ -204,20 +192,21 @@ status_t InputSystem::stop(bool keepBuffers)
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_STOP;
-    msg.data.stop = keepBuffers;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_STOP);
-
+    MessageStop msg;
+    msg.stop = keepBuffers;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleStop, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t InputSystem::handleMessageStop(Message &msg)
+status_t InputSystem::handleStop(MessageStop msg)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
     int ret = 0;
-    bool keepBuffers = msg.data.stop;
+    bool keepBuffers = msg.stop;
     mBufferSeqNbr = 0;
 
     mPollerThread->flush(true);
@@ -234,7 +223,6 @@ status_t InputSystem::handleMessageStop(Message &msg)
     if (!keepBuffers)
         mStarted = false;
 
-    mMessageQueue.reply(MESSAGE_ID_STOP, status);
     return status;
 }
 
@@ -243,14 +231,14 @@ status_t InputSystem::releaseBufferPools()
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_RELEASE_BUFFER_POOLS;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_RELEASE_BUFFER_POOLS);
-
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleReleaseBufferPools,
+                       base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t InputSystem::handleMessageReleaseBufferPools()
+status_t InputSystem::handleReleaseBufferPools()
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
@@ -279,7 +267,6 @@ status_t InputSystem::handleMessageReleaseBufferPools()
         LOGW("Input system poller thread flush failed!!");
     }
 
-    mMessageQueue.reply(MESSAGE_ID_RELEASE_BUFFER_POOLS, status);
     return status;
 }
 
@@ -288,52 +275,52 @@ bool InputSystem::isStarted()
     LOG1("@%s", __FUNCTION__);
 
     bool value = false;
-    Message msg;
-    msg.id = MESSAGE_ID_IS_STARTED;
-    msg.data.query.value = &value;
-    mMessageQueue.send(&msg, MESSAGE_ID_IS_STARTED);
-
+    MessageBoolQuery msg;
+    msg.value = &value;
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleIsStarted, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return value;
 }
 
-status_t InputSystem::handleMessageIsStarted(Message &msg)
+status_t InputSystem::handleIsStarted(MessageBoolQuery msg)
 {
     LOG1("@%s", __FUNCTION__);
-    status_t status = NO_ERROR;
-    if(msg.data.query.value)
-        *msg.data.query.value = mStarted;
+    if(msg.value)
+        *msg.value = mStarted;
 
-    mMessageQueue.reply(MESSAGE_ID_IS_STARTED, status);
-    return status;
+    return NO_ERROR;
 }
 
 status_t InputSystem::putFrame(IPU3NodeNames isysNodeName,
                                const V4L2Buffer *buf, int32_t reqId)
 {
     LOG2("@%s", __FUNCTION__);
-    status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_PUT_FRAME;
-    msg.data.frame.reqId = reqId;
-    msg.data.frame.isysNodeName = isysNodeName;
-    msg.data.frame.buf = buf;
+    MessageFrame msg;
+    msg.reqId = reqId;
+    msg.isysNodeName = isysNodeName;
+    msg.buf = buf;
 
-    status = mMessageQueue.send(&msg);
-
-    return status;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handlePutFrame, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return NO_ERROR;
 }
 
-status_t InputSystem::handleMessagePutFrame(Message &msg)
+status_t InputSystem::handlePutFrame(MessageFrame msg)
 {
     LOG2("@%s", __FUNCTION__);
 
     std::shared_ptr<IsysRequest> isysReq;
     status_t status = NO_ERROR;
     bool newReq = false;
-    IPU3NodeNames isysNodeName = msg.data.frame.isysNodeName;
-    const V4L2Buffer *buf = msg.data.frame.buf;
-    const int32_t reqId = msg.data.frame.reqId;
+    IPU3NodeNames isysNodeName = msg.isysNodeName;
+    const V4L2Buffer *buf = msg.buf;
+    const int32_t reqId = msg.reqId;
 
     /* first checking if existing mediaRequest created */
     auto itRequest = mPendingIsysRequests.find(reqId);
@@ -377,7 +364,7 @@ status_t InputSystem::handleMessagePutFrame(Message &msg)
     isysReq->numNodesForRequest = isysReq->configuredNodesForRequest.size();
     if (newReq) {
         isysReq->mediaRequestId = 44; // remove
-        isysReq->requestId = msg.data.frame.reqId;
+        isysReq->requestId = msg.reqId;
         mPendingIsysRequests.emplace(isysReq->requestId, isysReq);
     }
 
@@ -409,24 +396,26 @@ status_t InputSystem::setBufferPool(IPU3NodeNames isysNodeName,
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_SET_BUFFER_POOL;
-    msg.data.bufferPool.isysNodeName = isysNodeName;
-    msg.data.bufferPool.pool = &pool;
-    msg.data.bufferPool.cached = cached;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_SET_BUFFER_POOL);
+    MessageBufferPool msg;
+    msg.isysNodeName = isysNodeName;
+    msg.pool = &pool;
+    msg.cached = cached;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleSetBufferPool,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
 
     return status;
 }
 
-status_t InputSystem::handleMessageSetBufferPool(Message &msg)
+status_t InputSystem::handleSetBufferPool(MessageBufferPool msg)
 {
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    IPU3NodeNames isysNodeName = msg.data.bufferPool.isysNodeName;
-    std::vector<V4L2Buffer> *pool = msg.data.bufferPool.pool;
-    bool cached = msg.data.bufferPool.cached;
+    IPU3NodeNames isysNodeName = msg.isysNodeName;
+    std::vector<V4L2Buffer> *pool = msg.pool;
+    bool cached = msg.cached;
     std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
 
     int memType = getDefaultMemoryType(ISYS_NODE_RAW);
@@ -435,19 +424,16 @@ status_t InputSystem::handleMessageSetBufferPool(Message &msg)
                             mConfiguredNodesPerName.find(isysNodeName);
     if (it == mConfiguredNodesPerName.end()) {
         LOGE("@%s: ISYS node (%d) not found!", __FUNCTION__, isysNodeName);
-        status = BAD_VALUE;
-        goto exit;
+        return BAD_VALUE;
     }
     videoNode = it->second;
     status = videoNode->setBufferPool(*pool, cached, memType);
     if (status != NO_ERROR) {
         LOGE("Failed setting buffer poll into the device.");
-        goto exit;
+        return status;
     }
 
-exit:
-    mMessageQueue.reply(MESSAGE_ID_SET_BUFFER_POOL, status);
-    return NO_ERROR;
+    return status;
 }
 
 status_t InputSystem::getOutputNodes(ConfiguredNodesPerName **nodes,
@@ -456,11 +442,13 @@ status_t InputSystem::getOutputNodes(ConfiguredNodesPerName **nodes,
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_GET_NODES;
-    msg.data.nodes.nodes = nodes;
-    msg.data.nodes.nodeCount = &nodeCount;
-    status = mMessageQueue.send(&msg, MESSAGE_ID_GET_NODES);
+    MessageNodes msg;
+    msg.nodes = nodes;
+    msg.nodeCount = &nodeCount;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleGetOutputNodes,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
@@ -474,12 +462,12 @@ std::shared_ptr<V4L2VideoNode> InputSystem::findOutputNode(IPU3NodeNames isysNod
     return it->second;
 }
 
-status_t InputSystem::handleMessageGetOutputNodes(Message &msg)
+status_t InputSystem::handleGetOutputNodes(MessageNodes msg)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
-    ConfiguredNodesPerName **nodes = msg.data.nodes.nodes;
-    int *nodeCount = msg.data.nodes.nodeCount;
+    ConfiguredNodesPerName **nodes = msg.nodes;
+    int *nodeCount = msg.nodeCount;
 
     if (nodes)
         *nodes = &mConfiguredNodesPerName;
@@ -487,26 +475,26 @@ status_t InputSystem::handleMessageGetOutputNodes(Message &msg)
     if (nodeCount)
         *nodeCount = mConfiguredNodes.size();
 
-    mMessageQueue.reply(MESSAGE_ID_GET_NODES, status);
     return status;
 }
 
 status_t InputSystem::enqueueMediaRequest(int32_t reqId)
 {
     LOG2("@%s, reqId = %d", __FUNCTION__, reqId);
-    status_t status = NO_ERROR;
-    Message msg;
-    msg.id = MESSAGE_ID_ENQUEUE_MEDIA_REQUEST;
-    msg.data.enqueueMediaRequest.requestId = reqId;
-    status = mMessageQueue.send(&msg);
-
-    return status;
+    MessageEnqueueMediaRequest msg;
+    msg.requestId = reqId;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleEnqueueMediaRequest,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return NO_ERROR;
 }
 
-status_t InputSystem::handleMessageEnqueueMediaRequest(Message &msg)
+status_t InputSystem::handleEnqueueMediaRequest(
+        MessageEnqueueMediaRequest msg)
 {
     LOG2("@%s", __FUNCTION__);
-    int32_t reqId = msg.data.enqueueMediaRequest.requestId;
+    int32_t reqId = msg.requestId;
     std::shared_ptr<IsysRequest> currentRequest = nullptr;
     /* first checking if existing mediaRequest created */
     auto itRequest = mPendingIsysRequests.find(reqId);
@@ -523,30 +511,28 @@ status_t InputSystem::handleMessageEnqueueMediaRequest(Message &msg)
 status_t InputSystem::capture(int requestId)
 {
     LOG2("@%s: request ID: %d", __FUNCTION__, requestId);
-    status_t status = NO_ERROR;
+    MessageCapture msg;
+    msg.requestId = requestId;
 
-    Message msg;
-    msg.id = MESSAGE_ID_CAPTURE;
-    msg.data.capture.requestId = requestId;
-
-    status = mMessageQueue.send(&msg);
-
-    return status;
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleCapture,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return NO_ERROR;
 }
 
-status_t InputSystem::handleMessageCapture(Message &msg)
+status_t InputSystem::handleCapture(MessageCapture msg)
 {
     LOG2("@%s", __FUNCTION__);
-    status_t status = NO_ERROR;
 
-    mCaptureQueue.push_back(msg.data.capture.requestId);
+    mCaptureQueue.push_back(msg.requestId);
     // Start polling if all buffers for the previous request have
     // been received
     if (mRequestDone) {
         pollNextRequest();
         mRequestDone = false;
     }
-    return status;
+    return NO_ERROR;
 }
 
 status_t InputSystem::flush()
@@ -555,99 +541,30 @@ status_t InputSystem::flush()
     status_t status = NO_ERROR;
 
     // flush the poll messages
-    Message msg;
-    msg.id = MESSAGE_ID_FLUSH;
-    mMessageQueue.remove(MESSAGE_ID_CAPTURE);
-    status = mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    base::Callback<status_t()> closure =
+            base::Bind(&InputSystem::handleFlush, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t InputSystem::handleMessageFlush()
+status_t InputSystem::handleFlush()
 {
     LOG1("@%s:", __FUNCTION__);
-    status_t status = NO_ERROR;
     mPollerThread->flush(true);
-    mMessageQueue.reply(MESSAGE_ID_FLUSH, status);
-    return status;
+    return NO_ERROR;
 }
 
-void InputSystem::messageThreadLoop(void)
+status_t InputSystem::handleExit()
 {
-    LOG1("@%s: Start", __FUNCTION__);
-
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-
-        Message msg;
-        mMessageQueue.receive(&msg);
-
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            mThreadRunning = false;
-            mStarted = false;
-            status = NO_ERROR;
-            break;
-
-        case MESSAGE_ID_CONFIGURE:
-            status = handleMessageConfigure(msg);
-            break;
-
-        case MESSAGE_ID_START:
-            status = handleMessageStart();
-            break;
-
-        case MESSAGE_ID_STOP:
-            status = handleMessageStop(msg);
-            break;
-
-        case MESSAGE_ID_IS_STARTED:
-            status = handleMessageIsStarted(msg);
-            break;
-
-        case MESSAGE_ID_PUT_FRAME:
-            status = handleMessagePutFrame(msg);
-            break;
-
-        case MESSAGE_ID_SET_BUFFER_POOL:
-            status = handleMessageSetBufferPool(msg);
-            break;
-
-        case MESSAGE_ID_GET_NODES:
-            status = handleMessageGetOutputNodes(msg);
-            break;
-
-        case MESSAGE_ID_ENQUEUE_MEDIA_REQUEST:
-            status =  handleMessageEnqueueMediaRequest(msg);
-            break;
-
-        case MESSAGE_ID_CAPTURE:
-            status = handleMessageCapture(msg);
-            break;
-
-        case MESSAGE_ID_FLUSH:
-            status = handleMessageFlush();
-            break;
-
-        case MESSAGE_ID_POLL:
-            status = handleMessagePollEvent(msg);
-            break;
-
-        case MESSAGE_ID_RELEASE_BUFFER_POOLS:
-            status = handleMessageReleaseBufferPools();
-            break;
-
-        default:
-            LOGE("@%s: Unknown message: %d", __FUNCTION__, msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d", status, (int)msg.id);
-
+    LOG1("@%s", __FUNCTION__);
+    // stop streaming before closing devices
+    if (mStarted) {
+        MessageStop msg;
+        msg.stop = false;
+        handleStop(msg);
     }
-    LOG1("%s: Exit", __FUNCTION__);
+    mStarted = false;
+    return NO_ERROR;
 }
 
 status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
@@ -658,10 +575,9 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
         return BAD_VALUE;
 
     // Common thread message fields for any case
-    Message msg;
-    msg.id = MESSAGE_ID_POLL;
-    msg.data.pollEvent.pollMsgId = pollMsg->id;
-    msg.data.pollEvent.requestId = pollMsg->data.reqId;
+    MessagePollEvent msg;
+    msg.pollMsgId = pollMsg->id;
+    msg.requestId = pollMsg->data.reqId;
 
     if (pollMsg->id == POLL_EVENT_ID_EVENT) {
         int numDevices = pollMsg->data.activeDevices->size();
@@ -676,14 +592,17 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
             return OK;
         }
 
-        msg.data.pollEvent.activeDevices = new std::shared_ptr<V4L2VideoNode>[numDevices];
+        msg.activeDevices = new std::shared_ptr<V4L2VideoNode>[numDevices];
         for (int i = 0; i < numDevices; i++) {
-            msg.data.pollEvent.activeDevices[i] = (std::shared_ptr<V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
+            msg.activeDevices[i] = (std::shared_ptr<V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
         }
-        msg.data.pollEvent.numDevices = numDevices;
-        msg.data.pollEvent.polledDevices = numPolledDevices;
+        msg.numDevices = numDevices;
+        msg.polledDevices = numPolledDevices;
 
-        mMessageQueue.send(&msg);
+        base::Callback<status_t()> closure =
+                base::Bind(&InputSystem::handlePollEvent,
+                           base::Unretained(this), base::Passed(std::move(msg)));
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
             LOG2("@%s: %zu inactive nodes for request %d, retry poll", __FUNCTION__,
@@ -696,9 +615,12 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
     } else if (pollMsg->id == POLL_EVENT_ID_ERROR) {
         LOGE("device poll failed");
         // For now, set number of device to zero in error case
-        msg.data.pollEvent.numDevices = 0;
-        msg.data.pollEvent.polledDevices = 0;
-        mMessageQueue.send(&msg);
+        msg.numDevices = 0;
+        msg.polledDevices = 0;
+        base::Callback<status_t()> closure =
+                base::Bind(&InputSystem::handlePollEvent,
+                           base::Unretained(this), base::Passed(std::move(msg)));
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     }
 
     return OK;
@@ -718,7 +640,7 @@ status_t InputSystem::getIsysNodeName(std::shared_ptr<V4L2VideoNode> node, IPU3N
     return BAD_VALUE;
 }
 
-status_t InputSystem::handleMessagePollEvent(Message &msg)
+status_t InputSystem::handlePollEvent(MessagePollEvent msg)
 {
     LOG2("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
@@ -729,16 +651,16 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
     int activeNodecount = 0;
     int requestId = -999;
 
-    activeNodes = msg.data.pollEvent.activeDevices;
-    activeNodecount = msg.data.pollEvent.numDevices;
-    requestId = msg.data.pollEvent.requestId;
+    activeNodes = msg.activeDevices;
+    activeNodecount = msg.numDevices;
+    requestId = msg.requestId;
 
     LOG2("@%s: received %d / %d buffers for request Id %d", __FUNCTION__,
                                                             activeNodecount,
                                                             nodeCount,
                                                             requestId);
 
-    if (msg.data.pollEvent.pollMsgId == POLL_EVENT_ID_ERROR) {
+    if (msg.pollMsgId == POLL_EVENT_ID_ERROR) {
         // Notify observer
         IISysObserver::IsysMessage isysMsg;
         isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;

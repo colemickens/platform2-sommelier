@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@
 #define CAMERA3_HAL_CONTROLUNIT_H_
 #include <memory>
 #include <vector>
-#include "MessageQueue.h"
-#include "MessageThread.h"
 #include "ImguUnit.h"
 #include "CaptureUnit.h"
 #include "SharedItemPool.h"
@@ -27,6 +25,8 @@
 #include "CaptureUnitSettings.h"
 #include "RequestCtrlState.h"
 #include <linux/intel-ipu3.h>
+
+#include <arc/camera_thread.h>
 
 namespace android {
 namespace camera2 {
@@ -48,7 +48,7 @@ class AAARunner;
  * each request and to run the 3A algorithms.
  *
  */
-class ControlUnit : public IMessageHandler, public ICaptureEventListener
+class ControlUnit : public ICaptureEventListener
 {
 public:
     explicit ControlUnit(ImguUnit *thePU,
@@ -69,30 +69,6 @@ public:
     status_t flush(void);
 
 public:  /* private types */
-    // thread message id's
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,
-        MESSAGE_ID_NEW_REQUEST,
-        MESSAGE_ID_NEW_IMAGE,
-        MESSAGE_ID_NEW_AF_STAT,
-        MESSAGE_ID_NEW_2A_STAT,
-        MESSAGE_ID_NEW_SENSOR_METADATA,
-        MESSAGE_ID_NEW_SENSOR_DESCRIPTOR,
-        MESSAGE_ID_NEW_SOF,
-        MESSAGE_ID_NEW_SHUTTER,
-        MESSAGE_NEW_CV_RESULT,
-        MESSAGE_ID_FLUSH,
-        MESSAGE_ID_MAX
-    };
-
-    struct MessageGeneric {
-        bool enable;
-    };
-
-    struct MessageRequest {
-        unsigned int frame_number;
-    };
-
     struct MessageShutter {
         int requestId;
         int64_t tv_sec;
@@ -104,39 +80,17 @@ public:  /* private types */
         ia_aiq_frame_params frameParams;
     };
 
-    // union of all message data
-    union MessageData {
-        MessageGeneric generic;
-        MessageRequest request;
-        MessageShutter shutter;
-        MessageSensorMode sensor;
-    };
-
-    // message id and message data
-    struct Message {
-        MessageId id;
+    struct MessageNewImage {
         unsigned int requestId; /**< For raw buffers from CaptureUnit as
                                      they don't have request */
-        MessageData data;
-        Camera3Request* request;
-        std::shared_ptr<RequestCtrlState> state;
-        std::shared_ptr<IPU3CapturedStatistics> stats;
         std::shared_ptr<CaptureBuffer> rawBuffer;
-        std::shared_ptr<CaptureBuffer> yuvBuffer;
         CaptureEventType type;
-        Message(): id(MESSAGE_ID_EXIT),
-            requestId(0),
-            request(nullptr),
-            state(nullptr),
-            type(CAPTURE_EVENT_MAX)
-        { CLEAR(data); }
+        MessageNewImage() : requestId(0), type(CAPTURE_EVENT_MAX) {}
     };
 
-private:
-    typedef struct {
-        int reqId;
-        CaptureUnitSettings *captureSettings;
-    } RequestSettings;
+    struct MessageStats {
+        std::shared_ptr<IPU3CapturedStatistics> stats;
+    };
 
 private:  /* Methods */
     // prevent copy constructor and assignment operator
@@ -144,19 +98,13 @@ private:  /* Methods */
     ControlUnit& operator=(const ControlUnit& other);
 
     status_t initTonemaps();
-    status_t requestExitAndWait();
 
-    /* IMessageHandler overloads */
-    virtual void messageThreadLoop();
-
-    status_t handleMessageExit();
-    status_t handleNewRequest(Message &msg);
-    status_t handleNewImage(Message &msg);
-    status_t handleNewStat(Message &msg);
-    status_t handleNewSensorDescriptor(Message &msg);
-    status_t handleNewSof(Message &msg);
-    status_t handleNewShutter(Message &msg);
-    status_t handleMessageFlush(void);
+    status_t handleNewRequest(std::shared_ptr<RequestCtrlState> state);
+    status_t handleNewImage(MessageNewImage msg);
+    status_t handleNewStat(MessageStats msg);
+    status_t handleNewSensorDescriptor(MessageSensorMode msg);
+    status_t handleNewShutter(MessageShutter msg);
+    status_t handleFlush(void);
 
     status_t processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqState,
                                       std::shared_ptr<IPU3CapturedStatistics> &stats);
@@ -186,9 +134,7 @@ private:  /* Members */
     /**
      * Thread control members
      */
-    bool mThreadRunning;
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::unique_ptr<MessageThread> mMessageThread;
+    arc::CameraThread mCameraThread;
 
     /**
      * Settings history

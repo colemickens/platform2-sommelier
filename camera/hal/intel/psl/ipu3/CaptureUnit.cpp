@@ -33,9 +33,7 @@ CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::
         mCameraId(camId),
         mActiveIsysNodes(0),
         mMediaCtl(mc),
-        mThreadRunning(false),
-        mMessageQueue("Camera_CaptureUnit", (int)MESSAGE_ID_MAX),
-        mMessageThread(nullptr),
+        mCameraThread("CaptureUThread"),
         mStreamCfgProvider(aStreamCfgProv),
         mBufferPools(nullptr),
         mSettingProcessor(nullptr),
@@ -49,14 +47,8 @@ CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::
 
 CaptureUnit::~CaptureUnit()
 {
-    if (mMessageThread != nullptr) {
-        Message msg;
-        msg.id = MESSAGE_ID_EXIT;
-        mMessageQueue.send(&msg);
-        mMessageThread->requestExitAndWait();
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+
+    mCameraThread.Stop();
 
     if (mIsys != nullptr) {
         if (mIsys->isStarted())
@@ -124,8 +116,10 @@ status_t CaptureUnit::init()
 {
     mBufferPools = new BufferPools(mCameraId);
 
-    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "CaptureUnit"));
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+        return NO_INIT;
+    }
 
     mInflightRequestPool.init(MAX_REQUEST_IN_PROCESS_NUM, InflightRequestState::reset);
 
@@ -177,20 +171,17 @@ void CaptureUnit::setSettingsProcessor(SettingsProcessor *settingsProcessor)
 status_t CaptureUnit::flush()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
 
-    Message msg;
-    msg.id = MESSAGE_ID_FLUSH;
-    mMessageQueue.remove(MESSAGE_ID_CAPTURE);
-    status = mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&CaptureUnit::handleFlush, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t CaptureUnit::handleMessageFlush(Message &msg)
+status_t CaptureUnit::handleFlush()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    UNUSED(msg);
-    status_t status = NO_ERROR;
 
     if (mLastInflightRequest) {
         if (mLastInflightRequest->aiqCaptureSettings)
@@ -203,32 +194,33 @@ status_t CaptureUnit::handleMessageFlush(Message &msg)
 
     mIsys->flush();
 
-    mMessageQueue.reply(MESSAGE_ID_FLUSH, status);
-    return status;
+    return NO_ERROR;
 }
 
 status_t CaptureUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         bool configChanged)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    MessageConfig msg;
+    msg.activeStreams = &activeStreams;
+    msg.configChanged = configChanged; // written to in msg handler
+
     status_t status = NO_ERROR;
-
-    Message msg;
-    msg.id = MESSAGE_ID_CONFIGSTREAM;
-    msg.data.config.activeStreams = &activeStreams;
-    msg.data.config.configChanged = configChanged; // written to in msg handler
-
-    status = mMessageQueue.send(&msg, MESSAGE_ID_CONFIGSTREAM);
+    base::Callback<status_t()> closure =
+            base::Bind(&CaptureUnit::handleConfigStreams,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
+status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
     ICaptureEventListener::CaptureMessage outMsg;
-    std::vector<camera3_stream_t*> &activeStreams = *msg.data.config.activeStreams;
-    bool configChanged = msg.data.config.configChanged;
+    std::vector<camera3_stream_t*> &activeStreams = *msg.activeStreams;
+    bool configChanged = msg.configChanged;
     MediaCtlHelper::ConfigurationResults isysConfigResult;
     std::shared_ptr<GraphConfig> baseConfig = mStreamCfgProvider.getBaseGraphConfig();
 
@@ -267,7 +259,6 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
         status = mIsys->stop(true);
         if (status != NO_ERROR) {
             LOGE("Failed to stop streaming!");
-            mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
             return status;
         }
 
@@ -288,7 +279,6 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
                               isysConfigResult);
     if (status != NO_ERROR) {
         LOGE("Error configuring InputSystem");
-        mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
         return status;
     }
 
@@ -303,7 +293,6 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
     status = setSensorFrameTimings();
     if (status != NO_ERROR) {
         LOGE("Failed to set sensor frame timings, status:%d", status);
-        mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
         return status;
     }
 
@@ -313,7 +302,6 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
     status = mBufferPools->createBufferPools(poolSize, skipCount, mIsys);
     if (status != NO_ERROR) {
         LOGE("Failed to create buffer pools (status= 0x%X)", status);
-        mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
         return status;
     }
     mQueuedCaptureBuffers.reserve(poolSize);
@@ -329,15 +317,12 @@ status_t CaptureUnit::handleMessageConfigStreams(Message &msg)
     status = getSensorModeData(outMsg.data.event.exposureDesc);
     if (CC_UNLIKELY(status != OK)) {
         LOGE("Failed to retrieve sensor mode data - BUG");
-        mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
         return status;
     }
 
     outMsg.data.event.frameParams = isysConfigResult.sensorFrameParams;
 
     notifyListeners(&outMsg);
-
-    mMessageQueue.reply(MESSAGE_ID_CONFIGSTREAM, status);
 
     return status;
 }
@@ -440,33 +425,35 @@ status_t CaptureUnit::doCapture(Camera3Request* request,
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    Message msg;
+    MessageRequest msg;
 
-    status = mInflightRequestPool.acquireItem(msg.data.request.inFlightRequest);
+    status = mInflightRequestPool.acquireItem(msg.inFlightRequest);
     if (status != NO_ERROR) {
         LOGE("Failed to acquire free inflight request from pool - BUG");
         return UNKNOWN_ERROR;
     }
-    msg.id = MESSAGE_ID_CAPTURE;
-    msg.data.request.inFlightRequest->request = request;
-    msg.data.request.inFlightRequest->graphConfig = graphConfig;
-    msg.data.request.inFlightRequest->aiqCaptureSettings = aiqCaptureSettings;
-    msg.data.request.inFlightRequest->shutterDone = false;
+    msg.inFlightRequest->request = request;
+    msg.inFlightRequest->graphConfig = graphConfig;
+    msg.inFlightRequest->aiqCaptureSettings = aiqCaptureSettings;
+    msg.inFlightRequest->shutterDone = false;
 
     if (CC_UNLIKELY(aiqCaptureSettings.get() == nullptr)) {
         LOGE("AIQ capture settings is nullptr");
         return BAD_VALUE;
     }
 
-    status = mMessageQueue.send(&msg);
-    return status;
+    base::Callback<status_t()> closure =
+            base::Bind(&CaptureUnit::handleCapture, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
-status_t CaptureUnit::handleMessageCapture(Message &msg)
+status_t CaptureUnit::handleCapture(MessageRequest msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    std::shared_ptr<InflightRequestState> inflightRequest = msg.data.request.inFlightRequest;
+    std::shared_ptr<InflightRequestState> inflightRequest = msg.inFlightRequest;
     mLastInflightRequest = inflightRequest;
     mLastInflightRequest->request = nullptr;
     int32_t reqId = inflightRequest->aiqCaptureSettings->aiqResults.requestId;
@@ -641,15 +628,17 @@ void CaptureUnit::notifyIsysEvent(IsysMessage &isysMsg)
     if (isysMsg.id == ISYS_MESSAGE_ID_EVENT) {
         LOG2("@%s: request ID: %d, node: %d", __FUNCTION__,
                 isysMsg.data.event.requestId, isysMsg.data.event.isysNodeName);
-        Message msg;
-        msg.id = MESSAGE_ID_ISYS_EVENT;
-        msg.data.buffer.requestId = isysMsg.data.event.requestId;
-        msg.data.buffer.isysNodeName = isysMsg.data.event.isysNodeName;
+        MessageBuffer msg;
+        msg.requestId = isysMsg.data.event.requestId;
+        msg.isysNodeName = isysMsg.data.event.isysNodeName;
         if (isysMsg.data.event.buffer != nullptr) {
-            msg.data.buffer.v4l2Buf = *isysMsg.data.event.buffer;
+            msg.v4l2Buf = *isysMsg.data.event.buffer;
         }
-
-        mMessageQueue.send(&msg);
+        base::Callback<status_t()> closure =
+                base::Bind(&CaptureUnit::handleIsysEvent,
+                           base::Unretained(this),
+                           base::Passed(std::move(msg)));
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     } else {
         LOGE("Error from input system, ReqId: %d", isysMsg.id);
     }
@@ -721,13 +710,13 @@ status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool is
     return status;
 }
 
-status_t CaptureUnit::handleMessageIsysEvent(Message &msg)
+status_t CaptureUnit::handleIsysEvent(MessageBuffer msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
     ICaptureEventListener::CaptureMessage outMsg;
 
-    IPU3NodeNames isysNodeName = msg.data.buffer.isysNodeName;
+    IPU3NodeNames isysNodeName = msg.isysNodeName;
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
 
     switch(isysNodeName) {
@@ -744,7 +733,7 @@ status_t CaptureUnit::handleMessageIsysEvent(Message &msg)
     return status;
 }
 
-status_t CaptureUnit::processIsysBuffer(Message &msg)
+status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
@@ -756,10 +745,10 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
     IPU3NodeNames isysNode = IMGU_NODE_NULL;
     int requestId = 0;
 
-    requestId = msg.data.buffer.requestId;
+    requestId = msg.requestId;
 
     // Notify listeners, first fill the observer message
-    outBuf = &msg.data.buffer.v4l2Buf;
+    outBuf = &msg.v4l2Buf;
     outMsg.data.event.timestamp.tv_sec = outBuf->vbuffer.timestamp().tv_sec;
     outMsg.data.event.timestamp.tv_usec = outBuf->vbuffer.timestamp().tv_usec;
     outMsg.data.event.sequence = outBuf->vbuffer.sequence();
@@ -768,7 +757,7 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
     outMsg.data.event.reqId = requestId;
 
     std::vector<std::shared_ptr<CaptureBuffer>> *bufferQueuePtr = nullptr;
-    isysNode = msg.data.buffer.isysNodeName;
+    isysNode = msg.isysNodeName;
     bufferQueuePtr = &mQueuedCaptureBuffers;
 
     for (size_t i = 0; i < bufferQueuePtr->size(); i++) {
@@ -829,50 +818,6 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
     if (it != mInflightRequests.end())
         mInflightRequests.erase(it);
     return status;
-}
-
-
-void CaptureUnit::messageThreadLoop()
-{
-    LOG1("@%s - Start", __FUNCTION__);
-
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-
-        Message msg;
-        mMessageQueue.receive(&msg);
-        LOG2("@%s, receive message id:%d", __FUNCTION__, msg.id);
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            mThreadRunning = false;
-            break;
-        case MESSAGE_ID_FLUSH:
-            status = handleMessageFlush(msg);
-            break;
-        case MESSAGE_ID_CONFIGSTREAM:
-            status = handleMessageConfigStreams(msg);
-            break;
-        case MESSAGE_ID_CAPTURE:
-            status = handleMessageCapture(msg);
-            break;
-        case MESSAGE_ID_ISYS_EVENT:
-            handleMessageIsysEvent(msg);
-            break;
-        default:
-            LOGE("ERROR: Unknown message %d", msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d", status,
-                    static_cast<int>(msg.id));
-        LOG2("@%s, finish message id:%d", __FUNCTION__, msg.id);
-        mMessageQueue.reply(msg.id, status);
-    }
-
-    LOG1("%s: Exit", __FUNCTION__);
 }
 
 status_t CaptureUnit::notifyListeners(ICaptureEventListener::CaptureMessage *msg)

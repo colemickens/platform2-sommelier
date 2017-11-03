@@ -32,10 +32,8 @@ PSLSRC = \
     psl/ipu3/SettingsProcessor.cpp \
     psl/ipu3/BufferPools.cpp \
     psl/ipu3/Metadata.cpp \
-    psl/ipu3/tasks/ExecuteTaskBase.cpp \
     psl/ipu3/tasks/ITaskEventSource.cpp \
     psl/ipu3/tasks/ICaptureEventSource.cpp \
-    psl/ipu3/tasks/TaskThreadBase.cpp \
     psl/ipu3/tasks/ITaskEventListener.cpp \
     psl/ipu3/tasks/JpegEncodeTask.cpp \
     psl/ipu3/workers/FrameWorker.cpp \
