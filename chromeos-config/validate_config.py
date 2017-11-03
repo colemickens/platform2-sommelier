@@ -464,17 +464,19 @@ BASE_AUDIO_SCHEMA = [
     PropFile('hifi-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
     PropFile('alsa-conf', True, '', {'audio-type': False}, UCM_CONFIG_DIR),
     PropString('topology-xml', False, '', {'audio-type': False}),
+    PropString('topology-name', False, r'\w+'),
     PropFile('topology-bin', False, '', {'audio-type': False}, LIB_FIRMWARE),
+
+    # TODO(sjg@chromium.org): There is no validation that we have these two.
+    # They must both exist either in the model's audio node or here.
+    PropFile('cras-config-dir', False, r'[\w${}]+', target_dir=CRAS_CONFIG_DIR),
+    PropString('ucm-suffix', False, r'[\w${}]+'),
 ]
 
 BASE_AUDIO_NODE = [
     NodeAny(r'main', [
         PropPhandle('audio-type', '/chromeos/family/audio/ANY',
                     False),
-        PropFile('cras-config-dir', True, r'[\w${}]+',
-                 target_dir=CRAS_CONFIG_DIR),
-        PropString('ucm-suffix', True, r'[\w${}]+'),
-        PropString('topology-name', False, r'\w+'),
     ] + BASE_AUDIO_SCHEMA)
 ]
 NOT_WL = {'whitelabel': False}

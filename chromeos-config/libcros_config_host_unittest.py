@@ -222,43 +222,45 @@ class CrosConfigHostTest(unittest.TestCase):
     audio_files = config.GetAudioFiles()
     self.assertEqual(
         audio_files,
-        [BaseFile('cras-config/caroline/bxtda7219max',
+        [BaseFile('cras-config/1mic/bxtda7219max',
+                  '/etc/cras/1mic/bxtda7219max'),
+         BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
+         BaseFile('cras-config/2mic/bxtda7219max',
+                  '/etc/cras/2mic/bxtda7219max'),
+         BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
+         BaseFile('cras-config/caroline/bxtda7219max',
                   '/etc/cras/caroline/bxtda7219max'),
          BaseFile('cras-config/caroline/dsp.ini', '/etc/cras/caroline/dsp.ini'),
-         BaseFile('cras-config/front/bxtda7219max',
-                  '/etc/cras/front/bxtda7219max'),
-         BaseFile('cras-config/front/dsp.ini', '/etc/cras/front/dsp.ini'),
          BaseFile('cras-config/pyro/bxtda7219max',
                   '/etc/cras/pyro/bxtda7219max'),
          BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-         BaseFile('cras-config/rear/bxtda7219max',
-                  '/etc/cras/rear/bxtda7219max'),
-         BaseFile('cras-config/rear/dsp.ini', '/etc/cras/rear/dsp.ini'),
          BaseFile('cras-config/reefcras/bxtda7219max',
                   '/etc/cras/reefcras/bxtda7219max'),
          BaseFile('cras-config/reefcras/dsp.ini', '/etc/cras/reefcras/dsp.ini'),
-         BaseFile('topology/5a98-reef-front-8-tplg.bin',
-                  '/lib/firmware/5a98-reef-front-8-tplg.bin'),
+
+         BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
+                  '/lib/firmware/5a98-reef-1mic-8-tplg.bin'),
+         BaseFile('topology/5a98-reef-2mic-8-tplg.bin',
+                  '/lib/firmware/5a98-reef-2mic-8-tplg.bin'),
          BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
                   '/lib/firmware/5a98-reef-pyro-8-tplg.bin'),
-         BaseFile('topology/5a98-reef-rear-8-tplg.bin',
-                  '/lib/firmware/5a98-reef-rear-8-tplg.bin'),
          BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
                   '/lib/firmware/5a98-reef-reeftop-8-tplg.bin'),
-         BaseFile('ucm-config/bxtda7219max.front/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.front/HiFi.conf'),
-         BaseFile('ucm-config/bxtda7219max.front/bxtda7219max.front.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.front/bxtda7219max.front'
+
+         BaseFile('ucm-config/1mic/HiFi.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
+         BaseFile('ucm-config/1mic/bxtda7219max.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
+                  '.conf'),
+         BaseFile('ucm-config/2mic/HiFi.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.2mic/HiFi.conf'),
+         BaseFile('ucm-config/2mic/bxtda7219max.conf',
+                  '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
                   '.conf'),
          BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
          BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
-                  '.conf'),
-         BaseFile('ucm-config/bxtda7219max.rear/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.rear/HiFi.conf'),
-         BaseFile('ucm-config/bxtda7219max.rear/bxtda7219max.rear.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.rear/bxtda7219max.rear'
                   '.conf'),
          BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
@@ -360,7 +362,7 @@ class CrosConfigHostTest(unittest.TestCase):
     reef = config.models['reef']
     self.assertEqual(
         reef.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
-        'front')
+        '1mic')
     self.assertEqual(
         reef.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
     self.assertEqual(

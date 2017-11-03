@@ -27,6 +27,26 @@
 			topology-xml = "topology/${topology-name}_topology.xml";
 			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
 		};
+		audio_type_1mic: audio-type-1mic {
+			card = "bxtda7219max";
+			volume = "cras-config/${cras-config-dir}/${card}";
+			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+			hifi-conf = "ucm-config/1mic/HiFi.conf";
+			alsa-conf = "ucm-config/1mic/${card}.conf";
+			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+		};
+
+		audio_type_2mic: audio-type-2mic {
+			card = "bxtda7219max";
+			cras-config-dir = "2mic";
+			ucm-suffix = "2mic";
+			topology-name = "2mic";
+			volume = "cras-config/${cras-config-dir}/${card}";
+			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+			hifi-conf = "ucm-config/2mic/HiFi.conf";
+			alsa-conf = "ucm-config/2mic/${card}.conf";
+			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+		};
 	};
 	firmware {
 		script = "updater4.sh";
@@ -163,10 +183,10 @@
 				};
 				audio {
 					main {
-						audio-type = <&audio_type>;
-						cras-config-dir = "front";
-						ucm-suffix = "front";
-						topology-name = "front";
+						audio-type = <&audio_type_1mic>;
+						cras-config-dir = "1mic";
+						ucm-suffix = "1mic";
+						topology-name = "1mic";
 					};
 				};
 			};
@@ -176,10 +196,7 @@
 				};
 				audio {
 					main {
-						audio-type = <&audio_type>;
-						cras-config-dir = "rear";
-						ucm-suffix = "rear";
-						topology-name = "rear";
+						audio-type = <&audio_type_2mic>;
 					};
 				};
 			};
