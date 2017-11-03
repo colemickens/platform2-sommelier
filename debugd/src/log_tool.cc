@@ -148,7 +148,14 @@ const Log kCommandLogs[] = {
     "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
   },
   { "meminfo", "cat /proc/meminfo" },
-  { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
+  {
+    "memory_spd_info",
+    // mosys may use 'i2c-dev', which may not be loaded yet.
+    "modprobe i2c-dev 2>/dev/null && "
+        "mosys -l memory spd print all 2>/dev/null",
+    kRoot,
+    kDebugfsGroup,
+  },
   // The sed command finds the EDID blob (starting the line after "value:") and
   // replaces the serial number with all zeroes.
   //
@@ -189,7 +196,24 @@ const Log kCommandLogs[] = {
     kDebugfsGroup,
   },
   { "pagetypeinfo", "/bin/cat /proc/pagetypeinfo" },
-  { "platform_info", "/bin/cat /var/log/platform_info.txt" },
+  {
+    "platform_info",
+    // mosys may use 'i2c-dev', which may not be loaded yet.
+    "modprobe i2c-dev 2>/dev/null && "
+        "for param in "
+          "vendor "
+          "name "
+          "version "
+          "family "
+          "model "
+          "sku "
+          "customization "
+        "; do "
+          "mosys -l platform \"${param}\" 2>/dev/null; "
+        "done",
+    kRoot,
+    kDebugfsGroup,
+  },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
