@@ -604,6 +604,29 @@ class CrosConfig(object):
               GetPropFilename(self._fdt_node.path, props, 'firmware-symlink'))
       return files
 
+    def AllPathNodes(self, relative_path):
+      """List all path nodes which match the relative path (including submodels)
+
+      This looks in the model and all its submodels for this relative path.
+
+      Args:
+        relative_path: A relative path string separated by '/', '/thermal'
+
+      Returns:
+        Dict of:
+          key: Name of this model/submodel
+          value: Node object for this model/submodel
+      """
+      path_nodes = {}
+      node = self.PathNode(relative_path)
+      if node:
+        path_nodes[self.name] = node
+      for submodel_node in self.submodels.values():
+        node = submodel_node.PathNode(relative_path)
+        if node:
+          path_nodes[submodel_node.name] = node
+      return path_nodes
+
     def GetAudioFiles(self):
       """Get a list of audio files
 
@@ -614,6 +637,7 @@ class CrosConfig(object):
           value: BaseFile object
       """
       card = None  # To keep pylint happy since we use it in this function:
+      name = ''
       def _AddAudioFile(prop_name, dest_template, dirname=''):
         """Helper to add a single audio file
 
@@ -627,7 +651,7 @@ class CrosConfig(object):
             raise ValueError(("node '%s': Property '%s' does not have a " +
                               "target directory (internal error)") %
                              (card.name, prop_name))
-          files[self.name, prop_name] = BaseFile(
+          files[name, prop_name] = BaseFile(
               GetPropFilename(self._fdt_node.path, props, prop_name),
               os.path.join(
                   target_dir,
@@ -635,8 +659,8 @@ class CrosConfig(object):
                   GetFilename(self._fdt_node.path, props, dest_template)))
 
       files = {}
-      audio = self.PathNode('/audio')
-      if audio:
+      audio_nodes = self.AllPathNodes('/audio')
+      for name, audio in audio_nodes.iteritems():
         for card in audio.subnodes.values():
           # First get all the property keys/values from the current node
           props = self.GetMergedProperties(card, 'audio-type')
