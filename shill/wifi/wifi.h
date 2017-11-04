@@ -302,24 +302,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonCleared);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
-  FRIEND_TEST(WiFiMainTest, FullScanConnecting);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
-  FRIEND_TEST(WiFiMainTest, FullScanDuringProgressive);  // ScanState
   FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
-  FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting_FullScan);  // ScanState
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);  // EndpointMap
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToConnected);
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToNotFound);
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanDuringFull);  // ScanState
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanError);  // ScanMethod, ScanState
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanFound);  // ScanMethod, ScanState
-  FRIEND_TEST(WiFiMainTest, ProgressiveScanNotFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ScanRejected);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
-  FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod

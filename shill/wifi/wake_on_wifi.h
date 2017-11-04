@@ -335,7 +335,6 @@ class WakeOnWiFi {
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern);
   // kMaxDarkResumesPerPeriodShort
-  FRIEND_TEST(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_ClearsEventHistory);
   // kDarkResumeFrequencySamplingPeriodShortMinutes,
   // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
