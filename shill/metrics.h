@@ -1182,7 +1182,6 @@ class Metrics {
 
  private:
   friend class MetricsTest;
-  FRIEND_TEST(MetricsTest, CellularDropsPerHour);
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
   FRIEND_TEST(MetricsTest, ResetConnectTimer);
   FRIEND_TEST(MetricsTest, ServiceFailure);
@@ -1191,7 +1190,6 @@ class Metrics {
   FRIEND_TEST(MetricsTest, TimeToOnline);
   FRIEND_TEST(MetricsTest, TimeToPortal);
   FRIEND_TEST(MetricsTest, TimeToScanIgnore);
-  FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone);
   FRIEND_TEST(MetricsTest, NotifyWakeOnWiFiThrottled);

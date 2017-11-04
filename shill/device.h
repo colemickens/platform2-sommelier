@@ -371,12 +371,8 @@ class Device : public base::RefCounted<Device> {
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
-  FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
-  FRIEND_TEST(DeviceHealthCheckerTest, HealthCheckerPersistsAcrossDeviceReset);
-  FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
-  FRIEND_TEST(DeviceHealthCheckerTest, SetupHealthChecker);
   FRIEND_TEST(DevicePortalDetectionTest, RequestStartConnectivityTest);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
@@ -406,12 +402,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
-  FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, ShouldUseArpGateway);
   FRIEND_TEST(DeviceTest, Start);
-  FRIEND_TEST(DeviceTest, StartTrafficMonitor);
   FRIEND_TEST(DeviceTest, Stop);
-  FRIEND_TEST(DeviceTest, StopTrafficMonitor);
   FRIEND_TEST(DeviceTest, StopWithFixedIpParams);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
@@ -419,8 +412,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, GetEnabledDeviceWithTechnology);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(ManagerTest, GetEnabledDeviceByLinkName);
-  FRIEND_TEST(PPPDeviceTest, UpdateIPConfigFromPPP);
-  FRIEND_TEST(WiFiMainTest, Connect);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
   FRIEND_TEST(WiMaxTest, ConnectTimeout);
   FRIEND_TEST(WiMaxTest, UseNoArpGateway);

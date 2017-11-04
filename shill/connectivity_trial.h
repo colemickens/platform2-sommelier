@@ -132,8 +132,6 @@ class ConnectivityTrial {
  private:
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, StartAttemptFailed);
-  FRIEND_TEST(PortalDetectorTest, StartAttemptRepeated);
-  FRIEND_TEST(PortalDetectorTest, StartAttemptAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, ReadBadHeadersRetry);
   FRIEND_TEST(PortalDetectorTest, ReadBadHeader);

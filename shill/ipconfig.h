@@ -239,7 +239,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, OnIPConfigExpired);
-  FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
   FRIEND_TEST(IPConfigTest, UpdateLeaseExpirationTime);
   FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_NoDHCPLease);
@@ -249,7 +248,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, ConfigureRoutes);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
-  FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
   static const char kType[];
 

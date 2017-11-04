@@ -579,7 +579,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ClaimBlacklistedDevice);
-  FRIEND_TEST(ManagerTest, ClaimDeviceWhenClaimerNotVerified);
   FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
@@ -588,18 +587,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
   FRIEND_TEST(ManagerTest, DetectMultiHomedDevices);
-  FRIEND_TEST(ManagerTest, DeviceClaimerVanishedTask);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
-  FRIEND_TEST(ManagerTest, DisableTechnology);
-  FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, EnumerateServiceInnerDevices);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
-  FRIEND_TEST(ManagerTest, IsDefaultProfile);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
   FRIEND_TEST(ManagerTest, IsTechnologyProhibited);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
@@ -608,8 +603,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, UpdateDefaultServices);
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
-  FRIEND_TEST(ManagerTest, OnApModeSetterVanished);
-  FRIEND_TEST(ManagerTest, OnDeviceClaimerAppeared);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
@@ -617,8 +610,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
-  FRIEND_TEST(ManagerTest, SetupApModeInterface);
-  FRIEND_TEST(ManagerTest, SetupStationModeInterface);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);

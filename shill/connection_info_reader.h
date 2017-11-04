@@ -46,7 +46,6 @@ class ConnectionInfoReader {
  private:
   FRIEND_TEST(ConnectionInfoReaderTest, ParseConnectionInfo);
   FRIEND_TEST(ConnectionInfoReaderTest, ParseIPAddress);
-  FRIEND_TEST(ConnectionInfoReaderTest, ParseIsUnreplied);
   FRIEND_TEST(ConnectionInfoReaderTest, ParsePort);
   FRIEND_TEST(ConnectionInfoReaderTest, ParseProtocol);
   FRIEND_TEST(ConnectionInfoReaderTest, ParseTimeToExpireSeconds);
