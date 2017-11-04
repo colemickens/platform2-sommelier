@@ -45,7 +45,6 @@
 			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
 			hifi-conf = "ucm-config/2mic/HiFi.conf";
 			alsa-conf = "ucm-config/2mic/${card}.conf";
-			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
 		};
 	};
 	firmware {

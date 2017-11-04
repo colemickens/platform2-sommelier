@@ -240,8 +240,6 @@ class CrosConfigHostTest(unittest.TestCase):
 
          BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
                   '/lib/firmware/5a98-reef-1mic-8-tplg.bin'),
-         BaseFile('topology/5a98-reef-2mic-8-tplg.bin',
-                  '/lib/firmware/5a98-reef-2mic-8-tplg.bin'),
          BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
                   '/lib/firmware/5a98-reef-pyro-8-tplg.bin'),
          BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
@@ -268,6 +266,7 @@ class CrosConfigHostTest(unittest.TestCase):
                   '.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
                   '.reefucm.conf')])
+
   def testGetThermalFiles(self):
     config = CrosConfig(self.file)
     thermal_files = config.GetThermalFiles()

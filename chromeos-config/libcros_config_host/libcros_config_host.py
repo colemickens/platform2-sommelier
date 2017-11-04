@@ -674,8 +674,12 @@ class CrosConfig(object):
           _AddAudioFile('alsa-conf',
                         '${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf')
 
-          _AddAudioFile('topology-bin',
-                        os.path.basename(props.get('topology-bin')))
+          # Non-Intel platforms don't use topology-bin
+          topology = props.get('topology-bin')
+          if topology:
+            _AddAudioFile('topology-bin',
+                          os.path.basename(props.get('topology-bin')))
+
       return files
 
     def GetThermalFiles(self):
