@@ -65,7 +65,7 @@ const Log kCommandLogs[] = {
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
-  { "console-ramoops", "/bin/cat /dev/pstore/console-ramoops* 2> /dev/null" },
+  { "console-ramoops", "/bin/cat /sys/fs/pstore/console-ramoops* 2>/dev/null" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
   { "cr50_version", "/bin/cat /var/cache/cr50-version" },
