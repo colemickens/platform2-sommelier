@@ -15,7 +15,8 @@ CLOBBER_LOG_FILE="clobber.log"
 STATEFUL_LOG_FOLDER="/mnt/stateful_partition/unencrypted/"
 STATEFUL_LOG_PATH="$STATEFUL_LOG_FOLDER/$CLOBBER_LOG_FILE"
 TMP_LOG_PATH="/tmp/$CLOBBER_LOG_FILE"
-RAMOOPS_LOG="/dev/pstore/console-ramoops"
+PSTORE_PATH="/sys/fs/pstore"
+RAMOOPS_LOG="${PSTORE_PATH}/console-ramoops"
 MAX_KEEP_LOG_LINES=1024
 RAMOOPS_DUMP_LINES=128
 BLOCK_DUMP_LINES=64
@@ -24,9 +25,8 @@ mount_pstore() {
   # Copied from pstore.conf. clobber-state is always executed before
   # boot-services so pstore.conf won't be ready at that time and we have to
   # mount now.
-  if [ ! -d /dev/pstore ]; then
-    mkdir -p /dev/pstore
-    mount -n -t pstore -o nodev,nosuid,noexec none /dev/pstore || true
+  if ! mountpoint -q "${PSTORE_PATH}"; then
+    mount -n -t pstore -o nodev,nosuid,noexec pstore "${PSTORE_PATH}" || true
   fi
 }
 
