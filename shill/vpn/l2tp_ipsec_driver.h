@@ -75,7 +75,6 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, DeleteTemporaryFiles);
   FRIEND_TEST(L2TPIPSecDriverTest, Disconnect);
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitEnvironment);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
@@ -86,7 +85,6 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
-  FRIEND_TEST(L2TPIPSecDriverTest, ParseIPConfiguration);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
 
   static const char kL2TPIPSecVPNPath[];
