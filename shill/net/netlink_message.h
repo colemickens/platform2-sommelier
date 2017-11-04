@@ -122,7 +122,6 @@ class SHILL_EXPORT NetlinkMessage {
 
  protected:
   friend class NetlinkManagerTest;
-  FRIEND_TEST(NetlinkManagerTest, NL80211_CMD_NOTIFY_CQM);
 
   // Returns a string of bytes representing an |nlmsghdr|, filled-in, and its
   // padding.

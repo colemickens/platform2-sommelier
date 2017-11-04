@@ -137,7 +137,6 @@ class SHILL_EXPORT RTNLHandler {
 
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);
-  FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
   // Size of the window for receiving error sequences out-of-order.
   static const int kErrorWindowSize;
