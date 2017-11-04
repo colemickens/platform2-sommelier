@@ -21,7 +21,7 @@ namespace {
 
 const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
 const char kDumpParentPath[] = "/dev";
-const char kDumpPath[] = "/dev/pstore";
+const char kDumpPath[] = "/sys/fs/pstore";
 const char kDumpRecordDmesgName[] = "dmesg";
 const char kDumpRecordConsoleName[] = "console";
 const char kDumpDriverRamoopsName[] = "ramoops";

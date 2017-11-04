@@ -324,9 +324,6 @@ void EnterSandbox(bool write_proc) {
   // If we're not root, we won't be able to jail ourselves (well, we could if
   // we used user namespaces, but maybe later).  Need to double check handling
   // when called by chrome to process its crashes.
-  const FilePath kDevPstore = FilePath("/dev/pstore");
-  const FilePath kSysPstore = FilePath("/sys/fs/pstore");
-
   if (getuid() != 0)
     return;
 
@@ -339,11 +336,6 @@ void EnterSandbox(bool write_proc) {
   minijail_mount_dev(j);
   // We use syslog heavily.
   minijail_bind(j, "/dev/log", "/dev/log", 0);
-  // pstore is required to read console-ramoops
-  if (base::DirectoryExists(kDevPstore))
-    minijail_bind(j, "/dev/pstore", "/dev/pstore", 0);
-  else if (base::DirectoryExists(kSysPstore))
-    minijail_bind(j, "/sys/fs/pstore", "/dev/pstore", 0);
   minijail_no_new_privs(j);
   minijail_new_session_keyring(j);
 
