@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,7 +7,6 @@
 from __future__ import print_function
 
 import ctypes
-import time
 
 # Load hammerd-api library.
 _DLL = ctypes.CDLL('libhammerd-api.so')
@@ -158,36 +156,3 @@ class FirmwareUpdater(object):
                      ctypes.c_int, ctypes.c_int]
     func.restype = ctypes.c_void_p
     self.object = func(vendor_id, product_id, bus, port)
-
-
-def main():
-  """Demonstrates FirmwareUpdater usage."""
-  updater = FirmwareUpdater(0x18d1, 0x5022, 1, 2)
-  # Load EC image.
-  with open('/lib/firmware/hammer.fw', 'rb') as f:
-    ec_image = f.read()
-  updater.LoadEcImage(ec_image)
-  updater.TryConnectUsb()
-  updater.SendFirstPdu()
-  updater.SendDone()
-
-  # Print information.
-  print('PDU Response: %s' % updater.GetFirstResponsePdu().contents)
-  print('RO version: %s' % updater.GetSectionVersion(SectionName.RO))
-  print('RW version: %s' % updater.GetSectionVersion(SectionName.RW))
-
-  # Jump back to RO.
-  updater.SendSubcommand(UpdateExtraCommand.ImmediateReset)
-  updater.CloseUsb()
-
-  # Inject all-zero entropy.
-  time.sleep(0.5)
-  updater.TryConnectUsb()
-  updater.SendSubcommand(UpdateExtraCommand.StayInRO)
-  updater.InjectEntropyWithPayload('\x00' * ENTROPY_SIZE)
-  updater.CloseUsb()
-
-
-
-if __name__ == '__main__':
-  main()
