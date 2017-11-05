@@ -187,7 +187,6 @@ int UsbEndpoint::Send(const void* outbuf, int outlen, unsigned int timeout_ms) {
   // direction mask.
   int actual = BulkTransfer(
       const_cast<void*>(outbuf), LIBUSB_ENDPOINT_OUT, outlen, timeout_ms);
-  DLOG(INFO) << "Sent " << actual << "/" << outlen << " bytes";
   if (actual != outlen) {
     LOG(ERROR) << "Failed to send the complete data.";
   }
@@ -199,7 +198,6 @@ int UsbEndpoint::Receive(void* inbuf,
                          bool allow_less,
                          unsigned int timeout_ms) {
   int actual = BulkTransfer(inbuf, LIBUSB_ENDPOINT_IN, inlen, timeout_ms);
-  DLOG(INFO) << "Received " << actual << "/" << inlen << " bytes";
   if ((actual != inlen) && !allow_less) {
     LOG(ERROR) << "Failed to receive the complete data.";
     return kError;

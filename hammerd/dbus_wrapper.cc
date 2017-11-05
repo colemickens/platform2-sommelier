@@ -30,7 +30,6 @@ void DBusWrapper::SendSignalWithArg(const std::string& signal_name,
   LOG(INFO) << "Send the DBus signal: " << signal_name;
   dbus::Signal signal(kHammerdInterface, signal_name);
   if (length > 0) {
-    LOG(INFO) << "The signal argument: " << base::HexEncode(values, length);
     dbus::MessageWriter writer(&signal);
     writer.AppendArrayOfBytes(values, length);
   }

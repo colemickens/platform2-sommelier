@@ -578,7 +578,6 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
     endpoint_->Send(transfer_data_ptr, chunk_size);
     transfer_data_ptr += chunk_size;
     transfer_size += chunk_size;
-    DLOG(INFO) << "Sent block data " << transfer_size << "/" << payload_size;
   }
 
   // Now get the reply.
