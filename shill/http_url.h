@@ -28,12 +28,12 @@ class HttpUrl {
  public:
   enum Protocol {
     kProtocolUnknown,
-    kProtocolHTTP,
-    kProtocolHTTPS
+    kProtocolHttp,
+    kProtocolHttps
   };
 
-  static const int kDefaultHTTPPort;
-  static const int kDefaultHTTPSPort;
+  static const int kDefaultHttpPort;
+  static const int kDefaultHttpsPort;
 
   HttpUrl();
   virtual ~HttpUrl();
@@ -49,8 +49,8 @@ class HttpUrl {
  private:
   static const char kDelimiters[];
   static const char kPortSeparator;
-  static const char kPrefixHTTP[];
-  static const char kPrefixHTTPS[];
+  static const char kPrefixHttp[];
+  static const char kPrefixHttps[];
 
   std::string host_;
   std::string path_;

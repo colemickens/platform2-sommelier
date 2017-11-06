@@ -367,7 +367,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericSynchronous) {
 
 TEST_F(HTTPRequestTest, FailConnectNumericAsynchronous) {
   ExpectRouteRequest();
-  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort, true);
+  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
   ExpectResultCallback(HTTPRequest::kResultConnectionFailure);
   ExpectStop();
@@ -377,7 +377,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericAsynchronous) {
 
 TEST_F(HTTPRequestTest, FailConnectNumericTimeout) {
   ExpectRouteRequest();
-  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort, true);
+  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
   ExpectResultCallback(HTTPRequest::kResultConnectionTimeout);
   ExpectStop();
@@ -387,7 +387,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericTimeout) {
 
 TEST_F(HTTPRequestTest, SyncConnectNumeric) {
   ExpectRouteRequest();
-  ExpectSyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort);
+  ExpectSyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort);
   ExpectMonitorServerOutput();
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
 }

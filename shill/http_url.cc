@@ -27,17 +27,17 @@ using std::vector;
 
 namespace shill {
 
-const int HttpUrl::kDefaultHTTPPort = 80;
-const int HttpUrl::kDefaultHTTPSPort = 443;
+const int HttpUrl::kDefaultHttpPort = 80;
+const int HttpUrl::kDefaultHttpsPort = 443;
 
 const char HttpUrl::kDelimiters[] = " /#?";
 const char HttpUrl::kPortSeparator = ':';
-const char HttpUrl::kPrefixHTTP[] = "http://";
-const char HttpUrl::kPrefixHTTPS[] = "https://";
+const char HttpUrl::kPrefixHttp[] = "http://";
+const char HttpUrl::kPrefixHttps[] = "https://";
 
 HttpUrl::HttpUrl()
-    : port_(kDefaultHTTPPort),
-      protocol_(kProtocolHTTP) {}
+    : port_(kDefaultHttpPort),
+      protocol_(kProtocolHttp) {}
 
 HttpUrl::~HttpUrl() {}
 
@@ -45,17 +45,17 @@ bool HttpUrl::ParseFromString(const string& url_string) {
   Protocol protocol = kProtocolUnknown;
   size_t host_start = 0;
   int port = 0;
-  const string http_url_prefix(kPrefixHTTP);
-  const string https_url_prefix(kPrefixHTTPS);
+  const string http_url_prefix(kPrefixHttp);
+  const string https_url_prefix(kPrefixHttps);
   if (url_string.substr(0, http_url_prefix.length()) == http_url_prefix) {
     host_start = http_url_prefix.length();
-    port = kDefaultHTTPPort;
-    protocol = kProtocolHTTP;
+    port = kDefaultHttpPort;
+    protocol = kProtocolHttp;
   } else if (
       url_string.substr(0, https_url_prefix.length()) == https_url_prefix) {
     host_start = https_url_prefix.length();
-    port = kDefaultHTTPSPort;
-    protocol = kProtocolHTTPS;
+    port = kDefaultHttpsPort;
+    protocol = kProtocolHttps;
   } else {
     return false;
   }
