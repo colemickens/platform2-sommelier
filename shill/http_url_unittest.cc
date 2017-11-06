@@ -24,22 +24,21 @@ using testing::Test;
 namespace shill {
 
 struct StringAndResult {
+  explicit StringAndResult(const string& in_url_string)
+      : url_string(in_url_string), result(false) {}
+
   StringAndResult(const string& in_url_string,
-                  bool in_result)
-      : url_string(in_url_string),
-        result(in_result) {}
-  StringAndResult(const string& in_url_string,
-                  bool in_result,
                   HttpUrl::Protocol in_protocol,
                   const string& in_host,
                   int in_port,
                   const string& in_path)
       : url_string(in_url_string),
-        result(in_result),
+        result(true),
         protocol(in_protocol),
         host(in_host),
         port(in_port),
         path(in_path) {}
+
   string url_string;
   bool result;
   HttpUrl::Protocol protocol;
@@ -65,38 +64,43 @@ TEST_P(HttpUrlParseTest, ParseURL) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    HttpUrlParseStringsTest,
+    ParseFailed,
     HttpUrlParseTest,
     ::testing::Values(
-        StringAndResult("", false),                      // Empty string
-        StringAndResult("xxx", false),                   // No known prefix
-        StringAndResult(" http://www.foo.com", false),   // Leading garbage
-        StringAndResult("http://", false),               // No hostname
-        StringAndResult("http://:100", false),           // Port but no hostname
-        StringAndResult("http://www.foo.com:", false),   // Colon but no port
-        StringAndResult("http://www.foo.com:x", false),  // Non-numeric port
-        StringAndResult("http://foo.com:10:20", false),  // Too many colons
-        StringAndResult("http://www.foo.com", true,
+        StringAndResult(""),                        // Empty string
+        StringAndResult("xxx"),                     // No known prefix
+        StringAndResult(" http://www.foo.com"),     // Leading garbage
+        StringAndResult("http://"),                 // No hostname
+        StringAndResult("http://:100"),             // Port but no hostname
+        StringAndResult("http://www.foo.com:"),     // Colon but no port
+        StringAndResult("http://www.foo.com:x"),    // Non-numeric port
+        StringAndResult("http://foo.com:10:20")));  // Too many colons
+
+INSTANTIATE_TEST_CASE_P(
+    ParseSucceeded,
+    HttpUrlParseTest,
+    ::testing::Values(
+        StringAndResult("http://www.foo.com",
                         HttpUrl::kProtocolHttp,
                         "www.foo.com",
                         HttpUrl::kDefaultHttpPort,
                         "/"),
-        StringAndResult("https://www.foo.com", true,
+        StringAndResult("https://www.foo.com",
                         HttpUrl::kProtocolHttps,
                         "www.foo.com",
                         HttpUrl::kDefaultHttpsPort,
                         "/"),
-        StringAndResult("https://www.foo.com:4443", true,
+        StringAndResult("https://www.foo.com:4443",
                         HttpUrl::kProtocolHttps,
                         "www.foo.com",
                         4443,
                         "/"),
-        StringAndResult("http://www.foo.com/bar", true,
+        StringAndResult("http://www.foo.com/bar",
                         HttpUrl::kProtocolHttp,
                         "www.foo.com",
                         HttpUrl::kDefaultHttpPort,
                         "/bar"),
-        StringAndResult("http://www.foo.com?bar", true,
+        StringAndResult("http://www.foo.com?bar",
                         HttpUrl::kProtocolHttp,
                         "www.foo.com",
                         HttpUrl::kDefaultHttpPort,
