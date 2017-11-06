@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/technology.h"
 
@@ -35,28 +36,6 @@ class StoreInterface;
 
 class EapCredentials {
  public:
-  // TODO(pstew): Storage constants shouldn't need to be public
-  // crbug.com/208736
-  static const char kStorageEapAnonymousIdentity[];
-  static const char kStorageEapCACert[];
-  static const char kStorageEapCACertID[];
-  static const char kStorageEapCACertNSS[];
-  static const char kStorageEapCACertPEM[];
-  static const char kStorageEapCertID[];
-  static const char kStorageEapClientCert[];
-  static const char kStorageEapEap[];
-  static const char kStorageEapIdentity[];
-  static const char kStorageEapInnerEap[];
-  static const char kStorageEapKeyID[];
-  static const char kStorageEapKeyManagement[];
-  static const char kStorageEapPIN[];
-  static const char kStorageEapPassword[];
-  static const char kStorageEapPrivateKey[];
-  static const char kStorageEapPrivateKeyPassword[];
-  static const char kStorageEapSubjectMatch[];
-  static const char kStorageEapUseProactiveKeyCaching[];
-  static const char kStorageEapUseSystemCAs[];
-
   EapCredentials();
   virtual ~EapCredentials();
 
@@ -121,6 +100,27 @@ class EapCredentials {
 
  private:
   friend class EapCredentialsTest;
+  FRIEND_TEST(EapCredentialsTest, LoadAndSave);
+
+  static const char kStorageEapAnonymousIdentity[];
+  static const char kStorageEapCACert[];
+  static const char kStorageEapCACertID[];
+  static const char kStorageEapCACertNSS[];
+  static const char kStorageEapCACertPEM[];
+  static const char kStorageEapCertID[];
+  static const char kStorageEapClientCert[];
+  static const char kStorageEapEap[];
+  static const char kStorageEapIdentity[];
+  static const char kStorageEapInnerEap[];
+  static const char kStorageEapKeyID[];
+  static const char kStorageEapKeyManagement[];
+  static const char kStorageEapPIN[];
+  static const char kStorageEapPassword[];
+  static const char kStorageEapPrivateKey[];
+  static const char kStorageEapPrivateKeyPassword[];
+  static const char kStorageEapSubjectMatch[];
+  static const char kStorageEapUseProactiveKeyCaching[];
+  static const char kStorageEapUseSystemCAs[];
 
   // Returns true if the current EAP authentication type requires certificate
   // authentication and any of the client credentials are provided via
