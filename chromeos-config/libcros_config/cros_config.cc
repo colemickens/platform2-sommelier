@@ -245,9 +245,6 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
       *name_out = value;
     } else if (pair.first == "sku") {
       *sku_id_out = std::stoi(value);
-    } else {
-      LOG(WARNING) << "Unknown key " << pair.first << " in mosys output";
-      continue;
     }
   }
   return true;
