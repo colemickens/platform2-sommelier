@@ -41,12 +41,12 @@ const int HttpUrl::kDefaultHttpsPort = 443;
 
 HttpUrl::HttpUrl()
     : port_(kDefaultHttpPort),
-      protocol_(kProtocolHttp) {}
+      protocol_(Protocol::kHttp) {}
 
 HttpUrl::~HttpUrl() {}
 
 bool HttpUrl::ParseFromString(const string& url_string) {
-  Protocol protocol = kProtocolUnknown;
+  Protocol protocol = Protocol::kUnknown;
   size_t host_start = 0;
   int port = 0;
   const string http_url_prefix(kPrefixHttp);
@@ -54,12 +54,12 @@ bool HttpUrl::ParseFromString(const string& url_string) {
   if (url_string.substr(0, http_url_prefix.length()) == http_url_prefix) {
     host_start = http_url_prefix.length();
     port = kDefaultHttpPort;
-    protocol = kProtocolHttp;
+    protocol = Protocol::kHttp;
   } else if (
       url_string.substr(0, https_url_prefix.length()) == https_url_prefix) {
     host_start = https_url_prefix.length();
     port = kDefaultHttpsPort;
-    protocol = kProtocolHttps;
+    protocol = Protocol::kHttps;
   } else {
     return false;
   }

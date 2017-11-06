@@ -26,11 +26,7 @@ namespace shill {
 // Simple URL parsing class.
 class HttpUrl {
  public:
-  enum Protocol {
-    kProtocolUnknown,
-    kProtocolHttp,
-    kProtocolHttps
-  };
+  enum class Protocol { kUnknown, kHttp, kHttps };
 
   static const int kDefaultHttpPort;
   static const int kDefaultHttpsPort;
