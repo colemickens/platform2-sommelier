@@ -47,11 +47,6 @@ class HttpUrl {
   Protocol protocol() const { return protocol_; }
 
  private:
-  static const char kDelimiters[];
-  static const char kPortSeparator;
-  static const char kPrefixHttp[];
-  static const char kPrefixHttps[];
-
   std::string host_;
   std::string path_;
   int port_;

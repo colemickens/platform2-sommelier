@@ -27,13 +27,17 @@ using std::vector;
 
 namespace shill {
 
+namespace {
+
+constexpr char kDelimiters[] = " /#?";
+constexpr char kPortSeparator = ':';
+constexpr char kPrefixHttp[] = "http://";
+constexpr char kPrefixHttps[] = "https://";
+
+}  //  namespace
+
 const int HttpUrl::kDefaultHttpPort = 80;
 const int HttpUrl::kDefaultHttpsPort = 443;
-
-const char HttpUrl::kDelimiters[] = " /#?";
-const char HttpUrl::kPortSeparator = ':';
-const char HttpUrl::kPrefixHttp[] = "http://";
-const char HttpUrl::kPrefixHttps[] = "https://";
 
 HttpUrl::HttpUrl()
     : port_(kDefaultHttpPort),
