@@ -349,32 +349,16 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   }
 
   if (builder->UseFlagIsSet("rialto")) {
-    if (builder->UseFlagIsSet("rialto_enterprise_enrollment")) {
-      // The new mode of rialto operation. See crbug.com/574923
-      builder->AddArg("--login-manager");
-      builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
-      builder->AddArg("--disable-machine-cert-request");
-      builder->AddArg("--cellular-first");
-      builder->AddArg(
-          "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
-      builder->AddArg("--log-level=0");
-      builder->AddArg("--disable-logging-redirect");
-    } else {
-      // The current mode of rialto operation.
-      builder->AddArg("--disable-demo-mode");
-      builder->AddArg("--kiosk");
-      builder->AddArg("--login-user=chronos");
-      builder->AddArg("--ash-hide-notifications-for-factory");
-      builder->AddArg("--cellular-first");
-      builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
-      builder->AddArg("--enable-logging=stderr");
-      builder->AddArg("--log-level=0");
-      builder->AddArg("--enable-ble-advertising-in-apps");
-      builder->AddArg("about:blank");
-    }
-  } else {
-    builder->AddArg("--login-manager");
+    builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
+    builder->AddArg("--disable-machine-cert-request");
+    builder->AddArg("--cellular-first");
+    builder->AddArg(
+        "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
+    builder->AddArg("--log-level=0");
+    builder->AddArg("--disable-logging-redirect");
   }
+
+  builder->AddArg("--login-manager");
   builder->AddArg("--login-profile=user");
 
   if (builder->UseFlagIsSet("natural_scroll_default"))
