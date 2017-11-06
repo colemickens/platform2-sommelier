@@ -17,9 +17,9 @@
 #ifndef SHILL_HTTP_URL_H_
 #define SHILL_HTTP_URL_H_
 
-#include <base/macros.h>
-
 #include <string>
+
+#include <base/macros.h>
 
 namespace shill {
 

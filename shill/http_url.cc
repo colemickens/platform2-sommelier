@@ -39,9 +39,7 @@ constexpr char kPrefixHttps[] = "https://";
 const int HttpUrl::kDefaultHttpPort = 80;
 const int HttpUrl::kDefaultHttpsPort = 443;
 
-HttpUrl::HttpUrl()
-    : port_(kDefaultHttpPort),
-      protocol_(Protocol::kHttp) {}
+HttpUrl::HttpUrl() : port_(kDefaultHttpPort), protocol_(Protocol::kHttp) {}
 
 HttpUrl::~HttpUrl() {}
 
@@ -55,8 +53,8 @@ bool HttpUrl::ParseFromString(const string& url_string) {
     host_start = http_url_prefix.length();
     port = kDefaultHttpPort;
     protocol = Protocol::kHttp;
-  } else if (
-      url_string.substr(0, https_url_prefix.length()) == https_url_prefix) {
+  } else if (url_string.substr(0, https_url_prefix.length()) ==
+             https_url_prefix) {
     host_start = https_url_prefix.length();
     port = kDefaultHttpsPort;
     protocol = Protocol::kHttps;
@@ -68,13 +66,17 @@ bool HttpUrl::ParseFromString(const string& url_string) {
   if (host_end == string::npos) {
     host_end = url_string.length();
   }
-  vector<string> host_parts = base::SplitString(
-      url_string.substr(host_start, host_end - host_start),
-      std::string{kPortSeparator}, base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  vector<string> host_parts =
+      base::SplitString(url_string.substr(host_start, host_end - host_start),
+                        std::string{kPortSeparator},
+                        base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   if (host_parts.empty() || host_parts[0].empty() || host_parts.size() > 2) {
     return false;
-  } else if (host_parts.size() == 2) {
+  }
+
+  if (host_parts.size() == 2) {
     if (!base::StringToInt(host_parts[1], &port)) {
       return false;
     }
