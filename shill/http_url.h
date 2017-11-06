@@ -36,7 +36,7 @@ class HttpUrl {
   static const int kDefaultHttpsPort;
 
   HttpUrl();
-  virtual ~HttpUrl();
+  ~HttpUrl();
 
   // Parse a URL from |url_string|.
   bool ParseFromString(const std::string& url_string);
