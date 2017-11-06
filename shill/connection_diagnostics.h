@@ -38,7 +38,7 @@ class DNSClient;
 class DNSClientFactory;
 class Error;
 class EventDispatcher;
-class HTTPURL;
+class HttpUrl;
 class IcmpSession;
 class IcmpSessionFactory;
 class Metrics;
@@ -351,7 +351,7 @@ class ConnectionDiagnostics {
 
   // The URL being diagnosed. Stored in unique_ptr so that it can be cleared
   // when we stop diagnostics.
-  std::unique_ptr<HTTPURL> target_url_;
+  std::unique_ptr<HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in |connection_| in parallel.
   IcmpSessionFactory* icmp_session_factory_;

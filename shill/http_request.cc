@@ -91,7 +91,7 @@ HTTPRequest::~HTTPRequest() {
 }
 
 HTTPRequest::Result HTTPRequest::Start(
-    const HTTPURL& url,
+    const HttpUrl& url,
     const Callback<void(const ByteString&)>& read_event_callback,
     const Callback<void(Result, const ByteString&)>& result_callback) {
   SLOG(connection_.get(), 3) << "In " << __func__;

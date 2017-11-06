@@ -27,21 +27,21 @@ using std::vector;
 
 namespace shill {
 
-const int HTTPURL::kDefaultHTTPPort = 80;
-const int HTTPURL::kDefaultHTTPSPort = 443;
+const int HttpUrl::kDefaultHTTPPort = 80;
+const int HttpUrl::kDefaultHTTPSPort = 443;
 
-const char HTTPURL::kDelimiters[] = " /#?";
-const char HTTPURL::kPortSeparator = ':';
-const char HTTPURL::kPrefixHTTP[] = "http://";
-const char HTTPURL::kPrefixHTTPS[] = "https://";
+const char HttpUrl::kDelimiters[] = " /#?";
+const char HttpUrl::kPortSeparator = ':';
+const char HttpUrl::kPrefixHTTP[] = "http://";
+const char HttpUrl::kPrefixHTTPS[] = "https://";
 
-HTTPURL::HTTPURL()
+HttpUrl::HttpUrl()
     : port_(kDefaultHTTPPort),
       protocol_(kProtocolHTTP) {}
 
-HTTPURL::~HTTPURL() {}
+HttpUrl::~HttpUrl() {}
 
-bool HTTPURL::ParseFromString(const string& url_string) {
+bool HttpUrl::ParseFromString(const string& url_string) {
   Protocol protocol = kProtocolUnknown;
   size_t host_start = 0;
   int port = 0;

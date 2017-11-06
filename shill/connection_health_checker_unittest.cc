@@ -382,7 +382,7 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
 }
 
 TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
-  HTTPURL url;
+  HttpUrl url;
   url.ParseFromString(kProxyURLRemote);
   string host = url.host();
   IPAddress remote_ip = StringToIPv4Address(kProxyIPAddressRemote);

@@ -24,7 +24,7 @@
 namespace shill {
 
 // Simple URL parsing class.
-class HTTPURL {
+class HttpUrl {
  public:
   enum Protocol {
     kProtocolUnknown,
@@ -35,8 +35,8 @@ class HTTPURL {
   static const int kDefaultHTTPPort;
   static const int kDefaultHTTPSPort;
 
-  HTTPURL();
-  virtual ~HTTPURL();
+  HttpUrl();
+  virtual ~HttpUrl();
 
   // Parse a URL from |url_string|.
   bool ParseFromString(const std::string& url_string);
@@ -57,7 +57,7 @@ class HTTPURL {
   int port_;
   Protocol protocol_;
 
-  DISALLOW_COPY_AND_ASSIGN(HTTPURL);
+  DISALLOW_COPY_AND_ASSIGN(HttpUrl);
 };
 
 }  // namespace shill

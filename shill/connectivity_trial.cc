@@ -113,7 +113,7 @@ bool ConnectivityTrial::Start(const string& url_string,
 
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
-  HTTPURL url;
+  HttpUrl url;
   if (!url.ParseFromString(RandomizeURL(url_string))) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string;
     return false;
@@ -150,7 +150,7 @@ void ConnectivityTrial::StartTrialAfterDelay(int start_delay_milliseconds) {
 }
 
 void ConnectivityTrial::StartTrialTask() {
-  HTTPURL url;
+  HttpUrl url;
   if (!url.ParseFromString(RandomizeURL(url_string_))) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string_;
     CompleteTrial(Result(kPhaseUnknown, kStatusFailure));

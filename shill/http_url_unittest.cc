@@ -30,7 +30,7 @@ struct StringAndResult {
         result(in_result) {}
   StringAndResult(const string& in_url_string,
                   bool in_result,
-                  HTTPURL::Protocol in_protocol,
+                  HttpUrl::Protocol in_protocol,
                   const string& in_host,
                   int in_port,
                   const string& in_path)
@@ -42,18 +42,18 @@ struct StringAndResult {
         path(in_path) {}
   string url_string;
   bool result;
-  HTTPURL::Protocol protocol;
+  HttpUrl::Protocol protocol;
   string host;
   int port;
   string path;
 };
 
-class HTTPURLParseTest : public testing::TestWithParam<StringAndResult> {
+class HttpUrlParseTest : public testing::TestWithParam<StringAndResult> {
  protected:
-  HTTPURL url_;
+  HttpUrl url_;
 };
 
-TEST_P(HTTPURLParseTest, ParseURL) {
+TEST_P(HttpUrlParseTest, ParseURL) {
   bool result = url_.ParseFromString(GetParam().url_string);
   EXPECT_EQ(GetParam().result, result);
   if (GetParam().result && result) {
@@ -65,8 +65,8 @@ TEST_P(HTTPURLParseTest, ParseURL) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    HTTPURLParseStringsTest,
-    HTTPURLParseTest,
+    HttpUrlParseStringsTest,
+    HttpUrlParseTest,
     ::testing::Values(
         StringAndResult("", false),                      // Empty string
         StringAndResult("xxx", false),                   // No known prefix
@@ -77,29 +77,29 @@ INSTANTIATE_TEST_CASE_P(
         StringAndResult("http://www.foo.com:x", false),  // Non-numeric port
         StringAndResult("http://foo.com:10:20", false),  // Too many colons
         StringAndResult("http://www.foo.com", true,
-                        HTTPURL::kProtocolHTTP,
+                        HttpUrl::kProtocolHTTP,
                         "www.foo.com",
-                        HTTPURL::kDefaultHTTPPort,
+                        HttpUrl::kDefaultHTTPPort,
                         "/"),
         StringAndResult("https://www.foo.com", true,
-                        HTTPURL::kProtocolHTTPS,
+                        HttpUrl::kProtocolHTTPS,
                         "www.foo.com",
-                        HTTPURL::kDefaultHTTPSPort,
+                        HttpUrl::kDefaultHTTPSPort,
                         "/"),
         StringAndResult("https://www.foo.com:4443", true,
-                        HTTPURL::kProtocolHTTPS,
+                        HttpUrl::kProtocolHTTPS,
                         "www.foo.com",
                         4443,
                         "/"),
         StringAndResult("http://www.foo.com/bar", true,
-                        HTTPURL::kProtocolHTTP,
+                        HttpUrl::kProtocolHTTP,
                         "www.foo.com",
-                        HTTPURL::kDefaultHTTPPort,
+                        HttpUrl::kDefaultHTTPPort,
                         "/bar"),
         StringAndResult("http://www.foo.com?bar", true,
-                        HTTPURL::kProtocolHTTP,
+                        HttpUrl::kProtocolHTTP,
                         "www.foo.com",
-                        HTTPURL::kDefaultHTTPPort,
+                        HttpUrl::kDefaultHTTPPort,
                         "/?bar")));
 
 }  // namespace shill

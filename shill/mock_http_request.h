@@ -21,7 +21,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/http_request.h"
-#include "shill/http_url.h"  // MOCK_METHOD3() call below needs sizeof(HTTPURL).
+#include "shill/http_url.h"  // MOCK_METHOD3() call below needs sizeof(HttpUrl).
 
 namespace shill {
 
@@ -31,7 +31,7 @@ class MockHTTPRequest : public HTTPRequest {
   ~MockHTTPRequest() override;
 
   MOCK_METHOD3(Start, HTTPRequest::Result(
-      const HTTPURL& url,
+      const HttpUrl& url,
       const base::Callback<void(const ByteString&)>& read_event_callback,
       const base::Callback<void(Result, const ByteString&)>& result_callback));
   MOCK_METHOD0(Stop, void());

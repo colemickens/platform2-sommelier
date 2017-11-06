@@ -133,7 +133,7 @@ void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
 void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
   GarbageCollectDNSClients();
 
-  HTTPURL url;
+  HttpUrl url;
   if (!url.ParseFromString(url_string)) {
     SLOG(connection_.get(), 2) << __func__ << ": Malformed url: "
                                << url_string << ".";

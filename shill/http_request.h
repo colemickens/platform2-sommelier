@@ -35,7 +35,7 @@ class AsyncConnection;
 class DNSClient;
 class Error;
 class EventDispatcher;
-class HTTPURL;
+class HttpUrl;
 struct InputData;
 class IOHandler;
 class IPAddress;
@@ -81,7 +81,7 @@ class HTTPRequest {
   // failed during initialization, or kResultInProgress if the request
   // has started successfully and is now in progress.
   virtual Result Start(
-      const HTTPURL& url,
+      const HttpUrl& url,
       const base::Callback<void(const ByteString&)>& read_event_callback,
       const base::Callback<void(Result, const ByteString&)>& result_callback);
 

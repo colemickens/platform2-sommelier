@@ -186,7 +186,7 @@ bool ConnectionDiagnostics::Start(const string& url_string) {
     return false;
   }
 
-  target_url_.reset(new HTTPURL());
+  target_url_.reset(new HttpUrl());
   if (!target_url_->ParseFromString(url_string)) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string;
     Stop();
@@ -212,7 +212,7 @@ bool ConnectionDiagnostics::StartAfterPortalDetection(
     return false;
   }
 
-  target_url_.reset(new HTTPURL());
+  target_url_.reset(new HttpUrl());
   if (!target_url_->ParseFromString(url_string)) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string;
     Stop();

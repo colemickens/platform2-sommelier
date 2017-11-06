@@ -302,7 +302,7 @@ class HTTPRequestTest : public Test {
     request_->WriteToServer(fd);
   }
   HTTPRequest::Result StartRequest(const string& url) {
-    HTTPURL http_url;
+    HttpUrl http_url;
     EXPECT_TRUE(http_url.ParseFromString(url));
     return request_->Start(http_url,
                            target_.read_event_callback(),
@@ -367,7 +367,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericSynchronous) {
 
 TEST_F(HTTPRequestTest, FailConnectNumericAsynchronous) {
   ExpectRouteRequest();
-  ExpectAsyncConnect(kServerAddress, HTTPURL::kDefaultHTTPPort, true);
+  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
   ExpectResultCallback(HTTPRequest::kResultConnectionFailure);
   ExpectStop();
@@ -377,7 +377,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericAsynchronous) {
 
 TEST_F(HTTPRequestTest, FailConnectNumericTimeout) {
   ExpectRouteRequest();
-  ExpectAsyncConnect(kServerAddress, HTTPURL::kDefaultHTTPPort, true);
+  ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
   ExpectResultCallback(HTTPRequest::kResultConnectionTimeout);
   ExpectStop();
@@ -387,7 +387,7 @@ TEST_F(HTTPRequestTest, FailConnectNumericTimeout) {
 
 TEST_F(HTTPRequestTest, SyncConnectNumeric) {
   ExpectRouteRequest();
-  ExpectSyncConnect(kServerAddress, HTTPURL::kDefaultHTTPPort);
+  ExpectSyncConnect(kServerAddress, HttpUrl::kDefaultHTTPPort);
   ExpectMonitorServerOutput();
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
 }
