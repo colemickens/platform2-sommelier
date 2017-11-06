@@ -30,6 +30,11 @@ def main():
   print('RO: %s' % updater.GetSectionVersion(hammerd_api.SectionName.RO))
   print('RW: %s' % updater.GetSectionVersion(hammerd_api.SectionName.RW))
 
+  print('Assume EC already in RW, send pairing challenge.')
+  pair_manager = hammerd_api.PairManager()
+  challenge_status = pair_manager.PairChallenge(updater.object)
+  print('Challenge status: %d' % challenge_status)
+
   print('Jump back to RO.')
   updater.SendSubcommand(hammerd_api.UpdateExtraCommand.ImmediateReset)
   updater.CloseUsb()

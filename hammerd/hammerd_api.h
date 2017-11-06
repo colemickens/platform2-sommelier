@@ -14,15 +14,21 @@
 
 #include <brillo/brillo_export.h>
 
+#include "hammerd/curve25519.h"
+#include "hammerd/pair_utils.h"
 #include "hammerd/update_fw.h"
 
 extern "C" {
 
+using hammerd::ChallengeStatus;
 using hammerd::FirmwareUpdater;
+using hammerd::FirstResponsePdu;
+using hammerd::PairManager;
+using hammerd::PairChallengeRequest;
+using hammerd::PairChallengeResponse;
 using hammerd::SectionName;
 using hammerd::UpdateExtraCommand;
 using hammerd::UsbConnectStatus;
-using hammerd::FirstResponsePdu;
 
 // The intermediary type for converting Python string to C++ std::string.
 // It is used to store either a normal string ending with '\0' or binary data.
@@ -86,6 +92,11 @@ BRILLO_EXPORT const FirstResponsePdu* FirmwareUpdater_GetFirstResponsePdu(
     FirmwareUpdater* updater);
 BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
     FirmwareUpdater* updater, SectionName section_name);
+
+// Expose PairManager class.
+BRILLO_EXPORT PairManager* PairManager_New();
+BRILLO_EXPORT int PairManager_PairChallenge(
+    PairManager* self, FirmwareUpdater* fw_updater);
 
 }  // extern "C"
 #endif  // HAMMERD_HAMMERD_API_H_

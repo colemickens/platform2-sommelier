@@ -32,6 +32,14 @@ class SectionName(object):
   Invalid = 2
 
 
+class ChallengeStatus(object):
+  """The returned value of the PairChallenge."""
+  ChallengePassed = 0
+  ChallengeFailed = 1
+  NeedInjectEntropy = 2
+  UnknownError = 3
+
+
 class FirstResponsePdu(ctypes.Structure):
   """Struct of response of first PDU from src/platform/ec/include/update_fw.h"""
   _pack_ = 1
@@ -156,3 +164,18 @@ class FirmwareUpdater(object):
                      ctypes.c_int, ctypes.c_int]
     func.restype = ctypes.c_void_p
     self.object = func(vendor_id, product_id, bus, port)
+
+
+class PairManager(object):
+  """The wrapper of FirmwareUpdater class."""
+  __metaclass__ = WrapperMetaclass
+
+  METHODS = [
+      ('PairChallenge', [ctypes.c_voidp, ctypes.c_voidp], ctypes.c_int),
+  ]
+
+  def __init__(self):
+    func = _DLL.PairManager_New
+    func.argtypes = []
+    func.restype = ctypes.c_void_p
+    self.object = func()

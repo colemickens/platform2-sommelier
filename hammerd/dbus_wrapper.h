@@ -51,5 +51,19 @@ class DBusWrapper : public DBusWrapperInterface {
   DISALLOW_COPY_AND_ASSIGN(DBusWrapper);
 };
 
+// The dummy class used in hammerd API.
+class DummyDBusWrapper : public DBusWrapperInterface {
+ public:
+  DummyDBusWrapper() {}
+  virtual ~DummyDBusWrapper() = default;
+
+  void SendSignal(const std::string& signal_name) override {}
+  void SendSignalWithArg(const std::string& signal_name,
+                         const uint8_t* values, size_t length) override {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DummyDBusWrapper);
+};
+
 }  // namespace hammerd
 #endif  // HAMMERD_DBUS_WRAPPER_H_

@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include "hammerd/dbus_wrapper.h"
 #include "hammerd/usb_utils.h"
 
 // Because it returns std::string, which is not compatible with C, we move
@@ -122,6 +123,17 @@ BRILLO_EXPORT const FirstResponsePdu* FirmwareUpdater_GetFirstResponsePdu(
 BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
     FirmwareUpdater* updater, SectionName section_name) {
   return updater->GetSectionVersion(section_name).c_str();
+}
+
+BRILLO_EXPORT PairManager* PairManager_New() {
+  return new PairManager();
+}
+BRILLO_EXPORT int PairManager_PairChallenge(
+    PairManager* self, FirmwareUpdater* fw_updater) {
+  // We do not allow to send DBus signal from Hammerd API. Inject a dummy
+  // DBus wrapper here.
+  hammerd::DummyDBusWrapper* dummy = new hammerd::DummyDBusWrapper();
+  return static_cast<int>(self->PairChallenge(fw_updater, dummy));
 }
 
 }  // extern "C"
