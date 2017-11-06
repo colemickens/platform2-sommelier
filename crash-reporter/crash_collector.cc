@@ -567,10 +567,6 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   diag_process.RedirectOutput(raw_output_file.value());
 
   const int result = diag_process.Run();
-  if (result != 0) {
-    LOG(WARNING) << "Log command \"" << command << "\" exited with " << result;
-    return false;
-  }
 
   std::string log_contents;
   if (!base::ReadFileToStringWithMaxSize(raw_output_file,
@@ -587,6 +583,18 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
     log_contents.append("\n<TRUNCATED>\n");
   }
 
+  // If the registered command failed, we include any (partial) output it might
+  // have produced to improve crash reports.  But make a note of the failure.
+  if (result != 0) {
+    const std::string warning =
+        StringPrintf("\nLog command \"%s\" exited with %i\n", command.c_str(),
+                     result);
+    log_contents.append(warning);
+    LOG(WARNING) << warning;
+  }
+
+  // Always do this after log_contents is "finished" so we don't accidentally
+  // leak data.
   StripSensitiveData(&log_contents);
 
   // We must use WriteNewFile instead of base::WriteFile as we
