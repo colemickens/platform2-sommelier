@@ -25,12 +25,12 @@
 
 namespace shill {
 
-class MockHTTPRequest : public HTTPRequest {
+class MockHttpRequest : public HttpRequest {
  public:
-  explicit MockHTTPRequest(ConnectionRefPtr connection);
-  ~MockHTTPRequest() override;
+  explicit MockHttpRequest(ConnectionRefPtr connection);
+  ~MockHttpRequest() override;
 
-  MOCK_METHOD3(Start, HTTPRequest::Result(
+  MOCK_METHOD3(Start, HttpRequest::Result(
       const HttpUrl& url,
       const base::Callback<void(const ByteString&)>& read_event_callback,
       const base::Callback<void(Result, const ByteString&)>& result_callback));
@@ -38,7 +38,7 @@ class MockHTTPRequest : public HTTPRequest {
   MOCK_CONST_METHOD0(response_data, const ByteString& ());
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockHTTPRequest);
+  DISALLOW_COPY_AND_ASSIGN(MockHttpRequest);
 };
 
 }  // namespace shill

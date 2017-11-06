@@ -41,10 +41,10 @@ class IOHandler;
 class IPAddress;
 class Sockets;
 
-// The HTTPRequest class implements facilities for performing
+// The HttpRequest class implements facilities for performing
 // a simple "GET" request and returning the contents via a
 // callback.
-class HTTPRequest {
+class HttpRequest {
  public:
   enum Result {
     kResultUnknown,
@@ -60,10 +60,10 @@ class HTTPRequest {
     kResultSuccess
   };
 
-  HTTPRequest(ConnectionRefPtr connection,
+  HttpRequest(ConnectionRefPtr connection,
               EventDispatcher* dispatcher,
               Sockets* sockets);
-  virtual ~HTTPRequest();
+  virtual ~HttpRequest();
 
   // Start an http GET request to the URL |url|.  Whenever any data is
   // read from the server, |read_event_callback| is called with the
@@ -72,7 +72,7 @@ class HTTPRequest {
   //
   // When the transaction completes, |result_callback| will be called with
   // the final status from the transaction.  It is valid for the callback
-  // function to destroy this HTTPRequest object, because at this time all
+  // function to destroy this HttpRequest object, because at this time all
   // object state has already been cleaned up.  |result_callback| will not be
   // called if either the Start() call fails or if Stop() is called before
   // the transaction completes.
@@ -85,7 +85,7 @@ class HTTPRequest {
       const base::Callback<void(const ByteString&)>& read_event_callback,
       const base::Callback<void(Result, const ByteString&)>& result_callback);
 
-  // Stop the current HTTPRequest.  No callback is called as a side
+  // Stop the current HttpRequest.  No callback is called as a side
   // effect of this function.
   virtual void Stop();
 
@@ -95,7 +95,7 @@ class HTTPRequest {
   virtual const ByteString& response_data() const { return response_data_; }
 
  private:
-  friend class HTTPRequestTest;
+  friend class HttpRequestTest;
 
   // Time to wait for connection to remote server.
   static const int kConnectTimeoutSeconds;
@@ -104,7 +104,7 @@ class HTTPRequest {
   // Time to wait for any input from server.
   static const int kInputTimeoutSeconds;
 
-  static const char kHTTPRequestTemplate[];
+  static const char kHttpRequestTemplate[];
 
   bool ConnectServer(const IPAddress& address, int port);
   void GetDNSResult(const Error& error, const IPAddress& address);
@@ -120,7 +120,7 @@ class HTTPRequest {
   EventDispatcher* dispatcher_;
   Sockets* sockets_;
 
-  base::WeakPtrFactory<HTTPRequest> weak_ptr_factory_;
+  base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
   base::Callback<void(bool, int)> connect_completion_callback_;
   base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
   base::Callback<void(InputData*)> read_server_callback_;
@@ -140,7 +140,7 @@ class HTTPRequest {
   ByteString response_data_;
   bool is_running_;
 
-  DISALLOW_COPY_AND_ASSIGN(HTTPRequest);
+  DISALLOW_COPY_AND_ASSIGN(HttpRequest);
 };
 
 }  // namespace shill

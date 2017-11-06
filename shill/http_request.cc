@@ -44,16 +44,16 @@ static auto kModuleLogScope = ScopeLogger::kHTTP;
 static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
-const int HTTPRequest::kConnectTimeoutSeconds = 10;
-const int HTTPRequest::kDNSTimeoutSeconds = 5;
-const int HTTPRequest::kInputTimeoutSeconds = 10;
+const int HttpRequest::kConnectTimeoutSeconds = 10;
+const int HttpRequest::kDNSTimeoutSeconds = 5;
+const int HttpRequest::kInputTimeoutSeconds = 10;
 
-const char HTTPRequest::kHTTPRequestTemplate[] =
+const char HttpRequest::kHttpRequestTemplate[] =
     "GET %s HTTP/1.1\r\n"
     "Host: %s:%d\r\n"
     "Connection: Close\r\n\r\n";
 
-HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
+HttpRequest::HttpRequest(ConnectionRefPtr connection,
                          EventDispatcher* dispatcher,
                          Sockets* sockets)
     : connection_(connection),
@@ -61,13 +61,13 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
       sockets_(sockets),
       weak_ptr_factory_(this),
       connect_completion_callback_(
-          Bind(&HTTPRequest::OnConnectCompletion,
+          Bind(&HttpRequest::OnConnectCompletion,
                weak_ptr_factory_.GetWeakPtr())),
-      dns_client_callback_(Bind(&HTTPRequest::GetDNSResult,
+      dns_client_callback_(Bind(&HttpRequest::GetDNSResult,
                                 weak_ptr_factory_.GetWeakPtr())),
-      read_server_callback_(Bind(&HTTPRequest::ReadFromServer,
+      read_server_callback_(Bind(&HttpRequest::ReadFromServer,
                                  weak_ptr_factory_.GetWeakPtr())),
-      write_server_callback_(Bind(&HTTPRequest::WriteToServer,
+      write_server_callback_(Bind(&HttpRequest::WriteToServer,
                                   weak_ptr_factory_.GetWeakPtr())),
       dns_client_(
           new DNSClient(connection->IsIPv6() ? IPAddress::kFamilyIPv6
@@ -86,11 +86,11 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
       timeout_result_(kResultUnknown),
       is_running_(false) { }
 
-HTTPRequest::~HTTPRequest() {
+HttpRequest::~HttpRequest() {
   Stop();
 }
 
-HTTPRequest::Result HTTPRequest::Start(
+HttpRequest::Result HttpRequest::Start(
     const HttpUrl& url,
     const Callback<void(const ByteString&)>& read_event_callback,
     const Callback<void(Result, const ByteString&)>& result_callback) {
@@ -99,7 +99,7 @@ HTTPRequest::Result HTTPRequest::Start(
   DCHECK(!is_running_);
 
   is_running_ = true;
-  request_data_ = ByteString(StringPrintf(kHTTPRequestTemplate,
+  request_data_ = ByteString(StringPrintf(kHttpRequestTemplate,
                                           url.path().c_str(),
                                           url.host().c_str(),
                                           url.port()), false);
@@ -135,7 +135,7 @@ HTTPRequest::Result HTTPRequest::Start(
   return kResultInProgress;
 }
 
-void HTTPRequest::Stop() {
+void HttpRequest::Stop() {
   SLOG(connection_.get(), 3) << "In " << __func__ << "; running is "
                              << is_running_;
 
@@ -166,7 +166,7 @@ void HTTPRequest::Stop() {
   timeout_result_ = kResultUnknown;
 }
 
-bool HTTPRequest::ConnectServer(const IPAddress& address, int port) {
+bool HttpRequest::ConnectServer(const IPAddress& address, int port) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!server_async_connection_->Start(address, port)) {
     LOG(ERROR) << "Could not create socket to connect to server at "
@@ -182,7 +182,7 @@ bool HTTPRequest::ConnectServer(const IPAddress& address, int port) {
 }
 
 // DNSClient callback that fires when the DNS request completes.
-void HTTPRequest::GetDNSResult(const Error& error, const IPAddress& address) {
+void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!error.IsSuccess()) {
     LOG(ERROR) << "Could not resolve hostname "
@@ -201,7 +201,7 @@ void HTTPRequest::GetDNSResult(const Error& error, const IPAddress& address) {
 
 // AsyncConnection callback routine which fires when the asynchronous Connect()
 // to the remote server completes (or fails).
-void HTTPRequest::OnConnectCompletion(bool success, int fd) {
+void HttpRequest::OnConnectCompletion(bool success, int fd) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!success) {
     LOG(ERROR) << "Socket connection delayed failure to "
@@ -220,13 +220,13 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
   StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);
 }
 
-void HTTPRequest::OnServerReadError(const string& /*error_msg*/) {
+void HttpRequest::OnServerReadError(const string& /*error_msg*/) {
   SendStatus(kResultResponseFailure);
 }
 
 // IOInputHandler callback which fires when data has been read from the
 // server.
-void HTTPRequest::ReadFromServer(InputData* data) {
+void HttpRequest::ReadFromServer(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
 
   if (data->len < 0) {
@@ -246,7 +246,7 @@ void HTTPRequest::ReadFromServer(InputData* data) {
   }
 }
 
-void HTTPRequest::SendStatus(Result result) {
+void HttpRequest::SendStatus(Result result) {
   // Save copies on the stack, since Stop() will remove them.
   Callback<void(Result, const ByteString&)> result_callback = result_callback_;
   const ByteString response_data(response_data_);
@@ -260,15 +260,15 @@ void HTTPRequest::SendStatus(Result result) {
 }
 
 // Start a timeout for "the next event".
-void HTTPRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
+void HttpRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
   timeout_result_ = timeout_result;
   timeout_closure_.Reset(
-      Bind(&HTTPRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&HttpRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
                                timeout_seconds * 1000);
 }
 
-void HTTPRequest::TimeoutTask() {
+void HttpRequest::TimeoutTask() {
   LOG(ERROR) << "Connection with "
              << server_hostname_
              << " timed out";
@@ -277,7 +277,7 @@ void HTTPRequest::TimeoutTask() {
 
 // Output ReadyHandler callback which fires when the server socket is
 // ready for data to be sent to it.
-void HTTPRequest::WriteToServer(int fd) {
+void HttpRequest::WriteToServer(int fd) {
   CHECK_EQ(server_socket_, fd);
   int ret = sockets_->Send(fd, request_data_.GetConstData(),
                            request_data_.GetLength(), MSG_NOSIGNAL);
@@ -301,7 +301,7 @@ void HTTPRequest::WriteToServer(int fd) {
     read_server_handler_.reset(dispatcher_->CreateInputHandler(
         server_socket_,
         read_server_callback_,
-        Bind(&HTTPRequest::OnServerReadError, weak_ptr_factory_.GetWeakPtr())));
+        Bind(&HttpRequest::OnServerReadError, weak_ptr_factory_.GetWeakPtr())));
     StartIdleTimeout(kInputTimeoutSeconds, kResultResponseTimeout);
   } else {
     StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);

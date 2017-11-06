@@ -118,15 +118,15 @@ class ConnectivityTrialTest : public Test {
     Callback<void(ConnectivityTrial::Result)> result_callback_;
   };
 
-  void AssignHTTPRequest() {
-    http_request_ = new StrictMock<MockHTTPRequest>(connection_);
+  void AssignHttpRequest() {
+    http_request_ = new StrictMock<MockHttpRequest>(connection_);
     connectivity_trial_->request_.reset(http_request_);  // Passes ownership.
   }
 
   bool StartTrialWithDelay(const string& url_string, int delay) {
     bool ret = connectivity_trial_->Start(url_string, delay);
     if (ret) {
-      AssignHTTPRequest();
+      AssignHttpRequest();
     }
     return ret;
   }
@@ -136,9 +136,9 @@ class ConnectivityTrialTest : public Test {
   }
 
   void StartTrialTask() {
-    AssignHTTPRequest();
+    AssignHttpRequest();
     EXPECT_CALL(*http_request(), Start(_, _, _))
-        .WillOnce(Return(HTTPRequest::kResultInProgress));
+        .WillOnce(Return(HttpRequest::kResultInProgress));
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kTrialTimeout * 1000));
     connectivity_trial()->StartTrialTask();
   }
@@ -154,7 +154,7 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial_->TimeoutTrialTask();
   }
 
-  MockHTTPRequest* http_request() { return http_request_; }
+  MockHttpRequest* http_request() { return http_request_; }
   ConnectivityTrial* connectivity_trial() { return connectivity_trial_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
@@ -187,7 +187,7 @@ class ConnectivityTrialTest : public Test {
 
     // Expect that the request will be started -- return failure.
     EXPECT_CALL(*http_request(), Start(_, _, _))
-        .WillOnce(Return(HTTPRequest::kResultInProgress));
+        .WillOnce(Return(HttpRequest::kResultInProgress));
     EXPECT_CALL(dispatcher(), PostDelayedTask(
         _, _, kTrialTimeout * 1000));
 
@@ -216,7 +216,7 @@ class ConnectivityTrialTest : public Test {
   const string interface_name_;
   vector<string> dns_servers_;
   ByteString response_data_;
-  MockHTTPRequest* http_request_;
+  MockHttpRequest* http_request_;
 };
 
 // static
@@ -261,7 +261,7 @@ TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
-      .WillOnce(Return(HTTPRequest::kResultConnectionFailure));
+      .WillOnce(Return(HttpRequest::kResultConnectionFailure));
   // Expect a failure to be relayed to the caller.
   EXPECT_CALL(callback_target(),
               ResultCallback(IsResult(
@@ -299,7 +299,7 @@ TEST_F(ConnectivityTrialTest, TrialRetry) {
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
-      .WillOnce(Return(HTTPRequest::kResultConnectionFailure));
+      .WillOnce(Return(HttpRequest::kResultConnectionFailure));
   EXPECT_CALL(*http_request(), Stop());
   connectivity_trial()->StartTrialTask();
 
@@ -332,7 +332,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
   // Expect that the request will be started and return the in progress status.
   EXPECT_CALL(*http_request(), Start(_, _, _))
       .Times(num_failures).WillRepeatedly(
-          Return(HTTPRequest::kResultInProgress));
+          Return(HttpRequest::kResultInProgress));
 
   // Each HTTP request that gets started will have a request timeout.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kTrialTimeout * 1000))
@@ -444,12 +444,12 @@ TEST_F(ConnectivityTrialTest, ReadMatchingHeader) {
 }
 
 struct ResultMapping {
-  ResultMapping() : http_result(HTTPRequest::kResultUnknown), trial_result() {}
-  ResultMapping(HTTPRequest::Result in_http_result,
+  ResultMapping() : http_result(HttpRequest::kResultUnknown), trial_result() {}
+  ResultMapping(HttpRequest::Result in_http_result,
                 const ConnectivityTrial::Result& in_trial_result)
       : http_result(in_http_result),
         trial_result(in_trial_result) {}
-  HTTPRequest::Result http_result;
+  HttpRequest::Result http_result;
   ConnectivityTrial::Result trial_result;
 };
 
@@ -469,47 +469,47 @@ INSTANTIATE_TEST_CASE_P(
     ConnectivityTrialResultMappingTest,
     ::testing::Values(
         ResultMapping(
-            HTTPRequest::kResultUnknown,
+            HttpRequest::kResultUnknown,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultInProgress,
+            HttpRequest::kResultInProgress,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultDNSFailure,
+            HttpRequest::kResultDNSFailure,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultDNSTimeout,
+            HttpRequest::kResultDNSTimeout,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
                                       ConnectivityTrial::kStatusTimeout)),
         ResultMapping(
-            HTTPRequest::kResultConnectionFailure,
+            HttpRequest::kResultConnectionFailure,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultConnectionTimeout,
+            HttpRequest::kResultConnectionTimeout,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
                                       ConnectivityTrial::kStatusTimeout)),
         ResultMapping(
-            HTTPRequest::kResultRequestFailure,
+            HttpRequest::kResultRequestFailure,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultRequestTimeout,
+            HttpRequest::kResultRequestTimeout,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
                                       ConnectivityTrial::kStatusTimeout)),
         ResultMapping(
-            HTTPRequest::kResultResponseFailure,
+            HttpRequest::kResultResponseFailure,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
                                       ConnectivityTrial::kStatusFailure)),
         ResultMapping(
-            HTTPRequest::kResultResponseTimeout,
+            HttpRequest::kResultResponseTimeout,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
                                       ConnectivityTrial::kStatusTimeout)),
         ResultMapping(
-            HTTPRequest::kResultSuccess,
+            HttpRequest::kResultSuccess,
             ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
                                       ConnectivityTrial::kStatusFailure))));
 

@@ -43,8 +43,8 @@ class Time;
 // connectivity."
 //
 // ConnectivityTrial is responsible for managing the callbacks between the
-// calling class requesting a connectivity trial and the HTTPRequest that is
-// used to test connectivity.  ConnectivityTrial maps between the HTTPRequest
+// calling class requesting a connectivity trial and the HttpRequest that is
+// used to test connectivity.  ConnectivityTrial maps between the HttpRequest
 // response codes to higher-level connection-oriented status.
 //
 // ConnectivityTrial tests the connection by attempting to parse and access a
@@ -95,13 +95,13 @@ class ConnectivityTrial {
   // status string. This method supports success, timeout and failure.
   static const std::string StatusToString(Status status);
 
-  // Static method mapping from HTTPRequest responses to ConntectivityTrial
-  // phases for portal detection. For example, if the HTTPRequest result is
-  // HTTPRequest::kResultDNSFailure, this method returns a
+  // Static method mapping from HttpRequest responses to ConntectivityTrial
+  // phases for portal detection. For example, if the HttpRequest result is
+  // HttpRequest::kResultDNSFailure, this method returns a
   // ConnectivityTrial::Result with the phase set to
   // ConnectivityTrial::kPhaseDNS and the status set to
   // ConnectivityTrial::kStatusFailure.
-  static Result GetPortalResultForRequestResult(HTTPRequest::Result result);
+  static Result GetPortalResultForRequestResult(HttpRequest::Result result);
 
   // Start a ConnectivityTrial with the supplied URL and starting delay (ms).
   // Returns trus if |url_string| correctly parses as a URL.  Returns false (and
@@ -113,17 +113,17 @@ class ConnectivityTrial {
                      int start_delay_milliseconds);
 
   // After a trial completes, the calling class may call Retry on the trial.
-  // This allows the underlying HTTPRequest object to be reused.  The URL is not
+  // This allows the underlying HttpRequest object to be reused.  The URL is not
   // reparsed and the original URL supplied in the Start command is used.  The
   // |start_delay| is the time (ms) to wait before starting the trial.  Retry
-  // returns true if the underlying HTTPRequest is still available.  If the
-  // HTTPRequest was reset or never created, Retry will return false.
+  // returns true if the underlying HttpRequest is still available.  If the
+  // HttpRequest was reset or never created, Retry will return false.
   virtual bool Retry(int start_delay_milliseconds);
 
   // End the current attempt if one is in progress.  Will not call the callback
   // with any intermediate results.
   // The ConnectivityTrial will cancel any existing scheduled tasks and destroy
-  // the underlying HTTPRequest.
+  // the underlying HttpRequest.
   virtual void Stop();
 
   // Method to return if the connection is being actively tested.
@@ -148,11 +148,11 @@ class ConnectivityTrial {
   // the start delay completes.
   void StartTrialTask();
 
-  // Callback used to return data read from the HTTPRequest.
+  // Callback used to return data read from the HttpRequest.
   void RequestReadCallback(const ByteString& response_data);
 
-  // Callback used to return the result of the HTTPRequest.
-  void RequestResultCallback(HTTPRequest::Result result,
+  // Callback used to return the result of the HttpRequest.
+  void RequestResultCallback(HttpRequest::Result result,
                              const ByteString& response_data);
 
   // Internal method used to clean up state and call the original caller that
@@ -160,11 +160,11 @@ class ConnectivityTrial {
   void CompleteTrial(Result result);
 
   // Internal method used to cancel the timeout timer and stop an active
-  // HTTPRequest.  If |reset_request| is true, this method resets the underlying
-  // HTTPRequest object.
+  // HttpRequest.  If |reset_request| is true, this method resets the underlying
+  // HttpRequest object.
   void CleanupTrial(bool reset_request);
 
-  // Callback used to cancel the underlying HTTPRequest in the event of a
+  // Callback used to cancel the underlying HttpRequest in the event of a
   // timeout.
   void TimeoutTrialTask();
 
@@ -174,9 +174,9 @@ class ConnectivityTrial {
   base::Callback<void(Result)> trial_callback_;
   base::WeakPtrFactory<ConnectivityTrial> weak_ptr_factory_;
   base::Callback<void(const ByteString&)> request_read_callback_;
-  base::Callback<void(HTTPRequest::Result, const ByteString&)>
+  base::Callback<void(HttpRequest::Result, const ByteString&)>
         request_result_callback_;
-  std::unique_ptr<HTTPRequest> request_;
+  std::unique_ptr<HttpRequest> request_;
 
   Sockets sockets_;
   std::string url_string_;

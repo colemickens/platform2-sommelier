@@ -197,7 +197,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
   // Expect that the request will be started -- return failure.
   ConnectivityTrial::Result errorResult =
       ConnectivityTrial::GetPortalResultForRequestResult(
-          HTTPRequest::kResultConnectionFailure);
+          HttpRequest::kResultConnectionFailure);
 
   // Expect a non-final failure to be relayed to the caller.
   ExpectAttemptRetry(
@@ -314,7 +314,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
     ConnectivityTrial::Result r =
         ConnectivityTrial::GetPortalResultForRequestResult(
-            HTTPRequest::kResultDNSFailure);
+            HttpRequest::kResultDNSFailure);
     portal_detector()->CompleteAttempt(r);
   }
 

@@ -123,7 +123,7 @@ bool ConnectivityTrial::Start(const string& url_string,
   if (request_.get()) {
     CleanupTrial(false);
   } else {
-    request_.reset(new HTTPRequest(connection_, dispatcher_, &sockets_));
+    request_.reset(new HttpRequest(connection_, dispatcher_, &sockets_));
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   return true;
@@ -157,9 +157,9 @@ void ConnectivityTrial::StartTrialTask() {
     return;
   }
 
-  HTTPRequest::Result result =
+  HttpRequest::Result result =
       request_->Start(url, request_read_callback_, request_result_callback_);
-  if (result != HTTPRequest::kResultInProgress) {
+  if (result != HttpRequest::kResultInProgress) {
     CompleteTrial(ConnectivityTrial::GetPortalResultForRequestResult(result));
     return;
   }
@@ -203,7 +203,7 @@ void ConnectivityTrial::RequestReadCallback(const ByteString& response_data) {
 }
 
 void ConnectivityTrial::RequestResultCallback(
-    HTTPRequest::Result result, const ByteString& /*response_data*/) {
+    HttpRequest::Result result, const ByteString& /*response_data*/) {
   CompleteTrial(GetPortalResultForRequestResult(result));
 }
 
@@ -272,26 +272,26 @@ const string ConnectivityTrial::StatusToString(Status status) {
 }
 
 ConnectivityTrial::Result ConnectivityTrial::GetPortalResultForRequestResult(
-    HTTPRequest::Result result) {
+    HttpRequest::Result result) {
   switch (result) {
-    case HTTPRequest::kResultSuccess:
+    case HttpRequest::kResultSuccess:
       // The request completed without receiving the expected payload.
       return Result(kPhaseContent, kStatusFailure);
-    case HTTPRequest::kResultDNSFailure:
+    case HttpRequest::kResultDNSFailure:
       return Result(kPhaseDNS, kStatusFailure);
-    case HTTPRequest::kResultDNSTimeout:
+    case HttpRequest::kResultDNSTimeout:
       return Result(kPhaseDNS, kStatusTimeout);
-    case HTTPRequest::kResultConnectionFailure:
+    case HttpRequest::kResultConnectionFailure:
       return Result(kPhaseConnection, kStatusFailure);
-    case HTTPRequest::kResultConnectionTimeout:
+    case HttpRequest::kResultConnectionTimeout:
       return Result(kPhaseConnection, kStatusTimeout);
-    case HTTPRequest::kResultRequestFailure:
-    case HTTPRequest::kResultResponseFailure:
+    case HttpRequest::kResultRequestFailure:
+    case HttpRequest::kResultResponseFailure:
       return Result(kPhaseHTTP, kStatusFailure);
-    case HTTPRequest::kResultRequestTimeout:
-    case HTTPRequest::kResultResponseTimeout:
+    case HttpRequest::kResultRequestTimeout:
+    case HttpRequest::kResultResponseTimeout:
       return Result(kPhaseHTTP, kStatusTimeout);
-    case HTTPRequest::kResultUnknown:
+    case HttpRequest::kResultUnknown:
     default:
       return Result(kPhaseUnknown, kStatusFailure);
   }

@@ -87,9 +87,9 @@ static int BreakConnection() {
   return -1;
 }
 
-class HTTPRequestTest : public Test {
+class HttpRequestTest : public Test {
  public:
-  HTTPRequestTest()
+  HttpRequestTest()
       : interface_name_(kInterfaceName),
         server_async_connection_(new StrictMock<MockAsyncConnection>()),
         dns_servers_(kDNSServers, kDNSServers + 2),
@@ -108,19 +108,19 @@ class HTTPRequestTest : public Test {
               Bind(&CallbackTarget::ResultCallTarget, Unretained(this))) {}
 
     MOCK_METHOD1(ReadEventCallTarget, void(const ByteString& response_data));
-    MOCK_METHOD2(ResultCallTarget, void(HTTPRequest::Result result,
+    MOCK_METHOD2(ResultCallTarget, void(HttpRequest::Result result,
                                         const ByteString& response_data));
     const Callback<void(const ByteString&)>& read_event_callback() {
       return read_event_callback_;
     }
-    const Callback<void(HTTPRequest::Result,
+    const Callback<void(HttpRequest::Result,
                         const ByteString&)>& result_callback() {
       return result_callback_;
     }
 
    private:
     Callback<void(const ByteString&)> read_event_callback_;
-    Callback<void(HTTPRequest::Result, const ByteString&)> result_callback_;
+    Callback<void(HttpRequest::Result, const ByteString&)> result_callback_;
   };
 
   virtual void SetUp() {
@@ -131,7 +131,7 @@ class HTTPRequestTest : public Test {
     EXPECT_CALL(*connection_.get(), dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
 
-    request_.reset(new HTTPRequest(connection_, &dispatcher_, &sockets_));
+    request_.reset(new HttpRequest(connection_, &dispatcher_, &sockets_));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     // Passes ownership.
@@ -156,7 +156,7 @@ class HTTPRequestTest : public Test {
   const ByteString& GetRequestData() {
     return request_->request_data_;
   }
-  HTTPRequest* request() { return request_.get(); }
+  HttpRequest* request() { return request_.get(); }
   MockSockets& sockets() { return sockets_; }
 
   // Expectations
@@ -178,7 +178,7 @@ class HTTPRequestTest : public Test {
     EXPECT_TRUE(request_->server_hostname_.empty());
     EXPECT_EQ(-1, request_->server_port_);
     EXPECT_EQ(-1, request_->server_socket_);
-    EXPECT_EQ(HTTPRequest::kResultUnknown, request_->timeout_result_);
+    EXPECT_EQ(HttpRequest::kResultUnknown, request_->timeout_result_);
     EXPECT_TRUE(request_->request_data_.IsEmpty());
     EXPECT_TRUE(request_->response_data_.IsEmpty());
     EXPECT_FALSE(request_->is_running_);
@@ -198,10 +198,10 @@ class HTTPRequestTest : public Test {
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, timeout * 1000));
   }
   void ExpectSetConnectTimeout() {
-    ExpectSetTimeout(HTTPRequest::kConnectTimeoutSeconds);
+    ExpectSetTimeout(HttpRequest::kConnectTimeoutSeconds);
   }
   void ExpectSetInputTimeout() {
-    ExpectSetTimeout(HTTPRequest::kInputTimeoutSeconds);
+    ExpectSetTimeout(HttpRequest::kInputTimeoutSeconds);
   }
   void ExpectInResponse(const string& expected_response_data) {
     string response_string(
@@ -229,7 +229,7 @@ class HTTPRequestTest : public Test {
   }
   void ExpectSyncConnect(const string& address, int port) {
     EXPECT_CALL(*server_async_connection_, Start(IsIPAddress(address), port))
-        .WillOnce(DoAll(Invoke(this, &HTTPRequestTest::InvokeSyncConnect),
+        .WillOnce(DoAll(Invoke(this, &HttpRequestTest::InvokeSyncConnect),
                         Return(true)));
   }
   void ExpectConnectFailure() {
@@ -258,18 +258,18 @@ class HTTPRequestTest : public Test {
   void ExpectRouteRelease() {
     EXPECT_CALL(*connection_.get(), ReleaseRouting());
   }
-  void ExpectResultCallback(HTTPRequest::Result result) {
+  void ExpectResultCallback(HttpRequest::Result result) {
     EXPECT_CALL(target_, ResultCallTarget(result, _));
   }
-  void InvokeResultVerify(HTTPRequest::Result result,
+  void InvokeResultVerify(HttpRequest::Result result,
                           const ByteString& response_data) {
-    EXPECT_EQ(HTTPRequest::kResultSuccess, result);
+    EXPECT_EQ(HttpRequest::kResultSuccess, result);
     EXPECT_TRUE(expected_response_.Equals(response_data));
   }
   void ExpectResultCallbackWithResponse(const string& response) {
     expected_response_ = ByteString(response, false);
-    EXPECT_CALL(target_, ResultCallTarget(HTTPRequest::kResultSuccess, _))
-        .WillOnce(Invoke(this, &HTTPRequestTest::InvokeResultVerify));
+    EXPECT_CALL(target_, ResultCallTarget(HttpRequest::kResultSuccess, _))
+        .WillOnce(Invoke(this, &HttpRequestTest::InvokeResultVerify));
   }
   void ExpectReadEventCallback(const string& response) {
     ByteString response_data(response, false);
@@ -301,7 +301,7 @@ class HTTPRequestTest : public Test {
   void WriteToServer(int fd) {
     request_->WriteToServer(fd);
   }
-  HTTPRequest::Result StartRequest(const string& url) {
+  HttpRequest::Result StartRequest(const string& url) {
     HttpUrl http_url;
     EXPECT_TRUE(http_url.ParseFromString(url));
     return request_->Start(http_url,
@@ -311,7 +311,7 @@ class HTTPRequestTest : public Test {
   void SetupConnectWithURL(const string& url, const string& expected_hostname) {
     ExpectRouteRequest();
     ExpectDNSRequest(expected_hostname, true);
-    EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(url));
+    EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(url));
     IPAddress addr(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(addr.SetAddressFromString(kServerAddress));
     GetDNSResultSuccess(addr);
@@ -337,110 +337,110 @@ class HTTPRequestTest : public Test {
 
  private:
   const string interface_name_;
-  // Owned by the HTTPRequest, but tracked here for EXPECT().
+  // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockAsyncConnection>* server_async_connection_;
   vector<string> dns_servers_;
-  // Owned by the HTTPRequest, but tracked here for EXPECT().
+  // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockDNSClient>* dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
-  std::unique_ptr<HTTPRequest> request_;
+  std::unique_ptr<HttpRequest> request_;
   StrictMock<MockSockets> sockets_;
   StrictMock<CallbackTarget> target_;
   ByteString expected_response_;
 };
 
-TEST_F(HTTPRequestTest, Constructor) {
+TEST_F(HttpRequestTest, Constructor) {
   ExpectReset();
 }
 
 
-TEST_F(HTTPRequestTest, FailConnectNumericSynchronous) {
+TEST_F(HttpRequestTest, FailConnectNumericSynchronous) {
   ExpectRouteRequest();
   ExpectConnectFailure();
   ExpectStop();
-  EXPECT_EQ(HTTPRequest::kResultConnectionFailure, StartRequest(kNumericURL));
+  EXPECT_EQ(HttpRequest::kResultConnectionFailure, StartRequest(kNumericURL));
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, FailConnectNumericAsynchronous) {
+TEST_F(HttpRequestTest, FailConnectNumericAsynchronous) {
   ExpectRouteRequest();
   ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort, true);
-  EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
-  ExpectResultCallback(HTTPRequest::kResultConnectionFailure);
+  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kNumericURL));
+  ExpectResultCallback(HttpRequest::kResultConnectionFailure);
   ExpectStop();
   CallConnectCompletion(false, -1);
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, FailConnectNumericTimeout) {
+TEST_F(HttpRequestTest, FailConnectNumericTimeout) {
   ExpectRouteRequest();
   ExpectAsyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort, true);
-  EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
-  ExpectResultCallback(HTTPRequest::kResultConnectionTimeout);
+  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kNumericURL));
+  ExpectResultCallback(HttpRequest::kResultConnectionTimeout);
   ExpectStop();
   CallTimeoutTask();
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, SyncConnectNumeric) {
+TEST_F(HttpRequestTest, SyncConnectNumeric) {
   ExpectRouteRequest();
   ExpectSyncConnect(kServerAddress, HttpUrl::kDefaultHttpPort);
   ExpectMonitorServerOutput();
-  EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kNumericURL));
+  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kNumericURL));
 }
 
-TEST_F(HTTPRequestTest, FailDNSStart) {
+TEST_F(HttpRequestTest, FailDNSStart) {
   ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, false);
   ExpectStop();
-  EXPECT_EQ(HTTPRequest::kResultDNSFailure, StartRequest(kTextURL));
+  EXPECT_EQ(HttpRequest::kResultDNSFailure, StartRequest(kTextURL));
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, FailDNSFailure) {
+TEST_F(HttpRequestTest, FailDNSFailure) {
   ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
-  EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kTextURL));
-  ExpectResultCallback(HTTPRequest::kResultDNSFailure);
+  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
+  ExpectResultCallback(HttpRequest::kResultDNSFailure);
   ExpectStop();
   GetDNSResultFailure(DNSClient::kErrorNoData);
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, FailDNSTimeout) {
+TEST_F(HttpRequestTest, FailDNSTimeout) {
   ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
-  EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kTextURL));
-  ExpectResultCallback(HTTPRequest::kResultDNSTimeout);
+  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
+  ExpectResultCallback(HttpRequest::kResultDNSTimeout);
   ExpectStop();
   const string error(DNSClient::kErrorTimedOut);
   GetDNSResultFailure(error);
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, FailConnectText) {
+TEST_F(HttpRequestTest, FailConnectText) {
   ExpectConnectFailure();
-  ExpectResultCallback(HTTPRequest::kResultConnectionFailure);
+  ExpectResultCallback(HttpRequest::kResultConnectionFailure);
   ExpectStop();
   SetupConnect();
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, ConnectComplete) {
+TEST_F(HttpRequestTest, ConnectComplete) {
   SetupConnectComplete();
 }
 
-TEST_F(HTTPRequestTest, RequestTimeout) {
+TEST_F(HttpRequestTest, RequestTimeout) {
   SetupConnectComplete();
-  ExpectResultCallback(HTTPRequest::kResultRequestTimeout);
+  ExpectResultCallback(HttpRequest::kResultRequestTimeout);
   ExpectStop();
   CallTimeoutTask();
 }
 
-TEST_F(HTTPRequestTest, RequestData) {
+TEST_F(HttpRequestTest, RequestData) {
   SetupConnectComplete();
   EXPECT_EQ(0, FindInRequestData(string("GET ") + kPath));
   EXPECT_NE(string::npos,
@@ -456,31 +456,31 @@ TEST_F(HTTPRequestTest, RequestData) {
   WriteToServer(kServerFD);
 }
 
-TEST_F(HTTPRequestTest, ResponseTimeout) {
+TEST_F(HttpRequestTest, ResponseTimeout) {
   SetupConnectComplete();
   ByteString request_data = GetRequestData();
   EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(Return(request_data.GetLength()));
   ExpectMonitorServerInput();
   WriteToServer(kServerFD);
-  ExpectResultCallback(HTTPRequest::kResultResponseTimeout);
+  ExpectResultCallback(HttpRequest::kResultResponseTimeout);
   ExpectStop();
   CallTimeoutTask();
 }
 
-TEST_F(HTTPRequestTest, ResponseInputError) {
+TEST_F(HttpRequestTest, ResponseInputError) {
   SetupConnectComplete();
   ByteString request_data = GetRequestData();
   EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(Return(request_data.GetLength()));
   ExpectMonitorServerInput();
   WriteToServer(kServerFD);
-  ExpectResultCallback(HTTPRequest::kResultResponseFailure);
+  ExpectResultCallback(HttpRequest::kResultResponseFailure);
   ExpectStop();
   CallServerErrorCallback();
 }
 
-TEST_F(HTTPRequestTest, ResponseData) {
+TEST_F(HttpRequestTest, ResponseData) {
   SetupConnectComplete();
   const string response0("hello");
   ExpectReadEventCallback(response0);
@@ -500,7 +500,7 @@ TEST_F(HTTPRequestTest, ResponseData) {
   ExpectReset();
 }
 
-TEST_F(HTTPRequestTest, ResponseBadData) {
+TEST_F(HttpRequestTest, ResponseBadData) {
   // Test that ReadFromServer works with corrupt input / length
   SetupConnectComplete();
   const string response2("test no crash");
@@ -509,17 +509,17 @@ TEST_F(HTTPRequestTest, ResponseBadData) {
   vector<unsigned char> data_writable(ptr, ptr + response2.length());
   // Deliberately use negative size
   InputData server_data(data_writable.data(), 0 - data_writable.size());
-  ExpectResultCallback(HTTPRequest::kResultResponseFailure);
+  ExpectResultCallback(HttpRequest::kResultResponseFailure);
   ExpectStop();
   ReadFromServerBadData(&server_data);
 }
 
-TEST_F(HTTPRequestTest, ResponseBrokenConnection) {
+TEST_F(HttpRequestTest, ResponseBrokenConnection) {
   SetupConnectComplete();
   ByteString request_data = GetRequestData();
   EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(WithoutArgs(Invoke(BreakConnection)));
-  ExpectResultCallback(HTTPRequest::kResultRequestFailure);
+  ExpectResultCallback(HttpRequest::kResultRequestFailure);
   ExpectStop();
   WriteToServer(kServerFD);
 }
