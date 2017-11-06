@@ -1059,6 +1059,12 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			duration of a connection attempt and will never persist
 			this to a stored profile.
 
+		string OpenVPN.TLSVersionMin [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies the minimum
+			TLS version to be used. The current value of this property
+			is readable in the "Provider" property of this service.
+
 		string OpenVPN.User [writeonly]
 
 			(VPN services of type OpenVPN only) Specifies

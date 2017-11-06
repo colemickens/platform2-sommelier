@@ -723,11 +723,13 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kID[] = "TestPKCS11ID";
   static const char kKU0[] = "00";
   static const char kKU1[] = "01";
+  static const char kTLSVersionMin[] = "1.2";
   FilePath empty_cert;
   SetArg(kProviderHostProperty, kHost);
   SetArg(kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
   SetArg(kOpenVPNClientCertIdProperty, kID);
   SetArg(kOpenVPNRemoteCertKUProperty, string(kKU0) + " " + string(kKU1));
+  SetArg(kOpenVPNTLSVersionMinProperty, kTLSVersionMin);
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
@@ -754,6 +756,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, "syslog");
   ExpectNotInFlags(options, "auth-user-pass");
   ExpectInFlags(options, vector<string> { "remote-cert-ku", kKU0, kKU1 });
+  ExpectInFlags(options, "tls-version-min", kTLSVersionMin);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {

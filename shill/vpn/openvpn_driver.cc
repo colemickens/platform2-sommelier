@@ -127,6 +127,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNStaticChallengeProperty, 0 },
   { kOpenVPNTLSAuthContentsProperty, 0 },
   { kOpenVPNTLSRemoteProperty, 0 },
+  { kOpenVPNTLSVersionMinProperty, 0 },
   { kOpenVPNTokenProperty,
     Property::kEphemeral | Property::kCredential | Property::kWriteOnly },
   { kOpenVPNUserProperty, 0 },
@@ -639,6 +640,12 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
       }
       AppendOption("tls-auth", tls_auth_file_.value(), options);
     }
+  }
+
+  if (args()->ContainsString(kOpenVPNTLSVersionMinProperty)) {
+    AppendOption("tls-version-min",
+                 args()->GetString(kOpenVPNTLSVersionMinProperty),
+                 options);
   }
 
   string tls_remote = args()->LookupString(kOpenVPNTLSRemoteProperty, "");
