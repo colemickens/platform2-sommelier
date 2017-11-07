@@ -42,7 +42,7 @@
 			topology-name = "2mic";
 			volume = "cras-config/${cras-config-dir}/${card}";
 			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-			hifi-conf = "ucm-config/2mic/HiFi.conf";
+			hifi-conf = "ucm-config/2mic/Wibble";
 			alsa-conf = "ucm-config/2mic/${card}.conf";
 		};
 	};

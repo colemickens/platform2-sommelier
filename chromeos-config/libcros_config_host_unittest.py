@@ -248,8 +248,8 @@ class CrosConfigHostTest(unittest.TestCase):
          BaseFile('ucm-config/1mic/bxtda7219max.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
                   '.conf'),
-         BaseFile('ucm-config/2mic/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.2mic/HiFi.conf'),
+         BaseFile('ucm-config/2mic/Wibble',
+                  '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
          BaseFile('ucm-config/2mic/bxtda7219max.conf',
                   '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
                   '.conf'),
