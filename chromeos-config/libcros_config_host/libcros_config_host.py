@@ -666,7 +666,10 @@ class CrosConfig(object):
           props = self.GetMergedProperties(card, 'audio-type')
           self.SetupModelProps(props)
 
-          cras_dir = props['cras-config-dir']
+          cras_dir = props.get('cras-config-dir')
+          if not cras_dir:
+            raise ValueError(("node '%s': Should have a cras-config-dir") %
+                             (card._fdt_node.path))
           _AddAudioFile('volume', '${card}', cras_dir)
           _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
