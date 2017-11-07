@@ -25,11 +25,6 @@
 
 #include "shill/net/io_handler_factory_container.h"
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
-
-
 namespace shill {
 
 // This is the main event dispatcher.  It contains a central instance, and is

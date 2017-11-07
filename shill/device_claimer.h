@@ -28,7 +28,6 @@
 
 namespace shill {
 
-class ControlInterface;
 class DeviceInfo;
 
 // Provide an abstraction for remote service to claim/release devices

@@ -41,16 +41,11 @@
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 
-namespace chromeos_metrics {
-class Timer;
-}
-
 namespace shill {
 
 class ControlInterface;
 class DhcpProperties;
 class DiagnosticsReporter;
-class Endpoint;
 class Error;
 class EventDispatcher;
 class KeyValueStore;

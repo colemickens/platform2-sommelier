@@ -32,8 +32,6 @@
 
 namespace shill {
 
-class ByteString;
-class PortalDetector;
 class Time;
 
 // The PortalDetector class implements the portal detection

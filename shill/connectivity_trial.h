@@ -36,7 +36,6 @@ namespace shill {
 
 class ByteString;
 class EventDispatcher;
-class Time;
 
 // The ConnectivityTrial class implements a single portal detection
 // trial.  Each trial checks if a connection has "general internet

@@ -28,10 +28,7 @@
 namespace shill {
 
 class ControlInterface;
-class DeviceAdaptorInterface;
 class EventDispatcher;
-class Endpoint;
-class DeviceInfo;
 class Manager;
 class Metrics;
 

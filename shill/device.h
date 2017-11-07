@@ -49,7 +49,6 @@ namespace shill {
 class ControlInterface;
 class DHCPProvider;
 class DeviceAdaptorInterface;
-class Endpoint;
 class Error;
 class EventDispatcher;
 class GeolocationInfo;

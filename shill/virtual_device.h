@@ -28,8 +28,6 @@
 
 namespace shill {
 
-class StorageInterface;
-
 // A VirtualDevice represents a device that doesn't provide its own
 // physical layer. This includes, e.g., tunnel interfaces used for
 // OpenVPN, and PPP devices used for L2TPIPSec and 3G PPP dongles.

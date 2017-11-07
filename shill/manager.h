@@ -59,7 +59,6 @@ class EventDispatcher;
 class IPAddressStore;
 class ManagerAdaptorInterface;
 class Resolver;
-class StoreInterface;
 class VPNProvider;
 class Throttler;
 

@@ -26,8 +26,6 @@
 
 namespace shill {
 
-class Error;
-
 // These are the functions that a Device adaptor must support
 class DeviceAdaptorInterface {
  public:

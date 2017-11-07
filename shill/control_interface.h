@@ -47,7 +47,6 @@ class DBusPropertiesProxyInterface;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
-class FirewallProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemGSMCardProxyInterface;
 class ModemGSMNetworkProxyInterface;
@@ -85,8 +84,6 @@ class ModemSimpleProxyInterface;
 class SimProxyInterface;
 
 }  // namespace mm1
-
-class RPCServiceWatcherInterface;
 
 // This is the Interface for an object factory that creates adaptor/proxy
 // objects

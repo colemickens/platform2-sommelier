@@ -28,7 +28,6 @@ namespace shill {
 
 class ControlInterface;
 class Manager;
-class StoreInterface;
 
 // An in-memory profile that is not persisted to disk, but allows the
 // promotion of entries contained herein to the currently active profile.

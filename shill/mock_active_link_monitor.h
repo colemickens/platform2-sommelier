@@ -24,8 +24,6 @@
 
 namespace shill {
 
-class Connection;
-
 class MockActiveLinkMonitor : public ActiveLinkMonitor {
  public:
   MockActiveLinkMonitor();
