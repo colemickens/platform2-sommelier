@@ -376,13 +376,13 @@ void CameraClient::StreamOnCallback(scoped_refptr<internal::Future<int>> future,
   if (!result && out_num_buffers) {
     *out_num_buffers = num_buffers;
   }
-  future->Set(std::move(result));
+  future->Set(result);
 }
 
 void CameraClient::StreamOffCallback(
     scoped_refptr<internal::Future<int>> future,
     int result) {
-  future->Set(std::move(result));
+  future->Set(result);
 }
 
 CameraClient::RequestHandler::RequestHandler(

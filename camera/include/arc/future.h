@@ -71,6 +71,13 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
     lock_.Signal();
   }
 
+  /* Sets the value and then wake up the waiter. */
+  void Set(T value) {
+    VLOGF_ENTER();
+    value_ = value;
+    lock_.Signal();
+  }
+
   /* Default timeout is set to 5 seconds.  Setting the timeout to a value less
    * than or equal to 0 will wait indefinitely until the value is set.
    */
@@ -128,7 +135,7 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
 
 template <typename T>
 void FutureCallback(scoped_refptr<Future<T>> future, T ret) {
-  future->Set(std::move(ret));
+  future->Set(ret);
 }
 
 template <typename T>

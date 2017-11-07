@@ -41,6 +41,10 @@ libcab_test: common/libcab_test
 
 .PHONY: libcab_test
 
+libcamera_common: common/libcamera_common
+
+.PHONY: libcamera_common
+
 libcamera_exif: common/libcamera_exif
 
 .PHONY: libcamera_exif
