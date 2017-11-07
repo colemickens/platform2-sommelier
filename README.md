@@ -56,6 +56,7 @@ copies.
 | [imageloader](./imageloader/) | Daemon for mounting signed disk images |
 | [init](./init/) | CrOS common startup init scripts and boot time helpers |
 | [installer](./installer/) | CrOS installer utility (for AU/recovery/etc...) |
+| [ippusb_manager](./ippusb_manager/) | "Service" for ipp-over-usb printing |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |

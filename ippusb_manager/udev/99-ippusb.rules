@@ -1,0 +1,5 @@
+# Identify an ipp-over-usb printer and set the group permissions so that it can
+# be accessed by libusb without having to run as root.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", \
+  ENV{ID_USB_INTERFACES}=="*:070104:*", OWNER="root", GROUP="ippusb", \
+  MODE="0660"
