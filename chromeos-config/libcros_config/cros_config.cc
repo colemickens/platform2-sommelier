@@ -94,13 +94,14 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   if (whitelabel_offset_ != -1) {
     wl_subnode = GetPathOffset(whitelabel_offset_, path);
     if (subnode < 0 && wl_subnode >= 0) {
-      LOG(INFO) << "The path " << path << " does not exist. Falling back to "
-                << "whitelabel path";
+      LOG(INFO) << "The path " << GetFullPath(base_offset) << path
+                << " does not exist. Falling back to whitelabel path";
       subnode = wl_subnode;
     }
   }
   if (subnode < 0) {
-    LOG(ERROR) << "The path " << path << " does not exist.";
+    LOG(ERROR) << "The path " << GetFullPath(base_offset) << path
+               << " does not exist.";
     return false;
   }
 
