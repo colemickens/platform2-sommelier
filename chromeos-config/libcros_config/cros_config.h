@@ -90,14 +90,15 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool GetString(int base_offset, const std::string& path,
                  const std::string& prop, std::string* val_out);
 
-  // Look up a phandle in the model node.
-  // Looks up a phandle with the given property name in the model node for the
-  // current model.
+  // Look up a phandle in a node.
+  // Looks up a phandle with the given property name in the given node.
+  // @node_offset: Offset of node to look in.
   // @prop_name: Name of property to look up.
   // @offset_out: Returns the offset of the node the phandle points to, if
   // found.
   // @return true if found, false if not.
-  bool LookupPhandle(const std::string &prop_name, int *offset_out);
+  bool LookupPhandle(int node_offset, const std::string &prop_name,
+                     int *offset_out);
 
   // Select the model / submodel to use
   // Looks up the given name and sku_id in the mapping table and sets the

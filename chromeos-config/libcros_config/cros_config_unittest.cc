@@ -154,7 +154,8 @@ TEST_F(CrosConfigTest, CheckSubmodel) {
   InitConfig("Reef", 5);
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("no", val);
-  ASSERT_FALSE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_EQ("2mic", val);
 }
 
 int main(int argc, char **argv) {

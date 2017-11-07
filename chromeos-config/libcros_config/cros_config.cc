@@ -114,6 +114,22 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
     LOG(INFO) << "The property " << prop << " does not exist. Falling back to "
               << "whitelabel property";
   }
+  // We would prefer to do this lookup on the host where the full schema info
+  // is available. But at present this is not implemented. We want this for
+  // audio, so add a check there.
+  // Perhaps we can resolve this as part of crbug.com/761284
+  if (!ptr) {
+    int target_node;
+    LookupPhandle(subnode, "audio-type", &target_node);
+    if (target_node >= 0) {
+      ptr = static_cast<const char*>(
+        fdt_getprop(blob, target_node, prop.c_str(), &len));
+      if (ptr) {
+        LOG(INFO) << "Followed audio-type phandle";
+      }
+    }
+  }
+
   if (!ptr || len < 0) {
     LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
                  << "full path " << GetFullPath(subnode) << ": "
@@ -196,11 +212,12 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::LookupPhandle(const std::string &prop_name, int *offset_out) {
+bool CrosConfig::LookupPhandle(int node_offset, const std::string &prop_name,
+                               int *offset_out) {
   const void* blob = blob_.c_str();
   int len;
   const fdt32_t* ptr = static_cast<const fdt32_t*>(
-      fdt_getprop(blob, model_offset_, prop_name.c_str(), &len));
+      fdt_getprop(blob, node_offset, prop_name.c_str(), &len));
 
   // We probably don't need all these checks since validation will ensure that
   // the config is correct. But this is a critical tool and we want to avoid
@@ -294,8 +311,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(target_dirs_offset);
   }
   // See if there is a whitelabel config for this model.
-  LookupPhandle("whitelabel", &whitelabel_offset_);
-  LookupPhandle("default", &default_offset_);
+  LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
+  LookupPhandle(model_offset_, "default", &default_offset_);
 
   LOG(INFO) << "Using master configuration for model " << model_name_
             << ", submodel "
