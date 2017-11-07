@@ -35,5 +35,5 @@ PARAMS="
   customization
 "
 for param in ${PARAMS}; do
-  echo "${param}: $(mosys -l platform "${param}")"
+  mosys -l platform "${param}"
 done > "${PLATFORM_INFO_FILE}"
