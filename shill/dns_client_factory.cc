@@ -25,26 +25,26 @@ namespace shill {
 
 namespace {
 
-base::LazyInstance<DNSClientFactory> g_dns_client_factory
+base::LazyInstance<DnsClientFactory> g_dns_client_factory
     = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 
-DNSClientFactory::DNSClientFactory() {}
-DNSClientFactory::~DNSClientFactory() {}
+DnsClientFactory::DnsClientFactory() {}
+DnsClientFactory::~DnsClientFactory() {}
 
-DNSClientFactory* DNSClientFactory::GetInstance() {
+DnsClientFactory* DnsClientFactory::GetInstance() {
   return g_dns_client_factory.Pointer();
 }
 
-std::unique_ptr<DNSClient> DNSClientFactory::CreateDNSClient(
+std::unique_ptr<DnsClient> DnsClientFactory::CreateDnsClient(
     IPAddress::Family family,
     const string& interface_name,
     const vector<string>& dns_servers,
     int timeout_ms,
     EventDispatcher* dispatcher,
-    const DNSClient::ClientCallback& callback) {
-  return std::make_unique<DNSClient>(family,
+    const DnsClient::ClientCallback& callback) {
+  return std::make_unique<DnsClient>(family,
                                      interface_name,
                                      dns_servers,
                                      timeout_ms,

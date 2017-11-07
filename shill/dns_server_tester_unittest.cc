@@ -126,7 +126,7 @@ TEST_F(DnsServerTesterTest, StartAttempt) {
 
 TEST_F(DnsServerTesterTest, StartAttemptTask) {
   // Setup mock DNS test client.
-  MockDNSClient* dns_test_client = new MockDNSClient();
+  MockDnsClient* dns_test_client = new MockDnsClient();
   dns_server_tester()->dns_test_client_.reset(dns_test_client);
 
   // DNS test task started successfully.
@@ -171,7 +171,7 @@ TEST_F(DnsServerTesterTest, AttemptCompleted) {
 
 TEST_F(DnsServerTesterTest, StopAttempt) {
   // Setup mock DNS test client.
-  MockDNSClient* dns_test_client = new MockDNSClient();
+  MockDnsClient* dns_test_client = new MockDnsClient();
   dns_server_tester()->dns_test_client_.reset(dns_test_client);
 
   // DNS test task started successfully.

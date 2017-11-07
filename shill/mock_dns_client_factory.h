@@ -30,29 +30,29 @@
 
 namespace shill {
 
-class MockDNSClientFactory : public DNSClientFactory {
+class MockDnsClientFactory : public DnsClientFactory {
  public:
-  ~MockDNSClientFactory() override;
+  ~MockDnsClientFactory() override;
 
-  // This is a singleton. Use MockDNSClientFactory::GetInstance()->Foo().
-  static MockDNSClientFactory* GetInstance();
+  // This is a singleton. Use MockDnsClientFactory::GetInstance()->Foo().
+  static MockDnsClientFactory* GetInstance();
 
   MOCK_METHOD6(
-      CreateDNSClient,
-      std::unique_ptr<DNSClient>(IPAddress::Family family,
+      CreateDnsClient,
+      std::unique_ptr<DnsClient>(IPAddress::Family family,
                                  const std::string& interface_name,
                                  const std::vector<std::string>& dns_servers,
                                  int timeout_ms,
                                  EventDispatcher* dispatcher,
-                                 const DNSClient::ClientCallback& callback));
+                                 const DnsClient::ClientCallback& callback));
 
  protected:
-  MockDNSClientFactory();
+  MockDnsClientFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockDNSClientFactory>;
+  friend struct base::DefaultLazyInstanceTraits<MockDnsClientFactory>;
 
-  DISALLOW_COPY_AND_ASSIGN(MockDNSClientFactory);
+  DISALLOW_COPY_AND_ASSIGN(MockDnsClientFactory);
 };
 
 }  // namespace shill

@@ -105,7 +105,7 @@ ConnectionHealthChecker::ConnectionHealthChecker(
                weak_ptr_factory_.GetWeakPtr())),
       sock_fd_(kInvalidSocket),
       socket_info_reader_(new SocketInfoReader()),
-      dns_client_factory_(DNSClientFactory::GetInstance()),
+      dns_client_factory_(DnsClientFactory::GetInstance()),
       health_check_in_progress_(false),
       num_connection_failures_(0),
       num_congested_queue_detected_(0),
@@ -131,7 +131,7 @@ void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
 }
 
 void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
-  GarbageCollectDNSClients();
+  GarbageCollectDnsClients();
 
   HttpUrl url;
   if (!url.ParseFromString(url_string)) {
@@ -152,7 +152,7 @@ void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
            weak_ptr_factory_.GetWeakPtr());
   for (int i = 0; i < kNumDNSQueries; ++i) {
     Error error;
-    std::unique_ptr<DNSClient> dns_client(dns_client_factory_->CreateDNSClient(
+    std::unique_ptr<DnsClient> dns_client(dns_client_factory_->CreateDnsClient(
         IPAddress::kFamilyIPv4, connection_->interface_name(),
         connection_->dns_servers(), kDNSTimeoutMilliseconds, dispatcher_,
         dns_client_callback));
@@ -239,17 +239,17 @@ const char* ConnectionHealthChecker::ResultToString(
 void ConnectionHealthChecker::GetDNSResult(const Error& error,
                                            const IPAddress& ip) {
   if (!error.IsSuccess()) {
-    SLOG(connection_.get(), 2) << __func__ << "DNSClient returned failure: "
+    SLOG(connection_.get(), 2) << __func__ << "DnsClient returned failure: "
                                << error.message();
     return;
   }
   remote_ips_->AddUnique(ip);
 }
 
-void ConnectionHealthChecker::GarbageCollectDNSClients() {
+void ConnectionHealthChecker::GarbageCollectDnsClients() {
   dns_clients_.erase(
       std::remove_if(dns_clients_.begin(), dns_clients_.end(),
-                     [](const std::unique_ptr<DNSClient>& dns_client) {
+                     [](const std::unique_ptr<DnsClient>& dns_client) {
                        return !dns_client->IsActive();
                      }),
       dns_clients_.end());

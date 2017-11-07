@@ -34,8 +34,8 @@
 namespace shill {
 
 class AsyncConnection;
-class DNSClient;
-class DNSClientFactory;
+class DnsClient;
+class DnsClientFactory;
 class Error;
 class EventDispatcher;
 class IPAddress;
@@ -139,7 +139,7 @@ class ConnectionHealthChecker {
 
  private:
   friend class ConnectionHealthCheckerTest;
-  FRIEND_TEST(ConnectionHealthCheckerTest, GarbageCollectDNSClients);
+  FRIEND_TEST(ConnectionHealthCheckerTest, GarbageCollectDnsClients);
   FRIEND_TEST(ConnectionHealthCheckerTest, GetSocketInfo);
   FRIEND_TEST(ConnectionHealthCheckerTest, NextHealthCheckSample);
   FRIEND_TEST(ConnectionHealthCheckerTest, OnConnectionComplete);
@@ -170,9 +170,9 @@ class ConnectionHealthChecker {
   // request is made on the device.
   static const int kTCPStateUpdateWaitMilliseconds;
 
-  // Callback for DNSClient
+  // Callback for DnsClient
   void GetDNSResult(const Error& error, const IPAddress& ip);
-  void GarbageCollectDNSClients();
+  void GarbageCollectDnsClients();
 
   // Start a new AsyncConnection with callback set to OnConnectionComplete().
   void NextHealthCheckSample();
@@ -209,8 +209,8 @@ class ConnectionHealthChecker {
   // Interface to read TCP connection information from the system.
   std::unique_ptr<SocketInfoReader> socket_info_reader_;
 
-  DNSClientFactory* dns_client_factory_;
-  std::vector<std::unique_ptr<DNSClient>> dns_clients_;
+  DnsClientFactory* dns_client_factory_;
+  std::vector<std::unique_ptr<DnsClient>> dns_clients_;
 
   // Store the old value of the transmit queue to verify that data sent on the
   // connection is actually transmitted.

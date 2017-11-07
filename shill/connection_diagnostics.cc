@@ -162,7 +162,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       rtnl_handler_(RTNLHandler::GetInstance()),
       connection_(connection),
       device_info_(device_info),
-      dns_client_factory_(DNSClientFactory::GetInstance()),
+      dns_client_factory_(DnsClientFactory::GetInstance()),
       portal_detector_(new PortalDetector(
           connection_, dispatcher_,
           Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
@@ -353,7 +353,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   SLOG(this, 3) << __func__;
 
   Error e;
-  dns_client_ = dns_client_factory_->CreateDNSClient(
+  dns_client_ = dns_client_factory_->CreateDnsClient(
       connection_->IsIPv6() ? IPAddress::kFamilyIPv6 : IPAddress::kFamilyIPv4,
       connection_->interface_name(), dns_servers, kDNSTimeoutSeconds * 1000,
       dispatcher_, Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,

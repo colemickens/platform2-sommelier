@@ -37,10 +37,10 @@ namespace shill {
 
 class Ares;
 class Time;
-struct DNSClientState;
+struct DnsClientState;
 
 // Implements a DNS resolution client that can run asynchronously.
-class DNSClient {
+class DnsClient {
  public:
   using ClientCallback = base::Callback<void(const Error&, const IPAddress&)>;
 
@@ -55,13 +55,13 @@ class DNSClient {
   static const char kErrorTimedOut[];
   static const char kErrorUnknown[];
 
-  DNSClient(IPAddress::Family family,
+  DnsClient(IPAddress::Family family,
             const std::string& interface_name,
             const std::vector<std::string>& dns_servers,
             int timeout_ms,
             EventDispatcher* dispatcher,
             const ClientCallback& callback);
-  virtual ~DNSClient();
+  virtual ~DnsClient();
 
   // Returns true if the DNS client started successfully, false otherwise.
   // If successful, the callback will be called with the result of the
@@ -79,14 +79,14 @@ class DNSClient {
   std::string interface_name() { return interface_name_; }
 
  private:
-  friend class DNSClientTest;
+  friend class DnsClientTest;
 
   void HandleCompletion();
-  void HandleDNSRead(int fd);
-  void HandleDNSWrite(int fd);
+  void HandleDnsRead(int fd);
+  void HandleDnsWrite(int fd);
   void HandleTimeout();
-  void ReceiveDNSReply(int status, struct hostent* hostent);
-  static void ReceiveDNSReplyCB(void* arg, int status, int timeouts,
+  void ReceiveDnsReply(int status, struct hostent* hostent);
+  static void ReceiveDnsReplyCB(void* arg, int status, int timeouts,
                                 struct hostent* hostent);
   bool RefreshHandles();
 
@@ -98,13 +98,13 @@ class DNSClient {
   ClientCallback callback_;
   int timeout_ms_;
   bool running_;
-  std::unique_ptr<DNSClientState> resolver_state_;
+  std::unique_ptr<DnsClientState> resolver_state_;
   base::CancelableClosure timeout_closure_;
-  base::WeakPtrFactory<DNSClient> weak_ptr_factory_;
+  base::WeakPtrFactory<DnsClient> weak_ptr_factory_;
   Ares* ares_;
   Time* time_;
 
-  DISALLOW_COPY_AND_ASSIGN(DNSClient);
+  DISALLOW_COPY_AND_ASSIGN(DnsClient);
 };
 
 }  // namespace shill

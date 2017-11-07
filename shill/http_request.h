@@ -32,7 +32,7 @@
 namespace shill {
 
 class AsyncConnection;
-class DNSClient;
+class DnsClient;
 class Error;
 class EventDispatcher;
 class HttpUrl;
@@ -129,7 +129,7 @@ class HttpRequest {
   base::Callback<void(const ByteString&)> read_event_callback_;
   std::unique_ptr<IOHandler> read_server_handler_;
   std::unique_ptr<IOHandler> write_server_handler_;
-  std::unique_ptr<DNSClient> dns_client_;
+  std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<AsyncConnection> server_async_connection_;
   std::string server_hostname_;
   int server_port_;

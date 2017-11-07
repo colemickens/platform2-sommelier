@@ -32,7 +32,7 @@
 
 namespace shill {
 
-class DNSClient;
+class DnsClient;
 class Error;
 class EventDispatcher;
 
@@ -89,7 +89,7 @@ class DnsServerTester {
   base::WeakPtrFactory<DnsServerTester> weak_ptr_factory_;
   base::CancelableClosure start_attempt_;
   base::Callback<void(const Status)> dns_result_callback_;
-  std::unique_ptr<DNSClient> dns_test_client_;
+  std::unique_ptr<DnsClient> dns_test_client_;
 
   DISALLOW_COPY_AND_ASSIGN(DnsServerTester);
 };

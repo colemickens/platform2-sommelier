@@ -53,7 +53,7 @@ DnsServerTester::DnsServerTester(ConnectionRefPtr connection,
       retry_until_success_(retry_until_success),
       weak_ptr_factory_(this),
       dns_result_callback_(callback),
-      dns_test_client_(DNSClientFactory::GetInstance()->CreateDNSClient(
+      dns_test_client_(DnsClientFactory::GetInstance()->CreateDnsClient(
           IPAddress::kFamilyIPv4,
           connection_->interface_name(),
           dns_servers,

@@ -46,7 +46,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDNS;
-static string ObjectID(DNSClient* d) { return d->interface_name(); }
+static string ObjectID(DnsClient* d) { return d->interface_name(); }
 }
 
 namespace {
@@ -55,20 +55,20 @@ using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
 
 }  // namespace
 
-const char DNSClient::kErrorNoData[] = "The query response contains no answers";
-const char DNSClient::kErrorFormErr[] = "The server says the query is bad";
-const char DNSClient::kErrorServerFail[] = "The server says it had a failure";
-const char DNSClient::kErrorNotFound[] = "The queried-for domain was not found";
-const char DNSClient::kErrorNotImp[] = "The server doesn't implement operation";
-const char DNSClient::kErrorRefused[] = "The server replied, refused the query";
-const char DNSClient::kErrorBadQuery[] = "Locally we could not format a query";
-const char DNSClient::kErrorNetRefused[] = "The network connection was refused";
-const char DNSClient::kErrorTimedOut[] = "The network connection was timed out";
-const char DNSClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
+const char DnsClient::kErrorNoData[] = "The query response contains no answers";
+const char DnsClient::kErrorFormErr[] = "The server says the query is bad";
+const char DnsClient::kErrorServerFail[] = "The server says it had a failure";
+const char DnsClient::kErrorNotFound[] = "The queried-for domain was not found";
+const char DnsClient::kErrorNotImp[] = "The server doesn't implement operation";
+const char DnsClient::kErrorRefused[] = "The server replied, refused the query";
+const char DnsClient::kErrorBadQuery[] = "Locally we could not format a query";
+const char DnsClient::kErrorNetRefused[] = "The network connection was refused";
+const char DnsClient::kErrorTimedOut[] = "The network connection was timed out";
+const char DnsClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
 // Private to the implementation of resolver so callers don't include ares.h
-struct DNSClientState {
-  DNSClientState() : channel(nullptr), start_time{} {}
+struct DnsClientState {
+  DnsClientState() : channel(nullptr), start_time{} {}
 
   ares_channel channel;
   IOHandlerMap read_handlers;
@@ -76,7 +76,7 @@ struct DNSClientState {
   struct timeval start_time;
 };
 
-DNSClient::DNSClient(IPAddress::Family family,
+DnsClient::DnsClient(IPAddress::Family family,
                      const string& interface_name,
                      const vector<string>& dns_servers,
                      int timeout_ms,
@@ -93,11 +93,11 @@ DNSClient::DNSClient(IPAddress::Family family,
       ares_(Ares::GetInstance()),
       time_(Time::GetInstance()) {}
 
-DNSClient::~DNSClient() {
+DnsClient::~DnsClient() {
   Stop();
 }
 
-bool DNSClient::Start(const string& hostname, Error* error) {
+bool DnsClient::Start(const string& hostname, Error* error) {
   if (running_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Only one DNS request is allowed at a time");
@@ -115,7 +115,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       return false;
     }
 
-    resolver_state_ = std::make_unique<DNSClientState>();
+    resolver_state_ = std::make_unique<DnsClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel,
                                    &options,
                                    ARES_OPT_TIMEOUTMS);
@@ -158,7 +158,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
   running_ = true;
   time_->GetTimeMonotonic(&resolver_state_->start_time);
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
-                       address_.family(), ReceiveDNSReplyCB, this);
+                       address_.family(), ReceiveDnsReplyCB, this);
 
   if (!RefreshHandles()) {
     LOG(ERROR) << "Impossibly short timeout.";
@@ -170,7 +170,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
   return true;
 }
 
-void DNSClient::Stop() {
+void DnsClient::Stop() {
   SLOG(this, 3) << "In " << __func__;
   if (!resolver_state_) {
     return;
@@ -184,7 +184,7 @@ void DNSClient::Stop() {
   resolver_state_ = nullptr;
 }
 
-bool DNSClient::IsActive() const {
+bool DnsClient::IsActive() const {
   return running_;
 }
 
@@ -192,7 +192,7 @@ bool DNSClient::IsActive() const {
 // can clean up all of our local state before calling the callback, or
 // during the process of the execution of the callee (which is free to
 // call our destructor safely).
-void DNSClient::HandleCompletion() {
+void DnsClient::HandleCompletion() {
   SLOG(this, 3) << "In " << __func__;
   Error error;
   error.CopyFrom(error_);
@@ -210,22 +210,22 @@ void DNSClient::HandleCompletion() {
   callback_.Run(error, address);
 }
 
-void DNSClient::HandleDNSRead(int fd) {
+void DnsClient::HandleDnsRead(int fd) {
   ares_->ProcessFd(resolver_state_->channel, fd, ARES_SOCKET_BAD);
   RefreshHandles();
 }
 
-void DNSClient::HandleDNSWrite(int fd) {
+void DnsClient::HandleDnsWrite(int fd) {
   ares_->ProcessFd(resolver_state_->channel, ARES_SOCKET_BAD, fd);
   RefreshHandles();
 }
 
-void DNSClient::HandleTimeout() {
+void DnsClient::HandleTimeout() {
   ares_->ProcessFd(resolver_state_->channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
   RefreshHandles();
 }
 
-void DNSClient::ReceiveDNSReply(int status, struct hostent* hostent) {
+void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
   if (!running_) {
     // We can be called during ARES shutdown -- ignore these events.
     return;
@@ -233,7 +233,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent* hostent) {
   SLOG(this, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
-  dispatcher_->PostTask(FROM_HERE, Bind(&DNSClient::HandleCompletion,
+  dispatcher_->PostTask(FROM_HERE, Bind(&DnsClient::HandleCompletion,
                              weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS &&
@@ -290,14 +290,14 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent* hostent) {
   }
 }
 
-void DNSClient::ReceiveDNSReplyCB(void* arg, int status,
+void DnsClient::ReceiveDnsReplyCB(void* arg, int status,
                                   int /*timeouts*/,
                                   struct hostent* hostent) {
-  DNSClient* res = static_cast<DNSClient*>(arg);
-  res->ReceiveDNSReply(status, hostent);
+  DnsClient* res = static_cast<DnsClient*>(arg);
+  res->ReceiveDnsReply(status, hostent);
 }
 
-bool DNSClient::RefreshHandles() {
+bool DnsClient::RefreshHandles() {
   IOHandlerMap old_read(std::move(resolver_state_->read_handlers));
   IOHandlerMap old_write(std::move(resolver_state_->write_handlers));
 
@@ -306,9 +306,9 @@ bool DNSClient::RefreshHandles() {
                                    ARES_GETSOCK_MAXNUM);
 
   base::Callback<void(int)> read_callback(
-      Bind(&DNSClient::HandleDNSRead, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
   base::Callback<void(int)> write_callback(
-      Bind(&DNSClient::HandleDNSWrite, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       if (ContainsKey(old_read, sockets[i])) {
@@ -360,7 +360,7 @@ bool DNSClient::RefreshHandles() {
     //    in the posted task.
     running_ = false;
     error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
-    dispatcher_->PostTask(FROM_HERE, Bind(&DNSClient::HandleCompletion,
+    dispatcher_->PostTask(FROM_HERE, Bind(&DnsClient::HandleCompletion,
                                weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
@@ -369,7 +369,7 @@ bool DNSClient::RefreshHandles() {
     struct timeval* tv = ares_->Timeout(resolver_state_->channel,
                                         &max, &ret_tv);
     timeout_closure_.Reset(
-        Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
+        Bind(&DnsClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
     dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
                                  tv->tv_sec * 1000 + tv->tv_usec / 1000);
   }

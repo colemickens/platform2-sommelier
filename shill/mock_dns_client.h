@@ -26,17 +26,17 @@
 
 namespace shill {
 
-class MockDNSClient : public DNSClient {
+class MockDnsClient : public DnsClient {
  public:
-  MockDNSClient();
-  ~MockDNSClient() override;
+  MockDnsClient();
+  ~MockDnsClient() override;
 
   MOCK_METHOD2(Start, bool(const std::string& hostname, Error* error));
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsActive, bool());
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockDNSClient);
+  DISALLOW_COPY_AND_ASSIGN(MockDnsClient);
 };
 
 }  // namespace shill

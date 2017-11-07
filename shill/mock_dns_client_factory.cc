@@ -19,14 +19,14 @@
 namespace shill {
 
 namespace {
-base::LazyInstance<MockDNSClientFactory> g_mock_dns_client_factory
+base::LazyInstance<MockDnsClientFactory> g_mock_dns_client_factory
     = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-MockDNSClientFactory::MockDNSClientFactory() {}
-MockDNSClientFactory::~MockDNSClientFactory() {}
+MockDnsClientFactory::MockDnsClientFactory() {}
+MockDnsClientFactory::~MockDnsClientFactory() {}
 
-MockDNSClientFactory* MockDNSClientFactory::GetInstance() {
+MockDnsClientFactory* MockDnsClientFactory::GetInstance() {
   return g_mock_dns_client_factory.Pointer();
 }
 

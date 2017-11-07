@@ -34,8 +34,8 @@ namespace shill {
 class ArpClient;
 class ByteString;
 class DeviceInfo;
-class DNSClient;
-class DNSClientFactory;
+class DnsClient;
+class DnsClientFactory;
 class Error;
 class EventDispatcher;
 class HttpUrl;
@@ -343,8 +343,8 @@ class ConnectionDiagnostics {
   // The MAC address of device associated with |connection_|.
   ByteString local_mac_address_;
 
-  DNSClientFactory* dns_client_factory_;
-  std::unique_ptr<DNSClient> dns_client_;
+  DnsClientFactory* dns_client_factory_;
+  std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<ArpClient> arp_client_;
   std::unique_ptr<IcmpSession> icmp_session_;

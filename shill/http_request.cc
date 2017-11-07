@@ -70,7 +70,7 @@ HttpRequest::HttpRequest(ConnectionRefPtr connection,
       write_server_callback_(Bind(&HttpRequest::WriteToServer,
                                   weak_ptr_factory_.GetWeakPtr())),
       dns_client_(
-          new DNSClient(connection->IsIPv6() ? IPAddress::kFamilyIPv6
+          new DnsClient(connection->IsIPv6() ? IPAddress::kFamilyIPv6
                                              : IPAddress::kFamilyIPv4,
                         connection->interface_name(),
                         connection->dns_servers(),
@@ -181,7 +181,7 @@ bool HttpRequest::ConnectServer(const IPAddress& address, int port) {
   return true;
 }
 
-// DNSClient callback that fires when the DNS request completes.
+// DnsClient callback that fires when the DNS request completes.
 void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!error.IsSuccess()) {
@@ -189,7 +189,7 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
                << server_hostname_
                << ": "
                << error.message();
-    if (error.message() == DNSClient::kErrorTimedOut) {
+    if (error.message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {
       SendStatus(kResultDNSFailure);

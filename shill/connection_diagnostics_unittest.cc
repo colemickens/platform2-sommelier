@@ -188,7 +188,7 @@ class ConnectionDiagnosticsTest : public Test {
     ON_CALL(*connection_.get(), local())
         .WillByDefault(ReturnRef(local_ip_address_));
     connection_diagnostics_.dns_client_factory_ =
-        MockDNSClientFactory::GetInstance();
+        MockDnsClientFactory::GetInstance();
     connection_diagnostics_.icmp_session_factory_ =
         MockIcmpSessionFactory::GetInstance();
   }
@@ -371,15 +371,15 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kResultSuccess);
     ASSERT_FALSE(family == IPAddress::kFamilyUnknown);
 
-    auto dns_client = std::make_unique<NiceMock<MockDNSClient>>();
+    auto dns_client = std::make_unique<NiceMock<MockDnsClient>>();
     EXPECT_CALL(*dns_client,
                 Start(connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
     EXPECT_CALL(*connection_.get(), IsIPv6())
         .WillOnce(Return(family == IPAddress::kFamilyIPv6));
     EXPECT_CALL(
-        *MockDNSClientFactory::GetInstance(),
-        CreateDNSClient(family, kInterfaceName, dns_servers_,
+        *MockDnsClientFactory::GetInstance(),
+        CreateDnsClient(family, kInterfaceName, dns_servers_,
                         ConnectionDiagnostics::kDNSTimeoutSeconds * 1000,
                         &dispatcher_, _))
         .WillOnce(Return(ByMove(std::move(dns_client))));

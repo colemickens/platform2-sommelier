@@ -93,7 +93,7 @@ class HttpRequestTest : public Test {
       : interface_name_(kInterfaceName),
         server_async_connection_(new StrictMock<MockAsyncConnection>()),
         dns_servers_(kDNSServers, kDNSServers + 2),
-        dns_client_(new StrictMock<MockDNSClient>()),
+        dns_client_(new StrictMock<MockDnsClient>()),
         device_info_(
             new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())) {}
@@ -341,7 +341,7 @@ class HttpRequestTest : public Test {
   StrictMock<MockAsyncConnection>* server_async_connection_;
   vector<string> dns_servers_;
   // Owned by the HttpRequest, but tracked here for EXPECT().
-  StrictMock<MockDNSClient>* dns_client_;
+  StrictMock<MockDnsClient>* dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
   std::unique_ptr<MockDeviceInfo> device_info_;
@@ -406,7 +406,7 @@ TEST_F(HttpRequestTest, FailDNSFailure) {
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
   ExpectResultCallback(HttpRequest::kResultDNSFailure);
   ExpectStop();
-  GetDNSResultFailure(DNSClient::kErrorNoData);
+  GetDNSResultFailure(DnsClient::kErrorNoData);
   ExpectReset();
 }
 
@@ -416,7 +416,7 @@ TEST_F(HttpRequestTest, FailDNSTimeout) {
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
   ExpectResultCallback(HttpRequest::kResultDNSTimeout);
   ExpectStop();
-  const string error(DNSClient::kErrorTimedOut);
+  const string error(DnsClient::kErrorTimedOut);
   GetDNSResultFailure(error);
   ExpectReset();
 }

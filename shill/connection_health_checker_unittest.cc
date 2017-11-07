@@ -149,7 +149,7 @@ class ConnectionHealthCheckerTest : public Test {
     health_checker_->socket_.reset(socket_);
     health_checker_->tcp_connection_.reset(tcp_connection_);
     health_checker_->socket_info_reader_.reset(socket_info_reader_);
-    health_checker_->dns_client_factory_ = MockDNSClientFactory::GetInstance();
+    health_checker_->dns_client_factory_ = MockDnsClientFactory::GetInstance();
   }
 
   void TearDown() {
@@ -163,7 +163,7 @@ class ConnectionHealthCheckerTest : public Test {
   const AsyncConnection* tcp_connection() {
     return health_checker_->tcp_connection_.get();
   }
-  std::vector<std::unique_ptr<DNSClient>>& dns_clients() {
+  std::vector<std::unique_ptr<DnsClient>>& dns_clients() {
     return health_checker_->dns_clients_;
   }
   int NumDNSQueries() {
@@ -353,13 +353,13 @@ TEST_F(ConnectionHealthCheckerTest, SetConnection) {
   tcp_connection_ = nullptr;
 }
 
-TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
+TEST_F(ConnectionHealthCheckerTest, GarbageCollectDnsClients) {
   dns_clients().clear();
-  health_checker_->GarbageCollectDNSClients();
+  health_checker_->GarbageCollectDnsClients();
   EXPECT_TRUE(dns_clients().empty());
 
   for (int i = 0; i < 3; ++i) {
-    auto dns_client = std::make_unique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDnsClient>();
     EXPECT_CALL(*dns_client, IsActive())
         .WillOnce(Return(true))
         .WillOnce(Return(true))
@@ -367,17 +367,17 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
     dns_clients().push_back(std::move(dns_client));
   }
   for (int i = 0; i < 2; ++i) {
-    auto dns_client = std::make_unique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDnsClient>();
     EXPECT_CALL(*dns_client, IsActive()).WillOnce(Return(false));
     dns_clients().push_back(std::move(dns_client));
   }
 
   EXPECT_EQ(5, dns_clients().size());
-  health_checker_->GarbageCollectDNSClients();
+  health_checker_->GarbageCollectDnsClients();
   EXPECT_EQ(3, dns_clients().size());
-  health_checker_->GarbageCollectDNSClients();
+  health_checker_->GarbageCollectDnsClients();
   EXPECT_EQ(3, dns_clients().size());
-  health_checker_->GarbageCollectDNSClients();
+  health_checker_->GarbageCollectDnsClients();
   EXPECT_TRUE(dns_clients().empty());
 }
 
@@ -388,19 +388,19 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
   IPAddress remote_ip = StringToIPv4Address(kProxyIPAddressRemote);
   IPAddress remote_ip_2 = StringToIPv4Address(kIPAddress_8_8_8_8);
 
-  MockDNSClientFactory* dns_client_factory =
-      MockDNSClientFactory::GetInstance();
-  vector<std::unique_ptr<MockDNSClient>> dns_client_buffer;
+  MockDnsClientFactory* dns_client_factory =
+      MockDnsClientFactory::GetInstance();
+  vector<std::unique_ptr<MockDnsClient>> dns_client_buffer;
 
   // All DNS queries fail.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = std::make_unique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDnsClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(false));
     dns_client_buffer.push_back(std::move(dns_client));
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
+    EXPECT_CALL(*dns_client_factory, CreateDnsClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(ByMove(std::move(dns_client_buffer[i]))));
   }
@@ -413,13 +413,13 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // All but one DNS queries fail, 1 succeeds.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = std::make_unique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDnsClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(true));
     dns_client_buffer.push_back(std::move(dns_client));
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
+    EXPECT_CALL(*dns_client_factory, CreateDnsClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(ByMove(std::move(dns_client_buffer[i]))));
   }
@@ -436,13 +436,13 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // Only 2 distinct IP addresses are returned.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    auto dns_client = std::make_unique<MockDNSClient>();
+    auto dns_client = std::make_unique<MockDnsClient>();
     EXPECT_CALL(*dns_client, Start(host, _)).WillOnce(Return(true));
     dns_client_buffer.push_back(std::move(dns_client));
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
+    EXPECT_CALL(*dns_client_factory, CreateDnsClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(ByMove(std::move(dns_client_buffer[i]))));
   }

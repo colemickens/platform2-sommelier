@@ -29,28 +29,28 @@
 
 namespace shill {
 
-class DNSClientFactory {
+class DnsClientFactory {
  public:
-  virtual ~DNSClientFactory();
+  virtual ~DnsClientFactory();
 
-  // This is a singleton. Use DNSClientFactory::GetInstance()->Foo().
-  static DNSClientFactory* GetInstance();
+  // This is a singleton. Use DnsClientFactory::GetInstance()->Foo().
+  static DnsClientFactory* GetInstance();
 
-  virtual std::unique_ptr<DNSClient> CreateDNSClient(
+  virtual std::unique_ptr<DnsClient> CreateDnsClient(
       IPAddress::Family family,
       const std::string& interface_name,
       const std::vector<std::string>& dns_servers,
       int timeout_ms,
       EventDispatcher* dispatcher,
-      const DNSClient::ClientCallback& callback);
+      const DnsClient::ClientCallback& callback);
 
  protected:
-  DNSClientFactory();
+  DnsClientFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DNSClientFactory>;
+  friend struct base::DefaultLazyInstanceTraits<DnsClientFactory>;
 
-  DISALLOW_COPY_AND_ASSIGN(DNSClientFactory);
+  DISALLOW_COPY_AND_ASSIGN(DnsClientFactory);
 };
 
 }  // namespace shill

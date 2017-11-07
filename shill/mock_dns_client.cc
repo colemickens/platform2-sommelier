@@ -26,10 +26,10 @@ using std::vector;
 
 namespace shill {
 
-MockDNSClient::MockDNSClient()
-    : DNSClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, nullptr,
+MockDnsClient::MockDnsClient()
+    : DnsClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, nullptr,
                 ClientCallback()) {}
 
-MockDNSClient::~MockDNSClient() {}
+MockDnsClient::~MockDnsClient() {}
 
 }  // namespace shill
