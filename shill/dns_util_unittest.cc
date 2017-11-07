@@ -42,16 +42,13 @@ bool IsValidDNSDomainName(const char* name) {
 
 namespace shill {
 
-class DNSUtilTest : public testing::Test {
-};
-
 // IncludeNUL converts a char* to a std::string and includes the terminating
 // NUL in the result.
 static std::string IncludeNUL(const char* in) {
   return std::string(in, strlen(in) + 1);
 }
 
-TEST_F(DNSUtilTest, DNSDomainFromDot) {
+TEST(DNSUtilTest, DNSDomainFromDot) {
   std::string out;
 
   EXPECT_FALSE(DNSDomainFromDot("", &out));
@@ -89,7 +86,7 @@ TEST_F(DNSUtilTest, DNSDomainFromDot) {
   EXPECT_EQ(out, IncludeNUL("\003www\006google\003com"));
 }
 
-TEST_F(DNSUtilTest, IsValidDNSDomain) {
+TEST(DNSUtilTest, IsValidDNSDomain) {
   const char* const bad_hostnames[] = {
       "%20%20noodles.blorg", "noo dles.blorg ",    "noo dles.blorg. ",
       "^noodles.blorg",      "noodles^.blorg",     "noo&dles.blorg",
