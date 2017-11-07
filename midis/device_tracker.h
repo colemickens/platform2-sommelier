@@ -16,7 +16,6 @@
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
-#include "midis/libmidis/clientlib.h"
 #include "midis/seq_handler_interface.h"
 #include "mojo/midis.mojom.h"
 

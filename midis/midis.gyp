@@ -112,14 +112,6 @@
         'main.cc',
       ],
     },
-    {
-      'target_name': 'libmidis',
-      'type': 'static_library',
-      'standalone_static_library': 1,
-      'sources': [
-        'libmidis/clientlib.cc',
-      ],
-    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -130,7 +122,6 @@
           'dependencies' : [
             '../common-mk/testrunner.gyp:testrunner',
             'midis_common',
-            'libmidis',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [

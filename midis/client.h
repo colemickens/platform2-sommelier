@@ -15,7 +15,6 @@
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
-#include "midis/libmidis/clientlib.h"
 #include "mojo/midis.mojom.h"
 
 namespace midis {
