@@ -210,8 +210,7 @@ void ExternalBacklightController::UpdateDisplays(
     } else {
       std::unique_ptr<system::ExternalDisplay::RealDelegate> delegate(
           new system::ExternalDisplay::RealDelegate);
-      if (!delegate->Init(info.i2c_path))
-        continue;
+      delegate->Init(info.i2c_path);
       updated_displays[info.drm_path] = linked_ptr<system::ExternalDisplay>(
           new system::ExternalDisplay(std::move(delegate)));
     }

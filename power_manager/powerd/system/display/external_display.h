@@ -141,9 +141,8 @@ class ExternalDisplay {
     RealDelegate();
     virtual ~RealDelegate();
 
-    // Initializes the object to use the I2C device at |i2c_path| and returns
-    // true on success.
-    bool Init(const base::FilePath& i2c_path);
+    // Initializes the object to use the I2C device at |i2c_path|.
+    void Init(const base::FilePath& i2c_path);
 
     // Delegate implementation:
     std::string GetName() const override;
@@ -162,11 +161,17 @@ class ExternalDisplay {
       FAILURE_UNKNOWN = 3,
     };
 
+    // Opens |i2c_path_| and updates |fd_|.
+    bool OpenI2CFile();
+
     // Name describing the I2C bus.
     std::string name_;
 
     // File descriptor corresponding to the I2C bus passed to the c'tor.
     int fd_;
+
+    // File path for the I2C bus.
+    base::FilePath i2c_path_;
 
     DISALLOW_COPY_AND_ASSIGN(RealDelegate);
   };

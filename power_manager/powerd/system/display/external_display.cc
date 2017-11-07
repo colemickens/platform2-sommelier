@@ -66,11 +66,37 @@ ExternalDisplay::RealDelegate::~RealDelegate() {
   }
 }
 
-bool ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
+void ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
   name_ = i2c_path.BaseName().value();
-  fd_ = open(i2c_path.value().c_str(), O_RDWR);
+  i2c_path_ = i2c_path;
+}
+
+std::string ExternalDisplay::RealDelegate::GetName() const {
+  return name_;
+}
+
+bool ExternalDisplay::RealDelegate::PerformI2COperation(
+    struct i2c_rdwr_ioctl_data* data) {
+  DCHECK(data);
   if (fd_ < 0) {
-    PLOG(ERROR) << "Unable to open " << i2c_path.value();
+    // If powerd starts before udev, the permissions on the I2C device may
+    // have been incorrect at startup. Try to reopen the device now.
+    if (!OpenI2CFile())
+      return false;
+  }
+  if (ioctl(fd_, I2C_RDWR, data) < 0) {
+    PLOG(ERROR) << "I2C_RDWR ioctl to " << name_ << " failed";
+    return false;
+  }
+  return true;
+}
+
+bool ExternalDisplay::RealDelegate::OpenI2CFile() {
+  DCHECK_LT(fd_, 0);
+  fd_ = open(i2c_path_.value().c_str(), O_RDWR | O_CLOEXEC);
+  if (fd_ < 0) {
+    PLOG(WARNING) << "Unable to open " << i2c_path_.value()
+                  << "; will retry later";
     OpenResult result = OpenResult::FAILURE_UNKNOWN;
     switch (errno) {
       case EACCES:
@@ -88,20 +114,6 @@ bool ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
   SendEnumMetric(metrics::kExternalDisplayOpenResultName,
                  static_cast<int>(OpenResult::SUCCESS),
                  metrics::kExternalDisplayResultMax);
-  return true;
-}
-
-std::string ExternalDisplay::RealDelegate::GetName() const {
-  return name_;
-}
-
-bool ExternalDisplay::RealDelegate::PerformI2COperation(
-    struct i2c_rdwr_ioctl_data* data) {
-  DCHECK(data);
-  if (ioctl(fd_, I2C_RDWR, data) < 0) {
-    PLOG(ERROR) << "I2C_RDWR ioctl to " << name_ << " failed";
-    return false;
-  }
   return true;
 }
 
