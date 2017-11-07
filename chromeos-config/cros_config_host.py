@@ -213,7 +213,7 @@ def GetParser(description):
   return parser
 
 
-def main(argv):
+def main(argv=None):
   """Chrome OS Configuration for Host
 
   This Python script is used on the host (primary purpose is being called from
@@ -222,6 +222,8 @@ def main(argv):
   """
   parser = GetParser(__doc__)
   # Parse argv
+  if argv is None:
+    argv = sys.argv[1:]
   opts = parser.parse_args(argv)
   if opts.subcommand == 'write-target-dirs':
     WriteTargetDirectories()
@@ -263,4 +265,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv[1:]))
+  sys.exit(main())

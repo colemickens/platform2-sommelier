@@ -9,14 +9,22 @@ from __future__ import print_function
 from setuptools import setup
 
 setup(
-    name='cros_config',
+    name='cros_config_host',
     version='1',
     author='Simon Glass',
     author_email='sjg@chromium.org',
     url='README.md',
-    packages=['cros_config_host'],
-    py_modules=['libcros_config_host.fdt',
+    py_modules=['cros_config_host', 'libcros_config_host.fdt',
+                'libcros_config_host.fdt_util',
                 'libcros_config_host.libcros_config_host',
-                'cros_config_host'],
+                'validate_config', 'validate_schema'],
+    entry_points={
+        'console_scripts': [
+            'cros_config_host = cros_config_host:main',
+            # TODO(lannm): Remove after changing callers to cros_config_host.
+            'cros_config_host_py = cros_config_host:main',
+            'validate_config = validate_config:Main',
+        ],
+    },
     description='Access to the master configuration from the host',
 )

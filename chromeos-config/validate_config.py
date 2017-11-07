@@ -603,15 +603,17 @@ def ShowErrors(fname, errors):
   print(file=sys.stderr)
 
 
-def Main(argv):
+def Main(argv=None):
   """Main program for validator
 
   This validates each of the provided files and prints the errors for each, if
   any.
 
   Args:
-    argv: Arguments to the problem (excluding argv[0])
+    argv: Arguments to the problem (excluding argv[0]); if None, uses sys.argv
   """
+  if argv is None:
+    argv = sys.argv[1:]
   args = ParseArgv(argv)
   validator = CrosConfigValidator(SCHEMA, args.raise_on_error)
   found_errors = False
@@ -644,4 +646,4 @@ def Main(argv):
 
 
 if __name__ == "__main__":
-  Main(sys.argv[1:])
+  Main()
