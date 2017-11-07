@@ -1,0 +1,106 @@
+#!/usr/bin/env python2
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""The example code for getting touchpad info for factory with hammerd API."""
+
+from __future__ import print_function
+
+import argparse
+import collections
+import ctypes
+import shlex
+
+import hammerd_api
+
+
+# The mask of the hardware write protection.
+# TODO(akahuang): Move to hammerd_api.py
+EC_FLASH_PROTECT_GPIO_ASSERTED = 1 << 3
+
+
+def GetHammerdArguments():
+  """Parses the hammerd.override and retrieves the arguments.
+
+  The format of the file is:
+    env FOO=1234  # comment of FOO
+    env BAR="string value"  # comment of BAR
+
+  Returns:
+    a dict containing the arguments of hammerd process. The type of the key and
+    value are string. e.g.
+    {
+      'FOO': '1234',
+      'BAR': 'string value'
+    }
+  """
+  ARGUMENT_FILE_PATH = '/etc/init/hammerd.override'
+  REQUIRED_ARGUMENTS = [
+      'EC_IMAGE_PATH',
+      'TOUCHPAD_IMAGE_PATH',
+      'VENDOR_ID',
+      'PRODUCT_ID',
+      'USB_BUS',
+      'USB_PORT']
+
+  ret = {}
+  with open(ARGUMENT_FILE_PATH, 'r') as f:
+    for line in f:
+      tokens = shlex.split(line)
+      if len(tokens) >= 2 and tokens[0] == 'env':
+        key, _unused_sel, value = tokens[1].partition('=')
+        ret[key] = value
+
+  missing_args = set(REQUIRED_ARGUMENTS) - set(ret.keys())
+  if missing_args:
+    raise ValueError('Missing arguments: %s', ','.join(missing_args))
+  return ret
+
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('field', type=str, nargs='?',
+                      help='information field')
+  args = parser.parse_args()
+
+  hammerd_args = GetHammerdArguments()
+  updater = hammerd_api.FirmwareUpdater(
+      int(hammerd_args['VENDOR_ID']), int(hammerd_args['PRODUCT_ID']),
+      int(hammerd_args['USB_BUS']), int(hammerd_args['USB_PORT']))
+  with open(hammerd_args['EC_IMAGE_PATH'], 'rb') as f:
+    ec_image = f.read()
+  updater.LoadEcImage(ec_image)
+  updater.TryConnectUsb()
+  updater.SendFirstPdu()
+  updater.SendDone()
+
+  pdu_resp = updater.GetFirstResponsePdu().contents
+  wp_status = (pdu_resp.flash_protection & EC_FLASH_PROTECT_GPIO_ASSERTED) > 0
+  touchpad_info = hammerd_api.TouchpadInfo()
+  updater.SendSubcommandReceiveResponse(
+      hammerd_api.UpdateExtraCommand.TouchpadInfo, "",
+      ctypes.pointer(touchpad_info), ctypes.sizeof(touchpad_info))
+
+  # Print the base information.
+  info = collections.OrderedDict()
+  info['ro_version'] = updater.GetSectionVersion(hammerd_api.SectionName.RO)
+  info['rw_version'] = updater.GetSectionVersion(hammerd_api.SectionName.RW)
+  info['wp_screw'] = str(wp_status)
+  info['touchpad_id'] = '%d.0' % touchpad_info.id
+  info['touchpad_pid'] = hex(touchpad_info.vendor)
+  info['touchpad_fw_version'] = '%d.0' % touchpad_info.fw_version
+  info['touchpad_fw_checksum'] = hex(touchpad_info.fw_checksum)
+
+  if args.field is None:
+    print(' '.join('%s="%s"' % (key, val) for key, val in info.items()))
+  elif args.field in info:
+    print(info[args.field])
+  else:
+    print('Invalid args.field: "%s", should be one of %s' %
+          (args.field, ', '.join(info.keys())))
+    exit(1)
+
+
+if __name__ == '__main__':
+  main()

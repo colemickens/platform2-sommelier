@@ -7,10 +7,12 @@
 from __future__ import print_function
 
 import ctypes
+import sys
 
 # Load hammerd-api library.
 _DLL = ctypes.CDLL('libhammerd-api.so')
 ENTROPY_SIZE = ctypes.c_int.in_dll(_DLL, 'kEntropySize').value
+SHA256_DIGEST_LENGTH = ctypes.c_int.in_dll(_DLL, 'kSha256DigestLength').value
 
 
 class UpdateExtraCommand(object):
@@ -60,6 +62,20 @@ class FirstResponsePdu(ctypes.Structure):
     return ret
 
 
+class TouchpadInfo(ctypes.Structure):
+  """touchpad_info struct from src/platform/ec/include/update_fw.h"""
+  _pack_ = 1
+  _fields_ = [("status", ctypes.c_ubyte),
+              ("reserved", ctypes.c_ubyte),
+              ("vendor", ctypes.c_ushort),
+              ("fw_address", ctypes.c_uint),
+              ("fw_size", ctypes.c_uint),
+              ("allowed_fw_hash", ctypes.c_ubyte * SHA256_DIGEST_LENGTH),
+              ("id", ctypes.c_ushort),
+              ("fw_version", ctypes.c_ushort),
+              ("fw_checksum", ctypes.c_ushort)]
+
+
 class ByteString(ctypes.Structure):
   """Intermediary type between Python string to C++ string.
 
@@ -89,7 +105,7 @@ class WrapperMetaclass(type):
   def GenerateMethod(cls_name, method_name, argtypes, restype):
     """Generates the wrapper function by the function signature."""
     def method(self, *args):
-      print('Call %s' % method_name)
+      print('Call %s' % method_name, file=sys.stderr)
       if len(args) != len(argtypes) - 1:  # argtypes includes object itself.
         raise TypeError('%s expected %d arguments, got %d.' %
                         (method_name, len(argtypes) - 1, len(args)))

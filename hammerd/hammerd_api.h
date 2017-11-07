@@ -13,6 +13,7 @@
 #define HAMMERD_HAMMERD_API_H_
 
 #include <brillo/brillo_export.h>
+#include <openssl/sha.h>
 
 #include "hammerd/curve25519.h"
 #include "hammerd/pair_utils.h"
@@ -39,6 +40,7 @@ struct ByteString {
 
 // Expose the global constant.
 BRILLO_EXPORT int kEntropySize = hammerd::kEntropySize;
+BRILLO_EXPORT int kSha256DigestLength = SHA256_DIGEST_LENGTH;
 
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
