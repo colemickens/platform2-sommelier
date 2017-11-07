@@ -22,6 +22,7 @@ class FdtLibTest(unittest.TestCase):
   """The unit test suite for the fdt.py library"""
   def setUp(self):
     path = os.path.join(os.path.dirname(__file__), DTS_FILE)
+    temp_file = None
     try:
       (fname, temp_file) = fdt_util.EnsureCompiled(path)
       with open(fname) as fdt_file:
