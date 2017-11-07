@@ -133,7 +133,7 @@ class TestDevice : public Device {
   MOCK_METHOD3(StartDNSTest, bool(
       const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)>& callback));
+      const base::Callback<void(const DnsServerTester::Status)>& callback));
 
   MOCK_METHOD1(StartConnectionDiagnosticsAfterPortalDetection,
                bool(const PortalDetector::Result& result));
@@ -155,7 +155,7 @@ class TestDevice : public Device {
   virtual bool DeviceStartDNSTest(
       const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)>& callback) {
+      const base::Callback<void(const DnsServerTester::Status)>& callback) {
     return Device::StartDNSTest(dns_servers, retry_until_success, callback);
   }
 };
@@ -2019,10 +2019,10 @@ class DevicePortalDetectionTest : public DeviceTest {
   void ExpectPortalDetectorIsMock() {
     EXPECT_EQ(portal_detector_, device_->portal_detector_.get());
   }
-  void InvokeFallbackDNSResultCallback(DNSServerTester::Status status) {
+  void InvokeFallbackDNSResultCallback(DnsServerTester::Status status) {
     device_->FallbackDNSResultCallback(status);
   }
-  void InvokeConfigDNSResultCallback(DNSServerTester::Status status) {
+  void InvokeConfigDNSResultCallback(DnsServerTester::Status status) {
     device_->ConfigDNSResultCallback(status);
   }
   void DestroyConnection() { device_->DestroyConnection(); }
@@ -2499,7 +2499,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultFailure))
           .Times(1);
-  InvokeFallbackDNSResultCallback(DNSServerTester::kStatusFailure);
+  InvokeFallbackDNSResultCallback(DnsServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
   Mock::VerifyAndClearExpectations(&metrics_);
@@ -2514,7 +2514,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
           .Times(1);
-  InvokeFallbackDNSResultCallback(DNSServerTester::kStatusSuccess);
+  InvokeFallbackDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
@@ -2550,7 +2550,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
           .Times(1);
-  InvokeFallbackDNSResultCallback(DNSServerTester::kStatusSuccess);
+  InvokeFallbackDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
@@ -2565,7 +2565,7 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   // DNS test failed for configured DNS servers.
   EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
-  InvokeConfigDNSResultCallback(DNSServerTester::kStatusFailure);
+  InvokeConfigDNSResultCallback(DnsServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
 
@@ -2592,7 +2592,7 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(1);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(1);
   EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(1);
-  InvokeConfigDNSResultCallback(DNSServerTester::kStatusSuccess);
+  InvokeConfigDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());

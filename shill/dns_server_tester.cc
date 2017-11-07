@@ -37,13 +37,13 @@ namespace shill {
 
 namespace {
 
-constexpr char kDNSTestHostname[] = "www.gstatic.com";
-constexpr int kDNSTestRetryIntervalMilliseconds = 60000;
-constexpr int kDNSTimeoutMilliseconds = 5000;
+constexpr char kDnsTestHostname[] = "www.gstatic.com";
+constexpr int kDnsTestRetryIntervalMilliseconds = 60000;
+constexpr int kDnsTimeoutMilliseconds = 5000;
 
 }  // namespace
 
-DNSServerTester::DNSServerTester(ConnectionRefPtr connection,
+DnsServerTester::DnsServerTester(ConnectionRefPtr connection,
                                  EventDispatcher* dispatcher,
                                  const vector<string>& dns_servers,
                                  const bool retry_until_success,
@@ -57,59 +57,59 @@ DNSServerTester::DNSServerTester(ConnectionRefPtr connection,
           IPAddress::kFamilyIPv4,
           connection_->interface_name(),
           dns_servers,
-          kDNSTimeoutMilliseconds,
+          kDnsTimeoutMilliseconds,
           dispatcher_,
-          Bind(&DNSServerTester::DNSClientCallback,
+          Bind(&DnsServerTester::DnsClientCallback,
                weak_ptr_factory_.GetWeakPtr()))) {}
 
-DNSServerTester::~DNSServerTester() {
+DnsServerTester::~DnsServerTester() {
   Stop();
 }
 
-void DNSServerTester::Start() {
+void DnsServerTester::Start() {
   // Stop existing attempt.
   Stop();
   // Schedule the test to start immediately.
   StartAttempt(0);
 }
 
-void DNSServerTester::StartAttempt(int delay_ms) {
-  start_attempt_.Reset(Bind(&DNSServerTester::StartAttemptTask,
+void DnsServerTester::StartAttempt(int delay_ms) {
+  start_attempt_.Reset(Bind(&DnsServerTester::StartAttemptTask,
                             weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, start_attempt_.callback(), delay_ms);
 }
 
-void DNSServerTester::StartAttemptTask() {
+void DnsServerTester::StartAttemptTask() {
   Error error;
-  if (!dns_test_client_->Start(kDNSTestHostname, &error)) {
+  if (!dns_test_client_->Start(kDnsTestHostname, &error)) {
     LOG(ERROR) << __func__ << ": Failed to start DNS client "
                                 << error.message();
     CompleteAttempt(kStatusFailure);
   }
 }
 
-void DNSServerTester::Stop() {
+void DnsServerTester::Stop() {
   start_attempt_.Cancel();
   StopAttempt();
 }
 
-void DNSServerTester::StopAttempt() {
+void DnsServerTester::StopAttempt() {
   if (dns_test_client_.get()) {
     dns_test_client_->Stop();
   }
 }
 
-void DNSServerTester::CompleteAttempt(Status status) {
+void DnsServerTester::CompleteAttempt(Status status) {
   if (status == kStatusFailure && retry_until_success_) {
     // Schedule the test to restart after retry timeout interval.
-    StartAttempt(kDNSTestRetryIntervalMilliseconds);
+    StartAttempt(kDnsTestRetryIntervalMilliseconds);
     return;
   }
 
   dns_result_callback_.Run(status);
 }
 
-void DNSServerTester::DNSClientCallback(const Error& error,
+void DnsServerTester::DnsClientCallback(const Error& error,
                                         const IPAddress& ip) {
   Status status = kStatusSuccess;
   if (!error.IsSuccess()) {

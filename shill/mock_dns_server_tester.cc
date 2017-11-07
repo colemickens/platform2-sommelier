@@ -23,13 +23,13 @@
 
 namespace shill {
 
-MockDNSServerTester::MockDNSServerTester(ConnectionRefPtr connection)
-    : DNSServerTester(connection,
+MockDnsServerTester::MockDnsServerTester(ConnectionRefPtr connection)
+    : DnsServerTester(connection,
                       nullptr,
                       std::vector<std::string>(),
                       false,
-                      base::Callback<void(const DNSServerTester::Status)>()) {}
+                      base::Callback<void(const DnsServerTester::Status)>()) {}
 
-MockDNSServerTester::~MockDNSServerTester() {}
+MockDnsServerTester::~MockDnsServerTester() {}
 
 }  // namespace shill

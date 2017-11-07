@@ -601,7 +601,7 @@ class Device : public base::RefCounted<Device> {
   virtual bool StartDNSTest(
       const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)>& callback);
+      const base::Callback<void(const DnsServerTester::Status)>& callback);
   // Stop DNS test if one is running.
   virtual void StopDNSTest();
 
@@ -762,10 +762,10 @@ class Device : public base::RefCounted<Device> {
   void UpdateIPConfigsProperty();
 
   // Called by DNS server tester when the fallback DNS servers test completes.
-  void FallbackDNSResultCallback(const DNSServerTester::Status status);
+  void FallbackDNSResultCallback(const DnsServerTester::Status status);
 
   // Called by DNS server tester when the configured DNS servers test completes.
-  void ConfigDNSResultCallback(const DNSServerTester::Status status);
+  void ConfigDNSResultCallback(const DnsServerTester::Status status);
 
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string>& dns_servers);
@@ -850,7 +850,7 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<LinkMonitor> link_monitor_;
   // Used for verifying whether DNS server is functional.
-  std::unique_ptr<DNSServerTester> dns_server_tester_;
+  std::unique_ptr<DnsServerTester> dns_server_tester_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
   std::unique_ptr<TrafficMonitor> traffic_monitor_;

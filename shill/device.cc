@@ -1516,14 +1516,14 @@ void Device::OnLinkMonitorGatewayChange() {
 bool Device::StartDNSTest(
     const vector<string>& dns_servers,
     bool retry_until_success,
-    const Callback<void(const DNSServerTester::Status)>& callback) {
+    const Callback<void(const DnsServerTester::Status)>& callback) {
   if (dns_server_tester_.get()) {
     LOG(ERROR) << link_name() << ": "
                << "Failed to start DNS Test: current test still running";
     return false;
   }
 
-  dns_server_tester_.reset(new DNSServerTester(connection_,
+  dns_server_tester_.reset(new DnsServerTester(connection_,
                                                dispatcher_,
                                                dns_servers,
                                                retry_until_success,
@@ -1536,10 +1536,10 @@ void Device::StopDNSTest() {
   dns_server_tester_.reset();
 }
 
-void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
+void Device::FallbackDNSResultCallback(const DnsServerTester::Status status) {
   StopDNSTest();
   int result = Metrics::kFallbackDNSTestResultFailure;
-  if (status == DNSServerTester::kStatusSuccess) {
+  if (status == DnsServerTester::kStatusSuccess) {
     result = Metrics::kFallbackDNSTestResultSuccess;
 
     // Switch to fallback DNS server if service is configured to allow DNS
@@ -1562,10 +1562,10 @@ void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
 }
 
-void Device::ConfigDNSResultCallback(const DNSServerTester::Status status) {
+void Device::ConfigDNSResultCallback(const DnsServerTester::Status status) {
   StopDNSTest();
   // DNS test failed to start due to internal error.
-  if (status == DNSServerTester::kStatusFailure) {
+  if (status == DnsServerTester::kStatusFailure) {
     return;
   }
 

@@ -24,16 +24,16 @@
 
 namespace shill {
 
-class MockDNSServerTester : public DNSServerTester {
+class MockDnsServerTester : public DnsServerTester {
  public:
-  explicit MockDNSServerTester(ConnectionRefPtr connection);
-  ~MockDNSServerTester() override;
+  explicit MockDnsServerTester(ConnectionRefPtr connection);
+  ~MockDnsServerTester() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockDNSServerTester);
+  DISALLOW_COPY_AND_ASSIGN(MockDnsServerTester);
 };
 
 }  // namespace shill
