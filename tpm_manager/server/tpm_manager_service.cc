@@ -49,10 +49,13 @@ bool ClearOwnerPasswordIfPossible(tpm_manager::LocalData* local_data) {
 
 namespace tpm_manager {
 
-TpmManagerService::TpmManagerService(bool wait_for_ownership)
-    : wait_for_ownership_(wait_for_ownership) {}
+TpmManagerService::TpmManagerService(bool wait_for_ownership,
+                                     bool perform_preinit)
+    : wait_for_ownership_(wait_for_ownership),
+      perform_preinit_(perform_preinit) {}
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
+                                     bool perform_preinit,
                                      LocalDataStore* local_data_store,
                                      TpmStatus* tpm_status,
                                      TpmInitializer* tpm_initializer,
@@ -61,7 +64,8 @@ TpmManagerService::TpmManagerService(bool wait_for_ownership,
       tpm_status_(tpm_status),
       tpm_initializer_(tpm_initializer),
       tpm_nvram_(tpm_nvram),
-      wait_for_ownership_(wait_for_ownership) {}
+      wait_for_ownership_(wait_for_ownership),
+      perform_preinit_(perform_preinit) {}
 
 bool TpmManagerService::Initialize() {
   worker_thread_.reset(new base::Thread("TpmManager Service Worker"));
@@ -117,7 +121,7 @@ void TpmManagerService::InitializeTask() {
       LOG(WARNING) << __func__ << ": TPM initialization failed.";
       return;
     }
-  } else {
+  } else if (perform_preinit_) {
     VLOG(1) << "Pre-initializing TPM.";
     tpm_initializer_->PreInitializeTpm();
   }

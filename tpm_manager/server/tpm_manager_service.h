@@ -69,13 +69,19 @@ class TpmManagerService : public TpmNvramInterface,
                           public TpmOwnershipInterface {
  public:
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
-  // an explicit TakeOwnership request is received.
-  explicit TpmManagerService(bool wait_for_ownership);
+  // an explicit TakeOwnership request is received. If |perform_preinit| is
+  // additionally set, TPM pre-initialization will be performed in case TPM
+  // initialization is postponed.
+  explicit TpmManagerService(bool wait_for_ownership, bool perform_preinit);
 
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
-  // an explicit TakeOwnership request is received. Does not take ownership of
-  // |local_data_store|, |tpm_status|, |tpm_initializer|, or |tpm_nvram|.
+  // an explicit TakeOwnership request is received. If |perform_preinit| is
+  // additionally set, TPM pre-initialization will be performed in case TPM
+  // initialization is postponed.
+  // Does not take ownership of |local_data_store|, |tpm_status|,
+  // |tpm_initializer|, or |tpm_nvram|.
   TpmManagerService(bool wait_for_ownership,
+                    bool perform_preinit,
                     LocalDataStore* local_data_store,
                     TpmStatus* tpm_status,
                     TpmInitializer* tpm_initializer,
@@ -232,6 +238,9 @@ class TpmManagerService : public TpmNvramInterface,
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;
+  // Whether to perform pre-initialization (where available) if initialization
+  // itself needs to wait for 'TakeOwnership' first.
+  bool perform_preinit_;
   // Background thread to allow processing of potentially lengthy TPM requests
   // in the background.
   std::unique_ptr<base::Thread> worker_thread_;

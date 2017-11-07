@@ -50,8 +50,9 @@ class TpmManagerServiceTest : public testing::Test {
   ~TpmManagerServiceTest() override = default;
   void SetUp() override {
     service_.reset(new TpmManagerService(
-        true /*wait_for_ownership*/, &mock_local_data_store_, &mock_tpm_status_,
-        &mock_tpm_initializer_, &mock_tpm_nvram_));
+        true /*wait_for_ownership*/, true /*perform_preinit*/,
+        &mock_local_data_store_, &mock_tpm_status_, &mock_tpm_initializer_,
+        &mock_tpm_nvram_));
     SetupService();
   }
 
@@ -88,8 +89,33 @@ class TpmManagerServiceTest_NoWaitForOwnership : public TpmManagerServiceTest {
   ~TpmManagerServiceTest_NoWaitForOwnership() override = default;
   void SetUp() override {
     service_.reset(new TpmManagerService(
-        false /*wait_for_ownership*/, &mock_local_data_store_,
-        &mock_tpm_status_, &mock_tpm_initializer_, &mock_tpm_nvram_));
+        false /*wait_for_ownership*/, false /*perform_preinit*/,
+        &mock_local_data_store_, &mock_tpm_status_, &mock_tpm_initializer_,
+        &mock_tpm_nvram_));
+  }
+};
+
+// Tests must call SetupService().
+class TpmManagerServiceTest_NoPreinit : public TpmManagerServiceTest {
+ public:
+  ~TpmManagerServiceTest_NoPreinit() override = default;
+  void SetUp() override {
+    service_.reset(new TpmManagerService(
+        true /*wait_for_ownership*/, false /*perform_preinit*/,
+        &mock_local_data_store_, &mock_tpm_status_, &mock_tpm_initializer_,
+        &mock_tpm_nvram_));
+  }
+};
+
+// Tests must call SetupService().
+class TpmManagerServiceTest_Preinit : public TpmManagerServiceTest {
+ public:
+  ~TpmManagerServiceTest_Preinit() override = default;
+  void SetUp() override {
+    service_.reset(new TpmManagerService(
+        true /*wait_for_ownership*/, true /*perform_preinit*/,
+        &mock_local_data_store_, &mock_tpm_status_, &mock_tpm_initializer_,
+        &mock_tpm_nvram_));
   }
 };
 
@@ -129,8 +155,17 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, NoAutoInitialize) {
+TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(1);
+  SetupService();
+  RunServiceWorkerAndQuit();
+}
+
+TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  SetupService();
   RunServiceWorkerAndQuit();
 }
 

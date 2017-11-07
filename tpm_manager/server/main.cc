@@ -17,6 +17,8 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <brillo/syslog_logging.h>
 #if defined(USE_TPM2)
 #include <trunks/trunks_factory_impl.h>
@@ -34,6 +36,7 @@ namespace {
 
 constexpr char kWaitForOwnershipTriggerSwitch[] = "wait_for_ownership_trigger";
 constexpr char kLogToStderrSwitch[] = "log_to_stderr";
+constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 
 }  // namespace
 
@@ -46,8 +49,10 @@ int main(int argc, char* argv[]) {
   }
   brillo::InitLog(flags);
 
+  bool perform_preinit = !base::PathExists(base::FilePath(kNoPreinitFlagFile));
   tpm_manager::TpmManagerService tpm_manager_service(
-      cl->HasSwitch(kWaitForOwnershipTriggerSwitch));
+      cl->HasSwitch(kWaitForOwnershipTriggerSwitch),
+      perform_preinit);
 #if defined(USE_BINDER_IPC)
   tpm_manager::BinderService ipc_service(&tpm_manager_service,
                                          &tpm_manager_service);
