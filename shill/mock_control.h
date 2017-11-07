@@ -95,11 +95,6 @@ class MockControl : public ControlInterface {
 #endif
   const std::string& NullRPCIdentifier() override;
 
-  MOCK_METHOD2(CreateRPCServiceWatcher,
-               RPCServiceWatcherInterface*(
-                   const std::string& connection_name,
-                   const base::Closure& on_connection_vanished));
-
   MOCK_METHOD3(CreatePowerManagerProxy,
                std::unique_ptr<PowerManagerProxyInterface>(
                    PowerManagerProxyDelegate* delegate,
