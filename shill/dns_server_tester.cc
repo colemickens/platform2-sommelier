@@ -35,12 +35,13 @@ using std::string;
 
 namespace shill {
 
-// static
-const char DNSServerTester::kDNSTestHostname[] = "www.gstatic.com";
-// static
-const int DNSServerTester::kDNSTestRetryIntervalMilliseconds = 60000;
-// static
-const int DNSServerTester::kDNSTimeoutMilliseconds = 5000;
+namespace {
+
+constexpr char kDNSTestHostname[] = "www.gstatic.com";
+constexpr int kDNSTestRetryIntervalMilliseconds = 60000;
+constexpr int kDNSTimeoutMilliseconds = 5000;
+
+}  // namespace
 
 DNSServerTester::DNSServerTester(ConnectionRefPtr connection,
                                  EventDispatcher* dispatcher,

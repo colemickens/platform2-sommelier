@@ -75,10 +75,6 @@ class DNSServerTester {
   FRIEND_TEST(DNSServerTesterTest, AttemptCompleted);
   FRIEND_TEST(DNSServerTesterTest, StopAttempt);
 
-  static const char kDNSTestHostname[];
-  static const int kDNSTestRetryIntervalMilliseconds;
-  static const int kDNSTimeoutMilliseconds;
-
   void StartAttempt(int delay_ms);
   void StartAttemptTask();
   void StopAttempt();
