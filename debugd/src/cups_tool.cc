@@ -149,7 +149,6 @@ int RunAsUser(const std::string& user, const std::string& group,
 // Runs cupstestppd on |file_name| returns the result code.  0 is the expected
 // success code.
 int TestPPD(const std::string& path) {
-  // TODO(skau): Run cupstestppd in seccomp crbug.com/633383.
   return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
                    kTestPPDSeccompPolicy, {path},
                    true /* root_mount_ns */);
@@ -157,7 +156,6 @@ int TestPPD(const std::string& path) {
 
 // Runs lpadmin with the provided |arg_list|.
 int Lpadmin(const ProcessWithOutput::ArgList& arg_list) {
-  // TODO(skau): Run lpadmin in seccomp crbug.com/637160.
   // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
                    kLpadminSeccompPolicy, arg_list);
