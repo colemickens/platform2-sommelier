@@ -218,9 +218,15 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
     }
 
     if (!cgroup_parent.empty()) {
-      cg->cgroup_paths_[i] = cgroup_root.Append(kCgroupNames[i])
-                                 .Append(cgroup_parent)
-                                 .Append(name);
+      const base::FilePath parent_path =
+          cgroup_root.Append(kCgroupNames[i]).Append(cgroup_parent);
+
+      if (!CreateCgroupAsOwner(parent_path, cgroup_owner, cgroup_group)) {
+        PLOG(ERROR) << "Failed to create parent cgroup " << parent_path.value()
+                    << " as owner";
+        return nullptr;
+      }
+      cg->cgroup_paths_[i] = parent_path.Append(name);
     } else {
       cg->cgroup_paths_[i] = cgroup_root.Append(kCgroupNames[i]).Append(name);
     }
