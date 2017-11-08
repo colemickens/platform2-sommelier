@@ -47,6 +47,9 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
 OutputFrameWorker::~OutputFrameWorker()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    if (mOutputForListener.get() && mOutputForListener->isLocked()) {
+        mOutputForListener->unlock();
+    }
 }
 
 void OutputFrameWorker::addListener(camera3_stream_t* stream)
@@ -121,38 +124,54 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     mMsg = msg;
     status_t status = NO_ERROR;
 
-    Camera3Request* request = mMsg->cbMetadataMsg.request;
-    std::shared_ptr<CameraBuffer> buffer = nullptr;
-    if (mStream) {
-        buffer = findBuffer(request, mStream);
-    }
-    if (buffer.get() == nullptr) {
-        LOG1("No work for this worker mStream: %p", mStream);
-        mAllDone = true;
+    if (!mStream) {
         mOutputBuffer = nullptr;
+        mAllDone = true;
         mPollMe = false;
         return NO_ERROR;
     }
-    LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__,
-         buffer->getOwner()->getStream(), mStream);
 
-    status = prepareBuffer(buffer);
-    if (status != NO_ERROR) {
-        LOGE("prepare buffer error!");
-        buffer->getOwner()->captureDone(buffer, request);
-        return status;
+    Camera3Request* request = mMsg->cbMetadataMsg.request;
+    std::shared_ptr<CameraBuffer> buffer = findBuffer(request, mStream);
+    if (buffer.get()) {
+        // Work for mStream
+        LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__,
+             buffer->getOwner()->getStream(), mStream);
+        status = prepareBuffer(buffer);
+        if (status != NO_ERROR) {
+            LOGE("prepare buffer error!");
+            buffer->getOwner()->captureDone(buffer, request);
+            return status;
+        }
+        mOutputBuffer = buffer;
+        mAllDone = false;
+        mPollMe = true;
+    } else if (checkListenerBuffer(request)) {
+        // Work for listeners
+        LOG2("%s: stream %p works for listener only in req %d",
+             __FUNCTION__, mStream, request->getId());
+        mOutputBuffer = nullptr;
+        mAllDone = true;
+        mPollMe = true;
+    } else {
+        LOG2("No work for this worker mStream: %p", mStream);
+        mOutputBuffer = nullptr;
+        mAllDone = true;
+        mPollMe = false;
+        return NO_ERROR;
     }
 
     /*
      * store the buffer in a map where the key is the terminal UID
      */
-    mOutputBuffer = buffer;
-    mAllDone = false;
-    mPollMe = true;
-
     if (!mNeedPostProcess) {
         // Use stream buffer for zero-copy
         unsigned long userptr;
+        if (buffer.get() == nullptr) {
+            buffer = getOutputBufferForListener();
+            CheckError((buffer.get() == nullptr), UNKNOWN_ERROR,
+                       "failed to allocate listener buffer");
+        }
         switch (mNode->getMemoryType()) {
         case V4L2_MEMORY_USERPTR:
             userptr = reinterpret_cast<unsigned long>(buffer->data());
@@ -188,19 +207,9 @@ status_t OutputFrameWorker::run()
         return UNKNOWN_ERROR;
     }
 
-    if (mAllDone) {
+    if (!mPollMe) {
         LOG1("No work for this worker");
         return OK;
-    }
-
-    // If output format is something else than
-    // NV21 or Android flexible YCbCr 4:2:0, return
-    if (mOutputBuffer->format() != HAL_PIXEL_FORMAT_YCrCb_420_SP &&
-            mOutputBuffer->format() != HAL_PIXEL_FORMAT_YCbCr_420_888 &&
-            mOutputBuffer->format() != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
-            mOutputBuffer->format() != HAL_PIXEL_FORMAT_BLOB)  {
-        LOGE("Bad format %d", mOutputBuffer->format());
-        return BAD_TYPE;
     }
 
     V4L2BufferInfo outBuf;
@@ -227,11 +236,6 @@ status_t OutputFrameWorker::postRun()
     if (request == nullptr) {
         LOGE("No request provided for captureDone");
         status = UNKNOWN_ERROR;
-        goto exit;
-    }
-
-    if (mAllDone) {
-        mAllDone = false;
         goto exit;
     }
 
@@ -264,6 +268,11 @@ status_t OutputFrameWorker::postRun()
                      mWorkingBuffer->data(), mWorkingBuffer->size());
         }
         stream->captureDone(listenerBuf, request);
+    }
+
+    if (mAllDone) {
+        mAllDone = false;
+        goto exit;
     }
 
     if (mOutputBuffer == nullptr) {
@@ -355,6 +364,68 @@ OutputFrameWorker::findBuffer(Camera3Request* request,
         LOG2("No buffer for stream %p in req %d", stream, request->getId());
     }
     return buffer;
+}
+
+bool OutputFrameWorker::checkListenerBuffer(Camera3Request* request)
+{
+    bool required = false;
+    for (auto* s : mListeners) {
+        std::shared_ptr<CameraBuffer> listenerBuf = findBuffer(request, s);
+        if (listenerBuf.get()) {
+            required = true;
+            break;
+        }
+    }
+
+    LOG2("%s, required is %s", __FUNCTION__, (required ? "true" : "false"));
+    return required;
+}
+
+std::shared_ptr<CameraBuffer>
+OutputFrameWorker::getOutputBufferForListener()
+{
+    // mOutputForListener buffer infor is same with mOutputBuffer,
+    // and only allocated once
+    if (mOutputForListener.get() == nullptr) {
+        // Allocate buffer for listeners
+        if (mNode->getMemoryType() == V4L2_MEMORY_DMABUF) {
+            mOutputForListener = MemoryUtils::allocateHandleBuffer(
+                    mFormat.width(),
+                    mFormat.height(),
+                    HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                    GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
+                    mCameraId);
+        } else if (mNode->getMemoryType() == V4L2_MEMORY_MMAP) {
+            mOutputForListener = std::make_shared<CameraBuffer>(
+                    mFormat.width(),
+                    mFormat.height(),
+                    mFormat.bytesperline(),
+                    mNode->getFd(), -1, // dmabuf fd is not required.
+                    mBuffers[0].length(),
+                    mFormat.pixelformat(),
+                    mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
+        } else if (mNode->getMemoryType() == V4L2_MEMORY_USERPTR) {
+            mOutputForListener = MemoryUtils::allocateHeapBuffer(
+                    mFormat.width(),
+                    mFormat.height(),
+                    mFormat.bytesperline(),
+                    mFormat.pixelformat(),
+                    mCameraId,
+                    mBuffers[0].length());
+        } else {
+            LOGE("bad type for stream buffer %d", mNode->getMemoryType());
+            return nullptr;
+        }
+        CheckError((mOutputForListener.get() == nullptr), nullptr,
+                   "Can't allocate buffer for listeners!");
+    }
+
+    if (!mOutputForListener->isLocked()) {
+        mOutputForListener->lock();
+    }
+
+    LOG2("%s, get output buffer for Listeners", __FUNCTION__);
+    return mOutputForListener;
 }
 
 OutputFrameWorker::SWPostProcessor::SWPostProcessor(int cameraId) :

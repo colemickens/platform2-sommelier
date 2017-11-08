@@ -89,6 +89,8 @@ private:
     std::shared_ptr<CameraBuffer> findBuffer(Camera3Request* request,
                                              camera3_stream_t* stream);
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
+    bool checkListenerBuffer(Camera3Request* request);
+    std::shared_ptr<CameraBuffer> getOutputBufferForListener();
 
 private:
     std::shared_ptr<CameraBuffer> mOutputBuffer;
@@ -103,6 +105,8 @@ private:
     // For listeners
     std::vector<camera3_stream_t*> mListeners;
     std::vector<std::unique_ptr<SWPostProcessor> > mListenerProcessors;
+    // Put to ISP if requests require listeners'buffer only
+    std::shared_ptr<CameraBuffer> mOutputForListener;
 };
 
 } /* namespace camera2 */
