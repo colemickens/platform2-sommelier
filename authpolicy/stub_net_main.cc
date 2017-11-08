@@ -452,6 +452,9 @@ int HandleSearch(const std::string& command_line) {
 
 int HandleCommandLine(const std::string& command_line,
                       const std::string& smb_conf_path) {
+  // Make sure the caller adds the debug level.
+  CHECK(Contains(command_line, " -d "));
+
   // Stub net ads workgroup.
   if (StartsWithCaseSensitive(command_line, "ads workgroup"))
     return HandleWorkgroup();

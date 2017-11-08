@@ -62,6 +62,9 @@ std::vector<DownloadItem> GetDownloadItems(const std::string& command_line) {
 }
 
 int HandleCommandLine(const std::string& command_line) {
+  // Make sure the caller adds the debug level.
+  CHECK(Contains(command_line, " -d "));
+
   // Stub GPO files are written to krb5.conf's directory because it's hard to
   // pass a full file path from a unit test to a stub binary. Note that
   // environment variables are NOT passed through ProcessExecutor.

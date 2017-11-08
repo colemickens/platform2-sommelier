@@ -1187,8 +1187,8 @@ ErrorType SambaInterface::DownloadGpos(
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
   ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
-                                  paths_->Get(Path::SMB_CONF), "-k", "-c",
-                                  smb_command});
+                                  paths_->Get(Path::SMB_CONF), "-k", "-d",
+                                  flags_.net_log_level(), "-c", smb_command});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   smb_client_cmd.SetEnv(kKrb5CCEnvKey,
