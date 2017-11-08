@@ -139,10 +139,6 @@ class DeviceInfoTest : public Test {
     return device_info_.delayed_devices_;
   }
 
-  int GetDelayedDeviceCreationMilliseconds() {
-    return DeviceInfo::kDelayedDeviceCreationSeconds * 1000;
-  }
-
   void SetSockets() {
     mock_sockets_ = new MockSockets();
     device_info_.set_sockets(mock_sockets_);
@@ -297,8 +293,7 @@ TEST_F(DeviceInfoTest, StartStop) {
 
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
                                          RTNLHandler::kRequestAddr));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(
-      _, _, DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   device_info_.Start();
   EXPECT_TRUE(device_info_.link_listener_.get());
   EXPECT_TRUE(device_info_.address_listener_.get());
@@ -325,8 +320,7 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
 
 TEST_F(DeviceInfoTest, RequestLinkStatistics) {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(
-      _, _, DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   device_info_.RequestLinkStatistics();
 }
 
@@ -660,8 +654,7 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   EXPECT_CALL(manager_, modem_info()).Times(0);
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetDelayedDeviceCreationMilliseconds()));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   EXPECT_TRUE(GetDelayedDevices().empty());
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kCDCEthernet));

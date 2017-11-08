@@ -82,35 +82,78 @@ static auto kModuleLogScope = ScopeLogger::kDevice;
 static string ObjectID(const DeviceInfo* d) { return "(device_info)"; }
 }
 
-// static
-const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
-const char DeviceInfo::kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
-const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
-const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
-const char DeviceInfo::kDriverCdcNcm[] = "cdc_ncm";
-const char DeviceInfo::kDriverGdmWiMax[] = "gdm_wimax";
-const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
-const char DeviceInfo::kInterfaceUevent[] = "uevent";
-const char DeviceInfo::kInterfaceUeventBridgeSignature[] = "DEVTYPE=bridge\n";
-const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
-const char DeviceInfo::kInterfaceDevice[] = "device";
-const char DeviceInfo::kInterfaceDriver[] = "device/driver";
-const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
-const char DeviceInfo::kInterfaceType[] = "type";
-const char* const DeviceInfo::kIgnoredDeviceNamePrefixes[] = {
+namespace {
+
+// Device name prefix for modem pseudo devices used in testing.
+constexpr char kModemPseudoDeviceNamePrefix[] = "pseudomodem";
+
+// Device name prefix for virtual ethernet devices used in testing.
+constexpr char kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
+
+// Root of the kernel sysfs directory holding network device info.
+constexpr char kDeviceInfoRoot[] = "/sys/class/net";
+
+// Name of the "cdc_ether" driver.  This driver is not included in the
+// kModemDrivers list because we need to do additional checking.
+constexpr char kDriverCdcEther[] = "cdc_ether";
+
+// Name of the "cdc_ncm" driver.  This driver is not included in the
+// kModemDrivers list because we need to do additional checking.
+constexpr char kDriverCdcNcm[] = "cdc_ncm";
+
+// Name of the GDM WiMAX driver.
+constexpr char kDriverGdmWiMax[] = "gdm_wimax";
+
+// Name of the virtio network driver.
+constexpr char kDriverVirtioNet[] = "virtio_net";
+
+// Sysfs path to a device uevent file.
+constexpr char kInterfaceUevent[] = "uevent";
+
+// Content of a device uevent file that indicates it is a bridge device.
+constexpr char kInterfaceUeventBridgeSignature[] = "DEVTYPE=bridge\n";
+
+// Content of a device uevent file that indicates it is a WiFi device.
+constexpr char kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
+
+// Sysfs path to a device via its interface name.
+constexpr char kInterfaceDevice[] = "device";
+
+// Sysfs path to the driver of a device via its interface name.
+constexpr char kInterfaceDriver[] = "device/driver";
+
+// Sysfs path to the file that is used to determine if this is tun device.
+constexpr char kInterfaceTunFlags[] = "tun_flags";
+
+// Sysfs path to the file that is used to determine if a wifi device is
+// operating in monitor mode.
+constexpr char kInterfaceType[] = "type";
+
+// Device name prefixes for virtual devices that should be ignored.
+const char* const kIgnoredDeviceNamePrefixes[] = {
     "veth",
     "vm"
 };
-const char* const DeviceInfo::kModemDrivers[] = {
+
+// Modem drivers that we support.
+const char* const kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
     "GobiNet",
     "cdc_mbim",
     "qmi_wwan"
 };
-const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
-const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
-const int DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds = 20000;
+
+// Path to the tun device.
+constexpr char kTunDeviceName[] = "/dev/net/tun";
+
+// Time to wait before registering devices which need extra time to detect.
+constexpr int kDelayedDeviceCreationSeconds = 5;
+
+// Time interval for polling for link statistics.
+constexpr int kRequestLinkStatisticsIntervalMilliseconds = 20000;
+
+}  // namespace
 
 DeviceInfo::DeviceInfo(ControlInterface* control_interface,
                        EventDispatcher* dispatcher,

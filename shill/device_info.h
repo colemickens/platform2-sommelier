@@ -65,15 +65,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     unsigned char scope;
   };
 
-  // Device name prefix for modem pseudo devices used in testing.
-  static const char kModemPseudoDeviceNamePrefix[];
-  // Device name prefix for virtual ethernet devices used in testing.
-  static const char kEthernetPseudoDeviceNamePrefix[];
-  // Device name prefixes for virtual devices that should be ignored.
-  static const char* const kIgnoredDeviceNamePrefixes[];
-  // Time interval for polling for link statistics.
-  static const int kRequestLinkStatisticsIntervalMilliseconds;
-
   DeviceInfo(ControlInterface* control_interface,
              EventDispatcher* dispatcher,
              Metrics* metrics,
@@ -197,40 +188,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
     Technology::Identifier technology;
   };
-
-  // Root of the kernel sysfs directory holding network device info.
-  static const char kDeviceInfoRoot[];
-  // Name of the "cdc_ether" driver.  This driver is not included in the
-  // kModemDrivers list because we need to do additional checking.
-  static const char kDriverCdcEther[];
-  // Name of the "cdc_ncm" driver.  This driver is not included in the
-  // kModemDrivers list because we need to do additional checking.
-  static const char kDriverCdcNcm[];
-  // Name of the GDM WiMAX driver.
-  static const char kDriverGdmWiMax[];
-  // Name of the virtio network driver.
-  static const char kDriverVirtioNet[];
-  // Sysfs path to a device uevent file.
-  static const char kInterfaceUevent[];
-  // Content of a device uevent file that indicates it is a bridge device.
-  static const char kInterfaceUeventBridgeSignature[];
-  // Content of a device uevent file that indicates it is a wifi device.
-  static const char kInterfaceUeventWifiSignature[];
-  // Sysfs path to a device via its interface name.
-  static const char kInterfaceDevice[];
-  // Sysfs path to the driver of a device via its interface name.
-  static const char kInterfaceDriver[];
-  // Sysfs path to the file that is used to determine if this is tun device.
-  static const char kInterfaceTunFlags[];
-  // Sysfs path to the file that is used to determine if a wifi device is
-  // operating in monitor mode.
-  static const char kInterfaceType[];
-  // Modem drivers that we support.
-  static const char* const kModemDrivers[];
-  // Path to the tun device.
-  static const char kTunDeviceName[];
-  // Time to wait before registering devices which need extra time to detect.
-  static const int kDelayedDeviceCreationSeconds;
 
   // Create a Device object for the interface named |linkname|, with a
   // string-form MAC address |address|, whose kernel interface index
