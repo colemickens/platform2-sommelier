@@ -82,55 +82,37 @@ static auto kModuleLogScope = ScopeLogger::kDevice;
 static string ObjectID(Device* d) { return d->GetRpcIdentifier(); }
 }
 
-// static
-const char Device::kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
-// static
-const char Device::kIPFlagVersion4[] = "ipv4";
-// static
-const char Device::kIPFlagVersion6[] = "ipv6";
-// static
-const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
-// static
-const char Device::kIPFlagUseTempAddr[] = "use_tempaddr";
-// static
-const char Device::kIPFlagUseTempAddrUsedAndDefault[] = "2";
-// static
-const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
-// static
-const char Device::kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
-// static
-const char Device::kIPFlagReversePathFilter[] = "rp_filter";
-// static
-const char Device::kIPFlagReversePathFilterEnabled[] = "1";
-// static
-const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
-// static
-const char Device::kIPFlagArpAnnounce[] = "arp_announce";
-// static
-const char Device::kIPFlagArpAnnounceDefault[] = "0";
-// static
-const char Device::kIPFlagArpAnnounceBestLocal[] = "2";
-// static
-const char Device::kIPFlagArpIgnore[] = "arp_ignore";
-// static
-const char Device::kIPFlagArpIgnoreDefault[] = "0";
-// static
-const char Device::kIPFlagArpIgnoreLocalOnly[] = "1";
-// static
-const char Device::kStoragePowered[] = "Powered";
-// static
-const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
-// static
-const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
-// static
-const char* const Device::kFallbackDnsServers[] = {
-    "8.8.8.8",
-    "8.8.4.4"
-};
+namespace {
 
-// static
-const int Device::kLinkUnreliableThresholdSeconds = 60 * 60;
-const size_t Device::kHardwareAddressLength = 6U;
+constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
+constexpr char kIPFlagVersion4[] = "ipv4";
+constexpr char kIPFlagVersion6[] = "ipv6";
+constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
+constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
+constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
+constexpr char kIPFlagReversePathFilter[] = "rp_filter";
+constexpr char kIPFlagReversePathFilterEnabled[] = "1";
+constexpr char kIPFlagReversePathFilterLooseMode[] = "2";
+constexpr char kIPFlagArpAnnounce[] = "arp_announce";
+constexpr char kIPFlagArpAnnounceDefault[] = "0";
+constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
+constexpr char kIPFlagArpIgnore[] = "arp_ignore";
+constexpr char kIPFlagArpIgnoreDefault[] = "0";
+constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
+const char* const kFallbackDnsServers[] = {"8.8.8.8", "8.8.4.4"};
+constexpr size_t kHardwareAddressLength = 6;
+
+// Maximum seconds between two link monitor failures to declare this link
+// (network) as unreliable.
+constexpr int kLinkUnreliableThresholdSeconds = 60 * 60;
+
+}  // namespace
+
+const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
+const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
+const char Device::kStoragePowered[] = "Powered";
+const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
+const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 
 Device::Device(ControlInterface* control_interface,
                EventDispatcher* dispatcher,

@@ -680,33 +680,11 @@ class Device : public base::RefCounted<Device> {
   friend class VirtualDeviceTest;
   friend class WiFiObjectTest;
 
-  static const char kIPFlagTemplate[];
-  static const char kIPFlagVersion4[];
-  static const char kIPFlagVersion6[];
   static const char kIPFlagDisableIPv6[];
-  static const char kIPFlagUseTempAddr[];
-  static const char kIPFlagUseTempAddrUsedAndDefault[];
   static const char kIPFlagAcceptRouterAdvertisements[];
-  static const char kIPFlagAcceptRouterAdvertisementsAlways[];
-  static const char kIPFlagReversePathFilter[];
-  static const char kIPFlagReversePathFilterEnabled[];
-  static const char kIPFlagReversePathFilterLooseMode[];
-  static const char kIPFlagArpAnnounce[];
-  static const char kIPFlagArpAnnounceDefault[];
-  static const char kIPFlagArpAnnounceBestLocal[];
-  static const char kIPFlagArpIgnore[];
-  static const char kIPFlagArpIgnoreDefault[];
-  static const char kIPFlagArpIgnoreLocalOnly[];
   static const char kStoragePowered[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
-  static const char* const kFallbackDnsServers[];
-
-  // Maximum seconds between two link monitor failures to declare this link
-  // (network) as unreliable.
-  static const int kLinkUnreliableThresholdSeconds;
-
-  static const size_t kHardwareAddressLength;
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
