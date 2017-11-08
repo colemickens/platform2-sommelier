@@ -200,14 +200,6 @@ status_t AiqConf::fillLensStaticMetadata(camera_metadata_t * metadata)
             nd_gain = cmc->cmc_parsed_optics.cmc_optomechanics->nd_gain;
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES, (float*)&nd_gain, 1);
         LOG2("static ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES :%d", nd_gain);
-        // Lens: availableFocalLengths, only support fixed focal length
-        float effect_focal_length = 3.00;
-        if (!(camera_features & cmc_camera_feature_optical_zoom)) {
-            // focal length (mm * 100) from CMC
-            effect_focal_length = (float)cmc->cmc_parsed_optics.cmc_optomechanics->effect_focal_length / 100;
-            res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS, &effect_focal_length, 1);
-            LOG2("static ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS :%.2f", effect_focal_length);
-        }
         /**
          * check the type of focus actuator
          * 0 means no actuator, in this case we signal that this is a fixed
