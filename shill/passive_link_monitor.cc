@@ -38,10 +38,18 @@ static auto kModuleLogScope = ScopeLogger::kLink;
 static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
+namespace {
+
+// The number of milliseconds per cycle.
+constexpr int kCyclePeriodMilliseconds = 25000;
+
+// Minimum number of ARP requests expected per cycle.
+constexpr int kMinArpRequestsPerCycle = 5;
+
+}  // namespace
+
 // static.
 const int PassiveLinkMonitor::kDefaultMonitorCycles = 40;
-const int PassiveLinkMonitor::kCyclePeriodMilliseconds = 25000;
-const int PassiveLinkMonitor::kMinArpRequestsPerCycle = 5;
 
 PassiveLinkMonitor::PassiveLinkMonitor(const ConnectionRefPtr& connection,
                                        EventDispatcher* dispatcher,

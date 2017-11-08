@@ -57,12 +57,6 @@ class PassiveLinkMonitor {
  private:
   friend class PassiveLinkMonitorTest;
 
-  // The number of milliseconds per cycle.
-  static const int kCyclePeriodMilliseconds;
-
-  // Minimum number of ARP requests expected per cycle.
-  static const int kMinArpRequestsPerCycle;
-
   bool StartArpClient();
   void StopArpClient();
 
