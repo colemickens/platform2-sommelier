@@ -16,7 +16,7 @@ import unittest
 
 from libcros_config_host import fdt_util
 from libcros_config_host.libcros_config_host import BaseFile, CrosConfig
-from libcros_config_host.libcros_config_host import TouchFile
+from libcros_config_host.libcros_config_host import TouchFile, FirmwareInfo
 
 
 DTS_FILE = 'libcros_config/test.dts'
@@ -393,6 +393,72 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(
         ['broken', 'caroline', 'pyro', 'reef', 'whitetip', 'whitetip1',
          'whitetip2'], config.GetModelList())
+
+  def testFirmware(self):
+    """Test access to firmware information"""
+    config = CrosConfig(self.file)
+    self.assertEqual('updater4.sh', config.GetFirmwareScript())
+
+    self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
+        ('broken', FirmwareInfo(
+            model='broken', shared_model=None, key_id='', have_image=True,
+            bios_build_target=None, ec_build_target=None,
+            main_image_uri='bcs://Reef.9042.87.1.tbz2',
+            main_rw_image_uri='', ec_image_uri='', pd_image_uri='',
+            extra=[], create_bios_rw_image=False, tools=[], sig_id='broken')),
+        ('caroline', FirmwareInfo(
+            model='caroline', shared_model='caroline', key_id='',
+            have_image=True,
+            bios_build_target='caroline', ec_build_target='caroline',
+            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+            extra=[], create_bios_rw_image=False, tools=[], sig_id='caroline')),
+        ('pyro', FirmwareInfo(
+            model='pyro', shared_model=None, key_id='', have_image=True,
+            bios_build_target='pyro', ec_build_target='pyro',
+            main_image_uri='bcs://Pyro.9042.87.1.tbz2',
+            main_rw_image_uri='bcs://Pyro.9042.110.0.tbz2',
+            ec_image_uri='bcs://Pyro_EC.9042.87.1.tbz2',
+            pd_image_uri='bcs://Pyro_PD.9042.87.1.tbz2',
+            extra=[], create_bios_rw_image=False, tools=[], sig_id='pyro')),
+        ('reef', FirmwareInfo(
+            model='reef', shared_model=None, key_id='', have_image=True,
+            bios_build_target='pyro', ec_build_target='pyro',
+            main_image_uri='bcs://Reef.9042.87.1.tbz2',
+            main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
+            ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
+            extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
+        ('whitetip', FirmwareInfo(
+            model='whitetip', shared_model='caroline', key_id='',
+            have_image=True, bios_build_target='caroline',
+            ec_build_target='caroline',
+            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+            extra=[], create_bios_rw_image=False, tools=[], sig_id='whitetip')),
+        ('whitetip1', FirmwareInfo(
+            model='whitetip1', shared_model='caroline', key_id='WHITETIP1',
+            have_image=True,
+            bios_build_target='caroline', ec_build_target='caroline',
+            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+            extra=[], create_bios_rw_image=False, tools=[],
+            sig_id='whitetip1')),
+        ('whitetip2', FirmwareInfo(
+            model='whitetip2', shared_model='caroline', key_id='WHITETIP2',
+            have_image=True,
+            bios_build_target='caroline', ec_build_target='caroline',
+            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+            extra=[], create_bios_rw_image=False, tools=[],
+            sig_id='whitetip2'))]))
 
 
 if __name__ == '__main__':

@@ -34,6 +34,13 @@ TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 #   dest: Destination filename in the root filesystem
 BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 
+FirmwareInfo = namedtuple(
+    'FirmwareInfo',
+    ['model', 'shared_model', 'key_id', 'have_image',
+     'bios_build_target', 'ec_build_target', 'main_image_uri',
+     'main_rw_image_uri', 'ec_image_uri', 'pd_image_uri',
+     'extra', 'create_bios_rw_image', 'tools', 'sig_id'])
+
 # Known directories for installation
 # TODO(sjg@chromium.org): Move these to the schema
 LIB_FIRMWARE = '/lib/firmware'
@@ -326,6 +333,20 @@ class CrosConfig(object):
       List of model names, each a string
     """
     return sorted(self.models.keys())
+
+  def GetFirmwareScript(self):
+    """Obtain the packer script to use for this family
+
+    Returns:
+      Filename of packer script to use (e.g. 'updater4.sh')
+    """
+    return self.GetFamilyProperty('/firmware', 'script').value
+
+  def GetFirmwareInfo(self):
+    firmware_info = OrderedDict()
+    for name in self.GetModelList():
+      firmware_info[name] = self.models[name].GetFirmwareInfo()
+    return firmware_info
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -704,6 +725,72 @@ class CrosConfig(object):
             thermal.properties[prop].value,
             os.path.join(target_dir, thermal.properties[prop].value))
       return files
+
+    def GetFirmwareInfo(self):
+      whitelabel = self.FollowPhandle('whitelabel')
+      base_model = whitelabel if whitelabel else self
+      firmware_node = self.PathNode('/firmware')
+      base_firmware_node = base_model.PathNode('/firmware')
+
+      # If this model shares firmware with another model, get our
+      # images from there.
+      image_node = base_firmware_node.FollowPhandle('shares')
+      if image_node:
+        # Override the node - use the shared firmware instead.
+        node = image_node
+        shared_model = image_node.name
+      else:
+        node = base_firmware_node
+        shared_model = None
+      key_id = firmware_node.GetStr('key-id')
+
+      have_image = True
+      if (whitelabel and base_firmware_node and
+          base_firmware_node.Property('sig-id-in-customization-id')):
+        # For zero-touch whitelabel devices, we don't need to generate anything
+        # since the device will never report this model at runtime. The
+        # signature ID will come from customization_id.
+        have_image = False
+
+      # Firmware configuration supports both sharing the same fw image across
+      # multiple models and pinning specific models to different fw revisions.
+      # For context, see:
+      # https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-config/README.md
+      #
+      # In order to support this, the firmware build target needs to be
+      # decoupled from models (since it can be shared).  This was supported
+      # in the config with 'build-targets', which drives the actual firmware
+      # build/targets.
+      #
+      # This takes advantage of that same config to determine what the target
+      # FW image will be named in the build output.  This allows a many to
+      # many mapping between models and firmware images.
+      build_node = node.PathNode('build-targets')
+      if build_node:
+        bios_build_target = build_node.GetStr('coreboot')
+        ec_build_target = build_node.GetStr('ec')
+      else:
+        bios_build_target, ec_build_target = None, None
+
+      main_image_uri = node.GetStr('main-image')
+      main_rw_image_uri = node.GetStr('main-rw-image')
+      ec_image_uri = node.GetStr('ec-image')
+      pd_image_uri = node.GetStr('pd-image')
+      create_bios_rw_image = node.GetBool('create-bios-rw-image')
+      extra = node.GetStrList('extra')
+
+      tools = node.GetStrList('tools')
+
+      if firmware_node.GetBool('sig-id-in-customization-id'):
+        sig_id = 'use-vpd'
+      else:
+        sig_id = self.name
+
+      return FirmwareInfo(self.name, shared_model, key_id, have_image,
+                          bios_build_target, ec_build_target,
+                          main_image_uri, main_rw_image_uri, ec_image_uri,
+                          pd_image_uri, extra, create_bios_rw_image, tools,
+                          sig_id)
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration.
