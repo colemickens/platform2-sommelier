@@ -142,7 +142,7 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
 }
 
 bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
-                                        int find_sku_id) {
+    int find_sku_id, std::string& find_whitelabel_name) {
   const void* blob = blob_.c_str();
   LOG(INFO) << "Looking up name " << find_name << ", SKU ID " << find_sku_id;
 
@@ -174,6 +174,36 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
   } else {
     submodel_offset_ = -1;
     submodel_name_ = "";
+  }
+
+  // If this is a whitelabel model, use the tag.
+  int firmware_node = fdt_subnode_offset(blob, model_offset_, "firmware");
+  if (firmware_node >= 0) {
+    if (fdt_getprop(blob, firmware_node, "sig-id-in-customization-id", NULL)) {
+      int models_node = fdt_path_offset(blob, "/chromeos/models");
+      int wl_model = fdt_subnode_offset(blob, models_node,
+                                        find_whitelabel_name.c_str());
+      if (wl_model >= 0) {
+        whitelabel_offset_ = model_offset_;
+        model_offset_ = wl_model;
+      } else {
+        LOG(ERROR) << "Cannot find whitelabel model "
+                   << find_whitelabel_name << ": using " << model_name_
+                   << ": " << fdt_strerror(wl_model);
+      }
+    }
+  }
+  int wl_tags_node = fdt_subnode_offset(blob, model_offset_, "whitelabels");
+  if (wl_tags_node >= 0) {
+    int wl_tag = fdt_subnode_offset(blob, wl_tags_node,
+                                    find_whitelabel_name.c_str());
+    if (wl_tag >= 0) {
+      whitelabel_tag_offset_ = wl_tag;
+    } else {
+        LOG(ERROR) << "Cannot find whitelabel tag "
+                   << find_whitelabel_name << ": using " << model_name_
+                   << ": " << fdt_strerror(wl_tag);
+    }
   }
 
   return true;

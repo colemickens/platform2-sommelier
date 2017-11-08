@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
   DEFINE_int32(test_sku_id, -1, "Override SKU ID for testing.");
+  DEFINE_string(whitelabel_tag, "", "Override whitelabel tag for testing.");
 
   std::string usage = "Chrome OS Model Configuration\n\nUsage: " +
                       std::string(argv[0]) + " [flags] <path> <key>";
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
     }
   } else {
     if (!cros_config.InitForTest(base::FilePath(FLAGS_test_database),
-                                 FLAGS_test_name, FLAGS_test_sku_id)) {
+          FLAGS_test_name, FLAGS_test_sku_id, FLAGS_whitelabel_tag)) {
       return 1;
     }
   }

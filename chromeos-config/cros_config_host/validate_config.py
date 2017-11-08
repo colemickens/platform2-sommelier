@@ -570,6 +570,13 @@ SCHEMA = NodeDesc('/', True, [
                         PropString('date-code', False),
                     ]),
                 ], conditional_props=NOT_WL),
+                NodeDesc('whitelabels', False, [
+                    NodeAny('', [
+                        PropString('brand-code', False, '[A-Z]{4}'),
+                        PropString('wallpaper', False, '[a-z_]+'),
+                        PropString('key-id', False, '[A-Z][A-Z0-9]+'),
+                    ]),
+                ], conditional_props=NOT_WL),
             ])
         ]),
         NodeDesc('schema', False, [

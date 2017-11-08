@@ -78,6 +78,9 @@
 				5 &reef_notouch
 				8 &whitetip
 				9 &whitetip1
+				10 &blacktip
+				11 &blacktip_touch
+                                12 &blacktip_notouch
 				20 &caroline>;
 		};
 		sku-map@1 {
@@ -277,6 +280,37 @@
 		brand-code = "SHAQ";
 		firmware {
 			key-id = "WHITETIP2";
+		};
+	};
+
+	/* Whitelabel model */
+	blacktip: blacktip {
+		firmware {
+			shares = <&shared>;
+		};
+		submodels {
+			blacktip_touch: touch {
+				touch {
+					present = "yes";
+				};
+			};
+			blacktip_notouch: notouch {
+				touch {
+					present = "no";
+				};
+			};
+		};
+		whitelabels {
+			blacktip1 {
+				wallpaper = "dark";
+				brand-code = "HBBN";
+				key-id = "BLACKTIP1";
+			};
+			blacktip2 {
+				wallpaper = "darker";
+				brand-code = "HBBO";
+				key-id = "BLACKTIP2";
+			};
 		};
 	};
 };

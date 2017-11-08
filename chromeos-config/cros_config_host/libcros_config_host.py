@@ -365,7 +365,7 @@ class CrosConfig(object):
   def GetFirmwareInfo(self):
     firmware_info = OrderedDict()
     for name in self.GetModelList():
-      firmware_info[name] = self.models[name].GetFirmwareInfo()
+      firmware_info.update(self.models[name].GetFirmwareInfo())
     return firmware_info
 
   class Node(object):
@@ -842,16 +842,29 @@ class CrosConfig(object):
 
       tools = node.GetStrList('tools')
 
-      if firmware_node.GetBool('sig-id-in-customization-id'):
+      whitelabels = self.PathNode('/whitelabels')
+      if whitelabels or firmware_node.GetBool('sig-id-in-customization-id'):
         sig_id = 'sig-id-in-customization-id'
       else:
         sig_id = self.name
 
-      return FirmwareInfo(self.name, shared_model, key_id, have_image,
-                          bios_build_target, ec_build_target,
-                          main_image_uri, main_rw_image_uri, ec_image_uri,
-                          pd_image_uri, extra, create_bios_rw_image, tools,
-                          sig_id)
+      info = FirmwareInfo(
+          self.name, shared_model, key_id, have_image,
+          bios_build_target, ec_build_target,
+          main_image_uri, main_rw_image_uri, ec_image_uri,
+          pd_image_uri, extra, create_bios_rw_image, tools, sig_id)
+
+      # Handle the alternative schema, where whitelabels are in a single model
+      # and have whitelabel tags to distinguish them.
+      result = OrderedDict()
+      result[self.name] = info
+      if whitelabels:
+        for whitelabel in whitelabels.subnodes.values():
+          key_id = whitelabel.GetStr('key-id')
+          result[whitelabel.name] = info._replace(
+              model=whitelabel.name, key_id=key_id, have_image=False,
+              sig_id=whitelabel.name)
+      return result
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration.

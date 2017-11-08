@@ -20,7 +20,7 @@ from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
 
 DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
-          'whitetip2', ]
+          'whitetip2', 'blacktip']
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
                'overlay-pyro-private/chromeos-base/chromeos-firmware-pyro/')
 REEF_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
@@ -274,6 +274,10 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testWhitelabel(self):
     # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
+    # Note that we have no tests for the alternative whitelabel schema. In that
+    # case the key-id and brand-code are 1:many with the model and we need a
+    # separate identifier to determine which to use. For now, there are no
+    # users in the build system, so we can ignore it.
     config = CrosConfig(self.file)
     whitetip1 = config.models['whitetip1']
 
@@ -390,8 +394,8 @@ class CrosConfigHostTest(unittest.TestCase):
     """Test that we can obtain a model list"""
     config = CrosConfig(self.file)
     self.assertEqual(
-        ['broken', 'caroline', 'pyro', 'reef', 'whitetip', 'whitetip1',
-         'whitetip2'], config.GetModelList())
+        ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
+         'whitetip1', 'whitetip2'], config.GetModelList())
 
   def testFirmware(self):
     """Test access to firmware information"""
@@ -408,6 +412,12 @@ class CrosConfigHostTest(unittest.TestCase):
         pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
         extra=[], create_bios_rw_image=False, tools=[], sig_id='')
     self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
+        ('blacktip', caroline._replace(model='blacktip',
+                                       sig_id='sig-id-in-customization-id')),
+        ('blacktip1', caroline._replace(model='blacktip1', key_id='BLACKTIP1',
+                                        have_image=False, sig_id='blacktip1')),
+        ('blacktip2', caroline._replace(model='blacktip2', key_id='BLACKTIP2',
+                                        have_image=False, sig_id='blacktip2')),
         ('broken', FirmwareInfo(
             model='broken', shared_model=None, key_id='', have_image=True,
             bios_build_target=None, ec_build_target=None,

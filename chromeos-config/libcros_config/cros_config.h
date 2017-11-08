@@ -42,9 +42,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @filepath: Path to configuration .dtb file.
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
+  // @whitelabel_name: Name of the whitelabel model or 'tag' node
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath, const std::string& name,
-                   int sku_id);
+                   int sku_id, const std::string& whitelabel_tag);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
@@ -105,8 +106,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // model and submodel that will be used for the duration of execution.
   // @find_name: Platform name to search for
   // @find_sku_id: SKU ID to search for
+  // @find_whitelabel_name: Whitelabel model or tag to search for
   // @return true on success, false on failure
-  bool SelectModelConfigByIDs(const std::string &find_name, int find_sku_id);
+  bool SelectModelConfigByIDs(const std::string &find_name, int find_sku_id,
+                              std::string& find_whitelabel_name);
 
   // Check a single sku-map node for a match
   // This searches the given sku-map node to see if it is a match for the given
@@ -148,11 +151,11 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Decode the device identifiers to resolve the model / submodel
   // The decodes the output from 'mosys platform id' into the two fields
   // @output: Output string from mosys
-  // @name: Returns the platform name (which may be an exmpty string)
+  // @name_out: Returns the platform name (which may be an exmpty string)
   // @sku_id: Returns the SKU ID (which may be -1 if there is none)
   // @return true on success, false on failure
-  bool DecodeIdentifiers(const std::string &output, std::string* name,
-                         int* sku_id_out);
+  bool DecodeIdentifiers(const std::string &output, std::string* name_out,
+                         int* sku_id_out, std::string* whitelabel_name_out);
 
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
@@ -161,7 +164,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   std::string model_name_;       // Name of current model
   std::string submodel_name_;    // Name of current submodel
   std::string platform_name_;    // Platform name associated with the SKU map
-  int whitelabel_offset_ = -1;   // Device tree offset of the whitelabel node
+  int whitelabel_offset_ = -1;   // Device tree offset of the whitelabel model
+
+  // We support a special-case 'whitelabel' node which is inside a model. This
+  // holds the device tree offset of that node. We check this first on any
+  // property reads, since it overrides the model itself.
+  int whitelabel_tag_offset_ = -1;
   int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
   int default_offset_ = -1;      // Device tree offset of the default mode
   bool inited_ = false;          // true if the class is ready for use (Init*ed)

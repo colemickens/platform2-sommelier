@@ -48,9 +48,11 @@ bool CrosConfig::InitModel() {
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
-                             const std::string& name, int sku_id) {
-  std::string output = base::StringPrintf("name=\"%s\"\\nsku=\"%d\"",
-      name.c_str(), sku_id);
+                             const std::string& name, int sku_id,
+                             const std::string& whitelabel_tag) {
+  std::string output = base::StringPrintf(
+      "name=\"%s\"\\nsku=\"%d\"\ncustomization=\"%s\"",
+      name.c_str(), sku_id, whitelabel_tag.c_str());
   const base::FilePath::CharType* const argv[] = {"echo", "-e", output.c_str()};
   base::CommandLine cmdline(arraysize(argv), argv);
 
@@ -172,6 +174,17 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
+  if (whitelabel_tag_offset_ != -1) {
+    if (path == "/" && GetString(whitelabel_tag_offset_, "/", prop, val_out)) {
+      return true;
+    }
+    // TODO(sjg@chromium.org): We are considering moving the key-id to the root
+    // of the model schema. If we do, we can drop this special case.
+    if (path == "/firmware" && prop == "key-id" &&
+        GetString(whitelabel_tag_offset_, "/", prop, val_out)) {
+      return true;
+    }
+  }
   if (!GetString(model_offset_, path, prop, val_out)) {
     if (submodel_offset_ != -1 &&
         GetString(submodel_offset_, path, prop, val_out)) {
@@ -243,7 +256,8 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string &prop_name,
 }
 
 bool CrosConfig::DecodeIdentifiers(const std::string &output,
-                                   std::string* name_out, int* sku_id_out) {
+                                   std::string* name_out, int* sku_id_out,
+                                   std::string* whitelabel_tag_out) {
   *sku_id_out = -1;
   std::istringstream ss(output);
   std::string line;
@@ -262,6 +276,8 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
       *name_out = value;
     } else if (pair.first == "sku") {
       *sku_id_out = std::stoi(value);
+    } else if (pair.first == "customization") {
+      *whitelabel_tag_out = value;
     }
   }
   return true;
@@ -287,7 +303,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
   std::string name;
   int sku_id;
-  if (!DecodeIdentifiers(output, &name, &sku_id)) {
+  std::string whitelabel_tag;
+  if (!DecodeIdentifiers(output, &name, &sku_id, &whitelabel_tag)) {
     LOG(ERROR) << "Could not decode output " << output;
     return false;
   }
@@ -298,7 +315,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
-  if (!SelectModelConfigByIDs(name, sku_id)) {
+  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_tag)) {
     LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
     return false;
   }
@@ -311,12 +328,21 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(target_dirs_offset);
   }
   // See if there is a whitelabel config for this model.
-  LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
+  if (whitelabel_offset_ == -1) {
+    LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
+  }
   LookupPhandle(model_offset_, "default", &default_offset_);
 
   LOG(INFO) << "Using master configuration for model " << model_name_
             << ", submodel "
             << (submodel_name_.empty() ? "(none)" : submodel_name_);
+  if (whitelabel_offset_ != -1) {
+    LOG(INFO) << "Whiltelael of  "
+              << fdt_get_name(blob, whitelabel_offset_, NULL);
+  } else if (whitelabel_tag_offset_ != -1) {
+    LOG(INFO) << "Whiltelael tag "
+              << fdt_get_name(blob, whitelabel_tag_offset_, NULL);
+  }
   inited_ = true;
 
   return true;

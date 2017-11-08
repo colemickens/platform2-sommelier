@@ -14,32 +14,35 @@
 
 class CrosConfigTest : public testing::Test {
  protected:
-  void InitConfig(const std::string name = "Pyro", int sku_id = -1) {
+  void InitConfig(const std::string name = "Pyro", int sku_id = -1,
+    std::string whitelabel_name = "") {
     base::FilePath filepath("test.dtb");
-    ASSERT_TRUE(cros_config_.InitForTest(filepath, name, sku_id));
+    ASSERT_TRUE(cros_config_.InitForTest(filepath, name, sku_id,
+                                         whitelabel_name));
   }
+  void CheckWhiteLabelAlternateSku(int sku_id);
 
   brillo::CrosConfig cros_config_;
 };
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath("invalid-file");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckBadStruct) {
   base::FilePath filepath("test_bad_struct.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath("test.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model", -1));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model", -1, ""));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
@@ -110,6 +113,11 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // at run-time since we don't follow the 'shares' phandles.
   ASSERT_FALSE(cros_config_.GetString("/firmware/build-targets", "coreboot",
                                       &val));
+
+  // We should get the same result using the base whitetip and a whitelabel tag.
+  InitConfig("Reef", 8, "whitetip1");
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("shark", val);
 }
 
 TEST_F(CrosConfigTest, CheckAbsPath) {
@@ -156,6 +164,55 @@ TEST_F(CrosConfigTest, CheckSubmodel) {
   ASSERT_EQ("no", val);
   ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
   ASSERT_EQ("2mic", val);
+}
+
+// Check a particular SKU ID can return information from the whitelabels {} node
+// @sku_id: SKU ID to check
+void CrosConfigTest::CheckWhiteLabelAlternateSku(int sku_id) {
+  // Check values defined by blacktop1.
+  InitConfig("Reef", sku_id, "blacktip1");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("dark", val);
+  ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
+  ASSERT_EQ("BLACKTIP1", val);
+  ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
+  ASSERT_EQ("HBBN", val);
+
+  // Check values defined by blacktop2.
+  InitConfig("Reef", sku_id, "blacktip2");
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("darker", val);
+  ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
+  ASSERT_EQ("BLACKTIP2", val);
+  ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
+  ASSERT_EQ("HBBO", val);
+}
+
+TEST_F(CrosConfigTest, CheckWhiteLabelAlternate) {
+  InitConfig("Reef", 10);
+  std::string val;
+
+  // Check values defined by blacktop itself.
+  ASSERT_FALSE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_FALSE(cros_config_.GetString("/firmware", "key-id", &val));
+
+  // Check that we can find whitelabel values using the model.
+  CheckWhiteLabelAlternateSku(10);
+
+  // Check the same thing with the two submodels. This should work since they
+  // are orthogonal to the information in the whitelabels node.
+  CheckWhiteLabelAlternateSku(11);
+  CheckWhiteLabelAlternateSku(12);
+
+  // Check that submodel values are unaffected by the alternative schema.
+  InitConfig("Reef", 11, "blacktip1");
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("yes", val);
+
+  InitConfig("Reef", 12, "blacktip1");
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("no", val);
 }
 
 int main(int argc, char **argv) {
