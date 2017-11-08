@@ -624,7 +624,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     ResultCallback result_callback;
   };
 
-  static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
   static const char kErrorUnsupportedServiceType[];
 

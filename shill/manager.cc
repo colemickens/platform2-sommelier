@@ -93,7 +93,6 @@ static string ObjectID(const Manager* m) { return "manager"; }
 
 
 // statics
-const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
 const char Manager::kErrorUnsupportedServiceType[] =
     "service type is unsupported";
