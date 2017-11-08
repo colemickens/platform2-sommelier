@@ -70,7 +70,7 @@ class FakeSambaInterface : public SambaInterface {
         : name(entry_name), smbc_type(type), size(size) {}
   };
 
-  typedef std::map<std::string, FakeEntry> EntryMap;
+  using EntryMap = std::map<std::string, FakeEntry>;
 
   // This is used in |directory_map_| and is used as a fake file system.
   struct FakeDirectory {

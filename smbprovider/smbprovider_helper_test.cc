@@ -18,7 +18,7 @@ class SmbProviderHelperTest : public testing::Test {
   ~SmbProviderHelperTest() override {}
 
  protected:
-  typedef std::vector<uint8_t> Buffer;
+  using Buffer = std::vector<uint8_t>;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderHelperTest);
@@ -147,6 +147,20 @@ TEST_F(SmbProviderHelperTest, ShouldProcessEntryType) {
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_COMMS_SHARE));
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_IPC_SHARE));
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_LINK));
+}
+
+// Should properly serialize protobuf.
+TEST_F(SmbProviderHelperTest, ShouldSerializeProto) {
+  const std::string path("smb://192.168.0.1/test");
+  MountOptions mount_options;
+  mount_options.set_path(path);
+  Buffer buffer;
+  EXPECT_EQ(ERROR_OK, SerializeProtoToVector(mount_options, &buffer));
+  EXPECT_EQ(mount_options.ByteSizeLong(), buffer.size());
+
+  MountOptions deserialized_proto;
+  EXPECT_TRUE(deserialized_proto.ParseFromArray(buffer.data(), buffer.size()));
+  EXPECT_EQ(path, deserialized_proto.path());
 }
 
 }  // namespace smbprovider

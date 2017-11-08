@@ -22,9 +22,9 @@ namespace smbprovider {
 namespace {
 
 // Maps errno to ErrorType.
-ErrorType GetErrorFromErrno(int32_t err) {
+ErrorType GetErrorFromErrno(int32_t error_code) {
   ErrorType error;
-  switch (err) {
+  switch (error_code) {
     case EPERM:
     case EACCES:
       error = ERROR_ACCESS_DENIED;
@@ -55,23 +55,8 @@ void LogAndSetError(const std::string& operation_name,
   *error_code = static_cast<int32_t>(error_received);
 }
 
-// Serializes |proto| to the byte array |proto_blob|. Return ERROR_OK on success
-// and ERROR_INVALID_OPERATION otherwise.
-template <typename ProtoType>
-int32_t SerializeProto(const ProtoType& proto,
-                       std::vector<uint8_t>* proto_blob) {
-  DCHECK(proto_blob);
-  std::string buffer;
-  if (!proto.SerializeToString(&buffer)) {
-    LOG(ERROR) << "Failed to serialize proto";
-    return static_cast<int32_t>(ERROR_INVALID_OPERATION);
-  }
-  proto_blob->assign(buffer.begin(), buffer.end());
-  return static_cast<int32_t>(ERROR_OK);
-}
-
 // Helper method to get |DirectoryEntry| from a struct stat. Returns ERROR_OK
-// on success and ERROR_INVALID_OPERATION otherwise.
+// on success and ERROR_FAILED otherwise.
 int32_t GetDirectoryEntryFromStat(const std::string& full_path,
                                   const struct stat& stat_info,
                                   std::vector<uint8_t>* proto_blob) {
@@ -85,8 +70,7 @@ int32_t GetDirectoryEntryFromStat(const std::string& full_path,
   entry.set_name(path.BaseName().value());
   entry.set_size(size);
   entry.set_last_modified_time(stat_info.st_mtime);
-
-  return SerializeProto(entry, proto_blob);
+  return static_cast<int32_t>(SerializeProtoToVector(entry, proto_blob));
 }
 
 }  // namespace
@@ -112,13 +96,21 @@ void SmbProvider::RegisterAsync(
   dbus_object_->RegisterAsync(completion_callback);
 }
 
-void SmbProvider::Mount(const std::string& share_path,
+void SmbProvider::Mount(const std::vector<uint8_t>& mount_options_blob,
                         int32_t* error_code,
                         int32_t* mount_id) {
   DCHECK(error_code);
   DCHECK(mount_id);
+  MountOptions mount_options;
+  if (!mount_options.ParseFromArray(mount_options_blob.data(),
+                                    mount_options_blob.size())) {
+    *mount_id = -1;
+    LogAndSetError("Mount", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    return;
+  }
   int32_t dir_id = -1;
-  int32_t open_dir_error = samba_interface_->OpenDirectory(share_path, &dir_id);
+  int32_t open_dir_error =
+      samba_interface_->OpenDirectory(mount_options.path(), &dir_id);
   if (open_dir_error != 0) {
     *mount_id = -1;
     LogAndSetError("Mount", -1, GetErrorFromErrno(open_dir_error), error_code);
@@ -126,15 +118,23 @@ void SmbProvider::Mount(const std::string& share_path,
   }
   current_mount_id_++;
   DCHECK(mounts_.find(current_mount_id_) == mounts_.end());
-  mounts_[current_mount_id_] = share_path;
+  mounts_[current_mount_id_] = mount_options.path();
   CloseDirectory(dir_id);
   *mount_id = current_mount_id_;
   *error_code = static_cast<int32_t>(ERROR_OK);
 }
 
-int32_t SmbProvider::Unmount(int32_t mount_id) {
-  ErrorType err = mounts_.erase(mount_id) == 0 ? ERROR_NOT_FOUND : ERROR_OK;
-  return static_cast<int32_t>(err);
+int32_t SmbProvider::Unmount(const std::vector<uint8_t>& unmount_options_blob) {
+  UnmountOptions unmount_options;
+  if (!unmount_options.ParseFromArray(unmount_options_blob.data(),
+                                      unmount_options_blob.size())) {
+    LOG(ERROR) << "Error deserializing UnmountOptions proto";
+    return static_cast<int32_t>(ERROR_DBUS_PARSE_FAILED);
+  }
+  ErrorType error = mounts_.erase(unmount_options.mount_id()) == 0
+                        ? ERROR_NOT_FOUND
+                        : ERROR_OK;
+  return static_cast<int32_t>(error);
 }
 
 void SmbProvider::ReadDirectory(int32_t mount_id,
@@ -167,7 +167,8 @@ void SmbProvider::ReadDirectory(int32_t mount_id,
     CloseDirectory(dir_id);
     return;
   }
-  *error_code = SerializeProto(directory_entries, out_entries);
+  *error_code = static_cast<int32_t>(
+      SerializeProtoToVector(directory_entries, out_entries));
   CloseDirectory(dir_id);
 }
 

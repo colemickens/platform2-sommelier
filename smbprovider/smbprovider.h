@@ -33,11 +33,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
               std::unique_ptr<smbprovider::SambaInterface> samba_interface);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
-  void Mount(const std::string& share_path,
+  void Mount(const std::vector<uint8_t>& mount_options_blob,
              int32_t* error_code,
              int32_t* mount_id) override;
 
-  int32_t Unmount(int32_t mount_id) override;
+  int32_t Unmount(const std::vector<uint8_t>& unmount_options_blob) override;
 
   void ReadDirectory(int32_t mount_id,
                      const std::string& directory_path,

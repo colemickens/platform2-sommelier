@@ -38,8 +38,22 @@ class SmbProviderTest : public testing::Test {
   SmbProviderTest() { SetSmbProviderBuffer(kBufferSize); }
 
  protected:
-  typedef std::vector<smbc_dirent> DirEntries;
-  typedef std::vector<uint8_t> Buffer;
+  using DirEntries = std::vector<smbc_dirent>;
+  using Buffer = std::vector<uint8_t>;
+
+  Buffer WriteMountOptions(const std::string& path) {
+    Buffer proto_blob;
+    MountOptions mount_options;
+    mount_options.set_path(path);
+    EXPECT_EQ(ERROR_OK, SerializeProtoToVector(mount_options, &proto_blob));
+    return proto_blob;
+  }
+
+  void WriteUnmountOptions(int32_t mount_id, Buffer* proto_blob) {
+    UnmountOptions unmount_options;
+    unmount_options.set_mount_id(mount_id);
+    ASSERT_EQ(ERROR_OK, SerializeProtoToVector(unmount_options, proto_blob));
+  }
 
   // Helper method that adds |kValidSharePath| as a mountable share and mounts
   // it.
@@ -47,7 +61,8 @@ class SmbProviderTest : public testing::Test {
     fake_samba_->AddDirectory(std::string(kValidSharePath));
     int32_t mount_id;
     int32_t err;
-    smbprovider_->Mount(std::string(kValidSharePath), &err, &mount_id);
+    Buffer proto_blob = WriteMountOptions(kValidSharePath);
+    smbprovider_->Mount(proto_blob, &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
     ExpectNoOpenDirectories();
     return mount_id;
@@ -81,15 +96,18 @@ class SmbProviderTest : public testing::Test {
 TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   int32_t mount_id;
   int32_t err;
-  smbprovider_->Mount(std::string("/test/invalid"), &err, &mount_id);
+  Buffer proto_blob = WriteMountOptions("/test/invalid");
+  smbprovider_->Mount(proto_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
   ExpectNoOpenDirectories();
 }
 
 // Unmount fails when unmounting an |mount_id| that wasn't previously mounted.
 TEST_F(SmbProviderTest, UnmountFailsWithUnmountedShare) {
-  int32_t err = smbprovider_->Unmount(123);
-  EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
+  Buffer proto_blob;
+  WriteUnmountOptions(123, &proto_blob);
+  int32_t error = smbprovider_->Unmount(proto_blob);
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(error));
   ExpectNoOpenDirectories();
 }
 
@@ -101,9 +119,11 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
   fake_samba_->AddDirectory(share2);
   int32_t mount1_id = -1;
   int32_t mount2_id = -1;
-  int32_t err;
-  smbprovider_->Mount(share1, &err, &mount1_id);
-  smbprovider_->Mount(share1, &err, &mount2_id);
+  int32_t error;
+  Buffer proto_blob_1 = WriteMountOptions(share1);
+  Buffer proto_blob_2 = WriteMountOptions(share2);
+  smbprovider_->Mount(proto_blob_1, &error, &mount1_id);
+  smbprovider_->Mount(proto_blob_2, &error, &mount2_id);
   EXPECT_NE(mount1_id, mount2_id);
 }
 
@@ -113,9 +133,30 @@ TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
   ExpectNoOpenDirectories();
 
-  int32_t um_err = smbprovider_->Unmount(mount_id);
-  EXPECT_EQ(ERROR_OK, CastError(um_err));
+  Buffer proto_blob;
+  WriteUnmountOptions(mount_id, &proto_blob);
+  int32_t error = smbprovider_->Unmount(proto_blob);
+  EXPECT_EQ(ERROR_OK, CastError(error));
   ExpectNoOpenDirectories();
+}
+
+// Mount ids should not be reused.
+TEST_F(SmbProviderTest, MountIdsDontGetReused) {
+  const std::string share("smb://wdshare/dogs");
+  fake_samba_->AddDirectory(share);
+  int32_t mount_id1 = -1;
+  int32_t error;
+  Buffer mount_options_blob1 = WriteMountOptions(share);
+  smbprovider_->Mount(mount_options_blob1, &error, &mount_id1);
+
+  Buffer unmount_options_blob;
+  WriteUnmountOptions(mount_id1, &unmount_options_blob);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Unmount(unmount_options_blob)));
+
+  int32_t mount_id2 = -1;
+  Buffer mount_options_blob2 = WriteMountOptions(share);
+  smbprovider_->Mount(mount_options_blob2, &error, &mount_id2);
+  EXPECT_NE(mount_id1, mount_id2);
 }
 
 // ReadDirectory fails when passed a |mount_id| that wasn't previously mounted.
