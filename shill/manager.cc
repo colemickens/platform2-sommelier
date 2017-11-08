@@ -91,28 +91,33 @@ static auto kModuleLogScope = ScopeLogger::kManager;
 static string ObjectID(const Manager* m) { return "manager"; }
 }
 
+namespace {
 
-// statics
-const char Manager::kErrorTypeRequired[] = "must specify service type";
-const char Manager::kErrorUnsupportedServiceType[] =
-    "service type is unsupported";
-// This timeout should be less than the upstart job timeout, otherwise
-// stats for termination actions might be lost.
-const int Manager::kTerminationActionsTimeoutMilliseconds = 19500;
+constexpr char kErrorTypeRequired[] = "must specify service type";
 
-// Device status check interval (every 3 minutes).
-const int Manager::kDeviceStatusCheckIntervalMilliseconds = 180000;
+constexpr char kErrorUnsupportedServiceType[] = "service type is unsupported";
 
-// static
-const char* const Manager::kProbeTechnologies[] = {
+// Time to wait for termination actions to complete, which should be less than
+// the upstart job timeout, or otherwise stats for termination actions might be
+// lost.
+constexpr int kTerminationActionsTimeoutMilliseconds = 19500;
+
+// Interval for probing various device status, and report them to UMA stats.
+constexpr int kDeviceStatusCheckIntervalMilliseconds =
+    180000;  // every 3 minutes
+
+// Technologies to probe for.
+const char* const kProbeTechnologies[] = {
     kTypeEthernet,
     kTypeWifi,
     kTypeWimax,
-    kTypeCellular
+    kTypeCellular,
 };
 
-// static
-const char Manager::kDefaultClaimerName[] = "";
+// Name of the default claimer.
+constexpr char kDefaultClaimerName[] = "";
+
+}  // namespace
 
 Manager::Manager(ControlInterface* control_interface,
                  EventDispatcher* dispatcher,

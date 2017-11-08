@@ -624,21 +624,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     ResultCallback result_callback;
   };
 
-  static const char kErrorTypeRequired[];
-  static const char kErrorUnsupportedServiceType[];
-
-  // Technologies to probe for.
-  static const char* const kProbeTechnologies[];
-
-  // Name of the default claimer.
-  static const char kDefaultClaimerName[];
-
-  // Timeout interval for probing various device status, and report them to
-  // UMA stats.
-  static const int kDeviceStatusCheckIntervalMilliseconds;
-  // Time to wait for termination actions to complete.
-  static const int kTerminationActionsTimeoutMilliseconds;
-
   void ApplyPolicies();
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error* error);
