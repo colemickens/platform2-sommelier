@@ -31,7 +31,7 @@ main() {
   local bg_pid=$!
 
   # Trigger hammerd job, which blocks until the job completes.
-  initctl start hammerd AT_BOOT="true"
+  initctl start hammerd AT_BOOT="true" UPDATE_IF="mismatch"
 
   # Kill the dbus-monitor in the background process.
   pkill -9 -P "${bg_pid}" -f dbus-monitor

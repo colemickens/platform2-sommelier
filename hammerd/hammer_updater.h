@@ -35,8 +35,8 @@ class HammerUpdater {
   };
 
   enum class UpdateCondition {
-    kCritical,
-    kNewer,
+    kNever,
+    kMismatch,
     kAlways,
     kUnknown,
   };
@@ -119,9 +119,19 @@ class HammerUpdater {
   // Waits for hammer USB device ready. It is called after the whole updating
   // process to prevent invoking hammerd infinitely.
   void WaitUsbReady(HammerUpdater::RunStatus status);
+
+  // Sends DBus kBaseFirmwareNeedUpdateSignal to notify other processes that
+  // the RW section need to be updated.
+  // Note the update condition should be "never".
+  void NotifyNeedUpdate();
   // Sends DBus kBaseFirmwareUpdateStartedSignal to notify other processes that
   // the RW section will now be updated.
+  // Note the update condition should not be "never".
   void NotifyUpdateStarted();
+  // Sends DBus signal to notify other processes that the RW section is updated
+  // successfully or failed.
+  // Note the update condition should not be "never".
+  void NotifyUpdateFinished(bool is_success);
 
   template <typename HammerUpdaterType>
   friend class HammerUpdaterTest;

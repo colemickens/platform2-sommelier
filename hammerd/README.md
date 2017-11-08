@@ -19,3 +19,22 @@ related to hammer:
   - Interaction with Chrome:
     - Shows notification during update (EC+touchpad)
     - Shows notification that a new base is connected (pairing)
+
+## Triggered On Boot
+
+Before the UI starts, hammerd is invoked to check whether the base is attached
+and need update or not. If so, then hammerd update the base EC firmware and
+touchpad firmware.
+
+## Triggered On Attachment
+
+hammerd is also invoked when the base is attached to check whether the base
+needs update. But hammerd ONLY send a DBus signal to notify Chrome UI in
+critical case (firmware is broken or critical update appears),
+NOT updating anything.
+
+## Update Manually
+
+We can also manually update firmware by running:
+`start hammerd UPDATE_IF="always"`
+It is useful in development or debugging.

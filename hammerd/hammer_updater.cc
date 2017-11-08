@@ -41,10 +41,10 @@ const std::string HammerUpdater::TaskState::ToString() {
 
 HammerUpdater::UpdateCondition HammerUpdater::ToUpdateCondition(
     const std::string& s) {
-  if (s == "critical")
-    return UpdateCondition::kCritical;
-  if (s == "newer")
-    return UpdateCondition::kNewer;
+  if (s == "never")
+    return UpdateCondition::kNever;
+  if (s == "mismatch")
+    return UpdateCondition::kMismatch;
   if (s == "always")
     return UpdateCondition::kAlways;
   return UpdateCondition::kUnknown;
@@ -126,18 +126,14 @@ bool HammerUpdater::Run() {
       LOG(INFO) << "The version up to date, skip updating.";
       return true;
     }
+    // TODO(b/69347600): Check touchpad firmware version as well.
   }
 
   HammerUpdater::RunStatus status = RunLoop();
   bool ret = (status == HammerUpdater::RunStatus::kNoUpdate);
   WaitUsbReady(status);
-
-  // If we tried to update the firmware, send a signal to notify the updating is
-  // finished.
-  if (dbus_notified_) {
-    dbus_notified_ = false;
-    dbus_wrapper_->SendSignal(ret ? kBaseFirmwareUpdateSucceededSignal
-                                  : kBaseFirmwareUpdateFailedSignal);
+  if (update_condition_ != UpdateCondition::kNever) {
+    NotifyUpdateFinished(ret);
   }
   return ret;
 }
@@ -179,8 +175,13 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
     // This block is only run once at the first round of loop.
     if (!rollback_increased && fw_updater_->CompareRollback() > 0) {
       rollback_increased = true;
-      task_.update_ro = true;
-      task_.update_rw = true;
+      if (update_condition_ == UpdateCondition::kNever) {
+        LOG(INFO) << "Critical update appears but never update, notify UI.";
+        NotifyNeedUpdate();
+      } else {
+        task_.update_ro = true;
+        task_.update_rw = true;
+      }
     }
 
     DLOG(INFO) << "Current task state: " << task_.ToString();
@@ -259,7 +260,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
 
   // After sending first PDU, we get the information of current EC.
   // Check if the firmware version is mismatched or not.
-  if (update_condition_ == UpdateCondition::kNewer) {
+  if (update_condition_ == UpdateCondition::kMismatch) {
     if (fw_updater_->VersionMismatch(SectionName::RW))
       task_.update_rw = true;
     if (fw_updater_->VersionMismatch(SectionName::RO))
@@ -274,7 +275,6 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
     if (task_.update_rw) {
       if (fw_updater_->ValidKey() && fw_updater_->CompareRollback() >= 0) {
         LOG(INFO) << "RW section needs update. Rebooting to RO.";
-        NotifyUpdateStarted();
         if (fw_updater_->IsSectionLocked(SectionName::RW)) {
           fw_updater_->UnlockRW();
         }
@@ -298,11 +298,15 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
       (task_.update_rw &&
        fw_updater_->ValidKey() &&
        fw_updater_->CompareRollback() >= 0)) {
-    NotifyUpdateStarted();
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
     if (task_.post_rw_jump) {
       LOG(ERROR) << "Failed to jump to RW. Need to update RW section.";
+      if (update_condition_ == UpdateCondition::kNever) {
+        LOG(INFO) << "RW is broken but never update, notify UI.";
+        NotifyNeedUpdate();
+        return HammerUpdater::RunStatus::kFatalError;
+      }
       if (!fw_updater_->ValidKey() || fw_updater_->CompareRollback() < 0) {
         LOG(ERROR) << "RW section is unusable, but local image is "
                    << "incompatible. Giving up.";
@@ -371,11 +375,10 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Trigger the retry if update fails.
-  if (RunTouchpadUpdater() == HammerUpdater::RunStatus::kTouchpadUpToDate) {
-    LOG(INFO) << "Touchpad update succeeded.";
-  } else {
+  ret = RunTouchpadUpdater();
+  if (ret != HammerUpdater::RunStatus::kTouchpadUpToDate) {
     LOG(INFO) << "Touchpad update failure.";
-    return HammerUpdater::RunStatus::kNeedReset;
+    return ret;
   }
 
   // Pair with hammer.
@@ -503,10 +506,30 @@ void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
   }
 }
 
+void HammerUpdater::NotifyNeedUpdate() {
+  DCHECK(update_condition_ == UpdateCondition::kNever);
+  if (!dbus_notified_) {
+    dbus_notified_ = true;
+    dbus_wrapper_->SendSignal(kBaseFirmwareNeedUpdateSignal);
+  }
+}
+
 void HammerUpdater::NotifyUpdateStarted() {
+  DCHECK(update_condition_ != UpdateCondition::kNever);
   if (!dbus_notified_) {
     dbus_notified_ = true;
     dbus_wrapper_->SendSignal(kBaseFirmwareUpdateStartedSignal);
+  }
+}
+
+void HammerUpdater::NotifyUpdateFinished(bool is_success) {
+  DCHECK(update_condition_ != UpdateCondition::kNever);
+  // If we tried to update the firmware, send a signal to notify the updating is
+  // finished.
+  if (dbus_notified_) {
+    dbus_notified_ = false;
+    dbus_wrapper_->SendSignal(is_success ? kBaseFirmwareUpdateSucceededSignal
+                                         : kBaseFirmwareUpdateFailedSignal);
   }
 }
 
@@ -592,7 +615,22 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
       LOG(INFO) << "Version matched, skip update.";
       return HammerUpdater::RunStatus::kTouchpadUpToDate;
     }
+    // Version mismatches. However, if update condition is "never", then
+    // we should notify UI when firmware is broken, or just skip update.
+    if (update_condition_ == UpdateCondition::kNever) {
+      if (response.elan.fw_version == kElanBrokenFwVersion) {
+        LOG(INFO) << "Touchpad firmware is broken but never update, notify UI.";
+        NotifyNeedUpdate();
+        return HammerUpdater::RunStatus::kFatalError;
+      }
+      LOG(INFO) << "Pretend touchpad firmware is up to date.";
+      return HammerUpdater::RunStatus::kTouchpadUpToDate;
+    }
+    // OK, we really need to update touchpad now.
+    task_.update_tp = true;
   }
+  LOG(INFO) << "Update touchpad firmware, notify UI";
+  NotifyUpdateStarted();
   bool ret = fw_updater_->TransferTouchpadFirmware(
       response.fw_address, response.fw_size);
   task_.update_tp = !ret;

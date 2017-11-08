@@ -95,7 +95,7 @@ class HammerUpdaterTest : public testing::Test {
         touchpad_product_id_,
         touchpad_fw_ver_,
         false,
-        HammerUpdater::ToUpdateCondition("critical"),
+        HammerUpdater::ToUpdateCondition("mismatch"),
         base::FilePath(""),
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),
@@ -108,6 +108,8 @@ class HammerUpdaterTest : public testing::Test {
     dbus_wrapper_ =
         static_cast<MockDBusWrapper*>(hammer_updater_->dbus_wrapper_.get());
     task_ = &(hammer_updater_->task_);
+    update_condition_ = const_cast<HammerUpdater::UpdateCondition*>(
+        &(hammer_updater_->update_condition_));
     // By default, expect no USB connections to be made. This can
     // be overridden by a call to ExpectUsbConnections.
     usb_connection_count_ = 0;
@@ -118,6 +120,16 @@ class HammerUpdaterTest : public testing::Test {
     // related to most of testing logic. Set the default action here.
     ON_CALL(*fw_updater_, SendFirstPdu()).WillByDefault(Return(true));
     ON_CALL(*fw_updater_, SendDone()).WillByDefault(Return());
+
+    // Do not verify these non-state-changing methods are called.
+    ON_CALL(*fw_updater_, LoadEcImage(_)).WillByDefault(Return(true));
+    ON_CALL(*fw_updater_, LoadTouchpadImage(_)).WillByDefault(Return(true));
+    ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(false));
+    ON_CALL(*fw_updater_, IsSectionLocked(_)).WillByDefault(Return(false));
+    ON_CALL(*fw_updater_, ValidKey()).WillByDefault(Return(true));
+    ON_CALL(*fw_updater_, CurrentSection())
+        .WillByDefault(ReturnPointee(&current_section_));
+    ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(0));
   }
 
   void TearDown() override { ASSERT_EQ(usb_connection_count_, 0); }
@@ -144,6 +156,8 @@ class HammerUpdaterTest : public testing::Test {
   std::string touchpad_fw_ver_ = "2.0";
   int usb_connection_count_;
   HammerUpdater::TaskState* task_;
+  HammerUpdater::UpdateCondition* update_condition_;
+  SectionName current_section_ = SectionName::RO;
 };
 
 // We mock RunOnce function here to verify the interaction between Run() and
@@ -177,7 +191,7 @@ class HammerUpdaterPostRWTest : public HammerUpdaterTest<MockNothing> {
 
 // Failed to load EC image.
 TEST_F(HammerUpdaterFlowTest, Run_LoadEcImageFailed) {
-  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(false));
+  ON_CALL(*fw_updater_, LoadEcImage(_)).WillByDefault(Return(false));
   EXPECT_CALL(*fw_updater_, TryConnectUsb()).Times(0);
   EXPECT_CALL(*hammer_updater_, RunOnce()).Times(0);
 
@@ -186,7 +200,6 @@ TEST_F(HammerUpdaterFlowTest, Run_LoadEcImageFailed) {
 
 // Sends reset command if RunOnce returns kNeedReset.
 TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
-  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(HammerUpdater::RunStatus::kNeedReset));
@@ -200,7 +213,6 @@ TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
 
 // A fatal error occurred during update.
 TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
-  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce())
       .WillOnce(Return(HammerUpdater::RunStatus::kFatalError));
   EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
@@ -212,7 +224,6 @@ TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
 
 // After three attempts, Run reports no update needed.
 TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
-  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*hammer_updater_, RunOnce())
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
@@ -234,19 +245,85 @@ TEST_F(HammerUpdaterFlowTest, RunOnce_InvalidDevice) {
   EXPECT_CALL(*fw_updater_, CloseUsb())
     .WillRepeatedly(Return());
 
-  EXPECT_CALL(*fw_updater_, LoadEcImage(ec_image_)).WillOnce(Return(true));
   EXPECT_CALL(*dbus_wrapper_, SendSignal(kInvalidBaseConnectedSignal));
 
   // Do not call ExpectUsbConnections since it conflicts with our EXPECT_CALLs.
   ASSERT_FALSE(hammer_updater_->Run());
 }
 
+// In "never" update condition, send DBus signal only if need update.
+// Condition:
+//   1. Update condition is "never"
+//   2. In RW section.
+//   3. RW needs update.
+TEST_F(HammerUpdaterRWTest, Run_NeverUpdateCriticalUpdate) {
+  current_section_ = SectionName::RW;
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
+
+  {
+    InSequence dummy;
+
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareNeedUpdateSignal));
+    EXPECT_CALL(*hammer_updater_, PostRWProcess())
+        .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
+  }
+  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
+// In "never" update condition, send DBus signal only if RW is broken.
+// Condition:
+//   1. Update condition is "never"
+//   2. In RO section.
+//   3. RW is broken.
+TEST_F(HammerUpdaterRWTest, Run_NeverUpdateRWBroken) {
+  current_section_ = SectionName::RO;
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+
+  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
+  {
+    InSequence dummy;
+
+    // Try to jump to RW, but still in RO.
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
+        .WillOnce(Return(true));
+    // Send DBus signal, and reset the device again.
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareNeedUpdateSignal));
+    EXPECT_CALL(*fw_updater_,
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
+        .WillOnce(Return(true));
+  }
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_FALSE(hammer_updater_->Run());
+}
+
+// In "never" update condition, do nothing if there is only normal update.
+// Condition:
+//   1. Update condition is "never"
+//   2. In RO section.
+//   3. RW is broken.
+TEST_F(HammerUpdaterRWTest, Run_NeverUpdateNothing) {
+  current_section_ = SectionName::RW;
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(true));
+
+  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
+  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareNeedUpdateSignal))
+      .Times(0);
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
 // Return kInvalidFirmware if the layout of the firmware is changed.
 // Condition:
 //   1. The current section is Invalid.
 TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::Invalid));
+  current_section_ = SectionName::Invalid;
 
   ASSERT_EQ(hammer_updater_->RunOnce(),
             HammerUpdater::RunStatus::kInvalidFirmware);
@@ -258,17 +335,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
 //   2. RW does not need update.
 //   3. Fails to jump to RW due to invalid signature.
 TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
-  SectionName current_section = SectionName::RO;
-
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(ReturnPointee(&current_section));
+  current_section_ = SectionName::RO;
 
   {
     InSequence dummy;
@@ -279,7 +346,6 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
 
     // Second round: Jump to RW fails, so update RW. After update, again attempt
     // to jump to RW.
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
@@ -291,61 +357,16 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
     // Third round: Again attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
         .WillOnce(
-            DoAll(Assign(&current_section, SectionName::RW), Return(true)));
+            DoAll(Assign(&current_section_, SectionName::RW), Return(true)));
 
     // Fourth round: Check that jumping to RW was successful, and that
     // PostRWProcessing is called.
     EXPECT_CALL(*hammer_updater_, PostRWProcess())
         .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
   ExpectUsbConnections(AtLeast(1));
   ASSERT_TRUE(hammer_updater_->Run());
-}
-
-// Send UpdateFailed DBus signal after continuous RW update failure.
-// Condition:
-//   1. In RO section.
-//   2. RW needs update.
-//   3. Always fails to update RW.
-//   4. USB device disconnects after RunLoop.
-TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RO));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
-      .WillRepeatedly(Return(false));
-
-  // Hammerd would try to update RW 10 times, so just use WillRepeatedly
-  // instead of using InSequence.
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillOnce(Return(true));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
-      .WillRepeatedly(Return(true));
-
-  // USB losts connection after jumping out the RunLoop.
-  {
-    InSequence dummy;
-    EXPECT_CALL(*fw_updater_, TryConnectUsb())
-        .Times(10)
-        .WillRepeatedly(Return(UsbConnectStatus::kSuccess));
-    EXPECT_CALL(*fw_updater_, TryConnectUsb())
-        .WillOnce(Return(UsbConnectStatus::kUsbPathEmpty));
-  }
-  EXPECT_CALL(*fw_updater_, CloseUsb()).Times(11).WillRepeatedly(Return());
-
-  // We should send UpdateStart and UpdateFailed DBus signal.
-  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
-  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateFailedSignal));
-
-  ASSERT_FALSE(hammer_updater_->Run());
 }
 
 // Inject Entropy.
@@ -356,24 +377,14 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
 //   4. Pairing failed at the first time.
 //   5. After injecting entropy successfully, pairing is successful
 TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
-  SectionName current_section = SectionName::RO;
-
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(ReturnPointee(&current_section));
+  current_section_ = SectionName::RO;
 
   {
     InSequence dummy;
 
     // First round: RW does not need update.  Attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RW),
                         Return(true)));
 
     // Second round: Entering RW section, and need to inject entropy.
@@ -382,11 +393,10 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
                         Return(HammerUpdater::RunStatus::kNeedReset)));
     EXPECT_CALL(*fw_updater_,
                 SendSubcommand(UpdateExtraCommand::kImmediateReset))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RO),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RO),
                         Return(true)));
 
     // Third round: Inject entropy and reset again.
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, InjectEntropy())
@@ -397,13 +407,12 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
 
     // Fourth round: Send JumpToRW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RW),
                         Return(true)));
 
     // Fifth round: Post-RW processing is successful.
     EXPECT_CALL(*hammer_updater_, PostRWProcess())
         .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
   ExpectUsbConnections(AtLeast(1));
@@ -416,18 +425,12 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
 //   2. RW needs update.
 //   3. RW is not locked.
 TEST_F(HammerUpdaterRWTest, RunOnce_UpdateRW) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RO));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
-      .WillRepeatedly(Return(false));
+  current_section_ = SectionName::RO;
+  ON_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
+      .WillByDefault(Return(true));
 
   {
     InSequence dummy;
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
@@ -445,18 +448,13 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateRW) {
 //   2. RW needs update.
 //   3. RW is locked.
 TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RO));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
-      .WillRepeatedly(Return(true));
+  current_section_ = SectionName::RO;
+  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
+  ON_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
+      .WillByDefault(Return(true));
 
   {
     InSequence dummy;
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, UnlockRW())
@@ -473,12 +471,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
 //   1. In RO section.
 //   2. RW does not need update.
 TEST_F(HammerUpdaterRWTest, RunOnce_JumpToRW) {
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RO));
+  current_section_ = SectionName::RO;
 
   ASSERT_EQ(hammer_updater_->RunOnce(),
             HammerUpdater::RunStatus::kNeedJump);
@@ -489,10 +482,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_JumpToRW) {
 //   1. In RW section.
 //   2. RW jump flag is set.
 TEST_F(HammerUpdaterRWTest, RunOnce_CompleteRWJump) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RW));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(false));
+  current_section_ = SectionName::RW;
   EXPECT_CALL(*hammer_updater_, PostRWProcess())
       .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
 
@@ -506,12 +496,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_CompleteRWJump) {
 //   1. In RW section.
 //   2. RW does not need update.
 TEST_F(HammerUpdaterRWTest, RunOnce_KeepInRW) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RW));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(false));
+  current_section_ = SectionName::RW;
   EXPECT_CALL(*hammer_updater_, PostRWProcess())
       .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
 
@@ -524,13 +509,10 @@ TEST_F(HammerUpdaterRWTest, RunOnce_KeepInRW) {
 //   1. In RW section.
 //   2. RW needs update.
 TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RW));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
+  current_section_ = SectionName::RW;
+  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
+  ON_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
+      .WillByDefault(Return(true));
 
   task_->update_rw = true;
   ASSERT_EQ(hammer_updater_->RunOnce(),
@@ -548,12 +530,12 @@ TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
 //   2. RW needs update.
 //   3. Local image key_version is incompatible.
 TEST_F(HammerUpdaterRWTest, RunOnce_UpdateWorkingRWIncompatibleKey) {
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(false));
+  current_section_ = SectionName::RW;
+  ON_CALL(*fw_updater_, ValidKey()).WillByDefault(Return(false));
   ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RW));
+  ON_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
+      .WillByDefault(Return(true));
+
   EXPECT_CALL(*hammer_updater_, PostRWProcess())
       .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
 
@@ -572,13 +554,11 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateWorkingRWIncompatibleKey) {
 //   2. RW needs update.
 //   3. Local image key_version is incompatible.
 TEST_F(HammerUpdaterRWTest, RunOnce_UpdateCorruptRWIncompatibleKey) {
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(false));
+  current_section_ = SectionName::RO;
+  ON_CALL(*fw_updater_, ValidKey()).WillByDefault(Return(false));
   ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(Return(SectionName::RO));
-  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
+  ON_CALL(*fw_updater_, VersionMismatch(SectionName::RW))
+      .WillByDefault(Return(true));
 
   task_->post_rw_jump = true;
   ASSERT_EQ(hammer_updater_->RunOnce(),
@@ -591,25 +571,17 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateCorruptRWIncompatibleKey) {
 //   2. A valid update is available for RW.
 //   3. RW is locked.
 TEST_F(HammerUpdaterRWTest, Run_UpdateLockedRW) {
-  SectionName current_section = SectionName::RO;
+  current_section_ = SectionName::RO;
   bool is_rw_locked = true;
 
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, ValidKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(0));
-  ON_CALL(*fw_updater_, CurrentSection())
-      .WillByDefault(ReturnPointee(&current_section));
   ON_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
       .WillByDefault(ReturnPointee(&is_rw_locked));
 
   {
     InSequence dummy;
     // First round: Find RW is locked, send UnlockRW command and reset.
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW));
     EXPECT_CALL(*fw_updater_, UnlockRW())
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_,
@@ -619,7 +591,6 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateLockedRW) {
     // Second round: Update RW section, and reset again.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_,
@@ -627,12 +598,11 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateLockedRW) {
         .WillOnce(Return(true));
     // Third round: Jump to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RW),
                         Return(true)));
     // Fourth round: Run PostRWProcess.
     EXPECT_CALL(*hammer_updater_, PostRWProcess())
         .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
-    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
   task_->update_rw = true;
@@ -684,8 +654,6 @@ TEST_F(HammerUpdaterPostRWTest, Pairing_Failed) {
 TEST_F(HammerUpdaterPostRWTest, ROUpdate_Passed) {
   {
     InSequence dummy;
-    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
-        .WillOnce(Return(false));
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RO))
         .WillOnce(Return(true));
@@ -700,8 +668,6 @@ TEST_F(HammerUpdaterPostRWTest, ROUpdate_Passed) {
 TEST_F(HammerUpdaterPostRWTest, ROUpdate_Failed) {
   {
     InSequence dummy;
-    EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
-        .WillOnce(Return(false));
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RO))
         .WillOnce(Return(false));
@@ -714,9 +680,8 @@ TEST_F(HammerUpdaterPostRWTest, ROUpdate_Failed) {
 
 // RO update is not possible.
 TEST_F(HammerUpdaterPostRWTest, ROUpdate_NotPossible) {
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*fw_updater_, VersionMismatch(SectionName::RO)).Times(0);
+  ON_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
+      .WillByDefault(Return(true));
   EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RO)).Times(0);
 
   task_->update_ro = true;
@@ -730,17 +695,12 @@ TEST_F(HammerUpdaterPostRWTest, ROUpdate_NotPossible) {
 //   2. Key is changed.
 //   3. RO is locked.
 TEST_F(HammerUpdaterPostRWTest, Run_SkipUpdateWhenKeyChanged) {
-  SectionName current_section = SectionName::RO;
+  current_section_ = SectionName::RO;
 
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, ValidKey())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(ReturnPointee(&current_section));
+  ON_CALL(*fw_updater_, IsSectionLocked(SectionName::RO))
+      .WillByDefault(Return(true));
+  ON_CALL(*fw_updater_, ValidKey()).WillByDefault(Return(false));
+  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
 
   {
     InSequence dummy;
@@ -748,7 +708,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_SkipUpdateWhenKeyChanged) {
     // RW cannot be updated, since the key version is incorrect. Attempt to
     // jump to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RW),
                         Return(true)));
     // Check that RO was not updated and jumping to RW was successful.
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RO))
@@ -774,18 +734,11 @@ TEST_F(HammerUpdaterPostRWTest, Run_SkipUpdateWhenKeyChanged) {
 //   2. Key is changed.
 //   3. RO is not locked.
 TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
-  SectionName current_section = SectionName::RO;
+  current_section_ = SectionName::RO;
   bool valid_key = false;
 
-  EXPECT_CALL(*fw_updater_, LoadEcImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*fw_updater_, ValidKey())
-      .WillRepeatedly(ReturnPointee(&valid_key));
-  EXPECT_CALL(*fw_updater_, CompareRollback()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*fw_updater_, IsSectionLocked(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*fw_updater_, CurrentSection())
-      .WillRepeatedly(ReturnPointee(&current_section));
+  ON_CALL(*fw_updater_, ValidKey()).WillByDefault(ReturnPointee(&valid_key));
+  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
 
   {
     InSequence dummy;
@@ -793,7 +746,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
     // RW cannot be updated, since the key version is incorrect. Attempt to
     // jump to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RW),
                         Return(true)));
 
     // After jumping to RW, RO will be updated. Reset afterwards.
@@ -802,7 +755,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_,
                 SendSubcommand(UpdateExtraCommand::kImmediateReset))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RO),
+        .WillOnce(DoAll(Assign(&current_section_, SectionName::RO),
                         Assign(&valid_key, true),
                         Return(true)));
 
@@ -819,7 +772,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
     // Now both sections are updated. Jump from RO to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
         .WillOnce(
-            DoAll(Assign(&current_section, SectionName::RW), Return(true)));
+            DoAll(Assign(&current_section_, SectionName::RW), Return(true)));
 
     // Check that jumping to RW was successful.
     EXPECT_CALL(
@@ -840,8 +793,6 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
 
 // Test the return value if we can't get touchpad infomation.
 TEST_F(HammerUpdaterPostRWTest, Run_FailToGetTouchpadInfo) {
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
-      .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
@@ -855,8 +806,6 @@ TEST_F(HammerUpdaterPostRWTest, Run_FailToGetTouchpadInfo) {
 TEST_F(HammerUpdaterPostRWTest, Run_ICSizeMismatchAndStop) {
   // Make a mismatch response by setting a different firmware size.
   response_.fw_size += 9487;
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
-      .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
@@ -871,8 +820,6 @@ TEST_F(HammerUpdaterPostRWTest, Run_HashMismatchAndStop) {
   // Make a mismatch response by setting a different allowed_fw_hash.
   memset(response_.allowed_fw_hash, response_.allowed_fw_hash[0] + 0x5F,
          SHA256_DIGEST_LENGTH);
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
-      .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))
@@ -885,8 +832,6 @@ TEST_F(HammerUpdaterPostRWTest, Run_HashMismatchAndStop) {
 // Test the return value if TransferTouchpadFirmware is failed.
 TEST_F(HammerUpdaterPostRWTest, Run_FailToTransferFirmware) {
   response_.elan.fw_version -= 1;  // Make local fw_ver is newer than base.
-  EXPECT_CALL(*fw_updater_, LoadTouchpadImage(touchpad_image_))
-      .WillOnce(Return(true));
   EXPECT_CALL(*fw_updater_,
               SendSubcommandReceiveResponse(UpdateExtraCommand::kTouchpadInfo,
                                             "", _, sizeof(TouchpadInfo)))

@@ -40,12 +40,12 @@ int main(int argc, const char* argv[]) {
   DEFINE_bool(at_boot, false,
               "Invoke process at boot time. "
               "Exit if RW is up-to-date (no pairing)");
-  DEFINE_string(update_if, "critical",
-                "Update condition, one of: critical|newer|always.\n"
-                "    critical:\n"
-                "      Update if RW is broken or if rollback is increased\n"
-                "    newer:\n"
-                "      Update as long as newer firmware exists\n"
+  DEFINE_string(update_if, "never",
+                "Update condition, one of: never|mismatch|always.\n"
+                "    never:\n"
+                "      Never update, just check if update is needed.\n"
+                "    mismatch:\n"
+                "      Update as long as the firmware is mismatched.\n"
                 "    always:\n"
                 "      Update anyways, regardless of version");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon");
