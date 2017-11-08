@@ -822,14 +822,9 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
 
     if (isysNode == ISYS_NODE_RAW) {
         outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_RAW_BAYER;
-        // Send notification if needed in this request
-        if (gc->isIsaOutputDestinationActive(isysBufferPtr->mDestinationTerminal)) {
-            LOG2("ISYS event %d arrived", outMsg.data.event.type);
-            notifyListeners(&outMsg);
-        } else {
-            // buffer not needed in this request, recycle to the pool
-            isysBufferPtr.reset();
-        }
+        // Send notification
+        LOG2("ISYS event %d arrived", outMsg.data.event.type);
+        notifyListeners(&outMsg);
     } else {
         LOGE("Unsupprted isys node");
         return UNKNOWN_ERROR;
