@@ -123,15 +123,12 @@ const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
 // static
 const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 // static
-const char Device::kFallbackDnsTestHostname[] = "www.gstatic.com";
-// static
 const char* const Device::kFallbackDnsServers[] = {
     "8.8.8.8",
     "8.8.4.4"
 };
 
 // static
-const int Device::kDNSTimeoutMilliseconds = 5000;
 const int Device::kLinkUnreliableThresholdSeconds = 60 * 60;
 const size_t Device::kHardwareAddressLength = 6U;
 
