@@ -44,7 +44,14 @@ Intel3AClient::Intel3AClient():
 {
     LOG1("@%s", __FUNCTION__);
 
-    int ret = pthread_cond_init(&mCbCond, NULL);
+    pthread_condattr_t attr;
+    int ret = pthread_condattr_init(&attr);
+    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+
+    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+
+    ret = pthread_cond_init(&mCbCond, &attr);
     CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
 
     ret = pthread_mutex_init(&mCbLock, NULL);
@@ -134,22 +141,22 @@ int Intel3AClient::waitCallback()
     LOG2("@%s", __FUNCTION__);
     nsecs_t startTime = systemTime();
 
-    struct timeval tv;
-    struct timespec ts;
-    gettimeofday(&tv, nullptr);
-    ts.tv_sec = tv.tv_sec + 1; // 1s timeout
-    ts.tv_nsec = tv.tv_usec * 1000L;
-
     pthread_mutex_lock(&mCbLock);
     if (!mIsCallbacked) {
+        struct timespec ts = {0, 0};
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        ts.tv_sec += 5; // 5s timeout
+
         int ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
         pthread_mutex_unlock(&mCbLock);
-        CheckError(ret != 0, UNKNOWN_ERROR, "@%s, call pthread_cond_timedwait fail, ret:%d", __FUNCTION__, ret);
+        CheckError(ret != 0, UNKNOWN_ERROR,
+            "@%s, call pthread_cond_timedwait fail, ret:%d, it takes %" PRId64 "ms",
+            __FUNCTION__, ret, (systemTime() - startTime) / 1000000);
     }
     mIsCallbacked = false;
     pthread_mutex_unlock(&mCbLock);
 
-    LOG2("@%s: it takes %ums", __FUNCTION__, (unsigned)((systemTime() - startTime) / 1000000));
+    LOG2("@%s: it takes %" PRId64 "ms", __FUNCTION__, (systemTime() - startTime) / 1000000);
 
     return OK;
 }
