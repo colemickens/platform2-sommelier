@@ -70,6 +70,12 @@ public:
      */
     status_t init(const camera3_stream_buffer *aBuffer, int cameraId);
 
+    /**
+     * initialization for the fake framework buffer (allocated by the HAL)
+     */
+    status_t init(const camera3_stream_t* stream, buffer_handle_t buffer,
+                  int cameraId);
+
     void* data() { return mDataPtr; };
 
     status_t lock();
@@ -109,6 +115,7 @@ private:
     int             mFormat;         /*!<  HAL PIXEL fmt */
     int             mV4L2Fmt;        /*!< V4L2 fourcc format code */
     int             mStride;
+    int             mUsage;
     struct timeval  mTimestamp;
     bool            mInit;           /*!< Boolean to check the integrity of the
                                           buffer when it is created*/
@@ -136,6 +143,12 @@ allocateHeapBuffer(int w,
                    int cameraId,
                    int dataSizeOverride = 0);
 
+std::shared_ptr<CameraBuffer>
+allocateHandleBuffer(int w,
+                     int h,
+                     int gfxFmt,
+                     int usage,
+                     int cameraId);
 };
 
 

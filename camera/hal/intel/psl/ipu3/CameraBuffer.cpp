@@ -44,6 +44,7 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mFormat(0),
                                 mV4L2Fmt(0),
                                 mStride(0),
+                                mUsage(0),
                                 mInit(false),
                                 mLocked(false),
                                 mType(BUF_TYPE_HANDLE),
@@ -91,6 +92,7 @@ CameraBuffer::CameraBuffer(int w,
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
         mStride(s),
+        mUsage(0),
         mInit(false),
         mLocked(true),
         mType(BUF_TYPE_MALLOC),
@@ -145,6 +147,7 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
         mStride(s),
+        mUsage(0),
         mInit(false),
         mLocked(false),
         mType(BUF_TYPE_MMAP),
@@ -197,6 +200,7 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     mSize = 0;
     mLocked = false;
     mOwner = static_cast<CameraStream*>(aBuffer->stream->priv);
+    mUsage = mOwner->usage();
     mInit = true;
     mDataPtr = nullptr;
     mUserBuffer = *aBuffer;
@@ -212,6 +216,35 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     }
 
     /* TODO: add some consistency checks here and return an error */
+    return NO_ERROR;
+}
+
+status_t CameraBuffer::init(const camera3_stream_t* stream,
+                            buffer_handle_t handle,
+                            int cameraId)
+{
+    mType = BUF_TYPE_HANDLE;
+    mGbmBufferManager = arc::CameraBufferManager::GetInstance();
+    mHandle = handle;
+    mWidth = stream->width;
+    mHeight = stream->height;
+    mFormat = stream->format;
+    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
+    // Use actual width from platform native handle for stride
+    mStride = mGbmBufferManager->GetPlaneStride(handle, 0);
+    mSize = 0;
+    mLocked = false;
+    mOwner = nullptr;
+    mUsage = stream->usage;
+    mInit = true;
+    mDataPtr = nullptr;
+    CLEAR(mUserBuffer);
+    mUserBuffer.acquire_fence = -1;
+    mUserBuffer.release_fence = -1;
+    mCameraId = cameraId;
+    LOG2("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d",
+        __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride);
+
     return NO_ERROR;
 }
 
@@ -233,6 +266,11 @@ CameraBuffer::~CameraBuffer()
             close(mDmaBufFd);
             break;
         case BUF_TYPE_HANDLE:
+            // Allocated by the HAL
+            if (!(mUserBuffer.stream)) {
+                LOG1("release internal buffer");
+                mGbmBufferManager->Free(mHandle);
+            }
             break;
         default:
             break;
@@ -357,7 +395,7 @@ status_t CameraBuffer::lock()
         return INVALID_OPERATION;
     }
 
-    lockMode = mOwner->usage() & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK |
+    lockMode = mUsage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK |
         GRALLOC_USAGE_HW_CAMERA_MASK);
     if (!lockMode) {
         LOGW("@%s:trying to lock a buffer with no flags", __FUNCTION__);
@@ -476,6 +514,45 @@ allocateHeapBuffer(int w,
     }
 
     return std::shared_ptr<CameraBuffer>(new CameraBuffer(w, h, s, v4l2Fmt, dataPtr, cameraId, dataSizeOverride));
+}
+
+/**
+ * Allocates internal GBM buffer
+ */
+std::shared_ptr<CameraBuffer>
+allocateHandleBuffer(int w,
+                     int h,
+                     int gfxFmt,
+                     int usage,
+                     int cameraId)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    arc::CameraBufferManager* bufManager = arc::CameraBufferManager::GetInstance();
+    buffer_handle_t handle;
+    uint32_t stride = 0;
+
+    LOG1("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
+          __FUNCTION__, w, h, gfxFmt, usage);
+    int ret = bufManager->Allocate(w, h, gfxFmt, usage, arc::GRALLOC, &handle, &stride);
+    if (ret != 0) {
+        LOGE("Allocate handle failed! %d", ret);
+        return nullptr;
+    }
+
+    std::shared_ptr<CameraBuffer> buffer(new CameraBuffer());
+    camera3_stream_t stream;
+    CLEAR(stream);
+    stream.width = w;
+    stream.height = h;
+    stream.format = gfxFmt;
+    stream.usage = usage;
+    ret = buffer->init(&stream, handle, cameraId);
+    if (ret != NO_ERROR) {
+        // buffer handle will free in CameraBuffer destructure function
+        return nullptr;
+    }
+
+    return buffer;
 }
 
 } // namespace MemoryUtils
