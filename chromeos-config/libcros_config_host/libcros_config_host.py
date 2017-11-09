@@ -438,6 +438,44 @@ class CrosConfig(object):
       """
       return self.properties.get(property_name)
 
+    def GetStr(self, property_name):
+      """Get a string value from a property
+
+      Args:
+        property_name: Name of property to access
+
+      Returns:
+        String value of property, or '' if not present
+      """
+      prop = self.Property(property_name)
+      return prop.value if prop else ''
+
+    def GetStrList(self, property_name):
+      """Get a string-list value from a property
+
+      Args:
+        property_name: Name of property to access
+
+      Returns:
+        List of strings representing the value of the property, or [] if not
+        present
+      """
+      prop = self.Property(property_name)
+      if not prop:
+        return []
+      return prop.value
+
+    def GetBool(self, property_name):
+      """Get a boolean value from a property
+
+      Args:
+        property_name: Name of property to access
+
+      Returns:
+        True if the property is present, False if not
+      """
+      return property_name in self.properties
+
     def PathProperty(self, relative_path, property_name):
       """Returns the value of a property relatative to this node
 

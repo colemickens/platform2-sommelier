@@ -50,6 +50,9 @@ class FdtLibTest(unittest.TestCase):
     firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
     bcs_overlay = firmware.props['bcs-overlay'].value
     self.assertEqual(bcs_overlay, 'overlay-pyro-private')
+    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    value = firmware.props['wallpaper'].value
+    self.assertEqual(value, 'default')
 
   def testLookupPhandle(self):
     firmware = self.test_fdt.GetNode('/chromeos/models/caroline/firmware')
@@ -58,6 +61,17 @@ class FdtLibTest(unittest.TestCase):
 
     # Phandles are sequentially allocated integers > 0, so 0 is invalid
     self.assertEqual(None, self.test_fdt.LookupPhandle(0))
+
+  def testGetStringListProperty(self):
+    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    str_list = firmware.props['string-list'].value
+    self.assertEqual(str_list, ['default', 'more'])
+
+  def testGetBoolProperty(self):
+    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    present = firmware.props['bool-prop'].value
+    self.assertEqual(present, True)
+
 
 if __name__ == '__main__':
   unittest.main()

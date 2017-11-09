@@ -110,6 +110,7 @@
 	pyro: pyro {
 		wallpaper = "default";
 		string-list = "default", "more";
+                bool-prop;
 		audio {
 			main {
 				audio-type = <&audio_type>;
