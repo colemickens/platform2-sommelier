@@ -55,7 +55,7 @@ class CellularCapabilityClassicTest
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
-        cdma_proxy_(new MockModemCDMAProxy()),
+        cdma_proxy_(new MockModemCdmaProxy()),
         gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         gobi_proxy_(new MockModemGobiProxy()),
@@ -184,7 +184,7 @@ class CellularCapabilityClassicTest
       return std::move(test_->simple_proxy_);
     }
 
-    std::unique_ptr<ModemCDMAProxyInterface> CreateModemCDMAProxy(
+    std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       return std::move(test_->cdma_proxy_);
@@ -243,7 +243,7 @@ class CellularCapabilityClassicTest
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<MockModemProxy> proxy_;
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
-  std::unique_ptr<MockModemCDMAProxy> cdma_proxy_;
+  std::unique_ptr<MockModemCdmaProxy> cdma_proxy_;
   std::unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   std::unique_ptr<MockModemGobiProxy> gobi_proxy_;

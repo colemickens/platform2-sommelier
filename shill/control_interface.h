@@ -47,7 +47,7 @@ class DBusPropertiesProxyInterface;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
-class ModemCDMAProxyInterface;
+class ModemCdmaProxyInterface;
 class ModemGSMCardProxyInterface;
 class ModemGSMNetworkProxyInterface;
 class ModemGobiProxyInterface;
@@ -171,7 +171,7 @@ class ControlInterface {
   virtual std::unique_ptr<ModemSimpleProxyInterface> CreateModemSimpleProxy(
       const std::string& path, const std::string& service) = 0;
 
-  virtual std::unique_ptr<ModemCDMAProxyInterface> CreateModemCDMAProxy(
+  virtual std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
       const std::string& path,
       const std::string& service) = 0;
 

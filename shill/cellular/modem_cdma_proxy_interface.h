@@ -37,9 +37,9 @@ using RegistrationStateCallback =
 // The interface is provided so that it can be mocked in tests.
 // All calls are made asynchronously. Call completion is signalled via
 // the callbacks passed to the methods.
-class ModemCDMAProxyInterface {
+class ModemCdmaProxyInterface {
  public:
-  virtual ~ModemCDMAProxyInterface() {}
+  virtual ~ModemCdmaProxyInterface() {}
 
   virtual void Activate(const std::string& carrier, Error* error,
                         const ActivationResultCallback& callback,

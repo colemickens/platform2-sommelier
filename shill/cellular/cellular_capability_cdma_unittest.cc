@@ -55,7 +55,7 @@ class CellularCapabilityCdmaTest : public testing::Test {
                                    "",
                                    "")),
         classic_proxy_(new MockModemProxy()),
-        proxy_(new MockModemCDMAProxy()),
+        proxy_(new MockModemCdmaProxy()),
         capability_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
@@ -141,7 +141,7 @@ class CellularCapabilityCdmaTest : public testing::Test {
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> cellular_;
   std::unique_ptr<MockModemProxy> classic_proxy_;
-  std::unique_ptr<MockModemCDMAProxy> proxy_;
+  std::unique_ptr<MockModemCdmaProxy> proxy_;
   CellularCapabilityCdma* capability_;  // Owned by |cellular_|.
 };
 

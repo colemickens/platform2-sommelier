@@ -198,7 +198,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     dbus_properties_proxy_.reset(new MockDBusPropertiesProxy());
     proxy_.reset(new MockModemProxy());
     simple_proxy_.reset(new MockModemSimpleProxy());
-    cdma_proxy_.reset(new MockModemCDMAProxy());
+    cdma_proxy_.reset(new MockModemCdmaProxy());
     gsm_card_proxy_.reset(new MockModemGSMCardProxy());
     gsm_network_proxy_.reset(new MockModemGSMNetworkProxy());
     mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
@@ -507,7 +507,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->simple_proxy_);
     }
 
-    std::unique_ptr<ModemCDMAProxyInterface> CreateModemCDMAProxy(
+    std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       CHECK(test_->cdma_proxy_);
@@ -622,7 +622,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   unique_ptr<MockDBusPropertiesProxy> dbus_properties_proxy_;
   unique_ptr<MockModemProxy> proxy_;
   unique_ptr<MockModemSimpleProxy> simple_proxy_;
-  unique_ptr<MockModemCDMAProxy> cdma_proxy_;
+  unique_ptr<MockModemCdmaProxy> cdma_proxy_;
   unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;

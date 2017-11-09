@@ -60,7 +60,7 @@ CellularCapabilityCdma::~CellularCapabilityCdma() {}
 
 void CellularCapabilityCdma::InitProxies() {
   CellularCapabilityClassic::InitProxies();
-  proxy_ = control_interface()->CreateModemCDMAProxy(
+  proxy_ = control_interface()->CreateModemCdmaProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityCdma::OnSignalQualitySignal,

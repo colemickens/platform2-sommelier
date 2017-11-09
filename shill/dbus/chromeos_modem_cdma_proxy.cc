@@ -31,9 +31,9 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 }  // namespace Logging
 
 // static.
-const char ChromeosModemCDMAProxy::kPropertyMeid[] = "Meid";
+const char ChromeosModemCdmaProxy::kPropertyMeid[] = "Meid";
 
-ChromeosModemCDMAProxy::PropertySet::PropertySet(
+ChromeosModemCdmaProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
     const std::string& interface_name,
     const PropertyChangedCallback& callback)
@@ -41,7 +41,7 @@ ChromeosModemCDMAProxy::PropertySet::PropertySet(
   RegisterProperty(kPropertyMeid, &meid);
 }
 
-ChromeosModemCDMAProxy::ChromeosModemCDMAProxy(
+ChromeosModemCdmaProxy::ChromeosModemCdmaProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const string& path,
     const string& service)
@@ -50,19 +50,19 @@ ChromeosModemCDMAProxy::ChromeosModemCDMAProxy(
             bus, service, dbus::ObjectPath(path))) {
   // Register signal handlers.
   proxy_->RegisterActivationStateChangedSignalHandler(
-      base::Bind(&ChromeosModemCDMAProxy::ActivationStateChanged,
+      base::Bind(&ChromeosModemCdmaProxy::ActivationStateChanged,
                  weak_factory_.GetWeakPtr()),
-      base::Bind(&ChromeosModemCDMAProxy::OnSignalConnected,
+      base::Bind(&ChromeosModemCdmaProxy::OnSignalConnected,
                  weak_factory_.GetWeakPtr()));
   proxy_->RegisterSignalQualitySignalHandler(
-      base::Bind(&ChromeosModemCDMAProxy::SignalQuality,
+      base::Bind(&ChromeosModemCdmaProxy::SignalQuality,
                  weak_factory_.GetWeakPtr()),
-      base::Bind(&ChromeosModemCDMAProxy::OnSignalConnected,
+      base::Bind(&ChromeosModemCdmaProxy::OnSignalConnected,
                  weak_factory_.GetWeakPtr()));
   proxy_->RegisterRegistrationStateChangedSignalHandler(
-      base::Bind(&ChromeosModemCDMAProxy::RegistrationStateChanged,
+      base::Bind(&ChromeosModemCdmaProxy::RegistrationStateChanged,
                  weak_factory_.GetWeakPtr()),
-      base::Bind(&ChromeosModemCDMAProxy::OnSignalConnected,
+      base::Bind(&ChromeosModemCdmaProxy::OnSignalConnected,
                  weak_factory_.GetWeakPtr()));
 
   // Register properties.
@@ -70,7 +70,7 @@ ChromeosModemCDMAProxy::ChromeosModemCDMAProxy(
       new PropertySet(
           proxy_->GetObjectProxy(),
           cromo::kModemCdmaInterface,
-          base::Bind(&ChromeosModemCDMAProxy::OnPropertyChanged,
+          base::Bind(&ChromeosModemCdmaProxy::OnPropertyChanged,
                      weak_factory_.GetWeakPtr())));
 
   // Connect property signals and initialize cached value. Based on
@@ -79,53 +79,53 @@ ChromeosModemCDMAProxy::ChromeosModemCDMAProxy(
   properties_->GetAll();
 }
 
-ChromeosModemCDMAProxy::~ChromeosModemCDMAProxy() {}
+ChromeosModemCdmaProxy::~ChromeosModemCdmaProxy() {}
 
-void ChromeosModemCDMAProxy::Activate(const string& carrier,
+void ChromeosModemCdmaProxy::Activate(const string& carrier,
                                       Error* error,
                                       const ActivationResultCallback& callback,
                                       int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << carrier;
   proxy_->ActivateAsync(
       carrier,
-      base::Bind(&ChromeosModemCDMAProxy::OnActivateSuccess,
+      base::Bind(&ChromeosModemCdmaProxy::OnActivateSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback),
-      base::Bind(&ChromeosModemCDMAProxy::OnActivateFailure,
+      base::Bind(&ChromeosModemCdmaProxy::OnActivateFailure,
                  weak_factory_.GetWeakPtr(),
                  callback),
       timeout);
 }
 
-void ChromeosModemCDMAProxy::GetRegistrationState(
+void ChromeosModemCdmaProxy::GetRegistrationState(
     Error* error,
     const RegistrationStateCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetRegistrationStateAsync(
-      base::Bind(&ChromeosModemCDMAProxy::OnGetRegistrationStateSuccess,
+      base::Bind(&ChromeosModemCdmaProxy::OnGetRegistrationStateSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback),
-      base::Bind(&ChromeosModemCDMAProxy::OnGetRegistrationStateFailure,
+      base::Bind(&ChromeosModemCdmaProxy::OnGetRegistrationStateFailure,
                  weak_factory_.GetWeakPtr(),
                  callback),
       timeout);
 }
 
-void ChromeosModemCDMAProxy::GetSignalQuality(
+void ChromeosModemCdmaProxy::GetSignalQuality(
     Error* error, const SignalQualityCallback& callback, int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetSignalQualityAsync(
-      base::Bind(&ChromeosModemCDMAProxy::OnGetSignalQualitySuccess,
+      base::Bind(&ChromeosModemCdmaProxy::OnGetSignalQualitySuccess,
                  weak_factory_.GetWeakPtr(),
                  callback),
-      base::Bind(&ChromeosModemCDMAProxy::OnGetSignalQualityFailure,
+      base::Bind(&ChromeosModemCdmaProxy::OnGetSignalQualityFailure,
                  weak_factory_.GetWeakPtr(),
                  callback),
       timeout);
 }
 
-const string ChromeosModemCDMAProxy::MEID() {
+const string ChromeosModemCdmaProxy::MEID() {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   if (!properties_->meid.GetAndBlock()) {
     LOG(ERROR) << "Failed to get MEID";
@@ -134,7 +134,7 @@ const string ChromeosModemCDMAProxy::MEID() {
   return properties_->meid.value();
 }
 
-void ChromeosModemCDMAProxy::ActivationStateChanged(
+void ChromeosModemCdmaProxy::ActivationStateChanged(
     uint32_t activation_state,
     uint32_t activation_error,
     const brillo::VariantDictionary& status_changes) {
@@ -151,7 +151,7 @@ void ChromeosModemCDMAProxy::ActivationStateChanged(
                                  status_changes_store);
 }
 
-void ChromeosModemCDMAProxy::SignalQuality(uint32_t quality) {
+void ChromeosModemCdmaProxy::SignalQuality(uint32_t quality) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << quality << ")";
   if (signal_quality_callback_.is_null()) {
     return;
@@ -159,7 +159,7 @@ void ChromeosModemCDMAProxy::SignalQuality(uint32_t quality) {
   signal_quality_callback_.Run(quality);
 }
 
-void ChromeosModemCDMAProxy::RegistrationStateChanged(
+void ChromeosModemCdmaProxy::RegistrationStateChanged(
     uint32_t cdma_1x_state,
     uint32_t evdo_state) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << cdma_1x_state << ", "
@@ -170,13 +170,13 @@ void ChromeosModemCDMAProxy::RegistrationStateChanged(
   registration_state_callback_.Run(cdma_1x_state, evdo_state);
 }
 
-void ChromeosModemCDMAProxy::OnActivateSuccess(
+void ChromeosModemCdmaProxy::OnActivateSuccess(
     const ActivationResultCallback& callback, uint32_t status) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << status << ")";
   callback.Run(status, Error());
 }
 
-void ChromeosModemCDMAProxy::OnActivateFailure(
+void ChromeosModemCdmaProxy::OnActivateFailure(
     const ActivationResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
@@ -184,7 +184,7 @@ void ChromeosModemCDMAProxy::OnActivateFailure(
   callback.Run(0, error);
 }
 
-void ChromeosModemCDMAProxy::OnGetRegistrationStateSuccess(
+void ChromeosModemCdmaProxy::OnGetRegistrationStateSuccess(
     const RegistrationStateCallback& callback,
     uint32_t state_1x,
     uint32_t state_evdo) {
@@ -193,7 +193,7 @@ void ChromeosModemCDMAProxy::OnGetRegistrationStateSuccess(
   callback.Run(state_1x, state_evdo, Error());
 }
 
-void ChromeosModemCDMAProxy::OnGetRegistrationStateFailure(
+void ChromeosModemCdmaProxy::OnGetRegistrationStateFailure(
     const RegistrationStateCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
@@ -201,13 +201,13 @@ void ChromeosModemCDMAProxy::OnGetRegistrationStateFailure(
   callback.Run(0, 0, error);
 }
 
-void ChromeosModemCDMAProxy::OnGetSignalQualitySuccess(
+void ChromeosModemCdmaProxy::OnGetSignalQualitySuccess(
     const SignalQualityCallback& callback, uint32_t quality) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << quality << ")";
   callback.Run(quality, Error());
 }
 
-void ChromeosModemCDMAProxy::OnGetSignalQualityFailure(
+void ChromeosModemCdmaProxy::OnGetSignalQualityFailure(
     const SignalQualityCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
@@ -215,7 +215,7 @@ void ChromeosModemCDMAProxy::OnGetSignalQualityFailure(
   callback.Run(0, error);
 }
 
-void ChromeosModemCDMAProxy::OnSignalConnected(
+void ChromeosModemCdmaProxy::OnSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__
       << "interface: " << interface_name
@@ -226,7 +226,7 @@ void ChromeosModemCDMAProxy::OnSignalConnected(
   }
 }
 
-void ChromeosModemCDMAProxy::OnPropertyChanged(
+void ChromeosModemCdmaProxy::OnPropertyChanged(
     const string& property_name) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << property_name;
 }

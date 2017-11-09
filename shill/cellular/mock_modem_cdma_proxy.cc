@@ -22,7 +22,7 @@ using testing::_;
 
 namespace shill {
 
-MockModemCDMAProxy::MockModemCDMAProxy() {
+MockModemCdmaProxy::MockModemCdmaProxy() {
   ON_CALL(*this, Activate(_, _, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
   ON_CALL(*this, GetRegistrationState(_, _, _))
@@ -31,6 +31,6 @@ MockModemCDMAProxy::MockModemCDMAProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockModemCDMAProxy::~MockModemCDMAProxy() {}
+MockModemCdmaProxy::~MockModemCdmaProxy() {}
 
 }  // namespace shill

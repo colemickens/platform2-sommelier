@@ -105,7 +105,7 @@ class CellularCapabilityCdma : public CellularCapabilityClassic {
                                    const Error& error);
   void OnGetSignalQualityReply(uint32_t strength, const Error& error);
 
-  std::unique_ptr<ModemCDMAProxyInterface> proxy_;
+  std::unique_ptr<ModemCdmaProxyInterface> proxy_;
 
   // Helper method to extract the online portal information from properties.
   void UpdateOnlinePortal(const KeyValueStore& properties);

@@ -26,16 +26,16 @@
 namespace shill {
 
 // A proxy to (old) ModemManager.Modem.CDMA.
-class ChromeosModemCDMAProxy : public ModemCDMAProxyInterface {
+class ChromeosModemCdmaProxy : public ModemCdmaProxyInterface {
  public:
   // Constructs a ModemManager.Modem.CDMA DBus object proxy at |path| owned by
   // |service|.
-  ChromeosModemCDMAProxy(const scoped_refptr<dbus::Bus>& bus,
+  ChromeosModemCdmaProxy(const scoped_refptr<dbus::Bus>& bus,
                          const std::string& path,
                          const std::string& service);
-  ~ChromeosModemCDMAProxy() override;
+  ~ChromeosModemCdmaProxy() override;
 
-  // Inherited from ModemCDMAProxyInterface.
+  // Inherited from ModemCdmaProxyInterface.
   void Activate(const std::string& carrier,
                 Error* error,
                 const ActivationResultCallback& callback,
@@ -118,8 +118,8 @@ class ChromeosModemCDMAProxy : public ModemCDMAProxyInterface {
   std::unique_ptr<org::freedesktop::ModemManager::Modem::CdmaProxy> proxy_;
   std::unique_ptr<PropertySet> properties_;
 
-  base::WeakPtrFactory<ChromeosModemCDMAProxy> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(ChromeosModemCDMAProxy);
+  base::WeakPtrFactory<ChromeosModemCdmaProxy> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ChromeosModemCdmaProxy);
 };
 
 }  // namespace shill

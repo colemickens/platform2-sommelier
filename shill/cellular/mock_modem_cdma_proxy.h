@@ -26,10 +26,10 @@
 
 namespace shill {
 
-class MockModemCDMAProxy : public ModemCDMAProxyInterface {
+class MockModemCdmaProxy : public ModemCdmaProxyInterface {
  public:
-  MockModemCDMAProxy();
-  ~MockModemCDMAProxy() override;
+  MockModemCdmaProxy();
+  ~MockModemCdmaProxy() override;
 
   MOCK_METHOD4(Activate, void(const std::string& carrier, Error* error,
                               const ActivationResultCallback& callback,
@@ -49,7 +49,7 @@ class MockModemCDMAProxy : public ModemCDMAProxyInterface {
       void(const RegistrationStateSignalCallback& callback));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockModemCDMAProxy);
+  DISALLOW_COPY_AND_ASSIGN(MockModemCdmaProxy);
 };
 
 }  // namespace shill
