@@ -49,7 +49,7 @@ class DHCPProvider;
 class DHCPProxyInterface;
 class ModemCdmaProxyInterface;
 class ModemGsmCardProxyInterface;
-class ModemGSMNetworkProxyInterface;
+class ModemGsmNetworkProxyInterface;
 class ModemGobiProxyInterface;
 class ModemManagerClassic;
 class ModemManagerProxyInterface;
@@ -178,8 +178,8 @@ class ControlInterface {
   virtual std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
       const std::string& path, const std::string& service) = 0;
 
-  virtual std::unique_ptr<ModemGSMNetworkProxyInterface>
-  CreateModemGSMNetworkProxy(const std::string& path,
+  virtual std::unique_ptr<ModemGsmNetworkProxyInterface>
+  CreateModemGsmNetworkProxy(const std::string& path,
                              const std::string& service) = 0;
 
   virtual std::unique_ptr<ModemGobiProxyInterface> CreateModemGobiProxy(

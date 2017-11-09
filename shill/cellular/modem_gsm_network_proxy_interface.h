@@ -43,9 +43,9 @@ using ScanResultsCallback =
 // support. The interface is provided so that it can be mocked in tests.
 // All calls are made asynchronously.
 // XXX fixup comment to reflect new reality
-class ModemGSMNetworkProxyInterface {
+class ModemGsmNetworkProxyInterface {
  public:
-  virtual ~ModemGSMNetworkProxyInterface() {}
+  virtual ~ModemGsmNetworkProxyInterface() {}
 
   virtual void GetRegistrationInfo(Error* error,
                                    const RegistrationInfoCallback& callback,

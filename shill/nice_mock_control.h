@@ -158,8 +158,8 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD2(CreateModemGsmCardProxy,
                std::unique_ptr<ModemGsmCardProxyInterface>(
                    const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemGSMNetworkProxy,
-               std::unique_ptr<ModemGSMNetworkProxyInterface>(
+  MOCK_METHOD2(CreateModemGsmNetworkProxy,
+               std::unique_ptr<ModemGsmNetworkProxyInterface>(
                    const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateModemGobiProxy,
                std::unique_ptr<ModemGobiProxyInterface>(

@@ -26,10 +26,10 @@
 
 namespace shill {
 
-class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
+class MockModemGsmNetworkProxy : public ModemGsmNetworkProxyInterface {
  public:
-  MockModemGSMNetworkProxy();
-  ~MockModemGSMNetworkProxy() override;
+  MockModemGsmNetworkProxy();
+  ~MockModemGsmNetworkProxy() override;
 
   MOCK_METHOD3(GetRegistrationInfo,
                void(Error* error, const RegistrationInfoCallback& callback,
@@ -50,7 +50,7 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
       void(const RegistrationInfoSignalCallback& callback));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockModemGSMNetworkProxy);
+  DISALLOW_COPY_AND_ASSIGN(MockModemGsmNetworkProxy);
 };
 
 }  // namespace shill

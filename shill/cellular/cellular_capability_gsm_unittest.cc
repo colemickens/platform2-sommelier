@@ -60,7 +60,7 @@ class CellularCapabilityGsmTest : public testing::Test {
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         card_proxy_(new MockModemGsmCardProxy()),
-        network_proxy_(new MockModemGSMNetworkProxy()),
+        network_proxy_(new MockModemGsmNetworkProxy()),
         capability_(nullptr),
         device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
@@ -214,7 +214,7 @@ class CellularCapabilityGsmTest : public testing::Test {
       return nullptr;
     }
 
-    std::unique_ptr<ModemGSMNetworkProxyInterface> CreateModemGSMNetworkProxy(
+    std::unique_ptr<ModemGsmNetworkProxyInterface> CreateModemGsmNetworkProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       return std::move(test_->network_proxy_);
@@ -318,7 +318,7 @@ class CellularCapabilityGsmTest : public testing::Test {
   std::unique_ptr<MockModemProxy> proxy_;
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
   std::unique_ptr<MockModemGsmCardProxy> card_proxy_;
-  std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
+  std::unique_ptr<MockModemGsmNetworkProxy> network_proxy_;
   CellularCapabilityGsm* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;

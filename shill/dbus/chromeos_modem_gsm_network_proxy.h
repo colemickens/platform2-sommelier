@@ -27,16 +27,16 @@
 namespace shill {
 
 // A proxy to (old) ModemManager.Modem.Gsm.Network.
-class ChromeosModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
+class ChromeosModemGsmNetworkProxy : public ModemGsmNetworkProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Network DBus object proxy at |path|
   // owned by |service|.
-  ChromeosModemGSMNetworkProxy(const scoped_refptr<dbus::Bus>& bus,
+  ChromeosModemGsmNetworkProxy(const scoped_refptr<dbus::Bus>& bus,
                                const std::string& path,
                                const std::string& service);
-  ~ChromeosModemGSMNetworkProxy() override;
+  ~ChromeosModemGsmNetworkProxy() override;
 
-  // Inherited from ModemGSMNetworkProxyInterface.
+  // Inherited from ModemGsmNetworkProxyInterface.
   void GetRegistrationInfo(Error* error,
                            const RegistrationInfoCallback& callback,
                            int timeout) override;
@@ -130,8 +130,8 @@ class ChromeosModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
       proxy_;
   std::unique_ptr<PropertySet> properties_;
 
-  base::WeakPtrFactory<ChromeosModemGSMNetworkProxy> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(ChromeosModemGSMNetworkProxy);
+  base::WeakPtrFactory<ChromeosModemGsmNetworkProxy> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ChromeosModemGsmNetworkProxy);
 };
 
 }  // namespace shill

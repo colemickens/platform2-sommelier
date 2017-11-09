@@ -57,7 +57,7 @@ class CellularCapabilityClassicTest
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCdmaProxy()),
         gsm_card_proxy_(new MockModemGsmCardProxy()),
-        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
+        gsm_network_proxy_(new MockModemGsmNetworkProxy()),
         gobi_proxy_(new MockModemGobiProxy()),
         capability_(nullptr),
         device_adaptor_(nullptr),
@@ -203,7 +203,7 @@ class CellularCapabilityClassicTest
       return nullptr;
     }
 
-    std::unique_ptr<ModemGSMNetworkProxyInterface> CreateModemGSMNetworkProxy(
+    std::unique_ptr<ModemGsmNetworkProxyInterface> CreateModemGsmNetworkProxy(
         const string& /*path*/, const string& /*service*/) override {
       return std::move(test_->gsm_network_proxy_);
     }
@@ -226,7 +226,7 @@ class CellularCapabilityClassicTest
     capability_->simple_proxy_ = std::move(simple_proxy_);
   }
 
-  void SetGSMNetworkProxy() {
+  void SetGsmNetworkProxy() {
     CellularCapabilityGsm* gsm_capability =
         static_cast<CellularCapabilityGsm*>(cellular_->capability_.get());
     gsm_capability->network_proxy_ = std::move(gsm_network_proxy_);
@@ -245,7 +245,7 @@ class CellularCapabilityClassicTest
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
   std::unique_ptr<MockModemCdmaProxy> cdma_proxy_;
   std::unique_ptr<MockModemGsmCardProxy> gsm_card_proxy_;
-  std::unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
+  std::unique_ptr<MockModemGsmNetworkProxy> gsm_network_proxy_;
   std::unique_ptr<MockModemGobiProxy> gobi_proxy_;
   CellularCapabilityClassic* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
@@ -323,7 +323,7 @@ TEST_P(CellularCapabilityClassicTest, FinishEnable) {
       *gsm_network_proxy_,
       GetSignalQuality(nullptr, _, CellularCapability::kTimeoutDefault));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  SetGSMNetworkProxy();
+  SetGsmNetworkProxy();
   capability_->FinishEnable(
       Bind(&CellularCapabilityClassicTest::TestCallback, Unretained(this)));
 }

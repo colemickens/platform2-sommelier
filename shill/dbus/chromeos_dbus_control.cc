@@ -303,10 +303,10 @@ ChromeosDBusControl::CreateModemGsmCardProxy(const string& path,
   return std::make_unique<ChromeosModemGsmCardProxy>(proxy_bus_, path, service);
 }
 
-std::unique_ptr<ModemGSMNetworkProxyInterface>
-ChromeosDBusControl::CreateModemGSMNetworkProxy(const string& path,
+std::unique_ptr<ModemGsmNetworkProxyInterface>
+ChromeosDBusControl::CreateModemGsmNetworkProxy(const string& path,
                                                 const string& service) {
-  return std::make_unique<ChromeosModemGSMNetworkProxy>(
+  return std::make_unique<ChromeosModemGsmNetworkProxy>(
       proxy_bus_, path, service);
 }
 

@@ -22,7 +22,7 @@ using testing::_;
 
 namespace shill {
 
-MockModemGSMNetworkProxy::MockModemGSMNetworkProxy() {
+MockModemGsmNetworkProxy::MockModemGsmNetworkProxy() {
   ON_CALL(*this, GetRegistrationInfo(_, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
   ON_CALL(*this, GetSignalQuality(_, _, _))
@@ -33,6 +33,6 @@ MockModemGSMNetworkProxy::MockModemGSMNetworkProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockModemGSMNetworkProxy::~MockModemGSMNetworkProxy() {}
+MockModemGsmNetworkProxy::~MockModemGsmNetworkProxy() {}
 
 }  // namespace shill
