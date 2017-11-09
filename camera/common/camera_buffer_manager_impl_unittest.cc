@@ -299,21 +299,6 @@ off_t lseek(int fd, off_t offset, int whence) {
   return _lseek(fd, offset, whence);
 }
 
-namespace base {
-
-namespace internal {
-
-// A fake implementation of ScopedFDCloseTraits::Free for ScopedFD.
-
-// static
-void ScopedFDCloseTraits::Free(int fd) {
-  close(fd);
-}
-
-}  // namespace internal
-
-}  // namespace base
-
 namespace arc {
 
 namespace tests {
@@ -417,7 +402,7 @@ class CameraBufferManagerImplTest : public ::testing::Test {
       uint32_t width,
       uint32_t height) {
     std::unique_ptr<camera_buffer_handle_t> buffer(new camera_buffer_handle_t);
-    buffer->fds[0].reset(dummy_fd);
+    buffer->fds[0] = dummy_fd;
     buffer->magic = kCameraBufferMagic;
     buffer->buffer_id = buffer_id;
     buffer->type = type;
@@ -467,6 +452,7 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
   buffer_handle_t buffer_handle;
   uint32_t stride;
 
+  // Allocate the buffer.
   EXPECT_CALL(gbm_, GbmBoCreate(&dummy_device, kBufferWidth, kBufferHeight,
                                 DRM_FORMAT_YUV420,
                                 GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ |
@@ -490,6 +476,7 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
                            &buffer_handle, &stride),
             0);
 
+  // Lock the buffer.  All the planes should be mapped.
   for (size_t plane = 0; plane < 3; ++plane) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight,
                                GBM_BO_TRANSFER_READ_WRITE, A<uint32_t*>(),
@@ -501,6 +488,16 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
   EXPECT_EQ(cbm_->LockYCbCr(buffer_handle, 0, 0, 0, kBufferWidth, kBufferHeight,
                             &ycbcr),
             0);
+
+  // Unlock the buffer.  All the planes should be unmapped.
+  EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo, A<void*>())).Times(3);
+  EXPECT_EQ(cbm_->Unlock(buffer_handle), 0);
+
+  // Free the buffer.  The GBM bo should be destroyed and All the FDs should be
+  // closed.
+  EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo)).Times(1);
+  EXPECT_CALL(gbm_, Close(dummy_fd)).Times(3);
+  EXPECT_EQ(cbm_->Free(buffer_handle), 0);
 }
 
 TEST_F(CameraBufferManagerImplTest, LockTest) {

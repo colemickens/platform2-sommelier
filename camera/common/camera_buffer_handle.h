@@ -9,9 +9,6 @@
 
 #include <system/window.h>
 
-#include <base/files/scoped_file.h>
-#include <base/logging.h>
-
 #include "arc/common.h"
 
 const uint32_t kCameraBufferMagic = 0xD1DAD1DA;
@@ -22,7 +19,7 @@ const size_t kMaxPlanes = 4;
 typedef struct camera_buffer_handle {
   native_handle_t base;
   // The fds for each plane.
-  base::ScopedFD fds[kMaxPlanes];
+  int fds[kMaxPlanes];
   // Should be kCameraBufferMagic.  This is for basic sanity check.
   uint32_t magic;
   // Used to identify the buffer object on the other end of the IPC channel
@@ -53,7 +50,19 @@ typedef struct camera_buffer_handle {
         width(0),
         height(0),
         strides{},
-        offsets{} {}
+        offsets{} {
+    for (size_t i = 0; i < kMaxPlanes; ++i) {
+      fds[i] = -1;
+    }
+  }
+
+  ~camera_buffer_handle() {
+    for (size_t i = 0; i < kMaxPlanes; ++i) {
+      if (fds[i] != -1) {
+        close(fds[i]);
+      }
+    }
+  }
 
   static const struct camera_buffer_handle* FromBufferHandle(
       buffer_handle_t handle) {

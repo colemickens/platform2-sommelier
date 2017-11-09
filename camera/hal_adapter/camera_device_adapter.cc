@@ -288,8 +288,7 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i].reset(
-        internal::UnwrapPlatformHandle(std::move(fds[i])));
+    buffer_handle->fds[i] = internal::UnwrapPlatformHandle(std::move(fds[i]));
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }

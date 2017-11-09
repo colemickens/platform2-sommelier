@@ -295,7 +295,7 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
       return -EINVAL;
     }
     for (size_t i = 0; i < num_planes; ++i) {
-      import_data.fds[i] = handle->fds[i].get();
+      import_data.fds[i] = handle->fds[i];
       import_data.strides[i] = handle->strides[i];
       import_data.offsets[i] = handle->offsets[i];
     }
@@ -313,17 +313,17 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
     // The shared memory buffer is a contiguous area of memory which is large
     // enough to hold all the physical planes.  We mmap the buffer on Register
     // and munmap on Deregister.
-    off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
+    off_t size = lseek(handle->fds[0], 0, SEEK_END);
     if (size == -1) {
       LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
                   << strerror(errno);
       return -errno;
     }
     buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
-    lseek(handle->fds[0].get(), 0, SEEK_SET);
+    lseek(handle->fds[0], 0, SEEK_SET);
     buffer_context->mapped_addr =
         mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
-             MAP_SHARED, handle->fds[0].get(), 0);
+             MAP_SHARED, handle->fds[0], 0);
     if (buffer_context->mapped_addr == MAP_FAILED) {
       LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
       return -errno;
@@ -556,7 +556,7 @@ int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
   handle->height = height;
   size_t num_planes = gbm_bo_get_num_planes(buffer_context->bo);
   for (size_t i = 0; i < num_planes; ++i) {
-    handle->fds[i].reset(gbm_bo_get_plane_fd(buffer_context->bo, i));
+    handle->fds[i] = gbm_bo_get_plane_fd(buffer_context->bo, i);
     handle->strides[i] = gbm_bo_get_plane_stride(buffer_context->bo, i);
     handle->offsets[i] = gbm_bo_get_plane_offset(buffer_context->bo, i);
   }
@@ -600,7 +600,7 @@ void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
   }
 
   VLOGF(2) << "buffer info:";
-  VLOGF(2) << "\tfd: " << handle->fds[plane].get();
+  VLOGF(2) << "\tfd: " << handle->fds[plane];
   VLOGF(2) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
   VLOGF(2) << "\ttype: " << handle->type;
   VLOGF(2) << "\tformat: " << FormatToString(handle->drm_format);
