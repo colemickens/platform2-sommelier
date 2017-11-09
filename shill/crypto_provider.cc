@@ -42,7 +42,7 @@ void CryptoProvider::Init() {
   if (des_cbc->LoadKeyMatter(key_matter_file_)) {
     cryptos_.push_back(std::move(des_cbc));
   }
-  cryptos_.push_back(std::make_unique<CryptoROT47>());
+  cryptos_.push_back(std::make_unique<CryptoRot47>());
 }
 
 string CryptoProvider::Encrypt(const string& plaintext) {

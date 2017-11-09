@@ -26,11 +26,11 @@
 namespace shill {
 
 // ROT47 crypto module implementation.
-class CryptoROT47 : public CryptoInterface {
+class CryptoRot47 : public CryptoInterface {
  public:
   static const char kID[];
 
-  CryptoROT47();
+  CryptoRot47();
 
   // Inherited from CryptoInterface.
   virtual std::string GetID();
@@ -38,7 +38,7 @@ class CryptoROT47 : public CryptoInterface {
   virtual bool Decrypt(const std::string& ciphertext, std::string* plaintext);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(CryptoROT47);
+  DISALLOW_COPY_AND_ASSIGN(CryptoRot47);
 };
 
 }  // namespace shill

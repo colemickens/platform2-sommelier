@@ -20,15 +20,15 @@ using std::string;
 
 namespace shill {
 
-const char CryptoROT47::kID[] = "rot47";
+const char CryptoRot47::kID[] = "rot47";
 
-CryptoROT47::CryptoROT47() {}
+CryptoRot47::CryptoRot47() {}
 
-string CryptoROT47::GetID() {
+string CryptoRot47::GetID() {
   return kID;
 }
 
-bool CryptoROT47::Encrypt(const string& plaintext, string* ciphertext) {
+bool CryptoRot47::Encrypt(const string& plaintext, string* ciphertext) {
   const int kRotSize = 94;
   const int kRotHalf = kRotSize / 2;
   const char kRotMin = '!';
@@ -45,7 +45,7 @@ bool CryptoROT47::Encrypt(const string& plaintext, string* ciphertext) {
   return true;
 }
 
-bool CryptoROT47::Decrypt(const string& ciphertext, string* plaintext) {
+bool CryptoRot47::Decrypt(const string& ciphertext, string* plaintext) {
   // ROT47 is self-reciprocal.
   return Encrypt(ciphertext, plaintext);
 }

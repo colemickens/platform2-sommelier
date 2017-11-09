@@ -597,10 +597,10 @@ bool JsonStore::GetCryptedString(
 
   // TODO(quiche): Once we've removed the glib dependency in
   // CryptoProvider, move to using CryptoProvider, instead of
-  // CryptoROT47 directly. This change should be done before using
+  // CryptoRot47 directly. This change should be done before using
   // JsonStore in production, as the on-disk format of crypted strings
   // will change.
-  CryptoROT47 rot47;
+  CryptoRot47 rot47;
   string decrypted_value;
   if (!rot47.Decrypt(encrypted_value, &decrypted_value)) {
     LOG(ERROR) << "Failed to decrypt value for |" << group << "|"
@@ -616,7 +616,7 @@ bool JsonStore::GetCryptedString(
 
 bool JsonStore::SetCryptedString(
     const string& group, const string& key, const string& value) {
-  CryptoROT47 rot47;
+  CryptoRot47 rot47;
   string encrypted_value;
   if (!rot47.Encrypt(value, &encrypted_value)) {
     LOG(ERROR) << "Failed to encrypt value for |" << group << "|"

@@ -31,16 +31,16 @@ const char kPlainText[] = "~{\"Hello world!\" OPQ ['1234']}";
 const char kCipherText[] = "OLQw6==@ H@C=5PQ ~!\" ,V`abcV.N";
 }  // namespace
 
-class CryptoROT47Test : public Test {
+class CryptoRot47Test : public Test {
  protected:
-  CryptoROT47 crypto_;
+  CryptoRot47 crypto_;
 };
 
-TEST_F(CryptoROT47Test, GetID) {
-  EXPECT_EQ(CryptoROT47::kID, crypto_.GetID());
+TEST_F(CryptoRot47Test, GetID) {
+  EXPECT_EQ(CryptoRot47::kID, crypto_.GetID());
 }
 
-TEST_F(CryptoROT47Test, Encrypt) {
+TEST_F(CryptoRot47Test, Encrypt) {
   string text;
   EXPECT_TRUE(crypto_.Encrypt(kPlainText, &text));
   EXPECT_EQ(kCipherText, text);
@@ -48,7 +48,7 @@ TEST_F(CryptoROT47Test, Encrypt) {
   EXPECT_EQ(kEmpty, text);
 }
 
-TEST_F(CryptoROT47Test, Decrypt) {
+TEST_F(CryptoRot47Test, Decrypt) {
   string text;
   EXPECT_TRUE(crypto_.Decrypt(kCipherText, &text));
   EXPECT_EQ(kPlainText, text);
