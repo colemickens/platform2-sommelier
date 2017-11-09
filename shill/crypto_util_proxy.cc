@@ -47,13 +47,16 @@ namespace shill {
 const char CryptoUtilProxy::kCommandEncrypt[] = "encrypt";
 const char CryptoUtilProxy::kCommandVerify[] = "verify";
 const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
-const char CryptoUtilProxy::kDestinationVerificationUser[] = "shill-crypto";
-const uint64_t CryptoUtilProxy::kRequiredCapabilities = 0;
-const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 
 namespace {
+
+constexpr char kDestinationVerificationUser[] = "shill-crypto";
+constexpr uint64_t kRequiredCapabilities = 0;
+constexpr int kShimJobTimeoutMilliseconds = 30 * 1000;
+
 void DoNothingWithExitStatus(int /* exit_status */) {
 }
+
 }  // namespace
 
 CryptoUtilProxy::CryptoUtilProxy(EventDispatcher* dispatcher)

@@ -92,10 +92,6 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   FRIEND_TEST(CryptoUtilProxyTest, TimeoutsTriggerFailure);
   FRIEND_TEST(CryptoUtilProxyTest, ShimCleanedBeforeCallback);
 
-  static const char kDestinationVerificationUser[];
-  static const uint64_t kRequiredCapabilities;
-  static const int kShimJobTimeoutMilliseconds;
-
   // Helper method for parsing the proto buffer return codes sent back by the
   // shim.
   static bool ParseResponseReturnCode(int proto_return_code, Error* e);
