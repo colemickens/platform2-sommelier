@@ -118,8 +118,8 @@ class CellularCapabilityClassicTest
     cellular_->service_ = service;
   }
 
-  CellularCapabilityGSM* GetGsmCapability() {
-    return static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+  CellularCapabilityGsm* GetGsmCapability() {
+    return static_cast<CellularCapabilityGsm*>(cellular_->capability_.get());
   }
 
   void ReleaseCapabilityProxies() {
@@ -194,8 +194,8 @@ class CellularCapabilityClassicTest
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
-      // CellularCapabilityGSM::InitProperties (and thus
-      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // CellularCapabilityGsm::InitProperties (and thus
+      // CellularCapabilityGsm::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       if (test_->create_gsm_card_proxy_from_factory_) {
         return std::move(test_->gsm_card_proxy_);
@@ -227,8 +227,8 @@ class CellularCapabilityClassicTest
   }
 
   void SetGSMNetworkProxy() {
-    CellularCapabilityGSM* gsm_capability =
-        static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+    CellularCapabilityGsm* gsm_capability =
+        static_cast<CellularCapabilityGsm*>(cellular_->capability_.get());
     gsm_capability->network_proxy_ = std::move(gsm_network_proxy_);
   }
 
@@ -356,7 +356,7 @@ TEST_P(CellularCapabilityClassicTest, AllowRoaming) {
   }
 
   cellular_->state_ = Cellular::kStateConnected;
-  static_cast<CellularCapabilityGSM*>(capability_)->registration_state_ =
+  static_cast<CellularCapabilityGsm*>(capability_)->registration_state_ =
       MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
   cellular_->SetAllowRoaming(true, nullptr);
   EXPECT_TRUE(cellular_->GetAllowRoaming(nullptr));
@@ -423,7 +423,7 @@ TEST_P(CellularCapabilityClassicTest, TryApns) {
   Error error;
   Stringmap apn_info;
   KeyValueStore props;
-  CellularCapabilityGSM* gsm_capability = GetGsmCapability();
+  CellularCapabilityGsm* gsm_capability = GetGsmCapability();
 
   apn_info[kApnProperty] = kLastGoodApn;
   apn_info[kApnUsernameProperty] = kLastGoodUsername;

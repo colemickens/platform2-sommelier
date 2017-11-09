@@ -518,8 +518,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
-      // CellularCapabilityGSM::InitProperties (and thus
-      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // CellularCapabilityGsm::InitProperties (and thus
+      // CellularCapabilityGsm::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       CHECK(!test_->create_gsm_card_proxy_from_factory_ ||
             test_->gsm_card_proxy_);
@@ -579,8 +579,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
-  CellularCapabilityGSM* GetCapabilityGSM() {
-    return static_cast<CellularCapabilityGSM*>(device_->capability_.get());
+  CellularCapabilityGsm* GetCapabilityGSM() {
+    return static_cast<CellularCapabilityGsm*>(device_->capability_.get());
   }
 
   CellularCapabilityUniversal* GetCapabilityUniversal() {
@@ -647,10 +647,10 @@ const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
 const Stringmaps CellularTest::kTestNetworksGSM =
-    {{{CellularCapabilityGSM::kNetworkPropertyStatus, "1"},
-      {CellularCapabilityGSM::kNetworkPropertyID, "0000"},
-      {CellularCapabilityGSM::kNetworkPropertyLongName, "some_long_name"},
-      {CellularCapabilityGSM::kNetworkPropertyShortName, "short"}}};
+    {{{CellularCapabilityGsm::kNetworkPropertyStatus, "1"},
+      {CellularCapabilityGsm::kNetworkPropertyID, "0000"},
+      {CellularCapabilityGsm::kNetworkPropertyLongName, "some_long_name"},
+      {CellularCapabilityGsm::kNetworkPropertyShortName, "short"}}};
 const Stringmaps CellularTest::kTestNetworksCellular =
     {{{kStatusProperty, "available"},
       {kNetworkIdProperty, "0000"},

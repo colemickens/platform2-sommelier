@@ -40,31 +40,31 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityGSM* c) {
+static string ObjectID(CellularCapabilityGsm* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
 
 // static
-const char CellularCapabilityGSM::kNetworkPropertyAccessTechnology[] =
+const char CellularCapabilityGsm::kNetworkPropertyAccessTechnology[] =
     "access-tech";
-const char CellularCapabilityGSM::kNetworkPropertyID[] = "operator-num";
-const char CellularCapabilityGSM::kNetworkPropertyLongName[] = "operator-long";
-const char CellularCapabilityGSM::kNetworkPropertyShortName[] =
+const char CellularCapabilityGsm::kNetworkPropertyID[] = "operator-num";
+const char CellularCapabilityGsm::kNetworkPropertyLongName[] = "operator-long";
+const char CellularCapabilityGsm::kNetworkPropertyShortName[] =
     "operator-short";
-const char CellularCapabilityGSM::kNetworkPropertyStatus[] = "status";
-const char CellularCapabilityGSM::kPhoneNumber[] = "*99#";
-const char CellularCapabilityGSM::kPropertyAccessTechnology[] =
+const char CellularCapabilityGsm::kNetworkPropertyStatus[] = "status";
+const char CellularCapabilityGsm::kPhoneNumber[] = "*99#";
+const char CellularCapabilityGsm::kPropertyAccessTechnology[] =
     "AccessTechnology";
-const char CellularCapabilityGSM::kPropertyEnabledFacilityLocks[] =
+const char CellularCapabilityGsm::kPropertyEnabledFacilityLocks[] =
     "EnabledFacilityLocks";
-const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
-const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
+const char CellularCapabilityGsm::kPropertyUnlockRequired[] = "UnlockRequired";
+const char CellularCapabilityGsm::kPropertyUnlockRetries[] = "UnlockRetries";
 
-const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
-const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
+const int CellularCapabilityGsm::kGetIMSIRetryLimit = 40;
+const int64_t CellularCapabilityGsm::kGetIMSIRetryDelayMilliseconds = 500;
 
-CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
+CellularCapabilityGsm::CellularCapabilityGsm(Cellular* cellular,
                                              ModemInfo* modem_info)
     : CellularCapabilityClassic(cellular, modem_info),
       mobile_operator_info_(
@@ -78,7 +78,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
   SLOG(this, 2) << "Cellular capability constructed: GSM";
   mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(
-      kSIMLockStatusProperty, &CellularCapabilityGSM::SimLockStatusToProperty);
+      kSIMLockStatusProperty, &CellularCapabilityGsm::SimLockStatusToProperty);
   this->cellular()->set_scanning_supported(true);
 
   // TODO(benchan): This is a hack to initialize the GSM card proxy for GetIMSI
@@ -91,19 +91,19 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
       cellular->dbus_path(), cellular->dbus_service());
   // TODO(benchan): To allow unit testing using a mock proxy without further
   // complicating the code, the test proxy factory is set up to return a nullptr
-  // pointer when CellularCapabilityGSM is constructed. Refactor the code to
+  // pointer when CellularCapabilityGsm is constructed. Refactor the code to
   // avoid this hack.
   if (card_proxy_.get())
     InitProperties();
 }
 
-CellularCapabilityGSM::~CellularCapabilityGSM() {}
+CellularCapabilityGsm::~CellularCapabilityGsm() {}
 
-string CellularCapabilityGSM::GetTypeString() const {
+string CellularCapabilityGsm::GetTypeString() const {
   return kTechnologyFamilyGsm;
 }
 
-KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error* /*error*/) {
+KeyValueStore CellularCapabilityGsm::SimLockStatusToProperty(Error* /*error*/) {
   KeyValueStore status;
   status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
   status.SetString(kSIMLockTypeProperty, sim_lock_status_.lock_type);
@@ -111,17 +111,17 @@ KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error* /*error*/) {
   return status;
 }
 
-void CellularCapabilityGSM::HelpRegisterConstDerivedKeyValueStore(
+void CellularCapabilityGsm::HelpRegisterConstDerivedKeyValueStore(
     const string& name,
-    KeyValueStore(CellularCapabilityGSM::*get)(Error* error)) {
+    KeyValueStore(CellularCapabilityGsm::*get)(Error* error)) {
   cellular()->mutable_store()->RegisterDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
-          new CustomAccessor<CellularCapabilityGSM, KeyValueStore>(
+          new CustomAccessor<CellularCapabilityGsm, KeyValueStore>(
               this, get, nullptr)));
 }
 
-void CellularCapabilityGSM::InitProxies() {
+void CellularCapabilityGsm::InitProxies() {
   CellularCapabilityClassic::InitProxies();
   // TODO(benchan): Remove this check after refactoring the proxy
   // initialization.
@@ -132,70 +132,70 @@ void CellularCapabilityGSM::InitProxies() {
   network_proxy_ = control_interface()->CreateModemGSMNetworkProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   network_proxy_->set_signal_quality_callback(
-      Bind(&CellularCapabilityGSM::OnSignalQualitySignal,
+      Bind(&CellularCapabilityGsm::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));
   network_proxy_->set_network_mode_callback(
-      Bind(&CellularCapabilityGSM::OnNetworkModeSignal,
+      Bind(&CellularCapabilityGsm::OnNetworkModeSignal,
            weak_ptr_factory_.GetWeakPtr()));
   network_proxy_->set_registration_info_callback(
-      Bind(&CellularCapabilityGSM::OnRegistrationInfoSignal,
+      Bind(&CellularCapabilityGsm::OnRegistrationInfoSignal,
            weak_ptr_factory_.GetWeakPtr()));
 }
 
-void CellularCapabilityGSM::InitProperties() {
+void CellularCapabilityGsm::InitProperties() {
   CellularTaskList* tasks = new CellularTaskList();
   ResultCallback cb_ignore_error =
-      Bind(&CellularCapabilityGSM::StepCompletedCallback,
+      Bind(&CellularCapabilityGsm::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), ResultCallback(), true, tasks);
   // Chrome checks if a SIM is present before allowing the modem to be enabled,
   // so shill needs to obtain IMSI, as an indicator of SIM presence, even
   // before the device is enabled.
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetIMSI,
                         weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
   RunNextStep(tasks);
 }
 
-void CellularCapabilityGSM::StartModem(Error* error,
+void CellularCapabilityGsm::StartModem(Error* error,
                                        const ResultCallback& callback) {
   InitProxies();
 
   CellularTaskList* tasks = new CellularTaskList();
   ResultCallback cb =
-      Bind(&CellularCapabilityGSM::StepCompletedCallback,
+      Bind(&CellularCapabilityGsm::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
   ResultCallback cb_ignore_error =
-        Bind(&CellularCapabilityGSM::StepCompletedCallback,
+        Bind(&CellularCapabilityGsm::StepCompletedCallback,
                    weak_ptr_factory_.GetWeakPtr(), callback, true, tasks);
   if (!cellular()->IsUnderlyingDeviceEnabled())
-    tasks->push_back(Bind(&CellularCapabilityGSM::EnableModem,
+    tasks->push_back(Bind(&CellularCapabilityGsm::EnableModem,
                           weak_ptr_factory_.GetWeakPtr(), cb));
   // If we're within range of the home network, the modem will try to
   // register once it's enabled, or may be already registered if we
   // started out enabled.
   if (!IsUnderlyingDeviceRegistered() &&
       !cellular()->selected_network().empty())
-    tasks->push_back(Bind(&CellularCapabilityGSM::Register,
+    tasks->push_back(Bind(&CellularCapabilityGsm::Register,
                           weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetIMEI,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetIMEI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   get_imsi_retries_ = 0;
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetIMSI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetSPN,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetSPN,
                         weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetMSISDN,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetMSISDN,
                         weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetProperties,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetProperties,
                         weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetModemInfo,
+  tasks->push_back(Bind(&CellularCapabilityGsm::GetModemInfo,
                         weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
-  tasks->push_back(Bind(&CellularCapabilityGSM::FinishEnable,
+  tasks->push_back(Bind(&CellularCapabilityGsm::FinishEnable,
                         weak_ptr_factory_.GetWeakPtr(), cb));
 
   RunNextStep(tasks);
 }
 
-bool CellularCapabilityGSM::IsUnderlyingDeviceRegistered() const {
+bool CellularCapabilityGsm::IsUnderlyingDeviceRegistered() const {
   switch (cellular()->modem_state()) {
     case Cellular::kModemStateFailed:
     case Cellular::kModemStateUnknown:
@@ -216,19 +216,19 @@ bool CellularCapabilityGSM::IsUnderlyingDeviceRegistered() const {
   return false;
 }
 
-void CellularCapabilityGSM::ReleaseProxies() {
+void CellularCapabilityGsm::ReleaseProxies() {
   SLOG(this, 2) << __func__;
   CellularCapabilityClassic::ReleaseProxies();
   card_proxy_.reset();
   network_proxy_.reset();
 }
 
-bool CellularCapabilityGSM::AreProxiesInitialized() const {
+bool CellularCapabilityGsm::AreProxiesInitialized() const {
   return (CellularCapabilityClassic::AreProxiesInitialized() &&
           card_proxy_.get() && network_proxy_.get());
 }
 
-void CellularCapabilityGSM::OnServiceCreated() {
+void CellularCapabilityGsm::OnServiceCreated() {
   cellular()->service()->SetActivationState(kActivationStateActivated);
 }
 
@@ -239,7 +239,7 @@ void CellularCapabilityGSM::OnServiceCreated() {
 // - the list of APNs found in the mobile broadband provider DB for the
 //   home provider associated with the current SIM
 // - as a last resort, attempt to connect with no APN
-void CellularCapabilityGSM::SetupApnTryList() {
+void CellularCapabilityGsm::SetupApnTryList() {
   apn_try_list_.clear();
 
   DCHECK(cellular()->service().get());
@@ -256,13 +256,13 @@ void CellularCapabilityGSM::SetupApnTryList() {
                        cellular()->apn_list().end());
 }
 
-void CellularCapabilityGSM::SetupConnectProperties(
+void CellularCapabilityGsm::SetupConnectProperties(
     KeyValueStore* properties) {
   SetupApnTryList();
   FillConnectPropertyMap(properties);
 }
 
-void CellularCapabilityGSM::FillConnectPropertyMap(
+void CellularCapabilityGsm::FillConnectPropertyMap(
     KeyValueStore* properties) {
   properties->SetString(kConnectPropertyPhoneNumber, kPhoneNumber);
 
@@ -284,17 +284,17 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
   }
 }
 
-void CellularCapabilityGSM::Connect(const KeyValueStore& properties,
+void CellularCapabilityGsm::Connect(const KeyValueStore& properties,
                                     Error* error,
                                     const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  ResultCallback cb = Bind(&CellularCapabilityGSM::OnConnectReply,
+  ResultCallback cb = Bind(&CellularCapabilityGsm::OnConnectReply,
                            weak_ptr_factory_.GetWeakPtr(),
                            callback);
   simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
 }
 
-void CellularCapabilityGSM::OnConnectReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnConnectReply(const ResultCallback& callback,
                                            const Error& error) {
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
@@ -326,12 +326,12 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback& callback,
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetIMEI(const ResultCallback& callback) {
+void CellularCapabilityGsm::GetIMEI(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (cellular()->imei().empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGSM::OnGetIMEIReply,
+    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMEIReply,
                                     weak_ptr_factory_.GetWeakPtr(), callback);
     card_proxy_->GetIMEI(&error, cb, kTimeoutDefault);
     if (error.IsFailure())
@@ -343,12 +343,12 @@ void CellularCapabilityGSM::GetIMEI(const ResultCallback& callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetIMSI(const ResultCallback& callback) {
+void CellularCapabilityGsm::GetIMSI(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (cellular()->imsi().empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGSM::OnGetIMSIReply,
+    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMSIReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetIMSI(&error, cb, kTimeoutDefault);
@@ -363,12 +363,12 @@ void CellularCapabilityGSM::GetIMSI(const ResultCallback& callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetSPN(const ResultCallback& callback) {
+void CellularCapabilityGsm::GetSPN(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (spn_.empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGSM::OnGetSPNReply,
+    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetSPNReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetSPN(&error, cb, kTimeoutDefault);
@@ -381,13 +381,13 @@ void CellularCapabilityGSM::GetSPN(const ResultCallback& callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetMSISDN(const ResultCallback& callback) {
+void CellularCapabilityGsm::GetMSISDN(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   string mdn = cellular()->mdn();
   if (mdn.empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGSM::OnGetMSISDNReply,
+    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetMSISDNReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetMSISDN(&error, cb, kTimeoutDefault);
@@ -399,23 +399,23 @@ void CellularCapabilityGSM::GetMSISDN(const ResultCallback& callback) {
   }
 }
 
-void CellularCapabilityGSM::GetSignalQuality() {
+void CellularCapabilityGsm::GetSignalQuality() {
   SLOG(this, 2) << __func__;
   SignalQualityCallback callback =
-      Bind(&CellularCapabilityGSM::OnGetSignalQualityReply,
+      Bind(&CellularCapabilityGsm::OnGetSignalQualityReply,
            weak_ptr_factory_.GetWeakPtr());
   network_proxy_->GetSignalQuality(nullptr, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::GetRegistrationState() {
+void CellularCapabilityGsm::GetRegistrationState() {
   SLOG(this, 2) << __func__;
   RegistrationInfoCallback callback =
-      Bind(&CellularCapabilityGSM::OnGetRegistrationInfoReply,
+      Bind(&CellularCapabilityGsm::OnGetRegistrationInfoReply,
            weak_ptr_factory_.GetWeakPtr());
   network_proxy_->GetRegistrationInfo(nullptr, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::GetProperties(const ResultCallback& callback) {
+void CellularCapabilityGsm::GetProperties(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
@@ -432,12 +432,12 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback& callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::Register(const ResultCallback& callback) {
+void CellularCapabilityGsm::Register(const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << " \"" << cellular()->selected_network()
                 << "\"";
   CHECK(!callback.is_null());
   Error error;
-  ResultCallback cb = Bind(&CellularCapabilityGSM::OnRegisterReply,
+  ResultCallback cb = Bind(&CellularCapabilityGsm::OnRegisterReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Register(cellular()->selected_network(), &error, cb,
                            kTimeoutRegister);
@@ -445,19 +445,19 @@ void CellularCapabilityGSM::Register(const ResultCallback& callback) {
     callback.Run(error);
 }
 
-void CellularCapabilityGSM::RegisterOnNetwork(
+void CellularCapabilityGsm::RegisterOnNetwork(
     const string& network_id,
     Error* error,
     const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << "(" << network_id << ")";
   CHECK(error);
   desired_network_ = network_id;
-  ResultCallback cb = Bind(&CellularCapabilityGSM::OnRegisterReply,
+  ResultCallback cb = Bind(&CellularCapabilityGsm::OnRegisterReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Register(network_id, error, cb, kTimeoutRegister);
 }
 
-void CellularCapabilityGSM::OnRegisterReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnRegisterReply(const ResultCallback& callback,
                                             const Error& error) {
   SLOG(this, 2) << __func__ << "(" << error << ")";
 
@@ -479,12 +479,12 @@ void CellularCapabilityGSM::OnRegisterReply(const ResultCallback& callback,
   callback.Run(error);
 }
 
-bool CellularCapabilityGSM::IsRegistered() const {
+bool CellularCapabilityGsm::IsRegistered() const {
   return (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
           registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
 }
 
-void CellularCapabilityGSM::SetUnregistered(bool searching) {
+void CellularCapabilityGsm::SetUnregistered(bool searching) {
   // If we're already in some non-registered state, don't override that
   if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
       registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
@@ -494,21 +494,21 @@ void CellularCapabilityGSM::SetUnregistered(bool searching) {
   }
 }
 
-void CellularCapabilityGSM::RequirePIN(
+void CellularCapabilityGsm::RequirePIN(
     const std::string& pin, bool require,
     Error* error, const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->EnablePIN(pin, require, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::EnterPIN(const string& pin,
+void CellularCapabilityGsm::EnterPIN(const string& pin,
                                      Error* error,
                                      const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->SendPIN(pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::UnblockPIN(const string& unblock_code,
+void CellularCapabilityGsm::UnblockPIN(const string& unblock_code,
                                        const string& pin,
                                        Error* error,
                                        const ResultCallback& callback) {
@@ -516,21 +516,21 @@ void CellularCapabilityGSM::UnblockPIN(const string& unblock_code,
   card_proxy_->SendPUK(unblock_code, pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::ChangePIN(
+void CellularCapabilityGsm::ChangePIN(
     const string& old_pin, const string& new_pin,
     Error* error, const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->ChangePIN(old_pin, new_pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::Scan(Error* error,
+void CellularCapabilityGsm::Scan(Error* error,
                                  const ResultStringmapsCallback& callback) {
-  ScanResultsCallback cb = Bind(&CellularCapabilityGSM::OnScanReply,
+  ScanResultsCallback cb = Bind(&CellularCapabilityGsm::OnScanReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Scan(error, cb, kTimeoutScan);
 }
 
-void CellularCapabilityGSM::OnScanReply(
+void CellularCapabilityGsm::OnScanReply(
     const ResultStringmapsCallback& callback,
     const GSMScanResults& results,
     const Error& error) {
@@ -540,7 +540,7 @@ void CellularCapabilityGSM::OnScanReply(
   callback.Run(found_networks, error);
 }
 
-Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult& result) {
+Stringmap CellularCapabilityGsm::ParseScanResult(const GSMScanResult& result) {
   Stringmap parsed;
   for (const auto& property_key_value_pair : result) {
     const string& property_key = property_key_value_pair.first;
@@ -608,14 +608,14 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult& result) {
   return parsed;
 }
 
-void CellularCapabilityGSM::SetAccessTechnology(uint32_t access_technology) {
+void CellularCapabilityGsm::SetAccessTechnology(uint32_t access_technology) {
   access_technology_ = access_technology;
   if (cellular()->service().get()) {
     cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
   }
 }
 
-string CellularCapabilityGSM::GetNetworkTechnologyString() const {
+string CellularCapabilityGsm::GetNetworkTechnologyString() const {
   switch (access_technology_) {
     case MM_MODEM_GSM_ACCESS_TECH_GSM:
     case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
@@ -638,7 +638,7 @@ string CellularCapabilityGSM::GetNetworkTechnologyString() const {
   return "";
 }
 
-string CellularCapabilityGSM::GetRoamingStateString() const {
+string CellularCapabilityGsm::GetRoamingStateString() const {
   switch (registration_state_) {
     case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
       return kRoamingStateHome;
@@ -650,7 +650,7 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-void CellularCapabilityGSM::OnPropertiesChanged(
+void CellularCapabilityGsm::OnPropertiesChanged(
     const string& interface,
     const KeyValueStore& properties,
     const vector<string>& invalidated_properties) {
@@ -691,12 +691,12 @@ void CellularCapabilityGSM::OnPropertiesChanged(
   }
 }
 
-void CellularCapabilityGSM::OnNetworkModeSignal(uint32_t /*mode*/) {
+void CellularCapabilityGsm::OnNetworkModeSignal(uint32_t /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }
 
-void CellularCapabilityGSM::OnRegistrationInfoSignal(
+void CellularCapabilityGsm::OnRegistrationInfoSignal(
     uint32_t status, const string& operator_code, const string& operator_name) {
   SLOG(this, 2) << __func__ << ": regstate=" << status
                 << ", opercode=" << operator_code
@@ -707,24 +707,24 @@ void CellularCapabilityGSM::OnRegistrationInfoSignal(
   cellular()->HandleNewRegistrationState();
 }
 
-void CellularCapabilityGSM::OnSignalQualitySignal(uint32_t quality) {
+void CellularCapabilityGsm::OnSignalQualitySignal(uint32_t quality) {
   cellular()->HandleNewSignalQuality(quality);
 }
 
-void CellularCapabilityGSM::OnGetRegistrationInfoReply(
+void CellularCapabilityGsm::OnGetRegistrationInfoReply(
     uint32_t status, const string& operator_code, const string& operator_name,
     const Error& error) {
   if (error.IsSuccess())
     OnRegistrationInfoSignal(status, operator_code, operator_name);
 }
 
-void CellularCapabilityGSM::OnGetSignalQualityReply(uint32_t quality,
+void CellularCapabilityGsm::OnGetSignalQualityReply(uint32_t quality,
                                                     const Error& error) {
   if (error.IsSuccess())
     OnSignalQualitySignal(quality);
 }
 
-void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnGetIMEIReply(const ResultCallback& callback,
                                            const string& imei,
                                            const Error& error) {
   if (error.IsSuccess()) {
@@ -736,7 +736,7 @@ void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback& callback,
   callback.Run(error);
 }
 
-void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnGetIMSIReply(const ResultCallback& callback,
                                            const string& imsi,
                                            const Error& error) {
   if (error.IsSuccess()) {
@@ -756,7 +756,7 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
     cellular()->set_sim_present(false);
     if (get_imsi_retries_++ < kGetIMSIRetryLimit) {
       SLOG(this, 2) << "GetIMSI failed - " << error << ". Retrying";
-      base::Closure retry_get_imsi_cb = Bind(&CellularCapabilityGSM::GetIMSI,
+      base::Closure retry_get_imsi_cb = Bind(&CellularCapabilityGsm::GetIMSI,
                                              weak_ptr_factory_.GetWeakPtr(),
                                              callback);
       cellular()->dispatcher()->PostDelayedTask(
@@ -771,7 +771,7 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
   }
 }
 
-void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnGetSPNReply(const ResultCallback& callback,
                                           const string& spn,
                                           const Error& error) {
   if (error.IsSuccess()) {
@@ -784,7 +784,7 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback& callback,
   callback.Run(error);
 }
 
-void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback& callback,
+void CellularCapabilityGsm::OnGetMSISDNReply(const ResultCallback& callback,
                                              const string& msisdn,
                                              const Error& error) {
   if (error.IsSuccess()) {

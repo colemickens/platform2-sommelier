@@ -39,10 +39,10 @@ namespace shill {
 
 class ModemInfo;
 
-class CellularCapabilityGSM : public CellularCapabilityClassic {
+class CellularCapabilityGsm : public CellularCapabilityClassic {
  public:
-  CellularCapabilityGSM(Cellular* cellular, ModemInfo* modem_info);
-  ~CellularCapabilityGSM() override;
+  CellularCapabilityGsm(Cellular* cellular, ModemInfo* modem_info);
+  ~CellularCapabilityGsm() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
@@ -105,23 +105,23 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityGSMTest;
+  friend class CellularCapabilityGsmTest;
   friend class CellularCapabilityClassicTest;
-  FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
-  FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
-  FRIEND_TEST(CellularCapabilityGSMTest, GetIMSIFails);
-  FRIEND_TEST(CellularCapabilityGSMTest, GetMSISDN);
-  FRIEND_TEST(CellularCapabilityGSMTest, GetSPN);
-  FRIEND_TEST(CellularCapabilityGSMTest, RequirePIN);
-  FRIEND_TEST(CellularCapabilityGSMTest, EnterPIN);
-  FRIEND_TEST(CellularCapabilityGSMTest, UnblockPIN);
-  FRIEND_TEST(CellularCapabilityGSMTest, ChangePIN);
-  FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
-  FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
-  FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
-  FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
-  FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityGSMTest, OnPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetIMEI);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetIMSI);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetIMSIFails);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetMSISDN);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetSPN);
+  FRIEND_TEST(CellularCapabilityGsmTest, RequirePIN);
+  FRIEND_TEST(CellularCapabilityGsmTest, EnterPIN);
+  FRIEND_TEST(CellularCapabilityGsmTest, UnblockPIN);
+  FRIEND_TEST(CellularCapabilityGsmTest, ChangePIN);
+  FRIEND_TEST(CellularCapabilityGsmTest, ParseScanResult);
+  FRIEND_TEST(CellularCapabilityGsmTest, ParseScanResultProviderLookup);
+  FRIEND_TEST(CellularCapabilityGsmTest, RegisterOnNetwork);
+  FRIEND_TEST(CellularCapabilityGsmTest, SetAccessTechnology);
+  FRIEND_TEST(CellularCapabilityGsmTest, GetRegistrationState);
+  FRIEND_TEST(CellularCapabilityGsmTest, OnPropertiesChanged);
   FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
@@ -168,7 +168,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   void HelpRegisterConstDerivedKeyValueStore(
       const std::string& name,
-      KeyValueStore(CellularCapabilityGSM::*get)(Error* error));
+      KeyValueStore(CellularCapabilityGsm::*get)(Error* error));
 
   bool IsUnderlyingDeviceRegistered() const;
 
@@ -228,9 +228,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   std::deque<Stringmap> apn_try_list_;
   SimLockStatus sim_lock_status_;
 
-  base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
+  base::WeakPtrFactory<CellularCapabilityGsm> weak_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
+  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGsm);
 };
 
 }  // namespace shill

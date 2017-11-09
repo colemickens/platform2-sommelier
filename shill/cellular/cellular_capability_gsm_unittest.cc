@@ -51,9 +51,9 @@ using testing::_;
 
 namespace shill {
 
-class CellularCapabilityGSMTest : public testing::Test {
+class CellularCapabilityGsmTest : public testing::Test {
  public:
-  CellularCapabilityGSMTest()
+  CellularCapabilityGsmTest()
       : control_interface_(this),
         modem_info_(&control_interface_, &dispatcher_, nullptr, nullptr),
         create_card_proxy_from_factory_(false),
@@ -76,7 +76,7 @@ class CellularCapabilityGSMTest : public testing::Test {
                                           Technology::kCellular);
   }
 
-  ~CellularCapabilityGSMTest() override {
+  ~CellularCapabilityGsmTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
@@ -84,7 +84,7 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   void SetUp() override {
     capability_ =
-        static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+        static_cast<CellularCapabilityGsm*>(cellular_->capability_.get());
     device_adaptor_ =
         static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
   }
@@ -187,7 +187,7 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   class TestControl : public MockControl {
    public:
-    explicit TestControl(CellularCapabilityGSMTest* test) : test_(test) {}
+    explicit TestControl(CellularCapabilityGsmTest* test) : test_(test) {}
 
     std::unique_ptr<ModemProxyInterface> CreateModemProxy(
         const string& /*path*/,
@@ -205,8 +205,8 @@ class CellularCapabilityGSMTest : public testing::Test {
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
-      // CellularCapabilityGSM::InitProperties (and thus
-      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // CellularCapabilityGsm::InitProperties (and thus
+      // CellularCapabilityGsm::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       if (test_->create_card_proxy_from_factory_) {
         return std::move(test_->card_proxy_);
@@ -221,7 +221,7 @@ class CellularCapabilityGSMTest : public testing::Test {
     }
 
    private:
-    CellularCapabilityGSMTest* test_;
+    CellularCapabilityGsmTest* test_;
   };
 
   void SetCardProxy() {
@@ -283,18 +283,18 @@ class CellularCapabilityGSMTest : public testing::Test {
     SetupCommonProxiesExpectations();
 
     EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
-        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeEnable));
+        .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeEnable));
     EXPECT_CALL(*card_proxy_,
                 GetIMEI(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetIMEI));
+        .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetIMEI));
     EXPECT_CALL(*card_proxy_,
                 GetIMSI(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetIMSI));
+        .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetIMSI));
     EXPECT_CALL(*network_proxy_, AccessTechnology());
     EXPECT_CALL(*card_proxy_, EnabledFacilityLocks());
     EXPECT_CALL(*proxy_,
                 GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetModemInfo));
+        .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetModemInfo));
     EXPECT_CALL(*network_proxy_,
                 GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault));
     EXPECT_CALL(*network_proxy_,
@@ -319,7 +319,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
   std::unique_ptr<MockModemGSMCardProxy> card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
-  CellularCapabilityGSM* capability_;  // Owned by |cellular_|.
+  CellularCapabilityGsm* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
 
@@ -328,42 +328,42 @@ class CellularCapabilityGSMTest : public testing::Test {
   MockMobileOperatorInfo* mock_serving_operator_info_;
 };
 
-const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
-const char CellularCapabilityGSMTest::kTestMobileProviderDBPath[] =
+const char CellularCapabilityGsmTest::kAddress[] = "1122334455";
+const char CellularCapabilityGsmTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
-const char CellularCapabilityGSMTest::kTestCarrier[] = "The Cellular Carrier";
-const char CellularCapabilityGSMTest::kTestNetwork[] = "310555";
-const char CellularCapabilityGSMTest::kPIN[] = "9876";
-const char CellularCapabilityGSMTest::kPUK[] = "8765";
-const char CellularCapabilityGSMTest::kIMEI[] = "987654321098765";
-const char CellularCapabilityGSMTest::kIMSI[] = "310150123456789";
-const char CellularCapabilityGSMTest::kMSISDN[] = "12345678901";
-const int CellularCapabilityGSMTest::kStrength = 80;
+const char CellularCapabilityGsmTest::kTestCarrier[] = "The Cellular Carrier";
+const char CellularCapabilityGsmTest::kTestNetwork[] = "310555";
+const char CellularCapabilityGsmTest::kPIN[] = "9876";
+const char CellularCapabilityGsmTest::kPUK[] = "8765";
+const char CellularCapabilityGsmTest::kIMEI[] = "987654321098765";
+const char CellularCapabilityGsmTest::kIMSI[] = "310150123456789";
+const char CellularCapabilityGsmTest::kMSISDN[] = "12345678901";
+const int CellularCapabilityGsmTest::kStrength = 80;
 
-TEST_F(CellularCapabilityGSMTest, PropertyStore) {
+TEST_F(CellularCapabilityGsmTest, PropertyStore) {
   EXPECT_TRUE(cellular_->store().Contains(kSIMLockStatusProperty));
 }
 
-TEST_F(CellularCapabilityGSMTest, GetIMEI) {
+TEST_F(CellularCapabilityGsmTest, GetIMEI) {
   EXPECT_CALL(*card_proxy_, GetIMEI(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetIMEI));
+                       &CellularCapabilityGsmTest::InvokeGetIMEI));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   ASSERT_TRUE(cellular_->imei().empty());
-  capability_->GetIMEI(Bind(&CellularCapabilityGSMTest::TestCallback,
+  capability_->GetIMEI(Bind(&CellularCapabilityGsmTest::TestCallback,
                             Unretained(this)));
   EXPECT_EQ(kIMEI, cellular_->imei());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetIMSI) {
+TEST_F(CellularCapabilityGsmTest, GetIMSI) {
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetIMSI));
+                       &CellularCapabilityGsmTest::InvokeGetIMSI));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
-  ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
+  ResultCallback callback = Bind(&CellularCapabilityGsmTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(cellular_->imsi().empty());
   EXPECT_FALSE(cellular_->sim_present());
@@ -376,18 +376,18 @@ TEST_F(CellularCapabilityGSMTest, GetIMSI) {
 // In this test, the call to the proxy's GetIMSI() will always indicate failure,
 // which will cause the retry logic to call the proxy again a number of times.
 // Eventually, the retries expire.
-TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
+TEST_F(CellularCapabilityGsmTest, GetIMSIFails) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_INFO,
                        ::testing::EndsWith("cellular_capability_gsm.cc"),
                        ::testing::StartsWith("GetIMSI failed - ")));
   EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
-      .Times(CellularCapabilityGSM::kGetIMSIRetryLimit + 2)
+      .Times(CellularCapabilityGsm::kGetIMSIRetryLimit + 2)
       .WillRepeatedly(Invoke(this,
-                             &CellularCapabilityGSMTest::InvokeGetIMSIFails));
+                             &CellularCapabilityGsmTest::InvokeGetIMSIFails));
   EXPECT_CALL(*this, TestCallback(IsFailure())).Times(2);
   SetCardProxy();
-  ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
+  ResultCallback callback = Bind(&CellularCapabilityGsmTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(cellular_->imsi().empty());
   EXPECT_FALSE(cellular_->sim_present());
@@ -400,51 +400,51 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   capability_->sim_lock_status_.lock_type.clear();
   cellular_->set_sim_present(false);
   capability_->get_imsi_retries_ = 0;
-  EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds,
+  EXPECT_EQ(CellularCapabilityGsm::kGetIMSIRetryDelayMilliseconds,
             capability_->get_imsi_retry_delay_milliseconds_);
 
   // Set the delay to zero to speed up the test.
   capability_->get_imsi_retry_delay_milliseconds_ = 0;
   capability_->GetIMSI(callback);
-  for (int i = 0; i < CellularCapabilityGSM::kGetIMSIRetryLimit; ++i) {
+  for (int i = 0; i < CellularCapabilityGsm::kGetIMSIRetryLimit; ++i) {
     dispatcher_.DispatchPendingEvents();
   }
-  EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryLimit + 1,
+  EXPECT_EQ(CellularCapabilityGsm::kGetIMSIRetryLimit + 1,
             capability_->get_imsi_retries_);
   EXPECT_TRUE(cellular_->imsi().empty());
   EXPECT_FALSE(cellular_->sim_present());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetMSISDN) {
+TEST_F(CellularCapabilityGsmTest, GetMSISDN) {
   EXPECT_CALL(*card_proxy_, GetMSISDN(_, _,
                                       CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetMSISDN));
+                       &CellularCapabilityGsmTest::InvokeGetMSISDN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   ASSERT_TRUE(cellular_->mdn().empty());
-  capability_->GetMSISDN(Bind(&CellularCapabilityGSMTest::TestCallback,
+  capability_->GetMSISDN(Bind(&CellularCapabilityGsmTest::TestCallback,
                             Unretained(this)));
   EXPECT_EQ(kMSISDN, cellular_->mdn());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetSPN) {
+TEST_F(CellularCapabilityGsmTest, GetSPN) {
   EXPECT_CALL(*card_proxy_, GetSPN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetSPN));
+                       &CellularCapabilityGsmTest::InvokeGetSPN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   ASSERT_TRUE(capability_->spn_.empty());
-  capability_->GetSPN(Bind(&CellularCapabilityGSMTest::TestCallback,
+  capability_->GetSPN(Bind(&CellularCapabilityGsmTest::TestCallback,
                             Unretained(this)));
   EXPECT_EQ(kTestCarrier, capability_->spn_);
 }
 
-TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
+TEST_F(CellularCapabilityGsmTest, GetSignalQuality) {
   EXPECT_CALL(*network_proxy_,
               GetSignalQuality(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetSignalQuality));
+                       &CellularCapabilityGsmTest::InvokeGetSignalQuality));
   SetNetworkProxy();
   CreateService();
   EXPECT_EQ(0, cellular_->service()->strength());
@@ -452,20 +452,20 @@ TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
   EXPECT_EQ(kStrength, cellular_->service()->strength());
 }
 
-TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
+TEST_F(CellularCapabilityGsmTest, RegisterOnNetwork) {
   EXPECT_CALL(*network_proxy_, Register(kTestNetwork, _, _,
                                         CellularCapability::kTimeoutRegister))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeRegister));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeRegister));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetNetworkProxy();
   Error error;
   capability_->RegisterOnNetwork(kTestNetwork, &error,
-                                 Bind(&CellularCapabilityGSMTest::TestCallback,
+                                 Bind(&CellularCapabilityGsmTest::TestCallback,
                                       Unretained(this)));
   EXPECT_EQ(kTestNetwork, cellular_->selected_network());
 }
 
-TEST_F(CellularCapabilityGSMTest, IsRegistered) {
+TEST_F(CellularCapabilityGsmTest, IsRegistered) {
   EXPECT_FALSE(capability_->IsRegistered());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE);
   EXPECT_FALSE(capability_->IsRegistered());
@@ -481,12 +481,12 @@ TEST_F(CellularCapabilityGSMTest, IsRegistered) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetRegistrationState) {
+TEST_F(CellularCapabilityGsmTest, GetRegistrationState) {
   ASSERT_FALSE(capability_->IsRegistered());
   EXPECT_CALL(*network_proxy_,
               GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetRegistrationInfo));
+                       &CellularCapabilityGsmTest::InvokeGetRegistrationInfo));
   SetNetworkProxy();
   capability_->GetRegistrationState();
   EXPECT_TRUE(capability_->IsRegistered());
@@ -494,70 +494,70 @@ TEST_F(CellularCapabilityGSMTest, GetRegistrationState) {
             capability_->registration_state_);
 }
 
-TEST_F(CellularCapabilityGSMTest, RequirePIN) {
+TEST_F(CellularCapabilityGsmTest, RequirePIN) {
   EXPECT_CALL(*card_proxy_, EnablePIN(kPIN, true, _, _,
                                       CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeEnablePIN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeEnablePIN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   Error error;
   capability_->RequirePIN(kPIN, true, &error,
-                          Bind(&CellularCapabilityGSMTest::TestCallback,
+                          Bind(&CellularCapabilityGsmTest::TestCallback,
                                Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_F(CellularCapabilityGSMTest, EnterPIN) {
+TEST_F(CellularCapabilityGsmTest, EnterPIN) {
   EXPECT_CALL(*card_proxy_, SendPIN(kPIN, _, _,
                                     CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeSendPIN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeSendPIN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   Error error;
   capability_->EnterPIN(kPIN, &error,
-                        Bind(&CellularCapabilityGSMTest::TestCallback,
+                        Bind(&CellularCapabilityGsmTest::TestCallback,
                              Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_F(CellularCapabilityGSMTest, UnblockPIN) {
+TEST_F(CellularCapabilityGsmTest, UnblockPIN) {
   EXPECT_CALL(*card_proxy_, SendPUK(kPUK, kPIN, _, _,
                                     CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeSendPUK));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeSendPUK));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   Error error;
   capability_->UnblockPIN(kPUK, kPIN, &error,
-                          Bind(&CellularCapabilityGSMTest::TestCallback,
+                          Bind(&CellularCapabilityGsmTest::TestCallback,
                              Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_F(CellularCapabilityGSMTest, ChangePIN) {
+TEST_F(CellularCapabilityGsmTest, ChangePIN) {
   static const char kOldPIN[] = "1111";
   EXPECT_CALL(*card_proxy_, ChangePIN(kOldPIN, kPIN, _, _,
                                     CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeChangePIN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeChangePIN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   Error error;
   capability_->ChangePIN(kOldPIN, kPIN, &error,
-                         Bind(&CellularCapabilityGSMTest::TestCallback,
+                         Bind(&CellularCapabilityGsmTest::TestCallback,
                              Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
 }
 
 
-TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
+TEST_F(CellularCapabilityGsmTest, ParseScanResult) {
   static const char kID[] = "123";
   static const char kLongName[] = "long name";
   static const char kShortName[] = "short name";
   GSMScanResult result;
-  result[CellularCapabilityGSM::kNetworkPropertyStatus] = "1";
-  result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
-  result[CellularCapabilityGSM::kNetworkPropertyLongName] = kLongName;
-  result[CellularCapabilityGSM::kNetworkPropertyShortName] = kShortName;
-  result[CellularCapabilityGSM::kNetworkPropertyAccessTechnology] = "3";
+  result[CellularCapabilityGsm::kNetworkPropertyStatus] = "1";
+  result[CellularCapabilityGsm::kNetworkPropertyID] = kID;
+  result[CellularCapabilityGsm::kNetworkPropertyLongName] = kLongName;
+  result[CellularCapabilityGsm::kNetworkPropertyShortName] = kShortName;
+  result[CellularCapabilityGsm::kNetworkPropertyAccessTechnology] = "3";
   result["unknown property"] = "random value";
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(5, parsed.size());
@@ -568,7 +568,7 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
   EXPECT_EQ(kNetworkTechnologyEdge, parsed[kTechnologyProperty]);
 }
 
-TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
+TEST_F(CellularCapabilityGsmTest, ParseScanResultProviderLookup) {
   static const char kID[] = "10001";
   const string kLongName = "TestNetworkLongName";
   // Replace the |MobileOperatorInfo| used by |ParseScanResult| by a mock.
@@ -583,14 +583,14 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
   EXPECT_CALL(*mock_mobile_operator_info, operator_name()).
       WillRepeatedly(ReturnRef(kLongName));
   GSMScanResult result;
-  result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
+  result[CellularCapabilityGsm::kNetworkPropertyID] = kID;
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(2, parsed.size());
   EXPECT_EQ(kID, parsed[kNetworkIdProperty]);
   EXPECT_EQ(kLongName, parsed[kLongNameProperty]);
 }
 
-TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
+TEST_F(CellularCapabilityGsmTest, SetAccessTechnology) {
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, capability_->access_technology_);
   CreateService();
@@ -600,7 +600,7 @@ TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
   EXPECT_EQ(kNetworkTechnologyGprs, cellular_->service()->network_technology());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
+TEST_F(CellularCapabilityGsmTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
   EXPECT_EQ(kNetworkTechnologyGsm, capability_->GetNetworkTechnologyString());
@@ -623,7 +623,7 @@ TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
             capability_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
+TEST_F(CellularCapabilityGsmTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
   EXPECT_EQ(kRoamingStateHome, capability_->GetRoamingStateString());
@@ -637,7 +637,7 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
-TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
+TEST_F(CellularCapabilityGsmTest, OnPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
@@ -645,12 +645,12 @@ TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
   KeyValueStore props;
   static const char kLockType[] = "sim-pin";
   const int kRetries = 3;
-  props.SetUint(CellularCapabilityGSM::kPropertyAccessTechnology,
+  props.SetUint(CellularCapabilityGsm::kPropertyAccessTechnology,
                 MM_MODEM_GSM_ACCESS_TECH_EDGE);
-  props.SetUint(CellularCapabilityGSM::kPropertyEnabledFacilityLocks,
+  props.SetUint(CellularCapabilityGsm::kPropertyEnabledFacilityLocks,
                 MM_MODEM_GSM_FACILITY_SIM);
-  props.SetString(CellularCapabilityGSM::kPropertyUnlockRequired, kLockType);
-  props.SetUint(CellularCapabilityGSM::kPropertyUnlockRetries, kRetries);
+  props.SetString(CellularCapabilityGsm::kPropertyUnlockRequired, kLockType);
+  props.SetUint(CellularCapabilityGsm::kPropertyUnlockRetries, kRetries);
   // Call with the 'wrong' interface and nothing should change.
   capability_->OnPropertiesChanged(MM_MODEM_GSM_INTERFACE, props,
                                    vector<string>());
@@ -697,69 +697,69 @@ TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
 }
 
-TEST_F(CellularCapabilityGSMTest, StartModemSuccess) {
+TEST_F(CellularCapabilityGsmTest, StartModemSuccess) {
   SetupCommonStartModemExpectations();
   EXPECT_CALL(*card_proxy_,
               GetSPN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetSPN));
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetMSISDN));
   AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
-      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+      &error, Bind(&CellularCapabilityGsmTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityGSMTest, StartModemGetSPNFail) {
+TEST_F(CellularCapabilityGsmTest, StartModemGetSPNFail) {
   SetupCommonStartModemExpectations();
   EXPECT_CALL(*card_proxy_,
               GetSPN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPNFail));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetSPNFail));
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetMSISDN));
   AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
-      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+      &error, Bind(&CellularCapabilityGsmTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityGSMTest, StartModemGetMSISDNFail) {
+TEST_F(CellularCapabilityGsmTest, StartModemGetMSISDNFail) {
   SetupCommonStartModemExpectations();
   EXPECT_CALL(*card_proxy_,
               GetSPN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPN));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetSPN));
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDNFail));
+      .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeGetMSISDNFail));
   AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
-      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+      &error, Bind(&CellularCapabilityGsmTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityGSMTest, ConnectFailureNoService) {
+TEST_F(CellularCapabilityGsmTest, ConnectFailureNoService) {
   // Make sure we don't crash if the connect failed and there is no
   // CellularService object.  This can happen if the modem is enabled and
   // then quickly disabled.
   SetupCommonProxiesExpectations();
   EXPECT_CALL(*simple_proxy_,
-              Connect(_, _, _, CellularCapabilityGSM::kTimeoutConnect))
-       .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeConnectFail));
+              Connect(_, _, _, CellularCapabilityGsm::kTimeoutConnect))
+       .WillOnce(Invoke(this, &CellularCapabilityGsmTest::InvokeConnectFail));
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   InitProxies();
   EXPECT_FALSE(capability_->cellular()->service());
   Error error;
   KeyValueStore props;
   capability_->Connect(props, &error,
-                       Bind(&CellularCapabilityGSMTest::TestCallback,
+                       Bind(&CellularCapabilityGsmTest::TestCallback,
                             Unretained(this)));
 }
 

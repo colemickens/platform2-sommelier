@@ -58,7 +58,7 @@ class ModemInfo;
 //       |
 //       |-- CellularCapabilityClassic
 //                    |
-//                    |-- CellularCapabilityGSM
+//                    |-- CellularCapabilityGsm
 //                    |
 //                    |-- CellularCapabilityCdma
 //
@@ -300,7 +300,7 @@ class CellularCapability {
   static void OnUnsupportedOperation(const char* operation, Error* error);
 
  private:
-  friend class CellularCapabilityGSMTest;
+  friend class CellularCapabilityGsmTest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCdmaTest;

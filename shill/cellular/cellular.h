@@ -329,7 +329,7 @@ class Cellular : public Device,
   friend class CellularTest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityCdmaTest;
-  friend class CellularCapabilityGSMTest;
+  friend class CellularCapabilityGsmTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularServiceTest;

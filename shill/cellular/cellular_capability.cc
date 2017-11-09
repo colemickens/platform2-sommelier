@@ -59,7 +59,7 @@ std::unique_ptr<CellularCapability> CellularCapability::Create(
     Cellular::Type type, Cellular* cellular, ModemInfo* modem_info) {
   switch (type) {
     case Cellular::kTypeGSM:
-      return std::make_unique<CellularCapabilityGSM>(cellular, modem_info);
+      return std::make_unique<CellularCapabilityGsm>(cellular, modem_info);
 
     case Cellular::kTypeCdma:
       return std::make_unique<CellularCapabilityCdma>(cellular, modem_info);
