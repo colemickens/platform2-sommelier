@@ -69,7 +69,7 @@ std::unique_ptr<CellularCapability> CellularCapability::Create(
                                                            modem_info);
 
     case Cellular::kTypeUniversalCDMA:
-      return std::make_unique<CellularCapabilityUniversalCDMA>(cellular,
+      return std::make_unique<CellularCapabilityUniversalCdma>(cellular,
                                                                modem_info);
 
     default:

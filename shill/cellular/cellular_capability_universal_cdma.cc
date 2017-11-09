@@ -41,7 +41,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityUniversalCDMA* c) {
+static string ObjectID(CellularCapabilityUniversalCdma* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
@@ -53,7 +53,7 @@ const char kPropertyConnectNumber[] = "number";
 
 }  // namespace
 
-CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
+CellularCapabilityUniversalCdma::CellularCapabilityUniversalCdma(
     Cellular* cellular, ModemInfo* modem_info)
     : CellularCapabilityUniversal(cellular, modem_info),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
@@ -67,25 +67,25 @@ CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
   // See crbug.com/197330.
 }
 
-CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
+CellularCapabilityUniversalCdma::~CellularCapabilityUniversalCdma() {}
 
-void CellularCapabilityUniversalCDMA::InitProxies() {
+void CellularCapabilityUniversalCdma::InitProxies() {
   SLOG(this, 2) << __func__;
   modem_cdma_proxy_ = control_interface()->CreateMM1ModemModemCdmaProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_cdma_proxy_->set_activation_state_callback(
-      Bind(&CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal,
+      Bind(&CellularCapabilityUniversalCdma::OnActivationStateChangedSignal,
       weak_cdma_ptr_factory_.GetWeakPtr()));
   CellularCapabilityUniversal::InitProxies();
 }
 
-void CellularCapabilityUniversalCDMA::ReleaseProxies() {
+void CellularCapabilityUniversalCdma::ReleaseProxies() {
   SLOG(this, 2) << __func__;
   modem_cdma_proxy_.reset();
   CellularCapabilityUniversal::ReleaseProxies();
 }
 
-void CellularCapabilityUniversalCDMA::Activate(const string& carrier,
+void CellularCapabilityUniversalCdma::Activate(const string& carrier,
                                                Error* error,
                                                const ResultCallback& callback) {
   // Currently activation over the cellular network is not supported using
@@ -95,7 +95,7 @@ void CellularCapabilityUniversalCDMA::Activate(const string& carrier,
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityUniversalCDMA::CompleteActivation(Error* error) {
+void CellularCapabilityUniversalCdma::CompleteActivation(Error* error) {
   SLOG(this, 2) << __func__;
   if (cellular()->state() < Cellular::kStateEnabled) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -106,7 +106,7 @@ void CellularCapabilityUniversalCDMA::CompleteActivation(Error* error) {
   ActivateAutomatic();
 }
 
-void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
+void CellularCapabilityUniversalCdma::ActivateAutomatic() {
   if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown() ||
       cellular()->serving_operator_info()->activation_code().empty()) {
     SLOG(this, 2) << "OTA activation cannot be run in the presence of no "
@@ -136,7 +136,7 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
 
   // Initiate OTA activation.
   ResultCallback activation_callback =
-    Bind(&CellularCapabilityUniversalCDMA::OnActivateReply,
+    Bind(&CellularCapabilityUniversalCdma::OnActivateReply,
          weak_cdma_ptr_factory_.GetWeakPtr(),
          ResultCallback());
 
@@ -148,7 +148,7 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
       kTimeoutActivate);
 }
 
-void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
+void CellularCapabilityUniversalCdma::UpdatePendingActivationState() {
   SLOG(this, 2) << __func__;
   if (IsActivated()) {
     SLOG(this, 3) << "CDMA service activated. Clear store.";
@@ -168,7 +168,7 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
       SLOG(this, 3) << "OTA activation failed. Scheduling a retry.";
       cellular()->dispatcher()->PostTask(
           FROM_HERE,
-          Bind(&CellularCapabilityUniversalCDMA::ActivateAutomatic,
+          Bind(&CellularCapabilityUniversalCdma::ActivateAutomatic,
                weak_cdma_ptr_factory_.GetWeakPtr()));
       break;
     case PendingActivationStore::kStateActivated:
@@ -180,12 +180,12 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
   }
 }
 
-bool CellularCapabilityUniversalCDMA::AreProxiesInitialized() const {
+bool CellularCapabilityUniversalCdma::AreProxiesInitialized() const {
   return modem_cdma_proxy_ != nullptr &&
          CellularCapabilityUniversal::AreProxiesInitialized();
 }
 
-bool CellularCapabilityUniversalCDMA::IsServiceActivationRequired() const {
+bool CellularCapabilityUniversalCdma::IsServiceActivationRequired() const {
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
   if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown() ||
@@ -199,11 +199,11 @@ bool CellularCapabilityUniversalCDMA::IsServiceActivationRequired() const {
   return (activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED);
 }
 
-bool CellularCapabilityUniversalCDMA::IsActivated() const {
+bool CellularCapabilityUniversalCdma::IsActivated() const {
   return (activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED);
 }
 
-void CellularCapabilityUniversalCDMA::OnServiceCreated() {
+void CellularCapabilityUniversalCdma::OnServiceCreated() {
   SLOG(this, 2) << __func__;
   cellular()->service()->SetActivationType(
       CellularService::kActivationTypeOTASP);
@@ -212,7 +212,7 @@ void CellularCapabilityUniversalCDMA::OnServiceCreated() {
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
+void CellularCapabilityUniversalCdma::UpdateServiceActivationStateProperty() {
   string activation_state;
   if (IsActivating())
       activation_state = kActivationStateActivating;
@@ -223,7 +223,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
   cellular()->service()->SetActivationState(activation_state);
 }
 
-void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
+void CellularCapabilityUniversalCdma::UpdateServiceOLP() {
   SLOG(this, 2) << __func__;
 
   // In this case, the Home Provider is trivial. All information comes from the
@@ -253,7 +253,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
-void CellularCapabilityUniversalCDMA::GetProperties() {
+void CellularCapabilityUniversalCdma::GetProperties() {
   SLOG(this, 2) << __func__;
   CellularCapabilityUniversal::GetProperties();
 
@@ -266,7 +266,7 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   OnModemCDMAPropertiesChanged(properties, vector<string>());
 }
 
-void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
+void CellularCapabilityUniversalCdma::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
     const KeyValueStore& status_changes) {
@@ -287,7 +287,7 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversalCDMA::OnActivateReply(
+void CellularCapabilityUniversalCdma::OnActivateReply(
     const ResultCallback& callback,
     const Error& error) {
   SLOG(this, 2) << __func__;
@@ -306,14 +306,14 @@ void CellularCapabilityUniversalCDMA::OnActivateReply(
   }
   UpdatePendingActivationState();
 
-  // CellularCapabilityUniversalCDMA::ActivateAutomatic passes a dummy
+  // CellularCapabilityUniversalCdma::ActivateAutomatic passes a dummy
   // ResultCallback when it calls Activate on the proxy object, in which case
   // |callback.is_null()| will return true.
   if (!callback.is_null())
     callback.Run(error);
 }
 
-void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(
+void CellularCapabilityUniversalCdma::HandleNewActivationStatus(
     uint32_t error) {
   SLOG(this, 2) << __func__ << "(" << error << ")";
   if (!cellular()->service().get()) {
@@ -328,7 +328,7 @@ void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(
 }
 
 // static
-string CellularCapabilityUniversalCDMA::GetActivationStateString(
+string CellularCapabilityUniversalCdma::GetActivationStateString(
     uint32_t state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
@@ -345,7 +345,7 @@ string CellularCapabilityUniversalCDMA::GetActivationStateString(
 }
 
 // static
-string CellularCapabilityUniversalCDMA::GetActivationErrorString(
+string CellularCapabilityUniversalCdma::GetActivationErrorString(
     uint32_t error) {
   switch (error) {
     case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
@@ -364,18 +364,18 @@ string CellularCapabilityUniversalCDMA::GetActivationErrorString(
   }
 }
 
-void CellularCapabilityUniversalCDMA::Register(const ResultCallback& callback) {
+void CellularCapabilityUniversalCdma::Register(const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::RegisterOnNetwork(
+void CellularCapabilityUniversalCdma::RegisterOnNetwork(
     const string& network_id,
     Error* error,
     const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-bool CellularCapabilityUniversalCDMA::IsActivating() const {
+bool CellularCapabilityUniversalCdma::IsActivating() const {
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
@@ -384,37 +384,37 @@ bool CellularCapabilityUniversalCDMA::IsActivating() const {
       (activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING);
 }
 
-bool CellularCapabilityUniversalCDMA::IsRegistered() const {
+bool CellularCapabilityUniversalCdma::IsRegistered() const {
   return (cdma_1x_registration_state_ !=
               MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
           cdma_evdo_registration_state_ !=
               MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
 }
 
-void CellularCapabilityUniversalCDMA::SetUnregistered(bool /*searching*/) {
+void CellularCapabilityUniversalCdma::SetUnregistered(bool /*searching*/) {
   cdma_1x_registration_state_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   cdma_evdo_registration_state_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 }
 
-void CellularCapabilityUniversalCDMA::SetupConnectProperties(
+void CellularCapabilityUniversalCdma::SetupConnectProperties(
     KeyValueStore* properties) {
   properties->SetString(kPropertyConnectNumber, kPhoneNumber);
 }
 
-void CellularCapabilityUniversalCDMA::RequirePIN(
+void CellularCapabilityUniversalCdma::RequirePIN(
     const string& pin, bool require,
     Error* error, const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::EnterPIN(
+void CellularCapabilityUniversalCdma::EnterPIN(
     const string& pin,
     Error* error,
     const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::UnblockPIN(
+void CellularCapabilityUniversalCdma::UnblockPIN(
     const string& unblock_code,
     const string& pin,
     Error* error,
@@ -422,25 +422,25 @@ void CellularCapabilityUniversalCDMA::UnblockPIN(
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::ChangePIN(
+void CellularCapabilityUniversalCdma::ChangePIN(
     const string& old_pin, const string& new_pin,
     Error* error, const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::Scan(
+void CellularCapabilityUniversalCdma::Scan(
     Error* error,
     const ResultStringmapsCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityUniversalCDMA::OnSimPathChanged(
+void CellularCapabilityUniversalCdma::OnSimPathChanged(
     const string& sim_path) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
+string CellularCapabilityUniversalCdma::GetRoamingStateString() const {
   uint32_t state = cdma_evdo_registration_state_;
   if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     state = cdma_1x_registration_state_;
@@ -459,7 +459,7 @@ string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-void CellularCapabilityUniversalCDMA::OnPropertiesChanged(
+void CellularCapabilityUniversalCdma::OnPropertiesChanged(
     const string& interface,
     const KeyValueStore& changed_properties,
     const vector<string>& invalidated_properties) {
@@ -472,7 +472,7 @@ void CellularCapabilityUniversalCDMA::OnPropertiesChanged(
   }
 }
 
-void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
+void CellularCapabilityUniversalCdma::OnModemCDMAPropertiesChanged(
     const KeyValueStore& properties,
     const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(this, 2) << __func__;
@@ -520,7 +520,7 @@ void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
     OnCDMARegistrationChanged(state_1x, state_evdo, sid, nid);
 }
 
-void CellularCapabilityUniversalCDMA::OnCDMARegistrationChanged(
+void CellularCapabilityUniversalCdma::OnCDMARegistrationChanged(
       MMModemCdmaRegistrationState state_1x,
       MMModemCdmaRegistrationState state_evdo,
       uint32_t sid, uint32_t nid) {

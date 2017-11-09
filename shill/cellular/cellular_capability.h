@@ -54,7 +54,7 @@ class ModemInfo;
 //       |
 //       |-- CellularCapabilityUniversal
 //       |            |
-//       |            |-- CellularCapabilityUniversalCDMA
+//       |            |-- CellularCapabilityUniversalCdma
 //       |
 //       |-- CellularCapabilityClassic
 //                    |
@@ -303,7 +303,7 @@ class CellularCapability {
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCDMATest;
+  friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);

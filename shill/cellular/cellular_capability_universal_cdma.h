@@ -30,10 +30,10 @@
 
 namespace shill {
 
-class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
+class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
  public:
-  CellularCapabilityUniversalCDMA(Cellular* cellular, ModemInfo* modem_info);
-  ~CellularCapabilityUniversalCDMA() override;
+  CellularCapabilityUniversalCdma(Cellular* cellular, ModemInfo* modem_info);
+  ~CellularCapabilityUniversalCdma() override;
 
   // Returns true if the service is activated.
   bool IsActivated() const;
@@ -85,19 +85,19 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   void UpdatePendingActivationState() override;
 
  private:
-  friend class CellularCapabilityUniversalCDMATest;
-  FRIEND_TEST(CellularCapabilityUniversalCDMADispatcherTest,
+  friend class CellularCapabilityUniversalCdmaTest;
+  FRIEND_TEST(CellularCapabilityUniversalCdmaDispatcherTest,
               UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsActivating);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsRegistered);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, ActivateAutomatic);
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, IsActivating);
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, IsRegistered);
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
               IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
               OnCDMARegistrationChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP);
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
               UpdateServiceActivationStateProperty);
 
   // CDMA property change handlers
@@ -135,9 +135,9 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   // TODO(armansito): Should probably call this |weak_ptr_factory_| after
   // 3gpp refactor
-  base::WeakPtrFactory<CellularCapabilityUniversalCDMA> weak_cdma_ptr_factory_;
+  base::WeakPtrFactory<CellularCapabilityUniversalCdma> weak_cdma_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversalCDMA);
+  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversalCdma);
 };
 
 }  // namespace shill

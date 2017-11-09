@@ -331,7 +331,7 @@ class Cellular : public Device,
   friend class CellularCapabilityCdmaTest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCDMATest;
+  friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularServiceTest;
   friend class ModemTest;
   friend class SubscriptionStateOutOfCreditsDetectorTest;

@@ -189,8 +189,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularTest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCDMATest;
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
+  friend class CellularCapabilityUniversalCdmaTest;
+  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
