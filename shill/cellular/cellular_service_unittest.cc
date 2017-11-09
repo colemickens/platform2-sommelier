@@ -59,7 +59,7 @@ class CellularServiceTest : public testing::Test {
                                  "usb0",
                                  kAddress,
                                  3,
-                                 Cellular::kTypeCDMA,
+                                 Cellular::kTypeCdma,
                                  "",
                                  "")),
         service_(new CellularService(&modem_info_, device_)),
@@ -78,7 +78,7 @@ class CellularServiceTest : public testing::Test {
     service_->set_out_of_credits_detector_for_test(std::move(detector));
   }
 
-  CellularCapabilityCdma* GetCapabilityCDMA() {
+  CellularCapabilityCdma* GetCapabilityCdma() {
     return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
@@ -344,16 +344,16 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   device_->running_ = true;
 
   // If we're waiting on a disconnect before an activation, don't auto-connect.
-  GetCapabilityCDMA()->activation_starting_ = true;
+  GetCapabilityCdma()->activation_starting_ = true;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
 
   // If we're waiting on an activation, also don't auto-connect.
-  GetCapabilityCDMA()->activation_starting_ = false;
-  GetCapabilityCDMA()->activation_state_ =
+  GetCapabilityCdma()->activation_starting_ = false;
+  GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
 
-  GetCapabilityCDMA()->activation_state_ =
+  GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
 
   // Auto-connect should be suppressed if the we're undergoing an
@@ -378,13 +378,13 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
       .WillRepeatedly(Return(false));
 
   // But other activation states are fine.
-  GetCapabilityCDMA()->activation_state_ =
+  GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
-  GetCapabilityCDMA()->activation_state_ =
+  GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
-  GetCapabilityCDMA()->activation_state_ =
+  GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 

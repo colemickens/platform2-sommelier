@@ -57,7 +57,7 @@ void ModemClassic::CreateDeviceClassic(
   }
   switch (mm_type) {
     case MM_MODEM_TYPE_CDMA:
-      set_type(Cellular::kTypeCDMA);
+      set_type(Cellular::kTypeCdma);
       break;
     case MM_MODEM_TYPE_GSM:
       set_type(Cellular::kTypeGSM);

@@ -97,7 +97,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
-                             Cellular::kTypeCDMA,
+                             Cellular::kTypeCdma,
                              "",
                              "")) {}
 
@@ -575,7 +575,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         device_->capability_.get());
   }
 
-  CellularCapabilityCdma* GetCapabilityCDMA() {
+  CellularCapabilityCdma* GetCapabilityCdma() {
     return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
@@ -715,8 +715,8 @@ TEST_P(CellularTest, GetModemStateString) {
             Cellular::GetModemStateString(Cellular::kModemStateConnected));
 }
 
-TEST_P(CellularTest, StartCDMARegister) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+TEST_P(CellularTest, StartCdmaRegister) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -790,7 +790,7 @@ TEST_P(CellularTest, StartGSMRegister) {
 }
 
 TEST_P(CellularTest, StartConnected) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -808,7 +808,7 @@ TEST_P(CellularTest, StartConnected) {
 }
 
 TEST_P(CellularTest, StartLinked) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -831,7 +831,7 @@ TEST_P(CellularTest, StartLinked) {
 }
 
 TEST_P(CellularTest, FriendlyServiceName) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1076,7 +1076,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
 }
 
 TEST_P(CellularTest, StorageIdentifier) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1159,7 +1159,7 @@ MATCHER(ContainsPhoneNumber, "") {
 
 TEST_P(CellularTest, Connect) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCDMA})) {
+          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1218,7 +1218,7 @@ TEST_P(CellularTest, Connect) {
 
 TEST_P(CellularTest, Disconnect) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCDMA})) {
+          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1240,7 +1240,7 @@ TEST_P(CellularTest, Disconnect) {
 
 TEST_P(CellularTest, DisconnectFailure) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCDMA})) {
+          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1265,7 +1265,7 @@ TEST_P(CellularTest, DisconnectFailure) {
 }
 
 TEST_P(CellularTest, ConnectFailure) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1283,7 +1283,7 @@ TEST_P(CellularTest, ConnectFailure) {
 
 TEST_P(CellularTest, ConnectFailureNoService) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCDMA})) {
+          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1303,7 +1303,7 @@ TEST_P(CellularTest, ConnectFailureNoService) {
 }
 
 TEST_P(CellularTest, ConnectSuccessNoService) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1338,7 +1338,7 @@ TEST_P(CellularTest, UseNoArpGateway) {
 }
 
 TEST_P(CellularTest, ModemStateChangeEnable) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1369,7 +1369,7 @@ TEST_P(CellularTest, ModemStateChangeEnable) {
 }
 
 TEST_P(CellularTest, ModemStateChangeDisable) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCDMA})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1398,7 +1398,7 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
 
 TEST_P(CellularTest, ModemStateChangeStaleConnected) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCDMA})) {
+          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -2321,8 +2321,8 @@ TEST_P(CellularTest, GetGeolocationObjects) {
 INSTANTIATE_TEST_CASE_P(CellularTest,
                         CellularTest,
                         testing::Values(Cellular::kTypeGSM,
-                                        Cellular::kTypeCDMA,
+                                        Cellular::kTypeCdma,
                                         Cellular::kTypeUniversal,
-                                        Cellular::kTypeUniversalCDMA));
+                                        Cellular::kTypeUniversalCdma));
 
 }  // namespace shill

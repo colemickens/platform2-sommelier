@@ -543,6 +543,6 @@ TEST_P(CellularCapabilityClassicTest, DisconnectNoProxy) {
 INSTANTIATE_TEST_CASE_P(CellularCapabilityClassicTest,
                         CellularCapabilityClassicTest,
                         testing::Values(Cellular::kTypeGSM,
-                                        Cellular::kTypeCDMA));
+                                        Cellular::kTypeCdma));
 
 }  // namespace shill

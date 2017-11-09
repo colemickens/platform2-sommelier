@@ -263,7 +263,7 @@ void CellularCapabilityUniversalCdma::GetProperties() {
 
   KeyValueStore properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEMCDMA));
-  OnModemCDMAPropertiesChanged(properties, vector<string>());
+  OnModemCdmaPropertiesChanged(properties, vector<string>());
 }
 
 void CellularCapabilityUniversalCdma::OnActivationStateChangedSignal(
@@ -465,14 +465,14 @@ void CellularCapabilityUniversalCdma::OnPropertiesChanged(
     const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEMCDMA) {
-    OnModemCDMAPropertiesChanged(changed_properties, invalidated_properties);
+    OnModemCdmaPropertiesChanged(changed_properties, invalidated_properties);
   } else {
     CellularCapabilityUniversal::OnPropertiesChanged(
         interface, changed_properties, invalidated_properties);
   }
 }
 
-void CellularCapabilityUniversalCdma::OnModemCDMAPropertiesChanged(
+void CellularCapabilityUniversalCdma::OnModemCdmaPropertiesChanged(
     const KeyValueStore& properties,
     const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(this, 2) << __func__;
@@ -517,10 +517,10 @@ void CellularCapabilityUniversalCdma::OnModemCDMAPropertiesChanged(
     HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);
   }
   if (registration_changed)
-    OnCDMARegistrationChanged(state_1x, state_evdo, sid, nid);
+    OnCdmaRegistrationChanged(state_1x, state_evdo, sid, nid);
 }
 
-void CellularCapabilityUniversalCdma::OnCDMARegistrationChanged(
+void CellularCapabilityUniversalCdma::OnCdmaRegistrationChanged(
       MMModemCdmaRegistrationState state_1x,
       MMModemCdmaRegistrationState state_evdo,
       uint32_t sid, uint32_t nid) {

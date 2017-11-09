@@ -132,7 +132,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityClassicTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
-  FRIEND_TEST(CellularTest, StartCDMARegister);
+  FRIEND_TEST(CellularTest, StartCdmaRegister);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);

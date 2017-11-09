@@ -138,7 +138,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       kLinkName,
       kAddressAsString,
       kTestInterfaceIndex,
-      Cellular::kTypeCDMA,
+      Cellular::kTypeCdma,
       kService,
       kPath);
 

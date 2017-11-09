@@ -94,17 +94,17 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
               IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
-              OnCDMARegistrationChanged);
+              OnCdmaRegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP);
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
               UpdateServiceActivationStateProperty);
 
   // CDMA property change handlers
-  virtual void OnModemCDMAPropertiesChanged(
+  virtual void OnModemCdmaPropertiesChanged(
       const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
-  void OnCDMARegistrationChanged(MMModemCdmaRegistrationState state_1x,
+  void OnCdmaRegistrationChanged(MMModemCdmaRegistrationState state_1x,
                                  MMModemCdmaRegistrationState state_evdo,
                                  uint32_t sid, uint32_t nid);
 

@@ -51,9 +51,9 @@ class Cellular : public Device,
  public:
   enum Type {
     kTypeGSM,
-    kTypeCDMA,
+    kTypeCdma,
     kTypeUniversal,  // ModemManager1
-    kTypeUniversalCDMA,
+    kTypeUniversalCdma,
     kTypeInvalid,
   };
 
@@ -397,7 +397,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartConnected);
-  FRIEND_TEST(CellularTest, StartCDMARegister);
+  FRIEND_TEST(CellularTest, StartCdmaRegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartPPP);

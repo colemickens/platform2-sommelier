@@ -49,7 +49,7 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
                                              "usb0",
                                              kAddress,
                                              3,
-                                             Cellular::kTypeCDMA,
+                                             Cellular::kTypeCdma,
                                              "",
                                              "")),
         service_(new NiceMock<MockCellularService>(&modem_info_, cellular_)),

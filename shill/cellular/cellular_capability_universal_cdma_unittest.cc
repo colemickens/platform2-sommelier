@@ -75,7 +75,7 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
                                "",
                                kMachineAddress,
                                0,
-                               Cellular::kTypeUniversalCDMA,
+                               Cellular::kTypeUniversalCdma,
                                "",
                                "")),
         service_(new MockCellularService(&modem_info_,
@@ -233,7 +233,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged) {
   EXPECT_EQ(kEsn, cellular_->esn());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCDMARegistrationChanged) {
+TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCdmaRegistrationChanged) {
   EXPECT_EQ(0, capability_->sid_);
   EXPECT_EQ(0, capability_->nid_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
@@ -246,7 +246,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCDMARegistrationChanged) {
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*mock_serving_operator_info_, UpdateSID(UintToString(kSid)));
   EXPECT_CALL(*mock_serving_operator_info_, UpdateNID(UintToString(kNid)));
-  capability_->OnCDMARegistrationChanged(
+  capability_->OnCdmaRegistrationChanged(
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
       MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
       kSid,

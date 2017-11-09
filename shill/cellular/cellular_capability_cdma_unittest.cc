@@ -51,7 +51,7 @@ class CellularCapabilityCdmaTest : public testing::Test {
                                    "",
                                    "",
                                    0,
-                                   Cellular::kTypeCDMA,
+                                   Cellular::kTypeCdma,
                                    "",
                                    "")),
         classic_proxy_(new MockModemProxy()),

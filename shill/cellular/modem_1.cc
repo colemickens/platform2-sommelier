@@ -76,7 +76,7 @@ void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
                       MM_MODEM_CAPABILITY_LTE_ADVANCED)) {
     set_type(Cellular::kTypeUniversal);
   } else if (capabilities & MM_MODEM_CAPABILITY_CDMA_EVDO) {
-    set_type(Cellular::kTypeUniversalCDMA);
+    set_type(Cellular::kTypeUniversalCdma);
   } else {
     LOG(ERROR) << "Unsupported capabilities: " << capabilities;
     return;
