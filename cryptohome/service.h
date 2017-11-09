@@ -807,7 +807,6 @@ class Service : public brillo::dbus::AbstractDbusService,
 
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
-  FRIEND_TEST(ServiceTest, CanAttemptOwnership);
 
   std::unique_ptr<SecureBlob> GetAttestationBasedEnrollmentData();
 
@@ -836,13 +835,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Called on Mount thread. This method calls ReportDictionaryAttackResetStatus
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
-
-  // Sets and gets global flag indicating if EULA has been accepted and
-  // cryptohomed can attempt TPM ownership. This is a one-time decision
-  // until the owner is changed, so the flag is preserved over reboots and
-  // is cleared by the powerwash.
-  void SetCanAttemptOwnership();
-  bool CanAttemptOwnership() const;
 
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>
@@ -875,13 +867,6 @@ class Service : public brillo::dbus::AbstractDbusService,
       default_firmware_management_params_;
   FirmwareManagementParameters* firmware_management_parameters_;
   int low_disk_notification_period_ms_;
-  // A pair of flags for checking if owning the tpm can be attempted.
-  //  - checked_can_attempt_ownership_ - indicates if a non-volatile flag
-  //    has been read from the file system into can_attempt_ownership_ (below).
-  //  - can_attempt_ownership_ - in-memory cached flag.
-  // TODO(apronin): replace with std::optional / base::Optional, when available.
-  mutable bool checked_can_attempt_ownership_ = false;
-  mutable bool can_attempt_ownership_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

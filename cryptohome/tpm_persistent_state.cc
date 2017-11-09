@@ -19,6 +19,7 @@ namespace cryptohome {
 extern const FilePath kTpmOwnedFile("/mnt/stateful_partition/.tpm_owned");
 const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
+const FilePath kShallInitializeFile("/home/.shadow/.can_attempt_ownership");
 
 TpmPersistentState::TpmPersistentState(Platform* platform)
     : platform_(platform) {}
@@ -156,6 +157,26 @@ bool TpmPersistentState::SetReady(bool is_ready) {
   // be saved in persistent storage.
   return is_ready ? platform_->TouchFileDurable(kTpmOwnedFile)
                   : platform_->DeleteFileDurable(kTpmOwnedFile, false);
+}
+
+bool TpmPersistentState::ShallInitialize() const {
+  if (!read_shall_initialize_) {
+    shall_initialize_ = platform_->FileExists(kShallInitializeFile);
+    read_shall_initialize_ = true;
+  }
+  return shall_initialize_;
+}
+
+bool TpmPersistentState::SetShallInitialize(bool shall_initialize) {
+  if (ShallInitialize() == shall_initialize) {
+    return true;
+  }
+  shall_initialize_ = shall_initialize;
+  // See SetReady() above for the decision why we set the cached flag
+  // first despite possible filesystem errors later.
+  return shall_initialize
+             ? platform_->TouchFileDurable(kShallInitializeFile)
+             : platform_->DeleteFileDurable(kShallInitializeFile, false);
 }
 
 bool TpmPersistentState::LoadTpmStatus() {

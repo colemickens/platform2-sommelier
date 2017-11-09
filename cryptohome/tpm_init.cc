@@ -98,6 +98,7 @@ void TpmInit::Init(OwnershipCallback ownership_callback) {
 }
 
 bool TpmInit::AsyncTakeOwnership() {
+  tpm_persistent_state_.SetShallInitialize(true);
   take_ownership_called_ = true;
   if (!PlatformThread::Create(0, tpm_init_task_.get(), &init_thread_)) {
     LOG(ERROR) << "Unable to create background thread to take TPM ownership.";
@@ -314,6 +315,7 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
   // In any case, it's time to touch the TPM owned file to indicate that we
   // don't need to re-attempt completing initialization on the next boot.
   tpm_persistent_state_.SetReady(true);
+  tpm_persistent_state_.SetShallInitialize(false);
 
   SetTpmBeingOwned(false);
   return true;
@@ -482,6 +484,10 @@ bool TpmInit::ReloadCryptohomeKey() {
 
 bool TpmInit::GetVersion(Tpm::TpmVersionInfo* version_info) {
   return get_tpm() && get_tpm()->GetVersionInfo(version_info);
+}
+
+bool TpmInit::ShallInitialize() {
+  return tpm_persistent_state_.ShallInitialize();
 }
 
 }  // namespace cryptohome

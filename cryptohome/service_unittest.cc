@@ -338,17 +338,6 @@ TEST_F(ServiceTest, CheckKeyHomedirsTest) {
   base_reply_ptr = NULL;
 }
 
-TEST_F(ServiceTest, CanAttemptOwnership) {
-  EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(false));
-  EXPECT_FALSE(service_.CanAttemptOwnership());
-  EXPECT_FALSE(service_.CanAttemptOwnership());
-
-  EXPECT_CALL(platform_, TouchFileDurable(_)).WillOnce(Return(true));
-  service_.SetCanAttemptOwnership();
-  service_.SetCanAttemptOwnership();
-  EXPECT_TRUE(service_.CanAttemptOwnership());
-}
-
 TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   // Setup a real homedirs instance (making this a pseudo-integration test).
   test_helper_.InjectSystemSalt(&platform_, kSaltFile);

@@ -23,6 +23,7 @@ class MockTpmInit : public TpmInit {
   MOCK_METHOD0(HasCryptohomeKey, bool());
   MOCK_METHOD0(IsTpmReady, bool());
   MOCK_METHOD1(GetTpmPassword, bool(brillo::Blob*));
+  MOCK_METHOD0(ShallInitialize, bool());
 };
 
 }  // namespace cryptohome

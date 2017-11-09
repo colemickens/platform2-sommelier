@@ -121,6 +121,8 @@ class TpmInit {
 
   virtual bool GetVersion(Tpm::TpmVersionInfo* version_info);
 
+  virtual bool ShallInitialize();
+
  private:
   FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
 

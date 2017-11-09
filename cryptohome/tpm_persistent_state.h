@@ -89,6 +89,23 @@ class TpmPersistentState {
   // Returns true on success, false otherwise.
   bool SetReady(bool is_ready);
 
+  // Returns the global flag indicating if cryptohomed shall attempt TPM
+  // initialization. Reads the flag from persistent storage and caches it in
+  // memory on the first access. Subsequent checks return the cached value.
+  // About the flag: cryptohomed is normally requested to attempt TPM
+  // initialization during OOBE. The flag is persistent over reboots: if the
+  // TPM is still not initialized yet upon reboot, cryptohomed shall
+  // attempt to continue the interrupted initialization. After successfully
+  // owning the TPM, this flag is cleared. Powerwash also clears the flag.
+  bool ShallInitialize() const;
+
+  // Sets the global flag indicating if cryptohomed was requested to attempt
+  // TPM initialization. See ShallInitialize() for the flag description.
+  // If there were any changes, saves the updated flag in the persistent
+  // storage before returning.
+  // Returns true on success, false otherwise.
+  bool SetShallInitialize(bool shall_initialize);
+
  private:
   // Loads TpmStatus that includes the owner password and the dependencies
   // from persistent storage, if not done yet. Caches TpmStatus in memory
@@ -112,6 +129,16 @@ class TpmPersistentState {
   // TODO(apronin): replace with std::optional / base::Optional when available.
   bool read_tpm_ready_ = false;
   bool tpm_ready_ = false;
+
+  // Cached "shall initialize" flag implementation:
+  //  - checked_shall_initialize_ - indicates if a non-volatile
+  //    flag has been read from the file system into the cached flag below.
+  //  - shall_initialize_ - in-memory cached flag.
+  // TODO(apronin): replace with std::optional / base::Optional when available.
+  // TODO(apronin): refactor tpm_ready and shall_initialize to have
+  // a shared generic implementation parametrized by the underlying filename.
+  mutable bool read_shall_initialize_ = false;
+  mutable bool shall_initialize_ = false;
 };
 
 }  // namespace cryptohome

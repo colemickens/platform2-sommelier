@@ -14,6 +14,8 @@ MockTpmInit::MockTpmInit() : TpmInit(NULL, NULL) {
       .WillByDefault(Return(true));
   ON_CALL(*this, HasCryptohomeKey())
       .WillByDefault(Return(true));
+  ON_CALL(*this, ShallInitialize())
+      .WillByDefault(Return(false));
 }
 
 MockTpmInit::~MockTpmInit() {}

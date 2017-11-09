@@ -26,6 +26,8 @@ using TpmOwnerDependency = TpmPersistentState::TpmOwnerDependency;
 
 extern const base::FilePath kTpmOwnedFile;
 const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
+const base::FilePath kShallInitializeFile(
+    "/home/.shadow/.can_attempt_ownership");
 
 class TpmPersistentStateTest : public ::testing::Test {
  public:
@@ -226,6 +228,32 @@ TEST_F(TpmPersistentStateTest, TpmReadyPreExisting) {
   EXPECT_CALL(platform_, FileExists(kTpmOwnedFile)).Times(1);
   EXPECT_TRUE(tpm_persistent_state_.IsReady());
   EXPECT_TRUE(tpm_persistent_state_.IsReady());
+}
+
+TEST_F(TpmPersistentStateTest, ShallInitialize) {
+  // Two requests result in a single file operation, after that it is cached.
+  EXPECT_FALSE(FileExists(kShallInitializeFile));
+  EXPECT_CALL(platform_, FileExists(_)).Times(1);
+  EXPECT_FALSE(tpm_persistent_state_.ShallInitialize());
+  EXPECT_FALSE(tpm_persistent_state_.ShallInitialize());
+
+  // Two identical calls to SetShallInitialize result in one file operation.
+  // FileExists() is not called again.
+  EXPECT_CALL(platform_, TouchFileDurable(_)).Times(1);
+  EXPECT_TRUE(tpm_persistent_state_.SetShallInitialize(true));
+  EXPECT_TRUE(FileExists(kShallInitializeFile));
+  EXPECT_TRUE(tpm_persistent_state_.ShallInitialize());
+  EXPECT_TRUE(tpm_persistent_state_.SetShallInitialize(true));
+  EXPECT_TRUE(tpm_persistent_state_.ShallInitialize());
+
+  // Two identical calls to SetShallInitialize result in one file operation.
+  // FileExists() is not called again.
+  EXPECT_CALL(platform_, DeleteFileDurable(_, _)).Times(1);
+  EXPECT_TRUE(tpm_persistent_state_.SetShallInitialize(false));
+  EXPECT_FALSE(FileExists(kShallInitializeFile));
+  EXPECT_FALSE(tpm_persistent_state_.ShallInitialize());
+  EXPECT_TRUE(tpm_persistent_state_.SetShallInitialize(false));
+  EXPECT_FALSE(tpm_persistent_state_.ShallInitialize());
 }
 
 }  // namespace cryptohome
