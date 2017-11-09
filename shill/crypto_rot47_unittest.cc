@@ -36,8 +36,8 @@ class CryptoRot47Test : public Test {
   CryptoRot47 crypto_;
 };
 
-TEST_F(CryptoRot47Test, GetID) {
-  EXPECT_EQ(CryptoRot47::kID, crypto_.GetID());
+TEST_F(CryptoRot47Test, GetId) {
+  EXPECT_EQ("rot47", crypto_.GetId());
 }
 
 TEST_F(CryptoRot47Test, Encrypt) {

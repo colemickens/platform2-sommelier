@@ -33,15 +33,14 @@ namespace {
 constexpr unsigned int kBlockSize = 8;
 constexpr char kSentinel[] = "[ok]";
 constexpr char kVersion2Prefix[] = "02:";
+constexpr char kId[] = "des-cbc";
 
 }  // namespace
 
-const char CryptoDesCbc::kID[] = "des-cbc";
-
 CryptoDesCbc::CryptoDesCbc() {}
 
-string CryptoDesCbc::GetID() {
-  return kID;
+string CryptoDesCbc::GetId() const {
+  return kId;
 }
 
 bool CryptoDesCbc::Encrypt(const string& plaintext, string* ciphertext) {

@@ -27,7 +27,7 @@ class CryptoInterface {
   virtual ~CryptoInterface() {}
 
   // Returns a unique identifier for this crypto module.
-  virtual std::string GetID() = 0;
+  virtual std::string GetId() const = 0;
 
   // Encrypts |plaintext| into |ciphertext|. Returns true on success.
   virtual bool Encrypt(const std::string& plaintext,

@@ -20,12 +20,14 @@ using std::string;
 
 namespace shill {
 
-const char CryptoRot47::kID[] = "rot47";
+namespace {
+constexpr char kId[] = "rot47";
+}  // namespace
 
 CryptoRot47::CryptoRot47() {}
 
-string CryptoRot47::GetID() {
-  return kID;
+string CryptoRot47::GetId() const {
+  return kId;
 }
 
 bool CryptoRot47::Encrypt(const string& plaintext, string* ciphertext) {

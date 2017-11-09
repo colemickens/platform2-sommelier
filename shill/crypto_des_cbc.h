@@ -36,8 +36,6 @@ namespace shill {
 // DES-CBC crypto module implementation.
 class CryptoDesCbc : public CryptoInterface {
  public:
-  static const char kID[];
-
   CryptoDesCbc();
 
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
@@ -46,7 +44,7 @@ class CryptoDesCbc : public CryptoInterface {
   bool LoadKeyMatter(const base::FilePath& path);
 
   // Inherited from CryptoInterface.
-  std::string GetID() override;
+  std::string GetId() const override;
   bool Encrypt(const std::string& plaintext, std::string* ciphertext) override;
   bool Decrypt(const std::string& ciphertext, std::string* plaintext) override;
 

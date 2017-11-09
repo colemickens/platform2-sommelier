@@ -48,8 +48,8 @@ class CryptoDesCbcTest : public Test {
   CryptoDesCbc crypto_;
 };
 
-TEST_F(CryptoDesCbcTest, GetID) {
-  EXPECT_EQ(CryptoDesCbc::kID, crypto_.GetID());
+TEST_F(CryptoDesCbcTest, GetId) {
+  EXPECT_EQ("des-cbc", crypto_.GetId());
 }
 
 TEST_F(CryptoDesCbcTest, LoadKeyMatter) {

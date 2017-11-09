@@ -49,7 +49,7 @@ string CryptoProvider::Encrypt(const string& plaintext) {
   for (auto& crypto : cryptos_) {
     string ciphertext;
     if (crypto->Encrypt(plaintext, &ciphertext)) {
-      const string prefix = crypto->GetID() + ":";
+      const string prefix = crypto->GetId() + ":";
       return prefix + ciphertext;
     }
   }
@@ -59,13 +59,13 @@ string CryptoProvider::Encrypt(const string& plaintext) {
 
 string CryptoProvider::Decrypt(const string& ciphertext) {
   for (auto& crypto : cryptos_) {
-    const string prefix = crypto->GetID() + ":";
+    const string prefix = crypto->GetId() + ":";
     if (base::StartsWith(ciphertext, prefix, base::CompareCase::SENSITIVE)) {
       string to_decrypt = ciphertext;
       to_decrypt.erase(0, prefix.size());
       string plaintext;
       if (!crypto->Decrypt(to_decrypt, &plaintext)) {
-        LOG(WARNING) << "Crypto module " << crypto->GetID()
+        LOG(WARNING) << "Crypto module " << crypto->GetId()
                      << " failed to decrypt.";
       }
       return plaintext;

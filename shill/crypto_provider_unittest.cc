@@ -65,20 +65,20 @@ TEST_F(CryptoProviderTest, Init) {
   provider_.set_key_matter_file(FilePath("/some/non/existent/file"));
   provider_.Init();
   ASSERT_EQ(1, provider_.cryptos_.size());
-  EXPECT_EQ(CryptoRot47::kID, provider_.cryptos_[0]->GetID());
+  EXPECT_EQ("rot47", provider_.cryptos_[0]->GetId());
 
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.path()));
   provider_.Init();
   ASSERT_EQ(2, provider_.cryptos_.size());
-  EXPECT_EQ(CryptoDesCbc::kID, provider_.cryptos_[0]->GetID());
-  EXPECT_EQ(CryptoRot47::kID, provider_.cryptos_[1]->GetID());
+  EXPECT_EQ("des-cbc", provider_.cryptos_[0]->GetId());
+  EXPECT_EQ("rot47", provider_.cryptos_[1]->GetId());
 
   provider_.set_key_matter_file(FilePath("/other/missing/file"));
   provider_.Init();
   ASSERT_EQ(1, provider_.cryptos_.size());
-  EXPECT_EQ(CryptoRot47::kID, provider_.cryptos_[0]->GetID());
+  EXPECT_EQ("rot47", provider_.cryptos_[0]->GetId());
 }
 
 TEST_F(CryptoProviderTest, Encrypt) {
