@@ -43,9 +43,9 @@ using testing::StrEq;
 
 namespace shill {
 
-class CellularCapabilityCDMATest : public testing::Test {
+class CellularCapabilityCdmaTest : public testing::Test {
  public:
-  CellularCapabilityCDMATest()
+  CellularCapabilityCdmaTest()
       : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
         cellular_(new MockCellular(&modem_info_,
                                    "",
@@ -61,14 +61,14 @@ class CellularCapabilityCDMATest : public testing::Test {
                                           Technology::kCellular);
   }
 
-  ~CellularCapabilityCDMATest() override {
+  ~CellularCapabilityCdmaTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
   }
 
   void SetUp() override {
     capability_ =
-        static_cast<CellularCapabilityCDMA*>(cellular_->capability_.get());
+        static_cast<CellularCapabilityCdma*>(cellular_->capability_.get());
   }
 
   void InvokeActivate(const string& carrier, Error* error,
@@ -142,28 +142,28 @@ class CellularCapabilityCDMATest : public testing::Test {
   scoped_refptr<MockCellular> cellular_;
   std::unique_ptr<MockModemProxy> classic_proxy_;
   std::unique_ptr<MockModemCDMAProxy> proxy_;
-  CellularCapabilityCDMA* capability_;  // Owned by |cellular_|.
+  CellularCapabilityCdma* capability_;  // Owned by |cellular_|.
 };
 
-const char CellularCapabilityCDMATest::kMEID[] = "D1234567EF8901";
-const char CellularCapabilityCDMATest::kTestCarrier[] = "The Cellular Carrier";
-const unsigned int CellularCapabilityCDMATest::kStrength = 90;
+const char CellularCapabilityCdmaTest::kMEID[] = "D1234567EF8901";
+const char CellularCapabilityCdmaTest::kTestCarrier[] = "The Cellular Carrier";
+const unsigned int CellularCapabilityCdmaTest::kStrength = 90;
 
-TEST_F(CellularCapabilityCDMATest, PropertyStore) {
+TEST_F(CellularCapabilityCdmaTest, PropertyStore) {
   EXPECT_TRUE(cellular_->store().Contains(kPRLVersionProperty));
 }
 
-TEST_F(CellularCapabilityCDMATest, Activate) {
+TEST_F(CellularCapabilityCdmaTest, Activate) {
   SetDeviceState(Cellular::kStateEnabled);
   EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                 CellularCapability::kTimeoutActivate))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityCDMATest::InvokeActivate));
+                       &CellularCapabilityCdmaTest::InvokeActivate));
   EXPECT_CALL(*this, TestCallback(_));
   SetProxy();
   SetService();
   capability_->Activate(kTestCarrier, nullptr,
-      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityCdmaTest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
   EXPECT_EQ(kActivationStateActivating,
@@ -171,7 +171,7 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
   EXPECT_EQ("", cellular_->service()->error());
 }
 
-TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
+TEST_F(CellularCapabilityCdmaTest, ActivateWhileConnected) {
   SetDeviceState(Cellular::kStateConnected);
   {
     InSequence dummy;
@@ -180,14 +180,14 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
     EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                   CellularCapability::kTimeoutActivate))
         .WillOnce(Invoke(this,
-                         &CellularCapabilityCDMATest::InvokeActivate));
+                         &CellularCapabilityCdmaTest::InvokeActivate));
     EXPECT_CALL(*this, TestCallback(_));
   }
   SetProxy();
   SetService();
   Error error;
   capability_->Activate(kTestCarrier, &error,
-      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityCdmaTest::TestCallback, Unretained(this)));
   // So now we should be "activating" while we wait for a disconnect.
   EXPECT_TRUE(IsActivationStarting());
   EXPECT_TRUE(capability_->IsActivating());
@@ -206,7 +206,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   EXPECT_TRUE(capability_->IsActivating());
 }
 
-TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
+TEST_F(CellularCapabilityCdmaTest, ActivateWhileConnectedButFail) {
   SetDeviceState(Cellular::kStateConnected);
   {
     InSequence dummy;
@@ -220,7 +220,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   SetService();
   Error error;
   capability_->Activate(kTestCarrier, &error,
-      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityCdmaTest::TestCallback, Unretained(this)));
   // So now we should be "activating" while we wait for a disconnect.
   EXPECT_TRUE(IsActivationStarting());
   EXPECT_TRUE(capability_->IsActivating());
@@ -237,17 +237,17 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   EXPECT_FALSE(capability_->IsActivating());
 }
 
-TEST_F(CellularCapabilityCDMATest, ActivateError) {
+TEST_F(CellularCapabilityCdmaTest, ActivateError) {
   SetDeviceState(Cellular::kStateEnabled);
   EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                 CellularCapability::kTimeoutActivate))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityCDMATest::InvokeActivateError));
+                       &CellularCapabilityCdmaTest::InvokeActivateError));
   EXPECT_CALL(*this, TestCallback(_));
   SetProxy();
   SetService();
   capability_->Activate(kTestCarrier, nullptr,
-      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+      Bind(&CellularCapabilityCdmaTest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
   EXPECT_EQ(kActivationStateNotActivated,
@@ -256,50 +256,50 @@ TEST_F(CellularCapabilityCDMATest, ActivateError) {
             cellular_->service()->error());
 }
 
-TEST_F(CellularCapabilityCDMATest, GetActivationStateString) {
+TEST_F(CellularCapabilityCdmaTest, GetActivationStateString) {
   EXPECT_EQ(kActivationStateActivated,
-            CellularCapabilityCDMA::GetActivationStateString(
+            CellularCapabilityCdma::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED));
   EXPECT_EQ(kActivationStateActivating,
-            CellularCapabilityCDMA::GetActivationStateString(
+            CellularCapabilityCdma::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING));
   EXPECT_EQ(kActivationStateNotActivated,
-            CellularCapabilityCDMA::GetActivationStateString(
+            CellularCapabilityCdma::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED));
   EXPECT_EQ(kActivationStatePartiallyActivated,
-            CellularCapabilityCDMA::GetActivationStateString(
+            CellularCapabilityCdma::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED));
   EXPECT_EQ(kActivationStateUnknown,
-            CellularCapabilityCDMA::GetActivationStateString(123));
+            CellularCapabilityCdma::GetActivationStateString(123));
 }
 
-TEST_F(CellularCapabilityCDMATest, GetActivationErrorString) {
+TEST_F(CellularCapabilityCdmaTest, GetActivationErrorString) {
   EXPECT_EQ(kErrorNeedEvdo,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE));
   EXPECT_EQ(kErrorNeedHomeNetwork,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING));
   EXPECT_EQ(kErrorOtaspFailed,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT));
   EXPECT_EQ(kErrorOtaspFailed,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED));
   EXPECT_EQ(kErrorOtaspFailed,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED));
   EXPECT_EQ("",
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
   EXPECT_EQ(kErrorActivationFailed,
-            CellularCapabilityCDMA::GetActivationErrorString(
+            CellularCapabilityCdma::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
   EXPECT_EQ(kErrorActivationFailed,
-            CellularCapabilityCDMA::GetActivationErrorString(1234));
+            CellularCapabilityCdma::GetActivationErrorString(1234));
 }
 
-TEST_F(CellularCapabilityCDMATest, IsRegisteredEVDO) {
+TEST_F(CellularCapabilityCdmaTest, IsRegisteredEVDO) {
   EXPECT_FALSE(capability_->IsRegistered());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   EXPECT_FALSE(capability_->IsRegistered());
@@ -311,7 +311,7 @@ TEST_F(CellularCapabilityCDMATest, IsRegisteredEVDO) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityCDMATest, IsRegistered1x) {
+TEST_F(CellularCapabilityCdmaTest, IsRegistered1x) {
   EXPECT_FALSE(capability_->IsRegistered());
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   EXPECT_FALSE(capability_->IsRegistered());
@@ -323,7 +323,7 @@ TEST_F(CellularCapabilityCDMATest, IsRegistered1x) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityCDMATest, GetNetworkTechnologyString) {
+TEST_F(CellularCapabilityCdmaTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
   EXPECT_EQ(kNetworkTechnologyEvdo,
@@ -334,7 +334,7 @@ TEST_F(CellularCapabilityCDMATest, GetNetworkTechnologyString) {
             capability_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
+TEST_F(CellularCapabilityCdmaTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown,
             capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
@@ -356,11 +356,11 @@ TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
             capability_->GetRoamingStateString());
 }
 
-TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
+TEST_F(CellularCapabilityCdmaTest, GetSignalQuality) {
   EXPECT_CALL(*proxy_,
               GetSignalQuality(nullptr, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityCDMATest::InvokeGetSignalQuality));
+                       &CellularCapabilityCdmaTest::InvokeGetSignalQuality));
   SetProxy();
   SetService();
   EXPECT_EQ(0, cellular_->service()->strength());
@@ -368,7 +368,7 @@ TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
   EXPECT_EQ(kStrength, cellular_->service()->strength());
 }
 
-TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
+TEST_F(CellularCapabilityCdmaTest, GetRegistrationState) {
   EXPECT_FALSE(cellular_->service().get());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
             capability_->registration_state_1x());
@@ -379,7 +379,7 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
                                    CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(
           this,
-          &CellularCapabilityCDMATest::InvokeGetRegistrationState));
+          &CellularCapabilityCdmaTest::InvokeGetRegistrationState));
   SetProxy();
   cellular_->state_ = Cellular::kStateEnabled;
   EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));

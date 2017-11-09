@@ -123,7 +123,7 @@ class CellularCapabilityClassic : public CellularCapability {
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityCDMATest;
+  friend class CellularCapabilityCdmaTest;
   friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);

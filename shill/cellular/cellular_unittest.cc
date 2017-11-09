@@ -575,8 +575,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         device_->capability_.get());
   }
 
-  CellularCapabilityCDMA* GetCapabilityCDMA() {
-    return static_cast<CellularCapabilityCDMA*>(device_->capability_.get());
+  CellularCapabilityCdma* GetCapabilityCDMA() {
+    return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
   CellularCapabilityGSM* GetCapabilityGSM() {

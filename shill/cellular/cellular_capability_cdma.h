@@ -33,10 +33,10 @@ namespace shill {
 
 class ModemInfo;
 
-class CellularCapabilityCDMA : public CellularCapabilityClassic {
+class CellularCapabilityCdma : public CellularCapabilityClassic {
  public:
-  CellularCapabilityCDMA(Cellular* cellular, ModemInfo* modem_info);
-  ~CellularCapabilityCDMA() override;
+  CellularCapabilityCdma(Cellular* cellular, ModemInfo* modem_info);
+  ~CellularCapabilityCdma() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
@@ -73,12 +73,12 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void UpdateStatus(const KeyValueStore& properties) override;
 
  private:
-  friend class CellularCapabilityCDMATest;
+  friend class CellularCapabilityCdmaTest;
   friend class CellularTest;
-  FRIEND_TEST(CellularCapabilityCDMATest, Activate);
-  FRIEND_TEST(CellularCapabilityCDMATest, ActivateError);
-  FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
-  FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
+  FRIEND_TEST(CellularCapabilityCdmaTest, Activate);
+  FRIEND_TEST(CellularCapabilityCdmaTest, ActivateError);
+  FRIEND_TEST(CellularCapabilityCdmaTest, GetActivationStateString);
+  FRIEND_TEST(CellularCapabilityCdmaTest, GetActivationErrorString);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
 
   static const char kPhoneNumber[];
@@ -119,9 +119,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32_t registration_state_1x_;
   std::string usage_url_;
 
-  base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
+  base::WeakPtrFactory<CellularCapabilityCdma> weak_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);
+  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCdma);
 };
 
 }  // namespace shill

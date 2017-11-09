@@ -328,14 +328,14 @@ class Cellular : public Device,
  private:
   friend class CellularTest;
   friend class CellularCapabilityClassicTest;
-  friend class CellularCapabilityCDMATest;
+  friend class CellularCapabilityCdmaTest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularServiceTest;
   friend class ModemTest;
   friend class SubscriptionStateOutOfCreditsDetectorTest;
-  FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
+  FRIEND_TEST(CellularCapabilityCdmaTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemSucceed);

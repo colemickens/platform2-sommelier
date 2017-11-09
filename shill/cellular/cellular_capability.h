@@ -60,7 +60,7 @@ class ModemInfo;
 //                    |
 //                    |-- CellularCapabilityGSM
 //                    |
-//                    |-- CellularCapabilityCDMA
+//                    |-- CellularCapabilityCdma
 //
 // TODO(armansito): Currently, 3GPP logic is handled by
 // CellularCapabilityUniversal. Eventually CellularCapabilityUniversal will

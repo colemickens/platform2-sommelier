@@ -62,7 +62,7 @@ std::unique_ptr<CellularCapability> CellularCapability::Create(
       return std::make_unique<CellularCapabilityGSM>(cellular, modem_info);
 
     case Cellular::kTypeCDMA:
-      return std::make_unique<CellularCapabilityCDMA>(cellular, modem_info);
+      return std::make_unique<CellularCapabilityCdma>(cellular, modem_info);
 
     case Cellular::kTypeUniversal:
       return std::make_unique<CellularCapabilityUniversal>(cellular,

@@ -78,8 +78,8 @@ class CellularServiceTest : public testing::Test {
     service_->set_out_of_credits_detector_for_test(std::move(detector));
   }
 
-  CellularCapabilityCDMA* GetCapabilityCDMA() {
-    return static_cast<CellularCapabilityCDMA*>(device_->capability_.get());
+  CellularCapabilityCdma* GetCapabilityCDMA() {
+    return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
  protected:
