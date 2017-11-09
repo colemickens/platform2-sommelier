@@ -1632,8 +1632,8 @@ void CellularCapabilityUniversal::On3gppRegistrationChanged(
 
 void CellularCapabilityUniversal::Handle3gppRegistrationChange(
     MMModem3gppRegistrationState updated_state,
-    string updated_operator_code,
-    string updated_operator_name) {
+    const string& updated_operator_code,
+    const string& updated_operator_name) {
   // A finished callback does not qualify as a canceled callback.
   // We test for a canceled callback to check for outstanding callbacks.
   // So, explicitly cancel the callback here.

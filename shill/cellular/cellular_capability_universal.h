@@ -343,10 +343,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void On3gppRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string& operator_code,
                                  const std::string& operator_name);
-  void Handle3gppRegistrationChange(
-      MMModem3gppRegistrationState updated_state,
-      std::string updated_operator_code,
-      std::string updated_operator_name);
+  void Handle3gppRegistrationChange(MMModem3gppRegistrationState updated_state,
+                                    const std::string& updated_operator_code,
+                                    const std::string& updated_operator_name);
   void On3gppSubscriptionStateChanged(MMModem3gppSubscriptionState state);
   void OnFacilityLocksChanged(uint32_t locks);
 
