@@ -5,8 +5,8 @@ inactive for a given period of time:
 
 | Power source | Dim screen | Turn screen off | Suspend / sleep |
 |--------------|------------|-----------------|-----------------|
-| Battery      | 5 minutes  | 6 minutes       | 10 minutes      |
-| AC           | 7 minutes  | 8 minutes       | 30 minutes      |
+| Battery      | 5 minutes  | 5.5 minutes     | 6.5 minutes     |
+| AC           | 7 minutes  | 7.5 minutes     | 30 minutes      |
 
 There are different ways to define "activity":
 
