@@ -114,7 +114,7 @@ status_t CaptureUnit::initStaticMetadata()
 
 status_t CaptureUnit::init()
 {
-    mBufferPools = new BufferPools(mCameraId);
+    mBufferPools = new BufferPools();
 
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
@@ -271,7 +271,7 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
         delete mBufferPools;
         mBufferPools = nullptr;
     }
-    mBufferPools = new BufferPools(mCameraId);
+    mBufferPools = new BufferPools();
 
     // Configure ISYS based stream configuration from Graph Config Manager
     // Get output format from ISYS.
@@ -558,7 +558,7 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    std::shared_ptr<CaptureBuffer> capBufPtr = nullptr;
+    std::shared_ptr<cros::V4L2Buffer> v4l2BufPtr = nullptr;
     std::shared_ptr<GraphConfig> gc = nullptr;
     int32_t reqId = reqState->aiqCaptureSettings->aiqResults.requestId;
 
@@ -570,25 +570,23 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
 
     if (!skip) {
         // get a capture buffer from the pool
-        status = mBufferPools->acquireItem(capBufPtr);
+        status = mBufferPools->acquireItem(v4l2BufPtr);
     } else {
-        status = mBufferPools->acquireCaptureSkipBuffer(capBufPtr);
+        status = mBufferPools->acquireCaptureSkipBuffer(v4l2BufPtr);
     }
 
-    if (status != NO_ERROR || capBufPtr.get() == nullptr) {
+    if (status != NO_ERROR || v4l2BufPtr.get() == nullptr) {
         LOGE("Failed to get a capture %s buffer!", skip ? "skip" : "");
         return UNKNOWN_ERROR;
     }
 
     if (mActiveIsysNodes & ISYS_NODE_RAW) {
-        capBufPtr->mDestinationTerminal = mNodeToPortMap[ISYS_NODE_RAW];
-
-        uint32_t flags = capBufPtr->v4l2Buf.Flags();
+        uint32_t flags = v4l2BufPtr->Flags();
         flags |= (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE | V4L2_BUF_FLAG_NO_CACHE_CLEAN);
-        capBufPtr->v4l2Buf.SetFlags(flags);
+        v4l2BufPtr->SetFlags(flags);
 
         status = mIsys->putFrame(ISYS_NODE_RAW,
-                                 &capBufPtr->v4l2Buf, reqId);
+                                 v4l2BufPtr.get(), reqId);
     } else {
         LOGE("Unsupport ISYS capture type!");
         return UNKNOWN_ERROR;
@@ -599,7 +597,7 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
         return UNKNOWN_ERROR;
     }
 
-    mQueuedCaptureBuffers.push_back(capBufPtr);
+    mQueuedCaptureBuffers.push_back(v4l2BufPtr);
 
     return status;
 }
@@ -738,7 +736,7 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
     std::shared_ptr<GraphConfig> gc = nullptr;
-    std::shared_ptr<CaptureBuffer> isysBufferPtr = nullptr;
+    std::shared_ptr<cros::V4L2Buffer> isysBufferPtr = nullptr;
     cros::V4L2Buffer *outBuf = nullptr;
     ICaptureEventListener::CaptureMessage outMsg;
     std::shared_ptr<InflightRequestState> state = nullptr;
@@ -756,17 +754,16 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
     outMsg.data.event.reqId = requestId;
 
-    std::vector<std::shared_ptr<CaptureBuffer>> *bufferQueuePtr = nullptr;
+    std::vector<std::shared_ptr<cros::V4L2Buffer>> *bufferQueuePtr = nullptr;
     isysNode = msg.isysNodeName;
     bufferQueuePtr = &mQueuedCaptureBuffers;
 
     for (size_t i = 0; i < bufferQueuePtr->size(); i++) {
-        if (outBuf->Index() == bufferQueuePtr->at(i)->v4l2Buf.Index()) {
-            bufferQueuePtr->at(i)->buf->setRequestId(requestId);
-            bufferQueuePtr->at(i)->buf->setTimeStamp(outMsg.data.event.timestamp);
+        if (outBuf->Index() == bufferQueuePtr->at(i)->Index()) {
+            bufferQueuePtr->at(i)->SetTimestamp(outMsg.data.event.timestamp);
 
             isysBufferPtr = bufferQueuePtr->at(i);
-            isysBufferPtr->v4l2Buf.SetSequence(outMsg.data.event.sequence);
+            isysBufferPtr->SetSequence(outMsg.data.event.sequence);
             // Remove the shared pointer reference from the vector
             bufferQueuePtr->erase(bufferQueuePtr->begin() + i);
             break;

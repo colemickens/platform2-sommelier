@@ -613,7 +613,7 @@ ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
 
     if (captureBufs.rawNonScaledBuffer.get() != nullptr) {
         LOG2("Using Non Scaled Buffer %p for req id %d",
-             reinterpret_cast<void*>(captureBufs.rawNonScaledBuffer->buf->data()), reqId);
+             reinterpret_cast<void*>(captureBufs.rawNonScaledBuffer->Userptr(0)), reqId);
     }
 
     ProcTaskMsg procMsg;

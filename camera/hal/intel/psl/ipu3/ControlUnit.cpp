@@ -893,7 +893,7 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
         {
             MessageNewImage msg;
             msg.type = CAPTURE_EVENT_RAW_BAYER;
-            msg.requestId = captureMsg->data.event.pixelBuffer->buf->requestId();
+            msg.requestId = captureMsg->data.event.reqId;
             msg.rawBuffer = captureMsg->data.event.pixelBuffer;
             base::Callback<status_t()> closure =
                     base::Bind(&ControlUnit::handleNewImage,

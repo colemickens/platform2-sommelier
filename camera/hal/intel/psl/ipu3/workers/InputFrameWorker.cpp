@@ -58,13 +58,10 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
     int memType = mNode->GetMemoryType();
-    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.Index();
+    int index = msg->pMsg.rawNonScaledBuffer->Index();
 
-    if (memType == V4L2_MEMORY_USERPTR) {
-        unsigned long userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
-        mBuffers[index].Userptr(userptr);
-    } else if (memType == V4L2_MEMORY_DMABUF) {
-        int fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
+    if (memType == V4L2_MEMORY_DMABUF) {
+        int fd = msg->pMsg.rawNonScaledBuffer->Fd(0);
         mBuffers[index].SetFd(fd, 0);
         CheckError((mBuffers[index].Fd(0) < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
             __func__, mBuffers[index].Fd(0));
@@ -74,8 +71,8 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     }
     status |= mNode->PutFrame(&mBuffers[index]);
 
-    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence());
-    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.Sequence());
+    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->Sequence());
+    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->Sequence());
 
     return status;
 }

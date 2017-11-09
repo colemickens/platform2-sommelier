@@ -26,7 +26,6 @@
 #include <map>
 #include "ItemPool.h"
 #include "Intel3aPlus.h"
-#include "CaptureBuffer.h"
 #include "SyncManager.h"
 #include "SharedItemPool.h"
 #include <utils/Errors.h>

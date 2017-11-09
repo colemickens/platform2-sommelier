@@ -20,7 +20,6 @@
 #include "PerformanceTraces.h"
 #include "OutputFrameWorker.h"
 #include "ColorConverter.h"
-#include "CaptureBuffer.h"
 #include "NodeTypes.h"
 #include <libyuv.h>
 #include <sys/mman.h>
@@ -407,14 +406,6 @@ OutputFrameWorker::getOutputBufferForListener()
                     mBuffers[0].Length(0),
                     mFormat.PixelFormat(),
                     mBuffers[0].Offset(0), PROT_READ | PROT_WRITE, MAP_SHARED);
-        } else if (mNode->GetMemoryType() == V4L2_MEMORY_USERPTR) {
-            mOutputForListener = MemoryUtils::allocateHeapBuffer(
-                    mFormat.Width(),
-                    mFormat.Height(),
-                    mFormat.BytesPerLine(0),
-                    mFormat.PixelFormat(),
-                    mCameraId,
-                    mBuffers[0].Length(0));
         } else {
             LOGE("bad type for stream buffer %d", mNode->GetMemoryType());
             return nullptr;

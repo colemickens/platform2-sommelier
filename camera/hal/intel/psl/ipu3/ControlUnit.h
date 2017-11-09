@@ -21,7 +21,6 @@
 #include "ImguUnit.h"
 #include "CaptureUnit.h"
 #include "SharedItemPool.h"
-#include "CaptureBuffer.h"
 #include "CaptureUnitSettings.h"
 #include "RequestCtrlState.h"
 #include <linux/intel-ipu3.h>
@@ -83,7 +82,7 @@ public:  /* private types */
     struct MessageNewImage {
         unsigned int requestId; /**< For raw buffers from CaptureUnit as
                                      they don't have request */
-        std::shared_ptr<CaptureBuffer> rawBuffer;
+        std::shared_ptr<cros::V4L2Buffer> rawBuffer;
         CaptureEventType type;
         MessageNewImage() : requestId(0), type(CAPTURE_EVENT_MAX) {}
     };

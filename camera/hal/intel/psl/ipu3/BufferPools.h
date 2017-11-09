@@ -15,7 +15,6 @@
  */
 
 #include "utils/Errors.h"
-#include "CaptureBuffer.h"
 #include "cros-camera/v4l2_device.h"
 #include "ItemPool.h"
 #include "FrameInfo.h"
@@ -29,21 +28,21 @@
 namespace android {
 namespace camera2 {
 
-class BufferPools : public IBufferOwner
+class BufferPools
 {
 public:
-    BufferPools(int cameraId);
+    BufferPools();
     virtual ~BufferPools();
 
     /* IBufferOwner */
-    void returnBuffer(CaptureBuffer* buffer);
+    void returnBuffer(cros::V4L2Buffer* buffer);
 
     status_t createBufferPools(int numBufs, int numSkips,
             std::shared_ptr<InputSystem> isys);
 
-    status_t acquireItem(std::shared_ptr<CaptureBuffer> &capBuffer);
-    status_t acquireCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &capBuffer); /* Skip buffers are used to track aiq settings */
-    void returnCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &capBuffer);
+    status_t acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer);
+    status_t acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer); /* Skip buffers are used to track aiq settings */
+    void returnCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer);
 
     void freeBuffers();
 
@@ -52,19 +51,13 @@ private:
                                     const FrameInfo &frameInfo,
                                     int numSkips,
                                     std::vector<cros::V4L2Buffer> &v4l2Buffers);
-    std::shared_ptr<CameraBuffer> allocateBuffer(std::shared_ptr<cros::V4L2VideoNode> node,
-                                    const FrameInfo &frameInfo,
-                                    int mCameraId,
-                                    cros::V4L2Buffer &v4l2Buf,
-                                    size_t dataSizeOverride);
 
 private:
-    SharedItemPool<CaptureBuffer>   mCaptureItemsPool;         /**< Pool of buffers for Isys capture node. */
+    SharedItemPool<cros::V4L2Buffer>   mCaptureItemsPool;         /**< Pool of buffers for Isys capture node. */
 
-    std::vector<std::shared_ptr<CaptureBuffer>> mCaptureSkipBuffers;
+    std::vector<std::shared_ptr<cros::V4L2Buffer>> mCaptureSkipBuffers;
 
     unsigned int mBufferPoolSize;
-    int mCameraId;
 };
 
 } /* namespace camera2 */

@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "cros-camera/v4l2_device.h"
-#include "CaptureBuffer.h"
 #include "CaptureUnitSettings.h"
 #include "IPU3CapturedStatistics.h"
 #include "GraphConfig.h"
@@ -75,8 +74,8 @@ public:
     };
     // Buffers output from CaptureUnit
     struct CaptureBuffers {
-        std::shared_ptr<CaptureBuffer>   rawBuffer;
-        std::shared_ptr<CaptureBuffer>   rawNonScaledBuffer;
+        std::shared_ptr<cros::V4L2Buffer>   rawBuffer;
+        std::shared_ptr<cros::V4L2Buffer>   rawNonScaledBuffer;
     };
 
     // For MESSAGE_ID_EVENT
@@ -84,7 +83,7 @@ public:
         CaptureEventType type;
         struct timeval   timestamp;
         unsigned int     sequence;
-        std::shared_ptr<CaptureBuffer> pixelBuffer;   /**< Single buffer for output from CaptureUnit. To be identified by CaptureEventType  */
+        std::shared_ptr<cros::V4L2Buffer> pixelBuffer;   /**< Single buffer for output from CaptureUnit. To be identified by CaptureEventType  */
         std::shared_ptr<IPU3CapturedStatistics> stats;
         std::shared_ptr<ipu3_uapi_params> param;
         std::shared_ptr<CameraBuffer> yuvBuffer;
@@ -193,13 +192,11 @@ private:
     };
 
     struct MessageBuffer {
-        CaptureBuffer* captureBufPtr;
         cros::V4L2Buffer v4l2Buf;
         IPU3NodeNames isysNodeName;
         int requestId;
 
         MessageBuffer() :
-            captureBufPtr(nullptr),
             isysNodeName(IMGU_NODE_NULL),
             requestId(-999)
         {
@@ -273,7 +270,7 @@ private:
 
     std::vector<int32_t> mSkipRequestIdQueue; /**< Queue of skip request Id */
 
-    std::vector<std::shared_ptr<CaptureBuffer>> mQueuedCaptureBuffers;
+    std::vector<std::shared_ptr<cros::V4L2Buffer>> mQueuedCaptureBuffers;
 
     int mSensorSettingsDelay;
     int mGainDelay;

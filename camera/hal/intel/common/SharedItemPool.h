@@ -16,6 +16,7 @@
 #ifndef CAMERA3_HAL_SHAREDITEMPOOL_H_
 #define CAMERA3_HAL_SHAREDITEMPOOL_H_
 
+#include <memory>
 #include <vector>
 #include <mutex>
 #include <pthread.h>

@@ -24,10 +24,9 @@
 namespace android {
 namespace camera2 {
 
-BufferPools::BufferPools(int cameraId) :
+BufferPools::BufferPools() :
         mCaptureItemsPool("CaptureItemsPool"),
-        mBufferPoolSize(0),
-        mCameraId(cameraId)
+        mBufferPoolSize(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
@@ -69,14 +68,13 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
 
     std::vector<cros::V4L2Buffer> v4l2Buffers;
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
-        std::shared_ptr<CaptureBuffer> captureBufPtr = nullptr;
-        mCaptureItemsPool.acquireItem(captureBufPtr);
-        if (captureBufPtr.get() == nullptr) {
+        std::shared_ptr<cros::V4L2Buffer> v4l2BufPtr = nullptr;
+        mCaptureItemsPool.acquireItem(v4l2BufPtr);
+        if (v4l2BufPtr.get() == nullptr) {
             LOGE("Failed to get a capture buffer!");
             return UNKNOWN_ERROR;
         }
-        captureBufPtr->owner = this;
-        v4l2Buffers.push_back(captureBufPtr->v4l2Buf);
+        v4l2Buffers.push_back(*v4l2BufPtr);
     }
 
     status = isys->setBufferPool(ISYS_NODE_RAW, v4l2Buffers, true);
@@ -102,7 +100,7 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
 }
 
 /**
- * Allocates CameraBuffers to each of the CaptureBuffer in the
+ * Allocates CameraBuffers to each of the cros::V4L2Buffer in the
  * pool for Isys node.
  *
  * A given number of skip buffers is also allocated, but they will share
@@ -127,8 +125,7 @@ status_t BufferPools::allocateCaptureBuffers(
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
-    std::shared_ptr<CameraBuffer> tmpBuf = nullptr;
-    std::shared_ptr<CaptureBuffer> captureBuf = nullptr;
+    std::shared_ptr<cros::V4L2Buffer> v4l2Buf = nullptr;
 
     if (v4l2Buffers.size() == 0) {
         LOGE("v4l2 buffers where not allocated");
@@ -142,86 +139,24 @@ status_t BufferPools::allocateCaptureBuffers(
         return BAD_VALUE;
     }
 
-    uint32_t dataSizeOverride = v4l2Buffers[0].Length(0);
     unsigned int numBufs = mBufferPoolSize - numSkips;
     LOG2("numBufs: %d numSkips: %d", numBufs, numSkips);
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
-        tmpBuf = allocateBuffer(node, frameInfo, mCameraId, v4l2Buffers[i],
-                                dataSizeOverride);
-        CheckError((tmpBuf == nullptr), NO_MEMORY,
-            "Failed to allocate internal ISYS %s buffer", i < numBufs ? "capture" : "skip");
-        CheckError((tmpBuf->size() != dataSizeOverride), NO_MEMORY,
-            "Capture buffer is not big enough");
-
-        mCaptureItemsPool.acquireItem(captureBuf);
-        if (captureBuf.get() == nullptr) {
+        mCaptureItemsPool.acquireItem(v4l2Buf);
+        if (v4l2Buf.get() == nullptr) {
             LOGE("Failed to get a capture buffer!");
             return UNKNOWN_ERROR;
         }
-        captureBuf->buf = tmpBuf;
-        captureBuf->v4l2Buf = v4l2Buffers[i];
-        if (v4l2Buffers[i].Memory() == V4L2_MEMORY_USERPTR) {
-            unsigned long userptr = reinterpret_cast<unsigned long>(captureBuf->buf->data());
-            captureBuf->v4l2Buf.SetUserptr(userptr, 0);
-            LOG2("captureBuf->v4l2Buf.m.userptr: %p", (void*)captureBuf->v4l2Buf.Userptr(0));
-        }
-        LOG2("captureBuf->v4l2Buf.index: %d", captureBuf->v4l2Buf.Index());
+        *v4l2Buf = v4l2Buffers[i];
+        // TODO(hywu): add support of V4L2_MEMORY_DMABUF
+        LOG2("v4l2Buf->index: %d", v4l2Buf->Index());
 
         if (i >= numBufs)
-            mCaptureSkipBuffers.push_back(captureBuf);
+            mCaptureSkipBuffers.push_back(v4l2Buf);
     }
 
     return status;
 }
-
-
-std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(std::shared_ptr<cros::V4L2VideoNode> node,
-                                             const FrameInfo &frameInfo,
-                                             int mCameraId,
-                                             cros::V4L2Buffer &v4l2Buf,
-                                             size_t dataSizeOverride)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<CameraBuffer> buf = nullptr;
-    std::vector<int> dmaBufFds;
-    LOG2("@%s allocate format: %s", __func__, v4l2Fmt2Str(frameInfo.format));
-    switch (v4l2Buf.Memory()) {
-    case V4L2_MEMORY_USERPTR:
-        buf = MemoryUtils::allocateHeapBuffer(frameInfo.width,
-                                              frameInfo.height,
-                                              frameInfo.stride,
-                                              frameInfo.format,
-                                              mCameraId,
-                                              dataSizeOverride);
-        memset(buf->data(), 0, buf->size());
-        break;
-    case V4L2_MEMORY_MMAP:
-        if (node->ExportFrame(v4l2Buf.Index(), &dmaBufFds) != 0  ||
-            dmaBufFds.empty()) {
-            LOGE("Failed to export buffer");
-            return nullptr;
-        }
-        buf = std::make_shared<CameraBuffer>(frameInfo.width,
-                                             frameInfo.height,
-                                             frameInfo.stride,
-                                             *node,
-                                             v4l2Buf.Index(),
-                                             dmaBufFds[0],
-                                             frameInfo.format,
-                                             dataSizeOverride,
-                                             PROT_READ | PROT_WRITE, MAP_SHARED);
-        break;
-    default:
-        LOGE("Unsupported memory type.");
-        return nullptr;
-    }
-    if (buf == nullptr) {
-        LOGE("Failed to allocate skip buffer");
-        return nullptr;
-    }
-    return buf;
-}
-
 
 void BufferPools::freeBuffers()
 {
@@ -230,32 +165,32 @@ void BufferPools::freeBuffers()
     mCaptureSkipBuffers.clear();
 }
 
-status_t BufferPools::acquireItem(std::shared_ptr<CaptureBuffer> &capBuffer)
+status_t BufferPools::acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    return mCaptureItemsPool.acquireItem(capBuffer);
+    return mCaptureItemsPool.acquireItem(v4l2Buffer);
 }
 
-void BufferPools::returnCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &capBuffer)
+void BufferPools::returnCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mCaptureSkipBuffers.push_back(capBuffer);
+    mCaptureSkipBuffers.push_back(v4l2Buffer);
 }
 
-status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<CaptureBuffer> &capBuffer)
+status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mCaptureSkipBuffers.empty() == false) {
-        capBuffer = mCaptureSkipBuffers.at(0);
+        v4l2Buffer = mCaptureSkipBuffers.at(0);
         mCaptureSkipBuffers.erase(mCaptureSkipBuffers.begin());
-        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, capBuffer->v4l2Buf.Userptr(0));
-        LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, capBuffer->v4l2Buf.Index());
+        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, v4l2Buffer->Userptr(0));
+        LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, v4l2Buffer->Index());
         return OK;
     }
     return UNKNOWN_ERROR;
 }
 
-void BufferPools::returnBuffer(CaptureBuffer * /* buffer */)
+void BufferPools::returnBuffer(cros::V4L2Buffer * /* buffer */)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     LOGW("IMPLEMENTATION MISSING");
