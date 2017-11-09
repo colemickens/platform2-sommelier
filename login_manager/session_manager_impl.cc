@@ -1736,6 +1736,10 @@ bool SessionManagerImpl::StartArcInstanceInternal(
       return false;
     }
     if (user_sessions_.count(account_id) == 0) {
+      // This path can be taken if a forged D-Bus message for starting a full
+      // (stateful) container is sent to session_manager before the actual
+      // user's session has started. Do not remove the |account_id| check to
+      // prevent such a container from starting on login screen.
       constexpr char kMessage[] = "Provided user ID does not have a session.";
       LOG(ERROR) << kMessage;
       *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
