@@ -952,13 +952,13 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Roaming should be effective immediately.
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
       home_provider,
       ota_name);
@@ -966,14 +966,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
             capability_->registration_state_);
 
   // Idle --> Roaming should be effective immediately.
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
       home_provider,
       ota_name);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
       home_provider,
       ota_name);
@@ -981,14 +981,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
             capability_->registration_state_);
 
   // Idle --> Searching should be effective immediately.
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
       home_provider,
       ota_name);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);
@@ -1001,19 +1001,19 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   EXPECT_CALL(*(modem_info_.mock_metrics()),
       Notify3GPPRegistrationDelayedDropCanceled());
 
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
@@ -1027,13 +1027,13 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   // Home --> Searching --> wait till dispatch should see Searching
   EXPECT_CALL(*(modem_info_.mock_metrics()),
       Notify3GPPRegistrationDelayedDropPosted());
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);
@@ -1050,18 +1050,18 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   EXPECT_CALL(*(modem_info_.mock_metrics()),
       Notify3GPPRegistrationDelayedDropPosted());
 
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);
   SetMockRegistrationDroppedUpdateCallback();
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);
@@ -1107,13 +1107,13 @@ TEST_F(CellularCapabilityUniversalMainTest,
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Searching should be effective immediately.
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
       ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3GPPRegistrationChanged(
+  capability_->On3gppRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
       home_provider,
       ota_name);

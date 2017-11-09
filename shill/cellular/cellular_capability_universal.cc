@@ -757,7 +757,7 @@ void CellularCapabilityUniversal::GetProperties() {
   OnModemPropertiesChanged(properties, vector<string>());
 
   properties = properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP);
-  OnModem3GPPPropertiesChanged(properties, vector<string>());
+  OnModem3gppPropertiesChanged(properties, vector<string>());
 }
 
 void CellularCapabilityUniversal::UpdateServiceOLP() {
@@ -1310,7 +1310,7 @@ void CellularCapabilityUniversal::OnPropertiesChanged(
     OnModemPropertiesChanged(changed_properties, invalidated_properties);
   }
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEM3GPP) {
-    OnModem3GPPPropertiesChanged(changed_properties, invalidated_properties);
+    OnModem3gppPropertiesChanged(changed_properties, invalidated_properties);
   }
   if (interface == MM_DBUS_INTERFACE_SIM) {
     OnSimPropertiesChanged(changed_properties, invalidated_properties);
@@ -1527,7 +1527,7 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   }
 }
 
-void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
+void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
     const KeyValueStore& properties,
     const vector<string>& /* invalidated_properties */) {
   SLOG(this, 3) << __func__;
@@ -1564,9 +1564,9 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     registration_changed = true;
   }
   if (registration_changed)
-    On3GPPRegistrationChanged(state, operator_code, operator_name);
+    On3gppRegistrationChanged(state, operator_code, operator_name);
   if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE))
-    On3GPPSubscriptionStateChanged(
+    On3gppSubscriptionStateChanged(
         static_cast<MMModem3gppSubscriptionState>(
             properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)));
 
@@ -1586,7 +1586,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
         properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS));
 }
 
-void CellularCapabilityUniversal::On3GPPRegistrationChanged(
+void CellularCapabilityUniversal::On3gppRegistrationChanged(
     MMModem3gppRegistrationState state,
     const string& operator_code,
     const string& operator_name) {
@@ -1609,7 +1609,7 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
     }
     SLOG(this, 2) << "Posted deferred registration state update";
     registration_dropped_update_callback_.Reset(
-        Bind(&CellularCapabilityUniversal::Handle3GPPRegistrationChange,
+        Bind(&CellularCapabilityUniversal::Handle3gppRegistrationChange,
              weak_ptr_factory_.GetWeakPtr(),
              state,
              operator_code,
@@ -1626,11 +1626,11 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
       // small duration.
       modem_info()->metrics()->Notify3GPPRegistrationDelayedDropCanceled();
     }
-    Handle3GPPRegistrationChange(state, operator_code, operator_name);
+    Handle3gppRegistrationChange(state, operator_code, operator_name);
   }
 }
 
-void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
+void CellularCapabilityUniversal::Handle3gppRegistrationChange(
     MMModem3gppRegistrationState updated_state,
     string updated_operator_code,
     string updated_operator_name) {
@@ -1657,7 +1657,7 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::On3GPPSubscriptionStateChanged(
+void CellularCapabilityUniversal::On3gppSubscriptionStateChanged(
     MMModem3gppSubscriptionState updated_state) {
   SLOG(this, 3) << __func__ << ": Updated subscription state = "
                             << updated_state;

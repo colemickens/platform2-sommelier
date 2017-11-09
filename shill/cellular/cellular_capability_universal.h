@@ -337,17 +337,17 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool IsMdnValid() const;
 
   // 3GPP property change handlers
-  virtual void OnModem3GPPPropertiesChanged(
+  virtual void OnModem3gppPropertiesChanged(
       const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
-  void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
+  void On3gppRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string& operator_code,
                                  const std::string& operator_name);
-  void Handle3GPPRegistrationChange(
+  void Handle3gppRegistrationChange(
       MMModem3gppRegistrationState updated_state,
       std::string updated_operator_code,
       std::string updated_operator_name);
-  void On3GPPSubscriptionStateChanged(MMModem3gppSubscriptionState state);
+  void On3gppSubscriptionStateChanged(MMModem3gppSubscriptionState state);
   void OnFacilityLocksChanged(uint32_t locks);
 
   // SIM property change handlers
