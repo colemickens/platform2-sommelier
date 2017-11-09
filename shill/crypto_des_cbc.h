@@ -46,9 +46,9 @@ class CryptoDesCbc : public CryptoInterface {
   bool LoadKeyMatter(const base::FilePath& path);
 
   // Inherited from CryptoInterface.
-  virtual std::string GetID();
-  virtual bool Encrypt(const std::string& plaintext, std::string* ciphertext);
-  virtual bool Decrypt(const std::string& ciphertext, std::string* plaintext);
+  std::string GetID() override;
+  bool Encrypt(const std::string& plaintext, std::string* ciphertext) override;
+  bool Decrypt(const std::string& ciphertext, std::string* plaintext) override;
 
   const std::vector<char>& key() const { return key_; }
   const std::vector<char>& iv() const { return iv_; }
