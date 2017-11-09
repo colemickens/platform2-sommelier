@@ -305,6 +305,10 @@ TEST_F(StateControllerTest, BasicDelays) {
   delegate_.set_record_screen_idle_state_actions(true);
   Init();
 
+  // An initial message reporting that the screen is undimmed and turned on
+  // should be sent at startup.
+  EXPECT_EQ(kScreenIdleStateUndimmedOn, delegate_.GetActions());
+
   // The screen should be dimmed after the configured interval and then undimmed
   // in response to user activity.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));

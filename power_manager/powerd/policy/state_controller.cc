@@ -291,6 +291,11 @@ void StateController::Init(Delegate* delegate,
       this, &StateController::HandleInitialStateTimeout);
 
   UpdateSettingsAndState();
+
+  // Emit the current screen-idle state in case powerd restarted while the
+  // screen was dimmed or turned off.
+  delegate_->EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
+
   initialized_ = true;
 }
 
