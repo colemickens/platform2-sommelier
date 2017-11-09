@@ -7,12 +7,13 @@
 
 from __future__ import print_function
 
-import cros_config_schema
 import json
 import jsonschema
 import os
 import unittest
 import tempfile
+
+from . import cros_config_schema
 
 BASIC_CONFIG = """
 name: 'coral'
@@ -38,6 +39,8 @@ models:
     componentConfig:
       bluetoothConfigPath: '/etc/bluetooth/lava.conf'
 """
+
+this_dir = os.path.dirname(__file__)
 
 class GetNamedTupleTests(unittest.TestCase):
   def testRecursiveDicts(self):
@@ -115,7 +118,8 @@ models:
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
-    with open('v2/cros_config_schema.json', 'r') as schema_stream:
+    with open(
+        os.path.join(this_dir, 'cros_config_schema.json')) as schema_stream:
       self._schema = schema_stream.read()
 
   def testBasicSchemaValidation(self):
@@ -198,11 +202,13 @@ class MainTests(unittest.TestCase):
   def testMainWithExample(self):
     output = tempfile.mktemp()
     cros_config_schema.Main(
-        'v2/cros_config_schema.json',
-        'v2/cros_config_schema_example.yaml',
+        os.path.join(this_dir, 'cros_config_schema.json'),
+        os.path.join(this_dir, 'cros_config_schema_example.yaml'),
         output)
     with open(output, 'r') as output_stream:
-      with open('v2/cros_config_schema_example.json') as expected_stream:
+      with open(
+          os.path.join(this_dir, 'cros_config_schema_example.json')
+      ) as expected_stream:
         self.assertEqual(expected_stream.read(), output_stream.read())
 
     os.remove(output)

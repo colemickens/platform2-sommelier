@@ -15,7 +15,7 @@ from __future__ import print_function
 import argparse
 import sys
 
-from libcros_config_host.libcros_config_host import CrosConfig
+from .libcros_config_host import CrosConfig
 
 
 def ListModels(config):

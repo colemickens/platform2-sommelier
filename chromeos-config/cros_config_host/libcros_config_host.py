@@ -15,12 +15,7 @@ from collections import namedtuple, OrderedDict
 import os
 import sys
 
-import fdt
-
-# Find the validator when running locally
-our_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(our_path, '..'))
-import validate_config
+from . import fdt, validate_config
 
 # Represents a single touch firmware file which needs to be installed:
 #   firmware: source filename of firmware file. This is installed in a

@@ -5,8 +5,4 @@
 
 # Script to run all Python unit tests in cros_config.
 
-# Run all unit tests (all files ending with test.py recursively)
-while read -d $'\0' -r pytest; do
-  echo "Running tests in ${pytest}"
-  "./${pytest}" || exit 1
-done < <(find -name '*test.py' -print0)
+python -m unittest discover -p '*test.py'

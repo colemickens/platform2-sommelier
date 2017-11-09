@@ -14,16 +14,13 @@ setup(
     author='Simon Glass',
     author_email='sjg@chromium.org',
     url='README.md',
-    py_modules=['cros_config_host', 'libcros_config_host.fdt',
-                'libcros_config_host.fdt_util',
-                'libcros_config_host.libcros_config_host',
-                'validate_config', 'validate_schema'],
+    packages=['cros_config_host', 'libcros_config_host'],
     entry_points={
         'console_scripts': [
-            'cros_config_host = cros_config_host:main',
+            'cros_config_host = cros_config_host.cros_config_host:main',
             # TODO(lannm): Remove after changing callers to cros_config_host.
-            'cros_config_host_py = cros_config_host:main',
-            'validate_config = validate_config:Main',
+            'cros_config_host_py = cros_config_host.cros_config_host:main',
+            'validate_config = cros_config_host.validate_config:Main',
         ],
     },
     description='Access to the master configuration from the host',

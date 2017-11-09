@@ -10,8 +10,9 @@ from __future__ import print_function
 from collections import OrderedDict
 import struct
 
-import fdt_util
 import libfdt
+
+from . import fdt_util
 
 # This deals with a device tree, presenting it as an assortment of Node and
 # Prop objects, representing nodes and properties, respectively. This file

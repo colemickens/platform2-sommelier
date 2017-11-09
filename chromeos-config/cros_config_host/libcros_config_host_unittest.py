@@ -14,12 +14,11 @@ import os
 import sys
 import unittest
 
-from libcros_config_host import fdt_util
-from libcros_config_host.libcros_config_host import BaseFile, CrosConfig
-from libcros_config_host.libcros_config_host import TouchFile, FirmwareInfo
+from . import fdt_util
+from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
 
 
-DTS_FILE = 'libcros_config/test.dts'
+DTS_FILE = '../libcros_config/test.dts'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
           'whitetip2', ]
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'

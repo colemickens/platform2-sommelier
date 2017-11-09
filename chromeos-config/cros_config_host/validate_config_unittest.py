@@ -13,7 +13,7 @@ import tempfile
 
 from chromite.lib import cros_test_lib
 
-import validate_config
+from . import validate_config
 
 
 HEADER = '''/dts-v1/;
@@ -421,7 +421,8 @@ class UnitTests(cros_test_lib.TestCase):
     dts.close()
     self.returncode = 0
     if use_command_line:
-      call_args = ['python', 'validate_config.py', '-d', dts.name]
+      call_args = ['python', '-m', 'cros_config_host.validate_config',
+                   '-d', dts.name]
       if extra_options:
         call_args += extra_options
       try:
@@ -458,7 +459,8 @@ class UnitTests(cros_test_lib.TestCase):
     fnames = [dts.name for dts in dts_list]
     self.returncode = 0
     if use_command_line:
-      call_args = ['python', 'validate_config.py', '-d', '-p'] + fnames
+      call_args = ['python', '-m', 'cros_config_host.validate_config',
+                   '-d', '-p'] + fnames
       try:
         output = subprocess.check_output(call_args, stderr=subprocess.STDOUT)
       except subprocess.CalledProcessError as e:

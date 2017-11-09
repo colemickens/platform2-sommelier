@@ -10,8 +10,7 @@ from __future__ import print_function
 import os
 import unittest
 
-import fdt
-import fdt_util
+from . import fdt, fdt_util
 
 DTS_FILE = '../libcros_config/test.dts'
 PYRO_FIRMWARE_NAMES = ['bcs-overlay', 'ec-image', 'pd-image', 'main-image',
