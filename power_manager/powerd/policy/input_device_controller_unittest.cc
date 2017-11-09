@@ -6,7 +6,8 @@
 
 #include <cstdarg>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"

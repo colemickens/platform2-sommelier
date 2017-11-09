@@ -129,6 +129,7 @@
         'powerd/policy/state_controller.cc',
         'powerd/policy/suspend_delay_controller.cc',
         'powerd/policy/suspender.cc',
+        'powerd/policy/wifi_controller.cc',
       ],
     },
     {
@@ -366,6 +367,7 @@
             'powerd/policy/state_controller_unittest.cc',
             'powerd/policy/suspend_delay_controller_unittest.cc',
             'powerd/policy/suspender_unittest.cc',
+            'powerd/policy/wifi_controller_unittest.cc',
           ],
         },
         {

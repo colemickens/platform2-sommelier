@@ -9,8 +9,10 @@ ENV{POWERD_ROLE}!="",         ENV{POWERD_TAGS}+="role_$env{POWERD_ROLE}"
 # then filters by this tag.
 ENV{POWERD_TAGS}!="",      TAG+="powerd"
 
+# The "powerd" tag needs to be added to subsystems which powerd observes.
 SUBSYSTEM=="drm",          TAG+="powerd"
 SUBSYSTEM=="i2c-dev",      TAG+="powerd"
 SUBSYSTEM=="input",        TAG+="powerd"
 SUBSYSTEM=="leds",         TAG+="powerd"
+SUBSYSTEM=="net",          TAG+="powerd"
 SUBSYSTEM=="power_supply", TAG+="powerd"

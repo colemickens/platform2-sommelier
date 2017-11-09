@@ -270,6 +270,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       input_event_handler_(new policy::InputEventHandler),
       input_device_controller_(new policy::InputDeviceController),
       suspender_(new policy::Suspender),
+      wifi_controller_(std::make_unique<policy::WifiController>()),
       metrics_collector_(new metrics::MetricsCollector),
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),
@@ -372,11 +373,6 @@ void Daemon::Init() {
   for (auto controller : all_backlight_controllers_)
     controller->AddObserver(this);
 
-  prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
-                  &set_wifi_transmit_power_for_tablet_mode_);
-  if (set_wifi_transmit_power_for_tablet_mode_)
-    UpdateWifiTransmitPowerForTabletMode(tablet_mode);
-
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
@@ -413,6 +409,7 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
+  wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
 
@@ -557,8 +554,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   input_device_controller_->SetTabletMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
-  if (set_wifi_transmit_power_for_tablet_mode_)
-    UpdateWifiTransmitPowerForTabletMode(mode);
+  wifi_controller_->HandleTabletModeChange(mode);
 }
 
 void Daemon::ShutDownForPowerButtonWithNoDisplay() {
@@ -765,6 +761,16 @@ void Daemon::ShutDownForFailedSuspend() {
 
 void Daemon::ShutDownForDarkResume() {
   ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::DARK_RESUME);
+}
+
+void Daemon::SetWifiTransmitPower(TabletMode mode) {
+  std::string args = (mode == TabletMode::ON)
+                         ? "--wifi_transmit_power_tablet"
+                         : "--nowifi_transmit_power_tablet";
+
+  LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling" : "Disabling")
+            << " tablet mode wifi transmit power";
+  RunSetuidHelper("set_wifi_transmit_power", args, false);
 }
 
 void Daemon::OnAudioStateChange(bool active) {
@@ -1641,17 +1647,6 @@ void Daemon::SetBacklightsSuspended(bool suspended) {
 void Daemon::SetBacklightsDocked(bool docked) {
   for (auto controller : all_backlight_controllers_)
     controller->SetDocked(docked);
-}
-
-void Daemon::UpdateWifiTransmitPowerForTabletMode(TabletMode mode) {
-  DCHECK(set_wifi_transmit_power_for_tablet_mode_);
-  std::string args = (mode == TabletMode::ON)
-                         ? "--wifi_transmit_power_tablet"
-                         : "--nowifi_transmit_power_tablet";
-
-  LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling" : "Disabling")
-            << " tablet mode wifi transmit power";
-  RunSetuidHelper("set_wifi_transmit_power", args, false);
 }
 
 }  // namespace power_manager

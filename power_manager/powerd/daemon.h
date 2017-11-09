@@ -23,6 +23,7 @@
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
+#include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -48,6 +49,7 @@ class BacklightController;
 class InputDeviceController;
 class StateController;
 class Suspender;
+class WifiController;
 }  // namespace policy
 
 namespace system {
@@ -72,6 +74,7 @@ class Daemon;
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputEventHandler::Delegate,
                public policy::Suspender::Delegate,
+               public policy::WifiController::Delegate,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
@@ -139,6 +142,9 @@ class Daemon : public policy::BacklightControllerObserver,
       base::TimeDelta suspend_duration) override;
   void ShutDownForFailedSuspend() override;
   void ShutDownForDarkResume() override;
+
+  // Overridden from policy::WifiController::Delegate:
+  void SetWifiTransmitPower(TabletMode tablet_mode) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
@@ -278,10 +284,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsSuspended(bool suspended);
   void SetBacklightsDocked(bool docked);
 
-  // Updates wifi transmit power for |mode|. Should only be called if
-  // |set_wifi_transmit_power_for_tablet_mode_| is true.
-  void UpdateWifiTransmitPowerForTabletMode(TabletMode mode);
-
   DaemonDelegate* delegate_;  // weak
 
   std::unique_ptr<PrefsInterface> prefs_;
@@ -321,6 +323,7 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::Suspender> suspender_;
+  std::unique_ptr<policy::WifiController> wifi_controller_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 
@@ -390,9 +393,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // True if the system should suspend to idle.
   bool suspend_to_idle_ = false;
-
-  // Set wifi transmit power for tablet mode.
-  bool set_wifi_transmit_power_for_tablet_mode_ = false;
 
   // Used to log video, user, and audio activity and hovering.
   std::unique_ptr<PeriodicActivityLogger> video_activity_logger_;

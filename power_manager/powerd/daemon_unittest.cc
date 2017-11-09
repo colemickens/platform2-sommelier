@@ -325,14 +325,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
                               ShutdownReasonToString(reason).c_str());
   }
 
-  // Returns the command that Daemon should execute to set wifi transmit power
-  // for |mode|.
-  std::string GetWifiTransmitPowerCommand(TabletMode mode) {
-    return base::StringPrintf(
-        "%s --action=set_wifi_transmit_power --%swifi_transmit_power_tablet",
-        kSetuidHelperPath, mode == TabletMode::ON ? "" : "no");
-  }
-
   // Stub objects to be transferred by Create* methods.
   std::unique_ptr<FakePrefs> passed_prefs_;
   std::unique_ptr<system::DBusWrapperStub> passed_dbus_wrapper_;
@@ -813,20 +805,6 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   // TODO(derat): Also verify that we check battery_tool.
 }
 
-TEST_F(DaemonTest, SetWifiTransmitPower) {
-  prefs_->SetInt64(kSetWifiTransmitPowerForTabletModePref, 1);
-  input_watcher_->set_tablet_mode(TabletMode::ON);
-  Init();
-  ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetWifiTransmitPowerCommand(TabletMode::ON), async_commands_[0]);
-  async_commands_.clear();
-
-  input_watcher_->set_tablet_mode(TabletMode::OFF);
-  input_watcher_->NotifyObserversAboutTabletMode();
-  ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetWifiTransmitPowerCommand(TabletMode::OFF), async_commands_[0]);
-}
-
 TEST_F(DaemonTest, FactoryMode) {
   prefs_->SetInt64(kFactoryModePref, 1);
   prefs_->SetInt64(kHasAmbientLightSensorPref, 1);
@@ -878,7 +856,6 @@ TEST_F(DaemonTest, FactoryMode) {
 // - Generating suspend IDs
 // - Notifying policy::Suspender about services exiting
 // - StateControllerDelegate implementation
-// - Parsing IWL wifi transmit power pref
 // - Probably other stuff :-/
 
 }  // namespace power_manager
