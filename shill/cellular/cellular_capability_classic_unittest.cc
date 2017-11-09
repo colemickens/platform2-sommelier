@@ -274,7 +274,7 @@ TEST_P(CellularCapabilityClassicTest, GetModemStatus) {
 }
 
 TEST_P(CellularCapabilityClassicTest, GetModemInfo) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -312,7 +312,7 @@ TEST_P(CellularCapabilityClassicTest, EnableModemFail) {
 }
 
 TEST_P(CellularCapabilityClassicTest, FinishEnable) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -339,7 +339,7 @@ TEST_P(CellularCapabilityClassicTest, UnsupportedOperation) {
 }
 
 TEST_P(CellularCapabilityClassicTest, AllowRoaming) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -395,7 +395,7 @@ MATCHER(HasNoApn, "") {
 }
 
 TEST_P(CellularCapabilityClassicTest, TryApns) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -542,7 +542,7 @@ TEST_P(CellularCapabilityClassicTest, DisconnectNoProxy) {
 
 INSTANTIATE_TEST_CASE_P(CellularCapabilityClassicTest,
                         CellularCapabilityClassicTest,
-                        testing::Values(Cellular::kTypeGSM,
+                        testing::Values(Cellular::kTypeGsm,
                                         Cellular::kTypeCdma));
 
 }  // namespace shill

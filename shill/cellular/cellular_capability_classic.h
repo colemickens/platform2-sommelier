@@ -134,7 +134,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularTest, StartCdmaRegister);
   FRIEND_TEST(CellularTest, StartConnected);
-  FRIEND_TEST(CellularTest, StartGSMRegister);
+  FRIEND_TEST(CellularTest, StartGsmRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);

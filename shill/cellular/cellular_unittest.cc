@@ -254,19 +254,19 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                  MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  Error());
   }
-  void InvokeGetIMEI(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetIMEI(Error* error, const GsmIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMEI, Error());
   }
-  void InvokeGetIMSI(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetIMSI(Error* error, const GsmIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMSI, Error());
   }
-  void InvokeGetMSISDN(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetMSISDN(Error* error, const GsmIdentifierCallback& callback,
                        int timeout) {
     callback.Run(kMSISDN, Error());
   }
-  void InvokeGetSPN(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetSPN(Error* error, const GsmIdentifierCallback& callback,
                     int timeout) {
     callback.Run(kTestCarrierSPN, Error());
   }
@@ -470,7 +470,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   static const char kIMSI[];
   static const char kMSISDN[];
   static const char kTestMobileProviderDBPath[];
-  static const Stringmaps kTestNetworksGSM;
+  static const Stringmaps kTestNetworksGsm;
   static const Stringmaps kTestNetworksCellular;
   static const int kStrength;
 
@@ -579,7 +579,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
-  CellularCapabilityGsm* GetCapabilityGSM() {
+  CellularCapabilityGsm* GetCapabilityGsm() {
     return static_cast<CellularCapabilityGsm*>(device_->capability_.get());
   }
 
@@ -646,7 +646,7 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
-const Stringmaps CellularTest::kTestNetworksGSM =
+const Stringmaps CellularTest::kTestNetworksGsm =
     {{{CellularCapabilityGsm::kNetworkPropertyStatus, "1"},
       {CellularCapabilityGsm::kNetworkPropertyID, "0000"},
       {CellularCapabilityGsm::kNetworkPropertyLongName, "some_long_name"},
@@ -734,8 +734,8 @@ TEST_P(CellularTest, StartCdmaRegister) {
   EXPECT_EQ(kRoamingStateHome, device_->service_->roaming_state());
 }
 
-TEST_P(CellularTest, StartGSMRegister) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+TEST_P(CellularTest, StartGsmRegister) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -779,12 +779,12 @@ TEST_P(CellularTest, StartGSMRegister) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, device_->imei());
   EXPECT_EQ(kIMSI, device_->imsi());
-  EXPECT_EQ(kTestCarrierSPN, GetCapabilityGSM()->spn_);
+  EXPECT_EQ(kTestCarrierSPN, GetCapabilityGsm()->spn_);
   EXPECT_EQ(kMSISDN, device_->mdn());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(kNetworkTechnologyEdge, device_->service_->network_technology());
-  EXPECT_TRUE(GetCapabilityGSM()->sim_lock_status_.enabled);
+  EXPECT_TRUE(GetCapabilityGsm()->sim_lock_status_.enabled);
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(kRoamingStateRoaming, device_->service_->roaming_state());
 }
@@ -1159,7 +1159,7 @@ MATCHER(ContainsPhoneNumber, "") {
 
 TEST_P(CellularTest, Connect) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
+          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1218,7 +1218,7 @@ TEST_P(CellularTest, Connect) {
 
 TEST_P(CellularTest, Disconnect) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
+          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1240,7 +1240,7 @@ TEST_P(CellularTest, Disconnect) {
 
 TEST_P(CellularTest, DisconnectFailure) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
+          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1283,7 +1283,7 @@ TEST_P(CellularTest, ConnectFailure) {
 
 TEST_P(CellularTest, ConnectFailureNoService) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
+          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -1398,7 +1398,7 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
 
 TEST_P(CellularTest, ModemStateChangeStaleConnected) {
   if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGSM, Cellular::kTypeCdma})) {
+          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
     return;
   }
 
@@ -2109,7 +2109,7 @@ TEST_P(CellularTest, CustomSetterNoopChange) {
 }
 
 TEST_P(CellularTest, ScanImmediateFailure) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -2120,7 +2120,7 @@ TEST_P(CellularTest, ScanImmediateFailure) {
   // Capability*, to set up the modem proxies.
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
-  GetCapabilityGSM()->InitProxies();
+  GetCapabilityGsm()->InitProxies();
   device_->Scan(&error, "");
   EXPECT_TRUE(error.IsFailure());
   EXPECT_FALSE(device_->scanning_);
@@ -2128,7 +2128,7 @@ TEST_P(CellularTest, ScanImmediateFailure) {
 }
 
 TEST_P(CellularTest, ScanAsynchronousFailure) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -2144,20 +2144,20 @@ TEST_P(CellularTest, ScanAsynchronousFailure) {
   // Capability*, to set up the modem proxies.
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
-  GetCapabilityGSM()->InitProxies();
+  GetCapabilityGsm()->InitProxies();
   device_->Scan(&error, "");
   EXPECT_TRUE(error.IsOngoing());
   EXPECT_TRUE(device_->scanning_);
 
   // Asynchronously fail the scan.
   error.Populate(Error::kOperationFailed);
-  results_callback.Run(kTestNetworksGSM, error);
+  results_callback.Run(kTestNetworksGsm, error);
   EXPECT_FALSE(device_->scanning_);
   EXPECT_TRUE(device_->found_networks().empty());
 }
 
 TEST_P(CellularTest, ScanSuccess) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGSM})) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
   }
 
@@ -2173,15 +2173,15 @@ TEST_P(CellularTest, ScanSuccess) {
   // Capability*, to set up the modem proxies.
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
-  GetCapabilityGSM()->InitProxies();
+  GetCapabilityGsm()->InitProxies();
   device_->Scan(&error, "");
   EXPECT_TRUE(error.IsOngoing());
   EXPECT_TRUE(device_->scanning_);
 
   // Successfully complete the scan.
-  const GSMScanResults gsm_results{};
+  const GsmScanResults gsm_results{};
   error.Populate(Error::kSuccess);
-  results_callback.Run(kTestNetworksGSM, error);
+  results_callback.Run(kTestNetworksGsm, error);
   EXPECT_FALSE(device_->scanning_);
   EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
 }
@@ -2320,7 +2320,7 @@ TEST_P(CellularTest, GetGeolocationObjects) {
 
 INSTANTIATE_TEST_CASE_P(CellularTest,
                         CellularTest,
-                        testing::Values(Cellular::kTypeGSM,
+                        testing::Values(Cellular::kTypeGsm,
                                         Cellular::kTypeCdma,
                                         Cellular::kTypeUniversal,
                                         Cellular::kTypeUniversalCdma));

@@ -50,7 +50,7 @@ class Cellular : public Device,
                  public MobileOperatorInfo::Observer {
  public:
   enum Type {
-    kTypeGSM,
+    kTypeGsm,
     kTypeCdma,
     kTypeUniversal,  // ModemManager1
     kTypeUniversalCdma,
@@ -398,7 +398,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCdmaRegister);
-  FRIEND_TEST(CellularTest, StartGSMRegister);
+  FRIEND_TEST(CellularTest, StartGsmRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartPPP);
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);

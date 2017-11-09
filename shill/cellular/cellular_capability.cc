@@ -58,7 +58,7 @@ const int CellularCapability::kTimeoutSetupLocation = 45000;
 std::unique_ptr<CellularCapability> CellularCapability::Create(
     Cellular::Type type, Cellular* cellular, ModemInfo* modem_info) {
   switch (type) {
-    case Cellular::kTypeGSM:
+    case Cellular::kTypeGsm:
       return std::make_unique<CellularCapabilityGsm>(cellular, modem_info);
 
     case Cellular::kTypeCdma:

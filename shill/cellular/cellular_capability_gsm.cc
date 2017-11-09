@@ -331,7 +331,7 @@ void CellularCapabilityGsm::GetIMEI(const ResultCallback& callback) {
   CHECK(!callback.is_null());
   Error error;
   if (cellular()->imei().empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMEIReply,
+    GsmIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMEIReply,
                                     weak_ptr_factory_.GetWeakPtr(), callback);
     card_proxy_->GetIMEI(&error, cb, kTimeoutDefault);
     if (error.IsFailure())
@@ -348,7 +348,7 @@ void CellularCapabilityGsm::GetIMSI(const ResultCallback& callback) {
   CHECK(!callback.is_null());
   Error error;
   if (cellular()->imsi().empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMSIReply,
+    GsmIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetIMSIReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetIMSI(&error, cb, kTimeoutDefault);
@@ -368,7 +368,7 @@ void CellularCapabilityGsm::GetSPN(const ResultCallback& callback) {
   CHECK(!callback.is_null());
   Error error;
   if (spn_.empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetSPNReply,
+    GsmIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetSPNReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetSPN(&error, cb, kTimeoutDefault);
@@ -387,7 +387,7 @@ void CellularCapabilityGsm::GetMSISDN(const ResultCallback& callback) {
   Error error;
   string mdn = cellular()->mdn();
   if (mdn.empty()) {
-    GSMIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetMSISDNReply,
+    GsmIdentifierCallback cb = Bind(&CellularCapabilityGsm::OnGetMSISDNReply,
                                     weak_ptr_factory_.GetWeakPtr(),
                                     callback);
     card_proxy_->GetMSISDN(&error, cb, kTimeoutDefault);
@@ -532,7 +532,7 @@ void CellularCapabilityGsm::Scan(Error* error,
 
 void CellularCapabilityGsm::OnScanReply(
     const ResultStringmapsCallback& callback,
-    const GSMScanResults& results,
+    const GsmScanResults& results,
     const Error& error) {
   Stringmaps found_networks;
   for (const auto& result : results)
@@ -540,7 +540,7 @@ void CellularCapabilityGsm::OnScanReply(
   callback.Run(found_networks, error);
 }
 
-Stringmap CellularCapabilityGsm::ParseScanResult(const GSMScanResult& result) {
+Stringmap CellularCapabilityGsm::ParseScanResult(const GsmScanResult& result) {
   Stringmap parsed;
   for (const auto& property_key_value_pair : result) {
     const string& property_key = property_key_value_pair.first;

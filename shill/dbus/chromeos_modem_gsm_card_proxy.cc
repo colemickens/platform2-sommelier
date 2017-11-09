@@ -68,14 +68,14 @@ ChromeosModemGsmCardProxy::ChromeosModemGsmCardProxy(
 ChromeosModemGsmCardProxy::~ChromeosModemGsmCardProxy() {}
 
 void ChromeosModemGsmCardProxy::GetIMEI(
-    Error* error, const GSMIdentifierCallback& callback, int timeout) {
+    Error* error, const GsmIdentifierCallback& callback, int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetImeiAsync(
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "IMEI"),
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierFailure,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "IMEI"),
@@ -83,15 +83,15 @@ void ChromeosModemGsmCardProxy::GetIMEI(
 }
 
 void ChromeosModemGsmCardProxy::GetIMSI(Error* error,
-                                        const GSMIdentifierCallback& callback,
+                                        const GsmIdentifierCallback& callback,
                                         int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetImsiAsync(
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "IMSI"),
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierFailure,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "IMSI"),
@@ -99,15 +99,15 @@ void ChromeosModemGsmCardProxy::GetIMSI(Error* error,
 }
 
 void ChromeosModemGsmCardProxy::GetSPN(Error* error,
-                                       const GSMIdentifierCallback& callback,
+                                       const GsmIdentifierCallback& callback,
                                        int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetSpnAsync(
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "SPN"),
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierFailure,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "SPN"),
@@ -115,15 +115,15 @@ void ChromeosModemGsmCardProxy::GetSPN(Error* error,
 }
 
 void ChromeosModemGsmCardProxy::GetMSISDN(Error* error,
-                                          const GSMIdentifierCallback& callback,
+                                          const GsmIdentifierCallback& callback,
                                           int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetMsIsdnAsync(
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierSuccess,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "MSIDN"),
-      base::Bind(&ChromeosModemGsmCardProxy::OnGetGSMIdentifierFailure,
+      base::Bind(&ChromeosModemGsmCardProxy::OnGetGsmIdentifierFailure,
                  weak_factory_.GetWeakPtr(),
                  callback,
                  "MSIDN"),
@@ -219,8 +219,8 @@ uint32_t ChromeosModemGsmCardProxy::EnabledFacilityLocks() {
   return properties_->enabled_facility_locks.value();
 }
 
-void ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess(
-    const GSMIdentifierCallback& callback,
+void ChromeosModemGsmCardProxy::OnGetGsmIdentifierSuccess(
+    const GsmIdentifierCallback& callback,
     const string& identifier_name,
     const string& identifier_value) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << identifier_name
@@ -228,8 +228,8 @@ void ChromeosModemGsmCardProxy::OnGetGSMIdentifierSuccess(
   callback.Run(identifier_value, Error());
 }
 
-void ChromeosModemGsmCardProxy::OnGetGSMIdentifierFailure(
-    const GSMIdentifierCallback& callback,
+void ChromeosModemGsmCardProxy::OnGetGsmIdentifierFailure(
+    const GsmIdentifierCallback& callback,
     const string& identifier_name,
     brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << identifier_name;

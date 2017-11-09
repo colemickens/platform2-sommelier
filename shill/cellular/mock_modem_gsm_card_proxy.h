@@ -32,16 +32,16 @@ class MockModemGsmCardProxy : public ModemGsmCardProxyInterface {
   ~MockModemGsmCardProxy() override;
 
   MOCK_METHOD3(GetIMEI, void(Error* error,
-                             const GSMIdentifierCallback& callback,
+                             const GsmIdentifierCallback& callback,
                              int timeout));
   MOCK_METHOD3(GetIMSI, void(Error* error,
-                             const GSMIdentifierCallback& callback,
+                             const GsmIdentifierCallback& callback,
                              int timeout));
   MOCK_METHOD3(GetSPN, void(Error* error,
-                            const GSMIdentifierCallback& callback,
+                            const GsmIdentifierCallback& callback,
                             int timeout));
   MOCK_METHOD3(GetMSISDN, void(Error* error,
-                               const GSMIdentifierCallback& callback,
+                               const GsmIdentifierCallback& callback,
                                int timeout));
 
   MOCK_METHOD5(EnablePIN, void(const std::string& pin, bool enabled,

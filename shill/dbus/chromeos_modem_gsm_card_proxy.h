@@ -39,16 +39,16 @@ class ChromeosModemGsmCardProxy : public ModemGsmCardProxyInterface {
 
   // Inherited from ModemGsmCardProxyInterface.
   void GetIMEI(Error* error,
-               const GSMIdentifierCallback& callback,
+               const GsmIdentifierCallback& callback,
                int timeout) override;
   void GetIMSI(Error* error,
-               const GSMIdentifierCallback& callback,
+               const GsmIdentifierCallback& callback,
                int timeout) override;
   void GetSPN(Error* error,
-              const GSMIdentifierCallback& callback,
+              const GsmIdentifierCallback& callback,
               int timeout) override;
   void GetMSISDN(Error* error,
-                 const GSMIdentifierCallback& callback,
+                 const GsmIdentifierCallback& callback,
                  int timeout) override;
   void EnablePIN(const std::string& pin,
                  bool enabled,
@@ -86,10 +86,10 @@ class ChromeosModemGsmCardProxy : public ModemGsmCardProxyInterface {
   static const char kPropertyEnabledFacilityLocks[];
 
   // Callbacks for various GSMIdentifier Get async calls.
-  void OnGetGSMIdentifierSuccess(const GSMIdentifierCallback& callback,
+  void OnGetGsmIdentifierSuccess(const GsmIdentifierCallback& callback,
                                  const std::string& identifier_name,
                                  const std::string& identifier_value);
-  void OnGetGSMIdentifierFailure(const GSMIdentifierCallback& callback,
+  void OnGetGsmIdentifierFailure(const GsmIdentifierCallback& callback,
                                  const std::string& identifier_name,
                                  brillo::Error* dbus_error);
   void OnOperationSuccess(const ResultCallback& callback,

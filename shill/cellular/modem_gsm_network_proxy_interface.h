@@ -27,8 +27,8 @@ namespace shill {
 
 class Error;
 
-using GSMScanResult = std::map<std::string, std::string>;
-using GSMScanResults = std::vector<GSMScanResult>;
+using GsmScanResult = std::map<std::string, std::string>;
+using GsmScanResults = std::vector<GsmScanResult>;
 using SignalQualitySignalCallback = base::Callback<void(uint32_t)>;
 using RegistrationInfoSignalCallback =
     base::Callback<void(uint32_t, const std::string&, const std::string&)>;
@@ -37,7 +37,7 @@ using SignalQualityCallback = base::Callback<void(uint32_t, const Error&)>;
 using RegistrationInfoCallback = base::Callback<void(
     uint32_t, const std::string&, const std::string&, const Error&)>;
 using ScanResultsCallback =
-    base::Callback<void(const GSMScanResults&, const Error&)>;
+    base::Callback<void(const GsmScanResults&, const Error&)>;
 
 // These are the methods that a ModemManager.Modem.Gsm.Network proxy must
 // support. The interface is provided so that it can be mocked in tests.

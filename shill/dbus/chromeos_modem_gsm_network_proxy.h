@@ -68,7 +68,7 @@ class ChromeosModemGsmNetworkProxy : public ModemGsmNetworkProxyInterface {
   }
 
  private:
-  using GSMRegistrationInfo = std::tuple<uint32_t, std::string, std::string>;
+  using GsmRegistrationInfo = std::tuple<uint32_t, std::string, std::string>;
 
   class PropertySet : public dbus::PropertySet {
    public:
@@ -98,7 +98,7 @@ class ChromeosModemGsmNetworkProxy : public ModemGsmNetworkProxyInterface {
   // Callbacks for GetRegistrationInfo async call.
   void OnGetRegistrationInfoSuccess(
       const RegistrationInfoCallback& callback,
-      const GSMRegistrationInfo& info);
+      const GsmRegistrationInfo& info);
   void OnGetRegistrationInfoFailure(
       const RegistrationInfoCallback& callback, brillo::Error* dbus_error);
 
@@ -110,7 +110,7 @@ class ChromeosModemGsmNetworkProxy : public ModemGsmNetworkProxyInterface {
 
   // Callbacks for Scan async call.
   void OnScanSuccess(const ScanResultsCallback& callback,
-                     const GSMScanResults& results);
+                     const GsmScanResults& results);
   void OnScanFailure(const ScanResultsCallback& callback,
                      brillo::Error* dbus_error);
 

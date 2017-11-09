@@ -25,7 +25,7 @@ namespace shill {
 
 class Error;
 
-using GSMIdentifierCallback =
+using GsmIdentifierCallback =
     base::Callback<void(const std::string&, const Error&)>;
 
 // These are the methods that a ModemManager.Modem.Gsm.Card proxy must
@@ -35,13 +35,13 @@ class ModemGsmCardProxyInterface {
  public:
   virtual ~ModemGsmCardProxyInterface() {}
 
-  virtual void GetIMEI(Error* error, const GSMIdentifierCallback& callback,
+  virtual void GetIMEI(Error* error, const GsmIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void GetIMSI(Error* error, const GSMIdentifierCallback& callback,
+  virtual void GetIMSI(Error* error, const GsmIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void GetSPN(Error* error, const GSMIdentifierCallback& callback,
+  virtual void GetSPN(Error* error, const GsmIdentifierCallback& callback,
                       int timeout) = 0;
-  virtual void GetMSISDN(Error* error, const GSMIdentifierCallback& callback,
+  virtual void GetMSISDN(Error* error, const GsmIdentifierCallback& callback,
                          int timeout) = 0;
   virtual void EnablePIN(const std::string& pin, bool enabled,
                          Error* error, const ResultCallback& callback,

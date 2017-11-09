@@ -60,7 +60,7 @@ void ModemClassic::CreateDeviceClassic(
       set_type(Cellular::kTypeCdma);
       break;
     case MM_MODEM_TYPE_GSM:
-      set_type(Cellular::kTypeGSM);
+      set_type(Cellular::kTypeGsm);
       break;
     default:
       LOG(ERROR) << "Unsupported cellular modem type: " << mm_type;

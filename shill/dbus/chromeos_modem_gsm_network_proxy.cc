@@ -194,7 +194,7 @@ void ChromeosModemGsmNetworkProxy::OnRegisterFailure(
 
 void ChromeosModemGsmNetworkProxy::OnGetRegistrationInfoSuccess(
     const RegistrationInfoCallback& callback,
-    const GSMRegistrationInfo& info) {
+    const GsmRegistrationInfo& info) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   callback.Run(
       std::get<0>(info), std::get<1>(info), std::get<2>(info), Error());
@@ -224,7 +224,7 @@ void ChromeosModemGsmNetworkProxy::OnGetSignalQualityFailure(
 }
 
 void ChromeosModemGsmNetworkProxy::OnScanSuccess(
-    const ScanResultsCallback& callback, const GSMScanResults& results) {
+    const ScanResultsCallback& callback, const GsmScanResults& results) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   callback.Run(results, Error());
 }
@@ -234,7 +234,7 @@ void ChromeosModemGsmNetworkProxy::OnScanFailure(
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
-  callback.Run(GSMScanResults(), error);
+  callback.Run(GsmScanResults(), error);
 }
 
 void ChromeosModemGsmNetworkProxy::OnSignalConnected(

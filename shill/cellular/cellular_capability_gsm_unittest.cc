@@ -67,7 +67,7 @@ class CellularCapabilityGsmTest : public testing::Test {
                                "",
                                kAddress,
                                0,
-                               Cellular::kTypeGSM,
+                               Cellular::kTypeGsm,
                                "",
                                "")),
         mock_home_provider_info_(nullptr),
@@ -93,31 +93,31 @@ class CellularCapabilityGsmTest : public testing::Test {
                     const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeGetIMEI(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetIMEI(Error* error, const GsmIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMEI, Error());
   }
-  void InvokeGetIMSI(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetIMSI(Error* error, const GsmIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMSI, Error());
   }
-  void InvokeGetIMSIFails(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetIMSIFails(Error* error, const GsmIdentifierCallback& callback,
                           int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
-  void InvokeGetMSISDN(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetMSISDN(Error* error, const GsmIdentifierCallback& callback,
                        int timeout) {
     callback.Run(kMSISDN, Error());
   }
-  void InvokeGetMSISDNFail(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetMSISDNFail(Error* error, const GsmIdentifierCallback& callback,
                            int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
-  void InvokeGetSPN(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetSPN(Error* error, const GsmIdentifierCallback& callback,
                     int timeout) {
     callback.Run(kTestCarrier, Error());
   }
-  void InvokeGetSPNFail(Error* error, const GSMIdentifierCallback& callback,
+  void InvokeGetSPNFail(Error* error, const GsmIdentifierCallback& callback,
                         int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
@@ -552,7 +552,7 @@ TEST_F(CellularCapabilityGsmTest, ParseScanResult) {
   static const char kID[] = "123";
   static const char kLongName[] = "long name";
   static const char kShortName[] = "short name";
-  GSMScanResult result;
+  GsmScanResult result;
   result[CellularCapabilityGsm::kNetworkPropertyStatus] = "1";
   result[CellularCapabilityGsm::kNetworkPropertyID] = kID;
   result[CellularCapabilityGsm::kNetworkPropertyLongName] = kLongName;
@@ -582,7 +582,7 @@ TEST_F(CellularCapabilityGsmTest, ParseScanResultProviderLookup) {
       WillOnce(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info, operator_name()).
       WillRepeatedly(ReturnRef(kLongName));
-  GSMScanResult result;
+  GsmScanResult result;
   result[CellularCapabilityGsm::kNetworkPropertyID] = kID;
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(2, parsed.size());

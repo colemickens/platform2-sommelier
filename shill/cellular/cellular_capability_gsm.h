@@ -127,7 +127,7 @@ class CellularCapabilityGsm : public CellularCapabilityClassic {
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
-  FRIEND_TEST(CellularTest, StartGSMRegister);
+  FRIEND_TEST(CellularTest, StartGsmRegister);
 
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.
@@ -159,7 +159,7 @@ class CellularCapabilityGsm : public CellularCapabilityClassic {
 
   void SetAccessTechnology(uint32_t access_technology);
 
-  Stringmap ParseScanResult(const GSMScanResult& result);
+  Stringmap ParseScanResult(const GsmScanResult& result);
 
   KeyValueStore SimLockStatusToProperty(Error* error);
 
@@ -200,7 +200,7 @@ class CellularCapabilityGsm : public CellularCapabilityClassic {
                         const std::string& msisdn,
                         const Error& error);
   void OnScanReply(const ResultStringmapsCallback& callback,
-                   const GSMScanResults& results,
+                   const GsmScanResults& results,
                    const Error& error);
   void OnConnectReply(const ResultCallback& callback, const Error& error);
 
