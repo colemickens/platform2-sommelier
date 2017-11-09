@@ -178,12 +178,6 @@ bool TpmInit::SetupTpm(bool load_key) {
     }
   }
 
-  // In case of interrupted initialization, continue it.
-  if (IsTpmOwned() && !tpm_persistent_state_.IsReady()) {
-    LOG(WARNING) << "Taking ownership was interrupted, continuing.";
-    AsyncTakeOwnership();
-  }
-
   if (load_key) {
     // load cryptohome key
     LoadOrCreateCryptohomeKey(&cryptohome_key_);

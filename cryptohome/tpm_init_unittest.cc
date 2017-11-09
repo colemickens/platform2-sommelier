@@ -288,60 +288,6 @@ TEST_F(TpmInitTest, TakeOwnershipSuccess) {
   EXPECT_TRUE(FileExists(kTpmOwnedFile));
 }
 
-TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
-  // Setup TPM.
-  EXPECT_CALL(tpm_, SetIsOwned(false))
-    .Times(1);
-  EXPECT_CALL(tpm_, SetIsEnabled(true))
-    .Times(1);
-  EXPECT_TRUE(tpm_init_.SetupTpm(false));
-  EXPECT_TRUE(IsTpmInitialized());
-  EXPECT_FALSE(IsTpmOwned());
-  EXPECT_FALSE(FileExists(kTpmOwnedFile));
-  ::testing::Mock::VerifyAndClearExpectations(&tpm_);
-
-  // SRK is not initialized during the first attempt.
-  EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
-    .WillOnce(Return(false))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, CreateEndorsementKey())
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TakeOwnership(_, _))
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TestTpmAuth(_))
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, InitializeSrk(_))
-    .WillOnce(Return(false));
-  bool took_ownership = false;
-  EXPECT_FALSE(tpm_init_.TakeOwnership(&took_ownership));
-  EXPECT_TRUE(took_ownership);
-  EXPECT_TRUE(IsTpmOwned());
-  EXPECT_FALSE(IsTpmBeingOwned());
-  EXPECT_FALSE(FileExists(kTpmOwnedFile));
-  ::testing::Mock::VerifyAndClearExpectations(&tpm_);
-
-  // Attempt 2: Repeat initialization. This time, SetupTpm() should launch
-  // TakeOwnership(), which should complete the remaining steps.
-  EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
-    .Times(0);
-  EXPECT_CALL(tpm_, TestTpmAuth(_))
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, InitializeSrk(_))
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, ChangeOwnerPassword(_, _))
-    .WillOnce(Return(true));
-  EXPECT_CALL(tpm_, SetOwnerPassword(_))
-    .Times(1);
-  EXPECT_TRUE(tpm_init_.init_thread_.is_null());
-  tpm_init_.Init(TpmInit::OwnershipCallback());
-  ASSERT_FALSE(tpm_init_.init_thread_.is_null());
-  base::PlatformThread::Join(tpm_init_.init_thread_);
-  tpm_init_.init_thread_ = base::PlatformThreadHandle();
-  EXPECT_TRUE(IsTpmOwned());
-  EXPECT_FALSE(IsTpmBeingOwned());
-  EXPECT_TRUE(FileExists(kTpmOwnedFile));
-}
-
 TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |
