@@ -246,15 +246,13 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
   return false;
 }
 
-void InputWatcher::OnUdevEvent(const std::string& subsystem,
-                               const std::string& sysname,
-                               UdevAction action) {
-  DCHECK_EQ(subsystem, kInputUdevSubsystem);
+void InputWatcher::OnUdevEvent(const UdevEvent& event) {
+  DCHECK_EQ(event.subsystem, kInputUdevSubsystem);
   int input_num = -1;
-  if (GetInputNumber(sysname, &input_num)) {
-    if (action == UdevAction::ADD)
-      HandleAddedInput(sysname, input_num);
-    else if (action == UdevAction::REMOVE)
+  if (GetInputNumber(event.sysname, &input_num)) {
+    if (event.action == UdevEvent::Action::ADD)
+      HandleAddedInput(event.sysname, input_num);
+    else if (event.action == UdevEvent::Action::REMOVE)
       HandleRemovedInput(input_num);
   }
 }

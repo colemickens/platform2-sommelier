@@ -6,11 +6,11 @@
 #define POWER_MANAGER_POWERD_SYSTEM_UDEV_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/linked_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 
@@ -25,14 +25,21 @@ class TaggedDevice;
 class UdevSubsystemObserver;
 class UdevTaggedDeviceObserver;
 
-// Action described in a udev event.
-enum class UdevAction {
-  ADD = 0,
-  REMOVE,
-  CHANGE,
-  ONLINE,
-  OFFLINE,
-  UNKNOWN,
+// UdevEvent describes a udev event.
+struct UdevEvent {
+  enum class Action {
+    ADD = 0,
+    REMOVE,
+    CHANGE,
+    ONLINE,
+    OFFLINE,
+    UNKNOWN,
+  };
+
+  std::string subsystem;
+  std::string devtype;
+  std::string sysname;
+  Action action;
 };
 
 // Watches the udev manager for device-related events (e.g. hotplug).
@@ -115,8 +122,8 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
-  void HandleSubsystemEvent(UdevAction action, struct udev_device* dev);
-  void HandleTaggedDevice(UdevAction action, struct udev_device* dev);
+  void HandleSubsystemEvent(UdevEvent::Action action, struct udev_device* dev);
+  void HandleTaggedDevice(UdevEvent::Action action, struct udev_device* dev);
   void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
@@ -127,10 +134,9 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   struct udev_monitor* udev_monitor_;
 
   // Maps from a subsystem name to the corresponding observers.
-  typedef std::map<std::string,
-                   linked_ptr<base::ObserverList<UdevSubsystemObserver>>>
-      SubsystemObserverMap;
-  SubsystemObserverMap subsystem_observers_;
+  std::map<std::string,
+           std::unique_ptr<base::ObserverList<UdevSubsystemObserver>>>
+      subsystem_observers_;
 
   base::ObserverList<UdevTaggedDeviceObserver> tagged_device_observers_;
 

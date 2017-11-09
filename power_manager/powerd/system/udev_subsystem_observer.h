@@ -12,15 +12,15 @@
 namespace power_manager {
 namespace system {
 
+struct UdevEvent;
+
 // Interface for receiving notification of udev events from UdevInterface.
 class UdevSubsystemObserver {
  public:
   virtual ~UdevSubsystemObserver() {}
 
   // Called when an event has been received from an observed subsystem.
-  virtual void OnUdevEvent(const std::string& subsystem,
-                           const std::string& sysname,
-                           UdevAction action) = 0;
+  virtual void OnUdevEvent(const UdevEvent& event) = 0;
 };
 
 }  // namespace system

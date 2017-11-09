@@ -6,13 +6,14 @@
 #define POWER_MANAGER_POWERD_SYSTEM_UDEV_STUB_H_
 
 #include <map>
-#include <set>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/observer_list.h>
 
 #include "power_manager/powerd/system/udev.h"
 
@@ -28,6 +29,9 @@ class UdevStub : public UdevInterface {
   // Returns true if |observer| is registered for |subsystem|.
   bool HasSubsystemObserver(const std::string& subsystem,
                             UdevSubsystemObserver* observer) const;
+
+  // Notifies the relevant observers in |subsystem_observers_| about |event|.
+  void NotifySubsystemObservers(const UdevEvent& event);
 
   // Act as if a device was changed or removed. Notifies
   // UdevTaggedDeviceObservers and modifies the internal list of tagged devices.
@@ -55,9 +59,9 @@ class UdevStub : public UdevInterface {
 
  private:
   // Registered observers keyed by subsystem.
-  typedef std::map<std::string, std::set<UdevSubsystemObserver*>>
-      SubsystemObserverMap;
-  SubsystemObserverMap subsystem_observers_;
+  std::map<std::string,
+           std::unique_ptr<base::ObserverList<UdevSubsystemObserver>>>
+      subsystem_observers_;
 
   base::ObserverList<UdevTaggedDeviceObserver> tagged_device_observers_;
 

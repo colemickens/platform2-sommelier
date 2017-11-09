@@ -83,14 +83,15 @@ void PluggableInternalBacklight::UpdateDevice() {
                     OnBacklightDeviceChanged(this));
 }
 
-void PluggableInternalBacklight::OnUdevEvent(const std::string& subsystem,
-                                             const std::string& sysname,
-                                             UdevAction action) {
-  DCHECK_EQ(subsystem, udev_subsystem_);
-  if ((action == UdevAction::ADD || action == UdevAction::REMOVE) &&
-      base::MatchPattern(sysname, pattern_)) {
-    LOG(INFO) << "Got udev " << (action == UdevAction::ADD ? "add" : "remove")
-              << " event for " << sysname << " on subsystem " << subsystem;
+void PluggableInternalBacklight::OnUdevEvent(const UdevEvent& event) {
+  DCHECK_EQ(event.subsystem, udev_subsystem_);
+  if ((event.action == UdevEvent::Action::ADD ||
+       event.action == UdevEvent::Action::REMOVE) &&
+      base::MatchPattern(event.sysname, pattern_)) {
+    LOG(INFO) << "Got udev "
+              << (event.action == UdevEvent::Action::ADD ? "add" : "remove")
+              << " event for " << event.sysname << " on subsystem "
+              << event.subsystem;
     UpdateDevice();
   }
 }

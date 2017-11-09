@@ -20,6 +20,7 @@
 namespace power_manager {
 namespace system {
 
+struct UdevEvent;
 class UdevInterface;
 
 // Watches for displays being connected or disconnected.
@@ -70,9 +71,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
   void RemoveObserver(DisplayWatcherObserver* observer) override;
 
   // UdevSubsystemObserver implementation:
-  void OnUdevEvent(const std::string& subsystem,
-                   const std::string& sysname,
-                   UdevAction action) override;
+  void OnUdevEvent(const UdevEvent& event) override;
 
  private:
   // Returns the path to the I2C device used for communicating with the display

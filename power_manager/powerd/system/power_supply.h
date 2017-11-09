@@ -36,6 +36,7 @@ enum class PowerSupplyType;
 namespace system {
 
 struct PowerStatus;
+struct UdevEvent;
 class UdevInterface;
 
 // Copies fields from |status| into |proto|.
@@ -329,9 +330,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   bool SetPowerSource(const std::string& id) override;
 
   // UdevSubsystemObserver implementation:
-  void OnUdevEvent(const std::string& subsystem,
-                   const std::string& sysname,
-                   UdevAction action) override;
+  void OnUdevEvent(const UdevEvent& event) override;
 
  private:
   // Specifies when UpdatePowerStatus() should update |power_status_|.

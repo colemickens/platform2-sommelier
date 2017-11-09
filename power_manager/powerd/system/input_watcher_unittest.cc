@@ -609,15 +609,15 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   linked_ptr<EventDeviceStub> keyboard(new EventDeviceStub);
   keyboard->set_is_power_button(true);
   AddDevice(kDeviceName, keyboard);
-  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem, kDeviceName,
-                              UdevAction::ADD);
+  udev_.NotifySubsystemObservers({InputWatcher::kInputUdevSubsystem, "",
+                                  kDeviceName, UdevEvent::Action::ADD});
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
-  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem, kDeviceName,
-                              UdevAction::REMOVE);
+  udev_.NotifySubsystemObservers({InputWatcher::kInputUdevSubsystem, "",
+                                  kDeviceName, UdevEvent::Action::REMOVE});
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();

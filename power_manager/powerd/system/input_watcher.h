@@ -34,6 +34,7 @@ namespace system {
 class EventDeviceInterface;
 class EventDeviceFactoryInterface;
 class InputObserver;
+struct UdevEvent;
 class UdevInterface;
 
 class InputWatcher : public InputWatcherInterface,
@@ -83,9 +84,7 @@ class InputWatcher : public InputWatcherInterface,
   bool IsUSBInputDeviceConnected() const override;
 
   // UdevSubsystemObserver implementation:
-  void OnUdevEvent(const std::string& subsystem,
-                   const std::string& sysname,
-                   UdevAction action) override;
+  void OnUdevEvent(const UdevEvent& event) override;
 
  private:
   // Different types of devices monitored by InputWatcher. It's possible for a

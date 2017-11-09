@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 
 #include "power_manager/powerd/system/tagged_device.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
 namespace power_manager {
@@ -16,9 +17,14 @@ UdevStub::~UdevStub() {}
 
 bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
                                     UdevSubsystemObserver* observer) const {
-  SubsystemObserverMap::const_iterator it =
-      subsystem_observers_.find(subsystem);
-  return it != subsystem_observers_.end() && it->second.count(observer);
+  const auto it = subsystem_observers_.find(subsystem);
+  return it != subsystem_observers_.end() && it->second->HasObserver(observer);
+}
+
+void UdevStub::NotifySubsystemObservers(const UdevEvent& event) {
+  auto it = subsystem_observers_.find(event.subsystem);
+  if (it != subsystem_observers_.end())
+    FOR_EACH_OBSERVER(UdevSubsystemObserver, *it->second, OnUdevEvent(event));
 }
 
 void UdevStub::TaggedDeviceChanged(const std::string& syspath,
@@ -38,12 +44,24 @@ void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
 
 void UdevStub::AddSubsystemObserver(const std::string& subsystem,
                                     UdevSubsystemObserver* observer) {
-  subsystem_observers_[subsystem].insert(observer);
+  DCHECK(observer);
+  auto it = subsystem_observers_.find(subsystem);
+  if (it == subsystem_observers_.end()) {
+    it = subsystem_observers_
+             .emplace(
+                 subsystem,
+                 std::make_unique<base::ObserverList<UdevSubsystemObserver>>())
+             .first;
+  }
+  it->second->AddObserver(observer);
 }
 
 void UdevStub::RemoveSubsystemObserver(const std::string& subsystem,
                                        UdevSubsystemObserver* observer) {
-  subsystem_observers_[subsystem].erase(observer);
+  DCHECK(observer);
+  auto it = subsystem_observers_.find(subsystem);
+  if (it != subsystem_observers_.end())
+    it->second->RemoveObserver(observer);
 }
 
 void UdevStub::AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {

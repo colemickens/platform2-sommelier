@@ -20,6 +20,7 @@ namespace system {
 
 class BacklightObserver;
 class InternalBacklight;
+struct UdevEvent;
 class UdevInterface;
 
 // This class wraps the InternalBacklight class, refreshing it in response to
@@ -47,9 +48,7 @@ class PluggableInternalBacklight : public BacklightInterface,
   bool TransitionInProgress() const override;
 
   // UdevSubsystemObserver:
-  void OnUdevEvent(const std::string& subsystem,
-                   const std::string& sysname,
-                   UdevAction action) override;
+  void OnUdevEvent(const UdevEvent& event) override;
 
  private:
   // Recreates |device_|, setting it to null if the device wasn't found.
