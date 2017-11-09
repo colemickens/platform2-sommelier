@@ -28,10 +28,15 @@ using std::vector;
 
 namespace shill {
 
-const unsigned int CryptoDESCBC::kBlockSize = 8;
+namespace {
+
+constexpr unsigned int kBlockSize = 8;
+constexpr char kSentinel[] = "[ok]";
+constexpr char kVersion2Prefix[] = "02:";
+
+}  // namespace
+
 const char CryptoDESCBC::kID[] = "des-cbc";
-const char CryptoDESCBC::kSentinel[] = "[ok]";
-const char CryptoDESCBC::kVersion2Prefix[] = "02:";
 
 CryptoDESCBC::CryptoDESCBC() {}
 

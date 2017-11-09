@@ -57,10 +57,6 @@ class CryptoDESCBC : public CryptoInterface {
   FRIEND_TEST(CryptoDESCBCTest, Decrypt);
   FRIEND_TEST(CryptoDESCBCTest, Encrypt);
 
-  static const unsigned int kBlockSize;
-  static const char kSentinel[];
-  static const char kVersion2Prefix[];
-
   std::vector<char> key_;
   std::vector<char> iv_;
 
