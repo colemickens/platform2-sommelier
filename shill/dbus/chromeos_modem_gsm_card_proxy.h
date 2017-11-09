@@ -28,16 +28,16 @@
 namespace shill {
 
 // A proxy to (old) ModemManager.Modem.Gsm.Card.
-class ChromeosModemGSMCardProxy : public ModemGSMCardProxyInterface {
+class ChromeosModemGsmCardProxy : public ModemGsmCardProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Card DBus
   // object proxy at |path| owned by |service|.
-  ChromeosModemGSMCardProxy(const scoped_refptr<dbus::Bus>& bus,
+  ChromeosModemGsmCardProxy(const scoped_refptr<dbus::Bus>& bus,
                             const std::string& path,
                             const std::string& service);
-  ~ChromeosModemGSMCardProxy() override;
+  ~ChromeosModemGsmCardProxy() override;
 
-  // Inherited from ModemGSMCardProxyInterface.
+  // Inherited from ModemGsmCardProxyInterface.
   void GetIMEI(Error* error,
                const GSMIdentifierCallback& callback,
                int timeout) override;
@@ -104,8 +104,8 @@ class ChromeosModemGSMCardProxy : public ModemGSMCardProxyInterface {
   std::unique_ptr<org::freedesktop::ModemManager::Modem::Gsm::CardProxy> proxy_;
   std::unique_ptr<PropertySet> properties_;
 
-  base::WeakPtrFactory<ChromeosModemGSMCardProxy> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(ChromeosModemGSMCardProxy);
+  base::WeakPtrFactory<ChromeosModemGsmCardProxy> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ChromeosModemGsmCardProxy);
 };
 
 }  // namespace shill

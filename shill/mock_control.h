@@ -155,8 +155,8 @@ class MockControl : public ControlInterface {
   MOCK_METHOD2(CreateModemCdmaProxy,
                std::unique_ptr<ModemCdmaProxyInterface>(
                    const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemGSMCardProxy,
-               std::unique_ptr<ModemGSMCardProxyInterface>(
+  MOCK_METHOD2(CreateModemGsmCardProxy,
+               std::unique_ptr<ModemGsmCardProxyInterface>(
                    const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateModemGSMNetworkProxy,
                std::unique_ptr<ModemGSMNetworkProxyInterface>(

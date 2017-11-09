@@ -87,7 +87,7 @@ CellularCapabilityGsm::CellularCapabilityGsm(Cellular* cellular,
   // proxies can be created when the cellular device/capability is constructed,
   // but callbacks for DBus signal updates are not set up until the device is
   // enabled.
-  card_proxy_ = control_interface()->CreateModemGSMCardProxy(
+  card_proxy_ = control_interface()->CreateModemGsmCardProxy(
       cellular->dbus_path(), cellular->dbus_service());
   // TODO(benchan): To allow unit testing using a mock proxy without further
   // complicating the code, the test proxy factory is set up to return a nullptr
@@ -126,7 +126,7 @@ void CellularCapabilityGsm::InitProxies() {
   // TODO(benchan): Remove this check after refactoring the proxy
   // initialization.
   if (!card_proxy_.get()) {
-    card_proxy_ = control_interface()->CreateModemGSMCardProxy(
+    card_proxy_ = control_interface()->CreateModemGsmCardProxy(
         cellular()->dbus_path(), cellular()->dbus_service());
   }
   network_proxy_ = control_interface()->CreateModemGSMNetworkProxy(

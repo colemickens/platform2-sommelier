@@ -204,7 +204,7 @@ class CellularCapabilityGsm : public CellularCapabilityClassic {
                    const Error& error);
   void OnConnectReply(const ResultCallback& callback, const Error& error);
 
-  std::unique_ptr<ModemGSMCardProxyInterface> card_proxy_;
+  std::unique_ptr<ModemGsmCardProxyInterface> card_proxy_;
   std::unique_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance

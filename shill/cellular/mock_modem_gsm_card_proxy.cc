@@ -22,7 +22,7 @@ using testing::_;
 
 namespace shill {
 
-MockModemGSMCardProxy::MockModemGSMCardProxy() {
+MockModemGsmCardProxy::MockModemGsmCardProxy() {
   ON_CALL(*this, GetIMEI(_, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
   ON_CALL(*this, GetIMSI(_, _, _))
@@ -41,6 +41,6 @@ MockModemGSMCardProxy::MockModemGSMCardProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
 }
 
-MockModemGSMCardProxy::~MockModemGSMCardProxy() {}
+MockModemGsmCardProxy::~MockModemGsmCardProxy() {}
 
 }  // namespace shill

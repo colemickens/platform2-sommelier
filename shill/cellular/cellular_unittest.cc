@@ -199,7 +199,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     proxy_.reset(new MockModemProxy());
     simple_proxy_.reset(new MockModemSimpleProxy());
     cdma_proxy_.reset(new MockModemCdmaProxy());
-    gsm_card_proxy_.reset(new MockModemGSMCardProxy());
+    gsm_card_proxy_.reset(new MockModemGsmCardProxy());
     gsm_network_proxy_.reset(new MockModemGSMNetworkProxy());
     mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
@@ -514,7 +514,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->cdma_proxy_);
     }
 
-    std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
+    std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
@@ -566,7 +566,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     CellularTest* test_;
   };
 
-  void AllowCreateGSMCardProxyFromFactory() {
+  void AllowCreateGsmCardProxyFromFactory() {
     create_gsm_card_proxy_from_factory_ = true;
   }
 
@@ -623,7 +623,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   unique_ptr<MockModemProxy> proxy_;
   unique_ptr<MockModemSimpleProxy> simple_proxy_;
   unique_ptr<MockModemCdmaProxy> cdma_proxy_;
-  unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
+  unique_ptr<MockModemGsmCardProxy> gsm_card_proxy_;
   unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
@@ -771,7 +771,7 @@ TEST_P(CellularTest, StartGSMRegister) {
   EXPECT_CALL(*mock_serving_operator_info_, UpdateOperatorName(_));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
-  AllowCreateGSMCardProxyFromFactory();
+  AllowCreateGsmCardProxyFromFactory();
 
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
@@ -1406,7 +1406,7 @@ TEST_P(CellularTest, ModemStateChangeStaleConnected) {
   // When a modem is asked to connect and before the connect completes, the
   // modem is disabled, it may send a stale Connected state transition after
   // it has been disabled.
-  AllowCreateGSMCardProxyFromFactory();
+  AllowCreateGsmCardProxyFromFactory();
   device_->state_ = Cellular::kStateDisabled;
   device_->modem_state_ = Cellular::kModemStateEnabling;
   device_->OnModemStateChanged(Cellular::kModemStateConnected);

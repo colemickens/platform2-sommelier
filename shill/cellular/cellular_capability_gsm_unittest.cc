@@ -59,7 +59,7 @@ class CellularCapabilityGsmTest : public testing::Test {
         create_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
-        card_proxy_(new MockModemGSMCardProxy()),
+        card_proxy_(new MockModemGsmCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
         capability_(nullptr),
         device_adaptor_(nullptr),
@@ -201,7 +201,7 @@ class CellularCapabilityGsmTest : public testing::Test {
       return std::move(test_->simple_proxy_);
     }
 
-    std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
+    std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
@@ -317,7 +317,7 @@ class CellularCapabilityGsmTest : public testing::Test {
   bool create_card_proxy_from_factory_;
   std::unique_ptr<MockModemProxy> proxy_;
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
-  std::unique_ptr<MockModemGSMCardProxy> card_proxy_;
+  std::unique_ptr<MockModemGsmCardProxy> card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
   CellularCapabilityGsm* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.

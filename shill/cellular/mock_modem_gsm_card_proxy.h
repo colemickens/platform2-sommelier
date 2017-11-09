@@ -26,10 +26,10 @@
 
 namespace shill {
 
-class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
+class MockModemGsmCardProxy : public ModemGsmCardProxyInterface {
  public:
-  MockModemGSMCardProxy();
-  ~MockModemGSMCardProxy() override;
+  MockModemGsmCardProxy();
+  ~MockModemGsmCardProxy() override;
 
   MOCK_METHOD3(GetIMEI, void(Error* error,
                              const GSMIdentifierCallback& callback,
@@ -60,7 +60,7 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MOCK_METHOD0(EnabledFacilityLocks, uint32_t());
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockModemGSMCardProxy);
+  DISALLOW_COPY_AND_ASSIGN(MockModemGsmCardProxy);
 };
 
 }  // namespace shill

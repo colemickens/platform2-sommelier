@@ -31,9 +31,9 @@ using GSMIdentifierCallback =
 // These are the methods that a ModemManager.Modem.Gsm.Card proxy must
 // support. The interface is provided so that it can be mocked in tests.
 // All calls are made asynchronously.
-class ModemGSMCardProxyInterface {
+class ModemGsmCardProxyInterface {
  public:
-  virtual ~ModemGSMCardProxyInterface() {}
+  virtual ~ModemGsmCardProxyInterface() {}
 
   virtual void GetIMEI(Error* error, const GSMIdentifierCallback& callback,
                        int timeout) = 0;
