@@ -36,21 +36,21 @@ constexpr char kVersion2Prefix[] = "02:";
 
 }  // namespace
 
-const char CryptoDESCBC::kID[] = "des-cbc";
+const char CryptoDesCbc::kID[] = "des-cbc";
 
-CryptoDESCBC::CryptoDESCBC() {}
+CryptoDesCbc::CryptoDesCbc() {}
 
-string CryptoDESCBC::GetID() {
+string CryptoDesCbc::GetID() {
   return kID;
 }
 
-bool CryptoDESCBC::Encrypt(const string& plaintext, string* ciphertext) {
+bool CryptoDesCbc::Encrypt(const string& plaintext, string* ciphertext) {
   // Never encrypt. We'll fall back to rot47 which doesn't depend on
   // the owner key which may change due to rotation.
   return false;
 }
 
-bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
+bool CryptoDesCbc::Decrypt(const string& ciphertext, string* plaintext) {
   CHECK_EQ(kBlockSize, key_.size());
   CHECK_EQ(kBlockSize, iv_.size());
   int version = 1;
@@ -98,7 +98,7 @@ bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
   return true;
 }
 
-bool CryptoDESCBC::LoadKeyMatter(const FilePath& path) {
+bool CryptoDesCbc::LoadKeyMatter(const FilePath& path) {
   key_.clear();
   iv_.clear();
   string matter;

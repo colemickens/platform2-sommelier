@@ -40,19 +40,19 @@ const char kPlainVersion1[] = "This is a test!";
 const char kCipherVersion1[] = "bKlHDISdHMFfmfgBTT5I0w==";
 }  // namespace
 
-class CryptoDESCBCTest : public Test {
+class CryptoDesCbcTest : public Test {
  public:
-  CryptoDESCBCTest() {}
+  CryptoDesCbcTest() {}
 
  protected:
-  CryptoDESCBC crypto_;
+  CryptoDesCbc crypto_;
 };
 
-TEST_F(CryptoDESCBCTest, GetID) {
-  EXPECT_EQ(CryptoDESCBC::kID, crypto_.GetID());
+TEST_F(CryptoDesCbcTest, GetID) {
+  EXPECT_EQ(CryptoDesCbc::kID, crypto_.GetID());
 }
 
-TEST_F(CryptoDESCBCTest, LoadKeyMatter) {
+TEST_F(CryptoDesCbcTest, LoadKeyMatter) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const char kKeyMatterFile[] = "key-matter-file";
@@ -89,7 +89,7 @@ TEST_F(CryptoDESCBCTest, LoadKeyMatter) {
   EXPECT_TRUE(crypto_.iv().empty());
 }
 
-TEST_F(CryptoDESCBCTest, Encrypt) {
+TEST_F(CryptoDesCbcTest, Encrypt) {
   crypto_.key_.assign(kTestKey, kTestKey + strlen(kTestKey));
   crypto_.iv_.assign(kTestIV, kTestIV + strlen(kTestIV));
 
@@ -97,7 +97,7 @@ TEST_F(CryptoDESCBCTest, Encrypt) {
   EXPECT_FALSE(crypto_.Encrypt(kPlainText, &ciphertext));
 }
 
-TEST_F(CryptoDESCBCTest, Decrypt) {
+TEST_F(CryptoDesCbcTest, Decrypt) {
   crypto_.key_.assign(kTestKey, kTestKey + strlen(kTestKey));
   crypto_.iv_.assign(kTestIV, kTestIV + strlen(kTestIV));
 

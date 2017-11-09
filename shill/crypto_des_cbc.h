@@ -34,11 +34,11 @@ class FilePath;
 namespace shill {
 
 // DES-CBC crypto module implementation.
-class CryptoDESCBC : public CryptoInterface {
+class CryptoDesCbc : public CryptoInterface {
  public:
   static const char kID[];
 
-  CryptoDESCBC();
+  CryptoDesCbc();
 
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
   // the DES initialization vector to the second to last |kBlockSize| bytes of
@@ -54,13 +54,13 @@ class CryptoDESCBC : public CryptoInterface {
   const std::vector<char>& iv() const { return iv_; }
 
  private:
-  FRIEND_TEST(CryptoDESCBCTest, Decrypt);
-  FRIEND_TEST(CryptoDESCBCTest, Encrypt);
+  FRIEND_TEST(CryptoDesCbcTest, Decrypt);
+  FRIEND_TEST(CryptoDesCbcTest, Encrypt);
 
   std::vector<char> key_;
   std::vector<char> iv_;
 
-  DISALLOW_COPY_AND_ASSIGN(CryptoDESCBC);
+  DISALLOW_COPY_AND_ASSIGN(CryptoDesCbc);
 };
 
 }  // namespace shill
