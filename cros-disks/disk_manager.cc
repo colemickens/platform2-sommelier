@@ -18,7 +18,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "cros-disks/exfat_mounter.h"
-#include "cros-disks/external_mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
@@ -429,10 +428,6 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
   const string& mounter_type = filesystem.mounter_type();
   if (mounter_type == SystemMounter::kMounterType)
     return std::make_unique<SystemMounter>(
-        disk.device_file, target_path, filesystem.mount_type(), mount_options);
-
-  if (mounter_type == ExternalMounter::kMounterType)
-    return std::make_unique<ExternalMounter>(
         disk.device_file, target_path, filesystem.mount_type(), mount_options);
 
   if (mounter_type == ExFATMounter::kMounterType)

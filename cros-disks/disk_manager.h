@@ -186,7 +186,6 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   std::map<std::string, Filesystem> filesystems_;
 
   FRIEND_TEST(DiskManagerTest, CreateExFATMounter);
-  FRIEND_TEST(DiskManagerTest, CreateExternalMounter);
   FRIEND_TEST(DiskManagerTest, CreateNTFSMounter);
   FRIEND_TEST(DiskManagerTest, CreateSystemMounter);
   FRIEND_TEST(DiskManagerTest, GetFilesystem);

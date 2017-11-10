@@ -17,7 +17,6 @@
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/exfat_mounter.h"
-#include "cros-disks/external_mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mounter.h"
@@ -66,26 +65,6 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
 
   Filesystem filesystem("exfat");
   filesystem.set_mounter_type(ExFATMounter::kMounterType);
-
-  string target_path = "/media/disk";
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
-
-  unique_ptr<Mounter> mounter(
-      manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_NE(nullptr, mounter.get());
-  EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source_path());
-  EXPECT_EQ(target_path, mounter->target_path());
-  EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
-}
-
-TEST_F(DiskManagerTest, CreateExternalMounter) {
-  Disk disk;
-  disk.device_file = "/dev/sda1";
-
-  Filesystem filesystem("fat");
-  filesystem.set_mount_type("vfat");
-  filesystem.set_mounter_type(ExternalMounter::kMounterType);
 
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
