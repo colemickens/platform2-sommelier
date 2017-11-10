@@ -10,15 +10,12 @@
 #include <base/stl_util.h>
 
 #include "modemfwd/modem.h"
-#include "modemfwd/modem_helper.h"
 
 namespace modemfwd {
 
 ModemFlasher::ModemFlasher(
-    std::unique_ptr<ModemHelperDirectory> helper_directory,
     std::unique_ptr<FirmwareDirectory> firmware_directory)
-  : helper_directory_(std::move(helper_directory)),
-    firmware_directory_(std::move(firmware_directory)) {
+  : firmware_directory_(std::move(firmware_directory)) {
 }
 
 void ModemFlasher::TryFlash(Modem* modem) {
@@ -28,14 +25,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
                  << " is blacklisted; not flashing";
     return;
   }
-
   std::string device_id = modem->GetDeviceId();
-  ModemHelper* helper = helper_directory_->GetHelperForDeviceId(device_id);
-  if (!helper) {
-    LOG(WARNING) << "No helper found to update modems with ID ["
-                 << device_id << "]";
-    return;
-  }
 
   FirmwareFileInfo file_info;
   // Check if we need to update the main firmware.
@@ -48,7 +38,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
       // We found different firmware! Flash the modem, and since it will
       // reboot afterwards, we can wait to get called again to check the
       // carrier firmware.
-      if (helper->FlashMainFirmware(file_info.firmware_path)) {
+      if (modem->FlashMainFirmware(file_info.firmware_path)) {
         main_fw_checked_.insert(equipment_id);
         DLOG(INFO) << "Flashed " << file_info.firmware_path.value()
                    << " to the modem";
@@ -91,20 +81,19 @@ void ModemFlasher::TryFlash(Modem* modem) {
   // Carrier firmware operates a bit differently. We need to flash if
   // the carrier or the version has changed, or if there wasn't any carrier
   // firmware to begin with.
-  CarrierFirmwareInfo carrier_fw_info;
-  bool has_carrier_fw = helper->GetCarrierFirmwareInfo(&carrier_fw_info);
+  std::string carrier_fw_id = modem->GetCarrierFirmwareId();
+  std::string carrier_fw_version = modem->GetCarrierFirmwareVersion();
+  bool has_carrier_fw = !(carrier_fw_id.empty() || carrier_fw_version.empty());
   if (has_carrier_fw) {
     DLOG(INFO) << "Currently installed carrier firmware version "
-               << carrier_fw_info.version << " for carrier "
-               << carrier_fw_info.carrier_name;
+               << carrier_fw_version << " for carrier " << carrier_fw_id;
   } else {
     DLOG(INFO) << "No carrier firmware is currently installed";
   }
 
-  if (!has_carrier_fw ||
-      carrier_fw_info.carrier_name != current_carrier ||
-      carrier_fw_info.version != file_info.version) {
-    if (helper->FlashCarrierFirmware(file_info.firmware_path)) {
+  if (!has_carrier_fw || carrier_fw_id != current_carrier ||
+      carrier_fw_version != file_info.version) {
+    if (modem->FlashCarrierFirmware(file_info.firmware_path)) {
       last_carrier_fw_flashed_.insert(
           std::make_pair(equipment_id, file_info.firmware_path));
       DLOG(INFO) << "Flashed " << file_info.firmware_path.value()

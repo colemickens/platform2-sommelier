@@ -16,6 +16,8 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "modemfwd/modem_helper.h"
+
 namespace modemfwd {
 
 class ModemImpl : public Modem {
@@ -23,11 +25,14 @@ class ModemImpl : public Modem {
   ModemImpl(const std::string& device_id,
             const std::string& equipment_id,
             const std::string& carrier_id,
-            const std::string& firmware_version)
+            ModemHelper* helper)
     : device_id_(device_id),
       equipment_id_(equipment_id),
       carrier_id_(carrier_id),
-      firmware_version_(firmware_version) {}
+      helper_(helper) {
+    if (!helper->GetFirmwareInfo(&installed_firmware_))
+      LOG(WARNING) << "Could not fetch installed firmware information";
+  }
   ~ModemImpl() override = default;
 
   // modemfwd::Modem overrides.
@@ -38,20 +43,38 @@ class ModemImpl : public Modem {
   std::string GetCarrierId() const override { return carrier_id_; }
 
   std::string GetMainFirmwareVersion() const override {
-    return firmware_version_;
+    return installed_firmware_.main_version;
+  }
+
+  std::string GetCarrierFirmwareId() const override {
+    return installed_firmware_.carrier_uuid;
+  }
+
+  std::string GetCarrierFirmwareVersion() const override {
+    return installed_firmware_.carrier_version;
+  }
+
+  bool FlashMainFirmware(const base::FilePath& path_to_fw) override {
+    return helper_->FlashMainFirmware(path_to_fw);
+  }
+
+  bool FlashCarrierFirmware(const base::FilePath& path_to_fw) override {
+    return helper_->FlashCarrierFirmware(path_to_fw);
   }
 
  private:
   std::string device_id_;
   std::string equipment_id_;
   std::string carrier_id_;
-  std::string firmware_version_;
+  FirmwareInfo installed_firmware_;
+  ModemHelper* helper_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemImpl);
 };
 
 std::unique_ptr<Modem> CreateModem(
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device) {
+    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device,
+    ModemHelperDirectory* helper_directory) {
   std::string object_path = device->GetObjectPath().value();
   DVLOG(1) << "Creating modem proxy for " << object_path;
 
@@ -80,17 +103,22 @@ std::unique_ptr<Modem> CreateModem(
     return nullptr;
   }
 
-  // These properties may not exist and it's not a big deal if they don't.
+  // This property may not exist and it's not a big deal if it doesn't.
   std::map<std::string, std::string> operator_info;
   std::string carrier_id;
   if (properties[shill::kHomeProviderProperty].GetValue(&operator_info))
     carrier_id = operator_info[shill::kOperatorUuidKey];
 
-  std::string firmware_version =
-      properties[shill::kFirmwareRevisionProperty].TryGet<std::string>();
+  // Use the device ID to grab a helper.
+  ModemHelper* helper = helper_directory->GetHelperForDeviceId(device_id);
+  if (!helper) {
+    LOG(INFO) << "No helper found to update modems with ID ["
+                 << device_id << "]";
+    return nullptr;
+  }
 
   return std::make_unique<ModemImpl>(
-      device_id, equipment_id, carrier_id, firmware_version);
+      device_id, equipment_id, carrier_id, helper);
 }
 
 }  // namespace modemfwd

@@ -21,7 +21,8 @@
 
 namespace modemfwd {
 
-using OnModemAppearedCallback = base::Callback<void(std::unique_ptr<Modem>)>;
+using OnModemAppearedCallback =
+    base::Callback<void(std::unique_ptr<org::chromium::flimflam::DeviceProxy>)>;
 
 class ModemTracker {
  public:

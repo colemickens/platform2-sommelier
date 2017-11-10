@@ -32,10 +32,13 @@ class Daemon : public brillo::DBusDaemon {
   // Called when a modem appears. Generally this means on startup but can
   // also be called in response to e.g. rebooting the modem or SIM hot
   // swapping.
-  void OnModemAppeared(std::unique_ptr<Modem> modem);
+  void OnModemAppeared(
+      std::unique_ptr<org::chromium::flimflam::DeviceProxy> modem);
 
   base::FilePath helper_dir_path_;
   base::FilePath firmware_dir_path_;
+
+  std::unique_ptr<ModemHelperDirectory> helper_directory_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;

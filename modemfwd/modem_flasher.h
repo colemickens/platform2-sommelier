@@ -14,7 +14,6 @@
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/modem.h"
-#include "modemfwd/modem_helper_directory.h"
 
 namespace modemfwd {
 
@@ -22,13 +21,11 @@ namespace modemfwd {
 // or not it should flash new firmware onto the modem.
 class ModemFlasher {
  public:
-  ModemFlasher(std::unique_ptr<ModemHelperDirectory> helper_directory,
-               std::unique_ptr<FirmwareDirectory> firmware_directory);
+  explicit ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory);
 
   void TryFlash(Modem* modem);
 
  private:
-  std::unique_ptr<ModemHelperDirectory> helper_directory_;
   std::unique_ptr<FirmwareDirectory> firmware_directory_;
 
   // Unlike carrier firmware, we should only ever successfully flash the main

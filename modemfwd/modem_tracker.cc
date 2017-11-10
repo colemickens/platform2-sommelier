@@ -93,12 +93,8 @@ void ModemTracker::OnDeviceListChanged(
       continue;
     }
 
-    auto modem = CreateModem(std::move(device));
-    if (!modem)
-      continue;
-
     new_modems.insert(device_path);
-    on_modem_appeared_callback_.Run(std::move(modem));
+    on_modem_appeared_callback_.Run(std::move(device));
   }
   modem_objects_ = new_modems;
 }

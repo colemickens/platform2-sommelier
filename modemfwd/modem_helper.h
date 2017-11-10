@@ -13,23 +13,27 @@
 
 namespace modemfwd {
 
-struct CarrierFirmwareInfo {
-  CarrierFirmwareInfo() = default;
-  CarrierFirmwareInfo(const std::string& carrier_name,
-                      const std::string& version)
-      : carrier_name(carrier_name), version(version) {}
+struct FirmwareInfo {
+  FirmwareInfo() = default;
+  FirmwareInfo(const std::string& main_version,
+               const std::string& carrier_uuid,
+               const std::string& carrier_version)
+      : main_version(main_version),
+        carrier_uuid(carrier_uuid),
+        carrier_version(carrier_version) {}
 
-  std::string carrier_name;
-  std::string version;
+  std::string main_version;
+  std::string carrier_uuid;
+  std::string carrier_version;
 };
 
 class ModemHelper {
  public:
   virtual ~ModemHelper() = default;
 
-  virtual bool FlashMainFirmware(const base::FilePath& path_to_fw) = 0;
+  virtual bool GetFirmwareInfo(FirmwareInfo* out_info) = 0;
 
-  virtual bool GetCarrierFirmwareInfo(CarrierFirmwareInfo* out_info) = 0;
+  virtual bool FlashMainFirmware(const base::FilePath& path_to_fw) = 0;
   virtual bool FlashCarrierFirmware(const base::FilePath& path_to_fw) = 0;
 };
 

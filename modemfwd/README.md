@@ -12,21 +12,24 @@ require modem-specific knowledge to different programs. `modemfwd` will call
 into these programs with different flags to request different services. These
 flags are declared in the [system API] repo.
 
+* `--get_fw_info`: return version information for the currently installed
+  firmware (see below)
 * `--prepare_to_flash`: put the modem into firmware download mode
 * `--flash_main_fw=<file>`
-* `--get_carrier_fw_info`: get a string name for the carrier that is supported
-  by the currently installed carrier firmware, and its version (if there is any)
 * `--flash_carrier_fw=<file>`
 * `--reboot`
 
-`--get_carrier_fw_info` should return the carrier name on one line and the
-version on the next:
+`--get_fw_info` should return the main firmware on the first line, the carrier
+UUID on the next line and the carrier version on the one after that:
 
 ```
-$ modem_program --get_carrier_fw_info
-Carrier
-10.20.30.40
+$ modem_program --get_fw_info
+11.22.33.44
+big-long-carrier-uuid-string
+55.66
 ```
+
+The carrier UUID should match with one from the shill mobile operator DB.
 
 All commands should return 0 on success and something non-zero on failure.
 `modemfwd` will look for these binaries in the directory passed as the

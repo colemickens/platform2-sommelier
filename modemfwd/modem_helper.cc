@@ -19,8 +19,8 @@
 namespace {
 
 bool RunHelperProcess(const base::FilePath& helper_path,
-                       const std::string& arg,
-                       std::string* output) {
+                      const std::string& arg,
+                      std::string* output) {
   brillo::ProcessImpl helper;
   helper.AddArg(helper_path.value());
   helper.AddArg("--" + arg);
@@ -98,6 +98,26 @@ class ModemHelperImpl : public ModemHelper {
       : helper_path_(helper_path) {}
   ~ModemHelperImpl() override = default;
 
+  bool GetFirmwareInfo(FirmwareInfo* out_info) override {
+    CHECK(out_info);
+
+    std::string helper_output;
+    if (!RunHelperProcess(helper_path_, kGetFirmwareInfo, &helper_output))
+      return false;
+
+    std::vector<std::string> parsed_output = base::SplitString(
+        helper_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (parsed_output.size() != 3) {
+      LOG(WARNING) << "Modem helper returned malformed firmware version info";
+      return false;
+    }
+
+    out_info->main_version = parsed_output[0];
+    out_info->carrier_uuid = parsed_output[1];
+    out_info->carrier_version = parsed_output[2];
+    return true;
+  }
+
   // modemfwd::ModemHelper overrides.
   bool FlashMainFirmware(const base::FilePath& path_to_fw) override {
     auto flash_mode = FlashMode::Create(helper_path_);
@@ -109,28 +129,6 @@ class ModemHelperImpl : public ModemHelper {
                                                kFlashMainFirmware,
                                                path_to_fw.value().c_str()),
                             nullptr);
-  }
-
-  bool GetCarrierFirmwareInfo(CarrierFirmwareInfo* out_info) override {
-    CHECK(out_info);
-
-    std::string helper_output;
-    if (!RunHelperProcess(helper_path_,
-                          kGetCarrierFirmwareInfo,
-                          &helper_output)) {
-      return false;
-    }
-
-    std::vector<std::string> parsed_output = base::SplitString(
-        helper_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (parsed_output.size() != 2) {
-      LOG(WARNING) << "Modem helper returned malformed carrier firmware info";
-      return false;
-    }
-
-    out_info->carrier_name = parsed_output[0];
-    out_info->version = parsed_output[1];
-    return true;
   }
 
   bool FlashCarrierFirmware(const base::FilePath& path_to_fw) override {

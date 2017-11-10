@@ -8,6 +8,9 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+
+#include "modemfwd/modem_helper_directory.h"
 #include "shill/dbus-proxies.h"
 
 namespace modemfwd {
@@ -27,11 +30,18 @@ class Modem {
   // necessarily a readable name or e.g. MCC/MNC pair.
   virtual std::string GetCarrierId() const = 0;
 
+  // Information about this modem's installed firmware.
   virtual std::string GetMainFirmwareVersion() const = 0;
+  virtual std::string GetCarrierFirmwareId() const = 0;
+  virtual std::string GetCarrierFirmwareVersion() const = 0;
+
+  virtual bool FlashMainFirmware(const base::FilePath& path_to_fw) = 0;
+  virtual bool FlashCarrierFirmware(const base::FilePath& path_to_fw) = 0;
 };
 
 std::unique_ptr<Modem> CreateModem(
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device);
+    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device,
+    ModemHelperDirectory* helper_directory);
 
 }  // namespace modemfwd
 

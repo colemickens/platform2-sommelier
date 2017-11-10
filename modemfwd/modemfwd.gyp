@@ -79,7 +79,6 @@
             'firmware_directory_stub.cc',
             'firmware_directory_unittest.cc',
             'modem_flasher_unittest.cc',
-            'modem_helper_directory_stub.cc',
           ],
         },
       ]},

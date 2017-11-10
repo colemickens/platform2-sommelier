@@ -38,8 +38,8 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  auto helper_directory = CreateModemHelperDirectory(helper_dir_path_);
-  if (!helper_directory) {
+  helper_directory_ = CreateModemHelperDirectory(helper_dir_path_);
+  if (!helper_directory_) {
     LOG(ERROR) << "No suitable helpers found in " << helper_dir_path_.value();
     return EX_UNAVAILABLE;
   }
@@ -51,7 +51,6 @@ int Daemon::OnInit() {
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      std::move(helper_directory),
       CreateFirmwareDirectory(firmware_dir_path_));
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
@@ -62,7 +61,12 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-void Daemon::OnModemAppeared(std::unique_ptr<Modem> modem) {
+void Daemon::OnModemAppeared(
+    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device) {
+  auto modem = CreateModem(std::move(device), helper_directory_.get());
+  if (!modem)
+    return;
+
   DLOG(INFO) << "Modem " << modem->GetEquipmentId() << " appeared";
   modem_flasher_->TryFlash(modem.get());
 }

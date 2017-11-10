@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -23,6 +24,11 @@ class MockModem : public Modem {
   MOCK_CONST_METHOD0(GetEquipmentId, std::string());
   MOCK_CONST_METHOD0(GetCarrierId, std::string());
   MOCK_CONST_METHOD0(GetMainFirmwareVersion, std::string());
+  MOCK_CONST_METHOD0(GetCarrierFirmwareId, std::string());
+  MOCK_CONST_METHOD0(GetCarrierFirmwareVersion, std::string());
+
+  MOCK_METHOD1(FlashMainFirmware, bool(const base::FilePath&));
+  MOCK_METHOD1(FlashCarrierFirmware, bool(const base::FilePath&));
 };
 
 }  // namespace modemfwd

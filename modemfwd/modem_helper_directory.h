@@ -18,7 +18,7 @@ class ModemHelperDirectory {
  public:
   virtual ~ModemHelperDirectory() = default;
 
-  // Returns a weak pointer, do not store or free.
+  // Returns a weak pointer. Ensure users do not outlive the directory.
   virtual ModemHelper* GetHelperForDeviceId(const std::string& device_id) = 0;
 };
 
