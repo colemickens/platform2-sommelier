@@ -14,12 +14,6 @@
 
 #include "cros-disks/sandboxed_process.h"
 
-namespace brillo {
-
-class ProcessImpl;
-
-}  // namespace brillo
-
 namespace cros_disks {
 
 class Platform;
