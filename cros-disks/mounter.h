@@ -31,24 +31,9 @@ class Mounter {
   MountErrorType Mount();
 
   const std::string& filesystem_type() const { return filesystem_type_; }
-  void set_filesystem_type(const std::string& filesystem_type) {
-    filesystem_type_ = filesystem_type;
-  }
-
   const std::string& source_path() const { return source_path_; }
-  void set_source_path(const std::string& source_path) {
-    source_path_ = source_path;
-  }
-
   const std::string& target_path() const { return target_path_; }
-  void set_target_path(const std::string& target_path) {
-    target_path_ = target_path;
-  }
-
   const MountOptions& mount_options() const { return mount_options_; }
-  void set_mount_options(const MountOptions& mount_options) {
-    mount_options_ = mount_options;
-  }
 
  protected:
   // This pure virtual method is implemented by a derived class to mount
