@@ -148,7 +148,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
     }
 
     //The entity port of ipu3-csi2 is dynamical,
-    //get ipu3-csi2:0/1 from pixel entity sink.
+    //get ipu3-csi2 0 or 1 from pixel entity sink.
     if (type == SUBDEV_ISYSRECEIVER) {
         const char* pixelType  = "pixel_array";
 

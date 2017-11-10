@@ -53,7 +53,7 @@ namespace gcu = graphconfig::utils;
 #define MEDIACTL_PAD_PV_NUM 4
 #define SCALING_FACTOR 1
 
-const string csi2_without_port = "ipu3-csi2:";
+const string csi2_without_port = "ipu3-csi2 ";
 
 const string MEDIACTL_INPUTNAME = "input";
 
@@ -1925,7 +1925,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
 
         // get the next entity port of the "ov5670 binner 11-0010" which is dynamical.
-        // it could "ipu3-csi2:0" or "ipu3-csi2:1", then it will get 0 or 1.
+        // it could "ipu3-csi2 0" or "ipu3-csi2 1", then it will get 0 or 1.
         int port = 0;
         std::shared_ptr<MediaEntity> entity = nullptr;
         string entityName = sourceInfo.name + " " + sourceInfo.i2cAddress;
@@ -1946,7 +1946,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
             mMediaCtl->findMediaEntityById(pad->entity, entityDesc);
             LOG1("@%s, name:%s\n", __FUNCTION__, entityDesc.name);
             string name = entityDesc.name;
-            std::size_t p = name.find(":");
+            std::size_t p = name.find(" ");
             if (p != std::string::npos) {
                 string s;
                 s.append(name, p + 1, 1);
@@ -2135,7 +2135,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
      */
     addFormatParams(sourceInfo.pa.name, sourceInfo.output.w, sourceInfo.output.h, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
 
-    // ipu3-csi2:0 or 1
+    // ipu3-csi2 0 or 1
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 1, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
 

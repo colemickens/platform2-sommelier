@@ -47,8 +47,8 @@ const uint32_t MAX_KERNEL_COUNT = 30; // max number of kernels in the kernel lis
 const std::string SENSOR_PORT_NAME("sensor:port_0");
 const std::string TPG_PORT_NAME("tpg:port_0");
 // Declare string consts
-const std::string CSI_BE = "ipu3-cio2:";
-const std::string CSI_RECEIVER = "ipu3-csi2:0";
+const std::string CSI_BE = "ipu3-cio2 ";
+const std::string CSI_RECEIVER = "ipu3-csi2 0";
 
 const std::string GC_INPUT = "input";
 const std::string GC_PREVIEW = "preview";
