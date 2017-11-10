@@ -6,14 +6,13 @@
 
 #include <base/logging.h>
 
-using std::string;
-
 namespace cros_disks {
 
-Filesystem::Filesystem(const string& type)
-    : accepts_user_and_group_id_(false),
-      is_mounted_read_only_(false),
-      type_(type) {
+Filesystem::Filesystem(const std::string& type)
+    : type(type),
+      accepts_user_and_group_id(false),
+      is_mounted_read_only(false),
+      mount_type(type) {
   CHECK(!type.empty()) << "Invalid filesystem type";
 }
 

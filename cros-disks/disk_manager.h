@@ -26,9 +26,10 @@
 namespace cros_disks {
 
 class DeviceEjector;
-class Filesystem;
 class Mounter;
 class Platform;
+
+struct Filesystem;
 
 // The DiskManager is responsible for reading device state from udev.
 // Said changes could be the result of a udev notification or a synchronous

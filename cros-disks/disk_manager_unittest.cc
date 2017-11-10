@@ -64,7 +64,7 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("exfat");
-  filesystem.set_mounter_type(ExFATMounter::kMounterType);
+  filesystem.mounter_type = ExFATMounter::kMounterType;
 
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
@@ -72,7 +72,7 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
-  EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
+  EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
   EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
@@ -83,7 +83,7 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("ntfs");
-  filesystem.set_mounter_type(NTFSMounter::kMounterType);
+  filesystem.mounter_type = NTFSMounter::kMounterType;
 
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
@@ -91,7 +91,7 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
-  EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
+  EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
   EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
@@ -102,8 +102,7 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   disk.device_file = "/dev/sda1";
 
   Filesystem filesystem("vfat");
-  filesystem.AddExtraMountOption("utf8");
-  filesystem.AddExtraMountOption("shortname=mixed");
+  filesystem.extra_mount_options = {"utf8", "shortname=mixed"};
 
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
@@ -111,7 +110,7 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
-  EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
+  EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
   EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("utf8,shortname=mixed,rw,nodev,noexec,nosuid",
@@ -148,27 +147,27 @@ TEST_F(DiskManagerTest, GetFilesystem) {
   EXPECT_EQ(nullptr, manager_.GetFilesystem("nonexistent-fs"));
 
   Filesystem normal_fs("normal-fs");
-  EXPECT_EQ(nullptr, manager_.GetFilesystem(normal_fs.type()));
+  EXPECT_EQ(nullptr, manager_.GetFilesystem(normal_fs.type));
   manager_.RegisterFilesystem(normal_fs);
-  EXPECT_NE(nullptr, manager_.GetFilesystem(normal_fs.type()));
+  EXPECT_NE(nullptr, manager_.GetFilesystem(normal_fs.type));
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {
-  map<string, Filesystem>& filesystems = manager_.filesystems_;
+  const map<string, Filesystem>& filesystems = manager_.filesystems_;
   EXPECT_EQ(0, filesystems.size());
   EXPECT_TRUE(filesystems.find("nonexistent") == filesystems.end());
 
   Filesystem fat_fs("fat");
-  fat_fs.set_accepts_user_and_group_id(true);
+  fat_fs.accepts_user_and_group_id = true;
   manager_.RegisterFilesystem(fat_fs);
   EXPECT_EQ(1, filesystems.size());
-  EXPECT_TRUE(filesystems.find(fat_fs.type()) != filesystems.end());
+  EXPECT_TRUE(filesystems.find(fat_fs.type) != filesystems.end());
 
   Filesystem vfat_fs("vfat");
-  vfat_fs.set_accepts_user_and_group_id(true);
+  vfat_fs.accepts_user_and_group_id = true;
   manager_.RegisterFilesystem(vfat_fs);
   EXPECT_EQ(2, filesystems.size());
-  EXPECT_TRUE(filesystems.find(vfat_fs.type()) != filesystems.end());
+  EXPECT_TRUE(filesystems.find(vfat_fs.type) != filesystems.end());
 }
 
 TEST_F(DiskManagerTest, CanMount) {

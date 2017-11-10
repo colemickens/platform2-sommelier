@@ -344,57 +344,56 @@ const Filesystem* DiskManager::GetFilesystem(
 void DiskManager::RegisterDefaultFilesystems() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
   Filesystem vfat_fs("vfat");
-  vfat_fs.set_accepts_user_and_group_id(true);
-  vfat_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
-  vfat_fs.AddExtraMountOption(MountOptions::kOptionFlush);
-  vfat_fs.AddExtraMountOption("shortname=mixed");
-  vfat_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
+  vfat_fs.accepts_user_and_group_id = true;
+  vfat_fs.extra_mount_options = {MountOptions::kOptionDirSync,
+                                 MountOptions::kOptionFlush, "shortname=mixed",
+                                 MountOptions::kOptionUtf8};
   RegisterFilesystem(vfat_fs);
 
   Filesystem exfat_fs("exfat");
-  exfat_fs.set_mounter_type(ExFATMounter::kMounterType);
-  exfat_fs.set_accepts_user_and_group_id(true);
-  exfat_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  exfat_fs.mounter_type = ExFATMounter::kMounterType;
+  exfat_fs.accepts_user_and_group_id = true;
+  exfat_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(exfat_fs);
 
   Filesystem ntfs_fs("ntfs");
-  ntfs_fs.set_mounter_type(NTFSMounter::kMounterType);
-  ntfs_fs.set_accepts_user_and_group_id(true);
-  ntfs_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  ntfs_fs.mounter_type = NTFSMounter::kMounterType;
+  ntfs_fs.accepts_user_and_group_id = true;
+  ntfs_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(ntfs_fs);
 
   Filesystem hfsplus_fs("hfsplus");
-  hfsplus_fs.set_accepts_user_and_group_id(true);
-  hfsplus_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  hfsplus_fs.accepts_user_and_group_id = true;
+  hfsplus_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(hfsplus_fs);
 
   Filesystem iso9660_fs("iso9660");
-  iso9660_fs.set_is_mounted_read_only(true);
-  iso9660_fs.set_accepts_user_and_group_id(true);
-  iso9660_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
+  iso9660_fs.is_mounted_read_only = true;
+  iso9660_fs.accepts_user_and_group_id = true;
+  iso9660_fs.extra_mount_options = {MountOptions::kOptionUtf8};
   RegisterFilesystem(iso9660_fs);
 
   Filesystem udf_fs("udf");
-  udf_fs.set_is_mounted_read_only(true);
-  udf_fs.set_accepts_user_and_group_id(true);
-  udf_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
+  udf_fs.is_mounted_read_only = true;
+  udf_fs.accepts_user_and_group_id = true;
+  udf_fs.extra_mount_options = {MountOptions::kOptionUtf8};
   RegisterFilesystem(udf_fs);
 
   Filesystem ext2_fs("ext2");
-  ext2_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  ext2_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(ext2_fs);
 
   Filesystem ext3_fs("ext3");
-  ext3_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  ext3_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(ext3_fs);
 
   Filesystem ext4_fs("ext4");
-  ext4_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  ext4_fs.extra_mount_options = {MountOptions::kOptionDirSync};
   RegisterFilesystem(ext4_fs);
 }
 
 void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
-  filesystems_.insert(std::make_pair(filesystem.type(), filesystem));
+  filesystems_.emplace(filesystem.type, filesystem);
 }
 
 unique_ptr<Mounter> DiskManager::CreateMounter(
@@ -402,7 +401,7 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
     const Filesystem& filesystem,
     const string& target_path,
     const vector<string>& options) const {
-  const vector<string>& extra_options = filesystem.extra_mount_options();
+  const vector<string>& extra_options = filesystem.extra_mount_options;
   vector<string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
   extended_options.assign(options.begin(), options.end());
@@ -410,37 +409,36 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
                           extra_options.end());
 
   string default_user_id, default_group_id;
-  bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
-  if (set_user_and_group_id) {
+  if (filesystem.accepts_user_and_group_id) {
     default_user_id = base::StringPrintf("%d", platform()->mount_user_id());
     default_group_id = base::StringPrintf("%d", platform()->mount_group_id());
   }
 
   MountOptions mount_options;
-  mount_options.Initialize(extended_options, set_user_and_group_id,
+  mount_options.Initialize(extended_options,
+                           filesystem.accepts_user_and_group_id,
                            default_user_id, default_group_id);
 
-  if (filesystem.is_mounted_read_only() || disk.is_read_only ||
+  if (filesystem.is_mounted_read_only || disk.is_read_only ||
       disk.IsOpticalDisk()) {
     mount_options.SetReadOnlyOption();
   }
 
-  const string& mounter_type = filesystem.mounter_type();
-  if (mounter_type == SystemMounter::kMounterType)
+  if (filesystem.mounter_type == SystemMounter::kMounterType)
     return std::make_unique<SystemMounter>(
-        disk.device_file, target_path, filesystem.mount_type(), mount_options);
+        disk.device_file, target_path, filesystem.mount_type, mount_options);
 
-  if (mounter_type == ExFATMounter::kMounterType)
+  if (filesystem.mounter_type == ExFATMounter::kMounterType)
     return std::make_unique<ExFATMounter>(disk.device_file, target_path,
-                                          filesystem.mount_type(),
-                                          mount_options, platform());
+                                          filesystem.mount_type, mount_options,
+                                          platform());
 
-  if (mounter_type == NTFSMounter::kMounterType)
+  if (filesystem.mounter_type == NTFSMounter::kMounterType)
     return std::make_unique<NTFSMounter>(disk.device_file, target_path,
-                                         filesystem.mount_type(), mount_options,
+                                         filesystem.mount_type, mount_options,
                                          platform());
 
-  LOG(FATAL) << "Invalid mounter type '" << mounter_type << "'";
+  LOG(FATAL) << "Invalid mounter type '" << filesystem.mounter_type << "'";
   return nullptr;
 }
 
