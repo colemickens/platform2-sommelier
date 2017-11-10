@@ -469,6 +469,12 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
+  if (disk.is_on_boot_device) {
+    LOG(ERROR) << "'" << source_path
+               << "' is on boot device and not allowed to mount.";
+    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+  }
+
   if (disk.device_file.empty()) {
     LOG(ERROR) << "'" << source_path << "' does not have a device file";
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
