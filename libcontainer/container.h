@@ -16,10 +16,10 @@ namespace libcontainer {
 
 class BRILLO_EXPORT Container {
  public:
-  BRILLO_EXPORT Container(base::StringPiece name, const base::FilePath& rundir);
-  BRILLO_EXPORT ~Container();
+  Container(base::StringPiece name, const base::FilePath& rundir);
+  ~Container();
 
-  BRILLO_EXPORT container* get() const { return container_; }
+  container* get() const { return container_; }
 
  private:
   container* const container_;

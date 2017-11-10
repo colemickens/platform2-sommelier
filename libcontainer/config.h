@@ -23,15 +23,15 @@ using HookCallback = base::Callback<bool(pid_t)>;
 
 class BRILLO_EXPORT Config {
  public:
-  BRILLO_EXPORT Config();
-  BRILLO_EXPORT ~Config();
+  Config();
+  ~Config();
 
-  BRILLO_EXPORT container_config* get() const { return config_; }
+  container_config* get() const { return config_; }
 
   // Runs |callback| when |event| is reached. If |callback| fails,
   // container_start() will fail and tear down the container.
-  BRILLO_EXPORT void AddHook(minijail_hook_event_t event,
-                             libcontainer::HookCallback callback);
+  void AddHook(minijail_hook_event_t event,
+               libcontainer::HookCallback callback);
 
  private:
   container_config* const config_;
