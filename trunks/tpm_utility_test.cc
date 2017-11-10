@@ -15,6 +15,7 @@
 //
 
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -2230,6 +2231,128 @@ TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.DeclareTpmFirmwareStable());
+}
+
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_NoDataInNvram) {
+  std::string public_key;
+  EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
+            utility_.GetPublicRSAEndorsementKey(&public_key));
+}
+
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_EmptyNvram) {
+  uint32_t nv_index = 29360128;
+  TPM2B_MAX_NV_BUFFER nvram_data_buffer;
+  std::vector<unsigned char> cert = {};
+  nvram_data_buffer.size = cert.size();
+  memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
+
+  TPM2B_NV_PUBLIC public_area;
+  TPMS_NV_PUBLIC public_data;
+  public_area.nv_public = public_data;
+  public_data.data_size = 0;
+
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
+
+  std::string public_key;
+  EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
+            utility_.GetPublicRSAEndorsementKey(&public_key));
+}
+
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_InvalidDataInNvram) {
+  uint32_t nv_index = 29360128;
+  TPM2B_MAX_NV_BUFFER nvram_data_buffer;
+  std::vector<unsigned char> cert = {1, 2, 3, 4};
+  nvram_data_buffer.size = cert.size();
+  memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
+
+  TPM2B_NV_PUBLIC public_area;
+  TPMS_NV_PUBLIC public_data;
+  public_area.nv_public = public_data;
+  public_data.data_size = 4;
+
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
+
+  std::string public_key;
+  EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
+            utility_.GetPublicRSAEndorsementKey(&public_key));
+}
+
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_ValidCertificateInNvram) {
+  std::string hex_encoded_cert =
+      "308203EB308202D3A00302010202105A12528603AC1ABE3FE8EB925C951823300D06092A"
+      "864886F70D01010B0500308180310B30090603550406130255533113301106035504080C"
+      "0A43616C69666F726E696131143012060355040A0C0B476F6F676C6520496E632E312430"
+      "22060355040B0C1B456E67696E656572696E6720616E6420446576656C6F706D656E7431"
+      "20301E06035504030C1743524F532054504D2050524420454B20524F4F54204341301E17"
+      "0D3137303232313030303030325A170D3237303232313030303030325A30003082012230"
+      "0D06092A864886F70D01010105000382010F003082010A0282010100AC5869BD60F30463"
+      "612BB0C472AA19E5400E524A213290EBFB728D1AAC956F74B7CF6A8D57F17C94D4BE2B3D"
+      "07FD882CF708C30C476DCB1FF32695A8BAC77BDD5C04E89E2AB228D6EDFF2EFAA54BE9C3"
+      "0F9D211E2E42DE7E50CF424EEE6C310D677D8870522E8C953711BE42C9B94579D56D4815"
+      "60926606C60D74EFEEB013869C0424BB7D8585F79159BE7F476625B9BD2701D1C5ABA6D4"
+      "07A4724C2165C176C45CD2188576ADC20303C3368D11603CFEEE4CFD81EB9C9EACF0029C"
+      "4F41B2E4033AB68453884D5BB3E0DD9F680E150CB604428546CFA32B05743B073BAE9796"
+      "4A847756BB79D132EAEFF44EE1B25315C6B45CE74087A777CFD142769B5CF4E502030100"
+      "01A381DF3081DC300E0603551D0F0101FF04040302002030510603551D110101FF044730"
+      "45A443304131163014060567810502010C0B69643A3437344634463437310F300D060567"
+      "810502020C044831423231163014060567810502030C0B69643A3030313330303337300C"
+      "0603551D130101FF0402300030130603551D20040C300A3008060667810C010202301F06"
+      "03551D23041830168014153934FC5919CD2982F1F47FAD85D64469A1A17B30100603551D"
+      "25040930070605678105080130210603551D09041A3018301606056781050210310D300B"
+      "0C03322E30020100020110300D06092A864886F70D01010B05000382010100AE963A2EC0"
+      "72B8DC7C673389B62112CFDEAD6A7C2A1D5142E74D628B9FCA1599C9705A23C2FCB3A529"
+      "6B5CE3C2CB78A82B99D03D3B2E892C779EC46A2476CE70B68BE3FC87F1FC0B15A551F392"
+      "33AAB7A0E0B425C709790C05298F101AC0CF95FE5C2502D4E5D78233041EBB66CFC0AA59"
+      "983E20C915D7A35AE025FBE8ABBC898FD475288512C8BA2B70F4185E00A28A53D241188C"
+      "C9216D6AA8FA0F15DE4BD8EF11A78F55B89C1C330A6C39EC6647954C816FB74BEFA02CAB"
+      "C2B036B3E88DF7AE13F99449A2CADD70F322F64EFC437BA0A74BAE8354EAE44A5B0D5D66"
+      "A3A6F14630157CD7BABDC6B0FD45EC71D208DD7BF1EA014540E46865E34947B87A2668";
+  std::vector<uint8_t> cert;
+  base::HexStringToBytes(hex_encoded_cert, &cert);
+
+  ASSERT_TRUE(cert.size() <= MAX_NV_BUFFER_SIZE);
+
+  uint32_t nv_index = 29360128;
+  TPM2B_MAX_NV_BUFFER nvram_data_buffer;
+
+  nvram_data_buffer.size = cert.size();
+  memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
+
+  TPM2B_NV_PUBLIC public_area;
+  TPMS_NV_PUBLIC public_data;
+  public_data.data_size = cert.size();
+  public_area.nv_public = public_data;
+
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
+
+  std::string public_key;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetPublicRSAEndorsementKey(&public_key));
+  std::string hex_encoded_pk =
+      "AC5869BD60F30463612BB0C472AA19E5400E524A213290EBFB728D1AAC956F74B7CF6A8D"
+      "57F17C94D4BE2B3D07FD882CF708C30C476DCB1FF32695A8BAC77BDD5C04E89E2AB228D6"
+      "EDFF2EFAA54BE9C30F9D211E2E42DE7E50CF424EEE6C310D677D8870522E8C953711BE42"
+      "C9B94579D56D481560926606C60D74EFEEB013869C0424BB7D8585F79159BE7F476625B9"
+      "BD2701D1C5ABA6D407A4724C2165C176C45CD2188576ADC20303C3368D11603CFEEE4CFD"
+      "81EB9C9EACF0029C4F41B2E4033AB68453884D5BB3E0DD9F680E150CB604428546CFA32B"
+      "05743B073BAE97964A847756BB79D132EAEFF44EE1B25315C6B45CE74087A777CFD14276"
+      "9B5CF4E5";
+  EXPECT_EQ(hex_encoded_pk,
+            base::HexEncode(public_key.data(), public_key.size()));
 }
 
 }  // namespace trunks

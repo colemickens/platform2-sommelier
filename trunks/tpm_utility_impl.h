@@ -168,6 +168,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                            AuthorizationDelegate* delegate,
                            std::string* key_blob) override;
   TPM_RC DeclareTpmFirmwareStable() override;
+  TPM_RC GetPublicRSAEndorsementKey(std::string* public_key) override;
 
  private:
   friend class TpmUtilityTest;

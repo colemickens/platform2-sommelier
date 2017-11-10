@@ -23,10 +23,13 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/openssl_util.h>
+#include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 #include <openssl/aes.h>
+#include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/x509.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/blob_parser.h"
@@ -58,6 +61,9 @@ const uint16_t kCr50SubcmdInvalidateInactiveRW = 20;
 const std::string kEKTemplateAuthPolicy(
   "\x83\x71\x97\x67\x44\x84\xB3\xF8\x1A\x90\xCC\x8D\x46\xA5\xD7\x24"
   "\xFD\x52\xD7\x6E\x06\x52\x0B\x64\xF2\xA1\xDA\x1B\x33\x14\x69\xAA");
+
+// The index in NVRAM space where RSA EK certificate is stored.
+const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -1718,6 +1724,64 @@ TPM_RC TpmUtilityImpl::DeclareTpmFirmwareStable() {
                  << std::hex << rc;
   }
   return rc;
+}
+
+TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKey(std::string* public_key) {
+  uint32_t index = kRSAEndorsementCertificateIndex;
+  trunks::TPMS_NV_PUBLIC nvram_public;
+  TPM_RC result = GetNVSpacePublicArea(index, &nvram_public);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space for index " << index
+               << " with error: " << GetErrorString(result);
+    return result;
+  }
+
+  std::unique_ptr<AuthorizationDelegate> password_delegate(
+    factory_.GetPasswordAuthorization(""));
+  std::string nvram_data;
+  result = ReadNVSpace(index, 0, nvram_public.data_size, false,
+                              &nvram_data, password_delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space for index " << index
+               << " with error: " << GetErrorString(result);
+    return result;
+  }
+
+  // Get the X509 object.
+  const unsigned char* cert_data =
+      reinterpret_cast<const unsigned char*>(nvram_data.c_str());
+  crypto::ScopedOpenSSL<X509, X509_free> xcert(
+      d2i_X509(nullptr, &cert_data, nvram_data.size()));
+  if (!xcert) {
+    LOG(ERROR) << "Failed to get EK certificate from NVRAM";
+    return SAPI_RC_CORRUPTED_DATA;
+  }
+
+  // Get the public key.
+  crypto::ScopedEVP_PKEY pubkey(X509_get_pubkey(xcert.get()));
+  if (!pubkey || pubkey->type != EVP_PKEY_RSA) {
+    LOG(ERROR) << "Failed to get EK public key from NVRAM";
+    return SAPI_RC_CORRUPTED_DATA;
+  }
+
+  RSA* rsa = pubkey->pkey.rsa;
+  if (!rsa) {
+    LOG(ERROR) << "Failed to get RSA from NVRAM";
+    return SAPI_RC_CORRUPTED_DATA;
+  }
+
+  BIGNUM* bn = rsa->n;
+  size_t buf_len = (size_t) BN_num_bytes(bn);
+  if (buf_len == 0) {
+    LOG(ERROR) << "Invalid buffer size";
+    return SAPI_RC_CORRUPTED_DATA;
+  }
+
+  std::vector<unsigned char> key(buf_len);
+  BN_bn2bin(bn, key.data());
+  public_key->assign(reinterpret_cast<const char*>(key.data()), buf_len);
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(

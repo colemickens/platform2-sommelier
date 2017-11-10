@@ -402,6 +402,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->DeclareTpmFirmwareStable();
   }
 
+  TPM_RC GetPublicRSAEndorsementKey(std::string* public_key) override {
+    return target_->GetPublicRSAEndorsementKey(public_key);
+  }
+
  private:
   TpmUtility* target_;
 };

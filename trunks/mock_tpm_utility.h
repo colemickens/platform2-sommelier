@@ -156,6 +156,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD3(CreateIdentityKey,
                TPM_RC(TPM_ALG_ID, AuthorizationDelegate*, std::string*));
   MOCK_METHOD0(DeclareTpmFirmwareStable, TPM_RC());
+  MOCK_METHOD1(GetPublicRSAEndorsementKey, TPM_RC(std::string*));
 };
 
 }  // namespace trunks

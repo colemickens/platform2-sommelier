@@ -62,6 +62,7 @@ void PrintUsage() {
   puts("  --read_pcr --index=<N> - Reads a PCR and prints the value.");
   puts("  --extend_pcr --index=<N> --value=<value> - Extends a PCR.");
   puts("  --tpm_version - Prints TPM versions and IDs similar to tpm_version.");
+  puts("  --endorsement_public_key - Prints the public endorsement key.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -207,6 +208,14 @@ int TpmVersion(const TrunksFactory& factory) {
   return 0;
 }
 
+int EndorsementPublicKey(const TrunksFactory& factory) {
+  std::string public_key;
+  factory.GetTpmUtility()->GetPublicRSAEndorsementKey(&public_key);
+  std::string public_key_hex = HexEncode(public_key);
+  printf("  Public Endorsement Key: %s\n", public_key_hex.c_str());
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -341,6 +350,10 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("tpm_version")) {
     return TpmVersion(factory);
   }
+  if (cl->HasSwitch("endorsement_public_key")) {
+    return EndorsementPublicKey(factory);
+  }
+
   puts("Invalid options!");
   PrintUsage();
   return -1;
