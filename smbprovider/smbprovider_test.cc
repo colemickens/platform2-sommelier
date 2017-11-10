@@ -39,20 +39,19 @@ class SmbProviderTest : public testing::Test {
 
  protected:
   using DirEntries = std::vector<smbc_dirent>;
-  using Buffer = std::vector<uint8_t>;
 
-  Buffer WriteMountOptions(const std::string& path) {
-    Buffer proto_blob;
+  ProtoBlob WriteMountOptions(const std::string& path) {
+    ProtoBlob proto_blob;
     MountOptions mount_options;
     mount_options.set_path(path);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToVector(mount_options, &proto_blob));
+    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(mount_options, &proto_blob));
     return proto_blob;
   }
 
-  void WriteUnmountOptions(int32_t mount_id, Buffer* proto_blob) {
+  void WriteUnmountOptions(int32_t mount_id, ProtoBlob* proto_blob) {
     UnmountOptions unmount_options;
     unmount_options.set_mount_id(mount_id);
-    ASSERT_EQ(ERROR_OK, SerializeProtoToVector(unmount_options, proto_blob));
+    ASSERT_EQ(ERROR_OK, SerializeProtoToBlob(unmount_options, proto_blob));
   }
 
   // Helper method that adds |kValidSharePath| as a mountable share and mounts
@@ -61,7 +60,7 @@ class SmbProviderTest : public testing::Test {
     fake_samba_->AddDirectory(std::string(kValidSharePath));
     int32_t mount_id;
     int32_t err;
-    Buffer proto_blob = WriteMountOptions(kValidSharePath);
+    ProtoBlob proto_blob = WriteMountOptions(kValidSharePath);
     smbprovider_->Mount(proto_blob, &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
     ExpectNoOpenDirectories();
@@ -92,11 +91,25 @@ class SmbProviderTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);
 };
 
+// Should properly serialize protobuf.
+TEST_F(SmbProviderTest, ShouldSerializeProto) {
+  const std::string path("smb://192.168.0.1/test");
+  MountOptions mount_options;
+  mount_options.set_path(path);
+  ProtoBlob buffer;
+  EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(mount_options, &buffer));
+  EXPECT_EQ(mount_options.ByteSizeLong(), buffer.size());
+
+  MountOptions deserialized_proto;
+  EXPECT_TRUE(deserialized_proto.ParseFromArray(buffer.data(), buffer.size()));
+  EXPECT_EQ(path, deserialized_proto.path());
+}
+
 // Mount fails when mounting a share that doesn't exist.
 TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   int32_t mount_id;
   int32_t err;
-  Buffer proto_blob = WriteMountOptions("/test/invalid");
+  ProtoBlob proto_blob = WriteMountOptions("/test/invalid");
   smbprovider_->Mount(proto_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
   ExpectNoOpenDirectories();
@@ -104,7 +117,7 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
 
 // Unmount fails when unmounting an |mount_id| that wasn't previously mounted.
 TEST_F(SmbProviderTest, UnmountFailsWithUnmountedShare) {
-  Buffer proto_blob;
+  ProtoBlob proto_blob;
   WriteUnmountOptions(123, &proto_blob);
   int32_t error = smbprovider_->Unmount(proto_blob);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(error));
@@ -120,8 +133,8 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
   int32_t mount1_id = -1;
   int32_t mount2_id = -1;
   int32_t error;
-  Buffer proto_blob_1 = WriteMountOptions(share1);
-  Buffer proto_blob_2 = WriteMountOptions(share2);
+  ProtoBlob proto_blob_1 = WriteMountOptions(share1);
+  ProtoBlob proto_blob_2 = WriteMountOptions(share2);
   smbprovider_->Mount(proto_blob_1, &error, &mount1_id);
   smbprovider_->Mount(proto_blob_2, &error, &mount2_id);
   EXPECT_NE(mount1_id, mount2_id);
@@ -133,7 +146,7 @@ TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
   ExpectNoOpenDirectories();
 
-  Buffer proto_blob;
+  ProtoBlob proto_blob;
   WriteUnmountOptions(mount_id, &proto_blob);
   int32_t error = smbprovider_->Unmount(proto_blob);
   EXPECT_EQ(ERROR_OK, CastError(error));
@@ -146,22 +159,22 @@ TEST_F(SmbProviderTest, MountIdsDontGetReused) {
   fake_samba_->AddDirectory(share);
   int32_t mount_id1 = -1;
   int32_t error;
-  Buffer mount_options_blob1 = WriteMountOptions(share);
+  ProtoBlob mount_options_blob1 = WriteMountOptions(share);
   smbprovider_->Mount(mount_options_blob1, &error, &mount_id1);
 
-  Buffer unmount_options_blob;
+  ProtoBlob unmount_options_blob;
   WriteUnmountOptions(mount_id1, &unmount_options_blob);
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Unmount(unmount_options_blob)));
 
   int32_t mount_id2 = -1;
-  Buffer mount_options_blob2 = WriteMountOptions(share);
+  ProtoBlob mount_options_blob2 = WriteMountOptions(share);
   smbprovider_->Mount(mount_options_blob2, &error, &mount_id2);
   EXPECT_NE(mount_id1, mount_id2);
 }
 
 // ReadDirectory fails when passed a |mount_id| that wasn't previously mounted.
 TEST_F(SmbProviderTest, ReadDirectoryFailsWithUnmountedShare) {
-  Buffer results;
+  ProtoBlob results;
   int32_t err;
   smbprovider_->ReadDirectory(999, std::string(kValidPath), &err, &results);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
@@ -172,7 +185,7 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithUnmountedShare) {
 TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidDir) {
   int32_t mount_id = PrepareMount();
 
-  Buffer results;
+  ProtoBlob results;
   int32_t err;
   smbprovider_->ReadDirectory(mount_id, std::string("/test/invalid"), &err,
                               &results);
@@ -186,7 +199,7 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
   fake_samba_->AddDirectory(
       AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
 
-  Buffer results;
+  ProtoBlob results;
   int32_t err;
   smbprovider_->ReadDirectory(mount_id, std::string(kValidPath), &err,
                               &results);
@@ -212,7 +225,7 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnEntryWithSmallBuffer) {
   const std::string file("file.jpg");
   fake_samba_->AddEntry(dir_id, file, SMBC_FILE, kFileSize);
 
-  Buffer results;
+  ProtoBlob results;
   int32_t error_code;
   smbprovider_->ReadDirectory(mount_id, std::string(kValidPath), &error_code,
                               &results);
@@ -241,7 +254,7 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithMultipleUsageOfSmallBuffer) {
   fake_samba_->AddEntry(dir_id, file_name1, SMBC_FILE, kFileSize);
   fake_samba_->AddEntry(dir_id, file_name2, SMBC_FILE, kFileSize);
 
-  Buffer results;
+  ProtoBlob results;
   int32_t error_code;
   smbprovider_->ReadDirectory(mount_id, std::string(kValidPath), &error_code,
                               &results);
@@ -273,7 +286,7 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
   fake_samba_->AddEntry(dir_id, file, SMBC_FILE, kFileSize);
   fake_samba_->AddEntry(dir_id, dir, SMBC_DIR, 0);
 
-  Buffer results;
+  ProtoBlob results;
   int32_t error_code;
   smbprovider_->ReadDirectory(mount_id, std::string(kValidPath), &error_code,
                               &results);
@@ -305,7 +318,7 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParententries) {
   fake_samba_->AddEntry(dir_id, std::string(kEntrySelf), SMBC_DIR, 0);
   fake_samba_->AddEntry(dir_id, std::string(kEntryParent), SMBC_DIR, 0);
 
-  Buffer results;
+  ProtoBlob results;
   int32_t error_code;
   smbprovider_->ReadDirectory(mount_id, std::string(kValidPath), &error_code,
                               &results);
@@ -326,7 +339,7 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParententries) {
 // mounted.
 TEST_F(SmbProviderTest, GetMetadataFailsWithUnmountedShare) {
   int32_t err;
-  Buffer result;
+  ProtoBlob result;
   smbprovider_->GetMetadataEntry(123, std::string(kValidPath), &err, &result);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
 }
@@ -335,7 +348,7 @@ TEST_F(SmbProviderTest, GetMetadataFailsWithUnmountedShare) {
 TEST_F(SmbProviderTest, GetMetadataFailsWithInvalidPath) {
   int32_t mount_id = PrepareMount();
 
-  Buffer result;
+  ProtoBlob result;
   int32_t error_code;
   smbprovider_->GetMetadataEntry(mount_id, std::string("/test/invalid"),
                                  &error_code, &result);
@@ -354,7 +367,7 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   int32_t dir_id = fake_samba_->AddDirectory(dir_path);
   fake_samba_->AddEntry(dir_id, name, SMBC_FILE, kFileSize);
 
-  Buffer result;
+  ProtoBlob result;
   int32_t error_code;
   smbprovider_->GetMetadataEntry(
       mount_id, AppendPath(std::string(kValidPath), entry_path), &error_code,

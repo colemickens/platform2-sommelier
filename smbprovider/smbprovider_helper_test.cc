@@ -17,9 +17,6 @@ class SmbProviderHelperTest : public testing::Test {
   SmbProviderHelperTest() {}
   ~SmbProviderHelperTest() override {}
 
- protected:
-  using Buffer = std::vector<uint8_t>;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderHelperTest);
 };
@@ -35,14 +32,14 @@ TEST_F(SmbProviderHelperTest, WriteEntryFailsWithSmallBuffer) {
 // WriteEntry should succeed if given a proper sized buffer.
 TEST_F(SmbProviderHelperTest, WriteEntrySucceedsWithProperBufferSize) {
   const std::string name("a");
-  Buffer dir_buf(CalculateEntrySize(name));
+  std::vector<uint8_t> dir_buf(CalculateEntrySize(name));
   EXPECT_TRUE(WriteEntry(name, SMBC_FILE, dir_buf.size(),
                          GetDirentFromBuffer(dir_buf.data())));
 }
 
 // WriteEntry should write the proper fields.
 TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
-  Buffer dir_buf(kBufferSize);
+  std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   const std::string name("test_folder");
   uint32_t type = SMBC_DIR;
@@ -56,7 +53,7 @@ TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
 
 // "." and ".." entries shouldn't be added to DirectoryEntryList.
 TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
-  Buffer dir_buf(kBufferSize);
+  std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry(".", SMBC_DIR, dir_buf.size(), dirent));
 
@@ -71,7 +68,7 @@ TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
 
 // Incorrect smbc_type should not be added to DirectoryEntryList.
 TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
-  Buffer dir_buf(kBufferSize);
+  std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry("printer1", SMBC_PRINTER_SHARE, kBufferSize, dirent));
 
@@ -82,7 +79,7 @@ TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
 
 // AddEntryIfValid should properly add proper file and directory entries.
 TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
-  Buffer dir_buf(kBufferSize);
+  std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
 
   DirectoryEntryList entries;
@@ -147,20 +144,6 @@ TEST_F(SmbProviderHelperTest, ShouldProcessEntryType) {
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_COMMS_SHARE));
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_IPC_SHARE));
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_LINK));
-}
-
-// Should properly serialize protobuf.
-TEST_F(SmbProviderHelperTest, ShouldSerializeProto) {
-  const std::string path("smb://192.168.0.1/test");
-  MountOptions mount_options;
-  mount_options.set_path(path);
-  Buffer buffer;
-  EXPECT_EQ(ERROR_OK, SerializeProtoToVector(mount_options, &buffer));
-  EXPECT_EQ(mount_options.ByteSizeLong(), buffer.size());
-
-  MountOptions deserialized_proto;
-  EXPECT_TRUE(deserialized_proto.ParseFromArray(buffer.data(), buffer.size()));
-  EXPECT_EQ(path, deserialized_proto.path());
 }
 
 }  // namespace smbprovider

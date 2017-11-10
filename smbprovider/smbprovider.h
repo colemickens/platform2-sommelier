@@ -10,8 +10,9 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/weak_ptr.h>
+#include "base/memory/weak_ptr.h"
 #include "dbus_adaptors/org.chromium.SmbProvider.h"
+#include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 
@@ -19,6 +20,20 @@ namespace smbprovider {
 
 class DirectoryEntryList;
 class SambaInterface;
+
+// Used as buffer for serialized protobufs.
+using ProtoBlob = std::vector<uint8_t>;
+
+// Serializes |proto| to the byte array |proto_blob|. Returns ERROR_OK on
+// success and ERROR_FAILED on failure.
+template <typename ProtoType>
+ErrorType SerializeProtoToBlob(const ProtoType& proto, ProtoBlob* proto_blob) {
+  DCHECK(proto_blob);
+  proto_blob->resize(proto.ByteSizeLong());
+  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong())
+             ? ERROR_OK
+             : ERROR_FAILED;
+}
 
 // Implementation of smbprovider's DBus interface. Mostly routes stuff between
 // DBus and samba_interface.
@@ -33,21 +48,21 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
               std::unique_ptr<smbprovider::SambaInterface> samba_interface);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
-  void Mount(const std::vector<uint8_t>& mount_options_blob,
+  void Mount(const ProtoBlob& mount_options_blob,
              int32_t* error_code,
              int32_t* mount_id) override;
 
-  int32_t Unmount(const std::vector<uint8_t>& unmount_options_blob) override;
+  int32_t Unmount(const ProtoBlob& unmount_options_blob) override;
 
   void ReadDirectory(int32_t mount_id,
                      const std::string& directory_path,
                      int32_t* error_code,
-                     std::vector<uint8_t>* out_entries) override;
+                     ProtoBlob* out_entries) override;
 
   void GetMetadataEntry(int32_t mount_id,
                         const std::string& entry_path,
                         int32_t* error_code,
-                        std::vector<uint8_t>* out_entry) override;
+                        ProtoBlob* out_entry) override;
 
   // Register DBus object and interfaces.
   void RegisterAsync(

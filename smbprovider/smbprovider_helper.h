@@ -36,18 +36,6 @@ smbc_dirent* GetDirentFromBuffer(uint8_t* buffer);
 // Helper method to check whether an entry is self (".") or parent ("..").
 bool IsSelfOrParentDir(const std::string& entry_name);
 
-// Serializes |proto| to the byte array |proto_blob|. Returns ERROR_OK on
-// success and ERROR_FAILED on failure.
-template <typename ProtoType>
-ErrorType SerializeProtoToVector(const ProtoType& proto,
-                                 std::vector<uint8_t>* proto_blob) {
-  DCHECK(proto_blob);
-  proto_blob->resize(proto.ByteSizeLong());
-  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong())
-             ? ERROR_OK
-             : ERROR_FAILED;
-}
-
 // Helper method to check whether or not the entry should be processed on
 // GetDirectoryEntries().
 bool ShouldProcessEntryType(uint32_t smbc_type);

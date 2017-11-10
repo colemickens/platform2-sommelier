@@ -59,7 +59,7 @@ void LogAndSetError(const std::string& operation_name,
 // on success and ERROR_FAILED otherwise.
 int32_t GetDirectoryEntryFromStat(const std::string& full_path,
                                   const struct stat& stat_info,
-                                  std::vector<uint8_t>* proto_blob) {
+                                  ProtoBlob* proto_blob) {
   DCHECK(proto_blob);
   bool is_directory = S_ISDIR(stat_info.st_mode);
   int64_t size = is_directory ? 0 : stat_info.st_size;
@@ -70,7 +70,7 @@ int32_t GetDirectoryEntryFromStat(const std::string& full_path,
   entry.set_name(path.BaseName().value());
   entry.set_size(size);
   entry.set_last_modified_time(stat_info.st_mtime);
-  return static_cast<int32_t>(SerializeProtoToVector(entry, proto_blob));
+  return static_cast<int32_t>(SerializeProtoToBlob(entry, proto_blob));
 }
 
 }  // namespace
@@ -96,7 +96,7 @@ void SmbProvider::RegisterAsync(
   dbus_object_->RegisterAsync(completion_callback);
 }
 
-void SmbProvider::Mount(const std::vector<uint8_t>& mount_options_blob,
+void SmbProvider::Mount(const ProtoBlob& mount_options_blob,
                         int32_t* error_code,
                         int32_t* mount_id) {
   DCHECK(error_code);
@@ -124,7 +124,7 @@ void SmbProvider::Mount(const std::vector<uint8_t>& mount_options_blob,
   *error_code = static_cast<int32_t>(ERROR_OK);
 }
 
-int32_t SmbProvider::Unmount(const std::vector<uint8_t>& unmount_options_blob) {
+int32_t SmbProvider::Unmount(const ProtoBlob& unmount_options_blob) {
   UnmountOptions unmount_options;
   if (!unmount_options.ParseFromArray(unmount_options_blob.data(),
                                       unmount_options_blob.size())) {
@@ -140,7 +140,7 @@ int32_t SmbProvider::Unmount(const std::vector<uint8_t>& unmount_options_blob) {
 void SmbProvider::ReadDirectory(int32_t mount_id,
                                 const std::string& directory_path,
                                 int32_t* error_code,
-                                std::vector<uint8_t>* out_entries) {
+                                ProtoBlob* out_entries) {
   DCHECK(error_code);
   DCHECK(out_entries);
   out_entries->clear();
@@ -168,14 +168,14 @@ void SmbProvider::ReadDirectory(int32_t mount_id,
     return;
   }
   *error_code = static_cast<int32_t>(
-      SerializeProtoToVector(directory_entries, out_entries));
+      SerializeProtoToBlob(directory_entries, out_entries));
   CloseDirectory(dir_id);
 }
 
 void SmbProvider::GetMetadataEntry(int32_t mount_id,
                                    const std::string& entry_path,
                                    int32_t* error_code,
-                                   std::vector<uint8_t>* out_entry) {
+                                   ProtoBlob* out_entry) {
   DCHECK(error_code);
   DCHECK(out_entry);
   out_entry->clear();
