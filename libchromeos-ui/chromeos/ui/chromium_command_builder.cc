@@ -71,6 +71,13 @@ bool IsEnvironmentVariableName(const std::string& name) {
   return true;
 }
 
+// Splits |full|, a comma-separated list of values used for a flag like
+// --vmodule or --enable-features.
+std::vector<std::string> SplitFlagValues(const std::string& full) {
+  return base::SplitString(full, ",", base::TRIM_WHITESPACE,
+                           base::SPLIT_WANT_NONEMPTY);
+}
+
 // Updates |argument_index_to_update|, a arguments's position in |arguments_|,
 // in response to the argument at position |deleted_argument_index| being
 // removed. If the index-to-update is beyond the deleted index, it'll be
@@ -276,33 +283,35 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path,
       continue;
 
     if (line[0] == '!' && line.size() > 1) {
-      const std::string pattern = line.substr(1, line.size() - 1);
-      size_t num_copied = 0;
-      for (size_t src_index = 0; src_index < arguments_.size(); ++src_index) {
-        if (arguments_[src_index].find(pattern) == 0) {
-          // Drop the argument by not copying it and shift saved indexes if
-          // needed.
-          UpdateArgumentIndexForDeletion(&vmodule_argument_index_,
-                                         static_cast<int>(src_index));
-          UpdateArgumentIndexForDeletion(&enable_features_argument_index_,
-                                         static_cast<int>(src_index));
-        } else {
-          arguments_[num_copied] = arguments_[src_index];
-          num_copied++;
-        }
-      }
-      arguments_.resize(num_copied);
-    } else {
-      base::StringPairs pairs;
-      base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
-      if (pairs.size() == 1U && pairs[0].first == "vmodule")
-        AddVmodulePattern(pairs[0].second);
-      else if (pairs.size() == 1U && pairs[0].first == "enable-features")
-        AddFeatureEnableOverride(pairs[0].second);
-      else if (pairs.size() == 1U && IsEnvironmentVariableName(pairs[0].first))
-        AddEnvVar(pairs[0].first, pairs[0].second);
-      else if (!HasPrefix(line, disallowed_prefixes))
+      DeleteArgsWithPrefix(line.substr(1, line.size() - 1));
+      continue;
+    }
+
+    base::StringPairs pairs;
+    base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
+    if (pairs.size() != 1U) {
+      if (!HasPrefix(line, disallowed_prefixes))
         AddArg(line);
+      continue;
+    }
+
+    // Everything else takes the form "name=value".
+    const std::string& name = pairs[0].first;
+    const std::string& value = pairs[0].second;
+
+    // Bare "vmodule" and "enable-features" directives were used up until
+    // November 2017; we continue supporting them for backwards compatibility
+    // with existing configs and developer behavior.
+    if (name == "vmodule" || name == "--vmodule") {
+      for (const auto& pattern : SplitFlagValues(value))
+        AddVmodulePattern(pattern);
+    } else if (name == "enable-features" || name == "--enable-features") {
+      for (const auto& feature : SplitFlagValues(value))
+        AddFeatureEnableOverride(feature);
+    } else if (IsEnvironmentVariableName(name)) {
+      AddEnvVar(name, value);
+    } else if (!HasPrefix(line, disallowed_prefixes)) {
+      AddArg(line);
     }
   }
 
@@ -347,6 +356,24 @@ void ChromiumCommandBuilder::AddFeatureEnableOverride(
 
 base::FilePath ChromiumCommandBuilder::GetPath(const std::string& path) const {
   return util::GetReparentedPath(path, base_path_for_testing_);
+}
+
+void ChromiumCommandBuilder::DeleteArgsWithPrefix(const std::string& prefix) {
+  size_t num_copied = 0;
+  for (size_t src_index = 0; src_index < arguments_.size(); ++src_index) {
+    if (arguments_[src_index].find(prefix) == 0) {
+      // Drop the argument by not copying it and shift saved indexes if
+      // needed.
+      UpdateArgumentIndexForDeletion(&vmodule_argument_index_,
+                                     static_cast<int>(src_index));
+      UpdateArgumentIndexForDeletion(&enable_features_argument_index_,
+                                     static_cast<int>(src_index));
+    } else {
+      arguments_[num_copied] = arguments_[src_index];
+      num_copied++;
+    }
+  }
+  arguments_.resize(num_copied);
 }
 
 void ChromiumCommandBuilder::AddListFlagEntry(

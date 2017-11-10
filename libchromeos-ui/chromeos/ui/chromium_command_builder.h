@@ -133,6 +133,9 @@ class ChromiumCommandBuilder {
   // |base_path_for_testing_| if it's non-empty.
   base::FilePath GetPath(const std::string& path) const;
 
+  // Removes arguments beginning with |prefix| from |arguments_|.
+  void DeleteArgsWithPrefix(const std::string& prefix);
+
   // Adds an entry to a flag containing a list of values. For example, for a
   // flag like "--my-list=foo,bar", |flag_prefix| would be "--my-list=",
   // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar".

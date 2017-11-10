@@ -306,6 +306,16 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
 
   // Also check that literal "vmodule=..." arguments don't get added.
   ASSERT_EQ("", GetFirstArgWithPrefix("vmodule="));
+
+  // "--vmodule=" lines in config files should be permitted too. Each pattern is
+  // prepended to the existing list because Chrome uses the first matching
+  // pattern that it sees; we want patterns specified via the developer's config
+  // file to override hardcoded patterns.
+  const char kConfig4[] = "--vmodule=d=1,e=2";
+  ASSERT_EQ(strlen(kConfig4),
+            base::WriteFile(path, kConfig4, strlen(kConfig4)));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
+  ASSERT_EQ("--vmodule=e=2,d=1,b=2,a=1,c=1", GetFirstArgWithPrefix(kPrefix));
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
@@ -347,6 +357,13 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
 
   // Also check that literal "enable-features=..." arguments don't get added.
   ASSERT_EQ("", GetFirstArgWithPrefix("enable-features="));
+
+  // "--enable-features=" lines in config files should be permitted too.
+  const char kConfig4[] = "--enable-features=f,g";
+  ASSERT_EQ(strlen(kConfig4),
+            base::WriteFile(path, kConfig4, strlen(kConfig4)));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
+  ASSERT_EQ("--enable-features=c,d,e,f,g", GetFirstArgWithPrefix(kPrefix));
 }
 
 TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
