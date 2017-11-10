@@ -23,6 +23,7 @@
 
 const char* STATISTICS = "3a statistics";
 const char* PARAMS = "parameters";
+const char* IMGU_NAME = "ipu3-imgu:0";
 
 namespace android {
 namespace camera2 {
@@ -167,7 +168,15 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
             LOGE("Cannot get media entity device (ret = %d)", status);
             return status;
         }
-        status = vNode->setSelection(it.select);
+
+        // set selection control to imgu node
+        status = mMediaCtl->setSelection(IMGU_NAME,
+                                       it.select.pad,
+                                       it.select.target,
+                                       it.select.r.top,
+                                       it.select.r.left,
+                                       it.select.r.width,
+                                       it.select.r.height);
         if (status != NO_ERROR) {
             LOGE("Cannot set MediaCtl format selection (ret = %d)", status);
             return status;

@@ -887,7 +887,7 @@ status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
     }
 
     sel->type = mBufType;
-    LOG2("VIDIOC_S_SELECTION name %s type: %u, target: 0x%x, flags: 0x%x, rect left: %d, rect top: %d, width: %d, height: %d",
+    LOG2("VIDIOC_S_SELECTION name %s, type: %u, target: 0x%x, flags: 0x%x, rect left: %d, rect top: %d, width: %d, height: %d",
         mName.c_str(),
         aSelection.type,
         aSelection.target,

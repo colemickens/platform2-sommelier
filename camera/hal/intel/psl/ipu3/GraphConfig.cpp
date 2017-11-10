@@ -25,6 +25,7 @@
 #include "PlatformData.h"
 #include <GCSSParser.h>
 #include <v4l2device.h>
+#include <linux/v4l2-subdev.h>
 #include <algorithm>
 
 #include "MediaEntity.h"
@@ -2294,9 +2295,11 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;
             }
-            struct v4l2_selection select;
+            struct v4l2_subdev_selection select;
             CLEAR(select);
+            select.which = V4L2_SUBDEV_FORMAT_ACTIVE;
             select.target = V4L2_SEL_TGT_CROP;
+            select.pad = 0;
             select.flags = 0;
             select.r.left = 0;
             select.r.top = 0;
@@ -2312,7 +2315,9 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
                 return UNKNOWN_ERROR;
             }
             CLEAR(select);
+            select.which = V4L2_SUBDEV_FORMAT_ACTIVE;
             select.target = V4L2_SEL_TGT_COMPOSE;
+            select.pad = 0;
             select.flags = 0;
             select.r.left = 0;
             select.r.top = 0;
@@ -2787,7 +2792,7 @@ void GraphConfig::addSelectionParams(const string &entityName,
 }
 
 void GraphConfig::addSelectionVideoParams(const string &entityName,
-                                     const struct v4l2_selection &select,
+                                     const struct v4l2_subdev_selection &select,
                                      MediaCtlConfig* config)
 {
     if (entityName.empty() || !config) {
@@ -2799,9 +2804,9 @@ void GraphConfig::addSelectionVideoParams(const string &entityName,
     mediaCtlSelectionVideoParams.entityName = entityName;
     mediaCtlSelectionVideoParams.select = select;
     config->mSelectionVideoParams.push_back(mediaCtlSelectionVideoParams);
-    LOG2("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, type:%d, flags:%d entityName:%s",
+    LOG2("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, which:%d, flags:%d entityName:%s",
         __FUNCTION__, select.r.width, select.r.height, select.r.left, select.r.top,
-        select.target, select.type, select.flags, entityName.c_str());
+        select.target, select.which, select.flags, entityName.c_str());
 }
 
 /**

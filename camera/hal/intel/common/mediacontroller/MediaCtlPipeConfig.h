@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <linux/videodev2.h>
+#include <linux/v4l2-subdev.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,7 +82,7 @@ typedef struct {
 
 typedef struct {
     string entityName;
-    struct v4l2_selection select;
+    struct v4l2_subdev_selection select;
 } MediaCtlSelectionVideoParams;
 
 typedef struct {
