@@ -318,13 +318,20 @@ exit:
     return status;
 }
 
+bool OutputFrameWorker::isHalUsingRequestBuffer()
+{
+    LOG2("%s, mNeedPostProcess %d, mListeners.size() %lu",
+          __FUNCTION__, mNeedPostProcess, mListeners.size());
+    return (mNeedPostProcess || mListeners.size() > 0);
+}
+
 status_t
 OutputFrameWorker::prepareBuffer(std::shared_ptr<CameraBuffer>& buffer)
 {
     CheckError((buffer.get() == nullptr), UNKNOWN_ERROR, "null buffer!");
 
     status_t status = NO_ERROR;
-    if (!buffer->isLocked()) {
+    if (!buffer->isLocked() && isHalUsingRequestBuffer()) {
         status = buffer->lock();
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Could not lock the buffer error %d", status);

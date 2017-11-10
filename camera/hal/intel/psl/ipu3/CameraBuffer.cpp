@@ -494,7 +494,14 @@ void CameraBuffer::dumpImage(const int type, const char *name) const
 
 void CameraBuffer::dumpImage(const char *name) const
 {
+#ifdef DUMP_IMAGE
+    status_t status = lock();
+    CheckError((status != OK), VOID_VALUE, "failed to lock dump buffer");
+
     dumpImage(mDataPtr, mSize, mWidth, mHeight, name);
+
+    unlock();
+#endif
 }
 
 

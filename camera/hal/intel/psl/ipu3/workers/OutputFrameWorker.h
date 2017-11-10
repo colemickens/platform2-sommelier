@@ -86,6 +86,7 @@ private:
     };
 
 private:
+    bool isHalUsingRequestBuffer();
     std::shared_ptr<CameraBuffer> findBuffer(Camera3Request* request,
                                              camera3_stream_t* stream);
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
