@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
@@ -95,6 +96,8 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Bind, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD3(Unmount, bool(const base::FilePath&, bool, bool*));
   MOCK_METHOD1(LazyUnmount, void(const base::FilePath&));
+  MOCK_METHOD1(GetLoopDeviceMounts, bool(
+      std::multimap<const base::FilePath, const base::FilePath>*));
   MOCK_METHOD2(GetMountsBySourcePrefix, bool(const base::FilePath&,
                   std::multimap<const base::FilePath, const base::FilePath>*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const base::FilePath&));
@@ -208,6 +211,11 @@ class MockPlatform : public Platform {
                     const struct timespec&,
                     bool));
   MOCK_METHOD4(SendFile, bool(int, int, off_t, size_t));
+  MOCK_METHOD2(CreateSparseFile, bool(const base::FilePath&, size_t));
+  MOCK_METHOD1(AttachLoop, base::FilePath(const base::FilePath&));
+  MOCK_METHOD1(DetachLoop, bool(const base::FilePath&));
+  MOCK_METHOD0(GetAttachedLoopDevices, std::vector<LoopDevice>());
+  MOCK_METHOD1(FormatExt4, bool(const base::FilePath&));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

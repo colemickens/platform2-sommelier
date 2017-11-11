@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
+#include <linux/loop.h>
 #include <mntent.h>
 #include <pwd.h>
 #include <signal.h>
@@ -100,6 +101,35 @@ bool IsDirectory(const struct stat& file_info) {
   return !!S_ISDIR(file_info.st_mode);
 }
 
+/*
+ * Split a /proc/<id>/mountinfo line in arguments and
+ * populate information into |mount_info|.
+ * Return true if the line seems valid.
+ */
+bool DecodeProcInfoLine(const std::string& line,
+                        cryptohome::DecodedProcMountInfo* mount_info) {
+  auto args =
+      SplitString(line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  size_t fs_idx = 6;
+  if (args.size() <= fs_idx) {
+    LOG(ERROR) << "Invalid procinfo: too few items: " << line;
+    return false;
+  }
+
+  while (fs_idx < args.size() && args[fs_idx++] != "-") {}
+  if (fs_idx + 1 >= args.size()) {
+    LOG(ERROR) << "Invalid procinfo: separator or mount_source not found: "
+               << line;
+    return false;
+  } else {
+    mount_info->root = args[3];
+    mount_info->mount_point = args[4];
+    mount_info->filesystem_type = args[fs_idx];
+    mount_info->mount_source = args[fs_idx + 1];
+    return true;
+  }
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -111,7 +141,12 @@ const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
 const FilePath::CharType kProcDir[] = "/proc";
 const FilePath::CharType kMountInfoFile[] = "mountinfo";
 const FilePath::CharType kPathTune2fs[] = "/sbin/tune2fs";
-const char kEcyrptFS[] = "ecryptfs";
+const char kEcryptFS[] = "ecryptfs";
+const FilePath::CharType kLoopControl[] = "/dev/loop-control";
+const FilePath::CharType kLoopPrefix[] = "/dev/loop";
+const FilePath::CharType kSysBlockPath[] = "/sys/block";
+const FilePath::CharType kDevPath[] = "/dev";
+const FilePath::CharType kLoopBackingFile[] = "loop/backing_file";
 
 Platform::Platform() {
     pid_t pid = getpid();
@@ -122,65 +157,58 @@ Platform::Platform() {
 Platform::~Platform() {
 }
 
-/*
- * Split a /proc/<id>/mountinfo line in arguments,
- * Point to the file system type, first argument after the optional
- * arguments.
- * Return true if the line seems valid.
- */
-bool Platform::DecodeProcInfoLine(const std::string& line,
-                                  std::vector<std::string>* args,
-                                  size_t* file_system_type_idx) {
-  *args = SplitString(line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  size_t fs_idx = 6;
+std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {
+  std::string contents;
+  if (!base::ReadFileToString(mount_info_path_, &contents))
+    return std::vector<DecodedProcMountInfo>();
 
-  while (fs_idx < args->size() && (*args)[fs_idx++] != "-") {}
-  if (fs_idx >= args->size()) {
-    LOG(ERROR) << "Invalid procinfo: separator not found: " << line;
-    return false;
-  } else {
-    *file_system_type_idx = fs_idx;
-    return true;
+  std::vector<std::string> lines = SplitString(
+      contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  std::vector<DecodedProcMountInfo> mount_info_content;
+  for (const auto& line : lines) {
+    DecodedProcMountInfo mount_info;
+    if (!DecodeProcInfoLine(line, &mount_info))
+      return std::vector<DecodedProcMountInfo>();
+    mount_info_content.push_back(mount_info);
   }
+  return mount_info_content;
 }
 
+bool Platform::GetLoopDeviceMounts(
+    std::multimap<const FilePath, const FilePath>* mounts) {
+  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
 
-
+  // Populate all mounts from loop devices "/dev/loop*".
+  for (const auto& mount : proc_mounts) {
+    if (!base::StartsWith(mount.mount_source, kLoopPrefix,
+                          base::CompareCase::SENSITIVE))
+      continue;
+    mounts->insert(std::pair<const FilePath, const FilePath>(
+        FilePath(mount.mount_source), FilePath(mount.mount_point)));
+  }
+  return mounts && mounts->size() > 0;
+}
 
 bool Platform::GetMountsBySourcePrefix(const FilePath& from_prefix,
     std::multimap<const FilePath, const FilePath>* mounts) {
-  std::string contents;
-  if (!base::ReadFileToString(mount_info_path_, &contents))
-    return false;
+  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
 
-  // Format:
-  // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
-  // (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
-  // the destination is (4).
-  // When using ecryptfs (8), we compare the mount device (9), otherwise,
-  // we use the root directory (3).
-  // When using ecryptfs (1st elemt after hyphen), we compare the mount device
-  // (2nd), otherwise, we use the root directory (3).
-  std::vector<std::string> lines = SplitString(
-      contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& line : lines) {
-    std::vector<std::string> args;
-    size_t fs_idx;
-    if (!Platform::DecodeProcInfoLine(line, &args, &fs_idx))
-      return false;
-
+  // When using ecryptfs, we compare the mount device, otherwise,
+  // we use the root directory .
+  for (const auto& mount : proc_mounts) {
     FilePath root_dir;
-    if (args[fs_idx] == kEcyrptFS)
-      root_dir = FilePath(args[fs_idx + 1]);
+    if (mount.filesystem_type == kEcryptFS)
+      root_dir = FilePath(mount.mount_source);
     else
-      root_dir = FilePath(args[3]);
+      root_dir = FilePath(mount.root);
     if (!from_prefix.IsParent(root_dir))
       continue;
     // If there is no mounts pointer, we can return true right away.
     if (!mounts)
       return true;
     mounts->insert(
-      std::pair<const FilePath, const FilePath>(root_dir, FilePath(args[4])));
+      std::pair<const FilePath, const FilePath>(root_dir,
+                                                FilePath(mount.mount_point)));
   }
   return mounts && mounts->size();
 }
@@ -1017,28 +1045,13 @@ bool Platform::FindFilesystemDevice(const FilePath &filesystem_in,
   /* Removing trailing slashes. */
   FilePath filesystem = filesystem_in.StripTrailingSeparators();
 
-  std::string contents;
-  if (!base::ReadFileToString(mount_info_path_, &contents))
-    return false;
+  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
 
-  // Format:
-  // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
-  // (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
-  // the destination is (4).
-  // When using ecryptfs (1st elemt after hyphen), we compare the mount device
-  // (2nd), otherwise, we use the root directory (3).
-  std::vector<std::string> lines = SplitString(
-      contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& line : lines) {
-    std::vector<std::string> args;
-    size_t fs_idx;
-    if (!Platform::DecodeProcInfoLine(line, &args, &fs_idx))
-      return false;
-
-    if (args[4] != filesystem.value())
+  for (const auto& mount : proc_mounts) {
+    if (mount.mount_point != filesystem.value())
       continue;
 
-    *device = args[fs_idx + 1];
+    *device = mount.mount_source;
   }
   return (device->length() > 0);
 }
@@ -1185,6 +1198,132 @@ bool Platform::SendFile(int fd_to, int fd_from, off_t offset, size_t count) {
       return false;
     }
     count -= written;
+  }
+  return true;
+}
+
+bool Platform::CreateSparseFile(const base::FilePath& path, size_t size) {
+  base::File file;
+  InitializeFile(&file, path,
+                 base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  if (!file.IsValid()) {
+    PLOG(ERROR) << "open sparse file " << path.value();
+    return false;
+  }
+  return file.SetLength(size);
+}
+
+base::FilePath Platform::AttachLoop(const base::FilePath& path) {
+  base::ScopedFD control_fd(HANDLE_EINTR(open(kLoopControl,
+                                              O_RDONLY | O_CLOEXEC)));
+  if (!control_fd.is_valid()) {
+    PLOG(ERROR) << "open loop control";
+    return base::FilePath();
+  }
+  std::string loopback;
+
+  while (true) {
+    int num = ioctl(control_fd.get(), LOOP_CTL_GET_FREE);
+    if (num < 0) {
+      PLOG(ERROR) << "ioctl(LOOP_CTL_GET_FREE)";
+      return base::FilePath();
+    }
+    loopback = kLoopPrefix + base::IntToString(num);
+    base::ScopedFD loop_fd(HANDLE_EINTR(open(loopback.c_str(),
+                                             O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
+    if (!loop_fd.is_valid()) {
+      PLOG(ERROR) << "open " + loopback;
+      return base::FilePath();
+    }
+    base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(),
+                                        O_RDWR | O_CLOEXEC)));
+    if (!fd.is_valid()) {
+      PLOG(ERROR) << "open " + path.value();
+      return base::FilePath();
+    }
+    if (ioctl(loop_fd.get(), LOOP_SET_FD, fd.get()) == 0)
+      break;
+    // Retry on LOOP_SET_FD coming back with EBUSY.
+    if (errno != EBUSY) {
+      PLOG(ERROR) << "LOOP_SET_FD";
+      return base::FilePath();
+    }
+  }
+  return base::FilePath(loopback);
+}
+
+bool Platform::DetachLoop(const base::FilePath& device) {
+  base::ScopedFD loop_fd(HANDLE_EINTR(open(device.value().c_str(),
+                                           O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
+  if (!loop_fd.is_valid()) {
+    PLOG(ERROR) << "open " + device.value();
+    return false;
+  }
+  if (ioctl(loop_fd.get(), LOOP_CLR_FD, 0)) {
+    PLOG(ERROR) << "LOOP_CLR_FD";
+    return false;
+  }
+  return true;
+}
+
+std::vector<Platform::LoopDevice> Platform::GetAttachedLoopDevices() {
+  // Read /sys/block to discover all loop devices.
+  std::vector<FilePath> sysfs_block_devices;
+  EnumerateDirectoryEntries(FilePath(kSysBlockPath), false /* is_recursive */,
+                            &sysfs_block_devices);
+  std::vector<LoopDevice> devices;
+  for (const auto& sysfs_block_device : sysfs_block_devices) {
+    FilePath device = FilePath(kDevPath).Append(sysfs_block_device.BaseName());
+    // Backing file contains path to associated source for loop devices.
+    FilePath sysfs_backing_file = sysfs_block_device.Append(kLoopBackingFile);
+    std::string backing_file_content;
+    // If the backing file doesn't exist, it's not an attached loop device.
+    if (!ReadFileToString(sysfs_backing_file, &backing_file_content))
+      continue;
+    FilePath backing_file(base::TrimWhitespaceASCII(backing_file_content,
+                                                    base::TRIM_ALL));
+    devices.push_back({backing_file, device});
+  }
+  return devices;
+}
+
+bool Platform::FormatExt4(const base::FilePath& file) {
+  brillo::ProcessImpl format_process;
+  format_process.AddArg("/sbin/mkfs.ext4");
+  // Always use 'default' configuration.
+  format_process.AddArg("-T");
+  format_process.AddArg("default");
+  // reserved-blocks-percentage = 0%
+  format_process.AddArg("-m");
+  format_process.AddArg("0");
+  // ^huge_file: Do not allow files larger than 2TB.
+  // ^flex_bg: Do not allow per-block group metadata to be placed anywhere.
+  // ^has_journal: Do not create journal.
+  format_process.AddArg("-O");
+  format_process.AddArg("^huge_file,^flex_bg,^has_journal");
+  // Attempt to discard blocks at mkfs time.
+  format_process.AddArg("-E");
+  format_process.AddArg("discard");
+  format_process.AddArg(file.value());
+  int rc = format_process.Run();
+  if (rc != 0) {
+    LOG(ERROR) << "Can't format ext4: " << file.value() << ", error: " << rc;
+    return false;
+  }
+
+  brillo::ProcessImpl tune_process;
+  tune_process.AddArg("/sbin/tune2fs");
+  // Disable max mount count checking.
+  tune_process.AddArg("-c");
+  tune_process.AddArg("0");
+  // Disable filesystem checking.
+  tune_process.AddArg("-i");
+  tune_process.AddArg("0");
+  tune_process.AddArg(file.value());
+  rc = tune_process.Run();
+  if (rc != 0) {
+    LOG(ERROR) << "Can't tune ext4: " << file.value() << ", error: " << rc;
+    return false;
   }
   return true;
 }

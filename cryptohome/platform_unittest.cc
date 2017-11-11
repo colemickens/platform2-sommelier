@@ -291,6 +291,7 @@ TEST_F(PlatformTest, HasExtendedFileAttribute) {
         FilePath("file_not_exist"), name));
   EXPECT_FALSE(platform_.HasExtendedFileAttribute(
         filename, "user.name_not_exist"));
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, ListExtendedFileAttribute) {
@@ -324,6 +325,7 @@ TEST_F(PlatformTest, ListExtendedFileAttribute) {
   EXPECT_FALSE(
       platform_.ListExtendedFileAttributes(FilePath("file_not_exist"), &attrs));
   EXPECT_TRUE(attrs.empty());
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, GetExtendedAttributeAsString) {
@@ -348,6 +350,7 @@ TEST_F(PlatformTest, GetExtendedAttributeAsString) {
       FilePath("file_not_exist"), name, &got));
   EXPECT_FALSE(platform_.GetExtendedFileAttributeAsString(
       filename, "user.name_not_exist", &got));
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, GetExtendedAttribute) {
@@ -379,6 +382,7 @@ TEST_F(PlatformTest, GetExtendedAttribute) {
       filename, name, reinterpret_cast<char*>(&got), sizeof(got) - 1));
   EXPECT_FALSE(platform_.GetExtendedFileAttribute(
       filename, name, reinterpret_cast<char*>(&got), sizeof(got) + 1));
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, SetExtendedAttribute) {
@@ -400,6 +404,7 @@ TEST_F(PlatformTest, SetExtendedAttribute) {
 
   EXPECT_FALSE(platform_.SetExtendedFileAttribute(
       FilePath("file_not_exist"), name, value.c_str(), sizeof(value)));
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, RemoveExtendedAttribute) {
@@ -422,6 +427,7 @@ TEST_F(PlatformTest, RemoveExtendedAttribute) {
       platform_.RemoveExtendedFileAttribute(FilePath("file_not_exist"), name));
   EXPECT_FALSE(
       platform_.RemoveExtendedFileAttribute(filename, "attribute_not_exist"));
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, GetExtFileAttributes) {
@@ -438,6 +444,7 @@ TEST_F(PlatformTest, GetExtFileAttributes) {
   EXPECT_TRUE(platform_.GetExtFileAttributes(filename, &got));
   EXPECT_EQ(flags, got);
   close(fd);
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, SetExtFileAttributes) {
@@ -455,6 +462,7 @@ TEST_F(PlatformTest, SetExtFileAttributes) {
 
   EXPECT_EQ(flags, new_flags);
   close(fd);
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
 TEST_F(PlatformTest, HasNoDumpFileAttribute) {
@@ -471,47 +479,89 @@ TEST_F(PlatformTest, HasNoDumpFileAttribute) {
 
   EXPECT_TRUE(platform_.HasNoDumpFileAttribute(filename));
   close(fd);
+  platform_.DeleteFile(filename, false /* recursive */);
 }
 
-TEST_F(PlatformTest, DecodeProcInfoLineGood) {
+TEST_F(PlatformTest, ReadMountInfoFileGood) {
+  const base::FilePath mount_info(GetTempName());
   std::string mount_info_contents;
 
   mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
   mount_info_contents.append("/home/user/uid1 rw,nodev,relatime - ext4 ");
   mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered");
 
-  std::vector<std::string> args;
-  size_t fs_idx;
+  EXPECT_TRUE(platform_.WriteStringToFile(mount_info, mount_info_contents));
+  platform_.set_mount_info_path(mount_info);
 
-  EXPECT_TRUE(platform_.DecodeProcInfoLine(
-        mount_info_contents, &args, &fs_idx));
-  EXPECT_EQ(fs_idx, 7);
+  std::vector<DecodedProcMountInfo> decoded_info =
+      platform_.ReadMountInfoFile();
+  EXPECT_EQ(decoded_info.size(), 1);
+  EXPECT_EQ(decoded_info[0].root, "/beg/uid1/mount/user");
+  EXPECT_EQ(decoded_info[0].mount_point, "/home/user/uid1");
+  EXPECT_EQ(decoded_info[0].filesystem_type, "ext4");
+  EXPECT_EQ(decoded_info[0].mount_source, "/dev/mmcblk0p1");
 }
 
-TEST_F(PlatformTest, DecodeProcInfoLineCorruptedMountInfo) {
+TEST_F(PlatformTest, ReadMountInfoFileCorruptedMountInfo) {
+  const base::FilePath mount_info(GetTempName());
   std::string mount_info_contents;
 
   mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
   mount_info_contents.append("/home/user/uid1 rw,nodev,relatime hypen ext4 ");
   mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered");
 
-  std::vector<std::string> args;
-  size_t fs_idx;
+  EXPECT_TRUE(platform_.WriteStringToFile(mount_info, mount_info_contents));
+  platform_.set_mount_info_path(mount_info);
 
-  EXPECT_FALSE(platform_.DecodeProcInfoLine(
-        mount_info_contents, &args, &fs_idx));
+  std::vector<DecodedProcMountInfo> decoded_info =
+      platform_.ReadMountInfoFile();
+  EXPECT_EQ(decoded_info.size(), 0);
 }
 
-TEST_F(PlatformTest, DecodeProcInfoLineIncompleteMountInfo) {
+TEST_F(PlatformTest, ReadMountInfoFileIncompleteMountInfo) {
+  const base::FilePath mount_info(GetTempName());
   std::string mount_info_contents;
 
   mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
 
-  std::vector<std::string> args;
-  size_t fs_idx;
+  EXPECT_TRUE(platform_.WriteStringToFile(mount_info, mount_info_contents));
+  platform_.set_mount_info_path(mount_info);
 
-  EXPECT_FALSE(platform_.DecodeProcInfoLine(
-        mount_info_contents, &args, &fs_idx));
+  std::vector<DecodedProcMountInfo> decoded_info =
+      platform_.ReadMountInfoFile();
+  EXPECT_EQ(decoded_info.size(), 0);
+}
+
+TEST_F(PlatformTest, GetLoopDeviceMounts) {
+  const base::FilePath mount_info(GetTempName());
+  std::string mount_info_contents;
+
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/root/uid1 rw,nodev,relatime - ext4 ");
+  mount_info_contents.append("/dev/loop7 rw,commit=600,data=ordered\n");
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/root/uid1 rw,nodev,relatime - ext4 ");
+  mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered\n");
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/user/uid2 rw,nodev,relatime - ext4 ");
+  mount_info_contents.append("/dev/loop6 rw,commit=600,data=ordered\n");
+
+  EXPECT_TRUE(platform_.WriteStringToFile(mount_info, mount_info_contents));
+
+  platform_.set_mount_info_path(mount_info);
+
+  std::multimap<const FilePath, const FilePath> mounts;
+  EXPECT_TRUE(platform_.GetLoopDeviceMounts(&mounts));
+  ASSERT_EQ(mounts.size(), 2);
+  auto it = mounts.begin();
+  EXPECT_EQ(it->first.value(), "/dev/loop6");
+  EXPECT_EQ(it->second.value(), "/home/user/uid2");
+  ++it;
+  EXPECT_EQ(it->first.value(), "/dev/loop7");
+  EXPECT_EQ(it->second.value(), "/home/root/uid1");
+
+  /* Clean up. */
+  EXPECT_TRUE(base::DeleteFile(mount_info, false));
 }
 
 TEST_F(PlatformTest, GetMountsBySourcePrefixExt4) {
@@ -657,6 +707,22 @@ TEST_F(PlatformTest, SendFile) {
   EXPECT_FALSE(platform_.SendFile(to_file.GetPlatformFile(),
                                   from_file.GetPlatformFile(),
                                   offset, read_size + 1));
+  platform_.DeleteFile(from, false /* recursive */);
+  platform_.DeleteFile(to, false /* recursive */);
+}
+
+TEST_F(PlatformTest, CreateSparseFile) {
+  const base::FilePath sparse_name(GetTempName());
+  size_t file_size = 1024 * 32;
+  EXPECT_TRUE(platform_.CreateSparseFile(sparse_name, file_size));
+  base::File sparse_file(sparse_name,
+                         base::File::FLAG_OPEN | base::File::FLAG_READ);
+  EXPECT_EQ(file_size, sparse_file.GetLength());
+  struct stat stat;
+  EXPECT_TRUE(platform_.Stat(sparse_name, &stat));
+  // No blocks allocated for a sparse file.
+  EXPECT_EQ(0, stat.st_blocks);
+  platform_.DeleteFile(sparse_name, false /* recursive */);
 }
 
 }  // namespace cryptohome

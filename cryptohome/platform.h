@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback_forward.h>
@@ -40,6 +41,22 @@ namespace cryptohome {
 extern const int kDefaultUmask;
 
 class ProcessInformation;
+
+// Decoded content of /proc/<id>/mountinfo file that has format:
+// 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
+// (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
+struct DecodedProcMountInfo {
+  // (3) The pathname of the directory in the filesystem which forms the root of
+  // this mount.
+  std::string root;
+  // (4) The pathname of the mount point relative to the process's root
+  // directory.
+  std::string mount_point;
+  // (8) The filesystem type in the form "type[.subtype]".
+  std::string filesystem_type;
+  // (9) Filesystem-specific information or "none".
+  std::string mount_source;
+};
 
 // A class for enumerating the files in a provided path. The order of the
 // results is not guaranteed.
@@ -104,6 +121,10 @@ class Platform {
     gid_t group;
     mode_t mode;
   };
+  struct LoopDevice {
+    base::FilePath backing_file;
+    base::FilePath device;
+  };
 
   typedef base::Callback<bool(const base::FilePath&, const struct stat&)>
       FileEnumeratorCallback;
@@ -142,6 +163,14 @@ class Platform {
   // Parameters
   //   path - The destination path to unmount
   virtual void LazyUnmount(const base::FilePath& path);
+
+  // Returns true if any mounts match. Populates |mounts| with list of mounts
+  // from loop device to user directories that are used in ephemeral mode.
+  //
+  // Parameters
+  //   mounts - matching mounted paths, can't be NULL
+  virtual bool GetLoopDeviceMounts(
+      std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
   // Returns true if any mounts match. Populates |mounts| if
   // any mount sources have a matching prefix (|from_prefix|).
@@ -700,6 +729,42 @@ class Platform {
   //   count - The number of bytes to copy.
   virtual bool SendFile(int fd_to, int fd_from, off_t offset, size_t count);
 
+  // Creates a sparse file.
+  // Storage is only allocated when actually needed.
+  // Empty sparse file doesn't use any space.
+  // Returns true if the file is successfully created.
+  //
+  // Parameters
+  //   path - The path to the file.
+  //   size - The size to which sparse file should be resized.
+  virtual bool CreateSparseFile(const base::FilePath& path, size_t size);
+
+  // Attaches the file to a loop device and returns path to that.
+  // New loop device might be allocated if no free device is present.
+  // Returns path to the loop device.
+  //
+  // Parameters
+  //   path - Path to the file which should be associated to a loop device.
+  virtual base::FilePath AttachLoop(const base::FilePath& path);
+
+  // Detaches the loop device from associated file.
+  // Doesn't delete the loop device itself.
+  // Returns true if the loop device is successfully detached.
+  //
+  // Parameters
+  //   device - Path to the loop device to be detached.
+  virtual bool DetachLoop(const base::FilePath& device);
+
+  // Returns list of attached loop devices.
+  virtual std::vector<LoopDevice> GetAttachedLoopDevices();
+
+  // Formats the file or device into ext4 filesystem.
+  // Returns true if formatting succeeded.
+  //
+  // Paratemers
+  //   file - Path to the file or device to be formatted.
+  virtual bool FormatExt4(const base::FilePath& file);
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
@@ -787,9 +852,9 @@ class Platform {
                       const void* content,
                       size_t content_size);
 
-  bool DecodeProcInfoLine(const std::string& line,
-                          std::vector<std::string>* args,
-                          size_t* file_system_type_idx);
+
+  // Returns list of mounts from |mount_info_path_| file.
+  std::vector<DecodedProcMountInfo> ReadMountInfoFile();
 
   // Drops caches selectively for the mount the directory resides in.
   bool DropMountCaches(const base::FilePath& dir);
@@ -797,9 +862,9 @@ class Platform {
   base::FilePath mount_info_path_;
 
   friend class PlatformTest;
-  FRIEND_TEST(PlatformTest, DecodeProcInfoLineCorruptedMountInfo);
-  FRIEND_TEST(PlatformTest, DecodeProcInfoLineIncompleteMountInfo);
-  FRIEND_TEST(PlatformTest, DecodeProcInfoLineGood);
+  FRIEND_TEST(PlatformTest, ReadMountInfoFileCorruptedMountInfo);
+  FRIEND_TEST(PlatformTest, ReadMountInfoFileIncompleteMountInfo);
+  FRIEND_TEST(PlatformTest, ReadMountInfoFileGood);
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };
 
