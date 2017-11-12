@@ -438,10 +438,11 @@ class CrosConfigHostTest(unittest.TestCase):
             main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
             ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
             pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[], sig_id='whitetip')),
+            extra=[], create_bios_rw_image=False, tools=[],
+            sig_id='sig-id-in-customization-id')),
         ('whitetip1', FirmwareInfo(
             model='whitetip1', shared_model='caroline', key_id='WHITETIP1',
-            have_image=True,
+            have_image=False,
             bios_build_target='caroline', ec_build_target='caroline',
             main_image_uri='bcs://Caroline.2017.21.1.tbz2',
             main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
@@ -451,7 +452,7 @@ class CrosConfigHostTest(unittest.TestCase):
             sig_id='whitetip1')),
         ('whitetip2', FirmwareInfo(
             model='whitetip2', shared_model='caroline', key_id='WHITETIP2',
-            have_image=True,
+            have_image=False,
             bios_build_target='caroline', ec_build_target='caroline',
             main_image_uri='bcs://Caroline.2017.21.1.tbz2',
             main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',

@@ -240,6 +240,7 @@
 	whitetip: whitetip {
 		powerd-prefs = "whitetip";
 		firmware {
+			sig-id-in-customization-id;
 			shares = <&shared>;
 		};
 		audio {
