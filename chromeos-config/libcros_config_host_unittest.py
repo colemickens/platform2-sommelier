@@ -399,6 +399,15 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
+    # Use this to avoid repeating common fields
+    caroline = FirmwareInfo(
+        model='', shared_model='caroline', key_id='', have_image=True,
+        bios_build_target='caroline', ec_build_target='caroline',
+        main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+        main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+        ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+        pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+        extra=[], create_bios_rw_image=False, tools=[], sig_id='')
     self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
         ('broken', FirmwareInfo(
             model='broken', shared_model=None, key_id='', have_image=True,
@@ -406,15 +415,7 @@ class CrosConfigHostTest(unittest.TestCase):
             main_image_uri='bcs://Reef.9042.87.1.tbz2',
             main_rw_image_uri='', ec_image_uri='', pd_image_uri='',
             extra=[], create_bios_rw_image=False, tools=[], sig_id='broken')),
-        ('caroline', FirmwareInfo(
-            model='caroline', shared_model='caroline', key_id='',
-            have_image=True,
-            bios_build_target='caroline', ec_build_target='caroline',
-            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
-            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
-            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
-            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[], sig_id='caroline')),
+        ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
         ('pyro', FirmwareInfo(
             model='pyro', shared_model=None, key_id='', have_image=True,
             bios_build_target='pyro', ec_build_target='pyro',
@@ -430,36 +431,13 @@ class CrosConfigHostTest(unittest.TestCase):
             main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
             ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
             extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
-        ('whitetip', FirmwareInfo(
-            model='whitetip', shared_model='caroline', key_id='',
-            have_image=True, bios_build_target='caroline',
-            ec_build_target='caroline',
-            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
-            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
-            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
-            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[],
-            sig_id='sig-id-in-customization-id')),
-        ('whitetip1', FirmwareInfo(
-            model='whitetip1', shared_model='caroline', key_id='WHITETIP1',
-            have_image=False,
-            bios_build_target='caroline', ec_build_target='caroline',
-            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
-            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
-            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
-            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[],
-            sig_id='whitetip1')),
-        ('whitetip2', FirmwareInfo(
-            model='whitetip2', shared_model='caroline', key_id='WHITETIP2',
-            have_image=False,
-            bios_build_target='caroline', ec_build_target='caroline',
-            main_image_uri='bcs://Caroline.2017.21.1.tbz2',
-            main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
-            ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
-            pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[],
-            sig_id='whitetip2'))]))
+        ('whitetip', caroline._replace(model='whitetip',
+                                       sig_id='sig-id-in-customization-id')),
+        ('whitetip1', caroline._replace(model='whitetip1', key_id='WHITETIP1',
+                                        have_image=False, sig_id='whitetip1')),
+        ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
+                                        have_image=False, sig_id='whitetip2'))
+        ]))
 
 
 if __name__ == '__main__':
