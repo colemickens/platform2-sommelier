@@ -34,6 +34,31 @@ TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
 #   dest: Destination filename in the root filesystem
 BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 
+# Represents information needed to create firmware for a model:
+#   model: Name of model (e.g 'reef'). Also used as the signature ID for signing
+#   shared_model: Name of model containing the shared firmware used by this
+#       model, or None if this model has its own firmware images
+#   key_id: Key ID used to sign firmware for this model (e.g. 'REEF')
+#   have_image: True if we need to generate a setvars.sh file for this model.
+#       If this is False it indicates that the model will never be detected at
+#       run-time since it is a zero-touch whitelabel model. The signature ID
+#       will be obtained from the customization_id in VPD when needed. Signing
+#       instructions should still be generated for this model.
+#   bios_build_target: Build target to use to build the BIOS, or None if none
+#   ec_build_target: Build target to use to build the EC, or None if none
+#   main_image_uri: URI to use to obtain main firmware image (e.g.
+#       'bcs://Caroline.2017.21.1.tbz2')
+#   ec_image_uri: URI to use to obtain the EC (Embedded Controller) firmware
+#       image
+#   pd_image_uri: URI to use to obtain the PD (Power Delivery controller)
+#       firmware image
+#   extra: List of extra files to include in the firmware update, each a string
+#   create_bios_rw_image: True to create a RW BIOS image
+#   tools: List of tools to include in the firmware update
+#   sig_id: Signature ID to put in the setvars.sh file. This is normally the
+#       same as the model, since that is what we use for signature ID. But for
+#       zero-touch whitelabel this is 'sig-id-in-customization-id' since we do
+#       not know the signature ID until we look up in VPD.
 FirmwareInfo = namedtuple(
     'FirmwareInfo',
     ['model', 'shared_model', 'key_id', 'have_image',
@@ -823,7 +848,7 @@ class CrosConfig(object):
       tools = node.GetStrList('tools')
 
       if firmware_node.GetBool('sig-id-in-customization-id'):
-        sig_id = 'use-vpd'
+        sig_id = 'sig-id-in-customization-id'
       else:
         sig_id = self.name
 
