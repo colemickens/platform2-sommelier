@@ -1052,6 +1052,7 @@ std::string PSLConfParser::getImguMediaDevice()
 
 std::string PSLConfParser::getSensorMediaDevicePath()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     std::string mediaDeviceName = PSLConfParser::getSensorMediaDeviceName();
     if (strncmp("nullptr", mediaDeviceName.c_str(), MIN(sizeof("nullptr"),
         mediaDeviceName.size())) == 0) {
@@ -1064,6 +1065,7 @@ std::string PSLConfParser::getSensorMediaDevicePath()
 std::string PSLConfParser::getMediaDeviceByName(std::string driverName)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    LOG1("@%s, Target name: %s", __FUNCTION__, driverName.c_str());
     const char *MEDIADEVICES = "media";
     const char *DEVICE_PATH = "/dev/";
 

@@ -61,7 +61,6 @@ status_t
 IPU3CameraHw::init()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-
     status_t status = NO_ERROR;
 
     std::string sensorMediaDevice = PSLConfParser::getSensorMediaDevice();

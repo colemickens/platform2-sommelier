@@ -1938,10 +1938,10 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
         std::vector<media_link_desc> links;
         entity->getLinkDesc(links);
-        LOG1("@%s, linkes number:%zu\n", __FUNCTION__, links.size());
+        LOG1("@%s, links number:%lu\n", __FUNCTION__, links.size());
         if (links.size()) {
             struct media_pad_desc* pad = &links[0].sink;
-            LOG1("@%s, entity:%d, flags:%d, index:%d\n",
+            LOG1("@%s, sink entity:%d, flags:%d, index:%d\n",
                 __FUNCTION__, pad->entity, pad->flags, pad->index);
             struct media_entity_desc entityDesc;
             mMediaCtl->findMediaEntityById(pad->entity, entityDesc);
@@ -2156,6 +2156,9 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
      * Add video nodes into mediaCtlConfig
      */
     addVideoNodes(csiBESocOutput, mediaCtlConfig);
+
+    LOG1("Adding Isys link %s:[0] -> %s:[0]", sourceInfo.pa.name.c_str(), csi2.c_str());
+    addLinkParams(sourceInfo.pa.name, 0, csi2, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     if (gDumpType & CAMERA_DUMP_MEDIA_CTL)
         dumpMediaCtlConfig(*mediaCtlConfig);

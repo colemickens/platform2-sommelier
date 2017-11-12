@@ -93,7 +93,6 @@ status_t MediaController::open()
     }
 
     mFd = SysCall::open(mPath.c_str(), O_RDWR);
-
     if (mFd < 0) {
         if (mFd == -EPERM) {
             // Return permission denied, to allow skipping this device.
@@ -398,6 +397,7 @@ status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
              __FUNCTION__, linkParams.srcName.c_str());
         return status;
     }
+
     status = getMediaEntity(sinkEntity, linkParams.sinkName.c_str());
     if (status != NO_ERROR) {
         LOGE("@%s: getting MediaEntity \"%s\" failed",
@@ -409,8 +409,10 @@ status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
     CLEAR(sinkPadDesc);
     srcEntity->getPadDesc(srcPadDesc, linkParams.srcPad);
     sinkEntity->getPadDesc(sinkPadDesc, linkParams.sinkPad);
+
     linkDesc.source = srcPadDesc;
     linkDesc.sink = sinkPadDesc;
+
     if (linkParams.enable) {
         linkDesc.flags |= linkParams.flags;
     } else if (linkParams.flags & MEDIA_LNK_FL_DYNAMIC) {
@@ -451,6 +453,7 @@ status_t MediaController::setupLink(struct media_link_desc &linkDesc)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
+
     int ret = xioctl(MEDIA_IOC_SETUP_LINK, &linkDesc);
     if (ret < 0) {
         LOGE("Link setup failed: %s", strerror(errno));

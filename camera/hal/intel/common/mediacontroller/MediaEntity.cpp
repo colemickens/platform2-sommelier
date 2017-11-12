@@ -34,9 +34,12 @@ MediaEntity::MediaEntity(struct media_entity_desc &entity, struct media_link_des
 
     if (links != nullptr) {
         for (int i = 0; i < entity.links; i++) {
-            LOG1("link %d: pad %d --> sink entity %d:%d (%s%s%s)", i, links[i].source.index,
-                links[i].sink.entity, links[i].sink.index, (links[i].flags & MEDIA_LNK_FL_ENABLED)?"enabled":"disabled",
-                (links[i].flags & MEDIA_LNK_FL_IMMUTABLE)?" immutable":"", (links[i].flags & MEDIA_LNK_FL_DYNAMIC)?" dynamic":"");
+            LOG1("link %d: src entity %d: %d --> sink entity %d:%d (%s%s%s)", i,
+                links[i].source.entity, links[i].source.index,
+                links[i].sink.entity, links[i].sink.index,
+                (links[i].flags & MEDIA_LNK_FL_ENABLED)?"enabled":"disabled",
+                (links[i].flags & MEDIA_LNK_FL_IMMUTABLE)?" immutable":"",
+                (links[i].flags & MEDIA_LNK_FL_DYNAMIC)?" dynamic":"");
             mLinks.push_back(links[i]);
         }
     }

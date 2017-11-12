@@ -107,7 +107,7 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
         MediaCtlLinkParams pipeLink = mMediaCtlConfig->mLinkParams[i];
         status = mMediaCtl->configureLink(pipeLink);
         if (status != NO_ERROR) {
-            LOGE("Fannot set MediaCtl links (ret = %d)", status);
+            LOGE("Cannot set MediaCtl links (ret = %d)", status);
             return status;
         }
     }
