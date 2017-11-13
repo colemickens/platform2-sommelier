@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
   logging::SetMinLogLevel(logging::LOG_WARNING);
 
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
+  CHECK(prefs.Init(power_manager::Prefs::GetDefaultStore(),
+                   power_manager::Prefs::GetDefaultSources()));
 
   power_manager::system::UdevStub udev;
   base::FilePath path(power_manager::kPowerStatusPath);

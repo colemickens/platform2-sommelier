@@ -11,10 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/compiler_specific.h>
-#include <base/files/file_path.h>
-#include <base/files/file_path_watcher.h>
-#include <base/memory/linked_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -45,7 +43,48 @@ class PrefsInterface {
   virtual void SetDouble(const std::string& name, double value) = 0;
 };
 
-// PrefsInterface implementation that reads and writes prefs from/to disk.
+class PrefsSourceInterface;
+
+using PrefsSourceInterfaceVector =
+    std::vector<std::unique_ptr<PrefsSourceInterface>>;
+
+// Result of a pref file read operation.
+struct PrefReadResult {
+  std::string value;        // The value that was read.
+  std::string source_desc;  // Where |value| came from, for logging.
+};
+
+// Interface for readable sources of preferences.
+class PrefsSourceInterface {
+ public:
+  virtual ~PrefsSourceInterface() {}
+
+  // Gets a description of this source suitable for logging.
+  virtual std::string GetDescription() const = 0;
+
+  // Reads a pref named |name| from this source into the given string.
+  virtual bool ReadPrefString(const std::string& name,
+                              std::string* value_out) = 0;
+};
+
+// Interface for readable and writable storage of preferences.
+class PrefsStoreInterface : public PrefsSourceInterface {
+ public:
+  // Callback type for Watch(). |name| refers to the updated preference.
+  using ChangeCallback = base::Callback<void(const std::string& name)>;
+
+  // Writes a pref named |name| to this store.
+  virtual bool WritePrefString(const std::string& name,
+                               const std::string& value) = 0;
+
+  // Starts watching for changes in this store and call |callback| with changes.
+  // If called multiple times, only the last callback will be notified.
+  // Returns true on success.
+  virtual bool Watch(const ChangeCallback& callback) = 0;
+};
+
+// PrefsInterface implementation that reads and writes prefs from/to disk and
+// from libcros_config.
 // Multiple directories are supported; this allows a default set of prefs
 // to be placed on the readonly root partition and a second set of
 // prefs under /var to be overlaid and changed at runtime.
@@ -74,12 +113,17 @@ class Prefs : public PrefsInterface {
   Prefs();
   virtual ~Prefs();
 
-  // Returns the default paths where prefs are stored, to be passed to Init().
-  static std::vector<base::FilePath> GetDefaultPaths();
+  // Returns the default writable store of prefs, to be passed to Init().
+  static std::unique_ptr<PrefsStoreInterface> GetDefaultStore();
 
-  // Earlier directories in |pref_paths_| take precedence over later ones.  Only
-  // the first directory is watched for changes.
-  bool Init(const std::vector<base::FilePath>& pref_paths);
+  // Returns the default sources where prefs are stored, to be passed to Init().
+  static PrefsSourceInterfaceVector GetDefaultSources();
+
+  // Initialize the preference store and sources. The |store| takes highest
+  // precedence when reading preferences, followed by the |sources|, in order.
+  // The |store| is also used to write preferences and watched for changes.
+  bool Init(std::unique_ptr<PrefsStoreInterface> store,
+            PrefsSourceInterfaceVector sources);
 
   // PrefsInterface implementation:
   void AddObserver(PrefsObserver* observer) override;
@@ -93,24 +137,15 @@ class Prefs : public PrefsInterface {
   void SetDouble(const std::string& name, double value) override;
 
  private:
-  typedef std::map<std::string, linked_ptr<base::FilePathWatcher>>
-      FileWatcherMap;
+  // Handle changes to pref values in |pref_store_|.
+  void HandlePrefChanged(const std::string& name);
 
-  // Result of a pref file read operation.
-  struct PrefReadResult {
-    std::string value;  // The value that was read.
-    std::string path;   // The pref file from which |value| was read.
-  };
-
-  // Called by |file_watcher_| when a pref is changed. Notifies |observers_|.
-  void HandleFileChanged(const base::FilePath& path, bool error);
-
-  // Reads contents of pref files given by |name| from all the paths in
-  // |pref_paths_| in order, where they exist.  Strips them of whitespace.
+  // Reads string values of pref given by |name| from all the sources in
+  // |pref_sources_| in order, where they exist.  Strips them of whitespace.
   // Stores each read result in |results|.
   // If |read_all| is true, it will attempt to read from all pref paths.
-  // Otherwise it will return after successfully reading one pref file.
-  void GetPrefStrings(const std::string& name,
+  // Otherwise it will return after successfully reading one pref source.
+  void GetPrefResults(const std::string& name,
                       bool read_all,
                       std::vector<PrefReadResult>* results);
 
@@ -119,26 +154,20 @@ class Prefs : public PrefsInterface {
   // already scheduled.
   void ScheduleWrite();
 
-  // Writes |prefs_to_write_| to the first path in |pref_paths_|, updates
-  // |last_write_time_|, and clears |prefs_to_write_|.
+  // Writes |prefs_to_write_| to |pref_store_|, updates |last_write_time_|,
+  // and clears |prefs_to_write_|.
   void WritePrefs();
 
-  // Updates |file_watchers_| to contain a watcher for every file currently in
-  // |dir|.
-  void UpdateFileWatchers(const base::FilePath& dir);
+  // The pref store is the highest precedence source of pref values and the
+  // writable sink for preferences.
+  std::unique_ptr<PrefsStoreInterface> pref_store_;
 
-  // List of file paths to read from, in order of precedence.
+  // List of pref sources to read from, in order of precedence.
   // A value read from the first path will be used instead of values from the
   // other paths.
-  std::vector<base::FilePath> pref_paths_;
+  PrefsSourceInterfaceVector pref_sources_;
 
   base::ObserverList<PrefsObserver> observers_;
-
-  // For notification of updates to pref files.
-  base::FilePathWatcher dir_watcher_;
-
-  // Map from pref file basenames to base::FilePathWatchers.
-  FileWatcherMap file_watchers_;
 
   // Calls WritePrefs().
   base::OneShotTimer write_prefs_timer_;

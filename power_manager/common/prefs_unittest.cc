@@ -12,6 +12,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/file_prefs_store.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"
 
@@ -88,6 +89,20 @@ class PrefsTest : public testing::Test {
   }
 
  protected:
+  PrefsSourceInterfaceVector GetSources() {
+    PrefsSourceInterfaceVector sources;
+    // The first path will be used for the store; the rest become sources.
+    for (int i = 1; i < kNumPrefDirectories; ++i) {
+      sources.emplace_back(new FilePrefsStore(paths_[i]));
+    }
+    return sources;
+  }
+
+  void InitPrefs() {
+    ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                            GetSources()));
+  }
+
   std::vector<base::FilePath> paths_;
   std::unique_ptr<base::ScopedTempDir>
       temp_dir_generators_[kNumPrefDirectories];
@@ -98,7 +113,8 @@ class PrefsTest : public testing::Test {
 
 // Test read/write with only one directory.
 TEST_F(PrefsTest, TestOneDirectory) {
-  ASSERT_TRUE(prefs_.Init(std::vector<base::FilePath>(1, paths_[0])));
+  ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                          PrefsSourceInterfaceVector()));
 
   // Make sure the pref files don't already exist.
   EXPECT_FALSE(base::PathExists(paths_[0].Append(kIntTestFileName)));
@@ -130,7 +146,7 @@ TEST_F(PrefsTest, TestOneDirectory) {
 
 // Test read/write with three directories.
 TEST_F(PrefsTest, TestThreeDirectories) {
-  ASSERT_TRUE(prefs_.Init(paths_));
+  InitPrefs();
 
   // Make sure the files don't already exist.
   for (int i = 0; i < kNumPrefDirectories; ++i) {
@@ -175,7 +191,8 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
         base::StringPrintf("Testing stacked directories, cycle %d", cycle));
     SetUp();
     Prefs prefs;
-    ASSERT_TRUE(prefs.Init(paths_));
+    ASSERT_TRUE(prefs.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                           GetSources()));
 
     // Write values to the pref directories as appropriate for this cycle.
     int i;
@@ -236,7 +253,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
 // Test read from three directories, with the higher precedence directories
 // containing garbage.
 TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
-  ASSERT_TRUE(prefs_.Init(paths_));
+  InitPrefs();
 
   for (int i = 0; i < kNumPrefDirectories; ++i) {
     const base::FilePath& path = paths_[i];
@@ -281,7 +298,7 @@ TEST_F(PrefsTest, WatchPrefs) {
   const base::FilePath kFilePath = paths_[0].Append(kPrefName);
 
   TestPrefsObserver observer(&prefs_);
-  ASSERT_TRUE(prefs_.Init(paths_));
+  InitPrefs();
   EXPECT_EQ(strlen(kPrefValue),
             base::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
@@ -300,7 +317,7 @@ TEST_F(PrefsTest, WatchPrefs) {
 // are deferred.
 TEST_F(PrefsTest, DeferredWrites) {
   test_api_.set_write_interval(base::TimeDelta::FromSeconds(120));
-  ASSERT_TRUE(prefs_.Init(paths_));
+  InitPrefs();
 
   // Write 1 to a pref.
   const char kName[] = "foo";

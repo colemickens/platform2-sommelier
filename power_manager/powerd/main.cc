@@ -63,7 +63,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   // DaemonDelegate:
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
     auto prefs = base::WrapUnique(new Prefs());
-    CHECK(prefs->Init(Prefs::GetDefaultPaths()));
+    CHECK(prefs->Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
     return std::move(prefs);
   }
 

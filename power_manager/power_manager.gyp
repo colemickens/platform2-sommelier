@@ -39,6 +39,7 @@
       'sources': [
         'common/activity_logger.cc',
         'common/clock.cc',
+        'common/file_prefs_store.cc',
         'common/metrics_constants.cc',
         'common/metrics_sender.cc',
         'common/power_constants.cc',

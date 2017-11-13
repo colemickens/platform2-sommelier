@@ -47,7 +47,8 @@ int main(int argc, char* argv[]) {
   }
 
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
+  CHECK(prefs.Init(power_manager::Prefs::GetDefaultStore(),
+                   power_manager::Prefs::GetDefaultSources()));
 
   if (FLAGS_ambient_light_sensor) {
     bool als_enabled = false;

@@ -66,7 +66,7 @@ class Converter {
             bool keyboard,
             bool force_battery)
       : backlight_(max_level, current_level) {
-    CHECK(prefs_.Init(Prefs::GetDefaultPaths()));
+    CHECK(prefs_.Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
 
     bool has_als = false;
     if (prefs_.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
