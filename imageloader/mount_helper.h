@@ -14,6 +14,8 @@
 
 using MessageLoopForIO = base::MessageLoopForIO;
 
+struct cmsghdr;
+
 namespace imageloader {
 
 // Main loop for the Mount helper process.
@@ -32,8 +34,9 @@ class MountHelper : public brillo::Daemon,
   void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  private:
-  MountResponse HandleCommand(MountImage& command);
-  void SendResponse(MountResponse& response);
+  CommandResponse HandleCommand(ImageCommand& command,
+                                struct cmsghdr* cmsg);
+  void SendResponse(CommandResponse& response);
 
   base::ScopedFD control_fd_;
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;

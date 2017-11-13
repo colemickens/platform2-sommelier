@@ -71,6 +71,7 @@ statfs64: 1
 sysinfo: 1
 tgkill: 1
 ugetrlimit: 1
+umount2: 1
 uname: 1
 wait4: 1
 write: 1

@@ -40,7 +40,19 @@ class ImageLoaderImpl {
   bool RegisterComponent(const std::string& name, const std::string& version,
                          const std::string& component_folder_abs_path);
 
+  // Remove a component.
   bool RemoveComponent(const std::string& name);
+
+  // Enumerates all mount point paths with prefix of |parent_dir| and returns
+  // them with |paths|. If |dry_run| is true, no mount points are unmounted.
+  // If |dry_run| is false, all mount points returned in |paths| are unmounted.
+  bool CleanupAll(bool dry_run,
+                  const base::FilePath& parent_dir,
+                  std::vector<std::string>* paths,
+                  HelperProcess* process);
+
+  // Cleanup a mount point at |path|.
+  bool Cleanup(const base::FilePath& path, HelperProcess* process);
 
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name);

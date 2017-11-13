@@ -72,6 +72,7 @@ sysinfo: 1
 tgkill: 1
 time: 1
 ugetrlimit: 1
+umount2: 1
 uname: 1
 unlink: 1
 wait4: 1

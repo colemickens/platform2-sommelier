@@ -10,10 +10,17 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
+// Forward declare classes in sys/socket.h
+struct msghdr;
+
 namespace imageloader {
 
 // Forward declare the FileSystem enum.
 enum class FileSystem;
+
+// Forward declare classes in ipc.pb.h
+class ImageCommand;
+class CommandResponse;
 
 // Tracks a helper subprocess. Handles forking, cleaning up on termination, and
 // IPC.
@@ -33,17 +40,33 @@ class HelperProcess {
                                 FileSystem fs_type,
                                 const std::string& table);
 
+  // Sends a message telling the helper process to enumerate all mount point
+  // paths with prefix of |rootpath| and returns them with |paths|. If
+  // |dry_run| is true, no mount points are unmounted. If |dry_run| is false,
+  // all mount points returned in |paths| are unmounted.
+  virtual bool SendUnmountAllCommand(bool dry_run,
+                                     const std::string& rootpath,
+                                     std::vector<std::string>* paths);
+
+  // Sends a message telling the helper process to umount mount point at
+  // |path|.
+  virtual bool SendUnmountCommand(const std::string& path);
+
   const pid_t pid() { return pid_; }
 
  protected:
   // Waits for a reply from the helper process indicating if the mount succeeded
   // or failed.
-  virtual bool WaitForResponse();
+  virtual std::unique_ptr<CommandResponse> WaitForResponse();
 
   pid_t pid_{0};
   base::ScopedFD control_fd_;
 
  private:
+  // Constructs msghdr and sends it.
+  virtual std::unique_ptr<CommandResponse> SendCommand(
+      const ImageCommand& msg_proto, struct msghdr* msg);
+
   DISALLOW_COPY_AND_ASSIGN(HelperProcess);
 };
 

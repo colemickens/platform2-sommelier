@@ -80,49 +80,73 @@ void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
 
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
 
-  if (cmsg == nullptr) LOG(FATAL) << "no cmsg";
-
-  if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
-    LOG(FATAL) << "cmsg is wrong type";
-
-  memmove(&pending_fd_, CMSG_DATA(cmsg), sizeof(pending_fd_));
-
-  MountImage command;
-  if (!command.ParseFromArray(buffer, strlen(buffer)))
+  ImageCommand command;
+  std::string msg_str;
+  msg_str.assign(buffer, bytes - 1);
+  if (!command.ParseFromString(msg_str))
     LOG(FATAL) << "error parsing protobuf";
 
   // Handle the command to mount the image.
-  MountResponse response = HandleCommand(command);
+  CommandResponse response = HandleCommand(command, cmsg);
   // Reply to the parent process with the success or failure.
   SendResponse(response);
 }
 
-MountResponse MountHelper::HandleCommand(MountImage& command) {
-  // Convert the fs type to a string.
-  std::string fs_type;
-  switch (command.fs_type()) {
-    case MountImage::EXT4:
-      fs_type = "ext4";
-      break;
-    case MountImage::SQUASH:
-      fs_type = "squashfs";
-      break;
-    default:
-      LOG(FATAL) << "unknown filesystem type";
+CommandResponse MountHelper::HandleCommand(ImageCommand& imageCommand,
+                                           struct cmsghdr* cmsg) {
+  CommandResponse response;
+  if (imageCommand.has_mount_command()) {
+    MountCommand command = imageCommand.mount_command();
+    if (cmsg == nullptr)
+      LOG(FATAL) << "no cmsg";
+
+    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+      LOG(FATAL) << "cmsg is wrong type";
+
+    memmove(&pending_fd_, CMSG_DATA(cmsg), sizeof(pending_fd_));
+
+    // Convert the fs type to a string.
+    std::string fs_type;
+    switch (command.fs_type()) {
+      case MountCommand::EXT4:
+        fs_type = "ext4";
+        break;
+      case MountCommand::SQUASH:
+        fs_type = "squashfs";
+        break;
+      default:
+        LOG(FATAL) << "unknown filesystem type";
+    }
+
+    bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
+                                 base::FilePath(command.mount_path()),
+                                 fs_type,
+                                 command.table());
+    if (!status)
+      LOG(ERROR) << "mount failed";
+
+    response.set_success(status);
+  } else if (imageCommand.has_unmount_all_command()) {
+    UnmountAllCommand command = imageCommand.unmount_all_command();
+    std::vector<base::FilePath> paths;
+    const base::FilePath root_dir(command.unmount_rootpath());
+    response.set_success(mounter_.CleanupAll(command.dry_run(),
+                                             root_dir, &paths));
+    for (const auto& path : paths) {
+      const std::string path_(path.value());
+      response.add_paths(path_);
+    }
+  } else if (imageCommand.has_unmount_command()) {
+    UnmountCommand command = imageCommand.unmount_command();
+    const base::FilePath path(command.unmount_path());
+    response.set_success(mounter_.Cleanup(path));
+  } else {
+    LOG(ERROR) << "unknown operations";
   }
-
-  bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
-                               base::FilePath(command.mount_path()),
-                               fs_type,
-                               command.table());
-  if (!status) LOG(ERROR) << "mount failed";
-
-  MountResponse response;
-  response.set_success(status);
   return response;
 }
 
-void MountHelper::SendResponse(MountResponse& response) {
+void MountHelper::SendResponse(CommandResponse& response) {
   std::string response_str;
   if (!response.SerializeToString(&response_str))
     LOG(FATAL) << "failed to serialize protobuf";

@@ -46,31 +46,11 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
   pid_ = p.Pid();
 }
 
-bool HelperProcess::SendMountCommand(int fd, const std::string& path,
-                                     FileSystem fs_type,
-                                     const std::string& table) {
-  struct msghdr msg = {0};
-  char fds[CMSG_SPACE(sizeof(fd))];
-  memset(fds, '\0', sizeof(fds));
-
-  MountImage msg_proto;
-  msg_proto.set_mount_path(path);
-  msg_proto.set_table(table);
-
-  // Convert the internal enum to the protobuf enum.
-  switch (fs_type) {
-    case FileSystem::kExt4:
-      msg_proto.set_fs_type(MountImage::EXT4);
-      break;
-    case FileSystem::kSquashFS:
-      msg_proto.set_fs_type(MountImage::SQUASH);
-      break;
-    default:
-      LOG(FATAL) << "Unknown file system type passed to helper process.";
-  }
-
+std::unique_ptr<CommandResponse> HelperProcess::SendCommand(
+    const ImageCommand& image_command, struct msghdr* msg) {
+  // Serialize message object into string.
   std::string msg_str;
-  if (!msg_proto.SerializeToString(&msg_str))
+  if (!image_command.SerializeToString(&msg_str))
     LOG(FATAL) << "error serializing protobuf";
 
   // iov takes a non-const pointer.
@@ -81,9 +61,39 @@ bool HelperProcess::SendMountCommand(int fd, const std::string& path,
   iov[0].iov_base = buffer;
   iov[0].iov_len = sizeof(buffer);
 
-  msg.msg_iov = iov;
-  msg.msg_iovlen = sizeof(iov) / sizeof(iov[0]);
+  msg->msg_iov = iov;
+  msg->msg_iovlen = sizeof(iov) / sizeof(iov[0]);
 
+  if (sendmsg(control_fd_.get(), msg, 0) < 0) PLOG(FATAL) << "sendmsg failed";
+
+  return WaitForResponse();
+}
+
+bool HelperProcess::SendMountCommand(int fd, const std::string& path,
+                                     FileSystem fs_type,
+                                     const std::string& table) {
+  struct msghdr msg = {0};
+  char fds[CMSG_SPACE(sizeof(fd))];
+  memset(fds, '\0', sizeof(fds));
+
+  // 1. Construct message object.
+  ImageCommand image_command;
+  image_command.mutable_mount_command()->set_mount_path(path);
+  image_command.mutable_mount_command()->set_table(table);
+
+  // Convert the internal enum to the protobuf enum.
+  switch (fs_type) {
+    case FileSystem::kExt4:
+      image_command.mutable_mount_command()->set_fs_type(MountCommand::EXT4);
+      break;
+    case FileSystem::kSquashFS:
+      image_command.mutable_mount_command()->set_fs_type(MountCommand::SQUASH);
+      break;
+    default:
+      LOG(FATAL) << "Unknown file system type passed to helper process.";
+  }
+
+  // 2. Encode the fd into message.
   msg.msg_control = fds;
   msg.msg_controllen = sizeof(fds);
 
@@ -96,12 +106,43 @@ bool HelperProcess::SendMountCommand(int fd, const std::string& path,
   memmove(CMSG_DATA(cmsg), &fd, sizeof(fd));
   msg.msg_controllen = cmsg->cmsg_len;
 
-  if (sendmsg(control_fd_.get(), &msg, 0) < 0) PLOG(FATAL) << "sendmsg failed";
-
-  return WaitForResponse();
+  // 3. Send the command.
+  return SendCommand(image_command, &msg)->success();
 }
 
-bool HelperProcess::WaitForResponse() {
+bool HelperProcess::SendUnmountAllCommand(bool dry_run,
+                                          const std::string& rootpath,
+                                          std::vector<std::string>* paths) {
+  struct msghdr msg = {0};
+
+  // 1. Construct message object.
+  ImageCommand image_command;
+  image_command.mutable_unmount_all_command()->set_dry_run(dry_run);
+  image_command.mutable_unmount_all_command()->set_unmount_rootpath(rootpath);
+
+  // 2. Send the command.
+  std::unique_ptr<CommandResponse> response = SendCommand(image_command, &msg);
+
+  // 3. Process return value.
+  for (int i = 0; i < response->paths_size(); i++) {
+    std::string path(response->paths(i));
+    paths->push_back(path);
+  }
+  return response->success();
+}
+
+bool HelperProcess::SendUnmountCommand(const std::string& path) {
+  struct msghdr msg = {0};
+
+  // 1. Construct message object.
+  ImageCommand image_command;
+  image_command.mutable_unmount_command()->set_unmount_path(path);
+
+  // 2. Send the command.
+  return SendCommand(image_command, &msg)->success();
+}
+
+std::unique_ptr<CommandResponse> HelperProcess::WaitForResponse() {
   struct pollfd pfd;
   pfd.fd = control_fd_.get();
   pfd.events = POLLIN;
@@ -109,20 +150,20 @@ bool HelperProcess::WaitForResponse() {
   int rc = poll(&pfd, 1, /*timeout=*/ 2000);
   PCHECK(rc >= 0 || errno == EINTR);
 
+  std::unique_ptr<CommandResponse> response =
+      std::make_unique<CommandResponse>();
   if (pfd.revents & POLLIN) {
     char buffer[4096];
     memset(buffer, '\0', sizeof(buffer));
     ssize_t bytes = read(control_fd_.get(), buffer, sizeof(buffer));
     PCHECK(bytes != -1);
 
-    MountResponse response;
-    if (!response.ParseFromArray(buffer, bytes)) {
+    if (!response->ParseFromArray(buffer, bytes)) {
       LOG(FATAL) << "could not deserialize protobuf: " << buffer;
     }
-    return response.success();
   }
 
-  return false;
+  return response;
 }
 
 }  // namespace imageloader

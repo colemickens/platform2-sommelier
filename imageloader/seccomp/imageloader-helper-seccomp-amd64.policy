@@ -70,6 +70,7 @@ stat: 1
 statfs: 1
 sysinfo: 1
 tgkill: 1
+umount2: 1
 uname: 1
 unlink: 1
 wait4: 1

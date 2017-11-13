@@ -172,6 +172,50 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
   EXPECT_EQ(expected_path, mnt_path);
 }
 
+TEST_F(ImageLoaderTest, CleanupAll) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  auto helper_mock = std::make_unique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
+      .Times(1);
+  ON_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
+      .WillByDefault(testing::Return(true));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.path().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  base::FilePath rootpath("/");
+  std::vector<std::string> paths;
+  EXPECT_EQ(loader.CleanupAll(true, rootpath, &paths, helper_mock.get()), true);
+}
+
+TEST_F(ImageLoaderTest, Cleanup) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  auto helper_mock = std::make_unique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendUnmountCommand(_)).Times(1);
+  ON_CALL(*helper_mock, SendUnmountCommand(_))
+      .WillByDefault(testing::Return(true));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.path().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  base::FilePath path("/");
+  EXPECT_EQ(loader.Cleanup(path, helper_mock.get()), true);
+}
+
 TEST_F(ImageLoaderTest, LoadExt4Image) {
   Keys keys;
   keys.push_back(

@@ -90,33 +90,6 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (FLAGS_unmount_all) {
-    imageloader::VerityMounter mounter;
-    std::vector<base::FilePath> paths;
-    const base::FilePath parent_dir(FLAGS_loaded_mounts_base);
-    bool success = mounter.CleanupAll(FLAGS_dry_run, parent_dir, &paths);
-    if (FLAGS_dry_run) {
-      for (const auto& path : paths) {
-        std::cout << path.value() << "\n";
-      }
-    }
-    if (!success) {
-      LOG(ERROR) << "--unmount_all failed!";
-      return 1;
-    }
-    return 0;
-  }
-
-  if (FLAGS_unmount) {
-    if (FLAGS_mount_point.empty()) {
-      LOG(ERROR) << "--mount_point=path must be set with --unmount";
-      return 1;
-    }
-
-    imageloader::VerityMounter mounter;
-    return mounter.Cleanup(base::FilePath(FLAGS_mount_point)) ? 0 : 1;
-  }
-
   // Executing this as the helper process if specified.
   if (FLAGS_mount_helper_fd >= 0) {
     CHECK_GT(FLAGS_mount_helper_fd, -1);
@@ -166,6 +139,48 @@ int main(int argc, char** argv) {
                               helper_process.get())) {
       LOG(ERROR) << "Failed to verify and mount component: "
                  << FLAGS_mount_component << " at " << FLAGS_mount_point;
+      return 1;
+    }
+    return 0;
+  }
+
+  // Unmount all component mount points and exit.
+  if (FLAGS_unmount_all) {
+    // Run with minimal privilege.
+    imageloader::ImageLoader::EnterSandbox();
+
+    imageloader::ImageLoaderImpl loader(std::move(config));
+    std::vector<std::string> paths;
+    const base::FilePath parent_dir(FLAGS_loaded_mounts_base);
+    bool success = loader.CleanupAll(FLAGS_dry_run,
+                                     parent_dir, &paths, helper_process.get());
+    if (FLAGS_dry_run) {
+      for (const auto& path : paths) {
+        std::cout << path << "\n";
+      }
+    }
+    if (!success) {
+      LOG(ERROR) << "--unmount_all failed!";
+      return 1;
+    }
+    return 0;
+  }
+
+  // Unmount a component mount point and exit.
+  if (FLAGS_unmount) {
+    // Run with minimal privilege.
+    imageloader::ImageLoader::EnterSandbox();
+
+    if (FLAGS_mount_point.empty()) {
+      LOG(ERROR) << "--mount_point=path must be set with --unmount";
+      return 1;
+    }
+
+    imageloader::ImageLoaderImpl loader(std::move(config));
+    const base::FilePath path(FLAGS_mount_point);
+    bool success = loader.Cleanup(path, helper_process.get());
+    if (!success) {
+      LOG(ERROR) << "--unmount failed!";
       return 1;
     }
     return 0;

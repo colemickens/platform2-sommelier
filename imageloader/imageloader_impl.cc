@@ -105,6 +105,18 @@ bool ImageLoaderImpl::RemoveComponent(const std::string& name) {
   return RemoveComponentAtPath(name, component_root, component_path);
 }
 
+bool ImageLoaderImpl::CleanupAll(bool dry_run,
+                                 const base::FilePath& parent_dir,
+                                 std::vector<std::string>* paths,
+                                 HelperProcess* process) {
+  return process->SendUnmountAllCommand(dry_run, parent_dir.value(), paths);
+}
+
+bool ImageLoaderImpl::Cleanup(const base::FilePath& path,
+                              HelperProcess* process) {
+  return process->SendUnmountCommand(path.value());
+}
+
 bool ImageLoaderImpl::RemoveComponentAtPath(
   const std::string& name,
   const base::FilePath& component_root,
