@@ -101,6 +101,7 @@ CMetricsLibrary metrics_library;
 typedef enum {
   kWarningTypeGeneric,
   kWarningTypeWifi,
+  kWarningTypeSuspend,
 } KernelWarningType;
 
 const char *prog_name;          /* the name of this program */
@@ -117,6 +118,7 @@ const char anomaly_dump_dir[]  = "/run/anomaly-collector";
 const char *warn_dump_path = "/run/anomaly-collector/warning";
 const char *warn_crash_reporter_command;
 const char *wifi_warn_crash_reporter_command;
+const char *suspend_warn_crash_reporter_command;
 const char *service_fail_dump_path = "/run/anomaly-collector/service-fail";
 const char *service_fail_crash_reporter_command;
 
@@ -214,6 +216,8 @@ int KernelWarnStart(void) {
 
   if (strstr(yytext, "drivers/net/wireless"))
     warn_type = kWarningTypeWifi;
+  else if (strstr(yytext, "drivers/idle"))
+    warn_type = kWarningTypeSuspend;
   else
     warn_type = kWarningTypeGeneric;
 
@@ -227,6 +231,8 @@ int KernelWarnStart(void) {
 void KernelWarnEnd(void) {
   if (warn_type == kWarningTypeWifi)
     AnomalyEnd(wifi_warn_crash_reporter_command);
+  else if (warn_type == kWarningTypeSuspend)
+    AnomalyEnd(suspend_warn_crash_reporter_command);
   else
     AnomalyEnd(warn_crash_reporter_command);
 }
@@ -335,6 +341,10 @@ int main(int argc, char **argv) {
   wifi_warn_crash_reporter_command = testing ?
     "./anomaly_collector_test_reporter.sh warning wifi-warning" :
     "/sbin/crash_reporter --kernel_wifi_warning";
+
+  suspend_warn_crash_reporter_command = testing ?
+    "./anomaly_collector_test_reporter.sh warning suspend-warning" :
+    "/sbin/crash_reporter --kernel_suspend_warning";
 
   service_fail_crash_reporter_command = testing ?
     "./anomaly_collector_test_reporter.sh service-fail" :

@@ -105,11 +105,20 @@ check_log 6
 
 # Emit a kernel warning from a wifi driver.
 rm -f "wifi-warning"
-sed s/gpu\\/drm\\/ttm/net\\/wireless\\// < "${SRC}/TEST_WARNING" >> messages
+sed s/gpu\\/drm\\/ttm/net\\/wireless/ < "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 7
 if [[ ! -f "wifi-warning" ]]; then
   fail "wifi-warning was not generated."
+fi
+
+# Emit a kernel warning from a suspend failure.
+rm -f "suspend-warning"
+sed s/gpu\\/drm\\/ttm/idle/ < "${SRC}/TEST_WARNING" >> messages
+sleep 1
+check_log 8
+if [[ ! -f "suspend-warning" ]]; then
+  fail "suspend-warning was not generated."
 fi
 
 # Emit a kernel warning in old arm64 format.  This was close enough to trigger
@@ -118,7 +127,7 @@ fi
 # when we don't quite recognize the warning format.
 cat "${SRC}/TEST_WARNING_OLD_ARM64" >> messages
 sleep 1
-check_log 8 '\-unknown\-function$'
+check_log 9 '\-unknown\-function$'
 
 # Success!
 exit 0

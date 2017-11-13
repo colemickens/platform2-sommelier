@@ -13,6 +13,7 @@
 namespace {
 const char kGenericWarningExecName[] = "kernel-warning";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
+const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelWarningSignatureKey[] = "sig";
 const char kKernelWarningPath[] = "/run/anomaly-collector/warning";
 const pid_t kKernelPid = 0;
@@ -74,8 +75,14 @@ bool KernelWarningCollector::Collect(WarningType type) {
     return true;
   }
 
-  const char *exec_name = (type == kWifi) ? kWifiWarningExecName
-                                          : kGenericWarningExecName;
+  const char *exec_name;
+  if (type == kWifi)
+    exec_name = kWifiWarningExecName;
+  else if (type == kSuspend)
+    exec_name = kSuspendWarningExecName;
+  else
+    exec_name = kGenericWarningExecName;
+
   std::string dump_basename =
       FormatDumpBasename(exec_name, time(nullptr), kKernelPid);
   FilePath log_path = GetCrashPath(root_crash_directory, dump_basename, "log");

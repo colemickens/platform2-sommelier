@@ -18,6 +18,7 @@ class KernelWarningCollector : public CrashCollector {
   enum WarningType {
     kGeneric,
     kWifi,
+    kSuspend,
   };
 
   KernelWarningCollector();

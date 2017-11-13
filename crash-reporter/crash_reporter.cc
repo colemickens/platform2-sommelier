@@ -370,6 +370,8 @@ int main(int argc, char *argv[]) {
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
   DEFINE_bool(kernel_wifi_warning, false,
       "Report collected kernel wifi warning");
+  DEFINE_bool(kernel_suspend_warning, false,
+      "Report collected kernel suspend warning");
   DEFINE_bool(service_failure, false, "Report collected service failure");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
@@ -472,6 +474,11 @@ int main(int argc, char *argv[]) {
   if (FLAGS_kernel_wifi_warning) {
     return HandleKernelWarning(&kernel_warning_collector,
                                KernelWarningCollector::WarningType::kWifi);
+  }
+
+  if (FLAGS_kernel_suspend_warning) {
+    return HandleKernelWarning(&kernel_warning_collector,
+                               KernelWarningCollector::WarningType::kSuspend);
   }
 
   if (FLAGS_service_failure) {
