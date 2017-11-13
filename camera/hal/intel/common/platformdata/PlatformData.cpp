@@ -23,17 +23,9 @@
 #include "v4l2dev/v4l2device.h"
 #include "UtilityMacros.h"
 #include "ChromeCameraProfiles.h"
-#ifdef REMOTE_3A_SERVER
-#include "ipc/client/Intel3AClient.h"
-#endif
 
-#include <unistd.h>        // usleep()
-#include <ctype.h>         // tolower()
-#include <dirent.h>        // opendir()
-#include <fcntl.h>         // open(), close()
 #include <linux/media.h>   // media controller
 #include <linux/kdev_t.h>  // MAJOR(), MINOR()
-#include <string>
 #include <sstream>
 #include <fstream>
 
@@ -55,8 +47,14 @@ using std::string;
 #define RETRY_COUNTER 0
 #endif
 
+bool PlatformData::mInitialized = false;
+
 CameraProfiles* PlatformData::mInstance = nullptr;
 CameraHWInfo* PlatformData::mCameraHWInfo = nullptr;
+
+#ifdef REMOTE_3A_SERVER
+Intel3AClient* PlatformData::mIntel3AClient = nullptr;
+#endif
 
 /**
  * index to this array is the camera id
@@ -142,7 +140,7 @@ ia_uid GcssKeyMap::str2key(const std::string &key_str)
  */
 void PlatformData::init()
 {
-    LOGD("Camera HAL static init");
+    LOG1("@%s", __FUNCTION__);
 
     CLEAR(sKnownCPFConfigurations);
 
@@ -177,6 +175,15 @@ void PlatformData::init()
         deinit();
         return;
     }
+
+#ifdef REMOTE_3A_SERVER
+    mIntel3AClient = new Intel3AClient;
+    if (mIntel3AClient->isInitialized() == false) {
+        LOGE("@%s, mIntel3AClient->isInitialized() returns false", __FUNCTION__);
+        deinit();
+        return;
+    }
+#endif
 
     /**
      * This number currently comes from the number if sections in the XML
@@ -216,6 +223,7 @@ void PlatformData::init()
         initAiqdInfo(i);
     }
 
+    mInitialized = true;
     LOGD("Camera HAL static init - Done!");
 }
 
@@ -223,6 +231,8 @@ void PlatformData::init()
  * This method is only called once when the HAL library is unloaded
  */
 void PlatformData::deinit() {
+    LOG1("@%s", __FUNCTION__);
+
     if (mCameraHWInfo) {
         saveAiqdDataToFile();
         for (int i = 0; i < numberOfCameras(); i++) {
@@ -246,8 +256,13 @@ void PlatformData::deinit() {
     }
 
 #ifdef REMOTE_3A_SERVER
-    Intel3AClient::release();
+    if (mIntel3AClient) {
+        delete mIntel3AClient;
+        mIntel3AClient = nullptr;
+    }
 #endif
+
+    mInitialized = false;
 }
 
 /**

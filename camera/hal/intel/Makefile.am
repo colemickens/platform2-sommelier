@@ -52,7 +52,8 @@ AALSRC = AAL/Camera3HAL.cpp \
          AAL/RequestThread.cpp \
          AAL/RequestThread.h \
          AAL/ResultProcessor.cpp \
-         AAL/ResultProcessor.h
+         AAL/ResultProcessor.h \
+         AAL/IErrorCallback.h
 
 V4L2SRC = common/v4l2dev/v4l2devicebase.cpp \
           common/v4l2dev/v4l2subdevice.cpp \

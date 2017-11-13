@@ -81,6 +81,9 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
     }
 
     mResultProcessor = new ResultProcessor(this, callback_ops);
+#ifdef REMOTE_3A_SERVER
+    PlatformData::getIntel3AClient()->registerErrorCallback(mResultProcessor);
+#endif
     mInitialized = true;
     return NO_ERROR;
 }
@@ -93,6 +96,9 @@ RequestThread::deinit()
     }
 
     if (mResultProcessor!= nullptr) {
+#ifdef REMOTE_3A_SERVER
+        PlatformData::getIntel3AClient()->registerErrorCallback(nullptr);
+#endif
         mBlockAction = REQBLK_NONBLOCKING;
         mResultProcessor->requestExitAndWait();
         delete mResultProcessor;

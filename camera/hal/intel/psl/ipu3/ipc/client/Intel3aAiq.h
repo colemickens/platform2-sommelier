@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <ia_aiq.h>
-#include "Intel3AClient.h"
 #include "Intel3aCommon.h"
 #include "IPCAiq.h"
 

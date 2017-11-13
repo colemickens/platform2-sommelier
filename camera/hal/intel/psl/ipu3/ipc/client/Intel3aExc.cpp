@@ -17,7 +17,6 @@
 
 #include "Intel3aExc.h"
 #include "LogHelper.h"
-#include "Intel3AClient.h"
 #include "UtilityMacros.h"
 
 NAMESPACE_DECLARATION {

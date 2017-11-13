@@ -87,16 +87,6 @@ static int hal_get_number_of_cameras(void)
 
     PERFORMANCE_HAL_ATRACE();
 
-#ifdef REMOTE_3A_SERVER
-    // if the hal fails to connect the remote 3a,
-    // return camera number 0 makes camera service to reload hal.
-    Intel3AClient* client = Intel3AClient::getInstance();
-    if (client == nullptr) {
-        LOGE("@%s, Intel3AClient::getInstance() fails", __FUNCTION__);
-        return 0;
-    }
-#endif
-
     return PlatformData::numberOfCameras();
 }
 
@@ -142,6 +132,24 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
 
     LOG1("%s, camera id: %s", __FUNCTION__, name);
     camera_id = atoi(name);
+
+#ifdef REMOTE_3A_SERVER
+    if (PlatformData::getIntel3AClient()
+        && !PlatformData::getIntel3AClient()->isIPCFine()) {
+        PlatformData::deinit();
+        LOGW("@%s, remote 3A IPC fails", __FUNCTION__);
+    }
+#endif
+
+    if (!PlatformData::isInitialized()) {
+        PlatformData::init(); // try to init the PlatformData again.
+        if (!PlatformData::isInitialized()) {
+            LOGE("%s: open Camera id %d fails due to PlatformData init fails",
+                __func__, camera_id);
+            return -ENODEV;
+        }
+    }
+
     if (camera_id < 0 || camera_id >= hal_get_number_of_cameras()) {
         LOGE("%s: Camera id %d is out of bounds, num. of cameras (%d)",
              __func__, camera_id, hal_get_number_of_cameras());

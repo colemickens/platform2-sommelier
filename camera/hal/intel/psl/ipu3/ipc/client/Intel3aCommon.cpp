@@ -18,13 +18,14 @@
 
 #include "LogHelper.h"
 #include "Intel3aCommon.h"
+#include "PlatformData.h"
 
 NAMESPACE_DECLARATION {
 Intel3aCommon::Intel3aCommon()
 {
     LOG1("@%s", __FUNCTION__);
 
-    mClient = Intel3AClient::getInstance();
+    mClient = PlatformData::getIntel3AClient();
     LOG1("@%s, mClient:%p", __FUNCTION__, mClient);
 }
 
@@ -43,7 +44,7 @@ bool Intel3aCommon::allocShmMem(std::string& name, int size, ShmMemInfo* shm)
     int ret = mClient->allocateShmMem(shm->mName, shm->mSize, &shm->mFd, &shm->mAddr);
     CheckError((ret != OK), false, "@%s, call allocateShmMem fail", __FUNCTION__);
 
-    shm->mHandle = mClient->RegisterBuffer(shm->mFd);
+    shm->mHandle = mClient->registerBuffer(shm->mFd);
     CheckError((shm->mHandle < 0), false, "@%s, call mBridge->RegisterBuffer fail", __FUNCTION__);
 
     return true;
@@ -75,7 +76,7 @@ void Intel3aCommon::freeShmMem(ShmMemInfo& shm)
         return;
     }
 
-    mClient->DeregisterBuffer(shm.mHandle);
+    mClient->deregisterBuffer(shm.mHandle);
     mClient->releaseShmMem(shm.mName, shm.mSize, shm.mFd, shm.mAddr);
 }
 

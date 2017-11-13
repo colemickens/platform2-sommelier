@@ -17,7 +17,6 @@
 #define LOG_TAG "IA_MKN_IPC"
 
 #include "LogHelper.h"
-#include "Intel3AClient.h"
 #include "Intel3aMkn.h"
 #include <utils/Errors.h>
 #include "UtilityMacros.h"

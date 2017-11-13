@@ -148,18 +148,21 @@ void ResultProcessor::messageThreadLoop(void)
         case MESSAGE_ID_EXIT:
             status = handleMessageExit();
             break;
-       case MESSAGE_ID_SHUTTER_DONE:
-           status = handleShutterDone(msg);
-           break;
-       case MESSAGE_ID_METADATA_DONE:
-           status = handleMetadataDone(msg);
-           break;
-       case MESSAGE_ID_BUFFER_DONE:
-           status = handleBufferDone(msg);
-           break;
-       case MESSAGE_ID_REGISTER_REQUEST:
-           status = handleRegisterRequest(msg);
-           break;
+        case MESSAGE_ID_SHUTTER_DONE:
+            status = handleShutterDone(msg);
+            break;
+        case MESSAGE_ID_METADATA_DONE:
+            status = handleMetadataDone(msg);
+            break;
+        case MESSAGE_ID_BUFFER_DONE:
+            status = handleBufferDone(msg);
+            break;
+        case MESSAGE_ID_REGISTER_REQUEST:
+            status = handleRegisterRequest(msg);
+            break;
+        case MESSAGE_ID_DEVICE_ERROR:
+            handleDeviceError();
+            break;
         default:
            LOGE("Wrong message id %d", msg.id);
            status = BAD_VALUE;
@@ -602,6 +605,25 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
     mRequestThread->returnRequest(req);
     LOGR("<Request %d> camera id %d OUT from ResultProcessor",id, reqState->request->getCameraId());
     return status;
+}
+
+status_t ResultProcessor::deviceError(void)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    Message msg;
+    msg.id = MESSAGE_ID_DEVICE_ERROR;
+
+    return  mMessageQueue.send(&msg);
+}
+
+void ResultProcessor::handleDeviceError(void)
+{
+    camera3_notify_msg msg;
+    CLEAR(msg);
+    msg.type = CAMERA3_MSG_ERROR;
+    msg.message.error.error_code = CAMERA3_MSG_ERROR_DEVICE;
+    mCallbackOps->notify(mCallbackOps, &msg);
+    LOGR("@%s done", __FUNCTION__);
 }
 //----------------------------------------------------------------------------
 } NAMESPACE_DECLARATION_END

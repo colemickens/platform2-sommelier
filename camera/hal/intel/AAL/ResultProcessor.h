@@ -28,6 +28,8 @@
 #include "MessageThread.h"
 #include "ItemPool.h"
 
+#include "IErrorCallback.h"
+
 NAMESPACE_DECLARATION {
 
 /**
@@ -52,7 +54,7 @@ class Camera3Request;
  * - buffer return
  * - partial metadata return
  */
-class ResultProcessor : public IRequestCallback, public IMessageHandler {
+class ResultProcessor : public IErrorCallback, public IRequestCallback, public IMessageHandler {
 public:
     ResultProcessor(RequestThread * aReqThread,
                     const camera3_callback_ops_t * cbOps);
@@ -66,6 +68,7 @@ public:
                                   int resultIndex = -1);
     virtual status_t bufferDone(Camera3Request* request,
                                std::shared_ptr<CameraBuffer> buffer);
+    virtual status_t deviceError(void);
 
 private:  /* types  and constants */
     /**
@@ -127,6 +130,7 @@ private:  /* types  and constants */
         MESSAGE_ID_METADATA_DONE,       // partial metadata
         MESSAGE_ID_BUFFER_DONE,
         MESSAGE_ID_REGISTER_REQUEST,
+        MESSAGE_ID_DEVICE_ERROR,
         // max number of messages
         MESSAGE_ID_MAX
     };
@@ -165,6 +169,7 @@ private:  /* methods */
     status_t handleMetadataDone(Message &msg);
     status_t handleBufferDone(Message & msg);
     status_t handleRegisterRequest(Message &msg);
+    void handleDeviceError(void);
     status_t recycleRequest(Camera3Request *req);
     void returnPendingBuffers(RequestState_t *reqState);
     void returnPendingPartials(RequestState_t *reqState);

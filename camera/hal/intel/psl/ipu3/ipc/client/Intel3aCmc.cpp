@@ -17,7 +17,6 @@
 #define LOG_TAG "IA_CMC_IPC"
 
 #include "LogHelper.h"
-#include "Intel3AClient.h"
 #include "Intel3aCmc.h"
 #include <utils/Errors.h>
 #include "UtilityMacros.h"

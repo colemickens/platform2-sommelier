@@ -26,6 +26,9 @@
 #include "CameraWindow.h"
 #include "GraphConfigManager.h"
 #include "Metadata.h"
+#ifdef REMOTE_3A_SERVER
+#include "ipc/client/Intel3AClient.h"
+#endif
 
 #define DEFAULT_ENTRY_CAP 256
 #define DEFAULT_DATA_CAP 2048
@@ -281,17 +284,17 @@ protected:
      *  between both of them
      */
     std::map<int, int> mGfxHalToV4L2PixelFmtTable;
-    GraphConfigNodes *mGCMNodes;
+    GraphConfigNodes* mGCMNodes;
 };
 
 class GcssKeyMap {
 public:
     GcssKeyMap();
     ~GcssKeyMap();
-    void gcssKeyMapInsert(std::map<std::string, ia_uid> &customMap);
+    void gcssKeyMapInsert(std::map<std::string, ia_uid>& customMap);
     int gcssKeyMapSize();
     const char* key2str(const ia_uid key);
-    ia_uid str2key(const std::string &key_str);
+    ia_uid str2key(const std::string& key_str);
 
 private:
     std::map<std::string, ia_uid> mMap;
@@ -302,33 +305,44 @@ public:
     static void init();     // called when HAL is loaded
     static void deinit();   // called when HAL is unloaded
 private:
-    static CameraProfiles *mInstance;
-    static CameraProfiles *getInstance(void);
-    static CameraHWInfo *mCameraHWInfo;
-    static CpfStore *sKnownCPFConfigurations[MAX_CPF_CACHED];
-    static GcssKeyMap *mGcssKeyMap;
+    static bool mInitialized;
 
+    static CameraProfiles* mInstance;
+    static CameraProfiles* getInstance(void);
+    static CameraHWInfo* mCameraHWInfo;
+    static CpfStore* sKnownCPFConfigurations[MAX_CPF_CACHED];
+    static GcssKeyMap* mGcssKeyMap;
+
+#ifdef REMOTE_3A_SERVER
+    static Intel3AClient* mIntel3AClient;
+#endif
 public:
+
+    static bool isInitialized() { return mInitialized; }
+
+#ifdef REMOTE_3A_SERVER
+    static Intel3AClient* getIntel3AClient() { return mIntel3AClient; }
+#endif
 
     static GcssKeyMap* getGcssKeyMap();
 
     static int numberOfCameras(void);
-    static void getCameraInfo(int cameraId, struct camera_info *info);
-    static const camera_metadata_t *getStaticMetadata(int cameraId);
-    static camera_metadata_t *getDefaultMetadata(int cameraId, int requestType);
+    static void getCameraInfo(int cameraId, struct camera_info* info);
+    static const camera_metadata_t* getStaticMetadata(int cameraId);
+    static camera_metadata_t* getDefaultMetadata(int cameraId, int requestType);
     static CameraHwType getCameraHwType(int cameraId);
     static bool isCpfModeAvailable(int cameraId, std::string mode);
     static const AiqConf *getAiqConfiguration(int cameraId,
                                               std::string mode = std::string(CPF_MODE_DEFAULT));
-    static const CameraCapInfo *getCameraCapInfo(int cameraId);
-    static const CameraHWInfo *getCameraHWInfo() { return mCameraHWInfo; }
+    static const CameraCapInfo* getCameraCapInfo(int cameraId);
+    static const CameraHWInfo* getCameraHWInfo() { return mCameraHWInfo; }
     static int getXmlCameraId(int cameraId);
-    static const CameraCapInfo *getCameraCapInfoForXmlCameraId(int xmlCameraId);
-    static status_t getDeviceIds(std::vector<std::string> &names);
+    static const CameraCapInfo* getCameraCapInfoForXmlCameraId(int xmlCameraId);
+    static status_t getDeviceIds(std::vector<std::string>& names);
 
-    static const char *boardName(void);
-    static const char *productName(void);
-    static const char *manufacturerName(void);
+    static const char* boardName(void);
+    static const char* productName(void);
+    static const char* manufacturerName(void);
     static std::string getAiqdFileName(const std::string& sensorName);
     static bool supportDualVideo(void);
     static int getCameraDeviceAPIVersion(void);
@@ -356,7 +370,7 @@ public:
     static int getPartialMetadataCount(int cameraId);
     static CameraWindow getActivePixelArray(int cameraId);
 
-    static bool readAiqdData(int cameraId, ia_binary_data *data);
+    static bool readAiqdData(int cameraId, ia_binary_data* data);
     static void saveAiqdData(int cameraId, const ia_binary_data& data);
 
 private:
@@ -364,7 +378,7 @@ private:
     static unsigned int getAiqdFileSize(std::string fileName);
     static bool readAiqdDataFromFile(int cameraIdx, const std::string fileName, int fileSize);
     static bool saveAiqdDataToFile();
-    static status_t readSpId(std::string& spIdName, unsigned int &spIdValue);
+    static status_t readSpId(std::string& spIdName, unsigned int& spIdValue);
 };
 } NAMESPACE_DECLARATION_END
 

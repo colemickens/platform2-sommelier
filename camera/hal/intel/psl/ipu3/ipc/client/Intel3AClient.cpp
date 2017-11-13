@@ -25,21 +25,11 @@
 #include "Utils.h"
 
 NAMESPACE_DECLARATION {
-Intel3AClient* Intel3AClient::mInstance = nullptr;
-
-void Intel3AClient::release()
-{
-    LOG1("@%s", __FUNCTION__);
-
-    if (mInstance) {
-        delete mInstance;
-        mInstance = nullptr;
-    }
-}
-
 Intel3AClient::Intel3AClient():
+    mErrCb(nullptr),
     mIsCallbacked(false),
     mCbResult(true),
+    mIPCStatus(true),
     mInitialized(false)
 {
     LOG1("@%s", __FUNCTION__);
@@ -59,8 +49,9 @@ Intel3AClient::Intel3AClient():
 
     mCallback = base::Bind(&Intel3AClient::callbackHandler, base::Unretained(this));
     Intel3AClient::return_callback = returnCallback;
-    // TODO(liang.l.yang@intel.com): handle IPC error message
-    Intel3AClient::notify = nullptr;
+
+    mNotifyCallback = base::Bind(&Intel3AClient::notifyHandler, base::Unretained(this));
+    Intel3AClient::notify = notifyCallback;
 
     mBridge = arc::CameraAlgorithmBridge::CreateInstance();
     CheckError(!mBridge, VOID_VALUE, "@%s, mBridge is nullptr", __FUNCTION__);
@@ -84,19 +75,37 @@ Intel3AClient::~Intel3AClient()
     }
 }
 
-Intel3AClient* Intel3AClient::getInstance()
+bool Intel3AClient::isInitialized()
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, mInitialized:%d", __FUNCTION__, mInitialized);
 
-    if (mInstance == nullptr)
-        mInstance = new Intel3AClient;
-    return mInstance->mInitialized ? mInstance: nullptr;
+    return mInitialized;
+}
+
+bool Intel3AClient::isIPCFine()
+{
+    std::lock_guard<std::mutex> l(mIPCStatusMutex);
+    LOG1("@%s, mIPCStatus:%d", __FUNCTION__, mIPCStatus);
+
+    return mIPCStatus;
+}
+
+void Intel3AClient::registerErrorCallback(IErrorCallback* errCb)
+{
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    CheckError((errCb == nullptr), VOID_VALUE, "@%s, the errCb is nullptr", __FUNCTION__);
+
+    std::lock_guard<std::mutex> l(mIPCStatusMutex);
+    mErrCb = errCb;
+
+    if (!mIPCStatus) {
+        mErrCb->deviceError();
+    }
 }
 
 int Intel3AClient::allocateShmMem(std::string& name, int size, int* fd, void** addr)
 {
-    LOG1("@%s, name:%s, size:%d, mInitialized:%d", __FUNCTION__, name.c_str(), size, mInitialized);
-    CheckError((mInitialized != true), UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
+    LOG1("@%s, name:%s, size:%d", __FUNCTION__, name.c_str(), size);
 
     *fd = -1;
     *addr = nullptr;
@@ -129,11 +138,62 @@ int Intel3AClient::allocateShmMem(std::string& name, int size, int* fd, void** a
 void Intel3AClient::releaseShmMem(std::string& name, int size, int fd, void* addr)
 {
     LOG1("@%s, name:%s, size:%d, fd:%d, addr:%p", __FUNCTION__, name.c_str(), size, fd, addr);
-    CheckError((mInitialized != true), VOID_VALUE, "@%s, mInitialized is false", __FUNCTION__);
 
     munmap(addr, size);
     close(fd);
     shm_unlink(name.c_str());
+}
+
+int Intel3AClient::requestSync(IPC_CMD cmd, int32_t bufferHandle)
+{
+    LOG1("@%s, cmd:%d:%s, bufferHandle:%d, mInitialized:%d",
+        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), bufferHandle, mInitialized);
+    CheckError(!mInitialized, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
+    CheckError(!isIPCFine(), UNKNOWN_ERROR, "@%s, IPC error happens", __FUNCTION__);
+
+    std::lock_guard<std::mutex> lck(mMutex);
+
+    std::vector<uint8_t> reqHeader(IPC_REQUEST_HEADER_USED_NUM);
+    reqHeader[0] = IPC_MATCHING_KEY;
+    reqHeader[1] = cmd & 0xff;
+
+    mBridge->Request(reqHeader, bufferHandle);
+    int ret = waitCallback();
+    CheckError((ret != OK), UNKNOWN_ERROR, "@%s, call waitCallback fail", __FUNCTION__);
+
+    LOG2("@%s, cmd:%d:%s, mCbResult:%d, done!",
+        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mCbResult);
+
+    // check callback result
+    CheckError((mCbResult != true), UNKNOWN_ERROR, "@%s, callback fail", __FUNCTION__);
+
+    return OK;
+}
+
+int Intel3AClient::requestSync(IPC_CMD cmd)
+{
+    LOG1("@%s, cmd:%d:%s", __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd));
+
+    return requestSync(cmd, -1);
+}
+
+int32_t Intel3AClient::registerBuffer(int bufferFd)
+{
+    LOG1("@%s, bufferFd:%d, mInitialized:%d", __FUNCTION__, bufferFd, mInitialized);
+    CheckError(!mInitialized, -1, "@%s, mInitialized is false", __FUNCTION__);
+    CheckError(!isIPCFine(), -1, "@%s, IPC error happens", __FUNCTION__);
+
+    return mBridge->RegisterBuffer(bufferFd);
+}
+
+void Intel3AClient::deregisterBuffer(int32_t bufferHandle)
+{
+    LOG1("@%s, bufferHandle:%d, mInitialized:%d", __FUNCTION__, bufferHandle, mInitialized);
+    CheckError(!mInitialized, VOID_VALUE, "@%s, mInitialized is false", __FUNCTION__);
+    CheckError(!isIPCFine(), VOID_VALUE, "@%s, IPC error happens", __FUNCTION__);
+
+    std::vector<int32_t> handles({bufferHandle});
+    mBridge->DeregisterBuffers(handles);
 }
 
 int Intel3AClient::waitCallback()
@@ -161,55 +221,6 @@ int Intel3AClient::waitCallback()
     return OK;
 }
 
-int Intel3AClient::requestSync(IPC_CMD cmd, int32_t bufferHandle)
-{
-    LOG1("@%s, cmd:%d:%s, bufferHandle:%d, mInitialized:%d",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), bufferHandle, mInitialized);
-    CheckError((mInitialized != true), UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
-
-    std::lock_guard<std::mutex> lck(mMutex);
-
-    std::vector<uint8_t> reqHeader(IPC_REQUEST_HEADER_USED_NUM);
-    reqHeader[0] = IPC_MATCHING_KEY;
-    reqHeader[1] = cmd & 0xff;
-
-    mBridge->Request(reqHeader, bufferHandle);
-    int ret = waitCallback();
-    CheckError((ret != OK), UNKNOWN_ERROR, "@%s, call waitCallback fail", __FUNCTION__);
-
-    LOG2("@%s, cmd:%d:%s, mCbResult:%d, done!",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mCbResult);
-
-    // check callback result
-    CheckError((mCbResult != true), UNKNOWN_ERROR, "@%s, callback fail", __FUNCTION__);
-
-    return OK;
-}
-
-int Intel3AClient::requestSync(IPC_CMD cmd)
-{
-    LOG1("@%s, cmd:%d:%s, mInitialized:%d",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mInitialized);
-    return requestSync(cmd, -1);
-}
-
-int32_t Intel3AClient::RegisterBuffer(int bufferFd)
-{
-    LOG1("@%s, bufferFd:%d, mInitialized:%d", __FUNCTION__, bufferFd, mInitialized);
-    CheckError((mInitialized != true), -1, "@%s, mInitialized is false", __FUNCTION__);
-
-    return mBridge->RegisterBuffer(bufferFd);
-}
-
-void Intel3AClient::DeregisterBuffer(int32_t bufferHandle)
-{
-    LOG1("@%s, bufferHandle:%d, mInitialized:%d", __FUNCTION__, bufferHandle, mInitialized);
-    CheckError((mInitialized != true), VOID_VALUE, "@%s, mInitialized is false", __FUNCTION__);
-
-    std::vector<int32_t> handles({bufferHandle});
-    mBridge->DeregisterBuffers(handles);
-}
-
 void Intel3AClient::callbackHandler(uint32_t status, int32_t buffer_handle)
 {
     LOG2("@%s, status:%d, buffer_handle:%d", __FUNCTION__, status, buffer_handle);
@@ -226,12 +237,43 @@ void Intel3AClient::callbackHandler(uint32_t status, int32_t buffer_handle)
     CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_signal fails, ret:%d", __FUNCTION__, ret);
 }
 
+void Intel3AClient::notifyHandler(uint32_t msg)
+{
+    LOG2("@%s, msg:%d", __FUNCTION__, msg);
+
+    if (msg != CAMERA_ALGORITHM_MSG_IPC_ERROR) {
+        LOGE("@%s, receive msg:%d, not CAMERA_ALGORITHM_MSG_IPC_ERROR", __FUNCTION__, msg);
+        return;
+    }
+
+    std::lock_guard<std::mutex> l(mIPCStatusMutex);
+    mIPCStatus = false;
+    if (mErrCb) {
+        mErrCb->deviceError();
+    } else {
+        LOGE("@%s, mErrCb is nullptr, no device error is sent out", __FUNCTION__);
+    }
+    LOGE("@%s, receive CAMERA_ALGORITHM_MSG_IPC_ERROR", __FUNCTION__);
+}
+
 void Intel3AClient::returnCallback(const camera_algorithm_callback_ops_t* callback_ops,
-                            uint32_t status, int32_t buffer_handle) {
+                            uint32_t status, int32_t buffer_handle)
+{
     LOG2("@%s", __FUNCTION__);
     CheckError(!callback_ops, VOID_VALUE, "@%s, callback_ops is nullptr", __FUNCTION__);
 
     auto s = const_cast<Intel3AClient*>(static_cast<const Intel3AClient*>(callback_ops));
     s->mCallback.Run(status, buffer_handle);
 }
+
+void Intel3AClient::notifyCallback(const struct camera_algorithm_callback_ops* callback_ops,
+                                 camera_algorithm_error_msg_code_t msg)
+{
+    LOG2("@%s", __FUNCTION__);
+    CheckError(!callback_ops, VOID_VALUE, "@%s, callback_ops is nullptr", __FUNCTION__);
+
+    auto s = const_cast<Intel3AClient*>(static_cast<const Intel3AClient*>(callback_ops));
+    s->mNotifyCallback.Run((uint32_t)msg);
+}
+
 } NAMESPACE_DECLARATION_END
