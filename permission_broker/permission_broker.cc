@@ -47,10 +47,6 @@ using permission_broker::DenyUsbDeviceClassRule;
 using permission_broker::DenyUsbVendorIdRule;
 using permission_broker::PermissionBroker;
 
-#ifndef USBDEVFS_DROP_PRIVILEGES
-#define USBDEVFS_DROP_PRIVILEGES   _IO('U', 30)
-#endif
-
 namespace {
 const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
@@ -173,8 +169,9 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
   result.PutValue(fd);
   result.CheckValidity();
 
+  uint32_t mask = -1U;
   if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
-    if (ioctl(fd, USBDEVFS_DROP_PRIVILEGES) < 0) {
+    if (ioctl(fd, USBDEVFS_DROP_PRIVILEGES, &mask) < 0) {
       brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
