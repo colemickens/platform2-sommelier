@@ -251,6 +251,7 @@ void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
   } else {
     em_policy_data.set_device_id(samba_.machine_name());
   }
+  em_policy_data.set_timestamp(base::Time::Now().ToJavaTime());
   em_policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
   // Note: No signature required here, Active Directory policy is unsigned!
 
