@@ -167,7 +167,7 @@ constexpr struct {
         .target = "/sys/fs/cgroup/cpuset",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpuset,noprefix",
+        .data = "cpuset",
     },
 };
 
