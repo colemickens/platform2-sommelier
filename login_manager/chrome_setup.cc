@@ -311,10 +311,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
 
   builder->AddArg("--max-unused-resource-memory-usage-percentage=5");
 
-  // Some targets (embedded, VMs) do not need component updates.
-  if (!builder->UseFlagIsSet("compupdates"))
-    builder->AddArg("--disable-component-update");
-
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
