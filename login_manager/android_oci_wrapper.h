@@ -16,10 +16,10 @@ namespace login_manager {
 
 class SystemUtils;
 
-// The wrapper class around run_oci binary to launch Android container built
-// from Android master branch. See platform2/run_oci for more details about
-// run_oci binary, which provides an Open Container Initiative-compatible
-// container runtime (https://github.com/opencontainers/runtime-spec).
+// The wrapper class around run_oci binary to launch Android container.
+// See platform2/run_oci for more details about run_oci binary, which
+// provides an Open Container Initiative-compatible container runtime
+// (https://github.com/opencontainers/runtime-spec).
 class AndroidOciWrapper : public ContainerManagerInterface {
  public:
   // Ownership of |system_utils| remains with the caller.
@@ -42,7 +42,12 @@ class AndroidOciWrapper : public ContainerManagerInterface {
 
   // Relative path to container from |containers_directory_|.
   constexpr static char kContainerPath[] = "android";
+
+#if USE_ANDROID_MASTER_CONTAINER
   constexpr static char kContainerId[] = "android-master-run_oci";
+#else   // USE_ANDROID_MASTER_CONTAINER
+  constexpr static char kContainerId[] = "android-nyc-run_oci";
+#endif  // USE_ANDROID_MASTER_CONTAINER
 
   // Name of file containing container PID in container root under
   // |ContainerManagerInterface::kContainerRunPath|. run_oci writes init

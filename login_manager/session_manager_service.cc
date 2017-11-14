@@ -35,7 +35,6 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/container_manager_impl.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -129,15 +128,8 @@ SessionManagerService::SessionManagerService(
       key_gen_(uid, utils),
       state_key_generator_(utils, metrics),
       vpd_process_(utils),
-#if USE_ANDROID_MASTER_CONTAINER
       android_container_(std::make_unique<AndroidOciWrapper>(
           utils, base::FilePath(kContainerInstallDirectory))),
-#else   // USE_ANDROID_MASTER_CONTAINER
-      android_container_(std::make_unique<AndroidContainerManagerImpl>(
-          utils,
-          base::FilePath(kContainerInstallDirectory),
-          SessionManagerImpl::kArcContainerName)),
-#endif  // USE_ANDROID_MASTER_CONTAINER
       termina_manager_(std::make_unique<TerminaManagerImpl>(utils)),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),

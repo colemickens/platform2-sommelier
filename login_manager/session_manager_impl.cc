@@ -114,10 +114,10 @@ constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
 constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
 
-// TODO(b:66919195): Optimize Android master container shutdown time. It
+// TODO(b:66919195): Optimize Android container shutdown time. It
 // needs as long as 3s on kevin to perform graceful shutdown.
 constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
-    base::TimeDelta::FromSeconds(USE_ANDROID_MASTER_CONTAINER ? 3 : 1);
+    base::TimeDelta::FromSeconds(3);
 
 namespace {
 

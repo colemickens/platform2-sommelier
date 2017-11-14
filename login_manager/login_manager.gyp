@@ -58,13 +58,12 @@
         ],
       },
       'sources': [
+        'android_oci_wrapper.cc',
         'blob_util.cc',
         'browser_job.cc',
         'child_exit_handler.cc',
         'child_job.cc',
         'chrome_setup.cc',
-        'container_config_parser.cc',
-        'container_manager_impl.cc',
         'container_manager_interface.cc',
         'crossystem.cc',
         'crossystem_impl.cc',
@@ -102,16 +101,10 @@
       },
       'conditions': [
         ['USE_android_container_master_arc_dev == 1', {
-          'sources': [
-            'android_oci_wrapper.cc',
-          ],
           'defines': [
             'USE_ANDROID_MASTER_CONTAINER=1',
           ],
         }, { # USE_android_container_master_arc_dev != 1
-          'sources': [
-            'android_container_manager_impl.cc',
-          ],
           'defines': [
             'USE_ANDROID_MASTER_CONTAINER=0',
           ],
@@ -167,10 +160,10 @@
             ],
           },
           'sources': [
+            'android_oci_wrapper_unittest.cc',
             'browser_job_unittest.cc',
             'child_exit_handler_unittest.cc',
             'chrome_setup_unittest.cc',
-            'container_config_parser_unittest.cc',
             'cumulative_use_time_metric_unittest.cc',
             'device_local_account_manager_unittest.cc',
             'device_policy_service_unittest.cc',
@@ -202,9 +195,6 @@
           ],
           'conditions': [
             ['USE_android_container_master_arc_dev == 1', {
-              'sources': [
-                'android_oci_wrapper_unittest.cc',
-              ],
               'defines': [
                 'USE_ANDROID_MASTER_CONTAINER=1',
               ],
