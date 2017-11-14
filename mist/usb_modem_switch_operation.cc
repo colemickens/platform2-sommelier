@@ -374,6 +374,15 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
+  if (switch_context_->modem_info()->initial_reset()) {
+    if (!device_->Reset()) {
+      LOG(ERROR) << "Could not perform a USB port reset: "
+                 << device_->error().ToString();
+      Complete(false);
+      return;
+    }
+  }
+
   if (!device_->ClaimInterface(interface_number_)) {
     LOG(ERROR) << StringPrintf("Could not claim interface %u: %s",
                                interface_number_, device_->error().ToString());

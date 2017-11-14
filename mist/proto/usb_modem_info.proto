@@ -28,4 +28,6 @@ message UsbModemInfo {
   // Initial delay, in milliseconds, that mist should wait before starting
   // the modem switch operation.
   uint32 initial_delay_ms = 5;
+  // If true, perform an initial USB port reset to reinitialize the device.
+  bool initial_reset = 6;
 }
