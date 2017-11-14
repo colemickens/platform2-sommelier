@@ -292,6 +292,7 @@ grpc::Status ServiceImpl::LaunchProcess(
 grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
                                 const MountRequest* request,
                                 MountResponse* response) {
+  LOG(INFO) << "Received mount request";
   int ret = mount(request->source().c_str(),
                   request->target().c_str(),
                   request->fstype().c_str(),
@@ -300,8 +301,12 @@ grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
 
   if (ret < 0) {
     response->set_error(errno);
+    PLOG(ERROR) << "Failed to mount \"" << request->source() << "\" on \""
+                << request->target() << "\"";
   } else {
     response->set_error(0);
+    LOG(INFO) << "Mounted \"" << request->source() << "\" on \""
+              << request->target() << "\"";
   }
 
   return grpc::Status::OK;

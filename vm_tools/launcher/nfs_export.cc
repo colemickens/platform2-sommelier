@@ -4,6 +4,8 @@
 
 #include "vm_tools/launcher/nfs_export.h"
 
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/process_iterator.h>
@@ -30,26 +32,36 @@ constexpr char kGaneshaJobName[] = "nfs-ganesha";
 
 }  // namespace
 
-bool NfsExport::StartGanesha() {
-  brillo::ProcessImpl nfs_upstart;
-  nfs_upstart.AddArg("/sbin/start");
-  nfs_upstart.AddArg(kGaneshaJobName);
+bool NfsExport::StartRpcBind() {
+  brillo::ProcessImpl rpcbind;
 
-  LOG(INFO) << "Starting NFS server";
+  rpcbind.AddArg("/sbin/start");
+  rpcbind.AddArg("rpcbind");
+
+  LOG(INFO) << "Starting rpcbind";
+
+  if (rpcbind.Run() != 0) {
+    PLOG(ERROR) << "Unable to start rpcbind";
+    return false;
+  }
+
+  // Starting rpcbind will automatically start nfs-ganesha due to upstart
+  // dependencies.
 
   return true;
 }
 
-bool NfsExport::StopGanesha() {
-  brillo::ProcessImpl nfs_upstart;
-  nfs_upstart.AddArg("/sbin/stop");
-  nfs_upstart.AddArg(kGaneshaJobName);
+bool NfsExport::StopRpcBind() {
+  brillo::ProcessImpl rpcbind;
+  rpcbind.AddArg("/sbin/stop");
+  rpcbind.AddArg("rpcbind");
 
-  LOG(INFO) << "Stopping NFS server";
-  if (!nfs_upstart.Run()) {
-    PLOG(ERROR) << "Unable to stop NFS server";
+  LOG(INFO) << "Stopping rpcbind";
+  if (rpcbind.Run() != 0) {
+    PLOG(ERROR) << "Unable to stop rpcbind";
     return false;
   }
+
   return true;
 }
 
@@ -59,7 +71,7 @@ bool NfsExport::ReloadGanesha() {
   nfs_upstart.AddArg(kGaneshaJobName);
 
   LOG(INFO) << "Reloading NFS config";
-  if (!nfs_upstart.Run()) {
+  if (nfs_upstart.Run() != 0) {
     PLOG(ERROR) << "Unable to reload NFS config";
     return false;
   }
@@ -253,7 +265,7 @@ bool NfsExport::AllocateResource() {
     return false;
 
   if (allocated_exports_.size() == 1) {
-    if (!StartGanesha())
+    if (!StartRpcBind())
       return false;
   } else {
     if (!ReloadGanesha())
@@ -270,7 +282,7 @@ bool NfsExport::ReleaseResource() {
     return false;
 
   if (allocated_exports_.empty()) {
-    if (!StopGanesha())
+    if (!StopRpcBind())
       return false;
   } else {
     if (!ReloadGanesha())

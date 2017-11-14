@@ -380,6 +380,19 @@ bool CrosVM::VMInit(bool ssh, bool run_container, bool rw_container) {
       return false;
     }
 
+    if (nfs_export_) {
+      const std::string source =
+          base::StringPrintf("%s:%s", subnet_->GetGatewayAddress().c_str(),
+                             nfs_export_->GetExportPath().value().c_str());
+      const std::string opts =
+          base::StringPrintf("nolock,vers=3,addr=%s",
+                             subnet_->GetGatewayAddress().c_str());
+      if (!Mount(source, "/mnt/container_private", "nfs", 0, opts)) {
+        LOG(ERROR) << "Failed to mount nfs share";
+        return false;
+      }
+    }
+
     if (!LaunchProcess(
             {"run_oci", "run", "--cgroup_parent=chronos_containers",
              "--container_path=/mnt/container_rootfs", "termina_container"},

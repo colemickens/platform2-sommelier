@@ -54,11 +54,12 @@ class NfsExport : public PooledResource {
   // Writes the configuration file for the nfs server.
   bool ConfigureGanesha();
 
-  // Launch the nfs server.
-  bool StartGanesha();
+  // Launches rpcbind.  Once it's started, upstart will automatically start the
+  // nfs server.
+  bool StartRpcBind();
 
-  // Terminates the running nfs server.
-  bool StopGanesha();
+  // Terminates rpcbind, which will also stop the nfs server.
+  bool StopRpcBind();
 
   // Reload ganesha config.
   bool ReloadGanesha();
