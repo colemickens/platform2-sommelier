@@ -384,13 +384,14 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   interface_claimed_ = true;
   message_index_ = 0;
   num_usb_messages_ = switch_context_->modem_info()->usb_message_size();
-  // TODO(benchan): Remove this check when we support some modem that does not
-  // require a special USB message for the switch operation.
-  CHECK_GT(num_usb_messages_, 0);
 
   context_->usb_device_event_notifier()->AddObserver(this);
 
-  ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
+  if (num_usb_messages_ > 0) {
+    ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
+  } else {
+    StartWaitingForDeviceToReconnect();
+  }
 }
 
 bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
@@ -554,6 +555,10 @@ void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
 
   // After sending the last message (and receiving its response, if expected),
   // wait for the device to reconnect.
+  StartWaitingForDeviceToReconnect();
+}
+
+void UsbModemSwitchOperation::StartWaitingForDeviceToReconnect() {
   pending_task_.Cancel();
   reconnect_timeout_callback_.Reset(
       Bind(&UsbModemSwitchOperation::OnReconnectTimeout, Unretained(this)));

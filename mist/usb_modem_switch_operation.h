@@ -144,6 +144,9 @@ class UsbModemSwitchOperation
   // reconnect.
   void ScheduleNextMessageToMassStorageEndpoint();
 
+  // Starts waiting for the device to reconnect to the USB bus.
+  void StartWaitingForDeviceToReconnect();
+
   // Invoked upon the completion of the last USB bulk transfer submitted by
   // SendMessageToMassStorageEndpoint().
   void OnSendMessageCompleted(UsbTransfer* transfer);
@@ -152,9 +155,9 @@ class UsbModemSwitchOperation
   // ReceiveMessageFromMassStorageEndpoint().
   void OnReceiveMessageCompleted(UsbTransfer* transfer);
 
-  // Invoked when this switcher times out waiting for the device to reconnect to
-  // the bus, after the special USB message(s) is sent to the mass storage
-  // endpoint by SendMessageToMassStorageEndpoint().
+  // Invoked when this switcher times out waiting for the device to reconnect
+  // to the bus, after a specified period time since
+  // StartWaitingForDeviceToReconnect() is invoked.
   void OnReconnectTimeout();
 
   // Implements UsbDeviceEventObserver.
