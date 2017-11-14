@@ -82,5 +82,13 @@ bool WriteInt64File(const base::FilePath& path, int64_t value) {
   return true;
 }
 
+std::string JoinPaths(const std::vector<base::FilePath>& paths,
+                      const std::string& separator) {
+  std::string str;
+  for (const auto& path : paths)
+    str += (str.empty() ? std::string() : separator) + path.value();
+  return str;
+}
+
 }  // namespace util
 }  // namespace power_manager

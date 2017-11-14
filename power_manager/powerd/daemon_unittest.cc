@@ -35,6 +35,7 @@
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/ec_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
+#include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
@@ -78,6 +79,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_power_supply_(new system::PowerSupplyStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
+        passed_lockfile_checker_(new system::LockfileCheckerStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
@@ -99,6 +101,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         power_supply_(passed_power_supply_.get()),
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
+        lockfile_checker_(passed_lockfile_checker_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
         pid_(2) {
     CHECK(run_dir_.CreateUniqueTempDir());
@@ -134,9 +137,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
-    daemon_->set_flashrom_lock_path_for_testing(flashrom_lock_path_);
-    daemon_->set_battery_tool_lock_path_for_testing(battery_tool_lock_path_);
-    daemon_->set_proc_path_for_testing(proc_path_);
     daemon_->Init();
   }
 
@@ -259,6 +259,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
+  std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
+      const base::FilePath& dir,
+      const std::vector<base::FilePath>& files) override {
+    return std::move(passed_lockfile_checker_);
+  }
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     return std::move(passed_metrics_sender_);
   }
@@ -346,6 +351,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::PowerSupplyStub> passed_power_supply_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
+  std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
@@ -368,6 +374,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::PowerSupplyStub* power_supply_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
+  system::LockfileCheckerStub* lockfile_checker_;
   MetricsSenderStub* metrics_sender_;
 
   // Run directory passed to |daemon_|.
@@ -775,15 +782,8 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
 TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
 
-  const std::string kFlashromPid = "123";
-  ASSERT_EQ(kFlashromPid.size(),
-            base::WriteFile(flashrom_lock_path_, kFlashromPid.c_str(),
-                            kFlashromPid.size()));
-  const base::FilePath kFlashromPidDir(proc_path_.Append(kFlashromPid));
-  ASSERT_TRUE(base::CreateDirectory(kFlashromPidDir));
-
-  // The system should stay up if a lockfile exists for a currently-running
-  // process.
+  // The system should stay up if a lockfile exists.
+  lockfile_checker_->set_files_to_return({temp_dir_.path().Append("lockfile")});
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
   ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
   EXPECT_EQ(0, async_commands_.size());
@@ -792,17 +792,15 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   ASSERT_TRUE(daemon_->TriggerRetryShutdownTimerForTesting());
   EXPECT_EQ(0, async_commands_.size());
 
-  // Now delete the dir in /proc as if the process crashed without removing its
-  // lockfile. The next time the timer fires, Daemon should start shutting down.
-  ASSERT_TRUE(base::DeleteFile(kFlashromPidDir, true /* recursive */));
+  // Now remove the lockfile. The next time the timer fires, Daemon should start
+  // shutting down.
+  lockfile_checker_->set_files_to_return({});
   ASSERT_TRUE(daemon_->TriggerRetryShutdownTimerForTesting());
   ASSERT_EQ(1, async_commands_.size());
   EXPECT_EQ(GetShutdownCommand(ShutdownReason::UNKNOWN), async_commands_[0]);
 
   // The timer should've been stopped.
   EXPECT_FALSE(daemon_->TriggerRetryShutdownTimerForTesting());
-
-  // TODO(derat): Also verify that we check battery_tool.
 }
 
 TEST_F(DaemonTest, FactoryMode) {

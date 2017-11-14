@@ -47,6 +47,7 @@
 #include "power_manager/powerd/system/ec_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
+#include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
@@ -69,9 +70,15 @@ const char kDefaultSuspendedStatePath[] =
     "/var/lib/power_manager/powerd_suspended";
 const char kDefaultWakeupCountPath[] = "/sys/power/wakeup_count";
 const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
-const char kDefaultFlashromLockPath[] = "/run/lock/flashrom_powerd.lock";
-const char kDefaultBatteryToolLockPath[] = "/run/lock/battery_tool_powerd.lock";
-const char kDefaultProcPath[] = "/proc";
+
+// Directory checked for lockfiles indicating that powerd shouldn't suspend or
+// shut down the system (typically due to a firmware update).
+const char kPowerOverrideLockfileDir[] = "/run/lock/power_override";
+
+// Legacy lockfiles indicating that firmware is being updated.
+// TODO(derat): Move these into kPowerOverrideLockfileDir.
+const char kFlashromLockfilePath[] = "/run/lock/flashrom_powerd.lock";
+const char kBatteryToolLockfilePath[] = "/run/lock/battery_tool_powerd.lock";
 
 // Basename appended to |run_dir| (see Daemon's c'tor) to produce
 // |suspend_announced_path_|.
@@ -82,17 +89,20 @@ const char kSuspendAnnouncedFile[] = "suspend_announced";
 // TODO(derat): Add session state constants to login_manager's dbus-constants.h.
 const char kSessionStarted[] = "started";
 
-// When noticing that the firmware is being updated while suspending, wait up to
-// this long for the update to finish before reporting a suspend failure. The
-// event loop is blocked during this period.
-const int kFirmwareUpdateTimeoutMs = 500;
+// After noticing that power management is overridden while suspending, wait up
+// to this long for the lockfile(s) to be removed before reporting a suspend
+// failure. The event loop is blocked during this period.
+constexpr base::TimeDelta kSuspendLockfileTimeout =
+    base::TimeDelta::FromMilliseconds(500);
 
-// Interval between successive polls during kFirmwareUpdateTimeoutMs.
-const int kFirmwareUpdatePollMs = 100;
+// Interval between successive polls during kSuspendLockfileTimeout.
+constexpr base::TimeDelta kSuspendLockfilePollInterval =
+    base::TimeDelta::FromMilliseconds(100);
 
-// Interval between attempts to retry shutting the system down while
-// |flashrom_lock_path_| or |battery_lock_path_| exist, in seconds.
-const int kRetryShutdownForFirmwareUpdateSec = 5;
+// Interval between attempts to retry shutting the system down while power
+// management is overridden, in seconds.
+constexpr base::TimeDelta kShutdownLockfileRetryInterval =
+    base::TimeDelta::FromSeconds(5);
 
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
@@ -272,13 +282,10 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       suspender_(new policy::Suspender),
       wifi_controller_(std::make_unique<policy::WifiController>()),
       metrics_collector_(new metrics::MetricsCollector),
-      retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
-                                                true /* is_repeating */),
+      retry_shutdown_for_lockfile_timer_(false /* retain_user_task */,
+                                         true /* is_repeating */),
       wakeup_count_path_(kDefaultWakeupCountPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
-      flashrom_lock_path_(kDefaultFlashromLockPath),
-      battery_tool_lock_path_(kDefaultBatteryToolLockPath),
-      proc_path_(kDefaultProcPath),
       suspended_state_path_(kDefaultSuspendedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       video_activity_logger_(new PeriodicActivityLogger(
@@ -412,16 +419,20 @@ void Daemon::Init() {
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
+  power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
+      base::FilePath(kPowerOverrideLockfileDir),
+      {base::FilePath(kFlashromLockfilePath),
+       base::FilePath(kBatteryToolLockfilePath)});
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
 }
 
 bool Daemon::TriggerRetryShutdownTimerForTesting() {
-  if (!retry_shutdown_for_firmware_update_timer_.IsRunning())
+  if (!retry_shutdown_for_lockfile_timer_.IsRunning())
     return false;
 
-  retry_shutdown_for_firmware_update_timer_.user_task().Run();
+  retry_shutdown_for_lockfile_timer_.user_task().Run();
   return true;
 }
 
@@ -430,29 +441,10 @@ bool Daemon::BoolPrefIsTrue(const std::string& name) const {
   return prefs_->GetBool(name, &value) && value;
 }
 
-bool Daemon::PidLockFileExists(const base::FilePath& path) {
-  std::string pid;
-  if (!base::ReadFileToString(path, &pid))
-    return false;
-
-  base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
-  if (!base::DirectoryExists(proc_path_.Append(pid))) {
-    LOG(WARNING) << path.value() << " contains stale/invalid PID \"" << pid
-                 << "\"";
-    return false;
-  }
-
-  return true;
-}
-
-bool Daemon::FirmwareIsBeingUpdated(std::string* details_out) {
-  std::vector<std::string> paths;
-  if (PidLockFileExists(flashrom_lock_path_))
-    paths.push_back(flashrom_lock_path_.value());
-  if (PidLockFileExists(battery_tool_lock_path_))
-    paths.push_back(battery_tool_lock_path_.value());
-
-  *details_out = base::JoinString(paths, ", ");
+bool Daemon::SuspendAndShutdownAreBlocked(std::string* details_out) {
+  const std::vector<base::FilePath> paths =
+      power_override_lockfile_checker_->GetValidLockfiles();
+  *details_out = util::JoinPaths(paths, ", ");
   return !paths.empty();
 }
 
@@ -643,21 +635,17 @@ void Daemon::PrepareToSuspend() {
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count, bool wakeup_count_valid, base::TimeDelta duration) {
-  // If a firmware update is ongoing, spin for a bit to wait for it to finish:
-  // http://crosbug.com/p/38947
-  const base::TimeDelta firmware_poll_interval =
-      base::TimeDelta::FromMilliseconds(kFirmwareUpdatePollMs);
-  const base::TimeDelta firmware_timeout =
-      base::TimeDelta::FromMilliseconds(kFirmwareUpdateTimeoutMs);
-  base::TimeDelta firmware_duration;
+  // If power management is overridden by a lockfile, spin for a bit to wait for
+  // the process to finish: http://crosbug.com/p/38947
+  base::TimeDelta elapsed;
   std::string details;
-  while (FirmwareIsBeingUpdated(&details)) {
-    if (firmware_duration >= firmware_timeout) {
-      LOG(INFO) << "Aborting suspend attempt for firmware update: " << details;
+  while (SuspendAndShutdownAreBlocked(&details)) {
+    if (elapsed >= kSuspendLockfileTimeout) {
+      LOG(INFO) << "Aborting suspend attempt for lockfile(s): " << details;
       return policy::Suspender::Delegate::SuspendResult::FAILURE;
     }
-    firmware_duration += firmware_poll_interval;
-    base::PlatformThread::Sleep(firmware_poll_interval);
+    elapsed += kSuspendLockfilePollInterval;
+    base::PlatformThread::Sleep(kSuspendLockfilePollInterval);
   }
 
   // Touch a file that crash-reporter can inspect later to determine
@@ -1571,12 +1559,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   std::string details;
-  if (FirmwareIsBeingUpdated(&details)) {
-    LOG(INFO) << "Postponing shutdown for firmware update: " << details;
-    if (!retry_shutdown_for_firmware_update_timer_.IsRunning()) {
-      retry_shutdown_for_firmware_update_timer_.Start(
-          FROM_HERE,
-          base::TimeDelta::FromSeconds(kRetryShutdownForFirmwareUpdateSec),
+  if (SuspendAndShutdownAreBlocked(&details)) {
+    LOG(INFO) << "Postponing shutdown for lockfile(s): " << details;
+    if (!retry_shutdown_for_lockfile_timer_.IsRunning()) {
+      retry_shutdown_for_lockfile_timer_.Start(
+          FROM_HERE, kShutdownLockfileRetryInterval,
           base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode,
                      reason));
     }
@@ -1584,7 +1571,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   shutting_down_ = true;
-  retry_shutdown_for_firmware_update_timer_.Stop();
+  retry_shutdown_for_lockfile_timer_.Stop();
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
 

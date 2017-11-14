@@ -16,8 +16,11 @@ if [ -n "${UPSTART_RUN:=}" ]; then
   chmod 755 ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
 
   mkdir -p ${ROOT_RUN_DIR} ${ROOT_SPOOL_DIR}
-fi
 
+  LOCKFILE_DIR=/run/lock/power_override
+  mkdir -p "${LOCKFILE_DIR}"
+  chmod 1777 "${LOCKFILE_DIR}"
+fi
 
 # Read the real maximum backlight luminance (i.e. not the value reported by
 # the driver) from VPD and pass it to powerd via a pref file.

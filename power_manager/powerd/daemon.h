@@ -63,6 +63,7 @@ class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
 class EcWakeupHelperInterface;
 class InputWatcherInterface;
+class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class UdevInterface;
@@ -90,19 +91,10 @@ class Daemon : public policy::BacklightControllerObserver,
   void set_suspended_state_path_for_testing(const base::FilePath& path) {
     suspended_state_path_ = path;
   }
-  void set_flashrom_lock_path_for_testing(const base::FilePath& path) {
-    flashrom_lock_path_ = path;
-  }
-  void set_battery_tool_lock_path_for_testing(const base::FilePath& path) {
-    battery_tool_lock_path_ = path;
-  }
-  void set_proc_path_for_testing(const base::FilePath& path) {
-    proc_path_ = path;
-  }
 
   void Init();
 
-  // If |retry_shutdown_for_firmware_update_timer_| is running, triggers it
+  // If |retry_shutdown_for_lockfile_timer_| is running, triggers it
   // and returns true. Otherwise, returns false.
   bool TriggerRetryShutdownTimerForTesting();
 
@@ -166,12 +158,10 @@ class Daemon : public policy::BacklightControllerObserver,
   // Convenience method that returns true if |name| exists and is true.
   bool BoolPrefIsTrue(const std::string& name) const;
 
-  // Returns true if |path| exists and contains the PID of an active process.
-  bool PidLockFileExists(const base::FilePath& path);
-
-  // Returns true if a process that updates firmware is running. |details_out|
-  // is updated to contain information about the process(es).
-  bool FirmwareIsBeingUpdated(std::string* details_out);
+  // Returns true if a process that wants power management to be blocked is
+  // running. |details_out| is updated to contain information about the
+  // process(es).
+  bool SuspendAndShutdownAreBlocked(std::string* details_out);
 
   // Runs powerd_setuid_helper. |action| is passed via --action.  If
   // |additional_args| is non-empty, it will be appended to the command. If
@@ -327,6 +317,11 @@ class Daemon : public policy::BacklightControllerObserver,
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 
+  // Checks if a lockfile exists indicating that power management should be
+  // overridden (typically due to a firmware update).
+  std::unique_ptr<system::LockfileCheckerInterface>
+      power_override_lockfile_checker_;
+
   // Weak pointers to |display_backlight_controller_| and
   // |keyboard_backlight_controller_|, if non-null.
   std::vector<policy::BacklightController*> all_backlight_controllers_;
@@ -340,10 +335,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // system has powered off.
   bool shutting_down_ = false;
 
-  // Recurring timer that's started if a shutdown request is deferred due to a
-  // firmware update. ShutDown() is called repeatedly so the system will
-  // eventually be shut down after the firmware-updating process exits.
-  base::Timer retry_shutdown_for_firmware_update_timer_;
+  // Recurring timer that's started if a shutdown request is deferred due to
+  // |power_override_lockfile_checker_| reporting lockfiles. ShutDown() is
+  // called repeatedly so the system will eventually be shut down after the
+  // lockfile(s) are gone.
+  base::Timer retry_shutdown_for_lockfile_timer_;
 
   // Timer that periodically calls RequestTpmStatus() if
   // |cryptohome_dbus_proxy_| is non-null.
@@ -357,16 +353,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // File that's created once the out-of-box experience has been completed.
   base::FilePath oobe_completed_path_;
-
-  // Files where flashrom or battery_tool store their PIDs while performing a
-  // potentially-destructive action that powerd shouldn't interrupt by
-  // suspending or shutting down the system.
-  base::FilePath flashrom_lock_path_;
-  base::FilePath battery_tool_lock_path_;
-
-  // Directory containing subdirectories corresponding to running processes
-  // (i.e. /proc in non-test environments).
-  base::FilePath proc_path_;
 
   // Path to file that's touched before the system suspends and unlinked after
   // it resumes. Used by crash-reporter to avoid reporting unclean shutdowns

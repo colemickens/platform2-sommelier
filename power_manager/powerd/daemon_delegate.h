@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -30,6 +31,7 @@ class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
 class EcWakeupHelperInterface;
 class InputWatcherInterface;
+class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class UdevInterface;
@@ -120,6 +122,10 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) = 0;
+
+  virtual std::unique_ptr<system::LockfileCheckerInterface>
+  CreateLockfileChecker(const base::FilePath& dir,
+                        const std::vector<base::FilePath>& files) = 0;
 
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
 

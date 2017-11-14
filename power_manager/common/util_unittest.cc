@@ -6,15 +6,17 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
 namespace power_manager {
+namespace util {
 
 namespace {
 
 // Creates a TimeDelta and returns TimeDeltaToString()'s output.
 std::string RunTimeDeltaToString(int hours, int minutes, int seconds) {
-  return util::TimeDeltaToString(
+  return TimeDeltaToString(
       base::TimeDelta::FromSeconds(hours * 3600 + minutes * 60 + seconds));
 }
 
@@ -31,4 +33,13 @@ TEST(UtilTest, TimeDeltaToString) {
   EXPECT_EQ("5h", RunTimeDeltaToString(5, 0, 0));
 }
 
+TEST(UtilTest, JoinPaths) {
+  EXPECT_EQ("", JoinPaths({}, ","));
+  EXPECT_EQ("/foo/bar", JoinPaths({base::FilePath("/foo/bar")}, ","));
+  EXPECT_EQ("/a,/b,/c", JoinPaths({base::FilePath("/a"), base::FilePath("/b"),
+                                   base::FilePath("/c")},
+                                  ","));
+}
+
+}  // namespace util
 }  // namespace power_manager

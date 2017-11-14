@@ -1,5 +1,7 @@
 # Chrome OS Power Management FAQ
 
+[TOC]
+
 ## How do I prevent a system from going to sleep?
 
 In M61 and later, there are settings at chrome://settings/power for controlling
@@ -72,3 +74,15 @@ usage.
 [PowerPrefChanger]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/client/cros/power_utils.py
 [suspend.proto]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/suspend.proto
 [suspend_delay_sample]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/tools/suspend_delay_sample.cc
+
+## How do I prevent the system from suspending or shutting down while my code is running?
+
+This is often needed by code that updates firmware. Before powerd attempts to
+suspend the system or shut it down, it checks for the presence of one or more
+lockfiles, each containing the PID of a process that shouldn't be interrupted.
+If it finds one, it defers the attempt for 10 seconds before trying again.
+
+powerd uses several hard-coded lockfile paths within `/run/lock`, but new
+lockfiles should be written to the `/run/lock/power_override` directory. Your
+process should unlink its lockfile when it exits or no longer needs to block
+power management.
