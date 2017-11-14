@@ -1163,7 +1163,7 @@ bool Init::Setup() {
 
   // Create and setup the container cpusets with the default settings (all cpus,
   // all mems).
-  const char* sets[] = {"cpus", "mems"};
+  const char* sets[] = {"cpuset.cpus", "cpuset.mems"};
   base::FilePath root_dir = base::FilePath(kCgroupRootDir).Append("cpuset");
   base::FilePath chronos_dir = root_dir.Append(kCgroupContainerSuffix);
   for (const char* set : sets) {
