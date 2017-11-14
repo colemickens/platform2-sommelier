@@ -47,6 +47,7 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mUsage(0),
                                 mInit(false),
                                 mLocked(false),
+                                mRegistered(false),
                                 mType(BUF_TYPE_HANDLE),
                                 mGbmBufferManager(nullptr),
                                 mHandle(nullptr),
@@ -95,6 +96,7 @@ CameraBuffer::CameraBuffer(int w,
         mUsage(0),
         mInit(false),
         mLocked(true),
+        mRegistered(false),
         mType(BUF_TYPE_MALLOC),
         mGbmBufferManager(nullptr),
         mHandle(nullptr),
@@ -150,6 +152,7 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
         mUsage(0),
         mInit(false),
         mLocked(false),
+        mRegistered(false),
         mType(BUF_TYPE_MMAP),
         mGbmBufferManager(nullptr),
         mHandle(nullptr),
@@ -215,9 +218,8 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
         return BAD_VALUE;
     }
 
-    int ret = mGbmBufferManager->Register(mHandle);
+    int ret = registerBuffer();
     if (ret) {
-        LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
         mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
         return UNKNOWN_ERROR;
     }
@@ -253,6 +255,11 @@ status_t CameraBuffer::init(const camera3_stream_t* stream,
         __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride);
 
     return NO_ERROR;
+}
+
+status_t CameraBuffer::deinit()
+{
+    return deregisterBuffer();
 }
 
 CameraBuffer::~CameraBuffer()
@@ -321,6 +328,32 @@ status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
 
     buf->acquire_fence = mUserBuffer.acquire_fence;
     buf->release_fence = mUserBuffer.release_fence;
+
+    return NO_ERROR;
+}
+
+status_t CameraBuffer::registerBuffer()
+{
+    int ret = mGbmBufferManager->Register(mHandle);
+    if (ret) {
+        LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
+        return UNKNOWN_ERROR;
+    }
+
+    mRegistered = true;
+    return NO_ERROR;
+}
+
+status_t CameraBuffer::deregisterBuffer()
+{
+    if (mRegistered) {
+        int ret = mGbmBufferManager->Deregister(mHandle);
+        if (ret) {
+            LOGE("@%s: call Deregister fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
+            return UNKNOWN_ERROR;
+        }
+        mRegistered = false;
+    }
 
     return NO_ERROR;
 }
@@ -428,17 +461,13 @@ status_t CameraBuffer::unlock()
     }
 
     if (mLocked) {
+        LOG2("@%s, mHandle:%p, mFormat:%d", __FUNCTION__, mHandle, mFormat);
         int ret = mGbmBufferManager->Unlock(mHandle);
         if (ret) {
             LOGE("@%s: call Unlock fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
             return UNKNOWN_ERROR;
         }
 
-        ret = mGbmBufferManager->Deregister(mHandle);
-        if (ret) {
-            LOGE("@%s: call Deregister fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
-            return UNKNOWN_ERROR;
-        }
         mLocked = false;
         return NO_ERROR;
     }

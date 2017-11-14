@@ -76,6 +76,11 @@ public:
     status_t init(const camera3_stream_t* stream, buffer_handle_t buffer,
                   int cameraId);
 
+    /**
+     * deinitialization for the wrapper around the framework buffers
+     */
+    status_t deinit();
+
     void* data() { return mDataPtr; };
 
     status_t lock();
@@ -108,6 +113,10 @@ public:
     int status() { return mUserBuffer.status; }
 
 private:
+    status_t registerBuffer();
+    status_t deregisterBuffer();
+
+private:
     camera3_stream_buffer_t mUserBuffer; /*!< Original structure passed by request */
     int             mWidth;
     int             mHeight;
@@ -121,6 +130,7 @@ private:
     bool            mInit;           /*!< Boolean to check the integrity of the
                                           buffer when it is created*/
     bool            mLocked;         /*!< Use to track the lock status */
+    bool            mRegistered;     /*!< Use to track the buffer register status */
 
     BufferType mType;
     arc::CameraBufferManager* mGbmBufferManager;
