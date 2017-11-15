@@ -62,6 +62,9 @@ ATTRS{idVendor}=="2001", ATTRS{idProduct}=="7d01", GOTO="mist_mark_device"
 ATTRS{idVendor}=="2001", ATTRS{idProduct}=="7d0c", GOTO="mist_mark_device"
 ATTRS{idVendor}=="2020", ATTRS{idProduct}=="4010", GOTO="mist_mark_device"
 
+# The following devices are Ethernet adapters.
+ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="8153", GOTO="mist_mark_device"
+
 #-------------------------------------------------------------------------------
 # Supported USB devices before switching into a modem
 SUBSYSTEM!="usb", GOTO="mist_end"
@@ -93,6 +96,9 @@ ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="f000", GOTO="mist_switch_device"
 ATTRS{idVendor}=="2001", ATTRS{idProduct}=="a403", GOTO="mist_switch_device"
 ATTRS{idVendor}=="2001", ATTRS{idProduct}=="a706", GOTO="mist_switch_device"
 ATTRS{idVendor}=="2020", ATTRS{idProduct}=="0002", GOTO="mist_switch_device"
+
+# The following devices are Ethernet adapters.
+ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="8152", GOTO="mist_switch_device"
 
 GOTO="mist_end"
 
