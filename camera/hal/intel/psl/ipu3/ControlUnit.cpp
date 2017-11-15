@@ -1117,7 +1117,7 @@ std::shared_ptr<CaptureUnitSettings> ControlUnit::findSettingsInEffect(uint64_t 
         }
     }
     if (it == mSettingsHistory.end() && !mSettingsHistory.empty()) {
-        LOG2("Could not find settings for expID %lu providing for %d", expId,
+        LOG2("Could not find settings for expID %" PRIu64 " providing for %d", expId,
              mSettingsHistory[0]->inEffectFrom);
         settingsInEffect = mSettingsHistory[0];
     }

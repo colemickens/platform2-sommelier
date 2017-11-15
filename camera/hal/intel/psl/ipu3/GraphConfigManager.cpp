@@ -151,7 +151,7 @@ void GraphConfigManager::addAndroidMap()
     };
     #undef GCSS_KEY
 
-    LOG1("Adding %lu android specific keys to graph config parser",
+    LOG1("Adding %zu android specific keys to graph config parser",
             ANDROID_GRAPH_KEYS.size());
 
     /*
@@ -450,7 +450,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
      */
     ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
     if (streams.size() > MAX_NUM_STREAMS) {
-        LOGE("Maximum number of streams %u exceeded: %lu",
+        LOGE("Maximum number of streams %u exceeded: %zu",
             MAX_NUM_STREAMS, streams.size());
         return BAD_VALUE;
     }
@@ -661,7 +661,7 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvide
     for (size_t i = 0; i < mFirstQueryResults.size(); i++) {
         foundConfigId.push_back(id);
     }
-    LOG1("Number of available Sensor+ISA configs for this stream config: %lu",
+    LOG1("Number of available Sensor+ISA configs for this stream config: %zu",
             foundConfigId.size());
     if (foundConfigId.empty()) {
         LOGE("Could not find any sensor config id - BUG");

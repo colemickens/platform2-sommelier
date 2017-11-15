@@ -506,7 +506,7 @@ int PSLConfParser::convertXmlData(void * dest, int destMaxNum, const char * src,
             break;
         case TYPE_INT64:
             data.i64[index] = strtol(src, &endPtr, 0);
-            LOG2("    - %ld -", data.i64[index]);
+            LOG2("    - %" PRId64 " -", data.i64[index]);
             break;
         case TYPE_FLOAT:
             data.f[index] = strtof(src, &endPtr);

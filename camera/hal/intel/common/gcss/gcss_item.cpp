@@ -180,7 +180,7 @@ void GraphConfigNode::dumpNodeTree(GraphConfigNode* node, int depth)
 
 void GraphConfigNode::dumpNode()
 {
-    LOGE("Node %p type: %s ancestor %p map size %lu",
+    LOGE("Node %p type: %s ancestor %p map size %zu",
                                       this,
                                       type == NA ? "NA":
                                       type == STR_ATTRIBUTE ? "STRING":
@@ -190,7 +190,7 @@ void GraphConfigNode::dumpNode()
     if (type == NODE) {
         gcss_node_vector descendants;
         getAllDescendants(descendants);
-        LOGE("Node number of descendants : %lu", descendants.size());
+        LOGE("Node number of descendants : %zu", descendants.size());
     }
 }
 

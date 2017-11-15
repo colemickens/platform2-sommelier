@@ -303,7 +303,7 @@ status_t GraphConfig::getActiveOutputPorts(const StreamToSinkMap &streamToSinkId
         status = graphGetSinksByName(GCSS::ItemUID::key2str(it->second), sinks);
         if (CC_UNLIKELY(status != OK) || sinks.empty()) {
             string sinkName = GCSS::ItemUID::key2str(it->second);
-            LOGE("Found %lu sinks, expecting 1 for sink %s", sinks.size(),
+            LOGE("Found %zu sinks, expecting 1 for sink %s", sinks.size(),
                  sinkName.c_str());
             return BAD_VALUE;
         }
@@ -1937,7 +1937,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
         std::vector<media_link_desc> links;
         entity->getLinkDesc(links);
-        LOG1("@%s, linkes number:%lu\n", __FUNCTION__, links.size());
+        LOG1("@%s, linkes number:%zu\n", __FUNCTION__, links.size());
         if (links.size()) {
             struct media_pad_desc* pad = &links[0].sink;
             LOG1("@%s, entity:%d, flags:%d, index:%d\n",

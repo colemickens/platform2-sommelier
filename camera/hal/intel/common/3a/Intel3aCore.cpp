@@ -118,7 +118,7 @@ AiqInputParams &AiqInputParams::operator=(const AiqInputParams &other)
 
 status_t AiqResults::allocateLsc(size_t lscSize)
 {
-    LOG1("@%s, lscSize:%lu", __FUNCTION__, lscSize);
+    LOG1("@%s, lscSize:%zu", __FUNCTION__, lscSize);
     mChannelR  = new float[lscSize];
     mChannelGR = new float[lscSize];
     mChannelGB = new float[lscSize];

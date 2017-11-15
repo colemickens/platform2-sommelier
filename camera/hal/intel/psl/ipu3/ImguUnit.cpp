@@ -80,9 +80,9 @@ ImguUnit::~ImguUnit()
     }
 
     if (mMessagesUnderwork.size())
-        LOGW("There are messages that are not processed %lu:", mMessagesUnderwork.size());
+        LOGW("There are messages that are not processed %zu:", mMessagesUnderwork.size());
     if (mMessagesPending.size())
-        LOGW("There are pending messages %lu:", mMessagesPending.size());
+        LOGW("There are pending messages %zu:", mMessagesPending.size());
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
@@ -579,7 +579,7 @@ ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
         const std::vector<camera3_stream_buffer> *inBufs = request->getInputBuffers();
         int reqId = request->getId();
 
-        LOG2("@%s: Req id %d,  Num outbufs %lu Num inbufs %lu",
+        LOG2("@%s: Req id %d,  Num outbufs %zu Num inbufs %zu",
              __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, inBufs ? inBufs->size() : 0);
 
         if (captureBufs.rawNonScaledBuffer.get() != nullptr) {
@@ -880,7 +880,7 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         msg.pollEvent.polledDevices = numPolledDevices;
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
-            LOG2("@%s: %lu inactive nodes for request %u, retry poll", __FUNCTION__,
+            LOG2("@%s: %zu inactive nodes for request %u, retry poll", __FUNCTION__,
                                                                       pollMsg->data.inactiveDevices->size(),
                                                                       pollMsg->data.reqId);
             pollMsg->data.polledDevices->clear();

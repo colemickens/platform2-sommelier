@@ -688,7 +688,7 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
         mMessageQueue.send(&msg);
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
-            LOG2("@%s: %lu inactive nodes for request %d, retry poll", __FUNCTION__,
+            LOG2("@%s: %zu inactive nodes for request %d, retry poll", __FUNCTION__,
                                                                       pollMsg->data.inactiveDevices->size(),
                                                                       pollMsg->data.reqId);
             pollMsg->data.polledDevices->clear();

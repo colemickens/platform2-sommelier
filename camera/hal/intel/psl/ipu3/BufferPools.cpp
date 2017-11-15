@@ -132,7 +132,7 @@ status_t BufferPools::allocateCaptureBuffers(
 
     if (v4l2Buffers.size() != mBufferPoolSize) {
         LOGE("BufferPoolSize is not matching to requested number of v4l2 buffers, \
-              v4l2 Buffer size: %lu, bufferpool size: %u", \
+              v4l2 Buffer size: %zu, bufferpool size: %u", \
               v4l2Buffers.size(), mBufferPoolSize);
         return BAD_VALUE;
     }
