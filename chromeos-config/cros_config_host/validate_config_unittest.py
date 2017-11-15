@@ -306,6 +306,7 @@ MAPPING = '''
       smbios-name-match = "reef";
       /* This is an example! It does not match any real family */
       simple-sku-map = <
+        (-1) &pyro
         0 &reef
         4 &reef_4
         4 &snappy    /* duplicate */
