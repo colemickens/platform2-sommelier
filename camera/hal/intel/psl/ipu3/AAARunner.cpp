@@ -60,6 +60,9 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
     CLEAR(mResizeLscGridB);
     CLEAR(mLscGridRGGB);
     CLEAR(mLatestInputParams);
+
+    // init LscOffGrid to 1.0f
+    std::fill(std::begin(mLscOffGrid), std::end(mLscOffGrid), 1.0f);
 }
 
 status_t AAARunner::init(bool digiGainOnSensor)
@@ -631,27 +634,30 @@ status_t AAARunner::processAfTriggers(RequestCtrlState &reqAiqCfg)
 status_t AAARunner::processSAResults(RequestCtrlState &reqState)
 {
     status_t status = OK;
-    if (reqState.captureSettings->aiqResults.saResults.lsc_update &&
-         reqState.captureSettings->shadingMapMode ==
-         ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) {
-        Intel3aPlus::LSCGrid inputGrid;
-        ia_aiq_sa_results &sar = reqState.captureSettings->aiqResults.saResults;
-        inputGrid.gridB = sar.channel_b;
-        inputGrid.gridR = sar.channel_r;
-        inputGrid.gridGr = sar.channel_gr;
-        inputGrid.gridGb = sar.channel_gb;
-        inputGrid.width = sar.width;
-        inputGrid.height = sar.height;
+    if (reqState.captureSettings->shadingMapMode ==
+        ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) {
 
         Intel3aPlus::LSCGrid resizeGrid;
-        resizeGrid.gridB = mResizeLscGridB;
-        resizeGrid.gridR = mResizeLscGridR;
-        resizeGrid.gridGr = mResizeLscGridGr;
-        resizeGrid.gridGb = mResizeLscGridGb;
         resizeGrid.width = mSettingsProcessor->getLSCMapWidth();
         resizeGrid.height = mSettingsProcessor->getLSCMapHeight();
+        if (reqState.captureSettings->aiqResults.saResults.lsc_update) {
+            Intel3aPlus::LSCGrid inputGrid;
+            ia_aiq_sa_results &sar = reqState.captureSettings->aiqResults.saResults;
+            inputGrid.gridB = sar.channel_b;
+            inputGrid.gridR = sar.channel_r;
+            inputGrid.gridGr = sar.channel_gr;
+            inputGrid.gridGb = sar.channel_gb;
+            inputGrid.width = sar.width;
+            inputGrid.height = sar.height;
 
-        Intel3aPlus::storeLensShadingMap(inputGrid, resizeGrid, mLscGridRGGB);
+            Intel3aPlus::LSCGrid resizeGrid;
+            resizeGrid.gridB = mResizeLscGridB;
+            resizeGrid.gridR = mResizeLscGridR;
+            resizeGrid.gridGr = mResizeLscGridGr;
+            resizeGrid.gridGb = mResizeLscGridGb;
+
+            Intel3aPlus::storeLensShadingMap(inputGrid, resizeGrid, mLscGridRGGB);
+        }
 
         // todo remove fix too small values from algorithm
         size_t size = resizeGrid.width * resizeGrid.height * 4;
@@ -666,6 +672,12 @@ status_t AAARunner::processSAResults(RequestCtrlState &reqState)
             LOGE("Error - SA produced too small values (%zu/%zu)!", errCount, size);
             status = BAD_VALUE;
         }
+
+        bool lscOn = (reqState.captureSettings->shadingMode != ANDROID_SHADING_MODE_OFF);
+        const float *lscMap = lscOn ? mLscGridRGGB : mLscOffGrid;
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_LENS_SHADING_MAP,
+                                        lscMap,
+                                        size);
     }
 
     return status;

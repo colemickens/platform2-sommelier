@@ -51,8 +51,6 @@ private:
     float   *mGGammaLut;      /*!< [(P_IN, P_OUT), (P_IN, P_OUT), ..] */
     float   *mBGammaLut;      /*!< [(P_IN, P_OUT), (P_IN, P_OUT), ..] */
 
-    float mLscGridRGGB[MAX_LSC_GRID_SIZE * 4];
-    float mLscOffGrid[MAX_LSC_GRID_SIZE * 4];
     int mCameraId;
     ia_aiq_exposure_sensor_descriptor mSensorDescriptor;
     static constexpr float ONE_PERCENT = 0.01f;

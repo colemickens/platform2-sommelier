@@ -33,10 +33,7 @@ Metadata::Metadata(int cameraId, Intel3aPlus *a3aWrapper):
         mCameraId(cameraId),
         m3aWrapper(a3aWrapper)
 {
-    CLEAR(mLscGridRGGB);
     CLEAR(mSensorDescriptor);
-    // init LscOffGrid to 1.0f
-    std::fill(std::begin(mLscOffGrid), std::end(mLscOffGrid), 1.0f);
 }
 
 
@@ -194,22 +191,6 @@ void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
 void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    std::shared_ptr<CaptureUnitSettings> settings = reqState->captureSettings;
-    const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
-    camera_metadata_ro_entry_t lensShadingMapSize =
-                MetadataHelper::getMetadataEntry(meta, ANDROID_LENS_INFO_SHADING_MAP_SIZE);
-
-    if (lensShadingMapSize.count == 2 &&
-        settings->shadingMapMode == ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) {
-        size_t size = lensShadingMapSize.data.i32[0] *
-                      lensShadingMapSize.data.i32[1] * 4;
-        bool lscOn = (settings->shadingMode != ANDROID_SHADING_MODE_OFF);
-        const float *lscMap = lscOn ? mLscGridRGGB : mLscOffGrid;
-
-        reqState->ctrlUnitResult->update(ANDROID_STATISTICS_LENS_SHADING_MAP,
-                                        lscMap,
-                                        size);
-    }
 
     reqState->ctrlUnitResult->update(ANDROID_SHADING_MODE,
                                     &reqState->captureSettings->shadingMode,

@@ -72,7 +72,7 @@ private:
     float mResizeLscGridGb[MAX_LSC_GRID_SIZE];
     float mResizeLscGridB[MAX_LSC_GRID_SIZE];
     float mLscGridRGGB[MAX_LSC_GRID_SIZE * 4];
-
+    float mLscOffGrid[MAX_LSC_GRID_SIZE * 4];
 
     /**
      * To be handled by the AE state machine
