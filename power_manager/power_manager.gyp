@@ -215,6 +215,11 @@
       'sources': ['tools/check_powerd_config.cc'],
     },
     {
+      'target_name': 'inject_powerd_input_event',
+      'type': 'executable',
+      'sources': ['tools/inject_powerd_input_event.cc'],
+    },
+    {
       'target_name': 'memory_suspend_test',
       'type': 'executable',
       'sources': ['tools/memory_suspend_test.cc'],
