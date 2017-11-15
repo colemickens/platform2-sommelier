@@ -54,6 +54,8 @@ static std::mutex sCameraHalMutex;
 
 int openCameraHardware(int id, const hw_module_t* module, hw_device_t** device)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     if (sInstances[id])
         return 0;
 
@@ -81,6 +83,8 @@ static int hal_get_number_of_cameras(void)
     PerformanceTraces::reset();
     PerformanceTraces::HalAtrace::reset();
 
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     PERFORMANCE_HAL_ATRACE();
 
 #ifdef REMOTE_3A_SERVER
@@ -99,7 +103,8 @@ static int hal_get_number_of_cameras(void)
 static int hal_get_camera_info(int cameraId, struct camera_info *cameraInfo)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     if (cameraId < 0 || !cameraInfo ||
           cameraId >= hal_get_number_of_cameras())
         return -EINVAL;
@@ -111,6 +116,8 @@ static int hal_get_camera_info(int cameraId, struct camera_info *cameraInfo)
 
 static int hal_set_callbacks(const camera_module_callbacks_t *callbacks)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     UNUSED(callbacks);
     return 0;
 }
@@ -121,7 +128,7 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
     int status = -EINVAL;
     int camera_id;
 
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     LogHelper::setDebugLevel();
     PerformanceTraces::reset();
     PerformanceTraces::HalAtrace::reset();
@@ -155,7 +162,7 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
 static int hal_dev_close(hw_device_t* device)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
     if (!device || sInstanceCount == 0) {
         LOGW("hal close, instance count %d", sInstanceCount);
@@ -181,9 +188,11 @@ static int hal_dev_close(hw_device_t* device)
 
 #ifdef CAMERA_MODULE_API_VERSION_2_4
 static int hal_set_torch_mode (const char* camera_id, bool enabled){
-        UNUSED(camera_id);
-        UNUSED(enabled);
-        return -ENOSYS;
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    UNUSED(camera_id);
+    UNUSED(enabled);
+    return -ENOSYS;
 }
 #endif
 
