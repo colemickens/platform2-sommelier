@@ -525,7 +525,6 @@ void Cellular::Scan(Error* error, const string& /*reason*/) {
     return;
   }
 
-  // |scan_type| is ignored because Cellular only does a full scan.
   ResultStringmapsCallback cb = Bind(&Cellular::OnScanReply,
                                      weak_ptr_factory_.GetWeakPtr());
   capability_->Scan(error, cb);
