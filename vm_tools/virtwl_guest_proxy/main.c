@@ -29,9 +29,9 @@
 
 static int handle_server_in(int server_fd, int client_fd) {
   uint8_t ioctl_buf[4096];
-  struct virtwl_ioctl_recv* ioctl_recv = (struct virtwl_ioctl_recv*)ioctl_buf;
-  void* recv_data = ioctl_buf + sizeof(struct virtwl_ioctl_recv);
-  size_t max_recv_size = sizeof(ioctl_buf) - sizeof(struct virtwl_ioctl_recv);
+  struct virtwl_ioctl_txn* ioctl_recv = (struct virtwl_ioctl_txn*)ioctl_buf;
+  void* recv_data = ioctl_buf + sizeof(struct virtwl_ioctl_txn);
+  size_t max_recv_size = sizeof(ioctl_buf) - sizeof(struct virtwl_ioctl_txn);
   char fd_buf[CMSG_LEN(sizeof(int) * VIRTWL_SEND_MAX_ALLOCS)];
 
   ioctl_recv->len = max_recv_size;
@@ -86,9 +86,9 @@ static int handle_server_in(int server_fd, int client_fd) {
 
 static int handle_client_in(int server_fd, int client_fd) {
   uint8_t ioctl_buf[4096];
-  struct virtwl_ioctl_send* ioctl_send = (struct virtwl_ioctl_send*)ioctl_buf;
-  void* send_data = ioctl_buf + sizeof(struct virtwl_ioctl_send);
-  size_t max_send_size = sizeof(ioctl_buf) - sizeof(struct virtwl_ioctl_send);
+  struct virtwl_ioctl_txn* ioctl_send = (struct virtwl_ioctl_txn*)ioctl_buf;
+  void* send_data = ioctl_buf + sizeof(struct virtwl_ioctl_txn);
+  size_t max_send_size = sizeof(ioctl_buf) - sizeof(struct virtwl_ioctl_txn);
   char fd_buf[CMSG_LEN(sizeof(int) * VIRTWL_SEND_MAX_ALLOCS)];
 
   struct iovec buffer_iov;
