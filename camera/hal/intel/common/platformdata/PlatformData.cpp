@@ -633,7 +633,7 @@ unsigned int PlatformData::getAiqdFileSize(std::string fileName)
         return 0;
     }
 
-    LOG1("@%s: read aiqd file: %s, size = %ld", __FUNCTION__, fileName.c_str(), fileStat.st_size);
+    LOG1("@%s: read aiqd file: %s, size = %jd", __FUNCTION__, fileName.c_str(), (intmax_t)fileStat.st_size);
     return fileStat.st_size;
 }
 

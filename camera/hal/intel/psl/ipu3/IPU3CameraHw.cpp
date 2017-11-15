@@ -312,7 +312,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     if (mStreamsVideo.empty()) {
         mUseCase = USECASE_STILL;
     }
-    LOG1("%s: select usecase %d, video/still stream num: %lu/%lu", __FUNCTION__,
+    LOG1("%s: select usecase %d, video/still stream num: %zu/%zu", __FUNCTION__,
             mUseCase, mStreamsVideo.size(), mStreamsStill.size());
 
     std::vector<camera3_stream_t*> &configuredStreams =

@@ -124,7 +124,7 @@ bool IPCAiq::serverUnflattenInit(void* pData, int dataSize, ia_binary_data* aiqb
 // af
 bool IPCAiq::clientFlattenAf(uintptr_t aiq, const ia_aiq_af_input_params& inParams, af_run_params* params)
 {
-    LOG1("@%s, aiq:0x%lx, params:%p", __FUNCTION__, aiq, params);
+    LOG1("@%s, aiq:0x%" PRIxPTR ", params:%p", __FUNCTION__, aiq, params);
     CheckError(reinterpret_cast<ia_aiq*>(aiq) == nullptr, false, "@%s, aiq is nullptr", __FUNCTION__);
     CheckError(params == nullptr, false, "@%s, params is nullptr", __FUNCTION__);
 
@@ -246,7 +246,7 @@ bool IPCAiq::serverFlattenGbce(const ia_aiq_gbce_results& gbceResults, gbce_run_
     CheckError((params == nullptr), false, "@%s, results is nullptr", __FUNCTION__);
 
     size_t size = gbceResults.gamma_lut_size * sizeof(*gbceResults.g_gamma_lut);
-    LOG2("@%s, gamma_lut_size:%d, size:%lu, tone_map_lut_size:%d",
+    LOG2("@%s, gamma_lut_size:%d, size:%zu, tone_map_lut_size:%d",
         __FUNCTION__, gbceResults.gamma_lut_size, size, gbceResults.tone_map_lut_size);
 
     params->resBase = gbceResults;
@@ -275,7 +275,7 @@ bool IPCAiq::serverFlattenGbce(const ia_aiq_gbce_results& gbceResults, gbce_run_
 // statistics
 bool IPCAiq::clientFlattenStat(uintptr_t aiq, const ia_aiq_statistics_input_params& inParams, set_statistics_params* params)
 {
-    LOG1("@%s, aiq:0x%lx, params:%p", __FUNCTION__, aiq, params);
+    LOG1("@%s, aiq:0x%" PRIxPTR ", params:%p", __FUNCTION__, aiq, params);
     CheckError(reinterpret_cast<ia_aiq*>(aiq) == nullptr, false, "@%s, aiq is nullptr", __FUNCTION__);
     CheckError(params == nullptr, false, "@%s, params is nullptr", __FUNCTION__);
 
@@ -674,7 +674,7 @@ bool IPCAiq::unflattenAeResults(ae_run_params_results* res)
 // awb
 bool IPCAiq::clientFlattenAwb(uintptr_t aiq, const ia_aiq_awb_input_params& inParams, awb_run_params* params)
 {
-    LOG1("@%s, aiq:0x%lx, params:%p", __FUNCTION__, aiq, params);
+    LOG1("@%s, aiq:0x%" PRIxPTR ", params:%p", __FUNCTION__, aiq, params);
     CheckError(reinterpret_cast<ia_aiq*>(aiq) == nullptr, false, "@%s, aiq is nullptr", __FUNCTION__);
     CheckError(params == nullptr, false, "@%s, params is nullptr", __FUNCTION__);
 

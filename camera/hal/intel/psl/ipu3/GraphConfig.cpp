@@ -1938,7 +1938,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
         std::vector<media_link_desc> links;
         entity->getLinkDesc(links);
-        LOG1("@%s, links number:%lu\n", __FUNCTION__, links.size());
+        LOG1("@%s, links number:%zu\n", __FUNCTION__, links.size());
         if (links.size()) {
             struct media_pad_desc* pad = &links[0].sink;
             LOG1("@%s, sink entity:%d, flags:%d, index:%d\n",

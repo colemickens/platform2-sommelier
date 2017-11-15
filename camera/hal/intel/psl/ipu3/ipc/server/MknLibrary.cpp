@@ -47,7 +47,7 @@ status_t MknLibrary::init(void* pData, int dataSize)
     ia_mkn* mkn = ia_mkn_init(params->mkn_config_bits, params->mkn_section_1_size, params->mkn_section_2_size);
 
     params->results = reinterpret_cast<uintptr_t>(mkn);
-    LOG2("@%s, mkn:%p, params->results:%lu", __FUNCTION__, mkn, params->results);
+    LOG2("@%s, mkn:%p, params->results:%" PRIxPTR, __FUNCTION__, mkn, params->results);
 
     return OK;
 }

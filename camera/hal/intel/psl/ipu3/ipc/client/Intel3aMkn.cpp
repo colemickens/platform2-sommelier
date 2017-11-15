@@ -55,7 +55,7 @@ bool Intel3aMkn::init(ia_mkn_config_bits mkn_config_bits,
             size_t mkn_section_1_size,
             size_t mkn_section_2_size)
 {
-    LOG1("@%s, mkn_config_bits:%d, mkn_section_1_size:%lu, mkn_section_2_size:%lu",
+    LOG1("@%s, mkn_config_bits:%d, mkn_section_1_size:%zu, mkn_section_2_size:%zu",
         __FUNCTION__, mkn_config_bits, mkn_section_1_size, mkn_section_2_size);
     CheckError(mInitialized == false, false, "@%s, mInitialized is false", __FUNCTION__);
 

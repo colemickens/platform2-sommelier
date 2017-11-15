@@ -240,7 +240,7 @@ void Intel3AServer::request(const uint8_t req_header[], uint32_t size, int32_t b
                     VOID_VALUE, "@%s, Invalid buffer handle", __FUNCTION__);
         ShmInfo info = mShmInfoMap[buffer_handle];
 
-        LOG2("@%s, info.fd:%d, info.size:%lu", __FUNCTION__, info.fd, info.size);
+        LOG2("@%s, info.fd:%d, info.size:%zu", __FUNCTION__, info.fd, info.size);
         status = handleRequest(cmd, info.size, info.addr);
     }
 
