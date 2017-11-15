@@ -578,6 +578,33 @@ class AuthPolicyTest : public testing::Test {
     return base::SetPosixFilePermissions(config_path, mode);
   }
 
+  void MarkDeviceAsLocked() { authpolicy_->SetDeviceIsLockedForTesting(); }
+
+  // Writes one file to |gpo_path| with a few policies. Sets up
+  // |validate_device_policy_| callback with corresponding expectations.
+  void SetupDeviceOneGpo(const base::FilePath& gpo_path) {
+    policy::PRegUserDevicePolicyWriter writer;
+    writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
+    writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
+    writer.AppendString(policy::key::kSystemTimezone, kTimezone);
+    const std::vector<std::string> flags = {"flag1", "flag2"};
+    writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
+    writer.WriteToFile(gpo_path);
+
+    validate_device_policy_ = [flags](
+                                  const em::ChromeDeviceSettingsProto& policy) {
+      EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
+      EXPECT_EQ(
+          kPolicyInt,
+          policy.device_policy_refresh_rate().device_policy_refresh_rate());
+      EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
+      const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
+      EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
+      for (int n = 0; n < flags_proto.flags_size(); ++n)
+        EXPECT_EQ(flags_proto.flags(n), flags.at(n));
+    };
+  }
+
   std::unique_ptr<base::MessageLoop> message_loop_;
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
@@ -1084,7 +1111,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   writer1.WriteToFile(stub_gpo1_path_);
 
   // Normally, the latter GPO file overrides the former
-  // (DevicePolicyFetchGposOverwrite), but POLICY_LEVEL_RECOMMENDED does not
+  // (DevicePolicyFetchGposOverride), but POLICY_LEVEL_RECOMMENDED does not
   // beat POLICY_LEVEL_MANDATORY.
   policy::PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(policy::key::kSearchSuggestEnabled, kOtherPolicyBool,
@@ -1224,6 +1251,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceeds) {
   validate_device_policy_ = &CheckDevicePolicyEmpty;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1244,6 +1272,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
   validate_device_policy_ = &CheckDevicePolicyEmpty;
   EXPECT_EQ(ERROR_NONE, Join(kPropagationRetryMachineName, kUserPrincipal,
                              MakePasswordFd()));
+  MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(kNumPropagationRetries,
@@ -1254,27 +1283,26 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
 // Successful device policy fetch with actual data.
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegUserDevicePolicyWriter writer;
-  writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
-  writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
-  writer.AppendString(policy::key::kSystemTimezone, kTimezone);
-  const std::vector<std::string> flags = {"flag1", "flag2"};
-  writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
-  writer.WriteToFile(stub_gpo1_path_);
-
-  validate_device_policy_ = [flags](
-                                const em::ChromeDeviceSettingsProto& policy) {
-    EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
-    EXPECT_EQ(kPolicyInt,
-              policy.device_policy_refresh_rate().device_policy_refresh_rate());
-    EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
-    const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
-    EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
-    for (int n = 0; n < flags_proto.flags_size(); ++n)
-      EXPECT_EQ(flags_proto.flags(n), flags.at(n));
-  };
+  SetupDeviceOneGpo(stub_gpo1_path_);
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// Authpolicy caches device policy when device is not locked.
+TEST_F(AuthPolicyTest, CachesDevicePolicyWhenDeviceIsNotLocked) {
+  // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
+  SetupDeviceOneGpo(stub_gpo1_path_);
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  FetchAndValidateDevicePolicy(ERROR_DEVICE_POLICY_CACHED_BUT_NOT_SENT);
+  EXPECT_TRUE(base::DeleteFile(stub_gpo1_path_, /* recursive */ false));
+  MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
@@ -1323,6 +1351,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   };
   EXPECT_EQ(ERROR_NONE,
             Join(kTwoGposMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
@@ -1346,6 +1375,7 @@ TEST_F(AuthPolicyTest, CleanStateDir) {
 // data is logged. Only if logging is enabled it should be called.
 TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
 
   validate_user_policy_ = &CheckUserPolicyEmpty;
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);

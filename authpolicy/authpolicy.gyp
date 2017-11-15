@@ -104,6 +104,11 @@
         'samba_interface.cc',
         'tgt_manager.cc',
       ],
+      'link_settings': {
+        'libraries': [
+          '-linstallattributes-<(libbase_ver)',
+        ],
+      },
     },
     # Parser tool.
     {
@@ -152,11 +157,6 @@
         ],
       },
       'sources': ['authpolicy_main.cc'],
-      'link_settings': {
-        'libraries': [
-          '-linstallattributes-<(libbase_ver)',
-        ],
-      },
     },
   ],
   # Unit tests.

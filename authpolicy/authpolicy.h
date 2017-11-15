@@ -7,10 +7,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
+#include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/org.chromium.AuthPolicy.h"
@@ -43,7 +45,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   AuthPolicy(AuthPolicyMetrics* metrics, const PathService* path_service);
 
   // Initializes internals. See SambaInterface::Initialize() for details.
-  ErrorType Initialize(bool expect_config);
+  ErrorType Initialize(bool device_is_locked);
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
@@ -98,6 +100,8 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return samba_.RenewUserTgtForTesting(); }
 
+  void SetDeviceIsLockedForTesting() { device_is_locked_ = true; }
+
  private:
   // Gets triggered by when the Kerberos credential cache or the configuration
   // file of the currently logged in user change. Triggers the
@@ -107,7 +111,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // Sends policy to SessionManager. Assumes |gpo_policy_data| contains user
   // policy if |account_id_key| is not nullptr, otherwise assumes it's device
   // policy.
-  void StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
+  void StorePolicy(std::unique_ptr<protos::GpoPolicyData> gpo_policy_data,
                    const std::string* account_id_key,
                    std::unique_ptr<ScopedTimerReporter> timer,
                    PolicyResponseCallback callback);
@@ -120,6 +124,12 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   AuthPolicyMetrics* metrics_;  // Not owned.
   SambaInterface samba_;
+
+  // Used during enrollment when authpolicyd cannot send policy to Session
+  // Manager because device is not locked yet.
+  std::unique_ptr<protos::GpoPolicyData> cached_device_policy_data_;
+  bool device_is_locked_ = false;
+
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectProxy* session_manager_proxy_ = nullptr;
   base::WeakPtrFactory<AuthPolicy> weak_ptr_factory_;

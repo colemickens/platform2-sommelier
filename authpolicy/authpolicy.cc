@@ -99,8 +99,9 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
                         base::Unretained(this))),
       weak_ptr_factory_(this) {}
 
-ErrorType AuthPolicy::Initialize(bool expect_config) {
-  return samba_.Initialize(expect_config);
+ErrorType AuthPolicy::Initialize(bool device_is_locked) {
+  device_is_locked_ = device_is_locked;
+  return samba_.Initialize(/* expect_config */ device_is_locked_);
 }
 
 void AuthPolicy::RegisterAsync(
@@ -244,8 +245,10 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
-  protos::GpoPolicyData gpo_policy_data;
-  ErrorType error = samba_.FetchUserGpos(real_account_id, &gpo_policy_data);
+  std::unique_ptr<protos::GpoPolicyData> gpo_policy_data =
+      std::make_unique<protos::GpoPolicyData>();
+  ErrorType error =
+      samba_.FetchUserGpos(real_account_id, gpo_policy_data.get());
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -257,7 +260,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 
   const std::string account_id_key = GetAccountIdKey(real_account_id);
   // Send policy to Session Manager.
-  StorePolicy(gpo_policy_data, &account_id_key, std::move(timer),
+  StorePolicy(std::move(gpo_policy_data), &account_id_key, std::move(timer),
               std::move(callback));
 }
 
@@ -266,10 +269,26 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   auto timer =
       std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_DEVICE_POLICY);
 
+  if (cached_device_policy_data_) {
+    // Send policy to Session Manager.
+    LOG(INFO) << "Using cached policy";
+    StorePolicy(std::move(cached_device_policy_data_), nullptr,
+                std::move(timer), std::move(callback));
+    return;
+  }
+
   // Fetch GPOs for the device.
-  protos::GpoPolicyData gpo_policy_data;
-  ErrorType error = samba_.FetchDeviceGpos(&gpo_policy_data);
+  std::unique_ptr<protos::GpoPolicyData> gpo_policy_data =
+      std::make_unique<protos::GpoPolicyData>();
+  ErrorType error = samba_.FetchDeviceGpos(gpo_policy_data.get());
   PrintError("Device policy fetch and parsing", error);
+
+  device_is_locked_ = device_is_locked_ || InstallAttributesReader().IsLocked();
+  if (!device_is_locked_ && error == ERROR_NONE) {
+    LOG(INFO) << "Device is not locked yet. Caching device policy.";
+    cached_device_policy_data_ = std::move(gpo_policy_data);
+    error = ERROR_DEVICE_POLICY_CACHED_BUT_NOT_SENT;
+  }
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
@@ -279,7 +298,8 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   }
 
   // Send policy to Session Manager.
-  StorePolicy(gpo_policy_data, nullptr, std::move(timer), std::move(callback));
+  StorePolicy(std::move(gpo_policy_data), nullptr, std::move(timer),
+              std::move(callback));
 }
 
 std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
@@ -301,10 +321,11 @@ void AuthPolicy::OnUserKerberosFilesChanged() {
   SendUserKerberosFilesChangedSignal();
 }
 
-void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
-                             const std::string* account_id_key,
-                             std::unique_ptr<ScopedTimerReporter> timer,
-                             PolicyResponseCallback callback) {
+void AuthPolicy::StorePolicy(
+    std::unique_ptr<protos::GpoPolicyData> gpo_policy_data,
+    const std::string* account_id_key,
+    std::unique_ptr<ScopedTimerReporter> timer,
+    PolicyResponseCallback callback) {
   // Note: Only policy_value required here, the other data only impacts
   // signature, but since we don't sign, we don't need it.
   const bool is_user_policy = account_id_key != nullptr;
@@ -312,7 +333,7 @@ void AuthPolicy::StorePolicy(const protos::GpoPolicyData& gpo_policy_data,
       is_user_policy ? kChromeUserPolicyType : kChromeDevicePolicyType;
 
   em::PolicyData em_policy_data;
-  em_policy_data.set_policy_value(gpo_policy_data.user_or_device_policy());
+  em_policy_data.set_policy_value(gpo_policy_data->user_or_device_policy());
   em_policy_data.set_policy_type(policy_type);
   if (is_user_policy) {
     em_policy_data.set_username(samba_.user_sam_account_name());

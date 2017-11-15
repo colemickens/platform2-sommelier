@@ -28,9 +28,9 @@ namespace authpolicy {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  explicit Daemon(bool expect_config)
+  explicit Daemon(bool device_is_locked)
       : DBusServiceDaemon(kAuthPolicyServiceName, kObjectServicePath),
-        expect_config_(expect_config) {}
+        device_is_locked_(device_is_locked) {}
 
   // Cleans the authpolicy daemon state directory. Returns true if all files
   // were cleared.
@@ -44,7 +44,7 @@ class Daemon : public brillo::DBusServiceDaemon {
     auth_policy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true));
-    ErrorType error = auth_policy_.Initialize(expect_config_);
+    ErrorType error = auth_policy_.Initialize(device_is_locked_);
     if (error != ERROR_NONE) {
       LOG(ERROR) << "SambaInterface failed to initialize with error code "
                  << error;
@@ -57,7 +57,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
  private:
-  bool expect_config_;
+  bool device_is_locked_;
 
   // Keep this order! auth_policy_ must be last as it depends on the other two.
   AuthPolicyMetrics metrics_;
@@ -91,7 +91,7 @@ int main(int /* argc */, char* /* argv */ []) {
   // been locked to a mode other than enterprise_ad.  (The lifetime management
   // of authpolicyd happens through upstart, this check only serves as a second
   // line of defense.)
-  bool expect_config = false;
+  bool device_is_locked = false;
   InstallAttributesReader install_attributes_reader;
   if (install_attributes_reader.IsLocked()) {
     const std::string& mode = install_attributes_reader.GetAttribute(
@@ -105,7 +105,7 @@ int main(int /* argc */, char* /* argv */ []) {
       LOG(INFO) << "Install attributes locked to Active Directory mode.";
 
       // A configuration file should be present in this case.
-      expect_config = true;
+      device_is_locked = true;
     }
   } else {
     LOG(INFO) << "No install attributes found. Cleaning state.";
@@ -114,7 +114,7 @@ int main(int /* argc */, char* /* argv */ []) {
 
   // Run daemon.
   LOG(INFO) << "authpolicyd starting";
-  authpolicy::Daemon daemon(expect_config);
+  authpolicy::Daemon daemon(device_is_locked);
   int res = daemon.Run();
   LOG(INFO) << "authpolicyd stopping with exit code " << res;
 
