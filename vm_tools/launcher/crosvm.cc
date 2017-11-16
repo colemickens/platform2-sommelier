@@ -39,7 +39,9 @@ namespace launcher {
 
 namespace {
 
+constexpr char kCrosvmSocket[] = "crosvm.sock";
 constexpr int kGrpcTimeoutSeconds = 1;
+constexpr int kShutdownTimeoutSeconds = 2;
 constexpr int kVmMaxMemoryMiB = 8192;
 
 bool StringToIPv4Address(const std::string& address, uint32_t* addr) {
@@ -330,7 +332,7 @@ bool CrosVM::BuildCrosVMCommandLine(const base::FilePath& container_disk,
   vm_process_->AddStringOption("--cid",
                                base::StringPrintf("%u", cid_->GetCid()));
 
-  base::FilePath socket_path = instance_runtime_dir_.Append("crosvm.sock");
+  base::FilePath socket_path = instance_runtime_dir_.Append(kCrosvmSocket);
   vm_process_->AddStringOption("--socket", socket_path.value());
 
   vm_process_->AddStringOption("--wayland-sock", "/run/chrome/wayland-0");
@@ -498,7 +500,7 @@ bool CrosVM::ConfigureNetwork() {
 bool CrosVM::Shutdown() {
   grpc::ClientContext ctx;
   ctx.set_deadline(std::chrono::system_clock::now() +
-                   std::chrono::seconds(kGrpcTimeoutSeconds));
+                   std::chrono::seconds(kShutdownTimeoutSeconds));
 
   vm_tools::EmptyMessage empty;
 
@@ -532,6 +534,9 @@ bool CrosVM::Teardown() {
     if (!vm_dead && Shutdown())
       vm_dead = true;
 
+    if (!vm_dead && StopCrosvm())
+      vm_dead = true;
+
     // Attempt SIGTERM first. If this succeeds, we can release the process
     // from management. Otherwise, we'll send a SIGKILL automatically
     // when the process is destructed.
@@ -553,6 +558,17 @@ bool CrosVM::Teardown() {
   }
 
   return true;
+}
+
+bool CrosVM::StopCrosvm() {
+  brillo::ProcessImpl stop_process;
+  stop_process.AddArg(kCrosvmBin);
+  stop_process.AddArg("stop");
+  base::FilePath socket_path = instance_runtime_dir_.Append(kCrosvmSocket);
+  stop_process.AddArg(socket_path.value());
+
+  LOG(INFO) << "Stopping crosvm via control socket";
+  return stop_process.Run() == 0;
 }
 
 }  // namespace launcher

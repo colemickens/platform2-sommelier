@@ -107,6 +107,9 @@ class CrosVM {
   // this will shut down the VM and free all its resources.
   bool Teardown();
 
+  // Stops a crosvm instance using its control socket.
+  bool StopCrosvm();
+
   // RPC calls to maitred.
   bool LaunchProcess(const std::vector<std::string>& args,
                      bool respawn,
