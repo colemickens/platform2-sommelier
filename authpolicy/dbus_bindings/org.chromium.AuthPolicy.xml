@@ -5,8 +5,7 @@
   <interface name="org.chromium.AuthPolicy">
     <!--
          AuthenticateUser:
-         @user_principal_name: user@workgroup.domain.
-         @account_id: Object GUID of the user account, empty if unknown (yet).
+         @auth_user_request_blob: Serialized AuthenticateUserRequest protobuf.
          @password_fd: File descriptor of the user's password.
          @error_code: Returned error code, see ErrorType enum.
          @account_info_blob: Serialized ActiveDirectoryAccountInfo protobuf.
@@ -14,12 +13,13 @@
          Authenticates the user with an Active Directory domain.
     -->
     <method name="AuthenticateUser">
-      <arg name="user_principal_name" type="s" direction="in"/>
-      <arg name="account_id" type="s" direction="in"/>
+      <arg name="auth_user_request_blob" type="ay" direction="in" />
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
       <arg name="account_info_blob" type="ay" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <!-- Changing to raw handle both strings and protobufs by hand. Eventually
+           will switch to protobufs only. (see https://crbug.com/785956) -->
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
     </method>
 
     <!--
@@ -68,32 +68,29 @@
 
     <!--
          JoinADDomain:
-         @machine_name: Netbios name of the machine (aka device) to join.
-         @user_principal_name: user@workgroup.domain, used for authentication.
+         @join_domain_request_blob: Serialized JoinDomainRequest protobuf.
          @password_fd: File descriptor of the user's password.
          @error_code: Returned error code, see ErrorType enum.
 
          Joins the given machine with an Active Directory domain.
     -->
     <method name="JoinADDomain">
-      <arg name="machine_name" type="s" direction="in"/>
-      <arg name="user_principal_name" type="s" direction="in"/>
+      <arg name="join_domain_request_blob" type="ay" direction="in" />
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
     </method>
 
     <!--
          RefreshUserPolicy:
-         @account_id_key: Unique account id key of the user to fetch policy for.
-                          It's prefixed account_id.
+         @account_id: Object GUID of the user account to fetch policy for.
          @error_code: Returned error code, see ErrorType enum.
 
          Retrieves user policy for the currently authenticated user and sends it
          to Session Manager. Must be authenticated, see |AuthenticateUser|.
     -->
     <method name="RefreshUserPolicy">
-      <arg name="account_id_key" type="s" direction="in" />
+      <arg name="account_id" type="s" direction="in" />
       <arg name="error_code" type="i" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>

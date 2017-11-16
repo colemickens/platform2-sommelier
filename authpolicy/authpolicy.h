@@ -57,11 +57,13 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
   // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
-  void AuthenticateUser(const std::string& user_principal_name,
-                        const std::string& account_id,
+  void AuthenticateUser(dbus::MethodCall* method_call,
+                        brillo::dbus_utils::ResponseSender sender) override;
+
+  void AuthenticateUser(const authpolicy::AuthenticateUserRequest& request,
                         const dbus::FileDescriptor& password_fd,
                         int32_t* error,
-                        std::vector<uint8_t>* account_info_blob) override;
+                        std::vector<uint8_t>* account_info_blob);
 
   void GetUserStatus(const std::string& account_id,
                      int32_t* error,
@@ -72,12 +74,14 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                             int32_t* error,
                             std::vector<uint8_t>* kerberos_files_blob) override;
 
-  int32_t JoinADDomain(const std::string& machine_name,
-                       const std::string& user_principal_name,
-                       const dbus::FileDescriptor& password_fd) override;
+  void JoinADDomain(dbus::MethodCall* method_call,
+                    brillo::dbus_utils::ResponseSender sender) override;
+
+  int32_t JoinADDomain(const authpolicy::JoinDomainRequest& request,
+                       const dbus::FileDescriptor& password_fd);
 
   void RefreshUserPolicy(PolicyResponseCallback callback,
-                         const std::string& account_id_key) override;
+                         const std::string& acccount_id) override;
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 

@@ -102,9 +102,6 @@ dbus::FileDescriptor MakePasswordFd() {
 // Stub completion callback for RegisterAsync().
 void DoNothing(bool /* unused */) {}
 
-std::string GetAccountIdKey(const std::string& account_id) {
-  return kActiveDirectoryPrefix + account_id;
-}
 
 // If |error| is ERROR_NONE, parses |proto_blob| into the |proto| if given.
 // Otherwise, makes sure |proto_blob| is empty.
@@ -435,8 +432,10 @@ class AuthPolicyTest : public testing::Test {
                  const std::string& user_principal,
                  dbus::FileDescriptor password_fd) {
     expected_dbus_calls[DBUS_CALL_JOIN_AD_DOMAIN]++;
-    return CastError(
-        authpolicy_->JoinADDomain(machine_name, user_principal, password_fd));
+    authpolicy::JoinDomainRequest request;
+    request.set_machine_name(machine_name);
+    request.set_user_principal_name(user_principal);
+    return CastError(authpolicy_->JoinADDomain(request, password_fd));
   }
 
   // Authenticates to a (stub) Active Directory domain with the given
@@ -451,8 +450,11 @@ class AuthPolicyTest : public testing::Test {
     std::vector<uint8_t> account_info_blob;
     expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER]++;
     int prev_files_changed_count = user_kerberos_files_changed_count_;
-    authpolicy_->AuthenticateUser(user_principal, account_id, password_fd,
-                                  &error, &account_info_blob);
+    authpolicy::AuthenticateUserRequest request;
+    request.set_user_principal_name(user_principal);
+    request.set_account_id(account_id);
+    authpolicy_->AuthenticateUser(request, password_fd, &error,
+                                  &account_info_blob);
     MaybeParseProto(error, account_info_blob, account_info);
     // At most one UserKerberosFilesChanged signal should have been fired.
     EXPECT_LE(user_kerberos_files_changed_count_, prev_files_changed_count + 1);
@@ -484,19 +486,19 @@ class AuthPolicyTest : public testing::Test {
   }
 
   // Authenticates to a (stub) Active Directory domain with default credentials.
-  // Returns the account id key.
+  // Returns the account id.
   std::string DefaultAuth() {
     authpolicy::ActiveDirectoryAccountInfo account_info;
     EXPECT_EQ(ERROR_NONE,
               Auth(kUserPrincipal, "", MakePasswordFd(), &account_info));
-    return GetAccountIdKey(account_info.account_id());
+    return account_info.account_id();
   }
 
   // Calls AuthPolicy::RefreshUserPolicy(). Verifies that
   // StubCallStorePolicyMethod() and validate_user_policy_ are called as
   // expected. These callbacks verify that the policy protobuf is valid and
   // validate the contents.
-  void FetchAndValidateUserPolicy(const std::string& account_id_key,
+  void FetchAndValidateUserPolicy(const std::string& account_id,
                                   ErrorType expected_error) {
     dbus::MethodCall method_call(kAuthPolicyInterface,
                                  kAuthPolicyRefreshUserPolicy);
@@ -510,7 +512,7 @@ class AuthPolicyTest : public testing::Test {
             &method_call,
             base::Bind(&CheckError, expected_error, &callback_was_called));
     expected_dbus_calls[DBUS_CALL_REFRESH_USER_POLICY]++;
-    authpolicy_->RefreshUserPolicy(std::move(callback), account_id_key);
+    authpolicy_->RefreshUserPolicy(std::move(callback), account_id);
 
     // If policy fetch succeeds, authpolicy_ makes a D-Bus call to Session
     // Manager to store policy. We intercept this call and point it to
@@ -619,8 +621,7 @@ class AuthPolicyTest : public testing::Test {
 
 // Can't fetch user policy if the user is not logged in.
 TEST_F(AuthPolicyTest, UserPolicyFailsNotLoggedIn) {
-  FetchAndValidateUserPolicy(GetAccountIdKey("account_id_key"),
-                             ERROR_NOT_LOGGED_IN);
+  FetchAndValidateUserPolicy("account_id", ERROR_NOT_LOGGED_IN);
 }
 
 // Can't fetch device policy if the device is not joined.

@@ -89,11 +89,11 @@ class SambaInterface {
                         int password_fd);
 
   // Downloads user and extension policy from the Active Directory server and
-  // stores it in |gpo_policy_data|. |account_id_key| is the unique user GUID
-  // returned from |AuthenticateUser| in |account_info|, prefixed by "a-". The
-  // user's Kerberos authentication ticket must still be valid. If this
-  // operation fails, call |AuthenticateUser| and try again.
-  ErrorType FetchUserGpos(const std::string& account_id_key,
+  // stores it in |gpo_policy_data|. |account_id| is the unique user objectGUID
+  // returned from |AuthenticateUser| in |account_info|. The user's Kerberos
+  // authentication ticket must still be valid. If this operation fails, call
+  // |AuthenticateUser| and try again.
+  ErrorType FetchUserGpos(const std::string& account_id,
                           protos::GpoPolicyData* gpo_policy_data);
 
   // Downloads device and extension policy from the Active Directory server and

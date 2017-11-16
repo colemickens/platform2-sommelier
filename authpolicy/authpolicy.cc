@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -16,6 +17,7 @@
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/samba_interface.h"
 #include "bindings/device_management_backend.pb.h"
 
@@ -60,6 +62,20 @@ ErrorType SerializeProto(ProtoType proto, std::vector<uint8_t>* proto_blob) {
   }
   proto_blob->assign(buffer.begin(), buffer.end());
   return ERROR_NONE;
+}
+
+// Creates dbus::Response. Appends |error| to it. If |blob| is not nullptr
+// appends it to the response as well.
+std::unique_ptr<dbus::Response> CreateResponse(dbus::MethodCall* method_call,
+                                               int32_t error,
+                                               std::vector<uint8_t>* blob) {
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt32(error);
+  if (blob)
+    writer.AppendArrayOfBytes(blob->data(), blob->size());
+  return response;
 }
 
 }  // namespace
@@ -107,16 +123,41 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
-void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
-                                  const std::string& account_id,
-                                  const dbus::FileDescriptor& password_fd,
-                                  int32_t* int_error,
-                                  std::vector<uint8_t>* account_info_blob) {
+void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
+                                  brillo::dbus_utils::ResponseSender sender) {
+  // Read input arguments.
+  dbus::MessageReader reader(method_call);
+  dbus::FileDescriptor password_fd;
+  authpolicy::AuthenticateUserRequest request;
+  bool success = reader.PopArrayOfBytesAsProto(&request) ||
+                 (reader.PopString(request.mutable_user_principal_name()) &&
+                  reader.PopString(request.mutable_account_id()));
+
+  success = success && reader.PopFileDescriptor(&password_fd);
+  int32_t error = ERROR_NONE;
+  std::vector<uint8_t> account_data_blob;
+  if (success) {
+    password_fd.CheckValidity();
+    AuthenticateUser(request, password_fd, &error, &account_data_blob);
+  } else {
+    error = ERROR_DBUS_FAILURE;
+  }
+
+  // Send response.
+  sender.Run(CreateResponse(method_call, error, &account_data_blob));
+}
+
+void AuthPolicy::AuthenticateUser(
+    const authpolicy::AuthenticateUserRequest& request,
+    const dbus::FileDescriptor& password_fd,
+    int32_t* int_error,
+    std::vector<uint8_t>* account_info_blob) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
 
   authpolicy::ActiveDirectoryAccountInfo account_info;
-  ErrorType error = samba_.AuthenticateUser(user_principal_name, account_id,
+  ErrorType error = samba_.AuthenticateUser(request.user_principal_name(),
+                                            request.account_id(),
                                             password_fd.value(), &account_info);
   if (error == ERROR_NONE)
     error = SerializeProto(account_info, account_info_blob);
@@ -156,27 +197,55 @@ void AuthPolicy::GetUserKerberosFiles(
   *int_error = static_cast<int>(error);
 }
 
-int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
-                                 const std::string& user_principal_name,
+void AuthPolicy::JoinADDomain(dbus::MethodCall* method_call,
+                              brillo::dbus_utils::ResponseSender sender) {
+  // Read input arguments.
+  dbus::MessageReader reader(method_call);
+  dbus::FileDescriptor password_fd;
+  authpolicy::JoinDomainRequest request;
+  bool success = reader.PopArrayOfBytesAsProto(&request) ||
+                 (reader.PopString(request.mutable_machine_name()) &&
+                  reader.PopString(request.mutable_user_principal_name()));
+
+  success = success && reader.PopFileDescriptor(&password_fd);
+  int32_t error = ERROR_NONE;
+  if (success) {
+    password_fd.CheckValidity();
+    error = JoinADDomain(request, password_fd);
+  } else {
+    error = ERROR_DBUS_FAILURE;
+  }
+
+  // Send response.
+  sender.Run(CreateResponse(method_call, error, nullptr));
+}
+
+int32_t AuthPolicy::JoinADDomain(const authpolicy::JoinDomainRequest& request,
                                  const dbus::FileDescriptor& password_fd) {
   LOG(INFO) << "Received 'JoinADDomain' request";
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
-  ErrorType error = samba_.JoinMachine(machine_name, user_principal_name,
-                                       password_fd.value());
+  ErrorType error =
+      samba_.JoinMachine(request.machine_name(), request.user_principal_name(),
+                         password_fd.value());
   PrintError("JoinADDomain", error);
   metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
   return error;
 }
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
-                                   const std::string& account_id_key) {
+                                   const std::string& account_id) {
+  std::string real_account_id = account_id;
+  if (base::StartsWith(real_account_id, kActiveDirectoryPrefix,
+                       base::CompareCase::SENSITIVE)) {
+    real_account_id = real_account_id.substr(strlen(kActiveDirectoryPrefix));
+  }
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
   auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
   protos::GpoPolicyData gpo_policy_data;
-  ErrorType error = samba_.FetchUserGpos(account_id_key, &gpo_policy_data);
+  ErrorType error = samba_.FetchUserGpos(real_account_id, &gpo_policy_data);
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -186,6 +255,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
     return;
   }
 
+  const std::string account_id_key = GetAccountIdKey(real_account_id);
   // Send policy to Session Manager.
   StorePolicy(gpo_policy_data, &account_id_key, std::move(timer),
               std::move(callback));

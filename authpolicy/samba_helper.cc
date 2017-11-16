@@ -161,10 +161,8 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
   return guid;
 }
 
-std::string GetAccountId(const std::string& account_id_key) {
-  DCHECK_EQ(kActiveDirectoryPrefix,
-            account_id_key.substr(0, strlen(kActiveDirectoryPrefix)));
-  return account_id_key.substr(strlen(kActiveDirectoryPrefix));
+std::string GetAccountIdKey(const std::string& account_id) {
+  return kActiveDirectoryPrefix + account_id;
 }
 
 void LogLongString(const std::string& header,

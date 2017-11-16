@@ -535,9 +535,9 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
 }
 
 ErrorType SambaInterface::FetchUserGpos(
-    const std::string& account_id_key, protos::GpoPolicyData* gpo_policy_data) {
+    const std::string& account_id, protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
-  SetUser(GetAccountId(account_id_key));
+  SetUser(account_id);
 
   if (!user_logged_in_) {
     LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
