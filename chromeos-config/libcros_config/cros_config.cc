@@ -208,7 +208,7 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
 
   if (target_dirs_offset_ == -1) {
     LOG(ERROR) << "Absolute path requested at path " << path << " property "
-               << prop  << " but no target-dirs are available";
+               << prop << " but no target-dirs are available";
     return false;
   }
   int len;
@@ -217,7 +217,7 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
 
   if (!ptr) {
     LOG(ERROR) << "Absolute path requested at path " << path << " property "
-               << prop  << ": " << fdt_strerror(len);
+               << prop << ": " << fdt_strerror(len);
     return false;
   }
   *val_out = std::string(ptr) + "/" + val;
@@ -225,8 +225,8 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::LookupPhandle(int node_offset, const std::string &prop_name,
-                               int *offset_out) {
+bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
+                               int* offset_out) {
   const void* blob = blob_.c_str();
   int len;
   const fdt32_t* ptr = static_cast<const fdt32_t*>(
@@ -239,15 +239,15 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string &prop_name,
   if (ptr) {
     if (len != sizeof(fdt32_t)) {
       LOG(ERROR) << prop_name << " phandle for model " << model_
-                  << " is of size " << len << " but should be "
-                  << sizeof(fdt32_t);
+                 << " is of size " << len << " but should be "
+                 << sizeof(fdt32_t);
       return false;
     }
     int phandle = fdt32_to_cpu(*ptr);
     int offset = fdt_node_offset_by_phandle(blob, phandle);
     if (offset < 0) {
-      LOG(ERROR) << prop_name << "lookup for model " << model_ << " failed: "
-                  << fdt_strerror(offset);
+      LOG(ERROR) << prop_name << "lookup for model " << model_
+                 << " failed: " << fdt_strerror(offset);
       return false;
     }
     *offset_out = offset;

@@ -18,7 +18,7 @@
 namespace base {
 class CommandLine;
 class FilePath;
-}
+}  // namespace base
 
 namespace brillo {
 
@@ -45,7 +45,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @whitelabel_name: Name of the whitelabel model or 'tag' node
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath, const std::string& name,
-                   int sku_id, const std::string& whitelabel_tag);
+                   int sku_id, const std::string& whitelabel_name);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
@@ -98,7 +98,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @offset_out: Returns the offset of the node the phandle points to, if
   // found.
   // @return true if found, false if not.
-  bool LookupPhandle(int node_offset, const std::string &prop_name,
+  bool LookupPhandle(int node_offset, const std::string& prop_name,
                      int *offset_out);
 
   // Select the model / submodel to use
@@ -108,8 +108,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @find_sku_id: SKU ID to search for
   // @find_whitelabel_name: Whitelabel model or tag to search for
   // @return true on success, false on failure
-  bool SelectModelConfigByIDs(const std::string &find_name, int find_sku_id,
-                              std::string& find_whitelabel_name);
+  bool SelectModelConfigByIDs(const std::string& find_name, int find_sku_id,
+                              const std::string& find_whitelabel_name);
 
   // Check a single sku-map node for a match
   // This searches the given sku-map node to see if it is a match for the given

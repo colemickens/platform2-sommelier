@@ -142,7 +142,7 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
 }
 
 bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
-    int find_sku_id, std::string& find_whitelabel_name) {
+    int find_sku_id, const std::string& find_whitelabel_name) {
   const void* blob = blob_.c_str();
   LOG(INFO) << "Looking up name " << find_name << ", SKU ID " << find_sku_id;
 
