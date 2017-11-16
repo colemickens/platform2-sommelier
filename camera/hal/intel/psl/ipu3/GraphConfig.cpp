@@ -2217,7 +2217,7 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
     Node *imgu = nullptr;
     int width = 0, height = 0, format = 0;
     int enabled = 1;
-    std::string kImguName = "ipu3-imgu:0";
+    std::string kImguName = "ipu3-imgu";
 
     ret = mSettings->getDescendant(GCSS_KEY_IMGU, &imgu);
     if (ret != css_err_none) {

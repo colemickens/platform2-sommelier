@@ -23,7 +23,7 @@
 
 const char* STATISTICS = "3a statistics";
 const char* PARAMS = "parameters";
-const char* IMGU_NAME = "ipu3-imgu:0";
+const char* IMGU_NAME = "ipu3-imgu";
 
 namespace android {
 namespace camera2 {
