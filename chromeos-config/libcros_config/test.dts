@@ -236,6 +236,7 @@
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
+                        no-firmware;
 		};
 	};
 

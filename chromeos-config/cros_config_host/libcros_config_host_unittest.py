@@ -418,12 +418,6 @@ class CrosConfigHostTest(unittest.TestCase):
                                         have_image=False, sig_id='blacktip1')),
         ('blacktip2', caroline._replace(model='blacktip2', key_id='BLACKTIP2',
                                         have_image=False, sig_id='blacktip2')),
-        ('broken', FirmwareInfo(
-            model='broken', shared_model=None, key_id='', have_image=True,
-            bios_build_target=None, ec_build_target=None,
-            main_image_uri='bcs://Reef.9042.87.1.tbz2',
-            main_rw_image_uri='', ec_image_uri='', pd_image_uri='',
-            extra=[], create_bios_rw_image=False, tools=[], sig_id='broken')),
         ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
         ('pyro', FirmwareInfo(
             model='pyro', shared_model=None, key_id='', have_image=True,

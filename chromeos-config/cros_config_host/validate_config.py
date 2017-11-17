@@ -56,7 +56,7 @@ from . import fdt, fdt_util
 from .validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from .validate_schema import PropCustom, PropDesc, PropString, PropStringList
 from .validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
-from .validate_schema import PropAny, PropFile
+from .validate_schema import PropAny, PropBool, PropFile
 
 
 def ParseArgv(argv):
@@ -446,6 +446,7 @@ BASE_FIRMWARE_SCHEMA = [
     PropStringList('extra', False,
                    r'(\${(FILESDIR|SYSROOT)}/[a-z/]+)|' +
                    r'(bcs://[A-Za-z0-9\.]+\.tbz2)', FW_COND),
+    PropBool('no-firmware', FW_COND),
     ]
 
 # Firmware build targets schema, defined here since it is used in a few places.

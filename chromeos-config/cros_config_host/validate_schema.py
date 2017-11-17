@@ -110,6 +110,12 @@ class PropString(PropDesc):
                (prop.name, prop.value, pattern))
 
 
+class PropBool(PropDesc):
+  """A boolean property"""
+  def __init__(self, name, conditional_props=None):
+    super(PropBool, self).__init__(name, 'bool', False, conditional_props)
+
+
 class PropFile(PropDesc):
   """A file property
 

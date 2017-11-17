@@ -543,7 +543,7 @@ class UnitTests(cros_test_lib.TestCase):
     self.assertEqual(
         ["/chromeos/family/firmware/reef: Unexpected property 'shares', " +
          "valid list is (phandle, bcs-overlay, ec-image, main-image, " +
-         "main-rw-image, pd-image, extra)"], result)
+         "main-rw-image, pd-image, extra, no-firmware)"], result)
 
   def testFamilyFirmwareShared(self):
     """Test valid shared firmware"""
