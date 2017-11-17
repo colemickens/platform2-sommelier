@@ -10,8 +10,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/cros_config_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"
@@ -91,6 +93,9 @@ class PrefsTest : public testing::Test {
  protected:
   PrefsSourceInterfaceVector GetSources() {
     PrefsSourceInterfaceVector sources;
+    cros_config_ = new brillo::FakeCrosConfig();
+    sources.emplace_back(new CrosConfigPrefsSource(
+        std::unique_ptr<brillo::CrosConfigInterface>(cros_config_)));
     // The first path will be used for the store; the rest become sources.
     for (int i = 1; i < kNumPrefDirectories; ++i) {
       sources.emplace_back(new FilePrefsStore(paths_[i]));
@@ -106,6 +111,8 @@ class PrefsTest : public testing::Test {
   std::vector<base::FilePath> paths_;
   std::unique_ptr<base::ScopedTempDir>
       temp_dir_generators_[kNumPrefDirectories];
+
+  brillo::FakeCrosConfig* cros_config_;  // weak
 
   Prefs prefs_;
   Prefs::TestApi test_api_;
@@ -360,6 +367,18 @@ TEST_F(PrefsTest, DeferredWrites) {
   EXPECT_TRUE(prefs_.GetInt64(kName, &int64_value));
   EXPECT_EQ(4, int64_value);
   EXPECT_FALSE(test_api_.TriggerWriteTimeout());
+}
+
+// Test reads from libcros_config.
+TEST_F(PrefsTest, TestLibCrosConfigPrefs) {
+  InitPrefs();
+  cros_config_->SetString("/power", "power-pref-name", "1");
+  cros_config_->SetString("/power", "power_pref_name", "999");  // inaccessible
+
+  int64_t value;
+  EXPECT_TRUE(prefs_.GetInt64("power_pref_name", &value));
+  EXPECT_EQ(1, value);
+  EXPECT_FALSE(prefs_.GetInt64("nonexistent", &value));
 }
 
 }  // namespace power_manager

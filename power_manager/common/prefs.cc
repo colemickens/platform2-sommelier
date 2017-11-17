@@ -4,6 +4,7 @@
 
 #include "power_manager/common/prefs.h"
 
+#include <memory>
 #include <set>
 #include <utility>
 
@@ -16,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
+#include "power_manager/common/cros_config_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/util.h"
@@ -45,24 +47,6 @@ constexpr char kModelSubdirConfigKey[] = "powerd-prefs";
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.
 const int kDefaultWriteIntervalMs = 1000;
-
-// Returns a model-specific subdirectory of the read-only prefs dir if this
-// model has one, or empty if not.
-std::string GetModelSubdir() {
-  brillo::CrosConfig config;
-  if (!config.Init()) {
-    // Not necessarily an error; not every model has a database yet.
-    return "";
-  }
-  std::string subdir;
-  if (!config.GetString(kModelSubdirConfigPath, kModelSubdirConfigKey,
-                        &subdir)) {
-    // Not necessarily an error; not every model will need a subdir.
-    return "";
-  }
-
-  return subdir;
-}
 
 }  // namespace
 
@@ -98,10 +82,23 @@ PrefsSourceInterfaceVector Prefs::GetDefaultSources() {
   PrefsSourceInterfaceVector sources;
 
   const base::FilePath read_only_path(kReadOnlyPrefsDir);
-  const std::string model_subdir = GetModelSubdir();
-  if (!model_subdir.empty()) {
-    sources.emplace_back(new FilePrefsStore(
-        read_only_path.Append(kModelSpecificPrefsSubdir).Append(model_subdir)));
+
+  auto config = std::make_unique<brillo::CrosConfig>();
+  if (config->InitModel()) {
+    // Prior to the introduction of CrosConfigPrefsSource, power prefs were
+    // stored in a model-specific subdirectory named by a CrosConfig prop; we
+    // need to preserve that behavior until we migrate these existing props.
+    std::string model_subdir;
+    bool has_model_subdir = config->GetString(
+        kModelSubdirConfigPath, kModelSubdirConfigKey, &model_subdir);
+
+    sources.emplace_back(new CrosConfigPrefsSource(std::move(config)));
+
+    if (has_model_subdir) {
+      sources.emplace_back(
+          new FilePrefsStore(read_only_path.Append(kModelSpecificPrefsSubdir)
+                                 .Append(model_subdir)));
+    }
   }
 
   sources.emplace_back(

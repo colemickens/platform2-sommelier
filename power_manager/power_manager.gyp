@@ -39,6 +39,7 @@
       'sources': [
         'common/activity_logger.cc',
         'common/clock.cc',
+        'common/cros_config_prefs_source.cc',
         'common/file_prefs_store.cc',
         'common/metrics_constants.cc',
         'common/metrics_sender.cc',
