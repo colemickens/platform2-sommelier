@@ -363,7 +363,8 @@ int ResetSignalHandlers() {
       continue;
     }
     struct sigaction act = {
-        .sa_handler = SIG_DFL, .sa_flags = 0,
+        .sa_handler = SIG_DFL,
+        .sa_flags = 0,
     };
     sigemptyset(&act.sa_mask);
 
@@ -410,7 +411,8 @@ void DoChildSetup(const char* console,
   // Create a new session and process group.
   if (setsid() == -1) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SESSION_ID, .err = errno,
+        .reason = ChildErrorInfo::Reason::SESSION_ID,
+        .err = errno,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -421,7 +423,8 @@ void DoChildSetup(const char* console,
   int fd = open(console, O_RDWR | O_NOCTTY);
   if (fd < 0) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::CONSOLE, .err = errno,
+        .reason = ChildErrorInfo::Reason::CONSOLE,
+        .err = errno,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -1032,7 +1035,8 @@ void Init::Worker::Spawn(struct ChildInfo info,
 
     // execvp never returns except in case of an error.
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::EXEC, .err = errno,
+        .reason = ChildErrorInfo::Reason::EXEC,
+        .err = errno,
     };
 
     send(info_fds[1], &info, sizeof(info), MSG_NOSIGNAL);

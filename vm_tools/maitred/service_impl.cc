@@ -283,7 +283,6 @@ grpc::Status ServiceImpl::LaunchProcess(
       break;
   }
 
-
   // Return OK no matter what because the RPC itself succeeded even if there
   // was an issue with launching the process.
   return grpc::Status::OK;
@@ -293,10 +292,8 @@ grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
                                 const MountRequest* request,
                                 MountResponse* response) {
   LOG(INFO) << "Received mount request";
-  int ret = mount(request->source().c_str(),
-                  request->target().c_str(),
-                  request->fstype().c_str(),
-                  request->mountflags(),
+  int ret = mount(request->source().c_str(), request->target().c_str(),
+                  request->fstype().c_str(), request->mountflags(),
                   request->options().c_str());
 
   if (ret < 0) {

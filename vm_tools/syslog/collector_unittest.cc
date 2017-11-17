@@ -92,8 +92,8 @@ grpc::Status FakeLogCollectorService::CollectUserLogs(
   // Make a copy of the request and pass it on.
   auto request_copy = std::make_unique<vm_tools::LogRequest>(*request);
   main_task_runner_->PostTask(
-      FROM_HERE, base::Bind(handle_user_logs_cb_,
-                            base::Passed(std::move(request_copy))));
+      FROM_HERE,
+      base::Bind(handle_user_logs_cb_, base::Passed(std::move(request_copy))));
 
   return grpc::Status::OK;
 }
@@ -364,14 +364,15 @@ TEST_F(CollectorTest, EndToEnd) {
       {
           .buf = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for "
                  "lonvick on /dev/pts/8",
-          .tm =
-              {  // NOLINT(whitespace/braces)
-                  .tm_sec = 15,
-                  .tm_min = 14,
-                  .tm_hour = 22,
-                  .tm_mday = 11,
-                  .tm_mon = 9,
-              },
+          // clang-format off
+          .tm = {
+              .tm_sec = 15,
+              .tm_min = 14,
+              .tm_hour = 22,
+              .tm_mday = 11,
+              .tm_mon = 9,
+          },
+          // clang-format on
           .severity = vm_tools::CRITICAL,
           .content_offset = 19,
       },
@@ -380,14 +381,15 @@ TEST_F(CollectorTest, EndToEnd) {
                  "time to make the do-nuts.  %%  Ingredients: Mix=OK, Jelly=OK "
                  "# Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # "
                  "Transport: Conveyer1=OK, Conveyer2=OK # %%",
-          .tm =
-              {  // NOLINT(whitespace/braces)
-                  .tm_sec = 00,
-                  .tm_min = 34,
-                  .tm_hour = 5,
-                  .tm_mday = 24,
-                  .tm_mon = 7,
-              },
+          // clang-format off
+          .tm = {
+              .tm_sec = 00,
+              .tm_min = 34,
+              .tm_hour = 5,
+              .tm_mday = 24,
+              .tm_mon = 7,
+          },
+          // clang-format on
           .severity = vm_tools::NOTICE,
           .content_offset = 20,
       },

@@ -30,59 +30,63 @@ constexpr struct {
 } kEndToEndTests[] = {
     {
         .severity = vm_tools::ERROR,
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 11,
-                .tm_min = 54,
-                .tm_hour = 23,
-                .tm_mday = 17,
-                .tm_mon = 0,
-                .tm_year = 155,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 11,
+            .tm_min = 54,
+            .tm_hour = 23,
+            .tm_mday = 17,
+            .tm_mon = 0,
+            .tm_year = 155,
+        },
+        // clang-format on
         .content = u8"网页 图片 资讯更多 »",
         .result = u8"<11>Jan 17 23:54:11 VM(0): 网页 图片 资讯更多 »",
     },
     {
         .severity = vm_tools::EMERGENCY,
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 58,
-                .tm_min = 33,
-                .tm_hour = 18,
-                .tm_mday = 24,
-                .tm_mon = 11,
-                .tm_year = 6,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 58,
+            .tm_min = 33,
+            .tm_hour = 18,
+            .tm_mday = 24,
+            .tm_mon = 11,
+            .tm_year = 6,
+        },
+        // clang-format on
         .content = "Invalid\xED\xBA\xAD code\xF4\xAF\xBF\xBF points",
         .result = u8"<8>Dec 24 18:33:58 VM(0): Invalid\xEF\xBF\xBD "
                   u8"code\xEF\xBF\xBD points",
     },
     {
         .severity = vm_tools::DEBUG,
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 0,
-                .tm_min = 0,
-                .tm_hour = 0,
-                .tm_mday = 1,
-                .tm_mon = 0,
-                .tm_year = 70,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 0,
+            .tm_min = 0,
+            .tm_hour = 0,
+            .tm_mday = 1,
+            .tm_mon = 0,
+            .tm_year = 70,
+        },
+        // clang-format on
         .content = "Non-\xEF\xBF\xBE character \xEF\xB7\xA1 code points",
         .result = u8"<15>Jan  1 00:00:00 VM(0): Non-#177776 character "
                   u8"#176741 code points",
     },
     {
         .severity = vm_tools::NOTICE,
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 47,
-                .tm_min = 15,
-                .tm_hour = 17,
-                .tm_mday = 2,
-                .tm_mon = 5,
-                .tm_year = 112,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 47,
+            .tm_min = 15,
+            .tm_hour = 17,
+            .tm_mday = 2,
+            .tm_mon = 5,
+            .tm_year = 112,
+        },
+        // clang-format on
         .content = "Mix of\xC2\x91 val\x1Cid, invalid\xED\xAA\xAA, "
                    "전체Παγκόσμιος网页на русском, "
                    "non\xF7\x9F\xBF\xBF-character, and\xEF\xBF\xBE control "

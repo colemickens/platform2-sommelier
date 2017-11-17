@@ -96,16 +96,17 @@ grpc::Status Forwarder::ForwardLogs(grpc::ServerContext* ctx,
     }});
 
     msgs.emplace_back((struct mmsghdr){
-        .msg_hdr =
-            {  // NOLINT(whitespace/braces)
-                .msg_name = nullptr,
-                .msg_namelen = 0,
-                .msg_iov = iovs.back().data(),
-                .msg_iovlen = iovs.back().size(),
-                .msg_control = nullptr,
-                .msg_controllen = 0,
-                .msg_flags = 0,
-            },
+        // clang-format off
+        .msg_hdr = {
+            .msg_name = nullptr,
+            .msg_namelen = 0,
+            .msg_iov = iovs.back().data(),
+            .msg_iovlen = iovs.back().size(),
+            .msg_control = nullptr,
+            .msg_controllen = 0,
+            .msg_flags = 0,
+        },
+        // clang-format on
         .msg_len = 0,
     });
   }

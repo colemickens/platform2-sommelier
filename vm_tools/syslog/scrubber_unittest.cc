@@ -76,63 +76,68 @@ constexpr struct TimestampTestCase {
   const char* result;
 } kTimestampTests[] = {
     {
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 11,
-                .tm_min = 54,
-                .tm_hour = 23,
-                .tm_mday = 17,
-                .tm_mon = 0,
-                .tm_year = 155,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 11,
+            .tm_min = 54,
+            .tm_hour = 23,
+            .tm_mday = 17,
+            .tm_mon = 0,
+            .tm_year = 155,
+        },
+        // clang-format on
         .result = "Jan 17 23:54:11",
     },
     {
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 58,
-                .tm_min = 33,
-                .tm_hour = 18,
-                .tm_mday = 24,
-                .tm_mon = 11,
-                .tm_year = 6,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 58,
+            .tm_min = 33,
+            .tm_hour = 18,
+            .tm_mday = 24,
+            .tm_mon = 11,
+            .tm_year = 6,
+        },
+        // clang-format on
         .result = "Dec 24 18:33:58",
     },
     {
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 0,
-                .tm_min = 0,
-                .tm_hour = 0,
-                .tm_mday = 1,
-                .tm_mon = 0,
-                .tm_year = 70,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 0,
+            .tm_min = 0,
+            .tm_hour = 0,
+            .tm_mday = 1,
+            .tm_mon = 0,
+            .tm_year = 70,
+        },
+        // clang-format on
         .result = "Jan  1 00:00:00",
     },
     {
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 47,
-                .tm_min = 15,
-                .tm_hour = 17,
-                .tm_mday = 2,
-                .tm_mon = 5,
-                .tm_year = 112,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 47,
+            .tm_min = 15,
+            .tm_hour = 17,
+            .tm_mday = 2,
+            .tm_mon = 5,
+            .tm_year = 112,
+        },
+        // clang-format on
         .result = "Jun  2 17:15:47",
     },
     {
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 47,
-                .tm_min = 15,
-                .tm_hour = 17,
-                .tm_mday = 2,
-                .tm_mon = 5,
-                .tm_year = 57,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 47,
+            .tm_min = 15,
+            .tm_hour = 17,
+            .tm_mday = 2,
+            .tm_mon = 5,
+            .tm_year = 57,
+        },
+        // clang-format on
         .result = "Jun  2 17:15:47",
     },
 };

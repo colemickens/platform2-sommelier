@@ -11,8 +11,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <chrono>
+#include <chrono>  // NOLINT(build/c++11)
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/command_line.h>
@@ -143,9 +144,9 @@ std::unique_ptr<CrosVM> CrosVM::Create(const std::string& name,
     LOG(INFO) << "Allocated NFS export id: " << nfs_export->GetExportID();
   }
 
-  return std::unique_ptr<CrosVM>(new CrosVM(name, vm_kernel, vm_rootfs, instance_dir,
-                                     std::move(mac_addr), std::move(subnet),
-                                     std::move(cid), std::move(nfs_export), true));
+  return std::unique_ptr<CrosVM>(new CrosVM(
+      name, vm_kernel, vm_rootfs, instance_dir, std::move(mac_addr),
+      std::move(subnet), std::move(cid), std::move(nfs_export), true));
 }
 
 std::unique_ptr<CrosVM> CrosVM::Load(const std::string& name) {
@@ -176,7 +177,8 @@ std::unique_ptr<CrosVM> CrosVM::Load(const std::string& name) {
 
   auto nfs_export = NfsExport::Load(instance_dir, subnet);
   if (!nfs_export) {
-    LOG(WARNING) << "Could not allocate NFS export id. The VM may not have NFS enabled.";
+    LOG(WARNING)
+        << "Could not allocate NFS export id. The VM may not have NFS enabled.";
   }
 
   base::FilePath emptyPath;
@@ -384,9 +386,8 @@ bool CrosVM::VMInit(bool ssh, bool run_container, bool rw_container) {
       const std::string source =
           base::StringPrintf("%s:%s", subnet_->GetGatewayAddress().c_str(),
                              nfs_export_->GetExportPath().value().c_str());
-      const std::string opts =
-          base::StringPrintf("nolock,vers=3,addr=%s",
-                             subnet_->GetGatewayAddress().c_str());
+      const std::string opts = base::StringPrintf(
+          "nolock,vers=3,addr=%s", subnet_->GetGatewayAddress().c_str());
       if (!Mount(source, "/mnt/container_private", "nfs", 0, opts)) {
         LOG(ERROR) << "Failed to mount nfs share";
         return false;

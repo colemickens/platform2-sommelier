@@ -90,14 +90,15 @@ struct TimestampTestCase {
 const TimestampTestCase timestamp_tests[] = {
     {
         .buf = "Jan 17 23:54:11",
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 11,
-                .tm_min = 54,
-                .tm_hour = 23,
-                .tm_mday = 17,
-                .tm_mon = 0,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 11,
+            .tm_min = 54,
+            .tm_hour = 23,
+            .tm_mday = 17,
+            .tm_mon = 0,
+        },
+        // clang-format on
         .count = 15,
     },
     {
@@ -107,14 +108,15 @@ const TimestampTestCase timestamp_tests[] = {
     },
     {
         .buf = "Jun 2 17:15:47",
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 47,
-                .tm_min = 15,
-                .tm_hour = 17,
-                .tm_mday = 2,
-                .tm_mon = 5,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 47,
+            .tm_min = 15,
+            .tm_hour = 17,
+            .tm_mday = 2,
+            .tm_mon = 5,
+        },
+        // clang-format on
         .count = 14,
     },
     {
@@ -134,14 +136,15 @@ const TimestampTestCase timestamp_tests[] = {
     },
     {
         .buf = "Dec 24 18:33:58 Let the countdown begin",
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 58,
-                .tm_min = 33,
-                .tm_hour = 18,
-                .tm_mday = 24,
-                .tm_mon = 11,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 58,
+            .tm_min = 33,
+            .tm_hour = 18,
+            .tm_mday = 24,
+            .tm_mon = 11,
+        },
+        // clang-format on
         .count = 15,
     },
 };
@@ -170,14 +173,15 @@ const EndToEndTestCase end_to_end_tests[] = {
     {
         .buf = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick "
                "on /dev/pts/8",
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 15,
-                .tm_min = 14,
-                .tm_hour = 22,
-                .tm_mday = 11,
-                .tm_mon = 9,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 15,
+            .tm_min = 14,
+            .tm_hour = 22,
+            .tm_mday = 11,
+            .tm_mon = 9,
+        },
+        // clang-format on
         .severity = vm_tools::CRITICAL,
         .content_offset = 19,
     },
@@ -192,14 +196,15 @@ const EndToEndTestCase end_to_end_tests[] = {
                "time to make the do-nuts.  %%  Ingredients: Mix=OK, Jelly=OK # "
                "Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: "
                "Conveyer1=OK, Conveyer2=OK # %%",
-        .tm =
-            {  // NOLINT(whitespace/braces)
-                .tm_sec = 00,
-                .tm_min = 34,
-                .tm_hour = 5,
-                .tm_mday = 24,
-                .tm_mon = 7,
-            },
+        // clang-format off
+        .tm = {
+            .tm_sec = 00,
+            .tm_min = 34,
+            .tm_hour = 5,
+            .tm_mday = 24,
+            .tm_mon = 7,
+        },
+        // clang-format on
         .severity = vm_tools::NOTICE,
         .content_offset = 20,
     },

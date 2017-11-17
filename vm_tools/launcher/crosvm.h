@@ -9,14 +9,15 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/process.h>
 
 #include "vm_tools/launcher/mac_address.h"
-#include "vm_tools/launcher/subnet.h"
 #include "vm_tools/launcher/nfs_export.h"
+#include "vm_tools/launcher/subnet.h"
 #include "vm_tools/launcher/vsock_cid.h"
 
 #include "guest.grpc.pb.h"  // NOLINT(build/include)
