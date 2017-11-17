@@ -46,8 +46,6 @@ class EphemeralProfile : public Profile {
   bool Save() override;
 
  private:
-  static const char kFriendlyName[];
-
   DISALLOW_COPY_AND_ASSIGN(EphemeralProfile);
 };
 

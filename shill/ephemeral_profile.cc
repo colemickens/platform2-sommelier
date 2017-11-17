@@ -32,8 +32,11 @@ static auto kModuleLogScope = ScopeLogger::kProfile;
 static string ObjectID(EphemeralProfile* e) { return e->GetRpcIdentifier(); }
 }
 
-// static
-const char EphemeralProfile::kFriendlyName[] = "(ephemeral)";
+namespace {
+
+constexpr char kFriendlyName[] = "(ephemeral)";
+
+}  // namespace
 
 EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
                                    Metrics* metrics,
