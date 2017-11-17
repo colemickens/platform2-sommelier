@@ -191,12 +191,12 @@ TOUCH = r'''
   touch {
     elan_touchscreen: elan-touchscreen {
       vendor = "elan";
-      firmware-bin = "${vendor}/${pid}_${version}.bin";
-      firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+      firmware-bin = "{vendor}/{pid}_{version}.bin";
+      firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
     };
     weida_touchscreen: weida-touchscreen {
         vendor = "weida";
-        firmware-bin = "weida/${pid}_${version}_${date-code}.bin";
+        firmware-bin = "weida/{pid}_{version}_{date-code}.bin";
         firmware-symlink = "wdt87xx.bin";
     };
   };
@@ -239,18 +239,18 @@ AUDIO = r'''
   audio {
       audio_type: audio-type {
         card = "bxtda7219max";
-        volume = "cras-config/${cras-config-dir}/${card}";
-        dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-        hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
-        alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
-        topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+        volume = "cras-config/{cras-config-dir}/{card}";
+        dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
+        hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
+        alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
+        topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
       };
       bad_audio_type: bad-audio-type {
-        volume = "cras-config/${cras-config-dir}/${card}";
-        dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-        hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
-        alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
-        topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+        volume = "cras-config/{cras-config-dir}/{card}";
+        dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
+        hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
+        alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
+        topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
       };
   };
 };

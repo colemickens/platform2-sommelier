@@ -177,8 +177,8 @@ class CrosConfigHostTest(unittest.TestCase):
         props,
         OrderedDict([('version', '4209'),
                      ('vendor', 'wacom'),
-                     ('firmware-bin', 'wacom/${version}.hex'),
-                     ('firmware-symlink', 'wacom_firmware_${MODEL}.bin')]))
+                     ('firmware-bin', 'wacom/{version}.hex'),
+                     ('firmware-symlink', 'wacom_firmware_{MODEL}.bin')]))
 
   def testGetMergedPropertiesReef(self):
     config = CrosConfig(self.file)
@@ -190,8 +190,8 @@ class CrosConfigHostTest(unittest.TestCase):
         OrderedDict([('pid', '306e'),
                      ('version', '5611')
                      , ('vendor', 'elan'),
-                     ('firmware-bin', '${vendor}/${pid}_${version}.bin'),
-                     ('firmware-symlink', '${vendor}ts_i2c_${pid}.bin')]))
+                     ('firmware-bin', '{vendor}/{pid}_{version}.bin'),
+                     ('firmware-symlink', '{vendor}ts_i2c_{pid}.bin')]))
 
   def testGetMergedPropertiesDefault(self):
     config = CrosConfig(self.file)
@@ -204,15 +204,15 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('ucm-suffix', 'pyro'),
                      ('topology-name', 'pyro'),
                      ('card', 'bxtda7219max'),
-                     ('volume', 'cras-config/${cras-config-dir}/${card}'),
-                     ('dsp-ini', 'cras-config/${cras-config-dir}/dsp.ini'),
+                     ('volume', 'cras-config/{cras-config-dir}/{card}'),
+                     ('dsp-ini', 'cras-config/{cras-config-dir}/dsp.ini'),
                      ('hifi-conf',
-                      'ucm-config/${card}.${ucm-suffix}/HiFi.conf'),
+                      'ucm-config/{card}.{ucm-suffix}/HiFi.conf'),
                      ('alsa-conf',
-                      'ucm-config/${card}.${ucm-suffix}/${card}.' +
-                      '${ucm-suffix}.conf'),
+                      'ucm-config/{card}.{ucm-suffix}/{card}.' +
+                      '{ucm-suffix}.conf'),
                      ('topology-bin',
-                      'topology/5a98-reef-${topology-name}-8-tplg.bin')]))
+                      'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
 
   def testGetAudioFiles(self):
     config = CrosConfig(self.file)

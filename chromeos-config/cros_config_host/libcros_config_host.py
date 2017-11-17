@@ -749,15 +749,15 @@ class CrosConfig(object):
           if not cras_dir:
             raise ValueError(("node '%s': Should have a cras-config-dir") %
                              (card._fdt_node.path))
-          _AddAudioFile('volume', '${card}', cras_dir)
+          _AddAudioFile('volume', '{card}', cras_dir)
           _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
           # Allow renaming this file to something other than HiFi.conf
           _AddAudioFile('hifi-conf',
-                        os.path.join('${card}.${ucm-suffix}',
+                        os.path.join('{card}.{ucm-suffix}',
                                      os.path.basename(props['hifi-conf'])))
           _AddAudioFile('alsa-conf',
-                        '${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf')
+                        '{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf')
 
           # Non-Intel platforms don't use topology-bin
           topology = props.get('topology-bin')

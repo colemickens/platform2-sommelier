@@ -61,7 +61,7 @@ properties.
             *   `topology-bin` (optional): Template filename of the topology
                     firmware file
         Template filenames may include the following fields, enclosed in
-        `${...}` defined by the audio node: `card`, `cras-config-dir`,
+        `{...}` defined by the audio node: `card`, `cras-config-dir`,
         `topology-name`, `ucm-suffix` as well as `model` for the model name.
         The expansion / interpretation happens in cros_config_host. Other users
         should not attempt to implement this. The purpose is to avoid having to
@@ -215,7 +215,7 @@ properties.
             `/lib/firmware` part is assumed.
 
         Template filenames may include the following fields, enclosed in
-        `${...}` defined by the touch node: `vendor`, `pid`, `version` as well
+        `{...}` defined by the touch node: `vendor`, `pid`, `version` as well
         as `model` for the model name. The expansion / interpretation happens
         in cros_config. Other users should not attempt to implement this. The
         purpose is to avoid having to repeat the filename in each model that
@@ -363,11 +363,11 @@ chromeos {
         audio {
             audio_type: audio-type {
                 card = "bxtda7219max";
-                volume = "cras-config/${cras-config-dir}/${card}";
-                dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-                hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
-                alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
-                topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+                volume = "cras-config/{cras-config-dir}/{card}";
+                dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
+                hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
+                alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
+                topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
             };
         };
         firmware {
@@ -448,22 +448,22 @@ chromeos {
         touch {
             elan_touchscreen: elan-touchscreen {
                 vendor = "elan";
-                firmware-bin = "${vendor}/${pid}_${version}.bin";
-                firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+                firmware-bin = "{vendor}/{pid}_{version}.bin";
+                firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
             };
             elan_touchpad: elan-touchpad {
                 vendor = "elan";
-                firmware-bin = "${vendor}/${pid}_${version}.bin";
-                firmware-symlink = "${vendor}_i2c_${pid}.bin";
+                firmware-bin = "{vendor}/{pid}_{version}.bin";
+                firmware-symlink = "{vendor}_i2c_{pid}.bin";
             };
             wacom_stylus: wacom-stylus {
                 vendor = "wacom";
-                firmware-bin = "wacom/wacom_${version}.hex";
-                firmware-symlink = "wacom_firmware_${model}.bin";
+                firmware-bin = "wacom/wacom_{version}.hex";
+                firmware-symlink = "wacom_firmware_{model}.bin";
             };
             weida_touchscreen: weida-touchscreen {
                 vendor = "weida";
-                firmware-bin = "weida/${pid}_${version}_${date-code}.bin";
+                firmware-bin = "weida/{pid}_{version}_{date-code}.bin";
                 firmware-symlink = "wdt87xx.bin";
             };
         };

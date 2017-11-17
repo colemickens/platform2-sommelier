@@ -20,19 +20,19 @@
 	audio {
 		audio_type: audio-type {
 			card = "bxtda7219max";
-			volume = "cras-config/${cras-config-dir}/${card}";
-			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
-			hifi-conf = "ucm-config/${card}.${ucm-suffix}/HiFi.conf";
-			alsa-conf = "ucm-config/${card}.${ucm-suffix}/${card}.${ucm-suffix}.conf";
-			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+			volume = "cras-config/{cras-config-dir}/{card}";
+			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
+			hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
+			alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
+			topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
 		};
 		audio_type_1mic: audio-type-1mic {
 			card = "bxtda7219max";
-			volume = "cras-config/${cras-config-dir}/${card}";
-			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+			volume = "cras-config/{cras-config-dir}/{card}";
+			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
 			hifi-conf = "ucm-config/1mic/HiFi.conf";
-			alsa-conf = "ucm-config/1mic/${card}.conf";
-			topology-bin = "topology/5a98-reef-${topology-name}-8-tplg.bin";
+			alsa-conf = "ucm-config/1mic/{card}.conf";
+			topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
 		};
 
 		audio_type_2mic: audio-type-2mic {
@@ -40,10 +40,10 @@
 			cras-config-dir = "2mic";
 			ucm-suffix = "2mic";
 			topology-name = "2mic";
-			volume = "cras-config/${cras-config-dir}/${card}";
-			dsp-ini = "cras-config/${cras-config-dir}/dsp.ini";
+			volume = "cras-config/{cras-config-dir}/{card}";
+			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
 			hifi-conf = "ucm-config/2mic/Wibble";
-			alsa-conf = "ucm-config/2mic/${card}.conf";
+			alsa-conf = "ucm-config/2mic/{card}.conf";
 		};
 	};
 	power {
@@ -104,18 +104,18 @@
 	touch {
 		elan_touchscreen: elan-touchscreen {
 			vendor = "elan";
-			firmware-bin = "${vendor}/${pid}_${version}.bin";
-			firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
+			firmware-bin = "{vendor}/{pid}_{version}.bin";
+			firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
 		};
 		elan_touchpad: elan-touchpad {
 			vendor = "elan";
-			firmware-bin = "${vendor}/${pid}_${version}.bin";
-			firmware-symlink = "${vendor}_i2c_${pid}.bin";
+			firmware-bin = "{vendor}/{pid}_{version}.bin";
+			firmware-symlink = "{vendor}_i2c_{pid}.bin";
 		};
 		wacom_stylus: wacom-stylus {
 			vendor = "wacom";
-			firmware-bin = "wacom/${version}.hex";
-			firmware-symlink = "wacom_firmware_${MODEL}.bin";
+			firmware-bin = "wacom/{version}.hex";
+			firmware-symlink = "wacom_firmware_{MODEL}.bin";
 		};
 	};
 };
