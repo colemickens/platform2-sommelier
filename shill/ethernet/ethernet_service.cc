@@ -39,9 +39,11 @@ using std::string;
 
 namespace shill {
 
-// static
-const char EthernetService::kAutoConnNoCarrier[] = "no carrier";
-const char EthernetService::kServiceType[] = "ethernet";
+namespace {
+
+constexpr char kAutoConnNoCarrier[] = "no carrier";
+
+}  // namespace
 
 EthernetService::EthernetService(ControlInterface* control_interface,
                                  EventDispatcher* dispatcher,

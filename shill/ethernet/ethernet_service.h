@@ -79,9 +79,6 @@ class EthernetService : public Service {
  private:
   FRIEND_TEST(EthernetServiceTest, GetTethering);
 
-  static const char kAutoConnNoCarrier[];
-  static const char kServiceType[];
-
   std::string GetDeviceRpcId(Error* error) const override;
 
   base::WeakPtr<Ethernet> ethernet_;
