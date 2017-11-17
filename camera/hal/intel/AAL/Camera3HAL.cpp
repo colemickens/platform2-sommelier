@@ -267,8 +267,22 @@ camera_metadata_t* Camera3HAL::construct_default_request_settings(int type)
 int Camera3HAL::process_capture_request(camera3_capture_request_t *request)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    if (!request || !request->num_output_buffers || !request->output_buffers) {
-        LOGE("%s: Bad input!", __FUNCTION__);
+    if (request == nullptr) {
+        LOGE("%s: request is null!", __FUNCTION__);
+        return -EINVAL;
+    } else if (!request->num_output_buffers || request->output_buffers == nullptr) {
+        LOGE("%s: num_output_buffers %d, output_buffers %p", __FUNCTION__,
+              request->num_output_buffers, request->output_buffers);
+        return -EINVAL;
+    } else if (request->output_buffers->stream == nullptr) {
+        LOGE("%s: output_buffers->stream is null!", __FUNCTION__);
+        return -EINVAL;
+    } else if (request->output_buffers->stream->priv == nullptr) {
+        LOGE("%s: output_buffers->stream->priv is null!", __FUNCTION__);
+        return -EINVAL;
+    } else if (request->output_buffers->buffer == nullptr
+          || *(request->output_buffers->buffer) == nullptr) {
+        LOGE("%s: output buffer is invalid", __FUNCTION__);
         return -EINVAL;
     }
 
