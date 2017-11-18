@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Next min version: 1
+
 module arc.mojom;
 
 import "hal_adapter/mojo/camera3.mojom";
@@ -33,6 +35,8 @@ enum CameraDeviceStatus {
 // CameraModuleCallbacks is a translation of the camera_module_callbacks_t API
 // (https://goo.gl/8Hf8S8).  CameraModuleCallbacks is used by the camera HAL to
 // inform the client of the various status change of a camera.
+//
+// Next method ID: 1
 interface CameraModuleCallbacks {
   // CameraDeviceStatusChange() is called by the camera HAL to notify the client
   // of the new status of the camera device specified by |camera_id|.
@@ -42,6 +46,8 @@ interface CameraModuleCallbacks {
 // CameraModule is a translation of the camera_module_t API
 // (https://goo.gl/8Hf8S8).  CameraModule is the interface to interact with a
 // camera HAL to query device info and open camera devices.
+//
+// Next method ID: 4
 interface CameraModule {
   // Opens the camera device specified by |camera_id|.  On success, the camera
   // device is accessible through the |device_ops| returned.

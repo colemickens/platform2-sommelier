@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Next min version: 2
+
 module arc.mojom;
 
 import "hal_adapter/mojo/camera_metadata.mojom";
@@ -143,6 +145,8 @@ struct Camera3CaptureResult {
 // Camera3CallbackOps is a translation of the camera3_callback_ops_t API
 // in Android camera HAL v3.  For the work flow of the functions in
 // Camera3CallbackOps, see the comments about Camera3DeviceOps above.
+//
+// Next method ID: 2
 interface Camera3CallbackOps {
   // ProcessCaptureResult() is called by the camera HAL to send result metadata
   // and filled buffer to the client.
@@ -213,7 +217,8 @@ interface Camera3CallbackOps {
 //       ConfigureStreams() can be called again to set up new streams.
 //
 //    7. Close() closes the camera device.
-
+//
+// Next method ID: 8
 interface Camera3DeviceOps {
   // Initialize() is called once after the camera device is opened to register
   // the Camera3CallbackOps handle.
