@@ -84,25 +84,24 @@ void CameraHalAdapter::OpenCameraHal(
 // Callback interface for camera_module_t APIs.
 
 int32_t CameraHalAdapter::OpenDevice(
-    int32_t device_id,
-    mojom::Camera3DeviceOpsRequest device_ops_request) {
+    int32_t camera_id, mojom::Camera3DeviceOpsRequest device_ops_request) {
   VLOGF_ENTER();
-  if (device_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+  if (camera_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
     return -EINVAL;
   }
-  if (device_adapters_.find(device_id) != device_adapters_.end()) {
-    LOGF(WARNING) << "Multiple calls to OpenDevice on device " << device_id;
+  if (device_adapters_.find(camera_id) != device_adapters_.end()) {
+    LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
     return -EBUSY;
   }
   camera3_device_t* camera_device;
   char name[16];
-  snprintf(name, sizeof(name), "%d", device_id);
+  snprintf(name, sizeof(name), "%d", camera_id);
   int32_t ret = camera_module_->common.methods->open(
       &camera_module_->common, name,
       reinterpret_cast<hw_device_t**>(&camera_device));
   if (ret) {
-    LOGF(ERROR) << "Failed to open camera device " << device_id;
+    LOGF(ERROR) << "Failed to open camera device " << camera_id;
     return ret;
   }
 
@@ -113,14 +112,14 @@ int32_t CameraHalAdapter::OpenDevice(
   // runner of the current thread in the callback functor.
   base::Callback<void()> close_callback =
       base::Bind(&CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
-                 base::ThreadTaskRunnerHandle::Get(), device_id);
-  device_adapters_[device_id].reset(
+                 base::ThreadTaskRunnerHandle::Get(), camera_id);
+  device_adapters_[camera_id].reset(
       new CameraDeviceAdapter(camera_device, close_callback));
-  if (!device_adapters_[device_id]->Start()) {
-    device_adapters_.erase(device_id);
+  if (!device_adapters_[camera_id]->Start()) {
+    device_adapters_.erase(camera_id);
     return -ENODEV;
   }
-  device_adapters_.at(device_id)->Bind(std::move(device_ops_request));
+  device_adapters_.at(camera_id)->Bind(std::move(device_ops_request));
   return 0;
 }
 
@@ -129,19 +128,19 @@ int32_t CameraHalAdapter::GetNumberOfCameras() {
   return camera_module_->get_number_of_cameras();
 }
 
-int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
+int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
                                         mojom::CameraInfoPtr* camera_info) {
   VLOGF_ENTER();
 
-  if (device_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+  if (camera_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
     camera_info->reset();
     return -EINVAL;
   }
   camera_info_t info;
-  int32_t ret = camera_module_->get_camera_info(device_id, &info);
+  int32_t ret = camera_module_->get_camera_info(camera_id, &info);
   if (ret) {
-    LOGF(ERROR) << "Failed to get info of camera " << device_id;
+    LOGF(ERROR) << "Failed to get info of camera " << camera_id;
     camera_info->reset();
     return ret;
   }
@@ -185,10 +184,10 @@ int32_t CameraHalAdapter::SetCallbacks(
 
 void CameraHalAdapter::CloseDeviceCallback(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-    int32_t device_id) {
+    int32_t camera_id) {
   task_runner->PostTask(FROM_HERE,
                         base::Bind(&CameraHalAdapter::CloseDevice,
-                                   base::Unretained(this), device_id));
+                                   base::Unretained(this), camera_id));
 }
 
 // static
@@ -205,18 +204,18 @@ void CameraHalAdapter::CameraDeviceStatusChange(
   }
 }
 
-void CameraHalAdapter::CloseDevice(int32_t device_id) {
+void CameraHalAdapter::CloseDevice(int32_t camera_id) {
   VLOGF_ENTER();
-  if (device_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+  if (camera_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
     return;
   }
-  if (device_adapters_.find(device_id) == device_adapters_.end()) {
-    LOGF(ERROR) << "Failed to close camera device " << device_id
+  if (device_adapters_.find(camera_id) == device_adapters_.end()) {
+    LOGF(ERROR) << "Failed to close camera device " << camera_id
                 << ": device is not opened";
     return;
   }
-  device_adapters_.erase(device_id);
+  device_adapters_.erase(camera_id);
 }
 
 void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {

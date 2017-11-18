@@ -24,13 +24,13 @@ class CameraModuleDelegate final
   ~CameraModuleDelegate();
 
  private:
-  void OpenDevice(int32_t device_id,
+  void OpenDevice(int32_t camera_id,
                   mojom::Camera3DeviceOpsRequest device_ops_request,
                   const OpenDeviceCallback& callback) final;
 
   void GetNumberOfCameras(const GetNumberOfCamerasCallback& callback) final;
 
-  void GetCameraInfo(int32_t device_id,
+  void GetCameraInfo(int32_t camera_id,
                      const GetCameraInfoCallback& callback) final;
 
   void SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks,
