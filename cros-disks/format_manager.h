@@ -12,11 +12,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
-namespace brillo {
-
-class ProcessImpl;
-
-}  // namespace brillo
+#include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
 
@@ -49,7 +45,7 @@ class FormatManager {
   bool IsFilesystemSupported(const std::string& filesystem) const;
 
   // A list of outstanding formatting processes indexed by device path.
-  std::map<std::string, brillo::ProcessImpl> format_process_;
+  std::map<std::string, SandboxedProcess> format_process_;
 
   // Given the pid of formatting process it finds the device path.
   std::map<pid_t, std::string> pid_to_device_path_;

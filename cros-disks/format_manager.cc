@@ -68,17 +68,25 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
-  brillo::ProcessImpl* process = &format_process_[device_path];
-  process->AddArg(format_program);
+  SandboxedProcess* process = &format_process_[device_path];
+  process->SetNoNewPrivileges();
+  process->NewMountNamespace();
+  process->SkipRemountPrivate();
+  process->NewIpcNamespace();
+  process->NewNetworkNamespace();
+
+  process->AddArgument(format_program);
 
   // Allow to create filesystem across the entire device.
   if (filesystem == "vfat") {
-    process->AddArg("-I");
+    process->AddArgument("-I");
     // FAT type should be predefined, because mkfs autodetection is faulty.
-    process->AddStringOption("-F", "32");
-    process->AddStringOption("-n", kDefaultLabel);
+    process->AddArgument("-F");
+    process->AddArgument("32");
+    process->AddArgument("-n");
+    process->AddArgument(kDefaultLabel);
   }
-  process->AddArg(device_file);
+  process->AddArgument(device_file);
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start a process for formatting '" << device_path
                  << "' as filesystem '" << filesystem << "'";
