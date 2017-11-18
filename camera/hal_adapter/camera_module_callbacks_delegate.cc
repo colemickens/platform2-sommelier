@@ -29,6 +29,15 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(int camera_id,
           base::AsWeakPtr(this), camera_id, new_status));
 }
 
+void CameraModuleCallbacksDelegate::TorchModeStatusChange(int camera_id,
+                                                          int new_status) {
+  VLOGF_ENTER();
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread,
+                 base::AsWeakPtr(this), camera_id, new_status));
+}
+
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     int camera_id,
     int new_status) {
@@ -36,6 +45,14 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
   DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
+}
+
+void CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread(
+    int camera_id, int new_status) {
+  VLOGF_ENTER();
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  interface_ptr_->TorchModeStatusChange(
+      camera_id, static_cast<mojom::TorchModeStatus>(new_status));
 }
 
 }  // namespace arc

@@ -6,6 +6,7 @@
 
 #include "hal_adapter/camera_hal_adapter.h"
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -182,6 +183,23 @@ int32_t CameraHalAdapter::SetCallbacks(
   return 0;
 }
 
+int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
+  VLOGF_ENTER();
+  if (camera_module_->set_torch_mode) {
+    return camera_module_->set_torch_mode(std::to_string(camera_id).c_str(),
+                                          enabled);
+  }
+  return -ENOSYS;
+}
+
+int32_t CameraHalAdapter::Init() {
+  VLOGF_ENTER();
+  if (camera_module_->init) {
+    return camera_module_->init();
+  }
+  return 0;
+}
+
 void CameraHalAdapter::CloseDeviceCallback(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     int32_t camera_id) {
@@ -201,6 +219,18 @@ void CameraHalAdapter::CameraDeviceStatusChange(
   base::AutoLock l(self->callbacks_delegates_lock_);
   for (auto& it : self->callbacks_delegates_) {
     it.second->CameraDeviceStatusChange(camera_id, new_status);
+  }
+}
+
+// static
+void CameraHalAdapter::TorchModeStatusChange(
+    const camera_module_callbacks_t* callbacks, int camera_id, int new_status) {
+  VLOGF_ENTER();
+  CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
+      static_cast<const CameraHalAdapter*>(callbacks));
+  base::AutoLock l(self->callbacks_delegates_lock_);
+  for (auto& it : self->callbacks_delegates_) {
+    it.second->TorchModeStatusChange(camera_id, new_status);
   }
 }
 

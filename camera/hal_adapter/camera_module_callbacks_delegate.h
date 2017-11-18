@@ -22,8 +22,12 @@ class CameraModuleCallbacksDelegate
 
   void CameraDeviceStatusChange(int camera_id, int new_status);
 
+  void TorchModeStatusChange(int camera_id, int new_status);
+
  private:
   void CameraDeviceStatusChangeOnThread(int camera_id, int new_status);
+
+  void TorchModeStatusChangeOnThread(int camera_id, int new_status);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
 };

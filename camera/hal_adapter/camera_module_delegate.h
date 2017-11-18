@@ -36,6 +36,12 @@ class CameraModuleDelegate final
   void SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks,
                     const SetCallbacksCallback& callback) final;
 
+  void SetTorchMode(int32_t camera_id,
+                    bool enabled,
+                    const SetTorchModeCallback& callback) final;
+
+  void Init(const InitCallback& callback) final;
+
   CameraHalAdapter* camera_hal_adapter_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleDelegate);

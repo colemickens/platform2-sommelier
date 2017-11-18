@@ -52,6 +52,10 @@ class CameraHalAdapter : public camera_module_callbacks_t {
 
   int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
 
+  int32_t SetTorchMode(int32_t camera_id, bool enabled);
+
+  int32_t Init();
+
   // A callback for the camera devices opened in OpenDevice().  Used to run
   // CloseDevice() on the same thread that OpenDevice() runs on.
   void CloseDeviceCallback(
@@ -64,6 +68,9 @@ class CameraHalAdapter : public camera_module_callbacks_t {
       const camera_module_callbacks_t* callbacks,
       int camera_id,
       int new_status);
+  static void TorchModeStatusChange(const camera_module_callbacks_t* callbacks,
+                                    int camera_id,
+                                    int new_status);
 
   // Clean up the camera device specified by |camera_id| in |device_adapters_|.
   void CloseDevice(int32_t camera_id);

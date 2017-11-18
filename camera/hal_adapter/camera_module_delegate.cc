@@ -56,4 +56,18 @@ void CameraModuleDelegate::SetCallbacks(
   callback.Run(camera_hal_adapter_->SetCallbacks(std::move(callbacks)));
 }
 
+void CameraModuleDelegate::SetTorchMode(int32_t camera_id,
+                                        bool enabled,
+                                        const SetTorchModeCallback& callback) {
+  VLOGF_ENTER();
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  callback.Run(camera_hal_adapter_->SetTorchMode(camera_id, enabled));
+}
+
+void CameraModuleDelegate::Init(const InitCallback& callback) {
+  VLOGF_ENTER();
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  callback.Run(camera_hal_adapter_->Init());
+}
+
 }  // namespace arc
