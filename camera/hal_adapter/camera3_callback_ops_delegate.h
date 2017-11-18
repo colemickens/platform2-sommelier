@@ -10,7 +10,7 @@
 #include <hardware/camera3.h>
 
 #include "hal_adapter/arc_camera3_mojo_utils.h"
-#include "hal_adapter/mojo/arc_camera3.mojom.h"
+#include "hal_adapter/mojo/camera3.mojom.h"
 
 namespace arc {
 

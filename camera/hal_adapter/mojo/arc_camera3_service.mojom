@@ -4,7 +4,7 @@
 
 module arc.mojom;
 
-import "arc_camera3.mojom";
+import "hal_adapter/mojo/camera_common.mojom";
 
 // The ARC++ camera HAL v3 Mojo dispatcher.  The dispatcher acts as a proxy and
 // waits for the server and the clients to register.  There can only be one

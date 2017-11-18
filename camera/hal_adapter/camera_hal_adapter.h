@@ -16,7 +16,8 @@
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 
-#include "hal_adapter/mojo/arc_camera3.mojom.h"
+#include "hal_adapter/mojo/camera3.mojom.h"
+#include "hal_adapter/mojo/camera_common.mojom.h"
 
 namespace arc {
 

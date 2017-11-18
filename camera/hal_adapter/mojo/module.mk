@@ -10,9 +10,10 @@ GEN_MOJO_TEMPLATES_DIR := $(OUT)/hal_adapter/templates
 MOJOM_BINDINGS_GENERATOR := \
 	$(SYSROOT)/usr/src/libmojo-$(BASE_VER)/mojo/mojom_bindings_generator.py
 MOJOM_FILES := \
-	hal_adapter/mojo/arc_camera3.mojom \
-	hal_adapter/mojo/arc_camera3_metadata.mojom \
 	hal_adapter/mojo/arc_camera3_service.mojom \
+	hal_adapter/mojo/camera3.mojom \
+	hal_adapter/mojo/camera_common.mojom \
+	hal_adapter/mojo/camera_metadata.mojom \
 	hal_adapter/mojo/camera_metadata_tags.mojom
 
 hal_adapter/mojo/mojo_templates:
@@ -25,6 +26,7 @@ hal_adapter/mojo/mojo_templates:
 		python $(abspath $(MOJOM_BINDINGS_GENERATOR)) \
 		--use_bundled_pylibs generate \
 		$(MOJOM_FILES) \
+		-I $(SRC) \
 		-o $(SRC) \
 		--bytecode_path $(abspath $(GEN_MOJO_TEMPLATES_DIR)) \
 		-g c++

@@ -23,7 +23,7 @@
 #include "arc/common.h"
 #include "arc/future.h"
 #include "hal_adapter/common_types.h"
-#include "hal_adapter/mojo/arc_camera3.mojom.h"
+#include "hal_adapter/mojo/camera3.mojom.h"
 
 namespace internal {
 

@@ -8,7 +8,7 @@
 #define HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_
 
 #include "hal_adapter/arc_camera3_mojo_utils.h"
-#include "hal_adapter/mojo/arc_camera3.mojom.h"
+#include "hal_adapter/mojo/camera3.mojom.h"
 
 namespace arc {
 
