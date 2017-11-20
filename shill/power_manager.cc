@@ -48,6 +48,8 @@ PowerManager::PowerManager(EventDispatcher* dispatcher,
       dark_suspend_delay_registered_(false),
       dark_suspend_delay_id_(0),
       suspending_(false),
+      suspend_ready_(false),
+      suspend_done_deferred_(false),
       in_dark_resume_(false),
       current_suspend_id_(0),
       current_dark_suspend_id_(0) {}
@@ -84,6 +86,18 @@ void PowerManager::Stop() {
 }
 
 bool PowerManager::ReportSuspendReadiness() {
+  // If |suspend_done_deferred_| is true, a SuspendDone notification was
+  // observed before SuspendReadiness was reported and no further
+  // SuspendImminent notification was observed after the SuspendDone
+  // notification. We don't need to report SuspendReadiness, but instead notify
+  // the deferred SuspendDone.
+  if (suspend_done_deferred_) {
+    LOG(INFO) << __func__ << ": Notifying deferred SuspendDone.";
+    NotifySuspendDone();
+    return false;
+  }
+
+  suspend_ready_ = true;
   if (!suspending_) {
     LOG(INFO) << __func__ << ": Suspend attempt ("
               << current_suspend_id_ << ") not active. Ignoring signal.";
@@ -107,6 +121,10 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   current_suspend_id_ = suspend_id;
 
+  // Ignore any previously deferred SuspendDone notification as we're going to
+  // suspend again and expect a new SuspendDone notification later.
+  suspend_done_deferred_ = false;
+
   // If we're already suspending, don't call the |suspend_imminent_callback_|
   // again.
   if (!suspending_) {
@@ -129,9 +147,24 @@ void PowerManager::OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
     return;
   }
 
-  suspending_ = false;
-  in_dark_resume_ = false;
   suspend_duration_us_ = suspend_duration_us;
+
+  if (!suspend_ready_) {
+    LOG(INFO) << "Received SuspendDone (" << suspend_id
+              << ") before SuspendReadiness is reported. "
+              << "Defer SuspendDone notification.";
+    suspend_done_deferred_ = true;
+    return;
+  }
+
+  NotifySuspendDone();
+}
+
+void PowerManager::NotifySuspendDone() {
+  suspending_ = false;
+  suspend_ready_ = false;
+  suspend_done_deferred_ = false;
+  in_dark_resume_ = false;
   suspend_done_callback_.Run();
 }
 
@@ -167,8 +200,10 @@ void PowerManager::OnPowerManagerAppeared() {
 void PowerManager::OnPowerManagerVanished() {
   LOG(INFO) << __func__;
   // If powerd vanished during a suspend, we need to wake ourselves up.
-  if (suspending_)
+  if (suspending_) {
+    suspend_ready_ = true;
     OnSuspendDone(kInvalidSuspendId, 0);
+  }
   suspend_delay_registered_ = false;
   dark_suspend_delay_registered_ = false;
 }

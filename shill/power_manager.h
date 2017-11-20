@@ -113,6 +113,8 @@ class PowerManager : public PowerManagerProxyDelegate {
   void OnPowerManagerAppeared();
   void OnPowerManagerVanished();
 
+  void NotifySuspendDone();
+
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
 
@@ -141,6 +143,14 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // Set to true by OnSuspendImminent() and to false by OnSuspendDone().
   bool suspending_;
+  // Set to true if readiness to suspend has been reported, i.e. any action to
+  // perform before suspend has been completed.
+  bool suspend_ready_;
+  // Set to true if the suspend done callback should be deferred until after
+  // any action to perform before suspend has been completed, i.e. when a
+  // SuspendDone notification arrives before ReportSuspendReadiness() is
+  // called.
+  bool suspend_done_deferred_;
   // Set to true by OnDarkSuspendImminent() and to false by OnSuspendDone().
   bool in_dark_resume_;
   int current_suspend_id_;

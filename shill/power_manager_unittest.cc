@@ -179,7 +179,6 @@ class PowerManagerTest : public Test {
 
   void OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
     control_.delegate()->OnSuspendDone(suspend_id, suspend_duration_us);
-    EXPECT_FALSE(power_manager_.suspending());
   }
 
   void OnDarkSuspendImminent(int suspend_id) {
@@ -213,14 +212,129 @@ const char PowerManagerTest::kPowerManagerDefaultOwner[] =
     "PowerManagerDefaultOwner";
 
 TEST_F(PowerManagerTest, SuspendingState) {
-  const int kSuspendId = 3;
+  RegisterSuspendDelays();
   EXPECT_FALSE(power_manager_.suspending());
-  OnSuspendImminent(kSuspendId);
+  OnSuspendImminent(kSuspendId1);
   EXPECT_TRUE(power_manager_.suspending());
   EXPECT_EQ(0, power_manager_.suspend_duration_us());
-  OnSuspendDone(kSuspendId, kSuspendDurationUsecs);
+  AddProxyExpectationForReportSuspendReadiness(kDelayId, kSuspendId1, true);
+  EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
   EXPECT_FALSE(power_manager_.suspending());
   EXPECT_TRUE(power_manager_.suspend_duration_us() == kSuspendDurationUsecs);
+}
+
+TEST_F(PowerManagerTest, SuspendDoneBeforeReady) {
+  RegisterSuspendDelays();
+
+  EXPECT_FALSE(power_manager_.suspending());
+  EXPECT_CALL(*this, SuspendImminentAction()).Times(1);
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendImminent(kSuspendId1);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If SuspendDone is received before SuspendReadiness is reported,
+  // SuspendDoneAction should be deferred.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // When it's about to report readiness to suspend, the deferred
+  // SuspendDoneAction should be taken and ReportSuspendReadiness should be
+  // skipped.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(1);
+  EXPECT_CALL(*power_manager_proxy_, ReportSuspendReadiness(_, _)).Times(0);
+  EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  EXPECT_FALSE(power_manager_.suspending());
+}
+
+TEST_F(PowerManagerTest, SuspendDoneThenImminentBeforeReady) {
+  RegisterSuspendDelays();
+
+  EXPECT_FALSE(power_manager_.suspending());
+  EXPECT_CALL(*this, SuspendImminentAction()).Times(1);
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendImminent(kSuspendId1);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If SuspendDone is received before SuspendReadiness is reported,
+  // SuspendDoneAction should be deferred.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If another SuspendImminent is received before SuspendReadiness is reported,
+  // SuspendImminentAction shouldn't be called again.
+  EXPECT_CALL(*this, SuspendImminentAction()).Times(0);
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendImminent(kSuspendId2);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If SuspendDone for the second SuspendImminent is received after
+  // SuspendReadiness is reported, SuspendDoneAction is taken after SuspendDone
+  // is received.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  AddProxyExpectationForReportSuspendReadiness(kDelayId, kSuspendId2, true);
+  EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(1);
+  OnSuspendDone(kSuspendId2, kSuspendDurationUsecs);
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  EXPECT_FALSE(power_manager_.suspending());
+}
+
+TEST_F(PowerManagerTest, SuspendDoneThenImminentThenDoneBeforeReady) {
+  RegisterSuspendDelays();
+
+  EXPECT_FALSE(power_manager_.suspending());
+  EXPECT_CALL(*this, SuspendImminentAction()).Times(1);
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendImminent(kSuspendId1);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If SuspendDone is received before SuspendReadiness is reported,
+  // SuspendDoneAction should be deferred.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If another SuspendImminent is received before SuspendReadiness is
+  // reported, SuspendImminentAction shouldn't be called again.
+  EXPECT_CALL(*this, SuspendImminentAction()).Times(0);
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendImminent(kSuspendId2);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // If SuspendDone for the second SuspendImminent is received before
+  // SuspendReadiness is reported, SuspendDoneAction should be deferred.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(0);
+  OnSuspendDone(kSuspendId2, kSuspendDurationUsecs);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(power_manager_.suspending());
+
+  // When it's about to report readiness to suspend, the deferred
+  // SuspendDoneAction should be taken and ReportSuspendReadiness should be
+  // skipped.
+  EXPECT_CALL(*this, SuspendDoneAction()).Times(1);
+  EXPECT_CALL(*power_manager_proxy_, ReportSuspendReadiness(_, _)).Times(0);
+  EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  EXPECT_FALSE(power_manager_.suspending());
 }
 
 TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
@@ -242,7 +356,10 @@ TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
   //   path in this black swan case.
   EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
+  AddProxyExpectationForReportSuspendReadiness(kDelayId, kSuspendId1, true);
+  EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
   OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
+  EXPECT_FALSE(power_manager_.suspending());
   Mock::VerifyAndClearExpectations(this);
 }
 
@@ -337,11 +454,8 @@ TEST_F(PowerManagerTest, StopFailure) {
   power_manager_.Stop();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
-  // As a result, callbacks should still be invoked.
-  EXPECT_CALL(*this, SuspendImminentAction());
-  EXPECT_CALL(*this, SuspendDoneAction());
-  OnSuspendImminent(kSuspendId1);
-  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
+  // PowerManager::Stop() nullifies |PowerManager::power_manager_proxy_|, so no
+  // further SuspendImminent or SuspendDone notification is expected.
 }
 
 TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
