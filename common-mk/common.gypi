@@ -41,6 +41,7 @@
     'USE_ftdi_tpm%': 0,
     'USE_fuzzing%': 0,
     'USE_gdmwimax%': 0,
+    'USE_hammerd_api%': 0,
     'USE_iwlwifi_dump%': 0,
     'USE_kvm_host%': 0,
     'USE_metrics_uploader%': 0,
