@@ -48,7 +48,6 @@
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/geolocation_info.h"
 #include "shill/icmp.h"
 #include "shill/ip_address_store.h"
 #include "shill/link_monitor.h"

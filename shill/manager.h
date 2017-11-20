@@ -187,8 +187,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
 
   // Retrieve geolocation data from the Manager.
-  const std::map<std::string, GeolocationInfos>
-      &GetNetworksForGeolocation() const;
+  const std::map<std::string, std::vector<GeolocationInfo>>&
+  GetNetworksForGeolocation() const;
 
   // Called by Device when its geolocation data has been updated.
   virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device);
@@ -876,7 +876,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Stores the most recent copy of geolocation information for each
   // technology type.
-  std::map<std::string, GeolocationInfos> networks_for_geolocation_;
+  std::map<std::string, std::vector<GeolocationInfo>> networks_for_geolocation_;
 
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;

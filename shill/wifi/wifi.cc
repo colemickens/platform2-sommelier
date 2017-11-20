@@ -40,7 +40,6 @@
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/file_reader.h"
-#include "shill/geolocation_info.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -1781,13 +1780,11 @@ vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
     const WiFiEndpointRefPtr& endpoint = endpoint_entry.second;
-    geoinfo.AddField(kGeoMacAddressProperty, endpoint->bssid_string());
-    geoinfo.AddField(kGeoSignalStrengthProperty,
-                StringPrintf("%d", endpoint->signal_strength()));
-    geoinfo.AddField(
-        kGeoChannelProperty,
-        StringPrintf("%d",
-                     Metrics::WiFiFrequencyToChannel(endpoint->frequency())));
+    geoinfo[kGeoMacAddressProperty] = endpoint->bssid_string();
+    geoinfo[kGeoSignalStrengthProperty] =
+        StringPrintf("%d", endpoint->signal_strength());
+    geoinfo[kGeoChannelProperty] = StringPrintf(
+        "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
     // TODO(gauravsh): Include age field. crbug.com/217554
     objects.push_back(geoinfo);
   }

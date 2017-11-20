@@ -34,6 +34,7 @@
 #include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
@@ -51,7 +52,6 @@ class DHCPProvider;
 class DeviceAdaptorInterface;
 class Error;
 class EventDispatcher;
-class GeolocationInfo;
 class LinkMonitor;
 class Manager;
 class Metrics;

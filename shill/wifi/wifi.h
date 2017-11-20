@@ -111,7 +111,6 @@
 namespace shill {
 
 class Error;
-class GeolocationInfo;
 class Mac80211Monitor;
 class Metrics;
 class NetlinkManager;

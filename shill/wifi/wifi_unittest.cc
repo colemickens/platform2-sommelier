@@ -3574,12 +3574,12 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
     EXPECT_EQ(objects.size(), i + 1);
 
     GeolocationInfo expected_info;
-    expected_info.AddField(kGeoMacAddressProperty, bsses[i].bssid);
-    expected_info.AddField(kGeoSignalStrengthProperty,
-                           StringPrintf("%d", bsses[i].signal_strength));
-    expected_info.AddField(kGeoChannelProperty, StringPrintf(
-        "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
-    EXPECT_TRUE(objects[i].Equals(expected_info));
+    expected_info[kGeoMacAddressProperty] = bsses[i].bssid;
+    expected_info[kGeoSignalStrengthProperty] =
+        StringPrintf("%d", bsses[i].signal_strength);
+    expected_info[kGeoChannelProperty] =
+        StringPrintf("%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency));
+    EXPECT_EQ(expected_info, objects[i]);
   }
 }
 

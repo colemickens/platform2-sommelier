@@ -397,12 +397,7 @@ bool ChromeosManagerDBusAdaptor::GetNetworksForGeolocation(
     brillo::VariantDictionary* networks) {
   SLOG(this, 2) << __func__;
   for (const auto& network : manager_->GetNetworksForGeolocation()) {
-    Stringmaps value;
-    // Convert GeolocationInfos to their Stringmaps equivalent.
-    for (const auto& info : network.second) {
-      value.push_back(info.properties());
-    }
-    networks->insert(std::make_pair(network.first, brillo::Any(value)));
+    networks->emplace(network.first, brillo::Any(network.second));
   }
   return true;
 }

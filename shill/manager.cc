@@ -2568,8 +2568,8 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
-const map<string, GeolocationInfos>
-    &Manager::GetNetworksForGeolocation() const {
+const map<string, vector<GeolocationInfo>>& Manager::GetNetworksForGeolocation()
+    const {
   return networks_for_geolocation_;
 }
 

@@ -19,39 +19,12 @@
 
 #include <map>
 #include <string>
-#include <vector>
-
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
 
-class WiFiMainTest;
-
-// This class stores properties (key-value pairs) for a single entity
-// (e.g. a WiFi access point) that may be used for geolocation.
-class GeolocationInfo {
- public:
-  GeolocationInfo();
-  ~GeolocationInfo();
-
-  void AddField(const std::string& key, const std::string& value);
-  const std::string& GetFieldValue(const std::string& key) const;
-
-  const std::map<std::string, std::string> properties() const {
-    return properties_;
-  }
-
- private:
-  FRIEND_TEST(CellularTest, GetGeolocationObjects);
-  FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
-
-  // An equality testing helper for unit tests.
-  bool Equals(const GeolocationInfo& info) const;
-
-  std::map<std::string, std::string> properties_;
-};
-
-using GeolocationInfos = std::vector<GeolocationInfo>;
+// Geolocation property field names are defined by those kGeo* constants in
+// <chromiumos>/src/platform/system_api/dbus/shill/dbus-constants.h.
+using GeolocationInfo = std::map<std::string, std::string>;
 
 }  // namespace shill
 

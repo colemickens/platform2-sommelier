@@ -41,7 +41,6 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
-class GeolocationInfo;
 class PPPDeviceFactory;
 class ProcessManager;
 

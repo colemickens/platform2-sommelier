@@ -2291,17 +2291,16 @@ TEST_P(CellularTest, GetGeolocationObjects) {
     Error error;
 
     GeolocationInfo expected_info;
+    expected_info[kGeoMobileCountryCodeProperty] = location.mcc;
+    expected_info[kGeoMobileNetworkCodeProperty] = location.mnc;
+    expected_info[kGeoLocationAreaCodeProperty] = location.lac;
+    expected_info[kGeoCellIdProperty] = location.ci;
+
     device_->GetLocationCallback(raw_location, error);
     objects = device_->GetGeolocationObjects();
 
-    EXPECT_EQ(objects.size(), 1);
-
-    expected_info.AddField(kGeoMobileCountryCodeProperty, location.mcc);
-    expected_info.AddField(kGeoMobileNetworkCodeProperty, location.mnc);
-    expected_info.AddField(kGeoLocationAreaCodeProperty, location.lac);
-    expected_info.AddField(kGeoCellIdProperty, location.ci);
-
-    EXPECT_TRUE(objects[0].Equals(expected_info));
+    ASSERT_EQ(objects.size(), 1);
+    EXPECT_EQ(expected_info, objects[0]);
   }
 
   for (const auto& location : kBadLocations) {
@@ -2313,8 +2312,8 @@ TEST_P(CellularTest, GetGeolocationObjects) {
     device_->GetLocationCallback(raw_location, error);
     objects = device_->GetGeolocationObjects();
 
-    EXPECT_EQ(objects.size(), 1);
-    EXPECT_TRUE(objects[0].Equals(empty_info));
+    ASSERT_EQ(objects.size(), 1);
+    EXPECT_EQ(empty_info, objects[0]);
   }
 }
 

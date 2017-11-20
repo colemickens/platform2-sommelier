@@ -42,7 +42,6 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/external_task.h"
-#include "shill/geolocation_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
@@ -1603,10 +1602,10 @@ vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
   GeolocationInfo geolocation_info;
 
   if (!(mcc.empty() || mnc.empty() || lac.empty() || cid.empty())) {
-    geolocation_info.AddField(kGeoMobileCountryCodeProperty, mcc);
-    geolocation_info.AddField(kGeoMobileNetworkCodeProperty, mnc);
-    geolocation_info.AddField(kGeoLocationAreaCodeProperty, lac);
-    geolocation_info.AddField(kGeoCellIdProperty, cid);
+    geolocation_info[kGeoMobileCountryCodeProperty] = mcc;
+    geolocation_info[kGeoMobileNetworkCodeProperty] = mnc;
+    geolocation_info[kGeoLocationAreaCodeProperty] = lac;
+    geolocation_info[kGeoCellIdProperty] = cid;
     // kGeoTimingAdvanceProperty currently unused in geolocation API
   }
   // Else we have either an incomplete location, no location yet,
