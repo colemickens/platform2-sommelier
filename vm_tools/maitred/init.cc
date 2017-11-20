@@ -77,6 +77,7 @@ constexpr struct {
   const char* fstype;
   unsigned long flags;  // NOLINT(runtime/int)
   const void* data;
+  bool failure_is_fatal; // Abort if this mount fails.
 } mounts[] = {
     {
         .source = "proc",
@@ -84,6 +85,7 @@ constexpr struct {
         .fstype = "proc",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = nullptr,
+        .failure_is_fatal = true,
     },
     {
         .source = "sys",
@@ -91,6 +93,7 @@ constexpr struct {
         .fstype = "sysfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = nullptr,
+        .failure_is_fatal = true,
     },
     {
         .source = "tmp",
@@ -98,6 +101,7 @@ constexpr struct {
         .fstype = "tmpfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = nullptr,
+        .failure_is_fatal = true,
     },
     {
         .source = "run",
@@ -105,6 +109,7 @@ constexpr struct {
         .fstype = "tmpfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "mode=0755",
+        .failure_is_fatal = true,
     },
     {
         .source = "shmfs",
@@ -112,6 +117,7 @@ constexpr struct {
         .fstype = "tmpfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = nullptr,
+        .failure_is_fatal = true,
     },
     {
         .source = "devpts",
@@ -119,6 +125,7 @@ constexpr struct {
         .fstype = "devpts",
         .flags = MS_NOSUID | MS_NOEXEC,
         .data = "gid=5,mode=0620,ptmxmode=666",
+        .failure_is_fatal = true,
     },
     {
         .source = "var",
@@ -126,6 +133,7 @@ constexpr struct {
         .fstype = "tmpfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "mode=0755",
+        .failure_is_fatal = true,
     },
     {
         .source = "none",
@@ -133,6 +141,7 @@ constexpr struct {
         .fstype = "tmpfs",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "mode=0755",
+        .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
@@ -140,6 +149,7 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "cpu",
+        .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
@@ -147,6 +157,7 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "freezer",
+        .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
@@ -154,6 +165,7 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "devices",
+        .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
@@ -161,6 +173,7 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "cpuacct",
+        .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
@@ -168,6 +181,39 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "cpuset",
+        .failure_is_fatal = true,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/blkio",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "blkio",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/memory",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "memory",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/pids",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "pids",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/systemd",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "none,name=systemd",
+        .failure_is_fatal = false,
     },
 };
 
@@ -231,6 +277,22 @@ constexpr struct {
     },
     {
         .path = "/sys/fs/cgroup/cpuset/chronos_containers",
+        .mode = 0755,
+    },
+    {
+        .path = "/sys/fs/cgroup/blkio/chronos_containers",
+        .mode = 0755,
+    },
+    {
+        .path = "/sys/fs/cgroup/memory/chronos_containers",
+        .mode = 0755,
+    },
+    {
+        .path = "/sys/fs/cgroup/pids/chronos_containers",
+        .mode = 0755,
+    },
+    {
+        .path = "/sys/fs/cgroup/systemd/chronos_containers",
         .mode = 0755,
     },
 };
@@ -1130,12 +1192,15 @@ bool Init::Setup() {
   for (const auto& mt : mounts) {
     if (mkdir(mt.target, 0755) != 0 && errno != EEXIST) {
       PLOG(ERROR) << "Failed to create " << mt.target;
-      return false;
+      if (mt.failure_is_fatal)
+        return false;
     }
 
     if (mount(mt.source, mt.target, mt.fstype, mt.flags, mt.data) != 0) {
+      rmdir(mt.target);
       PLOG(ERROR) << "Failed to mount " << mt.target;
-      return false;
+      if (mt.failure_is_fatal)
+        return false;
     }
   }
 
