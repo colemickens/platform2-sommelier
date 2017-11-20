@@ -504,8 +504,6 @@ static tag_info_t android_sensor[ANDROID_SENSOR_END -
     { "dynamicWhiteLevel",             TYPE_INT32  },
     [ ANDROID_SENSOR_OPAQUE_RAW_SIZE - ANDROID_SENSOR_START ] =
     { "opaqueRawSize",                 TYPE_INT32  },
-    [ ANDROID_SENSOR_CROP_ROTATE_SCALE - ANDROID_SENSOR_START ] =
-    { "cropRotateScale",               TYPE_INT32  },
 };
 
 static tag_info_t android_sensor_info[ANDROID_SENSOR_INFO_END -
@@ -2126,9 +2124,6 @@ int camera_metadata_enum_snprint(uint32_t tag,
             break;
         }
         case ANDROID_SENSOR_OPAQUE_RAW_SIZE: {
-            break;
-        }
-        case ANDROID_SENSOR_CROP_ROTATE_SCALE: {
             break;
         }
 

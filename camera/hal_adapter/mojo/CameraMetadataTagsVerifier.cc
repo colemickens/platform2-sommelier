@@ -1110,11 +1110,6 @@ static_assert(
         static_cast<ssize_t>(ANDROID_SENSOR_OPAQUE_RAW_SIZE),
     "CameraMetadataTag::ANDROID_SENSOR_OPAQUE_RAW_SIZE != "
     "ANDROID_SENSOR_OPAQUE_RAW_SIZE");
-static_assert(
-    static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_CROP_ROTATE_SCALE) ==
-        static_cast<ssize_t>(ANDROID_SENSOR_CROP_ROTATE_SCALE),
-    "CameraMetadataTag::ANDROID_SENSOR_CROP_ROTATE_SCALE != "
-    "ANDROID_SENSOR_CROP_ROTATE_SCALE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_END) ==
                   static_cast<ssize_t>(ANDROID_SENSOR_END),
               "CameraMetadataTag::ANDROID_SENSOR_END != ANDROID_SENSOR_END");
