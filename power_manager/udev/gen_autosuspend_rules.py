@@ -177,6 +177,10 @@ USB_IDS += [
   "18d1:5029",
   # Libratone Q Adapt In-Ear USB-C Earphones, Made for Google
   "03eb:2433",
+  # Moshi USB-C to 3.5 mm Adapter/Charger, Made for Google
+  "282b:48f0",
+  # Moshi USB-C to 3.5 mm Adapter/Charger, Made for Google (HID only)
+  "282b:0026",
 ]
 
 # List of PCI devices (vendorid:deviceid) for which it is safe to enable
