@@ -71,7 +71,6 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
   SandboxedProcess* process = &format_process_[device_path];
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
-  process->SkipRemountPrivate();
   process->NewIpcNamespace();
   process->NewNetworkNamespace();
 
