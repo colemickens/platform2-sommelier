@@ -2,26 +2,43 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// This file contains wrapper of libusb functions.
+// Implement the USB-related functions using sysfs and usbfs.
+// The structure of sysfs:
+// /sys/bus/usb/devices/
+// |-- <bus>-<port>/
+//     |-- idVendor
+//     |-- idProduct
+//     |-- configuration
+//     |-- uevent
+//     |-- <bus>-<port>:<config>.<interface>/
+//         |-- bInterfaceNumber
+//         |-- bInterfaceClass
+//         |-- bInterfaceSubClass
+//         |-- bInterfaceProtocol
+//         |-- ep_<ep_num>/
+//             |-- wMaxPacketSize
 
 #ifndef HAMMERD_USB_UTILS_H_
 #define HAMMERD_USB_UTILS_H_
 
-#include <libusb.h>
 #include <stdint.h>
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 namespace hammerd {
 
+constexpr int kUsbEndpointIn = 0x80;
+constexpr int kUsbEndpointOut = 0x00;
+
+constexpr uint8_t kUsbClassGoogleUpdate = 0xff;
 constexpr uint8_t kUsbSubclassGoogleUpdate = 0x53;
 constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 
-bool InitLibUsb();
-void ExitLibUsb();
-void LogUsbError(const char* func_name, int return_code);
+// Get the path of the USB device root sysfs.
+const base::FilePath GetUsbSysfsPath(uint16_t bus, uint16_t port);
 
 enum class UsbConnectStatus {
   kSuccess,
@@ -62,7 +79,7 @@ class UsbEndpointInterface {
                       unsigned int timeout_ms = 0) = 0;
 
   // Gets the chunk length of the USB endpoint.
-  virtual size_t GetChunkLength() const = 0;
+  virtual int GetChunkLength() const = 0;
 
   // Gets the configuration string of the USB endpoint.
   virtual std::string GetConfigurationString() const = 0;
@@ -70,7 +87,8 @@ class UsbEndpointInterface {
 
 class UsbEndpoint : public UsbEndpointInterface {
  public:
-  UsbEndpoint(uint16_t vendor_id, uint16_t product_id, int bus, int port);
+  UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
+              uint16_t bus, uint16_t port);
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
@@ -89,41 +107,29 @@ class UsbEndpoint : public UsbEndpointInterface {
               int inlen,
               bool allow_less = false,
               unsigned int timeout_ms = 0) override;
-  size_t GetChunkLength() const override { return chunk_len_; }
+  int GetChunkLength() const override { return chunk_len_; }
   std::string GetConfigurationString() const override {
     return configuration_string_;
   }
 
  private:
-  // Opens and returns a handle of device with vendor_id and product_id
-  // connected to given bus and port.
-  UsbConnectStatus OpenDevice(
-      uint16_t vendor_id, uint16_t product_id, int bus, int port,
-      libusb_device_handle** devh);
-  // Returns the descriptor at the given index as an ASCII string.
-  std::string GetStringDescriptorAscii(uint8_t index);
-  // Finds the interface number. Returns -1 on error.
-  int FindInterface();
-  // Find the USB endpoint of the hammer EC.
-  int FindEndpoint(const libusb_interface* iface);
-
-  // Wrapper of libusb_bulk_transfer.
-  // Returns the actual transfered data size. -1 if the transmission fails.
+  // Returns the actual transfered data size.
   // If the timeout is not assigned, then use default timeout value.
+  // |direction_mask| should be one of kUsbEndpointIn or kUsbEndpointOut.
   int BulkTransfer(void* buf,
-                   enum libusb_endpoint_direction direction_mask,
+                   int direction_mask,
                    int len,
                    unsigned int timeout_ms = 0);
 
   uint16_t vendor_id_;
   uint16_t product_id_;
-  int bus_;
-  int port_;
-  libusb_device_handle* devh_;
+  uint16_t bus_;
+  uint16_t port_;
+  int fd_;
   std::string configuration_string_;
   int iface_num_;
   int ep_num_;
-  size_t chunk_len_;
+  int chunk_len_;
   DISALLOW_COPY_AND_ASSIGN(UsbEndpoint);
 };
 

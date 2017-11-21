@@ -7,7 +7,6 @@
         'libchrome-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
         'libpcrecpp',
-        'libusb-1.0',
         'openssl',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right

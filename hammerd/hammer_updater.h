@@ -18,9 +18,6 @@
 
 namespace hammerd {
 
-// Get the sysfs path of the USB device.
-const base::FilePath GetUsbSysfsPath(int bus, int port);
-
 class HammerUpdater {
  public:
   // The result of the Run, RunLoop, RunOnce, .. methods.

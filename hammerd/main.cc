@@ -18,6 +18,7 @@
 
 #include "hammerd/hammer_updater.h"
 #include "hammerd/process_lock.h"
+#include "hammerd/usb_utils.h"
 
 namespace {
 // The lock file used to prevent multiple hammerd be invoked at the same time.

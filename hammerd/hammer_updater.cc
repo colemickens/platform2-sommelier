@@ -24,13 +24,9 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hammerd/uma_metric_names.h"
+#include "hammerd/usb_utils.h"
 
 namespace hammerd {
-
-const base::FilePath GetUsbSysfsPath(int bus, int port) {
-  return base::FilePath(base::StringPrintf("/sys/bus/usb/devices/%d-%d",
-                                           bus, port));
-}
 
 const std::string HammerUpdater::TaskState::ToString() {
   return base::StringPrintf("update_ro(%d) update_rw(%d) update_tp(%d) "
