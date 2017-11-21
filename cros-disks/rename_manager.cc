@@ -110,7 +110,6 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
   process->SetGroupId(rename_group_id);
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
-  process->SkipRemountPrivate();
   process->NewIpcNamespace();
   process->NewNetworkNamespace();
 
