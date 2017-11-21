@@ -56,6 +56,7 @@ const char EapCredentials::kStorageEapClientCert[] = "EAP.ClientCert";
 const char EapCredentials::kStorageEapEap[] = "EAP.EAP";
 const char EapCredentials::kStorageEapIdentity[] = "EAP.Identity";
 const char EapCredentials::kStorageEapInnerEap[] = "EAP.InnerEAP";
+const char EapCredentials::kStorageEapTLSVersionMax[] = "EAP.TLSVersionMax";
 const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
 const char EapCredentials::kStorageEapPIN[] = "EAP.PIN";
@@ -154,6 +155,15 @@ void EapCredentials::PopulateSupplicantProperties(
                    WPASupplicant::kProactiveKeyCachingDisabled);
   }
 
+  if (tls_version_max_ == kEapTLSVersion1p0) {
+    params->SetString(WPASupplicant::kNetworkPropertyEapOuterEap,
+                      string(WPASupplicant::kFlagDisableEapTLS1p1) + " " +
+                          string(WPASupplicant::kFlagDisableEapTLS1p2));
+  } else if (tls_version_max_ == kEapTLSVersion1p1) {
+    params->SetString(WPASupplicant::kNetworkPropertyEapOuterEap,
+                      WPASupplicant::kFlagDisableEapTLS1p2);
+  }
+
   for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
       params->SetString(keyval.first, keyval.second);
@@ -206,6 +216,7 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   store->RegisterString(kEapCaCertProperty, &ca_cert_);
   store->RegisterString(kEapMethodProperty, &eap_);
   store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
+  store->RegisterString(kEapTLSVersionMaxProperty, &tls_version_max_);
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
   store->RegisterBool(kEapUseProactiveKeyCachingProperty,
                       &use_proactive_key_caching_);
@@ -303,6 +314,7 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   storage->GetStringList(id, kStorageEapCACertPEM, &ca_cert_pem_);
   storage->GetString(id, kStorageEapEap, &eap_);
   storage->GetString(id, kStorageEapInnerEap, &inner_eap_);
+  storage->GetString(id, kStorageEapTLSVersionMax, &tls_version_max_);
   storage->GetString(id, kStorageEapSubjectMatch, &subject_match_);
   storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
                    &use_proactive_key_caching_);
@@ -416,6 +428,12 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       id,
                       kStorageEapInnerEap,
                       inner_eap_,
+                      false,
+                      true);
+  Service::SaveString(storage,
+                      id,
+                      kStorageEapTLSVersionMax,
+                      tls_version_max_,
                       false,
                       true);
   Service::SaveString(storage,

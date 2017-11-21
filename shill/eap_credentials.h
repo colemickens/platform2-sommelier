@@ -112,6 +112,7 @@ class EapCredentials {
   static const char kStorageEapEap[];
   static const char kStorageEapIdentity[];
   static const char kStorageEapInnerEap[];
+  static const char kStorageEapTLSVersionMax[];
   static const char kStorageEapKeyID[];
   static const char kStorageEapKeyManagement[];
   static const char kStorageEapPIN[];
@@ -202,6 +203,8 @@ class EapCredentials {
   std::string eap_;
   // The inner EAP authentication type.
   std::string inner_eap_;
+  // The highest TLS version supplicant is allowed to negotiate.
+  std::string tls_version_max_;
   // If non-empty, string to match remote subject against before connecting.
   std::string subject_match_;
   // If true, use the system-wide CA database to authenticate the remote.

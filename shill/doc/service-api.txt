@@ -454,6 +454,23 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
+		string EAP.TLSVersionMax [readwrite]
+
+			Specifies "1.0", "1.1", or "1.2" to indicate the
+			highest TLS version that wpa_supplicant should try
+			to negotiate.
+
+			The default (empty string) selects the highest
+			protocol version supported by wpa_supplicant.
+			This is the recommended setting; sometimes it
+			needs to be changed to improve interoperability
+			with buggy RADIUS servers that advertise TLSv1.2
+			compatibility but break when negotiating a TLSv1.2
+			session.
+
+			This property is included in get requests only
+			when the requester has sufficient privileges.
+
 		string EAP.AnonymousIdentity [readwrite]
 
 			The client identity string that will be used

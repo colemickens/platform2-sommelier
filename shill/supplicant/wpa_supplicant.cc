@@ -100,6 +100,7 @@ const char WPASupplicant::kNetworkPropertyDisableVHT[] = "disable_vht";
 const char WPASupplicant::kNetworkPropertyEapIdentity[] = "identity";
 const char WPASupplicant::kNetworkPropertyEapKeyManagement[] = "key_mgmt";
 const char WPASupplicant::kNetworkPropertyEapEap[] = "eap";
+const char WPASupplicant::kNetworkPropertyEapOuterEap[] = "phase1";
 const char WPASupplicant::kNetworkPropertyEapInnerEap[] = "phase2";
 const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[]
     = "anonymous_identity";
@@ -144,6 +145,9 @@ const char WPASupplicant::kTDLSStateConnected[] = "connected";
 const char WPASupplicant::kTDLSStateDisabled[] = "disabled";
 const char WPASupplicant::kTDLSStatePeerDoesNotExist[] = "peer does not exist";
 const char WPASupplicant::kTDLSStatePeerNotConnected[] = "peer not connected";
+
+const char WPASupplicant::kFlagDisableEapTLS1p1[] = "tls_disable_tlsv1_1=1";
+const char WPASupplicant::kFlagDisableEapTLS1p2[] = "tls_disable_tlsv1_2=1";
 
 const uint32_t WPASupplicant::kDefaultEngine = 1;
 const uint32_t WPASupplicant::kNetworkIeee80211wDisabled = 0;

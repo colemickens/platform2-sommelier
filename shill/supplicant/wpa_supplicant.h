@@ -93,6 +93,7 @@ class WPASupplicant {
   static const char kNetworkPropertyEapKeyManagement[];
   static const char kNetworkPropertyEapIdentity[];
   static const char kNetworkPropertyEapEap[];
+  static const char kNetworkPropertyEapOuterEap[];
   static const char kNetworkPropertyEapInnerEap[];
   static const char kNetworkPropertyEapAnonymousIdentity[];
   static const char kNetworkPropertyEapClientCert[];
@@ -138,6 +139,9 @@ class WPASupplicant {
   static const char kTDLSStateDisabled[];
   static const char kTDLSStatePeerDoesNotExist[];
   static const char kTDLSStatePeerNotConnected[];
+
+  static const char kFlagDisableEapTLS1p1[];
+  static const char kFlagDisableEapTLS1p2[];
 
   static const uint32_t kDefaultEngine;
   static const uint32_t kNetworkIeee80211wDisabled;

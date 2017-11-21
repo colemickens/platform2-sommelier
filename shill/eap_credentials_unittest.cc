@@ -79,6 +79,9 @@ class EapCredentialsTest : public testing::Test {
   void SetInnerEap(const string& inner_eap) {
     eap_.inner_eap_ = inner_eap;
   }
+  void SetTLSVersionMax(const string& tls_version_max) {
+    eap_.tls_version_max_ = tls_version_max;
+  }
   void SetKeyId(const string& key_id) {
     eap_.key_id_ = key_id;
   }
@@ -101,25 +104,16 @@ class EapCredentialsTest : public testing::Test {
     eap_.use_system_cas_ = use_system_cas;
   }
   bool IsReset() {
-    return
-        eap_.anonymous_identity_.empty() &&
-        eap_.cert_id_.empty() &&
-        eap_.client_cert_.empty() &&
-        eap_.identity_.empty() &&
-        eap_.key_id_.empty() &&
-        eap_.password_.empty() &&
-        eap_.pin_.empty() &&
-        eap_.private_key_.empty() &&
-        eap_.private_key_password_.empty() &&
-        eap_.ca_cert_.empty() &&
-        eap_.ca_cert_id_.empty() &&
-        eap_.ca_cert_nss_.empty() &&
-        eap_.ca_cert_pem_.empty() &&
-        eap_.eap_.empty() &&
-        eap_.inner_eap_.empty() &&
-        eap_.subject_match_.empty() &&
-        eap_.use_system_cas_ == true &&
-        eap_.use_proactive_key_caching_ == false;
+    return eap_.anonymous_identity_.empty() && eap_.cert_id_.empty() &&
+           eap_.client_cert_.empty() && eap_.identity_.empty() &&
+           eap_.key_id_.empty() && eap_.password_.empty() &&
+           eap_.pin_.empty() && eap_.private_key_.empty() &&
+           eap_.private_key_password_.empty() && eap_.ca_cert_.empty() &&
+           eap_.ca_cert_id_.empty() && eap_.ca_cert_nss_.empty() &&
+           eap_.ca_cert_pem_.empty() && eap_.eap_.empty() &&
+           eap_.inner_eap_.empty() && eap_.tls_version_max_.empty() &&
+           eap_.subject_match_.empty() && eap_.use_system_cas_ == true &&
+           eap_.use_proactive_key_caching_ == false;
   }
 
   const string& GetKeyManagement() {
@@ -343,6 +337,26 @@ TEST_F(EapCredentialsTest, PopulateSupplicantProperties) {
   EXPECT_FALSE(params_.ContainsString(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_FALSE(params_.ContainsUint(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_FALSE(params_.ContainsString(WPASupplicant::kNetworkPropertyEngineId));
+
+  // Test EAP version translation.  The "phase1" supplicant parameter is
+  // normally empty, but it will contain a "tls_disable" flag if this
+  // service requests an old TLS version.
+  EXPECT_FALSE(
+      params_.ContainsString(WPASupplicant::kNetworkPropertyEapOuterEap));
+
+  SetTLSVersionMax("1.2");
+  PopulateSupplicantProperties();
+  EXPECT_FALSE(
+      params_.ContainsString(WPASupplicant::kNetworkPropertyEapOuterEap));
+
+  SetTLSVersionMax("1.0");
+  PopulateSupplicantProperties();
+  EXPECT_TRUE(
+      params_.ContainsString(WPASupplicant::kNetworkPropertyEapOuterEap));
+  string phase1 = params_.GetString(WPASupplicant::kNetworkPropertyEapOuterEap);
+  EXPECT_EQ(string::npos, phase1.find("disable_tlsv1_0=1"));
+  EXPECT_NE(string::npos, phase1.find("disable_tlsv1_1=1"));
+  EXPECT_NE(string::npos, phase1.find("disable_tlsv1_2=1"));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNoSystemCAs) {
