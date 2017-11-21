@@ -17,7 +17,9 @@
 
 #include <map>
 #include <memory>
+#include <ostream>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,6 +41,8 @@
 #include "libcontainer/config.h"
 #include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
+
+#define QUOTE(s) ('"' + std::string(s) + '"')
 
 namespace {
 
@@ -240,6 +244,137 @@ struct container {
 };
 
 namespace {
+
+std::ostream& operator<<(std::ostream& stream, const Mount& mount) {
+  stream << "mount:" << std::endl
+         << " name: " << QUOTE(mount.name) << std::endl
+         << " source: " << QUOTE(mount.source.value()) << std::endl
+         << " destination: " << QUOTE(mount.destination.value()) << std::endl
+         << " type: " << QUOTE(mount.type) << std::endl
+         << " data: " << QUOTE(mount.data) << std::endl
+         << " verity: " << QUOTE(mount.verity) << std::endl
+         << " flags: 0x" << std::hex << mount.flags << std::dec << std::endl
+         << " uid: " << mount.uid << std::endl
+         << " gid: " << mount.gid << std::endl
+         << " mode: 0" << std::oct << mount.mode << std::dec << std::endl
+         << " mount_in_ns: " << mount.mount_in_ns << std::endl
+         << " create: " << mount.create << std::endl
+         << " loopback: " << mount.loopback << std::endl;
+
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Device& device) {
+  stream << "device:" << std::endl
+         << " type: " << device.type << std::endl
+         << " path: " << QUOTE(device.path.value()) << std::endl
+         << " fs_permissions: 0" << std::oct << device.fs_permissions
+         << std::dec << std::endl
+         << " major: " << device.major << std::endl
+         << " minor: " << device.minor << std::endl
+         << " copy_minor: " << device.copy_minor << std::endl
+         << " uid: " << device.uid << std::endl
+         << " gid: " << device.gid << std::endl;
+
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const CgroupDevice& cgroup_device) {
+  stream << "cgroup_device:" << std::endl
+         << " allow: " << cgroup_device.allow << std::endl
+         << " type: " << cgroup_device.type << std::endl
+         << " major: " << cgroup_device.major << std::endl
+         << " minor: " << cgroup_device.minor << std::endl
+         << " read: " << cgroup_device.read << std::endl
+         << " write: " << cgroup_device.write << std::endl
+         << " modify: " << cgroup_device.modify << std::endl;
+
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const CpuCgroup& cpu_cgroup) {
+  stream << "cpu_cgroup:" << std::endl
+         << " shares: " << cpu_cgroup.shares << std::endl
+         << " quota: " << cpu_cgroup.quota << std::endl
+         << " period: " << cpu_cgroup.period << std::endl
+         << " rt_runtime: " << cpu_cgroup.rt_runtime << std::endl
+         << " rt_period: " << cpu_cgroup.rt_period << std::endl;
+
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Rlimit& rlimit) {
+  stream << "rlimit:" << std::endl
+         << " type: " << rlimit.type << std::endl
+         << " cur: " << rlimit.cur << std::endl
+         << " max: " << rlimit.max << std::endl;
+
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const container_config* c) {
+  stream << "config_root: " << QUOTE(c->config_root.value()) << std::endl
+         << "rootfs: " << QUOTE(c->rootfs.value()) << std::endl
+         << "rootfs_mount_flags: 0x" << std::hex << c->rootfs_mount_flags
+         << std::dec << std::endl
+         << "premounted_runfs: " << QUOTE(c->premounted_runfs.value())
+         << std::endl
+         << "pid_file_path: " << QUOTE(c->pid_file_path.value()) << std::endl
+         << "program_argv: size=" << c->program_argv.size() << std::endl;
+
+  for (const std::string& argv : c->program_argv)
+    stream << " " << QUOTE(argv) << std::endl;
+
+  stream << "uid: " << c->uid << std::endl
+         << "uid_map: " << QUOTE(c->uid_map) << std::endl
+         << "gid: " << c->gid << std::endl
+         << "gid_map: " << QUOTE(c->gid_map) << std::endl
+         << "alt_syscall_table: " << QUOTE(c->alt_syscall_table) << std::endl;
+
+  for (const auto& mount : c->mounts)
+    stream << mount;
+
+  stream << "namespaces: size=" << c->namespaces.size() << std::endl;
+  for (const std::string& ns : c->namespaces)
+    stream << " " << QUOTE(ns) << std::endl;
+
+  for (const auto& device : c->devices)
+    stream << device;
+
+  for (const auto& cgroup_device : c->cgroup_devices)
+    stream << cgroup_device;
+
+  stream << "run_setfiles: " << QUOTE(c->run_setfiles) << std::endl
+         << c->cpu_cgparams
+         << "cgroup_parent: " << QUOTE(c->cgroup_parent.value()) << std::endl
+         << "cgroup_owner: " << c->cgroup_owner << std::endl
+         << "cgroup_group: " << c->cgroup_group << std::endl
+         << "keep_fds_open: " << c->keep_fds_open << std::endl;
+
+  stream << "num_rlimits: " << c->num_rlimits << std::endl;
+  for (size_t i = 0; i < c->num_rlimits; ++i)
+    stream << c->rlimits[i];
+
+  stream << "use_capmask: 0x" << c->use_capmask << std::endl
+         << "use_capmask_ambient: " << c->use_capmask_ambient << std::endl
+         << "capmask: 0x" << std::hex << c->capmask << std::dec << std::endl
+         << "securebits_skip_mask: 0x" << std::hex << c->securebits_skip_mask
+         << std::dec << std::endl
+         << "do_init: " << c->do_init << std::endl
+         << "selinux_context: " << QUOTE(c->selinux_context) << std::endl
+         << "pre_start_hook: " << reinterpret_cast<void*>(c->pre_start_hook)
+         << std::endl
+         << "pre_start_hook_payload: " << c->pre_start_hook_payload << std::endl
+         << "inherited_fds: size=" << c->inherited_fds.size() << std::endl;
+
+  for (int fd : c->inherited_fds)
+    stream << " " << fd << std::endl;
+
+  stream << "hooks: size=" << c->hooks.size() << std::endl;
+
+  return stream;
+}
 
 // Returns the path for |path_in_container| in the outer namespace.
 base::FilePath GetPathInOuterNamespace(
@@ -1444,4 +1579,10 @@ int container_kill(struct container* c) {
     return -errno;
   }
   return container_wait(c);
+}
+
+char* container_config_dump(struct container_config* c) {
+  std::stringstream out;
+  out << c;
+  return strdup(out.str().c_str());
 }

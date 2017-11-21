@@ -4,6 +4,8 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -21,6 +23,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_split.h>
 #include <gtest/gtest.h>
 
 #include "libcontainer/cgroup.h"
@@ -194,6 +197,24 @@ TEST(LibcontainerTest, PidFilePath) {
   container_config_destroy(config);
 }
 
+TEST(LibcontainerTest, DumpConfig) {
+  struct container_config* config = container_config_create();
+  ASSERT_NE(nullptr, config);
+
+  // Confirm that container_config_dump() returns a non-empty string.
+  std::unique_ptr<char, decltype(&free)> config_str(
+      container_config_dump(config), free);
+  ASSERT_NE(nullptr, config_str.get());
+  EXPECT_NE(0U, strlen(config_str.get()));
+
+  // Also confirm that the string has multiple lines.
+  EXPECT_LT(1U, base::SplitString(config_str.get(), "\n", base::KEEP_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)
+                    .size());
+
+  container_config_destroy(config);
+}
+
 class ContainerTest : public ::testing::Test {
  public:
   ContainerTest() = default;
@@ -299,6 +320,8 @@ class ContainerTest : public ::testing::Test {
   }
 
  protected:
+  const Config* config() const { return config_.get(); }
+
   std::unique_ptr<Config> config_;
   std::unique_ptr<Container> container_;
   int mount_flags_;
@@ -373,6 +396,20 @@ TEST_F(ContainerTest, TestKillContainer) {
   EXPECT_EQ(0, container_kill(container_->get()));
   EXPECT_EQ(std::vector<int>{SIGKILL}, g_mock_posix_state->kill_sigs);
   EXPECT_EQ(1, g_mock_minijail_state->wait_called_count);
+}
+
+// Does the same as LibcontainerTest.DumpConfig but with more configuration
+// parameters similar to the production.
+TEST_F(ContainerTest, DumpConfig) {
+  struct container_config* config = this->config()->get();
+  ASSERT_NE(nullptr, config);
+  std::unique_ptr<char, decltype(&free)> config_str(
+      container_config_dump(config), free);
+  ASSERT_NE(nullptr, config_str.get());
+  EXPECT_NE(0U, strlen(config_str.get()));
+  EXPECT_LT(1U, base::SplitString(config_str.get(), "\n", base::KEEP_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)
+                    .size());
 }
 
 }  // namespace libcontainer

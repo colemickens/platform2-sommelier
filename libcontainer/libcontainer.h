@@ -360,6 +360,10 @@ BRILLO_EXPORT int container_wait(struct container* c);
 /* Kill the container's init process, then wait for it to exit. */
 BRILLO_EXPORT int container_kill(struct container* c);
 
+/* Dumps the container config. The returned string has to be passed to free()
+   when it is no longer needed. */
+BRILLO_EXPORT char* container_config_dump(struct container_config* c);
+
 #ifdef __cplusplus
 }; /* extern "C" */
 #endif
