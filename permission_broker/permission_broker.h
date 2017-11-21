@@ -17,8 +17,8 @@
 #include <brillo/dbus/exported_object_manager.h>
 
 #include "container_utils/device_jail_server.h"
-#include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
+#include "permission_broker/firewall.h"
 #include "permission_broker/port_tracker.h"
 #include "permission_broker/rule_engine.h"
 #include "permission_broker/usb_driver_tracker.h"
@@ -32,7 +32,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
   PermissionBroker(brillo::dbus_utils::ExportedObjectManager* object_manager,
-                   org::chromium::FirewalldProxyInterface* firewalld,
                    const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);
@@ -73,6 +72,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   RuleEngine rule_engine_;
   brillo::dbus_utils::DBusObject dbus_object_;
   gid_t access_group_;
+  Firewall firewall_;
   PortTracker port_tracker_;
   UsbDriverTracker usb_driver_tracker_;
 

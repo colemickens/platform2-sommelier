@@ -14,7 +14,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
 
-#include "firewalld/dbus-proxies.h"
+#include "permission_broker/firewall.h"
 
 namespace permission_broker {
 
@@ -22,22 +22,22 @@ class PortTracker {
  public:
   typedef std::pair<uint16_t, std::string> Hole;
 
-  explicit PortTracker(org::chromium::FirewalldProxyInterface* firewalld);
+  explicit PortTracker(Firewall* firewall);
   virtual ~PortTracker();
 
-  bool ProcessTcpPort(uint16_t port, const std::string& iface, int dbus_fd);
-  bool ProcessUdpPort(uint16_t port, const std::string& iface, int dbus_fd);
-  bool ReleaseTcpPort(uint16_t port, const std::string& iface);
-  bool ReleaseUdpPort(uint16_t port, const std::string& iface);
+  bool AllowTcpPortAccess(uint16_t port, const std::string& iface, int dbus_fd);
+  bool AllowUdpPortAccess(uint16_t port, const std::string& iface, int dbus_fd);
+  bool RevokeTcpPortAccess(uint16_t port, const std::string& iface);
+  bool RevokeUdpPortAccess(uint16_t port, const std::string& iface);
 
-  bool ProcessVpnSetup(const std::vector<std::string> &usernames,
-                       const std::string &interface,
+  bool PerformVpnSetup(const std::vector<std::string>& usernames,
+                       const std::string& interface,
                        int dbus_fd);
   bool RemoveVpnSetup();
 
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
-              org::chromium::FirewalldProxyInterface* firewalld);
+              Firewall* firewall);
 
  private:
   FRIEND_TEST(PortTrackerTest, RequestVpnSetupSuccess);
@@ -74,9 +74,9 @@ class PortTracker {
   std::vector<std::string> vpn_usernames_;
   std::string vpn_interface_;
 
-  // |firewalld_| is owned by the PermissionBroker object owning this instance
+  // |firewall_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.
-  org::chromium::FirewalldProxyInterface* firewalld_;
+  Firewall* firewall_;
 
   DISALLOW_COPY_AND_ASSIGN(PortTracker);
 };

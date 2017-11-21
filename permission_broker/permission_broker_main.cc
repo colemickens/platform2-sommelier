@@ -14,7 +14,6 @@
 
 namespace permission_broker {
 
-namespace Firewalld = org::chromium::Firewalld;
 using brillo::dbus_utils::AsyncEventSequencer;
 const char kObjectServicePath[] =
     "/org/chromium/PermissionBroker/ObjectManager";
@@ -30,36 +29,17 @@ class Daemon : public brillo::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    firewalld_object_manager_.reset(new Firewalld::ObjectManagerProxy{bus_});
-    firewalld_object_manager_->SetFirewalldAddedCallback(
-        base::Bind(&Daemon::OnFirewallUp, weak_ptr_factory_.GetWeakPtr()));
-    firewalld_object_manager_->SetFirewalldRemovedCallback(
-        base::Bind(&Daemon::OnFirewallDown, weak_ptr_factory_.GetWeakPtr()));
-  }
-
- private:
-  void OnFirewallUp(org::chromium::FirewalldProxyInterface* firewalld) {
-    LOG(INFO) << "firewalld instance created. "
-                 "Putting permission_broker object on D-Bus.";
-    broker_.reset(new PermissionBroker{object_manager_.get(), firewalld,
-                                       access_group_, udev_run_path_,
-                                       poll_interval_});
+    broker_.reset(new PermissionBroker{object_manager_.get(), access_group_,
+                                       udev_run_path_, poll_interval_});
     broker_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
-  void OnFirewallDown(const dbus::ObjectPath& object_path) {
-    LOG(INFO) << "firewalld instance went away. "
-                 "Removing permission_broker object from D-Bus.";
-    broker_.reset();
-  }
-
-  std::unique_ptr<Firewalld::ObjectManagerProxy> firewalld_object_manager_;
+ private:
   std::unique_ptr<PermissionBroker> broker_;
   std::string access_group_;
   std::string udev_run_path_;
   int poll_interval_;
 
-  base::WeakPtrFactory<Daemon> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 

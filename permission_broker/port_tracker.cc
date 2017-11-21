@@ -15,27 +15,26 @@
 #include <base/posix/eintr_wrapper.h>
 
 namespace {
-const size_t kMaxInterfaceNameLen = 16;
 const int kMaxEvents = 10;
 const int64_t kLifelineIntervalSeconds = 5;
 const int kInvalidHandle = -1;
-}
+}  // namespace
 
 namespace permission_broker {
 
-PortTracker::PortTracker(org::chromium::FirewalldProxyInterface* firewalld)
+PortTracker::PortTracker(Firewall* firewall)
     : task_runner_{base::MessageLoopForIO::current()->task_runner()},
       epfd_{kInvalidHandle},
       vpn_lifeline_{kInvalidHandle},
-      firewalld_{firewalld} {}
+      firewall_{firewall} {}
 
 // Test-only.
 PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
-                         org::chromium::FirewalldProxyInterface* firewalld)
+                         Firewall* firewall)
     : task_runner_{task_runner},
       epfd_{kInvalidHandle},
       vpn_lifeline_{kInvalidHandle},
-      firewalld_{firewalld} {}
+      firewall_{firewall} {}
 
 PortTracker::~PortTracker() {
   if (epfd_ >= 0) {
@@ -43,26 +42,20 @@ PortTracker::~PortTracker() {
   }
 }
 
-bool PortTracker::ProcessTcpPort(uint16_t port,
-                                 const std::string& iface,
-                                 int dbus_fd) {
-  // |iface| should be a short string.
-  if (iface.length() >= kMaxInterfaceNameLen) {
-    LOG(ERROR) << "Interface name '" << iface << "' is too long";
-    return false;
-  }
-
+bool PortTracker::AllowTcpPortAccess(uint16_t port,
+                                     const std::string& iface,
+                                     int dbus_fd) {
   Hole hole = std::make_pair(port, iface);
   if (tcp_fds_.find(hole) != tcp_fds_.end()) {
-    // This could potentially happen when a requesting process has just been
-    // restarted but scheduled lifeline FD check hasn't been performed yet, so
-    // we might have stale descriptors around. Force the FD check to see
-    // if they will be removed now.
+    // This can happen when a requesting process has just been restarted but
+    // the scheduled lifeline FD check hasn't yet been performed, so we might
+    // have stale file descriptors around.
+    // Force the FD check to see if they will be removed now.
     CheckLifelineFds(false);
 
     // Then try again. If this still fails, we know it's an invalid request.
     if (tcp_fds_.find(hole) != tcp_fds_.end()) {
-      LOG(ERROR) << "Hole already punched";
+      LOG(ERROR) << "Hole already punched for TCP port " << port;
       return false;
     }
   }
@@ -79,8 +72,7 @@ bool PortTracker::ProcessTcpPort(uint16_t port,
   tcp_holes_[lifeline_fd] = hole;
   tcp_fds_[hole] = lifeline_fd;
 
-  bool success;
-  firewalld_->PunchTcpHole(port, iface, &success, nullptr);
+  bool success = firewall_->AddAcceptRules(kProtocolTcp, port, iface);
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
@@ -93,26 +85,20 @@ bool PortTracker::ProcessTcpPort(uint16_t port,
   return true;
 }
 
-bool PortTracker::ProcessUdpPort(uint16_t port,
-                                 const std::string& iface,
-                                 int dbus_fd) {
-  // |iface| should be a short string.
-  if (iface.length() >= kMaxInterfaceNameLen) {
-    LOG(ERROR) << "Interface name '" << iface << "' is too long";
-    return false;
-  }
-
+bool PortTracker::AllowUdpPortAccess(uint16_t port,
+                                     const std::string& iface,
+                                     int dbus_fd) {
   Hole hole = std::make_pair(port, iface);
   if (udp_fds_.find(hole) != udp_fds_.end()) {
-    // This could potentially happen when a requesting process has just been
-    // restarted but scheduled lifeline FD check hasn't been performed yet, so
-    // we might have stale descriptors around. Force the FD check to see
-    // if they will be removed now.
+    // This can happen when a requesting process has just been restarted but
+    // the scheduled lifeline FD check hasn't yet been performed, so we might
+    // have stale file descriptors around.
+    // Force the FD check to see if they will be removed now.
     CheckLifelineFds(false);
 
     // Then try again. If this still fails, we know it's an invalid request.
     if (udp_fds_.find(hole) != udp_fds_.end()) {
-      LOG(ERROR) << "Hole already punched";
+      LOG(ERROR) << "Hole already punched for UDP port " << port;
       return false;
     }
   }
@@ -129,8 +115,7 @@ bool PortTracker::ProcessUdpPort(uint16_t port,
   udp_holes_[lifeline_fd] = hole;
   udp_fds_[hole] = lifeline_fd;
 
-  bool success;
-  firewalld_->PunchUdpHole(port, iface, &success, nullptr);
+  bool success = firewall_->AddAcceptRules(kProtocolUdp, port, iface);
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
@@ -143,7 +128,7 @@ bool PortTracker::ProcessUdpPort(uint16_t port,
   return true;
 }
 
-bool PortTracker::ReleaseTcpPort(uint16_t port, const std::string& iface) {
+bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
   Hole hole = std::make_pair(port, iface);
   auto p = tcp_fds_.find(hole);
   if (p == tcp_fds_.end()) {
@@ -165,7 +150,7 @@ bool PortTracker::ReleaseTcpPort(uint16_t port, const std::string& iface) {
   return plugged && deleted;
 }
 
-bool PortTracker::ReleaseUdpPort(uint16_t port, const std::string& iface) {
+bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
   Hole hole = std::make_pair(port, iface);
   auto p = udp_fds_.find(hole);
   if (p == udp_fds_.end()) {
@@ -187,10 +172,9 @@ bool PortTracker::ReleaseUdpPort(uint16_t port, const std::string& iface) {
   return plugged && deleted;
 }
 
-bool PortTracker::ProcessVpnSetup(
-    const std::vector<std::string>& usernames,
-    const std::string& interface,
-    int dbus_fd) {
+bool PortTracker::PerformVpnSetup(const std::vector<std::string>& usernames,
+                                  const std::string& interface,
+                                  int dbus_fd) {
   if (vpn_lifeline_ != kInvalidHandle) {
     LOG(ERROR) << "Already tracking a VPN lifeline";
     return false;
@@ -204,8 +188,7 @@ bool PortTracker::ProcessVpnSetup(
     return false;
   }
 
-  bool success;
-  firewalld_->RequestVpnSetup(usernames, interface, &success, nullptr);
+  bool success = firewall_->ApplyVpnSetup(usernames, interface, true /* add */);
   if (!success) {
     LOG(ERROR) << "Failed to set up rules for VPN";
     DeleteVpnRules();
@@ -220,9 +203,8 @@ bool PortTracker::ProcessVpnSetup(
 }
 
 bool PortTracker::DeleteVpnRules() {
-  bool success = true;
-
-  firewalld_->RemoveVpnSetup(vpn_usernames_, vpn_interface_, &success, nullptr);
+  bool success = firewall_->ApplyVpnSetup(vpn_usernames_, vpn_interface_,
+                                         false /* remove */);
   vpn_usernames_.clear();
   vpn_interface_.clear();
   vpn_lifeline_ = kInvalidHandle;
@@ -335,15 +317,16 @@ void PortTracker::ScheduleLifelineCheck() {
 }
 
 bool PortTracker::PlugFirewallHole(int fd) {
-  bool dbus_sucess = false;
+  bool success = false;
   Hole hole;
   if (tcp_holes_.find(fd) != tcp_holes_.end()) {
     // It was a TCP hole.
     hole = tcp_holes_[fd];
-    firewalld_->PlugTcpHole(hole.first, hole.second, &dbus_sucess, nullptr);
+    success = firewall_->DeleteAcceptRules(kProtocolTcp, hole.first /* port */,
+                                          hole.second /* interface */);
     tcp_holes_.erase(fd);
     tcp_fds_.erase(hole);
-    if (!dbus_sucess) {
+    if (!success) {
       LOG(ERROR) << "Failed to plug hole for TCP port " << hole.first
                  << " on interface '" << hole.second << "'";
       return false;
@@ -351,10 +334,11 @@ bool PortTracker::PlugFirewallHole(int fd) {
   } else if (udp_holes_.find(fd) != udp_holes_.end()) {
     // It was a UDP hole.
     hole = udp_holes_[fd];
-    firewalld_->PlugUdpHole(hole.first, hole.second, &dbus_sucess, nullptr);
+    success = firewall_->DeleteAcceptRules(kProtocolUdp, hole.first /* port */,
+                                          hole.second /* interface */);
     udp_holes_.erase(fd);
     udp_fds_.erase(hole);
-    if (!dbus_sucess) {
+    if (!success) {
       LOG(ERROR) << "Failed to plug hole for UDP port " << hole.first
                  << " on interface '" << hole.second << "'";
       return false;
@@ -374,7 +358,7 @@ bool PortTracker::PlugFirewallHole(int fd) {
 bool PortTracker::InitializeEpollOnce() {
   if (epfd_ < 0) {
     // |size| needs to be > 0, but is otherwise ignored.
-    LOG(INFO) << "Creating epoll instance";
+    VLOG(1) << "Creating epoll instance";
     epfd_ = epoll_create(1 /* size */);
     if (epfd_ < 0) {
       PLOG(ERROR) << "epoll_create()";

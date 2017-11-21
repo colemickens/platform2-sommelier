@@ -90,7 +90,6 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
 
 PermissionBroker::PermissionBroker(
     brillo::dbus_utils::ExportedObjectManager* object_manager,
-    org::chromium::FirewalldProxyInterface* firewalld,
     const std::string& access_group_name,
     const std::string& udev_run_path,
     int poll_interval_msecs)
@@ -99,9 +98,7 @@ PermissionBroker::PermissionBroker(
       dbus_object_(object_manager,
                    object_manager->GetBus(),
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
-      // |firewalld_| is owned by Firewalld's object manager proxy,
-      // the PortTracker object will only call D-Bus methods.
-      port_tracker_(firewalld) {
+      port_tracker_(&firewall_) {
   CHECK(brillo::userdb::GetGroupInfo(access_group_name, &access_group_))
       << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
@@ -199,34 +196,33 @@ bool PermissionBroker::RequestTcpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
     const dbus::FileDescriptor& in_lifeline_fd) {
-  return port_tracker_.ProcessTcpPort(in_port, in_interface,
-                                      in_lifeline_fd.value());
+  return port_tracker_.AllowTcpPortAccess(in_port, in_interface,
+                                          in_lifeline_fd.value());
 }
 
 bool PermissionBroker::RequestUdpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
     const dbus::FileDescriptor& in_lifeline_fd) {
-  return port_tracker_.ProcessUdpPort(in_port, in_interface,
-                                      in_lifeline_fd.value());
+  return port_tracker_.AllowUdpPortAccess(in_port, in_interface,
+                                          in_lifeline_fd.value());
 }
 
 bool PermissionBroker::ReleaseTcpPort(uint16_t in_port,
                                       const std::string& in_interface) {
-  return port_tracker_.ReleaseTcpPort(in_port, in_interface);
+  return port_tracker_.RevokeTcpPortAccess(in_port, in_interface);
 }
 
 bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
                                       const std::string& in_interface) {
-  return port_tracker_.ReleaseUdpPort(in_port, in_interface);
+  return port_tracker_.RevokeUdpPortAccess(in_port, in_interface);
 }
 
 bool PermissionBroker::RequestVpnSetup(
     const std::vector<std::string>& usernames,
     const std::string& interface,
     const dbus::FileDescriptor& in_lifeline_fd) {
-  return port_tracker_.ProcessVpnSetup(usernames,
-                                       interface,
+  return port_tracker_.PerformVpnSetup(usernames, interface,
                                        in_lifeline_fd.value());
 }
 

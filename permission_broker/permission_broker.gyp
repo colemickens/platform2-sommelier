@@ -9,7 +9,6 @@
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libudev',
-        'libfirewalld-client',
       ],
     },
   },
@@ -79,11 +78,6 @@
         {
           'target_name': 'permission_broker_unittest',
           'type': 'executable',
-          'variables': {
-            'deps': [
-              'libfirewalld-client-test',
-            ],
-          },
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libpermission_broker',
