@@ -203,6 +203,7 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
           handles->size()) == -1) {
     LOGF(ERROR) << "Failed to send token and handle: " << strerror(errno);
     cb.Run(-EAGAIN);
+    mojo::edk::ShutdownIPCSupport();
     return;
   }
   interface_ptr_.Bind(
@@ -232,9 +233,11 @@ void CameraAlgorithmBridgeImpl::OnConnectionErrorOnIpcThread() {
 void CameraAlgorithmBridgeImpl::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
-  cb_impl_.reset();
-  interface_ptr_.reset();
-  mojo::edk::ShutdownIPCSupport();
+  if (interface_ptr_.is_bound()) {
+    cb_impl_.reset();
+    interface_ptr_.reset();
+    mojo::edk::ShutdownIPCSupport();
+  }
   VLOGF_EXIT();
 }
 
