@@ -146,7 +146,10 @@
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
-          'dependencies': ['libsession_manager'],
+          'dependencies': [
+            'libsession_manager',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'variables': {
             'deps': [
               'libbrillo-test-<(libbase_ver)',
@@ -184,7 +187,6 @@
             'server_backed_state_key_generator_unittest.cc',
             'session_manager_impl_unittest.cc',
             'session_manager_process_unittest.cc',
-            'session_manager_testrunner.cc',
             'system_utils_unittest.cc',
             'user_policy_service_unittest.cc',
           ],
