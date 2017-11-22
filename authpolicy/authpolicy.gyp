@@ -171,6 +171,7 @@
           'dependencies': [
             'libauthpolicy',
             'stub_common',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {
             'deps': [
@@ -191,7 +192,6 @@
           'sources': [
             'anonymizer_unittest.cc',
             'authpolicy_flags_unittest.cc',
-            'authpolicy_testrunner.cc',
             'authpolicy_unittest.cc',
             'policy/device_policy_encoder_unittest.cc',
             'policy/extension_policy_encoder_unittest.cc',
