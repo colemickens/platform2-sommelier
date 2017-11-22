@@ -106,6 +106,7 @@
           'type': 'executable',
           'dependencies': [
             'buffet_common',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {
             'deps': [
@@ -117,7 +118,6 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'buffet_config_unittest.cc',
-            'buffet_testrunner.cc',
             'dbus_command_proxy_unittest.cc',
             'dbus_conversion_unittest.cc',
           ],
