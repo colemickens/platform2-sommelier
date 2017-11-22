@@ -803,12 +803,15 @@ TEST_F(ConnectionTest, RequestHostRoute) {
 }
 
 TEST_F(ConnectionTest, BlackholeIPv6) {
+  const unsigned char table_id = 9;
   properties_.blackhole_ipv6 = true;
   UpdateProperties();
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _))
       .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
+  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN));
+  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushRules(_));
   EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
@@ -816,7 +819,7 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
               CreateBlackholeRoute(kTestDeviceInterfaceIndex0,
                                    IPAddress::kFamilyIPv6,
                                    Connection::kDefaultMetric,
-                                   RT_TABLE_MAIN))
+                                   table_id))
       .WillOnce(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));

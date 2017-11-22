@@ -559,6 +559,7 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
   }
   if (!new_routes.empty()) {
     properties->routes.swap(new_routes);
+    properties->blackhole_ipv6 = true;
   }
   LOG_IF(WARNING, properties->routes.empty()) << "No routes provided.";
 }

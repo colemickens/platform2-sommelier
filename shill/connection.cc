@@ -205,7 +205,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties& properties = config->properties();
-  if (!properties.allowed_uids.empty() || !properties.allowed_iifs.empty()) {
+  if (!properties.allowed_uids.empty() || !properties.allowed_iifs.empty() ||
+      properties.blackhole_ipv6) {
     per_device_routing_ = true;
     allowed_uids_ = properties.allowed_uids;
     allowed_iifs_ = properties.allowed_iifs;

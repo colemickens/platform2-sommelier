@@ -681,7 +681,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(kGateway2, props.routes[1].gateway);
   EXPECT_EQ(kPrefix2, props.routes[1].prefix);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
-  EXPECT_FALSE(props.blackhole_ipv6);
+  EXPECT_TRUE(props.blackhole_ipv6);
 
   // If the driver is configured to ignore the gateway provided, it will
   // not set the "gateway" property for the properties, however the
