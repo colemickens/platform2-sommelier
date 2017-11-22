@@ -102,13 +102,12 @@
         {
           'target_name': 'virtual-file-provider_testrunner',
           'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libvirtual-file-provider',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'operation_throttle_unittest.cc',
-            'virtual_file_provider_testrunner.cc',
           ],
         },
       ],
