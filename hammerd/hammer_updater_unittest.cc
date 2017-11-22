@@ -42,6 +42,7 @@
 #include "hammerd/mock_dbus_wrapper.h"
 #include "hammerd/mock_pair_utils.h"
 #include "hammerd/mock_update_fw.h"
+#include "hammerd/update_fw.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -96,7 +97,6 @@ class HammerUpdaterTest : public testing::Test {
         touchpad_fw_ver_,
         false,
         HammerUpdater::ToUpdateCondition("mismatch"),
-        base::FilePath(""),
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),
         std::make_unique<MockDBusWrapper>(),
@@ -110,6 +110,7 @@ class HammerUpdaterTest : public testing::Test {
     task_ = &(hammer_updater_->task_);
     update_condition_ = const_cast<HammerUpdater::UpdateCondition*>(
         &(hammer_updater_->update_condition_));
+    at_boot_ = const_cast<bool*>(&(hammer_updater_->at_boot_));
     // By default, expect no USB connections to be made. This can
     // be overridden by a call to ExpectUsbConnections.
     usb_connection_count_ = 0;
@@ -157,6 +158,7 @@ class HammerUpdaterTest : public testing::Test {
   int usb_connection_count_;
   HammerUpdater::TaskState* task_;
   HammerUpdater::UpdateCondition* update_condition_;
+  bool* at_boot_;
   SectionName current_section_ = SectionName::RO;
 };
 
@@ -843,4 +845,31 @@ TEST_F(HammerUpdaterPostRWTest, Run_FailToTransferFirmware) {
             HammerUpdater::RunStatus::kFatalError);
 }
 
+// Update touchpad firmware on boot if the firmware is broken.
+// Condition:
+//   1. at_boot_ is True.
+//   2. In RW section.
+//   2. touchpad firmware is broken.
+TEST_F(HammerUpdaterPostRWTest, Run_UpdateTouchpadOnBoot) {
+  *at_boot_ = true;
+  current_section_ = SectionName::RW;
+  response_.elan.fw_version = kElanBrokenFwVersion;
+
+  {
+    InSequence dummy;
+    // Check that RO was not updated and jumping to RW was successful.
+    EXPECT_CALL(
+        *fw_updater_,
+        SendSubcommandReceiveResponse(
+            UpdateExtraCommand::kTouchpadInfo, "", _, sizeof(TouchpadInfo)))
+        .WillOnce(WriteResponse(static_cast<void *>(&response_)));
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
+    EXPECT_CALL(*fw_updater_, TransferTouchpadFirmware(_, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
+  }
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_EQ(hammer_updater_->Run(), true);
+}
 }  // namespace hammerd

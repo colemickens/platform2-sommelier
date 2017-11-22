@@ -110,6 +110,10 @@ FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
       ec_image_(""),
       sections_() {}
 
+UsbConnectStatus FirmwareUpdater::ConnectUsb() {
+  return endpoint_->Connect();
+}
+
 UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
   constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;

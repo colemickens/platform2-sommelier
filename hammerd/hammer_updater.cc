@@ -24,7 +24,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hammerd/uma_metric_names.h"
-#include "hammerd/usb_utils.h"
 
 namespace hammerd {
 
@@ -60,7 +59,6 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
         touchpad_fw_ver,
         at_boot,
         update_condition,
-        GetUsbSysfsPath(bus, port),
         std::make_unique<FirmwareUpdater>(
             std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port)),
         std::make_unique<PairManager>(),
@@ -74,7 +72,6 @@ HammerUpdater::HammerUpdater(
     const std::string& touchpad_fw_ver,
     bool at_boot,
     UpdateCondition update_condition,
-    const base::FilePath& base_path,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
     std::unique_ptr<PairManagerInterface> pair_manager,
     std::unique_ptr<DBusWrapperInterface> dbus_wrapper,
@@ -85,7 +82,6 @@ HammerUpdater::HammerUpdater(
       touchpad_fw_ver_(touchpad_fw_ver),
       at_boot_(at_boot),
       update_condition_(update_condition),
-      base_path_(base_path),
       task_(HammerUpdater::TaskState()),
       fw_updater_(std::move(fw_updater)),
       pair_manager_(std::move(pair_manager)),
@@ -99,30 +95,14 @@ bool HammerUpdater::Run() {
     LOG(ERROR) << "Failed to load EC image.";
     return false;
   }
-  // At boot time, we block UI and check the base need updating or not. But
-  // libusb_init takes long time to enumerate USB device during boot time, we do
-  // a quick firmware version check by USB sysfs first. If the base is not
-  // plugged or up to date, then we can terminate hammerd quickly.
+
   if (at_boot_) {
-    LOG(INFO) << "Trigger at boot. Check the firmware version first.";
-    base::FilePath conf_path = base_path_.Append("configuration");
-    if (!base::PathExists(conf_path)) {
-      LOG(INFO) << conf_path.value()
-                << " is not found, the base might not be attached.";
-      metrics_->SendBoolToUMA(kMetricAttachedOnBoot, false);
+    bool is_attached = fw_updater_->ConnectUsb() == UsbConnectStatus::kSuccess;
+    metrics_->SendBoolToUMA(kMetricAttachedOnBoot, is_attached);
+    if (!is_attached) {
+      LOG(INFO) << "USB device is not found.";
       return false;
     }
-    metrics_->SendBoolToUMA(kMetricAttachedOnBoot, true);
-
-    std::string current_version;
-    base::ReadFileToString(conf_path, &current_version);
-    base::TrimString(current_version, "\n", &current_version);
-    LOG(INFO) << "The firmware version in current base: " << current_version;
-    if (current_version == "RW:" + fw_updater_->GetEcImageVersion()) {
-      LOG(INFO) << "The version up to date, skip updating.";
-      return true;
-    }
-    // TODO(b/69347600): Check touchpad firmware version as well.
   }
 
   HammerUpdater::RunStatus status = RunLoop();
@@ -378,9 +358,11 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   }
 
   // Pair with hammer.
-  ret = Pair();
-  if (ret != HammerUpdater::RunStatus::kNoUpdate) {
-    return ret;
+  if (!at_boot_) {
+    ret = Pair();
+    if (ret != HammerUpdater::RunStatus::kNoUpdate) {
+      return ret;
+    }
   }
 
   // TODO(akahuang): Rollback increment.
