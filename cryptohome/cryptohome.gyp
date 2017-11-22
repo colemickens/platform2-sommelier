@@ -507,6 +507,7 @@
           'dependencies': [
             'libcrostpm',
             'libcryptohome',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'link_settings': {
             'libraries': [
@@ -540,7 +541,6 @@
             'boot_lockbox_unittest.cc',
             'crypto_unittest.cc',
             'cryptohome_event_source_unittest.cc',
-            'cryptohome_testrunner.cc',
             'dircrypto_data_migrator/migration_helper_unittest.cc',
             'firmware_management_parameters_unittest.cc',
             'homedirs_unittest.cc',
