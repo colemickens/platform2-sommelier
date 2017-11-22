@@ -775,7 +775,7 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
     }
 
     // Edge enhancement, noise reduction and aberration correction modes.
-    EXPECT_EQ(static_info->IsKeyAvailable(ANDROID_EDGE_MODE),
+    EXPECT_EQ(IsMetadataKeyAvailable(default_settings, ANDROID_EDGE_MODE),
               static_info->IsKeyAvailable(ANDROID_EDGE_AVAILABLE_EDGE_MODES))
         << "Edge mode must be present in request if available edge modes are "
            "present in metadata, and vice-versa";
@@ -792,9 +792,10 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
       }
     }
 
-    EXPECT_EQ(static_info->IsKeyAvailable(ANDROID_NOISE_REDUCTION_MODE),
-              static_info->IsKeyAvailable(
-                  ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES))
+    EXPECT_EQ(
+        IsMetadataKeyAvailable(default_settings, ANDROID_NOISE_REDUCTION_MODE),
+        static_info->IsKeyAvailable(
+            ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES))
         << "Noise reduction mode must be present in request if available noise "
            "reductions are present in metadata, and vice-versa";
     if (static_info->IsKeyAvailable(
@@ -813,10 +814,10 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
       }
     }
 
-    EXPECT_EQ(
-        static_info->IsKeyAvailable(ANDROID_COLOR_CORRECTION_ABERRATION_MODE),
-        static_info->IsKeyAvailable(
-            ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES))
+    EXPECT_EQ(IsMetadataKeyAvailable(default_settings,
+                                     ANDROID_COLOR_CORRECTION_ABERRATION_MODE),
+              static_info->IsKeyAvailable(
+                  ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES))
         << "Aberration correction mode must be present in request if available "
            "aberration correction reductions are present in metadata, and "
            "vice-versa";
@@ -902,7 +903,7 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   // Tone map and lens shading modes.
   if (type == CAMERA3_TEMPLATE_STILL_CAPTURE) {
     EXPECT_EQ(
-        static_info->IsKeyAvailable(ANDROID_TONEMAP_MODE),
+        IsMetadataKeyAvailable(default_settings, ANDROID_TONEMAP_MODE),
         static_info->IsKeyAvailable(ANDROID_TONEMAP_AVAILABLE_TONE_MAP_MODES))
         << "Tonemap mode must be present in request if available tonemap modes "
            "are present in metadata, and vice-versa";
