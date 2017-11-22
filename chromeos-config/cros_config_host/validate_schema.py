@@ -110,6 +110,28 @@ class PropString(PropDesc):
                (prop.name, prop.value, pattern))
 
 
+class PropFloat(PropDesc):
+  """A floating-point property"""
+  def __init__(self, name, required=False, float_range=None,
+               conditional_props=None):
+    super(PropFloat, self).__init__(name, 'float', required, conditional_props)
+    self.float_range = float_range
+
+  def Validate(self, val, prop):
+    """Check that the value is a float"""
+    try:
+      float_val = float(prop.value)
+      if self.float_range is not None:
+        min_val, max_val = self.float_range
+        if float_val < min_val or float_val > max_val:
+          val.Fail(prop.node.path, "'%s' value '%s' is out of range [%g..%g]" %
+                   (prop.name, prop.value, min_val, max_val))
+
+    except ValueError:
+      val.Fail(prop.node.path, "'%s' value '%s' is not a float" %
+               (prop.name, prop.value))
+
+
 class PropBool(PropDesc):
   """A boolean property"""
   def __init__(self, name, conditional_props=None):

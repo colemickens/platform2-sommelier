@@ -27,6 +27,7 @@ extern "C" {
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
+const char* kFollowPhandles[] = {"audio-type", "power-type"};
 }  // namespace
 
 namespace brillo {
@@ -118,16 +119,19 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   }
   // We would prefer to do this lookup on the host where the full schema info
   // is available. But at present this is not implemented. We want this for
-  // audio, so add a check there.
+  // audio and power, so add a check there.
   // Perhaps we can resolve this as part of crbug.com/761284
   if (!ptr) {
     int target_node;
-    LookupPhandle(subnode, "audio-type", &target_node);
-    if (target_node >= 0) {
-      ptr = static_cast<const char*>(
-        fdt_getprop(blob, target_node, prop.c_str(), &len));
-      if (ptr) {
-        LOG(INFO) << "Followed audio-type phandle";
+    for (int i = 0; i < arraysize(kFollowPhandles); i++) {
+      LookupPhandle(subnode, kFollowPhandles[i], &target_node);
+      if (target_node >= 0) {
+        ptr = static_cast<const char*>(
+          fdt_getprop(blob, target_node, prop.c_str(), &len));
+        if (ptr) {
+          LOG(INFO) << "Followed " << kFollowPhandles[i] << " phandle";
+          break;
+        }
       }
     }
   }

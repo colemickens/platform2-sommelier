@@ -56,7 +56,7 @@ from . import fdt, fdt_util
 from .validate_schema import NodeAny, NodeDesc, NodeModel, NodeSubmodel
 from .validate_schema import PropCustom, PropDesc, PropString, PropStringList
 from .validate_schema import PropPhandleTarget, PropPhandle, CheckPhandleTarget
-from .validate_schema import PropAny, PropBool, PropFile
+from .validate_schema import PropAny, PropBool, PropFile, PropFloat
 
 
 def ParseArgv(argv):
@@ -480,6 +480,16 @@ BASE_AUDIO_NODE = [
                     False),
     ] + BASE_AUDIO_SCHEMA)
 ]
+
+BASE_POWER_SCHEMA = [
+    PropString('charging-ports'),
+    PropFloat('keyboard-backlight-no-als-brightness', False, (0, 100)),
+    PropFloat('low-battery-shutdown-percent', False, (0, 100)),
+    PropFloat('power-supply-full-factor', False, (0.001, 1.0)),
+    PropString('set-wifi-transmit-power-for-tablet-mode', False, '0|1'),
+    PropString('suspend-to-idle', False, '0|1'),
+]
+
 NOT_WL = {'whitelabel': False}
 
 """This is the schema. It is a hierarchical set of nodes and properties, just
@@ -495,6 +505,10 @@ SCHEMA = NodeDesc('/', True, [
             NodeDesc('audio', elements=[
                 NodeAny('', [PropPhandleTarget()] +
                         copy.deepcopy(BASE_AUDIO_SCHEMA)),
+            ]),
+            NodeDesc('power', elements=[
+                NodeAny('', [PropPhandleTarget()] +
+                        copy.deepcopy(BASE_POWER_SCHEMA)),
             ]),
             NodeDesc('firmware', elements=[
                 PropString('script', True, r'updater4\.sh'),
@@ -539,6 +553,10 @@ SCHEMA = NodeDesc('/', True, [
                 PropString('wallpaper', False, '[a-z_]+'),
                 NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
                          conditional_props=NOT_WL),
+                NodeDesc('power', False, [
+                    PropPhandle('power-type', '/chromeos/family/power/ANY',
+                                False),
+                ] + copy.deepcopy(BASE_POWER_SCHEMA), conditional_props=NOT_WL),
                 NodeDesc('submodels', False, [
                     NodeSubmodel([
                         PropPhandleTarget(),

@@ -295,6 +295,31 @@ AUDIO = r'''
 };
 '''
 
+POWER = r'''
+&family {
+  power {
+    power_type: power_type {
+      power-supply-full-factor = "0.10";
+      suspend-to-idle = "1";
+    };
+    bad_power_type: bad-power-type {
+      low-battery-shutdown-percent = "110";
+      power-supply-full-factor = "ten point one";
+      suspend-to-idle = "2";
+    };
+  };
+};
+&models {
+  pyro: pyro {
+    power {
+      power-type = <&power_type>;
+      charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
+      power-supply-full-factor = "0.12";
+    };
+  };
+};
+'''
+
 MAPPING = '''
 &family {
   mapping {
@@ -606,6 +631,18 @@ class UnitTests(cros_test_lib.TestCase):
         "snappy/audio/main: Required property 'hifi-conf' missing",
         "snappy/audio/main: Required property 'alsa-conf' missing",
         "bad-audio-type: Required property 'card' missing",
+        ], result)
+
+  def testPower(self):
+    """Test validation of the power nodes"""
+    result = self.Run(HEADER + MODELS + POWER)
+    self._CheckAllIn([
+        "/chromeos/family/power/bad-power-type: 'power-supply-full-factor' " +
+        "value 'ten point one' is not a float",
+        "/chromeos/family/power/bad-power-type: 'suspend-to-idle' value '2' " +
+        "does not match pattern '^0|1$'",
+        "/chromeos/family/power/bad-power-type: " +
+        "'low-battery-shutdown-percent' value '110' is out of range [0..100]",
         ], result)
 
   def testMapping(self):

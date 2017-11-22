@@ -166,6 +166,15 @@ TEST_F(CrosConfigTest, CheckSubmodel) {
   ASSERT_EQ("2mic", val);
 }
 
+TEST_F(CrosConfigTest, CheckFollowPhandle) {
+  InitConfig("Pyro");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "card", &val));
+  ASSERT_EQ("bxtda7219max", val);
+  ASSERT_TRUE(cros_config_.GetString("/power", "suspend-to-idle", &val));
+  ASSERT_EQ("1", val);
+}
+
 // Check a particular SKU ID can return information from the whitelabels {} node
 // @sku_id: SKU ID to check
 void CrosConfigTest::CheckWhiteLabelAlternateSku(int sku_id) {

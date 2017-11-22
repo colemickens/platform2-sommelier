@@ -46,6 +46,17 @@
 			alsa-conf = "ucm-config/2mic/${card}.conf";
 		};
 	};
+	power {
+		power_type_clamshell: power-type-clamshell {
+			charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
+			power-supply-full-factor = "0.12";
+			suspend-to-idle = "1";
+		};
+		power_type_convertible: power-type-convertible {
+			charging-ports = "CROS_USB_PD_CHARGER0 LEFT";
+			power-supply-full-factor = "0.12";
+		};
+	};
 	firmware {
 		script = "updater4.sh";
 		shared: caroline {
@@ -80,7 +91,7 @@
 				9 &whitetip1
 				10 &blacktip
 				11 &blacktip_touch
-                                12 &blacktip_notouch
+				12 &blacktip_notouch
 				20 &caroline>;
 		};
 		sku-map@1 {
@@ -113,7 +124,7 @@
 	pyro: pyro {
 		wallpaper = "default";
 		string-list = "default", "more";
-                bool-prop;
+		bool-prop;
 		audio {
 			main {
 				audio-type = <&audio_type>;
@@ -121,6 +132,10 @@
 				ucm-suffix = "pyro";
 				topology-name = "pyro";
 			};
+		};
+		power {
+			power-type = <&power_type_clamshell>;
+			power-supply-full-factor = "0.20";
 		};
 		firmware {
 			bcs-overlay = "overlay-pyro-private";
@@ -166,6 +181,10 @@
 	};
 	reef {
 		wallpaper = "epic";
+		power {
+			power-type = <&power_type_clamshell>;
+			set-wifi-transmit-power-for-tablet-mode = <1>;
+		};
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
@@ -236,7 +255,7 @@
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
-                        no-firmware;
+			no-firmware;
 		};
 	};
 

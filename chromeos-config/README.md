@@ -69,6 +69,29 @@ properties.
         card, since the naming convention is typically consistent for that
         manufacturer.
 
+    *   `power` (optional): Contains information about power devices used by
+            this family. Each subnode is defined as a phandle that can be
+            referenced from the model-specific configuration using the
+            `power-type` property.
+        *   `<power-type>`: Node containing the power config for one device
+                type. Each property corresponds to a power_manager preference,
+                more completely documented in
+                [power_manager](https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h).
+            *   `charging-ports`: String describing charging port positions.
+            *   `keyboard-backlight-no-als-brightness`: Initial brightness for
+                    the keyboard backlight for systems without ambient light
+                    sensors, in the range [0.0, 100.0].
+            *   `low-battery-shutdown-percent`: Battery percentage threshold at
+                    which the system should shut down automatically, in the
+                    range [0.0, 100.0].
+            *   `power-supply-full-factor`: Fraction of the battery's total
+                    charge at which it should be reported as full in the UI, in
+                    the range (0.0, 1.0].
+            *   `set-wifi-transmit-power-for-tablet-mode`: If true (1), update
+                    wifi transmit power when in tablet vs. clamshell mode.
+            *   `suspend-to-idle`: If true (1), suspend to idle by writing
+                    freeze to /sys/power/state.
+
     *   `firmware` (optional) : Contains information about firmware versions and
         files
         *   `script`: Updater script to use. See [the pack_dist
@@ -379,6 +402,14 @@ chromeos {
                 };
             };
         };
+        power {
+          power_type: power-type {
+            charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
+            low-battery-shutdown-percent = "4.0";
+            power-supply-full-factor = "0.94";
+            suspend-to-idle = "1";
+          };
+        };
 
         mapping {
             #address-cells = <1>;
@@ -447,6 +478,10 @@ chromeos {
                 shares = <&shared>;
                 key-id = "REEF";
             };
+            power {
+              power-type = <&power_type>;
+              set-wifi-transmit-power-for-tablet-mode = "1";
+            };
             thermal {
                 dptf-dv = "reef/dptf.dv";
             };
@@ -513,6 +548,9 @@ chromeos {
                     libpayload = "reef";
                 };
             };
+            power {
+              power-type = <&power_type>;
+            };
             thermal {
                 dptf-dv = "pyro/dptf.dv";
             };
@@ -542,6 +580,10 @@ chromeos {
                     libpayload = "reef";
                 };
             };
+            power {
+              power-type = <&power_type>;
+              keyboard-backlight-no-als-brightness = "10.0";
+            };
         };
 
         basking: basking {
@@ -551,6 +593,9 @@ chromeos {
             firmware {
                 shares = <&shared>;
                 key-id = "BASKING";
+            };
+            power {
+              power-type = <&power_type>;
             };
             touch {
                 #address-cells = <1>;
@@ -597,6 +642,9 @@ chromeos {
                 shares = <&pinned_version>;
                 key-id = "SAND";
             };
+            power {
+              power-type = <&power_type>;
+            };
         };
 
         electro: electro {
@@ -606,6 +654,9 @@ chromeos {
             firmware {
                 shares = <&pinned_version>;
                 key-id = "ELECTRO";
+            };
+            power {
+              power-type = <&power_type>;
             };
         };
 
