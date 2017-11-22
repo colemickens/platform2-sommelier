@@ -12,7 +12,7 @@
 // Create the configuration structure used during an install.
 bool ConfigureInstall(
     const std::string& install_dev,
-    const std::string& install_path,
+    const std::string& install_dir,
     BiosType bios_type,
     InstallConfig* install_config);
 
@@ -28,8 +28,8 @@ bool KernelConfigToBiosType(const std::string& kernel_config, BiosType* type);
 // Perform the post install operation. This is used after a kernel and
 // rootfs have been copied into to place to make the valid and set them
 // up for the next boot.
-bool RunPostInstall(const std::string& install_dir,
-                    const std::string& install_dev,
+bool RunPostInstall(const std::string& install_dev,
+                    const std::string& install_dir,
                     BiosType bios_type,
                     int* exit_code);
 

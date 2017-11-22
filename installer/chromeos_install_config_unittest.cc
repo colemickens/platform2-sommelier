@@ -16,7 +16,7 @@
 using std::string;
 
 void TestConfigureInstall(const string& install_dev,
-                          const string& install_path,
+                          const string& install_dir,
                           bool expected_success,
                           const string& expected_slot,
                           const string& expected_root,
@@ -27,7 +27,7 @@ void TestConfigureInstall(const string& install_dev,
   BiosType expected_bios = kBiosTypeSecure;
 
   EXPECT_EQ(ConfigureInstall(install_dev,
-                             install_path,
+                             install_dir,
                              expected_bios,
                              &install_config),
             expected_success);

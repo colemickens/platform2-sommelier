@@ -23,10 +23,10 @@ const char kStatefulMount[] = "/mnt/stateful_partition";
 }  // namespace
 
 bool ConfigureInstall(const string& install_dev,
-                      const string& install_path,
+                      const string& install_dir,
                       BiosType bios_type,
                       InstallConfig* install_config) {
-  Partition root = Partition(install_dev, install_path);
+  Partition root = Partition(install_dev, install_dir);
 
   string slot;
   switch (root.number()) {
@@ -423,14 +423,14 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
 }  // namespace
 
-bool RunPostInstall(const string& install_dir,
-                    const string& install_dev,
+bool RunPostInstall(const string& install_dev,
+                    const string& install_dir,
                     BiosType bios_type,
                     int* exit_code) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(install_dir,
-                        install_dev,
+  if (!ConfigureInstall(install_dev,
+                        install_dir,
                         bios_type,
                         &install_config)) {
     printf("Configure failed.\n");
