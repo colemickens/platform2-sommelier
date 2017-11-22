@@ -1188,8 +1188,11 @@ void Camera3InvalidBufferTest::RunInvalidBufferTest(buffer_handle_t* handle) {
       .input_buffer = NULL,
       .num_output_buffers = static_cast<uint32_t>(stream_buffers.size()),
       .output_buffers = stream_buffers.data()};
-  ASSERT_EQ(0, cam_device_.ProcessCaptureRequest(&capture_request));
-
+  int ret = cam_device_.ProcessCaptureRequest(&capture_request);
+  if (ret == -EINVAL) {
+    return;
+  }
+  ASSERT_EQ(0, ret);
   struct timespec timeout;
   GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   ASSERT_EQ(0, sem_timedwait(&capture_result_sem_, &timeout));
