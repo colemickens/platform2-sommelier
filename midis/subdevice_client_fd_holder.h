@@ -11,6 +11,9 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/message_loops/message_loop.h>
 
+#include "media/midi/message_util.h"
+#include "media/midi/midi_message_queue.h"
+
 namespace midis {
 
 // Container to store the client_id, pipe FD and file watcher task id for the
@@ -49,6 +52,7 @@ class SubDeviceClientFdHolder {
   base::ScopedFD fd_;
   brillo::MessageLoop::TaskId pipe_taskid_;
   ClientDataCallback client_data_cb_;
+  std::unique_ptr<midi::MidiMessageQueue> queue_;
   base::WeakPtrFactory<SubDeviceClientFdHolder> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(SubDeviceClientFdHolder);

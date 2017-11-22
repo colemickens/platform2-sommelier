@@ -6,10 +6,12 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "media/midi/message_util.h"
 #include "midis/constants.h"
 
 namespace midis {
@@ -23,6 +25,7 @@ SubDeviceClientFdHolder::SubDeviceClientFdHolder(
       subdevice_id_(subdevice_id),
       fd_(std::move(fd)),
       client_data_cb_(client_data_cb),
+      queue_(std::make_unique<midi::MidiMessageQueue>(true)),
       weak_factory_(this) {}
 
 std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
@@ -38,9 +41,16 @@ std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
 
 void SubDeviceClientFdHolder::WriteDeviceDataToClient(const void* buffer,
                                                       size_t buf_len) {
-  ssize_t ret = HANDLE_EINTR(write(GetRawFd(), buffer, buf_len));
-  if (ret != static_cast<ssize_t>(buf_len)) {
-    PLOG(ERROR) << "Error writing to client fd.";
+  queue_->Add(reinterpret_cast<const uint8_t*>(buffer), buf_len);
+  std::vector<uint8_t> message;
+  queue_->Get(&message);
+  while (!message.empty()) {
+    ssize_t ret =
+        HANDLE_EINTR(write(GetRawFd(), message.data(), message.size()));
+    if (ret != static_cast<ssize_t>(message.size())) {
+      PLOG(ERROR) << "Error writing to client fd.";
+    }
+    queue_->Get(&message);
   }
 }
 
@@ -71,6 +81,12 @@ void SubDeviceClientFdHolder::HandleClientMidiData() {
   ssize_t ret = HANDLE_EINTR(read(fd_.get(), buf, sizeof(buf)));
   if (ret < 0) {
     PLOG(ERROR) << "Error reading from pipe fd.";
+    return;
+  }
+
+  std::vector<uint8_t> v(buf, buf + ret);
+  if (!midi::IsValidWebMIDIData(v)) {
+    PLOG(ERROR) << "Received invalid MIDI Data.";
     return;
   }
 

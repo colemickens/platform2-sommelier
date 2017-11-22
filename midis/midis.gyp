@@ -85,6 +85,10 @@
         },
       },
       'sources': [
+        # Files included from Chrome //src/media/midi checkout.
+        # This directory is placed in platform2 as platform2/media/midi.
+        '../media/midi/message_util.cc',
+        '../media/midi/midi_message_queue.cc',
         '<(mojo_output_dir)/mojo/midis.mojom.cc',
         'client.cc',
         'client_tracker.cc',
