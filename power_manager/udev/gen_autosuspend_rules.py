@@ -181,6 +181,8 @@ USB_IDS += [
   "282b:48f0",
   # Moshi USB-C to 3.5 mm Adapter/Charger, Made for Google (HID only)
   "282b:0026",
+  # AiAiAi TMA-2 C60 Cable, Made for Google
+  "0572:1a08",
 ]
 
 # List of PCI devices (vendorid:deviceid) for which it is safe to enable
