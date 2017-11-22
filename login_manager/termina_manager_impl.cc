@@ -35,6 +35,10 @@ const char kVmToolGetName[] = "getname";
 const char kVmToolStart[] = "start";
 const char kVmToolStop[] = "stop";
 
+bool VmEnabled() {
+  return base::PathExists(base::FilePath(kVmLauncherPath));
+}
+
 std::string VmNameFromPid(int pid) {
   brillo::ProcessImpl vmtool;
   vmtool.AddArg(std::string(kVmLauncherPath));
@@ -82,10 +86,16 @@ void TerminaManagerImpl::HandleExit(const siginfo_t& status) {
 }
 
 void TerminaManagerImpl::RequestJobExit() {
+  if (!VmEnabled())
+    return;
+
   CleanUpVm(kVmToolAllVms);
 }
 
 void TerminaManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
+  if (!VmEnabled())
+    return;
+
   brillo::ProcessImpl vmtool;
   vmtool.AddArg(kVmLauncherPath);
   vmtool.AddArg(kVmToolStop);
