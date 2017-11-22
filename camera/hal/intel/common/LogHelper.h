@@ -41,6 +41,7 @@ extern int32_t gPerfLevel;   //< camera.hal.perf
 extern int32_t gEnforceDvs;  //< camera.hal.dvs
 
 extern int32_t gDumpSkipNum;         //< camera.hal.dump.skip_num
+extern int32_t gDumpInterval;         //< camera.hal.dump.interval
 extern int32_t gDumpCount;           //< camera.hal.dump.count
 extern char    gDumpPath[PATH_MAX];  //< camera.hal.dump.path
 

@@ -27,6 +27,7 @@
 
 // Properties for debugging.
 #define ENV_CAMERA_HAL_DUMP_SKIP_NUM  "cameraDumpSkipNum"
+#define ENV_CAMERA_HAL_DUMP_INTERVAL  "cameraDumpInterval"
 #define ENV_CAMERA_HAL_DUMP_COUNT     "cameraDumpCount"
 #define ENV_CAMERA_HAL_DUMP_PATH      "cameraDumpPath"
 #define ENV_CAMERA_CSS_DEBUG          "cameraCSSDebug"

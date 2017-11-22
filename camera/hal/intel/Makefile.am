@@ -114,7 +114,8 @@ libcamerahal_la_SOURCES = $(3ASRC) \
 #cpphacks
 CPPHACKS = \
    -DPAGESIZE=4096 \
-   -DCAMERA_HAL_DEBUG
+   -DCAMERA_HAL_DEBUG \
+   -DDUMP_IMAGE
 
 STRICTED_CPPFLAGS = \
     -std=c++11 \

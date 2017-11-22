@@ -32,6 +32,8 @@ int32_t gPerfLevel = 0;
 int32_t gDumpType = 0;
 // Skip frame number before dump. Default: 0, not skip
 int32_t gDumpSkipNum = 0;
+// dump 1 frame every gDumpInterval frames. Default: 1, there is no skip frames between frames.
+int32_t gDumpInterval = 1;
 // Dump frame count. Default: -1, negative value means infinity
 int32_t gDumpCount = -1;
 // Path for dump data. Default: CAMERA_OPERATION_FOLDER
@@ -98,6 +100,10 @@ void setDebugLevel(void)
             // skip number
             if (__getEnviromentValue(ENV_CAMERA_HAL_DUMP_SKIP_NUM, &gDumpSkipNum)) {
                 LOGD("Skip %d frames before dump", gDumpSkipNum);
+            }
+            // set dump interval
+            if (__getEnviromentValue(ENV_CAMERA_HAL_DUMP_INTERVAL, &gDumpInterval)) {
+                LOGD("dump 1 frame every %d frames", gDumpInterval);
             }
             // total frame number for dump
             if (__getEnviromentValue(ENV_CAMERA_HAL_DUMP_COUNT, &gDumpCount)) {

@@ -95,7 +95,7 @@ public:
     void dumpImage(const int type, const char *name);
     void dumpImage(const char *name);
     void dumpImage(const void *data, const int size, int width, int height,
-                    const char *name) const;
+                    const char *name);
     CameraStream * getOwner() const { return mOwner; }
     int width() {return mWidth; }
     int height() {return mHeight; }
