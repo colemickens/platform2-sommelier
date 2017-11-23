@@ -136,13 +136,18 @@ class SambaInterface {
                                      int password_fd,
                                      ActiveDirectoryAccountInfo* account_info);
 
-  // Retrieves the name of the domain controller (DC) and the IP of the key
-  // distribution center (KDC). If the full server name is 'server.realm', the
-  // DC name is set to 'server'. The DC name is required for proper kerberized
-  // authentication. The KDC address is required to speed up network
-  // communication and get rid of waiting for the machine account propagation
-  // after Active Directory domain join.
+  // Calls GetKdcIp and GetDcName to fill the fields of the given |realm_info|.
   ErrorType GetRealmInfo(protos::RealmInfo* realm_info) const;
+
+  // Retrieves the IP of the key distribution center (KDC). The KDC address is
+  // required to speed up network communication and to get rid of waiting for
+  // the machine account propagation after Active Directory domain join.
+  ErrorType GetKdcIp(std::string* kdc_ip) const;
+
+  // Retrieves the DNS domain name of the domain controller (DC). The DC name is
+  // required as host name in smbclient. With an IP address only, Samba wouldn't
+  // be able to use the Kerberos ticket.
+  ErrorType GetDcName(std::string* dc_name) const;
 
   // Gets the status of the user's ticket-granting-ticket (TGT). Uses klist
   // internally to check whether the ticket is valid, expired or not present.
@@ -205,7 +210,7 @@ class SambaInterface {
   // a sub-folder where GPOs are downloaded to. It should match |scope| from
   // |GetGpoList|.
   ErrorType DownloadGpos(const protos::GpoList& gpo_list,
-                         const std::string& domain_controller_name,
+                         const std::string& dc_name,
                          PolicyScope scope,
                          std::vector<base::FilePath>* gpo_file_paths) const;
 

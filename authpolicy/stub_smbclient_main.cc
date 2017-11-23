@@ -21,16 +21,26 @@ namespace authpolicy {
 namespace {
 
 // smbclient sub-commands.
-const char kLcdCommand[] = "lcd ";
-const char kCdCommand[] = "cd ";
-const char kGetCommand[] = "get ";
+constexpr char kLcdCommand[] = "lcd ";
+constexpr char kCdCommand[] = "cd ";
+constexpr char kGetCommand[] = "get ";
+
+// Expected host and share in smbclient command. First part should match domain
+// controller name in kStubLookup (see stub_net_main.cc).
+constexpr char kHostAndShare[] = "//DCNAME.EXAMPLE.COM/SysVol";
 
 // Error printed when a "remote" GPO fails to download.
-const char kGpoDownloadError[] = "NT_STATUS_ACCESS_DENIED opening remote file ";
+constexpr char kGpoDownloadError[] =
+    "NT_STATUS_ACCESS_DENIED opening remote file ";
 
 // Error printed when a "remote" GPO file does not exist.
-const char kGpoDoesNotExistError[] =
+constexpr char kGpoDoesNotExistError[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
+
+// Error printed smbclient cannot connect to a host/share.
+constexpr char kConnectionFailedError[] =
+    "Connection to //<SERVER_NAME>/sysvol failed (Error "
+    "NT_STATUS_UNSUCCESSFUL)";
 
 struct DownloadItem {
   std::string remote_path_;
@@ -64,6 +74,11 @@ std::vector<DownloadItem> GetDownloadItems(const std::string& command_line) {
 int HandleCommandLine(const std::string& command_line) {
   // Make sure the caller adds the debug level.
   CHECK(Contains(command_line, " -d "));
+
+  if (!Contains(command_line, kHostAndShare)) {
+    WriteOutput(kConnectionFailedError, "");
+    return kExitCodeError;
+  }
 
   // Stub GPO files are written to krb5.conf's directory because it's hard to
   // pass a full file path from a unit test to a stub binary. Note that

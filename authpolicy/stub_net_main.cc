@@ -29,12 +29,12 @@ const char kSmbConfArgMissingError[] =
     "Can't load /etc/samba/smb.conf - run testparm to debug it";
 const char kNetworkError[] = "No logon servers";
 const char kWrongPasswordError[] =
-    "Failed to join domain: failed to lookup DC info for domain 'REALM.COM' "
-    "over rpc: Logon failure";
+    "Failed to join domain: failed to lookup DC info for domain "
+    "'REALM.EXAMPLE.COM' over rpc: Logon failure";
 const char kExpiredPasswordError[] =
-    "Enter user@REALM.COM's password:\n"
-    "Failed to join domain: failed to lookup DC info for domain 'REALM.COM' "
-    "over rpc: Must change password";
+    "Enter user@REALM.EXAMPLE.COM's password:\n"
+    "Failed to join domain: failed to lookup DC info for domain "
+    "'REALM.EXAMPLE.COM' over rpc: Must change password";
 const char kJoinAccessDeniedError[] =
     "Failed to join domain: Failed to set account flags for machine account "
     "(NT_STATUS_ACCESS_DENIED)";
@@ -43,8 +43,8 @@ const char kMachineNameTooLongError[] =
     "Failed to join domain: The format of the specified computer name is "
     "invalid.";
 const char kInvalidMachineNameError[] =
-    "Failed to join domain: failed to join domain 'REALM.COM' over rpc: "
-    "Improperly formed account name";
+    "Failed to join domain: failed to join domain 'REALM.EXAMPLE.COM' over "
+    "rpc: Improperly formed account name";
 const char kInsufficientQuotaError[] =
     "Insufficient quota exists to complete the operation";
 
@@ -52,16 +52,46 @@ const char kInsufficientQuotaError[] =
 const size_t kMaxMachineNameSize = 15;
 
 // Stub net ads info response.
-const char kStubInfo[] = R"!!!(LDAP server: 111.222.33.44
-LDAP server name: dcname.realm.com
-Realm: REALM.COM
-Bind Path: dc=REALM,dc=COM
+const char kStubInfo[] = R"!!!(LDAP server: 111.222.33.1
+LDAP server name: LDAPNAME.example.com
+Realm: REALM.EXAMPLE.COM
+Bind Path: dc=REALM,dc=EXAMPLE,dc=COM
 LDAP port: 389
 Server time: Fri, 03 Feb 2017 05:24:05 PST
-KDC server: 111.222.33.44
+KDC server: 111.222.33.2
 Server time offset: -91
 Last machine account password change:
 Wed, 31 Dec 1969 16:00:00 PST)!!!";
+
+// Stub net ads info response.
+const char kStubLookup[] = R"!!!(Information for Domain Controller: 111.222.33.3
+Response Type: LOGON_SAM_LOGON_RESPONSE_EX
+GUID: fca78f31-bf15-4ca3-b730-fbe619e937b2
+Flags:
+    Is a PDC:                                   yes
+    Is a GC of the forest:                      yes
+    Is an LDAP server:                          yes
+    Supports DS:                                yes
+    Is running a KDC:                           yes
+    Is running time services:                   yes
+    Is the closest DC:                          no
+    Is writable:                                yes
+    Has a hardware clock:                       yes
+    Is a non-domain NC serviced by LDAP server: no
+    Is NT6 DC that has some secrets:            no
+    Is NT6 DC that has all secrets:             yes
+    Runs Active Directory Web Services:         yes
+    Runs on Windows 2012 or later:              yes
+Forest:             FOREST.EXAMPLE.COM
+Domain:             REALM.EXAMPLE.COM
+Domain Controller:  DCNAME.EXAMPLE.COM
+Pre-Win2k Domain:   REALM
+Pre-Win2k Hostname: DCNAME
+Server Site Name :  SITE
+Client Site Name :  SITE
+NT Version: 5
+LMNT Token: ffff
+LM20 Token: ffff)!!!";
 
 // Stub net ads gpo list response.
 const char kStubLocalGpo[] = R"!!!(---------------------
@@ -84,10 +114,10 @@ displayname:  test-user-policy
 version:  %u (0x%04x%04x)
 version_user:  %u (0x%04x)
 version_machine: %u (0x%04x)
-filesyspath:  \\realm.com\SysVol\realm.com\Policies\%s
-dspath:  cn=%s,cn=policies,cn=system,DC=chrome,DC=lan
+filesyspath:  \\realm.example.com\SysVol\realm.example.com\Policies\%s
+dspath:  cn=%s,cn=policies,cn=system,DC=realm,DC=example,DC=com
 options:  %s
-link:   OU=test-ou,DC=chrome,DC=lan
+link:   OU=test-ou,DC=realm,DC=example,DC=com
 link_type:  4 GP_LINK_OU
 machine_extensions: (null)
 user_extensions: [{D02B1F73-3407-48AE-BA88-E8213C6761F1}]
@@ -103,7 +133,7 @@ cn: %s
 sn: Doe
 givenName: %s
 initials: JD
-distinguishedName: CN=%s,OU=some-ou,DC=realm,DC=com
+distinguishedName: CN=%s,OU=test-ou,DC=realm,DC=example,DC=com
 instanceType: 4
 whenCreated: 20161018155136.0Z
 whenChanged: 20170217134227.0Z
@@ -126,8 +156,8 @@ accountExpires: 9223372036854775807
 logonCount: 1453
 sAMAccountName: %s
 sAMAccountType: 805306368
-userPrincipalName: jdoe@realm.com
-objectCategory: CN=Person,CN=Schema,CN=Configuration,DC=chrome,DC=lan
+userPrincipalName: jdoe@realm.example.com
+objectCategory: CN=Person,CN=Schema,CN=Configuration,DC=realm,DC=example,DC=com
 dSCorePropagationData: 20161024075536.0Z
 dSCorePropagationData: 20161024075311.0Z
 dSCorePropagationData: 20161019075502.0Z
@@ -389,6 +419,12 @@ int HandleInfo() {
   return kExitCodeOk;
 }
 
+// Handles a stub 'net ads lookup' call. Just returns stub information.
+int HandleLookup() {
+  WriteOutput(kStubLookup, "");
+  return kExitCodeOk;
+}
+
 // Handles a stub 'net ads gpo list' call. Different behavior is triggered by
 // passing different machine names (in smb.conf).
 int HandleGpoList(const std::string& smb_conf_path) {
@@ -466,6 +502,10 @@ int HandleCommandLine(const std::string& command_line,
   // Stub net ads info.
   if (StartsWithCaseSensitive(command_line, "ads info"))
     return HandleInfo();
+
+  // Stub net ads lookup.
+  if (StartsWithCaseSensitive(command_line, "ads lookup"))
+    return HandleLookup();
 
   // Stub net ads gpo list.
   if (StartsWithCaseSensitive(command_line, "ads gpo list"))

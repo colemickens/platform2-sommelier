@@ -6,7 +6,8 @@
 
 namespace authpolicy {
 
-const char kCmdParseRealmInfo[] = "parse_realm_info";
+const char kCmdParseKdcIp[] = "parse_kdc_ip";
+const char kCmdParseDcName[] = "parse_dc_name";
 const char kCmdParseWorkgroup[] = "parse_workgroup";
 const char kCmdParseAccountInfo[] = "parse_account_info";
 const char kCmdParseUserGpoList[] = "parse_user_gpo_list";

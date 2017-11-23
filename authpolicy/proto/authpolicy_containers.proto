@@ -11,15 +11,15 @@ message ActiveDirectoryConfig {
 }
 
 // Information about a GPO parsed from net ads gpo list. |name| is the 16-byte
-// guid (e.g. {12345678-90AB-...}). |basepath| and |directory| are created from
+// guid (e.g. {12345678-90AB-...}). |share| and |directory| are created from
 // the first and the last part of the GPO's 'filesyspath' value in the net
 // output, e.g. if filesyspath is
 // \\example.com\SysVol\example.com\Policies\{12345678-90AB-CDEF-1234-567890ABCDEF},
-// then |basepath| is 'example.com/SysVol' and |directory| is
+// then |share| is 'SysVol' and |directory| is
 // example.com\Policies\{12345678-90AB-CDEF-1234-567890ABCDEF}.
 message GpoEntry {
   optional string name = 1;
-  optional string basepath = 2;
+  optional string share = 2;
   optional string directory = 3;
 }
 

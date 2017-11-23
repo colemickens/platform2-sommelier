@@ -112,8 +112,11 @@ const char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
 const char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
 const char kWorkgroupPlaceholder[] = "<WORKGROUP>";
 const char kRealmPlaceholder[] = "<REALM>";
+const char kForestPlaceholder[] = "<FOREST>";
+const char kDomainPlaceholder[] = "<DOMAIN>";
 const char kServerNamePlaceholder[] = "<SERVER_NAME>";
 const char kSiteNamePlaceholder[] = "<SITE_NAME>";
+const char kIpAddressPlaceholder[] = "<IP_ADDRESS>";
 
 // Keys for net ads searches.
 const char kKeyWorkgroup[] = "Workgroup";
@@ -123,6 +126,15 @@ const char kKeyAdsDcName[] = "ads_dc_name";
 const char kKeyPdcName[] = "pdc_name";
 const char kKeyServerSite[] = "server_site";
 const char kKeyClientSite[] = "client_site";
+const char kKeyForest[] = "Forest";
+const char kKeyDomain[] = "Domain";
+const char kKeyDomainController[] = "Domain Controller";
+const char kKeyPreWin2kDomain[] = "Pre-Win2k Domain";
+const char kKeyPreWin2kHostname[] = "Pre-Win2k Hostname";
+const char kKeyServerSiteName[] = "Server Site Name";
+const char kKeyClientSiteName[] = "Client Site Name";
+const char kKeyKdcServer[] = "KDC server";
+const char kKeyLdapServer[] = "LDAP server";
 const char kKeyLdapServerName[] = "LDAP server name";
 
 // Maximum time that logging through SetDefaultLogLevel() should stay enabled.
@@ -629,16 +641,31 @@ void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
 }
 
 ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
+  std::string kdc_ip;
+  ErrorType error = GetKdcIp(&kdc_ip);
+  if (error != ERROR_NONE)
+    return error;
+
+  std::string dc_name;
+  error = GetDcName(&dc_name);
+  if (error != ERROR_NONE)
+    return error;
+
+  realm_info->set_kdc_ip(kdc_ip);
+  realm_info->set_dc_name(dc_name);
+  return ERROR_NONE;
+}
+
+ErrorType SambaInterface::GetKdcIp(std::string* kdc_ip) const {
+  // Call net ads info to get the KDC IP.
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
                                        "-s", paths_->Get(Path::SMB_CONF), "-d",
                                        flags_.net_log_level()});
-  // Parse LDAP server name resp. domain controller name from the net_cmd output
-  // immediately, see SearchAccountInfo for an explanation. The regex grabs
-  // everything up to the first dot.
-  anonymizer_->ReplaceSearchArg(kKeyLdapServerName, kServerNamePlaceholder,
-                                "(.+?)\\.");
-  anonymizer_->ReplaceSearchArg(kKeyAdsDcName, kServerNamePlaceholder,
-                                "using server='(.+?)\\.");
+  // Replace a few values immediately in the net_cmd output, see
+  // SearchAccountInfo for an explanation.
+  anonymizer_->ReplaceSearchArg(kKeyKdcServer, kIpAddressPlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyLdapServer, kIpAddressPlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyLdapServerName, kServerNamePlaceholder);
   const bool net_result = jail_helper_.SetupJailAndRun(
       &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO);
   anonymizer_->ResetSearchArgReplacements();
@@ -646,30 +673,68 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
     return GetNetError(net_cmd, "info");
   const std::string& net_out = net_cmd.GetStdout();
 
-  // Parse the output to find the domain controller name. Enclose in a sandbox
-  // for security considerations. Prevent that stdout gets logged since it
-  // contains the DC name (the LDAP server name is dc_name.realm, so it's not
-  // removed yet).
+  // Parse the output to find the KDC IP. Enclose in a sandbox for security
+  // considerations.
   ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), kCmdParseRealmInfo, SerializeFlags(flags_)});
+      {paths_->Get(Path::PARSER), kCmdParseKdcIp, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
                                     TIMER_NONE)) {
-    LOG(ERROR) << "authpolicy_parser parse_realm_info failed with exit code "
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
+    LOG(ERROR) << "authpolicy_parser parse_kdc_ip failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  if (!realm_info->ParseFromString(parse_cmd.GetStdout())) {
-    // Log net output if it hasn't been done yet.
-    net_cmd.LogOutputOnce();
-    LOG(ERROR) << "Failed to parse realm info from string";
-    return ERROR_PARSE_FAILED;
-  }
+  *kdc_ip = parse_cmd.GetStdout();
 
   // Explicitly set replacements again, see SearchAccountInfo for an
   // explanation.
-  anonymizer_->SetReplacementAllCases(realm_info->dc_name(),
-                                      kServerNamePlaceholder);
+  anonymizer_->SetReplacementAllCases(*kdc_ip, kIpAddressPlaceholder);
+
+  return ERROR_NONE;
+}
+
+ErrorType SambaInterface::GetDcName(std::string* dc_name) const {
+  // Call net ads lookup to get the domain controller name.
+  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "lookup",
+                                       "-s", paths_->Get(Path::SMB_CONF), "-d",
+                                       flags_.net_log_level()});
+  // Replace a few values immediately in the net_cmd output, see
+  // SearchAccountInfo for an explanation.
+  anonymizer_->ReplaceSearchArg(kKeyForest, kForestPlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyDomain, kDomainPlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyDomainController, kServerNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyPreWin2kDomain, kDomainPlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyPreWin2kHostname, kServerNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyServerSiteName, kSiteNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kKeyClientSiteName, kSiteNamePlaceholder);
+  const bool net_result = jail_helper_.SetupJailAndRun(
+      &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO);
+  anonymizer_->ResetSearchArgReplacements();
+  if (!net_result)
+    return GetNetError(net_cmd, "lookup");
+  const std::string& net_out = net_cmd.GetStdout();
+
+  // Parse the output to find the domain controller name. Enclose in a sandbox
+  // for security considerations.
+  ProcessExecutor parse_cmd(
+      {paths_->Get(Path::PARSER), kCmdParseDcName, SerializeFlags(flags_)});
+  parse_cmd.SetInputString(net_out);
+  if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
+                                    TIMER_NONE)) {
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
+    LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
+               << parse_cmd.GetExitCode();
+    return ERROR_PARSE_FAILED;
+  }
+  *dc_name = parse_cmd.GetStdout();
+
+  // Explicitly set replacements again, see SearchAccountInfo for an
+  // explanation.
+  anonymizer_->SetReplacementAllCases(*dc_name, kServerNamePlaceholder);
+
   return ERROR_NONE;
 }
 
@@ -1099,7 +1164,7 @@ struct GpoPaths {
 
 ErrorType SambaInterface::DownloadGpos(
     const protos::GpoList& gpo_list,
-    const std::string& domain_controller_name,
+    const std::string& dc_name,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
   metrics_->Report(METRIC_DOWNLOAD_GPO_COUNT, gpo_list.entries_size());
@@ -1111,25 +1176,24 @@ ErrorType SambaInterface::DownloadGpos(
   // Generate all smb source and linux target directories and create targets.
   ErrorType error;
   std::string smb_command = "prompt OFF;lowercase ON;";
-  std::string gpo_basepath;
+  std::string gpo_share;
   std::vector<GpoPaths> gpo_paths;
   for (int entry_idx = 0; entry_idx < gpo_list.entries_size(); ++entry_idx) {
     const protos::GpoEntry& gpo = gpo_list.entries(entry_idx);
 
     // Security check, make sure nobody sneaks in smbclient commands.
-    if (gpo.basepath().find(';') != std::string::npos ||
+    if (gpo.share().find(';') != std::string::npos ||
         gpo.directory().find(';') != std::string::npos) {
       LOG(ERROR) << "GPO paths may not contain a ';'";
       return ERROR_BAD_GPOS;
     }
 
-    // All GPOs should have the same basepath, i.e. come from the same SysVol.
-    if (gpo_basepath.empty()) {
-      gpo_basepath = gpo.basepath();
-    } else if (!base::EqualsCaseInsensitiveASCII(gpo_basepath,
-                                                 gpo.basepath())) {
-      LOG(ERROR) << "Inconsistent base path '" << gpo_basepath << "' != '"
-                 << gpo.basepath() << "'";
+    // All GPOs should have the same share, i.e. come from the same SysVol.
+    if (gpo_share.empty()) {
+      gpo_share = gpo.share();
+    } else if (!base::EqualsCaseInsensitiveASCII(gpo_share, gpo.share())) {
+      LOG(ERROR) << "Inconsistent share '" << gpo_share << "' != '"
+                 << gpo.share() << "'";
       return ERROR_BAD_GPOS;
     }
 
@@ -1174,8 +1238,8 @@ ErrorType SambaInterface::DownloadGpos(
     }
   }
 
-  const std::string service = base::StringPrintf(
-      "//%s.%s", domain_controller_name.c_str(), gpo_basepath.c_str());
+  const std::string service =
+      base::StringPrintf("//%s/%s", dc_name.c_str(), gpo_share.c_str());
 
   // The exit code of smbclient corresponds to the LAST command issued. Some
   // files might be missing and fail to download, which is fine and handled

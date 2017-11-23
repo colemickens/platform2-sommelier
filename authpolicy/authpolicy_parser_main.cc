@@ -50,8 +50,11 @@ const char kGpoToken_VersionUser[] = "version_user";
 const char kGpoToken_VersionMachine[] = "version_machine";
 const char kGpoToken_Options[] = "options";
 
-// 'net ads search' tokens.
-const char kNoResults[] = "Got 0 replies";
+// 'net ads' tokens.
+const char kToken_NoResults[] = "Got 0 replies";
+const char kToken_KdcServer[] = "KDC server";
+const char kToken_DomainController[] = "Domain Controller";
+const char kToken_Workgroup[] = "Workgroup";
 
 // Length of the klist date/time format (mm/dd/yy HH:MM:SS).
 const int kDateTimeStringLength = 18;
@@ -178,7 +181,7 @@ bool ParseTgtDateTime(const std::string& str, size_t offset, time_t* time) {
 // it to stdout. Prints an empty string in case of no search results.
 int ParseAccountInfo(const std::string& net_out) {
   // Return an empty string, but no error, if no results have been found.
-  if (base::StartsWith(net_out, kNoResults, base::CompareCase::SENSITIVE))
+  if (base::StartsWith(net_out, kToken_NoResults, base::CompareCase::SENSITIVE))
     return OutputForCaller("");
 
   std::string object_guid;
@@ -228,40 +231,14 @@ int ParseAccountInfo(const std::string& net_out) {
   return OutputForCaller(account_info_blob);
 }
 
-// Parses the output of net ads info to get the domain controller name and KDC
-// IP address. Prints it to stdout.
-int ParseRealmInfo(const std::string& net_out) {
-  // Parse output for dc_name in 'LDAP server name: dc_name.some.domain'.
-  std::string dc_name, kdc_ip;
-  if (!FindToken(net_out, ':', "LDAP server name", &dc_name) ||
-      !FindToken(net_out, ':', "KDC server", &kdc_ip)) {
-    return EXIT_CODE_FIND_TOKEN_FAILED;
-  }
-
-  // We're only interested in the part before the dot.
-  size_t dot_pos = dc_name.find('.');
-  dc_name = dc_name.substr(0, dot_pos);
-
-  protos::RealmInfo realm_info;
-  realm_info.set_dc_name(dc_name);
-  realm_info.set_kdc_ip(kdc_ip);
-  std::string realm_info_blob;
-  if (!realm_info.SerializeToString(&realm_info_blob)) {
-    LOG(ERROR) << "Failed to convert realm info proto to string";
-    return EXIT_CODE_WRITE_OUTPUT_FAILED;
-  }
-
-  return OutputForCaller(realm_info_blob);
-}
-
-// Parses the output of net ads workgroup to get the workgroup and prints it to
+// Parses the output of a net ads command for '|token| : value'. Prints value to
 // stdout.
-int ParseWorkgroup(const std::string& net_out) {
-  std::string workgroup;
-  if (!FindToken(net_out, ':', "Workgroup", &workgroup))
+int ParseSingleToken(const std::string& net_out, const std::string& token) {
+  std::string value;
+  if (!FindToken(net_out, ':', token, &value))
     return EXIT_CODE_FIND_TOKEN_FAILED;
 
-  return OutputForCaller(workgroup);
+  return OutputForCaller(value);
 }
 
 // Parses the output of net ads gpo list to get the list of GPOs. Prints out a
@@ -272,7 +249,7 @@ int ParseGpoList(const std::string& net_out,
   // Parse net output.
   GpoEntry current_gpo;
   std::vector<GpoEntry> gpo_list;
-  std::vector<std::string> lines = base::SplitString(
+  const std::vector<std::string> lines = base::SplitString(
       net_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   LOG_IF(INFO, flags.log_gpo())
       << "Parsing GPO list (" << lines.size() << " lines)";
@@ -355,10 +332,11 @@ int ParseGpoList(const std::string& net_out,
     // Split the filesyspath, e.g.
     //   \\chrome.lan\SysVol\chrome.lan\Policies\{3507856D-...-CF144DC5CC3A}
     // into
-    // - the base path (chrome.lan/SysVol) and
+    // - the share (SysVol) and
     // - the directory (chrome.lan\Policies\...).
-    // Note the change from \ to / in base path.
-    std::vector<std::string> file_parts = base::SplitString(
+    // The first part (chrome.lan) is dropped and replaced by the domain
+    // controller name when the GPOs are downloaded via smbclient.
+    const std::vector<std::string> file_parts = base::SplitString(
         gpo.filesyspath, "\\/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (file_parts.size() < 4 || !file_parts[0].empty() ||
         !file_parts[1].empty()) {
@@ -366,14 +344,14 @@ int ParseGpoList(const std::string& net_out,
                  << "' into service and directory parts";
       return EXIT_CODE_PARSE_INPUT_FAILED;
     }
-    std::string basepath = file_parts[2] + "/" + file_parts[3];
-    file_parts =
-        std::vector<std::string>(file_parts.begin() + 4, file_parts.end());
-    std::string directory = base::JoinString(file_parts, "\\");
+    const std::string& share = file_parts[3];
+    const std::string directory = base::JoinString(
+        std::vector<std::string>(file_parts.begin() + 4, file_parts.end()),
+        "\\");
 
     protos::GpoEntry* gpo_proto = gpo_list_proto.add_entries();
     gpo_proto->set_name(gpo.name);
-    gpo_proto->set_basepath(basepath);
+    gpo_proto->set_share(share);
     gpo_proto->set_directory(directory);
   }
 
@@ -511,10 +489,12 @@ int ParseTgtLifetime(const std::string& klist_out) {
 int HandleCommand(const std::string& cmd,
                   const std::string& arg,
                   const protos::DebugFlags& flags) {
-  if (cmd == kCmdParseRealmInfo)
-    return ParseRealmInfo(arg);
+  if (cmd == kCmdParseKdcIp)
+    return ParseSingleToken(arg, kToken_KdcServer);
+  if (cmd == kCmdParseDcName)
+    return ParseSingleToken(arg, kToken_DomainController);
   if (cmd == kCmdParseWorkgroup)
-    return ParseWorkgroup(arg);
+    return ParseSingleToken(arg, kToken_Workgroup);
   if (cmd == kCmdParseAccountInfo)
     return ParseAccountInfo(arg);
   if (cmd == kCmdParseUserGpoList)

@@ -14,20 +14,24 @@ namespace authpolicy {
 const int kExitCodeOk = 0;
 const int kExitCodeError = 1;
 
-const char kRealm[] = "REALM.COM";
+const char kRealm[] = "REALM.EXAMPLE.COM";
 
 const char kUserName[] = "user";
-const char kUserPrincipal[] = "user@REALM.COM";
-const char kInvalidUserPrincipal[] = "user.REALM.COM";
-const char kNonExistingUserPrincipal[] = "non_existing_user@REALM.COM";
-const char kNetworkErrorUserPrincipal[] = "network_error_user@REALM.COM";
-const char kAccessDeniedUserPrincipal[] = "access_denied_user@REALM.COM";
-const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
-const char kKdcRetryFailsUserPrincipal[] = "kdc_retry_fails_user@REALM.COM";
+const char kUserPrincipal[] = "user@REALM.EXAMPLE.COM";
+const char kInvalidUserPrincipal[] = "user.REALM.EXAMPLE.COM";
+const char kNonExistingUserPrincipal[] = "non_existing_user@REALM.EXAMPLE.COM";
+const char kNetworkErrorUserPrincipal[] =
+    "network_error_user@REALM.EXAMPLE.COM";
+const char kAccessDeniedUserPrincipal[] =
+    "access_denied_user@REALM.EXAMPLE.COM";
+const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.EXAMPLE.COM";
+const char kKdcRetryFailsUserPrincipal[] =
+    "kdc_retry_fails_user@REALM.EXAMPLE.COM";
 const char kInsufficientQuotaUserPrincipal[] =
-    "insufficient_quota_user@REALM.COM";
-const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.COM";
-const char kPasswordChangedUserPrincipal[] = "password_changed@REALM.COM";
+    "insufficient_quota_user@REALM.EXAMPLE.COM";
+const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.EXAMPLE.COM";
+const char kPasswordChangedUserPrincipal[] =
+    "password_changed@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserName[] = "password_changed";
 
 const char kDisplayName[] = "John Doe";
