@@ -131,7 +131,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      const std::string& key_name,
                                      const SecureBlob& challenge)
     : AttestationTask(observer, attestation),
-      is_enterprise_(false),
+      challenge_type_(kSimpleChallengeType),
       is_user_specific_(is_user_specific),
       username_(username),
       key_name_(key_name),
@@ -148,7 +148,29 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      bool include_signed_public_key,
                                      const SecureBlob& challenge)
     : AttestationTask(observer, attestation),
-      is_enterprise_(true),
+      challenge_type_(kEnterpriseChallengeType),
+      is_user_specific_(is_user_specific),
+      username_(username),
+      key_name_(key_name),
+      domain_(domain),
+      device_id_(device_id),
+      include_signed_public_key_(include_signed_public_key),
+      challenge_(challenge) {
+}
+
+SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
+                                     Attestation* attestation,
+                                     Attestation::VAType va_type,
+                                     bool is_user_specific,
+                                     const std::string& username,
+                                     const std::string& key_name,
+                                     const std::string& domain,
+                                     const SecureBlob& device_id,
+                                     bool include_signed_public_key,
+                                     const SecureBlob& challenge)
+    : AttestationTask(observer, attestation),
+      challenge_type_(kEnterpriseVaChallengeType),
+      va_type_(va_type),
       is_user_specific_(is_user_specific),
       username_(username),
       key_name_(key_name),
@@ -168,21 +190,35 @@ void SignChallengeTask::Run() {
   }
   SecureBlob response;
   bool status = false;
-  if (is_enterprise_) {
-    status = attestation_->SignEnterpriseChallenge(is_user_specific_,
-                                                   username_,
-                                                   key_name_,
-                                                   domain_,
-                                                   device_id_,
-                                                   include_signed_public_key_,
-                                                   challenge_,
-                                                   &response);
-  } else {
-    status = attestation_->SignSimpleChallenge(is_user_specific_,
-                                               username_,
-                                               key_name_,
-                                               challenge_,
-                                               &response);
+  switch (challenge_type_) {
+    case kSimpleChallengeType:
+      status = attestation_->SignSimpleChallenge(is_user_specific_,
+                                                 username_,
+                                                 key_name_,
+                                                 challenge_,
+                                                 &response);
+      break;
+    case kEnterpriseChallengeType:
+      status = attestation_->SignEnterpriseChallenge(is_user_specific_,
+                                                     username_,
+                                                     key_name_,
+                                                     domain_,
+                                                     device_id_,
+                                                     include_signed_public_key_,
+                                                     challenge_,
+                                                     &response);
+      break;
+    case kEnterpriseVaChallengeType:
+      status = attestation_->SignEnterpriseVaChallenge(va_type_,
+          is_user_specific_,
+          username_,
+          key_name_,
+          domain_,
+          device_id_,
+          include_signed_public_key_,
+          challenge_,
+          &response);
+      break;
   }
   result()->set_return_status(status);
   result()->set_return_data(response);

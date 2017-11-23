@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -111,8 +112,7 @@ const char Attestation::kTestPCAWebOrigin[] =
        " but provide the right PCA_type in calls."
 #endif
 
-const char Attestation::kEnterpriseSigningPublicKey[] =
-    "bf7fefa3a661437b26aed0801db64d7ba8b58875c351d3bdc9f653847d4a67b3"
+const char Attestation::kDefaultEnterpriseSigningPublicKey[] =
     "b67479327724d56aa0f71a3f57c2290fdc1ff05df80589715e381dfbbda2c4ac"
     "114c30d0a73c5b7b2e22178d26d8b65860aa8dd65e1b3d61a07c81de87c1e7e4"
     "590145624936a011ece10434c1d5d41f917c3dc4b41dd8392479130c4fd6eafc"
@@ -121,7 +121,7 @@ const char Attestation::kEnterpriseSigningPublicKey[] =
     "f2b305360f886826cc6fdbef11a12b2d6002d70d8d1e8f40e0901ff94c203cb2"
     "01a36a0bd6e83955f14b494f4f2f17c0c826657b85c25ffb8a73599721fa17ab";
 
-const char Attestation::kEnterpriseEncryptionPublicKey[] =
+const char Attestation::kDefaultEnterpriseEncryptionPublicKey[] =
     "edba5e723da811e41636f792c7a77aef633fbf39b542aa537c93c93eaba7a3b1"
     "0bc3e484388c13d625ef5573358ec9e7fbeb6baaaa87ca87d93fb61bf5760e29"
     "6813c435763ed2c81f631e26e3ff1a670261cdc3c39a4640b6bbf4ead3d6587b"
@@ -134,7 +134,34 @@ const char Attestation::kEnterpriseEncryptionPublicKey[] =
 // This value is opaque; it is proprietary to the system managing the private
 // key.  In this case the value has been supplied by the enterprise server
 // maintainers.
-const char Attestation::kEnterpriseEncryptionPublicKeyID[] =
+const char Attestation::kDefaultEnterpriseEncryptionPublicKeyID[] =
+    "\x00\x4a\xe2\xdc\xae";
+
+const char Attestation::kTestEnterpriseSigningPublicKey[] =
+    "baab3e277518c65b1b98290bb55061df9a50b9f32a4b0ff61c7c61c51e966fcd"
+    "c891799a39ee0b7278f204a2b45a7e615080ff8f69f668e05adcf3486b319f80"
+    "f9da814d9b86b16a3e68b4ce514ab5591112838a68dc3bfdcc4043a5aa8de52c"
+    "ae936847a271971ecaa188172692c13f3b0321239c90559f3b7ba91e66d38ef4"
+    "db4c75104ac5f2f15e55a463c49753a88e56906b1725fd3f0c1372beb16d4904"
+    "752c74452b0c9f757ee12877a859dd0666cafaccbfc33fe67d98a89a2c12ef52"
+    "5e4b16ea8972577dbfc567c2625a3eee6bcaa6cb4939b941f57236d1d57243f8"
+    "c9766938269a8034d82fbd44044d2ee6a5c7275589afc3790b60280c0689900f";
+
+const char Attestation::kTestEnterpriseEncryptionPublicKey[] =
+    "c0c116e7ded8d7c1e577f9c8fb0d267c3c5c3e3b6800abb0309c248eaa5cd9bf"
+    "91945132e4bb0111711356a388b756788e20bc1ecc9261ea9bcae8369cfd050e"
+    "d8dc00b50fbe36d2c1c8a9b335f2e11096be76bebce8b5dcb0dc39ac0fd963b0"
+    "51474f794d4289cc0c52d0bab451b9e69a43ecd3a84330b0b2de4365c038ffce"
+    "ec0f1999d789615849c2f3c29d1d9ed42ccb7f330d5b56f40fb7cc6556190c3b"
+    "698c20d83fb341a442fd69701fe0bdc41bdcf8056ccbc8d9b4275e8e43ec6b63"
+    "c1ae70d52838dfa90a9cd9e7b6bd88ed3abf4fab444347104e30e635f4f296ac"
+    "4c91939103e317d0eca5f36c48102e967f176a19a42220f3cf14634b6773be07";
+
+// This value is opaque; it is proprietary to the system managing the private
+// key.  In this case the value has been supplied by the enterprise server
+// maintainers.
+// TODO(b/69687094): Put the correct key ID for the test encryption key.
+const char Attestation::kTestEnterpriseEncryptionPublicKeyID[] =
     "\x00\x4a\xe2\xdc\xae";
 
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
@@ -284,7 +311,6 @@ Attestation::Attestation()
     : database_path_(kDefaultDatabasePath),
       pkcs11_key_store_(new Pkcs11KeyStore()),
       key_store_(pkcs11_key_store_.get()),
-      enterprise_test_key_(NULL),
       install_attributes_observer_(this),
       is_tpm_ready_(false),
       is_prepare_in_progress_(false),
@@ -887,6 +913,22 @@ bool Attestation::SignEnterpriseChallenge(
       bool include_signed_public_key,
       const SecureBlob& challenge,
       SecureBlob* response) {
+  return SignEnterpriseVaChallenge(kDefaultVA, is_user_specific, username,
+                                 key_name, domain, device_id,
+                                 include_signed_public_key, challenge,
+                                 response);
+}
+
+bool Attestation::SignEnterpriseVaChallenge(
+      VAType va_type,
+      bool is_user_specific,
+      const std::string& username,
+      const std::string& key_name,
+      const std::string& domain,
+      const SecureBlob& device_id,
+      bool include_signed_public_key,
+      const SecureBlob& challenge,
+      SecureBlob* response) {
   if (!IsTPMReady())
     return false;
   base::AutoLock lock(lock_);
@@ -903,7 +945,7 @@ bool Attestation::SignEnterpriseChallenge(
     LOG(ERROR) << __func__ << ": Failed to parse signed challenge.";
     return false;
   }
-  if (!ValidateEnterpriseChallenge(signed_challenge)) {
+  if (!ValidateEnterpriseChallenge(va_type, signed_challenge)) {
     LOG(ERROR) << __func__ << ": Invalid challenge.";
     return false;
   }
@@ -940,7 +982,7 @@ bool Attestation::SignEnterpriseChallenge(
     }
     key_info.set_signed_public_key_and_challenge(spkac.to_string());
   }
-  if (!EncryptEnterpriseKeyInfo(key_info,
+  if (!EncryptEnterpriseKeyInfo(va_type, key_info,
                                 response_pb.mutable_encrypted_key_info())) {
     LOG(ERROR) << __func__ << ": Failed to encrypt KeyInfo.";
     return false;
@@ -1811,19 +1853,16 @@ bool Attestation::SignChallengeData(const CertifiedKey& key,
 }
 
 bool Attestation::ValidateEnterpriseChallenge(
+    VAType va_type,
     const SignedData& signed_challenge) {
-  const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
-  std::unique_ptr<RSA, RSADeleter> rsa =
-      CreateRSAFromHexModulus(kEnterpriseSigningPublicKey);
-  if (!rsa.get()) {
-    LOG(ERROR) << "Failed to decode public key.";
+  RSA* signing_key = GetEnterpriseSigningKey(va_type);
+  if (!signing_key)
     return false;
-  }
+  const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
   SecureBlob digest = CryptoLib::Sha256(SecureBlob(signed_challenge.data()));
   SecureBlob signature(signed_challenge.signature());
-  RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
   if (!RSA_verify(NID_sha256, digest.data(), digest.size(),
-                  signature.data(), signature.size(), enterprise_key)) {
+                  signature.data(), signature.size(), signing_key)) {
     LOG(ERROR) << "Failed to verify challenge signature.";
     return false;
   }
@@ -1839,28 +1878,77 @@ bool Attestation::ValidateEnterpriseChallenge(
   return true;
 }
 
-bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
+bool Attestation::EncryptEnterpriseKeyInfo(VAType va_type,
+                                           const KeyInfo& key_info,
                                            EncryptedData* encrypted_data) {
-  std::unique_ptr<RSA, RSADeleter> rsa =
-      CreateRSAFromHexModulus(kEnterpriseEncryptionPublicKey);
-  if (!rsa.get()) {
-    LOG(ERROR) << "Failed to decode public key.";
-    return false;
-  }
   std::string serialized;
   if (!key_info.SerializeToString(&serialized)) {
     LOG(ERROR) << "Failed to serialize key info.";
     return false;
   }
-  RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
-  std::string enterprise_key_id(kEnterpriseEncryptionPublicKeyID,
-                           arraysize(kEnterpriseEncryptionPublicKeyID) - 1);
+  RSA* enterprise_key = GetEnterpriseEncryptionKey(va_type);
+  std::string enterprise_key_id = std::string(
+      va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
+          : kTestEnterpriseEncryptionPublicKeyID,
+      arraysize(va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
+                            : kTestEnterpriseEncryptionPublicKeyID) - 1);
   bool result = EncryptData(SecureBlob(serialized),
                             enterprise_key,
                             enterprise_key_id,
                             encrypted_data);
   ClearString(&serialized);
   return result;
+}
+
+RSA* Attestation::GetEnterpriseSigningKey(Attestation::VAType va_type) {
+  auto search = enterprise_signing_keys_.find(va_type);
+  if (search != enterprise_signing_keys_.end())
+    return search->second.get();
+  // Create the key and remember it in the keys map.
+  std::unique_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
+      va_type == kDefaultVA ? kDefaultEnterpriseSigningPublicKey
+          : kTestEnterpriseSigningPublicKey);
+  if (!rsa.get()) {
+    LOG(ERROR) << "Failed to decode public signing key.";
+    return nullptr;
+  }
+  auto inserted = enterprise_signing_keys_.insert(
+      KeysMap::value_type(va_type, std::move(rsa)));
+  if (!inserted.second) {
+    LOG(ERROR) << "Failed to insert public signing key in map.";
+    return nullptr;
+  }
+  return inserted.first->second.get();
+}
+
+RSA* Attestation::GetEnterpriseEncryptionKey(Attestation::VAType va_type) {
+  auto search = enterprise_encryption_keys_.find(va_type);
+  if (search != enterprise_encryption_keys_.end())
+    return search->second.get();
+  // Create the key and remember it in the keys map.
+  std::unique_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
+      va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKey
+          : kTestEnterpriseEncryptionPublicKey);
+  if (!rsa.get()) {
+    LOG(ERROR) << "Failed to decode public encryption key.";
+    return nullptr;
+  }
+  auto inserted = enterprise_encryption_keys_.insert(
+      KeysMap::value_type(va_type, std::move(rsa)));
+  if (!inserted.second) {
+    LOG(ERROR) << "Failed to insert public encryption key in map.";
+    return nullptr;
+  }
+  return inserted.first->second.get();
+}
+
+void Attestation::set_enterprise_test_keys(VAType va_type,
+                                           RSA* signing_key,
+                                           RSA* encryption_key) {
+  enterprise_signing_keys_[va_type] =
+      std::unique_ptr<RSA, RSADeleter>(signing_key);
+  enterprise_encryption_keys_[va_type] =
+      std::unique_ptr<RSA, RSADeleter>(encryption_key);
 }
 
 bool Attestation::EncryptData(const SecureBlob& input,

@@ -503,6 +503,17 @@ class Service : public brillo::dbus::AbstractDbusService,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) = 0;
+  virtual gboolean TpmAttestationSignEnterpriseVaChallenge(
+      gint va_type,
+      gboolean is_user_specific,
+      gchar* username,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      gboolean include_signed_public_key,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error) = 0;
   virtual gboolean TpmAttestationSignSimpleChallenge(
       gboolean is_user_specific,
       gchar* username,

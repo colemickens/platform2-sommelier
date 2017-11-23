@@ -128,12 +128,30 @@ class SignChallengeTask : public AttestationTask {
                     const brillo::SecureBlob& device_id,
                     bool include_signed_public_key,
                     const brillo::SecureBlob& challenge);
+  // Constructs a task for SignEnterpriseVaChallenge.
+  SignChallengeTask(AttestationTaskObserver* observer,
+                    Attestation* attestation,
+                    Attestation::VAType va_type,
+                    bool is_user_specific,
+                    const std::string& username,
+                    const std::string& key_name,
+                    const std::string& domain,
+                    const brillo::SecureBlob& device_id,
+                    bool include_signed_public_key,
+                    const brillo::SecureBlob& challenge);
   virtual ~SignChallengeTask();
 
   virtual void Run();
 
  private:
-  bool is_enterprise_;
+  enum ChallengeType {
+    kSimpleChallengeType,
+    kEnterpriseChallengeType,
+    kEnterpriseVaChallengeType
+  };
+
+  ChallengeType challenge_type_;
+  Attestation::VAType va_type_;
   bool is_user_specific_;
   std::string username_;
   std::string key_name_;

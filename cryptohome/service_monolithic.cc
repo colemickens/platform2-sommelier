@@ -23,11 +23,21 @@ CertificateProfile GetProfile(int profile_value) {
   return static_cast<CertificateProfile>(profile_value);
 }
 
-// A helper function which maps an integer to a valid Attestation::PCAType.
+// A helper function which maps an integer to a valid Attestation::PCAType
+// lower than kMaxPCAType.
 Attestation::PCAType GetPCAType(int value) {
-  if (value < 0 || value > Attestation::kMaxPCAType)
+  if (value < 0 || value >= Attestation::kMaxPCAType)
     return Attestation::kDefaultPCA;
   return static_cast<Attestation::PCAType>(value);
+}
+
+// A helper function which maps an integer to a valid Attestation::VAType.
+// lower than kMaxVAType.
+Attestation::VAType GetVAType(int value) {
+  if (value < 0 || value >= Attestation::kMaxVAType) {
+    return Attestation::kDefaultVA;
+  }
+  return static_cast<Attestation::VAType>(value);
 }
 
 ServiceMonolithic::ServiceMonolithic(const std::string& abe_data)
@@ -367,6 +377,41 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseChallenge(
   scoped_refptr<SignChallengeTask> task =
       new SignChallengeTask(observer,
                             attestation_,
+                            is_user_specific,
+                            username,
+                            key_name,
+                            domain,
+                            device_id_blob,
+                            include_signed_public_key,
+                            challenge_blob);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&SignChallengeTask::Run, task.get()));
+  return TRUE;
+}
+
+gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
+      gint va_type,
+      gboolean is_user_specific,
+      gchar* username,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      gboolean include_signed_public_key,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error) {
+  brillo::SecureBlob device_id_blob(device_id->data,
+                                      device_id->data + device_id->len);
+  brillo::SecureBlob challenge_blob(challenge->data,
+                                      challenge->data + challenge->len);
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<SignChallengeTask> task =
+      new SignChallengeTask(observer,
+                            attestation_,
+                            GetVAType(va_type),
                             is_user_specific,
                             username,
                             key_name,

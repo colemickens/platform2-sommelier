@@ -111,6 +111,17 @@ class ServiceDistributed : public Service {
       GArray* challenge,
       gint* OUT_async_id,
       GError** error) override;
+  gboolean TpmAttestationSignEnterpriseVaChallenge(
+      gint va_type,
+      gboolean is_user_specific,
+      gchar* username,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      gboolean include_signed_public_key,
+      GArray* challenge,
+      gint* OUT_async_id,
+      GError** error) override;
   gboolean TpmAttestationSignSimpleChallenge(gboolean is_user_specific,
                                              gchar* username,
                                              gchar* key_name,

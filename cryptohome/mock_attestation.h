@@ -69,6 +69,15 @@ class MockAttestation : public Attestation {
                                              bool,
                                              const brillo::SecureBlob&,
                                              brillo::SecureBlob*));
+  MOCK_METHOD9(SignEnterpriseVaChallenge, bool(Attestation::VAType,
+                                               bool,
+                                               const std::string&,
+                                               const std::string&,
+                                               const std::string&,
+                                               const brillo::SecureBlob&,
+                                               bool,
+                                               const brillo::SecureBlob&,
+                                               brillo::SecureBlob*));
   MOCK_METHOD5(SignSimpleChallenge, bool(bool,
                                          const std::string&,
                                          const std::string&,
@@ -93,7 +102,8 @@ class MockAttestation : public Attestation {
   MOCK_METHOD2(GetIdentityResetRequest, bool(const std::string&,
                                              brillo::SecureBlob*));
   MOCK_METHOD1(set_database_path, void(const char*));
-  MOCK_METHOD1(set_enterprise_test_key, void(RSA*));  // NOLINT "unnamed" param.
+  MOCK_METHOD2(set_enterprise_test_key, void(Attestation::VAType,
+                                             RSA*));  // NOLINT "unnamed" param.
   MOCK_METHOD0(ThreadMain, void());
   MOCK_METHOD0(OnFinalized, void());
   MOCK_METHOD3(GetDelegateCredentials, bool(brillo::SecureBlob*,

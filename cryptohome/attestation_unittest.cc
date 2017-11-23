@@ -47,8 +47,7 @@ static const char* kTestUser = "test_user";
 class AttestationTest : public testing::Test {
  public:
   AttestationTest() : crypto_(&platform_),
-                      attestation_(),
-                      rsa_(nullptr) {
+                      attestation_() {
     crypto_.set_tpm(&tpm_);
     crypto_.set_use_tpm(true);
   }
@@ -105,15 +104,37 @@ class AttestationTest : public testing::Test {
   NiceMock<MockInstallAttributes> install_attributes_;
   std::shared_ptr<brillo::http::fake::Transport> http_transport_;
   Attestation attestation_;
-  RSA* rsa_;  // Access with rsa().
+  RSA* rsa_ = nullptr;  // Access with rsa().
+  bool is_enterprise_setup_ = false;
 
   RSA* rsa() {
     if (!rsa_) {
       rsa_ = RSA_generate_key(2048, 65537, nullptr, nullptr);
       CHECK(rsa_);
-      attestation_.set_enterprise_test_key(rsa_);
     }
     return rsa_;
+  }
+
+  virtual void SetUpEnterprise() {
+    if (!is_enterprise_setup_) {
+      attestation_.set_enterprise_test_keys(Attestation::kDefaultVA,
+          RSA_generate_key(2048, 65537, nullptr, nullptr),
+          RSA_generate_key(2048, 65537, nullptr, nullptr));
+      attestation_.set_enterprise_test_keys(Attestation::kTestVA,
+          RSA_generate_key(2048, 65537, nullptr, nullptr),
+          RSA_generate_key(2048, 65537, nullptr, nullptr));
+      is_enterprise_setup_ = true;
+    }
+  }
+
+  RSA* enterprise_signing_rsa(Attestation::VAType va_type) {
+    SetUpEnterprise();
+    return attestation_.GetEnterpriseSigningKey(va_type);
+  }
+
+  RSA* enterprise_encryption_rsa(Attestation::VAType va_type) {
+    SetUpEnterprise();
+    return attestation_.GetEnterpriseEncryptionKey(va_type);
   }
 
   SecureBlob GetEnrollBlob() {
@@ -205,24 +226,26 @@ class AttestationTest : public testing::Test {
     return true;
   }
 
-  bool VerifyEnterpriseChallenge(const SecureBlob& response,
-                                 KeyType key_type,
-                                 const std::string& domain,
-                                 const std::string& device_id,
-                                 const std::string& cert_chain,
-                                 const std::string& signature) {
+  bool VerifyEnterpriseVaChallenge(Attestation::VAType va_type,
+                                   const SecureBlob& response,
+                                   KeyType key_type,
+                                   const std::string& domain,
+                                   const std::string& device_id,
+                                   const std::string& cert_chain,
+                                   const std::string& signature) {
     SignedData signed_data;
     if (!signed_data.ParseFromArray(response.data(), response.size()))
       return false;
     ChallengeResponse response_pb;
     if (!response_pb.ParseFromString(signed_data.data()))
       return false;
-    std::string expected_challenge =
-        GetEnterpriseChallenge("EnterpriseKeyChallenge", false).to_string();
+    std::string expected_challenge = GetEnterpriseVaChallenge(
+        va_type, "EnterpriseKeyChallenge", false).to_string();
     if (response_pb.challenge().data() != expected_challenge)
       return false;
     std::string key_info;
-    if (!DecryptData(response_pb.encrypted_key_info(), &key_info))
+    if (!DecryptEnterpriseData(va_type, response_pb.encrypted_key_info(),
+                               &key_info))
       return false;
     KeyInfo key_info_pb;
     if (!key_info_pb.ParseFromString(key_info))
@@ -237,7 +260,9 @@ class AttestationTest : public testing::Test {
     return true;
   }
 
-  SecureBlob GetEnterpriseChallenge(const std::string& prefix, bool sign) {
+  SecureBlob GetEnterpriseVaChallenge(Attestation::VAType va_type,
+                                    const std::string& prefix,
+                                    bool sign) {
     Challenge challenge;
     challenge.set_prefix(prefix);
     challenge.set_nonce("nonce");
@@ -251,7 +276,7 @@ class AttestationTest : public testing::Test {
       RSA_sign(NID_sha256,
                digest.data(), digest.size(),
                buffer, &length,
-               rsa());
+               enterprise_signing_rsa(va_type));
       SignedData signed_challenge;
       signed_challenge.set_data(serialized);
       signed_challenge.set_signature(buffer, length);
@@ -260,7 +285,9 @@ class AttestationTest : public testing::Test {
     return SecureBlob(serialized);
   }
 
-  bool DecryptData(const EncryptedData& input, std::string* output) {
+  bool DecryptEnterpriseData(Attestation::VAType va_type,
+                             const EncryptedData& input,
+                             std::string* output) {
     // Unwrap the AES key.
     unsigned char* wrapped_key_buffer = reinterpret_cast<unsigned char*>(
         const_cast<char*>(input.wrapped_key().data()));
@@ -268,7 +295,7 @@ class AttestationTest : public testing::Test {
     int length = RSA_private_decrypt(input.wrapped_key().size(),
                                      wrapped_key_buffer,
                                      buffer,
-                                     rsa(),
+                                     enterprise_encryption_rsa(va_type),
                                      RSA_PKCS1_OAEP_PADDING);
     if (length != 32)
       return false;
@@ -547,7 +574,44 @@ TEST_F(AttestationTest, EMKChallenge) {
                                              kTestUser,
                                              "test",
                                              &blob));
-  SecureBlob bad_prefix_challenge = GetEnterpriseChallenge("bad", true);
+  // Try all the VA servers in turn. We don't parameterize the test because
+  // not doing so allows us to verify that the attestation code uses the
+  // proper key when it has more than one.
+  for (int t = Attestation::kDefaultVA; t < Attestation::kMaxVAType; ++t) {
+    Attestation::VAType va_type = static_cast<Attestation::VAType>(t);
+    SecureBlob bad_prefix_challenge = GetEnterpriseVaChallenge(
+        va_type, "bad", true);
+    EXPECT_FALSE(attestation_.SignEnterpriseVaChallenge(va_type,
+                                                        false,
+                                                        kTestUser,
+                                                        "test",
+                                                        "test_domain",
+                                                        SecureBlob("test_id"),
+                                                        false,
+                                                        bad_prefix_challenge,
+                                                        &blob));
+    SecureBlob challenge = GetEnterpriseVaChallenge(
+        va_type, "EnterpriseKeyChallenge", true);
+    EXPECT_TRUE(attestation_.SignEnterpriseVaChallenge(va_type,
+                                                       false,
+                                                       kTestUser,
+                                                       "test",
+                                                       "test_domain",
+                                                       SecureBlob("test_id"),
+                                                       false,
+                                                       challenge,
+                                                       &blob));
+    EXPECT_TRUE(VerifyEnterpriseVaChallenge(va_type,
+                                            blob,
+                                            EMK,
+                                            "test_domain",
+                                            "test_id",
+                                            "",
+                                            "signature"));
+  }
+  // Try the default VA server.
+  SecureBlob bad_prefix_challenge = GetEnterpriseVaChallenge(
+      Attestation::kDefaultVA, "bad", true);
   EXPECT_FALSE(attestation_.SignEnterpriseChallenge(false,
                                                     kTestUser,
                                                     "test",
@@ -556,7 +620,8 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                     false,
                                                     bad_prefix_challenge,
                                                     &blob));
-  SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
+  SecureBlob challenge = GetEnterpriseVaChallenge(
+      Attestation::kDefaultVA, "EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(false,
                                                    kTestUser,
                                                    "test",
@@ -565,12 +630,13 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                    false,
                                                    challenge,
                                                    &blob));
-  EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
-                                        EMK,
-                                        "test_domain",
-                                        "test_id",
-                                        "",
-                                        "signature"));
+  EXPECT_TRUE(VerifyEnterpriseVaChallenge(Attestation::kDefaultVA,
+                                          blob,
+                                          EMK,
+                                          "test_domain",
+                                          "test_id",
+                                          "",
+                                          "signature"));
 }
 
 TEST_F(AttestationTest, EUKChallenge) {
@@ -582,7 +648,34 @@ TEST_F(AttestationTest, EUKChallenge) {
           SetArgPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   brillo::SecureBlob blob;
-  SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
+  // Try all the VA servers in turn. We don't parameterize the test because
+  // not doing so allows us to verify that the attestation code uses the
+  // proper key when it has more than one.
+  for (int t = Attestation::kDefaultVA; t < Attestation::kMaxVAType; ++t) {
+    Attestation::VAType va_type = static_cast<Attestation::VAType>(t);
+    SecureBlob challenge = GetEnterpriseVaChallenge(
+      va_type, "EnterpriseKeyChallenge", true);
+    EXPECT_TRUE(attestation_.SignEnterpriseVaChallenge(va_type,
+                                                       true,
+                                                       kTestUser,
+                                                       "test",
+                                                       "test_domain",
+                                                       SecureBlob("test_id"),
+                                                       true,
+                                                       challenge,
+                                                       &blob));
+    EXPECT_TRUE(VerifyEnterpriseVaChallenge(va_type,
+                                            blob,
+                                            EUK,
+                                            "test_domain",
+                                            "test_id",
+                                            EncodeCertChain("stored_cert",
+                                                            "stored_ca_cert"),
+                                            "signature"));
+  }
+  // Try the default VA server.
+  SecureBlob challenge = GetEnterpriseVaChallenge(
+    Attestation::kDefaultVA, "EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(true,
                                                    kTestUser,
                                                    "test",
@@ -591,13 +684,14 @@ TEST_F(AttestationTest, EUKChallenge) {
                                                    true,
                                                    challenge,
                                                    &blob));
-  EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
-                                        EUK,
-                                        "test_domain",
-                                        "test_id",
-                                        EncodeCertChain("stored_cert",
-                                                        "stored_ca_cert"),
-                                        "signature"));
+  EXPECT_TRUE(VerifyEnterpriseVaChallenge(Attestation::kDefaultVA,
+                                          blob,
+                                          EUK,
+                                          "test_domain",
+                                          "test_id",
+                                          EncodeCertChain("stored_cert",
+                                                          "stored_ca_cert"),
+                                          "signature"));
 }
 
 TEST_F(AttestationTest, Payload) {

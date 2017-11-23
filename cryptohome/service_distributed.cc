@@ -748,6 +748,22 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseChallenge(
   return TRUE;
 }
 
+// TODO(b/69687094): Support test VA servers in attestationd.
+gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
+    gint va_type,
+    gboolean is_user_specific,
+    gchar* username,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    gboolean include_signed_public_key,
+    GArray* challenge,
+    gint* OUT_async_id,
+    GError** error) {
+  LOG(ERROR) << __func__ << " not implemented.";
+  return FALSE;
+}
+
 gboolean ServiceDistributed::TpmAttestationSignSimpleChallenge(
     gboolean is_user_specific,
     gchar* username,

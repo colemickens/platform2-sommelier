@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_SERVICE_MONOLITHIC_H_
 #define CRYPTOHOME_SERVICE_MONOLITHIC_H_
 
+#include <memory>
 #include <string>
 
 #include "cryptohome/attestation.h"
@@ -108,6 +109,17 @@ class ServiceMonolithic : public Service {
                                              gint *OUT_async_id,
                                              GError** error) override;
   gboolean TpmAttestationSignEnterpriseChallenge(
+      gboolean is_user_specific,
+      gchar* username,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      gboolean include_signed_public_key,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error) override;
+  gboolean TpmAttestationSignEnterpriseVaChallenge(
+      gint va_type,
       gboolean is_user_specific,
       gchar* username,
       gchar* key_name,
