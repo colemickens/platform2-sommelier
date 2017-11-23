@@ -152,6 +152,7 @@ class StateController : public PrefsObserver {
   // Handles various changes to external state.
   void HandlePowerSourceChange(PowerSource source);
   void HandleLidStateChange(LidState state);
+  void HandleTabletModeChange(TabletMode mode);
   void HandleSessionStateChange(SessionState state);
   void HandleUpdaterStateChange(UpdaterState state);
   void HandleDisplayModeChange(DisplayMode mode);

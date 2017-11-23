@@ -320,6 +320,14 @@ void StateController::HandleLidStateChange(LidState state) {
   UpdateState();
 }
 
+void StateController::HandleTabletModeChange(TabletMode mode) {
+  DCHECK(initialized_);
+
+  // We don't care about the mode, but we treat events as user activity.
+  UpdateLastUserActivityTime();
+  UpdateState();
+}
+
 void StateController::HandleSessionStateChange(SessionState state) {
   CHECK(initialized_);
   if (state == session_state_)

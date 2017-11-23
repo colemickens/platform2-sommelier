@@ -874,6 +874,24 @@ TEST_F(StateControllerTest, FactoryMode) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
+// Test that tablet mode events are treated as user activity.
+TEST_F(StateControllerTest, TreatTabletModeChangeAsUserActivity) {
+  Init();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_EQ(JoinActions(kScreenDim, kScreenOff, nullptr),
+            delegate_.GetActions());
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
+            delegate_.GetActions());
+
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_EQ(kScreenDim, delegate_.GetActions());
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+}
+
 // Tests that the controller does something reasonable when given delays
 // that don't make sense.
 TEST_F(StateControllerTest, InvalidDelays) {

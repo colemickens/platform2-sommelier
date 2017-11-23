@@ -543,6 +543,7 @@ void Daemon::HandleHoverStateChange(bool hovering) {
 void Daemon::HandleTabletModeChange(TabletMode mode) {
   DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
+  state_controller_->HandleTabletModeChange(mode);
   input_device_controller_->SetTabletMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
