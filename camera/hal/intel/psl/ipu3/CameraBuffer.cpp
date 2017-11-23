@@ -485,14 +485,14 @@ void CameraBuffer::dump()
     }
 }
 
-void CameraBuffer::dumpImage(const int type, const char *name) const
+void CameraBuffer::dumpImage(const int type, const char *name)
 {
     if (CC_UNLIKELY(LogHelper::isDumpTypeEnable(type))) {
         dumpImage(name);
     }
 }
 
-void CameraBuffer::dumpImage(const char *name) const
+void CameraBuffer::dumpImage(const char *name)
 {
 #ifdef DUMP_IMAGE
     status_t status = lock();

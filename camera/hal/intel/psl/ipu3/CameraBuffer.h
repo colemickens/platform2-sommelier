@@ -92,8 +92,8 @@ public:
     status_t waitOnAcquireFence();
 
     void dump();
-    void dumpImage(const int type, const char *name) const;
-    void dumpImage(const char *name) const;
+    void dumpImage(const int type, const char *name);
+    void dumpImage(const char *name);
     void dumpImage(const void *data, const int size, int width, int height,
                     const char *name) const;
     CameraStream * getOwner() const { return mOwner; }
