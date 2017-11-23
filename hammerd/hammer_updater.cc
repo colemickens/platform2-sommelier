@@ -613,7 +613,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
       response.fw_address, response.fw_size);
   task_.update_tp = !ret;
   return ret ? HammerUpdater::RunStatus::kTouchpadUpToDate
-             : HammerUpdater::RunStatus::kFatalError;
+             : HammerUpdater::RunStatus::kNeedReset;
 }
 
 bool HammerUpdater::ParseTouchpadInfoFromFilename(

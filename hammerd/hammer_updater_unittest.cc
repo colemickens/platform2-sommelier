@@ -842,7 +842,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_FailToTransferFirmware) {
       .WillOnce(Return(false));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
-            HammerUpdater::RunStatus::kFatalError);
+            HammerUpdater::RunStatus::kNeedReset);
 }
 
 // Update touchpad firmware on boot if the firmware is broken.
