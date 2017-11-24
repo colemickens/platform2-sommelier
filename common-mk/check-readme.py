@@ -101,7 +101,8 @@ def CheckTopLevel():
 
 def CheckSubdirs():
   """Check the subdir README.md files exist."""
-  # Legacy projects.  Someone should write some docs :D.
+  # Legacy projects that don't have a README.md file.
+  # Someone should write some docs :D.
   WHITELIST = (
       'arc-networkd',
       'avtest_label_detect',
@@ -124,7 +125,6 @@ def CheckSubdirs():
       'libweave',
       'lorgnette',
       'modem-utilities',
-      'p2p',
       'peerd',
       'permission_broker',
       'regions',
@@ -145,10 +145,11 @@ def CheckSubdirs():
     readme = os.path.join(TOP_DIR, proj, 'README.md')
     if os.path.exists(readme):
       if proj in WHITELIST:
-        logging.error('*** "%s" in WHITELIST needs updating!', proj)
+        logging.error('*** Project "%s" is in no-README WHITELIST, but actually'
+                      ' has one. Please remove it from WHITELIST!', proj)
     else:
       if not proj in WHITELIST:
-        logging.error('*** "%s" needs a README.md file', proj)
+        logging.error('*** Project "%s" needs a README.md file', proj)
         ret = 1
   return ret
 
