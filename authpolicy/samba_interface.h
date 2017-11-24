@@ -5,9 +5,9 @@
 #ifndef AUTHPOLICY_SAMBA_INTERFACE_H_
 #define AUTHPOLICY_SAMBA_INTERFACE_H_
 
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -70,10 +70,12 @@ class SambaInterface {
                              ActiveDirectoryAccountInfo* account_info);
 
   // Retrieves the status of the user account given by |account_id| (aka
-  // objectGUID). The status contains general ActiveDirectoryAccountInfo as well
-  // as the status of the user's ticket-granting-ticket (TGT). Does not fill
-  // |user_status| on error.
-  ErrorType GetUserStatus(const std::string& account_id,
+  // objectGUID). |user_principal_name| is used to derive the user's realm.
+  // The returned |user_status| contains general ActiveDirectoryAccountInfo as
+  // well as the status of the user's ticket-granting-ticket (TGT). Does not
+  // fill |user_status| on error.
+  ErrorType GetUserStatus(const std::string& user_principal_name,
+                          const std::string& account_id,
                           ActiveDirectoryUserStatus* user_status);
 
   // Gets the user Kerberos credential cache (krb5cc) and configuration
@@ -82,11 +84,20 @@ class SambaInterface {
                                  KerberosFiles* files);
 
   // Joins the local device with name |machine_name| to an Active Directory
-  // domain. A user principal name and password are required for authentication
-  // (see |AuthenticateUser| for details).
+  // domain. The credentials for joining (usually admin level) are given by
+  // |user_principal_name| and |password_fd|, see AuthenticateUser() for
+  // details. |machine_domain| is the domain where the machine is joined to. If
+  // empty, it is derived from |user_principal_name|. |machine_ou| is a vector
+  // of organizational units where the machine is placed into, ordered
+  // leaf-to-root. If empty, the machine is placed in the default location (e.g.
+  // Computers OU). On success, |joined_domain| is set to the domain that was
+  // joined.
   ErrorType JoinMachine(const std::string& machine_name,
+                        const std::string& machine_domain,
+                        const std::vector<std::string>& machine_ou,
                         const std::string& user_principal_name,
-                        int password_fd);
+                        int password_fd,
+                        std::string* joined_domain);
 
   // Downloads user and extension policy from the Active Directory server and
   // stores it in |gpo_policy_data|. |account_id| is the unique user objectGUID
@@ -126,28 +137,30 @@ class SambaInterface {
   const std::string& user_sam_account_name() const {
     return user_sam_account_name_;
   }
-  const std::string& machine_name() const { return config_->machine_name(); }
+  const std::string& machine_name() const {
+    return device_account_.netbios_name;
+  }
 
  private:
+  // User or device specific information. The user might be logging on to a
+  // different realm than the machine was joined to.
+  struct AccountData {
+    std::string realm;         // Active Directory realm.
+    std::string workgroup;     // Active Directory workgroup name.
+    std::string netbios_name;  // Netbios name is empty for user.
+    std::string kdc_ip;        // IPv4/IPv6 address of key distribution center.
+    std::string dc_name;       // DNS name of the domain controller
+    Path smb_conf_path;        // Path of the Samba configuration file.
+
+    explicit AccountData(Path _smb_conf_path) : smb_conf_path(_smb_conf_path) {}
+  };
+
   // Actual implementation of AuthenticateUser() (see above). The method is
   // wrapped in order to catch and memorize the returned error.
   ErrorType AuthenticateUserInternal(const std::string& user_principal_name,
                                      const std::string& account_id,
                                      int password_fd,
                                      ActiveDirectoryAccountInfo* account_info);
-
-  // Calls GetKdcIp and GetDcName to fill the fields of the given |realm_info|.
-  ErrorType GetRealmInfo(protos::RealmInfo* realm_info) const;
-
-  // Retrieves the IP of the key distribution center (KDC). The KDC address is
-  // required to speed up network communication and to get rid of waiting for
-  // the machine account propagation after Active Directory domain join.
-  ErrorType GetKdcIp(std::string* kdc_ip) const;
-
-  // Retrieves the DNS domain name of the domain controller (DC). The DC name is
-  // required as host name in smbclient. With an IP address only, Samba wouldn't
-  // be able to use the Kerberos ticket.
-  ErrorType GetDcName(std::string* dc_name) const;
 
   // Gets the status of the user's ticket-granting-ticket (TGT). Uses klist
   // internally to check whether the ticket is valid, expired or not present.
@@ -159,18 +172,28 @@ class SambaInterface {
   ActiveDirectoryUserStatus::PasswordStatus GetUserPasswordStatus(
       const ActiveDirectoryAccountInfo& account_info);
 
-  // Retrieves the name of the workgroup. Since the workgroup is expected to
-  // change very rarely, this function earlies out and returns ERROR_NONE if the
-  // workgroup has already been fetched.
-  ErrorType EnsureWorkgroup();
+  // Writes the Samba configuration file using the given |account|.
+  ErrorType WriteSmbConf(const AccountData& account) const;
 
-  // Writes the Samba configuration file.
-  ErrorType WriteSmbConf() const;
+  // Queries the name of the workgroup for the given |account| and stores it in
+  // |account|->workgroup.
+  ErrorType UpdateWorkgroup(AccountData* account);
 
-  // Writes the Samba configuration file. If |workgroup_| is empty, the
-  // workgroup is queried from the server and the string is updated. Workgroups
-  // are only queried once a session, they are expected to change very rarely.
-  ErrorType EnsureWorkgroupAndWriteSmbConf();
+  // Queries the IP of the key distribution center (KDC) for the given |account|
+  // and stores it in |account|->kdc_ip. The KDC address is required to speed up
+  // network communication and to get rid of waiting for the machine account
+  // propagation after Active Directory domain join.
+  ErrorType UpdateKdcIp(AccountData* account) const;
+
+  // Queries the DNS domain name of the domain controller (DC) for the given
+  // |account| and stores it in |account|->dc_name. The DC name is required as
+  // host name in smbclient. With an IP address only, Samba wouldn't be able to
+  // use the Kerberos ticket.
+  ErrorType UpdateDcName(AccountData* account) const;
+
+  // Writes the Samba configuration file for the given |account| and updates
+  // the account's kdc_ip, dc_name and workgroup.
+  ErrorType UpdateAccountData(AccountData* account);
 
   // Writes the file with configuration information.
   ErrorType WriteConfiguration() const;
@@ -191,7 +214,6 @@ class SambaInterface {
   ErrorType GetAccountInfo(const std::string& user_name,
                            const std::string& normalized_upn,
                            const std::string& account_id,
-                           const protos::RealmInfo& realm_info,
                            ActiveDirectoryAccountInfo* account_info);
 
   // Calls net ads search with given |search_string| to retrieve |account_info|.
@@ -201,16 +223,18 @@ class SambaInterface {
 
   // Calls net ads gpo list to retrieve a list of GPOs. |user_or_machine_name|
   // may be a user or machine sAMAccountName. (The machine sAMAccountName is the
-  // machine name postfixed with '$').
+  // machine name postfixed with '$'). |account| is the account used for
+  // authentication.
   ErrorType GetGpoList(const std::string& user_or_machine_name,
+                       const AccountData& account,
                        PolicyScope scope,
                        protos::GpoList* gpo_list) const;
 
   // Downloads user or device GPOs in the given |gpo_list|. |scope| determines
   // a sub-folder where GPOs are downloaded to. It should match |scope| from
-  // |GetGpoList|.
+  // |GetGpoList|. |account| is the account used for authentication.
   ErrorType DownloadGpos(const protos::GpoList& gpo_list,
-                         const std::string& dc_name,
+                         const AccountData& account,
                          PolicyScope scope,
                          std::vector<base::FilePath>* gpo_file_paths) const;
 
@@ -225,9 +249,16 @@ class SambaInterface {
   // crashes the daemon.
   void SetUser(const std::string& account_id_key);
 
+  // Similar to SetUser, but sets user_account_.realm.
+  void SetUserRealm(const std::string& user_realm);
+
   // Anonymizes |realm| in different capitalizations as well as all parts. For
   // instance, if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
-  void AnonymizeRealm(const std::string& realm);
+  void AnonymizeRealm(const std::string& realm, const char* placeholder);
+
+  // Returns ERROR_NOT_JOINED if the device is not in a 'joined' state and
+  // ERROR_NONE otherwise.
+  ErrorType CheckDeviceAccountValid() const;
 
   // Resets internal state to an 'unenrolled' state by wiping configuration and
   // user data.
@@ -249,8 +280,6 @@ class SambaInterface {
 
   // User account_id (aka objectGUID).
   std::string user_account_id_;
-  // TODO(ljusten): Should contain username with realm after crbug.com/765411 is
-  // fixed.
   // User logon name.
   std::string user_sam_account_name_;
   // Timestamp of last password change on server.
@@ -260,8 +289,8 @@ class SambaInterface {
   // Last AuthenticateUser() error.
   ErrorType last_auth_error_ = ERROR_NONE;
 
-  std::unique_ptr<protos::ActiveDirectoryConfig> config_;
-  std::string workgroup_;
+  AccountData user_account_;
+  AccountData device_account_;
 
   // The order of members is carefully chosen to match initialization order, so
   // don't mess with it unless you have a reason.

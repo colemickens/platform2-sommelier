@@ -65,9 +65,12 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                         int32_t* error,
                         std::vector<uint8_t>* account_info_blob) override;
 
-  void GetUserStatus(const std::string& account_id,
+  void GetUserStatus(dbus::MethodCall* method_call,
+                     brillo::dbus_utils::ResponseSender sender) override;
+
+  void GetUserStatus(const GetUserStatusRequest& request,
                      int32_t* error,
-                     std::vector<uint8_t>* user_status_blob) override;
+                     std::vector<uint8_t>* user_status_blob);
 
   // |kerberos_files_blob| is a serialized KerberosFiles profobuf.
   void GetUserKerberosFiles(const std::string& account_id,
@@ -75,8 +78,10 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                             std::vector<uint8_t>* kerberos_files_blob) override;
 
   // |join_domain_request_blob| is a serialized JoinDomainRequest protobuf.
-  int32_t JoinADDomain(const std::vector<uint8_t>& join_domain_request_blob,
-                       const dbus::FileDescriptor& password_fd) override;
+  void JoinADDomain(const std::vector<uint8_t>& join_domain_request_blob,
+                    const dbus::FileDescriptor& password_fd,
+                    int32_t* error,
+                    std::string* joined_domain) override;
 
   void RefreshUserPolicy(PolicyResponseCallback callback,
                          const std::string& acccount_id) override;

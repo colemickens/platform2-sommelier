@@ -22,10 +22,10 @@ const char kInvalidGuid[] = "10a9cbf6-3a09-444c-a5f6";
 
 namespace authpolicy {
 
-class SambaInterfaceTest : public ::testing::Test {
+class SambaHelperTest : public ::testing::Test {
  public:
-  SambaInterfaceTest() {}
-  ~SambaInterfaceTest() override {}
+  SambaHelperTest() {}
+  ~SambaHelperTest() override {}
 
  protected:
   // Helpers for ParseUserPrincipleName.
@@ -53,11 +53,11 @@ class SambaInterfaceTest : public ::testing::Test {
   int gp_flags_ = kGpFlagInvalid;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(SambaInterfaceTest);
+  DISALLOW_COPY_AND_ASSIGN(SambaHelperTest);
 };
 
 // a@b.c succeeds.
-TEST_F(SambaInterfaceTest, ParseUPNSuccess) {
+TEST_F(SambaHelperTest, ParseUPNSuccess) {
   EXPECT_TRUE(ParseUserPrincipalName("usar@wokgroup.doomain"));
   EXPECT_EQ(user_name_, "usar");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN");
@@ -65,7 +65,7 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess) {
 }
 
 // a@b.c.d.e succeeds.
-TEST_F(SambaInterfaceTest, ParseUPNSuccess_Long) {
+TEST_F(SambaHelperTest, ParseUPNSuccess_Long) {
   EXPECT_TRUE(ParseUserPrincipalName("usar@wokgroup.doomain.company.com"));
   EXPECT_EQ(user_name_, "usar");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN.COMPANY.COM");
@@ -73,7 +73,7 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_Long) {
 }
 
 // Capitalization works as expected.
-TEST_F(SambaInterfaceTest, ParseUPNSuccess_MixedCaps) {
+TEST_F(SambaHelperTest, ParseUPNSuccess_MixedCaps) {
   EXPECT_TRUE(ParseUserPrincipalName("UsAr@WoKgrOUP.DOOMain.com"));
   EXPECT_EQ(user_name_, "UsAr");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN.COM");
@@ -81,7 +81,7 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_MixedCaps) {
 }
 
 // a.b@c.d succeeds, even though it is invalid (rejected by kinit).
-TEST_F(SambaInterfaceTest, ParseUPNSuccess_DotAtDot) {
+TEST_F(SambaHelperTest, ParseUPNSuccess_DotAtDot) {
   EXPECT_TRUE(ParseUserPrincipalName("usar.team@wokgroup.doomain"));
   EXPECT_EQ(user_name_, "usar.team");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN");
@@ -89,91 +89,91 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_DotAtDot) {
 }
 
 // a@ fails (no workgroup.domain).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoRealm) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoRealm) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@"));
 }
 
 // a fails (no @workgroup.domain).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealm) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoAtRealm) {
   EXPECT_FALSE(ParseUserPrincipalName("usar"));
 }
 
 // a. fails (no @workgroup.domain and trailing . is invalid, anyway).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealmButDot) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoAtRealmButDot) {
   EXPECT_FALSE(ParseUserPrincipalName("usar."));
 }
 
 // a@b@c fails (double at).
-TEST_F(SambaInterfaceTest, ParseUPNFail_AtAt) {
+TEST_F(SambaHelperTest, ParseUPNFail_AtAt) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain"));
 }
 
 // a@b@c fails (double at).
-TEST_F(SambaInterfaceTest, ParseUPNFail_AtAtDot) {
+TEST_F(SambaHelperTest, ParseUPNFail_AtAtDot) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain.com"));
 }
 
 // @b.c fails (empty user name).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpn) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoUpn) {
   EXPECT_FALSE(ParseUserPrincipalName("@wokgroup.doomain"));
 }
 
 // b.c fails (no user name@).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpnAt) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoUpnAt) {
   EXPECT_FALSE(ParseUserPrincipalName("wokgroup.doomain"));
 }
 
 // .b.c fails (no user name@ and initial . is invalid, anyway).
-TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpnAtButDot) {
+TEST_F(SambaHelperTest, ParseUPNFail_NoUpnAtButDot) {
   EXPECT_FALSE(ParseUserPrincipalName(".wokgroup.doomain"));
 }
 
 // a=b works.
-TEST_F(SambaInterfaceTest, FindTokenSuccess) {
+TEST_F(SambaHelperTest, FindTokenSuccess) {
   EXPECT_TRUE(FindToken("tok=res", '=', "tok"));
   EXPECT_EQ(find_token_result_, "res");
 }
 
 // Multiple matches return the first match
-TEST_F(SambaInterfaceTest, FindTokenSuccess_Multiple) {
+TEST_F(SambaHelperTest, FindTokenSuccess_Multiple) {
   EXPECT_TRUE(FindToken("tok=res\ntok=res2", '=', "tok"));
   EXPECT_EQ(find_token_result_, "res");
 }
 
 // Different separators are ignored matches return the first match
-TEST_F(SambaInterfaceTest, FindTokenSuccess_IgnoreInvalidSeparator) {
+TEST_F(SambaHelperTest, FindTokenSuccess_IgnoreInvalidSeparator) {
   EXPECT_TRUE(FindToken("tok:res\ntok=res2", '=', "tok"));
   EXPECT_EQ(find_token_result_, "res2");
 }
 
 // a=b=c returns b=c
-TEST_F(SambaInterfaceTest, FindTokenSuccess_TwoSeparators) {
+TEST_F(SambaHelperTest, FindTokenSuccess_TwoSeparators) {
   EXPECT_TRUE(FindToken("tok = res = true", '=', "tok"));
   EXPECT_EQ(find_token_result_, "res = true");
 }
 
 // Trims leading and trailing whitespace
-TEST_F(SambaInterfaceTest, FindTokenSuccess_TrimWhitespace) {
+TEST_F(SambaHelperTest, FindTokenSuccess_TrimWhitespace) {
   EXPECT_TRUE(FindToken("\n   \n\n tok  =  res   \n\n", '=', "tok"));
   EXPECT_EQ(find_token_result_, "res");
 }
 
 // Empty input strings fail.
-TEST_F(SambaInterfaceTest, FindTokenFail_Empty) {
+TEST_F(SambaHelperTest, FindTokenFail_Empty) {
   EXPECT_FALSE(FindToken("", '=', "tok"));
   EXPECT_FALSE(FindToken("\n", '=', "tok"));
   EXPECT_FALSE(FindToken("\n\n\n", '=', "tok"));
 }
 
 // Whitespace input strings fail.
-TEST_F(SambaInterfaceTest, FindTokenFail_Whitespace) {
+TEST_F(SambaHelperTest, FindTokenFail_Whitespace) {
   EXPECT_FALSE(FindToken("    ", '=', "tok"));
   EXPECT_FALSE(FindToken("    \n   \n ", '=', "tok"));
   EXPECT_FALSE(FindToken("    \n\n \n   ", '=', "tok"));
 }
 
 // a=b works.
-TEST_F(SambaInterfaceTest, FindTokenInLineSuccess) {
+TEST_F(SambaHelperTest, FindTokenInLineSuccess) {
   std::string result;
   EXPECT_TRUE(
       authpolicy::FindTokenInLine("  tok =  res ", '=', "tok", &result));
@@ -181,7 +181,7 @@ TEST_F(SambaInterfaceTest, FindTokenInLineSuccess) {
 }
 
 // Parsing valid GPO version strings.
-TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
+TEST_F(SambaHelperTest, ParseGpoVersionSuccess) {
   EXPECT_TRUE(ParseGpoVersion("0 (0x0000)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 0);
   EXPECT_TRUE(ParseGpoVersion("1 (0x0001)", &gpo_version_));
@@ -195,49 +195,49 @@ TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
 }
 
 // Empty string
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_EmptyString) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_EmptyString) {
   EXPECT_FALSE(ParseGpoVersion("", &gpo_version_));
 }
 
 // Base-10 and Base-16 (hex) numbers not matching
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NotMatching) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_NotMatching) {
   EXPECT_FALSE(ParseGpoVersion("15 (0x000e)", &gpo_version_));
 }
 
 // Non-numeric characters fail
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NonNumericCharacters) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_NonNumericCharacters) {
   EXPECT_FALSE(ParseGpoVersion("15a (0x00f)", &gpo_version_));
   EXPECT_FALSE(ParseGpoVersion("15 (0xg0f)", &gpo_version_));
   EXPECT_FALSE(ParseGpoVersion("dead", &gpo_version_));
 }
 
 // Missing 0x in hex string fails
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_Missing0x) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_Missing0x) {
   EXPECT_FALSE(ParseGpoVersion("15 (000f)", &gpo_version_));
 }
 
 // Missing brackets in hex string fail
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingBrackets) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_MissingBrackets) {
   EXPECT_FALSE(ParseGpoVersion("15 000f", &gpo_version_));
 }
 
 // Missing hex string fails
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingHex) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_MissingHex) {
   EXPECT_FALSE(ParseGpoVersion("10", &gpo_version_));
 }
 
 // Only hex string fails
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_HexOnly) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_HexOnly) {
   EXPECT_FALSE(ParseGpoVersion("0x000f", &gpo_version_));
 }
 
 // Only hex string in brackets fails
-TEST_F(SambaInterfaceTest, ParseGpoVersionFail_BracketsHexOnly) {
+TEST_F(SambaHelperTest, ParseGpoVersionFail_BracketsHexOnly) {
   EXPECT_FALSE(ParseGpoVersion("(0x000f)", &gpo_version_));
 }
 
 // Successfully parsing GP flags
-TEST_F(SambaInterfaceTest, ParseGpFlagsSuccess) {
+TEST_F(SambaHelperTest, ParseGpFlagsSuccess) {
   EXPECT_TRUE(ParseGpFlags("0 GPFLAGS_ALL_ENABLED", &gp_flags_));
   EXPECT_EQ(0, gp_flags_);
   EXPECT_TRUE(ParseGpFlags("1 GPFLAGS_USER_SETTINGS_DISABLED", &gp_flags_));
@@ -249,41 +249,72 @@ TEST_F(SambaInterfaceTest, ParseGpFlagsSuccess) {
 }
 
 // Strings don't match numbers
-TEST_F(SambaInterfaceTest, ParseGpFlagsFail_StringNotMatching) {
+TEST_F(SambaHelperTest, ParseGpFlagsFail_StringNotMatching) {
   EXPECT_FALSE(ParseGpFlags("1 GPFLAGS_ALL_ENABLED", &gp_flags_));
   EXPECT_FALSE(ParseGpFlags("2 GPFLAGS_ALL_DISABLED", &gp_flags_));
 }
 
 // Missing string
-TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingString) {
+TEST_F(SambaHelperTest, ParseGpFlagsFail_MissingString) {
   EXPECT_FALSE(ParseGpFlags("0", &gp_flags_));
 }
 
 // Missing number
-TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingNumber) {
+TEST_F(SambaHelperTest, ParseGpFlagsFail_MissingNumber) {
   EXPECT_FALSE(ParseGpFlags("GPFLAGS_ALL_ENABLED", &gp_flags_));
 }
 
 // String not trimmed
-TEST_F(SambaInterfaceTest, ParseGpFlagsFail_NotTrimmed) {
+TEST_F(SambaHelperTest, ParseGpFlagsFail_NotTrimmed) {
   EXPECT_FALSE(ParseGpFlags(" 0 GPFLAGS_ALL_ENABLED", &gp_flags_));
   EXPECT_FALSE(ParseGpFlags("0 GPFLAGS_ALL_ENABLED ", &gp_flags_));
 }
 
 // Valid GUID to octet string conversion.
-TEST_F(SambaInterfaceTest, GuidToOctetSuccess) {
+TEST_F(SambaHelperTest, GuidToOctetSuccess) {
   EXPECT_EQ(kOctetStr, GuidToOctetString(kGuid));
 }
 
 // Invalid GUID to octet string conversion should yield empty string.
-TEST_F(SambaInterfaceTest, GuidToOctetFailInvalidGuid) {
+TEST_F(SambaHelperTest, GuidToOctetFailInvalidGuid) {
   EXPECT_EQ("", GuidToOctetString(kInvalidGuid));
 }
 
 // OctetStringToGuidForTesting() reverses GuidToOctetString().
-TEST_F(SambaInterfaceTest, OctetToGuidSuccess) {
+TEST_F(SambaHelperTest, OctetToGuidSuccess) {
   const std::string octet_str = GuidToOctetString(kGuid);
   EXPECT_EQ(kGuid, OctetStringToGuidForTesting(octet_str));
+}
+
+// BuildDistinguishedName() builds a valid distinguished name.
+TEST_F(SambaHelperTest, BuildDistinguishedName) {
+  std::vector<std::string> ou_vector;
+  std::string domain = "example.com";
+
+  ou_vector = {"OU1"};
+  EXPECT_EQ("ou=OU1,dc=example,dc=com",
+            BuildDistinguishedName(ou_vector, domain));
+
+  ou_vector.clear();
+  EXPECT_EQ("dc=example,dc=com", BuildDistinguishedName(ou_vector, domain));
+
+  ou_vector = {"OU1", "OU2", "OU3"};
+  EXPECT_EQ("ou=OU1,ou=OU2,ou=OU3,dc=example,dc=com",
+            BuildDistinguishedName(ou_vector, domain));
+
+  ou_vector = {"ou=123!", "a\"b", " ", "# ", " #", ",,\n\n\r/"};
+  domain.clear();
+  EXPECT_EQ(
+      "ou=ou\\=123!,ou=a\\\"b,ou=\\ ,ou=\\#\\ ,ou=\\ "
+      "#,ou=\\,\\,\\\n\\\n\\\r\\/",
+      BuildDistinguishedName(ou_vector, domain));
+
+  domain.clear();
+  ou_vector = {"ou"};
+  EXPECT_EQ("ou=ou", BuildDistinguishedName(ou_vector, domain));
+
+  ou_vector.clear();
+  EXPECT_EQ("", BuildDistinguishedName(ou_vector, domain));
 }
 
 }  // namespace authpolicy

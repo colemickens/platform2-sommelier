@@ -4,6 +4,7 @@
 
 #include "authpolicy/samba_helper.h"
 
+#include <cstring>
 #include <vector>
 
 #include <base/guid.h>
@@ -34,6 +35,28 @@ const int octet_pos_map[16][2] = {  // Maps GUID position to octet position.
 
 const size_t kGuidSize = 36;   // 16 bytes, xx each byte, plus 4 '-'.
 const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
+
+constexpr char kAttributeValueEscapedCharacters[] = ",+\"\\<>;\r\n=/";
+
+// Escapes a relative distinguished name attribute value according to
+// https://msdn.microsoft.com/en-us/library/aa366101(v=vs.85).aspx.
+std::string EscapeAttributeValue(const std::string& value) {
+  std::string escaped_value;
+  for (size_t n = 0; n < value.size(); ++n) {
+    // Escape
+    //   - ' ' and # at the beginning,
+    //   - ' ' at the end and
+    //   - all characters in kAttributeValueEscapedCharacters.
+    const bool should_escape =
+        (n == 0 && (value[n] == ' ' || value[n] == '#')) ||
+        (n + 1 == value.size() && value[n] == ' ') ||
+        strchr(kAttributeValueEscapedCharacters, value[n]) != nullptr;
+    if (should_escape)
+      escaped_value += '\\';
+    escaped_value += value[n];
+  }
+  return escaped_value;
+}
 
 }  // namespace
 
@@ -181,6 +204,28 @@ void LogLongString(const std::string& header,
     for (const std::string& line : lines)
       LOG(INFO) << "  " << line;
   }
+}
+
+std::string BuildDistinguishedName(
+    const std::vector<std::string>& organizational_units,
+    const std::string& domain) {
+  std::string distinguished_name;
+
+  for (const std::string& ou : organizational_units) {
+    if (distinguished_name.size() > 0)
+      distinguished_name += ",";
+    distinguished_name += "ou=" + EscapeAttributeValue(ou);
+  }
+
+  std::vector<std::string> dc_parts = base::SplitString(
+      domain, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  for (const std::string& dc : dc_parts) {
+    if (distinguished_name.size() > 0)
+      distinguished_name += ",";
+    distinguished_name += "dc=" + EscapeAttributeValue(dc);
+  }
+
+  return distinguished_name;
 }
 
 }  // namespace authpolicy

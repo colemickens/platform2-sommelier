@@ -14,8 +14,9 @@ namespace authpolicy {
 extern const int kExitCodeOk;
 extern const int kExitCodeError;
 
-// Default realm.
-extern const char kRealm[];
+// Realms.
+extern const char kUserRealm[];
+extern const char kMachineRealm[];
 
 // Default, valid user name.
 extern const char kUserName[];
@@ -42,6 +43,16 @@ extern const char kExpiredTgtUserPrincipal[];
 extern const char kPasswordChangedUserPrincipal[];
 // Corresponding user name.
 extern const char kPasswordChangedUserName[];
+// Triggers an error in net ads join for missing or bad createcomputer argument.
+extern const char kExpectOuUserPrincipal[];
+
+// 'createcomputer' argument tested by the kExpectOuUserPrincipal check. Equals
+// a distinguished name made from kExpectedOuParts and kUserRealm.
+extern const char kExpectedOuCreatecomputer[];
+// Array of organizational unit names used for the kExpectOuUserPrincipal check.
+extern const char* kExpectedOuParts[];
+// Array size of kExpectedOuParts.
+extern const size_t kExpectedOuPartsSize;
 
 // Misc account information, used to test whether they're properly parsed and
 // encoded.

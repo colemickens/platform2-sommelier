@@ -25,9 +25,8 @@ const char kGpoCacheDir[] = "/gpo_cache";
 
 // Configuration files.
 const char kConfig[] = "/config.dat";
-const char kSmbConf[] = "/smb.conf";
-
-// Kerberos configuration.
+const char kUserSmbConf[] = "/smb_user.conf";
+const char kDeviceSmbConf[] = "/smb_device.conf";
 const char kUserKrb5Conf[] = "/krb5_user.conf";
 const char kDeviceKrb5Conf[] = "/krb5_device.conf";
 
@@ -89,8 +88,8 @@ void PathService::Initialize() {
   Insert(Path::GPO_LOCAL_DIR, temp_dir + kSambaDir + kCacheDir + kGpoCacheDir);
 
   Insert(Path::CONFIG_DAT, state_dir + kConfig);
-  Insert(Path::SMB_CONF, temp_dir + kSmbConf);
-
+  Insert(Path::USER_SMB_CONF, temp_dir + kUserSmbConf);
+  Insert(Path::DEVICE_SMB_CONF, temp_dir + kDeviceSmbConf);
   Insert(Path::USER_KRB5_CONF, temp_dir + kUserKrb5Conf);
   Insert(Path::DEVICE_KRB5_CONF, temp_dir + kDeviceKrb5Conf);
 

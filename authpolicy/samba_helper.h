@@ -6,6 +6,7 @@
 #define AUTHPOLICY_SAMBA_HELPER_H_
 
 #include <string>
+#include <vector>
 
 namespace authpolicy {
 
@@ -19,7 +20,6 @@ const int kGpFlagAllDisabled = 0x03;
 const int kGpFlagCount = 0x04;
 const int kGpFlagInvalid = 0x04;
 
-extern const char kActiveDirectoryPrefix[];
 extern const char* const kGpFlagsStr[];
 
 // Parses user_name@some.realm into its components and normalizes (uppercases)
@@ -80,6 +80,14 @@ std::string GetAccountIdKey(const std::string& account_id);
 void LogLongString(const std::string& header,
                    const std::string& str,
                    Anonymizer* anonymizer);
+
+// Builds a distinguished name from a vector of |organizational_units|, ordered
+// leaf-to-root, and a DNS |domain| name. Returns a combined string
+// 'ou=ouLeaf,...,ou=ouRoot,dc="example",dc="com"'. Makes sure the result is
+// properly escaped..
+std::string BuildDistinguishedName(
+    const std::vector<std::string>& organizational_units,
+    const std::string& domain);
 
 }  // namespace authpolicy
 

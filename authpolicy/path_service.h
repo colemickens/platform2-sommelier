@@ -29,12 +29,11 @@ enum class Path {
   GPO_LOCAL_DIR,  // Location of downloaded GPOs.
 
   // Configuration files.
-  CONFIG_DAT,  // Authpolicy configuration.
-  SMB_CONF,    // Samba configuration.
-
-  // Kerberos configuration.
-  USER_KRB5_CONF,
-  DEVICE_KRB5_CONF,
+  CONFIG_DAT,        // Authpolicy configuration.
+  USER_SMB_CONF,     // Samba configuration for user account.
+  DEVICE_SMB_CONF,   // Samba configuration for device/machine account.
+  USER_KRB5_CONF,    // Kerberos configuration for user account.
+  DEVICE_KRB5_CONF,  // Kerberos configuration for device/machine account.
 
   // Credential cache paths.
   USER_CREDENTIAL_CACHE,

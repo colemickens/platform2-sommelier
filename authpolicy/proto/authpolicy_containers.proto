@@ -6,7 +6,10 @@ package authpolicy.protos;
 
 // Active directory information entered during domain join.
 message ActiveDirectoryConfig {
+  // Computer name from domain join operation.
   optional string machine_name = 1;
+  reserved 2;
+  // Realm where the computer was joined to.
   optional string realm = 3;
 }
 
@@ -32,14 +35,6 @@ message GpoList {
 // Local file paths of downloaded GPO files.
 message FilePathList {
   repeated string entries = 1;
-}
-
-// Selected data from net ads info. |dc_name| is the name of the domain
-// controller and |kdc_ip| is the IPv4 or IPv6 address of the key distribution
-// center.
-message RealmInfo {
-  optional string dc_name = 1;
-  optional string kdc_ip = 2;
 }
 
 // Validity and renewal lifetimes of a Kerberos ticket-granting-ticket.

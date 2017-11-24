@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/bus.h>
@@ -102,7 +103,6 @@ dbus::FileDescriptor MakePasswordFd() {
 // Stub completion callback for RegisterAsync().
 void DoNothing(bool /* unused */) {}
 
-
 // If |error| is ERROR_NONE, parses |proto_blob| into the |proto| if given.
 // Otherwise, makes sure |proto_blob| is empty.
 template <typename T>
@@ -117,6 +117,16 @@ void MaybeParseProto(int error,
     EXPECT_TRUE(proto->ParseFromArray(proto_blob.data(),
                                       static_cast<int>(proto_blob.size())));
   }
+}
+
+// Reads the smb.conf file at |smb_conf_path| and extracts some values.
+void ReadSmbConf(const std::string& smb_conf_path,
+                 std::string* machine_name,
+                 std::string* realm) {
+  std::string smb_conf;
+  EXPECT_TRUE(base::ReadFileToString(base::FilePath(smb_conf_path), &smb_conf));
+  EXPECT_TRUE(FindToken(smb_conf, '=', "netbios name", machine_name));
+  EXPECT_TRUE(FindToken(smb_conf, '=', "realm", realm));
 }
 
 // Helper class that points some paths to convenient locations we can write to.
@@ -431,28 +441,37 @@ class AuthPolicyTest : public testing::Test {
   ErrorType Join(const std::string& machine_name,
                  const std::string& user_principal,
                  dbus::FileDescriptor password_fd) {
-    expected_dbus_calls[DBUS_CALL_JOIN_AD_DOMAIN]++;
-    authpolicy::JoinDomainRequest request;
+    JoinDomainRequest request;
     request.set_machine_name(machine_name);
     request.set_user_principal_name(user_principal);
+    std::string joined_domain_unused;
+    return JoinEx(request, std::move(password_fd), &joined_domain_unused);
+  }
+
+  // Extended Join() that takes a full JoinDomainRequest proto.
+  ErrorType JoinEx(const JoinDomainRequest& request,
+                   dbus::FileDescriptor password_fd,
+                   std::string* joined_domain) {
+    expected_dbus_calls[DBUS_CALL_JOIN_AD_DOMAIN]++;
     std::vector<uint8_t> blob(request.ByteSizeLong());
     request.SerializeToArray(blob.data(), blob.size());
-    return CastError(authpolicy_->JoinADDomain(blob, password_fd));
+    int error;
+    authpolicy_->JoinADDomain(blob, password_fd, &error, joined_domain);
+    return CastError(error);
   }
 
   // Authenticates to a (stub) Active Directory domain with the given
   // credentials and returns the error code. Assigns the user account info to
   // |account_info| if a non-nullptr is provided.
-  ErrorType Auth(
-      const std::string& user_principal,
-      const std::string& account_id,
-      dbus::FileDescriptor password_fd,
-      authpolicy::ActiveDirectoryAccountInfo* account_info = nullptr) {
+  ErrorType Auth(const std::string& user_principal,
+                 const std::string& account_id,
+                 dbus::FileDescriptor password_fd,
+                 ActiveDirectoryAccountInfo* account_info = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> account_info_blob;
     expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER]++;
     int prev_files_changed_count = user_kerberos_files_changed_count_;
-    authpolicy::AuthenticateUserRequest request;
+    AuthenticateUserRequest request;
     request.set_user_principal_name(user_principal);
     request.set_account_id(account_id);
     std::vector<uint8_t> blob(request.ByteSizeLong());
@@ -468,13 +487,16 @@ class AuthPolicyTest : public testing::Test {
   // Gets a fake user status from a (stub) Active Directory service.
   // |account_id| is the id (aka objectGUID) of the user. Assigns the user's
   // status to |user_status| if a non-nullptr is given.
-  ErrorType GetUserStatus(
-      const std::string& account_id,
-      authpolicy::ActiveDirectoryUserStatus* user_status = nullptr) {
+  ErrorType GetUserStatus(const std::string& user_principal,
+                          const std::string& account_id,
+                          ActiveDirectoryUserStatus* user_status = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> user_status_blob;
     expected_dbus_calls[DBUS_CALL_GET_USER_STATUS]++;
-    authpolicy_->GetUserStatus(account_id, &error, &user_status_blob);
+    GetUserStatusRequest request;
+    request.set_user_principal_name(user_principal);
+    request.set_account_id(account_id);
+    authpolicy_->GetUserStatus(request, &error, &user_status_blob);
     MaybeParseProto(error, user_status_blob, user_status);
     return CastError(error);
   }
@@ -492,7 +514,7 @@ class AuthPolicyTest : public testing::Test {
   // Authenticates to a (stub) Active Directory domain with default credentials.
   // Returns the account id.
   std::string DefaultAuth() {
-    authpolicy::ActiveDirectoryAccountInfo account_info;
+    ActiveDirectoryAccountInfo account_info;
     EXPECT_EQ(ERROR_NONE,
               Auth(kUserPrincipal, "", MakePasswordFd(), &account_info));
     return account_info.account_id();
@@ -665,9 +687,49 @@ TEST_F(AuthPolicyTest, AuthFailsNotJoined) {
   EXPECT_EQ(ERROR_NOT_JOINED, Auth(kUserPrincipal, "", MakePasswordFd()));
 }
 
-// Successful domain join.
+// Successful domain join. The machine should join the user's domain since
+// Join() doesn't specify machine domain.
 TEST_F(AuthPolicyTest, JoinSucceeds) {
-  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_user_principal_name(kUserPrincipal);
+  std::string joined_realm;
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
+  std::string machine_name, config_realm;
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &machine_name, &config_realm);
+  EXPECT_EQ(base::ToUpperASCII(kMachineName), machine_name);
+  EXPECT_EQ(kUserRealm, config_realm);
+  EXPECT_EQ(kUserRealm, joined_realm);
+}
+
+// Successful domain join with separate machine domain specified.
+TEST_F(AuthPolicyTest, JoinSucceedsWithDifferentDomain) {
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  std::string joined_realm;
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
+  std::string machine_name, config_realm;
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &machine_name, &config_realm);
+  EXPECT_EQ(base::ToUpperASCII(kMachineName), machine_name);
+  EXPECT_EQ(kMachineRealm, config_realm);
+  EXPECT_EQ(kMachineRealm, joined_realm);
+}
+
+// Successful domain join with organizational unit (OU).
+TEST_F(AuthPolicyTest, JoinSucceedsWithOrganizationalUnit) {
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_user_principal_name(kExpectOuUserPrincipal);
+  for (size_t n = 0; n < kExpectedOuPartsSize; ++n)
+    *request.add_machine_ou() = kExpectedOuParts[n];
+  std::string joined_realm;
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
+  // Note: We can't test directly whether the computer was put into the right OU
+  // because there's no state for that in authpolicy. The only indicator is the
+  // 'createcomputer' parameter to net ads join, but that can only be tested in
+  // stub_net, see kExpectOuUserPrincipal.
 }
 
 // Successful user authentication.
@@ -679,7 +741,7 @@ TEST_F(AuthPolicyTest, AuthSucceeds) {
 
 // Successful user authentication with given account id.
 TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
-  authpolicy::ActiveDirectoryAccountInfo account_info;
+  ActiveDirectoryAccountInfo account_info;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_info));
@@ -706,7 +768,7 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
 
 // Successful user authentication.
 TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
-  authpolicy::ActiveDirectoryAccountInfo account_info;
+  ActiveDirectoryAccountInfo account_info;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, "", MakePasswordFd(), &account_info));
@@ -784,13 +846,13 @@ TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
 
 // Can't get user status before domain join.
 TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
-  EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kAccountId));
+  EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kUserPrincipal, kAccountId));
 }
 
 // GetUserStatus fails with bad account id.
 TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kBadAccountId));
+  EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kUserPrincipal, kBadAccountId));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
@@ -799,7 +861,8 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
 TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
-  EXPECT_DEATH(GetUserStatus(kAltAccountId), kMultiUserNotSupported);
+  EXPECT_DEATH(GetUserStatus(kUserPrincipal, kAltAccountId),
+               kMultiUserNotSupported);
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
@@ -807,7 +870,7 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
 TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtNotFound) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_NOT_FOUND, status.tgt_status());
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
@@ -817,7 +880,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
@@ -827,7 +890,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
 
   ActiveDirectoryUserStatus expected_status;
   ActiveDirectoryAccountInfo& expected_account_info =
@@ -859,7 +922,7 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsLastAuthError) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED, status.last_auth_error());
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
@@ -870,7 +933,8 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsExpiredPasswords) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, kExpiredPasswordAccountId, MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kExpiredPasswordAccountId, &status));
+  EXPECT_EQ(ERROR_NONE,
+            GetUserStatus(kUserPrincipal, kExpiredPasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_EXPIRED,
             status.password_status());
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -883,7 +947,8 @@ TEST_F(AuthPolicyTest, GetUserStatusDontReportNeverExpirePasswords) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kNeverExpirePasswordAccountId,
                              MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kNeverExpirePasswordAccountId, &status));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal,
+                                      kNeverExpirePasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
             status.password_status());
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -895,7 +960,8 @@ TEST_F(AuthPolicyTest, GetUserStatusReportChangedPasswords) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kPasswordChangedUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(ERROR_NONE, GetUserStatus(kPasswordChangedAccountId, &status));
+  EXPECT_EQ(ERROR_NONE,
+            GetUserStatus(kUserPrincipal, kPasswordChangedAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
             status.password_status());
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));

@@ -128,7 +128,7 @@ void AuthPolicy::AuthenticateUser(
   authpolicy::AuthenticateUserRequest request;
   ErrorType error = ParseProto(&request, auth_user_request_blob);
 
-  authpolicy::ActiveDirectoryAccountInfo account_info;
+  ActiveDirectoryAccountInfo account_info;
   if (error == ERROR_NONE) {
     error = samba_.AuthenticateUser(request.user_principal_name(),
                                     request.account_id(), password_fd.value(),
@@ -136,19 +136,46 @@ void AuthPolicy::AuthenticateUser(
   }
   if (error == ERROR_NONE)
     error = SerializeProto(account_info, account_info_blob);
+
   PrintError("AuthenticateUser", error);
   metrics_->ReportDBusResult(DBUS_CALL_AUTHENTICATE_USER, error);
   *int_error = static_cast<int>(error);
 }
 
-void AuthPolicy::GetUserStatus(const std::string& account_id,
+void AuthPolicy::GetUserStatus(dbus::MethodCall* method_call,
+                               brillo::dbus_utils::ResponseSender sender) {
+  // Read input arguments.
+  dbus::MessageReader reader(method_call);
+  GetUserStatusRequest request;
+  bool success = reader.PopArrayOfBytesAsProto(&request) ||
+                 reader.PopString(request.mutable_account_id());
+
+  int32_t error = ERROR_NONE;
+  std::vector<uint8_t> user_status_blob;
+  if (success) {
+    GetUserStatus(request, &error, &user_status_blob);
+  } else {
+    error = ERROR_DBUS_FAILURE;
+  }
+
+  // Send response.
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt32(error);
+  writer.AppendArrayOfBytes(user_status_blob.data(), user_status_blob.size());
+  sender.Run(std::move(response));
+}
+
+void AuthPolicy::GetUserStatus(const GetUserStatusRequest& request,
                                int32_t* int_error,
                                std::vector<uint8_t>* user_status_blob) {
   LOG(INFO) << "Received 'GetUserStatus' request";
   ScopedTimerReporter timer(TIMER_GET_USER_STATUS);
 
-  authpolicy::ActiveDirectoryUserStatus user_status;
-  ErrorType error = samba_.GetUserStatus(account_id, &user_status);
+  ActiveDirectoryUserStatus user_status;
+  ErrorType error = samba_.GetUserStatus(request.user_principal_name(),
+                                         request.account_id(), &user_status);
   if (error == ERROR_NONE)
     error = SerializeProto(user_status, user_status_blob);
   PrintError("GetUserStatus", error);
@@ -163,7 +190,7 @@ void AuthPolicy::GetUserKerberosFiles(
   LOG(INFO) << "Received 'GetUserKerberosFiles' request";
   ScopedTimerReporter timer(TIMER_GET_USER_KERBEROS_FILES);
 
-  authpolicy::KerberosFiles kerberos_files;
+  KerberosFiles kerberos_files;
   ErrorType error = samba_.GetUserKerberosFiles(account_id, &kerberos_files);
   if (error == ERROR_NONE)
     error = SerializeProto(kerberos_files, kerberos_files_blob);
@@ -172,40 +199,40 @@ void AuthPolicy::GetUserKerberosFiles(
   *int_error = static_cast<int>(error);
 }
 
-int32_t AuthPolicy::JoinADDomain(
+void AuthPolicy::JoinADDomain(
     const std::vector<uint8_t>& join_domain_request_blob,
-    const dbus::FileDescriptor& password_fd) {
+    const dbus::FileDescriptor& password_fd,
+    int32_t* int_error,
+    std::string* joined_domain) {
   LOG(INFO) << "Received 'JoinADDomain' request";
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
-  authpolicy::JoinDomainRequest request;
+  JoinDomainRequest request;
   ErrorType error = ParseProto(&request, join_domain_request_blob);
 
   if (error == ERROR_NONE) {
-    error =
-        samba_.JoinMachine(request.machine_name(),
-                           request.user_principal_name(), password_fd.value());
+    std::vector<std::string> machine_ou(request.machine_ou().begin(),
+                                        request.machine_ou().end());
+
+    error = samba_.JoinMachine(request.machine_name(), request.machine_domain(),
+                               machine_ou, request.user_principal_name(),
+                               password_fd.value(), joined_domain);
   }
+
   PrintError("JoinADDomain", error);
   metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
-  return error;
+  *int_error = static_cast<int>(error);
 }
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
                                    const std::string& account_id) {
-  std::string real_account_id = account_id;
-  if (base::StartsWith(real_account_id, kActiveDirectoryPrefix,
-                       base::CompareCase::SENSITIVE)) {
-    real_account_id = real_account_id.substr(strlen(kActiveDirectoryPrefix));
-  }
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
   auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
   std::unique_ptr<protos::GpoPolicyData> gpo_policy_data =
       std::make_unique<protos::GpoPolicyData>();
-  ErrorType error =
-      samba_.FetchUserGpos(real_account_id, gpo_policy_data.get());
+  ErrorType error = samba_.FetchUserGpos(account_id, gpo_policy_data.get());
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -215,8 +242,8 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
     return;
   }
 
-  const std::string account_id_key = GetAccountIdKey(real_account_id);
   // Send policy to Session Manager.
+  const std::string account_id_key = GetAccountIdKey(account_id);
   StorePolicy(std::move(gpo_policy_data), &account_id_key, std::move(timer),
               std::move(callback));
 }

@@ -95,7 +95,21 @@ const char kKeyJoinFailedToFindDC[] = "failed to find DC";
 const char kKeyNoLogonServers[] = "No logon servers";
 const char kKeyJoinLogonFailure[] = "Logon failure";
 const char kKeyJoinMustChangePassword[] = "Must change password";
-
+// Setting OU during domain join failed. More specific errors below.
+const char kKeyBadOuCommon[] = "failed to precreate account in ou";
+// The domain join createcomputer argument specified a non-existent OU.
+const char kKeyBadOuNoSuchObject[] = "No such object";
+// The domain join createcomputer argument syntax was invalid. Caused by some
+// special characters in OU names, e.g. 'ou=123!' or 'a"b'. Seems like a Samba
+// issue since OUs allow all characters and we do escape names properly.
+const char kKeyBadOuInvalidDnSyntax[] = "Invalid DN syntax";
+// Domain join operation would have violated an attribute constraint.
+const char kKeyBadOuConstrainViolation[] = "Constraint violation";
+// Domain join required access permissions that the user does not possess.
+const char kKeyBadOuInsufficientAccess[] = "Insufficient access";
+// All other OU errors result in a generic ERROR_SETTING_OU_FAILED, e.g.
+//  - "Referral": dc=... specification resulted in a referral to another server.
+//  - "Operations error": Unspecific error.
 // Keys for interpreting smbclient output.
 const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
@@ -111,7 +125,8 @@ const char kSAMAccountNamePlaceholder[] = "<USER_SAM_ACCOUNT_NAME>";
 const char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
 const char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
 const char kWorkgroupPlaceholder[] = "<WORKGROUP>";
-const char kRealmPlaceholder[] = "<REALM>";
+const char kDeviceRealmPlaceholder[] = "<DEVICE_REALM>";
+const char kUserRealmPlaceholder[] = "<USER_REALM>";
 const char kForestPlaceholder[] = "<FOREST>";
 const char kDomainPlaceholder[] = "<DOMAIN>";
 const char kServerNamePlaceholder[] = "<SERVER_NAME>";
@@ -177,6 +192,23 @@ ErrorType GetNetError(const ProcessExecutor& executor,
   if (Contains(net_out, kKeyUserHitJoinQuota)) {
     LOG(ERROR) << error_msg << "user joined max number of machines";
     return ERROR_USER_HIT_JOIN_QUOTA;
+  }
+  if (Contains(net_out, kKeyBadOuCommon)) {
+    if (Contains(net_out, kKeyBadOuNoSuchObject)) {
+      LOG(ERROR) << error_msg << "computer OU does not exist";
+      return ERROR_OU_DOES_NOT_EXIST;
+    }
+    if (Contains(net_out, kKeyBadOuInvalidDnSyntax)) {
+      LOG(ERROR) << error_msg << "computer OU invalid";
+      return ERROR_INVALID_OU;
+    }
+    if (Contains(net_out, kKeyBadOuConstrainViolation) ||
+        Contains(net_out, kKeyBadOuInsufficientAccess)) {
+      LOG(ERROR) << error_msg << "access denied setting computer OU";
+      return ERROR_OU_ACCESS_DENIED;
+    }
+    LOG(ERROR) << error_msg << "setting computer OU failed, unspecified error";
+    return ERROR_SETTING_OU_FAILED;
   }
   LOG(ERROR) << error_msg << "exit code " << executor.GetExitCode();
   return ERROR_NET_FAILED;
@@ -280,7 +312,9 @@ SambaInterface::SambaInterface(
     AuthPolicyMetrics* metrics,
     const PathService* path_service,
     const base::Closure& user_kerberos_files_changed)
-    : metrics_(metrics),
+    : user_account_(Path::USER_SMB_CONF),
+      device_account_(Path::DEVICE_SMB_CONF),
+      metrics_(metrics),
       paths_(path_service),
       anonymizer_(std::make_unique<Anonymizer>()),
       jail_helper_(paths_, &flags_, anonymizer_.get()),
@@ -368,28 +402,22 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (!account_id.empty())
     SetUser(account_id);
 
+  // We need the device account here to authenticate while getting the user's
+  // account info.
+  ErrorType error = CheckDeviceAccountValid();
+  if (error != ERROR_NONE)
+    return error;
+
   // Split user_principal_name into parts and normalize.
-  std::string user_name, realm, workgroup, normalized_upn;
-  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+  std::string user_name, user_realm, normalized_upn;
+  if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
                               &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  anonymizer_->SetReplacementAllCases(realm, kRealmPlaceholder);
-
-  // Write Samba configuration file.
-  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
-  if (error != ERROR_NONE)
-    return error;
-
-  // Make sure we have realm info.
-  protos::RealmInfo realm_info;
-  error = GetRealmInfo(&realm_info);
-  if (error != ERROR_NONE)
-    return error;
+  SetUserRealm(user_realm);
 
   // Get account info for the user.
-  error = GetAccountInfo(user_name, normalized_upn, account_id, realm_info,
-                         account_info);
+  error = GetAccountInfo(user_name, normalized_upn, account_id, account_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -399,11 +427,17 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   // Update normalized_upn. This handles the situation when the user name
   // changes on the server and the user logs in with their old user name (e.g.
   // from the pods screen in Chrome).
-  normalized_upn = account_info->sam_account_name() + "@" + realm;
+  normalized_upn = account_info->sam_account_name() + "@" + user_account_.realm;
+
+  // Update IPs, server names etc. for the user account.
+  error = UpdateAccountData(&user_account_);
+  if (error != ERROR_NONE)
+    return error;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  error = user_tgt_manager_.AcquireTgtWithPassword(normalized_upn, password_fd,
-                                                   realm, realm_info.kdc_ip());
+  DCHECK(!user_account_.kdc_ip.empty());
+  error = user_tgt_manager_.AcquireTgtWithPassword(
+      normalized_upn, password_fd, user_account_.realm, user_account_.kdc_ip);
   if (error != ERROR_NONE)
     return error;
 
@@ -422,26 +456,37 @@ ErrorType SambaInterface::AuthenticateUserInternal(
 }
 
 ErrorType SambaInterface::GetUserStatus(
-    const std::string& account_id, ActiveDirectoryUserStatus* user_status) {
+    const std::string& user_principal_name,
+    const std::string& account_id,
+    ActiveDirectoryUserStatus* user_status) {
   ReloadDebugFlags();
   SetUser(account_id);
 
-  // Write Samba configuration file.
-  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  // The device account is needed here to get the user's account info.
+  ErrorType error = CheckDeviceAccountValid();
   if (error != ERROR_NONE)
     return error;
 
-  // Make sure we have realm info.
-  protos::RealmInfo realm_info;
-  error = GetRealmInfo(&realm_info);
-  if (error != ERROR_NONE)
-    return error;
+  if (!user_principal_name.empty()) {
+    std::string user_name, user_realm, normalized_upn;
+    if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
+                                &normalized_upn)) {
+      return ERROR_PARSE_UPN_FAILED;
+    }
+    SetUserRealm(user_realm);
+  } else {
+    // Backwards compatibility for old interface not taking UPN: Use device
+    // realm. Can be removed after interface is switched to new protobuf
+    // interface.
+    if (user_account_.realm.empty())
+      SetUserRealm(device_account_.realm);
+  }
 
   // Get account info for the user.
   ActiveDirectoryAccountInfo account_info;
   error =
       GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
-                     account_id, realm_info, &account_info);
+                     account_id, &account_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -470,19 +515,33 @@ ErrorType SambaInterface::GetUserKerberosFiles(const std::string& account_id,
   return user_tgt_manager_.GetKerberosFiles(files);
 }
 
-ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
-                                      const std::string& user_principal_name,
-                                      int password_fd) {
+ErrorType SambaInterface::JoinMachine(
+    const std::string& machine_name,
+    const std::string& machine_domain,
+    const std::vector<std::string>& machine_ou,
+    const std::string& user_principal_name,
+    int password_fd,
+    std::string* joined_domain) {
   ReloadDebugFlags();
 
   // Split user principal name into parts.
-  std::string user_name, realm, normalized_upn;
-  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+  std::string user_name, user_realm, normalized_upn;
+  if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
                               &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  AnonymizeRealm(realm);
+  AnonymizeRealm(user_realm, kUserRealmPlaceholder);
   anonymizer_->SetReplacement(user_name, kSAMAccountNamePlaceholder);
+
+  std::string join_realm;
+  if (!machine_domain.empty()) {
+    // Join machine to the given domain (note: realm and domain is the same).
+    join_realm = base::ToUpperASCII(machine_domain);
+    AnonymizeRealm(join_realm, kDeviceRealmPlaceholder);
+  } else {
+    // By default, join machine to the user's realm.
+    join_realm = user_realm;
+  }
 
   // The netbios name in smb.conf needs to be upper-case, but there is also
   // Samba code that logs the machine name lower-case, so add both here.
@@ -491,21 +550,25 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
-  config_ = std::make_unique<protos::ActiveDirectoryConfig>();
-  config_->set_machine_name(base::ToUpperASCII(machine_name));
-  config_->set_realm(realm);
+  device_account_.netbios_name = base::ToUpperASCII(machine_name);
+  device_account_.realm = join_realm;
 
-  // Write Samba configuration. Will query the workgroup.
-  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  // Update IPs, server names etc. for the device account.
+  ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE) {
     Reset();
     return error;
   }
 
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", "-U",
-                           normalized_upn, "-s", paths_->Get(Path::SMB_CONF),
-                           "-d", flags_.net_log_level()});
+  std::vector<std::string> args(
+      {paths_->Get(Path::NET), "ads", "join", "-U", normalized_upn, "-s",
+       paths_->Get(Path::DEVICE_SMB_CONF), "-d", flags_.net_log_level()});
+  if (!machine_ou.empty()) {
+    args.push_back("createcomputer=" +
+                   BuildDistinguishedName(machine_ou, join_realm));
+  }
+  ProcessExecutor net_cmd(args);
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kKrb5KTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
@@ -531,6 +594,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
 
   // Only if everything worked out, keep the config.
   retry_machine_kinit_ = true;
+  *joined_domain = join_realm;
   return ERROR_NONE;
 }
 
@@ -544,15 +608,10 @@ ErrorType SambaInterface::FetchUserGpos(
     return ERROR_NOT_LOGGED_IN;
   }
   DCHECK(!user_sam_account_name_.empty());
+  DCHECK(!user_account_.realm.empty());
 
-  // Write Samba configuration file.
-  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
-  if (error != ERROR_NONE)
-    return error;
-
-  // Make sure we have the domain controller name.
-  protos::RealmInfo realm_info;
-  error = GetRealmInfo(&realm_info);
+  // Update IPs, server names etc for the user account.
+  ErrorType error = UpdateAccountData(&user_account_);
   if (error != ERROR_NONE)
     return error;
 
@@ -561,14 +620,15 @@ ErrorType SambaInterface::FetchUserGpos(
 
   // Get the list of GPOs for the given user name.
   protos::GpoList gpo_list;
-  error = GetGpoList(user_sam_account_name_, PolicyScope::USER, &gpo_list);
+  error = GetGpoList(user_sam_account_name_, user_account_, PolicyScope::USER,
+                     &gpo_list);
   if (error != ERROR_NONE)
     return error;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(gpo_list, realm_info.dc_name(), PolicyScope::USER,
-                       &gpo_file_paths);
+  error =
+      DownloadGpos(gpo_list, user_account_, PolicyScope::USER, &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
@@ -586,14 +646,13 @@ ErrorType SambaInterface::FetchDeviceGpos(
     protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
 
-  // Write Samba configuration file.
-  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  // Check if the device is domain joined.
+  ErrorType error = CheckDeviceAccountValid();
   if (error != ERROR_NONE)
     return error;
 
-  // Get realm info.
-  protos::RealmInfo realm_info;
-  error = GetRealmInfo(&realm_info);
+  // Update IPs, server names etc.
+  error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
 
@@ -602,24 +661,25 @@ ErrorType SambaInterface::FetchDeviceGpos(
   // which can be very slow because machine credentials need to propagate
   // through the AD deployment.
   std::string machine_principal =
-      config_->machine_name() + "$@" + config_->realm();
+      device_account_.netbios_name + "$@" + device_account_.realm;
+  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
   error = device_tgt_manager_.AcquireTgtWithKeytab(
       machine_principal, Path::MACHINE_KT_STATE, retry_machine_kinit_,
-      config_->realm(), realm_info.kdc_ip());
+      device_account_.realm, device_account_.kdc_ip);
   retry_machine_kinit_ = false;
   if (error != ERROR_NONE)
     return error;
 
   // Get the list of GPOs for the machine.
   protos::GpoList gpo_list;
-  error = GetGpoList(config_->machine_name() + "$", PolicyScope::MACHINE,
-                     &gpo_list);
+  error = GetGpoList(device_account_.netbios_name + "$", device_account_,
+                     PolicyScope::MACHINE, &gpo_list);
   if (error != ERROR_NONE)
     return error;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(gpo_list, realm_info.dc_name(), PolicyScope::MACHINE,
+  error = DownloadGpos(gpo_list, device_account_, PolicyScope::MACHINE,
                        &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
@@ -640,26 +700,11 @@ void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
   SaveFlagsDefaultLevel();
 }
 
-ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
-  std::string kdc_ip;
-  ErrorType error = GetKdcIp(&kdc_ip);
-  if (error != ERROR_NONE)
-    return error;
-
-  std::string dc_name;
-  error = GetDcName(&dc_name);
-  if (error != ERROR_NONE)
-    return error;
-
-  realm_info->set_kdc_ip(kdc_ip);
-  realm_info->set_dc_name(dc_name);
-  return ERROR_NONE;
-}
-
-ErrorType SambaInterface::GetKdcIp(std::string* kdc_ip) const {
+ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
   // Call net ads info to get the KDC IP.
+  const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
-                                       "-s", paths_->Get(Path::SMB_CONF), "-d",
+                                       "-s", smb_conf_path, "-d",
                                        flags_.net_log_level()});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
@@ -686,19 +731,20 @@ ErrorType SambaInterface::GetKdcIp(std::string* kdc_ip) const {
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  *kdc_ip = parse_cmd.GetStdout();
+  account->kdc_ip = parse_cmd.GetStdout();
 
   // Explicitly set replacements again, see SearchAccountInfo for an
   // explanation.
-  anonymizer_->SetReplacementAllCases(*kdc_ip, kIpAddressPlaceholder);
+  anonymizer_->SetReplacementAllCases(account->kdc_ip, kIpAddressPlaceholder);
 
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::GetDcName(std::string* dc_name) const {
+ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
   // Call net ads lookup to get the domain controller name.
+  const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "lookup",
-                                       "-s", paths_->Get(Path::SMB_CONF), "-d",
+                                       "-s", smb_conf_path, "-d",
                                        flags_.net_log_level()});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
@@ -729,11 +775,11 @@ ErrorType SambaInterface::GetDcName(std::string* dc_name) const {
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  *dc_name = parse_cmd.GetStdout();
+  account->dc_name = parse_cmd.GetStdout();
 
   // Explicitly set replacements again, see SearchAccountInfo for an
   // explanation.
-  anonymizer_->SetReplacementAllCases(*dc_name, kServerNamePlaceholder);
+  anonymizer_->SetReplacementAllCases(account->dc_name, kServerNamePlaceholder);
 
   return ERROR_NONE;
 }
@@ -789,13 +835,10 @@ ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
   return ActiveDirectoryUserStatus::PASSWORD_VALID;
 }
 
-ErrorType SambaInterface::EnsureWorkgroup() {
-  if (!workgroup_.empty())
-    return ERROR_NONE;
-
+ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) {
+  const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
-                           paths_->Get(Path::SMB_CONF), "-d",
-                           flags_.net_log_level()});
+                           smb_conf_path, "-d", flags_.net_log_level()});
   // Parse workgroup from the net_cmd output immediately, see SearchAccountInfo
   // for an explanation. Also replace a bunch of other server names.
   anonymizer_->ReplaceSearchArg(kKeyWorkgroup, kWorkgroupPlaceholder);
@@ -826,28 +869,26 @@ ErrorType SambaInterface::EnsureWorkgroup() {
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  workgroup_ = parse_cmd.GetStdout();
+  account->workgroup = parse_cmd.GetStdout();
 
   // Explicitly set replacements again, see SearchAccountInfo for an
   // explanation.
-  anonymizer_->SetReplacement(workgroup_, kWorkgroupPlaceholder);
+  anonymizer_->SetReplacement(account->workgroup, kWorkgroupPlaceholder);
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::WriteSmbConf() const {
-  if (!config_) {
-    LOG(ERROR) << "Missing configuration. Must call JoinMachine first.";
-    return ERROR_NOT_JOINED;
-  }
+ErrorType SambaInterface::WriteSmbConf(const AccountData& account) const {
+  // account.netbios_name and account.workgroup may be empty at this point.
+  DCHECK(!account.realm.empty());
 
   std::string data = base::StringPrintf(
-      kSmbConfData, config_->machine_name().c_str(), workgroup_.c_str(),
-      config_->realm().c_str(), paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
+      kSmbConfData, account.netbios_name.c_str(), account.workgroup.c_str(),
+      account.realm.c_str(), paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
       paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
       paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
       paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
 
-  const base::FilePath smbconf_path(paths_->Get(Path::SMB_CONF));
+  const base::FilePath smbconf_path(paths_->Get(account.smb_conf_path));
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(smbconf_path, data.c_str(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write Samba conf file '" << smbconf_path.value()
@@ -858,27 +899,48 @@ ErrorType SambaInterface::WriteSmbConf() const {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::EnsureWorkgroupAndWriteSmbConf() {
-  if (workgroup_.empty()) {
-    // EnsureWorkgroup requires an smb.conf file, write one with empty
-    // workgroup.
-    ErrorType error = WriteSmbConf();
-    if (error != ERROR_NONE)
-      return error;
+ErrorType SambaInterface::UpdateAccountData(AccountData* account) {
+  // Write smb.conf for UpdateWorkgroup().
+  ErrorType error = WriteSmbConf(*account);
+  if (error != ERROR_NONE)
+    return error;
 
-    error = EnsureWorkgroup();
+  // Update |account|->workgroup.
+  const std::string prev_workgroup = account->workgroup;
+  error = UpdateWorkgroup(account);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Write smb.conf again for the rest in case the workgroup changed.
+  if (account->workgroup != prev_workgroup) {
+    error = WriteSmbConf(*account);
     if (error != ERROR_NONE)
       return error;
   }
 
-  // Write smb.conf (potentially again, with valid workgroup).
-  return WriteSmbConf();
+  // Query the key distribution center IP and store it in |account|->kdc_ip.
+  error = UpdateKdcIp(account);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Query the domain controller name and store it in |account|->dc_name.
+  error = UpdateDcName(account);
+  if (error != ERROR_NONE)
+    return error;
+
+  return ERROR_NONE;
 }
 
 ErrorType SambaInterface::WriteConfiguration() const {
-  DCHECK(config_);
+  DCHECK(!device_account_.realm.empty());
+  DCHECK(!device_account_.netbios_name.empty());
+
+  protos::ActiveDirectoryConfig config;
+  config.set_realm(device_account_.realm);
+  config.set_machine_name(device_account_.netbios_name);
+
   std::string config_blob;
-  if (!config_->SerializeToString(&config_blob)) {
+  if (!config.SerializeToString(&config_blob)) {
     LOG(ERROR) << "Failed to serialize configuration to string";
     return ERROR_LOCAL_IO;
   }
@@ -930,10 +992,12 @@ ErrorType SambaInterface::ReadConfiguration() {
     return ERROR_LOCAL_IO;
   }
 
-  config_ = std::move(config);
+  device_account_.realm = config->realm();
+  device_account_.netbios_name = config->machine_name();
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
-  AnonymizeRealm(config_->realm());
-  anonymizer_->SetReplacementAllCases(config_->machine_name(),
+
+  AnonymizeRealm(device_account_.realm, kDeviceRealmPlaceholder);
+  anonymizer_->SetReplacementAllCases(device_account_.netbios_name,
                                       kMachineNamePlaceholder);
   return ERROR_NONE;
 }
@@ -993,16 +1057,22 @@ ErrorType SambaInterface::GetAccountInfo(
     const std::string& user_name,
     const std::string& normalized_upn,
     const std::string& account_id,
-    const protos::RealmInfo& realm_info,
     ActiveDirectoryAccountInfo* account_info) {
-  // Refresh the device TGT. Note that the user TGT might not be accessible at
-  // this point (we need the sAMAccountName returned in |account_info| to fetch
-  // the user TGT).
+  // The user TGT might not be accessible at this point (we need the
+  // sAMAccountName returned in |account_info| to fetch the user TGT). Thus, we
+  // have to query the account info using the DEVICE account. Thus, first make
+  // sure we have everything we need.
+  ErrorType error = UpdateAccountData(&device_account_);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Refresh the device TGT used by SearchAccountInfo() below.
   std::string machine_principal =
-      config_->machine_name() + "$@" + config_->realm();
-  ErrorType error = device_tgt_manager_.AcquireTgtWithKeytab(
-      machine_principal, Path::MACHINE_KT_STATE, false, config_->realm(),
-      realm_info.kdc_ip());
+      device_account_.netbios_name + "$@" + device_account_.realm;
+  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
+  error = device_tgt_manager_.AcquireTgtWithKeytab(
+      machine_principal, Path::MACHINE_KT_STATE, false, device_account_.realm,
+      device_account_.kdc_ip);
   if (error != ERROR_NONE)
     return error;
 
@@ -1036,13 +1106,17 @@ ErrorType SambaInterface::GetAccountInfo(
 ErrorType SambaInterface::SearchAccountInfo(
     const std::string& search_string,
     ActiveDirectoryAccountInfo* account_info) {
-  // Call net ads search to find the user's account info.
+  // Call net ads search to find the user's account info. Note that we're
+  // authenticating with the device account, but we're searching on the user's
+  // realm!
+  const std::string& smb_conf_path = paths_->Get(device_account_.smb_conf_path);
   ProcessExecutor net_cmd(
       {paths_->Get(Path::NET), "ads", "search", search_string,
        kSearchObjectGUID, kSearchSAMAccountName, kSearchCommonName,
        kSearchDisplayName, kSearchGivenName, kSearchPwdLastSet,
-       kSearchUserAccountControl, "-s", paths_->Get(Path::SMB_CONF), "-d",
-       flags_.net_log_level()});
+       kSearchUserAccountControl, "-S", user_account_.realm, "-s",
+       smb_conf_path, "-d", flags_.net_log_level()});
+
   // Parse the search args from the net_cmd output immediately. This resolves
   // the chicken-egg-problem that replacement strings cannot be set before the
   // strings-to-replace are known, so the output of net_cmd would still contain
@@ -1109,6 +1183,7 @@ ErrorType SambaInterface::SearchAccountInfo(
 }
 
 ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
+                                     const AccountData& account,
                                      PolicyScope scope,
                                      protos::GpoList* gpo_list) const {
   DCHECK(gpo_list);
@@ -1118,7 +1193,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   // Machine names are names ending with $, anything else is a user name.
   authpolicy::ProcessExecutor net_cmd(
       {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
-       paths_->Get(Path::SMB_CONF), "-d", flags_.net_log_level()});
+       paths_->Get(account.smb_conf_path), "-d", flags_.net_log_level()});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
@@ -1164,7 +1239,7 @@ struct GpoPaths {
 
 ErrorType SambaInterface::DownloadGpos(
     const protos::GpoList& gpo_list,
-    const std::string& dc_name,
+    const AccountData& account,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
   metrics_->Report(METRIC_DOWNLOAD_GPO_COUNT, gpo_list.entries_size());
@@ -1238,8 +1313,9 @@ ErrorType SambaInterface::DownloadGpos(
     }
   }
 
+  DCHECK(!account.dc_name.empty());
   const std::string service =
-      base::StringPrintf("//%s/%s", dc_name.c_str(), gpo_share.c_str());
+      base::StringPrintf("//%s/%s", account.dc_name.c_str(), gpo_share.c_str());
 
   // The exit code of smbclient corresponds to the LAST command issued. Some
   // files might be missing and fail to download, which is fine and handled
@@ -1251,8 +1327,9 @@ ErrorType SambaInterface::DownloadGpos(
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
   ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
-                                  paths_->Get(Path::SMB_CONF), "-k", "-d",
-                                  flags_.net_log_level(), "-c", smb_command});
+                                  paths_->Get(account.smb_conf_path), "-k",
+                                  "-d", flags_.net_log_level(), "-c",
+                                  smb_command});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   smb_client_cmd.SetEnv(kKrb5CCEnvKey,
@@ -1345,13 +1422,33 @@ void SambaInterface::SetUser(const std::string& account_id) {
   user_account_id_ = account_id;
 }
 
-void SambaInterface::AnonymizeRealm(const std::string& realm) {
-  anonymizer_->SetReplacementAllCases(realm, kRealmPlaceholder);
+void SambaInterface::SetUserRealm(const std::string& user_realm) {
+  // Allow setting the realm only once. This makes sure that nobody calls
+  // AuthenticateUser() with a different realm, the call fails and we're stuck
+  // with a wrong realm.
+  CHECK(!user_realm.empty());
+  CHECK(user_account_.realm.empty() || user_account_.realm == user_realm)
+      << "Multi-user not supported";
+  user_account_.realm = user_realm;
+  AnonymizeRealm(user_realm, kUserRealmPlaceholder);
+}
+
+void SambaInterface::AnonymizeRealm(const std::string& realm,
+                                    const char* placeholder) {
+  anonymizer_->SetReplacementAllCases(realm, placeholder);
 
   std::vector<std::string> parts = base::SplitString(
       realm, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (size_t n = 0; n < parts.size(); ++n)
-    anonymizer_->SetReplacementAllCases(parts[n], kRealmPlaceholder);
+    anonymizer_->SetReplacementAllCases(parts[n], placeholder);
+}
+
+ErrorType SambaInterface::CheckDeviceAccountValid() const {
+  if (device_account_.realm.empty() || device_account_.netbios_name.empty()) {
+    LOG(ERROR) << "Device is not joined. Must call JoinMachine first.";
+    return ERROR_NOT_JOINED;
+  }
+  return ERROR_NONE;
 }
 
 void SambaInterface::Reset() {
@@ -1359,8 +1456,8 @@ void SambaInterface::Reset() {
   user_sam_account_name_.clear();
   user_pwd_last_set_ = 0;
   user_logged_in_ = false;
-  config_.reset();
-  workgroup_.clear();
+  user_account_ = AccountData(Path::USER_SMB_CONF);
+  device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   retry_machine_kinit_ = false;
 }
 

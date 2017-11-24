@@ -14,7 +14,8 @@ namespace authpolicy {
 const int kExitCodeOk = 0;
 const int kExitCodeError = 1;
 
-const char kRealm[] = "REALM.EXAMPLE.COM";
+const char kUserRealm[] = "REALM.EXAMPLE.COM";
+const char kMachineRealm[] = "DEVICES.EXAMPLE.COM";
 
 const char kUserName[] = "user";
 const char kUserPrincipal[] = "user@REALM.EXAMPLE.COM";
@@ -33,6 +34,12 @@ const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserPrincipal[] =
     "password_changed@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserName[] = "password_changed";
+const char kExpectOuUserPrincipal[] = "expect_ou@REALM.EXAMPLE.COM";
+
+const char kExpectedOuCreatecomputer[] =
+    "ou=leaf,ou=\\ a\\\"b\\ ,ou=\\#123,ou=root,dc=REALM,dc=EXAMPLE,dc=COM";
+const char* kExpectedOuParts[] = {"leaf", " a\"b ", "#123", "root"};
+constexpr size_t kExpectedOuPartsSize = arraysize(kExpectedOuParts);
 
 const char kDisplayName[] = "John Doe";
 const char kGivenName[] = "John";

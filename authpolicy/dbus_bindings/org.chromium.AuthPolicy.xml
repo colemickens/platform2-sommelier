@@ -22,17 +22,19 @@
 
     <!--
          GetUserStatus:
-         @account_id: Object GUID of the user account.
+         @get_status_request_blob: Serialized GetUserStatusRequest protobuf.
          @error_code: Returned error code, see ErrorType enum.
          @user_status_blob: Serialized ActiveDirectoryUserStatus protobuf.
 
          Gets the status of the given Active Directory user account.
     -->
     <method name="GetUserStatus">
-      <arg name="account_id" type="s" direction="in"/>
+      <arg name="get_status_request_blob" type="ay" direction="in" />
       <arg name="error_code" type="i" direction="out"/>
       <arg name="user_status_blob" type="ay" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <!-- Changing to raw handle both strings and protobufs by hand. Eventually
+           will switch to protobufs only. (see https://crbug.com/785956) -->
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
     </method>
 
     <!--
@@ -69,6 +71,9 @@
          @join_domain_request_blob: Serialized JoinDomainRequest protobuf.
          @password_fd: File descriptor of the user's password.
          @error_code: Returned error code, see ErrorType enum.
+         @machine_domain: Domain that the machine was joined to. Should match
+            the one in the JoinDomainRequest if specified and the user's domain
+            otherwise.
 
          Joins the given machine with an Active Directory domain.
     -->
@@ -76,6 +81,7 @@
       <arg name="join_domain_request_blob" type="ay" direction="in" />
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
+      <arg name="joined_domain" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 

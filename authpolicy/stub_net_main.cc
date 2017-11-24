@@ -272,8 +272,14 @@ void WriteKeytabFile() {
 
 // Reads the smb.conf file at |smb_conf_path| and extracts the netbios name.
 std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
+  // We need the device smb.conf here, the user smb.conf doesn't contain the
+  // netbios name.
+  std::string device_smb_conf_path = smb_conf_path;
+  base::ReplaceFirstSubstringAfterOffset(&device_smb_conf_path, 0,
+                                         "smb_user.conf", "smb_device.conf");
   std::string smb_conf;
-  CHECK(base::ReadFileToString(base::FilePath(smb_conf_path), &smb_conf));
+  CHECK(
+      base::ReadFileToString(base::FilePath(device_smb_conf_path), &smb_conf));
   std::string machine_name;
   CHECK(FindToken(smb_conf, '=', "netbios name", &machine_name));
   return machine_name;
@@ -344,6 +350,7 @@ int HandleJoin(const std::string& command_line,
     return kExitCodeError;
   }
   const std::string kUserFlag = "-U ";
+  const std::string kCreatecomputer = "createcomputer=";
 
   // Read machine name from smb.conf.
   const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
@@ -386,6 +393,15 @@ int HandleJoin(const std::string& command_line,
   if (Contains(command_line, kUserFlag + kAccessDeniedUserPrincipal)) {
     WriteOutput(kJoinAccessDeniedError, "");
     return kExitCodeError;
+  }
+
+  // Check whether createcomputer argument matches the expected one.
+  if (Contains(command_line, kUserFlag + kExpectOuUserPrincipal)) {
+    CHECK(Contains(command_line, kCreatecomputer + kExpectedOuCreatecomputer))
+        << "Bad createcomputer arg in command line " << command_line
+        << ". Expected: " << kExpectedOuCreatecomputer;
+    WriteKeytabFile();
+    return kExitCodeOk;
   }
 
   // Stub valid user principal. Switch behavior based on password.

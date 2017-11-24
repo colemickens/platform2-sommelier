@@ -56,7 +56,7 @@ const char kPropagationTestFile[] = "propagation_test";
 
 // Returns upper-cased |machine_name|$@REALM.
 std::string MakeMachinePrincipal(const std::string& machine_name) {
-  return base::ToUpperASCII(machine_name) + "$@" + kRealm;
+  return base::ToUpperASCII(machine_name) + "$@" + kUserRealm;
 }
 
 // For a given |machine_name|, tests if the |command_line| starts with the
