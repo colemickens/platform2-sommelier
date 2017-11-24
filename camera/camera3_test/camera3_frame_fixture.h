@@ -80,10 +80,10 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                                           ImageFormat format,
                                           int32_t color_bars_pattern);
 
-  // Computes the peak signal-to-noise ratio of given images. Given images must
-  // be of the I420 format; otherwise, the maximum finite value representable
-  // by the double type is returned.
-  double ComputePsnr(const Image& buffer_a, const Image& buffer_b);
+  // Computes the structural similarity of given images. Given images must
+  // be of the I420 format; otherwise, a value of 0.0 is returned. When given
+  // images are very similar, it usually returns a score no less than 0.8.
+  double ComputeSsim(const Image& buffer_a, const Image& buffer_b);
 
  private:
   // Create and process capture request of given metadata |metadata|. The frame

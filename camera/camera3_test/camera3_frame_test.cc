@@ -324,15 +324,15 @@ Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
   return argb_image;
 }
 
-double Camera3FrameFixture::ComputePsnr(const Image& buffer_a,
+double Camera3FrameFixture::ComputeSsim(const Image& buffer_a,
                                         const Image& buffer_b) {
   if (buffer_a.format != ImageFormat::IMAGE_FORMAT_I420 ||
       buffer_b.format != ImageFormat::IMAGE_FORMAT_I420 ||
       buffer_a.width != buffer_b.width || buffer_a.height != buffer_b.height) {
     LOGF(ERROR) << "Images are not of I420 format or resolutions do not match";
-    return std::numeric_limits<double>::max();
+    return 0.0;
   }
-  return libyuv::I420Psnr(buffer_a.planes[0].addr, buffer_a.planes[0].stride,
+  return libyuv::I420Ssim(buffer_a.planes[0].addr, buffer_a.planes[0].stride,
                           buffer_a.planes[1].addr, buffer_a.planes[1].stride,
                           buffer_a.planes[2].addr, buffer_a.planes[2].stride,
                           buffer_b.planes[0].addr, buffer_b.planes[0].stride,
@@ -1220,7 +1220,7 @@ class Camera3FrameContentTest
       public ::testing::WithParamInterface<
           std::tuple<int32_t, int32_t, int32_t, int32_t>> {
  public:
-  const double kContentTestPsnrThreshold = 30.0;
+  const double kContentTestSsimThreshold = 0.75;
 
   Camera3FrameContentTest()
       : Camera3FrameFixture(std::get<0>(GetParam())),
@@ -1280,34 +1280,8 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
                                test_pattern_modes.front());
   ASSERT_NE(nullptr, pattern_image);
 
-  struct {
-    int crop[4];
-    const char* description;
-  } test_params[] = {{{0, 0, width_, 1}, "top"},
-                     {{0, height_ - 1, width_, 1}, "bottom"},
-                     {{0, 0, 1, height_}, "leftmost"},
-                     {{width_ - 1, 0, 1, height_}, "rightmost"}};
-  for (const auto& param : test_params) {
-    auto crop_image = [&](const ImageUniquePtr& image) {
-      ImageUniquePtr cropped_image(new Image(param.crop[2], param.crop[3],
-                                             ImageFormat::IMAGE_FORMAT_I420));
-      libyuv::ConvertToI420(
-          image->planes[0].addr, image->size, cropped_image->planes[0].addr,
-          cropped_image->planes[0].stride, cropped_image->planes[1].addr,
-          cropped_image->planes[1].stride, cropped_image->planes[2].addr,
-          cropped_image->planes[2].stride, param.crop[0], param.crop[1],
-          image->width, image->height, param.crop[2], param.crop[3],
-          libyuv::RotationMode::kRotate0, libyuv::FourCC::FOURCC_I420);
-      return cropped_image;
-    };
-    auto capture_line = crop_image(capture_image);
-    auto pattern_line = crop_image(pattern_image);
-    EXPECT_GT(ComputePsnr(*capture_line, *pattern_line),
-              kContentTestPsnrThreshold)
-        << "The " << param.description << " line of the frame is corrupted";
-  }
-  EXPECT_GT(ComputePsnr(*capture_image, *pattern_image),
-            kContentTestPsnrThreshold)
+  EXPECT_GT(ComputeSsim(*capture_image, *pattern_image),
+            kContentTestSsimThreshold)
       << "The frame content is corrupted";
   if (testing::Test::HasFailure()) {
     std::stringstream ss;
@@ -1326,10 +1300,7 @@ class Camera3PortraitRotationTest
       public ::testing::WithParamInterface<
           std::tuple<std::tuple<int32_t, int32_t, int32_t, int32_t>, int32_t>> {
  public:
-  // Typical values for the PSNR in lossy image and video compression are
-  // between 30 and 50 dB, provided the bit depth is 8 bits, where higher is
-  // better.
-  const double kPortraitTestPsnrThreshold = 30.0;
+  const double kPortraitTestSsimThreshold = 0.75;
 
   Camera3PortraitRotationTest()
       : Camera3FrameFixture(std::get<0>(std::get<0>(GetParam()))),
@@ -1521,8 +1492,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     ImageUniquePtr orig_rotated_i420_image(
         new Image(width_, height_, ImageFormat::IMAGE_FORMAT_I420));
     ASSERT_EQ(0, Rotate180(*orig_i420_image, orig_rotated_i420_image.get()));
-    ASSERT_LE(ComputePsnr(*orig_i420_image, *orig_rotated_i420_image),
-              kPortraitTestPsnrThreshold)
+    ASSERT_LE(ComputeSsim(*orig_i420_image, *orig_rotated_i420_image),
+              kPortraitTestSsimThreshold)
         << "Test pattern appears to be symmetric";
 
     // Generate software crop-rotate-scaled pattern
@@ -1547,9 +1518,9 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     }
 
     // Compare similarity of crop-rotate-scaled patterns
-    ASSERT_GT(ComputePsnr(*sw_portrait_i420_image, *portrait_i420_image),
-              kPortraitTestPsnrThreshold)
-        << "PSNR value is lower than threshold";
+    ASSERT_GT(ComputeSsim(*sw_portrait_i420_image, *portrait_i420_image),
+              kPortraitTestSsimThreshold)
+        << "SSIM value is lower than threshold";
   }
 }
 
