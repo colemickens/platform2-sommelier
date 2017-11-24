@@ -13,30 +13,44 @@ const char kMetricROUpdateResult[] = DETACHABLE_BASE_PREFIX "ROUpdateResult";
 const char kMetricRWUpdateResult[] = DETACHABLE_BASE_PREFIX "RWUpdateResult";
 const char kMetricPairResult[] = DETACHABLE_BASE_PREFIX "PairResult";
 const char kMetricAttachedOnBoot[] = DETACHABLE_BASE_PREFIX "AttachedOnBoot";
+const char kMetricPendingRWUpdate[] =
+    DETACHABLE_BASE_PREFIX "PendingRWUpdate";
+
+// Values in the enums below are persisted to logs. Entries should not
+// be renumbered and numeric values should never be reused.
 
 enum class ROUpdateResult {
   kSucceeded = 1,
-  kTransferFailed,
+  kTransferFailed = 2,
 
-  kMax,
+  kCount,
 };
 
 enum class RWUpdateResult {
   kSucceeded = 1,
-  kTransferFailed,
-  kInvalidKey,
-  kRollbackDisallowed,
+  kTransferFailed = 2,
+  kInvalidKey = 3,
+  kRollbackDisallowed = 4,
 
-  kMax,
+  kCount,
 };
 
 enum class PairResult {
   kUnknownError = 0,
   kChallengePassed = 1,
-  kChallengeFailed,
-  kNeedInjectEntropy,
+  kChallengeFailed = 2,
+  kNeedInjectEntropy = 3,
 
-  kMax,
+  kCount,
+};
+
+enum class PendingRWUpdate {
+  kCommunicationError = 0,
+  kNoUpdate = 1,
+  kCriticalUpdate = 2,
+  kNonCriticalUpdate = 3,
+
+  kCount,
 };
 
 }  // namespace hammerd

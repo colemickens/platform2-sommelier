@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -336,6 +337,21 @@ bool FirmwareUpdater::IsSectionLocked(SectionName section_name) const {
     return false;
   }
   return (targ_.flash_protection & mask) != 0;
+}
+
+// In this definition of "critical", either of the following must be true:
+//   - Rollback number has increased; or
+//   - Branch tag of RW section is different (defined as "v1.1" in
+//     version string "basename_v1.1.1234-1234abcde").
+bool FirmwareUpdater::IsCritical() const {
+  const std::string new_version{
+      sections_[static_cast<int>(SectionName::RW)].version};
+  const std::string current_version = GetSectionVersion(SectionName::RW);
+  const std::string branch_tag =
+      new_version.substr(0, new_version.rfind("."));
+  const bool same_branch_tag = base::StartsWith(
+      current_version, branch_tag, base::CompareCase::SENSITIVE);
+  return !same_branch_tag || CompareRollback() > 0;
 }
 
 bool FirmwareUpdater::UnlockRW() {

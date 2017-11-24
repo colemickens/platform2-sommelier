@@ -37,11 +37,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "hammerd/hammer_updater.h"
 #include "hammerd/mock_dbus_wrapper.h"
 #include "hammerd/mock_pair_utils.h"
 #include "hammerd/mock_update_fw.h"
+#include "hammerd/uma_metric_names.h"
 #include "hammerd/update_fw.h"
 
 using testing::_;
@@ -100,13 +102,15 @@ class HammerUpdaterTest : public testing::Test {
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),
         std::make_unique<MockDBusWrapper>(),
-        std::make_unique<MetricsLibrary>()});
+        std::make_unique<MetricsLibraryMock>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
     pair_manager_ = static_cast<MockPairManagerInterface*>(
         hammer_updater_->pair_manager_.get());
     dbus_wrapper_ =
         static_cast<MockDBusWrapper*>(hammer_updater_->dbus_wrapper_.get());
+    metrics_ =
+        static_cast<MetricsLibraryMock*>(hammer_updater_->metrics_.get());
     task_ = &(hammer_updater_->task_);
     update_condition_ = const_cast<HammerUpdater::UpdateCondition*>(
         &(hammer_updater_->update_condition_));
@@ -151,6 +155,7 @@ class HammerUpdaterTest : public testing::Test {
   MockFirmwareUpdater* fw_updater_;
   MockPairManagerInterface* pair_manager_;
   MockDBusWrapper* dbus_wrapper_;
+  MetricsLibraryMock* metrics_;
   std::string ec_image_ = "MOCK EC IMAGE";
   std::string touchpad_image_ = "MOCK TOUCHPAD IMAGE";
   std::string touchpad_product_id_ = "1.0";
@@ -243,9 +248,9 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
 // kInvalidBaseConnectedSignal DBus signal should be raised.
 TEST_F(HammerUpdaterFlowTest, RunOnce_InvalidDevice) {
   EXPECT_CALL(*fw_updater_, TryConnectUsb())
-    .WillRepeatedly(Return(UsbConnectStatus::kInvalidDevice));
+      .WillRepeatedly(Return(UsbConnectStatus::kInvalidDevice));
   EXPECT_CALL(*fw_updater_, CloseUsb())
-    .WillRepeatedly(Return());
+      .WillRepeatedly(Return());
 
   EXPECT_CALL(*dbus_wrapper_, SendSignal(kInvalidBaseConnectedSignal));
 
@@ -253,15 +258,88 @@ TEST_F(HammerUpdaterFlowTest, RunOnce_InvalidDevice) {
   ASSERT_FALSE(hammer_updater_->Run());
 }
 
-// In "never" update condition, send DBus signal only if need update.
+// Check PendingRWUpdate metric:
+// CommunicationError
+TEST_F(HammerUpdaterFlowTest,
+       RunOnce_PendingRWUpdate_CommunicationError) {
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  EXPECT_CALL(*fw_updater_, TryConnectUsb())
+      .WillRepeatedly(Return(UsbConnectStatus::kInvalidDevice));
+  EXPECT_CALL(*fw_updater_, CloseUsb())
+      .WillRepeatedly(Return());
+  EXPECT_CALL(*metrics_, SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(PendingRWUpdate::kCommunicationError),
+            static_cast<int>(PendingRWUpdate::kCount)));
+
+  ASSERT_FALSE(hammer_updater_->Run());
+}
+
+// Check PendingRWUpdate metric:
+// NoUpdate
+TEST_F(HammerUpdaterFlowTest,
+       RunOnce_PendingRWUpdate_NoUpdate) {
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  EXPECT_CALL(*hammer_updater_, RunOnce())
+      .WillRepeatedly(Return(HammerUpdater::RunStatus::kNoUpdate));
+  ON_CALL(*fw_updater_, IsCritical()).WillByDefault(Return(false));
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(false));
+  EXPECT_CALL(*metrics_, SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(PendingRWUpdate::kNoUpdate),
+            static_cast<int>(PendingRWUpdate::kCount)));
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
+// Check PendingRWUpdate metric:
+// CriticalUpdate
+TEST_F(HammerUpdaterFlowTest,
+       RunOnce_PendingRWUpdate_CriticalUpdate) {
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  EXPECT_CALL(*hammer_updater_, RunOnce())
+      .WillRepeatedly(Return(HammerUpdater::RunStatus::kNoUpdate));
+  ON_CALL(*fw_updater_, IsCritical()).WillByDefault(Return(true));
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(true));
+  EXPECT_CALL(*metrics_, SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(PendingRWUpdate::kCriticalUpdate),
+            static_cast<int>(PendingRWUpdate::kCount)));
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
+// Check PendingRWUpdatemetric:
+// NonCriticalUpdate
+TEST_F(HammerUpdaterFlowTest,
+       RunOnce_PendingRWUpdate_NonCriticalUpdate) {
+  *update_condition_ = HammerUpdater::UpdateCondition::kNever;
+  EXPECT_CALL(*hammer_updater_, RunOnce())
+      .WillRepeatedly(Return(HammerUpdater::RunStatus::kNoUpdate));
+  ON_CALL(*fw_updater_, IsCritical()).WillByDefault(Return(false));
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(true));
+  EXPECT_CALL(*metrics_, SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(PendingRWUpdate::kNonCriticalUpdate),
+            static_cast<int>(PendingRWUpdate::kCount)));
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
+// In "never" update condition, send DBus signal only if a critical update
+// is available.
 // Condition:
-//   1. Update condition is "never"
+//   1. Update condition is "never".
 //   2. In RW section.
-//   3. RW needs update.
+//   3. RW needs a critical update.
 TEST_F(HammerUpdaterRWTest, Run_NeverUpdateCriticalUpdate) {
   current_section_ = SectionName::RW;
   *update_condition_ = HammerUpdater::UpdateCondition::kNever;
-  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(true));
+  ON_CALL(*fw_updater_, IsCritical()).WillByDefault(Return(true));
 
   {
     InSequence dummy;
@@ -276,9 +354,24 @@ TEST_F(HammerUpdaterRWTest, Run_NeverUpdateCriticalUpdate) {
   ASSERT_TRUE(hammer_updater_->Run());
 }
 
+// In "mismatch" update condition, no update is performed.
+// Condition:
+//   1. Update condition is "mismatch".
+//   2. In RW section.
+//   3. RW needs update.
+TEST_F(HammerUpdaterRWTest, Run_MismatchUpdateRWMismatch) {
+  current_section_ = SectionName::RW;
+  *update_condition_ = HammerUpdater::UpdateCondition::kMismatch;
+  ON_CALL(*fw_updater_, VersionMismatch(_)).WillByDefault(Return(false));
+  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
+
+  ExpectUsbConnections(AtLeast(1));
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
 // In "never" update condition, send DBus signal only if RW is broken.
 // Condition:
-//   1. Update condition is "never"
+//   1. Update condition is "never".
 //   2. In RO section.
 //   3. RW is broken.
 TEST_F(HammerUpdaterRWTest, Run_NeverUpdateRWBroken) {
@@ -305,7 +398,7 @@ TEST_F(HammerUpdaterRWTest, Run_NeverUpdateRWBroken) {
 
 // In "never" update condition, do nothing if there is only normal update.
 // Condition:
-//   1. Update condition is "never"
+//   1. Update condition is "never".
 //   2. In RO section.
 //   3. RW is broken.
 TEST_F(HammerUpdaterRWTest, Run_NeverUpdateNothing) {
@@ -738,9 +831,11 @@ TEST_F(HammerUpdaterPostRWTest, Run_SkipUpdateWhenKeyChanged) {
 TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
   current_section_ = SectionName::RO;
   bool valid_key = false;
+  int rollback_cmp = 1;
 
   ON_CALL(*fw_updater_, ValidKey()).WillByDefault(ReturnPointee(&valid_key));
-  ON_CALL(*fw_updater_, CompareRollback()).WillByDefault(Return(1));
+  ON_CALL(*fw_updater_, CompareRollback())
+      .WillByDefault(ReturnPointee(&rollback_cmp));
 
   {
     InSequence dummy;
@@ -769,7 +864,8 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_,
                 SendSubcommand(UpdateExtraCommand::kImmediateReset))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(Assign(&rollback_cmp, 0),
+                        Return(true)));
 
     // Now both sections are updated. Jump from RO to RW.
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))

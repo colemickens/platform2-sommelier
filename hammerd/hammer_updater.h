@@ -143,8 +143,10 @@ class HammerUpdater {
   const std::string touchpad_fw_ver_;
   // Set this flag when hammerd is triggered at boot time.
   const bool at_boot_;
-  // The update mode.
-  const UpdateCondition update_condition_;
+  // The update mode. Leave as non-const for unittesting purposes.
+  UpdateCondition update_condition_;
+  // The sysfs path of the USB device.
+  const base::FilePath base_path_;
   // The internal state used for RunOnce method.
   HammerUpdater::TaskState task_;
   // The main firmware updater.

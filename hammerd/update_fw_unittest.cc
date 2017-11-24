@@ -485,4 +485,34 @@ TEST_F(FirmwareUpdaterTest, IsSectionUnlocked) {
   ASSERT_TRUE(fw_updater_->IsRollbackLocked());
 }
 
+// Tests IsCritical.
+TEST_F(FirmwareUpdaterTest, IsCritical) {
+  fw_updater_->sections_ = {
+      SectionInfo(SectionName::RO, 0x0, 0x10000, "1.2-3.5.abcdef", 2, 1),
+      SectionInfo(SectionName::RW, 0x11000, 0xA0, "1.2-3.4.abcdef", 2, 1)};
+
+  // Writable offset is at RW, so current section is RO.
+  fw_updater_->targ_.offset = 0x11000;
+
+  // Same version tag, same rollback.
+  fw_updater_->targ_.min_rollback = 2;
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "%s-installed",  // Add substring to end of version.
+           fw_updater_->sections_[1].version);
+  ASSERT_EQ(fw_updater_->IsCritical(), false);
+
+  // Same version tag, incremented rollback.
+  fw_updater_->targ_.min_rollback = 1;
+  ASSERT_EQ(fw_updater_->IsCritical(), true);
+
+  // Different version tag, same rollback.
+  fw_updater_->targ_.min_rollback = 2;
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "%s",
+           fw_updater_->sections_[0].version);
+  ASSERT_EQ(fw_updater_->IsCritical(), true);
+}
+
 }  // namespace hammerd

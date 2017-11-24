@@ -119,7 +119,8 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   // Time it takes hammer to reset or jump to RW, before being
   // available for the next USB connection.
   constexpr unsigned int kResetTimeMs = 100;
-  bool rollback_increased = false;
+  bool criticality_checked = false;
+  bool can_update = update_condition_ != UpdateCondition::kNever;
   // Set all update flags if update mode is forced.
   if (update_condition_ == UpdateCondition::kAlways) {
       task_.update_ro = true;
@@ -131,6 +132,12 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
     UsbConnectStatus connect_status = fw_updater_->TryConnectUsb();
     if (connect_status != UsbConnectStatus::kSuccess) {
+      if (!criticality_checked && !can_update) {
+        metrics_->SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(PendingRWUpdate::kCommunicationError),
+            static_cast<int>(PendingRWUpdate::kCount));
+      }
       LOG(ERROR) << "Failed to connect USB.";
       fw_updater_->CloseUsb();
 
@@ -147,16 +154,32 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       return HammerUpdater::RunStatus::kNeedJump;
     }
 
-    // If the rollback number is increased, then we need to update the firmware.
-    // This block is only run once at the first round of loop.
-    if (!rollback_increased && fw_updater_->CompareRollback() > 0) {
-      rollback_increased = true;
-      if (update_condition_ == UpdateCondition::kNever) {
-        LOG(INFO) << "Critical update appears but never update, notify UI.";
-        NotifyNeedUpdate();
-      } else {
-        task_.update_ro = true;
-        task_.update_rw = true;
+    // If this update is considered "critical", then we need to update the
+    // firmware. This block is only run once at the first round of loop.
+    if (!criticality_checked) {
+      criticality_checked = true;
+
+      if (!can_update) {
+        PendingRWUpdate pending_metric = PendingRWUpdate::kCount;
+
+        if (fw_updater_->IsCritical()) {
+          LOG(INFO) << "Critical update available but update condition "
+                    << "is set to 'never'; notify UI.";
+          NotifyNeedUpdate();
+          pending_metric = PendingRWUpdate::kCriticalUpdate;
+        } else if (fw_updater_->VersionMismatch(SectionName::RW) ||
+                   fw_updater_->CompareRollback() > 0) {
+          // In theory, an increase in rollback number should imply a version
+          // mismatch. Include both conditions here to simplify unittesting.
+          pending_metric = PendingRWUpdate::kNonCriticalUpdate;
+        } else {
+          pending_metric = PendingRWUpdate::kNoUpdate;
+        }
+
+        metrics_->SendEnumToUMA(
+            kMetricPendingRWUpdate,
+            static_cast<int>(pending_metric),
+            static_cast<int>(PendingRWUpdate::kCount));
       }
     }
 
@@ -237,7 +260,10 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
   // After sending first PDU, we get the information of current EC.
   // Check if the firmware version is mismatched or not.
   if (update_condition_ == UpdateCondition::kMismatch) {
-    if (fw_updater_->VersionMismatch(SectionName::RW))
+    // In theory, an increase in rollback number should imply a version
+    // mismatch. Include both conditions here to simplify unittesting.
+    if (fw_updater_->VersionMismatch(SectionName::RW) ||
+        fw_updater_->CompareRollback() > 0)
       task_.update_rw = true;
     if (fw_updater_->VersionMismatch(SectionName::RO))
       task_.update_ro = true;
@@ -256,6 +282,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
         }
         return HammerUpdater::RunStatus::kNeedReset;
       } else {
+        task_.update_ro = true;
         LOG(INFO) << "RW section needs update, but local image is "
                   << "incompatible. Continuing to post-RW process; maybe "
                   << "RO can be updated.";
@@ -293,7 +320,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
             static_cast<int>(fw_updater_->ValidKey()
                 ? RWUpdateResult::kRollbackDisallowed
                 : RWUpdateResult::kInvalidKey),
-            static_cast<int>(RWUpdateResult::kMax));
+            static_cast<int>(RWUpdateResult::kCount));
         return HammerUpdater::RunStatus::kFatalError;
       }
     }
@@ -331,7 +358,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
         static_cast<int>(ret
             ? RWUpdateResult::kSucceeded
             : RWUpdateResult::kTransferFailed),
-        static_cast<int>(RWUpdateResult::kMax));
+        static_cast<int>(RWUpdateResult::kCount));
     LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
     return HammerUpdater::RunStatus::kNeedReset;
   }
@@ -392,7 +419,7 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
       static_cast<int>(ret
           ? ROUpdateResult::kSucceeded
           : ROUpdateResult::kTransferFailed),
-      static_cast<int>(ROUpdateResult::kMax));
+      static_cast<int>(ROUpdateResult::kCount));
   LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
   // In the case that the update failed, a reset will either brick the device,
   // or get it back into a normal state.
@@ -436,7 +463,7 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
   metrics_->SendEnumToUMA(
       kMetricPairResult,
       static_cast<int>(metric_result),
-      static_cast<int>(PairResult::kMax));
+      static_cast<int>(PairResult::kCount));
   return ret;
 }
 

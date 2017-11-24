@@ -264,7 +264,7 @@ class FirmwareUpdaterInterface {
   // Compare the rollback version of the local image with current EC. Following
   // comparator function convention, it returns:
   //   0 if the rollback is equal to current EC
-  //   1 if the rollback is higher than current EC (i.e. critical update)
+  //   1 if the rollback is higher than current EC (i.e. security update)
   //   -1 if the rollback is lower than current EC (i.e. disallow update)
   virtual int CompareRollback() const = 0;
 
@@ -274,6 +274,10 @@ class FirmwareUpdaterInterface {
 
   // Determines the section is locked or not.
   virtual bool IsSectionLocked(SectionName section_name) const = 0;
+
+  // Determines whether the local image is considered a "critical" update.
+  // IsCritical() == true must imply VersionMismatch(RW) == true.
+  virtual bool IsCritical() const = 0;
 
   // Unlocks the section. Need to send "Reset" command afterward.
   virtual bool UnlockRW() = 0;
@@ -320,6 +324,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   int CompareRollback() const override;
   bool VersionMismatch(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
+  bool IsCritical() const override;
   bool UnlockRW() override;
 
   bool IsRollbackLocked() const override;
@@ -377,6 +382,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);
   FRIEND_TEST(FirmwareUpdaterTest, CheckKeyRollback);
   FRIEND_TEST(FirmwareUpdaterTest, VersionMismatch);
+  FRIEND_TEST(FirmwareUpdaterTest, IsCritical);
 
  private:
   bool CheckEmptyBlock(const uint8_t* transfer_data_ptr, size_t payload_size);
