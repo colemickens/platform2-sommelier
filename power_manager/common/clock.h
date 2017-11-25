@@ -17,6 +17,8 @@ namespace power_manager {
 // set_current_*time_for_testing() setters, and then call GetCurrentTime()
 // instead of base::TimeTicks::Now() and GetCurrentWallTime() instead of
 // base::Time::Now().
+//
+// TODO(derat): Replace this class with base::Clock and base::TickClock.
 class Clock {
  public:
   Clock();
@@ -27,6 +29,9 @@ class Clock {
   }
   void set_current_wall_time_for_testing(base::Time now) {
     current_wall_time_for_testing_ = now;
+  }
+  void advance_current_wall_time_for_testing(base::TimeDelta delta) {
+    current_wall_time_for_testing_ += delta;
   }
   void set_time_step_for_testing(base::TimeDelta step) {
     time_step_for_testing_ = step;

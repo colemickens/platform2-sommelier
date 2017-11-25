@@ -32,10 +32,6 @@ namespace policy {
 
 Suspender::TestApi::TestApi(Suspender* suspender) : suspender_(suspender) {}
 
-void Suspender::TestApi::SetCurrentWallTime(base::Time wall_time) {
-  suspender_->clock_->set_current_wall_time_for_testing(wall_time);
-}
-
 bool Suspender::TestApi::TriggerResuspendTimeout() {
   if (!suspender_->resuspend_timer_.IsRunning())
     return false;

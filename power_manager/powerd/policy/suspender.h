@@ -170,15 +170,13 @@ class Suspender : public SuspendDelayObserver {
     int suspend_id() const { return suspender_->suspend_request_id_; }
     int dark_suspend_id() const { return suspender_->dark_suspend_id_; }
 
+    Clock* clock() const { return suspender_->clock_.get(); }
     SuspendDelayController* suspend_delay_controller() const {
       return suspender_->suspend_delay_controller_.get();
     }
     SuspendDelayController* dark_suspend_delay_controller() const {
       return suspender_->dark_suspend_delay_controller_.get();
     }
-
-    // Sets the time used as "now".
-    void SetCurrentWallTime(base::Time wall_time);
 
     // Runs Suspender::HandleEvent(EVENT_READY_TO_RESUSPEND) if
     // |resuspend_timer_| is running. Returns false otherwise.
