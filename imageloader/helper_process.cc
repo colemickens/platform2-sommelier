@@ -124,9 +124,11 @@ bool HelperProcess::SendUnmountAllCommand(bool dry_run,
   std::unique_ptr<CommandResponse> response = SendCommand(image_command, &msg);
 
   // 3. Process return value.
-  for (int i = 0; i < response->paths_size(); i++) {
-    std::string path(response->paths(i));
-    paths->push_back(path);
+  if (paths) {
+    for (int i = 0; i < response->paths_size(); i++) {
+      std::string path(response->paths(i));
+      paths->push_back(path);
+    }
   }
   return response->success();
 }

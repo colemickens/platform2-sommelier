@@ -117,5 +117,20 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="UnmountComponent">
+    <tp:docstring>
+      Unmount all mount points of a component.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+      <tp:docstring>
+        The name of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="success" type="b" direction="out">
+      <tp:docstring>
+        The result of the component unmount (success or failure).
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

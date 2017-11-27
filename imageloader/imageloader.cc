@@ -24,6 +24,7 @@ constexpr char kSeccompFilterPath[] =
 const char ImageLoader::kImageLoaderGroupName[] = "imageloaderd";
 const char ImageLoader::kImageLoaderUserName[] = "imageloaderd";
 const int ImageLoader::kShutdownTimeoutMilliseconds = 20000;
+const char ImageLoader::kLoadedMountsBase[] = "/run/imageloader";
 
 ImageLoader::ImageLoader(ImageLoaderConfig config,
                          std::unique_ptr<HelperProcess> process)
@@ -140,6 +141,18 @@ bool ImageLoader::GetComponentMetadata(
     std::map<std::string, std::string>* out_metadata) {
   if (!impl_.GetComponentMetadata(name, out_metadata))
     out_metadata->clear();
+  PostponeShutdown();
+  return true;
+}
+
+bool ImageLoader::UnmountComponent(
+    brillo::ErrorPtr* err,
+    const std::string& name,
+    bool* out_success) {
+  base::FilePath component_mount_root =
+      base::FilePath(imageloader::ImageLoader::kLoadedMountsBase).Append(name);
+  *out_success = impl_.CleanupAll(
+      false, component_mount_root, nullptr, helper_process_.get());
   PostponeShutdown();
   return true;
 }

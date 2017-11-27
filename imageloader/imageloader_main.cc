@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
   DEFINE_string(mount_point, "",
                 "Specifies the mountpoint when using either --mount or "
                 "--unmount.");
-  DEFINE_string(loaded_mounts_base, "/run/imageloader",
+  DEFINE_string(loaded_mounts_base, imageloader::ImageLoader::kLoadedMountsBase,
                 "Base path where components are mounted (unless --mount_point "
                 "is used).");
   DEFINE_int32(mount_helper_fd, -1,

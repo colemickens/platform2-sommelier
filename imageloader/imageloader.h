@@ -31,6 +31,8 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   static const char kImageLoaderGroupName[];
   static const char kImageLoaderUserName[];
 
+  static const char kLoadedMountsBase[];
+
   ImageLoader(ImageLoaderConfig config, std::unique_ptr<HelperProcess> helper);
   ~ImageLoader();
 
@@ -57,13 +59,19 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                            const std::string& component_folder_abs_path,
                            std::string* out_mount_point) override;
 
+  // Remove a component given component |name|.
   bool RemoveComponent(brillo::ErrorPtr* err, const std::string& name,
                        bool* out_success) override;
 
+  // Get component metadata given component |name|.
   bool GetComponentMetadata(
       brillo::ErrorPtr* err,
       const std::string& name,
       std::map<std::string, std::string>* out_metadata) override;
+
+  // Unmount all mount points given component |name|.
+  bool UnmountComponent(brillo::ErrorPtr* err, const std::string& name,
+                        bool* out_success) override;
 
   // Sandboxes the runtime environment, using minijail. This is publicly exposed
   // so that imageloader_main.cc can sandbox when not running as a daemon.
