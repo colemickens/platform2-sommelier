@@ -173,7 +173,6 @@ status_t Camera3HAL::init(void)
     }
 
     mRequestThread = std::unique_ptr<RequestThread>(new RequestThread(mCameraId, mCameraHw));
-    mRequestThread->run();
 
     return NO_ERROR;
 

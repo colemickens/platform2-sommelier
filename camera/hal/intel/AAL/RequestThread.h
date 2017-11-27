@@ -147,6 +147,7 @@ private:  /* members */
     ICameraHw   *mCameraHw; /* allocate from outside and should not delete in here */
     MessageQueue<Message, MessageId> mMessageQueue;
     ItemPool<Camera3Request> mRequestsPool;
+    bool mThreadRunning;
 
     int mRequestsInHAL;
     bool mFlushing;

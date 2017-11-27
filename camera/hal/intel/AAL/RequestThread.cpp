@@ -37,6 +37,7 @@ RequestThread::RequestThread(int cameraId, ICameraHw *aCameraHW) :
     mCameraId(cameraId),
     mCameraHw(aCameraHW),
     mMessageQueue("RequestThread", MESSAGE_ID_MAX),
+    mThreadRunning(false),
     mRequestsInHAL(0),
     mFlushing(false),
     mWaitingRequest(nullptr),
@@ -46,10 +47,24 @@ RequestThread::RequestThread(int cameraId, ICameraHw *aCameraHW) :
     mStreamSeqNo(0)
 {
     LOG1("@%s", __FUNCTION__);
+
+    // Run Cam3ReqThread thread
+    if (run() == OK) {
+        mThreadRunning = true;
+    } else {
+        LOGE("Failed to run Cam3ReqThread thread");
+    }
 }
 
 RequestThread::~RequestThread()
 {
+    if (mThreadRunning) {
+        Message msg;
+        msg.id = MESSAGE_ID_EXIT;
+        mMessageQueue.send(&msg);
+        requestExitAndWait();
+    }
+
     deinit();
 }
 
@@ -83,11 +98,6 @@ RequestThread::deinit()
         delete mResultProcessor;
         mResultProcessor = nullptr;
     }
-
-    Message msg;
-    msg.id = MESSAGE_ID_EXIT;
-    mMessageQueue.send(&msg);
-    requestExitAndWait();
 
     // Delete all streams
     for (unsigned int i = 0; i < mLocalStreams.size(); i++) {
