@@ -223,18 +223,6 @@ TEST(UtilTest, LsbReleaseValueTest) {
   EXPECT_EQ(result_string, "http://blah.blah:8080/update");
 }
 
-TEST(UtilTest, VersionLessTest) {
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.4"), false);  // 4 digit ==
-  EXPECT_EQ(VersionLess("12.13.2.3", "12.13.2.4"), true);   // 4 digit <
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.3"), false);  // 4 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "12.13.2"), false);      // 3 digit ==
-  EXPECT_EQ(VersionLess("12.13.1", "12.13.2"), true);       // 3 digit <
-  EXPECT_EQ(VersionLess("12.13.4", "12.13.3"), false);      // 3 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "12.14.1"), true);       // 3 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "1.13.2.4"), false);     // 3 digit, 4 digit
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.1"), true);     // 4 digit, 3 digit
-}
-
 TEST(UtilTest, StartsWith) {
   EXPECT_EQ(StartsWith("", "abc"), false);
   EXPECT_EQ(StartsWith("a", "abc"), false);
@@ -404,22 +392,6 @@ TEST(UtilTest, ReplaceInFileTest) {
   EXPECT_EQ(ReplaceInFile("lamb", "la", file), true);
   EXPECT_EQ(ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy was a la");
-}
-
-TEST(UtilTest, R10FileSystemPatchTest) {
-  const string file = "/tmp/fuzzy";
-
-  EXPECT_EQ(Touch(file), true);
-
-  // Should modify file
-  EXPECT_EQ(R10FileSystemPatch(file), true);
-
-  // Check that the file has had bytes 1401 and 1402 written too.
-  struct stat stats;
-  EXPECT_EQ(stat(file.c_str(), &stats), 0);
-  EXPECT_EQ(stats.st_size, 1402);
-
-  unlink(file.c_str());
 }
 
 TEST(UtilTest, ExtractKernelArgTest) {

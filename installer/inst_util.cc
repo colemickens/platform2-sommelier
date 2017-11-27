@@ -356,40 +356,6 @@ bool LsbReleaseValue(const string& file, const string& key, string* result) {
   return false;
 }
 
-// If less is a lower version number than right
-bool VersionLess(const string& left, const string& right) {
-  vector<string> left_parts;
-  vector<string> right_parts;
-
-  SplitString(left, '.', &left_parts);
-  SplitString(right, '.', &right_parts);
-
-  // We changed from 3 part versions to 4 part versions.
-  // 3 part versions are always newer than 4 part versions
-  if (left_parts.size() == 3 && right_parts.size() == 4)
-    return false;
-
-  if (left_parts.size() == 4 && right_parts.size() == 3)
-    return true;
-
-  // There should be no other way for the lengths to be different
-  // assert(left_parts.length() == right_parts.length());
-
-  for (unsigned int i = 0; i < left_parts.size(); i++) {
-    int left_value = atoi(left_parts[i].c_str());
-    int right_value = atoi(right_parts[i].c_str());
-
-    if (left_value < right_value)
-      return true;
-
-    if (left_value > right_value)
-      return false;
-  }
-
-  // They are equal, and thus not less than.
-  return false;
-}
-
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
 const char *numbered_devices[] = { "/dev/loop", "/dev/mmcblk", "/dev/nvme" };
@@ -571,33 +537,6 @@ void ReplaceAll(string* target, const string& pattern, const string& value) {
   }
 }
 
-bool R10FileSystemPatch(const string& dev_name) {
-  // See bug chromium-os:11517. This fixes an old FS corruption problem.
-  const int offset = 1400;
-
-  ScopedFileDescriptor fd(open(dev_name.c_str(), O_WRONLY));
-
-  if (fd == -1) {
-    printf("Failed to open\n");
-    return false;
-  }
-
-  // Write out stuff
-  if (lseek(fd, offset, SEEK_SET) != offset) {
-    printf("Failed to seek\n");
-    return false;
-  }
-
-  char buff[] = { 0, 0 };
-
-  if (write(fd, buff, sizeof(buff)) != 2) {
-    printf("Failed to write\n");
-    return false;
-  }
-
-  return (fd.close() == 0);
-}
-
 bool MakeFileSystemRw(const string& dev_name) {
   const int offset = 0x464 + 3;  // Set 'highest' byte
 
@@ -640,21 +579,6 @@ bool MakeFileSystemRw(const string& dev_name) {
   }
 
   return (fd.close() == 0);
-}
-
-// hdparm -r 1 /device
-bool MakeDeviceReadOnly(const string& dev_name) {
-  int fd = open(dev_name.c_str(), O_RDONLY|O_NONBLOCK);
-  if (fd == -1)
-    return false;
-
-  int readonly = 1;
-
-  bool result = ioctl(fd, BLKROSET, &readonly) == 0;
-
-  close(fd);
-
-  return result;
 }
 
 extern "C" {

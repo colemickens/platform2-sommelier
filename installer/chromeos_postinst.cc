@@ -233,28 +233,14 @@ bool RunBoardPostInstall(const string &install_dir) {
 // GPT table, update firmware if necessary and possible.
 //
 // install_config defines the root, kernel and boot partitions.
-// src_version of the form "10.2.3.4" or "12.3.2"
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
-                            string src_version,
                             int* exit_code) {
-  printf("ChromeosChrootPostinst(%s)\n", src_version.c_str());
-
   // Extract External ENVs
   bool is_factory_install = getenv("IS_FACTORY_INSTALL");
   bool is_recovery_install = getenv("IS_RECOVERY_INSTALL");
   bool is_install = getenv("IS_INSTALL");
   bool is_update = !is_factory_install && !is_recovery_install && !is_install;
-
-  bool make_dev_readonly = false;
-
-  if (is_update && VersionLess(src_version, "0.10.156.2")) {
-    // See bug chromium-os:11517. This fixes an old FS corruption problem.
-    printf("Patching new rootfs\n");
-    if (!R10FileSystemPatch(install_config.root.device()))
-      return false;
-    make_dev_readonly = true;
-  }
 
   // TODO(dgarrett): Remove when chromium:216338 is fixed.
   // If this FS was mounted read-write, we can't do deltas from it. Mark the
@@ -324,11 +310,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   printf("Updated kernel %d with Successful = %d and NumTriesLeft = %d\n",
          install_config.kernel.number(), new_kern_successful, numTries);
-
-  if (make_dev_readonly) {
-    printf("Making dev %s read-only\n", install_config.root.device().c_str());
-    MakeDeviceReadOnly(install_config.root.device());  // Ignore error
-  }
 
   // At this point in the script, the new partition has been marked bootable
   // and a reboot will boot into it. Thus, it's important that any future
@@ -481,17 +462,7 @@ bool RunPostInstall(const string& install_dir,
     printf("\nTO:\n%s\n", lsb_contents.c_str());
   }
 
-
-  string src_version;
-  if (!LsbReleaseValue("/etc/lsb-release",
-                       "CHROMEOS_RELEASE_VERSION",
-                       &src_version) ||
-      src_version.empty()) {
-    printf("Failed to read /etc/lsb-release\n");
-    return false;
-  }
-
-  if (!ChromeosChrootPostinst(install_config, src_version, exit_code)) {
+  if (!ChromeosChrootPostinst(install_config, exit_code)) {
     printf("PostInstall Failed\n");
     return false;
   }

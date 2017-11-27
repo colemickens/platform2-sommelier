@@ -120,9 +120,6 @@ bool LsbReleaseValue(const std::string& file,
                      const std::string& key,
                      std::string* result);
 
-bool VersionLess(const std::string& left,
-                 const std::string& right);
-
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
 // /dev/ubiblock3_0), return the block dev (/dev/sda, /dev/mmcblk0, /dev/mtd0).
 std::string GetBlockDevFromPartitionDev(const std::string& partition_dev);
@@ -160,14 +157,8 @@ void ReplaceAll(std::string* target,
                 const std::string& pattern,
                 const std::string& value);
 
-// See bug chromium-os:11517. This fixes an old FS corruption problem.
-bool R10FileSystemPatch(const std::string& dev_name);
-
 // Mark ext2 (3 or 4???) filesystem RW
 bool MakeFileSystemRw(const std::string& dev_name);
-
-// hdparm -r 1 /device
-bool MakeDeviceReadOnly(const std::string& dev_name);
 
 // Conveniently invoke the external dump_kernel_config library
 std::string DumpKernelConfig(const std::string& kernel_dev);
