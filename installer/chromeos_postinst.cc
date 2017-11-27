@@ -444,22 +444,11 @@ bool RunPostInstall(const string& install_dir,
          install_config.kernel.device().c_str(),
          install_config.boot.device().c_str());
 
-  // If we can read in the lsb-release we are updating FROM, log it.
   string lsb_contents;
-  if (ReadFileToString("/etc/lsb-release", &lsb_contents)) {
-    printf("\nFROM (rootfs):\n%s", lsb_contents.c_str());
-  }
-
-  // If we can read in the stateful lsb-release we are updating FROM, log it.
-  if (ReadFileToString(string(kStatefulMount) + "/etc/lsb-release",
-                       &lsb_contents)) {
-    printf("\nFROM (stateful):\n%s", lsb_contents.c_str());
-  }
-
   // If we can read the lsb-release we are updating TO, log it
   if (ReadFileToString(install_config.root.mount() + "/etc/lsb-release",
                        &lsb_contents)) {
-    printf("\nTO:\n%s\n", lsb_contents.c_str());
+    printf("\nlsb-release inside the new rootfs:\n%s\n", lsb_contents.c_str());
   }
 
   if (!ChromeosChrootPostinst(install_config, exit_code)) {
