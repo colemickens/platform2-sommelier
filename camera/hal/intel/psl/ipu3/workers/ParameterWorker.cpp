@@ -205,6 +205,13 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     std::lock_guard<std::mutex> l(mParamsMutex);
 
     mMsg = msg;
+
+    // Don't queue ISP parameter buffer if test pattern mode is used.
+    if (mMsg->pMsg.processingSettings->captureSettings->testPatternMode
+            != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF) {
+        return OK;
+    }
+
     updateAicInputParams(mMsg, *mCurRuntimeParams);
     if (mSkyCamAIC)
         mSkyCamAIC->Run(*mCurRuntimeParams);
@@ -231,6 +238,12 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 status_t ParameterWorker::run()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    // Don't dequeue ISP parameter buffer if test pattern mode is used.
+    if (mMsg->pMsg.processingSettings->captureSettings->testPatternMode
+            != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF) {
+        return OK;
+    }
 
     V4L2BufferInfo outBuf;
 
