@@ -311,9 +311,17 @@ class Suspender : public SuspendDelayObserver {
   // StartRequest().
   void FinishRequest(bool success);
 
-  // Actually suspends the system and returns a new value for |state_| after
-  // performing any work needed to put the system into this state.
+  // Actually performs a suspend attempt and waits for the system to resume,
+  // returning a new value for |state_|.
   State Suspend();
+
+  // Helper methods called by Suspend() to handle various suspend results.
+  State HandleNormalResume(Delegate::SuspendResult result);
+  State HandleDarkResume(Delegate::SuspendResult result);
+
+  // Helper method called by HandleNormalResume() and HandleDarkResume() in
+  // response to a failed or canceled suspend attempt.
+  State HandleUnsuccessfulSuspend(Delegate::SuspendResult result);
 
   // Starts |resuspend_timer_| to send EVENT_READY_TO_RESUSPEND after |delay|.
   void ScheduleResuspend(const base::TimeDelta& delay);
@@ -388,12 +396,16 @@ class Suspender : public SuspendDelayObserver {
   // dark resume.
   int initial_num_attempts_ = 0;
 
-  // The time at which the system entered dark resume.
+  // The time at which the system entered dark resume. Set by HandleDarkResume()
+  // when it sees a sucessful dark resume.
   base::Time dark_resume_start_time_;
 
-  // The amount of time spent in dark resume for each wake, along with the wake
-  // reason-specific histogram to log wake duration metrics to.  The number of
-  // wakes in dark resume is the size of this vector.
+  // Information about each wake that occurred during dark resume. This vector
+  // is cleared by StartRequest() and reported by FinishRequest().
+  //
+  // HandleDarkResume() pushes a new entry when it sees a successful dark
+  // resume, but the entry's wake reason and duration is updated by Suspend()
+  // when it commences the next dark suspend cycle.
   std::vector<DarkResumeInfo> dark_resume_wake_durations_;
 
   // The wake reason for the last dark resume.
