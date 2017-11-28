@@ -85,6 +85,8 @@ const char Attestation::kDefaultPCAPublicKey[] =
 
 // This value is opaque; it is proprietary to the system managing the private
 // key.  In this case the value has been supplied by the PCA maintainers.
+// As of this writing, it is a zero (0x00) byte followed by the base64-decoded
+// value of the Keymaster hash (doc. added for later memory jogging).
 const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
 const char Attestation::kDefaultPCAWebOrigin[] =
     "https://chromeos-ca.gstatic.com";
@@ -103,6 +105,8 @@ const char Attestation::kTestPCAPublicKey[] =
 
 // This value is opaque; it is proprietary to the system managing the private
 // key.  In this case the value has been supplied by the PCA maintainers.
+// As of this writing, it is a zero (0x00) byte followed by the base64-decoded
+// value of the Keymaster hash (doc. added for later memory jogging).
 const char Attestation::kTestPCAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 const char Attestation::kTestPCAWebOrigin[] =
     "https://asbestos-qa.corp.google.com";
@@ -132,8 +136,9 @@ const char Attestation::kDefaultEnterpriseEncryptionPublicKey[] =
     "c3c309f98bf08a3b8fbb0166e97906151b46402217e65c5d01ddac8514340e8b";
 
 // This value is opaque; it is proprietary to the system managing the private
-// key.  In this case the value has been supplied by the enterprise server
-// maintainers.
+// key.  In this case the value has been supplied by the PCA maintainers.
+// As of this writing, it is a zero (0x00) byte followed by the base64-decoded
+// value of the Keymaster hash (doc. added for later memory jogging).
 const char Attestation::kDefaultEnterpriseEncryptionPublicKeyID[] =
     "\x00\x4a\xe2\xdc\xae";
 
@@ -158,11 +163,11 @@ const char Attestation::kTestEnterpriseEncryptionPublicKey[] =
     "4c91939103e317d0eca5f36c48102e967f176a19a42220f3cf14634b6773be07";
 
 // This value is opaque; it is proprietary to the system managing the private
-// key.  In this case the value has been supplied by the enterprise server
-// maintainers.
-// TODO(b/69687094): Put the correct key ID for the test encryption key.
+// key.  In this case the value has been supplied by the PCA maintainers.
+// As of this writing, it is a zero (0x00) byte followed by the base64-decoded
+// value of the Keymaster hash (doc. added for later memory jogging).
 const char Attestation::kTestEnterpriseEncryptionPublicKeyID[] =
-    "\x00\x4a\xe2\xdc\xae";
+    "\x00\xef\x22\x0f\xb0";
 
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   { "IFX TPM EK Intermediate CA 06",
