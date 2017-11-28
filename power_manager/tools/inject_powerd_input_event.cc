@@ -4,11 +4,13 @@
 
 #include <fcntl.h>
 #include <linux/input.h>
+#include <linux/uinput.h>
 #include <stdio.h>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
 namespace {
@@ -18,6 +20,10 @@ constexpr struct input_event kSync = {
 
 constexpr int kBitsPerInt = sizeof(uint32_t) * 8;
 constexpr int kMaxInputDev = 256;
+// When creating an input device, time delay before send out events to it.
+constexpr base::TimeDelta kUinputDevInjectDelay =
+    base::TimeDelta::FromSeconds(1);
+constexpr char kUinputDev[] = "/dev/uinput";
 const int kMaxBit = std::max(std::max(EV_MAX, KEY_MAX), SW_MAX);
 const int kMaxInt = (kMaxBit - 1) / kBitsPerInt + 1;
 
@@ -57,9 +63,58 @@ struct input_event CreateEvent(const std::string& code, int32_t value) {
   return event;
 }
 
+// Create an input device which supports given event |type|
+// and |code| with uinput interface. It will be alive for
+// |lifetime|.
+base::ScopedFD CreateDevice(int type, int code, base::TimeDelta lifetime) {
+  base::ScopedFD fd(open(kUinputDev, O_RDWR | O_CLOEXEC));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kUinputDev;
+    return base::ScopedFD();
+  }
+  int ui_set_type_bit;
+  switch (type) {
+    case EV_SW:
+      ui_set_type_bit = UI_SET_SWBIT;
+      break;
+    case EV_KEY:
+      ui_set_type_bit = UI_SET_KEYBIT;
+      break;
+    default:
+      LOG(FATAL) << "not handled type: " << type;
+  }
+
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), UI_SET_EVBIT, type))) {
+    PLOG(ERROR) << "ioctl ui_set_evbit";
+    return base::ScopedFD();
+  }
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), ui_set_type_bit, code))) {
+    PLOG(ERROR) << "ioctl ui_set_type_bit";
+    return base::ScopedFD();
+  }
+  struct uinput_user_dev dev;
+  memset(&dev, 0, sizeof(dev));
+  snprintf(dev.name, sizeof(dev.name), "inject powerd");
+  TEMP_FAILURE_RETRY(write(fd.get(), &dev, sizeof(dev)));
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), UI_DEV_CREATE))) {
+    PLOG(ERROR) << "ioctl ui_dev_create";
+    return base::ScopedFD();
+  }
+  // Create a child process to hold this fd to keep created
+  // device alive.
+  if (fork() == 0) {
+    setsid();
+    sleep(lifetime.InSeconds());
+    exit(0);
+  }
+  // Give powerd time to open new created device.
+  sleep(kUinputDevInjectDelay.InSeconds());
+  return fd;
+}
+
 // Find the event device which supports said |type| and |code| and
 // return opened file descriptor to it.
-base::ScopedFD OpenDev(int type, int code) {
+base::ScopedFD OpenDevice(int type, int code) {
   base::ScopedFD fd;
   for (int i = 0; i < kMaxInputDev; ++i) {
     fd.reset(open(base::StringPrintf("/dev/input/event%d", i).c_str(),
@@ -72,10 +127,19 @@ base::ScopedFD OpenDev(int type, int code) {
   return fd;
 }
 
-void InjectEvent(const struct input_event& event) {
-  base::ScopedFD fd = OpenDev(event.type, event.code);
-  if (!fd.is_valid())
-    LogErrorExit("No supported input device");
+void InjectEvent(const struct input_event& event,
+                 bool create_dev,
+                 base::TimeDelta lifetime) {
+  base::ScopedFD fd = OpenDevice(event.type, event.code);
+  if (!fd.is_valid()) {
+    if (!create_dev) {
+      LogErrorExit("No supported input device, try --create_dev");
+    }
+    fd = CreateDevice(event.type, event.code, lifetime);
+    if (!fd.is_valid()) {
+      LogErrorExit("Failed to create device");
+    }
+  }
 
   TEMP_FAILURE_RETRY(write(fd.get(), &event, sizeof(event)));
   TEMP_FAILURE_RETRY(write(fd.get(), &kSync, sizeof(kSync)));
@@ -86,11 +150,15 @@ void InjectEvent(const struct input_event& event) {
 int main(int argc, char* argv[]) {
   DEFINE_string(code, "", "Input event type to inject (one of tablet, lid)");
   DEFINE_int32(value, -1, "Input event value to inject (0 is off, 1 is on)");
+  DEFINE_bool(create_dev, false,
+              "Create device if no device supports wanted input event");
+  DEFINE_int32(dev_lifetime, 300, "Lifetime (in seconds) of created device");
 
   brillo::FlagHelper::Init(argc, argv, "Inject input events to powerd.\n");
 
   struct input_event event = CreateEvent(FLAGS_code, FLAGS_value);
 
-  InjectEvent(event);
+  InjectEvent(event, FLAGS_create_dev,
+              base::TimeDelta::FromSeconds(FLAGS_dev_lifetime));
   return 0;
 }
