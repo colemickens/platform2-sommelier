@@ -20,7 +20,6 @@ extern "C" {
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
@@ -28,6 +27,7 @@ namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
 const char* kFollowPhandles[] = {"audio-type", "power-type"};
+const char kMosysPlatformIdPath[] = "/run/mosys/platform_id";
 }  // namespace
 
 namespace brillo {
@@ -45,19 +45,34 @@ bool CrosConfig::InitModel() {
       "mosys", "-k", "platform", "id"};
   base::CommandLine cmdline(arraysize(argv), argv);
 
-  return InitCommon(base::FilePath(kConfigDtbPath), cmdline);
+  std::string platform_id_output;
+  if (!base::ReadFileToString(base::FilePath(kMosysPlatformIdPath),
+                              &platform_id_output)) {
+    LOG(WARNING) << "Could not read cache from " << kMosysPlatformIdPath
+                 << "; calling mosys...";
+    if (!base::GetAppOutput(cmdline, &platform_id_output)) {
+      LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
+      return false;
+    }
+  }
+
+  std::string name;
+  int sku_id;
+  std::string whitelabel_name;
+  if (!DecodeIdentifiers(platform_id_output, &name, &sku_id,
+                         &whitelabel_name)) {
+    LOG(ERROR) << "Could not decode platform id " << platform_id_output;
+    return false;
+  }
+
+  return InitCommon(base::FilePath(kConfigDtbPath), name, sku_id,
+                    whitelabel_name);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& name, int sku_id,
-                             const std::string& whitelabel_tag) {
-  std::string output = base::StringPrintf(
-      "name=\"%s\"\\nsku=\"%d\"\ncustomization=\"%s\"",
-      name.c_str(), sku_id, whitelabel_tag.c_str());
-  const base::FilePath::CharType* const argv[] = {"echo", "-e", output.c_str()};
-  base::CommandLine cmdline(arraysize(argv), argv);
-
-  return InitCommon(filepath, cmdline);
+                             const std::string& whitelabel_name) {
+  return InitCommon(filepath, name, sku_id, whitelabel_name);
 }
 
 std::string CrosConfig::GetFullPath(int offset) {
@@ -288,7 +303,9 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
 }
 
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
-                            const base::CommandLine& cmdline) {
+                            const std::string& name,
+                            int sku_id,
+                            const std::string& whitelabel_name) {
   // Many systems will not have a config database (yet), so just skip all the
   // setup without any errors if the config file doesn't exist.
   if (!base::PathExists(filepath)) {
@@ -299,19 +316,6 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
     return false;
   }
-
-  std::string output;
-  if (!base::GetAppOutput(cmdline, &output)) {
-    LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
-    return false;
-  }
-  std::string name;
-  int sku_id;
-  std::string whitelabel_tag;
-  if (!DecodeIdentifiers(output, &name, &sku_id, &whitelabel_tag)) {
-    LOG(ERROR) << "Could not decode output " << output;
-    return false;
-  }
   const void* blob = blob_.c_str();
   int ret = fdt_check_header(blob);
   if (ret) {
@@ -319,7 +323,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
-  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_tag)) {
+  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_name)) {
     LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
     return false;
   }
@@ -341,10 +345,10 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
             << ", submodel "
             << (submodel_name_.empty() ? "(none)" : submodel_name_);
   if (whitelabel_offset_ != -1) {
-    LOG(INFO) << "Whiltelael of  "
+    LOG(INFO) << "Whitelabel of  "
               << fdt_get_name(blob, whitelabel_offset_, NULL);
   } else if (whitelabel_tag_offset_ != -1) {
-    LOG(INFO) << "Whiltelael tag "
+    LOG(INFO) << "Whitelabel tag "
               << fdt_get_name(blob, whitelabel_tag_offset_, NULL);
   }
   inited_ = true;

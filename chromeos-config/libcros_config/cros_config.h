@@ -59,10 +59,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  private:
   // Common init function for both production and test code.
   // @filepath: path to configuration .dtb file.
-  // @cmdline: command line to execute to find out the current model. This is
-  // normally something that runs the 'mosys' tool.
+  // @name: Platform name as returned by 'mosys platform id'.
+  // @sku_id: SKU ID as returned by 'mosys platform sku'.
+  // @whitelabel_name: Name of the whitelabel model or 'tag' node
+  // @return true if OK, false on error.
   bool InitCommon(const base::FilePath& filepath,
-                  const base::CommandLine& cmdline);
+                  const std::string& name,
+                  int sku_id,
+                  const std::string& whitelabel_name);
 
   // Runs a quick init check and prints an error to stderr if it fails.
   // @return true if OK, false on error.
