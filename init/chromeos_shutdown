@@ -85,7 +85,11 @@ else
   rc=$?
 fi
 if [ $rc -ne 0 ] ; then
-  mount > /mnt/stateful_partition/shutdown_stateful_umount_failure
+  (
+    set -x
+    mount
+    dmsetup info
+  ) > /mnt/stateful_partition/shutdown_stateful_umount_failure 2>&1
 fi
 
 # Just in case something didn't unmount properly above.
