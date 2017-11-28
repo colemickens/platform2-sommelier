@@ -444,6 +444,11 @@ bool RunPostInstall(const string& install_dev,
          install_config.kernel.device().c_str(),
          install_config.boot.device().c_str());
 
+  string uname;
+  if (GetKernelInfo(&uname)) {
+    printf("\n Current Kernel Info: %s\n", uname.c_str());
+  }
+
   string lsb_contents;
   // If we can read the lsb-release we are updating TO, log it
   if (ReadFileToString(install_config.root.mount() + "/etc/lsb-release",

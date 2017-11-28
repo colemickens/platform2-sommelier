@@ -529,3 +529,15 @@ TEST(UtilTest, ScopedPathRemoverWithNonExistingPath) {
   }
   // There should be no crash.
 }
+
+TEST(UtilTest, GetKernelInfo) {
+  EXPECT_FALSE(GetKernelInfo(nullptr));
+
+  string uname;
+  EXPECT_TRUE(GetKernelInfo(&uname));
+  EXPECT_NE(uname.find("sysname"), string::npos);
+  EXPECT_NE(uname.find("nodename"), string::npos);
+  EXPECT_NE(uname.find("release"), string::npos);
+  EXPECT_NE(uname.find("version"), string::npos);
+  EXPECT_NE(uname.find("machine"), string::npos);
+}

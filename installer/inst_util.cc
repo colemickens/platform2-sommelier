@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -710,4 +711,24 @@ bool SetKernelArg(const string& key,
 // "/dev/dm" are to be treated as read-only.
 bool IsReadonly(const string& device) {
   return StartsWith(device, "/dev/dm") || StartsWith(device, "/dev/ubi");
+}
+
+bool GetKernelInfo(std::string* result) {
+  if (result == nullptr) {
+    return false;
+  }
+
+  struct utsname buf;
+  if (uname(&buf)) {
+    fprintf(stderr, "ERROR: uname() failed with errno: %s", strerror(errno));
+    return false;
+  }
+
+  *result = string("") +
+      "sysname(" + buf.sysname +
+      ") nodename(" + buf.nodename +
+      ") release(" + buf.release +
+      ") version(" + buf.version +
+      ") machine(" + buf.machine + ")";
+  return true;
 }

@@ -180,4 +180,8 @@ bool SetKernelArg(const std::string& tag,
 // or /dev/dm-1.
 bool IsReadonly(const std::string& device);
 
+// Sets |result| with the current running kernel information like name, version,
+// etc.
+bool GetKernelInfo(std::string* result);
+
 #endif  // INSTALLER_INST_UTIL_H_
