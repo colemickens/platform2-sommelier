@@ -622,8 +622,9 @@ class CrosConfig(object):
         # nicer way.
         _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
         default_node = self.default.PathNode(subpath)
-        self.MergeProperties(props, default_node, phandle_prop)
-        self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
+        if default_node:
+          self.MergeProperties(props, default_node, phandle_prop)
+          self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
       return props
 
     def GetFirmwareUris(self):
