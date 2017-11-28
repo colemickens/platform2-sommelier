@@ -435,7 +435,9 @@ class AuthPolicyTest : public testing::Test {
     authpolicy::JoinDomainRequest request;
     request.set_machine_name(machine_name);
     request.set_user_principal_name(user_principal);
-    return CastError(authpolicy_->JoinADDomain(request, password_fd));
+    std::vector<uint8_t> blob(request.ByteSizeLong());
+    request.SerializeToArray(blob.data(), blob.size());
+    return CastError(authpolicy_->JoinADDomain(blob, password_fd));
   }
 
   // Authenticates to a (stub) Active Directory domain with the given
@@ -453,7 +455,9 @@ class AuthPolicyTest : public testing::Test {
     authpolicy::AuthenticateUserRequest request;
     request.set_user_principal_name(user_principal);
     request.set_account_id(account_id);
-    authpolicy_->AuthenticateUser(request, password_fd, &error,
+    std::vector<uint8_t> blob(request.ByteSizeLong());
+    request.SerializeToArray(blob.data(), blob.size());
+    authpolicy_->AuthenticateUser(blob, password_fd, &error,
                                   &account_info_blob);
     MaybeParseProto(error, account_info_blob, account_info);
     // At most one UserKerberosFilesChanged signal should have been fired.

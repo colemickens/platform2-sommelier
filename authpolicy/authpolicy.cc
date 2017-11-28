@@ -53,29 +53,23 @@ DBusCallType GetPolicyDBusCallType(bool is_user_policy) {
 
 // Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
 // success and ERROR_PARSE_FAILED otherwise.
-template <typename ProtoType>
-ErrorType SerializeProto(ProtoType proto, std::vector<uint8_t>* proto_blob) {
-  std::string buffer;
-  if (!proto.SerializeToString(&buffer)) {
+ErrorType SerializeProto(const google::protobuf::MessageLite& proto,
+                         std::vector<uint8_t>* proto_blob) {
+  proto_blob->resize(proto.ByteSizeLong());
+  if (!proto.SerializeToArray(proto_blob->data(), proto_blob->size())) {
     LOG(ERROR) << "Failed to serialize proto";
     return ERROR_PARSE_FAILED;
   }
-  proto_blob->assign(buffer.begin(), buffer.end());
   return ERROR_NONE;
 }
 
-// Creates dbus::Response. Appends |error| to it. If |blob| is not nullptr
-// appends it to the response as well.
-std::unique_ptr<dbus::Response> CreateResponse(dbus::MethodCall* method_call,
-                                               int32_t error,
-                                               std::vector<uint8_t>* blob) {
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendInt32(error);
-  if (blob)
-    writer.AppendArrayOfBytes(blob->data(), blob->size());
-  return response;
+ErrorType ParseProto(google::protobuf::MessageLite* proto,
+                     const std::vector<uint8_t>& proto_blob) {
+  if (!proto->ParseFromArray(proto_blob.data(), proto_blob.size())) {
+    LOG(ERROR) << "Failed to parse proto";
+    return ERROR_PARSE_FAILED;
+  }
+  return ERROR_NONE;
 }
 
 }  // namespace
@@ -124,42 +118,22 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
-void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
-                                  brillo::dbus_utils::ResponseSender sender) {
-  // Read input arguments.
-  dbus::MessageReader reader(method_call);
-  dbus::FileDescriptor password_fd;
-  authpolicy::AuthenticateUserRequest request;
-  bool success = reader.PopArrayOfBytesAsProto(&request) ||
-                 (reader.PopString(request.mutable_user_principal_name()) &&
-                  reader.PopString(request.mutable_account_id()));
-
-  success = success && reader.PopFileDescriptor(&password_fd);
-  int32_t error = ERROR_NONE;
-  std::vector<uint8_t> account_data_blob;
-  if (success) {
-    password_fd.CheckValidity();
-    AuthenticateUser(request, password_fd, &error, &account_data_blob);
-  } else {
-    error = ERROR_DBUS_FAILURE;
-  }
-
-  // Send response.
-  sender.Run(CreateResponse(method_call, error, &account_data_blob));
-}
-
 void AuthPolicy::AuthenticateUser(
-    const authpolicy::AuthenticateUserRequest& request,
+    const std::vector<uint8_t>& auth_user_request_blob,
     const dbus::FileDescriptor& password_fd,
     int32_t* int_error,
     std::vector<uint8_t>* account_info_blob) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
+  authpolicy::AuthenticateUserRequest request;
+  ErrorType error = ParseProto(&request, auth_user_request_blob);
 
   authpolicy::ActiveDirectoryAccountInfo account_info;
-  ErrorType error = samba_.AuthenticateUser(request.user_principal_name(),
-                                            request.account_id(),
-                                            password_fd.value(), &account_info);
+  if (error == ERROR_NONE) {
+    error = samba_.AuthenticateUser(request.user_principal_name(),
+                                    request.account_id(), password_fd.value(),
+                                    &account_info);
+  }
   if (error == ERROR_NONE)
     error = SerializeProto(account_info, account_info_blob);
   PrintError("AuthenticateUser", error);
@@ -198,37 +172,20 @@ void AuthPolicy::GetUserKerberosFiles(
   *int_error = static_cast<int>(error);
 }
 
-void AuthPolicy::JoinADDomain(dbus::MethodCall* method_call,
-                              brillo::dbus_utils::ResponseSender sender) {
-  // Read input arguments.
-  dbus::MessageReader reader(method_call);
-  dbus::FileDescriptor password_fd;
-  authpolicy::JoinDomainRequest request;
-  bool success = reader.PopArrayOfBytesAsProto(&request) ||
-                 (reader.PopString(request.mutable_machine_name()) &&
-                  reader.PopString(request.mutable_user_principal_name()));
-
-  success = success && reader.PopFileDescriptor(&password_fd);
-  int32_t error = ERROR_NONE;
-  if (success) {
-    password_fd.CheckValidity();
-    error = JoinADDomain(request, password_fd);
-  } else {
-    error = ERROR_DBUS_FAILURE;
-  }
-
-  // Send response.
-  sender.Run(CreateResponse(method_call, error, nullptr));
-}
-
-int32_t AuthPolicy::JoinADDomain(const authpolicy::JoinDomainRequest& request,
-                                 const dbus::FileDescriptor& password_fd) {
+int32_t AuthPolicy::JoinADDomain(
+    const std::vector<uint8_t>& join_domain_request_blob,
+    const dbus::FileDescriptor& password_fd) {
   LOG(INFO) << "Received 'JoinADDomain' request";
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
-  ErrorType error =
-      samba_.JoinMachine(request.machine_name(), request.user_principal_name(),
-                         password_fd.value());
+  authpolicy::JoinDomainRequest request;
+  ErrorType error = ParseProto(&request, join_domain_request_blob);
+
+  if (error == ERROR_NONE) {
+    error =
+        samba_.JoinMachine(request.machine_name(),
+                           request.user_principal_name(), password_fd.value());
+  }
   PrintError("JoinADDomain", error);
   metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
   return error;
