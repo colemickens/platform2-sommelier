@@ -267,42 +267,6 @@ constexpr struct {
         .path = "/var/lib/misc",
         .mode = 0755,
     },
-    {
-        .path = "/sys/fs/cgroup/cpu/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/devices/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/freezer/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/cpuacct/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/cpuset/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/blkio/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/memory/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/pids/chronos_containers",
-        .mode = 0755,
-    },
-    {
-        .path = "/sys/fs/cgroup/systemd/chronos_containers",
-        .mode = 0755,
-    },
 };
 
 // Information about any errors that happen in the child process before the exec
@@ -1363,9 +1327,12 @@ bool Init::Setup() {
                                   base::FileEnumerator::DIRECTORIES);
   for (base::FilePath current = enumerator.Next(); !current.empty();
        current = enumerator.Next()) {
-    DCHECK(base::DirectoryExists(current.Append(kCgroupContainerSuffix)));
-    if (!ChangeOwnerAndGroup(current.Append(kCgroupContainerSuffix),
-                             kChronosUid, kChronosGid)) {
+    base::FilePath target_cgroup = current.Append(kCgroupContainerSuffix);
+    if (mkdir(target_cgroup.value().c_str(), 0755) != 0 && errno != EEXIST) {
+      PLOG(ERROR) << "Failed to create cgroup " << target_cgroup.value();
+      return false;
+    }
+    if (!ChangeOwnerAndGroup(target_cgroup, kChronosUid, kChronosGid)) {
       return false;
     }
   }
