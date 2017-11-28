@@ -108,6 +108,11 @@ void SmbProvider::Mount(const ProtoBlob& mount_options_blob,
     LogAndSetError("Mount", -1, ERROR_DBUS_PARSE_FAILED, error_code);
     return;
   }
+  if (!mount_options.has_path()) {
+    *mount_id = -1;
+    LogAndSetError("Mount", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    return;
+  }
   int32_t dir_id = -1;
   int32_t open_dir_error =
       samba_interface_->OpenDirectory(mount_options.path(), &dir_id);
@@ -131,39 +136,53 @@ int32_t SmbProvider::Unmount(const ProtoBlob& unmount_options_blob) {
     LOG(ERROR) << "Error deserializing UnmountOptions proto";
     return static_cast<int32_t>(ERROR_DBUS_PARSE_FAILED);
   }
+  if (!unmount_options.has_mount_id()) {
+    LOG(ERROR) << "Error deserializing UnmountOptions proto";
+    return static_cast<int32_t>(ERROR_DBUS_PARSE_FAILED);
+  }
   ErrorType error = mounts_.erase(unmount_options.mount_id()) == 0
                         ? ERROR_NOT_FOUND
                         : ERROR_OK;
   return static_cast<int32_t>(error);
 }
 
-void SmbProvider::ReadDirectory(int32_t mount_id,
-                                const std::string& directory_path,
+void SmbProvider::ReadDirectory(const ProtoBlob& read_directory_options_blob,
                                 int32_t* error_code,
                                 ProtoBlob* out_entries) {
   DCHECK(error_code);
   DCHECK(out_entries);
   out_entries->clear();
-  std::string share_path;
-  if (!GetMountPathFromId(mount_id, &share_path)) {
-    LogAndSetError("ReadDirectory", mount_id, ERROR_NOT_FOUND, error_code);
+  ReadDirectoryOptions read_directory_options;
+  if (!read_directory_options.ParseFromArray(
+          read_directory_options_blob.data(),
+          read_directory_options_blob.size())) {
+    LogAndSetError("ReadDirectory", -1, ERROR_DBUS_PARSE_FAILED, error_code);
     return;
   }
-  // |full_directory_path| is smb://server/share/directory.
-  std::string full_directory_path = AppendPath(share_path, directory_path);
+  if (!(read_directory_options.has_mount_id() &&
+        read_directory_options.has_directory_path())) {
+    LogAndSetError("ReadDirectory", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    return;
+  }
+  std::string share_path;
+  if (!GetMountPathFromId(read_directory_options.mount_id(), &share_path)) {
+    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+                   ERROR_NOT_FOUND, error_code);
+    return;
+  }
   int32_t dir_id = -1;
-  int32_t open_dir_error =
-      samba_interface_->OpenDirectory(full_directory_path, &dir_id);
+  int32_t open_dir_error = samba_interface_->OpenDirectory(
+      AppendPath(share_path, read_directory_options.directory_path()), &dir_id);
   if (open_dir_error != 0) {
-    LogAndSetError("ReadDirectory", mount_id, GetErrorFromErrno(open_dir_error),
-                   error_code);
+    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+                   GetErrorFromErrno(open_dir_error), error_code);
     return;
   }
   DirectoryEntryList directory_entries;
   int32_t get_dir_error = GetDirectoryEntries(dir_id, &directory_entries);
   if (get_dir_error != 0) {
-    LogAndSetError("ReadDirectory", mount_id, GetErrorFromErrno(get_dir_error),
-                   error_code);
+    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+                   GetErrorFromErrno(get_dir_error), error_code);
     CloseDirectory(dir_id);
     return;
   }
@@ -172,24 +191,36 @@ void SmbProvider::ReadDirectory(int32_t mount_id,
   CloseDirectory(dir_id);
 }
 
-void SmbProvider::GetMetadataEntry(int32_t mount_id,
-                                   const std::string& entry_path,
+void SmbProvider::GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
                                    int32_t* error_code,
                                    ProtoBlob* out_entry) {
   DCHECK(error_code);
   DCHECK(out_entry);
   out_entry->clear();
-  std::string share_path;
-  if (!GetMountPathFromId(mount_id, &share_path)) {
-    LogAndSetError("GetMetadataEntry", mount_id, ERROR_NOT_FOUND, error_code);
+  GetMetadataEntryOptions get_metadata_entry_options;
+  if (!get_metadata_entry_options.ParseFromArray(
+          get_metadata_options_blob.data(), get_metadata_options_blob.size())) {
+    LogAndSetError("GetMetadataEntry", -1, ERROR_DBUS_PARSE_FAILED, error_code);
     return;
   }
-  const std::string full_path = AppendPath(share_path, entry_path);
+  if (!(get_metadata_entry_options.has_mount_id() &&
+        get_metadata_entry_options.has_entry_path())) {
+    LogAndSetError("GetMetadataEntry", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    return;
+  }
+  std::string share_path;
+  if (!GetMountPathFromId(get_metadata_entry_options.mount_id(), &share_path)) {
+    LogAndSetError("GetMetadataEntry", get_metadata_entry_options.mount_id(),
+                   ERROR_NOT_FOUND, error_code);
+    return;
+  }
+  const std::string full_path =
+      AppendPath(share_path, get_metadata_entry_options.entry_path());
   struct stat stat_info;
   int32_t get_status_error =
       samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
   if (get_status_error != 0) {
-    LogAndSetError("GetMetadataEntry", mount_id,
+    LogAndSetError("GetMetadataEntry", get_metadata_entry_options.mount_id(),
                    GetErrorFromErrno(get_status_error), error_code);
     return;
   }

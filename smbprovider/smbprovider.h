@@ -54,13 +54,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t Unmount(const ProtoBlob& unmount_options_blob) override;
 
-  void ReadDirectory(int32_t mount_id,
-                     const std::string& directory_path,
+  void ReadDirectory(const ProtoBlob& read_directory_options_blob,
                      int32_t* error_code,
                      ProtoBlob* out_entries) override;
 
-  void GetMetadataEntry(int32_t mount_id,
-                        const std::string& entry_path,
+  void GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
                         int32_t* error_code,
                         ProtoBlob* out_entry) override;
 

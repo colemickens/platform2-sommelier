@@ -50,14 +50,9 @@
       <tp:docstring>
         Reads the directory on a given path. This outputs a serialized DirectoryEntryList protobuf.
       </tp:docstring>
-      <arg name="mount_id" type="i" direction="in">
+      <arg name="read_directory_options_blob" type="ay" direction="in">
         <tp:docstring>
-          Unique identifier of the mounted share.
-        </tp:docstring>
-      </arg>
-      <arg name="directory_path" type="s" direction="in">
-        <tp:docstring>
-          Path of the directory. (e.g. "/testfolder")
+          Serialized ReadDirectoryOptions protobuf.
         </tp:docstring>
       </arg>
       <arg name="error_code" type="i" direction="out">
@@ -77,14 +72,9 @@
       <tp:docstring>
         Gets the metadata of a given entry. This outputs an serialized DirectoryEntry protobuf.
       </tp:docstring>
-      <arg name="mount_id" type="i" direction="in">
+      <arg name="get_metadata_options_blob" type="ay" direction="in">
         <tp:docstring>
-          Unique identifier of the mounted share.
-        </tp:docstring>
-      </arg>
-      <arg name="entry_path" type="s" direction="in">
-        <tp:docstring>
-          Path of the entry. (e.g. "/testfolder/dog.jpg")
+          Serialized GetMetadataEntryOptions protobuf.
         </tp:docstring>
       </arg>
       <arg name="error_code" type="i" direction="out">
