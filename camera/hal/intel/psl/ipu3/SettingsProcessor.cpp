@@ -105,9 +105,6 @@ SettingsProcessor::processRequestSettings(const CameraMetadata  &settings,
     if ((status = processHotPixelSettings(settings, reqAiqCfg)) != OK)
         return status;
 
-    if ((status = processTonemapSettings(settings, reqAiqCfg)) != OK)
-        return status;
-
     PAInputParams params;
     params.aiqInputParams = &reqAiqCfg.aiqInputParams;
     if ((status = m3aWrapper->fillPAInputParams(settings, params)) != OK)
@@ -190,36 +187,6 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
     } else {
         LOGE("Capture Settings is nullptr!, bug");
         return UNKNOWN_ERROR;
-    }
-
-    //# ANDROID_METADATA_Control android.edge.mode done
-    entry = settings.find(ANDROID_EDGE_MODE);
-    uint8_t edgeMode = 0;
-    MetadataHelper::getSetting(mStaticMetadataCache.availableEdgeModes, entry, &edgeMode);
-    reqAiqCfg.captureSettings->ispControls.ee.mode = edgeMode;
-
-    switch (edgeMode) {
-        case ANDROID_EDGE_MODE_OFF:
-            ispSettings->eeSetting.feature_level
-                    = ia_isp_feature_level_off;
-            break;
-        case ANDROID_EDGE_MODE_FAST:
-            ispSettings->eeSetting.feature_level
-            // the speed of execution is the same for high or low quality
-            // therefore we apply also high quality in fast.
-                    = ia_isp_feature_level_high;
-            break;
-        case ANDROID_EDGE_MODE_HIGH_QUALITY:
-            ispSettings->eeSetting.feature_level
-                    = ia_isp_feature_level_high;
-            break;
-        case ANDROID_EDGE_MODE_ZERO_SHUTTER_LAG:
-            ispSettings->eeSetting.feature_level
-                    = ia_isp_feature_level_low;
-            break;
-        default:
-            LOGE("ERROR: Unknown edge mode %d", edgeMode);
-            return BAD_VALUE;
     }
 
     //# ANDROID_METADATA_Control android.edge.strength done
@@ -631,67 +598,6 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
     return OK;
 }
 
-
-status_t SettingsProcessor::processTonemapSettings(const CameraMetadata &settings,
-                                             RequestCtrlState &reqAiqCfg)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = OK;
-    camera_metadata_ro_entry entry;
-
-    //# ANDROID_METADATA_Control android.tonemap.mode done
-    entry = settings.find(ANDROID_TONEMAP_MODE);
-    MetadataHelper::getSetting(mStaticMetadataCache.availableTonemapModes, entry,
-                                 &(reqAiqCfg.captureSettings->tonemapMode));
-    // ITS test_param_tonemap_mode WA: allow incoming contrast curve, but
-    // only in manual mode (control mode off).
-    if (entry.count == 1 &&
-        entry.data.i32[0] == ANDROID_TONEMAP_MODE_CONTRAST_CURVE &&
-        IS_CONTROL_MODE_OFF(reqAiqCfg.captureSettings->controlMode))
-        reqAiqCfg.captureSettings->tonemapMode = entry.data.i32[0];
-
-    if (reqAiqCfg.captureSettings->tonemapMode ==
-            ANDROID_TONEMAP_MODE_CONTRAST_CURVE)
-        reqAiqCfg.tonemapContrastCurve = true;
-
-    if (reqAiqCfg.captureSettings->tonemapMode ==
-            ANDROID_TONEMAP_MODE_GAMMA_VALUE) {
-        entry = settings.find(ANDROID_TONEMAP_GAMMA);
-        if (entry.count == 1) {
-            reqAiqCfg.captureSettings->gammaValue = entry.data.f[0];
-        }
-    }
-
-    if (reqAiqCfg.captureSettings->tonemapMode ==
-            ANDROID_TONEMAP_MODE_PRESET_CURVE) {
-        entry = settings.find(ANDROID_TONEMAP_PRESET_CURVE);
-        if (entry.count == 1) {
-            reqAiqCfg.captureSettings->presetCurve = entry.data.i32[0];
-        }
-    }
-
-    if (reqAiqCfg.tonemapContrastCurve) {
-        status = getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_RED,
-                                 &(reqAiqCfg.rGammaLutSize),
-                                 &(reqAiqCfg.rGammaLut));
-        if (status == NO_ERROR)
-            status |= getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_GREEN,
-                                 &(reqAiqCfg.gGammaLutSize),
-                                 &(reqAiqCfg.gGammaLut));
-        if (status == NO_ERROR)
-            status |= getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_BLUE,
-                                 &(reqAiqCfg.bGammaLutSize),
-                                 &(reqAiqCfg.bGammaLut));
-    } else {
-        DELETE_ARRAY_AND_NULLIFY(reqAiqCfg.rGammaLut);
-        DELETE_ARRAY_AND_NULLIFY(reqAiqCfg.gGammaLut);
-        DELETE_ARRAY_AND_NULLIFY(reqAiqCfg.bGammaLut);
-    }
-
-    return OK;
-}
-
-
 status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &settings,
                                              RequestCtrlState &reqAiqCfg)
 {
@@ -701,30 +607,6 @@ status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &setting
     entry = settings.find(ANDROID_SENSOR_TEST_PATTERN_MODE);
     MetadataHelper::getSetting(mStaticMetadataCache.availableTestPatternModes, entry,
                                  &(reqAiqCfg.captureSettings->testPatternMode));
-
-    return OK;
-}
-
-status_t SettingsProcessor::getTonemapCurve(const CameraMetadata settings,
-                                      unsigned int tag,
-                                      unsigned int *gammaLutSize,
-                                      float **gammaLut) const
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    camera_metadata_ro_entry entry;
-
-    entry = settings.find(tag);
-    if (entry.count < 2) {
-        LOGE("tonemap curve %d is not available", tag);
-        return UNKNOWN_ERROR;
-    }
-
-    *gammaLutSize = entry.count;
-    *gammaLut = new float[entry.count];
-
-    for (unsigned int i = 0; i < entry.count; i++) {
-        (*gammaLut)[i] = entry.data.f[i];
-    }
 
     return OK;
 }
