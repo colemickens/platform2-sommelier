@@ -426,7 +426,7 @@ void Camera3SimpleStillCaptureTest::ValidateExifKeys(
   if (exif_datetime_string) {
     EXPECT_EQ(kExifDateTimeStringLength, strlen(exif_datetime_string))
         << "EXIF dateTime is in wrong format";
-    struct tm exif_tm;
+    struct tm exif_tm = {};
     strptime(exif_datetime_string, "%Y:%m:%d %H:%M:%S", &exif_tm);
     time_t exif_time = mktime(&exif_tm);
     EXPECT_GT(kExifDateTimeErrorMarginSeconds, difftime(date_time, exif_time))
