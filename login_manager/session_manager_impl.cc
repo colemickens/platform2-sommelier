@@ -61,6 +61,7 @@
 #include "login_manager/system_utils.h"
 #include "login_manager/termina_manager_interface.h"
 #include "login_manager/user_policy_service_factory.h"
+#include "login_manager/validator_utils.h"
 #include "login_manager/vpd_process.h"
 
 using base::FilePath;
@@ -71,8 +72,6 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 
 namespace login_manager {  // NOLINT
-
-constexpr char SessionManagerImpl::kDemoUser[] = "demouser@";
 
 constexpr char SessionManagerImpl::kStarted[] = "started";
 constexpr char SessionManagerImpl::kStopping[] = "stopping";
@@ -123,21 +122,8 @@ namespace {
 // Error message emitted when parsing a PolicyDescriptor proto fails.
 constexpr char kDescriptorParsingFailed[] = "PolicyDescriptor parsing failed.";
 
-// Constants used in email validation.
-const char kEmailSeparator = '@';
-const char kEmailLegalCharacters[] =
-    "abcdefghijklmnopqrstuvwxyz"
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    ".@1234567890!#$%&'*+-/=?^_`{|}~";
-
-// Should match chromium AccountId::kKeyGaiaIdPrefix .
-const char kGaiaIdKeyPrefix[] = "g-";
-// Should match chromium AccountId::kKeyAdIdPrefix .
-const char kActiveDirectoryPrefix[] = "a-";
-const char kAccountIdKeyLegalCharacters[] =
-    "-0123456789"
-    "abcdefghijklmnopqrstuvwxyz"
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// Error message emitted when encountering an invalid PolicyDescriptor.
+constexpr char kDescriptorInvalid[] = "PolicyDescriptor invalid.";
 
 // Characters allowed in a container name.
 constexpr char kContainerNameAllowedChars[] =
@@ -194,12 +180,6 @@ constexpr char kEmptyAccountId[] = "";
 constexpr char kCannotGetPolicyServiceFormat[] =
     "Cannot get policy service for account type %i";
 constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
-
-bool IsIncognitoAccountId(const std::string& account_id) {
-  const std::string lower_case_id(base::ToLowerASCII(account_id));
-  return (lower_case_id == kGuestUserName) ||
-         (lower_case_id == SessionManagerImpl::kDemoUser);
-}
 
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
@@ -370,37 +350,6 @@ SessionManagerImpl::SessionManagerImpl(
 
 SessionManagerImpl::~SessionManagerImpl() {
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
-}
-
-// static
-bool SessionManagerImpl::ValidateAccountIdKey(const std::string& account_id) {
-  if (account_id.find_first_not_of(kAccountIdKeyLegalCharacters) !=
-      std::string::npos)
-    return false;
-
-  return base::StartsWith(account_id, kGaiaIdKeyPrefix,
-                          base::CompareCase::SENSITIVE) ||
-         base::StartsWith(account_id, kActiveDirectoryPrefix,
-                          base::CompareCase::SENSITIVE);
-}
-
-// static
-bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
-  if (email_address.find_first_not_of(kEmailLegalCharacters) !=
-      std::string::npos) {
-    return false;
-  }
-
-  size_t at = email_address.find(kEmailSeparator);
-  // it has NO @.
-  if (at == std::string::npos)
-    return false;
-
-  // it has more than one @.
-  if (email_address.find(kEmailSeparator, at + 1) != std::string::npos)
-    return false;
-
-  return true;
 }
 
 #if USE_CHEETS
@@ -775,6 +724,10 @@ bool SessionManagerImpl::RetrievePolicyEx(
   if (!descriptor.ParseFromArray(in_descriptor_blob.data(),
                                  in_descriptor_blob.size())) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    return false;
+  }
+  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kRetrieve)) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
     return false;
   }
 
@@ -1434,26 +1387,19 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
 bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
                                             std::string* actual_account_id_out,
                                             brillo::ErrorPtr* error_out) {
-  // Validate the |account_id|.
-  if (IsIncognitoAccountId(account_id) || ValidateAccountIdKey(account_id)) {
-    *actual_account_id_out = account_id;
+  if (ValidateAccountId(account_id, actual_account_id_out)) {
+    DCHECK(!actual_account_id_out->empty());
     return true;
   }
 
-  // Support legacy email addresses.
-  // TODO(alemate): remove this after ChromeOS will stop using email as
-  // cryptohome identifier.
-  const std::string& lower_email = base::ToLowerASCII(account_id);
-  if (!ValidateEmail(lower_email)) {
-    constexpr char kMessage[] =
-        "Provided email address is not valid.  ASCII only.";
-    LOG(ERROR) << kMessage;
-    *error_out = CreateError(dbus_error::kInvalidAccount, kMessage);
-    return false;
-  }
-
-  *actual_account_id_out = lower_email;
-  return true;
+  // TODO(alemate): adjust this error message after ChromeOS will stop using
+  // email as cryptohome identifier.
+  constexpr char kMessage[] =
+      "Provided email address is not valid.  ASCII only.";
+  LOG(ERROR) << kMessage;
+  *error_out = CreateError(dbus_error::kInvalidAccount, kMessage);
+  DCHECK(actual_account_id_out->empty());
+  return false;
 }
 
 bool SessionManagerImpl::AllSessionsAreIncognito() {
@@ -1515,8 +1461,8 @@ PolicyService* SessionManagerImpl::GetPolicyService(
                                         : nullptr;
     }
     case ACCOUNT_TYPE_SESSIONLESS_USER:
-      // This case is handled in RetrievePolicyEx directly because of lifetime
-      // management.
+      // Descriptor validation should prevent this case.
+      NOTREACHED();
       return nullptr;
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
       return device_local_account_manager_->GetPolicyService(
@@ -1535,7 +1481,8 @@ int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
     case ACCOUNT_TYPE_USER:
       return PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE;
     case ACCOUNT_TYPE_SESSIONLESS_USER: {
-      NOTREACHED();  // Only supports retrieval, not storage.
+      // Only supports retrieval, not storage.
+      NOTREACHED();
       return PolicyService::KEY_NONE;
     }
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
@@ -1551,8 +1498,12 @@ void SessionManagerImpl::StorePolicyInternalEx(
   PolicyDescriptor descriptor;
   if (!descriptor.ParseFromArray(descriptor_blob.data(),
                                  descriptor_blob.size())) {
-    brillo::ErrorPtr error =
-        CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    auto error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    response->ReplyWithError(error.get());
+    return;
+  }
+  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kStore)) {
+    auto error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
     response->ReplyWithError(error.get());
     return;
   }

@@ -2741,65 +2741,9 @@ TEST_F(StartTPMFirmwareUpdateTest, VpdStatusError) {
   ExpectError(dbus_error::kVpdUpdateFailed);
 }
 
-class SessionManagerImplStaticTest : public ::testing::Test {
- public:
-  SessionManagerImplStaticTest() {}
-  virtual ~SessionManagerImplStaticTest() {}
-
-  bool ValidateEmail(const string& email_address) {
-    return SessionManagerImpl::ValidateEmail(email_address);
-  }
-
-  bool ValidateAccountIdKey(const string& account_id) {
-    return SessionManagerImpl::ValidateAccountIdKey(account_id);
-  }
-
 #if USE_CHEETS
-  bool ValidateStartArcInstanceRequest(const StartArcInstanceRequest& request,
-                                       brillo::ErrorPtr* error) {
-    return SessionManagerImpl::ValidateStartArcInstanceRequest(request, error);
-  }
-#endif
-};
 
-TEST_F(SessionManagerImplStaticTest, EmailAddressTest) {
-  EXPECT_TRUE(ValidateEmail("user_who+we.like@some-where.com"));
-  EXPECT_TRUE(ValidateEmail("john_doe's_mail@some-where.com"));
-}
-
-TEST_F(SessionManagerImplStaticTest, EmailAddressNonAsciiTest) {
-  char invalid[4] = "a@m";
-  invalid[2] = static_cast<char>(254);
-  EXPECT_FALSE(ValidateEmail(invalid));
-}
-
-TEST_F(SessionManagerImplStaticTest, EmailAddressNoAtTest) {
-  const char no_at[] = "user";
-  EXPECT_FALSE(ValidateEmail(no_at));
-}
-
-TEST_F(SessionManagerImplStaticTest, EmailAddressTooMuchAtTest) {
-  const char extra_at[] = "user@what@where";
-  EXPECT_FALSE(ValidateEmail(extra_at));
-}
-
-TEST_F(SessionManagerImplStaticTest, AccountIdKeyTest) {
-  EXPECT_TRUE(ValidateAccountIdKey("g-1234567890123456"));
-  // email string is invalid GaiaIdKey
-  EXPECT_FALSE(ValidateAccountIdKey("john@some.where.com"));
-  // Only alphanumeric characters plus a colon are allowed.
-  EXPECT_TRUE(ValidateAccountIdKey("g-1234567890"));
-  EXPECT_TRUE(ValidateAccountIdKey("g-abcdef0123456789"));
-  EXPECT_TRUE(ValidateAccountIdKey("g-ABCDEF0123456789"));
-  EXPECT_FALSE(ValidateAccountIdKey("g-123@some.where.com"));
-  EXPECT_FALSE(ValidateAccountIdKey("g-123@localhost"));
-  // Active Directory account keys.
-  EXPECT_TRUE(ValidateAccountIdKey("a-abcdef0123456789"));
-  EXPECT_FALSE(ValidateAccountIdKey("a-123@localhost"));
-}
-
-#if USE_CHEETS
-TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForUser) {
+TEST(StartArcInstanceRequestTest, ForUser) {
   StartArcInstanceRequest request;
   request.set_for_login_screen(false);
   request.set_account_id("dummy_account_id");
@@ -2807,7 +2751,8 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForUser) {
   request.set_scan_vendor_priv_app(true);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(ValidateStartArcInstanceRequest(request, &error));
+    EXPECT_TRUE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request, &error));
     EXPECT_FALSE(error.get());
   }
 
@@ -2816,7 +2761,8 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForUser) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.clear_account_id();
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
@@ -2824,7 +2770,8 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForUser) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.clear_skip_boot_completed_broadcast();
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
@@ -2832,18 +2779,20 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForUser) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.clear_scan_vendor_priv_app();
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
 }
 
-TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForLoginScreen) {
+TEST(StartArcInstanceRequestTest, ForLoginScreen) {
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(ValidateStartArcInstanceRequest(request, &error));
+    EXPECT_TRUE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request, &error));
     EXPECT_FALSE(error.get());
   }
 
@@ -2852,7 +2801,8 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForLoginScreen) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.set_account_id("dummy_account_id");
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
@@ -2860,7 +2810,8 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForLoginScreen) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.set_skip_boot_completed_broadcast(true);
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
@@ -2868,12 +2819,13 @@ TEST_F(SessionManagerImplStaticTest, StartArcInstanceRequestForLoginScreen) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request2 = request;
     request2.set_scan_vendor_priv_app(true);
-    EXPECT_FALSE(ValidateStartArcInstanceRequest(request2, &error));
+    EXPECT_FALSE(
+        SessionManagerImpl::ValidateStartArcInstanceRequest(request2, &error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
   }
 }
 
-#endif
+#endif  // USE_CHEETS
 
 }  // namespace login_manager

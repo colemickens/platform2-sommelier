@@ -63,9 +63,6 @@ class SessionManagerImpl
       public PolicyService::Delegate,
       public org::chromium::SessionManagerInterfaceInterface {
  public:
-  // Magic user name strings.
-  static const char kDemoUser[];
-
   // Payloads for SessionStateChanged DBus signal.
   static const char kStarted[];
   static const char kStopping[];
@@ -143,13 +140,6 @@ class SessionManagerImpl
                      dbus::ObjectProxy* component_updater_proxy,
                      dbus::ObjectProxy* system_clock_proxy);
   ~SessionManagerImpl() override;
-
-  // Checks if string looks like a valid account ID key (as returned by
-  // AccountId::GetAccountIdKey()).
-  static bool ValidateAccountIdKey(const std::string& account_id);
-
-  // Performs very, very basic validation of |email_address|.
-  static bool ValidateEmail(const std::string& email_address);
 
 #if USE_CHEETS
   // Validates if the given |request| satisfies the requirement of the

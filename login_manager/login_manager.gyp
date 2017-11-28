@@ -92,6 +92,7 @@
         'upstart_signal_emitter.cc',
         'user_policy_service.cc',
         'user_policy_service_factory.cc',
+        'validator_utils.cc',
         'vpd_process_impl.cc',
       ],
       'variables': {
@@ -189,6 +190,7 @@
             'session_manager_process_unittest.cc',
             'system_utils_unittest.cc',
             'user_policy_service_unittest.cc',
+            'validator_utils_unittest.cc',
           ],
           'conditions': [
             ['USE_android_container_master_arc_dev == 1', {
