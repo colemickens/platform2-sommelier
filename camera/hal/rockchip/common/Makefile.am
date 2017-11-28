@@ -1,4 +1,5 @@
 # Copyright (C) 2017 Intel Corporation
+#  Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,12 +41,10 @@ HAL_COMMON_SRC = \
     mediacontroller/MediaController.cpp \
     imageProcess/ColorConverter.cpp \
     imageProcess/ImageScalerCore.cpp \
-    3a/IntelAFStateMachine.cpp \
-    3a/IntelAEStateMachine.cpp \
-    3a/IntelAWBStateMachine.cpp \
-    3a/Intel3aPlus.cpp \
-    3a/Intel3aCore.cpp \
-    3a/Intel3aHelper.cpp \
+    3a/RkAEStateMachine.cpp \
+    3a/RkAWBStateMachine.cpp \
+    3a/Rk3aPlus.cpp \
+    3a/Rk3aCore.cpp \
     copied_utils/camera/CameraMetadata.cpp \
     copied_utils/system/camera_metadata.cpp \
     platformdata/gc/GraphConfigManager.cpp \
@@ -71,9 +70,6 @@ libhalcommon_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=//icamera
 libhalcommon_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ icamera
 
 libhalcommon_la_CPPFLAGS += $(ALL_INCLUDES)
-libhalcommon_la_CPPFLAGS += $(IA_IMAGING_CFLAGS)
-libhalcommon_la_CPPFLAGS += $(LIBIACSS_CFLAGS)
-libhalcommon_la_CPPFLAGS += $(LIBCAMERANVM_CFLAGS)
 
 libhalcommon_includedir = $(includedir)
 libhalcommon_utils_includedir = $(includedir)/utils
@@ -106,7 +102,6 @@ libhalcommon_include_HEADERS = \
     UtilityMacros.h \
     CameraWindow.h \
     platformdata/Metadata.h \
-    platformdata/CameraConf.h \
     platformdata/CameraMetadataHelper.h \
     platformdata/CameraProfiles.h \
     platformdata/PlatformData.h \
@@ -121,13 +116,11 @@ libhalcommon_include_HEADERS = \
     mediacontroller/MediaController.h \
     imageProcess/ColorConverter.h \
     imageProcess/ImageScalerCore.h \
-    3a/Intel3aControls.h \
-    3a/IntelAFStateMachine.h \
-    3a/IntelAEStateMachine.h \
-    3a/IntelAWBStateMachine.h \
-    3a/Intel3aPlus.h \
-    3a/Intel3aCore.h \
-    3a/Intel3aHelper.h \
+    3a/Rk3aControls.h \
+    3a/RkAEStateMachine.h \
+    3a/RkAWBStateMachine.h \
+    3a/Rk3aPlus.h \
+    3a/Rk3aCore.h \
     CommonUtilMacros.h
 
 pkgconfiglibdir = $(libdir)/pkgconfig

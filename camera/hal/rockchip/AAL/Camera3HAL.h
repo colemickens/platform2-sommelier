@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +20,6 @@
 
 #include <hardware/camera3.h>
 
-#include "CameraConf.h"
 #include "PlatformData.h"
 #include "RequestThread.h"
 

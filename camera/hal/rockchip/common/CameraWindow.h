@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 
 #include <utils/Errors.h>
 #include <stdint.h>
-#include "ia_coordinate.h"
+#include "ia_types.h"
 #include "FrameInfo.h"
 
 NAMESPACE_DECLARATION {

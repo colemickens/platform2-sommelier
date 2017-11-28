@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +26,10 @@
 #include "PerformanceTraces.h"
 
 #include "Camera3HAL.h"
+
+#ifdef REMOTE_3A_SERVER
+#include "Rk3aCommon.h"
+#endif
 
 using namespace android;
 USING_DECLARED_NAMESPACE;
@@ -134,8 +139,8 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
     camera_id = atoi(name);
 
 #ifdef REMOTE_3A_SERVER
-    if (PlatformData::getIntel3AClient()
-        && !PlatformData::getIntel3AClient()->isIPCFine()) {
+    if (PlatformData::getRockchip3AClient()
+        && !PlatformData::getRockchip3AClient()->isIPCFine()) {
         PlatformData::deinit();
         LOGW("@%s, remote 3A IPC fails", __FUNCTION__);
     }
@@ -214,8 +219,8 @@ camera_module_t VISIBILITY_PUBLIC HAL_MODULE_INFO_SYM = {
         NAMED_FIELD_INITIALIZER(module_api_version) CAMERA_MODULE_API_VERSION_2_3,
         NAMED_FIELD_INITIALIZER(hal_api_version) 0,
         NAMED_FIELD_INITIALIZER(id) CAMERA_HARDWARE_MODULE_ID,
-        NAMED_FIELD_INITIALIZER(name) "Intel Camera3HAL Module",
-        NAMED_FIELD_INITIALIZER(author) "Intel",
+        NAMED_FIELD_INITIALIZER(name) "Rockchip Camera3HAL Module",
+        NAMED_FIELD_INITIALIZER(author) "Rockchip",
         NAMED_FIELD_INITIALIZER(methods) &hal_module_methods,
         NAMED_FIELD_INITIALIZER(dso) nullptr,
         NAMED_FIELD_INITIALIZER(reserved) {0},
@@ -233,7 +238,7 @@ camera_module_t VISIBILITY_PUBLIC HAL_MODULE_INFO_SYM = {
 
 // PSL-specific constructor values to start from 200
 // to have enough reserved priorities to common HAL
-__attribute__((constructor(103))) void initCameraHAL() {
+__attribute__((constructor)) void initCameraHAL() {
     LogHelper::setDebugLevel();
     PerformanceTraces::reset();
     PlatformData::init();
@@ -244,6 +249,6 @@ __attribute__((constructor(103))) void initCameraHAL() {
     }
 }
 
-__attribute__((destructor(103))) void deinitCameraHAL() {
+__attribute__((destructor)) void deinitCameraHAL() {
     PlatformData::deinit();
 }

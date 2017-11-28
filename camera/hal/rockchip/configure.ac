@@ -10,8 +10,6 @@ AC_ARG_VAR(KERNELSOURCES, path to linux kernel directory (which contains psys dr
 
 AC_ARG_WITH([kernel-sources], AS_HELP_STRING([--with-kernel-sources=DIR], \
     [path to linux kernel directory (which contains psys driver)]), [], [with_kernel_sources=no])
-AC_ARG_WITH([ipu], AS_HELP_STRING([--with-ipu=VERSION], \
-    [IPU version which is wanted to be used. Defaults to ipu3.]), [], with_ipu=no)
 AC_ARG_WITH([base-version], AS_HELP_STRING([--with-base-version=VERSION], \
     [libbase version]), [], [with_base_version=no])
 
@@ -19,7 +17,6 @@ AC_ARG_ENABLE([remote3a],
     AS_HELP_STRING([--enable-remote3a], [Enable remote 3A]))
 
 AS_IF([test "x$with_kernel_sources" != xno], [KERNELSOURCES=$with_kernel_sources], [])
-AS_IF([test "x$with_ipu" != xno], [IPUVERSION=$with_ipu], [IPUVERSION="ipu3"])
 AS_IF([test "x$with_base_version" != xno], [BASEVER=$with_base_version],
     [AC_MSG_ERROR([libbase version is not set])])
 
@@ -30,7 +27,6 @@ AC_SUBST(PSYSH2600)
 AC_SUBST(KERNELSOURCES)
 
 AM_CONDITIONAL([NOPSYS], [test "$PSYSH2600" = ""])
-AM_CONDITIONAL([IPU3], [test x"$IPUVERSION" = xipu3])
 
 AM_CONDITIONAL([REMOTE_3A_SERVER], [test x"$enable_remote3a" = xyes])
 
@@ -62,7 +58,6 @@ PKG_CHECK_MODULES([LIBCAMERA_CLIENT], [libcamera_client])
 PKG_CHECK_MODULES([LIBCBM], [libcbm])
 PKG_CHECK_MODULES([LIBSYNC], [libsync])
 PKG_CHECK_MODULES([LIBYUV], [libyuv])
-PKG_CHECK_MODULES([IA_IMAGING], [ia_imaging])
 PKG_CHECK_MODULES([LIBCAMERA_JPEG], [libcamera_jpeg])
 
 # Checks for header files.

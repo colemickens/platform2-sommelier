@@ -26,9 +26,6 @@ AC_PROG_MAKE_SET
 LT_PREREQ([2.4.2])
 LT_INIT
 
-PKG_CHECK_MODULES([IA_IMAGING], [ia_imaging])
-PKG_CHECK_MODULES([LIBIACSS], [libiacss])
-PKG_CHECK_MODULES([LIBCAMERANVM], [libcameranvm])
 PKG_CHECK_MODULES([EXPAT],[expat],[],
     [AC_CHECK_HEADER([expat.h],[], [AC_MSG_ERROR([Expat headers required by GCSS not found])])
     AC_CHECK_LIB([expat],[XML_ParserCreate],[],[AC_MSG_ERROR([Expat library required by GCSS  not found])])

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +83,7 @@ typedef struct {
 
 typedef struct {
     string entityName;
-    struct v4l2_subdev_selection select;
+    struct v4l2_selection select;
 } MediaCtlSelectionVideoParams;
 
 typedef struct {

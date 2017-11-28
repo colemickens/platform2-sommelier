@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -528,6 +529,7 @@ GraphQueryManager::getConnectionData(
                 src_node_name.c_str());
         return css_err_none;
     }
+
     IGraphConfig *setSrcPort = nullptr;
     if (src_port_uid == GCSS_KEY_NA) {
         // in case of virtual source the node is treated as a port
@@ -583,6 +585,15 @@ GraphQueryManager::getConnectionData(
         if (setDstNode == nullptr) {
             LOGV("Ignoring node %s for not being in settings",
                         dst_node_name.c_str());
+            return css_err_none;
+        }
+        //add for rockchip, zyc
+        int32_t is_dst_port_enabled;
+        ret = setDstNode->getValue(GCSS_KEY_ENABLED, is_dst_port_enabled);
+        if (ret == css_err_none && !is_dst_port_enabled) {
+            // dst port disabled skip connection processing
+            LOGV("Dst port %s disabled, skip dst and peer processing",
+                          dst_node_name.c_str());
             return css_err_none;
         }
     }

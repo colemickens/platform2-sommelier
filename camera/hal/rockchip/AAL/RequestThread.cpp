@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +83,7 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
 
     mResultProcessor = new ResultProcessor(this, callback_ops);
 #ifdef REMOTE_3A_SERVER
-    PlatformData::getIntel3AClient()->registerErrorCallback(mResultProcessor);
+    PlatformData::getRockchip3AClient()->registerErrorCallback(mResultProcessor);
 #endif
     mInitialized = true;
     return NO_ERROR;
@@ -97,7 +98,7 @@ RequestThread::deinit()
 
     if (mResultProcessor!= nullptr) {
 #ifdef REMOTE_3A_SERVER
-        PlatformData::getIntel3AClient()->registerErrorCallback(nullptr);
+        PlatformData::getRockchip3AClient()->registerErrorCallback(nullptr);
 #endif
         mBlockAction = REQBLK_NONBLOCKING;
         mResultProcessor->requestExitAndWait();

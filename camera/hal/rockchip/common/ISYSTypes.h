@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ NAMESPACE_DECLARATION {
 /**
  * This enumeration lists the V4L2 nodes exposed by the InputSystem
  */
-enum IsysNodeNames {
+enum IsysNodeTypes {
     ISYS_NODE_NULL =                0,
     ISYS_NODE_CSI_RX0 =             1 << 0,
     ISYS_NODE_CSI_RX1 =             1 << 1,

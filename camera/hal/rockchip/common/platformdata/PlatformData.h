@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +23,11 @@
 #include <string>
 #include <vector>
 #include "Camera3V4l2Format.h"
-#include "CameraConf.h"
 #include "CameraWindow.h"
 #include "GraphConfigManager.h"
 #include "Metadata.h"
 #ifdef REMOTE_3A_SERVER
-#include "ipc/client/Intel3AClient.h"
+#include "ipc/client/Rockchip3AClient.h"
 #endif
 
 #define DEFAULT_ENTRY_CAP 256
@@ -104,7 +104,7 @@
 
 NAMESPACE_DECLARATION {
 typedef enum {
-    SUPPORTED_HW_IPU3,
+    SUPPORTED_HW_RKISP1,
     SUPPORTED_HW_UNKNOWN
 } CameraHwType;
 
@@ -161,10 +161,8 @@ enum ExtensionGroups {
   * 2. LSC self-calibration
   * 3. Latest detected flicker detection mode and flicker frequency
   *
-  * When the camera is starting, if there is aiqd data, ia_aiq_init() will
+  * When the camera is starting, if there is aiqd data, rk_aiq_init() will
   * use it. The 3a also could work if there is no aiqd data.
-  * When the camera is stopping, before the ia_aiq_deinit() is called,
-  * the ia_aiq_get_aiqd_data() will get the aiqd data from 3a libs.
   *
   * The aiqd data will be read from file system to PlatformData
   * when the camera HAL is loaded by arc_camera3_service.
@@ -260,6 +258,7 @@ public:
     CameraCapInfo() : mSensorType(SENSOR_TYPE_NONE), mGCMNodes(nullptr) {};
     virtual ~CameraCapInfo() {};
     virtual int sensorType(void) const = 0;
+    virtual const std::string& getIqTuningFile(void) const = 0;
     const GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
 
 protected:
@@ -310,18 +309,17 @@ private:
     static CameraProfiles* mInstance;
     static CameraProfiles* getInstance(void);
     static CameraHWInfo* mCameraHWInfo;
-    static CpfStore* sKnownCPFConfigurations[MAX_CPF_CACHED];
     static GcssKeyMap* mGcssKeyMap;
 
 #ifdef REMOTE_3A_SERVER
-    static Intel3AClient* mIntel3AClient;
+    static Rockchip3AClient* mRockchip3AClient;
 #endif
 public:
 
     static bool isInitialized() { return mInitialized; }
 
 #ifdef REMOTE_3A_SERVER
-    static Intel3AClient* getIntel3AClient() { return mIntel3AClient; }
+    static Rockchip3AClient* getRockchip3AClient() { return mRockchip3AClient; }
 #endif
 
     static GcssKeyMap* getGcssKeyMap();
@@ -331,9 +329,6 @@ public:
     static const camera_metadata_t* getStaticMetadata(int cameraId);
     static camera_metadata_t* getDefaultMetadata(int cameraId, int requestType);
     static CameraHwType getCameraHwType(int cameraId);
-    static bool isCpfModeAvailable(int cameraId, std::string mode);
-    static const AiqConf *getAiqConfiguration(int cameraId,
-                                              std::string mode = std::string(CPF_MODE_DEFAULT));
     static const CameraCapInfo* getCameraCapInfo(int cameraId);
     static const CameraHWInfo* getCameraHWInfo() { return mCameraHWInfo; }
     static int getXmlCameraId(int cameraId);
@@ -349,21 +344,11 @@ public:
     static bool supportExtendedMakernote(void);
     static bool supportIPUAcceleration(void);
     static bool supportFullColorRange(void);
-    static status_t getCpfAndCmc(ia_binary_data& cpfData,
-                                 ia_cmc_t** cmcData,
-                                 uintptr_t* cmcHandle,
-                                 int cameraId,
-                                 std::string mode = std::string(CPF_MODE_DEFAULT));
     /**
      * get the number of CPU cores
      * \return the number of CPU cores
      */
     static unsigned int getNumOfCPUCores();
-    /**
-    * Utility methods to retrieve particular fields from the static metadata
-    * (a.k.a. Camera Characteristics), Please do NOT add anything else here
-    * without a very good reason.
-    */
     static int facing(int cameraId);
     static int orientation(int cameraId);
     static float getStepEv(int cameraId);

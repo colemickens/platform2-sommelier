@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 - 2017 Intel Corporation.
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,7 +104,7 @@ typedef enum
 typedef enum
 {
     ia_mkn_dnid_dummy,                      /*!< Used for dummy records (no actual data). */
-    ia_mkn_dnid_ia_aiq_records = 1,         /*!< ia_aiq library internal records. */
+    ia_mkn_dnid_rk_aiq_records = 1,         /*!< rk_aiq library internal records. */
     ia_mkn_dnid_hal_records = 256,          /*!< HAL records. */
     ia_mkn_dnid_ia_isp_records = 512,       /*!< ia_isp library internal records. */
     ia_mkn_dnid_free_records = 768,         /*!< Next free block of records - replace this when assigned. */

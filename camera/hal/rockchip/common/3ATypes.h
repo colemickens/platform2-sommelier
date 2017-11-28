@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +19,7 @@
 #define _HAL_3A_TYPES_H_
 
 #include <ia_mkn_types.h>
-#include <ia_aiq_types.h>
+#include <ia_types.h>
 
 #define EV_LOWER_BOUND         (-100)
 #define EV_UPPER_BOUND          100
@@ -56,14 +57,6 @@ enum BlackLevelLock
 {
     CAM_BLACK_LEVEL_LOCK_OFF = 0,
     CAM_BLACK_LEVEL_LOCK_ON
-};
-
-enum AfStatus
-{
-    CAM_AF_STATUS_FAIL = -1,
-    CAM_AF_STATUS_IDLE,
-    CAM_AF_STATUS_BUSY,
-    CAM_AF_STATUS_SUCCESS
 };
 
 enum AwbMode
@@ -113,19 +106,6 @@ enum IsoMode {
     CAM_AE_ISO_MODE_MANUAL  /* Manual */
 };
 
-enum AfMode
-{
-    CAM_AF_MODE_NOT_SET = -1,
-    CAM_AF_MODE_AUTO,
-    CAM_AF_MODE_MACRO,
-    CAM_AF_MODE_INFINITY,
-    CAM_AF_MODE_FIXED,
-    CAM_AF_MODE_TOUCH,
-    CAM_AF_MODE_MANUAL,
-    CAM_AF_MODE_FACE,
-    CAM_AF_MODE_CONTINUOUS
-};
-
 struct SensorAeConfig
 {
     float evBias;
@@ -168,13 +148,6 @@ enum FlickerMode
     CAM_AE_FLICKER_MODE_50HZ,
     CAM_AE_FLICKER_MODE_60HZ,
     CAM_AE_FLICKER_MODE_AUTO
-};
-
-enum AFBracketingMode
-{
-    CAM_AF_BRACKETING_MODE_SYMMETRIC,
-    CAM_AF_BRACKETING_MODE_TOWARDS_NEAR,
-    CAM_AF_BRACKETING_MODE_TOWARDS_FAR,
 };
 
 struct AAAWindowInfo {

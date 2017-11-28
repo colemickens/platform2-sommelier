@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -629,7 +630,7 @@ void EXIFMaker::clear()
     // the TIFF default is 1 (centered)
     exifAttributes.ycbcr_positioning = EXIF_DEF_YCBCR_POSITIONING;
 
-    // Clear the Intel 3A Makernote information
+    // Clear the Rockchip 3A Makernote information
     exifAttributes.makerNoteData = nullptr;
     exifAttributes.makerNoteDataSize = 0;
 

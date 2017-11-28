@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +44,6 @@ int32_t gGuiLogLevel = 0;
 
 // Dump stats grid data
 int32_t gRgbsGridDump = 0;
-int32_t gAfGridDump = 0;
 
 namespace LogHelper {
 
@@ -128,10 +128,6 @@ void setDebugLevel(void)
     // Dump stats grid data
     if (__getEnviromentValue(ENV_CAMERA_RGBS_GRID_DUMP, &gRgbsGridDump)) {
         LOGD("RGBS grid dump level is 0x%x", gRgbsGridDump);
-    }
-
-    if (__getEnviromentValue(ENV_CAMERA_AF_GRID_DUMP, &gAfGridDump)) {
-        LOGD("AF grid dump level is 0x%x", gAfGridDump);
     }
 
 }

@@ -2,6 +2,7 @@
  * Copyright Samsung Electronics Co.,LTD.
  * Copyright (C) 2010 The Android Open Source Project
  * Copyright (C) 2011-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,8 +71,11 @@
 /*******************************************************************************/
 
 NAMESPACE_DECLARATION {
-const char MAKERNOTE_ID[] = { 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x4d,
-                              0x6b, 0x6e, 0x6f, 0x74, 0x65, 0x0 /* "IntelMknote\0" */ };
+const char MAKERNOTE_ID[] = {
+	/* "RockchipMknote\0" */
+	0x52, 0x6f, 0x63, 0x6b, 0x63, 0x68, 0x69, 0x70,
+	0x4d, 0x6b, 0x6e, 0x6f, 0x74, 0x65, 0x0,
+};
 
 const unsigned SIZEOF_LENGTH_FIELD = 2;
 const unsigned SIZEOF_APP2_MARKER = 2;

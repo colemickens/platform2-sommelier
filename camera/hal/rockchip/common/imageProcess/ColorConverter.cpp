@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,117 +100,6 @@ void copyYV12ToYV12(int width, int height, int srcStride, int dstStride, void *s
             dstPtrU += dcStride, srcPtrU += scStride;
             dstPtrV += dcStride, srcPtrV += scStride;
         }
-    }
-}
-
-// covert NV12 (Y plane, interlaced UV bytes) to
-// NV21 (Y plane, interlaced VU bytes) and trim stride width to real width
-void trimConvertNV12ToNV21(int width, int height, int srcStride, void *src, void *dst)
-{
-    const int ysize = width * height;
-    unsigned const char *pSrc = (unsigned char *)src;
-    unsigned char *pDst = (unsigned char *)dst;
-
-    // Copy Y component
-    if (srcStride == width) {
-        STDCOPY(pDst, pSrc, ysize);
-    } else if (srcStride > width) {
-        int j = height;
-        while(j--) {
-            STDCOPY(pDst, pSrc, width);
-            pSrc += srcStride;
-            pDst += width;
-        }
-    } else {
-        LOGE("bad stride value");
-        return;
-    }
-
-    // Convert UV to VU
-    pSrc = (unsigned char *)src + srcStride * height;
-    pDst = (unsigned char *)dst + width * height;
-    for (int j = 0; j < height / 2; j++) {
-        if (width >= 16) {
-            const uint32_t *ptr0 = (const uint32_t *)(pSrc);
-            uint32_t *ptr1 = (uint32_t *)(pDst);
-            int bNotLastLine = ((j+1) == (height/2)) ? 0 : 1;
-            int width_16 = (width + 15 * bNotLastLine) & ~0xf;
-            if ((((uint64_t)(pSrc)) & 0xf) == 0 && (((uint64_t)(pDst)) & 0xf) == 0) { // 16 bytes aligned for both src and dest
-                __asm__ volatile(\
-                                 "movl       %0,  %%eax      \n\t"
-                                 "movl       %1,  %%edx      \n\t"
-                                 "movl       %2,  %%ecx      \n\t"
-                                 "1:     \n\t"
-                                 "movdqa (%%eax), %%xmm1     \n\t"
-                                 "movdqa  %%xmm1, %%xmm0     \n\t"
-                                 "psllw       $8, %%xmm1     \n\t"
-                                 "psrlw       $8, %%xmm0     \n\t"
-                                 "por     %%xmm0, %%xmm1     \n\t"
-                                 "movdqa  %%xmm1, (%%edx)    \n\t"
-                                 "add        $16, %%eax      \n\t"
-                                 "add        $16, %%edx      \n\t"
-                                 "sub        $16, %%ecx      \n\t"
-                                 "jnz   1b \n\t"
-                                 : "+m"(ptr0), "+m"(ptr1), "+m"(width_16)
-                                 :
-                                 : "eax", "ecx", "edx", "xmm0", "xmm1"
-                                );
-            }
-            else { // either src or dest is not 16-bytes aligned
-                __asm__ volatile(\
-                                 "movl       %0,  %%eax      \n\t"
-                                 "movl       %1,  %%edx      \n\t"
-                                 "movl       %2,  %%ecx      \n\t"
-                                 "1:     \n\t"
-                                 "lddqu  (%%eax), %%xmm1     \n\t"
-                                 "movdqa  %%xmm1, %%xmm0     \n\t"
-                                 "psllw       $8, %%xmm1     \n\t"
-                                 "psrlw       $8, %%xmm0     \n\t"
-                                 "por     %%xmm0, %%xmm1     \n\t"
-                                 "movdqu  %%xmm1, (%%edx)    \n\t"
-                                 "add        $16, %%eax      \n\t"
-                                 "add        $16, %%edx      \n\t"
-                                 "sub        $16, %%ecx      \n\t"
-                                 "jnz   1b \n\t"
-                                 : "+m"(ptr0), "+m"(ptr1), "+m"(width_16)
-                                 :
-                                 : "eax", "ecx", "edx", "xmm0", "xmm1"
-                                );
-            }
-
-            // process remaining data of less than 16 bytes of last row
-            for (int i = width_16; i < width; i += 2) {
-                pDst[i] = pSrc[i + 1];
-                pDst[i + 1] = pSrc[i];
-            }
-        }
-        else if ((((uint64_t)(pSrc)) & 0x3) == 0 && (((uint64_t)(pDst)) & 0x3) == 0){  // 4 bytes aligned for both src and dest
-            const uint32_t *ptr0 = (const uint32_t *)(pSrc);
-            uint32_t *ptr1 = (uint32_t *)(pDst);
-            int width_4 = width & ~3;
-            for (int i = 0; i < width_4; i += 4) {
-                uint32_t data0 = *ptr0++;
-                uint32_t data1 = (data0 >> 8) & 0x00ff00ff;
-                uint32_t data2 = (data0 << 8) & 0xff00ff00;
-                *ptr1++ = data1 | data2;
-            }
-            // process remaining data of less than 4 bytes at end of each row
-            for (int i = width_4; i < width; i += 2) {
-                pDst[i] = pSrc[i + 1];
-                pDst[i + 1] = pSrc[i];
-            }
-        }
-        else {
-            unsigned const char *ptr0 = pSrc;
-            unsigned char *ptr1 = pDst;
-            for (int i = 0; i < width; i += 2) {
-                *ptr1++ = ptr0[1];
-                *ptr1++ = ptr0[0];
-                ptr0 += 2;
-            }
-        }
-        pDst += width;
-        pSrc += srcStride;
     }
 }
 
@@ -600,9 +490,6 @@ void convertBuftoNV21(int format, int width, int height, int srcStride, int
                       dstStride, void *src, void *dst)
 {
     switch (format) {
-    case V4L2_PIX_FMT_NV12:
-        trimConvertNV12ToNV21(width, height, srcStride, src, dst);
-        break;
     case V4L2_PIX_FMT_YVU420:
         convertYV12ToNV21(width, height, srcStride, dstStride, src, dst);
         break;

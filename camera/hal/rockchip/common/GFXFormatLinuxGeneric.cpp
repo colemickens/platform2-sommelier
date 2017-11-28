@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,23 +105,15 @@ int v4L2Fmt2GFXFmt(int v4l2Fmt)
 #endif
         gfxFmt = HAL_PIXEL_FORMAT_YV12;
         break;
-    case V4L2_PIX_FMT_IPU3_SBGGR10:
-    case V4L2_PIX_FMT_IPU3_SGBRG10:
-    case V4L2_PIX_FMT_IPU3_SGRBG10:
-    case V4L2_PIX_FMT_IPU3_SRGGB10:
-        gfxFmt = HAL_PIXEL_FORMAT_RAW10;
-        break;
-    case V4L2_META_FMT_IPU3_PARAMS:
-    case V4L2_META_FMT_IPU3_STAT_3A:
-    case V4L2_META_FMT_IPU3_STAT_DVS:
-    case V4L2_META_FMT_IPU3_STAT_LACE:
+    case V4L2_META_FMT_RK_ISP1_PARAMS:
+    case V4L2_META_FMT_RK_ISP1_STAT_3A:
         gfxFmt = HAL_PIXEL_FORMAT_RAW_OPAQUE;
         break;
     case V4L2_PIX_FMT_NV21:
         gfxFmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
         break;
     case V4L2_PIX_FMT_NV12:
-        gfxFmt = HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL;
+        gfxFmt = HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_RK;
         break;
     case V4L2_PIX_FMT_YUYV:
         gfxFmt = HAL_PIXEL_FORMAT_YCbCr_422_I;

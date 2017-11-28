@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +73,7 @@
 /**
  * \macro INIT_COORDINATE
  * Initializes the value of a structure of type ia_coordinate
- *  (see ia_aiq_types.h)
+ *  (see rk_aiq_types.h)
  */
 #define INIT_COORDINATE(p,xVal,yVal) (p).x = xVal; (p).y = yVal;
 

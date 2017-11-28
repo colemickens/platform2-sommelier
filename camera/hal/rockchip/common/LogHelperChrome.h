@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +36,5 @@
 
 // Dump stats grid
 #define ENV_CAMERA_RGBS_GRID_DUMP "rgbsGridDump"
-#define ENV_CAMERA_AF_GRID_DUMP "afGridDump"
 
 #endif // _CHROME_CAMERA_LOG_H_

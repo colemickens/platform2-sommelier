@@ -18,26 +18,16 @@ ACLOCAL_AMFLAGS = -I m4
 lib_LTLIBRARIES = \
     libcamerahal.la
 
-3ASRC = common/3a/Intel3aPlus.cpp \
-        common/3a/Intel3aCore.cpp \
-        common/3a/Intel3aHelper.cpp \
-        common/3a/IntelAEStateMachine.cpp \
-        common/3a/IntelAFStateMachine.cpp \
-        common/3a/IntelAWBStateMachine.cpp
+3ASRC = common/3a/Rk3aPlus.cpp \
+        common/3a/Rk3aCore.cpp \
+        common/3a/RkAEStateMachine.cpp \
+        common/3a/RkAWBStateMachine.cpp
 
 if REMOTE_3A_SERVER
-3ASRC += psl/ipu3/ipc/client/Intel3aCommon.cpp \
-         psl/ipu3/ipc/client/Intel3aCoordinate.cpp \
-         psl/ipu3/ipc/client/Intel3aAiq.cpp \
-         psl/ipu3/ipc/client/Intel3aCmc.cpp \
-         psl/ipu3/ipc/client/Intel3aExc.cpp \
-         psl/ipu3/ipc/client/Intel3aMkn.cpp
+3ASRC += psl/rkisp1/ipc/client/Rk3aCommon.cpp \
+         psl/rkisp1/ipc/client/Rk3aAiq.cpp
 else
-3ASRC += common/3awrapper/Intel3aCoordinate.cpp \
-         common/3awrapper/Intel3aAiq.cpp \
-         common/3awrapper/Intel3aCmc.cpp \
-         common/3awrapper/Intel3aExc.cpp \
-         common/3awrapper/Intel3aMkn.cpp
+3ASRC += common/3awrapper/Rk3aAiq.cpp
 endif
 
 AALSRC = AAL/Camera3HAL.cpp \
@@ -59,8 +49,7 @@ V4L2SRC = common/v4l2dev/v4l2devicebase.cpp \
           common/v4l2dev/v4l2subdevice.cpp \
           common/v4l2dev/v4l2videonode.cpp
 
-PLATFORMDATASRC = common/platformdata/CameraConf.cpp \
-                  common/platformdata/CameraMetadataHelper.cpp \
+PLATFORMDATASRC = common/platformdata/CameraMetadataHelper.cpp \
                   common/platformdata/CameraProfiles.cpp \
                   common/platformdata/ChromeCameraProfiles.cpp \
                   common/platformdata/Metadata.cpp \
@@ -126,6 +115,9 @@ STRICTED_CPPFLAGS = \
 libcamerahal_la_CPPFLAGS = $(CPPHACKS) \
                            $(STRICTED_CPPFLAGS)
 
+# Enable large file support.
+libcamerahal_la_CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
+
 #Namespace Declaration
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namespace\ camera2
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=}
@@ -140,8 +132,8 @@ libcamerahal_la_CPPFLAGS += $(ARC_CAMERA3_ANDROID_HEADERS_CFLAGS) \
                             $(LIBYUV_CFLAGS)
 
 #includes
-KERNELHEADERS = -I$(top_srcdir)/LAL/ipu3/include/uapi \
-                -I$(top_srcdir)/LAL/ipu3/include
+KERNELHEADERS = -I$(top_srcdir)/LAL/rkisp1/include/uapi \
+                -I$(top_srcdir)/LAL/rkisp1/include
 ALLINCLUDES = \
     $(PSLCPPFLAGS) \
     $(KERNELHEADERS) \
@@ -158,7 +150,7 @@ ALLINCLUDES = \
     -I$(top_srcdir)/common/gcss
 
 if REMOTE_3A_SERVER
-ALLINCLUDES += -I$(top_srcdir)/psl/ipu3/ipc/client
+ALLINCLUDES += -I$(top_srcdir)/psl/rkisp1/ipc/client
 else
 ALLINCLUDES += -I$(top_srcdir)/common/3awrapper
 endif
@@ -167,9 +159,7 @@ libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
 # libs
 EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) $(LIBYUV_LIBS) $(LIBCAMERA_JPEG_LIBS)
-UTIL_LIBS =  $(PSLLIBS) \
-          $(IA_IMAGING_LIBS) \
-          $(LIBIACSS_LIBS)
+UTIL_LIBS =  $(PSLLIBS)
 STATIC_LIBS = $(LIBCAMERA_CLIENT_LIBS) \
               $(LIBCAMERA_METADATA_LIBS) \
               $(LIBSYNC_LIBS)
@@ -178,4 +168,4 @@ libcamerahal_la_LIBADD = $(EXTERNAL_LIBS) $(UTIL_LIBS) $(STATIC_LIBS) $(OTHER_LI
 
 libcamerahal_la_LDFLAGS = -Wl,-z,defs
 
-include psl/ipu3/Makefile.am.inc
+include psl/rkisp1/Makefile.am.inc

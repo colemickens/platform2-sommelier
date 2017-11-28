@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +23,6 @@
 NAMESPACE_DECLARATION {
 void convertYV12ToNV21(int width, int height, int srcStride, int dstStride, void *src, void *dst);
 void copyYV12ToYV12(int width, int height, int srcStride, int dstStride, void *src, void *dst);
-
-void trimConvertNV12ToNV21(int width, int height, int srcStride, void *src, void *dst);
 
 void convertNV12ToYV12(int width, int height, int srcStride, void *src, void *dst);
 void align16ConvertNV12ToYV12(int width, int height, int srcStride, void *src, void *dst);

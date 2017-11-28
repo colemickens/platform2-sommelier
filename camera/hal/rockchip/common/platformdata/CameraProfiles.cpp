@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1303,8 +1304,8 @@ CameraHwType CameraProfiles::getCameraHwforId(int cameraId)
     CameraInfo *info = it->second;
     std::string hwType = info->hwType;
 
-    if (hwType == "SUPPORTED_HW_IPU3") {
-        return SUPPORTED_HW_IPU3;
+    if (hwType == "SUPPORTED_HW_RKISP1") {
+        return SUPPORTED_HW_RKISP1;
     } else
         LOGE("ERROR: Camera HW type wrong in xml");
         return SUPPORTED_HW_UNKNOWN;
