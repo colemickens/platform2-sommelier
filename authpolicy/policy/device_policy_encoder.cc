@@ -471,6 +471,16 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         tpm_firmware_update_settings->set_allow_user_initiated_powerwash(
             allow_user_initiated_powerwash);
       });
+
+  EncodeString(
+      key::kMinimumRequiredChromeVersion, [policy](const std::string& value) {
+        policy->mutable_minimum_required_version()->set_chrome_version(value);
+      });
+
+  EncodeBoolean(key::kUnaffiliatedArcAllowed, [policy](bool value) {
+    policy->mutable_unaffiliated_arc_allowed()->set_unaffiliated_arc_allowed(
+        value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

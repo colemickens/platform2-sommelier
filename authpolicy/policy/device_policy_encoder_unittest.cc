@@ -321,6 +321,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       true,
       policy.tpm_firmware_update_settings().allow_user_initiated_powerwash());
 
+  EncodeString(&policy, key::kMinimumRequiredChromeVersion, kString);
+  EXPECT_EQ(kString, policy.minimum_required_version().chrome_version());
+
+  EncodeBoolean(&policy, key::kUnaffiliatedArcAllowed, kBool);
+  EXPECT_EQ(kBool,
+            policy.unaffiliated_arc_allowed().unaffiliated_arc_allowed());
+
   //
   // Check whether all device policies have been handled.
   //
