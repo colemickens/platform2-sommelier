@@ -1849,14 +1849,70 @@ TEST_F(AttestationServiceTest, SignSimpleChallengeInternalFailure) {
   Run();
 }
 
+class AttestationServiceEnterpriseTest
+  : public AttestationServiceTest,
+    public testing::WithParamInterface<VAType> {};
+
+TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
+  KeyInfo key_info = CreateChallengeKeyInfo();
+  std::string key_info_str;
+  key_info.SerializeToString(&key_info_str);
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(
+      service_->GetEnterpriseSigningHexKey(GetParam()), _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_crypto_utility_,
+              EncryptDataForGoogle(key_info_str,
+                  service_->GetEnterpriseEncryptionHexKey(GetParam()), _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<3>(MockEncryptedData(key_info_str)),
+                Return(true)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
+                      Return(true)));
+  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_challenge_response());
+    SignedData signed_data;
+    EXPECT_TRUE(signed_data.ParseFromString(reply.challenge_response()));
+    EXPECT_EQ("signature", signed_data.signature());
+    ChallengeResponse response_pb;
+    EXPECT_TRUE(response_pb.ParseFromString(signed_data.data()));
+    EXPECT_EQ(CreateChallenge("EnterpriseKeyChallenge"),
+              response_pb.challenge().data());
+    KeyInfo key_info = CreateChallengeKeyInfo();
+    std::string key_info_str;
+    key_info.SerializeToString(&key_info_str);
+    EXPECT_EQ(key_info_str,
+              response_pb.encrypted_key_info().encrypted_data());
+    Quit();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_va_type(GetParam());
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_domain(key_info.domain());
+  request.set_device_id(key_info.device_id());
+  request.set_include_signed_public_key(false);
+  request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  Run();
+}
+
+INSTANTIATE_TEST_CASE_P(
+    VerifiedAccessType,
+    AttestationServiceEnterpriseTest,
+    ::testing::Values(DEFAULT_VA, TEST_VA));
+
 TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
   KeyInfo key_info = CreateChallengeKeyInfo();
   std::string key_info_str;
   key_info.SerializeToString(&key_info_str);
-  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(
+      service_->GetEnterpriseSigningHexKey(DEFAULT_VA), _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_crypto_utility_,
-              EncryptDataForGoogle(key_info_str, _, _, _))
+              EncryptDataForGoogle(key_info_str,
+                  service_->GetEnterpriseEncryptionHexKey(DEFAULT_VA), _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<3>(MockEncryptedData(key_info_str)),
                 Return(true)));

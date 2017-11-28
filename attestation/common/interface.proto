@@ -37,6 +37,11 @@ enum ACAType {
   TEST_ACA = 1;
 }
 
+enum VAType {
+  DEFAULT_VA = 0;
+  TEST_VA = 1;
+}
+
 message CreateGoogleAttestedKeyRequest {
   // An arbitrary label which can be used to reference the key later.
   optional string key_label = 1;
@@ -312,6 +317,8 @@ message SignEnterpriseChallengeRequest {
   optional bool include_signed_public_key = 5;
   // The challenge to be signed.
   optional bytes challenge = 6;
+  // The VA server that will handle the challenge.
+  optional VAType va_type = 7;
 }
 
 message SignEnterpriseChallengeReply {

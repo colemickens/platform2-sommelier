@@ -29,6 +29,7 @@
 #include <brillo/bind_lambda.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/secure_blob.h>
+#include <gtest/gtest_prod.h>
 
 #include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility.h"
@@ -431,12 +432,23 @@ class AttestationService : public AttestationInterface {
   // for enrollment.
   bool IsVerifiedMode() const;
 
+  // Gets the enterprise signing key for |va_type| servers.
+  const char* GetEnterpriseSigningHexKey(VAType va_type) const;
+
+  // Gets the enterprise encryption key for |va_type| servers.
+  const char *GetEnterpriseEncryptionHexKey(VAType va_type) const;
+
+  // Gets the enterprise encryption key identifier for |va_type| servers.
+  std::string GetEnterpriseEncryptionPublicKeyID(VAType va_type) const;
+
   // Validates incoming enterprise challenge data.
-  bool ValidateEnterpriseChallenge(const SignedData& signed_challenge);
+  bool ValidateEnterpriseChallenge(VAType va_type,
+                                   const SignedData& signed_challenge);
 
   // Encrypts a KeyInfo protobuf as required for an enterprise challenge
   // response.
-  bool EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
+  bool EncryptEnterpriseKeyInfo(VAType va_type,
+                                const KeyInfo& key_info,
                                 EncryptedData* encrypted_data);
 
   // Signs data using the provided key. On success, returns true and fills
@@ -502,6 +514,10 @@ class AttestationService : public AttestationInterface {
   std::string ComputeEnterpriseEnrollmentNonce();
 
   base::WeakPtr<AttestationService> GetWeakPtr();
+
+  FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,
+                           SignEnterpriseChallengeSuccess);
+  FRIEND_TEST(AttestationServiceTest, SignEnterpriseChallengeSuccess);
 
   // Other than initialization and destruction, these are used only by the
   // worker thread.
