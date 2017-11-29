@@ -357,7 +357,7 @@ bool CrosVM::VMInit(bool ssh, bool run_container, bool rw_container) {
   // For ssh, we must first generate the host key, then we can start sshd.
   if (ssh) {
     if (!LaunchProcess(
-            {"/usr/local/bin/ssh-keygen", "-f",
+            {"/usr/bin/ssh-keygen", "-f",
              "/run/sshd/ssh_host_ed25519_key", "-N", "", "-t", "ed25519"},
             false, true)) {
       LOG(ERROR) << "Failed to generate SSH host key for guest";
@@ -365,7 +365,7 @@ bool CrosVM::VMInit(bool ssh, bool run_container, bool rw_container) {
     }
 
     if (!LaunchProcess(
-            {"/usr/local/sbin/sshd", "-f", "/etc/ssh/termina_sshd_config"},
+            {"/usr/sbin/sshd", "-f", "/etc/ssh/termina_sshd_config"},
             true, false)) {
       LOG(ERROR) << "Failed to start sshd in guest";
       return false;
