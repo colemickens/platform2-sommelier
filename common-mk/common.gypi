@@ -51,6 +51,7 @@
     'USE_power_management%': 0,
     'USE_pppoe%': 0,
     'USE_profile%': 0,
+    'USE_profiling%': 0,
     'USE_systemd%': 0,
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
@@ -195,6 +196,10 @@
             '--sysroot=<(sysroot)',
           ],
         },
+      }],
+      ['USE_profiling == 1', {
+        'cflags': ['-fprofile-instr-generate', '-fcoverage-mapping'],
+        'ldflags': ['-fprofile-instr-generate', '-fcoverage-mapping'],
       }],
       ['USE_tcmalloc == 1', {
         'link_settings': {
