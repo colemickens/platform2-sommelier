@@ -110,8 +110,8 @@ bool detect_video_acc_vp8(void) {
 
 /* Helper function for detect_video_acc_vp9.
  * Determine given |fd| is a VAAPI device supports VP9 decoding, i.e. it
- * supports VP9 profile, has decoding entry point, and output YUV420
- * formats.
+ * supports VP9 profile 0, has decoding entry point, and can output YUV420
+ * format.
  */
 static bool is_vaapi_dec_vp9_device(int fd) {
 #ifdef HAS_VAAPI
@@ -153,6 +153,35 @@ bool detect_video_acc_vp9(void) {
   if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device))
     return true;
   return false;
+}
+
+
+/* Helper function for detect_video_acc_vp9_2.
+ * Determine given |fd| is a VAAPI device supports VP9 decoding Profile 2, i.e.
+ * it supports VP9 profile 2, has decoding entry point, and can output YUV420
+ * 10BPP format.
+ */
+static bool is_vaapi_dec_vp9_2_device(int fd) {
+#ifdef HAS_VAAPI
+#if VA_CHECK_VERSION(0, 38, 1)
+  VAProfile va_profiles[] = {
+    VAProfileVP9Profile2,
+    VAProfileNone
+  };
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+        VA_RT_FORMAT_YUV420_10BPP))
+    return true;
+#endif
+#endif
+  return false;
+}
+
+/* Determines "hw_video_acc_vp9_2" label. That is, either the VAAPI device
+ * supports VP9 profile 2, has decoding entry point, and output YUV420 10BPP
+ * format.
+ */
+bool detect_video_acc_vp9_2(void) {
+  return is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_2_device);
 }
 
 /* Helper function for detect_video_acc_enc_h264.

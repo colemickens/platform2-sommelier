@@ -20,6 +20,7 @@ struct detector detectors[] = {
   { "hw_video_acc_h264", detect_video_acc_h264 },
   { "hw_video_acc_vp8", detect_video_acc_vp8 },
   { "hw_video_acc_vp9", detect_video_acc_vp9 },
+  { "hw_video_acc_vp9_2", detect_video_acc_vp9_2 },
   { "hw_video_acc_enc_h264", detect_video_acc_enc_h264 },
   { "hw_video_acc_enc_vp8", detect_video_acc_enc_vp8 },
   { "webcam", detect_webcam },
