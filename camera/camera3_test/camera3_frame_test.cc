@@ -1292,6 +1292,70 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
   }
 }
 
+TEST_P(Camera3FrameContentTest, DetectGreenLine) {
+  auto test_pattern_modes = GetAvailableColorBarsTestPatternModes();
+  ASSERT_FALSE(test_pattern_modes.empty())
+      << "Failed to get sensor available test pattern modes";
+
+  cam_device_.AddOutputStream(format_, width_, height_,
+                              CAMERA3_STREAM_ROTATION_0);
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
+  CameraMetadataUniquePtr metadata(clone_camera_metadata(
+      cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
+  UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(), 1,
+                 &metadata);
+  ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
+      << "Creating capture request fails";
+
+  struct timespec timeout;
+  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
+  WaitShutterAndCaptureResult(timeout);
+  ASSERT_NE(nullptr, buffer_handle_) << "Failed to get frame buffer";
+  auto argb_image = ConvertToImage(std::move(buffer_handle_), width_, height_,
+                                   ImageFormat::IMAGE_FORMAT_ARGB);
+  ASSERT_NE(nullptr, argb_image);
+
+  auto IsGreenPixel = [](const uint8_t* pixel) {
+    const uint8_t kRedOrBlueUpperLimit = 50;
+    const uint8_t kGreenLowerLimit = 100;
+    const uint32_t kRedOffset = 0;
+    const uint32_t kGreenOffset = 1;
+    const uint32_t kBlueOffset = 2;
+    return *(pixel + kRedOffset)<kRedOrBlueUpperLimit&&*(pixel + kGreenOffset)>
+               kGreenLowerLimit &&
+           *(pixel + kBlueOffset) < kRedOrBlueUpperLimit;
+  };
+  auto IsBottomLineGreen = [&](const ImageUniquePtr& argb_image) {
+    uint8_t* pixel_of_last_line =
+        argb_image->planes[0].addr +
+        argb_image->planes[0].stride * (argb_image->height - 1);
+    for (size_t i = 0; i < argb_image->planes[0].stride;
+         i += kARGBPixelWidth, pixel_of_last_line += kARGBPixelWidth) {
+      if (!IsGreenPixel(pixel_of_last_line)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  EXPECT_FALSE(IsBottomLineGreen(argb_image))
+      << "Green line at the bottom of captured frame";
+  auto IsRightMostLineGreen = [&](const ImageUniquePtr& argb_image) {
+    uint8_t* last_pixel_of_line = argb_image->planes[0].addr +
+                                  argb_image->planes[0].stride -
+                                  kARGBPixelWidth;
+    for (size_t i = 0; i < argb_image->height;
+         i++, last_pixel_of_line += argb_image->planes[0].stride) {
+      if (!IsGreenPixel(last_pixel_of_line)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  EXPECT_FALSE(IsRightMostLineGreen(argb_image))
+      << "Green line at the rightmost of captured frame";
+}
+
 // Test parameters:
 // - Camera ID, frame format, resolution width, resolution height
 // - Rotation degrees
