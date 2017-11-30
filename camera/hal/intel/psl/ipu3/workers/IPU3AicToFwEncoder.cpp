@@ -1324,9 +1324,6 @@ IPU3AicToFwEncoder::encodeParameters(aic_config *config, ipu3_uapi_params *param
 {
     status_t status = OK;
 
-    params->version = 0x100;
-    params->fourcc = V4L2_META_FMT_IPU3_PARAMS;
-
     ispAwbFrEncode(config, params);
     ispAeEncode(config, params);
     ispAwbEncode(config, params);
