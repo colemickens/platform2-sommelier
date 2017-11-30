@@ -50,7 +50,6 @@
     'USE_passive_metrics%': 0,
     'USE_power_management%': 0,
     'USE_pppoe%': 0,
-    'USE_profile%': 0,
     'USE_profiling%': 0,
     'USE_systemd%': 0,
     'USE_tcmalloc%': 0,

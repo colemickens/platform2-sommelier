@@ -18,11 +18,6 @@
                 '<(DEPTH)/feedback/feedback.gyp:*',
               ],
             }],
-            ['USE_profile == 1', {
-              'dependencies': [
-                '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
-              ],
-            }],
           ],
         }],
       ],
