@@ -167,6 +167,9 @@ BRILLO_EXPORT int container_config_add_cgroup_device(struct container_config* c,
  * fs_permissions - Permissions to set on the node.
  * major - Major device number.
  * minor - Minor device number.
+ * copy_major - Overwrite major with the major of the existing device node.  If
+ *   this is true major will be copied from an existing node.  The |major| param
+ *   should be set to -1 in this case.
  * copy_minor - Overwrite minor with the minor of the existing device node.  If
  *   this is true minor will be copied from an existing node.  The |minor| param
  *   should be set to -1 in this case.
@@ -182,6 +185,7 @@ BRILLO_EXPORT int container_config_add_device(struct container_config* c,
                                               int fs_permissions,
                                               int major,
                                               int minor,
+                                              int copy_major,
                                               int copy_minor,
                                               int uid,
                                               int gid,

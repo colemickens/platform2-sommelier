@@ -83,6 +83,7 @@ struct OciLinuxDevice {
   uint32_t fileMode = 0000;   // Optional
   uint32_t uid = 0;           // Optional
   uint32_t gid = 0;           // Optional
+  bool dynamicMajor = false;  // Optional, Chrome OS extension.
   bool dynamicMinor = false;  // Optional, Chrome OS extension.
 };
 

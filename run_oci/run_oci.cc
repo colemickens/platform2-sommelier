@@ -222,7 +222,8 @@ void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
   for (const auto& device : devices) {
     container_config_add_device(
         config_out, device.type.c_str()[0], device.path.value().c_str(),
-        device.fileMode, device.major, device.dynamicMinor ? -1 : device.minor,
+        device.fileMode, device.dynamicMajor ? -1 : device.major,
+        device.dynamicMinor ? -1 : device.minor, device.dynamicMajor,
         device.dynamicMinor, device.uid, device.gid,
         0,  // Cgroup permission are now in 'resources'.
         0, 0);

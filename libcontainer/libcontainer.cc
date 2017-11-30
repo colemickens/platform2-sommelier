@@ -88,6 +88,8 @@ struct Device {
   int major;
   int minor;
 
+  // Copy the major from existing node, ignores |major|.
+  bool copy_major;
   // Copy the minor from existing node, ignores |minor|.
   bool copy_minor;
   int uid;
@@ -582,6 +584,7 @@ bool DoContainerMounts(struct container* c,
 bool ContainerCreateDevice(const struct container* c,
                            const struct container_config* config,
                            const Device& dev,
+                           int major,
                            int minor) {
   mode_t mode = dev.fs_permissions;
   switch (dev.type) {
@@ -608,7 +611,7 @@ bool ContainerCreateDevice(const struct container* c,
     PLOG(ERROR) << "Failed to create parent directory for " << path.value();
     return false;
   }
-  if (mknod(path.value().c_str(), mode, makedev(dev.major, minor)) != 0 &&
+  if (mknod(path.value().c_str(), mode, makedev(major, minor)) != 0 &&
       errno != EEXIST) {
     PLOG(ERROR) << "Failed to mknod " << path.value();
     return false;
@@ -689,17 +692,22 @@ bool CreateDeviceNodes(struct container* c,
                        const struct container_config* config,
                        pid_t container_pid) {
   for (const auto& dev : config->devices) {
+    int major = dev.major;
     int minor = dev.minor;
 
-    if (dev.copy_minor) {
+    if (dev.copy_major || dev.copy_minor) {
       struct stat st_buff;
       if (stat(dev.path.value().c_str(), &st_buff) != 0)
         continue;
-      minor = minor(st_buff.st_rdev);
+
+      if (dev.copy_major)
+        major = major(st_buff.st_rdev);
+      if (dev.copy_minor)
+        minor = minor(st_buff.st_rdev);
     }
-    if (minor < 0)
+    if (major < 0 || minor < 0)
       continue;
-    if (!ContainerCreateDevice(c, config, dev, minor))
+    if (!ContainerCreateDevice(c, config, dev, major, minor))
       return false;
   }
 
@@ -996,6 +1004,7 @@ int container_config_add_device(struct container_config* c,
                                 int fs_permissions,
                                 int major,
                                 int minor,
+                                int copy_major,
                                 int copy_minor,
                                 int uid,
                                 int gid,
@@ -1006,8 +1015,8 @@ int container_config_add_device(struct container_config* c,
     errno = EINVAL;
     return -1;
   }
-  /* If using a dynamic minor number, ensure that minor is -1. */
-  if (copy_minor && (minor != -1)) {
+  /* If using a dynamic major/minor number, ensure that major/minor is -1. */
+  if ((copy_major && (major != -1)) || (copy_minor && (minor != -1))) {
     errno = EINVAL;
     return -1;
   }
@@ -1022,14 +1031,8 @@ int container_config_add_device(struct container_config* c,
   }
 
   c->devices.emplace_back(Device{
-      type,
-      base::FilePath(path),
-      fs_permissions,
-      major,
-      minor,
-      copy_minor != 0,
-      uid,
-      gid,
+      type, base::FilePath(path), fs_permissions, major, minor, copy_major != 0,
+      copy_minor != 0, uid, gid,
   });
 
   return 0;

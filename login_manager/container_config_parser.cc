@@ -394,11 +394,15 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       LOG(ERROR) << "Fail to get minor id of " << path;
       return false;
     }
-    // If minor is negative, mirror the current device.
+    // If major or minor is negative, mirror the current device.
     // This is a cros-specific extension.
-    int copy_minor = 0;
-    if (path != "nodev" && minor < 0)
-      copy_minor = 1;
+    int copy_major = 0, copy_minor = 0;
+    if (path != "nodev") {
+      if (major < 0)
+        copy_major = 1;
+      if (minor < 0)
+        copy_minor = 1;
+    }
     std::string permissions;
     if (!dev->GetString("permissions", &permissions)) {
       LOG(ERROR) << "Fail to get device permissions of " << path;
@@ -424,9 +428,9 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
     }
 
     container_config_add_device(config_out->get(), type, path.c_str(),
-                                fs_permissions, major, minor, copy_minor,
-                                dev_uid, dev_gid, read_allowed, write_allowed,
-                                modify_allowed);
+                                fs_permissions, major, minor, copy_major,
+                                copy_minor, dev_uid, dev_gid, read_allowed,
+                                write_allowed, modify_allowed);
   }
 
   return true;

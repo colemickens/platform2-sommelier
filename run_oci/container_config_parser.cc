@@ -431,8 +431,18 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       LOG(ERROR) << "Fail to get type for " << device.path.value();
       return false;
     }
-    if (!ParseUint32FromDict(*dev, "major", &device.major))
-      return false;
+    dev->GetBoolean("dynamicMajor", &device.dynamicMajor);
+    if (device.dynamicMajor) {
+      if (dev->HasKey("major")) {
+        LOG(WARNING)
+            << "Ignoring \"major\" since \"dynamicMajor\" is specified for "
+            << device.path.value();
+      }
+    } else {
+      if (!ParseUint32FromDict(*dev, "major", &device.major))
+        return false;
+    }
+
     dev->GetBoolean("dynamicMinor", &device.dynamicMinor);
     if (device.dynamicMinor) {
       if (dev->HasKey("minor")) {

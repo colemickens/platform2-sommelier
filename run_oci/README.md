@@ -46,7 +46,7 @@ object has been extended to also contain the following:
         }
     }
 
-### Linux device node dynamic minor numbers
+### Linux device node dynamic major/minor numbers
 
 Device nodes that have well-known major/minor numbers are normally added to the
 [**`devices`**](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#devices)
@@ -57,6 +57,11 @@ files to have different permissions and/or SELinux attributes.
 
 The objects in the **`devices`** array has been extended to also contain the
 following:
+
+* **`dynamicMajor`** *(boolean, OPTIONAL)* - copies the [major
+  number](https://www.kernel.org/doc/Documentation/admin-guide/devices.txt) from
+  the device node that is present in `path` outside the container. If
+  `dynamicMajor` is set to `true`, the value of `major` is ignored.
 
 * **`dynamicMinor`** *(boolean, OPTIONAL)* - copies the [minor
   number](https://www.kernel.org/doc/Documentation/admin-guide/devices.txt) from
