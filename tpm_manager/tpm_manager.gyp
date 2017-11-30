@@ -1,0 +1,163 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{
+  'target_defaults': {
+    'includes': ['../common-mk/common.gypi'],
+    'variables': {
+      'deps': [  # This is a list of pkg-config dependencies
+        'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
+        'openssl',
+        'protobuf-lite',
+      ],
+    },
+    'defines': [ 'USE_TPM2=<(USE_tpm2)' ],
+  },
+  'targets': [
+    # A library for just the protobufs.
+    {
+      'target_name': 'proto_library',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': 'common',
+        'proto_out_dir': 'include/tpm_manager/common',
+      },
+      'sources': [
+        '<(proto_in_dir)/dbus_interface.proto',
+        '<(proto_in_dir)/local_data.proto',
+        'common/print_dbus_interface_proto.cc',
+        'common/print_local_data_proto.cc',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    # A shared library for clients.
+    {
+      'target_name': 'libtpm_manager',
+      'type': 'shared_library',
+      'sources': [
+        'client/dbus_proxy.cc',
+      ],
+      'dependencies': [
+        'proto_library',
+      ],
+    },
+    # A client command line utility.
+    {
+      'target_name': 'tpm_manager_client',
+      'type': 'executable',
+      'sources': [
+        'client/main.cc',
+      ],
+      'dependencies': [
+        'libtpm_manager',
+        'proto_library',
+      ]
+    },
+    # A library for server code.
+    {
+      'target_name': 'server_library',
+      'type': 'static_library',
+      'sources': [
+        'server/dbus_service.cc',
+        'server/local_data_store_impl.cc',
+        'server/openssl_crypto_util.cc',
+        'server/tpm_manager_service.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'sources': [
+            'server/tpm2_status_impl.cc',
+            'server/tpm2_initializer_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltrunks',
+            ],
+          },
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'server/tpm_connection.cc',
+            'server/tpm_status_impl.cc',
+            'server/tpm_initializer_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltspi',
+            ],
+          },
+        }],
+      ],
+      'dependencies': [
+        'proto_library',
+      ],
+    },
+    # The tpm_manager daemon.
+    {
+      'target_name': 'tpm_managerd',
+      'type': 'executable',
+      'sources': [
+        'server/main.cc',
+      ],
+      'variables': {
+        'deps': [
+          'libminijail',
+        ],
+      },
+      'dependencies': [
+        'proto_library',
+        'server_library',
+      ],
+    },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'tpm_manager_testrunner',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+              'libchromeos-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'client/dbus_proxy_test.cc',
+            'common/mock_tpm_manager_interface.cc',
+            'server/dbus_service_test.cc',
+            'server/mock_local_data_store.cc',
+            'server/mock_tpm_initializer.cc',
+            'server/mock_tpm_status.cc',
+            'server/tpm_manager_service_test.cc',
+            'tpm_manager_testrunner.cc',
+          ],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'sources': [
+                '../trunks/mock_blob_parser.cc',
+                '../trunks/mock_hmac_session.cc',
+                '../trunks/mock_policy_session.cc',
+                '../trunks/mock_session_manager.cc',
+                '../trunks/mock_tpm.cc',
+                '../trunks/mock_tpm_state.cc',
+                '../trunks/mock_tpm_utility.cc',
+                '../trunks/trunks_factory_for_test.cc',
+                'server/tpm2_status_test.cc',
+                'server/tpm2_initializer_test.cc',
+              ],
+            }],
+          ],
+          'dependencies': [
+            'libtpm_manager',
+            'proto_library',
+            'server_library',
+          ],
+        },
+      ],
+    }],
+  ],
+}
