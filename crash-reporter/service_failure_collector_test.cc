@@ -19,6 +19,9 @@ namespace {
 
 bool s_metrics = false;
 
+// Source tree log config file name.
+const char kLogConfigFileName[] = "crash_reporter_logs.conf";
+
 const char kTestFilename[] = "test-service-failure";
 const char kTestCrashDirectory[] = "test-crash-directory";
 
@@ -49,6 +52,7 @@ class ServiceFailureCollectorTest : public ::testing::Test {
     test_crash_directory_ = scoped_temp_dir_.path().Append(kTestCrashDirectory);
     CreateDirectory(test_crash_directory_);
     collector_.set_crash_directory_for_test(test_crash_directory_);
+    collector_.set_log_config_path(kLogConfigFileName);
   }
 
  protected:

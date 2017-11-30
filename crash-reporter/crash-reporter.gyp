@@ -180,6 +180,7 @@
                 'TEST_WARNING_OLD_ARM64',
                 'anomaly_collector_test.sh',
                 'anomaly_collector_test_reporter.sh',
+                'crash_reporter_logs.conf',
               ],
             },
           ],

@@ -44,6 +44,11 @@ class CrashCollector {
     crash_reporter_state_path_ = forced_directory;
   }
 
+  // For testing, set the log config file path instead of kDefaultLogConfig.
+  void set_log_config_path(const std::string& path) {
+    log_config_path_ = base::FilePath(path);
+  }
+
   // Initialize the crash collector for detection of crashes, given a
   // crash counting function, and metrics collection enabled oracle.
   void Initialize(CountCrashFunction count_crash,

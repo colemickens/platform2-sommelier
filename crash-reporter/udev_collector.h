@@ -56,11 +56,6 @@ class UdevCollector : public CrashCollector {
   // Return the driver name of the device that generates the coredump.
   std::string GetFailingDeviceDriverName(int instance_number);
 
-  // Mutator for unit testing.
-  void set_log_config_path(const std::string& path) {
-    log_config_path_ = base::FilePath(path);
-  }
-
   DISALLOW_COPY_AND_ASSIGN(UdevCollector);
 };
 
