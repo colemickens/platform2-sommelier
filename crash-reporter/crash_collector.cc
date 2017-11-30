@@ -569,9 +569,11 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   const int result = diag_process.Run();
 
   std::string log_contents;
-  if (!base::ReadFileToStringWithMaxSize(raw_output_file,
-                                         &log_contents,
-                                         max_log_size_)) {
+  const bool fully_read = base::ReadFileToStringWithMaxSize(
+      raw_output_file, &log_contents, max_log_size_);
+  base::DeleteFile(raw_output_file, false);
+
+  if (!fully_read) {
     if (log_contents.empty()) {
       LOG(WARNING) << "Failed to read raw log contents.";
       return false;
