@@ -203,15 +203,20 @@ int Intel3AClient::waitCallback()
 
     pthread_mutex_lock(&mCbLock);
     if (!mIsCallbacked) {
+        int ret = 0;
         struct timespec ts = {0, 0};
         clock_gettime(CLOCK_MONOTONIC, &ts);
         ts.tv_sec += 5; // 5s timeout
 
-        int ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
-        pthread_mutex_unlock(&mCbLock);
-        CheckError(ret != 0, UNKNOWN_ERROR,
-            "@%s, call pthread_cond_timedwait fail, ret:%d, it takes %" PRId64 "ms",
-            __FUNCTION__, ret, (systemTime() - startTime) / 1000000);
+        while (!mIsCallbacked && !ret) {
+            ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
+        }
+        if (ret != 0) {
+            LOGE("@%s, call pthread_cond_timedwait fail, ret:%d, it takes %" PRId64 "ms",
+                 __FUNCTION__, ret, (systemTime() - startTime) / 1000000);
+            pthread_mutex_unlock(&mCbLock);
+            return UNKNOWN_ERROR;
+        }
     }
     mIsCallbacked = false;
     pthread_mutex_unlock(&mCbLock);
