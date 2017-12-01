@@ -527,7 +527,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     transaction_->payload =
         report.substr(pkt.PayloadIndex(), transaction_->total_size);
   } else {  // CONT Frame
-    if (transaction_->cid == 0) {
+    if (transaction_->cid == 0 || transaction_->cid != pkt.ChannelId()) {
       VLOG(1) << "invalid CONT";
       return;  // just ignore
     }
