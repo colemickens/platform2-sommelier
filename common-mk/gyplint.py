@@ -357,17 +357,36 @@ def LinesLintIndent(lines):
   ret = []
 
   indent = 0
+  hanging_indent = 0
   for i, line in enumerate(lines, 1):
+    # Remove any leading whitespace & inline comments.
+    stripped = line.split('#', 1)[0].strip()
+
     # Always allow blank lines.
-    if not line:
+    if not stripped:
       continue
 
-    # Allow indent to increase or decrease or stay the same.
-    # Note: We don't currently check overall syntax to make sure the change
-    # is a valid change.  This just checks within common bounds.
+    # If the line is closing an array/dict, we move up one indentation level.
+    if stripped[0] in (']', '}'):
+      indent -= 2
+
+    # Make sure this line has the right indentation.
     num_spaces = len(line) - len(line.lstrip())
-    if num_spaces in (indent - 2, indent, indent + 2):
-      indent = num_spaces
+    if num_spaces == indent + hanging_indent:
+      hanging_indent = 0
+      if stripped[-1] in ('[', '{'):
+        indent += 2
+      elif stripped[-1] in (':',):
+        hanging_indent = 2
+      elif stripped[0] in (']', '}'):
+        pass
+      elif stripped.endswith(','):
+        pass
+      elif LineIsComment(line):
+        pass
+      else:
+        ret.append('internal error: unknown (to the linter) syntax: line %i: %s'
+                   % (i, line))
       continue
 
     ret.append('indent is incorrect: %i: %s' % (i, line))

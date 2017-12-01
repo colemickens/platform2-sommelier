@@ -171,28 +171,32 @@ class LinesLintTests(LintTestCase):
   def testLinesLintIndent(self):
     """Verify LinesLintIndent catches bad inputs."""
     self._CheckLinter(gyplint.LinesLintIndent, (
-        ['    '],
-        ['', '   '],
+        ['  {'],
+        ['', '   ['],
     ))
 
   def testLinesLintIndentValid(self):
     """Allow various valid indentation levels."""
-    self.assertEqual(gyplint.LinesLintCuddled([
-        '',
+    self.assertEqual(gyplint.LinesLintIndent([
+        '{',
         # Increase by one level.
-        '  ',
+        "  'foo': [",
+        "    'key',",
         # Decrease by one level.
-        '',
+        '  ],',
+        '}',
         # Incrementally increase by one level.
-        '  ',
-        '    ',
-        '      ',
-        '        ',
+        '[',
+        '  [',
+        '    [',
+        '      [',
+        '        [',
         # Then decrease back down.
-        '      ',
-        '    ',
-        '  ',
-        '',
+        '        ],',
+        '      ],',
+        '    ],',
+        '  ],',
+        '],',
     ]), [])
 
 
