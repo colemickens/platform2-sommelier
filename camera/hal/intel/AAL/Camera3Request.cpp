@@ -128,6 +128,16 @@ Camera3Request::init(camera3_capture_request* req,
         LOG2("@%s, req, width:%d, stream type:0x%x", __FUNCTION__,
                                                    buffer->stream->width,
                                                    buffer->stream->stream_type);
+
+        status = mOutputBufferPool[i]->init(buffer, cameraId);
+        if (status != NO_ERROR) {
+            LOGE("init output buffer fail");
+            l.unlock();
+            deInit();
+            return BAD_VALUE;
+        }
+        mOutputBuffers.push_back(mOutputBufferPool[i]);
+
         /*
          * Keep track of the number buffers per format
          */
@@ -140,9 +150,6 @@ Camera3Request::init(camera3_capture_request* req,
         int typeCount = mBuffersPerFormat.at(buffer->stream->format);
         mBuffersPerFormat.at(buffer->stream->format) = ++typeCount;
 
-        mOutputBufferPool[i]->init(buffer, cameraId);
-        mOutputBuffers.push_back(mOutputBufferPool[i]);
-
         mOutBuffers.push_back(*buffer);
         mOutBuffers.at(i).release_fence = -1;
 
@@ -153,8 +160,14 @@ Camera3Request::init(camera3_capture_request* req,
         buffer++;
     }
     if (req->input_buffer) {
+        status = mInputBuffer->init(req->input_buffer, cameraId);
+        if (status != NO_ERROR) {
+            LOGE("init input buffer fail");
+            l.unlock();
+            deInit();
+            return BAD_VALUE;
+        }
         mInBuffers.push_back(*(req->input_buffer));
-        mInputBuffer->init(req->input_buffer, cameraId);
     }
 
     status = checkInputStreams(req);
