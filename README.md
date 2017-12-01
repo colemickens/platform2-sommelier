@@ -25,7 +25,8 @@ copies.
 
 | Project | Description |
 |---------|-------------|
-| [arc-networkd](./arc-networkd/) | Tools for managing ARC++ network settings |
+| [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
+| [arc-networkd](./arc-networkd/) | Tools for managing ARC network settings |
 | [authpolicy](./authpolicy/) | Daemon for integrating with Microsoft Active Directory (AD) domains |
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |
 | [biod](./biod/) | Biometrics daemon |
