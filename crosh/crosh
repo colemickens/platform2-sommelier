@@ -1570,6 +1570,16 @@ cmd_vmstat() (
   vmstat "$@"
 )
 
+EXEC_ccd_pass='/usr/sbin/gsctool'
+HELP_ccd_pass="
+  When prompted, set or clear CCD password (use the word 'clear' to clear
+  the password).
+"
+USAGE_ccd_pass=''
+cmd_ccd_pass() (
+  "${EXEC_ccd_pass}" -t -P
+)
+
 USAGE_c='<container name> [args]'
 HELP_c='
   Run a program inside a container
