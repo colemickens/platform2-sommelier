@@ -29,19 +29,19 @@
       'cflags!': ['-fPIE'],
       'cflags': ['-fPIC'],
       'includes': [
-        '../common-mk/generate-dbus-adaptors.gypi'
+        '../common-mk/generate-dbus-adaptors.gypi',
       ],
       'sources': [
+        'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',
         'libwebserv/dbus_protocol_handler.cc',
-        'libwebserv/dbus_server.cc',
         'libwebserv/dbus_response.cc',
+        'libwebserv/dbus_server.cc',
         'libwebserv/protocol_handler.cc',
         'libwebserv/request.cc',
         'libwebserv/request_handler_callback.cc',
         'libwebserv/request_utils.cc',
         'libwebserv/response.cc',
         'libwebserv/server.cc',
-        'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',
       ],
       'actions': [
         {

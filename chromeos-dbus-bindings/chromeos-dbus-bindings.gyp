@@ -59,7 +59,7 @@
       'dependencies': ['libchromeos-dbus-bindings'],
       'sources': [
         'generate_chromeos_dbus_bindings.cc',
-      ]
+      ],
     },
   ],
   'conditions': [
@@ -71,7 +71,6 @@
           'dependencies': ['libchromeos-dbus-bindings'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'testrunner.cc',
             'adaptor_generator_unittest.cc',
             'dbus_signature_unittest.cc',
             'indented_text_unittest.cc',
@@ -80,6 +79,7 @@
             'proxy_generator_mock_unittest.cc',
             'proxy_generator_unittest.cc',
             'test_utils.cc',
+            'testrunner.cc',
             'xml_interface_parser_unittest.cc',
           ],
         },

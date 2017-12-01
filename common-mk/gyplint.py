@@ -255,6 +255,11 @@ def LinesLintWhitespace(lines):
     if line.rstrip() != line:
       ret.append('delete trailing whitespace: line %i: %s' % (i, line))
 
+    if LineIsComment(line):
+      comment = line.lstrip()
+      if len(comment) > 1 and comment[1] != ' ':
+        ret.append('add space after # mark: line %i: %s' % (i, line))
+
   if lines:
     if not lines[0]:
       ret.append('delete leading blanklines')

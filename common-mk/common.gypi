@@ -1,6 +1,6 @@
 # This file is included for every single target.
 
-# Use it to define Platform2 wide settings and defaults.
+# Use it to define Platform2 wide settings and defaults.
 
 # gyplint: disable=GypLintVisibilityFlags
 

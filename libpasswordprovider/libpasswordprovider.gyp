@@ -26,7 +26,7 @@
       'password_provider.h',
     ],
   }],
-  #Unit tests.
+  # Unit tests.
   'conditions': [
     ['USE_test == 1', {
       'targets': [
