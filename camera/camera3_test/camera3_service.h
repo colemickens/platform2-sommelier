@@ -218,7 +218,7 @@ class Camera3Service::Camera3DeviceService {
 
   Camera3Device cam_device_;
 
-  Camera3TestThread service_thread_;
+  arc::CameraThread service_thread_;
 
   ProcessStillCaptureResultCallback process_still_capture_result_cb_;
 

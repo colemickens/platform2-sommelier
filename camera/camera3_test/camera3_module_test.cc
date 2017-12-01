@@ -17,7 +17,7 @@
 namespace camera3_test {
 
 static camera_module_t* g_cam_module = NULL;
-static Camera3TestThread g_module_thread("Camera3 Test Module Thread");
+static arc::CameraThread g_module_thread("Camera3 Test Module Thread");
 
 int32_t ResolutionInfo::Width() const {
   return width_;

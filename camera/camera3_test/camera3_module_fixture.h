@@ -9,12 +9,11 @@
 
 #include <vector>
 
+#include <arc/camera_thread.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
-
-#include "camera3_test/camera3_test_thread.h"
 
 namespace camera3_test {
 
@@ -118,11 +117,11 @@ class Camera3Module {
   // It is expected to start this thread before gtest initialization in main()
   // because test case instantiation needs it running to get the camera ID
   // list.
-  Camera3TestThread* hal_thread_;
+  arc::CameraThread* hal_thread_;
 
   // Use a separate thread from |hal_thread_| to close camera device to
   // simulate hal_adapter behavior.
-  Camera3TestThread dev_thread_;
+  arc::CameraThread dev_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Module);
 };

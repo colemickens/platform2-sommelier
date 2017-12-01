@@ -170,7 +170,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   // This thread is needed because of the ARC++ HAL assumption that all the
   // camera3_device_ops functions, except dump, should be called on the same
   // thread. Each device is accessed through a different thread.
-  Camera3TestThread hal_thread_;
+  arc::CameraThread hal_thread_;
 
   base::ThreadChecker thread_checker_;
 
