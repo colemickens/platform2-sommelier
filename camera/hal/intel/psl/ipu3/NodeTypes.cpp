@@ -34,10 +34,10 @@ enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node)
      * dmabuf fd from stream buffer if using internal buffers is not necessary.
      */
     switch (node) {
-    case ISYS_NODE_RAW:
     case IMGU_NODE_PARAM:
     case IMGU_NODE_STAT:
         return V4L2_MEMORY_MMAP;
+    case ISYS_NODE_RAW:
     case IMGU_NODE_INPUT:
     case IMGU_NODE_VF_PREVIEW:
     case IMGU_NODE_PV_PREVIEW:

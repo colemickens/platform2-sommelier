@@ -21,6 +21,8 @@
 #include "SharedItemPool.h"
 #include "InputSystem.h"
 
+#include <cros-camera/camera_buffer_manager.h>
+
 
 #ifndef PSL_IPU3_BUFFERPOOLS_H_
 #define PSL_IPU3_BUFFERPOOLS_H_
@@ -58,6 +60,12 @@ private:
     std::vector<std::shared_ptr<cros::V4L2Buffer>> mCaptureSkipBuffers;
 
     unsigned int mBufferPoolSize;
+
+    // TODO: allocate handles in a buffer wrapper type (CameraBuffer?) and
+    // remove |mBufferManager|
+    cros::CameraBufferManager* mBufferManager;
+
+    std::vector<buffer_handle_t> mBufferHandles;
 };
 
 } /* namespace camera2 */

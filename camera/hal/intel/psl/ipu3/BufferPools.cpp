@@ -26,7 +26,8 @@ namespace camera2 {
 
 BufferPools::BufferPools() :
         mCaptureItemsPool("CaptureItemsPool"),
-        mBufferPoolSize(0)
+        mBufferPoolSize(0),
+        mBufferManager(cros::CameraBufferManager::GetInstance())
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
@@ -148,7 +149,26 @@ status_t BufferPools::allocateCaptureBuffers(
             return UNKNOWN_ERROR;
         }
         *v4l2Buf = v4l2Buffers[i];
-        // TODO(hywu): add support of V4L2_MEMORY_DMABUF
+        CheckError(v4l2Buf->Memory() != V4L2_MEMORY_DMABUF, UNKNOWN_ERROR,
+                   "Unsupported memory type %d.", v4l2Buf->Memory());
+        CheckError(!mBufferManager, UNKNOWN_ERROR,
+                   "Failed to get buffer manager instance!");
+        buffer_handle_t handle;
+        uint32_t stride;
+        if (mBufferManager->Allocate(
+              v4l2Buf->Length(0), 1, HAL_PIXEL_FORMAT_BLOB,
+              GRALLOC_USAGE_HW_CAMERA_READ |
+              GRALLOC_USAGE_HW_CAMERA_WRITE, cros::GRALLOC, &handle,
+              &stride) != 0) {
+            LOGE("Failed to allocate buffer handle!");
+            for (auto& it : mBufferHandles) {
+                mBufferManager->Free(it);
+            }
+            mBufferHandles.clear();
+            return UNKNOWN_ERROR;
+        }
+        mBufferHandles.push_back(handle);
+        v4l2Buf->SetFd(handle->data[0], 0);
         LOG2("v4l2Buf->index: %d", v4l2Buf->Index());
 
         if (i >= numBufs)
@@ -163,6 +183,10 @@ void BufferPools::freeBuffers()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
     mCaptureSkipBuffers.clear();
+    for (auto& it : mBufferHandles) {
+        mBufferManager->Free(it);
+    }
+    mBufferHandles.clear();
 }
 
 status_t BufferPools::acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
