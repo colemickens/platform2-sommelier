@@ -51,6 +51,7 @@ copies.
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [image-burner](./image-burner/) | Daemon for writing disk images (e.g. recovery) to USB sticks & SD cards |
+| [imageloader](./imageloader/) | Daemon for mounting signed disk images |
 | [init](./init/) | CrOS common startup init scripts and boot time helpers |
 | [installer](./installer/) | CrOS installer utility (for AU/recovery/etc...) |
 | [libchromeos-ui](./libchromeos-ui/) ||

@@ -1,4 +1,4 @@
-# src/platform/imageloader
+# imageloader
 
 This aims to provide a generic utility to verify and load (mount) signed disk
 images through DBUS IPC.
