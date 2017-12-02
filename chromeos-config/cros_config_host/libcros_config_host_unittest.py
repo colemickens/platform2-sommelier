@@ -436,8 +436,6 @@ class CrosConfigHostTest(unittest.TestCase):
             extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
         ('whitetip', caroline._replace(model='whitetip',
                                        sig_id='sig-id-in-customization-id')),
-        ('whitetip1', caroline._replace(model='whitetip1', key_id='WHITETIP1',
-                                        have_image=False, sig_id='whitetip1')),
         ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
                                         have_image=False, sig_id='whitetip2'))
         ]))

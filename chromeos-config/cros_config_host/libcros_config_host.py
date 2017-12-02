@@ -804,7 +804,7 @@ class CrosConfig(object):
         node = base_firmware_node
         shared_model = None
       key_id = firmware_node.GetStr('key-id')
-      if node.GetBool('no-firmware'):
+      if firmware_node.GetBool('no-firmware'):
         return {}
 
       have_image = True

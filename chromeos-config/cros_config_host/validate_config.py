@@ -447,7 +447,6 @@ BASE_FIRMWARE_SCHEMA = [
     PropStringList('extra', False,
                    r'(\${(FILESDIR|SYSROOT)}/[a-z/]+)|' +
                    r'(bcs://[A-Za-z0-9\.]+\.tbz2)', FW_COND),
-    PropBool('no-firmware', FW_COND),
     ]
 
 # Firmware build targets schema, defined here since it is used in a few places.
@@ -546,6 +545,7 @@ SCHEMA = NodeDesc('/', True, [
                     PropString(('sig-id-in-customization-id'),
                                conditional_props={'../whitelabel': False}),
                     PropString('key-id', False, '[A-Z][A-Z0-9]+'),
+                    PropBool('no-firmware'),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA)
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
                 PropString('brand-code', False, '[A-Z]{4}'),

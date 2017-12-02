@@ -569,7 +569,7 @@ class UnitTests(cros_test_lib.TestCase):
     self.assertEqual(
         ["/chromeos/family/firmware/reef: Unexpected property 'shares', " +
          "valid list is (phandle, bcs-overlay, ec-image, main-image, " +
-         "main-rw-image, pd-image, extra, no-firmware)"], result)
+         "main-rw-image, pd-image, extra)"], result)
 
   def testFamilyFirmwareShared(self):
     """Test valid shared firmware"""
@@ -583,7 +583,8 @@ class UnitTests(cros_test_lib.TestCase):
                       MODEL_FIRMWARE_SHARE_EXTRA_PROPS)
     self.assertEqual(
         ["/chromeos/models/reef/firmware: Unexpected property 'bcs-overlay', "
-         "valid list is (shares, sig-id-in-customization-id, key-id)"], result)
+         'valid list is (shares, sig-id-in-customization-id, key-id, '
+         'no-firmware)'], result)
 
   def testFamilyFirmwareSharedExtraNodes(self):
     """Test the model trying to specify nodes that should be shared"""
@@ -659,7 +660,8 @@ class UnitTests(cros_test_lib.TestCase):
     result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + WHITELABEL)
     self._CheckAllIn([
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
-        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        "bad/firmware: Unexpected property 'shares', valid list is "
+        '(key-id, no-firmware)',
         ], result)
 
   def testPartial(self):
@@ -667,7 +669,8 @@ class UnitTests(cros_test_lib.TestCase):
     result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL])
     self._CheckAllIn([
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
-        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        "bad/firmware: Unexpected property 'shares', valid list is "
+        '(key-id, no-firmware)',
         ], result)
 
   def testComanndLine(self):
@@ -686,7 +689,8 @@ class UnitTests(cros_test_lib.TestCase):
     self._CheckAllIn([
         '/tmp/',
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
-        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        "bad/firmware: Unexpected property 'shares', valid list is "
+        '(key-id, no-firmware)',
         ], result)
 
     result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL], True)
@@ -694,7 +698,8 @@ class UnitTests(cros_test_lib.TestCase):
     self._CheckAllIn([
         '/tmp/',
         "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
-        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        "bad/firmware: Unexpected property 'shares', valid list is "
+        '(key-id, no-firmware)',
         ], result)
 
   def testDefault(self):

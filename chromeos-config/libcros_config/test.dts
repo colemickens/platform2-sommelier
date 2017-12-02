@@ -291,6 +291,7 @@
 		brand-code = "SHAR";
 		firmware {
 			key-id = "WHITETIP1";
+                        no-firmware;
 		};
 	};
 
