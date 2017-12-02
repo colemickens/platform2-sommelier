@@ -55,6 +55,7 @@ const uint32_t kVendorIdCr50 = 0x43524f53;
 const uint32_t kCr50VendorCC = 0x20000000 | 0; /* Vendor Bit Set + 0 */
 // Vendor-specific subcommand codes.
 const uint16_t kCr50SubcmdInvalidateInactiveRW = 20;
+const uint16_t kCr50SubcmdManageCCDPwd = 33;
 
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
@@ -1782,6 +1783,16 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKey(std::string* public_key) {
   public_key->assign(reinterpret_cast<const char*>(key.data()), buf_len);
 
   return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::ManageCCDPwd(bool allow_pwd) {
+  if (!IsCr50()) {
+    return TPM_RC_SUCCESS;
+  }
+  std::string command_payload(1, allow_pwd ? 1 : 0);
+  std::string response_payload;
+  return Cr50VendorCommand(kCr50SubcmdManageCCDPwd,
+                           command_payload, &response_payload);
 }
 
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(

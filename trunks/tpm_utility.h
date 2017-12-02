@@ -364,6 +364,16 @@ class TRUNKS_EXPORT TpmUtility {
   // modulus into |public_key|. Returns TPM_RC_SUCCESS on success.
   virtual TPM_RC GetPublicRSAEndorsementKey(std::string* public_key) = 0;
 
+  // For TPMs that support it: allow setting the CCD password if |allow_pwd|
+  // is true, prohibit otherwise.
+  // Returns the result of sending the appropriate command to the TPM.
+  // For TPMs that don't support it: NOP, always returns TPM_RC_SUCCESS.
+  // Rationale for this behavior: All TPM revisions that need restricting CCD
+  // password implement this command. If the command is not implemented, the
+  // TPM firmware has no notion of restricting the CCD password and doesn't need
+  // a signal to lock things down at login.
+  virtual TPM_RC ManageCCDPwd(bool allow_pwd) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
 };

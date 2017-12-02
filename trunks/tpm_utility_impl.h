@@ -169,6 +169,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                            std::string* key_blob) override;
   TPM_RC DeclareTpmFirmwareStable() override;
   TPM_RC GetPublicRSAEndorsementKey(std::string* public_key) override;
+  TPM_RC ManageCCDPwd(bool allow_pwd) override;
 
  private:
   friend class TpmUtilityTest;

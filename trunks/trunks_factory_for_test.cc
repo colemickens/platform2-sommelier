@@ -406,6 +406,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetPublicRSAEndorsementKey(public_key);
   }
 
+  TPM_RC ManageCCDPwd(bool allow_pwd) override {
+    return target_->ManageCCDPwd(allow_pwd);
+  }
+
  private:
   TpmUtility* target_;
 };

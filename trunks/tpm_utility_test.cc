@@ -2355,4 +2355,63 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_ValidCertificateInNvram) {
             base::HexEncode(public_key.data(), public_key.size()));
 }
 
+TEST_F(TpmUtilityTest, ManageCCDPwdNonCr50) {
+  SetCr50(false);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .Times(0);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.ManageCCDPwd(true));
+}
+
+TEST_F(TpmUtilityTest, ManageCCDPwdCr50Success) {
+  // A hand-coded kCr50SubcmdManageCCDPwd command (two variants: true and false)
+  // and response.
+  std::string expected_command_true(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0D"  // size=13
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x01",             // value=true
+      13);
+  std::string expected_command_false(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0D"  // size=13
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x00",             // value=false
+      13);
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0A"   // size=10
+      "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
+      10);
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command_true))
+      .WillOnce(Return(command_response));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.ManageCCDPwd(true));
+  testing::Mock::VerifyAndClearExpectations(&mock_transceiver_);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command_false))
+      .WillOnce(Return(command_response));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.ManageCCDPwd(false));
+}
+
+TEST_F(TpmUtilityTest, ManageCCDPwdFailure) {
+  // A hand-coded kCr50SubcmdManageCCDPwd command and response.
+  std::string expected_command(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0D"  // size=13
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x01",             // value=true
+      13);
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0A"   // size=10
+      "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
+      10);
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.ManageCCDPwd(true));
+}
+
 }  // namespace trunks
