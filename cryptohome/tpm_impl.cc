@@ -2912,4 +2912,9 @@ bool TpmImpl::GetVersionInfo(TpmVersionInfo* version_info) {
   return true;
 }
 
+bool TpmImpl::SetUserType(Tpm::UserType type) {
+  // Nothing to do for TPM 1.2.
+  return true;
+}
+
 }  // namespace cryptohome

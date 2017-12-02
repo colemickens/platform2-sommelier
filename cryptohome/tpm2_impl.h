@@ -151,6 +151,7 @@ class Tpm2Impl : public Tpm {
       TpmPersistentState::TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
+  bool SetUserType(Tpm::UserType type) override;
 
  private:
   // This object may be used across multiple threads but the Trunks D-Bus proxy
@@ -207,6 +208,9 @@ class Tpm2Impl : public Tpm {
 
   // Indicates if the TPM is being owned
   bool is_being_owned_ = false;
+
+  // Specifies the currently set user type.
+  Tpm::UserType cur_user_type_ = Tpm::UserType::Unknown;
 
   // A message loop thread dedicated for asynchronous communication with
   // tpm_managerd.

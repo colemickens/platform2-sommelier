@@ -134,6 +134,7 @@ class TpmImpl : public Tpm {
       TpmPersistentState::TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
+  bool SetUserType(Tpm::UserType type) override;
 
  private:
   // Connects to the TPM and return its context at |context_handle|.

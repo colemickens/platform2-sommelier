@@ -53,6 +53,8 @@ MockTpm::MockTpm() {
       .WillByDefault(Invoke(this, &MockTpm::FakeExtendPCR));
   ON_CALL(*this, ReadPCR(_, _))
       .WillByDefault(Invoke(this, &MockTpm::FakeReadPCR));
+  ON_CALL(*this, SetUserType(_))
+      .WillByDefault(Return(true));
 }
 
 MockTpm::~MockTpm() {}
