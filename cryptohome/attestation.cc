@@ -1892,14 +1892,9 @@ bool Attestation::EncryptEnterpriseKeyInfo(VAType va_type,
     return false;
   }
   RSA* enterprise_key = GetEnterpriseEncryptionKey(va_type);
-  std::string enterprise_key_id = std::string(
-      va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
-          : kTestEnterpriseEncryptionPublicKeyID,
-      arraysize(va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
-                            : kTestEnterpriseEncryptionPublicKeyID) - 1);
   bool result = EncryptData(SecureBlob(serialized),
                             enterprise_key,
-                            enterprise_key_id,
+                            GetEnterpriseEncryptionPublicKeyID(va_type),
                             encrypted_data);
   ClearString(&serialized);
   return result;
@@ -1945,6 +1940,15 @@ RSA* Attestation::GetEnterpriseEncryptionKey(Attestation::VAType va_type) {
     return nullptr;
   }
   return inserted.first->second.get();
+}
+
+std::string Attestation::GetEnterpriseEncryptionPublicKeyID(
+    Attestation::VAType va_type) const {
+  return std::string(
+      va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
+          : kTestEnterpriseEncryptionPublicKeyID,
+      arraysize(va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKeyID
+                            : kTestEnterpriseEncryptionPublicKeyID) - 1);
 }
 
 void Attestation::set_enterprise_test_keys(VAType va_type,

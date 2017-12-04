@@ -411,6 +411,10 @@ class Attestation : public base::PlatformThread::Delegate,
   // servers, creating one as needed.
   virtual RSA* GetEnterpriseEncryptionKey(VAType va_type);
 
+  // Returns the public key ID for |va_type| VA servers. Note that this
+  // key may have embedded zero characters.
+  virtual std::string GetEnterpriseEncryptionPublicKeyID(VAType type) const;
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = base::FilePath(path);
