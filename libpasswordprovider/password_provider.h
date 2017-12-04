@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <brillo/brillo_export.h>
+
 #include "libpasswordprovider/password.h"
 
 namespace password_provider {
@@ -17,15 +19,15 @@ namespace password_provider {
 // Saves the given password to the keyring of the calling process. The password
 // will be available to be retrieved until the process that calls SavePassword
 // dies.
-bool SavePassword(const Password& password);
+bool BRILLO_EXPORT SavePassword(const Password& password);
 
 // Retrieves the given password. The returned password will be null terminated.
 // Calling GetPassword after DiscardPassword has been called by any process will
 // return false.
-std::unique_ptr<Password> GetPassword();
+std::unique_ptr<Password> BRILLO_EXPORT GetPassword();
 
 // Discards the saved password.
-bool DiscardPassword();
+bool BRILLO_EXPORT DiscardPassword();
 
 }  // namespace password_provider
 

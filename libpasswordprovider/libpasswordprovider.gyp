@@ -11,7 +11,7 @@
   },
   'targets': [{
     'target_name': 'libpasswordprovider',
-    'type': 'static_library',
+    'type': 'shared_library',
     'dependencies': [
     ],
     'link_settings': {
@@ -41,8 +41,15 @@
             'deps': [
             ],
           },
+          'link_settings': {
+            'libraries': [
+              '-lkeyutils',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'password.cc',
+            'password_provider.cc',
             'password_provider_test.cc',
             'password_test.cc',
           ],

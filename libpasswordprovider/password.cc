@@ -61,8 +61,17 @@ bool Password::Init() {
   // Mark memory as non mergeable with another page, even if the contents are
   // the same.
   if (madvise(password_, buffer_alloc_size_, MADV_UNMERGEABLE)) {
-    PLOG(ERROR) << "Error calling madvise with MADV_UNMERGEABLE option.";
-    return false;
+    // MADV_UNMERGEABLE is only available if the kernel has been configured with
+    // CONFIG_KSM set. If the CONFIG_KSM flag has not been set, then pages are
+    // not mergeable so this madvise option is not necessary.
+    //
+    // In the case where CONFIG_KSM is not set, EINVAL is the error set. Since
+    // this error value is expected in some cases, we don't return an error from
+    // this function.
+    if (errno != EINVAL) {
+      PLOG(ERROR) << "Error calling madvise with MADV_UNMERGEABLE option.";
+      return false;
+    }
   }
 
   // Don't make this page available to child processes.
