@@ -17,6 +17,7 @@
         'libcros_config/cros_config.cc',
         'libcros_config/cros_config_common.cc',
         'libcros_config/fake_cros_config.cc',
+        'libcros_config/identity.cc',
         'libcros_config/lookup.cc',
       ],
       'conditions': [

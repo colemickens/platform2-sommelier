@@ -235,9 +235,8 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
 }
 
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
-                            const std::string& name,
-                            int sku_id,
-                            const std::string& customization_id) {
+                            const base::FilePath& mem_file,
+                            const base::FilePath& vpd_file) {
   // Many systems will not have a config database (yet), so just skip all the
   // setup without any errors if the config file doesn't exist.
   if (!base::PathExists(filepath)) {
@@ -253,6 +252,12 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   if (ret) {
     LOG(ERROR) << "Config file " << filepath.MaybeAsASCII() << " is invalid: "
                << fdt_strerror(ret);
+    return false;
+  }
+  std::string name, customization_id;
+  int sku_id;
+  if (!ReadIdentity(mem_file, vpd_file, &name, &sku_id, &customization_id)) {
+    LOG(ERROR) << "Cannot read identity";
     return false;
   }
   if (!SelectModelConfigByIDs(name, sku_id, customization_id)) {

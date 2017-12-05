@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 
   brillo::CrosConfig cros_config;
   if (FLAGS_test_database.empty()) {
-    if (!cros_config.InitModel()) {
+    if (!cros_config.Init()) {
       return 1;
     }
   } else {

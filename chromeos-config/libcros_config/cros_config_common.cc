@@ -14,7 +14,8 @@
 #include <base/strings/string_split.h>
 
 namespace {
-const char kMosysPlatformIdPath[] = "/run/mosys/platform_id";
+const char kSmbiosTablePath[] = "/run/cros_config/SMBIOS";
+const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";
 }  // namespace
 
 namespace brillo {
@@ -28,38 +29,20 @@ bool CrosConfig::Init() {
 }
 
 bool CrosConfig::InitForConfig(const base::FilePath& filepath) {
-  const base::FilePath::CharType* const argv[] = {
-      "mosys", "-k", "platform", "id"};
-  base::CommandLine cmdline(arraysize(argv), argv);
-
-  std::string platform_id_output;
-  if (!base::ReadFileToString(base::FilePath(kMosysPlatformIdPath),
-                              &platform_id_output)) {
-    LOG(WARNING) << "Could not read cache from " << kMosysPlatformIdPath
-                 << "; calling mosys...";
-    if (!base::GetAppOutput(cmdline, &platform_id_output)) {
-      LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
-      return false;
-    }
-  }
-
-  std::string name;
-  int sku_id;
-  std::string whitelabel_name;
-  if (!DecodeIdentifiers(platform_id_output, &name, &sku_id,
-                         &whitelabel_name)) {
-    LOG(ERROR) << "Could not decode platform id " << platform_id_output;
-    return false;
-  }
-
-  return InitCommon(filepath, name, sku_id,
-                    whitelabel_name);
+  base::FilePath smbios_file(kSmbiosTablePath);
+  base::FilePath vpd_file(kCustomizationId);
+  return InitCommon(filepath, smbios_file, vpd_file);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& name, int sku_id,
-                             const std::string& whitelabel_name) {
-  return InitCommon(filepath, name, sku_id, whitelabel_name);
+                             const std::string& customization_id) {
+  base::FilePath smbios_file, vpd_file;
+  if (!FakeIdentity(name, sku_id, customization_id, &smbios_file, &vpd_file)) {
+    LOG(ERROR) << "FakeIdentity() failed";
+    return false;
+  }
+  return InitCommon(filepath, smbios_file, vpd_file);
 }
 
 bool CrosConfig::InitCheck() const {

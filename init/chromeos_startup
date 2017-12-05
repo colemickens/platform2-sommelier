@@ -91,9 +91,11 @@ mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 # processes.
 sysctl -q --system
 
-# Write mosys platform details to disk, where non-root users can read them.
-mkdir -p /run/mosys
-mosys platform id -k > /run/mosys/platform_id
+# Write SMBIOS info to disk, where non-root cros_config can read it.
+mkdir -p /run/cros_config
+if [ -e /sys/firmware/dmi/tables/DMI ]; then
+  cat /sys/firmware/dmi/tables/DMI > /run/cros_config/SMBIOS
+fi
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've
 # booted a developer image.
