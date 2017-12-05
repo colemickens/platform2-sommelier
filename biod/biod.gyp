@@ -20,6 +20,7 @@
         'bio_library.cc',
         'biod_storage.cc',
         'biometrics_daemon.cc',
+        'cros_fp_biometrics_manager.cc',
         'fake_biometrics_manager.cc',
         'fpc_biometrics_manager.cc',
         'scoped_umask.cc',
