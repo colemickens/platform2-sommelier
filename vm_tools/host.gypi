@@ -49,6 +49,25 @@
         'syslog/host_server.cc',
       ],
     },
+    {
+      'target_name': 'libconcierge',
+      'type': 'static_library',
+      'dependencies': ['vm-rpcs'],
+      'deps': ['system_api'],
+      'sources': [
+        'concierge/service.cc',
+      ],
+    },
+    {
+      'target_name': 'vm_concierge',
+      'type': 'executable',
+      'dependencies': [
+        'libconcierge',
+      ],
+      'sources': [
+        'concierge/main.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
