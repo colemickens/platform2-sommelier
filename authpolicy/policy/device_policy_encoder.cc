@@ -201,6 +201,18 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                      for (const std::string& value : values)
                        list->add_login_screen_input_methods(value);
                    });
+  EncodeStringList(
+      key::kDeviceLoginScreenAutoSelectCertificateForUrls,
+      [policy](const std::vector<std::string>& values) {
+        // Abbreviate |policy| to |p| to prevent issues with 80
+        // character line length limit.
+        em::ChromeDeviceSettingsProto* p = policy;
+        auto* list =
+            p->mutable_device_login_screen_auto_select_certificate_for_urls();
+        list->clear_login_screen_auto_select_certificate_rules();
+        for (const std::string& value : values)
+          list->add_login_screen_auto_select_certificate_rules(value);
+      });
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -214,6 +226,11 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
                  policy->mutable_open_network_configuration()
                      ->set_open_network_configuration(value);
                });
+
+  EncodeString(
+      key::kDeviceHostnameTemplate, [policy](const std::string& value) {
+        policy->mutable_network_hostname()->set_device_hostname_template(value);
+      });
 }
 
 void DevicePolicyEncoder::EncodeAutoUpdatePolicies(

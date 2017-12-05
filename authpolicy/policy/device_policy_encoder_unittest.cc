@@ -105,17 +105,27 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kDeviceAllowBluetooth, kBool);
   EXPECT_EQ(kBool, policy.allow_bluetooth().allow_bluetooth());
+
   EncodeStringList(&policy, key::kDeviceLoginScreenAppInstallList, kStringList);
   EXPECT_EQ(kStringList, ToVector(policy.device_login_screen_app_install_list()
                                       .device_login_screen_app_install_list()));
+
   EncodeStringList(&policy, key::kDeviceLoginScreenLocales, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.login_screen_locales().login_screen_locales()));
+
   EncodeStringList(&policy, key::kDeviceLoginScreenInputMethods, kStringList);
   EXPECT_EQ(
       kStringList,
       ToVector(
           policy.login_screen_input_methods().login_screen_input_methods()));
+
+  EncodeStringList(&policy, key::kDeviceLoginScreenAutoSelectCertificateForUrls,
+                   kStringList);
+  EXPECT_EQ(
+      kStringList,
+      ToVector(policy.device_login_screen_auto_select_certificate_for_urls()
+                   .login_screen_auto_select_certificate_rules()));
 
   //
   // Network policies.
@@ -128,22 +138,28 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kString,
             policy.open_network_configuration().open_network_configuration());
 
+  EncodeString(&policy, key::kDeviceHostnameTemplate, kString);
+  EXPECT_EQ(kString, policy.network_hostname().device_hostname_template());
+
   //
   // Auto update policies.
   //
 
   EncodeString(&policy, key::kChromeOsReleaseChannel, kString);
   EXPECT_EQ(kString, policy.release_channel().release_channel());
+
   EncodeBoolean(&policy, key::kChromeOsReleaseChannelDelegated, kBool);
   EXPECT_EQ(kBool, policy.release_channel().release_channel_delegated());
 
   EncodeBoolean(&policy, key::kDeviceAutoUpdateDisabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().update_disabled());
+
   EncodeString(&policy, key::kDeviceTargetVersionPrefix, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().target_version_prefix());
 
   EncodeInteger(&policy, key::kDeviceUpdateScatterFactor, kInt);
   EXPECT_EQ(kInt, policy.auto_update_settings().scatter_factor_in_seconds());
+
   // The encoder of this policy converts connection type strings to enums.
   std::vector<std::string> str_types;
   std::vector<int> enum_types;
@@ -155,10 +171,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                    str_types);
   EXPECT_EQ(enum_types,
             ToVector(policy.auto_update_settings().allowed_connection_types()));
+
   EncodeBoolean(&policy, key::kDeviceUpdateHttpDownloadsEnabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().http_downloads_enabled());
+
   EncodeBoolean(&policy, key::kRebootAfterUpdate, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().reboot_after_update());
+
   EncodeBoolean(&policy, key::kDeviceAutoUpdateP2PEnabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().p2p_enabled());
 
@@ -170,20 +189,24 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
                        .login_screen_default_large_cursor_enabled());
+
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
                        .login_screen_default_spoken_feedback_enabled());
+
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultHighContrastEnabled,
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
                        .login_screen_default_high_contrast_enabled());
+
   // The encoder of this policy converts ints to ScreenMagnifierType enums.
   EncodeInteger(&policy, key::kDeviceLoginScreenDefaultScreenMagnifierType,
                 em::AccessibilitySettingsProto::SCREEN_MAGNIFIER_TYPE_FULL);
   EXPECT_EQ(em::AccessibilitySettingsProto::SCREEN_MAGNIFIER_TYPE_FULL,
             policy.accessibility_settings()
                 .login_screen_default_screen_magnifier_type());
+
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultVirtualKeyboardEnabled,
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
@@ -202,6 +225,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kSystemTimezone, kString);
   EXPECT_EQ(kString, policy.system_timezone().timezone());
+
   // The encoder of this policy converts ints to AutomaticTimezoneDetectionType
   // enums.
   EncodeInteger(&policy, key::kSystemTimezoneAutomaticDetection,
@@ -304,13 +328,16 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   // The encoder of this policy converts ints to AccessMode enums.
   EncodeString(&policy, key::kDeviceNativePrinters, kString);
   EXPECT_EQ(kString, policy.native_device_printers().external_policy());
+
   EncodeInteger(&policy, key::kDeviceNativePrintersAccessMode,
                 em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST);
   EXPECT_EQ(em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST,
             policy.native_device_printers_access_mode().access_mode());
+
   EncodeStringList(&policy, key::kDeviceNativePrintersWhitelist, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.native_device_printers_whitelist().whitelist()));
+
   EncodeStringList(&policy, key::kDeviceNativePrintersBlacklist, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.native_device_printers_blacklist().blacklist()));
