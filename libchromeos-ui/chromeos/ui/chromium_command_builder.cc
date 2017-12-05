@@ -527,7 +527,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   }
 
   if (UseFlagIsSet("big_little"))
-    AddArg("--num-raster-threads=1");
+    AddArg("--num-raster-threads=2");
 
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
