@@ -16,6 +16,18 @@ constexpr size_t kBufferSize = 1024 * 32;
 extern const char kEntryParent[];
 extern const char kEntrySelf[];
 
+// $HOME environment variable.
+extern const char kHomeEnvironmentVariable[];
+// Set as $HOME in order for libsmbclient to read smb.conf file.
+extern const char kSmbProviderHome[];
+
+// Location and file name for smb configuration file.
+extern const char kSmbConfLocation[];
+extern const char kSmbConfFile[];
+
+// Data for smb config file.
+extern const char kSmbConfData[];
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_CONSTANTS_H_

@@ -2,15 +2,49 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <stdlib.h>
 
-#include <base/memory/ptr_util.h>
+#include "smbprovider/constants.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
 
 namespace smbprovider {
+
+namespace {
+
+// Helper method to set $HOME variable to a temporary path that only
+// smbproviderd user can access.
+bool SetHomeEnvironmentVariable() {
+  if (setenv(kHomeEnvironmentVariable, kSmbProviderHome, 1 /* overwrite */) !=
+      0) {
+    PLOG(ERROR) << "Failed to set $HOME variable";
+    return false;
+  }
+  return true;
+}
+
+// Creates smb configuration file in $HOME/.smb/smb.conf.
+bool CreateSmbConfFile() {
+  base::File::Error ferror;
+  const std::string smb_conf_directory(std::string(kSmbProviderHome) +
+                                       kSmbConfLocation);
+  if (!base::CreateDirectoryAndGetError(base::FilePath(smb_conf_directory),
+                                        &ferror)) {
+    LOG(ERROR) << "Failed to create directory '" << smb_conf_directory
+               << "': " << base::File::ErrorToString(ferror);
+    return false;
+  }
+  const int data_size = strlen(kSmbConfData);
+  return base::WriteFile(base::FilePath(smb_conf_directory + kSmbConfFile),
+                         kSmbConfData, data_size) == data_size;
+}
+
+}  // namespace
 
 class SmbProviderDaemon : public brillo::DBusServiceDaemon {
  public:
@@ -43,12 +77,23 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
   DISALLOW_COPY_AND_ASSIGN(SmbProviderDaemon);
 };
 
+// Runs SmbProviderDaemon.
+int RunDaemon() {
+  SmbProviderDaemon daemon;
+  int res = daemon.Run();
+  LOG(INFO) << "smbproviderd stopping with exit code " << res;
+  return res;
+}
+
 }  // namespace smbprovider
 
 int main(int argc, char* argv[]) {
-  smbprovider::SmbProviderDaemon daemon;
-  int res = daemon.Run();
-  LOG(INFO) << "smbproviderd stopping with exit code " << res;
-
-  return res;
+  // Smb configuration file must be written before the daemon is started because
+  // the check for smb.conf happens when the context is set.
+  if (!(smbprovider::SetHomeEnvironmentVariable() &&
+        smbprovider::CreateSmbConfFile())) {
+    LOG(ERROR) << "Failed to set configuration file, exiting";
+    return EXIT_FAILURE;
+  }
+  return smbprovider::RunDaemon();
 }
