@@ -119,6 +119,9 @@ remove_old_files /var/log/vmlog "vmlog.*"
 # Remove old Android logs
 remove_old_files /var/log/android "*"
 
+# Remove iwlwifi logs older than one hour, since they are large.
+find /var/log -name "last_iwlwifi_dump*" -mmin +60 -delete
+
 # Rotate other logs
 rotate_logs
 
