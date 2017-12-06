@@ -452,6 +452,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(derat): Remove after http://crbug.com/736936 is closed.
   builder->AddVmodulePattern("tablet_power_button_controller=1");
 
+  // Used to investigate issue with broken automatic reboots.
+  // TODO(poromov): Remove after http://b/69546724 is resolved.
+  builder->AddVmodulePattern("automatic_reboot_manager=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
