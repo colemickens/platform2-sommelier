@@ -16,6 +16,7 @@
 namespace arc {
 
 struct ArcPaths;
+class ArcSetupMetrics;
 
 // This MUST be in sync with 'enum BootType' in metrics.mojom.
 enum class ArcBootType {
@@ -114,10 +115,10 @@ class ArcSetup {
 
   // Calls GenerateHostSideCodeInternal(). If the internal function returns
   // false, deletes all files in |host_dalvik_cache_directory|.
-  void GenerateHostSideCode(const base::FilePath& host_dalvik_cache_directory);
+  bool GenerateHostSideCode(const base::FilePath& host_dalvik_cache_directory);
 
   // Calls InstallHostSideCodeInternal() for each isa the device supports.
-  void InstallLinksToHostSideCode();
+  bool InstallLinksToHostSideCode();
 
   // Installs links to *boot*.{art,oat} files to |dest_isa_directory|. Returns
   // false when |src_isa_directory| is empty.
@@ -257,6 +258,7 @@ class ArcSetup {
 
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;
+  std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcSetup);
 };

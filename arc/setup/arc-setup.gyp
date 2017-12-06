@@ -13,6 +13,7 @@
         'libchrome-<(libbase_ver)',
         'libcrypto',
         'libcryptohome-client',
+        'libmetrics-<(libbase_ver)',
         'libminijail',
         'libselinux',
         # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -30,6 +31,7 @@
       'sources': [
         'arc_read_ahead.cc',
         'arc_setup.cc',
+        'arc_setup_metrics.cc',
         'arc_setup_util.cc',
         'art_container.cc',
       ],
@@ -92,6 +94,7 @@
           },
           'sources': [
             'arc_read_ahead_unittest.cc',
+            'arc_setup_metrics_unittest.cc',
             'arc_setup_unittest.cc',
             'arc_setup_util_unittest.cc',
             'art_container_unittest.cc',

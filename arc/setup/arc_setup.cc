@@ -35,8 +35,10 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <metrics/metrics_library.h>
 
 #include "arc_read_ahead.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc_setup_metrics.h"  // NOLINT - TODO(b/32971714): fix it properly.
 #include "art_container.h"   // NOLINT - TODO(b/32971714): fix it properly.
 
 #define EXIT_IF(f)                            \
@@ -294,7 +296,8 @@ struct ArcPaths {
 
 ArcSetup::ArcSetup()
     : arc_mounter_(GetDefaultMounter()),
-      arc_paths_(std::make_unique<ArcPaths>()) {}
+      arc_paths_(std::make_unique<ArcPaths>()),
+      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {}
 
 ArcSetup::~ArcSetup() = default;
 
@@ -612,6 +615,7 @@ void ArcSetup::SetUpFilesystemForObbMounter() {
 
 bool ArcSetup::GenerateHostSideCodeInternal(
     const base::FilePath& host_dalvik_cache_directory) {
+  base::ElapsedTimer timer;
   std::unique_ptr<ArtContainer> art_container =
       ArtContainer::CreateContainer(arc_mounter_.get());
   if (!art_container) {
@@ -628,20 +632,28 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     LOG(ERROR) << "Failed to relocate boot images";
     return false;
   }
+  arc_setup_metrics_->SendCodeRelocationTime(timer.Elapsed());
   return true;
 }
 
-void ArcSetup::GenerateHostSideCode(
+bool ArcSetup::GenerateHostSideCode(
     const base::FilePath& host_dalvik_cache_directory) {
+  bool result = true;
   base::ElapsedTimer timer;
   if (!GenerateHostSideCodeInternal(host_dalvik_cache_directory)) {
     // If anything fails, delete code in cache.
     LOG(INFO) << "Failed to generate host-side code. Deleting existing code in "
               << host_dalvik_cache_directory.value();
     DeleteFilesInDir(host_dalvik_cache_directory);
+    result = false;
   }
+  base::TimeDelta time_delta = timer.Elapsed();
   LOG(INFO) << "GenerateHostSideCode took "
-            << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
+            << time_delta.InMillisecondsRoundedUp() << "ms";
+  arc_setup_metrics_->SendCodeRelocationResult(
+      result ? ArcCodeRelocationResult::SUCCESS
+             : ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE);
+  return result;
 }
 
 bool ArcSetup::InstallLinksToHostSideCodeInternal(
@@ -693,7 +705,8 @@ bool ArcSetup::InstallLinksToHostSideCodeInternal(
   return src_file_exists;
 }
 
-void ArcSetup::InstallLinksToHostSideCode() {
+bool ArcSetup::InstallLinksToHostSideCode() {
+  bool result = true;
   base::ElapsedTimer timer;
   const base::FilePath src_directory =
       arc_paths_->art_container_data_directory.Append("dalvik-cache");
@@ -711,6 +724,7 @@ void ArcSetup::InstallLinksToHostSideCode() {
     const std::string isa = src_isa_directory.BaseName().value();
     if (!InstallLinksToHostSideCodeInternal(src_isa_directory,
                                             dest_directory.Append(isa), isa)) {
+      result = false;
       LOG(INFO) << "InstallLinksToHostSideCodeInternal() for " << isa
                 << " failed. "
                 << "Deleting container's /data/dalvik-cache...";
@@ -722,6 +736,7 @@ void ArcSetup::InstallLinksToHostSideCode() {
 
   LOG(INFO) << "InstallLinksToHostSideCode() took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
+  return result;
 }
 
 void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
@@ -1463,7 +1478,12 @@ void ArcSetup::OnSetup(bool for_login_screen) {
     // Unconditionally generate host-side code here.
     const base::FilePath art_dalvik_cache_directory =
         arc_paths_->art_container_data_directory.Append("dalvik-cache");
+    base::ElapsedTimer timer;
     GenerateHostSideCode(art_dalvik_cache_directory);
+    // For now, integrity checking time is the time needed to relocate
+    // boot*.art files because of b/67912719. Once TPM is enabled, this will
+    // report the total time spend on code verification + [relocation + sign]
+    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
     SetUpDalvikCache();
   } else {
     SetUpAndroidData();
@@ -1521,7 +1541,13 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData();
 
-  InstallLinksToHostSideCode();
+  if (!InstallLinksToHostSideCode()) {
+    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+        ArcBootContinueCodeInstallationResult::ERROR_CANNOT_INSTALL_HOST_CODE);
+  } else {
+    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+        ArcBootContinueCodeInstallationResult::SUCCESS);
+  }
 
   // Set up /run/arc/shared_mounts/{cache,data} to expose the user's data to
   // the container.
