@@ -249,16 +249,19 @@ int64_t Camera3Module::GetOutputKeyParameterI64(
     }
   }
 
-  return -EINVAL;
+  return -ENODATA;
 }
 
 int64_t Camera3Module::GetOutputStallDuration(
     int cam_id,
     int32_t format,
     const ResolutionInfo& resolution) {
-  return GetOutputKeyParameterI64(cam_id, format, resolution,
-                                  ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
-                                  STREAM_CONFIG_STALL_DURATION_INDEX);
+  int64_t value = GetOutputKeyParameterI64(
+      cam_id, format, resolution, ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
+      STREAM_CONFIG_STALL_DURATION_INDEX);
+  return (value != -ENODATA)
+             ? value
+             : 0;  // Default duration is '0' (unsupported/no extra stall)
 }
 
 int64_t Camera3Module::GetOutputMinFrameDuration(
