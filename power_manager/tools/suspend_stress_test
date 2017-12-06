@@ -161,7 +161,6 @@ if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
   # Writing to memory can take a while. Make it less likely that the
   # wake alarm will fire before the system has suspended.
   if [ ${FLAGS_suspend_min} -lt ${MEMORY_TEST_SUSPEND_MIN_DELAY} ]; then
-    local orig_diff
     orig_diff=$(( FLAGS_suspend_max - FLAGS_suspend_min ))
     FLAGS_suspend_min=${MEMORY_TEST_SUSPEND_MIN_DELAY}
     FLAGS_suspend_max=$(( FLAGS_suspend_min + orig_diff ))
