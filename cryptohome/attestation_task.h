@@ -118,16 +118,6 @@ class SignChallengeTask : public AttestationTask {
                     const std::string& username,
                     const std::string& key_name,
                     const brillo::SecureBlob& challenge);
-  // Constructs a task for SignEnterpriseChallenge.
-  SignChallengeTask(AttestationTaskObserver* observer,
-                    Attestation* attestation,
-                    bool is_user_specific,
-                    const std::string& username,
-                    const std::string& key_name,
-                    const std::string& domain,
-                    const brillo::SecureBlob& device_id,
-                    bool include_signed_public_key,
-                    const brillo::SecureBlob& challenge);
   // Constructs a task for SignEnterpriseVaChallenge.
   SignChallengeTask(AttestationTaskObserver* observer,
                     Attestation* attestation,

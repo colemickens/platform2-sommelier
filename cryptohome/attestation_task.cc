@@ -140,26 +140,6 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
 
 SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      Attestation* attestation,
-                                     bool is_user_specific,
-                                     const std::string& username,
-                                     const std::string& key_name,
-                                     const std::string& domain,
-                                     const SecureBlob& device_id,
-                                     bool include_signed_public_key,
-                                     const SecureBlob& challenge)
-    : AttestationTask(observer, attestation),
-      challenge_type_(kEnterpriseChallengeType),
-      is_user_specific_(is_user_specific),
-      username_(username),
-      key_name_(key_name),
-      domain_(domain),
-      device_id_(device_id),
-      include_signed_public_key_(include_signed_public_key),
-      challenge_(challenge) {
-}
-
-SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
-                                     Attestation* attestation,
                                      Attestation::VAType va_type,
                                      bool is_user_specific,
                                      const std::string& username,

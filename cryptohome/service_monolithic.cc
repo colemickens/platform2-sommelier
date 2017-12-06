@@ -368,27 +368,17 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  brillo::SecureBlob device_id_blob(device_id->data,
-                                      device_id->data + device_id->len);
-  brillo::SecureBlob challenge_blob(challenge->data,
-                                      challenge->data + challenge->len);
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<SignChallengeTask> task =
-      new SignChallengeTask(observer,
-                            attestation_,
-                            is_user_specific,
-                            username,
-                            key_name,
-                            domain,
-                            device_id_blob,
-                            include_signed_public_key,
-                            challenge_blob);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&SignChallengeTask::Run, task.get()));
-  return TRUE;
+  return TpmAttestationSignEnterpriseVaChallenge(
+      Attestation::kDefaultVA,
+      is_user_specific,
+      username,
+      key_name,
+      domain,
+      device_id,
+      include_signed_public_key,
+      challenge,
+      OUT_async_id,
+      error);
 }
 
 gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
