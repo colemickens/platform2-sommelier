@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <unistd.h>
+
+#include <keyutils.h>
+
 #include <memory>
 #include <string>
 
@@ -13,8 +17,25 @@
 
 namespace password_provider {
 
+// Tests for the PasswordProvider class.
+class PasswordProviderTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    // Before running a test, check if keyrings are supported in the kernel.
+    keyrings_supported_ =
+        !(keyctl_clear(KEY_SPEC_PROCESS_KEYRING) == -1 && errno == ENOSYS);
+  }
+  bool keyrings_supported_ = true;
+};
+
 // Saving and retrieving password should succeed.
-TEST(PasswordProvider, SaveAndGetPassword) {
+TEST_F(PasswordProviderTest, SaveAndGetPassword) {
+  if (!keyrings_supported_) {
+    LOG(WARNING)
+        << "Skipping test because keyrings are not supported by the kernel.";
+    return;
+  }
+
   const std::string kPasswordStr("thepassword");
   Password password;
   ASSERT_TRUE(password.Init());
@@ -29,7 +50,13 @@ TEST(PasswordProvider, SaveAndGetPassword) {
 }
 
 // Reading password should fail if password was already discarded.
-TEST(PasswordProvider, DiscardAndGetPassword) {
+TEST_F(PasswordProviderTest, DiscardAndGetPassword) {
+  if (!keyrings_supported_) {
+    LOG(WARNING)
+        << "Skipping test because keyrings are not supported by the kernel.";
+    return;
+  }
+
   const std::string kPasswordStr("thepassword");
   Password password;
   ASSERT_TRUE(password.Init());
@@ -43,7 +70,13 @@ TEST(PasswordProvider, DiscardAndGetPassword) {
 }
 
 // Retrieving a very long password should succeed.
-TEST(PasswordProvider, GetLongPassword) {
+TEST_F(PasswordProviderTest, GetLongPassword) {
+  if (!keyrings_supported_) {
+    LOG(WARNING)
+        << "Skipping test because keyrings are not supported by the kernel.";
+    return;
+  }
+
   Password password;
   ASSERT_TRUE(password.Init());
 
