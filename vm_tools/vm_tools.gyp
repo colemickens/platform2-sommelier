@@ -36,6 +36,38 @@
         '../common-mk/protoc.gypi',
       ],
     },
+    {
+      'target_name': 'vsh-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': 'proto',
+        'proto_out_dir': 'include',
+        'exported_deps': [
+          'protobuf',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        '<(proto_in_dir)/vsh.proto',
+      ],
+      'includes': [
+        '../common-mk/protoc.gypi',
+      ],
+    },
+    {
+      'target_name': 'libvsh',
+      'type': 'static_library',
+      'sources': [
+        'vsh/utils.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_kvm_host == 1', {

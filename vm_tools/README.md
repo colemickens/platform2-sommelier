@@ -32,6 +32,13 @@ user's application exits or if requested to by `vm_concierge`.
 See [docs/init.md](docs/init.md) for more details on the duties maitred carries
 out as pid 1.
 
+## vsh
+
+`vsh` is a vsock-based remote shell utility. `vshd` runs on the guest/server,
+and `vsh` runs on the host/client. For now, this is only capable of launching
+a shell on the VM itself, but this may later be extended to launch a shell in
+a specific container inside of the VM.
+
 ## vm_syslog
 
 `vm_syslog` is the syslog daemon that runs inside the VM.  It is automatically

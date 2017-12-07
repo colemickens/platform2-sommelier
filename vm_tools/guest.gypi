@@ -54,6 +54,22 @@
         'virtwl_guest_proxy/main.c',
       ],
     },
+    {
+      'target_name': 'vshd',
+      'type': 'executable',
+      'dependencies': [
+        'libvsh',
+        'vsh-protos',
+      ],
+      'sources': [
+        'vsh/vshd.cc',
+      ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+    },
   ],
   'conditions': [
     ['USE_test == 1', {

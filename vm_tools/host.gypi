@@ -50,6 +50,21 @@
       ],
     },
     {
+      'target_name': 'vsh',
+      'type': 'executable',
+      'variables': {
+        'deps': ['system_api'],
+      },
+      'dependencies': [
+        'libvsh',
+        'vsh-protos',
+      ],
+      'sources': [
+        'vsh/scoped_termios.cc',
+        'vsh/vsh.cc',
+      ],
+    },
+    {
       'target_name': 'libconcierge',
       'type': 'static_library',
       'dependencies': ['vm-rpcs'],
