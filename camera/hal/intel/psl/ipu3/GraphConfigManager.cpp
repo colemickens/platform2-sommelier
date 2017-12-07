@@ -229,8 +229,8 @@ bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNod
     int previewHeight = 0;
     int videoWidth = 0;
     int videoHeight = 0;
-    css_err_t ret1 = ia_err_none;
-    css_err_t ret2 = ia_err_none;
+    status_t ret1 = OK;
+    status_t ret2 = OK;
 
     GraphConfigNode* node = nullptr;
     std::string nodeName = GC_PREVIEW;
@@ -238,7 +238,7 @@ bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNod
     if (node) {
         ret1 = node->getValue(GCSS_KEY_WIDTH, previewWidth);
         ret2 = node->getValue(GCSS_KEY_HEIGHT, previewHeight);
-        if (ret1 != ia_err_none || ret2 != ia_err_none) {
+        if (ret1 != OK || ret2 != OK) {
             LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
                 __FUNCTION__, nodeName.c_str(), ret1, ret2);
             return swapVideoPreview;
@@ -253,7 +253,7 @@ bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNod
     if (node) {
         ret1 = node->getValue(GCSS_KEY_WIDTH, videoWidth);
         ret2 = node->getValue(GCSS_KEY_HEIGHT, videoHeight);
-        if (ret1 != ia_err_none || ret2 != ia_err_none) {
+        if (ret1 != OK || ret2 != OK) {
             LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
                 __FUNCTION__, nodeName.c_str(), ret1, ret2);
             return swapVideoPreview;
@@ -580,7 +580,7 @@ status_t GraphConfigManager::prepareGraphConfig(std::shared_ptr<GraphConfig> gc)
     status_t status = OK;
     GraphConfigNode *result = new GraphConfigNode;
     ret  = mGraphQueryManager->getGraph(mFirstQueryResults[0], result);
-    if (CC_UNLIKELY(ret != ia_err_none)) {
+    if (CC_UNLIKELY(ret != css_err_none)) {
         gc.reset();
         delete result;
         return UNKNOWN_ERROR;
