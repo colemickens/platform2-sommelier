@@ -117,6 +117,7 @@ const char Attestation::kTestPCAWebOrigin[] =
 #endif
 
 const char Attestation::kDefaultEnterpriseSigningPublicKey[] =
+    "bf7fefa3a661437b26aed0801db64d7ba8b58875c351d3bdc9f653847d4a67b3"
     "b67479327724d56aa0f71a3f57c2290fdc1ff05df80589715e381dfbbda2c4ac"
     "114c30d0a73c5b7b2e22178d26d8b65860aa8dd65e1b3d61a07c81de87c1e7e4"
     "590145624936a011ece10434c1d5d41f917c3dc4b41dd8392479130c4fd6eafc"
@@ -322,6 +323,16 @@ Attestation::Attestation()
       retain_endorsement_data_(false),
       attestation_user_(0),
       attestation_group_(0) {
+  DCHECK(sizeof(kDefaultPCAPublicKey) == 512 + 1);
+  DCHECK(sizeof(kTestPCAPublicKey) == 512 + 1);
+  DCHECK(sizeof(kDefaultPCAPublicKeyID) == 5 + 1);
+  DCHECK(sizeof(kTestPCAPublicKeyID) == 5 + 1);
+  DCHECK(sizeof(kDefaultEnterpriseSigningPublicKey) == 512 + 1);
+  DCHECK(sizeof(kTestEnterpriseSigningPublicKey) == 512 + 1);
+  DCHECK(sizeof(kDefaultEnterpriseEncryptionPublicKey) == 512 + 1);
+  DCHECK(sizeof(kTestEnterpriseEncryptionPublicKey) == 512 + 1);
+  DCHECK(sizeof(kDefaultEnterpriseEncryptionPublicKeyID) == 5 + 1);
+  DCHECK(sizeof(kTestEnterpriseEncryptionPublicKeyID) == 5 + 1);
 }
 
 Attestation::~Attestation() {
