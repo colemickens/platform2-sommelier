@@ -15,11 +15,11 @@ import argparse
 import glob
 import os
 import shutil
-import subprocess
 import sys
 
+from chromite.lib import cros_build_lib
 from chromite.lib import osutils
-from chromite.lib.cros_build_lib import ShellUnquote
+
 
 class Platform2(object):
   """Main builder logic for platform2"""
@@ -112,14 +112,12 @@ class Platform2(object):
     cmd = [portageq_bin, 'envvar', '-v']
     cmd += varnames
 
-    try:
-      output = subprocess.check_output(cmd)
-    except (UnboundLocalError, OSError):
-      raise AssertionError('Error running %r' % cmd)
+    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True)
 
-    output_lines = [x for x in output.splitlines() if x]
+    output_lines = [x for x in ret.output.splitlines() if x]
     output_items = [x.split('=', 1) for x in output_lines]
-    board_vars = dict(dict([(k, ShellUnquote(v)) for k, v in output_items]))
+    board_vars = dict(dict((k, cros_build_lib.ShellUnquote(v))
+                           for k, v in output_items))
 
     return board_vars if len(board_vars) > 1 else board_vars.values()[0]
 
@@ -128,15 +126,8 @@ class Platform2(object):
     equery_bin = 'equery' if not self.board else 'equery-%s' % self.board
     cmd = [equery_bin, 'u', 'platform2']
 
-    try:
-      p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      output, errors = p.communicate()
-    except UnboundLocalError:
-      raise AssertionError('Error running %s' % equery_bin)
-    except OSError:
-      raise AssertionError('Error running equery: %s' % errors)
-
-    return set([x for x in output.splitlines() if x])
+    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True)
+    return set(x for x in ret.output.splitlines() if x)
 
   def get_build_environment(self):
     """Returns a dict containing environment variables we will use to run GYP.
@@ -232,14 +223,8 @@ class Platform2(object):
     gyp_args += ['-DUSE_%s=1' % (use_flag.replace('-', '_'),)
                  for use_flag in self.use_flags]
 
-    try:
-      subprocess.check_call(gyp_args, env=self.get_build_environment(),
-                            cwd=self.get_platform2_root())
-    except subprocess.CalledProcessError:
-      raise AssertionError('Error running: %s'
-                           % ' '.join(map(repr, gyp_args)))
-    except OSError:
-      raise AssertionError('Error running %s' % (gyp_args[0]))
+    cros_build_lib.RunCommand(gyp_args, env=self.get_build_environment(),
+                              cwd=self.get_platform2_root())
 
   def compile(self, args):
     """Runs the compile step of the Platform2 build.
@@ -264,13 +249,7 @@ class Platform2(object):
     if os.environ.get('NINJA_ARGS'):
       ninja_args.extend(os.environ['NINJA_ARGS'].split())
 
-    try:
-      subprocess.check_call(ninja_args)
-    except subprocess.CalledProcessError:
-      raise AssertionError('Error running: %s'
-                           % ' '.join(map(repr, ninja_args)))
-    except OSError:
-      raise AssertionError('Error running %s' % (ninja_args[0]))
+    cros_build_lib.RunCommand(ninja_args)
 
   def deviterate(self, args):
     """Runs the configure and compile steps of the Platform2 build.
