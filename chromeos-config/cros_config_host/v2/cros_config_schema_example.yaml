@@ -3,17 +3,80 @@
 #
 # It is also used to demonstrate specific use cases and how they are handled in the current schema.
 
-name: 'coral'
+reef_9042_fw: &reef_9042_fw
+  script: 'updater4.sh'
+  bcs_overlay: 'overlay-reef-private'
+  ec_image: 'Reef_EC.9042.87.1.tbz2'
+  main_image: 'Reef.9042.87.1.tbz2'
+  main_rw_image: 'Reef.9042.110.0.tbz2'
+  build_targets:
+    coreboot: 'reef'
+    ec: 'reef'
+    depthcharge: 'reef'
+    libpayload: 'reef'
+    cr50: 'cr50'
 
-# Defines the default config that is shared across the family.
-componentConfig:
-    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
+audio: &audio
+  cras_config_dir: '/etc/cras'
+  ucm_alsa_config_dir: '/usr/share/alsa/ucm'
+  disable_profile: ''
 
 models:
-  - name: 'astronaut'
-    # Optionally specifies any model specific override values.
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/astronaut.conf'
-  - name: 'lava'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/lava.conf'
+  - name: 'basking'
+    identity:
+      smbios_name_match: 'Reef'
+      sku_id: 0
+      customization_id: 'OEM2'
+    audio:
+      <<: *audio
+      cras_config_subdir: 'basking'
+      ucm_suffix: 'basking'
+    brand_code: 'ASUN'
+    firmware:
+      <<: *reef_9042_fw
+      key_id: 'OEM2'
+    powerd_prefs: 'reef'
+    test_alias: 'reef'
+    touch:
+      present: 'probe'
+      probe_regex: '[Tt]ouchscreen\|WCOMNTN2'
+      stylus:
+        firmware_bin: 'wacom/wacom_4209.hex'
+        firmware_symlink: 'wacom_firmware_BASKING.hex'
+      touchpad:
+        firmware_bin: 'elan/97.0_6.0.bin'
+        firmware_symlink: 'elan_i2c_97.0.bin'
+      touchscreen@0:
+        firmware_bin: 'elan/3062_5602.bin'
+        firmware_symlink: 'elants_i2c_3062.bin'
+      touchscreen@1:
+        firmware_bin: 'elan/306e_5611.bin'
+        firmware_symlink: 'elants_i2c_306e.bin'
+
+  - name: 'electro'
+    identity:
+      smbios_name_match: 'Reef'
+      sku_id: 8
+      customization_id: 'PARMA'
+    audio:
+      <<: *audio
+      cras_config_subdir: 'electro'
+      ucm_suffix: 'electro'
+    brand_code: 'ACBB'
+    firmware:
+      <<: *reef_9042_fw
+      key_id: 'PARMA'
+    powerd_prefs: 'reef'
+    test_alias: 'reef'
+    touch:
+      present: 'probe'
+      probe_regex: '[Tt]ouchscreen\|WCOMNTN2'
+      stylus:
+        firmware_bin: 'wacom/wacom_1636.hex'
+        firmware_symlink: 'wacom_firmware_ELECTRO.hex'
+      touchpad:
+        firmware_bin: 'elan/154.0_2.0.bin'
+        firmware_symlink: 'elan_i2c_154.0.bin'
+      touchscreen:
+        firmware_bin: 'elan/1cd2_5602.bin'
+        firmware_symlink: 'elants_i2c_1cd2.bin'

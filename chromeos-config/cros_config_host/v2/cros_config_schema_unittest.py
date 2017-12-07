@@ -11,7 +11,6 @@ import json
 import jsonschema
 import os
 import unittest
-import tempfile
 
 from . import cros_config_schema
 
@@ -197,21 +196,6 @@ models:
           cros_config_schema.TransformConfig(config))
     except cros_config_schema.ValidationError as err:
       self.assertIn('Model names are not unique', err.__str__())
-
-class MainTests(unittest.TestCase):
-  def testMainWithExample(self):
-    output = tempfile.mktemp()
-    cros_config_schema.Main(
-        os.path.join(this_dir, 'cros_config_schema.json'),
-        os.path.join(this_dir, 'cros_config_schema_example.yaml'),
-        output)
-    with open(output, 'r') as output_stream:
-      with open(
-          os.path.join(this_dir, 'cros_config_schema_example.json')
-      ) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read())
-
-    os.remove(output)
 
 
 if __name__ == '__main__':
