@@ -67,7 +67,8 @@ void Daemon::OnModemAppeared(
   if (!modem)
     return;
 
-  DLOG(INFO) << "Modem " << modem->GetEquipmentId() << " appeared";
+  DLOG(INFO) << "Modem appeared with equipment ID \""
+             << modem->GetEquipmentId() << "\"";
   modem_flasher_->TryFlash(modem.get());
 }
 
