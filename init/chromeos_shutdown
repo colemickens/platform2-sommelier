@@ -89,6 +89,7 @@ if [ $rc -ne 0 ] ; then
     set -x
     mount
     dmsetup info
+    lsof -n
   ) > /mnt/stateful_partition/shutdown_stateful_umount_failure 2>&1
 fi
 
