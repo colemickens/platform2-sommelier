@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/bits.h>
 #include <base/strings/string_piece.h>
 #include <libsmbclient.h>
 
@@ -47,7 +48,8 @@ std::string AppendPath(const std::string& base_path,
 }
 
 size_t CalculateEntrySize(const std::string& entry_name) {
-  return sizeof(smbc_dirent) + entry_name.size();
+  return base::bits::Align(sizeof(smbc_dirent) + entry_name.size(),
+                           alignof(smbc_dirent));
 }
 
 smbc_dirent* GetDirentFromBuffer(uint8_t* buffer) {
