@@ -112,7 +112,12 @@ class Platform2(object):
     cmd = [portageq_bin, 'envvar', '-v']
     cmd += varnames
 
-    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True)
+    # If a variable isn't found in the config files, portageq will exit 1,
+    # so ignore that.  We already hve fallbacks variables.
+    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True,
+                                    redirect_stderr=True, error_code_ok=True)
+    if ret.returncode > 1 or ret.error:
+      raise cros_build_lib.RunCommandError('unknown error', ret)
 
     output_lines = [x for x in ret.output.splitlines() if x]
     output_items = [x.split('=', 1) for x in output_lines]
