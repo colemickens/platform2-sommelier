@@ -111,7 +111,9 @@ int64_t GetUsableMemorySize() {
 }
 
 int main(int argc, char* argv[]) {
-  DEFINE_int64(size, 0, "Amount of memory to allocate");
+  DEFINE_int64(size, 0,
+               "Amount of memory to allocate "
+               "(0 means as much as possible)");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
   brillo::FlagHelper::Init(
@@ -128,6 +130,7 @@ int main(int argc, char* argv[]) {
     size = GetUsableMemorySize();
   }
 
+  printf("Trying to allocate %" PRId64 " KiB", size >> 10);
   uint32_t* ptr = Allocate(size);
 
   /* Retry allocate at 2.7GiB on 32 bit userland machine */
@@ -135,6 +138,7 @@ int main(int argc, char* argv[]) {
   if (!ptr && autosize && sizeof(long) == 4 && size > SIZE_2_7_GB) {
     size = SIZE_2_7_GB;
     ptr = Allocate(size);
+    printf("Allocation failed, now trying %" PRId64 " KiB", size >> 10);
   }
 
   CHECK(ptr);
