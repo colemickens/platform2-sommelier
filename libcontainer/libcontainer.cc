@@ -132,7 +132,7 @@ struct container_config {
   base::FilePath rootfs;
 
   // Flags that will be passed to mount() for the rootfs.
-  unsigned long rootfs_mount_flags;
+  unsigned long rootfs_mount_flags = 0x0;
 
   // Path to where the container will be run.
   base::FilePath premounted_runfs;
@@ -144,13 +144,13 @@ struct container_config {
   std::vector<std::string> program_argv;
 
   // The uid the container will run as.
-  uid_t uid;
+  uid_t uid = 0;
 
   // Mapping of UIDs in the container, e.g. "0 100000 1024"
   std::string uid_map;
 
   // The gid the container will run as.
-  gid_t gid;
+  gid_t gid = 0;
 
   // Mapping of GIDs in the container, e.g. "0 100000 1024"
   std::string gid_map;
@@ -180,37 +180,37 @@ struct container_config {
   base::FilePath cgroup_parent;
 
   // uid to own the created cgroups
-  uid_t cgroup_owner;
+  uid_t cgroup_owner = 0;
 
   // gid to own the created cgroups
-  gid_t cgroup_group;
+  gid_t cgroup_group = 0;
 
   // Allow the child process to keep open FDs (for stdin/out/err).
-  int keep_fds_open;
+  int keep_fds_open = 0;
 
   // Array of rlimits for the contained process.
   Rlimit rlimits[kMaxRlimits];
 
   // The number of elements in `rlimits`.
-  int num_rlimits;
-  int use_capmask;
-  int use_capmask_ambient;
-  uint64_t capmask;
+  int num_rlimits = 0;
+  int use_capmask = 0;
+  int use_capmask_ambient = 0;
+  uint64_t capmask = 0x0;
 
   // The mask of securebits to skip when restricting caps.
-  uint64_t securebits_skip_mask;
+  uint64_t securebits_skip_mask = 0x0;
 
   // Whether the container needs an extra process to be run as init.
-  int do_init;
+  int do_init = 0;
 
   // The SELinux context name the container will run under.
   std::string selinux_context;
 
   // A function pointer to be called prior to calling execve(2).
-  minijail_hook_t pre_start_hook;
+  minijail_hook_t pre_start_hook = nullptr;
 
   // Parameter that will be passed to pre_start_hook().
-  void* pre_start_hook_payload;
+  void* pre_start_hook_payload = nullptr;
 
   // A list of file descriptors to inherit.
   std::vector<int> inherited_fds;
