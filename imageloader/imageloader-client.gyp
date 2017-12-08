@@ -18,7 +18,7 @@
           'sources': [
             'dbus_adaptors/org.chromium.ImageLoaderInterface.xml',
           ],
-          'includes': ['../../platform2/common-mk/generate-dbus-proxies.gypi'],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
       ],
     },

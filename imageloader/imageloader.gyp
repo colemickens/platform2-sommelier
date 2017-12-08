@@ -23,7 +23,7 @@
         'proto_out_dir': 'include',
       },
       'sources': ['<(proto_in_dir)/ipc.proto'],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
     {
       'target_name': 'imageloader-adaptors',
@@ -35,7 +35,7 @@
       'sources': [
         'dbus_adaptors/org.chromium.ImageLoaderInterface.xml',
       ],
-      'includes': ['../../platform2/common-mk/generate-dbus-adaptors.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'libimageloader_static',
@@ -54,10 +54,10 @@
         'imageloader_impl.cc',
         'mount_helper.cc',
         'mount_helper.h',
-        'verity_mounter.h',
         'verity_mounter.cc',
-        'verity_mounter_impl.h',
+        'verity_mounter.h',
         'verity_mounter_impl.cc',
+        'verity_mounter_impl.h',
       ],
     },
     {
@@ -75,34 +75,34 @@
         'imageloader_main.cc',
       ],
     },
-    ],
-    'conditions': [
-      ['USE_test == 1', {
-        'targets': [
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
         {
           'target_name': 'run_tests',
           'type': 'executable',
           'variables': {
             'deps': ['libbrillo-<(libbase_ver)', 'libcrypto'],
           },
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libimageloader_static',
           ],
           'sources': [
-            'run_tests.cc',
-            'component_unittest.cc',
             'component.h',
-            'imageloader_unittest.cc',
+            'component_unittest.cc',
             'imageloader.cc',
             'imageloader.h',
+            'imageloader_unittest.cc',
             'mock_helper_process.h',
+            'run_tests.cc',
             'test_utilities.cc',
             'test_utilities.h',
             'verity_mounter_unittest.cc',
           ],
         },
-        ],
-      }],
-    ],
+      ],
+    }],
+  ],
 }
