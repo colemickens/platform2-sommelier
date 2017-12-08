@@ -7,6 +7,8 @@
 . /usr/share/misc/shflags
 
 DEFINE_integer count 10000 "number of iterations" c
+DEFINE_integer memory_check_size 0 \
+               "Amount of memory to allocate (0 means as much as possible)"
 DEFINE_integer suspend_max 10 "Max seconds to suspend"
 DEFINE_integer suspend_min 5 "Min seconds to suspend"
 DEFINE_integer wake_max 10 "Max seconds to stay awake for"
@@ -158,7 +160,10 @@ fi
 if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
   # Increase priority to make it less likely that memory_suspend_test takes
   # so long to free memory that the wake alarm fires prematurely.
-  suspend_cmd="nice -n ${MEMORY_TEST_PRIORITY} memory_suspend_test"
+  # Default size is set to 0, which tells memory_suspend_test to allocate as
+  # much memory as possible.
+  memory_test_cmd="memory_suspend_test --size=${FLAGS_memory_check_size}"
+  suspend_cmd="nice -n ${MEMORY_TEST_PRIORITY} ${memory_test_cmd}"
 
   # Writing to memory can take a while. Make it less likely that the
   # wake alarm will fire before the system has suspended.
