@@ -186,22 +186,22 @@ struct container_config {
   gid_t cgroup_group = 0;
 
   // Allow the child process to keep open FDs (for stdin/out/err).
-  int keep_fds_open = 0;
+  bool keep_fds_open = false;
 
   // Array of rlimits for the contained process.
   Rlimit rlimits[kMaxRlimits];
 
   // The number of elements in `rlimits`.
   int num_rlimits = 0;
-  int use_capmask = 0;
-  int use_capmask_ambient = 0;
+  bool use_capmask = false;
+  bool use_capmask_ambient = false;
   uint64_t capmask = 0x0;
 
   // The mask of securebits to skip when restricting caps.
   uint64_t securebits_skip_mask = 0x0;
 
   // Whether the container needs an extra process to be run as init.
-  int do_init = 0;
+  bool do_init = false;
 
   // The SELinux context name the container will run under.
   std::string selinux_context;
@@ -356,7 +356,7 @@ std::ostream& operator<<(std::ostream& stream, const container_config* c) {
   for (size_t i = 0; i < c->num_rlimits; ++i)
     stream << c->rlimits[i];
 
-  stream << "use_capmask: 0x" << c->use_capmask << std::endl
+  stream << "use_capmask: " << c->use_capmask << std::endl
          << "use_capmask_ambient: " << c->use_capmask_ambient << std::endl
          << "capmask: 0x" << std::hex << c->capmask << std::dec << std::endl
          << "securebits_skip_mask: 0x" << std::hex << c->securebits_skip_mask
@@ -1151,13 +1151,13 @@ bool container_config_has_namespace(const struct container_config* c,
 }
 
 void container_config_keep_fds_open(struct container_config* c) {
-  c->keep_fds_open = 1;
+  c->keep_fds_open = true;
 }
 
 void container_config_set_capmask(struct container_config* c,
                                   uint64_t capmask,
                                   int ambient) {
-  c->use_capmask = 1;
+  c->use_capmask = true;
   c->capmask = capmask;
   c->use_capmask_ambient = ambient;
 }
