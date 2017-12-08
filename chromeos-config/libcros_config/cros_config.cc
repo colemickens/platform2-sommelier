@@ -58,21 +58,21 @@ bool CrosConfig::InitModel() {
 
   std::string name;
   int sku_id;
-  std::string whitelabel_name;
+  std::string customization_id;
   if (!DecodeIdentifiers(platform_id_output, &name, &sku_id,
-                         &whitelabel_name)) {
+                         &customization_id)) {
     LOG(ERROR) << "Could not decode platform id " << platform_id_output;
     return false;
   }
 
   return InitCommon(base::FilePath(kConfigDtbPath), name, sku_id,
-                    whitelabel_name);
+                    customization_id);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& name, int sku_id,
-                             const std::string& whitelabel_name) {
-  return InitCommon(filepath, name, sku_id, whitelabel_name);
+                             const std::string& customization_id) {
+  return InitCommon(filepath, name, sku_id, customization_id);
 }
 
 std::string CrosConfig::GetFullPath(int offset) {
@@ -276,7 +276,7 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
 
 bool CrosConfig::DecodeIdentifiers(const std::string &output,
                                    std::string* name_out, int* sku_id_out,
-                                   std::string* whitelabel_tag_out) {
+                                   std::string* customization_id_out) {
   *sku_id_out = -1;
   std::istringstream ss(output);
   std::string line;
@@ -296,7 +296,7 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
     } else if (pair.first == "sku") {
       *sku_id_out = std::stoi(value);
     } else if (pair.first == "customization") {
-      *whitelabel_tag_out = value;
+      *customization_id_out = value;
     }
   }
   return true;
@@ -305,7 +305,7 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const std::string& name,
                             int sku_id,
-                            const std::string& whitelabel_name) {
+                            const std::string& customization_id) {
   // Many systems will not have a config database (yet), so just skip all the
   // setup without any errors if the config file doesn't exist.
   if (!base::PathExists(filepath)) {
@@ -323,7 +323,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                << fdt_strerror(ret);
     return false;
   }
-  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_name)) {
+  if (!SelectModelConfigByIDs(name, sku_id, customization_id)) {
     LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
     return false;
   }

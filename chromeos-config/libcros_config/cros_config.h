@@ -44,10 +44,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @filepath: Path to configuration .dtb file.
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
-  // @whitelabel_name: Name of the whitelabel model or 'tag' node
+  // @customization_id: VPD customization ID from 'mosys platform customization'
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath, const std::string& name,
-                   int sku_id, const std::string& whitelabel_name);
+                   int sku_id, const std::string& customization_id);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
@@ -63,12 +63,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @filepath: path to configuration .dtb file.
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
-  // @whitelabel_name: Name of the whitelabel model or 'tag' node
+  // @customization_id: VPD customization ID from 'mosys platform customization'
   // @return true if OK, false on error.
   bool InitCommon(const base::FilePath& filepath,
                   const std::string& name,
                   int sku_id,
-                  const std::string& whitelabel_name);
+                  const std::string& customization_id);
 
   // Runs a quick init check and prints an error to stderr if it fails.
   // @return true if OK, false on error.
@@ -112,10 +112,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // model and submodel that will be used for the duration of execution.
   // @find_name: Platform name to search for
   // @find_sku_id: SKU ID to search for
-  // @find_whitelabel_name: Whitelabel model or tag to search for
+  // @find_customization_id: Customization ID to search for
   // @return true on success, false on failure
   bool SelectModelConfigByIDs(const std::string& find_name, int find_sku_id,
-                              const std::string& find_whitelabel_name);
+                              const std::string& find_customization_id);
 
   // Check a single sku-map node for a match
   // This searches the given sku-map node to see if it is a match for the given
@@ -157,11 +157,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Decode the device identifiers to resolve the model / submodel
   // The decodes the output from 'mosys platform id' into the two fields
   // @output: Output string from mosys
-  // @name_out: Returns the platform name (which may be an exmpty string)
-  // @sku_id: Returns the SKU ID (which may be -1 if there is none)
+  // @name_out: Returns the platform name (which may be an empty string)
+  // @sku_id_out: Returns the SKU ID (which may be -1 if there is none)
+  // @customization_id_out: Returns the customization id (may be empty string)
   // @return true on success, false on failure
   bool DecodeIdentifiers(const std::string &output, std::string* name_out,
-                         int* sku_id_out, std::string* whitelabel_name_out);
+                         int* sku_id_out, std::string* customization_id_out);
 
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
