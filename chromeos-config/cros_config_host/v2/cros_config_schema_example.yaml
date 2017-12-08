@@ -4,7 +4,6 @@
 # It is also used to demonstrate specific use cases and how they are handled in the current schema.
 
 reef_9042_fw: &reef_9042_fw
-  script: 'updater4.sh'
   bcs_overlay: 'overlay-reef-private'
   ec_image: 'Reef_EC.9042.87.1.tbz2'
   main_image: 'Reef.9042.87.1.tbz2'
@@ -26,7 +25,7 @@ models:
     identity:
       smbios_name_match: 'Reef'
       sku_id: 0
-      customization_id: 'OEM2'
+      customization_id: 'BASKING'
     audio:
       <<: *audio
       cras_config_subdir: 'basking'
@@ -57,7 +56,7 @@ models:
     identity:
       smbios_name_match: 'Reef'
       sku_id: 8
-      customization_id: 'PARMA'
+      customization_id: 'ELECTRO'
     audio:
       <<: *audio
       cras_config_subdir: 'electro'

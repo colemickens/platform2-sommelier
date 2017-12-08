@@ -1,17 +1,104 @@
 {
   "models": [
     {
-      "componentConfig": {
-        "bluetoothConfigPath": "/etc/bluetooth/astronaut.conf"
+      "audio": {
+        "cras_config_dir": "/etc/cras", 
+        "cras_config_subdir": "basking", 
+        "disable_profile": "", 
+        "ucm_alsa_config_dir": "/usr/share/alsa/ucm", 
+        "ucm_suffix": "basking"
       }, 
-      "name": "astronaut"
+      "brand_code": "ASUN", 
+      "firmware": {
+        "bcs_overlay": "overlay-reef-private", 
+        "build_targets": {
+          "coreboot": "reef", 
+          "cr50": "cr50", 
+          "depthcharge": "reef", 
+          "ec": "reef", 
+          "libpayload": "reef"
+        }, 
+        "ec_image": "Reef_EC.9042.87.1.tbz2", 
+        "key_id": "OEM2", 
+        "main_image": "Reef.9042.87.1.tbz2", 
+        "main_rw_image": "Reef.9042.110.0.tbz2"
+      }, 
+      "identity": {
+        "customization_id": "BASKING", 
+        "sku_id": 0, 
+        "smbios_name_match": "Reef"
+      }, 
+      "name": "basking", 
+      "powerd_prefs": "reef", 
+      "test_alias": "reef", 
+      "touch": {
+        "present": "probe", 
+        "probe_regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+        "stylus": {
+          "firmware_bin": "wacom/wacom_4209.hex", 
+          "firmware_symlink": "wacom_firmware_BASKING.hex"
+        }, 
+        "touchpad": {
+          "firmware_bin": "elan/97.0_6.0.bin", 
+          "firmware_symlink": "elan_i2c_97.0.bin"
+        }, 
+        "touchscreen@0": {
+          "firmware_bin": "elan/3062_5602.bin", 
+          "firmware_symlink": "elants_i2c_3062.bin"
+        }, 
+        "touchscreen@1": {
+          "firmware_bin": "elan/306e_5611.bin", 
+          "firmware_symlink": "elants_i2c_306e.bin"
+        }
+      }
     }, 
     {
-      "componentConfig": {
-        "bluetoothConfigPath": "/etc/bluetooth/lava.conf"
+      "audio": {
+        "cras_config_dir": "/etc/cras", 
+        "cras_config_subdir": "electro", 
+        "disable_profile": "", 
+        "ucm_alsa_config_dir": "/usr/share/alsa/ucm", 
+        "ucm_suffix": "electro"
       }, 
-      "name": "lava"
+      "brand_code": "ACBB", 
+      "firmware": {
+        "bcs_overlay": "overlay-reef-private", 
+        "build_targets": {
+          "coreboot": "reef", 
+          "cr50": "cr50", 
+          "depthcharge": "reef", 
+          "ec": "reef", 
+          "libpayload": "reef"
+        }, 
+        "ec_image": "Reef_EC.9042.87.1.tbz2", 
+        "key_id": "PARMA", 
+        "main_image": "Reef.9042.87.1.tbz2", 
+        "main_rw_image": "Reef.9042.110.0.tbz2"
+      }, 
+      "identity": {
+        "customization_id": "ELECTRO", 
+        "sku_id": 8, 
+        "smbios_name_match": "Reef"
+      }, 
+      "name": "electro", 
+      "powerd_prefs": "reef", 
+      "test_alias": "reef", 
+      "touch": {
+        "present": "probe", 
+        "probe_regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+        "stylus": {
+          "firmware_bin": "wacom/wacom_1636.hex", 
+          "firmware_symlink": "wacom_firmware_ELECTRO.hex"
+        }, 
+        "touchpad": {
+          "firmware_bin": "elan/154.0_2.0.bin", 
+          "firmware_symlink": "elan_i2c_154.0.bin"
+        }, 
+        "touchscreen": {
+          "firmware_bin": "elan/1cd2_5602.bin", 
+          "firmware_symlink": "elants_i2c_1cd2.bin"
+        }
+      }
     }
-  ], 
-  "name": "coral"
+  ]
 }

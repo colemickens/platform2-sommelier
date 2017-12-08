@@ -11,32 +11,33 @@ import json
 import jsonschema
 import os
 import unittest
+import re
+import tempfile
 
 from . import cros_config_schema
 
 BASIC_CONFIG = """
-name: 'coral'
-componentConfig:
-    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
-models:
-  - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/astronaut.conf'
-  - name: 'lava'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/lava.conf'
-"""
+reef_9042_fw: &reef_9042_fw
+  bcs_overlay: 'overlay-reef-private'
+  ec_image: 'Reef_EC.9042.87.1.tbz2'
+  main_image: 'Reef.9042.87.1.tbz2'
+  main_rw_image: 'Reef.9042.110.0.tbz2'
 
-INHERITED_CONFIG = """
-name: 'coral'
-componentConfig:
-    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
 models:
-  - name: 'astronaut'
-    componentConfig:
-  - name: 'lava'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/lava.conf'
+  - name: 'basking'
+    identity:
+      sku_id: 0
+    audio:
+      cras_config_dir: '/etc/cras'
+      ucm_alsa_config_dir: '/usr/share/alsa/ucm'
+      cras_config_subdir: 'basking'
+      ucm_suffix: 'basking'
+    brand_code: 'ASUN'
+    firmware:
+      <<: *reef_9042_fw
+      key_id: 'OEM2'
+    powerd_prefs: 'reef'
+    test_alias: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)
@@ -56,64 +57,27 @@ class GetNamedTupleTests(unittest.TestCase):
 
 class ParseArgsTests(unittest.TestCase):
   def testParseArgs(self):
-    argv = ['-s', 'schema', '-c', 'config', '-o', 'output']
+    argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f' 'True']
     args = cros_config_schema.ParseArgs(argv)
     self.assertEqual(args.schema, 'schema')
     self.assertEqual(args.config, 'config')
     self.assertEqual(args.output, 'output')
+    self.assertTrue(args.filter)
 
 
 class TransformConfigTests(unittest.TestCase):
   def testBasicTransform(self):
     result = cros_config_schema.TransformConfig(BASIC_CONFIG)
-    json_obj = cros_config_schema.GetNamedTuple(json.loads(result))
-    self.assertEqual(2, len(json_obj.models))
+    json_dict = json.loads(result)
+    self.assertEqual(len(json_dict), 1)
+    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    self.assertEqual(1, len(json_obj.models))
     self.assertEqual(
-        'astronaut',
+        'basking',
         json_obj.models[0].name)
     self.assertEqual(
-        '/etc/bluetooth/astronaut.conf',
-        json_obj.models[0].componentConfig.bluetoothConfigPath)
-    self.assertEqual(
-        'lava',
-        json_obj.models[1].name)
-
-  def testFamilyConfigInheritanceNoValue(self):
-    result = cros_config_schema.TransformConfig(INHERITED_CONFIG)
-    json_obj = cros_config_schema.GetNamedTuple(json.loads(result))
-    self.assertEqual(
-        '/etc/bluetooth/coral.conf',
-        json_obj.models[0].componentConfig.bluetoothConfigPath)
-
-  def testFamilyConfigInheritanceEmptyValue(self):
-    config = """
-name: 'coral'
-componentConfig:
-    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
-models:
-  - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: ''
-"""
-    result = cros_config_schema.TransformConfig(config)
-    json_obj = cros_config_schema.GetNamedTuple(json.loads(result))
-    self.assertEqual(
-        '/etc/bluetooth/coral.conf',
-        json_obj.models[0].componentConfig.bluetoothConfigPath)
-
-  def testFullFamilyConfigInheritance(self):
-    config = """
-name: 'coral'
-componentConfig:
-    bluetoothConfigPath: '/etc/bluetooth/coral.conf'
-models:
-  - name: 'astronaut'
-"""
-    result = cros_config_schema.TransformConfig(config)
-    json_obj = cros_config_schema.GetNamedTuple(json.loads(result))
-    self.assertEqual(
-        '/etc/bluetooth/coral.conf',
-        json_obj.models[0].componentConfig.bluetoothConfigPath)
+        '/etc/cras',
+        json_obj.models[0].audio.cras_config_dir)
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
@@ -125,54 +89,14 @@ class ValidateConfigSchemaTests(unittest.TestCase):
     cros_config_schema.ValidateConfigSchema(
         self._schema, cros_config_schema.TransformConfig(BASIC_CONFIG))
 
-  def testFamilyConfigInheritance(self):
-    cros_config_schema.ValidateConfigSchema(
-        self._schema, cros_config_schema.TransformConfig(INHERITED_CONFIG))
-
-  def testMissingBluetoothPath(self):
-    config = """
-name: 'coral'
-models:
-  - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: ''
-"""
+  def testMissingRequiredElement(self):
+    config = re.sub(r" *cras_config_dir: .*", "", BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
     except jsonschema.ValidationError as err:
-      self.assertIn('does not match', err.__str__())
-      self.assertIn('bluetooth', err.__str__())
-
-  def testInvalidBluetoothPath(self):
-    config = """
-name: 'coral'
-models:
-  - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: 'not a valid path'
-"""
-    try:
-      cros_config_schema.ValidateConfigSchema(
-          self._schema, cros_config_schema.TransformConfig(config))
-    except jsonschema.ValidationError as err:
-      self.assertIn('does not match', err.__str__())
-      self.assertIn('bluetooth', err.__str__())
-
-  def testInvalidName(self):
-    config = """
-name: 'ab'
-models:
-  - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/valid.conf'
-"""
-    try:
-      cros_config_schema.ValidateConfigSchema(
-          self._schema, cros_config_schema.TransformConfig(config))
-    except jsonschema.ValidationError as err:
-      self.assertIn('does not match', err.__str__())
-      self.assertIn('name', err.__str__())
+      self.assertIn('required', err.__str__())
+      self.assertIn('cras_config_dir', err.__str__())
 
 
 class ValidateConfigTests(unittest.TestCase):
@@ -182,20 +106,38 @@ class ValidateConfigTests(unittest.TestCase):
 
   def testModelNamesNotUnique(self):
     config = """
-name: 'coral'
 models:
   - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/valid.conf'
   - name: 'astronaut'
-    componentConfig:
-      bluetoothConfigPath: '/etc/bluetooth/valid.conf'
 """
     try:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))
     except cros_config_schema.ValidationError as err:
       self.assertIn('Model names are not unique', err.__str__())
+
+
+class FilterBuildElements(unittest.TestCase):
+  def testBasicFilterBuildElements(self):
+    json_dict = json.loads(cros_config_schema.FilterBuildElements(
+        cros_config_schema.TransformConfig(BASIC_CONFIG)))
+    self.assertNotIn('firmware', json_dict['models'][0])
+
+
+class MainTests(unittest.TestCase):
+  def testMainWithExample(self):
+    output = tempfile.mktemp()
+    cros_config_schema.Main(
+        os.path.join(this_dir, 'cros_config_schema.json'),
+        os.path.join(this_dir, 'cros_config_schema_example.yaml'),
+        output)
+    with open(output, 'r') as output_stream:
+      with open(
+          os.path.join(this_dir, 'cros_config_schema_example.json')
+      ) as expected_stream:
+        self.assertEqual(expected_stream.read(), output_stream.read())
+
+    os.remove(output)
 
 
 if __name__ == '__main__':

@@ -1,51 +1,215 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "typeDefs": {
+    "bcs_file_name": {
+      "type": "string",
+      "description": "Name of the file located in BCS under the respective bcs_overlay."
+    },
     "name": {
       "type": "string",
       "pattern": "^[_a-zA-Z0-9]{3,}",
-      "description": "String that is at least 3 chars with letters/numbers/underscrores"
+      "description": "String that is at least 3 chars with letters/numbers/underscrores."
+    },
+    "firmware_build_target": {
+      "type": "string",
+      "description": "Build target that will be considered dirty when building/testing locally."
+    },
+    "touch_firmware": {
+      "type": "object",
+      "properties": {
+        "firmware_bin": {
+          "description": "Path to the firmware binary for the touch firmware.",
+          "type": "string"
+        },
+        "firmware_symlink": {
+          "description": "Name of the firmware symlink file.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "firmware_bin",
+        "firmware_symlink"
+      ]
     }
   },
 
   "type": "object",
   "properties": {
-    "name": {
-      "$ref": "#/typeDefs/name"
-    },
     "models": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "name": {
-            "$ref": "#/typeDefs/name"
-          },
-          "componentConfig": {
+          "audio": {
             "type": "object",
             "properties": {
-              "bluetoothConfigPath": {
-                "description": "Path to the bluetooth config file that will be used.",
+              "cras_config_dir": {
+                "description": "Root directory of the CRAS configuration files.",
                 "type": "string",
                 "pattern": "^(/[^/ ]*)+/?$"
+              },
+              "cras_config_subdir": {
+                "description": "Optional subdir for model specific configuration.",
+                "type": "string"
+              },
+              "disable_profile": {
+                "description": "Optional --disable_profile parameter for CRAS deamon.",
+                "type": "string"
+              },
+              "ucm_alsa_config_dir": {
+                "description": "Root directory of the UCM configuration files.",
+                "type": "string",
+                "pattern": "^(/[^/ ]*)+/?$"
+              },
+              "ucm_suffix": {
+                "description": "Optional UCM suffix used to determine model specific config.",
+                "type": "string"
               }
             },
             "additionalProperties": false,
             "required": [
-              "bluetoothConfigPath"
+              "cras_config_dir",
+              "ucm_alsa_config_dir"
+            ]
+          },
+          "brand_code": {
+            "description": "Brand code of the model (also called RLZ code).",
+            "type": "string",
+            "pattern": "^[A-Z]{4}$"
+          },
+          "firmware": {
+            "type": "object",
+            "properties": {
+              "bcs_overlay": {
+                "description": "BCS overlay path used to determine BCS file path for binary firmware downloads.",
+                "type": "string"
+              },
+              "build_targets": {
+                "type": "object",
+                "properties": {
+                  "coreboot": {
+                    "$ref": "#/typeDefs/firmware_build_target"
+                  },
+                  "cr50": {
+                    "$ref": "#/typeDefs/firmware_build_target"
+                  },
+                  "depthcharge": {
+                    "$ref": "#/typeDefs/firmware_build_target"
+                  },
+                  "ec": {
+                    "$ref": "#/typeDefs/firmware_build_target"
+                  },
+                  "libpayload": {
+                    "$ref": "#/typeDefs/firmware_build_target"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "ec_image": {
+                "$ref": "#/typeDefs/bcs_file_name"
+              },
+              "key_id": {
+                "description": "Key ID from the signer key set that is used to sign the given firmware image.",
+                "type": "string",
+                "pattern": "^[A-Z|_|0-9]*$"
+              },
+              "main_image": {
+                "$ref": "#/typeDefs/bcs_file_name"
+              },
+              "main_rw_image": {
+                "$ref": "#/typeDefs/bcs_file_name"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "bcs_overlay",
+              "ec_image",
+              "main_image"
+            ]
+          },
+          "identity": {
+            "type": "object",
+            "properties": {
+              "customization_id": {
+                "description": "Customization ID set in the VPD during manufacturing.",
+                "type": "string",
+                "pattern": "^[A-Z|_]*$"
+              },
+              "sku_id": {
+                "description": "SKU/Board strapping pins configured during board manufacturing.",
+                "type": "integer"
+              },
+              "smbios_name_match": {
+                "description": "Firmware name built into the firmware and reflected back out in the SMBIOS tables.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "sku_id"
+            ]
+          },
+          "name": {
+            "$ref": "#/typeDefs/name"
+          },
+          "powerd_prefs": {
+            "description": "Powerd config that should be used.",
+            "type": "string"
+          },
+          "test_alias": {
+            "description": "Test alias (model) label that will be applied in Autotest and reported for test results.",
+            "type": "string"
+          },
+          "touch": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "description": "Whether touch is present or needs to be probed for.",
+                "type": "string",
+                "enum": ["yes", "no", "probe"]
+              },
+              "probe_regex": {
+                "description": "If probe is set, the regex used to look for touch.",
+                "type": "string"
+              },
+              "stylus": {
+                "$ref": "#/typeDefs/touch_firmware"
+              },
+              "touchpad": {
+                "$ref": "#/typeDefs/touch_firmware"
+              },
+              "touchscreen": {
+                "$ref": "#/typeDefs/touch_firmware"
+              },
+              "touchscreen@0": {
+                "$ref": "#/typeDefs/touch_firmware"
+              },
+              "touchscreen@1": {
+                "$ref": "#/typeDefs/touch_firmware"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "present"
             ]
           }
         },
         "additionalProperties": false,
         "required": [
+          "audio",
+          "brand_code",
+          "firmware",
+          "identity",
           "name",
-          "componentConfig"
+          "powerd_prefs",
+          "test_alias"
         ]
       }
     }
   },
   "additionalProperties": false,
   "required": [
-    "name"
+    "models"
   ]
 }
