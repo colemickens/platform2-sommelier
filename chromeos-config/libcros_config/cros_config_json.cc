@@ -27,32 +27,8 @@ const char kConfigJsonPath[] = "/usr/share/chromeos-config/config.json";
 
 namespace brillo {
 
-CrosConfig::CrosConfig() {}
-
-CrosConfig::~CrosConfig() {}
-
-bool CrosConfig::Init() {
-  return InitModel();
-}
-
 bool CrosConfig::InitModel() {
-  const base::FilePath::CharType* const argv[] = {
-      "mosys", "-k", "platform", "id"};
-  base::CommandLine cmdline(arraysize(argv), argv);
-
-  return InitCommon(base::FilePath(kConfigJsonPath), cmdline);
-}
-
-bool CrosConfig::InitForTest(const base::FilePath& filepath,
-                             const std::string& name, int sku_id,
-                             const std::string& whitelabel_tag) {
-  std::string output = base::StringPrintf(
-      "name=\"%s\"\\nsku=\"%d\"\ncustomization=\"%s\"",
-      name.c_str(), sku_id, whitelabel_tag.c_str());
-  const base::FilePath::CharType* const argv[] = {"echo", "-e", output.c_str()};
-  base::CommandLine cmdline(arraysize(argv), argv);
-
-  return InitCommon(filepath, cmdline);
+  return InitForConfig(base::FilePath(kConfigJsonPath));
 }
 
 bool CrosConfig::GetString(const std::string& path, const std::string& prop,
@@ -128,14 +104,8 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
 }
 
 bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
-                            const base::CommandLine& cmdline) {
-  std::string output;
-  if (!base::GetAppOutput(cmdline, &output)) {
-    LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
-    return false;
-  }
-  base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &model_);
-
+                            const std::string& name, int sku_id,
+                            const std::string& whitelabel_name) {
   std::string config_json_data;
   if (!base::ReadFileToString(config_filepath, &config_json_data)) {
     LOG(ERROR) << "Could not read file " << config_filepath.MaybeAsASCII();
@@ -158,16 +128,12 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
                 << config_filepath.MaybeAsASCII();
     return false;
   }
-  inited_ = true;
-
-  return true;
-}
-
-bool CrosConfig::InitCheck() const {
-  if (!inited_) {
-    LOG(ERROR) << "Init*() must be called before accessing configuration";
+  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_name)) {
+    LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
     return false;
   }
+  inited_ = true;
+
   return true;
 }
 

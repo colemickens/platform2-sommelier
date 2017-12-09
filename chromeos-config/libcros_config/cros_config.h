@@ -59,6 +59,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                   std::string* val_out) override;
 
  private:
+  // Init for a particular config file
+  // This calls InitCommon() with the given file after reading the identity
+  // information for this device.
+  // @filepath: Path to configuration file to use
+  bool InitForConfig(const base::FilePath& filepath);
+
   // Common init function for both production and test code.
   // @filepath: path to configuration .dtb file.
   // @name: Platform name as returned by 'mosys platform id'.
