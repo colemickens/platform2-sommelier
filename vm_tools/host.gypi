@@ -56,6 +56,7 @@
       'deps': ['system_api'],
       'sources': [
         'concierge/service.cc',
+        'concierge/subnet_pool.cc',
       ],
     },
     {
@@ -83,6 +84,18 @@
           'sources': [
             'syslog/forwarder_unittest.cc',
             'syslog/scrubber_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'concierge_test',
+          'type': 'executable',
+          'dependencies': [
+            'libconcierge',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'concierge/subnet_pool_unittest.cc',
           ],
         },
       ],
