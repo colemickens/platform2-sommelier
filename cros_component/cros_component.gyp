@@ -4,7 +4,8 @@
       'target_name' : 'cros_component_config',
       'type' : 'none',
       'sources' : [
-        'cros_component.config',
+        'build_components.py',
+        'cros_components.json',
       ],
     },
   ],

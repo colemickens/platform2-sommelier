@@ -1,0 +1,14 @@
+[
+  {
+    "net-print/epson-inkjet-printer-escpr" : {
+      "name": "epson-inkjet-printer-escpr",
+      "files":[
+        "usr/libexec/cups/filter/epson-escpr-wrapper",
+        "usr/libexec/cups/filter/epson-escpr"
+      ],
+      "manifest": "build/epson-inkjet-printer-escpr/manifest.json",
+      "gsbucket": "gs://chrome-component-epson-inkjet-printer-escpr/",
+      "pkgpath": "var/db/pkg/net-print"
+    }
+  }
+]
