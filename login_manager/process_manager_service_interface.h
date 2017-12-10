@@ -29,9 +29,12 @@ class ProcessManagerServiceInterface {
   // crash dumping machinery.
   virtual void AbortBrowser(int signal, const std::string& message) = 0;
 
-  // Kill the browser. Provide |args| to be used when it's restarted.
-  virtual void RestartBrowserWithArgs(const std::vector<std::string>& args,
-                                      bool args_are_extra) = 0;
+  // Kill the browser. Provide |args| and |env_vars| to be used when it's
+  // restarted.
+  virtual void RestartBrowserWithArgs(
+      const std::vector<std::string>& args,
+      bool args_are_extra,
+      const std::vector<std::string>& env_vars) = 0;
 
   // Set bookkeeping for the browser process to indicate that a session
   // has been started for the given user.

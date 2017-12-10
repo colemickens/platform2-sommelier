@@ -71,8 +71,8 @@ class BrowserJobTest : public ::testing::Test {
     }
   }
 
-  std::map<std::string, std::string> env_;
   std::vector<std::string> argv_;
+  std::vector<std::string> env_;
   MockFileChecker checker_;
   MockMetrics metrics_;
   MockSystemUtils utils_;
@@ -152,18 +152,18 @@ TEST_F(BrowserJobTest, ShouldNotStopTest) {
   EXPECT_FALSE(job_->ShouldStop());
 }
 
-TEST_F(BrowserJobTest, ShouldDropExtraArgumentsTest) {
+TEST_F(BrowserJobTest, ShouldDropExtraArgumentsAndEnvironmentVariablesTest) {
   EXPECT_CALL(utils_, time(NULL))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
 
   // Simulate restart kUseExtraArgsRuns - 1 times and no dropping.
   for (int i = 0; i < BrowserJob::kUseExtraArgsRuns - 1; ++i)
     job_->RecordTime();
-  EXPECT_FALSE(job_->ShouldDropExtraArguments());
+  EXPECT_FALSE(job_->ShouldDropExtraArgumentsAndEnvironmentVariables());
 
-  // One more restart and extra arguments should be dropped.
+  // One more restart and extra args and env vars should be dropped.
   job_->RecordTime();
-  EXPECT_TRUE(job_->ShouldDropExtraArguments());
+  EXPECT_TRUE(job_->ShouldDropExtraArgumentsAndEnvironmentVariables());
 }
 
 TEST_F(BrowserJobTest, ShouldNotRunTest) {
@@ -316,6 +316,14 @@ TEST_F(BrowserJobTest, ExportArgv) {
   argv.insert(argv.end(), extra_args.begin(), extra_args.end());
   job.SetExtraArguments(extra_args);
   EXPECT_EQ(argv, job.ExportArgv());
+}
+
+TEST_F(BrowserJobTest, SetExtraEnvironmentVariables) {
+  std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
+  BrowserJob job(argv, {"A=a"}, -1, &checker_, &metrics_, &utils_);
+  job.SetExtraEnvironmentVariables({"B=b", "C="});
+  EXPECT_EQ((std::vector<std::string>{"A=a", "B=b", "C="}),
+            job.ExportEnvironmentVariables());
 }
 
 TEST_F(BrowserJobTest, CombineVModuleArgs) {

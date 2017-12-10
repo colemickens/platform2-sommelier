@@ -41,6 +41,8 @@ class FakeBrowserJob : public BrowserJobInterface {
   MOCK_METHOD0(StopSession, void());
   MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));
   MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
+  MOCK_METHOD1(SetExtraEnvironmentVariables,
+               void(const std::vector<std::string>&));
   MOCK_METHOD1(SetOneTimeArguments, void(const std::vector<std::string>&));
   MOCK_METHOD0(ClearOneTimeArguments, void());
 

@@ -60,6 +60,10 @@ class BrowserJobInterface : public ChildJobInterface {
   // Sets extra command line arguments for the job from a string vector.
   virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
 
+  // Sets extra environment variables for the job.
+  virtual void SetExtraEnvironmentVariables(
+      const std::vector<std::string>& env_vars) = 0;
+
   // Throw away the pid of the currently-tracked browser job.
   virtual void ClearPid() = 0;
 
@@ -76,7 +80,7 @@ class BrowserJobInterface : public ChildJobInterface {
 class BrowserJob : public BrowserJobInterface {
  public:
   BrowserJob(const std::vector<std::string>& arguments,
-             const std::map<std::string, std::string>& environment_varables,
+             const std::vector<std::string>& environment_variables,
              uid_t desired_uid,
              FileChecker* checker,
              LoginMetrics* metrics,
@@ -97,16 +101,20 @@ class BrowserJob : public BrowserJobInterface {
   const std::string GetName() const override;
   void SetArguments(const std::vector<std::string>& arguments) override;
   void SetExtraArguments(const std::vector<std::string>& arguments) override;
+  void SetExtraEnvironmentVariables(
+      const std::vector<std::string>& env_vars) override;
   void ClearPid() override;
 
   // Stores the current time as the time when the job was started.
   void RecordTime();
 
-  // Export a copy of the current argv.
+  // Exports a copy of the current argv or environment variables.
   std::vector<std::string> ExportArgv() const;
+  std::vector<std::string> ExportEnvironmentVariables() const;
 
-  // Whether to drop extra arguments when starting the job.
-  bool ShouldDropExtraArguments() const;
+  // Whether to drop extra arguments and environment variables when starting the
+  // job.
+  bool ShouldDropExtraArgumentsAndEnvironmentVariables() const;
 
   // Flag passed to Chrome the first time Chrome is started after the
   // system boots. Not passed when Chrome is restarted after signout.
@@ -123,11 +131,11 @@ class BrowserJob : public BrowserJobInterface {
   static const time_t kRestartWindowSeconds;
 
  private:
-  // Environment variables exported for Chrome.
-  std::vector<std::string> environment_variables_;
-
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
+
+  // Environment variables exported for Chrome.
+  std::vector<std::string> environment_variables_;
 
   // Login-related arguments to pass to exec.  Managed wholly by this class.
   std::vector<std::string> login_arguments_;
@@ -137,6 +145,10 @@ class BrowserJob : public BrowserJobInterface {
 
   // Extra one time arguments.
   std::vector<std::string> extra_one_time_arguments_;
+
+  // Extra environment variables to set when running the browser.
+  // Values are of the form "NAME=VALUE".
+  std::vector<std::string> extra_environment_variables_;
 
   // Wrapper for checking the flag file used to tell us to stop managing
   // the browser job. Externally owned.

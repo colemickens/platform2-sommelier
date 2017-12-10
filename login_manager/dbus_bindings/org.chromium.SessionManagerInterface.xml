@@ -42,6 +42,7 @@
         EnableChromeTesting:
         @force_relaunch: Restart the browser no matter what.
         @extra_arguments: Extra command line arguments to pass on restart.
+        @extra_environment_variables: Extra environment variables to export.
         @filepath: The named pipe to be used for testing communication.
 
         Restarts the browser, leaving it open for testing automation.
@@ -53,12 +54,17 @@
         invocation. Otherwise, it will only be restarted if
         automation is not yet enabled.  @extra_arguments can
         include any additional arguments that need to be passed to
-        Chrome on subsequent launches.
+        Chrome on subsequent launches. The values in
+        @extra_environment_variables should take the form "NAME=VAL".
     -->
     <method name="EnableChromeTesting">
       <arg type="b" name="force_relaunch" direction="in" />
       <arg type="as" name="extra_arguments" direction="in" />
+      <arg type="as" name="extra_environment_variables" direction="in" />
       <arg type="s" name="filepath" direction="out" />
+      <!-- TODO(derat): Remove raw after callers pass env vars:
+           https://crbug.com/793668 -->
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
     </method>
 
     <!--

@@ -253,7 +253,9 @@ void SessionManagerService::AbortBrowser(int signal,
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
-    const std::vector<std::string>& args, bool args_are_extra) {
+    const std::vector<std::string>& args,
+    bool args_are_extra,
+    const std::vector<std::string>& env_vars) {
   // Waiting for Chrome to shutdown takes too much time.
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
@@ -264,6 +266,7 @@ void SessionManagerService::RestartBrowserWithArgs(
     browser_->SetExtraArguments(args);
   else
     browser_->SetArguments(args);
+  browser_->SetExtraEnvironmentVariables(env_vars);
   // The browser will be restarted in HandleExit().
 }
 

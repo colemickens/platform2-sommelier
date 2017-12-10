@@ -83,6 +83,7 @@ using ::testing::Field;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
+using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -107,6 +108,13 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 namespace {
+
+// brillo::dbus_utils::ResponseSender implementation that just moves the
+// response that's passed to it.
+void MoveResponse(std::unique_ptr<dbus::Response>* response_out,
+                  std::unique_ptr<dbus::Response> response) {
+  *response_out = std::move(response);
+}
 
 // Test Bus instance to inject MockExportedObject.
 class FakeBus : public dbus::Bus {
@@ -766,6 +774,7 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   std::vector<std::string> args = {"--repeat-arg", "--one-time-arg"};
+  const std::vector<std::string> kEnvVars = {"FOO=", "BAR=/tmp"};
 
   base::FilePath temp_dir;
   ASSERT_TRUE(base::CreateNewTempDirectory("" /* ignored */, &temp_dir));
@@ -781,25 +790,34 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
               RestartBrowserWithArgs(
                   ElementsAre(args[0], args[1],
                               HasSubstr(expected_testing_path_prefix)),
-                  true))
+                  true, ElementsAre(kEnvVars[0], kEnvVars[1])))
       .Times(1);
 
   {
-    brillo::ErrorPtr error;
+    dbus::MethodCall method_call(kSessionManagerInterface,
+                                 kSessionManagerEnableChromeTesting);
+    method_call.SetSerial(1);  // Arbitrary, but needed by libdbus.
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendBool(false /* force_relaunch */);
+    writer.AppendArrayOfStrings(args);
+    writer.AppendArrayOfStrings(kEnvVars);
+
+    std::unique_ptr<dbus::Response> response;
+    impl_->EnableChromeTesting(&method_call,
+                               base::Bind(&MoveResponse, &response));
+    ASSERT_TRUE(response);
     std::string testing_path;
-    ASSERT_TRUE(impl_->EnableChromeTesting(&error, false, args, &testing_path));
-    EXPECT_FALSE(error.get());
+    EXPECT_TRUE(dbus::MessageReader(response.get()).PopString(&testing_path));
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
-  }
 
-  // Calling again, without forcing relaunch, should not do anything.
-  {
-    brillo::ErrorPtr error;
-    std::string testing_path;
-    ASSERT_TRUE(impl_->EnableChromeTesting(&error, false, args, &testing_path));
-    EXPECT_FALSE(error.get());
+    // Calling again, without forcing relaunch, should not do anything.
+    response.reset();
+    impl_->EnableChromeTesting(&method_call,
+                               base::Bind(&MoveResponse, &response));
+    ASSERT_TRUE(response);
+    EXPECT_TRUE(dbus::MessageReader(response.get()).PopString(&testing_path));
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
@@ -812,14 +830,24 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
               RestartBrowserWithArgs(
                   ElementsAre(args[0], args[1],
                               HasSubstr(expected_testing_path_prefix)),
-                  true))
+                  true, ElementsAre(kEnvVars[0], kEnvVars[1])))
       .Times(1);
 
   {
-    brillo::ErrorPtr error;
+    dbus::MethodCall method_call(kSessionManagerInterface,
+                                 kSessionManagerEnableChromeTesting);
+    method_call.SetSerial(1);  // Arbitrary, but needed by libdbus.
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendBool(true /* force_relaunch */);
+    writer.AppendArrayOfStrings(args);
+    writer.AppendArrayOfStrings(kEnvVars);
+
+    std::unique_ptr<dbus::Response> response;
+    impl_->EnableChromeTesting(&method_call,
+                               base::Bind(&MoveResponse, &response));
+    ASSERT_TRUE(response);
     std::string testing_path;
-    ASSERT_TRUE(impl_->EnableChromeTesting(&error, true, args, &testing_path));
-    EXPECT_FALSE(error.get());
+    EXPECT_TRUE(dbus::MessageReader(response.get()).PopString(&testing_path));
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix))
         << testing_path;
@@ -1687,7 +1715,7 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   fd1.PutValue(sockets[1]);
   fd1.CheckValidity();
 
-  const std::vector<std::string> argv = {
+  const std::vector<std::string> kArgv = {
       "program",
       "--switch1",
       "--switch2=switch2_value",
@@ -1698,12 +1726,13 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   };
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAreArray(argv), false))
+  EXPECT_CALL(manager_,
+              RestartBrowserWithArgs(ElementsAreArray(kArgv), false, IsEmpty()))
       .Times(1);
   ExpectGuestSession();
 
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RestartJob(&error, fd1, argv));
+  EXPECT_TRUE(impl_->RestartJob(&error, fd1, kArgv));
   EXPECT_FALSE(error.get());
 }
 

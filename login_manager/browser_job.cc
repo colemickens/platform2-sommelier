@@ -94,14 +94,14 @@ void MergeSwitches(std::vector<std::string>* args,
 
 }  // namespace
 
-BrowserJob::BrowserJob(
-    const std::vector<std::string>& arguments,
-    const std::map<std::string, std::string>& environment_variables,
-    uid_t desired_uid,
-    FileChecker* checker,
-    LoginMetrics* metrics,
-    SystemUtils* utils)
+BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
+                       const std::vector<std::string>& environment_variables,
+                       uid_t desired_uid,
+                       FileChecker* checker,
+                       LoginMetrics* metrics,
+                       SystemUtils* utils)
     : arguments_(arguments),
+      environment_variables_(environment_variables),
       file_checker_(checker),
       login_metrics_(metrics),
       system_(utils),
@@ -109,10 +109,6 @@ BrowserJob::BrowserJob(
       removed_login_manager_flag_(false),
       session_already_started_(false),
       subprocess_(desired_uid, system_) {
-  // Convert map of env vars into a vector of strings.
-  for (const auto& it : environment_variables)
-    environment_variables_.push_back(it.first + "=" + it.second);
-
   // Take over managing kLoginManagerFlag.
   if (RemoveArgs(&arguments_, kLoginManagerFlag)) {
     removed_login_manager_flag_ = true;
@@ -147,9 +143,10 @@ bool BrowserJob::RunInBackground() {
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
 
   const std::vector<std::string> argv(ExportArgv());
+  const std::vector<std::string> env_vars(ExportEnvironmentVariables());
   LOG(INFO) << "Running child " << base::JoinString(argv, " ");
   RecordTime();
-  return subprocess_.ForkAndExec(argv, environment_variables_);
+  return subprocess_.ForkAndExec(argv, env_vars);
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
@@ -230,6 +227,11 @@ void BrowserJob::SetExtraArguments(const std::vector<std::string>& arguments) {
   extra_arguments_ = arguments;
 }
 
+void BrowserJob::SetExtraEnvironmentVariables(
+    const std::vector<std::string>& env_vars) {
+  extra_environment_variables_ = env_vars;
+}
+
 void BrowserJob::ClearPid() {
   subprocess_.clear_pid();
 }
@@ -239,7 +241,7 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   to_return.insert(to_return.end(), login_arguments_.begin(),
                    login_arguments_.end());
 
-  if (ShouldDropExtraArguments()) {
+  if (ShouldDropExtraArgumentsAndEnvironmentVariables()) {
     LOG(WARNING) << "Dropping extra arguments and setting safe-mode switch due "
                     "to crashy browser.";
     to_return.emplace_back(kSafeModeFlag);
@@ -270,7 +272,16 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   return to_return;
 }
 
-bool BrowserJob::ShouldDropExtraArguments() const {
+std::vector<std::string> BrowserJob::ExportEnvironmentVariables() const {
+  std::vector<std::string> vars = environment_variables_;
+  if (!ShouldDropExtraArgumentsAndEnvironmentVariables()) {
+    vars.insert(vars.end(), extra_environment_variables_.begin(),
+                extra_environment_variables_.end());
+  }
+  return vars;
+}
+
+bool BrowserJob::ShouldDropExtraArgumentsAndEnvironmentVariables() const {
   // Check start_time_with_extra_args != 0 so that test cases such as
   // SetExtraArguments and ExportArgv pass without mocking time().
   const time_t start_time_with_extra_args =

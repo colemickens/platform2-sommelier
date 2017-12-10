@@ -149,12 +149,14 @@ int main(int argc, char* argv[]) {
   if (!cros_config->Init())
     cros_config = nullptr;
   bool is_developer_end_user = false;
-  map<string, string> env_vars;
-  vector<string> args;
+  map<string, string> env_var_map;
+  vector<string> args, env_vars;
   uid_t uid = 0;
-  PerformChromeSetup(cros_config.get(), &is_developer_end_user, &env_vars,
+  PerformChromeSetup(cros_config.get(), &is_developer_end_user, &env_var_map,
                      &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
+  for (const auto& it : env_var_map)
+    env_vars.push_back(it.first + "=" + it.second);
 
   // Shim that wraps system calls, file system ops, etc.
   SystemUtilsImpl system;
