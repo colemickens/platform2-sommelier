@@ -117,9 +117,9 @@ Commands:
   finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
       Finishes certificate request for |user| using CA response from
       |input_file|, and stores it in the key with the specified |label|.
-  sign_challenge [--enterprise] [--user=<user>] [--label=<label>]
-          [--domain=<domain>] [--device_id=<device_id>] [--spkac]
-          --input=<input_file> [--output=<output_file>]
+  sign_challenge [--enterprise [--va_server=default|test]] [--user=<user>]
+          [--label=<label>] [--domain=<domain>] [--device_id=<device_id>]
+          [--spkac] --input=<input_file> [--output=<output_file>]
       Signs a challenge (EnterpriseChallenge, if |enterprise| flag is given,
         otherwise a SimpleChallenge) provided in the |input_file|. Stores
         the response in the |output_file|, if specified.
@@ -383,9 +383,19 @@ class ClientLoop : public ClientLoopBase {
         return EX_NOINPUT;
       }
       if (command_line->HasSwitch("enterprise")) {
+        VAType va_type = DEFAULT_VA;
+        std::string va_server(command_line->GetSwitchValueASCII("va_server"));
+          va_type = DEFAULT_VA;
+        if (va_server == "test") {
+          va_type = TEST_VA;
+        } if (va_server != "" && va_server != "default") {
+          LOG(ERROR) << "Invalid va_server value: " << va_server;
+          return EX_USAGE;
+        }
         task = base::Bind(
             &ClientLoop::CallSignEnterpriseChallenge,
             weak_factory_.GetWeakPtr(),
+            va_type,
             input,
             command_line->GetSwitchValueASCII("label"),
             command_line->GetSwitchValueASCII("user"),
@@ -717,13 +727,15 @@ class ClientLoop : public ClientLoopBase {
         weak_factory_.GetWeakPtr()));
   }
 
-  void CallSignEnterpriseChallenge(const std::string& input,
+  void CallSignEnterpriseChallenge(VAType va_type,
+                                   const std::string& input,
                                    const std::string& label,
                                    const std::string& username,
                                    const std::string& domain,
                                    const std::string& device_id,
                                    bool include_spkac) {
     SignEnterpriseChallengeRequest request;
+    request.set_va_type(va_type);
     request.set_key_label(label);
     request.set_username(username);
     request.set_domain(domain);
