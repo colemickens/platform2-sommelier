@@ -73,6 +73,15 @@ namespace switches {
     { "test",     cryptohome::Attestation::kTestPCA },
     { nullptr,    cryptohome::Attestation::kMaxPCAType }
   };
+  static const char kVaServerSwitch[] = "va-server";
+  static struct {
+    const char *name;
+    const cryptohome::Attestation::VAType va_type;
+  } kVaServers[] = {
+    { "default",  cryptohome::Attestation::kDefaultVA },
+    { "test",     cryptohome::Attestation::kTestVA },
+    { nullptr,    cryptohome::Attestation::kMaxVAType }
+  };
   static const char kActionSwitch[] = "action";
   static const char* kActions[] = {"mount",
                                    "mount_ex",
@@ -647,6 +656,20 @@ int main(int argc, char **argv) {
     for (int i = 0; switches::kAttestationServers[i].name; ++i) {
       if (server == switches::kAttestationServers[i].name) {
         pca_type = switches::kAttestationServers[i].pca_type;
+        break;
+      }
+    }
+  }
+
+  cryptohome::Attestation::VAType va_type =
+      cryptohome::Attestation::kDefaultVA;
+  std::string va_server(cl->HasSwitch(switches::kVaServerSwitch) ?
+      cl->GetSwitchValueASCII(switches::kVaServerSwitch) :
+      cl->GetSwitchValueASCII(switches::kAttestationServerSwitch));
+  if (va_server.size()) {
+    for (int i = 0; switches::kVaServers[i].name; ++i) {
+      if (va_server == switches::kVaServers[i].name) {
+        va_type = switches::kVaServers[i].va_type;
         break;
       }
     }
@@ -2242,8 +2265,9 @@ int main(int argc, char **argv) {
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(  // NOLINT
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_va_challenge(  // NOLINT
             proxy.gproxy(),
+            va_type,
             is_user_specific,
             account_id.c_str(),
             key_name.c_str(),
@@ -2253,7 +2277,7 @@ int main(int argc, char **argv) {
             challenge.get(),
             &async_id,
             &brillo::Resetter(&error).lvalue())) {
-      printf("AsyncTpmAttestationSignEnterpriseChallenge call failed: %s.\n",
+      printf("AsyncTpmAttestationSignEnterpriseVaChallenge call failed: %s.\n",
              error->message);
       return 1;
     }
