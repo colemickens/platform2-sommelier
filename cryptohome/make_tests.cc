@@ -10,6 +10,8 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -206,9 +208,10 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   mount->set_use_tpm(false);
   NiceMock<policy::MockDevicePolicy>* device_policy =
     new NiceMock<policy::MockDevicePolicy>;
-  mount->set_policy_provider(new policy::PolicyProvider(device_policy));
   EXPECT_CALL(*device_policy, LoadPolicy())
     .WillRepeatedly(Return(true));
+  mount->set_policy_provider(new policy::PolicyProvider(
+      std::unique_ptr<NiceMock<policy::MockDevicePolicy>>(device_policy)));
   FilePath salt_path = shadow_root.Append("salt");
   int64_t salt_size = salt.size();
   EXPECT_CALL(platform, FileExists(salt_path))

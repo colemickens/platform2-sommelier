@@ -357,7 +357,8 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   real_homedirs.set_shadow_root(kImageDir);
   real_homedirs.set_platform(&platform_);
   policy::PolicyProvider policy_provider(
-      new NiceMock<policy::MockDevicePolicy>);
+      std::unique_ptr<NiceMock<policy::MockDevicePolicy>>(
+          new NiceMock<policy::MockDevicePolicy>));
   real_homedirs.set_policy_provider(&policy_provider);
   // Avoid calling FreeDiskSpace routine.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))

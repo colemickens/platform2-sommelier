@@ -158,7 +158,8 @@ class HomeDirsTest
         .WillRepeatedly(SetOwner(owner_known, owner));
     EXPECT_CALL(*device_policy, GetEphemeralUsersEnabled(_))
         .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
-    homedirs_.own_policy_provider(new policy::PolicyProvider(device_policy));
+    homedirs_.own_policy_provider(new policy::PolicyProvider(
+        std::unique_ptr<policy::MockDevicePolicy>(device_policy)));
   }
 
   // Returns true if the test is running for eCryptfs, false if for dircrypto.

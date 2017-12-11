@@ -191,7 +191,8 @@ class MountTest
         .WillRepeatedly(SetOwner(owner_known, owner));
     EXPECT_CALL(*device_policy, GetEphemeralUsersEnabled(_))
         .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
-    mount_->set_policy_provider(new policy::PolicyProvider(device_policy));
+    mount_->set_policy_provider(new policy::PolicyProvider(
+        std::unique_ptr<policy::MockDevicePolicy>(device_policy)));
     // By setting a policy up, we're expecting HomeDirs::GetPlainOwner() to
     // actually execute the code rather than a mock.
     EXPECT_CALL(homedirs_, GetPlainOwner(_))
