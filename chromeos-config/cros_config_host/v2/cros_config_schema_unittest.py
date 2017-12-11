@@ -28,10 +28,9 @@ models:
     identity:
       sku-id: 0
     audio:
-      cras-config-dir: '/etc/cras'
-      ucm-alsa-config-dir: '/usr/share/alsa/ucm'
-      cras-config-subdir: 'basking'
-      ucm-suffix: 'basking'
+      main:
+        cras-config-subdir: 'basking'
+        ucm-suffix: 'basking'
     brand-code: 'ASUN'
     firmware:
       <<: *reef-9042-fw
@@ -81,8 +80,8 @@ class TransformConfigTests(unittest.TestCase):
         'basking',
         json_obj.models[0].name)
     self.assertEqual(
-        '/etc/cras',
-        json_obj.models[0].audio.cras_config_dir)
+        '/etc/cras/basking',
+        json_obj.models[0].audio.main.cras_config_dir)
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
@@ -113,7 +112,13 @@ class ValidateConfigTests(unittest.TestCase):
     config = """
 models:
   - name: 'astronaut'
+    audio:
+      main:
+        cras-config-subdir: 'astronaut'
   - name: 'astronaut'
+    audio:
+      main:
+        cras-config-subdir: 'astronaut'
 """
     try:
       cros_config_schema.ValidateConfig(

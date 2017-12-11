@@ -16,6 +16,7 @@ import yaml
 
 MODELS = 'models'
 BUILD_ONLY_ELEMENTS = ['firmware']
+CRAS_CONFIG_DIR = '/etc/cras'
 
 def GetNamedTuple(mapping):
   """Converts a mapping into Named Tuple recursively.
@@ -93,6 +94,21 @@ def TransformConfig(config):
   # Drop everything except for models since they were just used as shared
   # config in the source yaml.
   json_config = {MODELS: json_config[MODELS]}
+
+  # For now, this reaches parity with the --abspath option on cros_config,
+  # except it does it at build time.
+  # We may standardize this, but for now doing it in the transform works.
+  cras_config_dir_name = 'cras-config-dir'
+  cras_config_subdir_name = 'cras-config-subdir'
+  for model in json_config[MODELS]:
+    audio = model['audio']['main']
+    main_dir = audio.get(cras_config_dir_name, CRAS_CONFIG_DIR)
+    sub_dir = audio.get(cras_config_subdir_name, None)
+    if sub_dir:
+      main_dir = '%s/%s' % (main_dir, sub_dir)
+      audio.pop(cras_config_subdir_name)
+    audio[cras_config_dir_name] = main_dir
+
   return json.dumps(json_config, sort_keys=True, indent=2)
 
 def FilterBuildElements(config):

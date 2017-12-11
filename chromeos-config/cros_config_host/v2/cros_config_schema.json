@@ -44,33 +44,37 @@
           "audio": {
             "type": "object",
             "properties": {
-              "cras-config-dir": {
-                "description": "Root directory of the CRAS configuration files.",
-                "type": "string",
-                "pattern": "^(/[^/ ]*)+/?$"
-              },
-              "cras-config-subdir": {
-                "description": "Optional subdir for model specific configuration.",
-                "type": "string"
-              },
-              "disable-profile": {
-                "description": "Optional --disable_profile parameter for CRAS deamon.",
-                "type": "string"
-              },
-              "ucm-alsa-config-dir": {
-                "description": "Root directory of the UCM configuration files.",
-                "type": "string",
-                "pattern": "^(/[^/ ]*)+/?$"
-              },
-              "ucm-suffix": {
-                "description": "Optional UCM suffix used to determine model specific config.",
-                "type": "string"
+              "main": {
+                "type": "object",
+                "properties": {
+                  "cras-config-dir": {
+                    "description": "Full path to cras config: /etc/cras/{cras-config-subdir} (Auto-generated)",
+                    "type": "string",
+                    "pattern": "^(/[^/ ]*)+/?$"
+                  },
+                  "cras-config-subdir": {
+                    "description": "Optional subdir for model specific configuration.",
+                    "type": "string"
+                  },
+                  "disable-profile": {
+                    "description": "Optional --disable_profile parameter for CRAS deamon.",
+                    "type": "string"
+                  },
+                  "ucm-suffix": {
+                    "description": "Optional UCM suffix used to determine model specific config.",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "cras-config-dir",
+                  "ucm-alsa-config-dir"
+                ]
               }
             },
             "additionalProperties": false,
             "required": [
-              "cras-config-dir",
-              "ucm-alsa-config-dir"
+              "main"
             ]
           },
           "brand-code": {

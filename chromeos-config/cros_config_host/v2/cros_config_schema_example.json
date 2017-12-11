@@ -2,11 +2,11 @@
   "models": [
     {
       "audio": {
-        "cras-config-dir": "/etc/cras", 
-        "cras-config-subdir": "basking", 
-        "disable-profile": "", 
-        "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
-        "ucm-suffix": "basking"
+        "main": {
+          "cras-config-dir": "/etc/cras/basking", 
+          "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
+          "ucm-suffix": "basking"
+        }
       }, 
       "brand-code": "ASUN", 
       "firmware": {
@@ -54,11 +54,11 @@
     }, 
     {
       "audio": {
-        "cras-config-dir": "/etc/cras", 
-        "cras-config-subdir": "electro", 
-        "disable-profile": "", 
-        "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
-        "ucm-suffix": "electro"
+        "main": {
+          "cras-config-dir": "/etc/cras/electro", 
+          "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
+          "ucm-suffix": "electro"
+        }
       }, 
       "brand-code": "ACBB", 
       "firmware": {

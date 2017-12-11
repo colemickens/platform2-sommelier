@@ -15,11 +15,6 @@ reef-9042-fw: &reef-9042-fw
     libpayload: 'reef'
     cr50: 'cr50'
 
-audio: &audio
-  cras-config-dir: '/etc/cras'
-  ucm-alsa-config-dir: '/usr/share/alsa/ucm'
-  disable-profile: ''
-
 models:
   - name: 'basking'
     identity:
@@ -27,9 +22,9 @@ models:
       sku-id: 0
       customization-id: 'BASKING'
     audio:
-      <<: *audio
-      cras-config-subdir: 'basking'
-      ucm-suffix: 'basking'
+      main:
+        cras-config-subdir: 'basking'
+        ucm-suffix: 'basking'
     brand-code: 'ASUN'
     firmware:
       <<: *reef-9042-fw
@@ -58,9 +53,9 @@ models:
       sku-id: 8
       customization-id: 'ELECTRO'
     audio:
-      <<: *audio
-      cras-config-subdir: 'electro'
-      ucm-suffix: 'electro'
+      main:
+        cras-config-subdir: 'electro'
+        ucm-suffix: 'electro'
     brand-code: 'ACBB'
     firmware:
       <<: *reef-9042-fw
