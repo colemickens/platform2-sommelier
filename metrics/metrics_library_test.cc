@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <unistd.h>
+
 #include <cstring>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
@@ -48,7 +50,8 @@ class MetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
         .WillRepeatedly(SetMetricsPolicy(true));
-    lib_.SetPolicyProvider(new policy::PolicyProvider(device_policy_));
+    lib_.SetPolicyProvider(new policy::PolicyProvider(
+        std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     // Defeat metrics enabled caching between tests.
     lib_.cached_enabled_time_ = 0;
   }
@@ -224,7 +227,8 @@ class CMetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
         .WillRepeatedly(SetMetricsPolicy(true));
-    ml.SetPolicyProvider(new policy::PolicyProvider(device_policy_));
+    ml.SetPolicyProvider(new policy::PolicyProvider(
+        std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     ml.cached_enabled_time_ = 0;
   }
 
