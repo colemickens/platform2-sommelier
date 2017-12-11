@@ -1,17 +1,58 @@
 {
   "models": [
     {
-      "componentConfig": {
-        "bluetoothConfigPath": "/etc/bluetooth/pyro.conf"
+      "audio": {
+        "cras_config_dir": "/etc/cras",
+        "cras_config_subdir": "pyro",
+        "disable_profile": "",
+        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
+        "ucm_suffix": "pyro"
       },
-      "name": "pyro"
+      "brand_code": "PYRO",
+      "identity": {
+        "sku_id": 0,
+        "smbios_name_match": "Pyro"
+      },
+      "name": "pyro",
+      "powerd_prefs": "pyro",
+      "wallpaper": "default",
+      "touch": {
+        "present": "probe"
+      }
     },
     {
-      "componentConfig": {
-        "bluetoothConfigPath": "/etc/bluetooth/sand.conf"
+      "audio": {
+        "cras_config_dir": "/etc/cras",
+        "cras_config_subdir": "basking",
+        "disable_profile": "",
+        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
+        "ucm_suffix": "basking"
       },
-      "name": "sand"
+      "brand_code": "ASUN",
+      "identity": {
+        "customization_id": "BASKING",
+        "sku_id": 0,
+        "smbios_name_match": "Reef"
+      },
+      "name": "basking",
+      "powerd_prefs": "reef"
+    },
+    {
+      "audio": {
+        "cras_config_dir": "/etc/cras",
+        "cras_config_subdir": "electro",
+        "disable_profile": "",
+        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
+        "ucm_suffix": "electro"
+      },
+      "brand_code": "ACBB",
+      "identity": {
+        "customization_id": "ELECTRO",
+        "sku_id": 8,
+        "smbios_name_match": "Reef"
+      },
+      "name": "electro",
+      "powerd_prefs": "reef"
     }
-  ],
-  "name": "reef"
+  ]
 }

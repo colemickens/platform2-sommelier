@@ -65,6 +65,13 @@
           'dependencies': [
             'libcros_config',
           ],
+          'conditions': [
+            ['USE_json == 1', {
+              'defines': [
+                'USE_JSON',
+              ]},
+            ],
+          ],
           'sources': [
             'libcros_config/cros_config_unittest.cc',
           ],
@@ -75,6 +82,13 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'cros_config',
+          ],
+          'conditions': [
+            ['USE_json == 1', {
+              'defines': [
+                'USE_JSON',
+              ]},
+            ],
           ],
           'sources': [
             'cros_config_main_unittest.cc',

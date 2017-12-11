@@ -55,22 +55,12 @@ TEST(CrosConfigTest, GetStringRoot) {
 TEST(CrosConfigTest, GetStringNonRoot) {
   std::string val;
   bool success = base::GetAppOutput(
-      GetCrosConfigCommand({"/firmware", "bcs-overlay"}), &val);
+      GetCrosConfigCommand({"/touch", "present"}), &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("overlay-pyro-private", val);
+  EXPECT_EQ("probe", val);
 }
 
-#ifdef USE_JSON
-TEST(CrosConfigTest, GetString_JsonConfig) {
-  std::string val;
-  bool success =
-      base::GetAppOutput(GetCrosConfigCommand(
-          {"/componentConfig", "bluetoothConfigPath"}), &val);
-  EXPECT_TRUE(success);
-  EXPECT_EQ("/etc/bluetooth/pyro.conf", val);
-}
-#endif /* USE_JSON */
-
+#ifndef USE_JSON
 TEST(CrosConfigTest, GetAbsPath) {
   std::string val;
   bool success =
@@ -100,6 +90,7 @@ TEST(CrosConfigTest, GetAbsPath) {
   EXPECT_FALSE(success);
   EXPECT_EQ("", val);
 }
+#endif /* !USE_JSON */
 
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");

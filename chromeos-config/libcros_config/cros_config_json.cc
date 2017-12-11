@@ -37,11 +37,6 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  if (model_offset_ < 0) {
-    LOG(ERROR) << "Please specify the model to access.";
-    return false;
-  }
-
   if (path.size() == 0) {
     LOG(ERROR) << "Path must be specified";
     return false;
@@ -52,41 +47,25 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  if (root_dict_ != nullptr) {
-    const base::ListValue* models_list = nullptr;
-    if (root_dict_->GetList("models", &models_list)) {
-      size_t num_models = models_list->GetSize();
-      for (size_t i = 0; i < num_models; ++i) {
-        const base::DictionaryValue* model_dict = nullptr;
-        if (models_list->GetDictionary(i, &model_dict)) {
-          std::string model_name;
-          if (model_dict->GetString("name", &model_name)) {
-            if (model_name == model_) {
-              bool valid_path = true;
-              const base::DictionaryValue* attr_dict = model_dict;
+  bool valid_path = true;
+  const base::DictionaryValue* attr_dict = model_dict_;
 
-              std::vector<std::string> path_tokens = base::SplitString(
-                  path.substr(1),
-                  "/",
-                  base::TRIM_WHITESPACE,
-                  base::SPLIT_WANT_ALL);
-              for (std::string& path : path_tokens) {
-                valid_path = attr_dict->GetDictionary(path, &attr_dict);
-                if (!valid_path) {
-                  break;
-                }
-              }
-
-              std::string value;
-              if (valid_path && attr_dict->GetString(prop, &value)) {
-                val->assign(value);
-                return true;
-              }
-            }
-          }
-        }
-      }
+  std::vector<std::string> path_tokens = base::SplitString(
+      path.substr(1),
+      "/",
+      base::TRIM_WHITESPACE,
+      base::SPLIT_WANT_ALL);
+  for (std::string& path : path_tokens) {
+    valid_path = attr_dict->GetDictionary(path, &attr_dict);
+    if (!valid_path) {
+      break;
     }
+  }
+
+  std::string value;
+  if (valid_path && attr_dict->GetString(prop, &value)) {
+    val->assign(value);
+    return true;
   }
 
   return false;
@@ -104,8 +83,9 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
 }
 
 bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
-                            const std::string& name, int sku_id,
-                            const std::string& whitelabel_name) {
+                            const std::string& name,
+                            int sku_id,
+                            const std::string& customization_id) {
   std::string config_json_data;
   if (!base::ReadFileToString(config_filepath, &config_json_data)) {
     LOG(ERROR) << "Could not read file " << config_filepath.MaybeAsASCII();
@@ -123,13 +103,50 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
     LOG(ERROR) << "Fail to parse config.json: " << error_msg;
     return false;
   }
-  if (!json_config_->GetAsDictionary(&root_dict_)) {
-    LOG(ERROR) << "Fail to parse root dictionary from "
-                << config_filepath.MaybeAsASCII();
-    return false;
+
+  const base::DictionaryValue* root_dict = nullptr;
+  if (json_config_->GetAsDictionary(&root_dict)) {
+    const base::ListValue* models_list = nullptr;
+    if (root_dict->GetList("models", &models_list)) {
+      size_t num_models = models_list->GetSize();
+      for (size_t i = 0; i < num_models; ++i) {
+        const base::DictionaryValue* model_dict = nullptr;
+        if (models_list->GetDictionary(i, &model_dict)) {
+          const base::DictionaryValue* identity_dict = nullptr;
+          if (model_dict->GetDictionary("identity", &identity_dict)) {
+            bool require_sku_match = sku_id > -1;
+            int current_sku_id;
+            bool sku_match = (!require_sku_match ||
+                (identity_dict->GetInteger("sku_id", &current_sku_id)
+                    && current_sku_id == sku_id));
+
+            bool name_match = true;
+            std::string current_name;
+            if (identity_dict->GetString("smbios_name_match", &current_name)
+                && !name.empty()) {
+              name_match = current_name == name;
+            }
+            bool customization_id_match = true;
+            std::string current_customization_id;
+            if (identity_dict->GetString(
+                "customization_id", &current_customization_id)
+                && !current_customization_id.empty()) {
+              customization_id_match =
+                  current_customization_id == customization_id;
+            }
+
+            if (sku_match && name_match && customization_id_match) {
+              model_dict_ = model_dict;
+              break;
+            }
+          }
+        }
+      }
+    }
   }
-  if (!SelectModelConfigByIDs(name, sku_id, whitelabel_name)) {
-    LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
+  if (!model_dict_) {
+    LOG(ERROR) << "Failed to find config for name: " << name << " sku_id: " <<
+        sku_id << " customization_id: " << customization_id;
     return false;
   }
   inited_ = true;

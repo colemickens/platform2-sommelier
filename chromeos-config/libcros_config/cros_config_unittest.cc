@@ -23,7 +23,7 @@ class CrosConfigTest : public testing::Test {
  protected:
   void InitConfig(const std::string name = "Pyro", int sku_id = -1,
     std::string whitelabel_name = "") {
-    base::FilePath filepath("test.dtb");
+    base::FilePath filepath(TEST_FILE);
     ASSERT_TRUE(cros_config_.InitForTest(filepath, name, sku_id,
                                          whitelabel_name));
   }
@@ -37,18 +37,8 @@ TEST_F(CrosConfigTest, CheckMissingFile) {
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
 }
 
-TEST_F(CrosConfigTest, CheckBadFile) {
-  base::FilePath filepath("test.dts");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
-}
-
-TEST_F(CrosConfigTest, CheckBadStruct) {
-  base::FilePath filepath("test_bad_struct.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1, ""));
-}
-
 TEST_F(CrosConfigTest, CheckUnknownModel) {
-  base::FilePath filepath("test.dtb");
+  base::FilePath filepath(TEST_FILE);
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model", -1, ""));
 }
 
@@ -79,8 +69,8 @@ TEST_F(CrosConfigTest, CheckGoodStringRoot) {
 TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
   InitConfig();
   std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/firmware", "bcs-overlay", &val));
-  ASSERT_EQ("overlay-pyro-private", val);
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("probe", val);
 }
 
 TEST_F(CrosConfigTest, CheckEmptyPathError) {
@@ -97,29 +87,16 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
   ASSERT_EQ("", val);
 }
 
-#ifdef USE_JSON
-TEST_F(CrosConfigTest, GetNonRootProperty_JsonConfig) {
-  InitConfig();
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString(
-      "/componentConfig", "bluetoothConfigPath", &val));
-  ASSERT_EQ("/etc/bluetooth/pyro.conf", val);
+#ifndef USE_JSON
+TEST_F(CrosConfigTest, CheckBadFile) {
+  base::FilePath filepath("test.dts");
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
 }
 
-TEST_F(CrosConfigTest, GetRootProperty_JsonConfig) {
-  InitConfig();
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
-  ASSERT_EQ("pyro", val);
+TEST_F(CrosConfigTest, CheckBadStruct) {
+  base::FilePath filepath("test_bad_struct.dtb");
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1, ""));
 }
-
-TEST_F(CrosConfigTest, CheckBadString_JsonConfig) {
-  InitConfig();
-  std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/componentConfig", "missing", &val));
-  ASSERT_EQ("", val);
-}
-#endif /* USE_JSON */
 
 TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // These mirror the tests in libcros_config_host_unittest testWhitelabel()
@@ -264,6 +241,7 @@ TEST_F(CrosConfigTest, CheckWhiteLabelAlternate) {
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("no", val);
 }
+#endif /* !USE_JSON */
 
 int main(int argc, char **argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");

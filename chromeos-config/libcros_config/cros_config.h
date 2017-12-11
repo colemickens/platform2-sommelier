@@ -187,11 +187,11 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   std::vector<int> default_offsets_;  // Device tree offset of default modes
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
 
-#ifdef USE_JSON
+
   // JSON configuration
   std::unique_ptr<const base::Value> json_config_ = nullptr;
-  const base::DictionaryValue* root_dict_ = nullptr;  // JSON root
-#endif
+  const base::DictionaryValue* model_dict_ = nullptr;  // Model root
+
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };
 
