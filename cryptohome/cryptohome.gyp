@@ -73,9 +73,10 @@
         'dbus_glib_type': 'client',
         'dbus_glib_out_dir': 'include/bindings',
         'dbus_glib_prefix': 'cryptohome',
+        'dbus_glib_header_stem': 'cryptohome',
       },
       'sources': [
-        'cryptohome.xml',
+        'dbus_bindings/org.chromium.CryptohomeInterface.xml',
       ],
       'includes': ['../common-mk/dbus_glib.gypi'],
     },
@@ -86,9 +87,10 @@
         'dbus_glib_type': 'server',
         'dbus_glib_out_dir': 'include/bindings',
         'dbus_glib_prefix': 'cryptohome',
+        'dbus_glib_header_stem': 'cryptohome',
       },
       'sources': [
-        'cryptohome.xml',
+        'dbus_bindings/org.chromium.CryptohomeInterface.xml',
       ],
       'includes': ['../common-mk/dbus_glib.gypi'],
     },

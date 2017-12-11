@@ -1,0 +1,6 @@
+include_dir=@INCLUDE_DIR@
+
+Name: libcryptohome-client-test
+Version: @PV@
+Description: Cryptohome client interface mock library
+Cflags: -I${include_dir}
