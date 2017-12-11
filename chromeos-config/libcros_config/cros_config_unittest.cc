@@ -180,6 +180,16 @@ TEST_F(CrosConfigTest, CheckDefault) {
   // This relies on a default property
   ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
   ASSERT_EQ("pyro", val);
+
+  // This relies on a 'default' property in 'broken' pointing to 'caroline',
+  // which itself has a 'default' property.
+  InitConfig("Reef", 21);
+  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
+  ASSERT_EQ("pyro", val);
+
+  // Check it detects a circular 'default'.
+  base::FilePath filepath("test.dtb");
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Reef", 22, ""));
 }
 
 TEST_F(CrosConfigTest, CheckSubmodel) {

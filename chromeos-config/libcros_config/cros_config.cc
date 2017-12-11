@@ -167,8 +167,9 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
         GetString(submodel_offset_, path, prop, val_out)) {
       return true;
     }
-    if (default_offset_ != -1) {
-      return GetString(default_offset_, path, prop, val_out);
+    for (int offset : default_offsets_) {
+      if (GetString(offset, path, prop, val_out))
+        return true;
     }
     return false;
   }
@@ -213,22 +214,23 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
   // the config is correct. But this is a critical tool and we want to avoid
   // crashes in any situation.
   *offset_out = -1;
-  if (ptr) {
-    if (len != sizeof(fdt32_t)) {
-      LOG(ERROR) << prop_name << " phandle for model " << model_
-                 << " is of size " << len << " but should be "
-                 << sizeof(fdt32_t);
-      return false;
-    }
-    int phandle = fdt32_to_cpu(*ptr);
-    int offset = fdt_node_offset_by_phandle(blob, phandle);
-    if (offset < 0) {
-      LOG(ERROR) << prop_name << "lookup for model " << model_
-                 << " failed: " << fdt_strerror(offset);
-      return false;
-    }
-    *offset_out = offset;
+  if (!ptr) {
+    return false;
   }
+  if (len != sizeof(fdt32_t)) {
+    LOG(ERROR) << prop_name << " phandle for model " << model_
+                << " is of size " << len << " but should be "
+                << sizeof(fdt32_t);
+    return false;
+  }
+  int phandle = fdt32_to_cpu(*ptr);
+  int offset = fdt_node_offset_by_phandle(blob, phandle);
+  if (offset < 0) {
+    LOG(ERROR) << prop_name << "lookup for model " << model_
+                << " failed: " << fdt_strerror(offset);
+    return false;
+  }
+  *offset_out = offset;
   return true;
 }
 
@@ -269,7 +271,18 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   if (whitelabel_offset_ == -1) {
     LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
   }
-  LookupPhandle(model_offset_, "default", &default_offset_);
+  int next_offset;
+  default_offsets_.clear();
+  for (int offset = model_offset_;
+       LookupPhandle(offset, "default", &next_offset);
+       offset = next_offset) {
+    if (std::find(default_offsets_.begin(), default_offsets_.end(),
+                  next_offset) != default_offsets_.end()) {
+      LOG(ERROR) << "Circular default at " << GetFullPath(offset);
+      return false;
+    }
+    default_offsets_.push_back(next_offset);
+  }
 
   LOG(INFO) << "Using master configuration for model " << model_name_
             << ", submodel "

@@ -92,7 +92,9 @@
 				10 &blacktip
 				11 &blacktip_touch
 				12 &blacktip_notouch
-				20 &caroline>;
+				20 &caroline
+				21 &broken
+				22 &circular_default>;
 		};
 		sku-map@1 {
 			reg = <1>;
@@ -251,10 +253,25 @@
 			};
 		};
 	};
-	broken {
+	broken: broken {
+		default = <&caroline>;
 		firmware {
 			bcs-overlay = "overlay-reef-private";
 			main-image = "bcs://Reef.9042.87.1.tbz2";
+			no-firmware;
+		};
+	};
+
+	circular_default: circular-default {
+		default = <&circular_default_1>;
+		firmware {
+			no-firmware;
+		};
+	};
+
+	circular_default_1: circular-default-1 {
+		default = <&circular_default>;
+		firmware {
 			no-firmware;
 		};
 	};

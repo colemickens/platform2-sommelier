@@ -184,7 +184,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // property reads, since it overrides the model itself.
   int whitelabel_tag_offset_ = -1;
   int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
-  int default_offset_ = -1;      // Device tree offset of the default mode
+  std::vector<int> default_offsets_;  // Device tree offset of default modes
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
 
 #ifdef USE_JSON
