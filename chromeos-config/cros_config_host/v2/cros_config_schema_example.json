@@ -2,101 +2,101 @@
   "models": [
     {
       "audio": {
-        "cras_config_dir": "/etc/cras", 
-        "cras_config_subdir": "basking", 
-        "disable_profile": "", 
-        "ucm_alsa_config_dir": "/usr/share/alsa/ucm", 
-        "ucm_suffix": "basking"
+        "cras-config-dir": "/etc/cras", 
+        "cras-config-subdir": "basking", 
+        "disable-profile": "", 
+        "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
+        "ucm-suffix": "basking"
       }, 
-      "brand_code": "ASUN", 
+      "brand-code": "ASUN", 
       "firmware": {
-        "bcs_overlay": "overlay-reef-private", 
-        "build_targets": {
+        "bcs-overlay": "overlay-reef-private", 
+        "build-targets": {
           "coreboot": "reef", 
           "cr50": "cr50", 
           "depthcharge": "reef", 
           "ec": "reef", 
           "libpayload": "reef"
         }, 
-        "ec_image": "Reef_EC.9042.87.1.tbz2", 
-        "key_id": "OEM2", 
-        "main_image": "Reef.9042.87.1.tbz2", 
-        "main_rw_image": "Reef.9042.110.0.tbz2"
+        "ec-image": "Reef_EC.9042.87.1.tbz2", 
+        "key-id": "OEM2", 
+        "main-image": "Reef.9042.87.1.tbz2", 
+        "main-rw-image": "Reef.9042.110.0.tbz2"
       }, 
       "identity": {
-        "customization_id": "BASKING", 
-        "sku_id": 0, 
-        "smbios_name_match": "Reef"
+        "customization-id": "BASKING", 
+        "sku-id": 0, 
+        "smbios-name-match": "Reef"
       }, 
       "name": "basking", 
-      "powerd_prefs": "reef", 
-      "test_alias": "reef", 
+      "powerd-prefs": "reef", 
+      "test-alias": "reef", 
       "touch": {
         "present": "probe", 
-        "probe_regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+        "probe-regex": "[Tt]ouchscreen\\|WCOMNTN2", 
         "stylus": {
-          "firmware_bin": "wacom/wacom_4209.hex", 
-          "firmware_symlink": "wacom_firmware_BASKING.hex"
+          "firmware-bin": "wacom/wacom_4209.hex", 
+          "firmware-symlink": "wacom_firmware_BASKING.hex"
         }, 
         "touchpad": {
-          "firmware_bin": "elan/97.0_6.0.bin", 
-          "firmware_symlink": "elan_i2c_97.0.bin"
+          "firmware-bin": "elan/97.0_6.0.bin", 
+          "firmware-symlink": "elan_i2c_97.0.bin"
         }, 
         "touchscreen@0": {
-          "firmware_bin": "elan/3062_5602.bin", 
-          "firmware_symlink": "elants_i2c_3062.bin"
+          "firmware-bin": "elan/3062_5602.bin", 
+          "firmware-symlink": "elants_i2c_3062.bin"
         }, 
         "touchscreen@1": {
-          "firmware_bin": "elan/306e_5611.bin", 
-          "firmware_symlink": "elants_i2c_306e.bin"
+          "firmware-bin": "elan/306e_5611.bin", 
+          "firmware-symlink": "elants_i2c_306e.bin"
         }
       }
     }, 
     {
       "audio": {
-        "cras_config_dir": "/etc/cras", 
-        "cras_config_subdir": "electro", 
-        "disable_profile": "", 
-        "ucm_alsa_config_dir": "/usr/share/alsa/ucm", 
-        "ucm_suffix": "electro"
+        "cras-config-dir": "/etc/cras", 
+        "cras-config-subdir": "electro", 
+        "disable-profile": "", 
+        "ucm-alsa-config-dir": "/usr/share/alsa/ucm", 
+        "ucm-suffix": "electro"
       }, 
-      "brand_code": "ACBB", 
+      "brand-code": "ACBB", 
       "firmware": {
-        "bcs_overlay": "overlay-reef-private", 
-        "build_targets": {
+        "bcs-overlay": "overlay-reef-private", 
+        "build-targets": {
           "coreboot": "reef", 
           "cr50": "cr50", 
           "depthcharge": "reef", 
           "ec": "reef", 
           "libpayload": "reef"
         }, 
-        "ec_image": "Reef_EC.9042.87.1.tbz2", 
-        "key_id": "PARMA", 
-        "main_image": "Reef.9042.87.1.tbz2", 
-        "main_rw_image": "Reef.9042.110.0.tbz2"
+        "ec-image": "Reef_EC.9042.87.1.tbz2", 
+        "key-id": "PARMA", 
+        "main-image": "Reef.9042.87.1.tbz2", 
+        "main-rw-image": "Reef.9042.110.0.tbz2"
       }, 
       "identity": {
-        "customization_id": "ELECTRO", 
-        "sku_id": 8, 
-        "smbios_name_match": "Reef"
+        "customization-id": "ELECTRO", 
+        "sku-id": 8, 
+        "smbios-name-match": "Reef"
       }, 
       "name": "electro", 
-      "powerd_prefs": "reef", 
-      "test_alias": "reef", 
+      "powerd-prefs": "reef", 
+      "test-alias": "reef", 
       "touch": {
         "present": "probe", 
-        "probe_regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+        "probe-regex": "[Tt]ouchscreen\\|WCOMNTN2", 
         "stylus": {
-          "firmware_bin": "wacom/wacom_1636.hex", 
-          "firmware_symlink": "wacom_firmware_ELECTRO.hex"
+          "firmware-bin": "wacom/wacom_1636.hex", 
+          "firmware-symlink": "wacom_firmware_ELECTRO.hex"
         }, 
         "touchpad": {
-          "firmware_bin": "elan/154.0_2.0.bin", 
-          "firmware_symlink": "elan_i2c_154.0.bin"
+          "firmware-bin": "elan/154.0_2.0.bin", 
+          "firmware-symlink": "elan_i2c_154.0.bin"
         }, 
         "touchscreen": {
-          "firmware_bin": "elan/1cd2_5602.bin", 
-          "firmware_symlink": "elants_i2c_1cd2.bin"
+          "firmware-bin": "elan/1cd2_5602.bin", 
+          "firmware-symlink": "elants_i2c_1cd2.bin"
         }
       }
     }

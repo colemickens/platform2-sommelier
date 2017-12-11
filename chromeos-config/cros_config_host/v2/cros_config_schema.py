@@ -34,9 +34,9 @@ def GetNamedTuple(mapping):
       new_list = []
       for val in v:
         new_list.append(GetNamedTuple(val))
-      new_mapping[k] = new_list
+      new_mapping[k.replace('-', '_')] = new_list
     else:
-      new_mapping[k] = GetNamedTuple(v)
+      new_mapping[k.replace('-', '_')] = GetNamedTuple(v)
   return collections.namedtuple('Config', new_mapping.iterkeys())(**new_mapping)
 
 def ParseArgs(argv):

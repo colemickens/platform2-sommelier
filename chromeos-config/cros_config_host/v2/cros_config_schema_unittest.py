@@ -17,27 +17,27 @@ import tempfile
 from . import cros_config_schema
 
 BASIC_CONFIG = """
-reef_9042_fw: &reef_9042_fw
-  bcs_overlay: 'overlay-reef-private'
-  ec_image: 'Reef_EC.9042.87.1.tbz2'
-  main_image: 'Reef.9042.87.1.tbz2'
-  main_rw_image: 'Reef.9042.110.0.tbz2'
+reef-9042-fw: &reef-9042-fw
+  bcs-overlay: 'overlay-reef-private'
+  ec-image: 'Reef_EC.9042.87.1.tbz2'
+  main-image: 'Reef.9042.87.1.tbz2'
+  main-rw-image: 'Reef.9042.110.0.tbz2'
 
 models:
   - name: 'basking'
     identity:
-      sku_id: 0
+      sku-id: 0
     audio:
-      cras_config_dir: '/etc/cras'
-      ucm_alsa_config_dir: '/usr/share/alsa/ucm'
-      cras_config_subdir: 'basking'
-      ucm_suffix: 'basking'
-    brand_code: 'ASUN'
+      cras-config-dir: '/etc/cras'
+      ucm-alsa-config-dir: '/usr/share/alsa/ucm'
+      cras-config-subdir: 'basking'
+      ucm-suffix: 'basking'
+    brand-code: 'ASUN'
     firmware:
-      <<: *reef_9042_fw
-      key_id: 'OEM2'
-    powerd_prefs: 'reef'
-    test_alias: 'reef'
+      <<: *reef-9042-fw
+      key-id: 'OEM2'
+    powerd-prefs: 'reef'
+    test-alias: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)
@@ -53,6 +53,11 @@ class GetNamedTupleTests(unittest.TestCase):
     val = {'a': {'b': [{'c': 2}]}}
     val_tuple = cros_config_schema.GetNamedTuple(val)
     self.assertEqual(val['a']['b'][0]['c'], val_tuple.a.b[0].c)
+
+  def testDashesReplacedWithUnderscores(self):
+    val = {'a-b': 1}
+    val_tuple = cros_config_schema.GetNamedTuple(val)
+    self.assertEqual(val['a-b'], val_tuple.a_b)
 
 
 class ParseArgsTests(unittest.TestCase):
@@ -90,13 +95,13 @@ class ValidateConfigSchemaTests(unittest.TestCase):
         self._schema, cros_config_schema.TransformConfig(BASIC_CONFIG))
 
   def testMissingRequiredElement(self):
-    config = re.sub(r" *cras_config_dir: .*", "", BASIC_CONFIG)
+    config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
     except jsonschema.ValidationError as err:
       self.assertIn('required', err.__str__())
-      self.assertIn('cras_config_dir', err.__str__())
+      self.assertIn('cras-config-dir', err.__str__())
 
 
 class ValidateConfigTests(unittest.TestCase):
