@@ -35,15 +35,13 @@ class CameraStream;
  *
  * This class is the buffer abstraction in the HAL. It can store buffers
  * provided by the framework or buffers allocated by the HAL.
- * Allocation in the HAL can be done via gralloc, malloc or mmap
- * in case of mmap the memory cannot be freed
+ * Allocation in the HAL can be done via gralloc or malloc.
  */
 class CameraBuffer {
 public:
     enum BufferType {
         BUF_TYPE_HANDLE,
         BUF_TYPE_MALLOC,
-        BUF_TYPE_MMAP,
     };
 
 public:
@@ -65,9 +63,7 @@ public:
      * These are used via the utility methods in the MemoryUtils namespace
      */
     CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride = 0);
-    CameraBuffer(int w, int h, int s, cros::V4L2VideoNode& node,
-                 unsigned int index, int dmaBufFd, int v4l2fmt, int length,
-                 int prot, int flags);
+
     /**
      * initialization for the wrapper around the framework buffers
      */
@@ -76,7 +72,7 @@ public:
     /**
      * initialization for the fake framework buffer (allocated by the HAL)
      */
-    status_t init(const camera3_stream_t* stream, buffer_handle_t buffer,
+    status_t init(int width, int height, int format, buffer_handle_t buffer,
                   int cameraId);
 
     /**
@@ -129,7 +125,6 @@ private:
     int             mFormat;         /*!<  HAL PIXEL fmt */
     int             mV4L2Fmt;        /*!< V4L2 fourcc format code */
     int             mStride;
-    int             mUsage;
     struct timeval  mTimestamp;
     bool            mInit;           /*!< Boolean to check the integrity of the
                                           buffer when it is created*/

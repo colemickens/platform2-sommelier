@@ -156,7 +156,9 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers();
+    ret = allocateWorkerBuffers(GRALLOC_USAGE_SW_WRITE_OFTEN |
+                                GRALLOC_USAGE_HW_CAMERA_READ,
+                                HAL_PIXEL_FORMAT_BLOB);
     if (ret != OK)
         return ret;
 
@@ -209,7 +211,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return UNKNOWN_ERROR;
     }
 
-    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[mIndex]->data();
+    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mBufferAddr[mIndex];
     IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
     status_t status = mNode->PutFrame(&mBuffers[mIndex]);

@@ -28,13 +28,17 @@ FrameWorker::FrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         IDeviceWorker(node, cameraId),
         mIndex(0),
         mPollMe(false),
-        mPipelineDepth(pipelineDepth)
+        mPipelineDepth(pipelineDepth),
+        mBufferManager(cros::CameraBufferManager::GetInstance())
 {
     LOG1("%s handling node %s", name.c_str(), mNode->Name().c_str());
 }
 
 FrameWorker::~FrameWorker()
 {
+  for (auto& it : mBufferHandles) {
+    mBufferManager->Free(it);
+  }
 }
 
 status_t FrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
@@ -90,11 +94,13 @@ status_t FrameWorker::setWorkerDeviceBuffers(enum v4l2_memory memType)
     return OK;
 }
 
-status_t FrameWorker::allocateWorkerBuffers()
+status_t FrameWorker::allocateWorkerBuffers(uint32_t usage, int pixelFormat)
 {
     int memType = mNode->GetMemoryType();
-    std::vector<int> dmaBufFds;
-    unsigned long userptr;
+    CheckError((memType != V4L2_MEMORY_DMABUF), BAD_VALUE,
+               "@%s, Unsupported memory type %d!", __FUNCTION__, memType);
+    CheckError(!mBufferManager, UNKNOWN_ERROR,
+               "@%s, Failed to get buffer manager instance!", __FUNCTION__);
     std::shared_ptr<CameraBuffer> buf = nullptr;
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
         LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.PixelFormat()),
@@ -102,39 +108,50 @@ status_t FrameWorker::allocateWorkerBuffers()
                 mFormat.Width(),
                 mFormat.Height(),
                 mFormat.BytesPerLine(0));
-        switch (memType) {
-        case V4L2_MEMORY_USERPTR:
-            buf = MemoryUtils::allocateHeapBuffer(mFormat.Width(),
-                mFormat.Height(),
-                mFormat.BytesPerLine(0),
-                mFormat.PixelFormat(),
-                mCameraId,
-                PAGE_ALIGN(mFormat.SizeImage(0)));
-            if (buf.get() == nullptr)
-                return NO_MEMORY;
-            userptr = reinterpret_cast<unsigned long>(buf->data());
-            mBuffers[i].SetUserptr(userptr, 0);
-            memset(buf->data(), 0, buf->size());
-            LOG2("mBuffers[%d].userptr: 0x%lx", i , mBuffers[i].Userptr(0));
-            break;
-        case V4L2_MEMORY_MMAP:
-            if (mNode->ExportFrame(i, &dmaBufFds) != 0 || dmaBufFds.empty()) {
-                LOGE("Failed to export buffer");
+        buffer_handle_t handle;
+        uint32_t stride;
+        int width = (pixelFormat == HAL_PIXEL_FORMAT_BLOB) ?
+            mBuffers[i].Length(0) : mFormat.Width();
+        int height = (pixelFormat == HAL_PIXEL_FORMAT_BLOB) ?
+            1 : mFormat.Height();
+        if (mBufferManager->Allocate(
+              width, height, pixelFormat, usage, cros::GRALLOC,
+              &handle, &stride) != 0) {
+            LOGE("Failed to allocate buffer handle!");
+            for (auto& it : mBufferHandles) {
+                mBufferManager->Free(it);
+            }
+            mBufferHandles.clear();
+            return UNKNOWN_ERROR;
+        }
+        mBufferHandles.push_back(handle);
+        mBuffers[i].SetFd(handle->data[0], 0);
+        if (pixelFormat == HAL_PIXEL_FORMAT_BLOB) {
+            void* addr;
+            if (mBufferManager->Lock(mBufferHandles[i], 0, 0, 0, width,
+                                     height, &addr) != 0) {
+                LOGE("Failed to lock buffer handle!");
+                for (auto& it : mBufferHandles) {
+                    mBufferManager->Free(it);
+                }
+                mBufferHandles.clear();
                 return UNKNOWN_ERROR;
             }
-            buf = std::make_shared<CameraBuffer>(mFormat.Width(),
-                mFormat.Height(),
-                mFormat.BytesPerLine(0),
-                *mNode,
-                i,
-                dmaBufFds[0],
-                mFormat.PixelFormat(),
-                mBuffers[i].Length(0),
-                PROT_READ | PROT_WRITE, MAP_SHARED);
-            break;
-        default:
-            LOGE("@%s Unsupported memory type %d", __func__, memType);
-            return BAD_VALUE;
+            mBufferAddr.push_back(addr);
+        } else {
+            android_ycbcr ycbcr_info;
+            if (mBufferManager->LockYCbCr(mBufferHandles[i], 0, 0, 0,
+                                          width, height, &ycbcr_info)
+                != 0) {
+              LOGE("Failed to lock buffer handle!");
+              for (auto& it : mBufferHandles) {
+                mBufferManager->Free(it);
+              }
+              mBufferHandles.clear();
+              return UNKNOWN_ERROR;
+            }
+            // Assume planes are continous for now
+            mBufferAddr.push_back(ycbcr_info.y);
         }
 
         mBuffers[i].SetBytesUsed(mFormat.SizeImage(0), 0);

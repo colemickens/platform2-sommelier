@@ -23,6 +23,7 @@
 #include "Camera3GFXFormat.h"
 #include <unistd.h>
 #include <sync/sync.h>
+#include <cros-camera/camera_buffer_manager.h>
 
 #include <sys/types.h>
 #include <dirent.h>
@@ -51,7 +52,6 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mFormat(0),
                                 mV4L2Fmt(0),
                                 mStride(0),
-                                mUsage(0),
                                 mInit(false),
                                 mLocked(false),
                                 mRegistered(false),
@@ -100,7 +100,6 @@ CameraBuffer::CameraBuffer(int w,
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
         mStride(s),
-        mUsage(0),
         mInit(false),
         mLocked(true),
         mRegistered(false),
@@ -130,68 +129,6 @@ CameraBuffer::CameraBuffer(int w,
 }
 
 /**
- * CameraBuffer
- *
- * Constructor for buffers allocated using mmap
- *
- * \param w [IN] width
- * \param h [IN] height
- * \param s [IN] stride
- * \param node [IN] V4L2 video node to map
- * \param index [IN] number of buffer
- * \param dmaBufFd [IN] File descriptor for dmabuf
- * \param v4l2fmt [IN] Pixel format in V4L2 enum
- * \param length [IN] amount of data to map
- * \param prot [IN] memory protection (mmap param)
- * \param flags [IN] flags (mmap param)
- *
- * Success of the mmap can be queried by checking the size of the resulting
- * buffer
- */
-CameraBuffer::CameraBuffer(int w, int h, int s, cros::V4L2VideoNode& node,
-                           unsigned int index, int dmaBufFd, int v4l2fmt,
-                           int length, int prot, int flags):
-        mWidth(w),
-        mHeight(h),
-        mSize(length),
-        mFormat(0),
-        mV4L2Fmt(v4l2fmt),
-        mStride(s),
-        mUsage(0),
-        mInit(false),
-        mLocked(false),
-        mRegistered(false),
-        mType(BUF_TYPE_MMAP),
-        mGbmBufferManager(nullptr),
-        mHandle(nullptr),
-        mHandlePtr(nullptr),
-        mOwner(nullptr),
-        mDataPtr(nullptr),
-        mRequestID(0),
-        mCameraId(-1),
-        mDmaBufFd(dmaBufFd)
-{
-    LOG1("%s create mmap camera buffer %p", __FUNCTION__, this);
-    mLocked = true;
-    mInit = true;
-    CLEAR(mUserBuffer);
-    CLEAR(mTimestamp);
-    CLEAR(mHandle);
-    mUserBuffer.release_fence = -1;
-    mUserBuffer.acquire_fence = -1;
-
-    std::vector<void*> mapped;
-    int ret = node.MapMemory(index, prot, flags, &mapped);
-    if (CC_UNLIKELY(ret != 0 || mapped.empty() || mapped[0] == MAP_FAILED)) {
-        LOGE("Failed to MMAP the buffer %s", strerror(errno));
-        mDataPtr = nullptr;
-        return;
-    }
-    mDataPtr = mapped[0];
-    LOG1("mmaped address for %p length %d", mDataPtr, mSize);
-}
-
-/**
  * init
  *
  * Constructor to wrap a camera3_stream_buffer
@@ -213,7 +150,6 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     mSize = 0;
     mLocked = false;
     mOwner = static_cast<CameraStream*>(aBuffer->stream->priv);
-    mUsage = mOwner->usage();
     mInit = true;
     mDataPtr = nullptr;
     mUserBuffer = *aBuffer;
@@ -238,25 +174,23 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     return NO_ERROR;
 }
 
-status_t CameraBuffer::init(const camera3_stream_t* stream,
+status_t CameraBuffer::init(int width, int height, int format,
                             buffer_handle_t handle,
                             int cameraId)
 {
     mType = BUF_TYPE_HANDLE;
     mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = handle;
-    mWidth = stream->width;
-    mHeight = stream->height;
-    mFormat = stream->format;
+    mWidth = width;
+    mHeight = height;
+    mFormat = format;
     mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
     // Use actual width from platform native handle for stride
     mStride = mGbmBufferManager->GetPlaneStride(handle, 0);
     mSize = 0;
     mLocked = false;
     mOwner = nullptr;
-    mUsage = stream->usage;
     mInit = true;
-    mDataPtr = nullptr;
     CLEAR(mUserBuffer);
     mUserBuffer.acquire_fence = -1;
     mUserBuffer.release_fence = -1;
@@ -281,20 +215,6 @@ CameraBuffer::~CameraBuffer()
         case BUF_TYPE_MALLOC:
             free(mDataPtr);
             mDataPtr = nullptr;
-            break;
-        case BUF_TYPE_MMAP:
-            if (mDataPtr != nullptr)
-                munmap(mDataPtr, mSize);
-            mDataPtr = nullptr;
-            mSize = 0;
-            close(mDmaBufFd);
-            break;
-        case BUF_TYPE_HANDLE:
-            // Allocated by the HAL
-            if (!(mUserBuffer.stream)) {
-                LOG1("release internal buffer");
-                mGbmBufferManager->Free(mHandle);
-            }
             break;
         default:
             break;
@@ -443,8 +363,8 @@ status_t CameraBuffer::lock()
         return INVALID_OPERATION;
     }
 
-    lockMode = mUsage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK |
-        GRALLOC_USAGE_HW_CAMERA_MASK);
+    lockMode = GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK |
+        GRALLOC_USAGE_HW_CAMERA_MASK;
     if (!lockMode) {
         LOGW("@%s:trying to lock a buffer with no flags", __FUNCTION__);
         return INVALID_OPERATION;
@@ -628,14 +548,8 @@ allocateHandleBuffer(int w,
     }
 
     std::shared_ptr<CameraBuffer> buffer(new CameraBuffer());
-    camera3_stream_t stream;
-    CLEAR(stream);
-    stream.width = w;
-    stream.height = h;
-    stream.format = gfxFmt;
-    stream.usage = usage;
-
-    buffer->init(&stream, handle, cameraId);
+    ret = buffer->init(w, h, gfxFmt, handle, cameraId);
+    CheckError(ret != NO_ERROR, nullptr, "Buffer initialization failed");
 
     return buffer;
 }

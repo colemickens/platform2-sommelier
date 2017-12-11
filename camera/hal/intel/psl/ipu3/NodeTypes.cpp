@@ -23,21 +23,12 @@ namespace camera2 {
 enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node)
 {
     /*
-     * According to V4L2 framework, the video device that exports dmabuf
-     * must use V4L2_MEMORY_MMAP. V4L2_MEMORY_DMABUF is used for video
-     * devices that import dmabuf.
-     * ISYS_NODE_RAW works as a dmabuf exporter.
-     * IMGU_NODE_INPUT imports the dmabuf fd exported from ISYS_NODE_RAW.
-     * IMGU_NODE_PARAM and IMGU_NODE_STAT nodes map and use the pointers
-     * to the buffers allocated from kernel.
-     * IMGU_NODE_VF/PV_PREVIEW, IMGU_NODE_VIDEO and IMGU_NODE_STILL nodes import
-     * dmabuf fd from stream buffer if using internal buffers is not necessary.
+     * All nodes use V4L2_MEMORY_DMABUF memory.
      */
     switch (node) {
+    case ISYS_NODE_RAW:
     case IMGU_NODE_PARAM:
     case IMGU_NODE_STAT:
-        return V4L2_MEMORY_MMAP;
-    case ISYS_NODE_RAW:
     case IMGU_NODE_INPUT:
     case IMGU_NODE_VF_PREVIEW:
     case IMGU_NODE_PV_PREVIEW:

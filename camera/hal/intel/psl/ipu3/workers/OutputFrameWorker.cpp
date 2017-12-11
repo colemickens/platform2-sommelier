@@ -21,6 +21,7 @@
 #include "OutputFrameWorker.h"
 #include "ColorConverter.h"
 #include "NodeTypes.h"
+#include "Camera3GFXFormat.h"
 #include <libyuv.h>
 #include <sys/mman.h>
 
@@ -87,20 +88,26 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     // If using internal buffer, only one buffer is required.
     if (mNeedPostProcess)
         mPipelineDepth = 1;
-    ret = setWorkerDeviceBuffers(
-        mNeedPostProcess ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName));
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(mNodeName));
     CheckError((ret != OK), ret, "@%s set worker device buffers failed.",
                __FUNCTION__);
 
     // Allocate internal buffer.
     if (mNeedPostProcess) {
-        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.Width(),
-                mFormat.Height(),
-                mFormat.BytesPerLine(0),
-                *mNode, 0, -1, // dmabuf fd is not required.
-                mFormat.PixelFormat(),
-                mBuffers[0].Length(0),
-                PROT_READ | PROT_WRITE, MAP_SHARED);
+        int gfxFormat = v4L2Fmt2GFXFmt(mFormat.PixelFormat());
+        if (gfxFormat == HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL) {
+          // Buffer manager does not support
+          // HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL. Use fake
+          // HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED instead.
+          gfxFormat = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
+        }
+        ret = allocateWorkerBuffers(GRALLOC_USAGE_SW_READ_OFTEN |
+                                    GRALLOC_USAGE_HW_CAMERA_WRITE, gfxFormat);
+        CheckError(ret != OK, ret, "@%s failed to allocate internal buffer.",
+                   __FUNCTION__);
+        mWorkingBuffer = std::make_shared<CameraBuffer>();
+        mWorkingBuffer->init(mFormat.Width(), mFormat.Height(), gfxFormat,
+                             mBufferHandles[0], mCameraId);
     }
 
     mListenerProcessors.clear();
@@ -163,31 +170,13 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
      */
     if (!mNeedPostProcess) {
         // Use stream buffer for zero-copy
-        unsigned long userptr;
         if (buffer.get() == nullptr) {
             buffer = getOutputBufferForListener();
             CheckError((buffer.get() == nullptr), UNKNOWN_ERROR,
                        "failed to allocate listener buffer");
         }
-        switch (mNode->GetMemoryType()) {
-        case V4L2_MEMORY_USERPTR:
-            userptr = reinterpret_cast<unsigned long>(buffer->data());
-            mBuffers[mIndex].SetUserptr(userptr, 0);
-            LOG2("%s mBuffers[%d].userptr: 0x%lx",
-                __FUNCTION__, mIndex, mBuffers[mIndex].Userptr(0));
-            break;
-        case V4L2_MEMORY_DMABUF:
-            mBuffers[mIndex].SetFd(buffer->dmaBufFd(), 0);
-            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].Fd(0));
-            break;
-        case V4L2_MEMORY_MMAP:
-            LOG2("%s mBuffers[%d].offset: 0x%x",
-                __FUNCTION__, mIndex, mBuffers[mIndex].Offset(0));
-            break;
-        default:
-            LOGE("%s unsupported memory type.", __FUNCTION__);
-            return BAD_VALUE;
-        }
+        mBuffers[mIndex].SetFd(buffer->dmaBufFd(), 0);
+        LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].Fd(0));
         mWorkingBuffer = buffer;
     }
     status |= mNode->PutFrame(&mBuffers[mIndex]);
@@ -397,15 +386,6 @@ OutputFrameWorker::getOutputBufferForListener()
                     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                     GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
                     mCameraId);
-        } else if (mNode->GetMemoryType() == V4L2_MEMORY_MMAP) {
-            mOutputForListener = std::make_shared<CameraBuffer>(
-                    mFormat.Width(),
-                    mFormat.Height(),
-                    mFormat.BytesPerLine(0),
-                    *mNode, -1, // dmabuf fd is not required.
-                    mBuffers[0].Length(0),
-                    mFormat.PixelFormat(),
-                    mBuffers[0].Offset(0), PROT_READ | PROT_WRITE, MAP_SHARED);
         } else {
             LOGE("bad type for stream buffer %d", mNode->GetMemoryType());
             return nullptr;
@@ -496,6 +476,10 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
     status_t status = OK;
     // Rotate input buffer is always mWorkingBuffer
     // and output buffer will be mPostProcessBufs[0] or directly mOutputBuffer
+    if (!input->isLocked()) {
+      CheckError(input->lock() != NO_ERROR, NO_MEMORY,
+                 "@%s, Failed to lock buffer", __FUNCTION__);
+    }
     if (mProcessType & PROCESS_ROTATE) {
         int angle = getRotationDegrees(mStream);
         // Check if any post-processing needed after rotate
@@ -515,6 +499,8 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                                    PAGE_ALIGN(input->size()));
                 CheckError((buf.get() == nullptr), NO_MEMORY,
                            "@%s, No memory for rotate", __FUNCTION__);
+                CheckError(buf->lock() != NO_ERROR, NO_MEMORY,
+                           "@%s, Failed to lock buffer", __FUNCTION__);
                 mPostProcessBufs.push_back(buf);
             }
             // Rotate to internal post-processing buffer
@@ -547,6 +533,8 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                          PAGE_ALIGN(mStream->width * mStream->height * 3 / 2));
                 CheckError((buf.get() == nullptr), NO_MEMORY,
                            "@%s, No memory for scale", __FUNCTION__);
+                CheckError(buf->lock() != NO_ERROR, NO_MEMORY,
+                           "@%s, Failed to lock buffer", __FUNCTION__);
                 mPostProcessBufs.push_back(buf);
             }
             // Scale to internal post-processing buffer

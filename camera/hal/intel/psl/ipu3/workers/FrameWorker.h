@@ -18,7 +18,8 @@
 #define PSL_IPU3_WORKERS_FRAMEWORKER_H_
 
 #include "IDeviceWorker.h"
-#include "cros-camera/v4l2_device.h"
+#include <cros-camera/camera_buffer_manager.h>
+#include <cros-camera/v4l2_device.h>
 
 namespace android {
 namespace camera2 {
@@ -39,7 +40,7 @@ public:
     virtual bool needPolling() { return mPollMe; }
 
 protected:
-    status_t allocateWorkerBuffers();
+    status_t allocateWorkerBuffers(uint32_t gralloc_usage, int pixelFormat);
     status_t setWorkerDeviceFormat(FrameInfo &frame);
     status_t setWorkerDeviceBuffers(enum v4l2_memory memType);
 
@@ -51,6 +52,14 @@ protected:
     cros::V4L2Format mFormat;
     bool mPollMe;
     size_t mPipelineDepth;
+
+    // TODO: allocate handles in a buffer wrapper type (CameraBuffer?) and
+    // remove |mBufferManager|
+    cros::CameraBufferManager* mBufferManager;
+
+    std::vector<buffer_handle_t> mBufferHandles;
+
+    std::vector<void*> mBufferAddr;
 };
 
 } /* namespace camera2 */

@@ -59,11 +59,13 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers();
+    ret = allocateWorkerBuffers(GRALLOC_USAGE_SW_READ_OFTEN |
+                                GRALLOC_USAGE_HW_CAMERA_WRITE,
+                                HAL_PIXEL_FORMAT_BLOB);
     if (ret != OK)
         return ret;
 
-    if (mCameraBuffers[0]->size() < mFormat.SizeImage(0)) {
+    if (mBuffers[0].Length(0) < mFormat.SizeImage(0)) {
         LOGE("Stats buffer is not big enough");
         return UNKNOWN_ERROR;
     }
@@ -117,7 +119,7 @@ status_t StatisticsWorker::run()
     CLEAR(out);
     CLEAR(in);
 
-    MEMCPY_S(&in, sizeof(in), mCameraBuffers[0]->data(), sizeof(ipu3_uapi_stats_3a));
+    MEMCPY_S(&in, sizeof(in), mBufferAddr[mIndex], sizeof(ipu3_uapi_stats_3a));
 
     ipu3_stats_get_3a(&out, &in);
 
