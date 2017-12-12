@@ -127,12 +127,12 @@ void SmbProvider::Mount(const ProtoBlob& mount_options_blob,
                    error_code);
     return;
   }
-  current_mount_id_++;
   DCHECK(mounts_.find(current_mount_id_) == mounts_.end());
   mounts_[current_mount_id_] = mount_options.path();
   CloseDirectory(dir_id);
   *mount_id = current_mount_id_;
   *error_code = static_cast<int32_t>(ERROR_OK);
+  current_mount_id_++;
 }
 
 int32_t SmbProvider::Unmount(const ProtoBlob& unmount_options_blob) {

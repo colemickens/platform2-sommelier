@@ -183,6 +183,7 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
 // using the |mount_id| from |Mount|.
 TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
+  EXPECT_EQ(0, mount_id);
   ExpectNoOpenDirectories();
 
   ProtoBlob proto_blob = CreateUnmountOptionsBlob(mount_id);
