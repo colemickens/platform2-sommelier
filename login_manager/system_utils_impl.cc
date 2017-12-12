@@ -30,6 +30,7 @@
 #include <base/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
@@ -274,10 +275,8 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                       const std::string& data) {
   const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
-  return (base::ImportantFileWriter::WriteFileAtomically(filename_in_base_dir,
-                                                         data) &&
-          base::SetPosixFilePermissions(filename_in_base_dir,
-                                        (S_IRUSR | S_IWUSR | S_IROTH)));
+  return brillo::WriteToFileAtomic(filename_in_base_dir, data.data(),
+                                   data.size(), (S_IRUSR | S_IWUSR | S_IROTH));
 }
 
 bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {

@@ -50,6 +50,7 @@
 #include <base/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <brillo/process.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
@@ -566,34 +567,17 @@ bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
 
 bool Platform::WriteFile(const FilePath& path,
                          const brillo::Blob& blob) {
-  return WriteArrayToFile(path,
-                          reinterpret_cast<const char*>(blob.data()),
-                          blob.size());
+  return brillo::WriteBlobToFile(path, blob);
 }
 
 bool Platform::WriteStringToFile(const FilePath& path,
                                  const std::string& data) {
-  return WriteArrayToFile(path, data.data(), data.size());
+  return brillo::WriteStringToFile(path, data);
 }
 
 bool Platform::WriteArrayToFile(const FilePath& path, const char* data,
                                 size_t size) {
-  if (!base::DirectoryExists(path.DirName())) {
-    if (!base::CreateDirectory(path.DirName())) {
-      LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
-      return false;
-    }
-  }
-  // brillo::Blob::size_type is std::vector::size_type and is unsigned.
-  if (size > static_cast<std::string::size_type>(
-          std::numeric_limits<int>::max())) {
-    LOG(ERROR) << "Cannot write to " << path.value()
-               << ". Data is too large: " << size << " bytes.";
-    return false;
-  }
-
-  int data_written = base::WriteFile(path, data, size);
-  return data_written == static_cast<int>(size);
+  return brillo::WriteToFile(path, data, size);
 }
 
 std::string Platform::GetRandomSuffix() {
@@ -619,70 +603,13 @@ std::string Platform::GetRandomSuffix() {
 bool Platform::WriteFileAtomic(const FilePath& path,
                                const brillo::Blob& blob,
                                mode_t mode) {
-  const std::string data(reinterpret_cast<const char*>(blob.data()),
-                         blob.size());
-  return WriteStringToFileAtomic(path, data, mode);
+  return brillo::WriteBlobToFileAtomic(path, blob, mode);
 }
 
 bool Platform::WriteStringToFileAtomic(const FilePath& path,
                                        const std::string& data,
                                        mode_t mode) {
-  if (!base::DirectoryExists(path.DirName())) {
-    if (!base::CreateDirectory(path.DirName())) {
-      LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
-      return false;
-    }
-  }
-  std::string random_suffix = GetRandomSuffix();
-  if (random_suffix.empty()) {
-    PLOG(WARNING) << "Could not compute random suffix";
-    return false;
-  }
-  std::string temp_name_string = path.DirName().
-      Append(".org.chromium.cryptohome." + random_suffix).value();
-  const char * temp_name = temp_name_string.c_str();
-  int fd = HANDLE_EINTR(open(temp_name, O_CREAT|O_EXCL|O_WRONLY, mode));
-  if (fd < 0) {
-    PLOG(WARNING) << "Could not open " << temp_name << " for atomic write";
-    unlink(temp_name);
-    return false;
-  }
-
-  size_t position = 0;
-  while (position < data.size()) {
-    ssize_t bytes_written = HANDLE_EINTR(
-        write(fd, data.data()+position, data.size()-position));
-    if (bytes_written < 0) {
-      PLOG(WARNING) << "Could not write " << temp_name;
-      close(fd);
-      unlink(temp_name);
-      return false;
-    }
-    position += bytes_written;
-  }
-
-  int result = HANDLE_EINTR(fdatasync(fd));
-  if (result < 0) {
-    PLOG(WARNING) << "Could not fsync " << temp_name;
-    close(fd);
-    unlink(temp_name);
-    return false;
-  }
-  result = close(fd);
-  if (result < 0) {
-    PLOG(WARNING) << "Could not close " << temp_name;
-    unlink(temp_name);
-    return false;
-  }
-
-  result = rename(temp_name, path.value().c_str());
-  if (result < 0) {
-    PLOG(WARNING) << "Could not close " << temp_name;
-    unlink(temp_name);
-    return false;
-  }
-
-  return true;
+  return brillo::WriteToFileAtomic(path, data.data(), data.size(), mode);
 }
 
 bool Platform::WriteFileAtomicDurable(const FilePath& path,
@@ -1086,38 +1013,7 @@ bool Platform::FirmwareWriteProtected() {
 bool Platform::SyncFileOrDirectory(const FilePath& path,
                                    bool is_directory,
                                    bool data_sync) {
-  const base::TimeTicks start = base::TimeTicks::Now();
-  data_sync = data_sync && !is_directory;
-
-  int flags = (is_directory ? O_RDONLY|O_DIRECTORY : O_WRONLY);
-  int fd = HANDLE_EINTR(open(path.value().c_str(), flags));
-  if (fd < 0) {
-    PLOG(WARNING) << "Could not open " << path.value() << " for syncing";
-    return false;
-  }
-  // POSIX specifies EINTR as a possible return value of fsync() but not for
-  // fdatasync().  To be on the safe side, it is handled in both cases.
-  int result =
-      (data_sync ? HANDLE_EINTR(fdatasync(fd)) : HANDLE_EINTR(fsync(fd)));
-  if (result < 0) {
-    PLOG(WARNING) << "Failed to sync " << path.value();
-    close(fd);
-    return false;
-  }
-  // close() may not be retried on error.
-  result = IGNORE_EINTR(close(fd));
-  if (result < 0) {
-    PLOG(WARNING) << "Failed to close after sync " << path.value();
-    return false;
-  }
-
-  const base::TimeDelta delta = base::TimeTicks::Now() - start;
-  if (delta > base::TimeDelta::FromSeconds(kLongSyncSec)) {
-    LOG(WARNING) << "Long " << (data_sync ? "fdatasync" : "fsync") << "() of "
-                 << path.value() << ": " << delta.InSeconds() << " seconds";
-  }
-
-  return true;
+  return brillo::SyncFileOrDirectory(path, is_directory, data_sync);
 }
 
 bool Platform::DataSyncFile(const FilePath& path) {
