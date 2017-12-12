@@ -145,7 +145,8 @@ public:
      * First Query
      */
     status_t configStreams(const std::vector<camera3_stream_t*> &activeStreams,
-                           uint32_t operationMode);
+                           uint32_t operationMode,
+                           int32_t testPatternMode);
     /*
      * Implementation of IStreamConfigProvider
      */

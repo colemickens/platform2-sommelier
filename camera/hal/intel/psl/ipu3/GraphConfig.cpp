@@ -2205,7 +2205,9 @@ status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* wid
 /*
  * Imgu specific function
  */
-status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
+status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
+                                          int32_t testPatternMode,
+                                          MediaCtlConfig *mediaCtlConfig,
                                           MediaCtlConfig *mediaCtlConfigVideo,
                                           MediaCtlConfig *mediaCtlConfigStill)
 {
@@ -2340,6 +2342,15 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
                                    : (mLut[i].pad == MEDIACTL_PAD_VF_NUM) ? mediaCtlConfigVideo
                                    :                                        mediaCtlConfig;
 
+        /* Use BGGR as bayer format when specific sensor receives test pattern request */
+        if (testPatternMode != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF) {
+            const IPU3CameraCapInfo* capInfo = getIPU3CameraCapInfo(cameraId);
+            CheckError(capInfo == nullptr, UNKNOWN_ERROR, "@%s: failed to get cameraCapInfo", __FUNCTION__);
+            if (mLut[i].nodeName.compare(MEDIACTL_INPUTNAME) == 0 &&
+                !capInfo->getTestPatternBayerFormat().empty()) {
+                format = gcu::getV4L2Format(capInfo->getTestPatternBayerFormat());
+            }
+        }
         addFormatParams(mLut[i].nodeName, width, height, 1,
                         format, 0, pipeConfig);
 

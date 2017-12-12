@@ -558,6 +558,8 @@ void PSLConfParser::handleSensorInfo(const char *name, const char **atts)
     } else if (strcmp(name, "nvmDirectory") == 0) {
         info->mNvmDirectory = atts[1];
         readNvmData();
+    } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
+        info->mTestPatternBayerFormat = atts[1];
     }
 }
 
@@ -1141,6 +1143,7 @@ void PSLConfParser::dumpSensorInfoSection(int cameraId){
     LOGD("element name: exposure.lag, element value = %d", info->mExposureLag);
     LOGD("element name: fov, element value = %f, %f", info->mFov[0], info->mFov[1]);
     LOGD("element name: statistics.initialSkip, element value = %d", info->mStatisticsInitialSkip);
+    LOGD("element name: testPattern.bayerFormat, element value = %s", info->mTestPatternBayerFormat.c_str());
 }
 
 void PSLConfParser::dumpMediaCtlElementsSection(int cameraId){

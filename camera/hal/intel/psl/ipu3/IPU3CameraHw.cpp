@@ -318,7 +318,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     std::vector<camera3_stream_t*> &configuredStreams =
             (mUseCase == USECASE_STILL) ? mStreamsStill : mStreamsVideo;
 
-    status = mGCM.configStreams(configuredStreams, operation_mode);
+    status = mGCM.configStreams(configuredStreams, operation_mode, mTestPatternMode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;
@@ -441,7 +441,7 @@ status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase,
     mImguUnit->flush();
     mControlUnit->flush();
 
-    status_t status = mGCM.configStreams(streams, operation_mode);
+    status_t status = mGCM.configStreams(streams, operation_mode, testPatternMode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;

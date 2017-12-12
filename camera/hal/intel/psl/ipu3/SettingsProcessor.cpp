@@ -68,7 +68,7 @@ status_t SettingsProcessor::init()
  * \param reqAiqCfg [OUT] AIQ configuration
  */
 status_t
-SettingsProcessor::processRequestSettings(const CameraMetadata  &settings,
+SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
                                     RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);

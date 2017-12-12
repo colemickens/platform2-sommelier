@@ -27,8 +27,9 @@ namespace utils {
                         | ((uint32_t)(b) << 16) | ((uint32_t)(a) << 24))
 
 int32_t getMBusFormat(int32_t commonPixelFormat);
-int32_t getMBusFormat(const std::string &bayerOrder, const int32_t bpp);
+int32_t getMBusFormat(const std::string& bayerOrder, const int32_t bpp);
 int32_t getV4L2Format(const int32_t commonPixelFormat);
+int32_t getV4L2Format(const std::string& formatName);
 int32_t getBpl(int32_t format, int32_t width);
 int32_t getBpp(int32_t format);
 int32_t getBppFromCommon(int32_t format);

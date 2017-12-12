@@ -29,6 +29,7 @@
 #include "MediaCtlPipeConfig.h"
 #include "LogHelper.h"
 #include "MediaController.h"
+#include "IPU3CameraCapInfo.h"
 
 namespace GCSS {
 class GraphConfigNode;
@@ -355,7 +356,9 @@ private:
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
     status_t parseTPGNodeInfo(Node* tpgNode, SourceNodeInfo &info);
     status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
-    status_t getImguMediaCtlData(MediaCtlConfig* mediaCtlConfig,
+    status_t getImguMediaCtlData(int32_t cameraId,
+                                 int32_t testPatternMode,
+                                 MediaCtlConfig* mediaCtlConfig,
                                  MediaCtlConfig* mediaCtlConfigVideo,
                                  MediaCtlConfig* mediaCtlConfigStill);
     status_t addControls(const Node *sensorNode,

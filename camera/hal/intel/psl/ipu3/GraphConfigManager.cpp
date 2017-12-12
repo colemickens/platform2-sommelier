@@ -432,7 +432,8 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
  * \param[in] streams List of streams required by the client.
  */
 status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &streams,
-                                           uint32_t operationMode)
+                                           uint32_t operationMode,
+                                           int32_t testPatternMode)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
@@ -553,7 +554,9 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
-    ret = gc->getImguMediaCtlData(&mMediaCtlConfigs[IMGU_COMMON],
+    ret = gc->getImguMediaCtlData(mCameraId,
+                                  testPatternMode,
+                                  &mMediaCtlConfigs[IMGU_COMMON],
                                   &mMediaCtlConfigs[IMGU_VIDEO],
                                   &mMediaCtlConfigs[IMGU_STILL]);
     if (ret != OK) {

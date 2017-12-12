@@ -208,7 +208,7 @@ int32_t getBppFromCommon(int32_t format)
  *
  */
 
-int32_t getMBusFormat(const std::string &bayerOrder, const int32_t bpp)
+int32_t getMBusFormat(const std::string& bayerOrder, const int32_t bpp)
 {
     std::ostringstream stringStream;
     stringStream << bpp;
@@ -253,6 +253,18 @@ int32_t getV4L2Format(const int32_t commonPixelFormat)
 
     LOGE("Failed to find any V4L2 format with format %s",
             pixelCode2String(commonPixelFormat).c_str());
+    return -1;
+}
+
+int32_t getV4L2Format(const std::string& formatName)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(gFormatMapping); i++) {
+        if (gFormatMapping[i].fullName.compare(formatName) == 0)
+            return gFormatMapping[i].pixelCode;
+    }
+
+    LOGE("Failed to find any V4L2 format with format %s",
+            formatName.c_str());
     return -1;
 }
 
