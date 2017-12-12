@@ -23,6 +23,12 @@ class SambaInterfaceImpl : public SambaInterface {
   // This should be called instead of constructor.
   static std::unique_ptr<SambaInterfaceImpl> Create();
 
+  int32_t OpenFile(const std::string& file_path,
+                   int32_t flags,
+                   int32_t* file_id) override;
+
+  int32_t CloseFile(int32_t file_id) override;
+
   int32_t OpenDirectory(const std::string& directory_path,
                         int32_t* dir_id) override;
 

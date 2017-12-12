@@ -41,6 +41,12 @@ class FakeSambaInterface : public SambaInterface {
   int32_t GetEntryStatus(const std::string& entry_path,
                          struct stat* stat) override;
 
+  int32_t OpenFile(const std::string& file_path,
+                   int32_t flags,
+                   int32_t* file_id) override;
+
+  int32_t CloseFile(int32_t file_id) override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
@@ -55,6 +61,13 @@ class FakeSambaInterface : public SambaInterface {
   // Helper method to check if there are any leftover open directories or files
   // in |open_fds|.
   bool HasOpenEntries() const;
+
+  // Helpers to check the flags set on a FakeFile entry.
+  bool HasReadSet(int32_t fd) const;
+  bool HasWriteSet(int32_t fd) const;
+
+  // Checks whether a file descriptor is open.
+  bool IsFDOpen(uint32_t fd) const;
 
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
@@ -112,6 +125,8 @@ class FakeSambaInterface : public SambaInterface {
     bool writeable = false;
 
     explicit OpenInfo(const std::string& full_path) : full_path(full_path) {}
+    OpenInfo(const std::string& full_path, bool readable, bool writeable)
+        : full_path(full_path), readable(readable), writeable(writeable) {}
 
     OpenInfo(OpenInfo&& other)
         : full_path(std::move(other.full_path)),
@@ -128,23 +143,25 @@ class FakeSambaInterface : public SambaInterface {
   // Checks whether the file/directory at the specified path is open.
   bool IsOpen(const std::string& full_path) const;
 
-  // Checks whether a file descriptor is open.
-  bool IsFDOpen(uint32_t fd) const;
-
   // Returns an iterator to an OpenInfo in open_fds.
   OpenEntriesIterator FindOpenFD(uint32_t fd);
 
-  // Recurses through the file system returning a pointer to a directory.
+  // Recurses through the file system, returning a pointer to a directory.
   // Pointer is owned by the class and should not be retained passed the
   // lifetime of a single public method call as it could be invalidated.
   FakeDirectory* GetDirectory(const std::string& full_path,
                               int32_t* error) const;
   FakeDirectory* GetDirectory(const std::string& full_path) const;
 
-  // Recurses through the file system return a pointer to the entry.
+  // Recurses through the file system, returning a pointer to the entry.
   // Pointer is owned by the class and should not be retained passed the
   // lifetime of a single public method call as it could be invalidated.
   FakeEntry* GetEntry(const std::string& entry_path) const;
+
+  // Recurses through the file system, returning a pointer to the file.
+  // Pointer is owned by the class and should not be retained passed the
+  // lifetime of a single public method call as it could be invalidated.
+  FakeFile* GetFile(const std::string& file_path) const;
 
   // Checks whether the directory has more entries.
   bool HasMoreEntries(uint32_t dir_fd) const;

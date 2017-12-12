@@ -21,6 +21,18 @@ class SambaInterface {
   SambaInterface() {}
   virtual ~SambaInterface() {}
 
+  // Opens a file at a given |file_path|.
+  // |file_id| is the file id of the opened file. This will be -1 on failure.
+  // Flags should be either O_RDONLY or O_RDWR.
+  // Returns 0 on success, and errno on failure.
+  virtual int32_t OpenFile(const std::string& file_path,
+                           int32_t flags,
+                           int32_t* file_id) WARN_UNUSED_RESULT = 0;
+
+  // Closes file from a given |file_id|, which is from OpenFile().
+  // Returns 0 on success, and errno on failure.
+  virtual int32_t CloseFile(int32_t file_id) WARN_UNUSED_RESULT = 0;
+
   // Opens directory in a given |directory_path|.
   // |dir_id| is the directory id of the opened directory. This will be
   // -1 on failure.

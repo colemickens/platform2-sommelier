@@ -81,6 +81,11 @@ int32_t GetDirectoryEntryFromStat(const std::string& full_path,
   return static_cast<int32_t>(SerializeProtoToBlob(entry, proto_blob));
 }
 
+bool IsValidOpenFileOptions(const OpenFileOptions& open_file_options) {
+  return open_file_options.has_file_path() &&
+         open_file_options.has_writeable() && open_file_options.has_mount_id();
+}
+
 }  // namespace
 
 SmbProvider::SmbProvider(
@@ -236,6 +241,69 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
     return;
   }
   *error_code = GetDirectoryEntryFromStat(full_path, stat_info, out_entry);
+}
+
+void SmbProvider::OpenFile(const ProtoBlob& open_file_options_blob,
+                           int32_t* error_code,
+                           int32_t* file_id) {
+  DCHECK(error_code);
+  DCHECK(file_id);
+
+  OpenFileOptions open_file_options;
+  if (!open_file_options.ParseFromArray(open_file_options_blob.data(),
+                                        open_file_options_blob.size())) {
+    LogAndSetDBusParseError(kOpenFileMethod, error_code);
+    return;
+  }
+  if (!IsValidOpenFileOptions(open_file_options)) {
+    LogAndSetDBusParseError(kOpenFileMethod, error_code);
+    return;
+  }
+
+  std::string share_path;
+  if (!GetMountPathFromId(open_file_options.mount_id(), &share_path)) {
+    LogAndSetError(kOpenFileMethod, open_file_options.mount_id(),
+                   ERROR_NOT_FOUND, error_code);
+    return;
+  }
+
+  const std::string full_path =
+      AppendPath(share_path, open_file_options.file_path());
+  const int32_t flags = open_file_options.writeable() ? O_RDWR : O_RDONLY;
+
+  int32_t result = samba_interface_->OpenFile(full_path, flags, file_id);
+
+  if (result != 0) {
+    LogAndSetError(kOpenFileMethod, open_file_options.mount_id(),
+                   GetErrorFromErrno(result), error_code);
+    *file_id = -1;
+    return;
+  }
+  *error_code = static_cast<int32_t>(ERROR_OK);
+}
+
+int32_t SmbProvider::CloseFile(const ProtoBlob& close_file_options_blob) {
+  CloseFileOptions close_file_options;
+  int32_t error_code;
+  if (!close_file_options.ParseFromArray(close_file_options_blob.data(),
+                                         close_file_options_blob.size())) {
+    LogAndSetDBusParseError(kCloseFileMethod, &error_code);
+    return error_code;
+  }
+  if (!close_file_options.has_file_id()) {
+    LogAndSetDBusParseError(kCloseFileMethod, &error_code);
+    return error_code;
+  }
+
+  int32_t result = samba_interface_->CloseFile(close_file_options.file_id());
+
+  if (result != 0) {
+    LogAndSetError(kCloseFileMethod, -1 /* mount_id */,
+                   GetErrorFromErrno(result), &error_code);
+    return error_code;
+  }
+
+  return static_cast<int32_t>(ERROR_OK);
 }
 
 // This is a helper method that has a similar return structure as

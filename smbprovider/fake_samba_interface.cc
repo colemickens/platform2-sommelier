@@ -125,6 +125,37 @@ int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
   return 0;
 }
 
+int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
+                                     int32_t flags,
+                                     int32_t* file_id) {
+  DCHECK(file_id);
+  *file_id = -1;
+
+  std::string path = RemoveURLScheme(file_path);
+
+  if (!GetFile(file_path)) {
+    return ENOENT;
+  }
+
+  bool readable = (flags == O_RDONLY || flags == O_RDWR) ? true : false;
+  bool writeable = flags == O_RDWR ? true : false;
+
+  DCHECK(!IsFDOpen(next_fd));
+  open_fds.emplace(next_fd, OpenInfo(path, readable, writeable));
+  *file_id = next_fd++;
+  return 0;
+}
+
+int32_t FakeSambaInterface::CloseFile(int32_t file_id) {
+  DCHECK_GE(file_id, 0);
+  if (!IsFDOpen(file_id)) {
+    return EBADF;
+  }
+  auto open_info_iter = FindOpenFD(file_id);
+  open_fds.erase(open_info_iter);
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {
@@ -205,6 +236,15 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
   return current;
 }
 
+FakeSambaInterface::FakeFile* FakeSambaInterface::GetFile(
+    const std::string& file_path) const {
+  FakeEntry* entry = GetEntry(file_path);
+  if (!entry || entry->smbc_type != SMBC_FILE) {
+    return nullptr;
+  }
+  return static_cast<FakeFile*>(entry);
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::GetEntry(
     const std::string& entry_path) const {
   FakeDirectory* directory = GetDirectory(GetDirPath(entry_path));
@@ -239,6 +279,16 @@ FakeSambaInterface::OpenEntriesIterator FakeSambaInterface::FindOpenFD(
 
 bool FakeSambaInterface::FakeEntry::IsValidEntryType() const {
   return smbc_type == SMBC_DIR || smbc_type == SMBC_FILE;
+}
+
+bool FakeSambaInterface::HasReadSet(int32_t fd) const {
+  DCHECK(IsFDOpen(fd));
+  return open_fds.at(fd).readable;
+}
+
+bool FakeSambaInterface::HasWriteSet(int32_t fd) const {
+  DCHECK(IsFDOpen(fd));
+  return open_fds.at(fd).writeable;
 }
 
 }  // namespace smbprovider

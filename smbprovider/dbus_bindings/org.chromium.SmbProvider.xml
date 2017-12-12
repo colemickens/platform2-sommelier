@@ -89,5 +89,44 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+
+    <method name="OpenFile">
+      <tp:docstring>
+        Opens a file with a specified path.
+      </tp:docstring>
+      <arg name="open_file_options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized OpenFileOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="file_id" type="i" direction="out">
+        <tp:docstring>
+          Unique identifier of the open file.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="CloseFile">
+       <tp:docstring>
+        Closes the file with the specified file handler.
+      </tp:docstring>
+      <arg name="close_file_options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized CloseFileOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

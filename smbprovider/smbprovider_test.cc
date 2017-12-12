@@ -78,6 +78,26 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
+  ProtoBlob CreateOpenFileOptionsBlob(int32_t mount_id,
+                                      const std::string& file_path,
+                                      bool writeable) {
+    ProtoBlob proto_blob;
+    OpenFileOptions open_file_options;
+    open_file_options.set_mount_id(mount_id);
+    open_file_options.set_file_path(file_path);
+    open_file_options.set_writeable(writeable);
+    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(open_file_options, &proto_blob));
+    return proto_blob;
+  }
+
+  ProtoBlob CreateCloseFileOptionsBlob(int32_t file_id) {
+    ProtoBlob proto_blob;
+    CloseFileOptions close_file_options;
+    close_file_options.set_file_id(file_id);
+    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(close_file_options, &proto_blob));
+    return proto_blob;
+  }
+
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
   int32_t PrepareMount() {
@@ -106,6 +126,13 @@ class SmbProviderTest : public testing::Test {
   // closed.
   void ExpectNoOpenDirectories() {
     EXPECT_FALSE(fake_samba_->HasOpenEntries());
+  }
+
+  // Helper method that creates a CloseFileOptionsBlob for |file_id| and
+  // calls SmbProvider::CloseFile with it, expecting success.
+  void CloseFileHelper(int32_t file_id) {
+    ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(file_id);
+    EXPECT_EQ(ERROR_OK, smbprovider_->CloseFile(close_file_blob));
   }
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
@@ -509,7 +536,6 @@ TEST_F(SmbProviderTest, GetMetadataFailsWithInvalidPath) {
 // GetMetadata succeeds when passed a valid share path.
 TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   int32_t mount_id = PrepareMount();
-  const std::string name("dog.jpg");
 
   fake_samba_->AddDirectory("smb://wdshare/test/path");
   fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
@@ -526,9 +552,213 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
   EXPECT_FALSE(entry.is_directory());
-  EXPECT_EQ(name, entry.name());
+  EXPECT_EQ("dog.jpg", entry.name());
   EXPECT_EQ(kFileSize, entry.size());
   EXPECT_EQ(kFileDate, entry.last_modified_time());
+}
+
+// OpenFile fails when called on a non existent file.
+TEST_F(SmbProviderTest, OpenFileFailsFileDoesNotExist) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+  EXPECT_EQ(-1, file_id);
+}
+
+// OpenFile succeeds and returns a valid file_id when called on a valid file.
+TEST_F(SmbProviderTest, OpenFileSuceedsOnValidFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  EXPECT_EQ(ERROR_OK, error_code);
+  EXPECT_GE(file_id, 0);
+
+  CloseFileHelper(file_id);
+}
+
+// OpenFile fails when called on a directory.
+TEST_F(SmbProviderTest, OpenFileFailsOnDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob =
+      CreateOpenFileOptionsBlob(mount_id, "/path", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+  EXPECT_EQ(-1, file_id);
+}
+
+// OpenFile fails when called on a non file / non directory.
+TEST_F(SmbProviderTest, OpenFileFailsOnNonFileNonDir) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddEntry("smb://wdshare/test/path/canon.cn", SMBC_PRINTER_SHARE);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/canon.cn", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+  EXPECT_EQ(-1, file_id);
+}
+
+// OpenFile sets read and write flags correctly in the corresponding OpenInfo.
+TEST_F(SmbProviderTest, OpenFileReadandWriteFlagSetCorrectly) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+  fake_samba_->AddFile("smb://wdshare/test/path/cat.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  int32_t file_id_2;
+  int32_t error_code_2;
+  open_file_blob = CreateOpenFileOptionsBlob(mount_id, "/path/cat.jpg",
+                                             true /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code_2, &file_id_2);
+
+  EXPECT_EQ(ERROR_OK, error_code);
+  EXPECT_TRUE(fake_samba_->HasReadSet(file_id));
+  EXPECT_FALSE(fake_samba_->HasWriteSet(file_id));
+
+  EXPECT_EQ(ERROR_OK, error_code_2);
+  EXPECT_TRUE(fake_samba_->HasReadSet(file_id_2));
+  EXPECT_TRUE(fake_samba_->HasWriteSet(file_id_2));
+
+  CloseFileHelper(file_id);
+  CloseFileHelper(file_id_2);
+}
+
+// CloseFile succeeds on a valid file.
+TEST_F(SmbProviderTest, CloseFileSuceedsOnOpenFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+  EXPECT_EQ(ERROR_OK, error_code);
+
+  CloseFileHelper(file_id);
+}
+
+// CloseFile closes the correct file when multiple files are open.
+TEST_F(SmbProviderTest, CloseFileClosesCorrectFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+  fake_samba_->AddFile("smb://wdshare/test/path/cat.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  int32_t file_id_2;
+  int32_t error_code_2;
+  open_file_blob = CreateOpenFileOptionsBlob(mount_id, "/path/cat.jpg",
+                                             false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code_2, &file_id_2);
+
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_NE(file_id, file_id_2);
+
+  CloseFileHelper(file_id);
+  EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+
+  CloseFileHelper(file_id_2);
+}
+
+// CloseFile closes the correct instance of a file with opened more than once.
+TEST_F(SmbProviderTest, CloseFileClosesCorrectInstanceOfSameFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+
+  int32_t file_id_2;
+  int32_t error_code_2;
+  open_file_blob = CreateOpenFileOptionsBlob(mount_id, "/path/dog.jpg",
+                                             false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code_2, &file_id_2);
+
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_NE(file_id, file_id_2);
+
+  CloseFileHelper(file_id);
+  EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+
+  CloseFileHelper(file_id_2);
+}
+
+// CloseFile fails when called on a closed file.
+TEST_F(SmbProviderTest, CloseFileFailsWhenFileIsNotOpen) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob = CreateOpenFileOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+  EXPECT_EQ(ERROR_OK, error_code);
+  CloseFileHelper(file_id);
+
+  ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(file_id);
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
+}
+
+// CloseFile fails when called with a non-existant file handler.
+TEST_F(SmbProviderTest, TestName) {
+  ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(1564);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
 }
 
 }  // namespace smbprovider

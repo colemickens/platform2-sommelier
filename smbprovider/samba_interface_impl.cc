@@ -10,6 +10,12 @@
 
 #include "smbprovider/samba_interface_impl.h"
 
+namespace {
+bool IsValidOpenFileFlags(int32_t flags) {
+  return flags == O_RDONLY || flags == O_RDWR;
+}
+}  // namespace
+
 namespace smbprovider {
 
 std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create() {
@@ -25,6 +31,24 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create() {
   }
   smbc_set_context(context);
   return std::unique_ptr<SambaInterfaceImpl>(new SambaInterfaceImpl(context));
+}
+
+int32_t SambaInterfaceImpl::CloseFile(int32_t file_id) {
+  return smbc_close(file_id) >= 0 ? 0 : errno;
+}
+
+int32_t SambaInterfaceImpl::OpenFile(const std::string& file_path,
+                                     int32_t flags,
+                                     int32_t* file_id) {
+  DCHECK(file_id);
+  DCHECK(IsValidOpenFileFlags(flags));
+
+  *file_id = smbc_open(file_path.c_str(), flags, 0 /* mode */);
+  if (*file_id < 0) {
+    *file_id = -1;
+    return errno;
+  }
+  return 0;
 }
 
 int32_t SambaInterfaceImpl::OpenDirectory(const std::string& directory_path,

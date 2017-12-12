@@ -62,6 +62,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                         int32_t* error_code,
                         ProtoBlob* out_entry) override;
 
+  void OpenFile(const ProtoBlob& open_file_options_blob,
+                int32_t* error_code,
+                int32_t* file_id) override;
+
+  int32_t CloseFile(const ProtoBlob& close_file_options_blob) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
