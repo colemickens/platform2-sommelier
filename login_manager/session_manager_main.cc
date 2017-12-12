@@ -26,6 +26,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
@@ -88,20 +89,24 @@ using login_manager::PerformChromeSetup;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
 
+namespace {
 // Directory in which per-boot metrics flag files will be stored.
-static const char kFlagFileDir[] = "/run/session_manager";
+constexpr char kFlagFileDir[] = "/run/session_manager";
 
 // Hang-detection magic file and constants.
-static const char kHangDetectionFlagFile[] = "enable_hang_detection";
-static const uint32_t kHangDetectionIntervalDefaultSeconds = 60;
-static const uint32_t kHangDetectionIntervalShortSeconds = 5;
+constexpr char kHangDetectionFlagFile[] = "enable_hang_detection";
+constexpr base::TimeDelta kHangDetectionIntervalStable =
+    base::TimeDelta::FromSeconds(60);
+constexpr base::TimeDelta kHangDetectionIntervalDev =
+    base::TimeDelta::FromSeconds(15);
+constexpr base::TimeDelta kHangDetectionIntervalTest =
+    base::TimeDelta::FromSeconds(5);
 
 // Time to wait for children to exit gracefully before killing them
 // with a SIGABRT.
-static const int kKillTimeoutDefaultSeconds = 3;
-static const int kKillTimeoutLongSeconds = 12;
+constexpr int kKillTimeoutDefaultSeconds = 3;
+constexpr int kKillTimeoutLongSeconds = 12;
 
-namespace {
 bool BootDeviceIsRotationalDisk() {
   char full_rootdev_path[PATH_MAX];
   if (rootdev(full_rootdev_path, PATH_MAX - 1, true, true) != 0) {
@@ -178,13 +183,24 @@ int main(int argc, char* argv[]) {
   LoginMetrics metrics(flag_file_dir);
 
   // The session_manager supports pinging the browser periodically to check that
-  // it is still alive.  On developer systems, this would be a problem, as
-  // debugging the browser would cause it to be aborted. Override via a
-  // flag-file is allowed to enable integration testing.
-  bool enable_hang_detection = !is_developer_end_user;
-  uint32_t hang_detection_interval = kHangDetectionIntervalDefaultSeconds;
-  if (base::PathExists(flag_file_dir.Append(kHangDetectionFlagFile)))
-    hang_detection_interval = kHangDetectionIntervalShortSeconds;
+  // it is still alive. On developer systems, this would be a problem, as
+  // debugging the browser would cause it to be aborted. desktopui_HangDetector
+  // autotest uses the flag file to indicate that an abort is expected. We
+  // tolerate shorter intervals for all non-stable channels.
+  const bool hang_detection_file_exists =
+      base::PathExists(flag_file_dir.Append(kHangDetectionFlagFile));
+  const bool enable_hang_detection =
+      !is_developer_end_user || hang_detection_file_exists;
+
+  base::TimeDelta hang_detection_interval = kHangDetectionIntervalStable;
+  std::string channel_string;
+  if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
+                                        &channel_string) &&
+      channel_string != "stable-channel") {
+    hang_detection_interval = kHangDetectionIntervalDev;
+  }
+  if (hang_detection_file_exists)
+    hang_detection_interval = kHangDetectionIntervalTest;
 
   // On platforms with rotational disks, Chrome takes longer to shut down. As
   // such, we need to change our baseline assumption about what "taking too long
@@ -207,7 +223,7 @@ int main(int argc, char* argv[]) {
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
       std::move(browser_job), uid, kill_timeout, enable_hang_detection,
-      base::TimeDelta::FromSeconds(hang_detection_interval), &metrics, &system);
+      hang_detection_interval, &metrics, &system);
 
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.
