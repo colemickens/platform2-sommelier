@@ -151,6 +151,7 @@ class Tpm2Impl : public Tpm {
       TpmPersistentState::TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
+  bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool SetUserType(Tpm::UserType type) override;
 
  private:

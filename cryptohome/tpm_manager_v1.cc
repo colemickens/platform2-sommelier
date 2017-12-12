@@ -171,6 +171,11 @@ int GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
   return tpm->GetVersionInfo(version_info);
 }
 
+int GetIFXFieldUpgradeInfo(cryptohome::Tpm::IFXFieldUpgradeInfo* info) {
+  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
+  return tpm->GetIFXFieldUpgradeInfo(info);
+}
+
 }  // namespace tpm_manager
 
 }  // namespace cryptohome

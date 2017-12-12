@@ -145,6 +145,11 @@ bool GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
   return true;
 }
 
+int GetIFXFieldUpgradeInfo(cryptohome::Tpm::IFXFieldUpgradeInfo* info) {
+  LOG(ERROR) << "Not implemented";
+  return -1;
+}
+
 }  // namespace tpm_manager
 
 }  // namespace cryptohome

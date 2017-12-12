@@ -45,6 +45,16 @@ void PrintUsage() {
          "as a hex-encoded string.\n");
   printf("    get_version_info: Prints TPM software and hardware version "
          "information.\n");
+  printf("    get_ifx_field_upgrade_info: Prints status information pertaining "
+         "to firmware updates on Infineon TPMs.\n");
+}
+
+static void PrintIFXFirmwarePackage(
+    const Tpm::IFXFieldUpgradeInfo::FirmwarePackage& firmware_package,
+    const char* prefix) {
+  printf("%s_package_id %08x\n", prefix, firmware_package.package_id);
+  printf("%s_version %08x\n", prefix, firmware_package.version);
+  printf("%s_stale_version %08x\n", prefix, firmware_package.stale_version);
 }
 
 int TakeOwnership(bool finalize);
@@ -52,14 +62,17 @@ int VerifyEK(bool is_cros_core);
 int DumpStatus();
 int GetRandom(unsigned int random_bytes_count);
 int GetVersionInfo(Tpm::TpmVersionInfo* version_info);
+int GetIFXFieldUpgradeInfo(Tpm::IFXFieldUpgradeInfo* info);
 
 }  // namespace tpm_manager
 
 }  // namespace cryptohome
 
 using cryptohome::tpm_manager::DumpStatus;
+using cryptohome::tpm_manager::GetIFXFieldUpgradeInfo;
 using cryptohome::tpm_manager::GetRandom;
 using cryptohome::tpm_manager::GetVersionInfo;
+using cryptohome::tpm_manager::PrintIFXFirmwarePackage;
 using cryptohome::tpm_manager::PrintUsage;
 using cryptohome::tpm_manager::TakeOwnership;
 using cryptohome::tpm_manager::VerifyEK;
@@ -119,6 +132,22 @@ int main(int argc, char **argv) {
            vendor_specific.c_str(),
            fingerprint,
            fingerprint);
+    return 0;
+  }
+  if (command == "get_ifx_field_upgrade_info") {
+    cryptohome::Tpm::IFXFieldUpgradeInfo info;
+    if (!GetIFXFieldUpgradeInfo(&info)) {
+      return -1;
+    }
+
+    printf("max_data_size %u\n", info.max_data_size);
+    PrintIFXFirmwarePackage(info.bootloader, "bootloader");
+    PrintIFXFirmwarePackage(info.firmware[0], "fw0");
+    PrintIFXFirmwarePackage(info.firmware[1], "fw1");
+    printf("status %04x\n", info.status);
+    PrintIFXFirmwarePackage(info.process_fw, "process_fw");
+    printf("field_upgrade_counter %u\n", info.field_upgrade_counter);
+
     return 0;
   }
   PrintUsage();

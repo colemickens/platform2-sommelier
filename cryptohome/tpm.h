@@ -131,6 +131,32 @@ class Tpm {
     int GetFingerprint() const;
   };
 
+  // Holds status information pertaining to TPM firmware updates for Infineon
+  // TPMs.
+  struct IFXFieldUpgradeInfo {
+    // Describes status of a firmware package.
+    struct FirmwarePackage {
+      uint32_t package_id;
+      uint32_t version;
+      uint32_t stale_version;
+    };
+
+    // Chunk size for transmitting the firmware update.
+    uint16_t max_data_size;
+    // Version numbers of the bootloader in ROM.
+    FirmwarePackage bootloader;
+    // Version numbers for the two writable firmware slots.
+    FirmwarePackage firmware[2];
+    // Status of the TPM - 0x5a3c indicates bootloader mode, i.e. no running
+    // TPM firmware.
+    uint16_t status;
+    // Version numbers of the firmware for which installation has started, but
+    // not completed.
+    FirmwarePackage process_fw;
+    // Total number of updates the TPM has installed in its entire lifetime.
+    uint16_t field_upgrade_counter;
+  };
+
   static Tpm* GetSingleton();
 
   static const uint32_t kLockboxIndex;
@@ -589,6 +615,9 @@ class Tpm {
 
   // Obtains version information from the TPM.
   virtual bool GetVersionInfo(TpmVersionInfo* version_info) = 0;
+
+  // Obtains field upgrade status for IFX TPMs.
+  virtual bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) = 0;
 
   // For TPMs that require it, performs TPM-specific actions when the type of
   // the signed-in user changes (owner vs non-owner/no-user).

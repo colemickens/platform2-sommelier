@@ -1180,6 +1180,10 @@ bool Tpm2Impl::GetVersionInfo(TpmVersionInfo* version_info) {
   return true;
 }
 
+bool Tpm2Impl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
+  return false;
+}
+
 bool Tpm2Impl::SetUserType(Tpm::UserType type) {
   VLOG(1) << __func__ << ": " << cur_user_type_ << " -> " << type;
   if (cur_user_type_ == UserType::NonOwner || cur_user_type_ == type) {

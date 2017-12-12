@@ -14,9 +14,9 @@
 #include <gmock/gmock.h>
 
 namespace cryptohome {
-using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
+using ::testing::_;
 
 class Crypto;
 
@@ -130,6 +130,7 @@ class MockTpm : public Tpm {
                bool(TpmPersistentState::TpmOwnerDependency));
   MOCK_METHOD0(ClearStoredPassword, bool());
   MOCK_METHOD1(GetVersionInfo, bool(TpmVersionInfo*));
+  MOCK_METHOD1(GetIFXFieldUpgradeInfo, bool(IFXFieldUpgradeInfo*));
   MOCK_METHOD1(SetUserType, bool(Tpm::UserType));
 
  private:

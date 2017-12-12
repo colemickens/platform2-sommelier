@@ -157,6 +157,9 @@ class StubTpm : public Tpm {
     { return true; }
   bool ClearStoredPassword() override { return true; }
   bool GetVersionInfo(TpmVersionInfo* version_info) override { return false; }
+  bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override {
+    return false;
+  }
   bool SetUserType(Tpm::UserType type) override { return true; }
 };
 

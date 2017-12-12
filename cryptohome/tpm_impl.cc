@@ -2912,6 +2912,78 @@ bool TpmImpl::GetVersionInfo(TpmVersionInfo* version_info) {
   return true;
 }
 
+static void ParseIFXFirmwarePackage(
+    uint64_t* offset,
+    uint8_t* buffer,
+    Tpm::IFXFieldUpgradeInfo::FirmwarePackage* firmware_package) {
+  Trspi_UnloadBlob_UINT32(offset, &firmware_package->package_id, buffer);
+  Trspi_UnloadBlob_UINT32(offset, &firmware_package->version, buffer);
+  Trspi_UnloadBlob_UINT32(offset, &firmware_package->stale_version, buffer);
+}
+
+bool TpmImpl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
+  ScopedTssContext context_handle;
+  if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
+    LOG(ERROR) << "Could not open the TPM";
+    return false;
+  }
+
+  TSS_HTPM tpm_handle;
+  if (!GetTpm(context_handle, &tpm_handle)) {
+    LOG(ERROR) << "Could not get a handle to the TPM.";
+    return false;
+  }
+
+  TSS_RESULT result = TSS_SUCCESS;
+  uint8_t kRequest[] = { 0x11, 0x00, 0x00 };
+  uint32_t response_size;
+  ScopedTssMemory response(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_FieldUpgrade(tpm_handle, sizeof(kRequest),
+                                               kRequest, &response_size,
+                                               response.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_FieldUpgrade";
+    return false;
+  }
+
+  const uint32_t kFieldUpgradeInfo2Size = 106;
+  const uint32_t kFieldUpgradeResponseSize =
+      kFieldUpgradeInfo2Size + sizeof(uint16_t);
+  if (response_size < kFieldUpgradeResponseSize) {
+    LOG(ERROR) << "FieldUpgrade response too short";
+    return false;
+  }
+
+  // Parse the response.
+  uint64_t offset = 0;
+  uint16_t size = 0;
+  Trspi_UnloadBlob_UINT16(&offset, &size, response.value());
+
+  if (size != kFieldUpgradeInfo2Size) {
+    LOG(ERROR) << "FieldUpgrade response size too short";
+    return false;
+  }
+
+  Trspi_UnloadBlob_UINT16(&offset, NULL, response.value());
+  Trspi_UnloadBlob_UINT16(&offset, &info->max_data_size, response.value());
+  Trspi_UnloadBlob_UINT16(&offset, NULL, response.value());
+  Trspi_UnloadBlob_UINT32(&offset, NULL, response.value());
+  offset += 34;
+  ParseIFXFirmwarePackage(&offset, response.value(), &info->bootloader);
+  Trspi_UnloadBlob_UINT16(&offset, NULL, response.value());
+  ParseIFXFirmwarePackage(&offset, response.value(), &info->firmware[0]);
+  ParseIFXFirmwarePackage(&offset, response.value(), &info->firmware[1]);
+  Trspi_UnloadBlob_UINT16(&offset, &info->status, response.value());
+  ParseIFXFirmwarePackage(&offset, response.value(), &info->process_fw);
+  Trspi_UnloadBlob_UINT16(&offset, NULL, response.value());
+  offset += 6;
+  Trspi_UnloadBlob_UINT16(&offset, &info->field_upgrade_counter,
+                          response.value());
+
+  CHECK_EQ(offset, kFieldUpgradeResponseSize);
+
+  return true;
+}
+
 bool TpmImpl::SetUserType(Tpm::UserType type) {
   // Nothing to do for TPM 1.2.
   return true;
