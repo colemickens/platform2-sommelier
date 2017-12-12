@@ -165,7 +165,7 @@ TEST_F(CrosConfigTest, CheckDefault) {
   ASSERT_EQ("pyro", val);
 
   // Check it detects a circular 'default'.
-  base::FilePath filepath("test.dtb");
+  base::FilePath filepath("test_bad_default.dtb");
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "Reef", 22, ""));
 }
 
