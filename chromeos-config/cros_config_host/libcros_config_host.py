@@ -637,7 +637,7 @@ class CrosConfig(object):
         A list of (string) full firmware URIs, or an empty list on failure.
       """
       firmware = self.PathNode('/firmware')
-      if not firmware:
+      if not firmware or firmware.GetBool('no-firmware'):
         return []
       shared = firmware.FollowPhandle('shares')
       props = self.GetMergedProperties(firmware, 'shares')

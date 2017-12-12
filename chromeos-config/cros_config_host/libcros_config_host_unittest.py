@@ -132,8 +132,7 @@ class CrosConfigHostTest(unittest.TestCase):
     expected = sorted(
         [CAROLINE_BUCKET + fname for fname in CAROLINE_FIRMWARE_FILES] +
         [PYRO_BUCKET + fname for fname in PYRO_FIRMWARE_FILES] +
-        [REEF_BUCKET + fname for fname in REEF_FIRMWARE_FILES] +
-        [BROKEN_BUCKET + fname for fname in BROKEN_FIRMWARE_FILES]
+        [REEF_BUCKET + fname for fname in REEF_FIRMWARE_FILES]
         )
     self.assertSequenceEqual(firmware_uris, expected)
 
