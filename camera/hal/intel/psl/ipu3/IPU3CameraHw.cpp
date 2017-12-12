@@ -46,7 +46,8 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mCaptureUnit(nullptr),
         mGCM(cameraId),
         mUseCase(USECASE_VIDEO),
-        mOperationMode(0)
+        mOperationMode(0),
+        mTestPatternMode(ANDROID_SENSOR_TEST_PATTERN_MODE_OFF)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
@@ -371,14 +372,18 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
     status_t status = NO_ERROR;
     // Check reconfiguration
     UseCase newUseCase = checkUseCase(request);
-    if (newUseCase != mUseCase) {
+    int32_t testPatternMode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+    status = getTestPatternMode(request, &testPatternMode);
+    CheckError(status != NO_ERROR, status, "@%s: failed to get test pattern mode", __FUNCTION__);
+
+    if (newUseCase != mUseCase || testPatternMode != mTestPatternMode) {
         LOG1("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
                 request->getId(), inFlightCount, mUseCase, newUseCase);
         if (inFlightCount > 1) {
             return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
         }
 
-        status = reconfigureStreams(newUseCase, mOperationMode);
+        status = reconfigureStreams(newUseCase, mOperationMode, testPatternMode);
     }
 
     if (status == NO_ERROR) {
@@ -402,9 +407,31 @@ IPU3CameraHw::UseCase IPU3CameraHw::checkUseCase(Camera3Request* request) const
     return USECASE_VIDEO;
 }
 
-status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase, uint32_t operation_mode)
+status_t IPU3CameraHw::getTestPatternMode(Camera3Request* request, int32_t* testPatternMode)
+{
+    const CameraMetadata *reqSetting = request->getSettings();
+    CheckError(reqSetting == nullptr, UNKNOWN_ERROR, "no settings in request - BUG");
+
+    const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
+    camera_metadata_ro_entry entry, availableTestPatternModes;
+
+    availableTestPatternModes = MetadataHelper::getMetadataEntry(meta,
+        ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES);
+
+    entry = reqSetting->find(ANDROID_SENSOR_TEST_PATTERN_MODE);
+    MetadataHelper::getSetting(availableTestPatternModes, entry, testPatternMode);
+    CheckError(*testPatternMode < 0, BAD_VALUE, "@%s: invalid test pattern mode: %d",
+        __FUNCTION__, *testPatternMode);
+
+    LOG2("@%s: current test pattern mode: %d", __FUNCTION__, *testPatternMode);
+    return NO_ERROR;
+}
+
+status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase,
+                                  uint32_t operation_mode, int32_t testPatternMode)
 {
     mUseCase = newUseCase;
+    mTestPatternMode = testPatternMode;
     std::vector<camera3_stream_t*>& streams = (mUseCase == USECASE_STILL) ?
                                               mStreamsStill : mStreamsVideo;
 

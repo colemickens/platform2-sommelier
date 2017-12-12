@@ -460,7 +460,7 @@ ControlUnit::processRequest(Camera3Request* request,
     Message msg;
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> state;
-    LOG2("@%s: id %d", __FUNCTION__,  request->getId());
+    LOG2("@%s: id %d", __FUNCTION__, request->getId());
 
     status = acquireRequestStateStruct(state);
     if (CC_UNLIKELY(status != OK) || CC_UNLIKELY(state.get() == nullptr)) {
@@ -471,7 +471,7 @@ ControlUnit::processRequest(Camera3Request* request,
 
     msg.id = MESSAGE_ID_NEW_REQUEST;
     msg.state = state;
-    status =  mMessageQueue.send(&msg);
+    status = mMessageQueue.send(&msg);
     return status;
 }
 

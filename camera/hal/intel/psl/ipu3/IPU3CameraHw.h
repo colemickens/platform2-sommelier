@@ -73,7 +73,7 @@ class IPU3CameraHw: public ICameraHw {
     camera3_stream_t* findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams);
 
     UseCase checkUseCase(Camera3Request* request) const;
-    status_t reconfigureStreams(UseCase newUseCase, uint32_t operation_mode);
+    status_t reconfigureStreams(UseCase newUseCase, uint32_t operation_mode, int32_t testPatternMode);
 
  private:  //members
     int mCameraId;
@@ -99,6 +99,8 @@ class IPU3CameraHw: public ICameraHw {
     std::vector<camera3_stream_t*> mStreamsStill;
     std::vector<camera3_stream_t*> mStreamsVideo;
     uint32_t mOperationMode;
+    int32_t mTestPatternMode;
+    status_t getTestPatternMode(Camera3Request* request, int32_t* testPatternMode);
 };
 
 } /* namespace camera2 */
