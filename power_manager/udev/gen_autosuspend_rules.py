@@ -85,6 +85,8 @@ USB_IDS += [
   "0489:e04e",
   # Hon-hai (peppy)
   "0489:e056",
+  # Hon-hai (Kahlee)
+  "0489:e09f",
   # LiteOn (parrot)
   "04ca:3006",
   # Atheros (stumpy, stout)
