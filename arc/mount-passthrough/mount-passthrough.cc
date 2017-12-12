@@ -29,11 +29,13 @@
 
 #define WRAP_FS_CALL(res) ((res) < 0 ? -errno : 0)
 
-static int passthrough_create(const char* path,
-                              mode_t mode,
-                              struct fuse_file_info* fi) {
+namespace {
+
+int passthrough_create(const char* path,
+                       mode_t mode,
+                       struct fuse_file_info* fi) {
   // Ignore specified |mode| and always use a fixed mode since we do not allow
-  // chmod anyway.
+  // chmod anyway. Note that we explicitly set the umask to 0022 in main().
   int fd = open(path, fi->flags, 0644);
   if (fd < 0) {
     return -errno;
@@ -42,46 +44,46 @@ static int passthrough_create(const char* path,
   return 0;
 }
 
-static int passthrough_fgetattr(const char* path,
-                                struct stat* buf,
-                                struct fuse_file_info* fi) {
+int passthrough_fgetattr(const char* path,
+                         struct stat* buf,
+                         struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   // File owner is overridden by uid/gid options passed to fuse.
   return WRAP_FS_CALL(fstat(fd, buf));
 }
 
-static int passthrough_fsync(const char* path,
-                             int datasync,
-                             struct fuse_file_info* fi) {
+int passthrough_fsync(const char* path,
+                      int datasync,
+                      struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return datasync ? WRAP_FS_CALL(fdatasync(fd)) : WRAP_FS_CALL(fsync(fd));
 }
 
-static int passthrough_fsyncdir(const char* path,
-                                int datasync,
-                                struct fuse_file_info* fi) {
+int passthrough_fsyncdir(const char* path,
+                         int datasync,
+                         struct fuse_file_info* fi) {
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
   int fd = dirfd(dirp);
   return datasync ? WRAP_FS_CALL(fdatasync(fd)) : WRAP_FS_CALL(fsync(fd));
 }
 
-static int passthrough_ftruncate(const char* path,
-                                 off_t size,
-                                 struct fuse_file_info* fi) {
+int passthrough_ftruncate(const char* path,
+                          off_t size,
+                          struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return WRAP_FS_CALL(ftruncate(fd, size));
 }
 
-static int passthrough_getattr(const char* path, struct stat* buf) {
+int passthrough_getattr(const char* path, struct stat* buf) {
   // File owner is overridden by uid/gid options passed to fuse.
   return WRAP_FS_CALL(lstat(path, buf));
 }
 
-static int passthrough_mkdir(const char* path, mode_t mode) {
+int passthrough_mkdir(const char* path, mode_t mode) {
   return WRAP_FS_CALL(mkdir(path, mode));
 }
 
-static int passthrough_open(const char* path, struct fuse_file_info* fi) {
+int passthrough_open(const char* path, struct fuse_file_info* fi) {
   int fd = open(path, fi->flags);
   if (fd < 0) {
     return -errno;
@@ -90,7 +92,7 @@ static int passthrough_open(const char* path, struct fuse_file_info* fi) {
   return 0;
 }
 
-static int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
+int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
   DIR* dirp = opendir(path);
   if (!dirp) {
     return -errno;
@@ -99,11 +101,11 @@ static int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
   return 0;
 }
 
-static int passthrough_read(const char* path,
-                            char* buf,
-                            size_t size,
-                            off_t off,
-                            struct fuse_file_info* fi) {
+int passthrough_read(const char* path,
+                     char* buf,
+                     size_t size,
+                     off_t off,
+                     struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   int res = pread(fd, buf, size, off);
   if (res < 0) {
@@ -114,7 +116,7 @@ static int passthrough_read(const char* path,
 
 /*
 // TODO(nya): Use this faster version after we update libfuse.
-static int passthrough_read_buf(
+int passthrough_read_buf(
     const char* path, struct fuse_bufvec** srcp, size_t size, off_t off,
     struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
@@ -129,11 +131,11 @@ static int passthrough_read_buf(
 }
 */
 
-static int passthrough_readdir(const char* path,
-                               void* buf,
-                               fuse_fill_dir_t filler,
-                               off_t off,
-                               struct fuse_file_info* fi) {
+int passthrough_readdir(const char* path,
+                        void* buf,
+                        fuse_fill_dir_t filler,
+                        off_t off,
+                        struct fuse_file_info* fi) {
   // TODO(nya): This implementation returns all files at once and thus
   // inefficient. Make use of offset and be better to memory.
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
@@ -151,45 +153,45 @@ static int passthrough_readdir(const char* path,
   return -errno;
 }
 
-static int passthrough_release(const char* path, struct fuse_file_info* fi) {
+int passthrough_release(const char* path, struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return WRAP_FS_CALL(close(fd));
 }
 
-static int passthrough_releasedir(const char* path, struct fuse_file_info* fi) {
+int passthrough_releasedir(const char* path, struct fuse_file_info* fi) {
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
   return WRAP_FS_CALL(closedir(dirp));
 }
 
-static int passthrough_rename(const char* oldpath, const char* newpath) {
+int passthrough_rename(const char* oldpath, const char* newpath) {
   return WRAP_FS_CALL(rename(oldpath, newpath));
 }
 
-static int passthrough_rmdir(const char* path) {
+int passthrough_rmdir(const char* path) {
   return WRAP_FS_CALL(rmdir(path));
 }
 
-static int passthrough_statfs(const char* path, struct statvfs* buf) {
+int passthrough_statfs(const char* path, struct statvfs* buf) {
   return WRAP_FS_CALL(statvfs(path, buf));
 }
 
-static int passthrough_truncate(const char* path, off_t size) {
+int passthrough_truncate(const char* path, off_t size) {
   return WRAP_FS_CALL(truncate(path, size));
 }
 
-static int passthrough_unlink(const char* path) {
+int passthrough_unlink(const char* path) {
   return WRAP_FS_CALL(unlink(path));
 }
 
-static int passthrough_utimens(const char* path, const struct timespec tv[2]) {
+int passthrough_utimens(const char* path, const struct timespec tv[2]) {
   return WRAP_FS_CALL(utimensat(AT_FDCWD, path, tv, 0));
 }
 
-static int passthrough_write(const char* path,
-                             const char* buf,
-                             size_t size,
-                             off_t off,
-                             struct fuse_file_info* fi) {
+int passthrough_write(const char* path,
+                      const char* buf,
+                      size_t size,
+                      off_t off,
+                      struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   int res = pwrite(fd, buf, size, off);
   if (res < 0) {
@@ -200,7 +202,7 @@ static int passthrough_write(const char* path,
 
 /*
 // TODO(nya): Use this faster version after we update libfuse.
-static int passthrough_write_buf(
+int passthrough_write_buf(
     const char* path, const fuse_bufvec* src, off_t off,
     struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
@@ -212,7 +214,7 @@ static int passthrough_write_buf(
 }
 */
 
-static void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
+void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   memset(passthrough_ops, 0, sizeof(*passthrough_ops));
 #define FILL_OP(name) passthrough_ops->name = passthrough_##name
   FILL_OP(create);
@@ -237,6 +239,8 @@ static void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(write);
 #undef FILL_OP
 }
+
+}  // namespace
 
 int main(int argc, char** argv) {
   if (argc != 4) {
