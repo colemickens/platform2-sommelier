@@ -21,8 +21,8 @@ ModemFlasher::ModemFlasher(
 void ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
   if (ContainsValue(blacklist_, equipment_id)) {
-    LOG(WARNING) << "Modem with equipment ID " << equipment_id
-                 << " is blacklisted; not flashing";
+    LOG(WARNING) << "Modem with equipment ID \"" << equipment_id
+                 << "\" is blacklisted; not flashing";
     return;
   }
   std::string device_id = modem->GetDeviceId();
