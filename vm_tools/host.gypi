@@ -55,6 +55,7 @@
       'dependencies': ['vm-rpcs'],
       'deps': ['system_api'],
       'sources': [
+        'concierge/mac_address_generator.cc',
         'concierge/service.cc',
         'concierge/subnet_pool.cc',
       ],
@@ -95,6 +96,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'concierge/mac_address_generator_unittest.cc',
             'concierge/subnet_pool_unittest.cc',
           ],
         },
