@@ -11,7 +11,9 @@
 #include <mntent.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <selinux/restorecon.h>
 #include <selinux/selinux.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -49,6 +51,28 @@ namespace {
 
 std::string GetLoopDevice(int32_t device) {
   return base::StringPrintf("/dev/loop%d", device);
+}
+
+// A callback function for SELinux restorecon.
+PRINTF_FORMAT(2, 3)
+int RestoreConLogCallback(int type, const char* fmt, ...) {
+  va_list ap;
+
+  std::string message = "restorecon: ";
+  va_start(ap, fmt);
+  message += base::StringPrintV(fmt, ap);
+  va_end(ap);
+
+  // This already has a line feed at the end, so trim it off to avoid
+  // empty lines in the log.
+  base::TrimString(message, "\r\n", &message);
+
+  if (type == SELINUX_INFO)
+    LOG(INFO) << message;
+  else
+    LOG(ERROR) << message;
+
+  return 0;
 }
 
 // A callback function for GetPropertyFromFile.
@@ -584,12 +608,21 @@ bool LaunchAndWait(const std::vector<std::string>& argv) {
 }
 
 bool RestoreconRecursively(const std::vector<base::FilePath>& directories) {
-  // TODO(yusukes): Stop using LaunchAndWait. fork/exec is slow.
-  std::vector<std::string> argv{"/sbin/restorecon", "-R"};
+  union selinux_callback cb;
+  cb.func_log = RestoreConLogCallback;
+  selinux_set_callback(SELINUX_CB_LOG, cb);
+
+  const unsigned int restorecon_flags =
+      SELINUX_RESTORECON_RECURSE | SELINUX_RESTORECON_REALPATH;
+
+  bool success = true;
   for (const auto& directory : directories) {
-    argv.emplace_back(directory.value());
+    if (selinux_restorecon(directory.value().c_str(), restorecon_flags) != 0) {
+      LOG(ERROR) << "Error in restorecon of directory " << directory.value();
+      success = false;
+    }
   }
-  return LaunchAndWait(argv);
+  return success;
 }
 
 std::string GenerateFakeSerialNumber(const std::string& chromeos_user,
