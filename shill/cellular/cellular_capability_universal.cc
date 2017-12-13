@@ -1634,11 +1634,6 @@ void CellularCapabilityUniversal::Handle3gppRegistrationChange(
     MMModem3gppRegistrationState updated_state,
     const string& updated_operator_code,
     const string& updated_operator_name) {
-  // A finished callback does not qualify as a canceled callback.
-  // We test for a canceled callback to check for outstanding callbacks.
-  // So, explicitly cancel the callback here.
-  registration_dropped_update_callback_.Cancel();
-
   SLOG(this, 3) << __func__ << ": regstate=" << updated_state
                             << ", opercode=" << updated_operator_code
                             << ", opername=" << updated_operator_name;
@@ -1651,6 +1646,14 @@ void CellularCapabilityUniversal::Handle3gppRegistrationChange(
       updated_operator_name);
 
   cellular()->HandleNewRegistrationState();
+
+  // A finished callback does not qualify as a canceled callback.
+  // We test for a canceled callback to check for outstanding callbacks.
+  // So, explicitly cancel the callback here.
+  // Caution: Do not use any function arguments post the call to Cancel().
+  // Cancel() call invalidates the arguments that were copied when creating
+  // the callback.
+  registration_dropped_update_callback_.Cancel();
 
   // If the modem registered with the network and the current ICCID is pending
   // activation, then reset the modem.
