@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,11 +61,7 @@ status_t JpegMakerCore::setupExifWithMetaData(ImgEncoderCore::EncodePackage & pa
 
     status = processJpegSettings(package, metaData);
 
-    status = processExifSettings(package.settings, metaData);
-    if (status != NO_ERROR) {
-        LOGE("@%s: Process settngs for Exif! %d", __FUNCTION__, status);
-        return status;
-    }
+    processExifSettings(package.settings, metaData);
 
     mExifMaker->initialize(package.main->width(), package.main->height());
     mExifMaker->pictureTaken(metaData);

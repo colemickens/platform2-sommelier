@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation.
+ * Copyright (C) 2015-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,12 +37,6 @@ ITaskEventSource::attachListener(ITaskEventListener *observer,
     if (observer == nullptr)
         return BAD_VALUE;
     std::lock_guard<std::mutex> l(mListenerLock);
-    // Check event to be in the range of allowed events.
-    if ((event < ITaskEventListener::PU_TASK_EVENT_BUFFER_COMPLETE ) ||
-        (event > ITaskEventListener::PU_TASK_EVENT_MAX)) {
-        LOGE("Event is outside the range of allowed events: %d", event);
-        return BAD_VALUE;
-    }
 
     // Check if we have any listener registered to this event
     std::map<ITaskEventListener::PUTaskEventType, listener_list_t>::
@@ -90,7 +84,7 @@ status_t
 ITaskEventSource::notifyListeners(ITaskEventListener::PUTaskMessage *msg)
 {
     LOG2("@%s", __FUNCTION__);
-    bool ret = false;
+    status_t ret = NO_ERROR;
     std::lock_guard<std::mutex> l(mListenerLock);
     if (mListeners.size() > 0) {
         std::map<ITaskEventListener::PUTaskEventType, listener_list_t>::

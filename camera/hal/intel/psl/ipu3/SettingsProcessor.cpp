@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,40 +80,31 @@ SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
      **/
     processCroppingRegion(settings, reqAiqCfg);
 
-    if ((status = processAeSettings(settings, reqAiqCfg)) != OK)
-        return status;
+    processAeSettings(settings, reqAiqCfg);
     reqAiqCfg.aeState = ALGORITHM_CONFIGURED;
 
-    if ((status = processAfSettings(settings, reqAiqCfg)) != OK)
-        return status;
+    processAfSettings(settings, reqAiqCfg);
     reqAiqCfg.afState = ALGORITHM_CONFIGURED;
 
-    if ((status = processAwbSettings(settings, reqAiqCfg)) != OK)
-        return status;
+    processAwbSettings(settings, reqAiqCfg);
     reqAiqCfg.awbState = ALGORITHM_CONFIGURED;
 
 
     if ((status = processIspSettings(settings, reqAiqCfg)) != OK)
         return status;
 
-    if ((status = processImageEnhancementSettings(settings, reqAiqCfg)) != OK)
-        return status;
+    processImageEnhancementSettings(settings, reqAiqCfg);
+    processStabilizationSettings(settings, reqAiqCfg);
 
-    if ((status = processStabilizationSettings(settings, reqAiqCfg)) != OK)
-        return status;
-
-    if ((status = processHotPixelSettings(settings, reqAiqCfg)) != OK)
-        return status;
+    status = processHotPixelSettings(settings, reqAiqCfg);
 
     PAInputParams params;
     params.aiqInputParams = &reqAiqCfg.aiqInputParams;
-    if ((status = m3aWrapper->fillPAInputParams(settings, params)) != OK)
-        return status;
+    m3aWrapper->fillPAInputParams(settings, params);
 
     SAInputParams saParams;
     saParams.aiqInputParams = &reqAiqCfg.aiqInputParams;
-    if ((status = m3aWrapper->fillSAInputParams(settings, saParams)) != OK)
-        return status;
+    m3aWrapper->fillSAInputParams(settings, saParams);
 
     reqAiqCfg.captureSettings->shadingMode = saParams.saMode;
     reqAiqCfg.captureSettings->shadingMapMode = saParams.shadingMapMode;
@@ -366,7 +357,7 @@ SettingsProcessor::processAfSettings(const CameraMetadata  &settings,
         reqAiqCfg.aiqInputParams.afParams.focus_rect->right = toW.right();
 
     } else {
-        CLEAR(reqAiqCfg.captureSettings->afRegion);
+        reqAiqCfg.captureSettings->afRegion.reset();
         // This is the normal case when there is no AF region defined.
         reqAiqCfg.captureSettings->afRegion = reqAiqCfg.captureSettings->cropRegion;
     }

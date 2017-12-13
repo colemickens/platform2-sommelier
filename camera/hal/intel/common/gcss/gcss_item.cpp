@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -734,7 +734,6 @@ css_err_t
 GraphConfigNode::addValue(ia_uid uid, const string &val)
 {
     GraphConfigStrAttribute *attribute;
-    css_err_t ret;
 
     if (hasItem(uid))
         return css_err_full;
@@ -743,11 +742,7 @@ GraphConfigNode::addValue(ia_uid uid, const string &val)
     if (attribute == nullptr)
         return css_err_nomemory;
     attribute->setValue(val);
-    ret = insertDescendant(attribute, uid);
-    if (ret != css_err_none) {
-        delete attribute;
-        return ret;
-    }
+    insertDescendant(attribute, uid);
 
     return css_err_none;
 }
@@ -756,7 +751,6 @@ css_err_t
 GraphConfigNode::addValue(ia_uid uid, int val)
 {
     GraphConfigIntAttribute *attribute;
-    css_err_t ret;
 
     if (hasItem(uid))
         return css_err_full;
@@ -765,11 +759,7 @@ GraphConfigNode::addValue(ia_uid uid, int val)
     if (attribute == nullptr)
         return css_err_nomemory;
     attribute->setValue(val);
-    ret = insertDescendant(attribute, uid);
-    if (ret != css_err_none) {
-        delete attribute;
-        return ret;
-    }
+    insertDescendant(attribute, uid);
 
     return css_err_none;
 }

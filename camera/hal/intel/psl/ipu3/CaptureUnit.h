@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -293,6 +293,7 @@ private:
     status_t issueSkips(int count, bool buffers, bool settings, bool isys);
     status_t applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSettings);
     status_t initStaticMetadata();
+    DISALLOW_IMPLICIT_CONSTRUCTORS(CaptureUnit);
 
 private:
     friend class std::shared_ptr<InflightRequestState>;

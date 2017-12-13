@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <utils/Errors.h>
 #include <hardware/camera3.h>
 #include "UtilityMacros.h"
+#include "base/macros.h"
 #include <camera_buffer_manager.h>
 #include <memory>
 
@@ -115,6 +116,7 @@ public:
 private:
     status_t registerBuffer();
     status_t deregisterBuffer();
+    DISALLOW_COPY_AND_ASSIGN(CameraBuffer);
 
 private:
     camera3_stream_buffer_t mUserBuffer; /*!< Original structure passed by request */

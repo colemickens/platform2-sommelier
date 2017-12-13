@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,10 +98,6 @@ status_t MediaController::open()
             // Return permission denied, to allow skipping this device.
             // Our HAL may not want to really use this device at all.
             ret = PERMISSION_DENIED;
-        } else {
-            LOGE("Error opening media device %s: %d (%s)",
-                mPath.c_str(), mFd, strerror(errno));
-            ret = UNKNOWN_ERROR;
         }
     }
 
@@ -308,7 +304,6 @@ status_t MediaController::setFormat(const MediaCtlFormatParams &formatParams)
         std::shared_ptr<V4L2VideoNode> node;
         FrameInfo config;
 
-        CLEAR(config);
         config.format = formatParams.formatCode;
         config.width = formatParams.width;
         config.height = formatParams.height;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ public:
     void init(ia_coordinate topLeft,ia_coordinate bottomRight, int aWeight);
     void init(ia_coordinate topLeft,int width, int height, int aWeight);
     void init(int aWeight);
+    void reset();
     /**
      * Queries
      */

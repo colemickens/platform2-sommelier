@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -420,9 +420,6 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
 
         //TODO FIX VALUES
         switch (controlMode) {
-            case ANDROID_CONTROL_MODE_OFF:
-                aiqInputParams->aeInputParams.operation_mode = ia_aiq_ae_operation_mode_automatic;
-                break;
             case ANDROID_CONTROL_MODE_AUTO:
                 aiqInputParams->aeInputParams.operation_mode = ia_aiq_ae_operation_mode_automatic;
                 break;

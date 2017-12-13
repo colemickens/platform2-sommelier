@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,10 +108,6 @@ ControlUnit::init()
 
     mMetadata = new Metadata(mCameraId, m3aWrapper);
     status = mMetadata->init();
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Error Initializing metadata");
-        return UNKNOWN_ERROR;
-    }
 
     mCaptureUnit->setSettingsProcessor(mSettingsProcessor);
 
@@ -143,10 +139,6 @@ ControlUnit::init()
     if (cap)
         supportDigiGain = cap->digiGainOnSensor();
     status = m3ARunner->init(supportDigiGain);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Error Initializing 3A Runner");
-        return UNKNOWN_ERROR;
-    }
 
     status = allocateLscResults();
     if (CC_UNLIKELY(status != OK)) {
@@ -390,6 +382,7 @@ ControlUnit::requestExitAndWait()
     msg.id = MESSAGE_ID_EXIT;
     status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
     status |= mMessageThread->requestExitAndWait();
+
     return status;
 }
 
@@ -933,8 +926,7 @@ ControlUnit::messageThreadLoop()
                 LOGE("Error handling new stats");
             break;
         case MESSAGE_ID_NEW_SENSOR_DESCRIPTOR:
-            if (handleNewSensorDescriptor(msg) != NO_ERROR)
-                LOGE("Error getting sensor descriptor");
+            handleNewSensorDescriptor(msg);
             break;
         case MESSAGE_ID_NEW_SHUTTER:
             status = handleNewShutter(msg);

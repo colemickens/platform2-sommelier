@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ private: /* Methods */
     void handleGraph(const char *name, const char **atts);
     void handleNode(const char *name, const char **atts);
     void checkField(GCSSParser *profiles, const char *name, const char **atts);
+    DISALLOW_COPY_AND_ASSIGN(GCSSParser);
 
 private:  /* Members */
 

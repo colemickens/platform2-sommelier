@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include "Camera3V4l2Format.h"
 #include "UtilityMacros.h"
 #include <utils/Errors.h>
+#include "base/macros.h"
 
 #ifndef _EXIFMETADATA_H_
 #define _EXIFMETADATA_H_
@@ -87,6 +88,8 @@ typedef makernote_info MakernoteType;
     int8_t mV3AeMode;                           /*!< v3 ae mode (e.g. for flash) */
     int8_t mFlashMode;                          /*!< flash mode (e.g. TORCH,SINGLE,OFF) */
     int mZoomRatio;
+private:
+    DISALLOW_COPY_AND_ASSIGN(ExifMetaData);
 };
 } NAMESPACE_DECLARATION_END
 #endif   // _EXIFMETADATA_H_

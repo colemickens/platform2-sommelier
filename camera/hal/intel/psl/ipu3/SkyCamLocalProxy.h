@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define PSL_IPU3_SKYCAMLOCALPROXY_H_
 
 #include "SkyCamProxy.h"
+#include "base/macros.h"
 
 class KBL_AIC;
 
@@ -47,6 +48,7 @@ private:
 
     KBL_AIC *mSkyCam;
     IPU3ISPPipe *mPipe; /* SkyCamLocalProxy doesn't own mPipe */
+    DISALLOW_COPY_AND_ASSIGN(SkyCamLocalProxy);
 };
 
 } /* namespace camera2 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include "ia_cmc_parser.h"
 #include "Metadata.h"
 #include "Intel3aCmc.h"
+#include "base/macros.h"
 
 NAMESPACE_DECLARATION {
 class CameraHWInfo;
@@ -57,7 +58,7 @@ private:
     status_t fillLightSourceStaticMetadata(camera_metadata_t * metadata);
     status_t fillSensorStaticMetadata(camera_metadata_t * metadata);
     status_t fillLscSizeStaticMetadata(camera_metadata_t * metadata);
-
+    DISALLOW_IMPLICIT_CONSTRUCTORS(AiqConf);
 private:
     Intel3aCmc mCmc; /* CameraConf owns mCmc */
     camera_metadata_t* mMetadata; /* CameraConf doesn't own mMetadata */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -354,11 +354,6 @@ public:
                                  uintptr_t* cmcHandle,
                                  int cameraId,
                                  std::string mode = std::string(CPF_MODE_DEFAULT));
-    /**
-     * get the number of CPU cores
-     * \return the number of CPU cores
-     */
-    static unsigned int getNumOfCPUCores();
     /**
     * Utility methods to retrieve particular fields from the static metadata
     * (a.k.a. Camera Characteristics), Please do NOT add anything else here

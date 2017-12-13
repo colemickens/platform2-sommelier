@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -403,10 +403,6 @@ status_t CameraBuffer::lock(int flags)
         LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
         return UNKNOWN_ERROR;
     }
-    if (ret) {
-        LOGE("ERROR @%s: Failed to lock buffer! %d", __FUNCTION__, ret);
-        return UNKNOWN_ERROR;
-    }
 
     for (int i = 0; i < planeNum; i++) {
         mSize += mGbmBufferManager->GetPlaneSize(mHandle, i);
@@ -635,11 +631,8 @@ allocateHandleBuffer(int w,
     stream.height = h;
     stream.format = gfxFmt;
     stream.usage = usage;
-    ret = buffer->init(&stream, handle, cameraId);
-    if (ret != NO_ERROR) {
-        // buffer handle will free in CameraBuffer destructure function
-        return nullptr;
-    }
+
+    buffer->init(&stream, handle, cameraId);
 
     return buffer;
 }

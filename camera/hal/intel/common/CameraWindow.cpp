@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,20 @@ CameraWindow::CameraWindow() :
     mWidth(0),
     mHeight(0)
 {
+    CLEAR(mMeteringRectangle);
+    CLEAR(mCenter);
+}
+
+void CameraWindow::reset()
+{
+    mXleft = 0;
+    mXright = 0;
+    mYtop = 0;
+    mYbottom = 0;
+    mWeight = 0;
+    mWidth = 0;
+    mHeight = 0;
+
     CLEAR(mMeteringRectangle);
     CLEAR(mCenter);
 }

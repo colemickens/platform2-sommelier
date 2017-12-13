@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,25 @@ private:
         camera_metadata_ro_entry pipelineDepth;
         camera_metadata_ro_entry lensSupported;
         camera_metadata_ro_entry availableTestPatternModes;
-        StaticMetadataCache() { CLEAR(*this); }
+
+        StaticMetadataCache() {
+            CLEAR(availableEffectModes);
+            CLEAR(availableEdgeModes);
+            CLEAR(availableNoiseReductionModes);
+            CLEAR(availableTonemapModes);
+            CLEAR(availableHotPixelMapModes);
+            CLEAR(availableHotPixelModes);
+            CLEAR(availableVideoStabilization);
+            CLEAR(availableOpticalStabilization);
+            CLEAR(currentAperture);
+            CLEAR(currentFocalLength);
+            CLEAR(flashInfoAvailable);
+            CLEAR(lensShadingMapSize);
+            CLEAR(maxAnalogSensitivity);
+            CLEAR(pipelineDepth);
+            CLEAR(lensSupported);
+            CLEAR(availableTestPatternModes);
+        }
 
         status_t getFlashInfoAvailable(bool &available) const
         {

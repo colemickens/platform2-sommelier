@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -176,11 +176,7 @@ status_t GraphConfig::prepare(GraphConfigManager *manager,
         return UNKNOWN_ERROR;
     }
 
-    ret = analyzeSourceType();
-    if (ret != OK) {
-        LOGE("Failed to analyze source type");
-        return ret;
-    }
+    analyzeSourceType();
 
     ret = getActiveOutputPorts(streamToSinkIdMap);
     if (ret != OK) {
@@ -189,10 +185,6 @@ status_t GraphConfig::prepare(GraphConfigManager *manager,
     }
 
     ret = generateKernelListsForStreams();
-    if (ret != OK) {
-        LOGE("Failed to generate kernel list");
-        return ret;
-    }
 
     calculateSinkDependencies();
     storeTuningModes();
@@ -835,8 +827,6 @@ status_t GraphConfig::pipelineGetInternalConnections(
     Node *port = nullptr;
     PSysPipelineConnection aConnection;
 
-    CLEAR(aConnection);
-
     alreadyConnectedPorts.clear();
     status = graphGetSinksByName(sinkName, sinks);
     if (CC_UNLIKELY(status != OK) || sinks.empty()) {
@@ -1024,10 +1014,6 @@ int32_t GraphConfig::portGetStreamId(Node *port)
         return -1;
     }
     ret = port->getAncestor(&ancestor);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Failed to get port's ancestor");
-        return -1;
-    }
 
     ret = ancestor->getValue(GCSS_KEY_STREAM_ID, streamId);
     if (CC_UNLIKELY(ret != css_err_none)) {
@@ -1458,10 +1444,6 @@ status_t GraphConfig::portGetFullName(Node *port, string &fullName)
     }
 
     ret = port->getAncestor(&ancestor);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Failed to retrieve port ancestor");
-        return BAD_VALUE;
-    }
     ret = ancestor->getValue(GCSS_KEY_NAME, ancestorName);
     if (CC_UNLIKELY(ret != css_err_none)) {
         LOGE("Failed to get ancestor name for port");
@@ -1708,11 +1690,7 @@ bool GraphConfig::isPipeEdgePort(Node *port)
      * it does not have ancestor.
      */
     if (!portIsVirtual(peer)) {
-        ret = peer->getAncestor(&peerAncestor);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Failed to get peer's ancestor");
-            return false;
-        }
+        peer->getAncestor(&peerAncestor);
         ret = peerAncestor->getValue(GCSS_KEY_STREAM_ID, peerStreamId);
         if (CC_UNLIKELY(ret != css_err_none)) {
             LOGE("Failed to get stream ID of peer PG");

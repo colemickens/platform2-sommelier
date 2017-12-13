@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,20 +75,8 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         return NO_INIT;
     }
 
-    ret = RuntimeParamsHelper::allocateAiStructs(mVideoRuntimeParams);
-    if (ret != OK) {
-        LOGE("Cannot allocate AIC struct");
-        RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
-        return ret;
-    }
-
-    ret = RuntimeParamsHelper::allocateAiStructs(mPreviewRuntimeParams);
-    if (ret != OK) {
-        LOGE("Cannot allocate AIC struct");
-        RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
-        RuntimeParamsHelper::deleteAiStructs(mPreviewRuntimeParams);
-        return ret;
-    }
+    RuntimeParamsHelper::allocateAiStructs(mVideoRuntimeParams);
+    RuntimeParamsHelper::allocateAiStructs(mPreviewRuntimeParams);
 
     GraphConfig::NodesPtrVector sinks;
     std::string name = "csi_be:output";

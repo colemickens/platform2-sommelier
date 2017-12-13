@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
     CLEAR(mResizeLscGridGb);
     CLEAR(mResizeLscGridB);
     CLEAR(mLscGridRGGB);
-    CLEAR(mLatestInputParams);
+    mLatestInputParams.init();
 
     // init LscOffGrid to 1.0f
     std::fill(std::begin(mLscOffGrid), std::end(mLscOffGrid), 1.0f);
@@ -370,13 +370,9 @@ void AAARunner::runAf(RequestCtrlState &reqState, bool bypass)
      * Get the lens position and time now, just before running AF
      */
     if (mLensController != nullptr) {
-        status = mLensController->getLatestPosition(
+        mLensController->getLatestPosition(
                 &afInputParams->lens_position,
                 &afInputParams->lens_movement_start_timestamp);
-
-        if (CC_UNLIKELY(status != OK)) {
-            LOGW("Failed to get latest Lens Position");
-        }
     }
 
     // Uncomment for debugging

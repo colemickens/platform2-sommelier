@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #define CAMERA3_HAL_SHAREDITEMPOOL_H_
 
 #include <vector>
+#include <mutex>
 #include <pthread.h>
 #include "LogHelper.h"
 #include "CommonUtilMacros.h"
@@ -125,7 +126,7 @@ private: /* members */
     ItemType           *mAllocated;
     size_t              mCapacity;
     ItemDeleter         mDeleter;
-    pthread_mutex_t     mMutex; /* protects mAvailable, mAllocated, mCapacity, mTraceReturns */
+    std::mutex          mMutex; /* protects mAvailable, mAllocated, mCapacity, mTraceReturns */
     bool                mTraceReturns;
     const char         *mName;
     void (*mResetter)(ItemType*);

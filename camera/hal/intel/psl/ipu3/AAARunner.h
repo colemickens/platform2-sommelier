@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ private:
 
     float interpolate(float pos, const float *src, int srcSize) const;
     void interpolateArray(const float *src, int srcSize, float *dst, int dstSize) const;
+    DISALLOW_IMPLICIT_CONSTRUCTORS(AAARunner);
 
 private:
     int mCameraId;

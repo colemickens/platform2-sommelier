@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,12 +73,7 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
 {
     LOG1("@%s", __FUNCTION__);
 
-    status_t status = NO_ERROR;
-    status = mRequestsPool.init(MAX_REQUEST_IN_PROCESS_NUM);
-    if (status != NO_ERROR) {
-        LOGE("Error creating RequestPool: %d", status);
-        return status;
-    }
+    mRequestsPool.init(MAX_REQUEST_IN_PROCESS_NUM);
 
     mResultProcessor = new ResultProcessor(this, callback_ops);
 #ifdef REMOTE_3A_SERVER

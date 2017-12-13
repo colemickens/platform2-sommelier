@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -198,6 +198,7 @@ public:
     operator IGraphConfig*() { return this; }
 
 private:
+    DISALLOW_ASSIGN(GraphConfigNode);
     GraphConfigItem::const_iterator getNext(const_iterator& it){
                                             return std::next(it, 1);}
     GraphConfigItem::const_iterator getNextAttribute(

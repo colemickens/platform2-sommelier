@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -596,7 +596,7 @@ void PSLConfParser::handleMediaCtlElements(const char *name, const char **atts)
                 LOGW("Unhandled xml attribute in MediaCtl element (%s)", attr_name);
             }
         }
-        if ((currentElement.type == "video_node") && (currentElement.isysNodeName == -1)) {
+        if ((currentElement.type == "video_node")) {
             LOGE("ISYS node name is not set for \"%s\"", currentElement.name.c_str());
             return;
         }

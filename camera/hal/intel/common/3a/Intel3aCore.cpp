@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,6 @@ void AiqInputParams::init()
     CLEAR(focusRect);
     CLEAR(manualCctRange);
     CLEAR(manualWhiteCoordinate);
-    CLEAR(afRegion);
     CLEAR(awbResults);
     CLEAR(colorGains);
     CLEAR(exposureParams);
@@ -57,6 +56,7 @@ void AiqInputParams::init()
     aeLock = false;
     awbLock = false;
     blackLevelLock = false;
+    afRegion.reset();
     reset();
 }
 

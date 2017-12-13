@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -899,8 +899,6 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         msg.pollEvent.numDevices = 0;
         msg.pollEvent.polledDevices = 0;
         mMessageQueue.send(&msg);
-    } else {
-        LOGW("unknown poll event id (%d)", pollMsg->id);
     }
 
     return OK;

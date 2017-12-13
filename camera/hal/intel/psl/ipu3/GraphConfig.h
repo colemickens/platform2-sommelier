@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -167,6 +167,9 @@ public:
         ConnectionConfig connectionConfig;
         camera3_stream_t *stream;
         bool hasEdgePort;
+        PSysPipelineConnection() : stream(nullptr), hasEdgePort(0) {
+            CLEAR(portFormatSettings);
+        }
     };
 
 public:

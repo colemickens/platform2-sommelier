@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include <mutex>
 #include "CommonBuffer.h"
 #include "EXIFMaker.h"
+#include "base/macros.h"
 
 NAMESPACE_DECLARATION {
 /**
@@ -110,9 +111,9 @@ private:  /* Methods */
                    std::shared_ptr<CommonBuffer> destBuf,
                    unsigned int destOffset = 0);
     status_t getJpegSettings(EncodePackage & pkg, ExifMetaData& metaData);
+    DISALLOW_COPY_AND_ASSIGN(ImgEncoderCore);
 
 private:  /* Members */
-
     std::shared_ptr<CommonBuffer> mThumbOutBuf;
     std::shared_ptr<CommonBuffer> mJpegDataBuf;
     std::shared_ptr<CommonBuffer> mMainScaled;

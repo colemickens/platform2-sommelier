@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,23 +54,11 @@ JpegEncodeTask::init()
     status_t status = NO_ERROR;
 
     mImgEncoder = std::make_shared<ImgEncoder>(mCameraId);
-    status = mImgEncoder->init();
-    if (status != NO_ERROR) {
-        LOGE("Failed to init ImgEncoder!");
-        mImgEncoder.reset();
-        return NO_INIT;
-    }
+    mImgEncoder->init();
 
     mJpegMaker = new JpegMaker(mCameraId);
 
     status = mJpegMaker->init();
-    if (status != NO_ERROR) {
-        LOGE("Failed to init JpegMaker!");
-        delete mJpegMaker;
-        mJpegMaker = nullptr;
-        mImgEncoder.reset();
-        return NO_INIT;
-    }
 
     return status;
 }
@@ -92,11 +80,6 @@ status_t JpegEncodeTask::handleMessageSettings(ProcUnitSettings &procSettings)
 
     if (capSettings.get() == nullptr) {
         LOGE("JPEG settings, nullptr CapU settings");
-        return BAD_VALUE;
-    }
-
-    if (!andr3ACtrl) {
-        LOGE("JPEG settings, nullptr Android 3A controls.");
         return BAD_VALUE;
     }
 
@@ -259,10 +242,10 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     package.settings = msg.request->getSettings();
 
     ExifMetaData exifData;
-    CLEAR(exifData);
 
     ExifDataCache exifCache;
     CLEAR(exifCache);
+
     // NOTE: MKN fields now nullptr. Will bail later, if exifCache
     // data not found from vec.
 
@@ -274,30 +257,14 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     else
         LOGE("EXIF data for req ID %d not cached - BUG.", reqId);
 
-    status = handleISPData(exifData);
-    if (status != OK) {
-        LOGE("Error setting ISP related EXIF data.");
-        return status;
-    }
+    handleISPData(exifData);
 
     // Set 3A-related EXIF info
-    status = handleExposureData(exifData, exifCache);
-    if (status != OK) {
-        LOGE("Error setting exposure EXIF data.");
-        return status;
-    }
+    handleExposureData(exifData, exifCache);
 
-    status = handleIa3ASetting(exifData, exifCache);
-    if (status != OK) {
-        LOGE("Error setting IA 3A EXIF data.");
-        return status;
-    }
+    handleIa3ASetting(exifData, exifCache);
 
-    status = handleFlashData(exifData, exifCache);
-    if (status != OK) {
-        LOGE("Error setting flash EXIF data.");
-        return status;
-    }
+    handleFlashData(exifData, exifCache);
 
     // GPS handled in JpegMaker::processGpsSettings()
 
@@ -307,11 +274,7 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
         return status;
     }
 
-    status = handleJpegSettings(exifData, exifCache);
-    if (status != OK) {
-        LOGE("Error setting JPEG info to EXIF data.");
-        return status;
-    }
+    handleJpegSettings(exifData, exifCache);
 
     status = mJpegMaker->setupExifWithMetaData(package, exifData);
     // Do sw or HW encoding. Also create Thumb buffer if needed

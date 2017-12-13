@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,19 +208,24 @@ struct AeInputParams {
     CameraWindow                        *aeRegion;
     int                                 extraEvShift;
     int                                 maxSupportedFps;
-    AeInputParams()                     { CLEAR(*this); }
+    AeInputParams() : sensorDescriptor(nullptr), aiqInputParams(nullptr),
+      aaaControls(nullptr), croppingRegion(nullptr), aeRegion(nullptr)
+    {
+      extraEvShift = 0;
+      maxSupportedFps = 0;
+    }
 };
 
 struct AwbInputParams {
     AiqInputParams                      *aiqInputParams;
     AAAControls                         *aaaControls;
-    AwbInputParams()                    { CLEAR(*this); }
+    AwbInputParams() : aiqInputParams(nullptr), aaaControls(nullptr) { }
 };
 
 struct PAInputParams {
     AiqInputParams *aiqInputParams;
     // non Aiq related fields can be put here if needed
-    PAInputParams() { CLEAR(*this); }
+    PAInputParams() : aiqInputParams(nullptr) { }
 };
 
 struct SAInputParams {
@@ -228,7 +233,7 @@ struct SAInputParams {
     // non Aiq related fields can be put here if needed
     uint8_t saMode; /**< android sa mode */
     uint8_t shadingMapMode; /**< android shading map mode */
-    SAInputParams() { CLEAR(*this); }
+    SAInputParams() : aiqInputParams(nullptr) { saMode = 0; shadingMapMode = 0; }
 };
 
 struct DsdInputParams {
@@ -241,7 +246,7 @@ struct DsdInputParams {
 struct AfInputParams {
     AiqInputParams *aiqInputParams;
     AfControls  *afControls;
-    AfInputParams() { CLEAR(*this); }
+    AfInputParams() : aiqInputParams(nullptr), afControls(nullptr) { }
 };
 
 /**

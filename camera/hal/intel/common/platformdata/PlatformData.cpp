@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,6 +113,8 @@ int GcssKeyMap::gcssKeyMapSize()
 
 const char* GcssKeyMap::key2str(const ia_uid key)
 {
+    if (mMap.empty())
+         return nullptr;
     std::map<std::string, ia_uid>::const_iterator it = mMap.begin();
     for (;it != mMap.end(); ++it)
         if (it->second == key)
@@ -551,31 +553,6 @@ bool PlatformData::supportIPUAcceleration(void)
     return mCameraHWInfo->supportIPUAcceleration();
 }
 
-unsigned int PlatformData::getNumOfCPUCores()
-{
-    LOG1("@%s, line:%d", __FUNCTION__, __LINE__);
-    unsigned int cpuCores = 1;
-
-    char buf[20];
-    FILE *cpuOnline = fopen("/sys/devices/system/cpu/online", "r");
-    if (cpuOnline) {
-        CLEAR(buf);
-        size_t size = fread(buf, 1, sizeof(buf), cpuOnline);
-        if (size != sizeof(buf)) {
-            LOGW("Failed to read number of CPU's ");
-        }
-        buf[sizeof(buf) - 1] = '\0';
-        char *p = strchr(buf, '-');
-        if (p)
-            cpuCores = 1 + atoi(p + 1);
-        else
-            cpuCores = 1;
-        fclose(cpuOnline);
-    }
-    LOG1("@%s, line:%d, cpu core number:%d", __FUNCTION__, __LINE__, cpuCores);
-    return cpuCores;
-}
-
 status_t PlatformData::readSpId(string& spIdName, unsigned int& spIdValue)
 {
     FILE *file;
@@ -788,7 +765,6 @@ CameraWindow PlatformData::getActivePixelArray(int cameraId)
 {
     CameraWindow apa;
     camera_metadata_ro_entry entry;
-    CLEAR(apa);
     const camera_metadata *staticMeta = getStaticMetadata(cameraId);
     if (CC_UNLIKELY(staticMeta == nullptr)) {
         LOGE("@%s: Invalid camera id (%d) could not get static metadata",

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,10 +104,6 @@ IPU3CameraHw::init()
     // Register ControlUnit as a listener to capture events
     status = mImguUnit->attachListener(mControlUnit);
     status |= mCaptureUnit->attachListener(mControlUnit);
-    if (status != NO_ERROR) {
-        LOGE("Error registering CaptureUnit listener");
-        return status;
-    }
 
     status = initStaticMetadata();
     if (status != NO_ERROR) {

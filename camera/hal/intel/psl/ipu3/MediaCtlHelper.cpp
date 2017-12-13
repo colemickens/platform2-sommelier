@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,14 +59,10 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
     media_device_info deviceInfo;
     CLEAR(deviceInfo);
 
-    status_t status = closeVideoNodes();
-    if (status != NO_ERROR) {
-        LOGE("Failed to close video nodes (ret = %d)", status);
-        return status;
-    }
+    closeVideoNodes();
 
     // Reset pipe config
-    status = resetLinks(graphConfigMgr.getMediaCtlConfigPrev(mConfigedPipeType));
+    status_t status = resetLinks(graphConfigMgr.getMediaCtlConfigPrev(mConfigedPipeType));
     if (status != NO_ERROR) {
         LOGE("Cannot reset MediaCtl links");
         return status;

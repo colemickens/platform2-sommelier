@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,8 +46,6 @@ InputSystem::InputSystem(IISysObserver *observer, std::shared_ptr<MediaControlle
     mRequestDone(true)
 {
     LOG1("@%s", __FUNCTION__);
-    CLEAR(mConfigResults);
-
     mIsysRequestPool.init(MAX_REQUEST_IN_PROCESS_NUM);
     mPendingIsysRequests.clear();
     mMessageThread->run();
@@ -701,8 +699,6 @@ status_t InputSystem::notifyPollEvent(PollEventMessage *pollMsg)
         msg.data.pollEvent.numDevices = 0;
         msg.data.pollEvent.polledDevices = 0;
         mMessageQueue.send(&msg);
-    } else {
-        LOGW("unknown poll event id (%d)", pollMsg->id);
     }
 
     return OK;

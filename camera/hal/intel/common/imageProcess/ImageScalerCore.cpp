@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -329,11 +329,6 @@ void ImageScalerCore::downScaleAndCropNv12ImageQcif(unsigned char *dest, const u
     // (should be multiple by four)
     int proper_source_width = (aspect_ratio * (long int)(src_h) + 0x8000L) >> 16;
     proper_source_width = (proper_source_width + 2) & ~0x3;
-    // Now, the source image should have some surplus width
-    if (src_w < proper_source_width) {
-        LOGE("%s: source image too narrow", __func__);
-        return;
-    }
     // Let's divide the surplus to both sides
     int l_skip = (src_w - proper_source_width) >> 1;
     int r_skip = src_w - proper_source_width - l_skip;

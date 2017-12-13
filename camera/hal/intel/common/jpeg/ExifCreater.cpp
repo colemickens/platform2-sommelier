@@ -1,7 +1,7 @@
 /*
  * Copyright Samsung Electronics Co.,LTD.
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2011-2017 Intel Corporation
+ * Copyright (C) 2011-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -457,9 +457,6 @@ exif_status ExifCreater::makeExif (void *exifOut,
         LOG1("Makernote goes to APP2 segment.");
         status = makeApp2((pApp1Start + app2StartOffset), *size, exifInfo);
     }
-
-    if (status != EXIF_SUCCESS)
-        LOGW("Failed to create EXIF APP2 section");
 
     LOG1("makeExif End");
 

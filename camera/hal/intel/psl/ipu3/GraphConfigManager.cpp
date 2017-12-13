@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,11 +78,7 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
         return;
     }
 
-    status_t status = mGraphConfigPool.init(MAX_REQ_IN_FLIGHT,
-                                            GraphConfig::reset);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to initialize the pool of GraphConfigs");
-    }
+    mGraphConfigPool.init(MAX_REQ_IN_FLIGHT, GraphConfig::reset);
 }
 
 /**

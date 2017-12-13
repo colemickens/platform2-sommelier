@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,7 @@ private:
     status_t handleFlashData(ExifMetaData& exifData, const ExifDataCache &exifCache) const;
     status_t handleMakernote(ExifMetaData& exifData, ExifDataCache &exifCache) const;
     status_t handleJpegSettings(ExifMetaData& exifData, ExifDataCache &exifCache) const;
+    DISALLOW_IMPLICIT_CONSTRUCTORS(JpegEncodeTask);
 
 // Types
 private:

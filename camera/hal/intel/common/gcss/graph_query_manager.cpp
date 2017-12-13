@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -684,10 +684,6 @@ GraphQueryManager::getConnectionData(
     peerAttribute->setValue(set_sink_connection);
     ret = static_cast<GraphConfigNode*>(outSrcPort)
             ->insertDescendant(peerAttribute, GCSS_KEY_PEER);
-    if (ret != css_err_none) {
-        delete peerAttribute;
-        return ret;
-    }
 
     ret = outDstPort->getValue(GCSS_KEY_PEER, peerStr);
     if (ret != css_err_none) {
@@ -707,12 +703,8 @@ GraphQueryManager::getConnectionData(
         if (peerAttribute == nullptr)
             return css_err_nomemory;
         peerAttribute->setValue(source_connection);
-        ret = static_cast<GraphConfigNode*>(outDstPort)
+        static_cast<GraphConfigNode*>(outDstPort)
                 ->insertDescendant(peerAttribute, GCSS_KEY_PEER);
-        if (ret != css_err_none) {
-            delete peerAttribute;
-            return ret;
-        }
     }
 
     return css_err_none;
@@ -864,12 +856,8 @@ GraphQueryManager::getStaticConnectionData(
     if (peerAttribute == nullptr)
         return css_err_nomemory;
     peerAttribute->setValue(set_sink_connection);
-    ret = static_cast<GraphConfigNode*>(outSrcPort)
+    static_cast<GraphConfigNode*>(outSrcPort)
             ->insertDescendant(peerAttribute, GCSS_KEY_PEER);
-    if (ret != css_err_none) {
-        delete peerAttribute;
-        return ret;
-    }
 
     ret = outDstPort->getValue(GCSS_KEY_PEER, peerStr);
     if (ret != css_err_none) {
@@ -889,12 +877,8 @@ GraphQueryManager::getStaticConnectionData(
         if (peerAttribute == nullptr)
             return css_err_nomemory;
         peerAttribute->setValue(source_connection);
-        ret = static_cast<GraphConfigNode*>(outDstPort)
+        static_cast<GraphConfigNode*>(outDstPort)
                 ->insertDescendant(peerAttribute, GCSS_KEY_PEER);
-        if (ret != css_err_none) {
-            delete peerAttribute;
-            return ret;
-        }
     }
 
     return css_err_none;
@@ -1151,10 +1135,8 @@ css_err_t GraphQueryManager::propagateIntAttribute(IGraphConfig *srcNode,
             delete attr;
             return ret;
         }
-        ret = static_cast<GraphConfigNode*>(dstNode)
+        static_cast<GraphConfigNode*>(dstNode)
                 ->insertDescendant(attr, attributeId);
-        if (ret != css_err_none)
-            delete attr;
     } else {
         dstNode->setValue(attributeId, value);
     }
@@ -1205,10 +1187,8 @@ css_err_t GraphQueryManager::propagateStrAttribute(IGraphConfig *srcNode,
             delete attr;
             return ret;
         }
-        ret = static_cast<GraphConfigNode*>(dstNode)
+        static_cast<GraphConfigNode*>(dstNode)
                 ->insertDescendant(attr, attributeId);
-        if (ret != css_err_none)
-            delete attr;
     } else {
         dstNode->setValue(attributeId, value);
     }
