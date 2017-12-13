@@ -79,10 +79,8 @@ class SessionManagerImpl
   // File containing the path to the updated TPM firmware binary.
   static const char kTPMFirmwareUpdateLocationFile[];
 
-  // The VPD key that holds the TPM firmware update parameters. These are
-  // encoded string-value pairs using ':' as the value separator and ',' as the
-  // pair separator.
-  static const char kTPMFirmwareUpdateParamsVPDKey[];
+  // Flag file indicating a request to update TPM firmware after reboot.
+  static const char kTPMFirmwareUpdateRequestFlagFile[];
 
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
@@ -274,9 +272,8 @@ class SessionManagerImpl
                   const std::vector<std::string>& in_argv) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
-  void StartTPMFirmwareUpdate(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::string& update_mode) override;
+  bool StartTPMFirmwareUpdate(brillo::ErrorPtr* error,
+                              const std::string& update_mode) override;
   void SetFlagsForUser(const std::string& in_account_id,
                        const std::vector<std::string>& in_flags) override;
 

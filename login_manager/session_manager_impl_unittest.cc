@@ -2754,27 +2754,30 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
     ON_CALL(utils_, ReadFileToString(_, _))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::ReadFile));
-    ON_CALL(utils_, GetAppOutput(_, _))
-        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::GetAppOutput));
+    ON_CALL(utils_, AtomicFileWrite(_, _))
+        .WillByDefault(
+            Invoke(this, &StartTPMFirmwareUpdateTest::AtomicWriteFile));
     ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
         .WillByDefault(Return(false));
-    ON_CALL(vpd_process_, RunInBackground(_, _, _))
-        .WillByDefault(
-            Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
 
     SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
                     "/lib/firmware/tpm/dummy.bin");
   }
 
   void TearDown() override {
-    ResponseCapturer capturer;
-    impl_->StartTPMFirmwareUpdate(capturer.CreateMethodResponse<>(),
-                                  update_mode_);
-    if (!completion_.is_null()) {
-      completion_.Run(vpd_status_);
+    brillo::ErrorPtr error;
+    bool result = impl_->StartTPMFirmwareUpdate(&error, update_mode_);
+    if (expected_error_.empty()) {
+      EXPECT_TRUE(result);
+      EXPECT_FALSE(error);
+      EXPECT_TRUE(file_contents_.count(
+          SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile));
+    } else {
+      EXPECT_FALSE(result);
+      ASSERT_TRUE(error);
+      EXPECT_EQ(expected_error_, error->GetCode());
     }
 
-    EXPECT_EQ(expected_error_, capturer.response()->GetErrorName());
     SessionManagerImplTest::TearDown();
   }
 
@@ -2798,70 +2801,22 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     return true;
   }
 
+  bool AtomicWriteFile(const base::FilePath& path, const std::string& value) {
+    file_contents_[path.value()] = value;
+    return file_write_status_;
+  }
+
   void ExpectError(const std::string& error) { expected_error_ = error; }
 
   void SetUpdateMode(const std::string& mode) { update_mode_ = mode; }
 
-  void SetExistingVPDParams(const std::string& params) {
-    existing_vpd_params_ = params;
-  }
-
-  void SetExpectedVPDParams(const std::string& params) {
-    expected_vpd_params_ = params;
-  }
-
-  bool GetAppOutput(const std::vector<std::string>& argv, std::string* output) {
-    if (argv.size() != 2) {
-      return false;
-    }
-    if (argv[1] == SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey) {
-      *output = existing_vpd_params_;
-    }
-    return true;
-  }
-
-  bool RunVpdProcess(const VpdProcess::KeyValuePairs& updates,
-                     bool ignore_cache,
-                     const VpdProcess::CompletionCallback& completion) {
-    EXPECT_EQ(1, updates.size());
-    EXPECT_TRUE(ignore_cache);
-    if (updates.size() == 1) {
-      EXPECT_EQ(SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey,
-                updates[0].first);
-      EXPECT_EQ(expected_vpd_params_, updates[0].second);
-    }
-    if (vpd_spawned_) {
-      completion_ = std::move(completion);
-    }
-    return vpd_spawned_;
-  }
-
-  void SetVpdSpawned(bool spawned) { vpd_spawned_ = spawned; }
-
-  void SetVpdStatus(bool status) { vpd_status_ = status; }
-
   std::string update_mode_ = "first_boot";
-  std::string existing_vpd_params_;
-  std::string expected_vpd_params_ = "mode:first_boot";
   std::string expected_error_;
   std::map<std::string, std::string> file_contents_;
-  bool vpd_spawned_ = true;
-  bool vpd_status_ = true;
-  VpdProcess::CompletionCallback completion_;
+  bool file_write_status_ = true;
 };
 
-TEST_F(StartTPMFirmwareUpdateTest, Success_FirstBoot) {
-  ExpectDeviceRestart();
-}
-
-TEST_F(StartTPMFirmwareUpdateTest, Success_Recovery) {
-  SetUpdateMode("recovery");
-  SetExpectedVPDParams("mode:recovery");
-}
-
-TEST_F(StartTPMFirmwareUpdateTest, Success_DryRunPreserved) {
-  SetExistingVPDParams("attempts:2,dryrun:1,mode:complete");
-  SetExpectedVPDParams("mode:first_boot,dryrun:1");
+TEST_F(StartTPMFirmwareUpdateTest, Success) {
   ExpectDeviceRestart();
 }
 
@@ -2901,14 +2856,9 @@ TEST_F(StartTPMFirmwareUpdateTest, NoUpdateAvailable) {
   ExpectError(dbus_error::kNotAvailable);
 }
 
-TEST_F(StartTPMFirmwareUpdateTest, VpdSpawnError) {
-  SetVpdSpawned(false);
-  ExpectError(dbus_error::kVpdUpdateFailed);
-}
-
-TEST_F(StartTPMFirmwareUpdateTest, VpdStatusError) {
-  SetVpdStatus(false);
-  ExpectError(dbus_error::kVpdUpdateFailed);
+TEST_F(StartTPMFirmwareUpdateTest, RequestFileWriteFailure) {
+  file_write_status_ = false;
+  ExpectError(dbus_error::kNotAvailable);
 }
 
 }  // namespace login_manager

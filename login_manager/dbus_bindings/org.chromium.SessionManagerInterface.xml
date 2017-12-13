@@ -510,7 +510,6 @@
     -->
     <method name="StartTPMFirmwareUpdate">
       <arg type="s" name="update_mode" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
