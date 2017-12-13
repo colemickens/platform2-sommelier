@@ -12635,24 +12635,8 @@ mno {
     localized_name {
       name : "台灣大哥大"
     }
-    mccmnc : "46699"
-    mobile_apn {
-      apn : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "838969b4-b1cd-4646-a615-3790200f4b31"
-    country : "tw"
-    localized_name {
-      name : "TransAsia"
-    }
-    localized_name {
-      name : "泛亞電信"
-    }
     mccmnc : "46697"
+    mccmnc : "46699"
     mobile_apn {
       apn : "internet"
     }
