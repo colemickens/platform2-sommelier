@@ -76,8 +76,8 @@ class SessionManagerImpl
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // Path to flag file indicating that a TPM firmware update is available.
-  static const char kTPMFirmwareUpdateAvailableFile[];
+  // File containing the path to the updated TPM firmware binary.
+  static const char kTPMFirmwareUpdateLocationFile[];
 
   // The VPD key that holds the TPM firmware update parameters. These are
   // encoded string-value pairs using ':' as the value separator and ',' as the

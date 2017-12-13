@@ -2723,6 +2723,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
     ON_CALL(utils_, Exists(_))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
+    ON_CALL(utils_, ReadFileToString(_, _))
+        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::ReadFile));
     ON_CALL(utils_, GetAppOutput(_, _))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::GetAppOutput));
     ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
@@ -2731,7 +2733,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
 
-    SetFileExists(SessionManagerImpl::kTPMFirmwareUpdateAvailableFile, true);
+    SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
+                    "/lib/firmware/tpm/dummy.bin");
   }
 
   void TearDown() override {
@@ -2746,13 +2749,24 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     SessionManagerImplTest::TearDown();
   }
 
-  void SetFileExists(const std::string& path, bool exists) {
-    file_existence_[path] = exists;
+  void SetFileContents(const std::string& path, const std::string& contents) {
+    file_contents_[path] = contents;
   }
 
+  void DeleteFile(const std::string& path) { file_contents_.erase(path); }
+
   bool FileExists(const base::FilePath& path) {
-    const auto entry = file_existence_.find(path.MaybeAsASCII());
-    return entry != file_existence_.end() && entry->second;
+    const auto entry = file_contents_.find(path.MaybeAsASCII());
+    return entry != file_contents_.end();
+  }
+
+  bool ReadFile(const base::FilePath& path, std::string* str_out) {
+    const auto entry = file_contents_.find(path.MaybeAsASCII());
+    if (entry == file_contents_.end()) {
+      return false;
+    }
+    *str_out = entry->second;
+    return true;
   }
 
   void ExpectError(const std::string& error) { expected_error_ = error; }
@@ -2801,7 +2815,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   std::string existing_vpd_params_;
   std::string expected_vpd_params_ = "mode:first_boot";
   std::string expected_error_;
-  std::map<std::string, bool> file_existence_;
+  std::map<std::string, std::string> file_contents_;
   bool vpd_spawned_ = true;
   bool vpd_status_ = true;
   VpdProcess::CompletionCallback completion_;
@@ -2823,7 +2837,7 @@ TEST_F(StartTPMFirmwareUpdateTest, Success_DryRunPreserved) {
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, AlreadyLoggedIn) {
-  SetFileExists(SessionManagerImpl::kLoggedInFlag, true);
+  SetFileContents(SessionManagerImpl::kLoggedInFlag, "");
   ExpectError(dbus_error::kSessionExists);
 }
 
@@ -2846,6 +2860,16 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseAllowed) {
       ->set_allow_user_initiated_powerwash(true);
   SetDevicePolicy(settings);
   ExpectDeviceRestart();
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, AvailabilityNotDecided) {
+  DeleteFile(SessionManagerImpl::kTPMFirmwareUpdateLocationFile);
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, NoUpdateAvailable) {
+  SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, VpdSpawnError) {

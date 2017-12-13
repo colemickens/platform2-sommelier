@@ -83,9 +83,9 @@ constexpr char SessionManagerImpl::kLoggedInFlag[] =
     "/run/session_manager/logged_in";
 constexpr char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
-constexpr char SessionManagerImpl::kTPMFirmwareUpdateAvailableFile[] =
-    "/run/tpm_firmware_update_available";
 
+constexpr char SessionManagerImpl::kTPMFirmwareUpdateLocationFile[] =
+    "/run/tpm_firmware_update_location";
 constexpr char SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey[] =
     "tpm_firmware_update_params";
 
@@ -964,9 +964,12 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
     }
   }
 
-  // Check whether a firmware update is present.
-  if (!system_->Exists(base::FilePath(kTPMFirmwareUpdateAvailableFile))) {
-    constexpr char kMessage[] = "No TPM firmware update available.";
+  // Validate that a firmware update is actually available.
+  std::string update_location;
+  if (!system_->ReadFileToString(base::FilePath(kTPMFirmwareUpdateLocationFile),
+                                 &update_location) ||
+      !update_location.size()) {
+    constexpr char kMessage[] = "No update available.";
     LOG(ERROR) << kMessage;
     auto error = CreateError(dbus_error::kNotAvailable, kMessage);
     response->ReplyWithError(error.get());
