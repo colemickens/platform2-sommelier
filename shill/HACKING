@@ -15,13 +15,13 @@ limitations under the License.
 
 To keep the shill source code consistent, please follow the conventions below:
 
-- Use the Chromium Coding Style, as described at
-  http://www.chromium.org/developers/coding-style.
+- Follow the Chromium C++ style guide, as described at
+  https://chromium.googlesource.com/chromium/src/+/master/styleguide/c++/c++.md
 
   If you use Emacs, the Google C Style mode will help you with the formatting
   aspects of style. (Chromium Style generally follows Google Style). Get the
   Emacs mode at
-  http://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
+  https://github.com/google/styleguide/blob/gh-pages/google-c-style.el
 
 - When deferring work from a signal handler (e.g. a D-Bus callback) to
   the event loop, name the deferred work function by adding "Task" to
