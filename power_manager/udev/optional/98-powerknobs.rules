@@ -1,10 +1,6 @@
 # Enable WiFi Power Save Mode
 ACTION=="add|change", SUBSYSTEM=="net", TEST=="phy80211", RUN+="/usr/sbin/iw dev %k set power_save on"
 
-# Enable power save mode for Intel HDA
-ACTION=="add", SUBSYSTEM=="module", DEVPATH=="/module/snd_hda_intel", \
-  ATTR{parameters/power_save}="10", ATTR{parameters/power_save_controller}="Y"
-
 # Minimize link power for SATA drives
 ACTION=="add|change", SUBSYSTEM=="scsi_host", \
   TEST=="link_power_management_policy", \
