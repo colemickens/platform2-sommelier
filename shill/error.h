@@ -23,10 +23,6 @@
 #include <base/location.h>
 #include <base/macros.h>
 
-namespace DBus {
-class Error;
-}  // namespace DBus
-
 namespace brillo {
 class Error;
 using ErrorPtr = std::unique_ptr<Error>;
