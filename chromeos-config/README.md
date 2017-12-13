@@ -705,6 +705,103 @@ chromeos {
     };
 };
 ```
+[](begin_definitions)
+
+## CrOS Config Type Definitions (v2)
+### model
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| audio | [audio](#audio) |  | True |  |
+| brand-code | string | ```^[A-Z]{4}$``` | True | Brand code of the model (also called RLZ code). |
+| firmware | [firmware](#firmware) |  | True |  |
+| identity | [identity](#identity) |  | True |  |
+| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | String that is at least 3 chars with letters/numbers/underscrores. |
+| powerd-prefs | string |  | True | Powerd config that should be used. |
+| test-alias | string |  | True | Test alias (model) label that will be applied in Autotest and reported for test results. |
+| touch | [touch](#touch) |  | False |  |
+
+### audio
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| main | [main](#main) |  | True |  |
+
+### main
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| cras-config-dir | string | ```^(/[^/ ]*)+/?$``` | True | Full path to cras config: /etc/cras/{cras-config-subdir} (Auto-generated) |
+| cras-config-subdir | string |  | False | Optional subdir for model specific configuration. |
+| disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
+| ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
+
+### firmware
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| bcs-overlay | string |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
+| build-targets | [build-targets](#build-targets) |  | False |  |
+| ec-image | string |  | True | Name of the file located in BCS under the respective bcs-overlay. |
+| key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
+| main-image | string |  | True | Name of the file located in BCS under the respective bcs-overlay. |
+| main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+
+### build-targets
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| coreboot | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| cr50 | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| depthcharge | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| ec | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| libpayload | string |  | False | Build target that will be considered dirty when building/testing locally. |
+
+### identity
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| customization-id | string | ```^[A-Z|_]*$``` | False | Customization ID set in the VPD during manufacturing. |
+| sku-id | integer |  | True | SKU/Board strapping pins configured during board manufacturing. |
+| smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+
+### touch
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| present | string |  | True | Whether touch is present or needs to be probed for. |
+| probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
+| stylus | [stylus](#stylus) |  | False |  |
+| touchpad | [touchpad](#touchpad) |  | False |  |
+| touchscreen | [touchscreen](#touchscreen) |  | False |  |
+| touchscreen@0 | [touchscreen@0](#touchscreen@0) |  | False |  |
+| touchscreen@1 | [touchscreen@1](#touchscreen@1) |  | False |  |
+
+### stylus
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+
+### touchpad
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+
+### touchscreen
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+
+### touchscreen@0
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+
+### touchscreen@1
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+
+
+[](end_definitions)
 ## Usage Instructions
 
 ### Pinning Firmware Versions for Specific Models
