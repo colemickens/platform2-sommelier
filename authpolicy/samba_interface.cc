@@ -1076,6 +1076,11 @@ ErrorType SambaInterface::GetAccountInfo(
   if (error != ERROR_NONE)
     return error;
 
+  // Write the user's smb.conf for SearchAccountInfo().
+  error = WriteSmbConf(user_account_);
+  if (error != ERROR_NONE)
+    return error;
+
   // If |account_id| is provided, search by objectGUID only.
   if (!account_id.empty()) {
     // Searching by objectGUID has to use the octet string representation!
@@ -1109,13 +1114,13 @@ ErrorType SambaInterface::SearchAccountInfo(
   // Call net ads search to find the user's account info. Note that we're
   // authenticating with the device account, but we're searching on the user's
   // realm!
-  const std::string& smb_conf_path = paths_->Get(device_account_.smb_conf_path);
-  ProcessExecutor net_cmd(
-      {paths_->Get(Path::NET), "ads", "search", search_string,
-       kSearchObjectGUID, kSearchSAMAccountName, kSearchCommonName,
-       kSearchDisplayName, kSearchGivenName, kSearchPwdLastSet,
-       kSearchUserAccountControl, "-S", user_account_.realm, "-s",
-       smb_conf_path, "-d", flags_.net_log_level()});
+  const std::string& smb_conf_path = paths_->Get(user_account_.smb_conf_path);
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
+                           search_string, kSearchObjectGUID,
+                           kSearchSAMAccountName, kSearchCommonName,
+                           kSearchDisplayName, kSearchGivenName,
+                           kSearchPwdLastSet, kSearchUserAccountControl, "-s",
+                           smb_conf_path, "-d", flags_.net_log_level()});
 
   // Parse the search args from the net_cmd output immediately. This resolves
   // the chicken-egg-problem that replacement strings cannot be set before the
