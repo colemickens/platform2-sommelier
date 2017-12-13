@@ -14,10 +14,12 @@ setup(
     author='Simon Glass',
     author_email='sjg@chromium.org',
     url='README.md',
-    packages=['cros_config_host', 'libcros_config_host'],
+    packages=['cros_config_host', 'libcros_config_host', 'cros_config_host.v2'],
+    package_data={'cros_config_host.v2': ['cros_config_schema.json']},
     entry_points={
         'console_scripts': [
             'cros_config_host = cros_config_host.cros_config_host:main',
+            'cros_config_schema = cros_config_host.v2.cros_config_schema:main',
             # TODO(lannm): Remove after changing callers to cros_config_host.
             'cros_config_host_py = cros_config_host.cros_config_host:main',
             'validate_config = cros_config_host.validate_config:Main',
