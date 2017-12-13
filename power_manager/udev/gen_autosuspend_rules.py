@@ -169,6 +169,8 @@ USB_IDS += [
   "1050:0200",
   # Google Cr50 (HID)
   "18d1:5014",
+  # Google Titan key
+  "18d1:5026",
 ]
 
 # USB Audio devices
