@@ -40,6 +40,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -622,6 +624,56 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   return true;
 }
 
+bool SessionManagerImpl::SaveLoginPassword(
+    brillo::ErrorPtr* error, const dbus::FileDescriptor& in_password_fd) {
+  if (!device_policy_->InstallAttributesEnterpriseMode()) {
+    // We only allow passwords to be saved for enterprise enrolled devices.
+    LOG(ERROR) << "Attempting to save user password for non-enterprise "
+                  "enrolled device.";
+    return false;
+  }
+
+  password_provider::Password password;
+  if (!password.Init()) {
+    LOG(ERROR) << "Could not initialize buffer.";
+    return false;
+  }
+
+  size_t data_size = 0;
+  if (!base::ReadFromFD(in_password_fd.value(),
+                        reinterpret_cast<char*>(&data_size), sizeof(size_t))) {
+    PLOG(ERROR) << "Could not read password size from file.";
+    return false;
+  }
+
+  if (data_size <= 0) {
+    LOG(ERROR) << "Invalid data size read from file descriptor. Size read: "
+               << data_size;
+    return false;
+  }
+
+  if (data_size > password.max_size()) {
+    LOG(ERROR) << "Password size too large for buffer. Password size: "
+               << data_size << " Max buffer size: " << password.max_size();
+    return false;
+  }
+
+  if (!base::ReadFromFD(in_password_fd.value(), password.GetMutableRaw(),
+                        data_size)) {
+    PLOG(ERROR) << "Could not read password from file descriptor.";
+    return false;
+  }
+
+  password.SetSize(data_size);
+
+  if (!password_provider::SavePassword(password)) {
+    LOG(ERROR) << "Could not save password.";
+    return false;
+  }
+
+  return true;
+}
+
 void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   LOG(INFO) << "Stopping all sessions";
   // Most calls to StopSession() will log the reason for the call.
@@ -633,6 +685,7 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   // browser_.job->StopSession();
   // user_policy_.reset();
   // session_started_ = false;
+  password_provider::DiscardPassword();
 }
 
 void SessionManagerImpl::StorePolicy(

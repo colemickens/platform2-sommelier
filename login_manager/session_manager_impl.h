@@ -190,6 +190,8 @@ class SessionManagerImpl
   void EmitLoginPromptVisible() override;
   void EnableChromeTesting(dbus::MethodCall* call,
                            brillo::dbus_utils::ResponseSender sender) override;
+  bool SaveLoginPassword(brillo::ErrorPtr* error,
+                         const dbus::FileDescriptor& in_password_fd) override;
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;

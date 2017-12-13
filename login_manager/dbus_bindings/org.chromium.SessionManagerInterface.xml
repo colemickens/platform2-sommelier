@@ -68,6 +68,25 @@
     </method>
 
     <!--
+        SavePassword:
+        @password_fd: File descriptor to a pipe containing the user's password.
+            The password is prefixed by the size of the password written as a
+            size_t value.
+
+        Saves the primary user's login password at the start of the session. The
+        password will be saved to the Linux kernel process keyring. This
+        password is used by shill to authenticate the user to 802.1X networks
+        that require authentication via a username/password combo. The password
+        will only be saved and used for enterprise users.
+
+        The password will be discarded when the session_manager process exits in
+        response to the session ending.
+    -->
+    <method name="SaveLoginPassword">
+      <arg type="h" name="password_fd" direction="in" />
+    </method>
+
+    <!--
         StartSession:
         @account_id: Account ID of the user to start a session for.
         @unique_identifier: Unused.

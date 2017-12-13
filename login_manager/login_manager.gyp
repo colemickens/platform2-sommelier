@@ -16,6 +16,7 @@
         'libcros_config',
         'libmetrics-<(libbase_ver)',
         'libminijail',
+        'libpasswordprovider',
         'nss',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
@@ -158,6 +159,11 @@
               'libcros_config',
             ],
             'USE_android_container_master_arc_dev%': 0,
+          },
+          'link_settings': {
+            'libraries': [
+              '-lkeyutils',
+            ],
           },
           'sources': [
             'browser_job_unittest.cc',

@@ -5,6 +5,7 @@
 #include "login_manager/session_manager_impl.h"
 
 #include <fcntl.h>
+#include <keyutils.h>
 #include <stdint.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -42,6 +43,8 @@
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -275,6 +278,25 @@ std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
   return StringToBlob(descriptor.SerializeAsString());
 }
 
+// Create a file descriptor pointing to a pipe that contains the given data.
+// The data size (of type size_t) will be inserted into the pipe first, followed
+// by the actual data.
+dbus::FileDescriptor WriteSizeAndDataToPipe(const std::string& data) {
+  int fds[2];
+  EXPECT_TRUE(base::CreateLocalNonBlockingPipe(fds));
+  dbus::FileDescriptor read_dbus_fd;
+  read_dbus_fd.PutValue(fds[0]);
+  read_dbus_fd.CheckValidity();
+  base::ScopedFD write_scoped_fd(fds[1]);
+
+  size_t size = data.size();
+  EXPECT_TRUE(base::WriteFileDescriptor(
+      write_scoped_fd.get(), reinterpret_cast<char*>(&size), sizeof(size_t)));
+  EXPECT_TRUE(base::WriteFileDescriptor(write_scoped_fd.get(), data.c_str(),
+                                        data.size()));
+  return read_dbus_fd;
+}
+
 }  // namespace
 
 class SessionManagerImplTest : public ::testing::Test,
@@ -407,6 +429,8 @@ class SessionManagerImplTest : public ::testing::Test,
     SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
+
+    password_provider::DiscardPassword();
   }
 
   // SessionManagerImpl::Delegate:
@@ -753,6 +777,20 @@ class SessionManagerImplTest : public ::testing::Test,
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
 };
 
+// TODO(maybelle): Create a mock PasswordProvider so that the keyrings behavior
+// can be mocked and we can get rid of this check.
+class SessionManagerImplKeyringsTest : public SessionManagerImplTest {
+ protected:
+  void SetUp() override {
+    SessionManagerImplTest::SetUp();
+    // Before running a test, check if keyrings are supported in the kernel.
+    keyrings_supported_ =
+        !(keyctl_clear(KEY_SPEC_PROCESS_KEYRING) == -1 && errno == ENOSYS);
+  }
+
+  bool keyrings_supported_ = true;
+};
+
 const pid_t SessionManagerImplTest::kDummyPid = 4;
 const char SessionManagerImplTest::kNothing[] = "";
 const int SessionManagerImplTest::kAllKeyFlags =
@@ -968,6 +1006,50 @@ TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
+}
+
+TEST_F(SessionManagerImplKeyringsTest, SaveLoginPasswordForEnterpriseCustomer) {
+  if (!keyrings_supported_) {
+    LOG(WARNING)
+        << "Skipping test because keyrings are not supported by the kernel.";
+    return;
+  }
+
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillOnce(Return(true));
+
+  const string kPassword("thepassword");
+  dbus::FileDescriptor password_fd = WriteSizeAndDataToPipe(kPassword);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->SaveLoginPassword(&error, password_fd));
+  EXPECT_FALSE(error.get());
+
+  auto retrieved_password = password_provider::GetPassword();
+  EXPECT_EQ(kPassword, std::string(retrieved_password->GetRaw(),
+                                   retrieved_password->size()));
+  VerifyAndClearExpectations();
+}
+
+TEST_F(SessionManagerImplKeyringsTest,
+       SaveLoginPasswordForNonEnterpriseCustomer) {
+  if (!keyrings_supported_) {
+    LOG(WARNING)
+        << "Skipping test because keyrings are not supported by the kernel.";
+    return;
+  }
+
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillOnce(Return(false));
+
+  const string kPassword("thepassword");
+  dbus::FileDescriptor password_fd = WriteSizeAndDataToPipe(kPassword);
+
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->SaveLoginPassword(&error, password_fd));
+  auto retrieved_password = password_provider::GetPassword();
+  EXPECT_EQ(nullptr, retrieved_password);
+
+  VerifyAndClearExpectations();
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
