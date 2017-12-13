@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <openssl/evp.h>
@@ -114,16 +115,16 @@ int main(int argc, char **argv) {
     }
 
     uint32_t fingerprint = version_info.GetFingerprint();
-    std::string vendor_specific =
+    std::string vendor_specific = base::ToLowerASCII(
         base::HexEncode(version_info.vendor_specific.data(),
-                        version_info.vendor_specific.size());
-    printf("TPM family: %08" PRIx32 "\n"
-           "spec level: %016" PRIx64 "\n"
-           "manufacturer: %08" PRIx32 "\n"
-           "tpm_model: %08" PRIx32 "\n"
-           "firmware version: %016" PRIx64 "\n"
-           "vendor specific: %s\n"
-           "version fingerprint: %" PRId32 " %08" PRIx32 "\n",
+                        version_info.vendor_specific.size()));
+    printf("tpm_family %08" PRIx32 "\n"
+           "spec_level %016" PRIx64 "\n"
+           "vendor %08" PRIx32 "\n"
+           "tpm_model %08" PRIx32 "\n"
+           "firmware_version %016" PRIx64 "\n"
+           "vendor_specific %s\n"
+           "version_fingerprint %" PRId32 " %08" PRIx32 "\n",
            version_info.family,
            version_info.spec_level,
            version_info.manufacturer,
