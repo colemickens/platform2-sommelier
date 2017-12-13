@@ -55,6 +55,11 @@ void LogAndSetError(const std::string& operation_name,
   *error_code = static_cast<int32_t>(error_received);
 }
 
+void LogAndSetDBusParseError(const std::string& operation_name,
+                             int32_t* error_code) {
+  LogAndSetError(operation_name, -1, ERROR_DBUS_PARSE_FAILED, error_code);
+}
+
 // Helper method to get |DirectoryEntry| from a struct stat. Returns ERROR_OK
 // on success and ERROR_FAILED otherwise.
 int32_t GetDirectoryEntryFromStat(const std::string& full_path,
@@ -105,12 +110,12 @@ void SmbProvider::Mount(const ProtoBlob& mount_options_blob,
   if (!mount_options.ParseFromArray(mount_options_blob.data(),
                                     mount_options_blob.size())) {
     *mount_id = -1;
-    LogAndSetError("Mount", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kMountMethod, error_code);
     return;
   }
   if (!mount_options.has_path()) {
     *mount_id = -1;
-    LogAndSetError("Mount", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kMountMethod, error_code);
     return;
   }
   int32_t dir_id = -1;
@@ -118,7 +123,8 @@ void SmbProvider::Mount(const ProtoBlob& mount_options_blob,
       samba_interface_->OpenDirectory(mount_options.path(), &dir_id);
   if (open_dir_error != 0) {
     *mount_id = -1;
-    LogAndSetError("Mount", -1, GetErrorFromErrno(open_dir_error), error_code);
+    LogAndSetError(kMountMethod, -1, GetErrorFromErrno(open_dir_error),
+                   error_code);
     return;
   }
   current_mount_id_++;
@@ -156,17 +162,17 @@ void SmbProvider::ReadDirectory(const ProtoBlob& read_directory_options_blob,
   if (!read_directory_options.ParseFromArray(
           read_directory_options_blob.data(),
           read_directory_options_blob.size())) {
-    LogAndSetError("ReadDirectory", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kReadDirectoryMethod, error_code);
     return;
   }
   if (!(read_directory_options.has_mount_id() &&
         read_directory_options.has_directory_path())) {
-    LogAndSetError("ReadDirectory", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kReadDirectoryMethod, error_code);
     return;
   }
   std::string share_path;
   if (!GetMountPathFromId(read_directory_options.mount_id(), &share_path)) {
-    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+    LogAndSetError(kReadDirectoryMethod, read_directory_options.mount_id(),
                    ERROR_NOT_FOUND, error_code);
     return;
   }
@@ -174,14 +180,14 @@ void SmbProvider::ReadDirectory(const ProtoBlob& read_directory_options_blob,
   int32_t open_dir_error = samba_interface_->OpenDirectory(
       AppendPath(share_path, read_directory_options.directory_path()), &dir_id);
   if (open_dir_error != 0) {
-    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+    LogAndSetError(kReadDirectoryMethod, read_directory_options.mount_id(),
                    GetErrorFromErrno(open_dir_error), error_code);
     return;
   }
   DirectoryEntryList directory_entries;
   int32_t get_dir_error = GetDirectoryEntries(dir_id, &directory_entries);
   if (get_dir_error != 0) {
-    LogAndSetError("ReadDirectory", read_directory_options.mount_id(),
+    LogAndSetError(kReadDirectoryMethod, read_directory_options.mount_id(),
                    GetErrorFromErrno(get_dir_error), error_code);
     CloseDirectory(dir_id);
     return;
@@ -200,18 +206,19 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
   GetMetadataEntryOptions get_metadata_entry_options;
   if (!get_metadata_entry_options.ParseFromArray(
           get_metadata_options_blob.data(), get_metadata_options_blob.size())) {
-    LogAndSetError("GetMetadataEntry", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kGetMetadataEntryMethod, error_code);
     return;
   }
   if (!(get_metadata_entry_options.has_mount_id() &&
         get_metadata_entry_options.has_entry_path())) {
-    LogAndSetError("GetMetadataEntry", -1, ERROR_DBUS_PARSE_FAILED, error_code);
+    LogAndSetDBusParseError(kGetMetadataEntryMethod, error_code);
     return;
   }
   std::string share_path;
   if (!GetMountPathFromId(get_metadata_entry_options.mount_id(), &share_path)) {
-    LogAndSetError("GetMetadataEntry", get_metadata_entry_options.mount_id(),
-                   ERROR_NOT_FOUND, error_code);
+    LogAndSetError(kGetMetadataEntryMethod,
+                   get_metadata_entry_options.mount_id(), ERROR_NOT_FOUND,
+                   error_code);
     return;
   }
   const std::string full_path =
@@ -220,7 +227,8 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
   int32_t get_status_error =
       samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
   if (get_status_error != 0) {
-    LogAndSetError("GetMetadataEntry", get_metadata_entry_options.mount_id(),
+    LogAndSetError(kGetMetadataEntryMethod,
+                   get_metadata_entry_options.mount_id(),
                    GetErrorFromErrno(get_status_error), error_code);
     return;
   }
