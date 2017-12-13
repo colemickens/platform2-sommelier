@@ -2,19 +2,17 @@
   "models": [
     {
       "audio": {
-        "cras_config_dir": "/etc/cras",
-        "cras_config_subdir": "pyro",
-        "disable_profile": "",
-        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
-        "ucm_suffix": "pyro"
+        "cras-config-dir": "/etc/cras/pyro",
+        "disable-profile": "",
+        "ucm-suffix": "pyro"
       },
-      "brand_code": "PYRO",
+      "brand-code": "PYRO",
       "identity": {
-        "sku_id": 0,
-        "smbios_name_match": "Pyro"
+        "sku-id": 0,
+        "smbios-name-match": "Pyro"
       },
       "name": "pyro",
-      "powerd_prefs": "pyro",
+      "powerd-prefs": "pyro",
       "wallpaper": "default",
       "touch": {
         "present": "probe"
@@ -22,37 +20,33 @@
     },
     {
       "audio": {
-        "cras_config_dir": "/etc/cras",
-        "cras_config_subdir": "basking",
-        "disable_profile": "",
-        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
-        "ucm_suffix": "basking"
+        "cras-config-dir": "/etc/cras/basking",
+        "disable-profile": "",
+        "ucm-suffix": "basking"
       },
-      "brand_code": "ASUN",
+      "brand-code": "ASUN",
       "identity": {
-        "customization_id": "BASKING",
-        "sku_id": 0,
-        "smbios_name_match": "Reef"
+        "customization-id": "BASKING",
+        "sku-id": 0,
+        "smbios-name-match": "Reef"
       },
       "name": "basking",
-      "powerd_prefs": "reef"
+      "powerd-prefs": "reef"
     },
     {
       "audio": {
-        "cras_config_dir": "/etc/cras",
-        "cras_config_subdir": "electro",
-        "disable_profile": "",
-        "ucm_alsa_config_dir": "/usr/share/alsa/ucm",
-        "ucm_suffix": "electro"
+        "cras-config-dir": "/etc/cras/electro",
+        "disable-profile": "",
+        "ucm-suffix": "electro"
       },
-      "brand_code": "ACBB",
+      "brand-code": "ACBB",
       "identity": {
-        "customization_id": "ELECTRO",
-        "sku_id": 8,
-        "smbios_name_match": "Reef"
+        "customization-id": "ELECTRO",
+        "sku-id": 8,
+        "smbios-name-match": "Reef"
       },
       "name": "electro",
-      "powerd_prefs": "reef"
+      "powerd-prefs": "reef"
     }
   ]
 }

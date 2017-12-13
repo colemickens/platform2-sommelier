@@ -117,19 +117,19 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
             bool require_sku_match = sku_id > -1;
             int current_sku_id;
             bool sku_match = (!require_sku_match ||
-                (identity_dict->GetInteger("sku_id", &current_sku_id)
+                (identity_dict->GetInteger("sku-id", &current_sku_id)
                     && current_sku_id == sku_id));
 
             bool name_match = true;
             std::string current_name;
-            if (identity_dict->GetString("smbios_name_match", &current_name)
+            if (identity_dict->GetString("smbios-name-match", &current_name)
                 && !name.empty()) {
               name_match = current_name == name;
             }
             bool customization_id_match = true;
             std::string current_customization_id;
             if (identity_dict->GetString(
-                "customization_id", &current_customization_id)
+                "customization-id", &current_customization_id)
                 && !current_customization_id.empty()) {
               customization_id_match =
                   current_customization_id == customization_id;
