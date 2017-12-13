@@ -23,71 +23,6 @@ To keep the shill source code consistent, please follow the conventions below:
   Emacs mode at
   http://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
 
-- When working with DBus::Variant:
-  - Read data via the appropriate named method, rather than depending on
-    implicit conversion. E.g.,
-
-       ::DBus::Variant var;
-       int8 data = var.reader().get_byte();
-
-    rather than
-
-       ::DBus::Variant var;
-       int8 data = var;
-
-    RATIONALE: The explicit version is only marginally longer than the
-    implicit version, and does not require the reader to understand C++
-    conversion rules.
-
-  - Where there is no named method, call the appropriate cast operator
-    explicitly. E.g.
-
-    ::DBus::Variant var;
-    vector<unsigned int> data = var.operator vector<unsigned int>();
-
-    RATIONALE: Calling the cast operator explicitly avoids conflicts with
-    constructors that might also be used to make the conversion. It also
-    avoids requiring that the reader understand C++ conversion rules.
-
-  - Write data via the appropriate named method. E.g.,
-
-       ::DBus::Variant var;
-       int16_t data;
-       var.writer().append_int16(data);
-
-    rather than
-
-       ::DBus::Variant var;
-       int16_t data;
-       var.writer() << data;
-
-    RATIONALE: Similarly as for reading, the explicit version is only
-    marginally longer, and does not require the reader to understand
-    overload resolution.
-
-  - Where there is no named method, write by using the stream
-    insertion operator. E.g.
-
-       ::DBus::Variant var;
-       ::DBus::MessageIter writer;
-       map<string, string> data;
-       writer = var.writer();
-       writer << data;
-
-    RATIONALE: This case is somewhat unfortunate, because it's not as
-    clear as its analogue for reading. However, the alternative is to
-    duplicate the code of the stream insertion operator overloads.
-
-    Note that the writer can't be omitted. E.g.
-
-       ::DBus::Variant var;
-       map<string, string> data;
-       var.writer() << data;
-
-    does not work. For an explanation of why the local variable
-    |writer| is needed, see the comment in
-    DBusAdaptor::ByteArraysToVariant.
-
 - When deferring work from a signal handler (e.g. a D-Bus callback) to
   the event loop, name the deferred work function by adding "Task" to
   the name of the function deferring the work. E.g.
@@ -99,11 +34,6 @@ To keep the shill source code consistent, please follow the conventions below:
 
   RATIONALE: The naming convention makes the relationship between the signal
   handler and the task function obvious, at-a-glance.
-
-- C++ exceptions are not allowed in the code. An exception to this rule is
-  that try-catch blocks may be used in various D-Bus proxy classes to handle
-  DBus::Error exceptions thrown by the D-Bus C++ code. C++ exceptions should
-  be caught by const reference in general.
 
 - When adding verbose log messages for debug purposes, use the SLOG marco and
   its variants (see logging.h for details).
