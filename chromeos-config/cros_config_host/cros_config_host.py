@@ -16,6 +16,7 @@ import argparse
 import sys
 
 from .libcros_config_host import CrosConfig
+from v2.libcros_config_host_json import CrosConfigJson
 
 
 def ListModels(config):
@@ -277,7 +278,10 @@ def main(argv=None):
     config = CrosConfig(sys.stdin)
   elif opts.config:
     with open(opts.config) as infile:
-      config = CrosConfig(infile)
+      if 'yaml' in opts.config:
+        config = CrosConfigJson(infile)
+      else:
+        config = CrosConfig(infile)
   else:
     config = CrosConfig()
   # Get all models we are invoking on (if any).
