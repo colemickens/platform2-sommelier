@@ -11,55 +11,68 @@
 #include <errno.h>
 
 namespace smbprovider {
-
 namespace {
 
 constexpr mode_t kFileMode = 33188;  // File entry
-constexpr time_t kFileModTime = 12345678;
+constexpr char kSmbUrlScheme[] = "smb://";
+
+using PathParts = const std::vector<std::string>;
+
+// Returns the file component of a path.
+std::string GetFileName(const std::string& full_path) {
+  base::FilePath file_path(full_path);
+  return file_path.BaseName().value();
+}
+
+// Returns the components of a filepath as a vector<std::string>.
+std::vector<std::string> SplitPath(const std::string& full_path) {
+  base::FilePath path(full_path);
+  std::vector<std::string> result;
+  path.GetComponents(&result);
+  return result;
+}
+
+// Removes smb:// from url.
+std::string RemoveURLScheme(const std::string& smb_url) {
+  DCHECK_EQ(0, smb_url.compare(0, 6, kSmbUrlScheme));
+  return smb_url.substr(5, std::string::npos);
+}
+
+// Returns a string representing the filepath to the directory above the file.
+std::string GetDirPath(const std::string& full_path) {
+  std::string path = RemoveURLScheme(full_path);
+  return base::FilePath(path).DirName().value();
+}
 
 }  // namespace
 
-FakeSambaInterface::EntryMap::const_iterator
-FakeSambaInterface::FakeDirectory::FindEntryByFullPath(
-    const base::FilePath& full_path) const {
-  if (full_path.DirName().value() != path) {
-    return entries.end();
-  }
-  return entries.find(full_path.BaseName().value());
-}
-
-FakeSambaInterface::FakeSambaInterface() {}
+FakeSambaInterface::FakeSambaInterface()
+    : root(std::make_unique<FakeDirectory>("/")) {}
 
 int32_t FakeSambaInterface::OpenDirectory(const std::string& directory_path,
                                           int32_t* dir_id) {
   DCHECK(dir_id);
   *dir_id = -1;
-  for (auto& dir_iter : directory_map_) {
-    FakeDirectory& dir = dir_iter.second;
-    if (dir.path == directory_path) {
-      if (dir.is_open) {
-        return ENOENT;
-      }
-      dir.is_open = true;
-      dir.current_entry = dir.entries.empty() ? "" : dir.entries.begin()->first;
-      *dir_id = dir.dir_id;
-      return 0;
-    }
+
+  std::string path = RemoveURLScheme(directory_path);
+
+  int32_t error;
+  if (!GetDirectory(path, &error)) {
+    return error;
   }
-  return ENOENT;
+
+  DCHECK(!IsFDOpen(next_fd));
+  open_fds.emplace(next_fd, OpenInfo(path));
+  *dir_id = next_fd++;
+  return 0;
 }
 
 int32_t FakeSambaInterface::CloseDirectory(int32_t dir_id) {
-  auto dir_iter = directory_map_.find(dir_id);
-  if (dir_iter == directory_map_.end()) {
+  if (!IsFDOpen(dir_id)) {
     return EBADF;
   }
-  FakeDirectory& dir = dir_iter->second;
-  if (!dir.is_open) {
-    return EBADF;
-  }
-  dir.is_open = false;
-  dir.current_entry = "";
+  auto open_info_iter = FindOpenFD(dir_id);
+  open_fds.erase(open_info_iter);
   return 0;
 }
 
@@ -70,19 +83,21 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
   DCHECK(dirp);
   DCHECK(bytes_read);
   *bytes_read = 0;
-  const auto& dir_iter = directory_map_.find(dir_id);
-  if (dir_iter == directory_map_.end()) {
+
+  if (!IsFDOpen(dir_id)) {
     return EBADF;
   }
-  FakeDirectory& dir = dir_iter->second;
-  if (!dir.is_open) {
-    return EBADF;
-  }
-  while (dir.HasMoreEntries()) {
-    auto iter = dir.entries.find(dir.current_entry);
-    FakeEntry& entry = iter->second;
-    if (!WriteEntry(entry.name, entry.smbc_type, dirp_buffer_size - *bytes_read,
-                    dirp)) {
+
+  auto open_info_iter = FindOpenFD(dir_id);
+
+  FakeDirectory* directory = GetDirectory(open_info_iter->second.full_path);
+  DCHECK(directory);
+
+  while (open_info_iter->second.current_entry < directory->entries.size()) {
+    FakeEntry* entry =
+        directory->entries[open_info_iter->second.current_entry].get();
+    if (!WriteEntry(entry->name, entry->smbc_type,
+                    dirp_buffer_size - *bytes_read, dirp)) {
       // WriteEntry will fail if the buffer size is not large enough to fit the
       // next entry. This is a valid case and will return with no error.
       return 0;
@@ -90,8 +105,7 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
     *bytes_read += dirp->dirlen;
     DCHECK_GE(dirp_buffer_size, *bytes_read);
     dirp = AdvanceDirEnt(dirp);
-    iter++;
-    dir.current_entry = iter == dir.entries.end() ? "" : iter->first;
+    ++(open_info_iter->second.current_entry);
   }
   return 0;
 }
@@ -99,49 +113,132 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
 int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
                                            struct stat* stat) {
   DCHECK(stat);
-  const base::FilePath full_path(entry_path);
-  for (const auto& dir_iter : directory_map_) {
-    const FakeDirectory& dir = dir_iter.second;
-    EntryMap::const_iterator entry_iter = dir.FindEntryByFullPath(full_path);
-    if (entry_iter == dir.entries.end()) {
-      continue;
-    }
-    const FakeEntry& entry = entry_iter->second;
-    stat->st_size = entry.size;
-    stat->st_mode = kFileMode;
-    stat->st_mtime = kFileModTime;
-    return 0;
+
+  FakeEntry* entry = GetEntry(entry_path);
+  if (!entry || !entry->IsValidEntryType()) {
+    return ENOENT;
   }
-  return ENOENT;
+
+  stat->st_size = entry->size;
+  stat->st_mode = kFileMode;
+  stat->st_mtime = entry->date;
+  return 0;
 }
 
-int32_t FakeSambaInterface::AddDirectory(const std::string& path) {
-  int32_t dir_id = dir_id_counter_++;
-  directory_map_.emplace(dir_id, FakeDirectory(dir_id, path));
-  return dir_id;
+FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
+    const std::string& name) {
+  for (auto&& entry : entries) {
+    if (entry->name == name) {
+      return entry.get();
+    }
+  }
+  return nullptr;
 }
 
-void FakeSambaInterface::AddEntry(int32_t dir_id,
-                                  const std::string& entry_name,
-                                  uint32_t type,
-                                  size_t size) {
-  auto dir_iter = directory_map_.find(dir_id);
-  DCHECK(dir_iter != directory_map_.end());
-  FakeDirectory& dir = dir_iter->second;
-  // Check to make sure we aren't adding an entry to a currently opened
-  // directory.
-  DCHECK(dir.current_entry.empty());
-  DCHECK(dir.entries.find(entry_name) == dir.entries.end());
-  dir.entries.emplace(entry_name, FakeEntry(entry_name, type, size));
+FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,
+                                         uint32_t smbc_type,
+                                         size_t size,
+                                         uint64_t date)
+    : name(GetFileName(full_path)),
+      smbc_type(smbc_type),
+      size(size),
+      date(date) {}
+
+void FakeSambaInterface::AddDirectory(const std::string& path) {
+  DCHECK(!IsOpen(path));
+  FakeDirectory* directory = GetDirectory(GetDirPath(path));
+  DCHECK(directory);
+  directory->entries.emplace_back(std::make_unique<FakeDirectory>(path));
 }
 
-bool FakeSambaInterface::HasOpenDirectories() const {
-  for (const auto& dirIter : directory_map_) {
-    if (dirIter.second.is_open) {
+void FakeSambaInterface::AddFile(const std::string& path) {
+  AddFile(path, 0 /* size */);
+}
+
+void FakeSambaInterface::AddFile(const std::string& path, size_t size) {
+  AddFile(path, size, 0 /* date */);
+}
+void FakeSambaInterface::AddFile(const std::string& path,
+                                 size_t size,
+                                 uint64_t date) {
+  DCHECK(!IsOpen(path));
+  FakeDirectory* directory = GetDirectory(GetDirPath(path));
+  DCHECK(directory);
+  directory->entries.emplace_back(std::make_unique<FakeFile>(path, size, date));
+}
+
+void FakeSambaInterface::AddEntry(const std::string& path, uint32_t smbc_type) {
+  DCHECK(!IsOpen(path));
+  FakeDirectory* directory = GetDirectory(GetDirPath(path));
+  DCHECK(directory);
+  directory->entries.emplace_back(
+      std::make_unique<FakeEntry>(path, smbc_type, 0 /* size */, 0 /* date */));
+}
+
+FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
+    const std::string& full_path) const {
+  int32_t error;
+  return GetDirectory(full_path, &error);
+}
+
+FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
+    const std::string& full_path, int32_t* error) const {
+  PathParts split_path = SplitPath(full_path);
+
+  FakeDirectory* current = root.get();
+  DCHECK(current);
+
+  // i = 0 represents the root directory which we already have.
+  DCHECK_EQ("/", split_path[0]);
+  for (int i = 1; i < split_path.size(); ++i) {
+    FakeEntry* entry = current->FindEntry(split_path[i]);
+    if (!entry) {
+      *error = ENOENT;
+      return nullptr;
+    }
+    if (entry->smbc_type != SMBC_DIR) {
+      *error = ENOTDIR;
+      return nullptr;
+    }
+    current = static_cast<FakeDirectory*>(entry);
+  }
+  return current;
+}
+
+FakeSambaInterface::FakeEntry* FakeSambaInterface::GetEntry(
+    const std::string& entry_path) const {
+  FakeDirectory* directory = GetDirectory(GetDirPath(entry_path));
+  if (!directory) {
+    return nullptr;
+  }
+  return directory->FindEntry(GetFileName(entry_path));
+}
+
+bool FakeSambaInterface::IsOpen(const std::string& full_path) const {
+  std::string path = RemoveURLScheme(full_path);
+  for (auto const& open_it : open_fds) {
+    if (open_it.second.full_path == path) {
       return true;
     }
   }
   return false;
+}
+
+bool FakeSambaInterface::HasOpenEntries() const {
+  return !open_fds.empty();
+}
+
+bool FakeSambaInterface::IsFDOpen(uint32_t fd) const {
+  return open_fds.count(fd) != 0;
+}
+
+FakeSambaInterface::OpenEntriesIterator FakeSambaInterface::FindOpenFD(
+    uint32_t fd) {
+  return open_fds.find(fd);
+}
+
+bool FakeSambaInterface::FakeEntry::IsValidEntryType() const {
+  return smbc_type == SMBC_DIR || smbc_type == SMBC_FILE;
 }
 
 }  // namespace smbprovider

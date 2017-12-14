@@ -24,8 +24,7 @@ namespace smbprovider {
 namespace {
 
 constexpr size_t kFileSize = 10;
-constexpr char kValidPath[] = "/path/valid";
-constexpr char kValidSharePath[] = "smb://wdshare/test";
+constexpr uint64_t kFileDate = 42;
 
 ErrorType CastError(int error) {
   EXPECT_GE(error, 0);
@@ -79,13 +78,14 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
-  // Helper method that adds |kValidSharePath| as a mountable share and mounts
-  // it.
+  // Helper method that adds "smb://wdshare/test" as a mountable share and
+  // mounts it.
   int32_t PrepareMount() {
-    fake_samba_->AddDirectory(std::string(kValidSharePath));
+    fake_samba_->AddDirectory("smb://wdshare");
+    fake_samba_->AddDirectory("smb://wdshare/test");
     int32_t mount_id;
     int32_t err;
-    ProtoBlob proto_blob = CreateMountOptionsBlob(kValidSharePath);
+    ProtoBlob proto_blob = CreateMountOptionsBlob("smb://wdshare/test");
     smbprovider_->Mount(proto_blob, &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
     ExpectNoOpenDirectories();
@@ -96,7 +96,7 @@ class SmbProviderTest : public testing::Test {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
-    const ObjectPath object_path(std::string("/object/path"));
+    const ObjectPath object_path("/object/path");
     smbprovider_.reset(new SmbProvider(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(fake_ptr), buffer_size));
@@ -105,7 +105,7 @@ class SmbProviderTest : public testing::Test {
   // Helper method that asserts there are no entries that have not been
   // closed.
   void ExpectNoOpenDirectories() {
-    EXPECT_FALSE(fake_samba_->HasOpenDirectories());
+    EXPECT_FALSE(fake_samba_->HasOpenEntries());
   }
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
@@ -143,7 +143,7 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidProto) {
 TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   int32_t mount_id;
   int32_t err;
-  ProtoBlob proto_blob = CreateMountOptionsBlob("/test/invalid");
+  ProtoBlob proto_blob = CreateMountOptionsBlob("smb://test/invalid");
   smbprovider_->Mount(proto_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
   ExpectNoOpenDirectories();
@@ -166,15 +166,14 @@ TEST_F(SmbProviderTest, UnmountFailsWithUnmountedShare) {
 
 // Mounting different shares should return different mount ids.
 TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
-  const std::string share1("smb://wdshare/dogs");
-  const std::string share2("smb://wdshare/cats");
-  fake_samba_->AddDirectory(share1);
-  fake_samba_->AddDirectory(share2);
+  fake_samba_->AddDirectory("smb://wdshare");
+  fake_samba_->AddDirectory("smb://wdshare/dogs");
+  fake_samba_->AddDirectory("smb://wdshare/cats");
   int32_t mount1_id = -1;
   int32_t mount2_id = -1;
   int32_t error;
-  ProtoBlob proto_blob_1 = CreateMountOptionsBlob(share1);
-  ProtoBlob proto_blob_2 = CreateMountOptionsBlob(share2);
+  ProtoBlob proto_blob_1 = CreateMountOptionsBlob("smb://wdshare/dogs");
+  ProtoBlob proto_blob_2 = CreateMountOptionsBlob("smb://wdshare/cats");
   smbprovider_->Mount(proto_blob_1, &error, &mount1_id);
   smbprovider_->Mount(proto_blob_2, &error, &mount2_id);
   EXPECT_NE(mount1_id, mount2_id);
@@ -195,18 +194,18 @@ TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
 
 // Mount ids should not be reused.
 TEST_F(SmbProviderTest, MountIdsDontGetReused) {
-  const std::string share("smb://wdshare/dogs");
-  fake_samba_->AddDirectory(share);
+  fake_samba_->AddDirectory("smb://wdshare");
+  fake_samba_->AddDirectory("smb://wdshare/dogs");
   int32_t mount_id1 = -1;
   int32_t error;
-  ProtoBlob mount_options_blob1 = CreateMountOptionsBlob(share);
+  ProtoBlob mount_options_blob1 = CreateMountOptionsBlob("smb://wdshare/dogs");
   smbprovider_->Mount(mount_options_blob1, &error, &mount_id1);
 
   ProtoBlob unmount_options_blob = CreateUnmountOptionsBlob(mount_id1);
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Unmount(unmount_options_blob)));
 
   int32_t mount_id2 = -1;
-  ProtoBlob mount_options_blob2 = CreateMountOptionsBlob(share);
+  ProtoBlob mount_options_blob2 = CreateMountOptionsBlob("smb://wdshare/dogs");
   smbprovider_->Mount(mount_options_blob2, &error, &mount_id2);
   EXPECT_NE(mount_id1, mount_id2);
 }
@@ -225,8 +224,8 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidProto) {
 TEST_F(SmbProviderTest, ReadDirectoryFailsWithUnmountedShare) {
   ProtoBlob results;
   int32_t err;
-  ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(999, kValidPath);
+  ProtoBlob read_directory_blob = CreateReadDirectoryOptionsBlob(
+      999 /* mount_id */, "smb://wdshare/test/path");
   smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
   EXPECT_TRUE(results.empty());
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
@@ -250,13 +249,11 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidDir) {
 TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
   int32_t mount_id = PrepareMount();
 
-  fake_samba_->AddDirectory(
-      AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
-
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
   ProtoBlob results;
   int32_t err;
   ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, kValidPath);
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
 
   DirectoryEntryList entries;
@@ -275,15 +272,17 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnEntryWithSmallBuffer) {
   SetSmbProviderBuffer(1);
   int32_t mount_id = PrepareMount();
 
-  int32_t dir_id = fake_samba_->AddDirectory(
-      AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
-  const std::string file("file.jpg");
-  fake_samba_->AddEntry(dir_id, file, SMBC_FILE, kFileSize);
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  const std::string file_path =
+      AppendPath("smb://wdshare/test/path", "file.jpg");
+
+  fake_samba_->AddFile(file_path, kFileSize);
 
   ProtoBlob results;
   int32_t error_code;
   ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, kValidPath);
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
   DirectoryEntryList entries;
@@ -298,22 +297,20 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnEntryWithSmallBuffer) {
 // entry. This should return one entry, and ReadDirectory will loop through the
 // buffer again from the beginning.
 TEST_F(SmbProviderTest, ReadDirectorySucceedsWithMultipleUsageOfSmallBuffer) {
-  const std::string file_name1("file1.jpg");
-  const std::string file_name2("file2.jpg");
-  size_t buffer_size = CalculateEntrySize(file_name1) + 1;
+  size_t buffer_size = CalculateEntrySize("file1.jpg") + 1;
 
   SetSmbProviderBuffer(buffer_size);
   int32_t mount_id = PrepareMount();
 
-  int32_t dir_id = fake_samba_->AddDirectory(
-      AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
-  fake_samba_->AddEntry(dir_id, file_name1, SMBC_FILE, kFileSize);
-  fake_samba_->AddEntry(dir_id, file_name2, SMBC_FILE, kFileSize);
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  fake_samba_->AddFile("smb://wdshare/test/path/file1.jpg", kFileSize);
+  fake_samba_->AddFile("smb://wdshare/test/path/file2.jpg", kFileSize);
 
   ProtoBlob results;
   int32_t error_code;
   ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, kValidPath);
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
   DirectoryEntryList entries;
@@ -325,28 +322,26 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithMultipleUsageOfSmallBuffer) {
 
   const DirectoryEntry& entry1 = entries.entries(0);
   EXPECT_FALSE(entry1.is_directory());
-  EXPECT_EQ(file_name1, entry1.name());
+  EXPECT_EQ("file1.jpg", entry1.name());
 
   const DirectoryEntry& entry2 = entries.entries(1);
   EXPECT_FALSE(entry2.is_directory());
-  EXPECT_EQ(file_name2, entry2.name());
+  EXPECT_EQ("file2.jpg", entry2.name());
 }
 
 // Read directory succeeds and returns expected entries.
 TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
   int32_t mount_id = PrepareMount();
 
-  int32_t dir_id = fake_samba_->AddDirectory(
-      AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
-  const std::string file("file.jpg");
-  const std::string dir("images");
-  fake_samba_->AddEntry(dir_id, file, SMBC_FILE, kFileSize);
-  fake_samba_->AddEntry(dir_id, dir, SMBC_DIR, 0);
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  fake_samba_->AddFile("smb://wdshare/test/path/file.jpg", kFileSize);
+  fake_samba_->AddDirectory("smb://wdshare/test/path/images");
 
   ProtoBlob results;
   int32_t error_code;
   ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, kValidPath);
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
   DirectoryEntryList entries;
@@ -358,28 +353,27 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
 
   const DirectoryEntry& entry1 = entries.entries(0);
   EXPECT_FALSE(entry1.is_directory());
-  EXPECT_EQ(file, entry1.name());
+  EXPECT_EQ("file.jpg", entry1.name());
 
   const DirectoryEntry& entry2 = entries.entries(1);
   EXPECT_TRUE(entry2.is_directory());
-  EXPECT_EQ(dir, entry2.name());
+  EXPECT_EQ("images", entry2.name());
 }
 
 // Read directory succeeds and omits "." and ".." entries.
 TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParentEntries) {
   int32_t mount_id = PrepareMount();
 
-  int32_t dir_id = fake_samba_->AddDirectory(
-      AppendPath(std::string(kValidSharePath), std::string(kValidPath)));
-  const std::string file("file.jpg");
-  fake_samba_->AddEntry(dir_id, file, SMBC_FILE, kFileSize);
-  fake_samba_->AddEntry(dir_id, std::string(kEntrySelf), SMBC_DIR, 0);
-  fake_samba_->AddEntry(dir_id, std::string(kEntryParent), SMBC_DIR, 0);
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  fake_samba_->AddFile("smb://wdshare/test/path/file.jpg", kFileSize);
+  fake_samba_->AddDirectory("smb://wdshare/test/path/.");
+  fake_samba_->AddDirectory("smb://wdshare/test/path/..");
 
   ProtoBlob results;
   int32_t error_code;
   ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, kValidPath);
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
   DirectoryEntryList entries;
@@ -391,7 +385,91 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParentEntries) {
 
   const DirectoryEntry& entry = entries.entries(0);
   EXPECT_FALSE(entry.is_directory());
-  EXPECT_EQ(file, entry.name());
+  EXPECT_EQ("file.jpg", entry.name());
+}
+
+// Read directory fails when called on a file.
+TEST_F(SmbProviderTest, ReadDirectoryFailsWithFile) {
+  int32_t mount_id = PrepareMount();
+
+  const std::string file_url = "smb://wdshare/test/path/file.jpg";
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile(file_url);
+
+  ProtoBlob results;
+  int32_t error_code;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/path/file.jpg");
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+
+  EXPECT_EQ(ERROR_NOT_A_DIRECTORY, CastError(error_code));
+}
+
+// Read directory fails when called on a non file.
+TEST_F(SmbProviderTest, ReadDirectoryFailsWithNonFileNonDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  const std::string printer("canon.cn");
+  const std::string printer_url = "smb://wdshare/test/path/canon.cn";
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddEntry(printer_url, SMBC_PRINTER_SHARE);
+
+  ProtoBlob results;
+  int32_t error_code;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/path/canon.cn");
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+
+  EXPECT_EQ(ERROR_NOT_A_DIRECTORY, CastError(error_code));
+}
+
+// Read directory suceeds and omits non files / non directories.
+TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnNonFileNonDir) {
+  int32_t mount_id = PrepareMount();
+
+  const std::string printer("canon.cn");
+  const std::string printer_url = "smb://wdshare/test/path/canon.cn";
+  const std::string file_url = "smb://wdshare/test/path/file.jpg";
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile(file_url);
+  fake_samba_->AddEntry(printer_url, SMBC_PRINTER_SHARE);
+
+  ProtoBlob results;
+  int32_t error_code;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/path");
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+
+  DirectoryEntryList entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_EQ(1, entries.entries_size());
+
+  const DirectoryEntry& entry = entries.entries(0);
+  EXPECT_FALSE(entry.is_directory());
+  EXPECT_EQ("file.jpg", entry.name());
+}
+
+// GetMetadata fails on non files/dirs. Overall, other types
+// are treated as if they do not exist.
+TEST_F(SmbProviderTest, GetMetadataFailsWithNonFileNonDir) {
+  int32_t mount_id = PrepareMount();
+
+  const std::string printer("canon.cn");
+  const std::string printer_url = "smb://wdshare/test/path/canon.cn";
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddEntry(printer_url, SMBC_PRINTER_SHARE);
+
+  ProtoBlob result;
+  int32_t error_code;
+  ProtoBlob get_metadata_blob =
+      CreateGetMetadataOptionsBlob(mount_id, "/path/canon.cn");
+  smbprovider_->GetMetadataEntry(get_metadata_blob, &error_code, &result);
+
+  EXPECT_TRUE(result.empty());
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(error_code));
 }
 
 // GetMetadata fails when an invalid protobuf with missing fields is passed.
@@ -409,7 +487,7 @@ TEST_F(SmbProviderTest, GetMetadataFailsWithInvalidProto) {
 TEST_F(SmbProviderTest, GetMetadataFailsWithUnmountedShare) {
   int32_t err;
   ProtoBlob result;
-  ProtoBlob get_metadata_blob = CreateGetMetadataOptionsBlob(123, kValidPath);
+  ProtoBlob get_metadata_blob = CreateGetMetadataOptionsBlob(123, "/path");
   smbprovider_->GetMetadataEntry(get_metadata_blob, &err, &result);
   EXPECT_TRUE(result.empty());
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
@@ -431,18 +509,15 @@ TEST_F(SmbProviderTest, GetMetadataFailsWithInvalidPath) {
 // GetMetadata succeeds when passed a valid share path.
 TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   int32_t mount_id = PrepareMount();
-  const std::string dir_path = AppendPath(kValidSharePath, kValidPath);
   const std::string name("dog.jpg");
-  // Add an entry path since chrome passes us entry paths with a leading '/'.
-  const std::string entry_path = "/" + name;
 
-  int32_t dir_id = fake_samba_->AddDirectory(dir_path);
-  fake_samba_->AddEntry(dir_id, name, SMBC_FILE, kFileSize);
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
 
   ProtoBlob result;
   int32_t error_code;
-  ProtoBlob get_metadata_blob = CreateGetMetadataOptionsBlob(
-      mount_id, AppendPath(kValidPath, entry_path));
+  ProtoBlob get_metadata_blob =
+      CreateGetMetadataOptionsBlob(mount_id, "/path/dog.jpg");
   smbprovider_->GetMetadataEntry(get_metadata_blob, &error_code, &result);
 
   DirectoryEntry entry;
@@ -453,6 +528,7 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   EXPECT_FALSE(entry.is_directory());
   EXPECT_EQ(name, entry.name());
   EXPECT_EQ(kFileSize, entry.size());
+  EXPECT_EQ(kFileDate, entry.last_modified_time());
 }
 
 }  // namespace smbprovider

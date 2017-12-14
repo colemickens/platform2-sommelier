@@ -38,6 +38,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case ENFILE:
       error = ERROR_TOO_MANY_OPENED;
       break;
+    case ENOTDIR:
+      error = ERROR_NOT_A_DIRECTORY;
+      break;
     default:
       error = ERROR_FAILED;
       break;
