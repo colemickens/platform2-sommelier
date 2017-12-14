@@ -290,10 +290,10 @@ bool DropCaches() {
   // Drop all clean cache data to ensure that erased data does not stay visible.
   // This clears the page cache and slab objects (maybe unnecessary).
   // https://www.kernel.org/doc/Documentation/sysctl/vm.txt
-  constexpr char kData[] = "3\n";
+  constexpr char kData = '3';
   if (!base::WriteFile(
           base::FilePath(FILE_PATH_LITERAL("/proc/sys/vm/drop_caches")),
-          kData,
+          &kData,
           sizeof(kData))) {
     PLOG(ERROR) << "Failed to drop cache.";
     return false;
