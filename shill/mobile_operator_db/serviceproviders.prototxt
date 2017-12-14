@@ -5211,20 +5211,6 @@ mno {
 
 mno {
   data {
-    uuid : "b3e298a9-4b4d-4a46-b051-7049f39e464e"
-    country : "hk"
-    localized_name {
-      name : "Orange"
-    }
-    mccmnc : "45404"
-    mobile_apn {
-      apn : "web.orangehk.com"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "b5a1e90a-e4e9-4886-aa65-cbb2c5d6b295"
     country : "hk"
     localized_name {
@@ -5286,12 +5272,21 @@ mno {
     uuid : "0dbf0f37-23e6-4745-9c98-332cf1e952c8"
     country : "hk"
     localized_name {
-      name : "Three"
+      name : "3"
     }
     mccmnc : "45403"
     mccmnc : "45404"
     mobile_apn {
+      apn : "mobile.lte.three.com.hk"
+      localized_name {
+        name : "4G LTE"
+      }
+    }
+    mobile_apn {
       apn : "mobile.three.com.hk"
+      localized_name {
+        name : "3G"
+      }
     }
   }
 }
