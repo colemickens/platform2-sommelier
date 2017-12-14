@@ -404,9 +404,9 @@ properties.
                 firmware although it may have its own keyset. This property is
                 used to share firmware across multiple models where hardware
                 differences are small and we can detect the model from board ID
-                pins. At this time, only a phandle reference to a node at
-                family/firmware/shared is supported. The phandle target node
-                must be named with a valid model (e.g. 'reef'). Note that this
+                pins. At this time, only a phandle reference to a subnode of
+                family/firmware is supported. There are no restrictions on
+                the phandle target node naming. Note that this
                 property cannot be provided if the model configuration is shared
                 at the model level (the `whitelabel` property under
                 `<model_name>`).

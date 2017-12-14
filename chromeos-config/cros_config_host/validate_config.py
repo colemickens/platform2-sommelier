@@ -538,7 +538,7 @@ SCHEMA = NodeDesc('/', True, [
             ]),
             NodeDesc('firmware', elements=[
                 PropString('script', True, r'updater4\.sh'),
-                NodeModel([
+                NodeAny('', [
                     PropPhandleTarget(),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA),
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
@@ -568,7 +568,7 @@ SCHEMA = NodeDesc('/', True, [
                 PropPhandle('default', '/chromeos/models/MODEL', False),
                 PropPhandle('whitelabel', '/chromeos/models/MODEL', False),
                 NodeDesc('firmware', False, [
-                    PropPhandle('shares', '/chromeos/family/firmware/MODEL',
+                    PropPhandle('shares', '/chromeos/family/firmware/ANY',
                                 False, {'../whitelabel': False}),
                     PropString(('sig-id-in-customization-id'),
                                conditional_props={'../whitelabel': False}),
