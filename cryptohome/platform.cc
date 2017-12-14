@@ -1426,9 +1426,9 @@ bool Platform::InvalidateDirCryptoKey(key_serial_t key_id,
     // Use drop_caches to drop all clear cache. Otherwise, cached decrypted data
     // will stay visible. This should invalidate the key provided no one touches
     // the encrypted directories while this function is running.
-    constexpr char kData[] = "3\n";
+    constexpr char kData = '3';
     if (base::WriteFile(FilePath(FILE_PATH_LITERAL(
-        "/proc/sys/vm/drop_caches")), kData, sizeof(kData))
+        "/proc/sys/vm/drop_caches")), &kData, sizeof(kData))
         != sizeof(kData)) {
       LOG(ERROR) << "Failed to drop all caches.";
       return false;
