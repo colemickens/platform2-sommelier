@@ -1437,6 +1437,14 @@ bool Init::Setup() {
           .use_console = false,
           .wait_for_exit = false,
       },
+      {
+          .doc = "vsock remote shell daemon",
+          .argv = {"vshd"},
+          .env = {},
+          .respawn = true,
+          .use_console = false,
+          .wait_for_exit = false,
+      },
   };
 
   // Spawn all the startup applications.
