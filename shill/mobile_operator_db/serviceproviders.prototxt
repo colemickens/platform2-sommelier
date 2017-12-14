@@ -5188,8 +5188,9 @@ mno {
       name : "China Mobile"
     }
     mccmnc : "45412"
+    mccmnc : "45413"
     mobile_apn {
-      apn : "peoples.net"
+      apn : "cmhk"
     }
   }
 }
