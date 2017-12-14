@@ -550,6 +550,7 @@ SCHEMA = NodeDesc('/', True, [
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
                 PropString('brand-code', False, '[A-Z]{4}'),
                 PropString('powerd-prefs', conditional_props=NOT_WL),
+                PropString('test-label', False, '[a-z_]+'),
                 PropString('wallpaper', False, '[a-z_]+'),
                 NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
                          conditional_props=NOT_WL),

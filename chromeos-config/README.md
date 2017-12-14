@@ -354,6 +354,9 @@ properties.
         *   `powerd-prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
+        *   `test-label` (optional): Test label applied to DUTs in the lab.
+            In Autotest, this will be the model label.  By allowing an alternate
+            label, different models can be shared for testing purposes.
 
 ### Example for reef
 
@@ -588,6 +591,7 @@ chromeos {
 
         basking: basking {
             powerd-prefs = "reef";
+            test-label = "reef";
             wallpaper = "coffee";
             brand-code = "ABCG";
             firmware {
@@ -649,6 +653,7 @@ chromeos {
 
         electro: electro {
             powerd-prefs = "reef";
+            test-label = "reef";
             wallpaper = "coffee";
             brand-code = "ABCI";
             firmware {
