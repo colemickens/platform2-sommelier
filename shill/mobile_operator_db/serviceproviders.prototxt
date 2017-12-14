@@ -12613,12 +12613,13 @@ mno {
     uuid : "1e38aae2-ed2c-4c96-882d-d1b095c84634"
     country : "tw"
     localized_name {
-      name : "Far EasTone / KGT"
+      name : "Far EasTone"
     }
     localized_name {
-      name : "遠傳電信 / 和信電訊"
+      name : "遠傳電信"
     }
     mccmnc : "46601"
+    mccmnc : "46688"
     mobile_apn {
       apn : "internet"
     }
