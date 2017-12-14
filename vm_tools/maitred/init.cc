@@ -85,7 +85,7 @@ constexpr struct {
   const char* fstype;
   unsigned long flags;  // NOLINT(runtime/int)
   const void* data;
-  bool failure_is_fatal; // Abort if this mount fails.
+  bool failure_is_fatal;  // Abort if this mount fails.
 } mounts[] = {
     {
         .source = "proc",
