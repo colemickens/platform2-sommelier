@@ -12653,14 +12653,14 @@ mno {
     uuid : "505cc47e-d1d9-4f04-98ad-94f1875a868e"
     country : "tw"
     localized_name {
-      name : "Vibo Telecom / Aurora"
+      name : "T STAR"
     }
     localized_name {
-      name : "威寶電信 (Vibo) / 震旦電信 (Aurora)"
+      name : "台灣之星"
     }
     mccmnc : "46689"
     mobile_apn {
-      apn : "vibo"
+      apn : "internet"
     }
   }
 }
