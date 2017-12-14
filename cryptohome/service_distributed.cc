@@ -1020,4 +1020,12 @@ gboolean ServiceDistributed::InitializeCastKey(const GArray* request,
   return TRUE;
 }
 
+gboolean ServiceDistributed::TpmAttestationGetEnrollmentId(
+    GArray** OUT_enrollment_id,
+    gboolean* OUT_success,
+    GError** error) {
+  LOG(ERROR) << __func__ << " not implemented.";
+  return FALSE;
+}
+
 }  // namespace cryptohome

@@ -156,6 +156,9 @@ class ServiceDistributed : public Service {
                               DBusGMethodInvocation* context) override;
   gboolean InitializeCastKey(const GArray* request,
                              DBusGMethodInvocation* context) override;
+  gboolean TpmAttestationGetEnrollmentId(GArray** OUT_enrollment_id,
+                                             gboolean* OUT_success,
+                                             GError** error) override;
 
  private:
   // A helper function which maps an integer to a valid CertificateProfile.

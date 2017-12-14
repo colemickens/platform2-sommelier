@@ -170,6 +170,9 @@ class ServiceMonolithic : public Service {
                                    DBusGMethodInvocation* context);
   gboolean InitializeCastKey(const GArray* request,
                              DBusGMethodInvocation* context) override;
+  gboolean TpmAttestationGetEnrollmentId(GArray** OUT_enrollment_id,
+                                         gboolean* OUT_success,
+                                         GError** error) override;
 
  private:
   // Parses |data| and fills in |abe_data|, or clears it if |data| are invalid.

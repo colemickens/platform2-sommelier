@@ -840,6 +840,16 @@ gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
       NeedsDircryptoMigration, identifier, OUT_needs_migration);
 }
 
+gboolean cryptohome_tpm_attestation_get_enrollment_id(
+    Cryptohome* self,
+    GArray** OUT_enrollment_id,
+    gboolean* OUT_success,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetEnrollmentId,
+                         OUT_enrollment_id,
+                         OUT_success);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

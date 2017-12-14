@@ -677,6 +677,22 @@ bool Attestation::VerifyEK(bool is_cros_core) {
   return VerifyEndorsementCredential(ek_cert, ek_public_key, is_cros_core);
 }
 
+bool Attestation::GetEnterpriseEnrollmentId(
+    brillo::SecureBlob* enterprise_enrollment_id) {
+  if (!enterprise_enrollment_id_.empty()) {
+    *enterprise_enrollment_id = enterprise_enrollment_id_;
+    return true;
+  }
+  if (ComputeEnterpriseEnrollmentId(enterprise_enrollment_id) &&
+      !enterprise_enrollment_id->empty()) {
+    // Cache the computed value
+    enterprise_enrollment_id_ = *enterprise_enrollment_id;
+    // TODO(igorcov): Store the value in a certificate. http://crbug.com/798707
+    return true;
+  }
+  return false;
+}
+
 bool Attestation::CreateEnrollRequest(PCAType pca_type,
                                       SecureBlob* pca_request) {
   if (!IsTPMReady())
@@ -2408,6 +2424,29 @@ bool Attestation::ComputeEnterpriseEnrollmentNonce(
       + sizeof(kAttestationBasedEnterpriseEnrollmentContextName) - 1);
   SecureBlob nonce = CryptoLib::HmacSha256(context_key, abe_data_);
   enterprise_enrollment_nonce->swap(nonce);
+  return true;
+}
+
+bool Attestation::ComputeEnterpriseEnrollmentId(
+    brillo::SecureBlob* enterprise_enrollment_id) {
+  brillo::SecureBlob den;
+  if (!ComputeEnterpriseEnrollmentNonce(&den))
+    return false;
+  if (den.empty()) {
+    enterprise_enrollment_id->clear();
+    return true;
+  }
+
+  brillo::SecureBlob ekm;
+  if (!tpm_->GetEndorsementPublicKey(&ekm))
+    return false;
+  if (ekm.empty()) {
+    enterprise_enrollment_id->clear();
+    return true;
+  }
+
+  // Compute the EID based on den and ekm.
+  *enterprise_enrollment_id = CryptoLib::HmacSha256(ekm, den);
   return true;
 }
 

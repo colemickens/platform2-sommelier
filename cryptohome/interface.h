@@ -495,6 +495,11 @@ gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
                                               gboolean* OUT_needs_migration,
                                               GError** error);
 
+gboolean cryptohome_tpm_attestation_get_enrollment_id(
+    Cryptohome* self,
+    GArray** OUT_enrollment_id,
+    gboolean* OUT_success,
+    GError** error);
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

@@ -94,6 +94,13 @@ class Attestation : public base::PlatformThread::Delegate,
   // is endorsed for that configuration.
   virtual bool VerifyEK(bool is_cros_core);
 
+  // Populates the enrollment id in |enterprise_enrollment_id|. The result is
+  // taken from cache or computed if not available. Returns true on success.
+  // TODO(igorcov): Store and retrieve the ID from a certificate.
+  // http://crbug.com/798707
+  virtual bool GetEnterpriseEnrollmentId(
+      brillo::SecureBlob* enterprise_enrollment_id);
+
   // Creates an enrollment request to be sent to the Privacy CA. This request
   // is a serialized AttestationEnrollmentRequest protobuf. Attestation
   // enrollment is a process by which the Privacy CA verifies the EK certificate
@@ -517,6 +524,7 @@ class Attestation : public base::PlatformThread::Delegate,
   base::Lock lock_;
   brillo::SecureBlob database_key_;
   brillo::SecureBlob sealed_database_key_;
+  brillo::SecureBlob enterprise_enrollment_id_;
   base::FilePath database_path_;
   AttestationDatabase database_pb_;
   base::PlatformThreadHandle thread_;
@@ -739,6 +747,12 @@ class Attestation : public base::PlatformThread::Delegate,
   // stores it in |enterprise_enrollment_nonce|.
   bool ComputeEnterpriseEnrollmentNonce(
       brillo::SecureBlob* enterprise_enrollment_nonce);
+
+  // Computes the enrollment id and populates the result in
+  // |enterprise_enrollment_id|. If |abe_data_| or endorsement pulic key is
+  // empty, the |enterprise_enrollment_id| is cleared. Returns true on success.
+  bool ComputeEnterpriseEnrollmentId(
+      brillo::SecureBlob* enterprise_enrollment_id);
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }

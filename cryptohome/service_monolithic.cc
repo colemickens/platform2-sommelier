@@ -648,4 +648,22 @@ gboolean ServiceMonolithic::InitializeCastKey(const GArray* request,
   return TRUE;
 }
 
+gboolean ServiceMonolithic::TpmAttestationGetEnrollmentId(
+    GArray** OUT_enrollment_id,
+    gboolean* OUT_success,
+    GError** error) {
+  *OUT_enrollment_id = g_array_new(false,
+                                   false,
+                                   sizeof(SecureBlob::value_type));
+  brillo::SecureBlob enrollment_id;
+  *OUT_success =
+      attestation_->GetEnterpriseEnrollmentId(&enrollment_id);
+  if (*OUT_success) {
+    g_array_append_vals(*OUT_enrollment_id,
+                        enrollment_id.data(),
+                        enrollment_id.size());
+  }
+  return TRUE;
+}
+
 }  // namespace cryptohome

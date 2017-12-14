@@ -375,8 +375,21 @@ bool Tpm2Impl::CreateEndorsementKey() {
 }
 
 bool Tpm2Impl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::string public_ek;
+  TPM_RC result =
+      trunks->tpm_utility->GetPublicRSAEndorsementKey(&public_ek);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting public ek from certificate: "
+               << GetErrorString(result);
+    return false;
+  }
+  ek_public_key->assign(public_ek.begin(), public_ek.end());
+
+  return true;
 }
 
 bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {

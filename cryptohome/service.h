@@ -669,6 +669,10 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean RemoveFirmwareManagementParameters(const GArray* request,
                               DBusGMethodInvocation* context);
 
+  virtual gboolean TpmAttestationGetEnrollmentId(GArray** OUT_enrollment_id,
+                                                 gboolean* OUT_success,
+                                                 GError** error) = 0;
+
  protected:
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, StoreEnrollmentState);

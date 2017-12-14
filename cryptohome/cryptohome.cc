@@ -145,6 +145,7 @@ namespace switches {
                                    "remove_firmware_management_parameters",
                                    "migrate_to_dircrypto",
                                    "needs_dircrypto_migration",
+                                   "get_enrollment_id",
                                    NULL};
   enum ActionEnum {
     ACTION_MOUNT,
@@ -209,6 +210,7 @@ namespace switches {
     ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_MIGRATE_TO_DIRCRYPTO,
     ACTION_NEEDS_DIRCRYPTO_MIGRATION,
+    ACTION_GET_ENROLLMENT_ID,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2700,6 +2702,23 @@ int main(int argc, char **argv) {
       printf("Yes\n");
     else
       printf("No\n");
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_GET_ENROLLMENT_ID],
+      action.c_str())) {
+    gboolean success = FALSE;
+    brillo::glib::ScopedArray enrollment_id;
+    brillo::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_enrollment_id(
+          proxy.gproxy(),
+          &brillo::Resetter(&enrollment_id).lvalue(),
+          &success,
+          &brillo::Resetter(&error).lvalue())) {
+      printf("GetEnrollmentId call failed: %s.\n", error->message);
+      return 1;
+    }
+    std::string eid_str = base::ToLowerASCII(
+        base::HexEncode(enrollment_id->data, enrollment_id->len));
+    printf("%s\n", eid_str.c_str());
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
