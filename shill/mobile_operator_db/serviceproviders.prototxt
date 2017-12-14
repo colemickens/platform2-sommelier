@@ -12630,7 +12630,7 @@ mno {
     uuid : "2fb5c2ec-486b-4a31-b8e8-98e296edf0b1"
     country : "tw"
     localized_name {
-      name : "TW Mobile"
+      name : "Taiwan Mobile"
     }
     localized_name {
       name : "台灣大哥大"
