@@ -138,7 +138,7 @@ class MainTests(unittest.TestCase):
   def testMainWithExample(self):
     output = tempfile.mktemp()
     cros_config_schema.Main(
-        os.path.join(this_dir, 'cros_config_schema.json'),
+        None,
         os.path.join(this_dir, 'cros_config_schema_example.yaml'),
         output)
     with open(output, 'r') as output_stream:

@@ -67,8 +67,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "cras-config-dir",
-                  "ucm-alsa-config-dir"
+                  "cras-config-dir"
                 ]
               }
             },
