@@ -12578,10 +12578,14 @@ mno {
     uuid : "32070313-9dc1-454d-9e94-806b11c0f434"
     country : "tw"
     localized_name {
-      name : "Asia Pacific Telecom (APBW)"
+      name : "Gt 4G"
     }
     localized_name {
-      name : "亞太電信 (亞太行動寬頻電信)"
+      name : "亞太電信"
+    }
+    mccmnc : "46605"
+    mobile_apn {
+      apn : "gtnet"
     }
   }
 }
