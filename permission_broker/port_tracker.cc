@@ -37,6 +37,8 @@ PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
       firewall_{firewall} {}
 
 PortTracker::~PortTracker() {
+  RevokeAllPortAccess();
+
   if (epfd_ >= 0) {
     close(epfd_);
   }
@@ -172,6 +174,30 @@ bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
   return plugged && deleted;
 }
 
+void PortTracker::RevokeAllPortAccess() {
+  VLOG(1) << "Revoking all port access";
+
+  // Copy the containers so that we can remove elements from the originals.
+  // TCP
+  auto holes = tcp_holes_;
+  for (const auto& hole : holes) {
+    int fd = hole.first;
+    PlugFirewallHole(fd);
+    DeleteLifelineFd(fd);
+  }
+
+  // UDP
+  holes = udp_holes_;
+  for (const auto& hole : holes) {
+    int fd = hole.first;
+    PlugFirewallHole(fd);
+    DeleteLifelineFd(fd);
+  }
+
+  CHECK(tcp_holes_.size() == 0) << "Failed to plug all TCP holes";
+  CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes";
+}
+
 bool PortTracker::PerformVpnSetup(const std::vector<std::string>& usernames,
                                   const std::string& interface,
                                   int dbus_fd) {
@@ -234,7 +260,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   struct epoll_event epevent;
   epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
   epevent.data.fd = fd;
-  LOG(INFO) << "Adding file descriptor " << fd << " to epoll instance";
+  VLOG(1) << "Adding file descriptor " << fd << " to epoll instance";
   if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &epevent) != 0) {
     PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_ADD)";
     return kInvalidHandle;
@@ -243,7 +269,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   // If this is the first port request, start lifeline checks.
   if ((tcp_holes_.size() + udp_holes_.size() == 0) &&
       vpn_lifeline_ == kInvalidHandle) {
-    LOG(INFO) << "Starting lifeline checks";
+    VLOG(1) << "Starting lifeline checks";
     ScheduleLifelineCheck();
   }
 
@@ -256,7 +282,7 @@ bool PortTracker::DeleteLifelineFd(int fd) {
     return false;
   }
 
-  LOG(INFO) << "Deleting file descriptor " << fd << " from epoll instance";
+  VLOG(1) << "Deleting file descriptor " << fd << " from epoll instance";
   if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr) != 0) {
     PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL)";
     return false;
@@ -304,7 +330,7 @@ void PortTracker::CheckLifelineFds(bool reschedule_check) {
         vpn_lifeline_ != kInvalidHandle) {
       ScheduleLifelineCheck();
     } else {
-      LOG(INFO) << "Stopping lifeline checks";
+      VLOG(1) << "Stopping lifeline checks";
     }
   }
 }

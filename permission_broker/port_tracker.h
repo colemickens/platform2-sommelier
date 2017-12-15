@@ -35,6 +35,9 @@ class PortTracker {
                        int dbus_fd);
   bool RemoveVpnSetup();
 
+  // Close all outstanding firewall holes.
+  void RevokeAllPortAccess();
+
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
               Firewall* firewall);
