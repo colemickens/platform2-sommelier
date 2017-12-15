@@ -25,6 +25,10 @@ camera3_fuzzer: camera3_test/arc_camera3_fuzzer
 
 .PHONY: camera3_fuzzer
 
+camera_profile: tools/generate_camera_profile
+
+.PHONY: camera_profile
+
 hal_adapter:
 	$(MAKE) hal_adapter/mojo/mojo_templates
 	$(MAKE) hal_adapter/arc_camera3_service

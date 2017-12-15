@@ -170,7 +170,9 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
         pid = tmp_pid;
         const auto& device = devices.find(value);
         if (device != devices.end()) {
-          tmp_device_infos[camera_id] = device->second;
+          tmp_device_infos[camera_id].usb_vid = device->second.usb_vid;
+          tmp_device_infos[camera_id].usb_pid = device->second.usb_pid;
+          tmp_device_infos[camera_id].device_path = device->second.device_path;
         }
 
         VLOGF(1) << "Camera" << camera_id << " " << kUsbVidPid << ": " << value;
