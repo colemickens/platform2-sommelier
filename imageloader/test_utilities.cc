@@ -21,15 +21,9 @@ void PrintTo(const base::FilePath& path, std::ostream* stream) {
 namespace imageloader {
 
 base::FilePath GetTestDataPath(const std::string& subdir) {
-  const char* src_dir = getenv("CROS_WORKON_SRCROOT");
+  const char* src_dir = getenv("SRC");
   CHECK(src_dir != nullptr);
-  base::FilePath component_path(src_dir);
-  component_path = component_path.Append("src")
-                       .Append("platform")
-                       .Append("imageloader")
-                       .Append("testdata")
-                       .Append(subdir);
-  return component_path;
+  return base::FilePath(src_dir).Append("testdata").Append(subdir);
 }
 
 base::FilePath GetTestComponentPath() {
