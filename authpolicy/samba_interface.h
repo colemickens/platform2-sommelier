@@ -119,6 +119,15 @@ class SambaInterface {
   // reboot.
   void SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level);
 
+  // Returns sam_account_name_ @ realm.
+  std::string GetUserAndRealm() const;
+
+  const std::string& user_account_id() const { return user_account_id_; }
+
+  const std::string& machine_name() const {
+    return device_account_.netbios_name;
+  }
+
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() {
     smbclient_retry_sleep_enabled_ = false;
@@ -132,14 +141,6 @@ class SambaInterface {
 
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
-
-  const std::string& user_account_id() const { return user_account_id_; }
-  const std::string& user_sam_account_name() const {
-    return user_sam_account_name_;
-  }
-  const std::string& machine_name() const {
-    return device_account_.netbios_name;
-  }
 
  private:
   // User or device specific information. The user might be logging on to a

@@ -432,7 +432,7 @@ void AuthPolicy::StoreSinglePolicy(
   policy_data.set_policy_value(policy_blob);
   policy_data.set_policy_type(policy_type);
   if (descriptor.account_type() == login_manager::ACCOUNT_TYPE_USER) {
-    policy_data.set_username(samba_.user_sam_account_name());
+    policy_data.set_username(samba_.GetUserAndRealm());
     // Device id in the proto also could be used as an account/client id.
     policy_data.set_device_id(samba_.user_account_id());
   } else {

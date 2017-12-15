@@ -700,6 +700,10 @@ void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
   SaveFlagsDefaultLevel();
 }
 
+std::string SambaInterface::GetUserAndRealm() const {
+  return user_sam_account_name_ + "@" + user_account_.realm;
+}
+
 ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
   // Call net ads info to get the KDC IP.
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
