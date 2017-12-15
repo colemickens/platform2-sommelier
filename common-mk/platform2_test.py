@@ -94,6 +94,8 @@ ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     r'GCOV_',
     # Used by unit tests to access test binaries.
     r'^OUT$',
+    # Used by unit tests to access source data files.
+    r'^SRC$',
 ])
 
 
@@ -338,9 +340,12 @@ class Platform2Test(object):
       # child creates after the child terminates.
       os.setpgid(0, 0)
 
-      # Remove sysroot from OUT environment variable.
+      # Remove sysroot from OUT & SRC environment variables.
       if 'OUT' in os.environ:
         os.environ['OUT'] = self.removeSysrootPrefix(os.environ['OUT'])
+      if 'SRC' in os.environ:
+        os.environ['SRC'] = self.removeSysrootPrefix(os.environ['SRC'])
+
       # The TERM the user is leveraging might not exist in the sysroot.
       # Force a sane default that supports standard color sequences.
       os.environ['TERM'] = 'ansi'
