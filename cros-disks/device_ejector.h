@@ -16,8 +16,6 @@
 
 namespace cros_disks {
 
-class GlibProcess;
-
 // A class for ejecting any removable media on a device.
 class DeviceEjector {
  public:
