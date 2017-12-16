@@ -12,8 +12,6 @@
 
 namespace {
 
-const char kEnableChromeTesting[] = "EnableChromeTesting";
-
 void OnSignalConnected(const std::string& interface,
                        const std::string& signal,
                        bool success) {
@@ -69,11 +67,13 @@ void SessionManagerProxy::EnableChromeRemoteDebuggingInternal() {
     return;
   }
 
-  dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
-                               kEnableChromeTesting);
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerEnableChromeTesting);
   dbus::MessageWriter writer(&method_call);
-  writer.AppendBool(true);  // force restart Chrome
+  writer.AppendBool(true);  // force_restart
   writer.AppendArrayOfStrings({"--remote-debugging-port=9222"});
+  writer.AppendArrayOfStrings({});  // extra_environment_variables
   if (proxy_->CallMethodAndBlock(&method_call,
                                  dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
     is_chrome_remote_debugging_enabled_ = true;
