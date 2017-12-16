@@ -16,6 +16,7 @@
 
 #include "shill/wifi/wifi_endpoint.h"
 
+#include <algorithm>
 #include <limits>
 #include <map>
 #include <set>
