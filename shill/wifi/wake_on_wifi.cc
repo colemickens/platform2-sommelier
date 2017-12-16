@@ -700,9 +700,11 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
 }
 
 // static
-bool WakeOnWiFi::CreateSingleAttribute(ByteString& pattern, ByteString& mask,
+bool WakeOnWiFi::CreateSingleAttribute(const ByteString& pattern,
+                                       const ByteString& mask,
                                        AttributeListRefPtr patterns,
-                                       uint8_t patnum, Error* error) {
+                                       uint8_t patnum,
+                                       Error* error) {
   if (!patterns->CreateNestedAttribute(patnum, "Pattern info")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "

@@ -484,9 +484,11 @@ class WakeOnWiFi {
   // NOTE: |patnum| should be unique across multiple calls to this function to
   // prevent the formation of a erroneous nl80211 message or the overwriting of
   // pattern matching rules.
-  static bool CreateSingleAttribute(ByteString& pattern, ByteString& mask,
+  static bool CreateSingleAttribute(const ByteString& pattern,
+                                    const ByteString& mask,
                                     AttributeListRefPtr patterns,
-                                    uint8_t patnum, Error* error);
+                                    uint8_t patnum,
+                                    Error* error);
   // Creates and sets attributes in an GetWakeOnPacketConnMessage msg| so that
   // the message will request for wake-on-packet settings information from the
   // NIC with wiphy index |wiphy_index|. Returns true iff |msg| is successfully
