@@ -29,6 +29,8 @@ class ChapsProxyImpl;
 //                    "1234",
 //                    "MyTokenLabel",
 //                    &slot_id);
+// Users of this class must instantiate AtExitManager, as the class relies on
+// its presence.
 class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
  public:
   TokenManagerClient();

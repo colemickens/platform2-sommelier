@@ -27,7 +27,15 @@ class DBusProxyWrapper;
 // All calls are forwarded to a libchrome proxy object.
 class ChapsProxyImpl : public ChapsInterface {
  public:
-  static std::unique_ptr<ChapsProxyImpl> Create();
+  // Factory method for creating a new proxy. The proxy requires that an
+  // AtExitManager is instantiated. |shadow_at_exit| flag passed to Create()
+  // defines if Create() should instantiate shadowing AtExitManager internally.
+  // The callers that are guaranteed to have AtExitManager should pass false.
+  // The callers that are guaranteed to NOT have AtExitManager, should
+  // instantiate it themselves and still pass false here. Only those callers
+  // that may or may not have AtExitManager depending on how they are called in
+  // turn, should pass true as |shadow_at_exit|.
+  static std::unique_ptr<ChapsProxyImpl> Create(bool shadow_at_exit);
   ~ChapsProxyImpl() override;
 
   bool OpenIsolate(brillo::SecureBlob* isolate_credential,

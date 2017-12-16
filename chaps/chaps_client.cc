@@ -46,7 +46,7 @@ void PrintHelp() {
 }
 
 void Ping() {
-  auto proxy = chaps::ChapsProxyImpl::Create();
+  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
     exit(-1);
   vector<uint64_t> slot_list;
@@ -95,14 +95,14 @@ void ChangeAuthData(const string& path,
 
 // Sets the logging level.
 void SetLogLevel(int level) {
-  auto proxy = chaps::ChapsProxyImpl::Create();
+  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
     exit(-1);
   proxy->SetLogLevel(level);
 }
 
 void ListTokens() {
-  auto proxy = chaps::ChapsProxyImpl::Create();
+  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
     exit(-1);
   vector<uint64_t> slot_list;
@@ -130,6 +130,7 @@ void ListTokens() {
 }  // namespace
 
 int main(int argc, char** argv) {
+  base::AtExitManager at_exit;
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);

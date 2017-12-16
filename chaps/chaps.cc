@@ -162,7 +162,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
   // If we're not using a mock proxy instance we need to create one.
   if (!g_is_using_mock) {
-    auto proxy = chaps::ChapsProxyImpl::Create();
+    auto proxy = chaps::ChapsProxyImpl::Create(true /* shadow_at_exit */);
     if (!proxy)
       LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);
     g_proxy = proxy.release();

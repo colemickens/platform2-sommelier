@@ -116,7 +116,7 @@ bool TokenManagerClient::GetTokenPath(const SecureBlob& isolate_credential,
 
 bool TokenManagerClient::Connect() {
   if (!proxy_)
-    proxy_ = ChapsProxyImpl::Create();
+    proxy_ = ChapsProxyImpl::Create(false /* shadow_at_exit */);
   return proxy_.get() != nullptr;
 }
 

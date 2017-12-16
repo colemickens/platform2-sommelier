@@ -25,7 +25,7 @@ using std::vector;
 namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
-  auto proxy = ChapsProxyImpl::Create();
+  auto proxy = ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
     return nullptr;
   return proxy.release();
@@ -790,6 +790,7 @@ TEST_F(TestP11PublicSession, Random) {
 }  // namespace chaps
 
 int main(int argc, char** argv) {
+  base::AtExitManager at_exit;
   base::CommandLine::Init(argc, argv);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

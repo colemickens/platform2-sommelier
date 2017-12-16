@@ -74,8 +74,11 @@ ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
 ChapsProxyImpl::~ChapsProxyImpl() {}
 
 // static
-std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create() {
-  auto at_exit = std::make_unique<ProxyAtExitManager>();
+std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create(bool shadow_at_exit) {
+  std::unique_ptr<base::AtExitManager> at_exit;
+  if (shadow_at_exit) {
+    at_exit = std::make_unique<ProxyAtExitManager>();
+  }
 
   base::Thread::Options options;
   options.message_loop_type = base::MessageLoop::TYPE_IO;
