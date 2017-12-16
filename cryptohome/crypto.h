@@ -187,7 +187,7 @@ class Crypto {
   }
 
   // Gets the TPM implementation
-  const Tpm* get_tpm() {
+  Tpm* get_tpm() {
     return tpm_;
   }
 

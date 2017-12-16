@@ -763,6 +763,18 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // /home/chronos/user.
   bool MountLegacyHome(const base::FilePath& from, MountError* mount_error);
 
+  // TODO(chromium:795310): include all side-effects into the following hook
+  // and move it out of mount.cc.
+  // Sign-in/sign-out effects hook. Performs actions that need to follow a
+  // mount/unmount operation as a part of user sign-in/sign-out.
+  // Parameters:
+  //   |mount| - the mount instance that was just mounted/unmounted.
+  //   |tpm| - the TPM instance.
+  //   |is_mount| - true for mount operation, false for unmount.
+  //   |is_owner| - true if mounted for an owner user, false otherwise.
+  // Returns true if successful, false otherwise.
+  bool UserSignInEffects(bool is_mount, bool is_owner);
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;

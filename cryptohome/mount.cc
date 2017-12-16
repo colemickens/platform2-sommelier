@@ -683,6 +683,13 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
   }
 
+  if (!UserSignInEffects(true /* is_mount */, !non_owner)) {
+    LOG(ERROR) << "Failed to set user type, aborting mount";
+    UnmountAll();
+    *mount_error = MOUNT_ERROR_TPM_COMM_ERROR;
+    return false;
+  }
+
   // TODO(ellyjones): Expose the path to the root directory over dbus for use by
   // daemons. We may also want to bind-mount it somewhere stable.
 
@@ -744,6 +751,13 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     UnmountAll();
     return false;
   }
+
+  if (!UserSignInEffects(true /* is_mount */, false /* is_owner */)) {
+    LOG(ERROR) << "Failed to set user type, aborting ephemeral mount";
+    UnmountAll();
+    return false;
+  }
+
   mount_type_ = MountType::EPHEMERAL;
   return true;
 }
@@ -875,6 +889,10 @@ void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
 }
 
 bool Mount::UnmountCryptohome() {
+  if (!UserSignInEffects(false /* is_mount */, false /* is_owner */)) {
+    LOG(WARNING) << "Failed to set user type, but continuing with unmount";
+  }
+
   // There should be no file access when unmounting.
   // Stop dircrypto migration if in progress.
   MaybeCancelActiveDircryptoMigrationAndWait();
@@ -2019,5 +2037,26 @@ void Mount::MaybeCancelActiveDircryptoMigrationAndWait() {
 }
 
 bool Mount::IsShadowOnly() const { return shadow_only_; }
+
+// TODO(chromium:795310): include all side-effects and move out of mount.cc.
+// Sign-in/sign-out effects hook.
+// Performs actions that need to follow a mount/unmount operation as a part of
+// user sign-in/sign-out.
+// Parameters:
+//   |mount| - the mount instance that was just mounted/unmounted.
+//   |tpm| - the TPM instance.
+//   |is_mount| - true for mount operation, false for unmount.
+//   |is_owner| - true if mounted for an owner user, false otherwise.
+// Returns true if successful, false otherwise.
+bool Mount::UserSignInEffects(bool is_mount, bool is_owner) {
+  Tpm* tpm = crypto_->get_tpm();
+  if (!tpm) {
+    return true;
+  }
+
+  Tpm::UserType user_type =
+      (is_mount & is_owner) ? Tpm::UserType::Owner : Tpm::UserType::NonOwner;
+  return tpm->SetUserType(user_type);
+}
 
 }  // namespace cryptohome

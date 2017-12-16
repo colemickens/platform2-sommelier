@@ -2020,6 +2020,10 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
+  // First user to login -> an owner.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::Owner))
+      .WillOnce(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
@@ -2027,7 +2031,82 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
                                       mount_args,
                                       &error));
 
+  // Unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   ASSERT_TRUE(mount_->UnmountCryptohome());
+}
+
+TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
+  // Checks that when a device is not enterprise enrolled and does not have a
+  // known owner, a regular vault is created and mounted.
+  set_policy(false, "", true);
+
+  TestUser *user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(user->image_path))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
+    .WillRepeatedly(Return(false));
+
+  if (ShouldTestEcryptfs()) {
+    EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+        .WillRepeatedly(Return(true));
+  } else {
+    const key_serial_t kDirCryptoKeyId = 12345;
+    EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<2>(kDirCryptoKeyId), Return(true)));
+    EXPECT_CALL(platform_, SetDirCryptoKey(user->vault_mount_path, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId, kImageDir))
+        .WillRepeatedly(Return(true));
+  }
+
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
+    .WillRepeatedly(Return(true));
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
+                          Return(true)));
+  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
+                          Return(true)));
+  EXPECT_CALL(platform_,
+      DirectoryExists(
+        Property(&FilePath::value, StartsWith(user->user_vault_path.value()))))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  // Inject the failure.
+  // In case of MOUNT_ERROR_TPM_COMM_ERROR, it will retry mounting once,
+  // so an attempt to SetUserType will happen twice.
+  EXPECT_CALL(tpm_, SetUserType(_))
+      .Times(2)
+      .WillRepeatedly(Return(false));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_FALSE(mount_->MountCryptohome(up,
+                                       mount_args,
+                                       &error));
+  ASSERT_EQ(MOUNT_ERROR_TPM_COMM_ERROR, error);
 }
 
 // TODO(wad) Duplicate these tests with multiple mounts instead of one.
@@ -2082,11 +2161,20 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
+  // Enterprise enrolled -> no one is the owner.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
+
+  // Implicit unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
 }
 
 TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
@@ -2095,6 +2183,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
   TestUser *user = &helper_.users[0];
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
+  EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2153,6 +2242,10 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
+  // Enterprise enrolled -> no one is the owner.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
@@ -2179,6 +2272,12 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
     .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
+
+  // Unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2251,6 +2350,10 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
+  // Different user -> not an owner.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
@@ -2275,6 +2378,12 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(true));
+
+  // Unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2332,11 +2441,20 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
+  // Different user -> not an owner.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
+
+  // Implicit unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
 }
 
 TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
@@ -2347,6 +2465,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
   UsernamePasskey up(owner->username, owner->passkey);
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
+  EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2984,7 +3103,67 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
         Property(&FilePath::value, StartsWith("/home/chronos/u-"))))
     .WillOnce(Return(true));
 
+  // Guest -> not an owner.
+  // Also will be called on implicit Unmount.
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+
   ASSERT_TRUE(mount_->MountGuestCryptohome());
+
+  // Implicit unmount triggers setting user type to non-owner.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(true));
+}
+
+TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
+  struct stat fake_root_st;
+  fake_root_st.st_uid = 0;
+  fake_root_st.st_gid = 0;
+  fake_root_st.st_mode = S_IFDIR | S_IRWXU;
+  EXPECT_CALL(platform_, Stat(FilePath("/home"), _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(fake_root_st),
+                          Return(true)));
+  EXPECT_CALL(platform_, Stat(FilePath("/home/root"), _))
+    .WillOnce(DoAll(SetArgPointee<1>(fake_root_st),
+                    Return(true)));
+  EXPECT_CALL(platform_,
+      Stat(Property(&FilePath::value, StartsWith("/home/root/")), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, Stat(FilePath("/home/user"), _))
+    .WillOnce(DoAll(SetArgPointee<1>(fake_root_st),
+                    Return(true)));
+  EXPECT_CALL(platform_,
+      Stat(Property(&FilePath::value, StartsWith("/home/user/")), _))
+    .WillOnce(Return(false));
+  struct stat fake_user_st;
+  fake_user_st.st_uid = chronos_uid_;
+  fake_user_st.st_gid = chronos_gid_;
+  fake_user_st.st_mode = S_IFDIR | S_IRWXU;
+  EXPECT_CALL(platform_, Stat(FilePath("/home/chronos"), _))
+    .WillOnce(DoAll(SetArgPointee<1>(fake_user_st),
+                    Return(true)));
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
+      .WillOnce(Return(false));
+
+  ASSERT_FALSE(mount_->MountGuestCryptohome());
 }
 
 }  // namespace cryptohome
