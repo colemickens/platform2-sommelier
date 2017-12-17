@@ -4,6 +4,8 @@
 
 #include "crash-reporter/ec_collector.h"
 
+#include <string>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
