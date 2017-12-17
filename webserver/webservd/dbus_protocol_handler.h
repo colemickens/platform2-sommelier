@@ -27,8 +27,8 @@
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
-#include "libwebserv/dbus-proxies.h"
 #include "dbus_bindings/org.chromium.WebServer.ProtocolHandler.h"
+#include "libwebserv/dbus-proxies.h"
 
 namespace brillo {
 namespace dbus_utils {

@@ -15,6 +15,11 @@
 #ifndef WEBSERVER_LIBWEBSERV_MOCK_RESPONSE_H_
 #define WEBSERVER_LIBWEBSERV_MOCK_RESPONSE_H_
 
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

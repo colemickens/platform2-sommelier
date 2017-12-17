@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef WEBSERVER_LIBWEBSERV_RESPONSE_IMPL_H_
-#define WEBSERVER_LIBWEBSERV_RESPONSE_IMPL_H_
+#ifndef WEBSERVER_LIBWEBSERV_DBUS_RESPONSE_H_
+#define WEBSERVER_LIBWEBSERV_DBUS_RESPONSE_H_
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -57,4 +58,4 @@ class DBusResponse final : public Response {
 
 }  // namespace libwebserv
 
-#endif  // WEBSERVER_LIBWEBSERV_RESPONSE_IMPL_H_
+#endif  // WEBSERVER_LIBWEBSERV_DBUS_RESPONSE_H_

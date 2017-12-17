@@ -15,6 +15,8 @@
 #ifndef WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
 #define WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/macros.h>
 #include <libwebserv/export.h>

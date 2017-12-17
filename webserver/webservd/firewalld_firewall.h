@@ -17,6 +17,7 @@
 
 #include "webservd/firewall_interface.h"
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>

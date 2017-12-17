@@ -14,6 +14,8 @@
 
 #include <libwebserv/request_handler_callback.h>
 
+#include <utility>
+
 namespace libwebserv {
 
 RequestHandlerCallback::RequestHandlerCallback(

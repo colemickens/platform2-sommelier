@@ -18,6 +18,7 @@
 #include "webservd/encryptor.h"
 
 #include <memory>
+#include <string>
 
 #include <keystore/keystore_client.h>
 

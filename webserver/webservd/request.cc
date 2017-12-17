@@ -259,7 +259,7 @@ void Request::ForwardRequestToHandler() {
     char src[INET6_ADDRSTRLEN] = {};
     if (info) {
       sock_addr = reinterpret_cast<struct sockaddr_in6 *>(info->client_addr);
-      inet_ntop(AF_INET6,&sock_addr->sin6_addr, src, INET6_ADDRSTRLEN);
+      inet_ntop(AF_INET6, &sock_addr->sin6_addr, src, INET6_ADDRSTRLEN);
     }
     // Send the request over D-Bus and await the response.
     p->second.handler->HandleRequest(this, src);

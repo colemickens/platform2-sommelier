@@ -24,7 +24,7 @@ namespace libwebserv {
 
 void Response::AddHeader(const std::string& header_name,
                          const std::string& value) {
-  AddHeaders({std::pair<std::string,std::string>{header_name, value}});
+  AddHeaders({std::pair<std::string, std::string>{header_name, value}});
 }
 
 void Response::ReplyWithText(int status_code,

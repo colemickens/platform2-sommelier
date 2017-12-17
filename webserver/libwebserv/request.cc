@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <libwebserv/request_impl.h>
+#include <libwebserv/request.h>
 
 #include <base/callback.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/streams/file_stream.h>
 
 #include <libwebserv/dbus_protocol_handler.h>
+#include <libwebserv/request_impl.h>
 
 namespace libwebserv {
 

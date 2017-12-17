@@ -14,6 +14,8 @@
 
 #include <libwebserv/request_utils.h>
 
+#include <utility>
+
 #include <base/bind.h>
 #include <brillo/streams/memory_stream.h>
 #include <brillo/streams/stream_utils.h>

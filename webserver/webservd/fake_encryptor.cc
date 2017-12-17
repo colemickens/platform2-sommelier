@@ -14,6 +14,8 @@
 
 #include "webservd/encryptor.h"
 
+#include <memory>
+
 #include <brillo/data_encoding.h>
 
 namespace webservd {
