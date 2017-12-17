@@ -190,6 +190,7 @@
         {
           'target_name': 'trunks_testrunner',
           'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
               'libpower_manager-client-test',
