@@ -105,6 +105,7 @@ def CheckSubdirs():
   # Someone should write some docs :D.
   WHITELIST = (
       'arc-networkd',
+      'attestation',
       'avtest_label_detect',
       'bootstat',
       'buffet',
@@ -133,7 +134,9 @@ def CheckSubdirs():
       'thd',
       'timberslide',
       'tpm2-simulator',
+      'tpm_manager',
       'trim',
+      'trunks',
       'userfeedback',
       'userspace_touchpad',
       'vpn-manager',
