@@ -27,6 +27,7 @@ copies.
 |---------|-------------|
 | [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
 | [arc-networkd](./arc-networkd/) | Tools for managing ARC network settings |
+| [attestation](./attestation/) | Daemon and client for managing remote attestation |
 | [authpolicy](./authpolicy/) | Daemon for integrating with Microsoft Active Directory (AD) domains |
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |
 | [biod](./biod/) | Biometrics daemon |
@@ -82,7 +83,9 @@ copies.
 | [touch_firmware_calibration](./touch_firmware_calibration/) ||
 | [touch_keyboard](./touch_keyboard/) | Utilities for a touch based virtual keyboard |
 | [tpm2-simulator](./tpm2-simulator/) | A software TPM 2.0 implementation (for testing/debugging) |
+| [tpm_manager](./tpm_manager/) | Daemon and client for managing TPM setup and operations |
 | [trim](./trim/) | Service to manage filesystem trim operations in the background |
+| [trunks](./trunks/) | Middleware and resource manager for interfacing with TPM 2.0 hardware |
 | [u2fd](./u2fd/) | U2FHID emulation daemon for systems with secure elements (not TPMs) |
 | [userfeedback](./userfeedback/) | Various utilities to gather extended data for user feedback reports |
 | [userspace_touchpad](./userspace_touchpad/) ||
