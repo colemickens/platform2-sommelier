@@ -13,6 +13,20 @@ typeDefs:
   touch-firmware: &touch_firmware
     type: object
     properties:
+      overlay:
+        description: Name of overlay to download from
+        type: string
+      package:
+        description: Package subdirectory to download from
+        type: string
+      ebuild-version:
+        description: 'Tarfile version to download. This corresponds to the ebuild
+          version prior to unibuild, but can be any suitable string.'
+        type: string
+      tarball:
+        description: 'Template for tarball to download. This can maybe one day
+          include {package} and {version}.'
+        type: string
       firmware-bin:
         description: Path to the firmware binary for the touch firmware.
         type: string

@@ -434,6 +434,7 @@ class CrosConfigValidator(object):
 CRAS_CONFIG_DIR = '/etc/cras'
 UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
 LIB_FIRMWARE = '/lib/firmware'
+TOUCH_FIRMWARE = '/opt/google/touch/firmware'
 # In order not to pollute the regular /usr/sbin with model specific files
 # putting the files underneath chromeos-config
 ARC_SBIN_DIR = '/usr/share/chromeos-config/sbin'
@@ -508,6 +509,15 @@ SCHEMA = NodeDesc('/', True, [
                 NodeAny('', [PropPhandleTarget()] +
                         copy.deepcopy(BASE_AUDIO_SCHEMA)),
             ]),
+            NodeDesc('bcs', False, [
+                NodeAny('', [
+                    PropPhandleTarget(),
+                    PropString('overlay', False, 'overlay-.*'),
+                    PropString('package'),
+                    PropString('tarball'),
+                    PropString('ebuild-version', False, '[-.0-9r]+'),
+                ]),
+            ]),
             NodeDesc('power', elements=[
                 NodeAny('', [PropPhandleTarget()] +
                         copy.deepcopy(BASE_POWER_SCHEMA)),
@@ -520,16 +530,11 @@ SCHEMA = NodeDesc('/', True, [
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA))
             ]),
             NodeDesc('touch', False, [
-                NodeDesc('bcs', False, [
-                    PropString('overlay', False, 'overlay-.*'),
-                    PropString('package'),
-                    PropString('tarball'),
-                    PropString('version', False, '[-.0-9r]+'),
-                ]),
                 NodeAny('', [
                     PropPhandleTarget(),
-                    PropString('firmware-bin', True, ''),
-                    PropString('firmware-symlink', True, ''),
+                    PropPhandle('bcs-type', '/chromeos/family/bcs/ANY'),
+                    PropFile('firmware-bin', True, target_dir=TOUCH_FIRMWARE),
+                    PropFile('firmware-symlink', True, target_dir=LIB_FIRMWARE),
                     PropString('vendor', True, ''),
                 ]),
             ]),
@@ -593,14 +598,17 @@ SCHEMA = NodeDesc('/', True, [
                     # currently.
                     PropString('probe-regex', False, ''),
                     NodeAny(r'(stylus|touchpad|touchscreen)(@[0-9])?', [
+                        PropPhandle('bcs-type', '/chromeos/family/bcs/ANY'),
                         PropString('pid', False),
                         PropString('version', True),
                         PropPhandle('touch-type', '/chromeos/family/touch/ANY',
                                     False),
-                        PropString('firmware-bin', True, '',
-                                   {'touch-type': False}),
-                        PropString('firmware-symlink', True, '',
-                                   {'touch-type': False}),
+                        PropFile('firmware-bin', True, '',
+                                 {'touch-type': False},
+                                 target_dir=TOUCH_FIRMWARE),
+                        PropFile('firmware-symlink', True, '',
+                                 {'touch-type': False},
+                                 target_dir=LIB_FIRMWARE),
                         PropString('date-code', False),
                     ]),
                 ], conditional_props=NOT_WL),

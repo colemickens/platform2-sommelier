@@ -17,8 +17,10 @@ import os
 import sys
 
 from .cros_config_schema import TransformConfig, GetNamedTuple
-from ..libcros_config_host import BaseFile, FirmwareInfo, PathComponent, TouchFile, LIB_FIRMWARE
+from ..libcros_config_host import BaseFile, FirmwareInfo, PathComponent
+from ..libcros_config_host import TouchFile
 
+LIB_FIRMWARE = '/lib/firmware'
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 
 class CrosConfigJson(object):

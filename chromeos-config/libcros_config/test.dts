@@ -46,6 +46,14 @@
 			alsa-conf = "ucm-config/2mic/{card}.conf";
 		};
 	};
+	bcs {
+		touch_bcs: touch-bcs {
+			overlay = "overlay-reef-private";
+			package = "chromeos-touch-firmware-reef";
+			tarball = "chromeos-base/{package}/{package}-{ebuild-version}.tbz2";
+			ebuild-version = "1.0-r9";
+		};
+	};
 	power {
 		power_type_clamshell: power-type-clamshell {
 			charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
@@ -103,18 +111,15 @@
 		};
 	};
 	touch {
-		bcs {
-			overlay = "overlay-reef-private";
-			package = "chromeos-touch-firmware-reef";
-			tarball = "chromeos-base/{package}/{package}-{version}.tbz2";
-			version = "1.0-r9";
-		};
+		/* Example of how to put firmware in BCS */
 		elan_touchscreen: elan-touchscreen {
+			bcs-type = <&touch_bcs>;
 			vendor = "elan";
 			firmware-bin = "{vendor}/{pid}_{version}.bin";
 			firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
 		};
 		elan_touchpad: elan-touchpad {
+			bcs-type = <&touch_bcs>;
 			vendor = "elan";
 			firmware-bin = "{vendor}/{pid}_{version}.bin";
 			firmware-symlink = "{vendor}_i2c_{pid}.bin";
@@ -123,12 +128,6 @@
 			vendor = "wacom";
 			firmware-bin = "wacom/{version}.hex";
 			firmware-symlink = "wacom_firmware_{MODEL}.bin";
-		};
-		/* Example of how to put firmware in BCS */
-		elan_touchscreen_bcs: elan-touchscreen-bcs {
-			vendor = "elan";
-			firmware-bin = "${vendor}/${pid}_${version}.bin";
-			firmware-symlink = "${vendor}ts_i2c_${pid}.bin";
 		};
 	};
 };

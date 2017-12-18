@@ -92,6 +92,19 @@ properties.
             *   `suspend-to-idle`: If true (1), suspend to idle by writing
                     freeze to /sys/power/state.
 
+    *   `bcs` (optional): Provides a set of BCS (Binary Cloud Storage) sources
+            which can be used to download files needed by the build system.
+            Each subnode is defined as a phandle that can be referenced from
+            a node which needs access to BCS.
+        *   `<bcs-type>`: Node containing information about one BCS tarfile:
+            *   `overlay`: Name of overlay to download from
+            *   `package`: Package subdirectory to download from
+            *   `ebuild-version`: Tarfile version to download. This corresponds
+                    to the ebuild version prior to unibuild, but can be any
+                    suitable string.
+            *   `tarball`: Template for tarball to download. This can include
+                `{package}` and `{version}`.
+
     *   `firmware` (optional) : Contains information about firmware versions and
         files
         *   `script`: Updater script to use. See [the pack_dist
@@ -213,6 +226,8 @@ properties.
         *   `firmware-symlink`: Template filename to use for the /lib/firmware
             symlink to the firmware file in `/opt/google/touch`. The
             `/lib/firmware` part is assumed.
+        *   `bcs-type` (optional): phandle pointing to the BCS node to use to obtain
+                a tarfile containing the firmware.
 
         Template filenames may include the following fields, enclosed in
         `{...}` defined by the touch node: `vendor`, `pid`, `version` as well
@@ -221,14 +236,6 @@ properties.
         purpose is to avoid having to repeat the filename in each model that
         uses a particular manufacturer's touchscreen, since the naming
         convention is typically consistent for that manufacturer.
-
-        In addition, a `bcs` node can be provided, to allow files to be
-        downloaded from BCS (Binary Cloud Storage):
-        *   `overlay`: Name of overlay to download from
-        *   `package`: Package subdirectory to download from
-        *   `version`: Tarfile version to download
-        *   `tarball`: Template for tarball to download. This can include
-            `{package}` and `{version}`.
 
 *   `models`: Sub-nodes of this define models supported by this board.
 
@@ -384,6 +391,14 @@ chromeos {
                 topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
             };
         };
+        bcs {
+            touch_bcs: touch-bcs {
+                overlay = "overlay-reef-private";
+                package = "chromeos-touch-firmware-reef";
+                tarball = "chromeos-base/{package}/{package}-{ebuild-version}.tbz2";
+                ebuild-version = "1.0-r9";
+            };
+        };
         firmware {
             script = "updater4.sh";
             shared: reef {
@@ -460,28 +475,26 @@ chromeos {
         };
 
         touch {
-            bcs {
-                overlay = "overlay-reef-private";
-                package = "chromeos-touch-firmware-reef";
-                tarball = "chromeos-base/{package}/{package}-{version}.tbz2";
-                version = "1.0-r9";
-            };
             elan_touchscreen: elan-touchscreen {
+                bcs-type = <&touch_bcs>;
                 vendor = "elan";
                 firmware-bin = "{vendor}/{pid}_{version}.bin";
                 firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
             };
             elan_touchpad: elan-touchpad {
+                bcs-type = <&touch_bcs>;
                 vendor = "elan";
                 firmware-bin = "{vendor}/{pid}_{version}.bin";
                 firmware-symlink = "{vendor}_i2c_{pid}.bin";
             };
             wacom_stylus: wacom-stylus {
+                /* This uses ${FILESDIR}, not BCS */
                 vendor = "wacom";
                 firmware-bin = "wacom/wacom_{version}.hex";
                 firmware-symlink = "wacom_firmware_{model}.bin";
             };
             weida_touchscreen: weida-touchscreen {
+                /* This uses ${FILESDIR}, not BCS */
                 vendor = "weida";
                 firmware-bin = "weida/{pid}_{version}_{date-code}.bin";
                 firmware-symlink = "wdt87xx.bin";
@@ -808,32 +821,52 @@ chromeos {
 ### stylus
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
 | firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
 | firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| overlay | string |  | False | Name of overlay to download from |
+| package | string |  | False | Package subdirectory to download from |
+| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
 
 ### touchpad
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
 | firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
 | firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| overlay | string |  | False | Name of overlay to download from |
+| package | string |  | False | Package subdirectory to download from |
+| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
 
 ### touchscreen
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
 | firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
 | firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| overlay | string |  | False | Name of overlay to download from |
+| package | string |  | False | Package subdirectory to download from |
+| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
 
 ### touchscreen@0
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
 | firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
 | firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| overlay | string |  | False | Name of overlay to download from |
+| package | string |  | False | Package subdirectory to download from |
+| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
 
 ### touchscreen@1
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
 | firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
 | firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| overlay | string |  | False | Name of overlay to download from |
+| package | string |  | False | Package subdirectory to download from |
+| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
 
 
 [](end_definitions)

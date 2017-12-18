@@ -17,11 +17,13 @@ import os
 from . import fdt, validate_config
 
 # Represents a single touch firmware file which needs to be installed:
-#   firmware: source filename of firmware file. This is installed in a
+#   source: source filename of firmware file. This is installed in a
 #       directory in the root filesystem
+#   dest: destination filename of firmware file in the root filesystem. This is
+#       in /opt/google/touch/firmware
 #   symlink: name of symbolic link to put in LIB_FIRMWARE to point to the touch
 #       firmware. This is where Linux finds the firmware at runtime.
-TouchFile = namedtuple('TouchFile', ['firmware', 'symlink'])
+TouchFile = namedtuple('TouchFile', ['source', 'dest', 'symlink'])
 
 # Represents a single file which needs to be installed:
 #   source: Source filename within ${FILESDIR}
@@ -59,10 +61,6 @@ FirmwareInfo = namedtuple(
      'bios_build_target', 'ec_build_target', 'main_image_uri',
      'main_rw_image_uri', 'ec_image_uri', 'pd_image_uri',
      'extra', 'create_bios_rw_image', 'tools', 'sig_id'])
-
-# Known directories for installation
-# TODO(sjg@chromium.org): Move these to the schema
-LIB_FIRMWARE = '/lib/firmware'
 
 UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
 
@@ -245,6 +243,8 @@ class CrosConfig(object):
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files for all models
 
+    These files may come from ${FILESDIR} or from a tar file in BCS.
+
     Returns:
       List of TouchFile objects representing all the touch firmware referenced
       by all models
@@ -254,7 +254,7 @@ class CrosConfig(object):
       for files in model.GetTouchFirmwareFiles().values():
         file_set.add(files)
 
-    return sorted(file_set, key=lambda files: files.firmware)
+    return sorted(file_set, key=lambda files: files.source)
 
   def GetBcsUri(self, overlay, path):
     """Form a valid BCS URI for downloading files.
@@ -274,6 +274,25 @@ class CrosConfig(object):
     return ('gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s' %
             {'bcs': bcs_overlay, 'path': path})
 
+  def GetBspTarFiles(self):
+    """Get a list of tarfiles needed by the BSP ebuild
+
+    It is possible to upload tarfiles to BCS which contain firmware used by the
+    BSP ebuild. These need to be unpacked so that the files are available to be
+    installed by the BSP ebuild.
+
+    The files are stored in distdir by portage, so we can locate them there.
+
+    Returns:
+      List of tarfile filenames, each a string
+    """
+    tarfile_set = set()
+    for model in self.models.values():
+      for fname in model.GetBspTarFiles().values():
+        tarfile_set.add(fname)
+
+    return sorted(tarfile_set)
+
   def GetArcFiles(self):
     """Get a list of unique Arc++ files for all models
 
@@ -287,6 +306,7 @@ class CrosConfig(object):
         file_set.add(files)
 
     return sorted(file_set, key=lambda files: files.source)
+
   def GetAudioFiles(self):
     """Get a list of unique audio files for all models
 
@@ -352,10 +372,8 @@ class CrosConfig(object):
     for item in self.GetAudioFiles():
       paths.add(item.dest)
     for item in self.GetTouchFirmwareFiles():
-      # TODO(sjg@chromium.org): Move these constant paths into cros_config so
-      # that ebuilds do not need to specify them. crbug.com/769575
-      paths.add(os.path.join('/opt/google/touch/firmware', item.firmware))
-      paths.add(os.path.join(LIB_FIRMWARE, item.symlink))
+      paths.add(item.dest)
+      paths.add(item.symlink)
     root = PathComponent('')
     for path in paths:
       root.AddPath(path[1:])
@@ -396,20 +414,18 @@ class CrosConfig(object):
       firmware_info.update(self.models[name].GetFirmwareInfo())
     return firmware_info
 
-  def GetTouchBspUri(self):
+  def GetTouchBspUris(self):
     """Get the touch firmware BSP file URI
 
     Returns:
       URI of touch firmware file to use, or None if none
     """
-    touch = self.GetFamilyNode('touch/bcs')
-    if not touch:
-      return None
-    props = touch.GetMergedProperties(touch, None)
-    if not 'tarball' in props:
-      return None
-    tarball = GetPropFilename(touch.GetPath(), props, 'tarball')
-    return self.GetBcsUri(props['overlay'], tarball)
+    file_set = set()
+    for model in self.models.values():
+      for files in model.GetTouchBspUris().values():
+        file_set.add(files)
+
+    return file_set
 
   def GetBspUris(self):
     """Gets a list of URIs containing files required by the BSP
@@ -423,11 +439,7 @@ class CrosConfig(object):
     Returns:
       List of URIs found (which may be empty)
     """
-    uris = []
-    touch = self.GetTouchBspUri()
-    if touch:
-      uris.append(touch)
-    return uris
+    return list(self.GetTouchBspUris())
 
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
@@ -642,10 +654,10 @@ class CrosConfig(object):
       # First get all the property keys/values from the main node
       props = OrderedDict((prop.name, prop.value)
                           for prop in node.properties.values()
-                          if prop.name not in [phandle_prop, 'reg'])
+                          if prop.name not in [phandle_prop, 'bcs-type', 'reg'])
 
       # Follow the phandle and add any new ones we find
-      self.MergeProperties(props, node.FollowPhandle(phandle_prop))
+      self.MergeProperties(props, node.FollowPhandle(phandle_prop), 'bcs-type')
       if self.default:
         # Get the path of this node relative to its model. For example:
         # '/chromeos/models/pyro/thermal' will return '/thermal' in subpath.
@@ -723,19 +735,93 @@ class CrosConfig(object):
 
       Returns:
         List of TouchFile objects representing the touch firmware referenced
-        by this model
+          by this model
       """
-      touch = self.PathNode('/touch')
       files = {}
+      for device_name, props, dirname, tarball in self.GetTouchBspInfo():
+        # Add a special property for the capitalised model name
+        self.SetupModelProps(props)
+        fw_prop_name = 'firmware-bin'
+        fw_target_dir = self.cros_config.validator.GetModelTargetDir(
+            '/touch/ANY', fw_prop_name)
+        if not fw_target_dir:
+          raise ValueError(("node '%s': Property '%s' does not have a " +
+                            "target directory (internal error)") %
+                           (device_name, fw_prop_name))
+        sym_prop_name = 'firmware-sym'
+        sym_target_dir = self.cros_config.validator.GetModelTargetDir(
+            '/touch/ANY', 'firmware-symlink')
+        if not sym_target_dir:
+          raise ValueError(("node '%s': Property '%s' does not have a " +
+                            "target directory (internal error)") %
+                           (device_name, sym_prop_name))
+        src = GetPropFilename(self.GetPath(), props, fw_prop_name)
+        dest = src
+        sym_fname = GetPropFilename(self.GetPath(), props, 'firmware-symlink')
+        if tarball:
+          root, _ = os.path.splitext(os.path.basename(tarball))
+          src_dir = os.path.join(root, fw_target_dir[1:])
+          src = os.path.join(src_dir, os.path.basename(src))
+        else:
+          src_dir = dirname
+          src = os.path.join(src_dir, src)
+        files[device_name] = TouchFile(
+            src,
+            os.path.join(fw_target_dir, dest),
+            os.path.join(sym_target_dir, sym_fname))
+
+      return files
+
+    def GetTouchBspInfo(self, need_filesdir=True):
+      distdir = os.getenv('DISTDIR')
+      if not distdir:
+        raise ValueError('Cannot locate tar files unless DISTDIR is defined')
+      filesdir = os.getenv('FILESDIR')
+      if not filesdir and need_filesdir:
+        raise ValueError('Cannot locate BSP files unless FILESDIR is defined')
+      touch = self.PathNode('/touch')
       if touch:
         for device in touch.subnodes.values():
           props = self.GetMergedProperties(device, 'touch-type')
+          touch_type = device.FollowPhandle('touch-type')
+          bcs = device.FollowPhandle('bcs-type')
+          if not bcs and touch_type:
+            bcs = touch_type.FollowPhandle('bcs-type')
+          if bcs:
+            self.MergeProperties(props, bcs)
+            tarball = GetPropFilename(touch.GetPath(), props, 'tarball')
+            yield [device.name, props, distdir, tarball]
+          elif filesdir:
+            yield [device.name, props, filesdir, None]
 
-          # Add a special property for the capitalised model name
-          self.SetupModelProps(props)
-          files[device.name] = TouchFile(
-              GetPropFilename(self._fdt_node.path, props, 'firmware-bin'),
-              GetPropFilename(self._fdt_node.path, props, 'firmware-symlink'))
+    def GetBspTarFiles(self):
+      """Get a dict of tarfiles needed by the BSP ebuild for this model
+
+      Returns:
+        Dict of tarfile filenames:
+          key: touch device which needs this tarfile
+          value: filename of tarfile
+      """
+      files = {}
+      for device_name, _, distdir, tarball in self.GetTouchBspInfo(False):
+        if tarball:
+          fname = os.path.join(distdir, os.path.basename(tarball))
+          files[device_name] = fname
+      return files
+
+    def GetTouchBspUris(self):
+      """Get a dict of URIs needed by the BSP ebuild for this model
+
+      Returns:
+        Dict of URIs:
+          key: touch device which needs this URI
+          value: URI (string)
+      """
+      files = {}
+      for device_name, props, _, tarball in self.GetTouchBspInfo(False):
+        if tarball:
+          files[device_name] = self.cros_config.GetBcsUri(props['overlay'],
+                                                          tarball)
       return files
 
     def AllPathNodes(self, relative_path):

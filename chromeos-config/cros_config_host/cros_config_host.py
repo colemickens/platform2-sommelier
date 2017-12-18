@@ -55,14 +55,16 @@ def GetTouchFirmwareFiles(config):
 
   The output is one line for the firmware file and one line for the symlink,
   e.g.:
-     wacom/4209.hex
-     wacom_firmware_reef.bin
+     ${FILESDIR}/wacom/4209.hex
+     /opt/google/touch/firmware/wacom/4209.hex
+     /lib/firmware/wacom_firmware_reef.bin
 
   Args:
     config: A CrosConfig instance
   """
   for files in config.GetTouchFirmwareFiles():
-    print(files.firmware)
+    print(files.source)
+    print(files.dest)
     print(files.symlink)
 
 def GetArcFiles(config):
@@ -141,15 +143,26 @@ def GetBspUris(config):
   to put in the git repo. This returns a list of these URIs, which should be
   downloaded before the BSP ebuild can work.
 
+  Prints a list of URIs, each a string (e.g. 'gs://chromeos-binaries/HOME/'
+        'bcs-reef-private/overlay-reef-private/chromeos-base/'
+        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
+
+  Args:
+    config: A CrosConfig instance
+  """
+  print(' '.join(config.GetBspUris()))
+
+def GetBspTarFiles(config):
+  """Get the tarfiles needed for the BSP
+
   Args:
     config: A CrosConfig instance
 
   Returns:
-    List of URIs, each a string (e.g. ['gs://chromeos-binaries/HOME/'
-        'bcs-reef-private/overlay-reef-private/chromeos-base/'
-        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2']
+    List of tarfile filenames inside DISTDIR, each a string
   """
-  print(' '.join(config.GetBspUris()))
+  for fname in config.GetBspTarFiles():
+    print(fname)
 
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
@@ -256,6 +269,10 @@ def GetParser(description):
            'that this does not include AP firmware URIs, as used by the '
            'chromeos-firmware-xxx ebuilds. Future work will relationalise this '
            'command with get-firmware-uris.')
+  # Parser: get-bsp-tar-files
+  subparsers.add_parser(
+      'get-bsp-tar-files',
+      help='Writes out a list of tarfiles needed to obtain the BSP files.')
   return parser
 
 
@@ -313,6 +330,8 @@ def main(argv=None):
     GetThermalFiles(config)
   elif opts.subcommand == 'file-tree':
     FileTree(config, opts.root)
+  elif opts.subcommand == 'get-bsp-tar-files':
+    GetBspTarFiles(config)
   elif opts.subcommand == 'get-bsp-uris':
     GetBspUris(config)
 
