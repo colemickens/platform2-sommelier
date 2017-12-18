@@ -29,6 +29,13 @@ bool SetHomeEnvironmentVariable() {
   return true;
 }
 
+void InitLog() {
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  logging::SetLogItems(true /* enable_process_id */,
+                       true /* enable_thread_id */, true /* enable_timestamp */,
+                       true /* enable_tickcount */);
+}
+
 // Creates smb configuration file in $HOME/.smb/smb.conf.
 bool CreateSmbConfFile() {
   base::File::Error ferror;
@@ -89,6 +96,7 @@ int RunDaemon() {
 }  // namespace smbprovider
 
 int main(int argc, char* argv[]) {
+  smbprovider::InitLog();
   // Smb configuration file must be written before the daemon is started because
   // the check for smb.conf happens when the context is set.
   if (!(smbprovider::SetHomeEnvironmentVariable() &&
