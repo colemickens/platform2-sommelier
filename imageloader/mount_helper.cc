@@ -17,7 +17,6 @@
 #include <base/time/time.h>
 
 #include "imageloader.h"
-#include "ipc.pb.h"
 #include "verity_mounter.h"
 
 namespace imageloader {

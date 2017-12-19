@@ -15,7 +15,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/process_reaper.h>
 
-#include "dbus_adaptors/org.chromium.ImageLoaderInterface.h"
+#include "imageloader/dbus_adaptors/org.chromium.ImageLoaderInterface.h"
 #include "helper_process.h"
 #include "imageloader_impl.h"
 

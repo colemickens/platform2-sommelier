@@ -9,7 +9,7 @@
 #include <base/message_loop/message_loop.h>
 #include <brillo/daemons/daemon.h>
 
-#include "ipc.pb.h"
+#include "imageloader/ipc.pb.h"
 #include "verity_mounter.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;

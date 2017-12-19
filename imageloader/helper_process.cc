@@ -15,7 +15,7 @@
 
 #include "component.h"
 #include "imageloader_impl.h"
-#include "ipc.pb.h"
+#include "imageloader/ipc.pb.h"
 
 namespace imageloader {
 

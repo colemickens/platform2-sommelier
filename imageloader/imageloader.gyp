@@ -20,7 +20,7 @@
       'type': 'static_library',
       'variables': {
         'proto_in_dir': '.',
-        'proto_out_dir': 'include',
+        'proto_out_dir': 'include/imageloader',
       },
       'sources': ['<(proto_in_dir)/ipc.proto'],
       'includes': ['../common-mk/protoc.gypi'],
@@ -29,7 +29,7 @@
       'target_name': 'imageloader-adaptors',
       'type': 'none',
       'variables': {
-        'dbus_adaptors_out_dir': 'include/dbus_adaptors',
+        'dbus_adaptors_out_dir': 'include/imageloader/dbus_adaptors',
         'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
       },
       'sources': [
