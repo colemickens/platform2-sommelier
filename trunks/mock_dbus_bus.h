@@ -17,6 +17,8 @@
 #ifndef TRUNKS_MOCK_DBUS_H_
 #define TRUNKS_MOCK_DBUS_H_
 
+#include <string>
+
 #include <dbus/bus.h>
 #include <gmock/gmock.h>
 

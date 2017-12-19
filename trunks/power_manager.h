@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <power_manager/dbus-proxies.h>

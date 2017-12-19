@@ -16,6 +16,7 @@
 
 #include "trunks/trunks_dbus_proxy.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>

@@ -17,6 +17,8 @@
 #ifndef TRUNKS_TPM_STATE_H_
 #define TRUNKS_TPM_STATE_H_
 
+#include <string>
+
 #include <base/macros.h>
 
 #include "trunks/tpm_generated.h"

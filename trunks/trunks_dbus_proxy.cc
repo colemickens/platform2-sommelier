@@ -16,6 +16,8 @@
 
 #include "trunks/trunks_dbus_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <brillo/bind_lambda.h>
 

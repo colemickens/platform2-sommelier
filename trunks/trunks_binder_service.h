@@ -17,6 +17,9 @@
 #ifndef TRUNKS_TRUNKS_BINDER_SERVICE_H_
 #define TRUNKS_TRUNKS_BINDER_SERVICE_H_
 
+#include <string>
+#include <vector>
+
 #include <base/memory/weak_ptr.h>
 #include <brillo/binder_watcher.h>
 #include <brillo/daemons/daemon.h>

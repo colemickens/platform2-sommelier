@@ -20,6 +20,7 @@
 #include "trunks/tpm_state.h"
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include <base/callback.h>

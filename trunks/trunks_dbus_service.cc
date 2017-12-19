@@ -16,6 +16,8 @@
 
 #include "trunks/trunks_dbus_service.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <brillo/bind_lambda.h>
 

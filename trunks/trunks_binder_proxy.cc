@@ -16,6 +16,8 @@
 
 #include "trunks/trunks_binder_proxy.h"
 
+#include <vector>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>

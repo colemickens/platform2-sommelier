@@ -17,6 +17,8 @@
 #ifndef TRUNKS_MOCK_TPM_STATE_H_
 #define TRUNKS_MOCK_TPM_STATE_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "trunks/tpm_state.h"

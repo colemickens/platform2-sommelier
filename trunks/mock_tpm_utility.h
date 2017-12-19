@@ -18,6 +18,7 @@
 #define TRUNKS_MOCK_TPM_UTILITY_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
