@@ -15,7 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <chromeos-config/libcros_config/cros_config.h>
+#include <cros_config/cros_config.h>
 
 #include "power_manager/common/cros_config_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"

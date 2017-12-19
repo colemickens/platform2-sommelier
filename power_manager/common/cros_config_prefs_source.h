@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos-config/libcros_config/cros_config_interface.h>
+#include <cros_config/cros_config_interface.h>
 
 #include "power_manager/common/prefs.h"
 

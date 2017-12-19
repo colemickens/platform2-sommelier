@@ -10,7 +10,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/cros_config_prefs_source.h"
