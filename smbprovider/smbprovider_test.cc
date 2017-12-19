@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider_helper.h"
 
-#include <base/memory/ptr_util.h>
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
 #include <gtest/gtest.h>
@@ -93,11 +94,11 @@ class SmbProviderTest : public testing::Test {
 
   void SetSmbProviderBuffer(int32_t buffer_size) {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
-        base::MakeUnique<FakeSambaInterface>();
+        std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
     const ObjectPath object_path(std::string("/object/path"));
     smbprovider_.reset(new SmbProvider(
-        base::MakeUnique<DBusObject>(nullptr, mock_bus_, object_path),
+        std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(fake_ptr), buffer_size));
   }
 

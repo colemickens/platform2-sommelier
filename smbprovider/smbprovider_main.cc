@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -60,7 +61,7 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
       exit(EXIT_FAILURE);
     }
     smb_provider_.reset(new SmbProvider(
-        base::MakeUnique<brillo::dbus_utils::DBusObject>(
+        std::make_unique<brillo::dbus_utils::DBusObject>(
             nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),
         std::move(samba_interface)));
     smb_provider_->RegisterAsync(
