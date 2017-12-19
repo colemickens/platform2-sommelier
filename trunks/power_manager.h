@@ -34,7 +34,7 @@ class PowerManager {
  public:
   // The |resource_manager| will be notified of power events. This
   // class does not take ownership of |resource_manager|.
-  PowerManager(ResourceManager* resource_manager = nullptr)
+  explicit PowerManager(ResourceManager* resource_manager = nullptr)
     : resource_manager_(resource_manager) {}
   ~PowerManager() = default;
 

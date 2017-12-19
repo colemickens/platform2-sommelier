@@ -844,7 +844,7 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   };
   class Scoper {
    public:
-    Scoper(const base::Closure& callback) : callback_(callback) {}
+    explicit Scoper(const base::Closure& callback) : callback_(callback) {}
     ~Scoper() {
       if (!cancel_)
         callback_.Run();

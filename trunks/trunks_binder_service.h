@@ -55,7 +55,7 @@ class TrunksBinderService : public brillo::Daemon {
   friend class BinderServiceInternal;
   class BinderServiceInternal : public android::trunks::BnTrunks {
    public:
-    BinderServiceInternal(TrunksBinderService* service);
+    explicit BinderServiceInternal(TrunksBinderService* service);
     ~BinderServiceInternal() override = default;
 
     // ITrunks interface.
