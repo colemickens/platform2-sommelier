@@ -50,6 +50,7 @@ class WiFiService : public Service {
   static const char kStoragePreferredDevice[];
   static const char kStorageRoamThreshold[];
   static const char kStorageRoamThresholdSet[];
+  static const char kStorageFTEnabled[];
 
   WiFiService(ControlInterface* control_interface,
               EventDispatcher* dispatcher,
@@ -212,6 +213,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
   FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
@@ -348,6 +350,7 @@ class WiFiService : public Service {
   const std::string mode_;
   std::string auth_mode_;
   bool hidden_ssid_;
+  bool ft_enabled_;
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   uint16_t physical_mode_;

@@ -76,6 +76,10 @@ class WPASupplicant {
   static const char kInterfaceStateGroupHandshake[];
   static const char kInterfaceStateInactive[];
   static const char kInterfaceStateScanning[];
+  static const char kKeyManagementFTEAP[];
+  static const char kKeyManagementFTPSK[];
+  static const char kKeyManagementWPAEAP[];
+  static const char kKeyManagementWPAPSK[];
   static const char kKeyManagementIeee8021X[];
   static const char kKeyManagementMethodSuffixEAP[];
   static const char kKeyManagementMethodSuffixPSK[];

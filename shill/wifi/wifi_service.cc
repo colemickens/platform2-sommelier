@@ -68,6 +68,7 @@ const char WiFiService::kStorageSSID[] = "SSID";
 const char WiFiService::kStoragePreferredDevice[] = "WiFi.PreferredDevice";
 const char WiFiService::kStorageRoamThreshold[] = "WiFi.RoamThreshold";
 const char WiFiService::kStorageRoamThresholdSet[] = "WiFi.RoamThresholdSet";
+const char WiFiService::kStorageFTEnabled[] = "WiFi.FTEnabled";
 
 bool WiFiService::logged_signal_warning = false;
 
@@ -80,12 +81,13 @@ WiFiService::WiFiService(ControlInterface* control_interface,
                          const string& mode,
                          const string& security,
                          bool hidden_ssid)
-    : Service(control_interface, dispatcher, metrics, manager,
-              Technology::kWifi),
+    : Service(
+          control_interface, dispatcher, metrics, manager, Technology::kWifi),
       need_passphrase_(false),
       security_(security),
       mode_(mode),
       hidden_ssid_(hidden_ssid),
+      ft_enabled_(false),
       frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
@@ -116,6 +118,7 @@ WiFiService::WiFiService(ControlInterface* control_interface,
   store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);
   store->RegisterConstUint16(kWifiPhyMode, &physical_mode_);
   store->RegisterConstString(kWifiBSsid, &bssid_);
+  store->RegisterBool(kWifiFTEnabled, &ft_enabled_);
   store->RegisterConstString(kCountryProperty, &country_code_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
                                 &vendor_information_);
@@ -145,15 +148,15 @@ WiFiService::WiFiService(ControlInterface* control_interface,
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
   } else if (security_ == kSecurityPsk) {
-    SetEAPKeyManagement("WPA-PSK");
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
   } else if (security_ == kSecurityRsn) {
-    SetEAPKeyManagement("WPA-PSK");
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
   } else if (security_ == kSecurityWpa) {
-    SetEAPKeyManagement("WPA-PSK");
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
   } else if (security_ == kSecurityWep) {
-    SetEAPKeyManagement("NONE");
+    SetEAPKeyManagement(WPASupplicant::kKeyModeNone);
   } else if (security_ == kSecurityNone) {
-    SetEAPKeyManagement("NONE");
+    SetEAPKeyManagement(WPASupplicant::kKeyModeNone);
   } else {
     LOG(ERROR) << "Unsupported security method " << security_;
   }
@@ -390,6 +393,8 @@ bool WiFiService::Load(StoreInterface* storage) {
   roam_threshold_db_ = static_cast<uint16_t>(stored_roam_threshold_temp);
   storage->GetBool(id, kStorageRoamThresholdSet, &roam_threshold_db_set_);
 
+  storage->GetBool(id, kStorageFTEnabled, &ft_enabled_);
+
   expecting_disconnect_ = false;
   return true;
 }
@@ -412,6 +417,7 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetUint64(id, kStorageRoamThreshold,
                      static_cast<uint64_t>(roam_threshold_db_));
   storage->SetBool(id, kStorageRoamThresholdSet, roam_threshold_db_set_);
+  storage->SetBool(id, kStorageFTEnabled, ft_enabled_);
   Service::SaveString(storage, id, kStoragePreferredDevice, preferred_device_,
                       false, false);
 
@@ -437,6 +443,7 @@ bool WiFiService::Unload() {
   preferred_device_.clear();
   roam_threshold_db_ = 0;
   roam_threshold_db_set_ = false;
+  ft_enabled_ = false;
   return provider_->OnServiceUnloaded(this);
 }
 
@@ -630,7 +637,7 @@ void WiFiService::Connect(Error* error, const char* reason) {
   if (Is8021x()) {
     // If EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())
-      SetEAPKeyManagement("WPA-EAP");
+      SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAP);
     ClearEAPCertification();
   }
 
@@ -680,8 +687,16 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
     NOTIMPLEMENTED() << "Unsupported security method " << security_;
   }
 
-  params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement,
-                   key_management());
+  string key_mgmt = key_management();
+  if (ft_enabled_ && key_mgmt == WPASupplicant::kKeyManagementWPAPSK)
+    key_mgmt = base::StringPrintf("%s %s",
+                                  WPASupplicant::kKeyManagementWPAPSK,
+                                  WPASupplicant::kKeyManagementFTPSK);
+  else if (ft_enabled_ && key_mgmt == WPASupplicant::kKeyManagementWPAEAP)
+    key_mgmt = base::StringPrintf("%s %s",
+                                  WPASupplicant::kKeyManagementWPAEAP,
+                                  WPASupplicant::kKeyManagementFTEAP);
+  params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement, key_mgmt);
 
   if (ieee80211w_required_) {
     // TODO(pstew): We should also enable IEEE 802.11w if the user
