@@ -213,6 +213,15 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('topology-bin',
                       'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
 
+  def testGetArcFiles(self):
+    config = CrosConfig(self.file)
+    arc_files = config.GetArcFiles()
+    self.assertEqual(
+        arc_files,
+        [BaseFile(source='reef/arc++/hardware_features',
+                  dest='/usr/share/chromeos-config/sbin/reef/arc++/'
+                       'hardware_features')])
+
   def testGetAudioFiles(self):
     config = CrosConfig(self.file)
     audio_files = config.GetAudioFiles()

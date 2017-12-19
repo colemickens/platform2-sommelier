@@ -234,6 +234,9 @@ properties.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
+        *   `arc` (optional): Contains arc++ configuration information
+            *   `hw-features`: Script filename that configures the Arc++
+                    hardware features (by probing or hard-coding) for a model.
         *   `audio` (optional): Contains information about audio devices
                 used by this model.
             *   `<audio_system>`: Contains information about a particular
@@ -262,7 +265,7 @@ properties.
             Note: This is an experimental feature which will be evaluated in
             December 2017 to determine its usefulness versus the potential
             confusion it can cause.
-        *   `thermal`(optional): Contains information about thermel properties
+        *   `thermal`(optional): Contains information about thermal properties
             and settings.
             *   `dptf-dv`: Filename of the .dv file containing DPTF (Dynamic
                 Platform and Thermal Framework) settings, relative to the
@@ -491,6 +494,9 @@ chromeos {
             powerd-prefs = "reef";
             wallpaper = "seaside_life";
             brand-code = "ABCD";
+            arc {
+                hw-features = "reef/arc++/hardware_features";
+            };
             firmware {
                 shares = <&shared>;
                 key-id = "REEF";

@@ -64,6 +64,21 @@ def GetTouchFirmwareFiles(config):
     print(files.firmware)
     print(files.symlink)
 
+def GetArcFiles(config):
+  """Print a list of arc++ files across all models
+
+  The output is one line for the source file (typically relative to ${FILESDIR})
+  and one line for the install file, e.g.:
+     astronaut/arc++/board_hardware_features
+     /usr/sbin/astronaut/board_hardware_features
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetArcFiles():
+    print(files.source)
+    print(files.dest)
+
 def GetAudioFiles(config):
   """Print a list of audio files across all models
 
@@ -199,6 +214,11 @@ def GetParser(description):
       'get-firmware-uris',
       help='Lists AP firmware URIs for models. These URIs can be used to '
            'fetch firmware files for the chromeos-firmware-xxx ebuilds.')
+  # Parser: get-arc-files
+  subparsers.add_parser(
+      'get-arc-files',
+      help='Lists pairs of arc++ files in sequence: first line is ' +
+      'the relative source file file, second line is the full install pathname')
   # Parser: get-audio-files
   subparsers.add_parser(
       'get-audio-files',
@@ -279,6 +299,8 @@ def main(argv=None):
     GetTouchFirmwareFiles(config)
   elif opts.subcommand == 'get-firmware-uris':
     GetFirmwareUris(config)
+  elif opts.subcommand == 'get-arc-files':
+    GetArcFiles(config)
   elif opts.subcommand == 'get-audio-files':
     GetAudioFiles(config)
   elif opts.subcommand == 'get-firmware-build-targets':

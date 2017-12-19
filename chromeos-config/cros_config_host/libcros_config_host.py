@@ -67,7 +67,6 @@ LIB_FIRMWARE = '/lib/firmware'
 
 UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
 
-
 class PathComponent(object):
   """A component in a directory/file tree
 
@@ -277,6 +276,19 @@ class CrosConfig(object):
     return ('gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s' %
             {'bcs': bcs_overlay, 'path': path})
 
+  def GetArcFiles(self):
+    """Get a list of unique Arc++ files for all models
+
+    Returns:
+      List of BaseFile objects representing all the arc++ files referenced
+      by all models
+    """
+    file_set = set()
+    for model in self.models.values():
+      for files in model.GetArcFiles().values():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
   def GetAudioFiles(self):
     """Get a list of unique audio files for all models
 
@@ -757,6 +769,25 @@ class CrosConfig(object):
         if node:
           path_nodes[submodel_node.name] = node
       return path_nodes
+
+    def GetArcFiles(self):
+      """Get a dict of arc++ files
+
+      Returns:
+        Dict of BaseFile objects representing the arc++ files referenced
+        by this model:
+          key: property
+          value: BaseFile object
+      """
+      files = {}
+      prop = 'hw-features'
+      arc = self.PathNode('/arc')
+      target_dir = self.cros_config.validator.GetModelTargetDir('/arc', prop)
+      if arc:
+        files['base'] = BaseFile(
+            arc.properties[prop].value,
+            os.path.join(target_dir, arc.properties[prop].value))
+      return files
 
     def GetAudioFiles(self):
       """Get a list of audio files

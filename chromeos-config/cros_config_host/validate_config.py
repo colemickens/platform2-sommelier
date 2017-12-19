@@ -434,6 +434,9 @@ class CrosConfigValidator(object):
 CRAS_CONFIG_DIR = '/etc/cras'
 UCM_CONFIG_DIR = '/usr/share/alsa/ucm'
 LIB_FIRMWARE = '/lib/firmware'
+# In order not to pollute the regular /usr/sbin with model specific files
+# putting the files underneath chromeos-config
+ARC_SBIN_DIR = '/usr/share/chromeos-config/sbin'
 
 # Basic firmware schema, which is augmented depending on the situation.
 FW_COND = {'shares': False, '../whitelabel': False}
@@ -560,6 +563,10 @@ SCHEMA = NodeDesc('/', True, [
                 PropString('wallpaper', False, '[a-z_]+'),
                 NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
                          conditional_props=NOT_WL),
+                NodeDesc('arc', False, [
+                    PropFile('hw-features', False, '',
+                             target_dir=ARC_SBIN_DIR),
+                ], conditional_props=NOT_WL),
                 NodeDesc('power', False, [
                     PropPhandle('power-type', '/chromeos/family/power/ANY',
                                 False),

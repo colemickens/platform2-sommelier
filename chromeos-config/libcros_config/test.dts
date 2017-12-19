@@ -194,6 +194,9 @@
 	};
 	reef {
 		wallpaper = "epic";
+		arc {
+			hw-features = "reef/arc++/hardware_features";
+		};
 		power {
 			power-type = <&power_type_clamshell>;
 			set-wifi-transmit-power-for-tablet-mode = <1>;
