@@ -106,6 +106,7 @@ def CheckSubdirs():
   # Legacy projects that don't have a README.md file.
   # Someone should write some docs :D.
   WHITELIST = (
+      'apmanager',
       'attestation',
       'avtest_label_detect',
       'bootstat',
