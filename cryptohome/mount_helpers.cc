@@ -6,7 +6,6 @@
  * utility.
  *
  */
-#define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
 #include <dirent.h>
 #include <errno.h>
@@ -30,8 +29,8 @@
 
 #include <openssl/evp.h>
 
-#include "mount-encrypted.h"
-#include "mount-helpers.h"
+#include "mount_encrypted.h"
+#include "mount_helpers.h"
 
 static const gchar kRootDir[] = "/";
 static const gchar kSysBlockPath[] = "/sys/block";
@@ -73,8 +72,8 @@ int runcmd(const gchar* argv[], gchar** output) {
   gchar *out = NULL, *errout = NULL;
   GError* err = NULL;
 
-  g_spawn_sync(kRootDir, (gchar**)argv, NULL, 0, NULL, NULL, &out, &errout, &rc,
-               &err);
+  g_spawn_sync(kRootDir, (gchar**)argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &out,
+               &errout, &rc, &err);
   if (err) {
     ERROR("%s: %s", argv[0], err->message);
     g_error_free(err);
@@ -112,7 +111,7 @@ char* stringify_hex(uint8_t* binary, size_t length) {
   char* string;
   size_t i;
 
-  string = malloc(length * 2 + 1);
+  string = (char*)malloc(length * 2 + 1);
   if (!string) {
     PERROR("malloc");
     return NULL;
@@ -168,7 +167,7 @@ void shred(const char* pathname) {
     return;
   }
   /* Ignore errors here, since there's nothing we can really do. */
-  pattern = malloc(info.st_size);
+  pattern = (uint8_t*)malloc(info.st_size);
   for (i = 0; i < sizeof(patterns); ++i) {
     memset(pattern, patterns[i], info.st_size);
     if (fseek(target, 0, SEEK_SET))
@@ -597,37 +596,44 @@ int filesystem_build(const char* device,
   }
 
   inode_ratio = get_inode_ratio(block_bytes, blocks_min, blocks_max);
-  gchar* inode_ratio_str = g_strdup_printf("%" PRIu64, inode_ratio);
+  gchar* inode_ratio_str;
+  inode_ratio_str = g_strdup_printf("%" PRIu64, inode_ratio);
   if (!inode_ratio_str) {
     PERROR("g_strdup_printf");
     goto free_extended;
   }
 
-  const gchar* mkfs[] = {"/sbin/mkfs.ext4",
-                         "-T",
-                         "default",
-                         "-b",
-                         blocksize,
-                         "-m",
-                         "0",
-                         "-O",
-                         "^huge_file,^flex_bg",
-                         "-i",
-                         inode_ratio_str,
-                         "-E",
-                         extended,
-                         device,
-                         blocks_str,
-                         NULL};
+  /* Add scope to ensure compilation with C++: "error: jump bypasses
+   * initialization" goto * above jumps over the definition of mkfs[] and
+   * tune2fs[] */
+  {
+    const gchar* mkfs[] = {"/sbin/mkfs.ext4",
+                           "-T",
+                           "default",
+                           "-b",
+                           blocksize,
+                           "-m",
+                           "0",
+                           "-O",
+                           "^huge_file,^flex_bg",
+                           "-i",
+                           inode_ratio_str,
+                           "-E",
+                           extended,
+                           device,
+                           blocks_str,
+                           NULL};
 
-  rc = (runcmd(mkfs, NULL) == 0);
-  if (!rc)
-    goto free_inode_ratio_str;
+    rc = (runcmd(mkfs, NULL) == 0);
+    if (!rc)
+      goto free_inode_ratio_str;
+  }
 
-  const gchar* tune2fs[] = {"/sbin/tune2fs", "-c", "0", "-i", "0",
-                            device,          NULL};
-  rc = (runcmd(tune2fs, NULL) == 0);
-
+  {
+    const gchar* tune2fs[] = {"/sbin/tune2fs", "-c", "0", "-i", "0",
+                              device,          NULL};
+    rc = (runcmd(tune2fs, NULL) == 0);
+  }
 free_inode_ratio_str:
   g_free(inode_ratio_str);
 free_extended:
@@ -719,7 +725,7 @@ char* keyfile_read(const char* keyfile, uint8_t* system_key) {
     g_error_free(error);
     goto out;
   }
-  plain = malloc(length + EVP_CIPHER_block_size(algo));
+  plain = (uint8_t*)malloc(length + EVP_CIPHER_block_size(algo));
   if (!plain) {
     PERROR("malloc");
     goto free_cipher;
@@ -851,7 +857,7 @@ int keyfile_write(const char* keyfile, uint8_t* system_key, char* string) {
 
   debug_dump_hex("encryption key", plain, DIGEST_LENGTH);
 
-  cipher = malloc(length + EVP_CIPHER_block_size(algo));
+  cipher = (uint8_t*)malloc(length + EVP_CIPHER_block_size(algo));
   if (!cipher) {
     PERROR("malloc");
     goto out;

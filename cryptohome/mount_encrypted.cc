@@ -6,7 +6,6 @@
  * and the various bind mountable subdirectories.
  *
  */
-#define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
 #include <stdint.h>
 #include <stdio.h>
@@ -34,8 +33,8 @@
 #include <vboot/tlcl.h>
 #include <vboot/crossystem.h>
 
-#include "mount-encrypted.h"
-#include "mount-helpers.h"
+#include "mount_encrypted.h"
+#include "mount_helpers.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
@@ -107,10 +106,12 @@ static struct bind_mount {
   mode_t mode;
   int submount; /* Submount is bound already. */
 } bind_mounts_default[] = {
-    {ENCRYPTED_MNT "/var", "var", STATEFUL_MNT "/var", STATEFUL_MNT "/.var",
-     "root", "root", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 0},
-    {ENCRYPTED_MNT "/chronos", "home/chronos", STATEFUL_MNT "/home/chronos",
-     STATEFUL_MNT "/home/.chronos", "chronos", "chronos",
+    {(char*)ENCRYPTED_MNT "/var", (char*)"var", (char*)STATEFUL_MNT "/var",
+     (char*)STATEFUL_MNT "/.var", (char*)"root", (char*)"root",
+     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 0},
+    {(char*)ENCRYPTED_MNT "/chronos", (char*)"home/chronos",
+     (char*)STATEFUL_MNT "/home/chronos", (char*)STATEFUL_MNT "/home/.chronos",
+     (char*)"chronos", (char*)"chronos",
      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 1},
     {},
 };
@@ -698,17 +699,22 @@ static int migrate_contents(struct bind_mount* bind,
   }
 
   INFO("Migrating bind mount contents %s to %s.", dotdir, bind->src);
-  const gchar* cp[] = {"/bin/cp", "-a", dotdir, bind->src, NULL};
 
-  if (runcmd(cp, NULL) != 0) {
-    /* If the copy failed, it may have partially populated the
-     * new source, so we need to remove the new source and
-     * rebuild it. Regardless, the previous source must be removed
-     * as well.
-     */
-    INFO("Failed to migrate %s to %s!", dotdir, bind->src);
-    remove_tree(bind->src);
-    check_bind(bind, BIND_SOURCE);
+  /* Add scope to ensure compilation with C++: "error: jump bypasses
+   * initialization" goto mark_for_removal jumps over the definition of cp[] */
+  {
+    const gchar* cp[] = {"/bin/cp", "-a", dotdir, bind->src, NULL};
+
+    if (runcmd(cp, NULL) != 0) {
+      /* If the copy failed, it may have partially populated the
+       * new source, so we need to remove the new source and
+       * rebuild it. Regardless, the previous source must be removed
+       * as well.
+       */
+      INFO("Failed to migrate %s to %s!", dotdir, bind->src);
+      remove_tree(bind->src);
+      check_bind(bind, BIND_SOURCE);
+    }
   }
 
 mark_for_removal:
@@ -1371,9 +1377,9 @@ static void prepare_paths(void) {
   struct bind_mount* old;
   struct bind_mount* mnt;
 
-  mnt = bind_mounts =
-      calloc(sizeof(bind_mounts_default) / sizeof(*bind_mounts_default),
-             sizeof(*bind_mounts_default));
+  mnt = bind_mounts = (struct bind_mount*)calloc(
+      sizeof(bind_mounts_default) / sizeof(*bind_mounts_default),
+      sizeof(*bind_mounts_default));
   if (!mnt) {
     perror("calloc");
     exit(1);
@@ -1396,7 +1402,7 @@ static void prepare_paths(void) {
       goto fail;
     g_free(hex);
   } else {
-    rootdir = "/";
+    rootdir = (gchar*)"/";
     if (!(dmcrypt_name = strdup(kCryptDevName)))
       goto fail;
   }

@@ -360,8 +360,8 @@
         ],
       },
       'sources': [
-        'mount-encrypted.c',
-        'mount-helpers.c',
+        'mount_encrypted.cc',
+        'mount_helpers.cc',
       ],
     },
     {
