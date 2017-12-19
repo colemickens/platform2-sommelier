@@ -18,7 +18,12 @@ import yaml
 this_dir = os.path.dirname(__file__)
 
 MODELS = 'models'
-BUILD_ONLY_ELEMENTS = ['firmware']
+BUILD_ONLY_ELEMENTS = [
+  '/firmware',
+  '/audio/main/card',
+  '/audio/main/cras-config-subdir',
+  '/audio/main/files'
+]
 CRAS_CONFIG_DIR = '/etc/cras'
 
 def GetNamedTuple(mapping):
@@ -109,10 +114,82 @@ def TransformConfig(config):
     sub_dir = audio.get(cras_config_subdir_name, None)
     if sub_dir:
       main_dir = '%s/%s' % (main_dir, sub_dir)
-      audio.pop(cras_config_subdir_name)
     audio[cras_config_dir_name] = main_dir
+    audio['files'] = _GetAudioFiles(model)
+    model['firmware']['bcs-uris'] = _GetFirmwareUris(model)
 
   return json.dumps(json_config, sort_keys=True, indent=2)
+
+def _GetAudioFiles(model_dict):
+  """Get all of the audio files to the specific model
+
+  Args:
+    model_dict: All attributes of the model
+
+  Returns:
+    List of files with {source, dest} tuples
+  """
+  files = []
+  model = GetNamedTuple(model_dict)
+  def _AddAudioFile(source, dest, file):
+    files.append(
+        {'source': os.path.join(source, file),
+         'dest': os.path.join(dest, file)})
+  card = model.audio.main.card
+  subdir = model.audio.main.cras_config_subdir
+  subdir_path = '%s/' % subdir if subdir else ''
+
+  cras_source = 'cras-config'
+  cras_dest = CRAS_CONFIG_DIR
+
+  _AddAudioFile(cras_source, cras_dest, '%s%s' % (subdir_path, card))
+  _AddAudioFile(cras_source, cras_dest, '%s%s' % (subdir_path, 'dsp.ini'))
+
+  ucm_source = 'ucm-config'
+  ucm_dest = '/ucm/share/alsa/ucm'
+  ucm_suffix = getattr(model.audio.main, 'ucm-suffix', None)
+  ucm_suffix_path = '.%s' % ucm_suffix if ucm_suffix else ''
+
+  ucm_card_path = '%s%s' % (card, ucm_suffix_path)
+  _AddAudioFile(
+      ucm_source, ucm_dest, os.path.join(ucm_card_path, 'HiFi.conf'))
+  _AddAudioFile(
+      ucm_source,
+      ucm_dest,
+      os.path.join(ucm_card_path, '%s.conf' % ucm_card_path))
+
+  if getattr(model.audio.main, 'firmware_bin', None):
+    _AddAudioFile(
+        'topology', '/lib/firmware', model.audio.main.firmware_bin)
+
+  return files
+
+def _GetFirmwareUris(model_dict):
+  """Returns a list of (string) firmware URIs.
+
+  Generates and returns a list of firmware URIs for this model. These URIs
+  can be used to pull down remote firmware packages.
+
+  Returns:
+    A list of (string) full firmware URIs, or an empty list on failure.
+  """
+
+  model = GetNamedTuple(model_dict)
+  fw = model.firmware
+  fw_dict = model.firmware._asdict()
+
+  if not getattr(fw, 'bcs_overlay'):
+    return []
+  bcs_overlay = fw.bcs_overlay.replace('overlay-', '')
+  base_model = fw.build_targets.coreboot
+
+  valid_images = [p for n, p in fw_dict.iteritems()
+                  if n.endswith('image') and p]
+  uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
+                'chromeos-base/chromeos-firmware-{base_model}/{fname}')
+  return [uri_format.format(bcs=bcs_overlay, model=model.name, fname=fname,
+                            base_model=base_model)
+          for fname in valid_images]
 
 def FilterBuildElements(config):
   """Removes build only elements from the schema.
@@ -124,10 +201,26 @@ def FilterBuildElements(config):
   """
   json_config = json.loads(config)
   for model in json_config[MODELS]:
-    for build_only_element in BUILD_ONLY_ELEMENTS:
-      model.pop(build_only_element)
+    _FilterBuildElements(model, "")
 
   return json.dumps(json_config, sort_keys=True, indent=2)
+
+def _FilterBuildElements(config, path):
+  """Recursively checks and removes build only elements.
+
+  Args:
+    config: Dict that will be checked.
+  """
+  to_delete = []
+  for key in config:
+    full_path = "%s/%s" % (path, key)
+    if full_path in BUILD_ONLY_ELEMENTS:
+      to_delete.append(key)
+    elif isinstance(config[key], dict):
+      _FilterBuildElements(config[key], full_path)
+
+  for key in to_delete:
+    config.remove(key)
 
 def ValidateConfigSchema(schema, config):
   """Validates a transformed cros config against the schema specified
@@ -188,8 +281,11 @@ def Main(schema, config, output, filter_build_details=False):
       ValidateConfig(json_transform)
       if filter_build_details:
         json_transform = FilterBuildElements(json_transform)
-    with open(output, 'w') as output_stream:
-      output_stream.write(json_transform)
+    if output:
+      with open(output, 'w') as output_stream:
+        output_stream.write(json_transform)
+    else:
+      print (json_transform)
 
 def main(argv=None):
   args = ParseArgs(sys.argv[1:])

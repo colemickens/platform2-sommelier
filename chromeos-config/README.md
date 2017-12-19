@@ -753,15 +753,19 @@ chromeos {
 ### main
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| card | string |  | True | Name of the card. |
 | cras-config-dir | string | ```^(/[^/ ]*)+/?$``` | True | Full path to cras config: /etc/cras/{cras-config-subdir} (Auto-generated) |
 | cras-config-subdir | string |  | False | Optional subdir for model specific configuration. |
 | disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
+| files | array |  | True | All of the audio files configured. |
+| topology-bin | string |  | False | Optional topology firmware filename. |
 | ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | bcs-overlay | string |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
+| bcs-uris | array |  | False | Fully qualified paths to all of the BCS files for download |
 | build-targets | [build-targets](#build-targets) |  | False |  |
 | ec-image | string |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |

@@ -47,6 +47,10 @@
               "main": {
                 "type": "object",
                 "properties": {
+                  "card": {
+                    "description": "Name of the card.",
+                    "type": "string"
+                  },
                   "cras-config-dir": {
                     "description": "Full path to cras config: /etc/cras/{cras-config-subdir} (Auto-generated)",
                     "type": "string",
@@ -60,14 +64,37 @@
                     "description": "Optional --disable_profile parameter for CRAS deamon.",
                     "type": "string"
                   },
+                  "files": {
+                    "description": "All of the audio files configured.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "description": "File source in the build structure.",
+                          "type": "string"
+                        },
+                        "target": {
+                          "description": "Where the file will be installed on the image",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
                   "ucm-suffix": {
                     "description": "Optional UCM suffix used to determine model specific config.",
+                    "type": "string"
+                  },
+                  "topology-bin": {
+                    "description": "Optional topology firmware filename.",
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "cras-config-dir"
+                  "card",
+                  "cras-config-dir",
+                  "files"
                 ]
               }
             },
@@ -87,6 +114,13 @@
               "bcs-overlay": {
                 "description": "BCS overlay path used to determine BCS file path for binary firmware downloads.",
                 "type": "string"
+              },
+              "bcs-uris": {
+                "description": "Fully qualified paths to all of the BCS files for download",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "build-targets": {
                 "type": "object",

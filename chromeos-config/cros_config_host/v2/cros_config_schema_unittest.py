@@ -22,6 +22,8 @@ reef-9042-fw: &reef-9042-fw
   ec-image: 'Reef_EC.9042.87.1.tbz2'
   main-image: 'Reef.9042.87.1.tbz2'
   main-rw-image: 'Reef.9042.110.0.tbz2'
+  build-targets:
+    coreboot: 'reef'
 
 models:
   - name: 'basking'
@@ -29,6 +31,7 @@ models:
       sku-id: 0
     audio:
       main:
+        card: 'bxtda7219max'
         cras-config-subdir: 'basking'
         ucm-suffix: 'basking'
     brand-code: 'ASUN'
@@ -76,12 +79,13 @@ class TransformConfigTests(unittest.TestCase):
     self.assertEqual(len(json_dict), 1)
     json_obj = cros_config_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.models))
+    model = json_obj.models[0]
     self.assertEqual(
         'basking',
-        json_obj.models[0].name)
+        model.name)
     self.assertEqual(
         '/etc/cras/basking',
-        json_obj.models[0].audio.main.cras_config_dir)
+        model.audio.main.cras_config_dir)
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
@@ -110,15 +114,30 @@ class ValidateConfigTests(unittest.TestCase):
 
   def testModelNamesNotUnique(self):
     config = """
+reef-9042-fw: &reef-9042-fw
+  bcs-overlay: 'overlay-reef-private'
+  ec-image: 'Reef_EC.9042.87.1.tbz2'
+  main-image: 'Reef.9042.87.1.tbz2'
+  main-rw-image: 'Reef.9042.110.0.tbz2'
+  build-targets:
+    coreboot: 'reef'
 models:
   - name: 'astronaut'
     audio:
       main:
+        card: 'bxtda7219max'
         cras-config-subdir: 'astronaut'
+    firmware:
+      <<: *reef-9042-fw
+      key-id: 'OEM2'
   - name: 'astronaut'
     audio:
       main:
+        card: 'bxtda7219max'
         cras-config-subdir: 'astronaut'
+    firmware:
+      <<: *reef-9042-fw
+      key-id: 'OEM2'
 """
     try:
       cros_config_schema.ValidateConfig(
@@ -145,7 +164,13 @@ class MainTests(unittest.TestCase):
       with open(
           os.path.join(this_dir, 'cros_config_schema_example.json')
       ) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read())
+        self.assertEqual(
+            expected_stream.read(),
+            output_stream.read(),
+            ('To regenerate the expected output, run:\n\t'
+             'python cros_config_schema.py '
+             '-c cros_config_schema_example.yaml '
+             '-o cros_config_schema_example.json'))
 
     os.remove(output)
 

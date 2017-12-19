@@ -23,6 +23,7 @@ models:
       customization-id: 'BASKING'
     audio:
       main:
+        card: 'bxtda7219max'
         cras-config-subdir: 'basking'
         ucm-suffix: 'basking'
     brand-code: 'ASUN'
@@ -54,6 +55,7 @@ models:
       customization-id: 'ELECTRO'
     audio:
       main:
+        card: 'bxtda7219max'
         cras-config-subdir: 'electro'
         ucm-suffix: 'electro'
     brand-code: 'ACBB'
