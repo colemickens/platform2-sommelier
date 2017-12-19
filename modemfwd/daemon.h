@@ -12,6 +12,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "modemfwd/component.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_tracker.h"
@@ -20,6 +21,11 @@ namespace modemfwd {
 
 class Daemon : public brillo::DBusDaemon {
  public:
+  // Constructor for Daemon which loads the cellular component to get
+  // firmware.
+  explicit Daemon(const std::string& helper_directory);
+  // Constructor for Daemon which loads from already set-up
+  // directories.
   Daemon(const std::string& helper_directory,
          const std::string& firmware_directory);
   ~Daemon() override = default;
@@ -34,6 +40,8 @@ class Daemon : public brillo::DBusDaemon {
   // swapping.
   void OnModemAppeared(
       std::unique_ptr<org::chromium::flimflam::DeviceProxy> modem);
+
+  std::unique_ptr<Component> component_;
 
   base::FilePath helper_dir_path_;
   base::FilePath firmware_dir_path_;

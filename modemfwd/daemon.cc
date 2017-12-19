@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 
+#include "modemfwd/component.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
@@ -20,6 +21,9 @@
 #include "modemfwd/modem_tracker.h"
 
 namespace modemfwd {
+
+Daemon::Daemon(const std::string& helper_directory)
+    : Daemon(helper_directory, "") {}
 
 Daemon::Daemon(const std::string& helper_directory,
                const std::string& firmware_directory)
@@ -31,6 +35,17 @@ int Daemon::OnInit() {
   int exit_code = brillo::DBusDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
+
+  DCHECK(!helper_dir_path_.empty());
+
+  if (firmware_dir_path_.empty()) {
+    // Set up the component and get the sub-directories.
+    component_ = Component::Load(bus_);
+    if (!component_)
+      return EX_UNAVAILABLE;
+
+    firmware_dir_path_ = component_->GetPath();
+  }
 
   if (!base::DirectoryExists(helper_dir_path_)) {
     LOG(ERROR) << "Supplied modem-specific helper directory "

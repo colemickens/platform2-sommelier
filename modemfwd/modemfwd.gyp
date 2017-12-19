@@ -54,6 +54,7 @@
         'libmodemfw',
       ],
       'sources': [
+        'component.cc',
         'daemon.cc',
         'main.cc',
       ],
