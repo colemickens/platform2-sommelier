@@ -2007,8 +2007,6 @@ TEST_F(SessionManagerImplTest, ContainerValidChars) {
 
 #if USE_CHEETS
 
-// Android master container doesn't support launching for login screen.
-#if !USE_ANDROID_MASTER_CONTAINER
 TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   {
     int64_t start_time = 0;
@@ -2076,7 +2074,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
 
   EXPECT_FALSE(android_container_.running());
 }
-#endif  // !USE_ANDROID_MASTER_CONTAINER
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   ExpectAndRunStartSession(kSaneEmail);
@@ -2152,8 +2149,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   EXPECT_FALSE(android_container_.running());
 }
 
-// Android master container doesn't support launching in login screen.
-#if !USE_ANDROID_MASTER_CONTAINER
 TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   ExpectAndRunStartSession(kSaneEmail);
 
@@ -2275,7 +2270,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_NativeBridgeExperiment) {
                                       &server_socket_fd));
   EXPECT_FALSE(error.get());
 }
-#endif  // !USE_ANDROID_MASTER_CONTAINER
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   brillo::ErrorPtr error;
