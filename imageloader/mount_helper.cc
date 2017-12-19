@@ -95,11 +95,11 @@ void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
   SendResponse(response);
 }
 
-CommandResponse MountHelper::HandleCommand(ImageCommand& imageCommand,
+CommandResponse MountHelper::HandleCommand(const ImageCommand& image_command,
                                            struct cmsghdr* cmsg) {
   CommandResponse response;
-  if (imageCommand.has_mount_command()) {
-    MountCommand command = imageCommand.mount_command();
+  if (image_command.has_mount_command()) {
+    MountCommand command = image_command.mount_command();
     if (cmsg == nullptr)
       LOG(FATAL) << "no cmsg";
 
@@ -129,8 +129,8 @@ CommandResponse MountHelper::HandleCommand(ImageCommand& imageCommand,
       LOG(ERROR) << "mount failed";
 
     response.set_success(status);
-  } else if (imageCommand.has_unmount_all_command()) {
-    UnmountAllCommand command = imageCommand.unmount_all_command();
+  } else if (image_command.has_unmount_all_command()) {
+    UnmountAllCommand command = image_command.unmount_all_command();
     std::vector<base::FilePath> paths;
     const base::FilePath root_dir(command.unmount_rootpath());
     response.set_success(mounter_.CleanupAll(command.dry_run(),
@@ -139,8 +139,8 @@ CommandResponse MountHelper::HandleCommand(ImageCommand& imageCommand,
       const std::string path_(path.value());
       response.add_paths(path_);
     }
-  } else if (imageCommand.has_unmount_command()) {
-    UnmountCommand command = imageCommand.unmount_command();
+  } else if (image_command.has_unmount_command()) {
+    UnmountCommand command = image_command.unmount_command();
     const base::FilePath path(command.unmount_path());
     response.set_success(mounter_.Cleanup(path));
   } else {
@@ -149,7 +149,7 @@ CommandResponse MountHelper::HandleCommand(ImageCommand& imageCommand,
   return response;
 }
 
-void MountHelper::SendResponse(CommandResponse& response) {
+void MountHelper::SendResponse(const CommandResponse& response) {
   std::string response_str;
   if (!response.SerializeToString(&response_str))
     LOG(FATAL) << "failed to serialize protobuf";

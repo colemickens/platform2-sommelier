@@ -34,9 +34,9 @@ class MountHelper : public brillo::Daemon,
   void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  private:
-  CommandResponse HandleCommand(ImageCommand& command,
+  CommandResponse HandleCommand(const ImageCommand& image_command,
                                 struct cmsghdr* cmsg);
-  void SendResponse(CommandResponse& response);
+  void SendResponse(const CommandResponse& response);
 
   base::ScopedFD control_fd_;
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;
