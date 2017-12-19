@@ -48,7 +48,7 @@ bool AssertComponentDirPerms(const base::FilePath& path) {
   return mode == kComponentDirPerms;
 }
 
-}  // namespace {}
+}  // namespace
 
 bool ImageLoaderImpl::LoadComponent(const std::string& name,
                                     const std::string& mount_point_str,

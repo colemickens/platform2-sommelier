@@ -38,4 +38,4 @@ class MockHelperProcess : public HelperProcess {
 
 }  // namespace imageloader
 
-#endif // IMAGELOADER_MOCK_HELPER_PROCESS_H_
+#endif  // IMAGELOADER_MOCK_HELPER_PROCESS_H_

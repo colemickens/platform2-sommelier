@@ -36,7 +36,6 @@ class VerityMounter {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VerityMounter);
-
 };
 
 }  // namespace imageloader

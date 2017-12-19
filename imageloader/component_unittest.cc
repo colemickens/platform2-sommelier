@@ -278,7 +278,7 @@ TEST_F(ComponentTest, CopyValidImage) {
   ASSERT_TRUE(base::ReadFileToStringWithMaxSize(image_dest, &resulting_image,
                                                 image_size));
 
-  EXPECT_TRUE(memcmp(image.data(), resulting_image.data(), image_size) == 0);
+  EXPECT_EQ(0, memcmp(image.data(), resulting_image.data(), image_size));
 }
 
 }  // namespace imageloader

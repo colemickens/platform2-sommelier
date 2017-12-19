@@ -73,9 +73,9 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
                                         GetTestComponentPath().value()));
 
   // Now copy a new version into place.
-  EXPECT_TRUE(
-      loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
-                               GetTestComponentPath(kTestUpdatedVersion).value()));
+  EXPECT_TRUE(loader.RegisterComponent(
+      kTestComponentName, kTestUpdatedVersion,
+      GetTestComponentPath(kTestUpdatedVersion).value()));
 
   std::string hint_file_contents2;
   ASSERT_TRUE(
@@ -413,7 +413,6 @@ TEST_F(ImageLoaderTest, MetadataFailure) {
       kNonDictMetadataComponentName,
       kTestOciComponentVersion,
       GetNonDictMetadataComponentPath().value()));
-
 }
 
 }   // namespace imageloader

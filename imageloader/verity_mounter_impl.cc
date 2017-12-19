@@ -14,7 +14,6 @@ namespace imageloader {
 
 bool MapperParametersToLoop(const std::string& verity_mount_parameters,
                             int32_t* loop) {
-
   // Parameters should be of the form:
   // "0 7:6 7:6 4096 4096 3089 3089 sha256 eef4aa5dc50d181b7f6..."
   auto tokens = base::SplitString(verity_mount_parameters, " ",
