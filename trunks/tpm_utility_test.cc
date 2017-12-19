@@ -46,7 +46,7 @@ namespace {
 // Cr50 Vendor ID ("CROS").
 const uint32_t kVendorIdCr50 = 0x43524f53;
 
-} // namespace
+}  // namespace
 
 namespace trunks {
 

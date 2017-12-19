@@ -168,7 +168,7 @@ char* TpmPropertyToStr(uint32_t value) {
   char c;
   int i = 0;
   int shift = 24;
-  for( ; i < 4; i++, shift -= 8) {
+  for (; i < 4; i++, shift -= 8) {
     c = static_cast<char>((value >> shift) & 0xFF);
     if (c == 0)
       break;

@@ -54,7 +54,6 @@ namespace trunks {
 //   details.
 class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
  public:
-
   explicit PostProcessingTransceiver(CommandTransceiver* transceiver)
       : command_retry_delay_(kDefaultRetryDelay),
         max_command_retries_(kDefaultRetries),

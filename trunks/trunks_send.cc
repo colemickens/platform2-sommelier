@@ -68,7 +68,7 @@ std::string HexEncode(const std::string& bytes) {
 
 // All TPM extension commands use this struct for input and output. Any other
 // data follows immediately after. All values are big-endian over the wire.
-struct TpmCmdHeader{
+struct TpmCmdHeader {
   uint16_t tag;                         // TPM_ST_NO_SESSIONS
   uint32_t size;                        // including this header
   uint32_t code;                        // Command out, Response back.
@@ -378,7 +378,6 @@ static bool SetupConnection(TrunksDBusProxy* proxy,
 //
 static bool ImageIsNewer(const EssentialHeader &header,
                          const SignedHeaderVersion &shv) {
-
   if (header.epoch != shv.epoch)
     return header.epoch > shv.epoch;
   if (header.major != shv.major)
@@ -556,8 +555,7 @@ static UpdateStatus HandleUpdate(TrunksDBusProxy* proxy,
 }
 
 // Vendor command to get the console lock state
-static int VcGetLock(TrunksDBusProxy* proxy, base::CommandLine* cl)
-{
+static int VcGetLock(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_GET_LOCK, out, &out);
 
@@ -568,8 +566,7 @@ static int VcGetLock(TrunksDBusProxy* proxy, base::CommandLine* cl)
 }
 
 // Vendor command to set the console lock
-static int VcSetLock(TrunksDBusProxy* proxy, base::CommandLine* cl)
-{
+static int VcSetLock(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_SET_LOCK, out, &out);
 
@@ -579,8 +576,7 @@ static int VcSetLock(TrunksDBusProxy* proxy, base::CommandLine* cl)
   return rc != 0;
 }
 
-static const char *key_type(uint32_t key_id)
-{
+static const char* key_type(uint32_t key_id) {
   // It is a mere convention, but all prod keys are required to have key
   // IDs such that bit D2 is set, and all dev keys are required to have
   // key IDs such that bit D2 is not set.
@@ -600,8 +596,7 @@ struct sysinfo_s {
   uint32_t dev_id1;
 } __attribute__((packed));
 
-static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl)
-{
+static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_SYSINFO, out, &out);
 
@@ -640,8 +635,7 @@ struct logentry_s {
   uint16_t data;      /* Type-defined additional log info */
 } __attribute__((packed));
 
-static int VcPopLogEntry(TrunksDBusProxy* proxy, base::CommandLine* cl)
-{
+static int VcPopLogEntry(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string out;
   uint32_t rc = VendorCommand(proxy, VENDOR_CC_POP_LOG_ENTRY, out, &out);
   base::Time ts;
