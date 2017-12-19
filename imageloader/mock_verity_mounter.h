@@ -4,11 +4,11 @@
 #ifndef IMAGELOADER_MOCK_VERITY_MOUNTER_H_
 #define IMAGELOADER_MOCK_VERITY_MOUNTER_H_
 
-#include "verity_mounter.h"
+#include "imageloader/verity_mounter.h"
 
 #include <string>
 
-#include "gmock/gmock.h"
+#include "imageloader/gmock/gmock.h"
 
 namespace imageloader {
 

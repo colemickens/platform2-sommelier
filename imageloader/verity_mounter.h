@@ -5,6 +5,7 @@
 #ifndef IMAGELOADER_VERITY_MOUNTER_H_
 #define IMAGELOADER_VERITY_MOUNTER_H_
 
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>

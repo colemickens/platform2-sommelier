@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "component.h"
+#include "imageloader/component.h"
 
 #include <fcntl.h>
 
@@ -26,7 +26,7 @@
 #include <crypto/sha2.h>
 #include <crypto/signature_verifier.h>
 
-#include "helper_process.h"
+#include "imageloader/helper_process.h"
 
 namespace imageloader {
 

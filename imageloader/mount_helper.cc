@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mount_helper.h"
+#include "imageloader/mount_helper.h"
+
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <libminijail.h>
@@ -16,8 +20,8 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
-#include "imageloader.h"
-#include "verity_mounter.h"
+#include "imageloader/imageloader.h"
+#include "imageloader/verity_mounter.h"
 
 namespace imageloader {
 

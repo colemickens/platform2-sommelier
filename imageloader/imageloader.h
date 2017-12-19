@@ -4,6 +4,8 @@
 #ifndef IMAGELOADER_IMAGELOADER_H_
 #define IMAGELOADER_IMAGELOADER_H_
 
+#include <map>
+#include <memory>
 #include <string>
 
 #include <signal.h>
@@ -16,8 +18,8 @@
 #include <brillo/process_reaper.h>
 
 #include "imageloader/dbus_adaptors/org.chromium.ImageLoaderInterface.h"
-#include "helper_process.h"
-#include "imageloader_impl.h"
+#include "imageloader/helper_process.h"
+#include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
 

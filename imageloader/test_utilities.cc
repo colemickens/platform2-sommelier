@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "test_utilities.h"
+#include "imageloader/test_utilities.h"
 
 #include <dirent.h>
 
@@ -10,7 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-#include "component.h"
+#include "imageloader/component.h"
 
 namespace base {
 void PrintTo(const base::FilePath& path, std::ostream* stream) {

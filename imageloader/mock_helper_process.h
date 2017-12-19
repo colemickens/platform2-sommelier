@@ -5,9 +5,13 @@
 #ifndef IMAGELOADER_MOCK_HELPER_PROCESS_H_
 #define IMAGELOADER_MOCK_HELPER_PROCESS_H_
 
-#include "gmock/gmock.h"
-#include "helper_process.h"
-#include "imageloader_impl.h"
+#include <string>
+#include <vector>
+
+#include <gmock/gmock.h>
+
+#include "imageloader/helper_process.h"
+#include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
 

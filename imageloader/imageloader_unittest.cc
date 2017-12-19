@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader_impl.h"
+#include "imageloader/imageloader_impl.h"
 
 #include <stdint.h>
 
@@ -11,16 +11,16 @@
 #include <string>
 #include <vector>
 
-#include "component.h"
-#include "mock_helper_process.h"
-#include "test_utilities.h"
-#include "verity_mounter.h"
-
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "imageloader/component.h"
+#include "imageloader/mock_helper_process.h"
+#include "imageloader/test_utilities.h"
+#include "imageloader/verity_mounter.h"
 
 namespace imageloader {
 

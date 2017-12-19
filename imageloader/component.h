@@ -26,8 +26,8 @@
 #include <base/macros.h>
 #include <crypto/secure_hash.h>
 
-#include "helper_process.h"
-#include "imageloader_impl.h"
+#include "imageloader/helper_process.h"
+#include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
 

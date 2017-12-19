@@ -7,6 +7,10 @@
 
 #include <sys/types.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 

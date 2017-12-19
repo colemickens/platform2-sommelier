@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "helper_process.h"
+#include "imageloader/helper_process.h"
 
 #include <poll.h>
 #include <signal.h>
@@ -13,8 +13,8 @@
 
 #include <base/process/launch.h>
 
-#include "component.h"
-#include "imageloader_impl.h"
+#include "imageloader/component.h"
+#include "imageloader/imageloader_impl.h"
 #include "imageloader/ipc.pb.h"
 
 namespace imageloader {

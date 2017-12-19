@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <string>
 
 #include <base/files/file_path.h>
 

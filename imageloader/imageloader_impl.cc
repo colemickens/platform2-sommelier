@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader_impl.h"
+#include "imageloader/imageloader_impl.h"
 
+#include <linux/magic.h>
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
-#include </usr/include/linux/magic.h>
 
 #include <memory>
 #include <string>
@@ -21,7 +21,7 @@
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "component.h"
+#include "imageloader/component.h"
 
 namespace imageloader {
 

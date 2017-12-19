@@ -10,7 +10,7 @@
 #include <brillo/daemons/daemon.h>
 
 #include "imageloader/ipc.pb.h"
-#include "verity_mounter.h"
+#include "imageloader/verity_mounter.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "verity_mounter.h"
+#include "imageloader/verity_mounter.h"
 
 #include <algorithm>
 #include <memory>
@@ -32,8 +32,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
-#include "component.h"
-#include "verity_mounter_impl.h"
+#include "imageloader/component.h"
+#include "imageloader/verity_mounter_impl.h"
 
 namespace imageloader {
 

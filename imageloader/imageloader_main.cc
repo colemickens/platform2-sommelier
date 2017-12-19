@@ -12,10 +12,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "helper_process.h"
-#include "imageloader.h"
-#include "imageloader_impl.h"
-#include "mount_helper.h"
+#include "imageloader/helper_process.h"
+#include "imageloader/imageloader.h"
+#include "imageloader/imageloader_impl.h"
+#include "imageloader/mount_helper.h"
 
 namespace {
 

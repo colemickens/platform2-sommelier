@@ -6,13 +6,14 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "helper_process.h"
+#include "imageloader/helper_process.h"
 
 namespace imageloader {
 

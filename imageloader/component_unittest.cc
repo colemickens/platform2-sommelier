@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "component.h"
+#include "imageloader/component.h"
 
 #include <stdint.h>
 
@@ -20,9 +20,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "imageloader_impl.h"
-#include "mock_helper_process.h"
-#include "test_utilities.h"
+#include "imageloader/imageloader_impl.h"
+#include "imageloader/mock_helper_process.h"
+#include "imageloader/test_utilities.h"
 
 namespace imageloader {
 
