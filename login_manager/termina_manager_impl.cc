@@ -85,7 +85,7 @@ void TerminaManagerImpl::HandleExit(const siginfo_t& status) {
   CleanUpVm(vm_name);
 }
 
-void TerminaManagerImpl::RequestJobExit() {
+void TerminaManagerImpl::RequestJobExit(const std::string& reason) {
   if (!VmEnabled())
     return;
 

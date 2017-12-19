@@ -14,7 +14,7 @@ bool FakeContainerManager::IsManagedJob(pid_t pid) {
 
 void FakeContainerManager::HandleExit(const siginfo_t& status) {}
 
-void FakeContainerManager::RequestJobExit() {
+void FakeContainerManager::RequestJobExit(const std::string& reason) {
   LOG_IF(FATAL, !running_) << "Trying to stop an already stopped container";
   running_ = false;
   exit_callback_.Run(pid_, true);

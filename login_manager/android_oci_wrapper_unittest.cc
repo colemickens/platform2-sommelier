@@ -163,7 +163,7 @@ TEST_F(AndroidOciWrapperTest, GracefulShutdownOnRequest) {
 
   ExpectKill(false /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit();
+  impl_->RequestJobExit("");
 }
 
 TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
@@ -172,7 +172,7 @@ TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
   ExpectKill(false /* forceful */, -1 /* exit_code */);
   ExpectKill(true /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit();
+  impl_->RequestJobExit("");
 }
 
 TEST_F(AndroidOciWrapperTest, KillJobOnEnsure) {
@@ -199,7 +199,7 @@ TEST_F(AndroidOciWrapperTest, CleanExitAfterRequest) {
 
   ExpectKill(false /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit();
+  impl_->RequestJobExit("");
 
   base::TimeDelta delta = base::TimeDelta::FromSeconds(11);
   EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_, delta))

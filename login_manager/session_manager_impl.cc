@@ -476,9 +476,9 @@ void SessionManagerImpl::Finalize() {
 
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
-  android_container_->RequestJobExit();
+  android_container_->RequestJobExit("session_manager exiting");
   android_container_->EnsureJobExit(kContainerTimeout);
-  termina_manager_->RequestJobExit();
+  termina_manager_->RequestJobExit("session_manager exiting");
   termina_manager_->EnsureJobExit(kContainerTimeout);
 }
 
@@ -1180,7 +1180,7 @@ bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
     return false;
   }
 
-  android_container_->RequestJobExit();
+  android_container_->RequestJobExit("stopping ARC instance");
   android_container_->EnsureJobExit(kContainerTimeout);
   return true;
 #else
@@ -1774,7 +1774,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
       // Asking the container to exit will result in
       // OnAndroidContainerStopped() being called, which will handle any
       // necessary cleanup.
-      android_container_->RequestJobExit();
+      android_container_->RequestJobExit("network startup failed");
       android_container_->EnsureJobExit(kContainerTimeout);
       return false;
     }

@@ -81,7 +81,7 @@ void ContainerManagerImpl::HandleExit(const siginfo_t& status) {
   CleanUpContainer(pid);
 }
 
-void ContainerManagerImpl::RequestJobExit() {
+void ContainerManagerImpl::RequestJobExit(const std::string& reason) {
   pid_t pid;
   if (!GetContainerPID(&pid))
     return;

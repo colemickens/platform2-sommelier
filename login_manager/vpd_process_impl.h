@@ -31,7 +31,7 @@ class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
   // Implementation of JobManagerInterface.
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit() override;
+  void RequestJobExit(const std::string& reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 
  private:

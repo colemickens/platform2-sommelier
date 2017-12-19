@@ -54,7 +54,7 @@ void AndroidOciWrapper::HandleExit(const siginfo_t& status) {
   CleanUpContainer();
 }
 
-void AndroidOciWrapper::RequestJobExit() {
+void AndroidOciWrapper::RequestJobExit(const std::string& reason) {
   if (!container_pid_)
     return;
 

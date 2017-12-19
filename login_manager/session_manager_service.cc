@@ -66,6 +66,21 @@ const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
 
+const char* ExitCodeToString(SessionManagerService::ExitCode code) {
+  switch (code) {
+    case SessionManagerService::SUCCESS:
+      return "exiting cleanly";
+    case SessionManagerService::CRASH_WHILE_RESTART_DISABLED:
+      return "got crash while restart disabled";
+    case SessionManagerService::CHILD_EXITING_TOO_FAST:
+      return "child exiting too fast";
+    case SessionManagerService::MUST_WIPE_DEVICE:
+      return "must wipe device";
+  }
+  NOTREACHED() << "Invalid exit code " << code;
+  return "unknown";
+}
+
 }  // anonymous namespace
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -297,9 +312,9 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   browser_->ClearPid();
 
   // Also ensure all containers are gone.
-  android_container_->RequestJobExit();
+  android_container_->RequestJobExit("browser exited");
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
-  termina_manager_->RequestJobExit();
+  termina_manager_->RequestJobExit("browser exited");
   termina_manager_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 
   // Do nothing if already shutting down.
@@ -326,9 +341,9 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   }
 }
 
-void SessionManagerService::RequestJobExit() {
+void SessionManagerService::RequestJobExit(const std::string& reason) {
   if (browser_->CurrentPid() > 0)
-    browser_->Kill(SIGTERM, "");
+    browser_->Kill(SIGTERM, reason);
 }
 
 void SessionManagerService::EnsureJobExit(base::TimeDelta timeout) {
@@ -478,7 +493,7 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 
   child_exit_handler_.Reset();
   liveness_checker_->Stop();
-  CleanupChildren(GetKillTimeout());
+  CleanupChildren(GetKillTimeout(), ExitCodeToString(code));
   impl_->AnnounceSessionStopped();
 
   brillo::MessageLoop::current()->PostTask(
@@ -487,11 +502,12 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
 
-void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
-  RequestJobExit();
-  key_gen_.RequestJobExit();
-  android_container_->RequestJobExit();
-  termina_manager_->RequestJobExit();
+void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
+                                            const std::string& reason) {
+  RequestJobExit(reason);
+  key_gen_.RequestJobExit(reason);
+  android_container_->RequestJobExit(reason);
+  termina_manager_->RequestJobExit(reason);
   EnsureJobExit(timeout);
   key_gen_.EnsureJobExit(timeout);
   termina_manager_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);

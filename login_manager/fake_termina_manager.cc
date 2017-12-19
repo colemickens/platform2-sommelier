@@ -28,7 +28,7 @@ bool FakeTerminaManager::IsManagedJob(pid_t pid) {
 
 void FakeTerminaManager::HandleExit(const siginfo_t& status) {}
 
-void FakeTerminaManager::RequestJobExit() {}
+void FakeTerminaManager::RequestJobExit(const std::string& reason) {}
 
 void FakeTerminaManager::EnsureJobExit(base::TimeDelta timeout) {}
 

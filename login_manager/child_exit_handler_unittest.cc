@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <string>
 #include <vector>
 
 #include <base/message_loop/message_loop.h>
@@ -38,7 +39,7 @@ class FakeJobManager : public JobManagerInterface {
     last_status_ = s;
     brillo::MessageLoop::current()->BreakLoop();
   }
-  void RequestJobExit() override {}
+  void RequestJobExit(const std::string& reason) override {}
   void EnsureJobExit(base::TimeDelta timeout) override {}
 
  private:

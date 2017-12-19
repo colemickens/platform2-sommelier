@@ -55,7 +55,7 @@ bool VpdProcessImpl::IsManagedJob(pid_t pid) {
   return subprocess_ && subprocess_->pid() > 0 && subprocess_->pid() == pid;
 }
 
-void VpdProcessImpl::RequestJobExit() {
+void VpdProcessImpl::RequestJobExit(const std::string& reason) {
   if (subprocess_ && subprocess_->pid() > 0)
     subprocess_->Kill(SIGTERM);
 }

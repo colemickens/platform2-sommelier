@@ -46,7 +46,7 @@ class KeyGenerator : public JobManagerInterface {
   // Implementation of JobManagerInterface.
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit() override;
+  void RequestJobExit(const std::string& reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   void InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface> factory);

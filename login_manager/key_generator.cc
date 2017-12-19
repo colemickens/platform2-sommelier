@@ -77,7 +77,7 @@ void KeyGenerator::HandleExit(const siginfo_t& info) {
   Reset();
 }
 
-void KeyGenerator::RequestJobExit() {
+void KeyGenerator::RequestJobExit(const std::string& reason) {
   if (keygen_job_ && keygen_job_->CurrentPid() > 0)
     keygen_job_->Kill(SIGTERM, "");
 }

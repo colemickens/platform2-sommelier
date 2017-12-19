@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include <string>
+
 #include <base/time/time.h>
 
 namespace login_manager {
@@ -23,8 +25,9 @@ class JobManagerInterface {
   // The job managed by this object exited, with |status|.
   virtual void HandleExit(const siginfo_t& status) = 0;
 
-  // Ask the managed job to exit.
-  virtual void RequestJobExit() = 0;
+  // Ask the managed job to exit. |reason| is a human-readable string that may
+  // be logged to describe the reason for the request.
+  virtual void RequestJobExit(const std::string& reason) = 0;
 
   // The job must be destroyed within the timeout.
   virtual void EnsureJobExit(base::TimeDelta timeout) = 0;

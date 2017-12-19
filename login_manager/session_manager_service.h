@@ -99,7 +99,7 @@ class SessionManagerService
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
       session_manager_service_->CleanupChildren(
-          base::TimeDelta::FromSeconds(timeout_sec));
+          base::TimeDelta::FromSeconds(timeout_sec), "");
     }
 
     // Cause handling of faked-out exit of a child process.
@@ -163,7 +163,7 @@ class SessionManagerService
   //  ShouldRunBrowser() indicates the browser should not run anymore.
   void HandleExit(const siginfo_t& info) override;
   // Request that browser_ exit.
-  void RequestJobExit() override;
+  void RequestJobExit(const std::string& reason) override;
   // Ensure that browser_ is gone.
   void EnsureJobExit(base::TimeDelta timeout) override;
 
@@ -210,7 +210,7 @@ class SessionManagerService
   void SetExitAndScheduleShutdown(ExitCode code);
 
   // Terminate all children, with increasing prejudice.
-  void CleanupChildren(base::TimeDelta timeout);
+  void CleanupChildren(base::TimeDelta timeout, const std::string& reason);
 
   // Callback when receiving a termination signal.
   bool OnTerminationSignal(const struct signalfd_siginfo& info);
