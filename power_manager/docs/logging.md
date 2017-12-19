@@ -17,9 +17,21 @@ kernel messages, are written to `/var/log/messages`.
 
 ## Interpreting logs
 
-powerd logs detailed information about what it's doing and why. Here are
-examples and explanations of some of the more-useful messages (with date/time
-and file/line prefixes omitted):
+powerd logs detailed information about what it's doing and why. Each line begins
+with a header similar to `[1219/195923:INFO:input_watcher.cc(430)]`:
+
+*   The first four digits are the zero-prefixed month and day-of-month in the
+    system's local time zone.
+*   The next six digits are zero-prefixed hours, minutes, and seconds.
+*   The next string, `INFO`, `WARNING`, or `ERROR`, describes the severity of
+    the message.
+*   The next string is the name of the file within the powerd source code that
+    logged the message.
+*   The final number in parentheses is the line in the file that logged the
+    message.
+
+Here are examples and explanations of some of the more-useful messages (with
+date/time and file/line prefixes omitted):
 
 *   `On battery at 81% (displayed as 83%), 4.242/5.248Ah at 0.483A, 8h19m9s
     until empty (7h54m27s until shutdown)`
