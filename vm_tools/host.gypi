@@ -53,11 +53,27 @@
       'target_name': 'libconcierge',
       'type': 'static_library',
       'dependencies': ['vm-rpcs'],
-      'deps': ['system_api'],
+      'variables': {
+        'exported_deps': [
+          'system_api',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
+      },
+      'link_settings': {
+        'libraries': [
+          '-lgpr',
+        ],
+      },
       'sources': [
         'concierge/mac_address_generator.cc',
         'concierge/service.cc',
         'concierge/subnet_pool.cc',
+        'concierge/virtual_machine.cc',
       ],
     },
     {
@@ -98,6 +114,7 @@
           'sources': [
             'concierge/mac_address_generator_unittest.cc',
             'concierge/subnet_pool_unittest.cc',
+            'concierge/virtual_machine_unittest.cc',
           ],
         },
       ],
