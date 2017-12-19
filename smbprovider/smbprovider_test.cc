@@ -4,10 +4,10 @@
 
 #include <memory>
 
-#include "smbprovider/smbprovider.h"
 #include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
 
 #include <dbus/mock_bus.h>
