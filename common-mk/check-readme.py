@@ -109,7 +109,6 @@ def CheckSubdirs():
       'avtest_label_detect',
       'bootstat',
       'buffet',
-      'chaps',
       'container_utils',
       'crash-reporter',
       'cromo',
