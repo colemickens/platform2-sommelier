@@ -5,6 +5,7 @@
 #include "buffet/peerd_client.h"
 
 #include <map>
+#include <utility>
 #include <vector>
 
 #include <base/message_loop/message_loop.h>

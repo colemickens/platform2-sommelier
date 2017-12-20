@@ -6,6 +6,7 @@
 #define BUFFET_DBUS_COMMAND_DISPATCHER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>

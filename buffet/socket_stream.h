@@ -5,7 +5,9 @@
 #ifndef BUFFET_SOCKET_STREAM_H_
 #define BUFFET_SOCKET_STREAM_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/macros.h>
