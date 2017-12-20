@@ -45,7 +45,6 @@ static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int HttpRequest::kConnectTimeoutSeconds = 10;
-const int HttpRequest::kDNSTimeoutSeconds = 5;
 const int HttpRequest::kInputTimeoutSeconds = 10;
 
 const char HttpRequest::kHttpRequestTemplate[] =
@@ -74,7 +73,7 @@ HttpRequest::HttpRequest(ConnectionRefPtr connection,
                                              : IPAddress::kFamilyIPv4,
                         connection->interface_name(),
                         connection->dns_servers(),
-                        kDNSTimeoutSeconds * 1000,
+                        DnsClient::kDnsTimeoutMilliseconds,
                         dispatcher,
                         dns_client_callback_)),
       server_async_connection_(

@@ -99,8 +99,6 @@ class HttpRequest {
 
   // Time to wait for connection to remote server.
   static const int kConnectTimeoutSeconds;
-  // Time to wait for DNS server.
-  static const int kDNSTimeoutSeconds;
   // Time to wait for any input from server.
   static const int kInputTimeoutSeconds;
 

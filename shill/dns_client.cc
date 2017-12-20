@@ -107,13 +107,14 @@ bool DnsClient::Start(const string& hostname, Error* error) {
   if (!resolver_state_) {
     struct ares_options options;
     memset(&options, 0, sizeof(options));
-    options.timeout = timeout_ms_;
 
     if (dns_servers_.empty()) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "No valid DNS server addresses");
       return false;
     }
+
+    options.timeout = timeout_ms_ / dns_servers_.size();
 
     resolver_state_ = std::make_unique<DnsClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel,

@@ -39,7 +39,6 @@ namespace {
 
 constexpr char kDnsTestHostname[] = "www.gstatic.com";
 constexpr int kDnsTestRetryIntervalMilliseconds = 60000;
-constexpr int kDnsTimeoutMilliseconds = 5000;
 
 }  // namespace
 
@@ -57,7 +56,7 @@ DnsServerTester::DnsServerTester(ConnectionRefPtr connection,
           IPAddress::kFamilyIPv4,
           connection_->interface_name(),
           dns_servers,
-          kDnsTimeoutMilliseconds,
+          DnsClient::kDnsTimeoutMilliseconds,
           dispatcher_,
           Bind(&DnsServerTester::DnsClientCallback,
                weak_ptr_factory_.GetWeakPtr()))) {}

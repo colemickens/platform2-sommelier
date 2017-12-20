@@ -55,6 +55,8 @@ class DnsClient {
   static const char kErrorTimedOut[];
   static const char kErrorUnknown[];
 
+  static const int kDnsTimeoutMilliseconds = 8000;
+
   DnsClient(IPAddress::Family family,
             const std::string& interface_name,
             const std::vector<std::string>& dns_servers,

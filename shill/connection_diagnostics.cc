@@ -150,7 +150,6 @@ const int ConnectionDiagnostics::kMaxDNSRetries = 2;
 const int ConnectionDiagnostics::kRouteQueryTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
-const int ConnectionDiagnostics::kDNSTimeoutSeconds = 3;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
     ConnectionRefPtr connection, EventDispatcher* dispatcher, Metrics* metrics,
@@ -355,9 +354,10 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   Error e;
   dns_client_ = dns_client_factory_->CreateDnsClient(
       connection_->IsIPv6() ? IPAddress::kFamilyIPv6 : IPAddress::kFamilyIPv4,
-      connection_->interface_name(), dns_servers, kDNSTimeoutSeconds * 1000,
-      dispatcher_, Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                        weak_ptr_factory_.GetWeakPtr()));
+      connection_->interface_name(), dns_servers,
+      DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
+      Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
+           weak_ptr_factory_.GetWeakPtr()));
   if (!dns_client_->Start(target_url_->host(), &e)) {
     LOG(ERROR) << __func__ << ": could not start DNS -- " << e.message();
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,

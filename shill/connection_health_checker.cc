@@ -64,8 +64,6 @@ const char* const ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
     "74.125.224.143"
 };
 // static
-const int ConnectionHealthChecker::kDNSTimeoutMilliseconds = 5000;
-// static
 const int ConnectionHealthChecker::kInvalidSocket = -1;
 // static
 const int ConnectionHealthChecker::kMaxFailedConnectionAttempts = 2;
@@ -154,8 +152,8 @@ void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
     Error error;
     std::unique_ptr<DnsClient> dns_client(dns_client_factory_->CreateDnsClient(
         IPAddress::kFamilyIPv4, connection_->interface_name(),
-        connection_->dns_servers(), kDNSTimeoutMilliseconds, dispatcher_,
-        dns_client_callback));
+        connection_->dns_servers(), DnsClient::kDnsTimeoutMilliseconds,
+        dispatcher_, dns_client_callback));
     dns_clients_.push_back(std::move(dns_client));
     if (!dns_clients_[i]->Start(url.host(), &error)) {
       SLOG(connection_.get(), 2) << __func__ << ": Failed to start DNS client "

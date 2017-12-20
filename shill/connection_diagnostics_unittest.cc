@@ -380,7 +380,7 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(
         *MockDnsClientFactory::GetInstance(),
         CreateDnsClient(family, kInterfaceName, dns_servers_,
-                        ConnectionDiagnostics::kDNSTimeoutSeconds * 1000,
+                        DnsClient::kDnsTimeoutMilliseconds,
                         &dispatcher_, _))
         .WillOnce(Return(ByMove(std::move(dns_client))));
     connection_diagnostics_.ResolveTargetServerIPAddress(dns_servers_);

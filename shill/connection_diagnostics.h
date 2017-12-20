@@ -228,7 +228,6 @@ class ConnectionDiagnostics {
   static const int kRouteQueryTimeoutSeconds;
   static const int kArpReplyTimeoutSeconds;
   static const int kNeighborTableRequestTimeoutSeconds;
-  static const int kDNSTimeoutSeconds;
 
   // Create a new Event with |type|, |phase|, |result|, and an empty message,
   // and add it to the end of |diagnostic_events_|.
