@@ -33,8 +33,8 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
 
  private:
   std::map<std::string, FirmwareFileInfo> main_fw_info_;
-  std::map<std::pair<std::string, std::string>,
-           FirmwareFileInfo> carrier_fw_info_;
+  std::map<std::pair<std::string, std::string>, FirmwareFileInfo>
+      carrier_fw_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FirmwareDirectoryStub);
 };

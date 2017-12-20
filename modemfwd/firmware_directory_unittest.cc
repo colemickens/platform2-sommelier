@@ -33,6 +33,8 @@ constexpr char kCarrierC[] = "CarrierC";
 constexpr char kGenericCarrierFirmwareFile[] = "Generic_V1.59.3.fls";
 constexpr char kGenericCarrierFirmwareVersion[] = "V1.59.3";
 
+// clang-format off
+
 // To generate a manifest, execute the following:
 // protoc --proto_path . --encode modemfwd.FirmwareManifest \
 //     firmware_manifest.proto < path/to/file.prototxt | xxd -i
@@ -131,15 +133,15 @@ std::vector<char> kMalformedCarrierFirmwareManifest{
   0x04, 0x39, 0x30, 0x30, 0x31
 };
 
+// clang-format on
+
 }  // namespace
 
 namespace modemfwd {
 
 class FirmwareDirectoryTest : public ::testing::Test {
  public:
-  FirmwareDirectoryTest() {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-  }
+  FirmwareDirectoryTest() { CHECK(temp_dir_.CreateUniqueTempDir()); }
   ~FirmwareDirectoryTest() override = default;
 
  protected:

@@ -34,8 +34,8 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
       base::FilePath helper_path = directory.Append(entry.filename());
       auto helper = CreateModemHelper(helper_path);
       for (const std::string device_id : entry.device_id()) {
-        DLOG(INFO) << "Adding helper " << helper_path.value()
-                   << " for [" << device_id << "]";
+        DLOG(INFO) << "Adding helper " << helper_path.value() << " for ["
+                   << device_id << "]";
         helpers_by_id_[device_id] = helper.get();
       }
       available_helpers_.push_back(std::move(helper));
@@ -68,8 +68,8 @@ std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
   if (!ReadProtobuf(directory.Append(kManifestName), &parsed_manifest))
     return nullptr;
 
-  auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(
-      parsed_manifest, directory);
+  auto helper_dir =
+      std::make_unique<ModemHelperDirectoryImpl>(parsed_manifest, directory);
   if (!helper_dir->FoundHelpers())
     return nullptr;
 

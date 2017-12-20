@@ -66,17 +66,14 @@ bool RunHelperProcess(const base::FilePath& helper_path,
 // Ensures we reboot the modem to prevent us from leaving it in a bad state.
 class FlashMode {
  public:
-  static std::unique_ptr<FlashMode> Create(
-      const base::FilePath& helper_path) {
+  static std::unique_ptr<FlashMode> Create(const base::FilePath& helper_path) {
     if (!RunHelperProcess(helper_path, modemfwd::kPrepareToFlash, nullptr))
       return nullptr;
 
     return base::WrapUnique(new FlashMode(helper_path));
   }
 
-  ~FlashMode() {
-    RunHelperProcess(helper_path_, modemfwd::kReboot, nullptr);
-  }
+  ~FlashMode() { RunHelperProcess(helper_path_, modemfwd::kReboot, nullptr); }
 
  private:
   // Use the static factory method above.
@@ -125,8 +122,7 @@ class ModemHelperImpl : public ModemHelper {
       return false;
 
     return RunHelperProcess(helper_path_,
-                            base::StringPrintf("%s=%s",
-                                               kFlashMainFirmware,
+                            base::StringPrintf("%s=%s", kFlashMainFirmware,
                                                path_to_fw.value().c_str()),
                             nullptr);
   }
@@ -137,8 +133,7 @@ class ModemHelperImpl : public ModemHelper {
       return false;
 
     return RunHelperProcess(helper_path_,
-                            base::StringPrintf("%s=%s",
-                                               kFlashCarrierFirmware,
+                            base::StringPrintf("%s=%s", kFlashCarrierFirmware,
                                                path_to_fw.value().c_str()),
                             nullptr);
   }

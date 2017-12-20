@@ -34,8 +34,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                         FirmwareFileInfo* out_info) override {
     DCHECK(out_info);
     for (const MainFirmware& file_info : manifest_.main_firmware()) {
-      if (file_info.device_id() == device_id &&
-          !file_info.filename().empty() && !file_info.version().empty()) {
+      if (file_info.device_id() == device_id && !file_info.filename().empty() &&
+          !file_info.version().empty()) {
         out_info->firmware_path = directory_.Append(file_info.filename());
         out_info->version = file_info.version();
         return true;
@@ -66,8 +66,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                                    FirmwareFileInfo* out_info) {
     DCHECK(out_info);
     for (const CarrierFirmware& file_info : manifest_.carrier_firmware()) {
-      if (file_info.device_id() != device_id ||
-          file_info.filename().empty() || file_info.version().empty()) {
+      if (file_info.device_id() != device_id || file_info.filename().empty() ||
+          file_info.version().empty()) {
         continue;
       }
 

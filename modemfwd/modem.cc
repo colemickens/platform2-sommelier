@@ -26,10 +26,10 @@ class ModemImpl : public Modem {
             const std::string& equipment_id,
             const std::string& carrier_id,
             ModemHelper* helper)
-    : device_id_(device_id),
-      equipment_id_(equipment_id),
-      carrier_id_(carrier_id),
-      helper_(helper) {
+      : device_id_(device_id),
+        equipment_id_(equipment_id),
+        carrier_id_(carrier_id),
+        helper_(helper) {
     if (!helper->GetFirmwareInfo(&installed_firmware_))
       LOG(WARNING) << "Could not fetch installed firmware information";
   }
@@ -112,13 +112,13 @@ std::unique_ptr<Modem> CreateModem(
   // Use the device ID to grab a helper.
   ModemHelper* helper = helper_directory->GetHelperForDeviceId(device_id);
   if (!helper) {
-    LOG(INFO) << "No helper found to update modems with ID ["
-                 << device_id << "]";
+    LOG(INFO) << "No helper found to update modems with ID [" << device_id
+              << "]";
     return nullptr;
   }
 
-  return std::make_unique<ModemImpl>(
-      device_id, equipment_id, carrier_id, helper);
+  return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
+                                     helper);
 }
 
 }  // namespace modemfwd

@@ -25,16 +25,14 @@ bool GetValue(const Map& map, const K& key, V* out_value) {
 
 namespace modemfwd {
 
-void FirmwareDirectoryStub::AddMainFirmware(
-    const std::string& device_id,
-    FirmwareFileInfo info) {
+void FirmwareDirectoryStub::AddMainFirmware(const std::string& device_id,
+                                            FirmwareFileInfo info) {
   main_fw_info_.insert(std::make_pair(device_id, info));
 }
 
-void FirmwareDirectoryStub::AddCarrierFirmware(
-    const std::string& device_id,
-    const std::string& carrier_id,
-    FirmwareFileInfo info) {
+void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
+                                               const std::string& carrier_id,
+                                               FirmwareFileInfo info) {
   carrier_fw_info_.insert(
       std::make_pair(std::make_pair(device_id, carrier_id), info));
 }
@@ -49,14 +47,12 @@ bool FirmwareDirectoryStub::FindCarrierFirmware(const std::string& device_id,
                                                 std::string* carrier_id,
                                                 FirmwareFileInfo* out_info) {
   CHECK(carrier_id);
-  if (GetValue(carrier_fw_info_,
-               std::make_pair(device_id, *carrier_id),
+  if (GetValue(carrier_fw_info_, std::make_pair(device_id, *carrier_id),
                out_info)) {
     return true;
   }
 
-  if (GetValue(carrier_fw_info_,
-               std::make_pair(device_id, kGenericCarrierId),
+  if (GetValue(carrier_fw_info_, std::make_pair(device_id, kGenericCarrierId),
                out_info)) {
     *carrier_id = kGenericCarrierId;
     return true;

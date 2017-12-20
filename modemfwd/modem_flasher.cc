@@ -15,8 +15,7 @@ namespace modemfwd {
 
 ModemFlasher::ModemFlasher(
     std::unique_ptr<FirmwareDirectory> firmware_directory)
-  : firmware_directory_(std::move(firmware_directory)) {
-}
+    : firmware_directory_(std::move(firmware_directory)) {}
 
 void ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
@@ -61,8 +60,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
 
   // Check if we have carrier firmware matching the SIM's carrier. If not,
   // there's nothing to flash.
-  if (!firmware_directory_->FindCarrierFirmware(device_id,
-                                                &current_carrier,
+  if (!firmware_directory_->FindCarrierFirmware(device_id, &current_carrier,
                                                 &file_info)) {
     DLOG(INFO) << "No carrier firmware found for carrier " << current_carrier;
     return;

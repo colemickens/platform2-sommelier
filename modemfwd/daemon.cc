@@ -23,9 +23,9 @@ namespace modemfwd {
 
 Daemon::Daemon(const std::string& helper_directory,
                const std::string& firmware_directory)
-      : helper_dir_path_(helper_directory),
-        firmware_dir_path_(firmware_directory),
-        weak_ptr_factory_(this) {}
+    : helper_dir_path_(helper_directory),
+      firmware_dir_path_(firmware_directory),
+      weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
   int exit_code = brillo::DBusDaemon::OnInit();
@@ -55,8 +55,7 @@ int Daemon::OnInit() {
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
-      base::Bind(&Daemon::OnModemAppeared,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Daemon::OnModemAppeared, weak_ptr_factory_.GetWeakPtr()));
 
   return EX_OK;
 }
@@ -67,8 +66,8 @@ void Daemon::OnModemAppeared(
   if (!modem)
     return;
 
-  DLOG(INFO) << "Modem appeared with equipment ID \""
-             << modem->GetEquipmentId() << "\"";
+  DLOG(INFO) << "Modem appeared with equipment ID \"" << modem->GetEquipmentId()
+             << "\"";
   modem_flasher_->TryFlash(modem.get());
 }
 

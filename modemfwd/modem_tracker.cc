@@ -20,8 +20,8 @@ namespace {
 void OnSignalConnected(const std::string& interface_name,
                        const std::string& signal_name,
                        bool success) {
-  DVLOG(1) << (success ? "Connected" : "Failed to connect")
-           << " to signal " << signal_name << " of " << interface_name;
+  DVLOG(1) << (success ? "Connected" : "Failed to connect") << " to signal "
+           << signal_name << " of " << interface_name;
 }
 
 }  // namespace
@@ -29,13 +29,12 @@ void OnSignalConnected(const std::string& interface_name,
 ModemTracker::ModemTracker(
     scoped_refptr<dbus::Bus> bus,
     const OnModemAppearedCallback& on_modem_appeared_callback)
-  : bus_(bus),
-    shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
-    on_modem_appeared_callback_(on_modem_appeared_callback),
-    weak_ptr_factory_(this) {
-  shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::Bind(&ModemTracker::OnServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+    : bus_(bus),
+      shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
+      on_modem_appeared_callback_(on_modem_appeared_callback),
+      weak_ptr_factory_(this) {
+  shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
+      &ModemTracker::OnServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ModemTracker::OnServiceAvailable(bool available) {
@@ -59,7 +58,7 @@ void ModemTracker::OnServiceAvailable(bool available) {
   }
 
   OnDeviceListChanged(properties[shill::kDevicesProperty]
-      .TryGet<std::vector<dbus::ObjectPath>>());
+                          .TryGet<std::vector<dbus::ObjectPath>>());
 }
 
 void ModemTracker::OnPropertyChanged(const std::string& property_name,
