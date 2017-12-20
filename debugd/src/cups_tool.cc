@@ -205,6 +205,18 @@ bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
   return true;
 }
 
+// Checks whether the scheme for the given |uri| is one of the required schemes
+// for IPP Everywhere.
+bool IppEverywhereURI(const std::string& uri) {
+  static const char* const kValidSchemes[] = {"ipp://", "ipps://", "ippusb://"};
+  for (const char* scheme : kValidSchemes) {
+    if (base::StartsWith(uri, scheme, base::CompareCase::INSENSITIVE_ASCII))
+      return true;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 // Invokes lpadmin with arguments to configure a new printer using '-m
@@ -212,10 +224,8 @@ bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
 // failed.
 int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
                                            const std::string& uri) {
-  // Autoconfiguration requires ipp or ipps.
-  if (!base::StartsWith(uri, "ipp://", base::CompareCase::INSENSITIVE_ASCII) &&
-      !base::StartsWith(uri, "ipps://", base::CompareCase::INSENSITIVE_ASCII)) {
-    LOG(WARNING) << "IPP or IPPS required for IPP Everywhere: " << uri;
+  if (!IppEverywhereURI(uri)) {
+    LOG(WARNING) << "IPP, IPPS or IPPUSB required for IPP Everywhere: " << uri;
     return CupsResult::CUPS_FATAL;
   }
 
