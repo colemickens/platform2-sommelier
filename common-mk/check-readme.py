@@ -136,7 +136,6 @@ def CheckSubdirs():
       'tpm2-simulator',
       'tpm_manager',
       'trim',
-      'trunks',
       'userfeedback',
       'userspace_touchpad',
       'vpn-manager',
