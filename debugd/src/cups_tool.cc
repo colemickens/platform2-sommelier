@@ -117,7 +117,8 @@ int RunAsUser(const std::string& user, const std::string& group,
               const std::string& command,
               const std::string& seccomp_policy,
               const ProcessWithOutput::ArgList& arg_list,
-              bool root_mount_ns = false) {
+              bool root_mount_ns = false,
+              bool inherit_usergroups = false) {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
@@ -127,6 +128,9 @@ int RunAsUser(const std::string& user, const std::string& group,
 
   if (root_mount_ns)
     process.AllowAccessRootMountNamespace();
+
+  if (inherit_usergroups)
+    process.InheritUsergroups();
 
   if (!process.Init())
     return ProcessWithOutput::kRunError;
@@ -155,10 +159,11 @@ int TestPPD(const std::string& path) {
 }
 
 // Runs lpadmin with the provided |arg_list|.
-int Lpadmin(const ProcessWithOutput::ArgList& arg_list) {
+int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
+            bool inherit_usergroups = false) {
   // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
-                   kLpadminSeccompPolicy, arg_list);
+                   kLpadminSeccompPolicy, arg_list, false, inherit_usergroups);
 }
 
 // Write |contents| to |filename| in |temp_ppd_dir| and set permissions so
@@ -229,8 +234,17 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
     return CupsResult::CUPS_FATAL;
   }
 
-  if (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}) !=
-      EXIT_SUCCESS) {
+  int32_t result;
+  if (base::StartsWith(uri, "ippusb://",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
+    // In the case of printing with the ippusb scheme, we want to run lpadmin in
+    // a minijail with the inherit usergroups option set.
+    result = Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, true);
+  } else {
+    result = Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
+  }
+
+  if (result != EXIT_SUCCESS) {
     return CupsResult::CUPS_AUTOCONF_FAILURE;
   }
 

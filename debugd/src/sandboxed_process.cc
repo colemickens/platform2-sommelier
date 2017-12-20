@@ -47,6 +47,7 @@ SandboxedProcess::SandboxedProcess()
     : sandboxing_(true),
       access_root_mount_ns_(false),
       set_capabilities_(false),
+      inherit_usergroups_(false),
       user_(kDefaultUser),
       group_(kDefaultGroup) {
 }
@@ -94,6 +95,9 @@ bool SandboxedProcess::Init() {
       AddArg("-g");
       AddArg(group_);
     }
+    if (inherit_usergroups_) {
+      AddArg("-G");
+    }
     if (set_capabilities_) {
       AddStringOption("-c",
                       base::StringPrintf("0x%" PRIx64, capabilities_mask_));
@@ -127,6 +131,10 @@ void SandboxedProcess::SandboxAs(const std::string& user,
   sandboxing_ = true;
   user_ = user;
   group_ = group;
+}
+
+void SandboxedProcess::InheritUsergroups() {
+  inherit_usergroups_ = true;
 }
 
 void SandboxedProcess::SetCapabilities(uint64_t capabilities_mask) {

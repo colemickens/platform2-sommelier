@@ -31,6 +31,9 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Change the default sandboxing for this process.
   virtual void SandboxAs(const std::string& user, const std::string& group);
 
+  // Allow the sandbox to inherit supplementary groups from the uid.
+  virtual void InheritUsergroups();
+
   // Set the capabilities mask for this process. Requires that the process is
   // not running as root.
   void SetCapabilities(uint64_t capabilities_mask) override;
@@ -52,6 +55,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   bool sandboxing_;
   bool access_root_mount_ns_;
   bool set_capabilities_;
+  bool inherit_usergroups_;
   std::string user_;
   std::string group_;
   std::string seccomp_filter_policy_file_;
