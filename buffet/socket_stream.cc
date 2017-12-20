@@ -135,14 +135,12 @@ void SocketStream::CancelPendingOperations() {
 }
 
 std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
-    const std::string& host,
-    uint16_t port) {
+    const std::string& host, uint16_t port) {
   int socket_fd = ConnectSocket(host, port);
   if (socket_fd <= 0)
     return nullptr;
 
-  auto ptr_ =
-      brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+  auto ptr_ = brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
   if (ptr_)
     return std::unique_ptr<Stream>{new SocketStream{std::move(ptr_)}};
 

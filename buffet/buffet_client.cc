@@ -51,15 +51,15 @@ void usage() {
 }
 
 // Helpers for JsonToAny().
-template<typename T>
+template <typename T>
 brillo::Any GetJsonValue(const base::Value& json,
-                           bool(base::Value::*fnc)(T*) const) {
+                         bool (base::Value::*fnc)(T*) const) {
   T val;
   CHECK((json.*fnc)(&val));
   return val;
 }
 
-template<typename T>
+template <typename T>
 brillo::Any GetJsonList(const base::ListValue& list);  // Prototype.
 
 // Converts a JSON value into an Any so it can be sent over D-Bus using
@@ -130,7 +130,7 @@ brillo::Any JsonToAny(const base::Value& json) {
   return prop_value;
 }
 
-template<typename T>
+template <typename T>
 brillo::Any GetJsonList(const base::ListValue& list) {
   std::vector<T> val;
   val.reserve(list.GetSize());
@@ -191,16 +191,15 @@ class Daemon final : public brillo::DBusDaemon {
       std::string dict;
       if (!args.empty())
         dict = args.back();
-      job = base::Bind(&Daemon::CallRegisterDevice,
-                       weak_factory_.GetWeakPtr(), dict);
+      job = base::Bind(&Daemon::CallRegisterDevice, weak_factory_.GetWeakPtr(),
+                       dict);
     } else if (command.compare("UpdateState") == 0 ||
                command.compare("us") == 0) {
       if (!CheckArgs(command, args, 2))
         return EX_USAGE;
       job = base::Bind(&Daemon::CallUpdateState, weak_factory_.GetWeakPtr(),
                        args.front(), args.back());
-    } else if (command.compare("GetState") == 0 ||
-               command.compare("gs") == 0) {
+    } else if (command.compare("GetState") == 0 || command.compare("gs") == 0) {
       if (!CheckArgs(command, args, 0))
         return EX_USAGE;
       job = base::Bind(&Daemon::CallGetState, weak_factory_.GetWeakPtr());
@@ -232,9 +231,7 @@ class Daemon final : public brillo::DBusDaemon {
     timeout_task_.Reset(
         base::Bind(&Daemon::OnJobTimeout, weak_factory_.GetWeakPtr()));
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE,
-        timeout_task_.callback(),
-        base::TimeDelta::FromSeconds(10));
+        FROM_HERE, timeout_task_.callback(), base::TimeDelta::FromSeconds(10));
 
     return EX_OK;
   }

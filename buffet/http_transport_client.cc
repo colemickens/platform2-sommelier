@@ -90,8 +90,7 @@ void HttpTransportClient::SendRequest(Method method,
 }
 
 void HttpTransportClient::OnSuccessCallback(
-    int id,
-    std::unique_ptr<brillo::http::Response> response) {
+    int id, std::unique_ptr<brillo::http::Response> response) {
   auto it = callbacks_.find(id);
   if (it == callbacks_.end()) {
     LOG(INFO) << "Request has already been cancelled: " << id;
@@ -99,7 +98,8 @@ void HttpTransportClient::OnSuccessCallback(
   }
 
   it->second.Run(std::unique_ptr<HttpClient::Response>{new ResponseImpl{
-      std::move(response)}}, nullptr);
+                     std::move(response)}},
+                 nullptr);
   callbacks_.erase(it);
 }
 
@@ -119,7 +119,7 @@ void HttpTransportClient::OnErrorCallback(int id,
 
 void HttpTransportClient::SetOnline(bool online) {
   if (!online) {
-    for (const auto &pair : callbacks_) {
+    for (const auto& pair : callbacks_) {
       weave::ErrorPtr error;
       weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "offline",
                           "offline");

@@ -37,13 +37,12 @@ class PeerdClient;
 class ShillClient;
 class WebServClient;
 
-template<typename... Types>
+template <typename... Types>
 using DBusMethodResponsePtr =
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>;
 
-template<typename... Types>
-using DBusMethodResponse =
-    brillo::dbus_utils::DBusMethodResponse<Types...>;
+template <typename... Types>
+using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and

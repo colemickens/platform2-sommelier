@@ -63,8 +63,9 @@ void PeerdClient::Update() {
   // Abort pending updates, and wait for more changes.
   restart_weak_ptr_factory_.InvalidateWeakPtrs();
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&PeerdClient::UpdateImpl,
-                            restart_weak_ptr_factory_.GetWeakPtr()),
+      FROM_HERE,
+      base::Bind(&PeerdClient::UpdateImpl,
+                 restart_weak_ptr_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kCommitTimeoutSeconds));
 }
 

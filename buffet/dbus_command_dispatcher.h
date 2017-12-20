@@ -15,7 +15,7 @@
 namespace weave {
 class Command;
 class Device;
-}
+}  // namespace weave
 
 namespace brillo {
 namespace dbus_utils {

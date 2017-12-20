@@ -79,17 +79,14 @@ class RequestImpl : public HttpServer::Request {
 
 }  // namespace
 
-WebServClient::WebServClient(
-    const scoped_refptr<dbus::Bus>& bus,
-    brillo::dbus_utils::AsyncEventSequencer* sequencer,
-    const base::Closure& server_available_callback)
+WebServClient::WebServClient(const scoped_refptr<dbus::Bus>& bus,
+                             brillo::dbus_utils::AsyncEventSequencer* sequencer,
+                             const base::Closure& server_available_callback)
     : server_available_callback_{server_available_callback} {
   web_server_ = libwebserv::Server::ConnectToServerViaDBus(
-      bus,
-      buffet::dbus_constants::kServiceName,
+      bus, buffet::dbus_constants::kServiceName,
       sequencer->GetHandler("Server::Connect failed.", true),
-      base::Bind(&base::DoNothing),
-      base::Bind(&base::DoNothing));
+      base::Bind(&base::DoNothing), base::Bind(&base::DoNothing));
 
   web_server_->OnProtocolHandlerConnected(
       base::Bind(&WebServClient::OnProtocolHandlerConnected,
@@ -104,19 +101,19 @@ WebServClient::~WebServClient() {
 }
 
 void WebServClient::AddHttpRequestHandler(
-    const std::string& path,
-    const RequestHandlerCallback& callback) {
+    const std::string& path, const RequestHandlerCallback& callback) {
   web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
-      path, "", base::Bind(&WebServClient::OnRequest,
-                           weak_ptr_factory_.GetWeakPtr(), callback));
+      path, "",
+      base::Bind(&WebServClient::OnRequest, weak_ptr_factory_.GetWeakPtr(),
+                 callback));
 }
 
 void WebServClient::AddHttpsRequestHandler(
-    const std::string& path,
-    const RequestHandlerCallback& callback) {
+    const std::string& path, const RequestHandlerCallback& callback) {
   web_server_->GetDefaultHttpsHandler()->AddHandlerCallback(
-      path, "", base::Bind(&WebServClient::OnRequest,
-                           weak_ptr_factory_.GetWeakPtr(), callback));
+      path, "",
+      base::Bind(&WebServClient::OnRequest, weak_ptr_factory_.GetWeakPtr(),
+                 callback));
 }
 
 uint16_t WebServClient::GetHttpPort() const {

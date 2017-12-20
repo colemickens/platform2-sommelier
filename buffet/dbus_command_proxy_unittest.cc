@@ -29,8 +29,8 @@ using ::testing::Return;
 using ::testing::ReturnRefOfCopy;
 using ::testing::StrictMock;
 
-using brillo::VariantDictionary;
 using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::VariantDictionary;
 using weave::test::CreateDictionaryValue;
 using weave::test::IsEqualValue;
 
@@ -130,7 +130,8 @@ class DBusCommandProxyTest : public ::testing::Test {
 
 TEST_F(DBusCommandProxyTest, Init) {
   VariantDictionary params = {
-      {"height", int32_t{53}}, {"_jumpType", std::string{"_withKick"}},
+      {"height", int32_t{53}},
+      {"_jumpType", std::string{"_withKick"}},
   };
   EXPECT_EQ(weave::Command::State::kQueued, GetCommandState());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());

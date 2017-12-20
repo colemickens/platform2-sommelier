@@ -17,7 +17,7 @@ namespace brillo {
 namespace http {
 class Transport;
 }
-}
+}  // namespace brillo
 
 namespace buffet {
 

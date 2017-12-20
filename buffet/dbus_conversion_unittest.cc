@@ -48,7 +48,8 @@ const base::Value::Type kRandomTypes[] = {
 };
 
 const base::Value::Type kRandomTypesWithChildren[] = {
-    base::Value::TYPE_DICTIONARY, base::Value::TYPE_LIST,
+    base::Value::TYPE_DICTIONARY,
+    base::Value::TYPE_LIST,
 };
 
 base::Value::Type CreateRandomValueType(bool with_children) {

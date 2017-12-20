@@ -18,7 +18,7 @@ namespace {
 // Helpers for JsonToAny().
 template <typename T>
 brillo::Any ValueToAny(const base::Value& json,
-                         bool (base::Value::*fnc)(T*) const) {
+                       bool (base::Value::*fnc)(T*) const) {
   T val;
   CHECK((json.*fnc)(&val));
   return val;
@@ -28,7 +28,7 @@ brillo::Any ValueToAny(const base::Value& json);
 
 template <typename T>
 brillo::Any ListToAny(const base::ListValue& list,
-                        bool (base::Value::*fnc)(T*) const) {
+                      bool (base::Value::*fnc)(T*) const) {
   std::vector<T> result;
   result.reserve(list.GetSize());
   for (const base::Value* v : list) {
@@ -136,16 +136,14 @@ std::unique_ptr<base::Value> CreateValue(const T& value,
 }
 
 template <>
-std::unique_ptr<base::Value> CreateValue<std::string>(
-    const std::string& value,
-    brillo::ErrorPtr* error) {
+std::unique_ptr<base::Value> CreateValue<std::string>(const std::string& value,
+                                                      brillo::ErrorPtr* error) {
   return std::unique_ptr<base::Value>{new base::StringValue{value}};
 }
 
 template <>
 std::unique_ptr<base::Value> CreateValue<brillo::VariantDictionary>(
-    const brillo::VariantDictionary& value,
-    brillo::ErrorPtr* error) {
+    const brillo::VariantDictionary& value, brillo::ErrorPtr* error) {
   return DictionaryFromDBusVariantDictionary(value, error);
 }
 
@@ -184,9 +182,8 @@ bool TryCreateValue(const brillo::Any& any,
 }
 
 template <>
-std::unique_ptr<base::Value> CreateValue<brillo::Any>(
-    const brillo::Any& any,
-    brillo::ErrorPtr* error) {
+std::unique_ptr<base::Value> CreateValue<brillo::Any>(const brillo::Any& any,
+                                                      brillo::ErrorPtr* error) {
   std::unique_ptr<base::Value> result;
   if (!TryCreateValue<bool>(any, &result, error) || result)
     return result;
@@ -209,9 +206,9 @@ std::unique_ptr<base::Value> CreateValue<brillo::Any>(
   if (!TryCreateValue<brillo::Any>(any, &result, error) || result)
     return result;
 
-  brillo::Error::AddToPrintf(
-      error, FROM_HERE, "buffet", "unknown_type", "Type '%s' is not supported.",
-      any.GetUndecoratedTypeName().c_str());
+  brillo::Error::AddToPrintf(error, FROM_HERE, "buffet", "unknown_type",
+                             "Type '%s' is not supported.",
+                             any.GetUndecoratedTypeName().c_str());
 
   return nullptr;
 }
@@ -230,8 +227,7 @@ brillo::VariantDictionary DictionaryToDBusVariantDictionary(
 }
 
 std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
-    const brillo::VariantDictionary& object,
-    brillo::ErrorPtr* error) {
+    const brillo::VariantDictionary& object, brillo::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
 
   for (const auto& pair : object) {

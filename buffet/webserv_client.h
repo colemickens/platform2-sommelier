@@ -20,14 +20,14 @@ namespace brillo {
 namespace dbus_utils {
 class AsyncEventSequencer;
 }
-}
+}  // namespace brillo
 
 namespace libwebserv {
 class ProtocolHandler;
 class Request;
 class Response;
 class Server;
-}
+}  // namespace libwebserv
 
 namespace buffet {
 

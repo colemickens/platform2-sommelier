@@ -20,8 +20,7 @@ brillo::VariantDictionary DictionaryToDBusVariantDictionary(
 
 // Converts D-Bus variant dictionary to DictionaryValue.
 std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
-    const brillo::VariantDictionary& object,
-    brillo::ErrorPtr* error);
+    const brillo::VariantDictionary& object, brillo::ErrorPtr* error);
 
 }  // namespace buffet
 

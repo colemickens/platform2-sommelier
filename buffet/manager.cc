@@ -63,8 +63,8 @@ bool LoadFile(const base::FilePath& file_path,
   if (!base::ReadFileToString(file_path, data)) {
     brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
     brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                                 "Failed to read file '%s'",
-                                 file_path.value().c_str());
+                               "Failed to read file '%s'",
+                               file_path.value().c_str());
     return false;
   }
   return true;
@@ -142,8 +142,7 @@ Manager::Manager(const Options& options,
                    object_manager->GetBus(),
                    org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {}
 
-Manager::~Manager() {
-}
+Manager::~Manager() {}
 
 void Manager::Start(AsyncEventSequencer* sequencer) {
   RestartWeave(sequencer);
@@ -162,9 +161,8 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(),
                                       options_.device_whitelist,
                                       !options_.xmpp_enabled});
-  shill_client_->AddConnectionChangedCallback(
-      base::Bind(&Manager::OnConnectionStateChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+  shill_client_->AddConnectionChangedCallback(base::Bind(
+      &Manager::OnConnectionStateChanged, weak_ptr_factory_.GetWeakPtr()));
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options_.disable_privet) {
@@ -431,7 +429,7 @@ void Manager::OnConnectionStateChanged() {
 
   if (http_client_) {
     http_client_->SetOnline(shill_client_->GetConnectionState() ==
-          weave::provider::Network::State::kOnline);
+                            weave::provider::Network::State::kOnline);
   }
 }
 

@@ -96,7 +96,8 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
 }  // namespace
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
-                         const set<string>& device_whitelist, bool disable_xmpp)
+                         const set<string>& device_whitelist,
+                         bool disable_xmpp)
     : bus_{bus},
       manager_proxy_{bus_},
       device_whitelist_{device_whitelist},
@@ -176,8 +177,9 @@ void ShillClient::Connect(const string& ssid,
       base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
                  weak_factory_.GetWeakPtr(), service_path));
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&ShillClient::ConnectToServiceError,
-                            weak_factory_.GetWeakPtr(), connecting_service_),
+      FROM_HERE,
+      base::Bind(&ShillClient::ConnectToServiceError,
+                 weak_factory_.GetWeakPtr(), connecting_service_),
       base::TimeDelta::FromMinutes(1));
 }
 
@@ -493,12 +495,12 @@ void ShillClient::OnIpConfigChange(const ObjectPath& ip_config_path,
   const auto it = properties.find(shill::kAddressProperty);
   if (it != properties.end()) {
     ip_address_ = it->second.TryGet<string>();
-    LOG(INFO) << "IPConfigProperty address = " << ip_address_
-              << " at " << device_path;
+    LOG(INFO) << "IPConfigProperty address = " << ip_address_ << " at "
+              << device_path;
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
-                          weak_factory_.GetWeakPtr(),
-                          GetConnectionState() == Network::State::kOnline));
+                              weak_factory_.GetWeakPtr(),
+                              GetConnectionState() == Network::State::kOnline));
   }
 }
 
@@ -553,8 +555,7 @@ void ShillClient::OnStrengthChangeForConnectingService(
 }
 
 void ShillClient::OnStateChangeForSelectedService(
-    const ObjectPath& service_path,
-    const string& state) {
+    const ObjectPath& service_path, const string& state) {
   // Find the device/service pair responsible for this update
   VLOG(3) << "State for potentially selected service " << service_path.value()
           << " have changed to " << state;

@@ -27,8 +27,8 @@ namespace {
 
 bool ReportDestroyedError(brillo::ErrorPtr* error) {
   brillo::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                         errors::commands::kCommandDestroyed,
-                         "Command has been destroyed");
+                       errors::commands::kCommandDestroyed,
+                       "Command has been destroyed");
   return false;
 }
 
@@ -65,9 +65,8 @@ void DBusCommandProxy::RegisterAsync(
   dbus_object_.RegisterAsync(completion_callback);
 }
 
-bool DBusCommandProxy::SetProgress(
-    brillo::ErrorPtr* error,
-    const brillo::VariantDictionary& progress) {
+bool DBusCommandProxy::SetProgress(brillo::ErrorPtr* error,
+                                   const brillo::VariantDictionary& progress) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);
