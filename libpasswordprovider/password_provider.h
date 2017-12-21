@@ -22,15 +22,15 @@ class LIBPASSWORDPROVIDER_EXPORT PasswordProviderInterface {
   // Saves the given password to the keyring of the calling process.
   // The password will be available to be retrieved until the process that calls
   // SavePassword dies.
-  virtual bool SavePassword(const Password& password) = 0;
+  virtual bool SavePassword(const Password& password) const = 0;
 
   // Retrieves the given password. The returned password will be null
   // terminated. Calling GetPassword after DiscardPassword has been called by
   // any process will return false.
-  virtual std::unique_ptr<Password> GetPassword() = 0;
+  virtual std::unique_ptr<Password> GetPassword() const = 0;
 
   // Discards the saved password.
-  virtual bool DiscardPassword() = 0;
+  virtual bool DiscardPassword() const = 0;
 };
 
 // Implementation of password storage. This is a wrapper around Linux keyring
@@ -41,9 +41,9 @@ class LIBPASSWORDPROVIDER_EXPORT PasswordProvider
   PasswordProvider();
 
   // PasswordProviderInterface overrides
-  bool SavePassword(const Password& password) override;
-  std::unique_ptr<Password> GetPassword() override;
-  bool DiscardPassword() override;
+  bool SavePassword(const Password& password) const override;
+  std::unique_ptr<Password> GetPassword() const override;
+  bool DiscardPassword() const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PasswordProvider);

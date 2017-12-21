@@ -18,9 +18,19 @@ constexpr char kKeyringKeyType[] = "keyring";
 constexpr char kPasswordKeyDescription[] = "password";
 constexpr char kPasswordKeyType[] = "user";
 
+key_serial_t RequestKey(const char* type, const char* description) {
+  key_serial_t keyring_serial =
+      find_key_by_type_and_desc(kKeyringKeyType, kKeyringDescription, 0);
+  if (keyring_serial == -1) {
+    PLOG(ERROR) << "Error finding keyring.";
+    return keyring_serial;
+  }
+
+  return keyctl_search(keyring_serial, type, description, 0);
+}
+
 int RevokeKey(const char* type, const char* description) {
-  key_serial_t key_serial =
-      find_key_by_type_and_desc(type, description, 0 /* dest_keyring */);
+  key_serial_t key_serial = RequestKey(type, description);
   if (key_serial == -1) {
     return errno;
   }
@@ -33,11 +43,18 @@ int RevokeKey(const char* type, const char* description) {
   return result;
 }
 
+void HandleKeyError(const char* type, const char* description) {
+  int result = RevokeKey(type, description);
+  if (result != 0) {
+    PLOG(ERROR) << "Error revoking key: " << description;
+  }
+}
+
 }  // namespace
 
 PasswordProvider::PasswordProvider() {}
 
-bool PasswordProvider::SavePassword(const Password& password) {
+bool PasswordProvider::SavePassword(const Password& password) const {
   DCHECK_GT(password.size(), 0);
   DCHECK(password.GetRaw());
 
@@ -45,6 +62,15 @@ bool PasswordProvider::SavePassword(const Password& password) {
                                     0, KEY_SPEC_PROCESS_KEYRING);
   if (keyring_id == -1) {
     PLOG(ERROR) << "Error creating keyring.";
+    return false;
+  }
+
+  int result =
+      keyctl_setperm(keyring_id, KEY_POS_ALL | KEY_USR_VIEW | KEY_USR_READ |
+                                     KEY_USR_SEARCH | KEY_USR_WRITE);
+
+  if (result == -1) {
+    PLOG(ERROR) << "Error setting permissions on keyring. ";
     return false;
   }
 
@@ -57,19 +83,22 @@ bool PasswordProvider::SavePassword(const Password& password) {
     return false;
   }
 
-  int result =
-      keyctl_setperm(key_serial, KEY_POS_ALL | KEY_USR_READ | KEY_USR_SEARCH);
+  result =
+      keyctl_setperm(key_serial, KEY_POS_ALL | KEY_USR_VIEW | KEY_USR_READ |
+                                     KEY_USR_SEARCH | KEY_USR_WRITE);
+
   if (result == -1) {
     PLOG(ERROR) << "Error setting permissions on key. ";
+    HandleKeyError(kPasswordKeyType, kPasswordKeyDescription);
     return false;
   }
 
   return true;
 }
 
-std::unique_ptr<Password> PasswordProvider::GetPassword() {
+std::unique_ptr<Password> PasswordProvider::GetPassword() const {
   key_serial_t key_serial =
-      find_key_by_type_and_desc(kPasswordKeyType, kPasswordKeyDescription, 0);
+      RequestKey(kPasswordKeyType, kPasswordKeyDescription);
   if (key_serial == -1) {
     PLOG(WARNING) << "Could not find key.";
     return nullptr;
@@ -98,16 +127,10 @@ std::unique_ptr<Password> PasswordProvider::GetPassword() {
   return password;
 }
 
-bool PasswordProvider::DiscardPassword() {
+bool PasswordProvider::DiscardPassword() const {
   int result = RevokeKey(kPasswordKeyType, kPasswordKeyDescription);
   if (result != 0) {
     PLOG(ERROR) << "Error revoking key.";
-    return false;
-  }
-
-  result = RevokeKey(kKeyringKeyType, kKeyringDescription);
-  if (result != 0) {
-    PLOG(ERROR) << "Error revoking keyring.";
     return false;
   }
 

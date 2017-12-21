@@ -27,14 +27,14 @@ class FakePasswordProvider : public PasswordProviderInterface {
   }
 
   // PasswordProviderInterface overrides
-  bool SavePassword(const Password& password) override {
+  bool SavePassword(const Password& password) const override {
     password_saved_ = true;
 
     password_ = std::string(password.GetRaw(), password.size());
     return true;
   }
 
-  std::unique_ptr<Password> GetPassword() override {
+  std::unique_ptr<Password> GetPassword() const override {
     if (password_discarded()) {
       return nullptr;
     }
@@ -50,16 +50,17 @@ class FakePasswordProvider : public PasswordProviderInterface {
     return password;
   }
 
-  bool DiscardPassword() override {
+  bool DiscardPassword() const override {
     password_.clear();
     password_discarded_ = true;
     return true;
   }
 
  private:
-  bool password_saved_ = false;      // true if the password was ever saved.
-  bool password_discarded_ = false;  // true if password_ is cleared out.
-  std::string password_;
+  mutable bool password_saved_ = false;  // true if the password was ever saved.
+  mutable bool password_discarded_ =
+      false;  // true if password_ is cleared out.
+  mutable std::string password_;
 
   DISALLOW_COPY_AND_ASSIGN(FakePasswordProvider);
 };
