@@ -232,7 +232,9 @@ def ValidateConfigSchema(schema, config):
     config: Config (transformed) that will be verified.
   """
   json_config = json.loads(config)
-  schema_json = json.loads(schema)
+  schema_yaml = yaml.load(schema)
+  schema_json_from_yaml = json.dumps(schema_yaml, sort_keys=True, indent=2)
+  schema_json = json.loads(schema_json_from_yaml)
   validate(json_config, schema_json)
 
 
@@ -272,7 +274,7 @@ def Main(schema, config, output, filter_build_details=False):
     filter_build_details: Whether build only details should be filtered or not.
   """
   if not schema:
-    schema = os.path.join(this_dir, 'cros_config_schema.json')
+    schema = os.path.join(this_dir, 'cros_config_schema.yaml')
 
   with open(config, 'r') as config_stream:
     json_transform = TransformConfig(config_stream.read())

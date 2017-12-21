@@ -9,9 +9,9 @@ from __future__ import print_function
 
 import argparse
 import collections
-import json
 import os.path
 import sys
+import yaml
 
 
 def ParseArgs(argv):
@@ -30,7 +30,7 @@ def ParseArgs(argv):
   parser.add_argument(
       '-s',
       '--schema',
-      default='cros_config_schema.json',
+      default='cros_config_schema.yaml',
       type=str,
       help='Schema file that is processed')
   parser.add_argument(
@@ -92,12 +92,12 @@ def Main(schema, output):
     output: Output file.
   """
   with open(schema, 'r') as schema_stream:
-    schema_json = json.loads(schema_stream.read())
+    schema_yaml = yaml.load(schema_stream.read())
     ref_types = {}
-    for type_def in schema_json['typeDefs']:
+    for type_def in schema_yaml['typeDefs']:
       ref_types[
           '#/typeDefs/%s' %
-          type_def] = schema_json['typeDefs'][type_def]
+          type_def] = schema_yaml['typeDefs'][type_def]
 
     type_def_outputs = []
     type_def_outputs.append('[](begin_definitions)')
@@ -105,7 +105,7 @@ def Main(schema, output):
     type_def_outputs.append('## CrOS Config Type Definitions (v2)')
     PopulateTypeDef(
         'model',
-        schema_json['properties']['models']['items'],
+        schema_yaml['properties']['models']['items'],
         ref_types,
         type_def_outputs)
     type_def_outputs.append('')

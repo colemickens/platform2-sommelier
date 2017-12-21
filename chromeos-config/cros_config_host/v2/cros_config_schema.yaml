@@ -1,0 +1,178 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"$schema": http://json-schema.org/draft-04/schema#
+typeDefs:
+  bcs-file-name: &bcs_file_name
+    type: string
+    description: Name of the file located in BCS under the respective bcs-overlay.
+  firmware-build-target: &firmware_build_target
+    type: string
+    description: Build target that will be considered dirty when building/testing
+      locally.
+  touch-firmware: &touch_firmware
+    type: object
+    properties:
+      firmware-bin:
+        description: Path to the firmware binary for the touch firmware.
+        type: string
+      firmware-symlink:
+        description: Name of the firmware symlink file.
+        type: string
+    additionalProperties: false
+    required:
+    - firmware-bin
+    - firmware-symlink
+type: object
+properties:
+  models:
+    type: array
+    items:
+      type: object
+      properties:
+        audio:
+          type: object
+          properties:
+            main:
+              type: object
+              properties:
+                card:
+                  description: Name of the card.
+                  type: string
+                cras-config-dir:
+                  description: 'Full path to cras config: /etc/cras/{cras-config-subdir}
+                    (Auto-generated)'
+                  type: string
+                  pattern: "^(/[^/ ]*)+/?$"
+                cras-config-subdir:
+                  description: Optional subdir for model specific configuration.
+                  type: string
+                disable-profile:
+                  description: Optional --disable_profile parameter for CRAS deamon.
+                  type: string
+                files:
+                  description: All of the audio files configured.
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      source:
+                        description: File source in the build structure.
+                        type: string
+                      target:
+                        description: Where the file will be installed on the image
+                        type: string
+                ucm-suffix:
+                  description: Optional UCM suffix used to determine model specific
+                    config.
+                  type: string
+                topology-bin:
+                  description: Optional topology firmware filename.
+                  type: string
+              additionalProperties: false
+              required:
+              - card
+              - cras-config-dir
+              - files
+          additionalProperties: false
+          required:
+          - main
+        brand-code:
+          description: Brand code of the model (also called RLZ code).
+          type: string
+          pattern: "^[A-Z]{4}$"
+        firmware:
+          type: object
+          properties:
+            bcs-overlay:
+              description: BCS overlay path used to determine BCS file path for binary
+                firmware downloads.
+              type: string
+            bcs-uris:
+              description: Fully qualified paths to all of the BCS files for download
+              type: array
+              items:
+                type: string
+            build-targets:
+              type: object
+              properties:
+                coreboot: *firmware_build_target
+                cr50: *firmware_build_target
+                depthcharge: *firmware_build_target
+                ec: *firmware_build_target
+                libpayload: *firmware_build_target
+              additionalProperties: false
+            ec-image: *bcs_file_name
+            key-id:
+              description: Key ID from the signer key set that is used to sign the
+                given firmware image.
+              type: string
+              pattern: "^[A-Z|_|0-9]*$"
+            main-image: *bcs_file_name
+            main-rw-image: *bcs_file_name
+          additionalProperties: false
+          required:
+          - bcs-overlay
+          - ec-image
+          - main-image
+        identity:
+          type: object
+          properties:
+            customization-id:
+              description: Customization ID set in the VPD during manufacturing.
+              type: string
+              pattern: "^[A-Z|_]*$"
+            sku-id:
+              description: SKU/Board strapping pins configured during board manufacturing.
+              type: integer
+            smbios-name-match:
+              description: Firmware name built into the firmware and reflected back
+                out in the SMBIOS tables.
+              type: string
+          additionalProperties: false
+          required:
+          - sku-id
+        name:
+          type: string
+          pattern: "^[_a-zA-Z0-9]{3,}"
+          description: Unique name for the given model.
+        powerd-prefs:
+          description: Powerd config that should be used.
+          type: string
+        test-alias:
+          description: Test alias (model) label that will be applied in Autotest and
+            reported for test results.
+          type: string
+        touch:
+          type: object
+          properties:
+            present:
+              description: Whether touch is present or needs to be probed for.
+              type: string
+              enum:
+              - yes
+              - no
+              - probe
+            probe-regex:
+              description: If probe is set, the regex used to look for touch.
+              type: string
+            stylus: *touch_firmware
+            touchpad: *touch_firmware
+            touchscreen: *touch_firmware
+            touchscreen@0: *touch_firmware
+            touchscreen@1: *touch_firmware
+          additionalProperties: false
+          required:
+          - present
+      additionalProperties: false
+      required:
+      - audio
+      - brand-code
+      - firmware
+      - identity
+      - name
+      - powerd-prefs
+      - test-alias
+additionalProperties: false
+required:
+- models

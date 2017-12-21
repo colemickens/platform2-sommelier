@@ -90,7 +90,7 @@ class TransformConfigTests(unittest.TestCase):
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
     with open(
-        os.path.join(this_dir, 'cros_config_schema.json')) as schema_stream:
+        os.path.join(this_dir, 'cros_config_schema.yaml')) as schema_stream:
       self._schema = schema_stream.read()
 
   def testBasicSchemaValidation(self):

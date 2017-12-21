@@ -21,7 +21,7 @@ class SchemaTests(unittest.TestCase):
   def testActualSchemaAgainstReadme(self):
     output = tempfile.mktemp()
     generate_schema_doc.Main(
-        os.path.join(this_dir, 'cros_config_schema.json'),
+        os.path.join(this_dir, 'cros_config_schema.yaml'),
         output)
     with open(output, 'r') as output_stream:
       output_lines = output_stream.readlines()

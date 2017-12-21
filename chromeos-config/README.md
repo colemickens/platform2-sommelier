@@ -740,7 +740,7 @@ chromeos {
 | brand-code | string | ```^[A-Z]{4}$``` | True | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |
 | identity | [identity](#identity) |  | True |  |
-| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | String that is at least 3 chars with letters/numbers/underscrores. |
+| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
 | powerd-prefs | string |  | True | Powerd config that should be used. |
 | test-alias | string |  | True | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | touch | [touch](#touch) |  | False |  |
