@@ -74,6 +74,8 @@ constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/cache/apk";
 constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
 constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
+constexpr char kCameraProfileDir[] =
+    "/mnt/stateful_partition/encrypted/var/cache/camera";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
 constexpr char kDebugfsDirectory[] = "/run/arc/debugfs";
 constexpr char kFakeKptrRestrict[] = "/run/arc/fake_kptr_restrict";
@@ -83,6 +85,7 @@ constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
 constexpr char kMediaDestDirectory[] = "/run/arc/media/removable";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
+constexpr char kMediaProfileFile[] = "media_profiles.xml";
 constexpr char kMediaRootfsDirectory[] =
     "/opt/google/containers/arc-removable-media/mountpoints/container-root";
 constexpr char kObbMountDirectory[] = "/run/arc/obb";
@@ -247,6 +250,7 @@ struct ArcPaths {
   const base::FilePath apk_cache_dir{kApkCacheDir};
   const base::FilePath art_container_data_directory{kArtContainerDataDirectory};
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
+  const base::FilePath camera_profile_dir{kCameraProfileDir};
   const base::FilePath cras_socket_directory{kCrasSocketDirectory};
   const base::FilePath debugfs_directory{kDebugfsDirectory};
   const base::FilePath fake_kptr_restrict{kFakeKptrRestrict};
@@ -256,6 +260,7 @@ struct ArcPaths {
       kHostSideDalvikCacheDirectoryInContainer};
   const base::FilePath media_dest_directory{kMediaDestDirectory};
   const base::FilePath media_mount_directory{kMediaMountDirectory};
+  const base::FilePath media_profile_file{kMediaProfileFile};
   const base::FilePath media_rootfs_directory{kMediaRootfsDirectory};
   const base::FilePath obb_mount_directory{kObbMountDirectory};
   const base::FilePath obb_rootfs_directory{kObbRootfsDirectory};
@@ -515,6 +520,25 @@ void ArcSetup::ApplyPerBoardConfigurations() {
                                "mode=0755"));
   EXIT_IF(!MkdirRecursively(
       arc_paths_->oem_mount_directory.Append("etc/permissions")));
+
+  // Detect camera device and generate camera profiles.
+  const base::FilePath generate_camera_profile(
+      "/usr/bin/generate_camera_profile");
+  if (base::PathExists(generate_camera_profile)) {
+    EXIT_IF(!LaunchAndWait({generate_camera_profile.value()}));
+
+    const base::FilePath generated_media_profile_xml =
+        base::FilePath(arc_paths_->camera_profile_dir)
+            .Append(arc_paths_->media_profile_file);
+    const base::FilePath new_media_profile_xml =
+        base::FilePath(arc_paths_->oem_mount_directory)
+            .Append("etc")
+            .Append(arc_paths_->media_profile_file);
+    if (base::PathExists(generated_media_profile_xml)) {
+      EXIT_IF(
+          !base::CopyFile(generated_media_profile_xml, new_media_profile_xml));
+    }
+  }
 
   const base::FilePath platform_xml_file =
       base::FilePath(arc_paths_->oem_mount_directory)
