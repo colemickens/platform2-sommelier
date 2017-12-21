@@ -86,6 +86,19 @@
         'concierge/main.cc',
       ],
     },
+    {
+      'target_name': 'concierge_client',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'protobuf',
+          'system_api',
+        ],
+      },
+      'sources': [
+        'concierge/client.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
