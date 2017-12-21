@@ -27,6 +27,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/repeated_field.h>
 
 #include "shill/logging.h"
@@ -74,6 +75,20 @@ string GetRegError(int code, const regex_t* compiled) {
   vector<char> buffer(length);
   DCHECK_EQ(length, regerror(code, compiled, buffer.data(), length));
   return buffer.data();
+}
+
+string GetApnAuthentication(const MobileAPN& apn) {
+  if (apn.has_authentication()) {
+    switch (apn.authentication()) {
+      case mobile_operator_db::MobileAPN_Authentication_PAP:
+        return kApnAuthenticationPap;
+      case mobile_operator_db::MobileAPN_Authentication_CHAP:
+        return kApnAuthenticationChap;
+      default:
+        break;
+    }
+  }
+  return string();
 }
 
 }  // namespace
@@ -845,6 +860,7 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
         apn->operator_name_list.push_back({localized_name.name(),
                                            localized_name.language()});
       }
+      apn->authentication = GetApnAuthentication(apn_data);
       apn_list_.push_back(std::move(apn));
     }
   }

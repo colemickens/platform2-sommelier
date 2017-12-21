@@ -50,6 +50,13 @@ message MobileAPN {
   optional string username = 5;
   optional string password = 6;
   repeated string dns = 7;
+
+  enum Authentication {
+    DEFAULT = 0;
+    PAP = 1;
+    CHAP = 2;
+  }
+  optional Authentication authentication = 8;
 }
 
 message OnlinePortal {

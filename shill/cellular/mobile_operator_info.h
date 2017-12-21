@@ -128,6 +128,19 @@ class MobileOperatorInfo {
     // a certain default pair.
     std::string username;
     std::string password;
+    // The authentication method for sending username / password, which could
+    // be one of the following values:
+    // * (empty):
+    //   - When no username or password is provided, no authentication method
+    //     is specified.
+    //   - When a username and password is provided, the default authentication
+    //     method is used (which is PAP for most cases in the current
+    //     implementation of ModemManager).
+    // * "pap" (kApnAuthenticationPap):
+    //   - Password Authentication Protocol (PAP) is used for authentication
+    // * "chap" (kApnAuthenticationChap):
+    //   - Challenge-Handshake Authentication Protocol (CHAP) for authentication
+    std::string authentication;
   };
 
   // Encapsulates information about the Online payment portal used by chrome to
