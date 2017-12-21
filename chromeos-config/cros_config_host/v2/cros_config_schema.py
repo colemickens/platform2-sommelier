@@ -220,7 +220,7 @@ def _FilterBuildElements(config, path):
       _FilterBuildElements(config[key], full_path)
 
   for key in to_delete:
-    config.remove(key)
+    config.pop(key)
 
 def ValidateConfigSchema(schema, config):
   """Validates a transformed cros config against the schema specified
