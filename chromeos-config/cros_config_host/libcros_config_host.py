@@ -13,7 +13,6 @@ from __future__ import print_function
 
 from collections import namedtuple, OrderedDict
 import os
-import sys
 
 from . import fdt, validate_config
 
@@ -409,7 +408,7 @@ class CrosConfig(object):
     props = touch.GetMergedProperties(touch, None)
     if not 'tarball' in props:
       return None
-    tarball = GetPropFilename(touch._fdt_node.path, props, 'tarball')
+    tarball = GetPropFilename(touch.GetPath(), props, 'tarball')
     return self.GetBcsUri(props['overlay'], tarball)
 
   def GetBspUris(self):
@@ -454,6 +453,14 @@ class CrosConfig(object):
                                     for n, p in fdt_node.props.iteritems())
       self.default = None
       self.submodels = {}
+
+    def GetPath(self):
+      """Get the full path to a node
+
+      Returns:
+        path to node as a string
+      """
+      return self._fdt_node.path
 
     def FollowShare(self):
       """Follow a node's shares property
@@ -644,7 +651,7 @@ class CrosConfig(object):
         # '/chromeos/models/pyro/thermal' will return '/thermal' in subpath.
         # Once crbug.com/775229 is completed, we will be able to do this in a
         # nicer way.
-        _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
+        _, _, _, _, subpath = node.GetPath().split('/', 4)
         default_node = self.default.PathNode(subpath)
         if default_node:
           self.MergeProperties(props, default_node, phandle_prop)
@@ -815,7 +822,7 @@ class CrosConfig(object):
           cras_dir = props.get('cras-config-dir')
           if not cras_dir:
             raise ValueError(("node '%s': Should have a cras-config-dir") %
-                             (card._fdt_node.path))
+                             (card.GetPath().path))
           _AddAudioFile('volume', '{card}', cras_dir)
           _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
