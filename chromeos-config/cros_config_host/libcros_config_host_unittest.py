@@ -171,7 +171,7 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     pyro = config.models['pyro']
     stylus = pyro.PathNode('touch/stylus')
-    props = stylus.GetMergedProperties(None, 'touch-type')
+    props = pyro.GetMergedProperties(stylus, 'touch-type')
     self.assertSequenceEqual(
         props,
         OrderedDict([('version', '4209'),
@@ -183,7 +183,7 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.file)
     reef = config.models['reef']
     touchscreen = reef.PathNode('touch/touchscreen@1')
-    props = touchscreen.GetMergedProperties(None, 'touch-type')
+    props = reef.GetMergedProperties(touchscreen, 'touch-type')
     self.assertSequenceEqual(
         props,
         OrderedDict([('pid', '306e'),

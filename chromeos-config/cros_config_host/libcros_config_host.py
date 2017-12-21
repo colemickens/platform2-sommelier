@@ -190,14 +190,13 @@ class CrosConfig(object):
       cros_config: CrosConfig object
       fdt_node: fdt.Node object containing the device-tree node
     """
+    node = CrosConfig.Node(cros_config, fdt_node)
     if fdt_node.parent and fdt_node.parent.name == 'models':
-      node = CrosConfig.Model(cros_config, fdt_node)
       cros_config.models[node.name] = node
-    else:
-      node = CrosConfig.Node(cros_config, fdt_node)
     if 'phandle' in node.properties:
       phandle = fdt_node.props['phandle'].GetPhandle()
       cros_config.phandle_to_node[phandle] = node
+    node.default = node.FollowPhandle('default')
     for subnode in fdt_node.subnodes.values():
       node.subnodes[subnode.name] = CrosConfig.MakeNode(cros_config, subnode)
     node.ScanSubnodes()
@@ -407,7 +406,7 @@ class CrosConfig(object):
     touch = self.GetFamilyNode('touch/bcs')
     if not touch:
       return None
-    props = touch.GetMergedProperties(None, None)
+    props = touch.GetMergedProperties(touch, None)
     if not 'tarball' in props:
       return None
     tarball = GetPropFilename(touch._fdt_node.path, props, 'tarball')
@@ -454,10 +453,7 @@ class CrosConfig(object):
       self.properties = OrderedDict((n, CrosConfig.Property(p))
                                     for n, p in fdt_node.props.iteritems())
       self.default = None
-
-    def ScanSubnodes(self):
-      """Do any post-processing needed after the node's subnodes are present"""
-      pass
+      self.submodels = {}
 
     def FollowShare(self):
       """Follow a node's shares property
@@ -612,7 +608,7 @@ class CrosConfig(object):
               name != ignore):
             props[name] = prop.value
 
-    def GetMergedProperties(self, _, phandle_prop):
+    def GetMergedProperties(self, node, phandle_prop):
       """Obtain properties in two nodes linked by a phandle
 
       This is used to create a dict of the properties in a main node along with
@@ -623,40 +619,42 @@ class CrosConfig(object):
       linked node filling in anything missing. The main node's properties take
       precedence.
 
-      Phandle properties and 'reg' properties are not included.
+      Phandle properties and 'reg' properties are not included. The 'default'
+      node is checked as well.
 
       Args:
-        phandle_prop: Name of the phandle property to follow
+        node: Main node to obtain properties from
+        phandle_prop: Name of the phandle property to follow to get more
+            properties
 
       Returns:
         dict containing property names and values from both nodes:
           key: property name
           value: property value
       """
-      # First get all the property keys/values from the current node
+      # First get all the property keys/values from the main node
       props = OrderedDict((prop.name, prop.value)
-                          for prop in self.properties.values()
+                          for prop in node.properties.values()
                           if prop.name not in [phandle_prop, 'reg'])
 
       # Follow the phandle and add any new ones we find
-      self.MergeProperties(props, self.FollowPhandle(phandle_prop))
+      self.MergeProperties(props, node.FollowPhandle(phandle_prop))
+      if self.default:
+        # Get the path of this node relative to its model. For example:
+        # '/chromeos/models/pyro/thermal' will return '/thermal' in subpath.
+        # Once crbug.com/775229 is completed, we will be able to do this in a
+        # nicer way.
+        _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
+        default_node = self.default.PathNode(subpath)
+        if default_node:
+          self.MergeProperties(props, default_node, phandle_prop)
+          self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
       return props
-
-  class Model(Node):
-    """Represents a ChromeOS Configuration Model.
-
-    A CrosConfig.Model is a subclass of CrosConfig.Node, meaning it can be
-    traversed in the same manner. It also exposes helper functions
-    specific to ChromeOS Config models.
-    """
-    def __init__(self, cros_config, fdt_node):
-      super(CrosConfig.Model, self).__init__(cros_config, fdt_node)
-      self.default = self.FollowPhandle('default')
-      self.submodels = {}
 
     def ScanSubnodes(self):
       """Collect a list of submodels"""
-      if 'submodels' in self.subnodes.keys():
+      if (self.name in self.cros_config.models and
+          'submodels' in self.subnodes.keys()):
         for name, subnode in self.subnodes['submodels'].subnodes.iteritems():
           self.submodels[name] = subnode
 
@@ -675,20 +673,6 @@ class CrosConfig(object):
       if not submodel:
         return None
       return submodel.PathProperty(relative_path, property_name)
-
-    def GetMergedProperties(self, node, phandle_prop):
-      props = node.GetMergedProperties(None, phandle_prop)
-      if self.default:
-        # Get the path of this node relative to its model. For example:
-        # '/chromeos/models/pyro/thermal' will return '/thermal' in subpath.
-        # Once crbug.com/775229 is completed, we will be able to do this in a
-        # nicer way.
-        _, _, _, _, subpath = node._fdt_node.path.split('/', 4)
-        default_node = self.default.PathNode(subpath)
-        if default_node:
-          self.MergeProperties(props, default_node, phandle_prop)
-          self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
-      return props
 
     def GetFirmwareUris(self):
       """Returns a list of (string) firmware URIs.
