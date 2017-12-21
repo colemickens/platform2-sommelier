@@ -83,7 +83,7 @@ TEST_F(PasswordProviderTest, GetLongPassword) {
   // Create a very long password
   auto long_password = std::make_unique<char[]>(password.max_size());
   memset(long_password.get(), 'a', password.max_size());
-  std::string password_str(long_password.get());
+  std::string password_str(long_password.get(), password.max_size());
   memcpy(password.GetMutableRaw(), long_password.get(), password_str.size());
   password.SetSize(password_str.size());
 
