@@ -4,20 +4,44 @@
 
 #include "vm_tools/concierge/service.h"
 
+#include <arpa/inet.h>
+#include <signal.h>
+#include <stdint.h>
+#include <sys/mount.h>
+#include <sys/signalfd.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <map>
+#include <thread>  // NOLINT(build/c++11)
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
+
+using std::string;
 
 namespace vm_tools {
 namespace concierge {
 
 namespace {
+
+using Subnet = SubnetPool::Subnet;
+using LaunchProcessResult = VirtualMachine::LaunchProcessResult;
+using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
+using ProcessStatus = VirtualMachine::ProcessStatus;
+
+// Path to the runtime directory used by VMs.
+constexpr char kRuntimeDir[] = "/run/vm";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -32,6 +56,18 @@ void HandleSynchronousDBusMethodCall(
   response_sender.Run(std::move(response));
 }
 
+// Converts a string into an IPv4 address in network byte order.
+bool StringToIPv4Address(const string& address, uint32_t* addr) {
+  CHECK(addr);
+
+  struct in_addr in = {};
+  if (inet_pton(AF_INET, address.c_str(), &in) != 1) {
+    return false;
+  }
+  *addr = in.s_addr;
+  return true;
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create() {
@@ -42,6 +78,59 @@ std::unique_ptr<Service> Service::Create() {
   }
 
   return service;
+}
+
+void Service::OnFileCanReadWithoutBlocking(int fd) {
+  DCHECK_EQ(signal_fd_.get(), fd);
+
+  struct signalfd_siginfo siginfo;
+  if (read(signal_fd_.get(), &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
+    PLOG(ERROR) << "Failed to read from signalfd";
+    return;
+  }
+  DCHECK_EQ(siginfo.ssi_signo, SIGCHLD);
+
+  // We can't just rely on the information in the siginfo structure because
+  // more than one child may have exited but only one SIGCHLD will be
+  // generated.
+  while (true) {
+    int status;
+    pid_t pid = waitpid(-1, &status, WNOHANG);
+    if (pid <= 0) {
+      if (pid == -1 && errno != ECHILD) {
+        PLOG(ERROR) << "Unable to reap child processes";
+      }
+      break;
+    }
+
+    // See if this is a process we launched.
+    string name;
+    for (const auto& pair : vms_) {
+      if (pid == pair.second->pid()) {
+        name = pair.first;
+        break;
+      }
+    }
+
+    if (WIFEXITED(status)) {
+      LOG(INFO) << " Process " << pid << " exited with status "
+                << WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      LOG(INFO) << " Process " << pid << " killed by signal "
+                << WTERMSIG(status)
+                << (WCOREDUMP(status) ? " (core dumped)" : "");
+    } else {
+      LOG(WARNING) << "Unknown exit status " << status << " for process "
+                   << pid;
+    }
+
+    // Remove this process from the our set of VMs.
+    vms_.erase(std::move(name));
+  }
+}
+
+void Service::OnFileCanWriteWithoutBlocking(int fd) {
+  NOTREACHED();
 }
 
 bool Service::Init() {
@@ -86,20 +175,236 @@ bool Service::Init() {
     return false;
   }
 
+  // Change the umask so that the runtime directory for each VM will get the
+  // right permissions.
+  umask(002);
+
+  // Set up the signalfd for receiving SIGCHLD events.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+
+  signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
+  if (!signal_fd_.is_valid()) {
+    PLOG(ERROR) << "Failed to create signalfd";
+    return false;
+  }
+
+  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
+      &watcher_, this);
+  if (!ret) {
+    LOG(ERROR) << "Failed to watch signalfd";
+    return false;
+  }
+
+  // Now block SIGCHLD from the normal signal handling path so that we will get
+  // it via the signalfd.
+  if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    PLOG(ERROR) << "Failed to block SIGCHLD via sigprocmask";
+    return false;
+  }
+
   return true;
 }
 
 std::unique_ptr<dbus::Response> Service::StartVm(
     dbus::MethodCall* method_call) {
-  return nullptr;
+  LOG(INFO) << "Received StartVm request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartVmRequest request;
+  StartVmResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartVmRequest from message";
+
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Make sure the VM has a name.
+  if (request.name().empty()) {
+    LOG(ERROR) << "Ignoring request with empty name";
+
+    response.set_failure_reason("Missing VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (vms_.find(request.name()) != vms_.end()) {
+    LOG(ERROR) << "VM with requested name is already running";
+
+    response.set_failure_reason("VM name is taken");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath kernel(request.vm().kernel());
+  if (!base::PathExists(kernel)) {
+    LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
+
+    response.set_failure_reason("Kernel path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath rootfs(request.vm().rootfs());
+  if (!base::PathExists(rootfs)) {
+    LOG(ERROR) << "Missing VM rootfs path: " << rootfs.value();
+
+    response.set_failure_reason("Rootfs path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::vector<VirtualMachine::Disk> disks;
+  for (const auto& disk : request.disks()) {
+    if (!base::PathExists(base::FilePath(disk.path()))) {
+      LOG(ERROR) << "Missing disk path: " << disk.path();
+      response.set_failure_reason("One or more disk paths do not exist");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    disks.emplace_back(VirtualMachine::Disk{
+        .path = base::FilePath(disk.path()), .writable = disk.writable(),
+    });
+  }
+
+  // Create the runtime directory.
+  base::FilePath runtime_dir;
+  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
+                                     &runtime_dir)) {
+    PLOG(ERROR) << "Unable to create runtime directory for VM";
+
+    response.set_failure_reason(
+        "Internal error: unable to create runtime directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Allocate resources for the VM.
+  MacAddress mac_address = mac_address_generator_.Generate();
+  std::unique_ptr<Subnet> subnet = subnet_pool_.Allocate();
+  if (!subnet) {
+    LOG(ERROR) << "No available subnets; unable to start VM";
+
+    response.set_failure_reason("No available subnets");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  uint32_t vsock_cid = vsock_cid_pool_.Allocate();
+
+  // Get the address in network byte order.
+  uint32_t addr;
+  if (!StringToIPv4Address(subnet->IPv4Address(), &addr)) {
+    LOG(ERROR) << "Unable to parse subnet address " << subnet->IPv4Address();
+
+    response.set_failure_reason(
+        "Internal error: unable to parse subnet address");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Start the VM and build the response.
+  auto vm = VirtualMachine::Create(std::move(kernel), std::move(rootfs),
+                                   std::move(disks), std::move(mac_address),
+                                   std::move(subnet), vsock_cid,
+                                   std::move(runtime_dir));
+  if (!vm) {
+    LOG(ERROR) << "Unable to start VM";
+
+    response.set_failure_reason("Unable to start VM");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  LOG(INFO) << "Started VM with pid " << vm->pid();
+
+  response.set_success(true);
+  response.set_ipv4_address(addr);
+  response.set_pid(vm->pid());
+  response.set_cid(vsock_cid);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  vms_[request.name()] = std::move(vm);
+
+  return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
-  return nullptr;
+  LOG(INFO) << "Received StopVm request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StopVmRequest request;
+  StopVmResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StopVmRequest from message";
+
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!iter->second->Shutdown()) {
+    LOG(ERROR) << "Unable to shut down VM";
+
+    response.set_failure_reason("Unable to shut down VM");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  vms_.erase(iter);
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Service::StopAllVms(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received StopAllVms request";
+
+  std::vector<std::thread> threads;
+  threads.reserve(vms_.size());
+
+  // Spawn a thread for each VM to shut it down.
+  for (auto& pair : vms_) {
+    // By resetting the unique_ptr, each thread calls the destructor for that
+    // VM, which will shut it down.
+    threads.emplace_back([](std::unique_ptr<VirtualMachine> vm) { vm.reset(); },
+                         std::move(pair.second));
+  }
+
+  // Wait for all VMs to shutdown.
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  vms_.clear();
+
   return nullptr;
 }
 
