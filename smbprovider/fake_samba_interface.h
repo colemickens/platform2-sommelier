@@ -69,6 +69,8 @@ class FakeSambaInterface : public SambaInterface {
               size_t size,
               uint64_t date);
 
+    virtual ~FakeEntry() = default;
+
     // Returns true for SMBC_FILE and SMBC_DIR. False for all others.
     bool IsValidEntryType() const;
 
