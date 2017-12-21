@@ -32,8 +32,8 @@ class CrosConfigHostJsonTest(unittest.TestCase):
 
   def testGetFirmwareUris(self):
     expected_base_path = (
-      'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
-      'chromeos-base/chromeos-firmware-reef/%s'
+        'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
+        'chromeos-base/chromeos-firmware-reef/%s'
     )
     fw_uris = self.config.GetFirmwareUris()
     self.assertEquals(3, len(fw_uris))
@@ -51,7 +51,6 @@ class CrosConfigHostJsonTest(unittest.TestCase):
 
   def testGetAudioFiles(self):
     audio_files = self.config.GetAudioFiles()
-    print(audio_files)
     self.assertEquals(6, len(audio_files))
     self.assertIn(
         BaseFile(
