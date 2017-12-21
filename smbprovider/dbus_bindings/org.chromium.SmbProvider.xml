@@ -10,7 +10,7 @@
         in quotes because this does not actually do an actual mount since it is not needed on an SMB
         share. On success, this returns the corresponding mount id.
       </tp:docstring>
-      <arg name="mount_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized MountOptions protobuf.
         </tp:docstring>
@@ -33,7 +33,7 @@
         Unmounts' the mount corresponding to the mount id. 'Unmounts' is in quotes because this
         does not do an actual unmount since SMB does not need to actually mount a share.
       </tp:docstring>
-      <arg name="unmount_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized UnmountOptions protobuf.
         </tp:docstring>
@@ -50,7 +50,7 @@
       <tp:docstring>
         Reads the directory on a given path. This outputs a serialized DirectoryEntryList protobuf.
       </tp:docstring>
-      <arg name="read_directory_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized ReadDirectoryOptions protobuf.
         </tp:docstring>
@@ -72,7 +72,7 @@
       <tp:docstring>
         Gets the metadata of a given entry. This outputs an serialized DirectoryEntry protobuf.
       </tp:docstring>
-      <arg name="get_metadata_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized GetMetadataEntryOptions protobuf.
         </tp:docstring>
@@ -94,7 +94,7 @@
       <tp:docstring>
         Opens a file with a specified path.
       </tp:docstring>
-      <arg name="open_file_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized OpenFileOptions protobuf.
         </tp:docstring>
@@ -116,7 +116,7 @@
        <tp:docstring>
         Closes the file with the specified file handler.
       </tp:docstring>
-      <arg name="close_file_options_blob" type="ay" direction="in">
+      <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized CloseFileOptions protobuf.
         </tp:docstring>

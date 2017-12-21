@@ -48,25 +48,25 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
               std::unique_ptr<smbprovider::SambaInterface> samba_interface);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
-  void Mount(const ProtoBlob& mount_options_blob,
+  void Mount(const ProtoBlob& options_blob,
              int32_t* error_code,
              int32_t* mount_id) override;
 
-  int32_t Unmount(const ProtoBlob& unmount_options_blob) override;
+  int32_t Unmount(const ProtoBlob& options_blob) override;
 
-  void ReadDirectory(const ProtoBlob& read_directory_options_blob,
+  void ReadDirectory(const ProtoBlob& options_blob,
                      int32_t* error_code,
                      ProtoBlob* out_entries) override;
 
-  void GetMetadataEntry(const ProtoBlob& get_metadata_options_blob,
+  void GetMetadataEntry(const ProtoBlob& options_blob,
                         int32_t* error_code,
                         ProtoBlob* out_entry) override;
 
-  void OpenFile(const ProtoBlob& open_file_options_blob,
+  void OpenFile(const ProtoBlob& options_blob,
                 int32_t* error_code,
                 int32_t* file_id) override;
 
-  int32_t CloseFile(const ProtoBlob& close_file_options_blob) override;
+  int32_t CloseFile(const ProtoBlob& options_blob) override;
 
   // Register DBus object and interfaces.
   void RegisterAsync(
