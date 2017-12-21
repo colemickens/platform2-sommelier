@@ -18,8 +18,8 @@ namespace smbprovider {
 // smb:// urls. The methods will return errno on failure.
 class SambaInterface {
  public:
-  SambaInterface() {}
-  virtual ~SambaInterface() {}
+  SambaInterface() = default;
+  virtual ~SambaInterface() = default;
 
   // Opens a file at a given |file_path|.
   // |file_id| is the file id of the opened file. This will be -1 on failure.

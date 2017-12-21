@@ -14,8 +14,8 @@ namespace smbprovider {
 
 class SmbProviderHelperTest : public testing::Test {
  public:
-  SmbProviderHelperTest() {}
-  ~SmbProviderHelperTest() override {}
+  SmbProviderHelperTest() = default;
+  ~SmbProviderHelperTest() override = default;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderHelperTest);

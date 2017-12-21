@@ -49,6 +49,8 @@ std::string GetDirPath(const std::string& full_path) {
 FakeSambaInterface::FakeSambaInterface()
     : root(std::make_unique<FakeDirectory>("/")) {}
 
+FakeSambaInterface::~FakeSambaInterface() = default;
+
 int32_t FakeSambaInterface::OpenDirectory(const std::string& directory_path,
                                           int32_t* dir_id) {
   DCHECK(dir_id);

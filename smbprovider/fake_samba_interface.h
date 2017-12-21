@@ -25,7 +25,7 @@ namespace smbprovider {
 class FakeSambaInterface : public SambaInterface {
  public:
   FakeSambaInterface();
-  ~FakeSambaInterface() {}
+  ~FakeSambaInterface() override;
 
   // SambaInterface overrides.
   int32_t OpenDirectory(const std::string& directory_path,
