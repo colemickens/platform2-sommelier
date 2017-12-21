@@ -51,7 +51,7 @@ struct SmbiosTable {
     SmbiosTableSystem system;
     uint8_t data[1024];
   } data;
-  const char* strings;
+  std::string strings;
 };
 
 bool CrosConfig::WriteFakeTables(base::File& smbios_file,
@@ -186,10 +186,9 @@ bool CrosConfig::FindAndCopyTable(enum SmbiosTypes type,
   // Figure out the size of the string table, then copy that too.
   const char* strings_ptr = ptr + hdr->length;
   int strings_len = StringTableLength(strings_ptr);
-  table_out->strings = new char[strings_len];
-  memcpy((char*)table_out->strings, strings_ptr, strings_len);
+  table_out->strings.assign(strings_ptr, strings_len);
   VLOG(1) << "found table at " << (uintptr_t)hdr << " strings "
-          << table_out->strings << " " << strings_len;
+          << table_out->strings.c_str() << " " << strings_len;
 
   return true;
 }
@@ -225,9 +224,10 @@ bool CrosConfig::GetSystemTable(const base::FilePath& smbios_file,
 }
 
 std::string CrosConfig::GetString(const SmbiosTable& table, int string_id) {
+  const char* strings = table.strings.c_str();
   const char* ptr;
   int i;
-  for (i = 1, ptr = table.strings; i < string_id; i++, ptr += strlen(ptr) + 1) {
+  for (i = 1, ptr = strings; i < string_id; i++, ptr += strlen(ptr) + 1) {
     if (!*ptr) {
       return "";
     }
