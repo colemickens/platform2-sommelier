@@ -35,7 +35,6 @@ namespace libwebserv {
 
 using PairOfStrings = std::pair<std::string, std::string>;
 
-#ifndef __ANDROID__
 class DBusProtocolHandler;
 
 
@@ -69,7 +68,6 @@ class LIBWEBSERV_EXPORT FileInfo final {
 
   DISALLOW_COPY_AND_ASSIGN(FileInfo);
 };
-#endif  // !__ANDROID__
 
 // A class that represents the HTTP request data.
 class LIBWEBSERV_EXPORT Request {
@@ -107,11 +105,9 @@ class LIBWEBSERV_EXPORT Request {
   // POST data.
   std::vector<PairOfStrings> GetFormDataPost() const;
 
-#ifndef __ANDROID__
   // Returns a list of file information records for all the file uploads in
   // the POST request.
   std::vector<std::pair<std::string, const FileInfo*>> GetFiles() const;
-#endif  // !__ANDROID__
 
   // Gets the values of form field with given |name|. This includes both
   // values provided on the URL and as part of form data in POST request.
@@ -124,10 +120,8 @@ class LIBWEBSERV_EXPORT Request {
   // Gets the values of URL query parameters with given |name|.
   std::vector<std::string> GetFormFieldGet(const std::string& name) const;
 
-#ifndef __ANDROID__
   // Gets the file upload parameters for a file form field of given |name|.
   std::vector<const FileInfo*> GetFileInfo(const std::string& name) const;
-#endif  // !__ANDROID__
 
   // Returns a list of key-value pairs for all the request headers.
   std::vector<PairOfStrings> GetHeaders() const;
@@ -145,9 +139,7 @@ class LIBWEBSERV_EXPORT Request {
   std::string method_;
   std::multimap<std::string, std::string> post_data_;
   std::multimap<std::string, std::string> get_data_;
-#ifndef __ANDROID__
   std::multimap<std::string, std::unique_ptr<FileInfo>> file_info_;
-#endif  // !__ANDROID__
   std::multimap<std::string, std::string> headers_;
 };
 

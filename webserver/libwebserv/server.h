@@ -22,13 +22,9 @@
 #include <base/macros.h>
 #include <libwebserv/export.h>
 
-#ifdef __ANDROID__
-#include <brillo/message_loops/message_loop.h>
-#else
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/bus.h>
-#endif  // __ANDROID__
 
 namespace libwebserv {
 
@@ -41,21 +37,6 @@ class LIBWEBSERV_EXPORT Server {
   Server() = default;
   virtual ~Server() = default;
 
-#ifdef __ANDROID__
-  // Establish a connection to the system webserver.
-  //
-  // |on_server_online| and |on_server_offline| will notify the caller when the
-  // server comes up and down.
-  //
-  // Note that you can use the returned Server instance as if the webserver
-  // process is actually running (ignoring webserver crashes and restarts).
-  // All registered request handlers will simply be re-registered when the
-  // webserver appears again.
-  static std::unique_ptr<Server> ConnectToServerViaBinder(
-      brillo::MessageLoop* message_loop,
-      const base::Closure& on_server_online,
-      const base::Closure& on_server_offline);
-#else
   // Establish a connection to the system webserver.
   //
   // |service_name| is the well known D-Bus name of the client's process, used
@@ -74,7 +55,6 @@ class LIBWEBSERV_EXPORT Server {
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
       const base::Closure& on_server_online,
       const base::Closure& on_server_offline);
-#endif  // __ANDROID__
 
   // A helper method that returns the default handler for "http".
   virtual ProtocolHandler* GetDefaultHttpHandler() = 0;

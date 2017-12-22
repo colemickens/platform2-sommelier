@@ -36,13 +36,8 @@ using brillo::dbus_utils::ExportedObjectManager;
 
 namespace {
 
-#ifdef __ANDROID__
-const char kCertificateFile[] = "/data/misc/webservd/certificate";
-const char kKeyFile[] = "/data/misc/webservd/key";
-#else
 const char kCertificateFile[] = "/var/lib/webservd-certificate";
 const char kKeyFile[] = "/var/lib/webservd-key";
-#endif
 
 void OnFirewallSuccess(const std::string& itf_name,
                        uint16_t port,
@@ -230,11 +225,7 @@ void Server::InitTlsData() {
 
 base::FilePath Server::GetUploadDirectory() const {
   base::FilePath upload_dir;
-#ifdef __ANDROID__
-  upload_dir = base::FilePath{"/data/misc/webservd/uploads"};
-#else
   CHECK(base::GetTempDir(&upload_dir));
-#endif
   return upload_dir;
 }
 

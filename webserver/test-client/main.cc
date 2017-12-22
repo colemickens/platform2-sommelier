@@ -23,24 +23,12 @@
 
 #define LOG_TAG webservd_testc
 
-#ifdef __ANDROID__
-
-#include <binderwrapper/binder_wrapper.h>
-
-#include <brillo/binder_watcher.h>
-#include <brillo/daemons/daemon.h>
-using WebservTestClientBaseClass = brillo::Daemon;
-
-#else
-
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 
 // If we're using DBus, pick a base class that does DBus related init.
 using WebservTestClientBaseClass = brillo::DBusDaemon;
 using brillo::dbus_utils::AsyncEventSequencer;
-
-#endif  // __ANDROID__
 
 using libwebserv::Server;
 using libwebserv::ProtocolHandler;
@@ -83,23 +71,11 @@ class WebservTestClient : public WebservTestClientBaseClass {
     if (exit_code != EX_OK)
       return exit_code;
 
-#ifdef __ANDROID__
-    android::BinderWrapper::Create();
-    if (!binder_watcher_.Init()) {
-      return EX_OSERR;
-    }
-
-    webserver_ = Server::ConnectToServerViaBinder(
-        brillo::MessageLoop::current(),
-        base::Bind(&LogServerOnlineStatus, true /* online */),
-        base::Bind(&LogServerOnlineStatus, false /* offline */));
-#else
     webserver_ = Server::ConnectToServerViaDBus(
         bus_, bus_->GetConnectionName(),
         AsyncEventSequencer::GetDefaultCompletionAction(),
         base::Bind(&LogServerOnlineStatus, true /* online */),
         base::Bind(&LogServerOnlineStatus, false /* offline */));
-#endif  // __ANDROID__
 
     // Note that adding this handler is only local, and we won't receive
     // requests until the library does some async book keeping.
@@ -114,9 +90,6 @@ class WebservTestClient : public WebservTestClientBaseClass {
 
  private:
   std::unique_ptr<Server> webserver_;
-#ifdef __ANDROID__
-  brillo::BinderWatcher binder_watcher_;
-#endif  // __ANDROID__
 
   DISALLOW_COPY_AND_ASSIGN(WebservTestClient);
 };  // class WebservTestClient

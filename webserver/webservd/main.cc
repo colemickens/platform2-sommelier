@@ -19,64 +19,36 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#ifdef __ANDROID__
-#include <binderwrapper/binder_wrapper.h>
-#include <brillo/binder_watcher.h>
-#include <brillo/daemons/daemon.h>
-#else
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
-#include <brillo/daemons/dbus_daemon.h>
-#endif  // __ANDROID__
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#ifdef __ANDROID__
-#include "webservd/binder_server.h"
-#include "webserv_common/binder_constants.h"
-#else
-#include "webservd/server.h"
-#endif
 #include "webservd/config.h"
 #include "webservd/log_manager.h"
+#include "webservd/permission_broker_firewall.h"
+#include "webservd/server.h"
 #include "webservd/utils.h"
 
-#if defined(__ANDROID__)
-#include <firewalld/firewall.h>
-#else
-#include "webservd/permission_broker_firewall.h"
-using FirewallImpl = webservd::PermissionBrokerFirewall;
-#endif  // defined(__ANDROID__)
-
-#ifdef __ANDROID__
-using BaseDaemon = brillo::Daemon;
-#else
 using brillo::dbus_utils::AsyncEventSequencer;
 using BaseDaemon = brillo::DBusServiceDaemon;
-#endif  // __ANDROID__
+using FirewallImpl = webservd::PermissionBrokerFirewall;
 
 namespace {
 
 const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 
-#ifndef __ANDROID__
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
-#endif  // !defined(__ANDROID__)
 
 class Daemon final : public BaseDaemon {
  public:
-#ifdef __ANDROID__
-  explicit Daemon(webservd::Config config)
-      : config_{std::move(config)} {}
-#else
   explicit Daemon(webservd::Config config)
       : DBusServiceDaemon{kServiceName, kRootServicePath},
         config_{std::move(config)} {}
-#endif  // __ANDROID__
 
  protected:
-#ifndef __ANDROID__
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     webservd::LogManager::Init(base::FilePath{config_.log_directory});
     server_.reset(new webservd::Server{
@@ -89,44 +61,10 @@ class Daemon final : public BaseDaemon {
   void OnShutdown(int* /* return_code */) override {
     server_.reset();
   }
-#endif  // !__ANDROID__
 
  private:
-#ifdef __ANDROID__
-  int OnInit() override {
-    int result = brillo::Daemon::OnInit();
-    if (result != EX_OK) {
-      return result;
-    }
-
-    webservd::LogManager::Init(base::FilePath{config_.log_directory});
-
-    android::BinderWrapper::Create();
-    if (!binder_watcher_.Init()) {
-        return EX_OSERR;
-    }
-
-    server_.reset(new webservd::BinderServer(config_,
-                  android::BinderWrapper::Get()));
-
-    if (!android::BinderWrapper::Get()->RegisterService(
-            webservd::kWebserverBinderServiceName,
-            server_.get())) {
-      return EX_OSERR;
-    }
-
-
-    return EX_OK;
-  }
-#endif  // __ANDROID__
-
   webservd::Config config_;
-#ifdef __ANDROID__
-  std::unique_ptr<webservd::BinderServer> server_;
-  brillo::BinderWatcher binder_watcher_;
-#else
   std::unique_ptr<webservd::Server> server_;
-#endif  // __ANDROID__
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
