@@ -148,41 +148,30 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
                         int32_t* mount_id) {
   DCHECK(error_code);
   DCHECK(mount_id);
+  *mount_id = -1;
 
   MountOptions options;
-  if (!ParseOptionsProto(kMountMethod, options_blob, &options, error_code)) {
-    *mount_id = -1;
+  bool can_mount =
+      ParseOptionsProto(kMountMethod, options_blob, &options, error_code) &&
+      CanMountPath(options.path(), error_code);
+
+  if (!can_mount) {
+    // ParseOptionsProto() or CanMountPath() already set |error_code|.
     return;
   }
 
-  int32_t dir_id = -1;
-  int32_t open_dir_error =
-      samba_interface_->OpenDirectory(options.path(), &dir_id);
-  if (open_dir_error != 0) {
-    *mount_id = -1;
-    LogAndSetError(kMountMethod, -1, GetErrorFromErrno(open_dir_error),
-                   error_code);
-    return;
-  }
-  DCHECK(mounts_.find(current_mount_id_) == mounts_.end());
-  mounts_[current_mount_id_] = options.path();
-  CloseDirectory(dir_id);
-  *mount_id = current_mount_id_;
+  *mount_id = AddMount(options.path());
   *error_code = static_cast<int32_t>(ERROR_OK);
-  current_mount_id_++;
 }
 
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
-  int32_t parse_error_code;
+  int32_t error_code;
   UnmountOptions options;
-  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options,
-                         &parse_error_code)) {
-    return parse_error_code;
+  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options, &error_code)) {
+    return error_code;
   }
 
-  ErrorType error =
-      mounts_.erase(options.mount_id()) == 0 ? ERROR_NOT_FOUND : ERROR_OK;
-  return static_cast<int32_t>(error);
+  return RemoveMount(options.mount_id());
 }
 
 void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
@@ -198,15 +187,15 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
     return;
   }
 
-  std::string share_path;
-  if (!GetMountPathFromId(options.mount_id(), &share_path)) {
-    LogAndSetError(kReadDirectoryMethod, options.mount_id(), ERROR_NOT_FOUND,
-                   error_code);
+  std::string full_path;
+  if (!GetFullPath(kReadDirectoryMethod, options.mount_id(),
+                   options.directory_path(), &full_path)) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return;
   }
+
   int32_t dir_id = -1;
-  int32_t open_dir_error = samba_interface_->OpenDirectory(
-      AppendPath(share_path, options.directory_path()), &dir_id);
+  int32_t open_dir_error = samba_interface_->OpenDirectory(full_path, &dir_id);
   if (open_dir_error != 0) {
     LogAndSetError(kReadDirectoryMethod, options.mount_id(),
                    GetErrorFromErrno(open_dir_error), error_code);
@@ -238,13 +227,13 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
     return;
   }
 
-  std::string share_path;
-  if (!GetMountPathFromId(options.mount_id(), &share_path)) {
-    LogAndSetError(kGetMetadataEntryMethod, options.mount_id(), ERROR_NOT_FOUND,
-                   error_code);
+  std::string full_path;
+  if (!GetFullPath(kGetMetadataEntryMethod, options.mount_id(),
+                   options.entry_path(), &full_path)) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return;
   }
-  const std::string full_path = AppendPath(share_path, options.entry_path());
+
   struct stat stat_info;
   int32_t get_status_error =
       samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
@@ -267,24 +256,22 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
     return;
   }
 
-  std::string share_path;
-  if (!GetMountPathFromId(options.mount_id(), &share_path)) {
-    LogAndSetError(kOpenFileMethod, options.mount_id(), ERROR_NOT_FOUND,
-                   error_code);
+  std::string full_path;
+  if (!GetFullPath(kGetMetadataEntryMethod, options.mount_id(),
+                   options.file_path(), &full_path)) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return;
   }
 
-  const std::string full_path = AppendPath(share_path, options.file_path());
   const int32_t flags = options.writeable() ? O_RDWR : O_RDONLY;
-
   int32_t result = samba_interface_->OpenFile(full_path, flags, file_id);
-
   if (result != 0) {
     LogAndSetError(kOpenFileMethod, options.mount_id(),
                    GetErrorFromErrno(result), error_code);
     *file_id = -1;
     return;
   }
+
   *error_code = static_cast<int32_t>(ERROR_OK);
 }
 
@@ -335,14 +322,32 @@ int32_t SmbProvider::GetDirectoryEntries(int32_t dir_id,
   return 0;
 }
 
-bool SmbProvider::GetMountPathFromId(int32_t mount_id,
-                                     std::string* share_path) const {
-  DCHECK(share_path);
+bool SmbProvider::GetFullPath(const char* operation_name,
+                              int32_t mount_id,
+                              const std::string& entry_path,
+                              std::string* full_path) const {
+  DCHECK(full_path);
+
   auto mount_iter = mounts_.find(mount_id);
   if (mount_iter == mounts_.end()) {
+    LOG(ERROR) << operation_name << " requested unknown mount_id " << mount_id;
     return false;
   }
-  *share_path = mount_iter->second;
+
+  *full_path = AppendPath(mount_iter->second, entry_path);
+  return true;
+}
+
+bool SmbProvider::CanMountPath(const std::string& mount_root,
+                               int32_t* error_code) {
+  int32_t dir_id = -1;
+  int32_t result = samba_interface_->OpenDirectory(mount_root, &dir_id);
+  if (result != 0) {
+    LogAndSetError(kMountMethod, -1, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+
+  CloseDirectory(dir_id);
   return true;
 }
 
@@ -351,6 +356,22 @@ void SmbProvider::CloseDirectory(int32_t dir_id) {
   if (result != 0) {
     LOG(ERROR) << "Error closing directory " << dir_id;
   }
+}
+
+bool SmbProvider::IsAlreadyMounted(int32_t mount_id) const {
+  return mounts_.count(mount_id) > 0;
+}
+
+int32_t SmbProvider::AddMount(const std::string& mount_root) {
+  DCHECK(!IsAlreadyMounted(current_mount_id_));
+
+  mounts_[current_mount_id_] = mount_root;
+  return current_mount_id_++;
+}
+
+int32_t SmbProvider::RemoveMount(int32_t mount_id) {
+  ErrorType result = mounts_.erase(mount_id) == 0 ? ERROR_NOT_FOUND : ERROR_OK;
+  return static_cast<int32_t>(result);
 }
 
 }  // namespace smbprovider

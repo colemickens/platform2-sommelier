@@ -81,14 +81,33 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // |entries| will be empty in case of failure.
   int32_t GetDirectoryEntries(int32_t dir_id, DirectoryEntryList* entries);
 
-  // Helper method to get the corresponding |share_path| to the provided
-  // |mount_id| on success. Returns true if if mount info is found.
-  // |share_path| will be unmodified in case of failure.
-  bool GetMountPathFromId(int32_t mount_id, std::string* share_path) const;
+  // Looks up the |mount_id| and appends |entry_path| to the root share path
+  // and sets |full_path| to the result. |full_path| will be unmodified on
+  // failure.
+  // |operation_name| is used for logging purposes only.
+  bool GetFullPath(const char* operation_name,
+                   int32_t mount_id,
+                   const std::string& entry_path,
+                   std::string* full_path) const;
+
+  // Tests whether |mount_root| is a valid path to be mounted by attemping
+  // to open the directory.
+  bool CanMountPath(const std::string& mount_root, int32_t* error_code);
 
   // Helper method to close the directory with id |dir_id|. Logs an error if the
   // directory fails to close.
   void CloseDirectory(int32_t dir_id);
+
+  // Returns true if |mount_id| is already mounted.
+  bool IsAlreadyMounted(int32_t mount_id) const;
+
+  // Adds |mount_root| to the |mounts_| map and returns the mount id
+  // that was assigned to this mount.
+  int32_t AddMount(const std::string& mount_root);
+
+  // Removes |mount_id| from the |mounts_| map and returns ERROR_OK
+  // on success or ERROR_FAILED otherwise.
+  int32_t RemoveMount(int32_t mount_id);
 
   std::unique_ptr<smbprovider::SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
