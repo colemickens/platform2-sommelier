@@ -147,19 +147,32 @@ def GetPropFilename(node_path, props, fname_prop):
   return GetFilename(node_path, props, template)
 
 
-class CrosConfig(object):
+def CrosConfig(infile=None):
+  """Create a new CrosConfigImpl object
+
+  This is in a separate function to allow us to (in the future) support YAML,
+  which will have a different means of creating the impl class.
+  """
+  return CrosConfigImpl(infile)
+
+
+class CrosConfigImpl(object):
   """The ChromeOS Configuration API for the host.
 
-  CrosConfig is the top level API for accessing ChromeOS Configs from the host.
+  CrosConfigImpl is the top level API for accessing ChromeOS Configs from the
+  host.
 
   Properties:
-    models: All models in the CrosConfig tree, in the form of a dictionary:
-            <model name: string, model: CrosConfig.Model>
-    phandle_to_node: Map of phandles to the assocated CrosConfig.Node:
+    models: All models in the CrosConfigImpl tree, in the form of a dictionary:
+            <model name: string, model: CrosConfigImpl.Node>
+    phandle_to_node: Map of phandles to the assocated CrosConfigImpl.Node:
         key: Integer phandle value (>= 1)
-        value: Associated CrosConfig.Node object
+        value: Associated CrosConfigImpl.Node object
+    root: Root node (CrosConigImpl.Node object)
+    validator: Validator for the config (CrosConfigValidator object)
+    family: Family node (CrosConigImpl.Node object)
   """
-  def __init__(self, infile=None):
+  def __init__(self, infile):
     if not infile:
       if 'SYSROOT' not in os.environ:
         raise ValueError('No master configuration is available outside the '
@@ -172,7 +185,7 @@ class CrosConfig(object):
     self._fdt.Scan()
     self.phandle_to_node = {}
     self.models = OrderedDict()
-    self.root = CrosConfig.MakeNode(self, self._fdt.GetRoot())
+    self.root = CrosConfigImpl.MakeNode(self, self._fdt.GetRoot())
     self.validator = validate_config.GetValidator()
     self.family = self.root.subnodes['chromeos'].subnodes['family']
 
@@ -187,7 +200,7 @@ class CrosConfig(object):
       cros_config: CrosConfig object
       fdt_node: fdt.Node object containing the device-tree node
     """
-    node = CrosConfig.Node(cros_config, fdt_node)
+    node = CrosConfigImpl.Node(cros_config, fdt_node)
     if fdt_node.parent and fdt_node.parent.name == 'models':
       cros_config.models[node.name] = node
     if 'phandle' in node.properties:
@@ -195,7 +208,8 @@ class CrosConfig(object):
       cros_config.phandle_to_node[phandle] = node
     node.default = node.FollowPhandle('default')
     for subnode in fdt_node.subnodes.values():
-      node.subnodes[subnode.name] = CrosConfig.MakeNode(cros_config, subnode)
+      node.subnodes[subnode.name] = CrosConfigImpl.MakeNode(cros_config,
+                                                            subnode)
     node.ScanSubnodes()
     return node
 
@@ -451,9 +465,9 @@ class CrosConfig(object):
     Properties:
       name: The name of the this node.
       subnodes: Child nodes, in the form of a dictionary:
-                <node name: string, child node: CrosConfig.Node>
+                <node name: string, child node: CrosConfigImpl.Node>
       properties: All properties attached to this node in the form of a
-                  dictionary: <name: string, property: CrosConfig.Property>
+                  dictionary: <name: string, property: CrosConfigImpl.Property>
     """
     def __init__(self, cros_config, fdt_node):
       self.cros_config = cros_config
@@ -461,7 +475,7 @@ class CrosConfig(object):
       self.name = fdt_node.name
       # Subnodes are set up in Model.ScanSubnodes()
       self.subnodes = OrderedDict()
-      self.properties = OrderedDict((n, CrosConfig.Property(p))
+      self.properties = OrderedDict((n, CrosConfigImpl.Property(p))
                                     for n, p in fdt_node.props.iteritems())
       self.default = None
       self.submodels = {}
@@ -491,7 +505,7 @@ class CrosConfig(object):
       return None
 
     def PathNode(self, relative_path):
-      """Returns the CrosConfig.Node at the relative path.
+      """Returns the CrosConfigImpl.Node at the relative path.
 
       This method is useful for accessing a nested child object at a relative
       path from a Node (or Model). The path must be separated with '/'
@@ -501,7 +515,7 @@ class CrosConfig(object):
         relative_path: A relative path string separated by '/', '/thermal'
 
       Returns:
-        A CrosConfig.Node at the path, or None if it doesn't exist.
+        A CrosConfigImpl.Node at the path, or None if it doesn't exist.
       """
       if not relative_path:
         return self
@@ -532,7 +546,7 @@ class CrosConfig(object):
         property_name: Name of property to find
 
       Returns:
-        CrosConfig.Property object that waws found, or None if none
+        CrosConfigImpl.Property object that waws found, or None if none
       """
       return self.properties.get(property_name)
 

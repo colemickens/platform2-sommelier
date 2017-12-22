@@ -15,7 +15,7 @@ from __future__ import print_function
 import argparse
 import sys
 
-from .libcros_config_host import CrosConfig
+from .libcros_config_host import CrosConfig, CrosConfigImpl
 from v2.libcros_config_host_json import CrosConfigJson
 
 
@@ -166,7 +166,7 @@ def GetBspTarFiles(config):
 
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
-  target_dirs = CrosConfig.GetTargetDirectories()
+  target_dirs = CrosConfigImpl.GetTargetDirectories()
   print('''/*
  * This is a generated file, DO NOT EDIT!'
  *
