@@ -67,6 +67,7 @@ preserve_files() {
       unencrypted/preserve/attestation.epb
       unencrypted/preserve/local_tpm_data
       unencrypted/preserve/powerwash_count
+      unencrypted/preserve/tpm_firmware_update_request
       unencrypted/preserve/update_engine/prefs/rollback-version
       home/.shadow/install_attributes.pb
     "
