@@ -71,10 +71,9 @@ std::string GetStrippedReleaseBoard() {
   return base::ToLowerASCII(board);
 }
 
-static void HandleVpdUpdateCompletion(
-    bool is_enrolled,
-    const PolicyService::Completion& completion,
-    bool success) {
+void HandleVpdUpdateCompletion(bool is_enrolled,
+                               const PolicyService::Completion& completion,
+                               bool success) {
   if (completion.is_null()) {
     return;
   }
@@ -99,6 +98,14 @@ static void HandleVpdUpdateCompletion(
              << ", full board name: " << base::SysInfo::GetLsbReleaseBoard();
   completion.Run(
       CreateError(dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
+}
+
+int GetSwitchPrefixLength(const std::string& switch_string) {
+  if (switch_string.substr(0, 2) == "--")
+    return 2;
+  if (switch_string.substr(0, 1) == "-")
+    return 1;
+  return 0;
 }
 
 const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
@@ -306,11 +313,16 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
          it != flags.end(); ++it) {
       std::string flag(*it);
-      // Ignore empty flags.
-      if (flag.empty() || flag == "-" || flag == "--")
+      const int prefix_length = GetSwitchPrefixLength(flag);
+      const std::string unprefixed_flag(flag.substr(prefix_length));
+      // Ignore empty or invalid flags.
+      if (unprefixed_flag.empty() ||
+          unprefixed_flag == chromeos::switches::kPolicySwitchesBegin ||
+          unprefixed_flag == chromeos::switches::kPolicySwitchesEnd) {
         continue;
-      // Check if the flag doesn't start with proper prefix and add it.
-      if (flag.length() <= 1 || flag[0] != '-')
+      }
+      // Ensure the added flag has the proper prefix.
+      if (!prefix_length)
         flag = std::string("--").append(flag);
       policy_args.push_back(flag);
     }

@@ -996,6 +996,8 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("");
   settings.mutable_start_up_flags()->add_flags("-");
   settings.mutable_start_up_flags()->add_flags("--");
+  settings.mutable_start_up_flags()->add_flags("--policy-switches-end");
+  settings.mutable_start_up_flags()->add_flags("--policy-switches-begin");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
                                 policy_proto_);
