@@ -91,6 +91,19 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                    const std::string& entry_path,
                    std::string* full_path) const;
 
+  // Parses the raw contents of |blob| into |options| and validates that
+  // the required fields are all correctly set.
+  // |full_path| will contain the full path, including the mount root, based
+  // on the mount id and entry path supplied in |options|.
+  // On failure |error_code| will be populated and |options| and |full_path|
+  // are undefined.
+  template <typename Proto>
+  bool ParseOptionsAndPath(const char* method_name,
+                           const ProtoBlob& blob,
+                           Proto* options,
+                           std::string* full_path,
+                           int32_t* error_code);
+
   // Tests whether |mount_root| is a valid path to be mounted by attemping
   // to open the directory.
   bool CanMountPath(const std::string& mount_root, int32_t* error_code);

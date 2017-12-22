@@ -90,6 +90,32 @@ bool IsValidOptions(const CloseFileOptions& options) {
   return options.has_mount_id() && options.has_file_id();
 }
 
+// Template specializations to extract the entry path from the various protos
+// even when the fields have different names.
+template <typename Proto>
+std::string GetEntryPath(const Proto& options) {
+  // Each new Proto type that uses ParseProtoAndPath must add a specialization
+  // below that extracts the field from the proto that represents the path.
+  //
+  // This will only cause a compile error when a specialization is not defined.
+  options.you_must_define_a_specialization_for_GetEntryPath();
+}
+
+template <>
+std::string GetEntryPath(const ReadDirectoryOptions& options) {
+  return options.directory_path();
+}
+
+template <>
+std::string GetEntryPath(const GetMetadataEntryOptions& options) {
+  return options.entry_path();
+}
+
+template <>
+std::string GetEntryPath(const OpenFileOptions& options) {
+  return options.file_path();
+}
+
 template <typename Proto>
 bool ParseOptionsProto(const char* method_name,
                        const ProtoBlob& blob,
@@ -183,16 +209,10 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
   DCHECK(out_entries);
   out_entries->clear();
 
-  ReadDirectoryOptions options;
-  if (!ParseOptionsProto(kReadDirectoryMethod, options_blob, &options,
-                         error_code)) {
-    return;
-  }
-
   std::string full_path;
-  if (!GetFullPath(kReadDirectoryMethod, options.mount_id(),
-                   options.directory_path(), &full_path)) {
-    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+  ReadDirectoryOptions options;
+  if (!ParseOptionsAndPath(kReadDirectoryMethod, options_blob, &options,
+                           &full_path, error_code)) {
     return;
   }
 
@@ -223,16 +243,10 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
   DCHECK(out_entry);
   out_entry->clear();
 
-  GetMetadataEntryOptions options;
-  if (!ParseOptionsProto(kGetMetadataEntryMethod, options_blob, &options,
-                         error_code)) {
-    return;
-  }
-
   std::string full_path;
-  if (!GetFullPath(kGetMetadataEntryMethod, options.mount_id(),
-                   options.entry_path(), &full_path)) {
-    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+  GetMetadataEntryOptions options;
+  if (!ParseOptionsAndPath(kGetMetadataEntryMethod, options_blob, &options,
+                           &full_path, error_code)) {
     return;
   }
 
@@ -253,15 +267,10 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
   DCHECK(error_code);
   DCHECK(file_id);
 
-  OpenFileOptions options;
-  if (!ParseOptionsProto(kOpenFileMethod, options_blob, &options, error_code)) {
-    return;
-  }
-
   std::string full_path;
-  if (!GetFullPath(kGetMetadataEntryMethod, options.mount_id(),
-                   options.file_path(), &full_path)) {
-    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+  OpenFileOptions options;
+  if (!ParseOptionsAndPath(kOpenFileMethod, options_blob, &options, &full_path,
+                           error_code)) {
     return;
   }
 
@@ -337,6 +346,25 @@ bool SmbProvider::GetFullPath(const char* operation_name,
   }
 
   *full_path = AppendPath(mount_iter->second, entry_path);
+  return true;
+}
+
+template <typename Proto>
+bool SmbProvider::ParseOptionsAndPath(const char* method_name,
+                                      const ProtoBlob& blob,
+                                      Proto* options,
+                                      std::string* full_path,
+                                      int32_t* error_code) {
+  if (!ParseOptionsProto(method_name, blob, options, error_code)) {
+    return false;
+  }
+
+  if (!GetFullPath(method_name, options->mount_id(), GetEntryPath(*options),
+                   full_path)) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+    return false;
+  }
+
   return true;
 }
 
