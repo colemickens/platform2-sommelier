@@ -1235,8 +1235,10 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   }
   // not needed: MM_MODEM_PROPERTY_DEVICEIDENTIFIER
   // not needed: MM_MODEM_PROPERTY_DRIVER
-  // not needed: MM_MODEM_PROPERTY_PLUGIN
-  // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
+  if (properties.ContainsString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
+    cellular()->set_equipment_id(
+        properties.GetString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER));
+  }
 
   // Unlock required and SimLock
   bool lock_status_changed = false;

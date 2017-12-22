@@ -294,6 +294,7 @@ class Cellular : public Device,
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
   void set_scanning_supported(bool scanning_supported);
+  void set_equipment_id(const std::string& equipment_id);
   void set_esn(const std::string& esn);
   void set_firmware_revision(const std::string& firmware_revision);
   void set_hardware_revision(const std::string& hardware_revision);
@@ -515,6 +516,7 @@ class Cellular : public Device,
 
   bool scanning_supported_;
   std::string carrier_;
+  std::string equipment_id_;
   std::string esn_;
   std::string firmware_revision_;
   std::string hardware_revision_;

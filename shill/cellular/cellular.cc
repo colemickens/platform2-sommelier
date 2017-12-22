@@ -157,7 +157,17 @@ string Cellular::GetEquipmentIdentifier() const {
   if (!meid_.empty())
     return meid_;
 
-  // If neither IMEI nor MEID is available, fall back to MAC address.
+  // An equipment ID may be reported by ModemManager, which is typically the
+  // serial number of a legacy AT modem, and is either the IMEI, MEID, or ESN
+  // of a MBIM/QMI modem. This is used as a fallback in case neither IMEI nor
+  // MEID could be retrieved through ModemManager (e.g. when there is no SIM
+  // inserted, ModemManager doesn't expose modem 3GPP interface where the IMEI
+  // is reported).
+  if (!equipment_id_.empty())
+    return equipment_id_;
+
+  // If none of IMEI, MEID, and equipment ID is available, fall back to MAC
+  // address.
   return address();
 }
 
@@ -1245,6 +1255,10 @@ void Cellular::set_scanning_supported(bool scanning_supported) {
     SLOG(this, 2) << "Could not emit signal for property |"
                   << kSupportNetworkScanProperty
                   << "| change. DBus adaptor is NULL!";
+}
+
+void Cellular::set_equipment_id(const string& equipment_id) {
+  equipment_id_ = equipment_id;
 }
 
 void Cellular::set_esn(const string& esn) {
