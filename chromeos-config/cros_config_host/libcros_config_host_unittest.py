@@ -64,73 +64,71 @@ class CrosConfigHostTest(unittest.TestCase):
   """The unit test suite for the libcros_config_host.py library"""
   def setUp(self):
     path = os.path.join(os.path.dirname(__file__), DTS_FILE)
-    (filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
-    self.file = open(filepath)
+    (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
 
   def tearDown(self):
     if self.temp_file is not None:
       os.remove(self.temp_file.name)
-    self.file.close()
 
   def testGoodDtbFile(self):
-    self.assertIsNotNone(CrosConfig(self.file))
+    self.assertIsNotNone(CrosConfig(self.filepath))
 
   def testModels(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertSequenceEqual([n for n, _ in config.models.iteritems()], MODELS)
 
   def testNodeSubnames(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     for name, model in config.models.iteritems():
       self.assertEqual(name, model.name)
 
   def testProperties(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     pyro = config.models['pyro']
     self.assertEqual(pyro.properties['wallpaper'].value, 'default')
     self.assertEqual(pyro.Property('wallpaper').value, 'default')
     self.assertIsNone(pyro.Property('missing'))
 
   def testPathNode(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertIsNotNone(config.models['pyro'].PathNode('/firmware'))
 
   def testBadPathNode(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertIsNone(config.models['pyro'].PathNode('/dne'))
 
   def testPathProperty(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     pyro = config.models['pyro']
     ec_image = pyro.PathProperty('/firmware', 'ec-image')
     self.assertEqual(ec_image.value, 'bcs://Pyro_EC.9042.87.1.tbz2')
 
   def testBadPathProperty(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     pyro = config.models['pyro']
     self.assertIsNone(pyro.PathProperty('/firmware', 'dne'))
     self.assertIsNone(pyro.PathProperty('/dne', 'ec-image'))
 
   def testSinglePhandleFollowProperty(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     caroline = config.models['caroline']
     bcs_overlay = caroline.PathProperty('/firmware', 'bcs-overlay')
     self.assertEqual(bcs_overlay.value, 'overlay-reef-private')
 
   def testSinglePhandleFollowNode(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     caroline = config.models['caroline']
     target = caroline.PathProperty('/firmware/build-targets', 'coreboot')
     self.assertEqual(target.value, 'caroline')
 
   def testGetFirmwareUris(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     firmware_uris = config.models['pyro'].GetFirmwareUris()
     self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
                                              fname in PYRO_FIRMWARE_FILES])
 
   def testGetSharedFirmwareUris(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     firmware_uris = config.GetFirmwareUris()
     expected = sorted(
         [CAROLINE_BUCKET + fname for fname in CAROLINE_FIRMWARE_FILES] +
@@ -144,7 +142,7 @@ class CrosConfigHostTest(unittest.TestCase):
       """Helper to return a suitable TouchFile"""
       return TouchFile(source, TOUCH_FIRMWARE + source, LIB_FIRMWARE + symlink)
 
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     touch_files = config.models['pyro'].GetTouchFirmwareFiles()
     self.assertEqual(
         touch_files,
@@ -214,7 +212,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetTouchFirmwareFilesTar(self):
     """Test unpacking from a tarfile or reading from ${FILESDIR}"""
     os.environ['FILESDIR'] = 'test'
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     touch_files = config.models['pyro'].GetTouchFirmwareFiles()
     self.assertEqual(
         touch_files,
@@ -228,7 +226,7 @@ class CrosConfigHostTest(unittest.TestCase):
     touch_files = config.models['reef'].GetTouchFirmwareFiles()
 
   def testGetMergedPropertiesPyro(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     pyro = config.models['pyro']
     stylus = pyro.PathNode('touch/stylus')
     props = pyro.GetMergedProperties(stylus, 'touch-type')
@@ -240,7 +238,7 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('firmware-symlink', 'wacom_firmware_{MODEL}.bin')]))
 
   def testGetMergedPropertiesReef(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     reef = config.models['reef']
     touchscreen = reef.PathNode('touch/touchscreen@1')
     props = reef.GetMergedProperties(touchscreen, 'touch-type')
@@ -253,7 +251,7 @@ class CrosConfigHostTest(unittest.TestCase):
                      ('firmware-symlink', '{vendor}ts_i2c_{pid}.bin')]))
 
   def testGetMergedPropertiesDefault(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     caroline = config.models['caroline']
     audio = caroline.PathNode('/audio/main')
     props = caroline.GetMergedProperties(audio, 'audio-type')
@@ -274,7 +272,7 @@ class CrosConfigHostTest(unittest.TestCase):
                       'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
 
   def testGetArcFiles(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     arc_files = config.GetArcFiles()
     self.assertEqual(
         arc_files,
@@ -283,7 +281,7 @@ class CrosConfigHostTest(unittest.TestCase):
                   'hardware_features')])
 
   def testGetAudioFiles(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     audio_files = config.GetAudioFiles()
     self.assertEqual(
         audio_files,
@@ -333,7 +331,7 @@ class CrosConfigHostTest(unittest.TestCase):
                   '.reefucm.conf')])
 
   def testGetThermalFiles(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     thermal_files = config.GetThermalFiles()
     self.assertEqual(
         thermal_files,
@@ -346,7 +344,7 @@ class CrosConfigHostTest(unittest.TestCase):
     # case the key-id and brand-code are 1:many with the model and we need a
     # separate identifier to determine which to use. For now, there are no
     # users in the build system, so we can ignore it.
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     whitetip1 = config.models['whitetip1']
 
     # These are defined by whitetip1 itself
@@ -366,7 +364,7 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(target.value, 'caroline')
 
   def testGetFirmwareBuildTargets(self):
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
                              ['pyro', 'caroline'])
 
@@ -374,7 +372,7 @@ class CrosConfigHostTest(unittest.TestCase):
     """Test that we can obtain a file tree"""
     os.environ['DISTDIR'] = 'distdir'
     os.environ['FILESDIR'] = 'files'
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     node = config.GetFileTree()
     self.assertEqual(node.name, '')
     self.assertEqual(sorted(node.children.keys()), ['etc', 'lib', 'opt', 'usr'])
@@ -388,7 +386,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testShowTree(self):
     """Test that we can show a file tree"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     tree = config.GetFileTree()
     with capture_sys_output() as (stdout, stderr):
       config.ShowTree('/', tree)
@@ -402,7 +400,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testWriteTargetDirectories(self):
     """Test that we can write out a list of file paths"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     target_dirs = config.GetTargetDirectories()
     self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
     self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
@@ -413,7 +411,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testDefault(self):
     """Test the 'default' property"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     caroline = config.models['caroline']
 
     # These are defined by caroline itself
@@ -428,7 +426,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testSubmodel(self):
     """Test that we can read properties from the submodel"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     reef = config.models['reef']
     self.assertEqual(
         reef.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
@@ -440,7 +438,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testGetProperty(self):
     """Test that we can read properties from non-model nodes"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     # pylint: disable=protected-access
     self.assertEqual(config._GetProperty('/chromeos/family/firmware',
                                          'script').value, 'updater4.sh')
@@ -462,14 +460,14 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testModelList(self):
     """Test that we can obtain a model list"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertEqual(
         ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
          'whitetip1', 'whitetip2'], config.GetModelList())
 
   def testFirmware(self):
     """Test access to firmware information"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
     # Use this to avoid repeating common fields
@@ -512,7 +510,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testGetBspUris(self):
     """Test access to the BSP URIs"""
-    config = CrosConfig(self.file)
+    config = CrosConfig(self.filepath)
     uris = config.GetBspUris()
     self.assertSequenceEqual(uris, [
         'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'

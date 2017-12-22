@@ -16,8 +16,7 @@ import argparse
 import sys
 
 from .libcros_config_host import CrosConfig, CrosConfigImpl
-from v2.libcros_config_host_json import CrosConfigJson
-
+from .libcros_config_host import FORMAT_YAML
 
 def ListModels(config):
   """Prints all models in a config to stdout, one per line.
@@ -203,6 +202,8 @@ def GetParser(description):
                       help='Which model to run the subcommand on.')
   parser.add_argument('-a', '--all-models', action='store_true',
                       help='Runs the subcommand on all models, one per line.')
+  parser.add_argument('-y', '--yaml',
+                      help='Use YAML format instead of DTB.')
   subparsers = parser.add_subparsers(dest='subcommand')
   # Parser: list-models
   subparsers.add_parser(
@@ -291,16 +292,7 @@ def main(argv=None):
   if opts.subcommand == 'write-target-dirs':
     WriteTargetDirectories()
     return
-  if opts.config == '-':
-    config = CrosConfig(sys.stdin)
-  elif opts.config:
-    with open(opts.config) as infile:
-      if 'yaml' in opts.config:
-        config = CrosConfigJson(infile)
-      else:
-        config = CrosConfig(infile)
-  else:
-    config = CrosConfig()
+  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
   # Get all models we are invoking on (if any).
   models = None
   if opts.model and opts.model in config.models:

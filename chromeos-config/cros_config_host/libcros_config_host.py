@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Crome OS Configuration access library.
+"""Chrome OS Configuration access library.
 
 Provides build-time access to the master configuration on the host. It is used
 for reading from the master configuration. Consider using cros_config_host.py
@@ -13,8 +13,9 @@ from __future__ import print_function
 
 from collections import namedtuple, OrderedDict
 import os
+import sys
 
-from . import fdt, validate_config
+from . import validate_config
 
 # Represents a single touch firmware file which needs to be installed:
 #   source: source filename of firmware file. This is installed in a
@@ -63,6 +64,9 @@ FirmwareInfo = namedtuple(
      'extra', 'create_bios_rw_image', 'tools', 'sig_id'])
 
 UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
+
+# We support two configuration file format
+(FORMAT_FDT, FORMAT_YAML) = range(2)
 
 class PathComponent(object):
   """A component in a directory/file tree
@@ -156,53 +160,13 @@ class CrosConfigImpl(object):
   Properties:
     models: All models in the CrosConfigImpl tree, in the form of a dictionary:
             <model name: string, model: CrosConfigImpl.Node>
-    phandle_to_node: Map of phandles to the assocated CrosConfigImpl.Node:
-        key: Integer phandle value (>= 1)
-        value: Associated CrosConfigImpl.Node object
     root: Root node (CrosConigImpl.Node object)
     validator: Validator for the config (CrosConfigValidator object)
-    family: Family node (CrosConigImpl.Node object)
   """
   def __init__(self, infile):
-    if not infile:
-      if 'SYSROOT' not in os.environ:
-        raise ValueError('No master configuration is available outside the '
-                         'ebuild environemnt. You must specify one')
-      fname = os.path.join(os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_PATH)
-      with open(fname) as infile:
-        self._fdt = fdt.Fdt(infile)
-    else:
-      self._fdt = fdt.Fdt(infile)
-    self._fdt.Scan()
-    self.phandle_to_node = {}
+    self.infile = infile
     self.models = OrderedDict()
-    self.root = CrosConfigImpl.MakeNode(self, self._fdt.GetRoot())
     self.validator = validate_config.GetValidator()
-    self.family = self.root.subnodes['chromeos'].subnodes['family']
-
-  @staticmethod
-  def MakeNode(cros_config, fdt_node):
-    """Make a new Node in the tree
-
-    This create a new Node or Model object in the tree and recursively adds all
-    subnodes to it. Any phandles found update the phandle_to_node map.
-
-    Args:
-      cros_config: CrosConfig object
-      fdt_node: fdt.Node object containing the device-tree node
-    """
-    node = CrosConfigImpl.Node(cros_config, fdt_node)
-    if fdt_node.parent and fdt_node.parent.name == 'models':
-      cros_config.models[node.name] = node
-    if 'phandle' in node.properties:
-      phandle = fdt_node.props['phandle'].GetPhandle()
-      cros_config.phandle_to_node[phandle] = node
-    node.default = node.FollowPhandle('default')
-    for subnode in fdt_node.subnodes.values():
-      node.subnodes[subnode.name] = CrosConfigImpl.MakeNode(cros_config,
-                                                            subnode)
-    node.ScanSubnodes()
-    return node
 
   def _GetProperty(self, absolute_path, property_name):
     """Internal function to read a property from anywhere in the tree
@@ -460,24 +424,20 @@ class CrosConfigImpl(object):
       properties: All properties attached to this node in the form of a
                   dictionary: <name: string, property: CrosConfigImpl.Property>
     """
-    def __init__(self, cros_config, fdt_node):
+    def __init__(self, cros_config):
       self.cros_config = cros_config
-      self._fdt_node = fdt_node
-      self.name = fdt_node.name
-      # Subnodes are set up in Model.ScanSubnodes()
       self.subnodes = OrderedDict()
-      self.properties = OrderedDict((n, CrosConfigImpl.Property(p))
-                                    for n, p in fdt_node.props.iteritems())
+      self.properties = OrderedDict()
       self.default = None
       self.submodels = {}
 
     def GetPath(self):
-      """Get the full path to a node
+      """Get the full path to a node, implemented by subclasses.
 
       Returns:
         path to node as a string
       """
-      return self._fdt_node.path
+      return ''
 
     def FollowShare(self):
       """Follow a node's shares property
@@ -610,19 +570,16 @@ class CrosConfigImpl(object):
         return self.default.PathProperty(relative_path, property_name)
       return None
 
-    def FollowPhandle(self, prop_name):
-      """Follow a property's phandle
+    def FollowPhandle(self, _prop_name):
+      """Follow a property's phandle, implemented by subclasses
 
       Args:
-        prop_name: Property name to check
+        _prop_name: Property name to check
 
       Returns:
         Node that the property's phandle points to, or None if none
       """
-      prop = self.properties.get(prop_name)
-      if not prop:
-        return None
-      return self.cros_config.phandle_to_node[prop.GetPhandle()]
+      return None
 
     @staticmethod
     def MergeProperties(props, node, ignore=''):
@@ -896,11 +853,11 @@ class CrosConfigImpl(object):
                               "target directory (internal error)") %
                              (card.name, prop_name))
           files[name, prop_name] = BaseFile(
-              GetPropFilename(self._fdt_node.path, props, prop_name),
+              GetPropFilename(self.GetPath(), props, prop_name),
               os.path.join(
                   target_dir,
                   dirname,
-                  GetFilename(self._fdt_node.path, props, dest_template)))
+                  GetFilename(self.GetPath(), props, dest_template)))
 
       files = {}
       audio_nodes = self.AllPathNodes('/audio')
@@ -1034,33 +991,52 @@ class CrosConfigImpl(object):
       return result
 
   class Property(object):
-    """Represents a single property in a ChromeOS Configuration.
-
-    Properties:
-      name: The name of the property.
-      value: The value of the property.
-      type: The FDT type of the property (for now).
-    """
-    def __init__(self, fdt_prop):
-      self._fdt_prop = fdt_prop
-      self.name = fdt_prop.name
-      self.value = fdt_prop.value
-      # TODO(athilenius): Transform these int types to something more useful
-      self.type = fdt_prop.type
+    """Represents a single property in a ChromeOS Configuration."""
+    def __init__(self):
+      pass
 
     def GetPhandle(self):
-      """Get the value of a property as a phandle
+      """Get the value of a property as a phandle, implemented by subclasses.
 
       Returns:
         Property's phandle as an integer (> 0)
       """
-      return self._fdt_prop.GetPhandle()
+      return None
 
 
-def CrosConfig(infile=None):
+import libcros_config_host_fdt
+import v2.libcros_config_host_json
+
+def CrosConfig(fname=None, config_format=None):
   """Create a new CrosConfigImpl object
 
   This is in a separate function to allow us to (in the future) support YAML,
   which will have a different means of creating the impl class.
   """
-  return CrosConfigImpl(infile)
+  if not fname:
+    if 'SYSROOT' not in os.environ:
+      raise ValueError('No master configuration is available outside the '
+                       'ebuild environemnt. You must specify one')
+    fname = os.path.join(os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_PATH)
+  if not config_format:
+    if fname and ('.yaml' in fname or '.json' in fname):
+      config_format = FORMAT_YAML
+    else:
+      config_format = FORMAT_FDT
+  # Allow files for backward compatibility with the old API.
+  # TODO(sjg@chromum.org): Remove this when the firmware updater is updated.
+  if isinstance(fname, file):
+    infile = fname
+    infile.seek(0)
+  elif fname == '-':
+    infile = sys.stdin
+  else:
+    infile = open(fname)
+
+  if config_format == FORMAT_FDT:
+    return libcros_config_host_fdt.CrosConfigFdt(infile)
+  elif config_format == FORMAT_YAML:
+    # TODO(sjg@chromium.org): Move this to use CrosConfigImpl
+    return libcros_config_host_json.CrosConfigJson(infile)
+  else:
+    raise ValueError("Invalid config format '%s' requested" % config_format)
