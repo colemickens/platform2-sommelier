@@ -12,6 +12,16 @@
 
 namespace smbprovider {
 
+namespace {
+
+// Helper method to get the current offset of a file descriptor |fd|. Returns
+// the offset from the beginning of the file.
+int64_t GetCurrentOffset(int32_t fd) {
+  return lseek(fd, 0, SEEK_CUR);
+}
+
+}  // namespace
+
 class TempFileManagerTest : public testing::Test {
  public:
   TempFileManagerTest() = default;
@@ -74,7 +84,7 @@ TEST_F(TempFileManagerTest, WriteFileSucceeds) {
   base::ScopedFD fd = file_manager.CreateTempFile(expected);
 
   // Expect the current offset to be at the beginning of the file.
-  EXPECT_EQ(0, lseek(fd.get(), 0, SEEK_CUR));
+  EXPECT_EQ(0, GetCurrentOffset(fd.get()));
 
   // Read back the data written and ensure that it is the same.
   std::vector<uint8_t> actual(expected.size());

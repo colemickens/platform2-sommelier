@@ -90,6 +90,7 @@ int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
                                      size_t buffer_size,
                                      size_t* bytes_read) {
   DCHECK(buffer);
+  DCHECK(bytes_read);
   *bytes_read = smbc_read(file_id, buffer, buffer_size);
   return *bytes_read < 0 ? errno : 0;
 }

@@ -111,6 +111,20 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
+  ProtoBlob CreateReadFileOptionsBlob(int32_t mount_id,
+                                      int32_t file_id,
+                                      int64_t offset,
+                                      int32_t length) {
+    ProtoBlob proto_blob;
+    ReadFileOptions options;
+    options.set_mount_id(mount_id);
+    options.set_file_id(file_id);
+    options.set_offset(offset);
+    options.set_length(length);
+    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(options, &proto_blob));
+    return proto_blob;
+  }
+
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
   int32_t PrepareMount() {
@@ -123,6 +137,34 @@ class SmbProviderTest : public testing::Test {
     EXPECT_EQ(ERROR_OK, CastError(err));
     ExpectNoOpenEntries();
     return mount_id;
+  }
+
+  // Helper method that calls PrepareMount() and adds a single directory with a
+  // single file in the mount. |file_data| is the data that will be in the file.
+  int32_t PrepareSingleFileMountWithData(std::vector<uint8_t> file_data) {
+    const int32_t mount_id = PrepareMount();
+    fake_samba_->AddDirectory("smb://wdshare/test/path");
+    fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileDate,
+                         std::move(file_data));
+    return mount_id;
+  }
+
+  // Helper method that opens an already added file located in "/path/dog.jpg".
+  // PrepareSingleFileMountWithData() must be called beforehand.
+  int32_t OpenAddedFile(int32_t mount_id) {
+    return OpenAddedFile(mount_id, "/path/dog.jpg");
+  }
+
+  // Helper method that opens an already added file located in |path|.
+  // PrepareSingleFileMountWithData() must be called beforehand.
+  int32_t OpenAddedFile(int32_t mount_id, const std::string& path) {
+    int32_t file_id;
+    int32_t error_code;
+    ProtoBlob open_file_blob =
+        CreateOpenFileOptionsBlob(mount_id, path, false /* writeable */);
+    smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+    DCHECK_EQ(static_cast<int32_t>(ERROR_OK), error_code);
+    return file_id;
   }
 
   void SetSmbProviderBuffer(int32_t buffer_size) {
@@ -147,6 +189,34 @@ class SmbProviderTest : public testing::Test {
   void CloseFileHelper(int32_t mount_id, int32_t file_id) {
     ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(mount_id, file_id);
     EXPECT_EQ(ERROR_OK, smbprovider_->CloseFile(close_file_blob));
+  }
+
+  // Helper method to read a file using the given options, and outputs a file
+  // descriptor |fd|.
+  void ReadFile(int32_t mount_id,
+                int32_t file_id,
+                int64_t offset,
+                int32_t length,
+                dbus::FileDescriptor* fd) {
+    int32_t err;
+    ProtoBlob read_file_blob =
+        CreateReadFileOptionsBlob(mount_id, file_id, offset, length);
+    smbprovider_->ReadFile(read_file_blob, &err, fd);
+    EXPECT_EQ(ERROR_OK, CastError(err));
+  }
+
+  void ValidateFDContent(
+      const dbus::FileDescriptor& fd,
+      int32_t length_to_read,
+      std::vector<uint8_t>::const_iterator data_start_iterator,
+      std::vector<uint8_t>::const_iterator data_end_iterator) {
+    EXPECT_EQ(length_to_read,
+              std::distance(data_start_iterator, data_end_iterator));
+    std::vector<uint8_t> buffer(length_to_read);
+    EXPECT_TRUE(base::ReadFromFD(
+        fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
+    EXPECT_TRUE(std::equal(data_start_iterator, data_end_iterator,
+                           buffer.begin(), buffer.end()));
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_ =
@@ -238,7 +308,7 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
 // using the |mount_id| from |Mount|.
 TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
-  EXPECT_GE(0, mount_id);
+  EXPECT_GE(mount_id, 0);
   ExpectNoOpenEntries();
   EXPECT_EQ(1, mount_manager_->MountCount());
   EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
@@ -897,6 +967,164 @@ TEST_F(SmbProviderTest, DeleteEntryFailsOnNonFileNonDirectory) {
   ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
       mount_id, "path/canon.cn", false /* recursive */);
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->DeleteEntry(delete_entry_blob));
+}
+
+// ReadFile fails when passed in invalid proto.
+TEST_F(SmbProviderTest, ReadFileFailsWithInvalidProto) {
+  int32_t err;
+  ProtoBlob empty_blob;
+  dbus::FileDescriptor fd;
+
+  smbprovider_->ReadFile(empty_blob, &err, &fd);
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
+  EXPECT_FALSE(fd.is_valid());
+}
+
+// ReadFile fails when passed an invalid file descriptor.
+TEST_F(SmbProviderTest, ReadFileFailsWithBadFD) {
+  int32_t err;
+  ProtoBlob blob = CreateReadFileOptionsBlob(0 /* mount_id */, -1 /* file_id */,
+                                             0 /* offset */, 1 /* length */);
+  dbus::FileDescriptor fd;
+  smbprovider_->ReadFile(blob, &err, &fd);
+
+  EXPECT_NE(ERROR_OK, CastError(err));
+  EXPECT_FALSE(fd.is_valid());
+}
+
+// ReadFile fails when passed an unopened file descriptor.
+TEST_F(SmbProviderTest, ReadFileFailsWithUnopenedFD) {
+  int32_t err;
+  ProtoBlob blob = CreateReadFileOptionsBlob(
+      0 /* mount_id */, 100 /* file_id */, 0 /* offset */, 1 /* length */);
+  dbus::FileDescriptor fd;
+  smbprovider_->ReadFile(blob, &err, &fd);
+
+  EXPECT_NE(ERROR_OK, CastError(err));
+  EXPECT_FALSE(fd.is_valid());
+}
+
+// ReadFile fails when passed a negative offset.
+TEST_F(SmbProviderTest, ReadFileFailsWithNegativeOffset) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t file_id = OpenAddedFile(mount_id);
+
+  int32_t err;
+  ProtoBlob blob = CreateReadFileOptionsBlob(mount_id, file_id, -1 /* offset */,
+                                             1 /* length */);
+  dbus::FileDescriptor fd;
+  smbprovider_->ReadFile(blob, &err, &fd);
+
+  EXPECT_NE(ERROR_OK, CastError(err));
+  EXPECT_FALSE(fd.is_valid());
+}
+
+// ReadFile fails when passed a negative length.
+TEST_F(SmbProviderTest, ReadFileFailsWithNegativeLength) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t file_id = OpenAddedFile(mount_id);
+
+  int32_t err;
+  ProtoBlob blob = CreateReadFileOptionsBlob(mount_id, file_id, 0 /* offset */,
+                                             -1 /* length */);
+  dbus::FileDescriptor fd;
+  smbprovider_->ReadFile(blob, &err, &fd);
+
+  EXPECT_NE(ERROR_OK, CastError(err));
+  EXPECT_FALSE(fd.is_valid());
+}
+
+// ReadFile returns a valid file descriptor on success.
+TEST_F(SmbProviderTest, ReadFileReturnsValidFileDescriptor) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t file_id = OpenAddedFile(mount_id);
+
+  dbus::FileDescriptor fd;
+  ReadFile(mount_id, file_id, 0 /* offset */, file_data.size(), &fd);
+
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_GE(fd.value(), 0);
+  CloseFileHelper(mount_id, file_id);
+}
+
+// ReadFile should properly call Seek and ending offset for file should be
+// (offset + length).
+TEST_F(SmbProviderTest, ReadFileSeeksToOffset) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t file_id = OpenAddedFile(mount_id);
+
+  const int64_t offset = 5;
+  const int32_t length_to_read = 2;
+  DCHECK_GT(file_data.size(), offset);
+  DCHECK_GE(file_data.size(), offset + length_to_read);
+
+  EXPECT_EQ(0, fake_samba_->GetFileOffset(file_id));
+
+  dbus::FileDescriptor fd;
+  ReadFile(mount_id, file_id, offset, length_to_read, &fd);
+
+  EXPECT_EQ(offset + length_to_read, fake_samba_->GetFileOffset(file_id));
+  CloseFileHelper(mount_id, file_id);
+}
+
+// ReadFile should properly write the read bytes into a temporary file.
+TEST_F(SmbProviderTest, ReadFileWritesTemporaryFile) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t file_id = OpenAddedFile(mount_id);
+
+  const int64_t offset = 3;
+  const int32_t length_to_read = 2;
+
+  dbus::FileDescriptor fd;
+  ReadFile(mount_id, file_id, offset, length_to_read, &fd);
+
+  // Compare the written value to the expected value.
+  ValidateFDContent(fd, length_to_read, file_data.begin() + offset,
+                    file_data.begin() + offset + length_to_read);
+  CloseFileHelper(mount_id, file_id);
+}
+
+// ReadFile should properly read the correct file when there are multiple
+// files.
+TEST_F(SmbProviderTest, ReadFileReadsCorrectFile) {
+  const std::vector<uint8_t> file_data1 = {0, 1, 2, 3, 4, 5};
+  const std::vector<uint8_t> file_data2 = {10, 11, 12, 13, 14, 15};
+
+  // PrepareSingleFileMountWithData() prepares a mount and adds a file in
+  // "/path/dog.jpg".
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data1);
+
+  // Add an additional file with different data.
+  fake_samba_->AddFile("smb://wdshare/test/path/cat.jpg", kFileDate,
+                       file_data2);
+
+  // Open both files.
+  const int32_t file_id1 = OpenAddedFile(mount_id, "/path/dog.jpg");
+  const int32_t file_id2 = OpenAddedFile(mount_id, "/path/cat.jpg");
+  EXPECT_NE(file_id1, file_id2);
+
+  dbus::FileDescriptor fd1;
+  ReadFile(mount_id, file_id1, 0 /* offset */, file_data1.size(), &fd1);
+
+  dbus::FileDescriptor fd2;
+  ReadFile(mount_id, file_id2, 0 /* offset */, file_data2.size(), &fd2);
+
+  // Compare the written values to the expected values.
+  ValidateFDContent(fd1, file_data1.size(), file_data1.begin(),
+                    file_data1.end());
+
+  ValidateFDContent(fd2, file_data2.size(), file_data2.begin(),
+                    file_data2.end());
+
+  // Close files.
+  CloseFileHelper(mount_id, file_id1);
+  CloseFileHelper(mount_id, file_id2);
 }
 
 }  // namespace smbprovider

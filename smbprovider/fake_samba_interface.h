@@ -83,6 +83,9 @@ class FakeSambaInterface : public SambaInterface {
   // Checks whether an entry exists in a given |path|.
   bool EntryExists(const std::string& path) const;
 
+  // Gets current offset of file.
+  size_t GetFileOffset(int32_t fd) const;
+
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
   struct FakeEntry {

@@ -4,10 +4,9 @@
 
 #include "smbprovider/smbprovider_helper.h"
 
-#include <libsmbclient.h>
-
 #include <base/bits.h>
 #include <base/strings/string_piece.h>
+#include <libsmbclient.h>
 
 #include "smbprovider/constants.h"
 

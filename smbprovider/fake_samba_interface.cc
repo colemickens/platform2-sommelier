@@ -410,6 +410,12 @@ bool FakeSambaInterface::IsFDOpen(uint32_t fd) const {
   return open_fds.count(fd) != 0;
 }
 
+size_t FakeSambaInterface::GetFileOffset(int32_t fd) const {
+  const OpenInfo& open_info = FindOpenFD(fd)->second;
+  DCHECK_EQ(open_info.smbc_type, SMBC_FILE);
+  return open_info.current_index;
+}
+
 FakeSambaInterface::OpenEntriesIterator FakeSambaInterface::FindOpenFD(
     uint32_t fd) {
   return open_fds.find(fd);

@@ -51,6 +51,17 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
   return error;
 }
 
+// Helper method to get a valid DBus FileDescriptor |dbus_fd| from a scoped
+// file descriptor |fd|.
+void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
+  DCHECK(dbus_fd);
+  DCHECK(fd);
+  DCHECK(fd->is_valid());
+  dbus_fd->PutValue(fd->release());
+  dbus_fd->CheckValidity();
+  DCHECK(dbus_fd->is_valid());
+}
+
 bool IsValidOptions(const MountOptions& options) {
   return options.has_path();
 }
@@ -79,6 +90,12 @@ bool IsValidOptions(const CloseFileOptions& options) {
 bool IsValidOptions(const DeleteEntryOptions& options) {
   return options.has_mount_id() && options.has_entry_path() &&
          options.has_recursive();
+}
+
+bool IsValidOptions(const ReadFileOptions& options) {
+  return options.has_mount_id() && options.has_file_id() &&
+         options.has_offset() && options.has_length() &&
+         options.offset() >= 0 && options.length() >= 0;
 }
 
 // Template specializations to extract the entry path from the various protos
@@ -155,6 +172,11 @@ const char* GetMethodName(const CloseFileOptions& unused) {
 template <>
 const char* GetMethodName(const DeleteEntryOptions& unused) {
   return kDeleteEntryMethod;
+}
+
+template <>
+const char* GetMethodName(const ReadFileOptions& unused) {
+  return kReadFileMethod;
 }
 
 void LogAndSetError(const char* operation_name,
@@ -406,6 +428,22 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
   return static_cast<int32_t>(ERROR_OK);
 }
 
+void SmbProvider::ReadFile(const ProtoBlob& options_blob,
+                           int32_t* error_code,
+                           dbus::FileDescriptor* temp_fd) {
+  DCHECK(error_code);
+  DCHECK(temp_fd);
+
+  // TODO(allenvic): Investigate having a single shared buffer in the class.
+  std::vector<uint8_t> buffer;
+  ReadFileOptions options;
+
+  ParseOptionsProto(options_blob, &options, error_code) &&
+      Seek(options, error_code) &&
+      ReadFileIntoBuffer(options, error_code, &buffer) &&
+      WriteTempFile(options, buffer, error_code, temp_fd);
+}
+
 // This is a helper method that has a similar return structure as
 // samba_interface_ methods, where it will return errno as an error in case of
 // failure.
@@ -490,6 +528,16 @@ bool SmbProvider::GetEntryType(const std::string& full_path,
   return false;
 }
 
+template <typename Proto>
+bool SmbProvider::Seek(const Proto& options, int32_t* error_code) {
+  int32_t result = samba_interface_->Seek(options.file_id(), options.offset());
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+  return true;
+}
+
 bool SmbProvider::CanMountPath(const std::string& mount_root,
                                int32_t* error_code) {
   int32_t dir_id = -1;
@@ -517,6 +565,43 @@ bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
   }
 
   return removed;
+}
+
+bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptions& options,
+                                     int32_t* error_code,
+                                     std::vector<uint8_t>* buffer) {
+  DCHECK(buffer);
+  DCHECK(error_code);
+
+  buffer->resize(options.length());
+  size_t bytes_read;
+  int32_t result = samba_interface_->ReadFile(options.file_id(), buffer->data(),
+                                              buffer->size(), &bytes_read);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+
+  DCHECK_GE(bytes_read, 0);
+  DCHECK_LE(bytes_read, buffer->size());
+  // Make sure buffer is only as big as bytes_read.
+  buffer->resize(bytes_read);
+  return true;
+}
+
+bool SmbProvider::WriteTempFile(const ReadFileOptions& options,
+                                const std::vector<uint8_t>& buffer,
+                                int32_t* error_code,
+                                dbus::FileDescriptor* temp_fd) {
+  base::ScopedFD scoped_fd = temp_file_manager_.CreateTempFile(buffer);
+  if (!scoped_fd.is_valid()) {
+    LogAndSetError(options, ERROR_IO, error_code);
+    return false;
+  }
+
+  GetValidDBusFD(&scoped_fd, temp_fd);
+  *error_code = static_cast<int32_t>(ERROR_OK);
+  return true;
 }
 
 }  // namespace smbprovider

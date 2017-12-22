@@ -113,7 +113,7 @@
     </method>
 
     <method name="CloseFile">
-       <tp:docstring>
+      <tp:docstring>
         Closes the file with the specified file handler.
       </tp:docstring>
       <arg name="options_blob" type="ay" direction="in">
@@ -141,6 +141,29 @@
       <arg name="error_code" type="i" direction="out">\
         <tp:docstring>
           Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="ReadFile">
+      <tp:docstring>
+        Reads the file in a given samba file descriptor and writes the data in a temporary file.
+        This outputs the file descriptor to the temporary file.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized ReadFileOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="temp_fd" type="h" direction="out">
+        <tp:docstring>
+          File descriptor of the temporary file that contains the read data.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
