@@ -147,15 +147,6 @@ def GetPropFilename(node_path, props, fname_prop):
   return GetFilename(node_path, props, template)
 
 
-def CrosConfig(infile=None):
-  """Create a new CrosConfigImpl object
-
-  This is in a separate function to allow us to (in the future) support YAML,
-  which will have a different means of creating the impl class.
-  """
-  return CrosConfigImpl(infile)
-
-
 class CrosConfigImpl(object):
   """The ChromeOS Configuration API for the host.
 
@@ -1064,3 +1055,12 @@ class CrosConfigImpl(object):
         Property's phandle as an integer (> 0)
       """
       return self._fdt_prop.GetPhandle()
+
+
+def CrosConfig(infile=None):
+  """Create a new CrosConfigImpl object
+
+  This is in a separate function to allow us to (in the future) support YAML,
+  which will have a different means of creating the impl class.
+  """
+  return CrosConfigImpl(infile)
