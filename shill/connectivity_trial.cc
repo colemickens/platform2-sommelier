@@ -72,7 +72,7 @@ static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const char ConnectivityTrial::kDefaultURL[] =
-    "http://alt${RAND}.gstatic.com/generate_204";
+    "http://www.gstatic.com/generate_204";
 const char ConnectivityTrial::kResponseExpected[] = "HTTP/?.? 204";
 
 ConnectivityTrial::ConnectivityTrial(
