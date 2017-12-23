@@ -194,17 +194,6 @@ BRILLO_EXPORT int container_config_add_device(struct container_config* c,
                                               int write_allowed,
                                               int modify_allowed);
 
-/*
- * Set to cause the given setfiles command to be run whenever a mount is made
- * in the parent mount namespace.
- */
-BRILLO_EXPORT int container_config_run_setfiles(struct container_config* c,
-                                                const char* setfiles_cmd);
-
-/* Get the setfiles command that is configured to be run. */
-BRILLO_EXPORT const char* container_config_get_run_setfiles(
-    const struct container_config* c);
-
 /* Set the CPU shares cgroup param for container. */
 BRILLO_EXPORT int container_config_set_cpu_shares(struct container_config* c,
                                                   int shares);

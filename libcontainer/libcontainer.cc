@@ -57,7 +57,6 @@ using libcontainer::MakeDir;
 using libcontainer::MountExternal;
 using libcontainer::TouchFile;
 
-constexpr size_t kMaxNumSetfilesArgs = 128;
 constexpr size_t kMaxRlimits = 32;  // Linux defines 15 at the time of writing.
 
 struct Mount {
@@ -173,9 +172,6 @@ struct container_config {
 
   // Device node cgroup permissions.
   std::vector<CgroupDevice> cgroup_devices;
-
-  // Should run setfiles on mounts to enable selinux.
-  std::string run_setfiles;
 
   // CPU cgroup params.
   CpuCgroup cpu_cgparams;
@@ -410,8 +406,7 @@ void DumpConfig(std::ostream* stream,
   for (const auto& cgroup_device : cgroup_devices_sorted)
     *stream << cgroup_device;
 
-  *stream << "run_setfiles: " << QUOTE(c->run_setfiles) << std::endl
-          << c->cpu_cgparams
+  *stream << c->cpu_cgparams
           << "cgroup_parent: " << QUOTE(c->cgroup_parent.value()) << std::endl
           << "cgroup_owner: " << c->cgroup_owner << std::endl
           << "cgroup_group: " << c->cgroup_group << std::endl
@@ -475,59 +470,6 @@ bool SetupMountDestination(const struct container_config* config,
   }
 
   return TouchFile(dest, uid_userns, gid_userns, mount.mode);
-}
-
-// Fork and exec the setfiles command to configure the selinux policy.
-bool RunSetfilesCommand(const struct container* c,
-                        const struct container_config* config,
-                        const std::vector<base::FilePath>& destinations,
-                        pid_t container_pid) {
-  int pid = fork();
-  if (pid == 0) {
-    size_t arg_index = 0;
-    const char* argv[kMaxNumSetfilesArgs];
-    const char* env[] = {
-        nullptr,
-    };
-
-    base::FilePath context_path = c->runfsroot.Append("file_contexts");
-
-    argv[arg_index++] = config->run_setfiles.c_str();
-    argv[arg_index++] = "-r";
-    argv[arg_index++] = c->runfsroot.value().c_str();
-    argv[arg_index++] = context_path.value().c_str();
-    if (arg_index + destinations.size() >= kMaxNumSetfilesArgs)
-      _exit(-E2BIG);
-    for (const auto& destination : destinations)
-      argv[arg_index++] = destination.value().c_str();
-    argv[arg_index] = nullptr;
-
-    execve(
-        argv[0], const_cast<char* const*>(argv), const_cast<char* const*>(env));
-
-    /* Command failed to exec if execve returns. */
-    _exit(-errno);
-  }
-  if (pid < 0) {
-    PLOG(ERROR) << "Failed to fork to run setfiles";
-    return false;
-  }
-
-  int status;
-  if (HANDLE_EINTR(waitpid(pid, &status, 0)) < 0) {
-    PLOG(ERROR) << "Failed to wait for setfiles";
-    return false;
-  }
-  if (!WIFEXITED(status)) {
-    LOG(ERROR) << "setfiles did not terminate cleanly";
-    return false;
-  }
-  if (WEXITSTATUS(status) != 0) {
-    LOG(ERROR) << "setfiles exited with non-zero status: "
-               << WEXITSTATUS(status);
-    return false;
-  }
-  return true;
 }
 
 // Unmounts anything we mounted in this mount namespace in the opposite order
@@ -1100,17 +1042,6 @@ int container_config_add_device(struct container_config* c,
   return 0;
 }
 
-int container_config_run_setfiles(struct container_config* c,
-                                  const char* setfiles_cmd) {
-  c->run_setfiles = setfiles_cmd;
-  return 0;
-}
-
-const char* container_config_get_run_setfiles(
-    const struct container_config* c) {
-  return c->run_setfiles.c_str();
-}
-
 int container_config_set_cpu_shares(struct container_config* c, int shares) {
   /* CPU shares must be 2 or higher. */
   if (shares < 2) {
@@ -1408,37 +1339,6 @@ int container_start(struct container* c,
     }
     if (!DeviceSetup(c, config))
       return -1;
-  }
-
-  // Potentially run setfiles on mounts configured outside of the jail.
-  if (!config->run_setfiles.empty()) {
-    const base::FilePath kDataPath("/data");
-    const base::FilePath kCachePath("/cache");
-    std::vector<base::FilePath> destinations;
-    for (const auto& mnt : config->mounts) {
-      if (mnt.mount_in_ns)
-        continue;
-      if (mnt.flags & MS_RDONLY)
-        continue;
-
-      // A hack to avoid setfiles on /data and /cache.
-      if (mnt.destination == kDataPath || mnt.destination == kCachePath)
-        continue;
-
-      destinations.emplace_back(
-          GetPathInOuterNamespace(c->runfsroot, mnt.destination));
-    }
-
-    if (!destinations.empty()) {
-      auto it = hook_callbacks.insert(
-          std::make_pair(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
-                         std::vector<libcontainer::HookCallback>()));
-      it.first->second.emplace_back(
-          libcontainer::AdaptCallbackToRunInNamespaces(
-              base::Bind(&RunSetfilesCommand, base::Unretained(c),
-                         base::Unretained(config), destinations),
-              {CLONE_NEWNS}));
-    }
   }
 
   /* Setup CPU cgroup params. */
