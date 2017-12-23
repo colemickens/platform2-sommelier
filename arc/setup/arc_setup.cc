@@ -1589,6 +1589,9 @@ void ArcSetup::OnPreChroot() {
                  });
 
   EXIT_IF(!RestoreconRecursively(host_paths));
+
+  // Restore context of the arc/ directory itself non-recursively.
+  EXIT_IF(!Restorecon({rootfs.Append("var/run/arc")}));
 }
 
 void ArcSetup::OnReadAhead() {
