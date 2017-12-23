@@ -75,6 +75,26 @@ int RestoreConLogCallback(int type, const char* fmt, ...) {
   return 0;
 }
 
+bool RestoreconInternal(const std::vector<base::FilePath>& paths,
+                        bool is_recursive) {
+  union selinux_callback cb;
+  cb.func_log = RestoreConLogCallback;
+  selinux_set_callback(SELINUX_CB_LOG, cb);
+
+  const unsigned int restorecon_flags =
+      (is_recursive ? SELINUX_RESTORECON_RECURSE : 0) |
+      SELINUX_RESTORECON_REALPATH;
+
+  bool success = true;
+  for (const auto& path : paths) {
+    if (selinux_restorecon(path.value().c_str(), restorecon_flags) != 0) {
+      LOG(ERROR) << "Error in restorecon of " << path.value();
+      success = false;
+    }
+  }
+  return success;
+}
+
 // A callback function for GetPropertyFromFile.
 bool FindProperty(const std::string& line_prefix_to_find,
                   const std::string& line,
@@ -608,21 +628,11 @@ bool LaunchAndWait(const std::vector<std::string>& argv) {
 }
 
 bool RestoreconRecursively(const std::vector<base::FilePath>& directories) {
-  union selinux_callback cb;
-  cb.func_log = RestoreConLogCallback;
-  selinux_set_callback(SELINUX_CB_LOG, cb);
+  return RestoreconInternal(directories, true /* is_recursive */);
+}
 
-  const unsigned int restorecon_flags =
-      SELINUX_RESTORECON_RECURSE | SELINUX_RESTORECON_REALPATH;
-
-  bool success = true;
-  for (const auto& directory : directories) {
-    if (selinux_restorecon(directory.value().c_str(), restorecon_flags) != 0) {
-      LOG(ERROR) << "Error in restorecon of directory " << directory.value();
-      success = false;
-    }
-  }
-  return success;
+bool Restorecon(const std::vector<base::FilePath>& paths) {
+  return RestoreconInternal(paths, false /* is_recursive */);
 }
 
 std::string GenerateFakeSerialNumber(const std::string& chromeos_user,

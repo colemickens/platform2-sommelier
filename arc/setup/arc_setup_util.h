@@ -216,10 +216,12 @@ bool WaitForPaths(std::initializer_list<base::FilePath> paths,
 // ~200ms or more. Instead, use one of the mount/umount syscall wrappers above.
 bool LaunchAndWait(const std::vector<std::string>& argv);
 
-// Launches /sbin/restorecon -R for |directories| and waits for the command to
-// finish. Returns true if the command returns 0. WARNING: This function is also
-// very slow. Do not call it too often.
+// Restores contexts of the |directories| and their contents recursively.
+// Returns true on success.
 bool RestoreconRecursively(const std::vector<base::FilePath>& directories);
+
+// Restores contexts of the |paths|. Returns true on success.
+bool Restorecon(const std::vector<base::FilePath>& paths);
 
 // Generates a unique, 20-character hex string from |chromeos_user| and
 // |salt| which can be used as Android's ro.boot.serialno and ro.serialno
