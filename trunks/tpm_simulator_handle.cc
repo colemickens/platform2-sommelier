@@ -37,11 +37,7 @@ extern "C" {
 
 namespace {
 
-#if defined(__ANDROID__)
-const char kSimulatorStateDirectory[] = "/data/misc/trunksd";
-#else
 const char kSimulatorStateDirectory[] = "/var/lib/trunks";
-#endif
 
 }  // namespace
 

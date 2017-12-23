@@ -19,15 +19,9 @@
 
 namespace trunks {
 
-#if defined(__ANDROID__)
-constexpr char kTrunksInterface[] = "com.android.Trunks";
-constexpr char kTrunksServicePath[] = "/com/android/Trunks";
-constexpr char kTrunksServiceName[] = "com.android.Trunks";
-#else
 constexpr char kTrunksInterface[] = "org.chromium.Trunks";
 constexpr char kTrunksServicePath[] = "/org/chromium/Trunks";
 constexpr char kTrunksServiceName[] = "org.chromium.Trunks";
-#endif
 
 // Methods exported by trunks.
 constexpr char kSendCommand[] = "SendCommand";

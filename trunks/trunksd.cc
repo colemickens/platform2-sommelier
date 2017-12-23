@@ -45,12 +45,7 @@ namespace {
 const uid_t kRootUID = 0;
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
-#if defined(__ANDROID__)
-const char kTrunksSeccompPath[] =
-    "/system/usr/share/policy/trunksd-seccomp.policy";
-#else
 const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
-#endif
 const char kBackgroundThreadName[] = "trunksd_background_thread";
 
 void InitMinijailSandbox() {
