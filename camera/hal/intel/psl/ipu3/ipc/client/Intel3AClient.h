@@ -38,7 +38,7 @@ public:
     // when IPC error happens, device error
     // will be sent out via the IErrorCallback which belongs to ResultProcessor.
     // before the ResultProcessor be terminated, set nullptr in the function.
-    void registerErrorCallback(IErrorCallback* rp);
+    void registerErrorCallback(IErrorCallback* errCb);
 
     int allocateShmMem(std::string& name, int size, int* fd, void** addr);
     void releaseShmMem(std::string& name, int size, int fd, void* addr);
