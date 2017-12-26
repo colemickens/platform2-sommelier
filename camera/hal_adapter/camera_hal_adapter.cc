@@ -39,6 +39,7 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module)
   VLOGF_ENTER();
   camera_module_callbacks_t::camera_device_status_change =
       CameraDeviceStatusChange;
+  camera_module_callbacks_t::torch_mode_status_change = TorchModeStatusChange;
 }
 
 CameraHalAdapter::~CameraHalAdapter() {
@@ -224,13 +225,16 @@ void CameraHalAdapter::CameraDeviceStatusChange(
 
 // static
 void CameraHalAdapter::TorchModeStatusChange(
-    const camera_module_callbacks_t* callbacks, int camera_id, int new_status) {
+    const camera_module_callbacks_t* callbacks,
+    const char* camera_id,
+    int new_status) {
   VLOGF_ENTER();
   CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
       static_cast<const CameraHalAdapter*>(callbacks));
   base::AutoLock l(self->callbacks_delegates_lock_);
+  int camera_id_int = atoi(camera_id);
   for (auto& it : self->callbacks_delegates_) {
-    it.second->TorchModeStatusChange(camera_id, new_status);
+    it.second->TorchModeStatusChange(camera_id_int, new_status);
   }
 }
 

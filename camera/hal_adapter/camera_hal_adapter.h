@@ -69,7 +69,7 @@ class CameraHalAdapter : public camera_module_callbacks_t {
       int camera_id,
       int new_status);
   static void TorchModeStatusChange(const camera_module_callbacks_t* callbacks,
-                                    int camera_id,
+                                    const char* camera_id,
                                     int new_status);
 
   // Clean up the camera device specified by |camera_id| in |device_adapters_|.
