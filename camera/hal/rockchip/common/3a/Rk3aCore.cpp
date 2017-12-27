@@ -28,6 +28,43 @@
 #include "Utils.h"
 
 NAMESPACE_DECLARATION {
+void AiqInputParams::init()
+{
+    CLEAR(aeInputParams);
+    CLEAR(awbParams);
+    CLEAR(miscParams);
+    CLEAR(sensorDescriptor);
+    CLEAR(exposureWindow);
+    CLEAR(aeManualLimits);
+    aeLock = false;
+    restorePointers();
+}
+
+void AiqInputParams::restorePointers()
+{
+    aeInputParams.sensor_descriptor = &sensorDescriptor;
+    aeInputParams.window = &exposureWindow;
+    aeInputParams.manual_limits = &aeManualLimits;
+    aeInputParams.manual_exposure_time_us = &manual_exposure_time_us[0];
+    aeInputParams.manual_analog_gain = &manual_analog_gain[0];
+    aeInputParams.manual_iso = &manual_iso[0];
+}
+
+AiqInputParams &AiqInputParams::operator=(const AiqInputParams &other)
+{
+    LOG2("@%s", __FUNCTION__);
+    if (this == &other)
+        return *this;
+
+    MEMCPY_S(this,
+             sizeof(AiqInputParams),
+             &other,
+             sizeof(AiqInputParams));
+    restorePointers();
+
+    return *this;
+}
+
 
 Rk3aCore::Rk3aCore(int camId):
         mCameraId(camId)

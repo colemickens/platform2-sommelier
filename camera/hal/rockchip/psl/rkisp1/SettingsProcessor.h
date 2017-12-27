@@ -123,6 +123,7 @@ private:
     CameraWindow    mAPA;   /*!< Active Pixel Array */
     StaticMetadataCache mStaticMetadataCache; /*!< metadata fetched at init */
     int mCameraId;
+    Rk3aPlus    *m3aWrapper; /* SettingsProcessor doesn't own m3aWrapper */
 
     /**
      * Sensor mode information

@@ -109,6 +109,7 @@ typedef enum
 typedef enum
 {
     rk_aiq_ae_operation_mode_automatic,         /*!< Automatic mode. */
+    rk_aiq_ae_operation_mode_off,               /*!< ae off, keep the last ae state. */
     rk_aiq_ae_operation_mode_long_exposure,     /*!< AEC produces exposure parameters with long exposure (low light & static) scene. */
     rk_aiq_ae_operation_mode_action,            /*!< AEC produces exposure parameters for fast moving scene. */
     rk_aiq_ae_operation_mode_video_conference,  /*!< AEC produces exposure parameters which can be used in video conferencing scene. */

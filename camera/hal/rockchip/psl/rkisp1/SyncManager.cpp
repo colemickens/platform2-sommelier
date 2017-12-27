@@ -27,7 +27,14 @@
 
 namespace android {
 namespace camera2 {
-
+/**
+ * The new exposures calculated by 3A lib for next frame
+ * may be queued a little delay than the next frame's SOF,
+ * and it might be possible to configure the new exposures
+ * to sensor in a safety delay time. This defines the relative
+ * safety delay time compared to the frame duration.
+ */
+#define SAFETY_NEW_EXP_DELAY_DIV 5
 
 SyncManager::SyncManager(int32_t cameraId,
                          std::shared_ptr<MediaController> mediaCtl,
@@ -492,8 +499,6 @@ status_t SyncManager::handleMessageSetParams(Message &msg)
 
     mQueuedSettings.push_back(msg.settings);
 
-    // TODO: the line_length_pixels & frame_length_lines is not ready yet
-    /*
     rk_aiq_exposure_sensor_parameters &expParams =
         msg.settings->aiqResults.aeResults.sensor_exposure;
     rk_aiq_exposure_sensor_descriptor *sensor_desc =
@@ -501,10 +506,9 @@ status_t SyncManager::handleMessageSetParams(Message &msg)
 
     int64_t frameDuration = (expParams.line_length_pixels * expParams.frame_length_lines) /
                             sensor_desc->pixel_clock_freq_mhz;
-    */
 
-    // TODO: use frameDuration / 5
-    if ((systemTime()/1000) < (TIMEVAL2USECS(&mLatestFrameEvent.timestamp) + 6656)) {
+    if ((systemTime() / 1000) <
+        (TIMEVAL2USECS(&mLatestFrameEvent.timestamp) + frameDuration / SAFETY_NEW_EXP_DELAY_DIV)) {
         status = applyParameters(mQueuedSettings[0]);
         if (status != NO_ERROR)
             LOGE("Failed to apply sensor parameters.");
@@ -634,10 +638,9 @@ status_t SyncManager::applySensorParams(rk_aiq_exposure_sensor_parameters &expPa
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
     uint16_t aGain, dGain;
-    // TODO: the line_length_pixels & frame_length_lines is not ready yet
-    // Frame duration
-    /* status |= mSensorOp->setFrameDuration(expParams.line_length_pixels, */
-    /*                                       expParams.frame_length_lines); */
+
+    status |= mSensorOp->setFrameDuration(expParams.line_length_pixels,
+                                          expParams.frame_length_lines);
     // gain
     mDelayedAGains.push_back(expParams.analog_gain_code_global);
     mDelayedDGains.push_back(expParams.digital_gain_global);

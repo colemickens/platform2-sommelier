@@ -49,6 +49,7 @@ struct ae_run_params {
     long manual_exposure_time_us;
     float manual_analog_gain;
     short manual_iso;
+    rk_aiq_ae_manual_limits manual_limits;
 
     rk_aiq_ae_results results;
 };

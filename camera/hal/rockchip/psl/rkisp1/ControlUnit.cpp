@@ -288,7 +288,7 @@ void RequestCtrlState::init(Camera3Request *req,
 {
     request = req;
     graphConfig = aGraphConfig;
-    /* aiqInputParams.init(); */
+    aiqInputParams.init();
     if (CC_LIKELY(captureSettings)) {
         /* captureSettings->aiqResults.init(); */
         CLEAR(captureSettings->aiqResults);

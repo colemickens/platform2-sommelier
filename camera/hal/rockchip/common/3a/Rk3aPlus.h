@@ -44,6 +44,10 @@ public:
 
     rk_aiq_frame_use getFrameUseFromIntent(const CameraMetadata * settings);
 
+    status_t fillAeInputParams(const CameraMetadata *settings,
+                               struct AeInputParams *aeInputParams);
+
+
     /*
      * static common operation
      */
@@ -53,6 +57,8 @@ private:
     // prevent copy constructor and assignment operator
     Rk3aPlus(const Rk3aPlus& other);
     Rk3aPlus& operator=(const Rk3aPlus& other);
+    void parseMeteringRegion(const CameraMetadata *settings,
+                             int tagId, CameraWindow *meteringWindow);
 
 // private members
 private:

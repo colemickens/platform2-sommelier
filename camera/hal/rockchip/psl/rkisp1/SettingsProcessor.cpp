@@ -31,6 +31,7 @@ namespace camera2 {
 SettingsProcessor::SettingsProcessor(int cameraId,
         Rk3aPlus *a3aWrapper, IStreamConfigProvider &aStreamCfgProv) :
         mCameraId(cameraId),
+        m3aWrapper(a3aWrapper),
         mMinSensorModeFrameTime(INT32_MAX),
         mStreamCfgProv(aStreamCfgProv)
 {
@@ -363,6 +364,9 @@ status_t
 SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
                                RequestCtrlState &reqAiqCfg)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    status_t status = OK;
+
     LOG2("%s:%d: sensorDesc(%f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)", __func__, __LINE__,
          mSensorDescriptor.pixel_clock_freq_mhz,
          mSensorDescriptor.pixel_periods_per_line,
@@ -379,23 +383,53 @@ SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
          mSensorDescriptor.isp_output_width,
          mSensorDescriptor.isp_output_height);
 
+    AeInputParams aeInputParams;
+    aeInputParams.aiqInputParams = &reqAiqCfg.aiqInputParams;
+    aeInputParams.aaaControls = &reqAiqCfg.aaaControls;
+    aeInputParams.croppingRegion = &reqAiqCfg.captureSettings->cropRegion;
+    aeInputParams.aeRegion = &reqAiqCfg.captureSettings->aeRegion;
+    aeInputParams.sensorDescriptor = &mSensorDescriptor;
 
-    rk_aiq_ae_input_params* aeInputParams;
-    aeInputParams = &reqAiqCfg.aiqInputParams.aeInputParams;
-    aeInputParams->frame_use = rk_aiq_frame_use_preview;
-    aeInputParams->flash_mode = rk_aiq_flash_mode_off;
-    aeInputParams->operation_mode = rk_aiq_ae_operation_mode_automatic;
-    aeInputParams->metering_mode = rk_aiq_ae_metering_mode_center;
-    aeInputParams->priority_mode = rk_aiq_ae_priority_mode_normal;
-    aeInputParams->flicker_reduction_mode = rk_aiq_ae_flicker_reduction_off;
-    aeInputParams->sensor_descriptor = &mSensorDescriptor;
-    aeInputParams->window = NULL;
-    aeInputParams->ev_shift = 0;
-    aeInputParams->manual_exposure_time_us = NULL;
-    aeInputParams->manual_analog_gain = NULL;
-    aeInputParams->manual_iso = NULL;
+    status = m3aWrapper->fillAeInputParams(&settings, &aeInputParams);
+    if (status != OK) {
+        LOGE("%s: fillAeInputParams failed!", __FUNCTION__);
+        return status;
+    }
 
-    return OK;
+    if (aeInputParams.aiqInputParams) {
+        /*
+         * apply the sensor limits reported from the exposure sensor descriptor
+         *
+         * The exposure sensor descriptor is updated every time we change sensor
+         * mode.
+         * Each sensor mode has associated a maximum fps. We should not let AE
+         * to produce values that drive the sensor at a higher speed.
+         *
+         * This operation is already done inside fillAeInputParams, but
+         * unfortunately the input parameter is an int
+         * (AeInputParams.maxSupportedFps) therefore we apply the limit here
+         * with more precision.
+         *
+         * In other PSL the AeInputParams.maxSupportedFps passed to 3A is coming
+         * from the reported min stream duration in static metadata.
+         *
+         * In our case we use the limit reported by the sensor mode selected.
+         * The value mMinSensorModeFrameTime is updated after every stream
+         * config.
+         */
+        rk_aiq_ae_input_params *aeParams = nullptr;
+        aeParams = &aeInputParams.aiqInputParams->aeInputParams;
+        aeParams->flicker_reduction_mode = rk_aiq_ae_flicker_reduction_off;
+        if (aeParams->manual_limits->manual_frame_time_us_min < mMinSensorModeFrameTime) {
+            aeParams->manual_limits->manual_frame_time_us_min = mMinSensorModeFrameTime;
+        }
+        if (aeParams->manual_limits->manual_frame_time_us_max < mMinSensorModeFrameTime) {
+            aeParams->manual_limits->manual_frame_time_us_max = mMinSensorModeFrameTime;
+        }
+    }
+
+    return status;
+
 }
 
 status_t

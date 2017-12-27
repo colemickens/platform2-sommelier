@@ -184,6 +184,10 @@ bool IPCAiq::clientFlattenAe(uintptr_t aiq, const rk_aiq_ae_input_params& inPara
         params->manual_iso = *inParams.manual_iso;
     }
 
+    if (base->manual_limits) {
+        params->manual_limits = *inParams.manual_limits;
+    }
+
     return true;
 }
 
@@ -222,6 +226,10 @@ bool IPCAiq::serverUnflattenAe(const ae_run_params& inParams, rk_aiq_ae_input_pa
 
     if (base->manual_iso) {
         base->manual_iso = const_cast<short*>(&inParams.manual_iso);
+    }
+
+    if (base->manual_limits) {
+        base->manual_limits = const_cast<rk_aiq_ae_manual_limits*>(&inParams.manual_limits);
     }
 
     *params = base;

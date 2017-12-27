@@ -30,15 +30,27 @@
 #include "Rk3aAiq.h"
 
 NAMESPACE_DECLARATION {
+static const unsigned int NUM_EXPOSURES = 1;   /*!> Number of frames AIQ algorithm
+                                                    provides output for */
 
 /**
  * \struct AiqInputParams
- * The private structs are part of AE, AWB and misc ISP input parameters.
  */
 struct AiqInputParams {
+    void init();
+    void restorePointers();
+    AiqInputParams &operator=(const AiqInputParams &other);
     rk_aiq_ae_input_params  aeInputParams;
     rk_aiq_awb_input_params awbParams;
     rk_aiq_misc_isp_input_params miscParams;
+    bool aeLock;
+    /* Below structs are part of AE, AWB and misc ISP input parameters. */
+    rk_aiq_exposure_sensor_descriptor sensorDescriptor;
+    rk_aiq_window exposureWindow;
+    rk_aiq_ae_manual_limits aeManualLimits;
+    long manual_exposure_time_us[NUM_EXPOSURES];
+    float manual_analog_gain[NUM_EXPOSURES];
+    short manual_iso[NUM_EXPOSURES];
 };
 
 /**
@@ -52,6 +64,17 @@ struct AiqResults {
     rk_aiq_ae_results aeResults;
     rk_aiq_awb_results awbResults;
     rk_aiq_misc_isp_results miscIspResults;
+};
+
+struct AeInputParams {
+    rk_aiq_exposure_sensor_descriptor   *sensorDescriptor;
+    AiqInputParams                      *aiqInputParams;
+    AAAControls                         *aaaControls;
+    CameraWindow                        *croppingRegion;
+    CameraWindow                        *aeRegion;
+    int                                 extraEvShift;
+    int                                 maxSupportedFps;
+    AeInputParams()                     { CLEAR(*this); }
 };
 
 /**
