@@ -167,6 +167,7 @@ private:  /* Methods */
     status_t getSensorModeData(rk_aiq_exposure_sensor_descriptor &desc);
     status_t initStaticMetadata();
     status_t applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSettings);
+    status_t fillMetadata(std::shared_ptr<RequestCtrlState> &reqState);
 
 private:  /* Members */
     SharedItemPool<RequestCtrlState> mRequestStatePool;

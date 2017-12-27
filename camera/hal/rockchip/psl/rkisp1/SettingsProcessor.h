@@ -106,6 +106,8 @@ private:
                                           RequestCtrlState &reqAiqCfg);
     status_t processHotPixelSettings(const CameraMetadata &settings,
                                      RequestCtrlState &reqAiqCfg);
+    status_t processTonemapSettings(const CameraMetadata &settings,
+                                    RequestCtrlState &reqAiqCfg);
     void processCroppingRegion(const CameraMetadata &settings,
                                    RequestCtrlState &reqAiqCfg);
 
@@ -114,6 +116,9 @@ private:
     char mapImageEnhancementSettings(const CameraMetadata &settings,
             const int enhancementName,
             RequestCtrlState &reqAiqCfg);
+
+    status_t getTonemapCurve(const CameraMetadata settings, unsigned int tag,
+                             unsigned int *gammaLutSize, float *gammaLut) const;
 
 private:
     /**

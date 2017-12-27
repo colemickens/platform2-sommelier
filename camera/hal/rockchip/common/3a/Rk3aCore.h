@@ -32,6 +32,7 @@
 NAMESPACE_DECLARATION {
 static const unsigned int NUM_EXPOSURES = 1;   /*!> Number of frames AIQ algorithm
                                                     provides output for */
+static const unsigned int COLOR_TRANSFORM_SIZE = 9;
 
 /**
  * \struct AiqInputParams
@@ -45,12 +46,22 @@ struct AiqInputParams {
     rk_aiq_misc_isp_input_params miscParams;
     bool aeLock;
     /* Below structs are part of AE, AWB and misc ISP input parameters. */
+    bool awbLock;
+    /*
+     * Manual color correction.
+     */
+    rk_aiq_color_channels manualColorGains;
+    float manualColorTransform[COLOR_TRANSFORM_SIZE];
     rk_aiq_exposure_sensor_descriptor sensorDescriptor;
     rk_aiq_window exposureWindow;
+    rk_aiq_window awbWindow;
     rk_aiq_ae_manual_limits aeManualLimits;
     long manual_exposure_time_us[NUM_EXPOSURES];
     float manual_analog_gain[NUM_EXPOSURES];
     short manual_iso[NUM_EXPOSURES];
+
+    /*!< rk_aiq_awb_input_params pointer contents */
+    rk_aiq_awb_manual_cct_range manualCctRange;
 };
 
 /**
@@ -75,6 +86,12 @@ struct AeInputParams {
     int                                 extraEvShift;
     int                                 maxSupportedFps;
     AeInputParams()                     { CLEAR(*this); }
+};
+
+struct AwbInputParams {
+    AiqInputParams                      *aiqInputParams;
+    AAAControls                         *aaaControls;
+    AwbInputParams()                    { CLEAR(*this); }
 };
 
 /**

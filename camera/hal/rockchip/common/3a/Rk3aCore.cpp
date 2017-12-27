@@ -35,8 +35,12 @@ void AiqInputParams::init()
     CLEAR(miscParams);
     CLEAR(sensorDescriptor);
     CLEAR(exposureWindow);
+    CLEAR(awbWindow);
     CLEAR(aeManualLimits);
+    CLEAR(manualCctRange);
+    CLEAR(manualColorGains);
     aeLock = false;
+    awbLock = false;
     restorePointers();
 }
 
@@ -48,6 +52,9 @@ void AiqInputParams::restorePointers()
     aeInputParams.manual_exposure_time_us = &manual_exposure_time_us[0];
     aeInputParams.manual_analog_gain = &manual_analog_gain[0];
     aeInputParams.manual_iso = &manual_iso[0];
+
+    awbParams.window = &awbWindow;
+    awbParams.manual_cct_range = &manualCctRange;
 }
 
 AiqInputParams &AiqInputParams::operator=(const AiqInputParams &other)

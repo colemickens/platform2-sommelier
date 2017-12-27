@@ -215,9 +215,6 @@ void RequestCtrlState::reset(RequestCtrlState* me)
         me->captureSettings.reset();
         me->processingSettings.reset();
         me->graphConfig.reset();
-        DELETE_ARRAY_AND_NULLIFY(me->rGammaLut);
-        DELETE_ARRAY_AND_NULLIFY(me->gGammaLut);
-        DELETE_ARRAY_AND_NULLIFY(me->bGammaLut);
     } else {
         LOGE("Trying to reset a null CtrlState structure !! - BUG ");
     }
@@ -322,9 +319,6 @@ void RequestCtrlState::init(Camera3Request *req,
     initAAAControls();
 
     tonemapContrastCurve = false;
-    rGammaLut = nullptr;
-    gGammaLut = nullptr;
-    bGammaLut = nullptr;
     rGammaLutSize = 0;
     gGammaLutSize = 0;
     bGammaLutSize = 0;
@@ -751,6 +745,30 @@ ControlUnit::applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSetti
     return status;
 }
 
+status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
+{
+    mMetadata->writeMiscMetadata(*reqState);
+    mMetadata->writeJpegMetadata(*reqState);
+
+    mMetadata->writeAwbMetadata(*reqState);
+    mMetadata->writeSensorMetadata(*reqState);
+    mMetadata->writeLensMetadata(*reqState);
+    mMetadata->fillTonemapCurve(*reqState);
+
+    // TODO: calculate proper rolling shutter skew
+    int64_t rollingShutterSkew = 1000000; // default 1ms
+    //# ANDROID_METADATA_Dynamic android.sensor.rollingShutterSkew done
+    reqState->ctrlUnitResult->update(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
+                                     &rollingShutterSkew, 1);
+
+    uint8_t pipelineDepth;
+    mSettingsProcessor->getStaticMetadataCache().getPipelineDepth(pipelineDepth);
+    //# ANDROID_METADATA_Dynamic android.request.pipelineDepth done
+    reqState->ctrlUnitResult->update(ANDROID_REQUEST_PIPELINE_DEPTH,
+                                     &pipelineDepth, 1);
+    return OK;
+}
+
 status_t
 ControlUnit::handleNewStat(Message &msg)
 {
@@ -820,6 +838,8 @@ ControlUnit::handleNewStat(Message &msg)
         LOGE("Failed to apply AE settings for frame id %llu", stats->frame_id);
     }
     mLatestAiqResults = reqState->captureSettings->aiqResults;
+    /* dump3A(mLatestAiqResults); */
+
     return status;
 }
 
@@ -872,38 +892,6 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int reqId = reqState->captureSettings->aiqResults.requestId;
-    bool updateMeta = false;
-
-    LOG2("complete processing req %d frames arrived %d total %d",
-             reqId, reqState->framesArrived,
-             reqState->graphConfig->getIsaOutputCount());
-
-    // We do this only once per request when the first buffer arrives
-    if (reqState->framesArrived == 1) {
-        mMetadata->writeAwbMetadata(*reqState);
-        mMetadata->writeSensorMetadata(*reqState);
-        //TODO, zyc
-        /* mMetadata->writePAMetadata(*reqState); */
-        mMetadata->writeJpegMetadata(*reqState);
-        mMetadata->writeMiscMetadata(*reqState);
-        mMetadata->writeLensMetadata(*reqState);
-        //TODO, zyc
-        /* mMetadata->fillTonemapCurve(*reqState); */
-
-        // TODO: calculate proper rolling shutter skew
-        int64_t rollingShutterSkew = 1000000; // default 1ms
-        //# ANDROID_METADATA_Dynamic android.sensor.rollingShutterSkew done
-        reqState->ctrlUnitResult->update(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
-                                         &rollingShutterSkew, 1);
-
-        uint8_t pipelineDepth;
-        mSettingsProcessor->getStaticMetadataCache().getPipelineDepth(pipelineDepth);
-        //# ANDROID_METADATA_Dynamic android.request.pipelineDepth done
-        reqState->ctrlUnitResult->update(ANDROID_REQUEST_PIPELINE_DEPTH,
-                                         &pipelineDepth, 1);
-    }
-
-    updateMeta = true;
 
     if (CC_LIKELY((reqState->request != nullptr) &&
                   (reqState->captureSettings.get() != nullptr))) {
@@ -921,8 +909,10 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
         reqState->processingSettings->android3Actrl = reqState->aaaControls;
 
         reqState->captureSettings->aiqResults = mLatestAiqResults;
-        mImguUnit->completeRequest(reqState->processingSettings,
-                                         updateMeta);
+
+        fillMetadata(reqState);
+
+        mImguUnit->completeRequest(reqState->processingSettings, true);
     } else {
         LOGE("request or captureSetting is nullptr - Fix the bug!");
         return UNKNOWN_ERROR;

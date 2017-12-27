@@ -28,6 +28,8 @@
 namespace android {
 namespace camera2 {
 
+#define TONEMAP_MAX_CURVE_POINTS    1024
+
 /**
  * \enum AlgorithmState
  * Describes the state for all the camera control algorithms (AE, AWB)
@@ -68,9 +70,9 @@ struct RequestCtrlState {
     AlgorithmState  awbState;
 
     bool tonemapContrastCurve;
-    float *rGammaLut;
-    float *gGammaLut;
-    float *bGammaLut;
+    float rGammaLut[TONEMAP_MAX_CURVE_POINTS];
+    float gGammaLut[TONEMAP_MAX_CURVE_POINTS];
+    float bGammaLut[TONEMAP_MAX_CURVE_POINTS];
     unsigned int rGammaLutSize;
     unsigned int gGammaLutSize;
     unsigned int bGammaLutSize;

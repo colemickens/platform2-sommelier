@@ -44,7 +44,12 @@ public:
 private:
     status_t processAeResults(RequestCtrlState &reqState);
     status_t processAwbResults(RequestCtrlState &reqState);
+    status_t processAfTriggers(RequestCtrlState &reqAiqCfg);
+    status_t processAfResults(RequestCtrlState &reqState);
+    status_t applyTonemaps(RequestCtrlState &reqState);
 
+    float interpolate(float pos, const float *src, int srcSize) const;
+    void interpolateArray(const float *src, int srcSize, float *dst, int dstSize) const;
 private:
     int mCameraId;
 

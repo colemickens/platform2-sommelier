@@ -67,28 +67,28 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
      /*
       * TODO: Consider moving this to common code in 3A class
       */
-     /* rk_aiq_pa_results &paResults = reqState.captureSettings->aiqResults.paResults; */
-     /* float gains[4]; */
-     /* gains[0] = paResults.color_gains.r; */
-     /* gains[1] = paResults.color_gains.gr; */
-     /* gains[2] = paResults.color_gains.gb; */
-     /* gains[3] = paResults.color_gains.b; */
-     /* reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_GAINS, gains, 4); */
+     rk_aiq_awb_results &awbResults = reqState.captureSettings->aiqResults.awbResults;
+     float gains[4];
+     gains[0] = awbResults.awb_gain_cfg.awb_gains.red_gain;
+     gains[1] = awbResults.awb_gain_cfg.awb_gains.green_r_gain;
+     gains[2] = awbResults.awb_gain_cfg.awb_gains.green_b_gain;
+     gains[3] = awbResults.awb_gain_cfg.awb_gains.blue_gain;
+     reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_GAINS, gains, 4);
 
      /*
       * store the results in row major order
       */
-     /* camera_metadata_rational_t transformMatrix[9]; */
-     /* const int32_t COLOR_TRANSFORM_PRECISION = 10000; */
-     /* for (int i = 0; i < 3; i++) { */
-     /*     for (int j = 0; j < 3; j++) { */
-     /*         transformMatrix[j + 3*i].numerator = */
-     /*                 (int32_t)(paResults.color_conversion_matrix[i][j] * COLOR_TRANSFORM_PRECISION); */
-     /*         transformMatrix[j + 3*i].denominator = COLOR_TRANSFORM_PRECISION; */
-     /*     } */
-     /* } */
-     /* reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_TRANSFORM, */
-     /*                                 transformMatrix, 9); */
+     camera_metadata_rational_t transformMatrix[9];
+     const int32_t COLOR_TRANSFORM_PRECISION = 10000;
+     for (int i = 0; i < 9; i++) {
+             transformMatrix[i].numerator =
+                     (int32_t)(awbResults.ctk_config.ctk_matrix.coeff[i] * COLOR_TRANSFORM_PRECISION);
+             transformMatrix[i].denominator = COLOR_TRANSFORM_PRECISION;
+
+     }
+
+     reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_TRANSFORM,
+                                     transformMatrix, 9);
 }
 
 /**
@@ -316,6 +316,81 @@ status_t Metadata::initTonemaps()
         mBGammaLut[i * 2 + 1] = (float) i / (mMaxCurvePoints - 1);
     }
     return OK;
+}
+
+status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    /* ia_aiq_gbce_results &gbceResults = reqState.captureSettings->aiqResults.gbceResults; */
+    rk_aiq_goc_config &results = reqState.captureSettings->aiqResults.miscIspResults.gbce_config.goc_config;
+
+    int multiplier = 1;
+    // TODO: apply the curves from request to gbce results
+    if (reqState.tonemapContrastCurve) {
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_RED,
+                reqState.rGammaLut,
+                reqState.rGammaLutSize);
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_GREEN,
+                reqState.gGammaLut,
+                reqState.gGammaLutSize);
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_BLUE,
+                reqState.bGammaLut,
+                reqState.bGammaLutSize);
+    } else {
+        if (mMaxCurvePoints < results.gamma_y.gamma_y_cnt && mMaxCurvePoints > 0) {
+            multiplier = results.gamma_y.gamma_y_cnt / mMaxCurvePoints;
+            LOG2("Not enough curve points. Linear interpolation is used.");
+        } else {
+            mMaxCurvePoints = results.gamma_y.gamma_y_cnt;
+            if (mMaxCurvePoints > CIFISP_GAMMA_OUT_MAX_SAMPLES)
+                mMaxCurvePoints = CIFISP_GAMMA_OUT_MAX_SAMPLES;
+        }
+
+        if (mRGammaLut == nullptr ||
+            mGGammaLut == nullptr ||
+            mBGammaLut == nullptr) {
+            LOGE("Lut tables are not initialized.");
+            return UNKNOWN_ERROR;
+        }
+
+        unsigned short gamma_y_max = mMaxCurvePoints > 0 ? results.gamma_y.gamma_y[mMaxCurvePoints - 1] :
+            results.gamma_y.gamma_y[0];
+        for (uint32_t i=0; i < mMaxCurvePoints; i++) {
+            if (mMaxCurvePoints > 1)
+                mRGammaLut[i * 2] = (float) i / (mMaxCurvePoints - 1);
+            mRGammaLut[i * 2 + 1] = (float)results.gamma_y.gamma_y[i * multiplier] / gamma_y_max;
+            if (mMaxCurvePoints > 1)
+                mGGammaLut[i * 2] = (float) i / (mMaxCurvePoints - 1);
+            mGGammaLut[i * 2 + 1] = (float)results.gamma_y.gamma_y[i * multiplier] / gamma_y_max;
+            if (mMaxCurvePoints > 1)
+                mBGammaLut[i * 2] = (float) i / (mMaxCurvePoints - 1);
+            mBGammaLut[i * 2 + 1] = (float)results.gamma_y.gamma_y[i * multiplier] / gamma_y_max;
+        }
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_RED,
+                mRGammaLut,
+                mMaxCurvePoints * 2);
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_GREEN,
+                mGGammaLut,
+                mMaxCurvePoints * 2);
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_BLUE,
+                mBGammaLut,
+                mMaxCurvePoints * 2);
+    }
+
+    if (reqState.captureSettings->tonemapMode == ANDROID_TONEMAP_MODE_GAMMA_VALUE) {
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_GAMMA,
+                &reqState.captureSettings->gammaValue,
+                1);
+    }
+
+    if (reqState.captureSettings->tonemapMode == ANDROID_TONEMAP_MODE_PRESET_CURVE) {
+        reqState.ctrlUnitResult->update(ANDROID_TONEMAP_PRESET_CURVE,
+                &reqState.captureSettings->presetCurve,
+                1);
+    }
+
+    return NO_ERROR;
 }
 
 void

@@ -46,7 +46,8 @@ public:
 
     status_t fillAeInputParams(const CameraMetadata *settings,
                                struct AeInputParams *aeInputParams);
-
+    status_t fillAwbInputParams(const CameraMetadata *settings,
+                                struct AwbInputParams *awbInputParams);
 
     /*
      * static common operation

@@ -101,6 +101,9 @@ SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
     if ((status = processHotPixelSettings(settings, reqAiqCfg)) != OK)
         return status;
 
+    if ((status = processTonemapSettings(settings, reqAiqCfg)) != OK)
+        return status;
+
     return processTestPatternMode(settings, reqAiqCfg);
 }
 
@@ -497,12 +500,18 @@ status_t
 SettingsProcessor::processAwbSettings(const CameraMetadata  &settings,
                                 RequestCtrlState &reqAiqCfg)
 {
-    rk_aiq_awb_input_params* awbInputParams;
-    awbInputParams = &reqAiqCfg.aiqInputParams.awbParams;
-    awbInputParams->frame_use = rk_aiq_frame_use_preview;
-    awbInputParams->scene_mode = rk_aiq_awb_operation_mode_auto;
-    awbInputParams->manual_cct_range = NULL;
-    awbInputParams->window = NULL;
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    AwbInputParams awbInputParams;
+    awbInputParams.aiqInputParams = &reqAiqCfg.aiqInputParams;
+    awbInputParams.aaaControls = &reqAiqCfg.aaaControls;
+
+    m3aWrapper->fillAwbInputParams(&settings,
+                                   &awbInputParams);
+
+    rk_aiq_awb_input_params* awbparams = &awbInputParams.aiqInputParams->awbParams;
+    LOG2("%s:%d: frame_use(%d), scence_mode(%d), manual_cct(%p), window(%p) ", __func__, __LINE__,
+         awbparams->frame_use, awbparams->scene_mode, awbparams->manual_cct_range, awbparams->window);
 
     return OK;
 }
@@ -541,6 +550,61 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
     return OK;
 }
 
+status_t SettingsProcessor::processTonemapSettings(const CameraMetadata &settings,
+                                                   RequestCtrlState &reqAiqCfg)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    status_t status = OK;
+    camera_metadata_ro_entry entry;
+
+    //# ANDROID_METADATA_Control android.tonemap.mode done
+    entry = settings.find(ANDROID_TONEMAP_MODE);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableTonemapModes, entry,
+                                 &(reqAiqCfg.captureSettings->tonemapMode));
+    // ITS test_param_tonemap_mode WA: allow incoming contrast curve, but
+    // only in manual mode (control mode off).
+    if (entry.count == 1 &&
+        entry.data.i32[0] == ANDROID_TONEMAP_MODE_CONTRAST_CURVE &&
+        IS_CONTROL_MODE_OFF(reqAiqCfg.captureSettings->controlMode))
+        reqAiqCfg.captureSettings->tonemapMode = entry.data.i32[0];
+
+    if (reqAiqCfg.captureSettings->tonemapMode ==
+            ANDROID_TONEMAP_MODE_CONTRAST_CURVE)
+        reqAiqCfg.tonemapContrastCurve = true;
+
+    if (reqAiqCfg.captureSettings->tonemapMode ==
+            ANDROID_TONEMAP_MODE_GAMMA_VALUE) {
+        entry = settings.find(ANDROID_TONEMAP_GAMMA);
+        if (entry.count == 1) {
+            reqAiqCfg.captureSettings->gammaValue = entry.data.f[0];
+        }
+    }
+
+    if (reqAiqCfg.captureSettings->tonemapMode ==
+            ANDROID_TONEMAP_MODE_PRESET_CURVE) {
+        entry = settings.find(ANDROID_TONEMAP_PRESET_CURVE);
+        if (entry.count == 1) {
+            reqAiqCfg.captureSettings->presetCurve = entry.data.i32[0];
+        }
+    }
+
+    if (reqAiqCfg.tonemapContrastCurve) {
+        status = getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_RED,
+                                 &(reqAiqCfg.rGammaLutSize),
+                                 reqAiqCfg.rGammaLut);
+        if (status == NO_ERROR)
+            status |= getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_GREEN,
+                                 &(reqAiqCfg.gGammaLutSize),
+                                 reqAiqCfg.gGammaLut);
+        if (status == NO_ERROR)
+            status |= getTonemapCurve(settings, ANDROID_TONEMAP_CURVE_BLUE,
+                                 &(reqAiqCfg.bGammaLutSize),
+                                 reqAiqCfg.bGammaLut);
+    }
+
+    return OK;
+}
+
 status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &settings,
                                              RequestCtrlState &reqAiqCfg)
 {
@@ -550,6 +614,29 @@ status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &setting
     entry = settings.find(ANDROID_SENSOR_TEST_PATTERN_MODE);
     MetadataHelper::getSetting(mStaticMetadataCache.availableTestPatternModes, entry,
                                  &(reqAiqCfg.captureSettings->testPatternMode));
+
+    return OK;
+}
+
+status_t SettingsProcessor::getTonemapCurve(const CameraMetadata settings,
+                                            unsigned int tag,
+                                            unsigned int *gammaLutSize,
+                                            float *gammaLut) const
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    camera_metadata_ro_entry entry;
+
+    entry = settings.find(tag);
+    if (entry.count < 2 || entry.count > TONEMAP_MAX_CURVE_POINTS) {
+        LOGE("tonemap curve %d is not available", tag);
+        return UNKNOWN_ERROR;
+    }
+
+    *gammaLutSize = entry.count;
+
+    for (unsigned int i = 0; i < entry.count; i++) {
+        gammaLut[i] = entry.data.f[i];
+    }
 
     return OK;
 }

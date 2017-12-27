@@ -427,5 +427,123 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
     return NO_ERROR;
 }
 
+/**
+ * fillAwbInputParams
+ *
+ * Converts the capture request settings in format into input parameters
+ * for the AWB algorithm and Parameter Adaptor that is in charge of color
+ * correction.
+ *
+ * It also provides the AWB mode that is used in PSL code.
+ * we do the parsing here so that it is done only once.
+ *
+ * \param[in] settings: Camera metadata with the capture request settings.
+ * \param[out] awbInputParams: parameters for aiq and other awb processing.
+ *
+ * \return BAD_VALUE if settings was nullptr.
+ * \return NO_ERROR in normal situation.
+ */
+status_t Rk3aPlus::fillAwbInputParams(const CameraMetadata *settings,
+                                      AwbInputParams *awbInputParams)
+{
+    rk_aiq_awb_input_params *awbCfg;
+    AwbControls *awbCtrl;
+
+    if (settings == nullptr
+        || awbInputParams->aaaControls == nullptr
+        || awbInputParams->aiqInputParams == nullptr) {
+        LOGE("Input Param is nullptr!");
+        LOGE("settings = %p, aaaControl = %p, aiqInput = %p",
+              settings, awbInputParams->aaaControls,
+              awbInputParams->aiqInputParams);
+
+        return BAD_VALUE;
+    }
+
+    awbCfg = &awbInputParams->aiqInputParams->awbParams;
+    awbCtrl = &awbInputParams->aaaControls->awb;
+
+    // AWB lock
+    camera_metadata_ro_entry entry;
+    //# METADATA_Control control.awbLock done
+    entry = settings->find(ANDROID_CONTROL_AWB_LOCK);
+    if (entry.count == 1) {
+        awbCtrl->awbLock = entry.data.u8[0];
+        if (awbCtrl->awbLock == ANDROID_CONTROL_AWB_LOCK_ON)
+            awbInputParams->aiqInputParams->awbLock = true;
+    }
+
+    /* frame_use
+     *  BEWARE - THIS VALUE MAY NOT WORK WITH AIQ WHICH RUNS PRE-CAPTURE
+     *  WITH STILL FRAME_USE, WHILE THE HAL GETS PREVIEW INTENTS DURING PRE-
+     *  CAPTURE!!!
+     */
+    awbCfg->frame_use = getFrameUseFromIntent(settings);
+
+    awbCfg->manual_cct_range = nullptr;
+
+    CameraWindow awbRegion;
+    //# METADATA_Control control.awbRegion done
+    parseMeteringRegion(settings, ANDROID_CONTROL_AWB_REGIONS, &awbRegion);
+
+    if (awbRegion.isValid()) {
+        awbCfg->window->h_offset = awbRegion.left();
+        awbCfg->window->v_offset = awbRegion.top();
+        awbCfg->window->width = awbRegion.width();
+        awbCfg->window->height = awbRegion.height();
+    } else {
+        awbCfg->window = nullptr;
+    }
+    /*
+     * MANUAL COLOR CORRECTION
+     */
+    awbCtrl->colorCorrectionMode = ANDROID_COLOR_CORRECTION_MODE_FAST;
+    //# METADATA_Control colorCorrection.mode done
+    entry = settings->find(ANDROID_COLOR_CORRECTION_MODE);
+    if (entry.count == 1) {
+        awbCtrl->colorCorrectionMode = entry.data.u8[0];
+    }
+
+    awbCtrl->colorCorrectionAberrationMode = ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST;
+    //# METADATA_Control colorCorrection.aberrationMode done
+    entry = settings->find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE);
+    if (entry.count == 1) {
+        awbCtrl->colorCorrectionAberrationMode = entry.data.u8[0];
+    }
+
+    // if awbMode is not OFF, then colorCorrection mode TRANSFORM_MATRIX should
+    // be ignored and overwrittern to FAST.
+    if (awbCtrl->awbMode != ANDROID_CONTROL_AWB_MODE_OFF &&
+        awbCtrl->colorCorrectionMode == ANDROID_COLOR_CORRECTION_MODE_TRANSFORM_MATRIX) {
+        awbCtrl->colorCorrectionMode = ANDROID_COLOR_CORRECTION_MODE_FAST;
+    }
+
+    if (awbCtrl->awbMode == ANDROID_CONTROL_AWB_MODE_OFF) {
+        //# METADATA_Control colorCorrection.transform done
+        entry = settings->find(ANDROID_COLOR_CORRECTION_TRANSFORM);
+        if (entry.count == 9) {
+            for (size_t i = 0; i < entry.count; i++) {
+                int32_t numerator = entry.data.r[i].numerator;
+                int32_t denominator = entry.data.r[i].denominator;
+                awbInputParams->aiqInputParams->manualColorTransform[i] = (float) numerator / denominator;
+            }
+        }
+
+        //# METADATA_Control colorCorrection.gains done
+        entry = settings->find(ANDROID_COLOR_CORRECTION_GAINS);
+        if (entry.count == 4) {
+            // The color gains from application is in order of RGGB
+            awbInputParams->aiqInputParams->manualColorGains.r = entry.data.f[0];
+            awbInputParams->aiqInputParams->manualColorGains.gr = entry.data.f[1];
+            awbInputParams->aiqInputParams->manualColorGains.gb = entry.data.f[2];
+            awbInputParams->aiqInputParams->manualColorGains.b = entry.data.f[3];
+        }
+    }
+
+    //# METADATA_Control control.awbRegions done
+    //# METADATA_Dynamic control.awbRegions done
+    //# AM Not Supported by 3a
+    return NO_ERROR;
+}
 } NAMESPACE_DECLARATION_END
 
