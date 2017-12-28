@@ -1264,6 +1264,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       SLOG(this, 2) << "Deregistered device: " << to_forget->link_name();
       UpdateDevice(to_forget);
       to_forget->SetEnabled(false);
+      device_geolocation_info_.erase(to_forget);
       devices_.erase(it);
       EmitDeviceProperties();
       return;
@@ -2568,31 +2569,35 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
-const map<string, vector<GeolocationInfo>>& Manager::GetNetworksForGeolocation()
+map<string, vector<GeolocationInfo>> Manager::GetNetworksForGeolocation()
     const {
-  return networks_for_geolocation_;
+  map<string, vector<GeolocationInfo>> geolocation_infos;
+  for (const auto& entry : device_geolocation_info_) {
+    const DeviceRefPtr& device = entry.first;
+    const vector<GeolocationInfo>& device_info = entry.second;
+    vector<GeolocationInfo>* network_geolocation_info = nullptr;
+    if (device->technology() == Technology::kWifi) {
+      network_geolocation_info =
+          &geolocation_infos[kGeoWifiAccessPointsProperty];
+    } else if (device->technology() == Technology::kCellular) {
+      network_geolocation_info =
+          &geolocation_infos[kGeoCellTowersProperty];
+    } else {
+      // Ignore other technologies.
+      continue;
+    }
+
+    DCHECK(network_geolocation_info);
+    network_geolocation_info->insert(network_geolocation_info->end(),
+                                     device_info.begin(), device_info.end());
+  }
+
+  return geolocation_infos;
 }
 
 void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
-  SLOG(this, 2) << __func__ << " for technology "
-                << Technology::NameFromIdentifier(device->technology());
-  switch (device->technology()) {
-    // TODO(gauravsh): crbug.com/217833 Need a strategy for combining
-    // geolocation objects from multiple devices of the same technolgy.
-    // Currently, we just override the any previously acquired
-    // geolocation objects for the retrieved technology type.
-    case Technology::kWifi:
-      networks_for_geolocation_[kGeoWifiAccessPointsProperty] =
-          device->GetGeolocationObjects();
-      break;
-    case Technology::kCellular:
-      networks_for_geolocation_[kGeoCellTowersProperty] =
-          device->GetGeolocationObjects();
-      break;
-    default:
-      // Ignore other technologies.
-      break;
-  }
+  SLOG(this, 2) << __func__ << " for device " << device->UniqueName();
+  device_geolocation_info_[device] = device->GetGeolocationObjects();
 }
 
 void Manager::RecheckPortal(Error* /*error*/) {

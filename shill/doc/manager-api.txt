@@ -351,6 +351,9 @@ Methods
 			mapping string key-value pairs. Each of these
 			(sub) dictionaries contains information about one single
 			network for Geolocation.
+			If there are several network devices of a particular
+			type, this method will return all of the information
+			from all of the devices.
 			For more details, see:
 			https://developers.google.com/maps/documentation/business/geolocation/
 
