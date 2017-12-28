@@ -24,7 +24,7 @@
             '<(INTERMEDIATE_DIR)/squashfs',
           ],
           'action': [
-            'mkdir', '<(INTERMEDIATE_DIR)/squashfs',
+            'mkdir', '-p', '<(INTERMEDIATE_DIR)/squashfs',
           ],
         },
         {
