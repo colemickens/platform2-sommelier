@@ -16,6 +16,11 @@ const uint64_t kInvalidBufferId = 0xFFFFFFFFFFFFFFFF;
 
 const size_t kMaxPlanes = 4;
 
+enum BufferState {
+  kRegistered = 0,  // The buffer is registered by the framework.
+  kReturned = 1,    // The buffer is returned to the framework.
+};
+
 typedef struct camera_buffer_handle {
   native_handle_t base;
   // The fds for each plane.
@@ -40,6 +45,8 @@ typedef struct camera_buffer_handle {
   uint32_t strides[kMaxPlanes];
   // The offset to the start of each plane in bytes.
   uint32_t offsets[kMaxPlanes];
+  // The state of the buffer; must be one of |BufferState|.
+  int state;
 
   camera_buffer_handle()
       : magic(kCameraBufferMagic),
@@ -50,7 +57,8 @@ typedef struct camera_buffer_handle {
         width(0),
         height(0),
         strides{},
-        offsets{} {
+        offsets{},
+        state(kRegistered) {
     for (size_t i = 0; i < kMaxPlanes; ++i) {
       fds[i] = -1;
     }

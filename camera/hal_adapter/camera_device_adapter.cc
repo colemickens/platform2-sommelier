@@ -292,8 +292,10 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }
-  DCHECK(buffer_handles_.find(buffer_id) == buffer_handles_.end());
-  buffer_handles_[buffer_id] = std::move(buffer_handle);
+  {
+    base::AutoLock l(buffer_handles_lock_);
+    buffer_handles_[buffer_id] = std::move(buffer_handle);
+  }
 
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
            << "format: " << FormatToString(drm_format)
@@ -364,6 +366,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
         LOGF(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
+      buffer_handles_[out_buf->buffer_id]->state = kReturned;
       RemoveBufferLocked(*(result->output_buffers + i));
       output_buffers.push_back(std::move(out_buf));
     }
@@ -380,6 +383,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     if (input_buffer.is_null()) {
       LOGF(ERROR) << "Failed to serialize input stream buffer";
     }
+    buffer_handles_[input_buffer->buffer_id]->state = kReturned;
     RemoveBufferLocked(*result->input_buffer);
     r->input_buffer = std::move(input_buffer);
   }
@@ -451,6 +455,11 @@ void CameraDeviceAdapter::RemoveBufferLocked(
   // condition where the process_capture_request sends down an existing buffer
   // handle which hasn't been removed in RemoveBufferHandleOnFenceSyncThread.
   uint64_t buffer_id = handle->buffer_id;
+  if (buffer_handles_[buffer_id]->state == kRegistered) {
+    // Framework registered a new buffer with the same |buffer_id| before we
+    // remove the old buffer handle from |buffer_handles_|.
+    return;
+  }
   std::unique_ptr<camera_buffer_handle_t> buffer_handle;
   buffer_handles_[buffer_id].swap(buffer_handle);
   buffer_handles_.erase(buffer_id);
