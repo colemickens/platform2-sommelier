@@ -25,6 +25,7 @@ using std::string;
 namespace shill {
 
 // static
+const char WPASupplicant::kBSSPropertyAge[] = "Age";
 const char WPASupplicant::kBSSPropertyBSSID[] = "BSSID";
 const char WPASupplicant::kBSSPropertyFrequency[] = "Frequency";
 const char WPASupplicant::kBSSPropertyIEs[] = "IEs";

@@ -482,6 +482,7 @@
         'external_task.cc',
         'file_io.cc',
         'file_reader.cc',
+        'geolocation_info.cc',
         'hook_table.cc',
         'http_request.cc',
         'http_url.cc',

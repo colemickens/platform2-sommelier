@@ -20,11 +20,18 @@
 #include <map>
 #include <string>
 
+#include <base/time/time.h>
+
 namespace shill {
 
 // Geolocation property field names are defined by those kGeo* constants in
 // <chromiumos>/src/platform/system_api/dbus/shill/dbus-constants.h.
 using GeolocationInfo = std::map<std::string, std::string>;
+
+// Helper functions to serialize and transform the last-seen time for a
+// geolocation object, so up-to-date age values can be returned over D-Bus.
+void AddLastSeenTime(GeolocationInfo* info, const base::TimeTicks& time);
+GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info);
 
 }  // namespace shill
 

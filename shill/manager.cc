@@ -20,6 +20,7 @@
 #include <time.h>
 
 #include <algorithm>
+#include <iterator>
 #include <set>
 #include <string>
 #include <vector>
@@ -2613,9 +2614,12 @@ map<string, vector<GeolocationInfo>> Manager::GetNetworksForGeolocation()
       continue;
     }
 
+    // Insert new info objects, but ensure that the last seen field is
+    // replaced with an age field, if it exists.
     DCHECK(network_geolocation_info);
-    network_geolocation_info->insert(network_geolocation_info->end(),
-                                     device_info.begin(), device_info.end());
+    std::transform(device_info.begin(), device_info.end(),
+                   std::back_inserter(*network_geolocation_info),
+                   &PrepareGeolocationInfoForExport);
   }
 
   return geolocation_infos;

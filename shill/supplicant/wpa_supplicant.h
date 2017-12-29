@@ -25,6 +25,7 @@ namespace shill {
 
 class WPASupplicant {
  public:
+  static const char kBSSPropertyAge[];
   static const char kBSSPropertyBSSID[];
   static const char kBSSPropertyFrequency[];
   static const char kBSSPropertyIEs[];

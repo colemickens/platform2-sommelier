@@ -16,6 +16,7 @@
 
 #include "shill/wifi/wifi.h"
 
+#include <inttypes.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 #include <netinet/ether.h>
 #include <stdio.h>
@@ -1785,7 +1786,7 @@ vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
         StringPrintf("%d", endpoint->signal_strength());
     geoinfo[kGeoChannelProperty] = StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
-    // TODO(gauravsh): Include age field. crbug.com/217554
+    AddLastSeenTime(&geoinfo, endpoint->last_seen());
     objects.push_back(geoinfo);
   }
   return objects;
