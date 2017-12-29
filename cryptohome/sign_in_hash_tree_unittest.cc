@@ -1,0 +1,179 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Unit tests for SignInHashTree.
+
+#include <utility>
+
+#include <base/files/scoped_temp_dir.h>
+#include <gtest/gtest_prod.h>
+#include <gmock/gmock.h>
+
+#include "cryptohome/sign_in_hash_tree.h"
+
+using ::testing::_;
+using ::testing::Expectation;
+using ::testing::Return;
+using ::testing::SetArgPointee;
+
+namespace {
+// The following constant names have the format:
+//  kAuxLabels<l>_<k>_<constant_number>
+const char kAuxKey4_2_1[] = "1100";
+const std::vector<std::string> kAuxLabels4_2_1 = {{"1101", "111", "10", "0"}};
+const char kAuxKey4_2_2[] = "0111";
+const std::vector<std::string> kAuxLabels4_2_2 = {{"0110", "010", "00", "1"}};
+const char kAuxKey6_4_1[] = "010110";
+const std::vector<std::string> kAuxLabels6_4_1 = {
+    {"010100", "010101", "010111", "0100", "0110", "0111", "00", "10", "11"}};
+const char kAuxKey6_4_2[] = "000010";
+const std::vector<std::string> kAuxLabels6_4_2 = {
+    {"000000", "000001", "000011", "0001", "0010", "0011", "01", "10", "11"}};
+const std::vector<uint8_t> kRootHash4_2 = {
+    {0x53, 0x6D, 0x98, 0x83, 0x7F, 0x2D, 0xD1, 0x65, 0xA5, 0x5D, 0x5E,
+     0xEA, 0xE9, 0x14, 0x85, 0x95, 0x44, 0x72, 0xD5, 0x6F, 0x24, 0x6D,
+     0xF2, 0x56, 0xBF, 0x3C, 0xAE, 0x19, 0x35, 0x2A, 0x12, 0x3c}};
+
+const std::vector<uint8_t> kSampleHash1 = {
+    {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x1, 0x2, 0x3,
+     0x4, 0x5, 0x6, 0x7, 0x8, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
+     0x7, 0x8, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8}};
+
+const std::vector<uint8_t> kRootHash6_4_1 = {
+    {0x42, 0xA8, 0x59, 0x26, 0xBA, 0xF5, 0x62, 0xFB, 0x10, 0xCC, 0x33,
+     0x79, 0x66, 0xA5, 0xC4, 0x74, 0xD1, 0x81, 0x44, 0x08, 0xB4, 0x78,
+     0xA7, 0x92, 0x1E, 0x07, 0x89, 0xBB, 0x9A, 0x8D, 0xBC, 0x02}};
+
+const std::vector<uint8_t> kSampleCredData1 = {{0xA, 0xB, 0xC, 0xD}};
+
+std::vector<std::string> ConvertLabelsIntoStrings(
+    const std::vector<cryptohome::SignInHashTree::Label>& labels) {
+  std::vector<std::string> result_strings;
+  for (auto const& label : labels) {
+    result_strings.push_back(
+        std::bitset<64>(label.value()).to_string().substr(64 - label.length()));
+  }
+  return result_strings;
+}
+
+}  // namespace
+
+namespace cryptohome {
+
+TEST(SignInHashTreeUnitTest, GetAuxiliaryLabelsTest) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  SignInHashTree tree(4, 1, temp_dir.path());
+
+  // Convert the string labels into Label which the code understands.
+  uint64_t key_val = static_cast<uint64_t>(std::stoi(kAuxKey4_2_1, nullptr, 2));
+  auto label = SignInHashTree::Label(key_val, 4, 1);
+  auto result_labels = tree.GetAuxiliaryLabels(label);
+  // Convert the labels into strings for easy comparison.
+  EXPECT_EQ(kAuxLabels4_2_1, ConvertLabelsIntoStrings(result_labels));
+
+  key_val = static_cast<uint64_t>(std::stoi(kAuxKey4_2_2, nullptr, 2));
+  label = SignInHashTree::Label(key_val, 4, 1);
+  result_labels = tree.GetAuxiliaryLabels(label);
+  EXPECT_EQ(kAuxLabels4_2_2, ConvertLabelsIntoStrings(result_labels));
+
+  base::ScopedTempDir temp_dir2;
+  ASSERT_TRUE(temp_dir2.CreateUniqueTempDir());
+
+  SignInHashTree tree2(6, 2, temp_dir2.path());
+
+  key_val = static_cast<uint64_t>(std::stoi(kAuxKey6_4_1, nullptr, 2));
+  label = SignInHashTree::Label(key_val, 6, 2);
+  result_labels = tree2.GetAuxiliaryLabels(label);
+  EXPECT_EQ(kAuxLabels6_4_1, ConvertLabelsIntoStrings(result_labels));
+
+  key_val = static_cast<uint64_t>(std::stoi(kAuxKey6_4_2, nullptr, 2));
+  label = SignInHashTree::Label(key_val, 6, 2);
+  result_labels = tree2.GetAuxiliaryLabels(label);
+  EXPECT_EQ(kAuxLabels6_4_2, ConvertLabelsIntoStrings(result_labels));
+}
+
+// Test that we can generate a hash file with an expected root hash.
+// Also test that we can write to the hash file and read back from it
+// when we update an inner label.
+TEST(SignInHashTreeUnitTest, GenerateAndStoreHashCacheFile) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  SignInHashTree tree(4, 1, temp_dir.path());
+  tree.GenerateAndStoreHashCache();
+
+  // Check that the root hash was calculated successfully.
+  std::vector<uint8_t> result_hash;
+  std::vector<uint8_t> cred_data;
+  auto label = SignInHashTree::Label(0, 0, 1);
+  ASSERT_TRUE(tree.GetLabelData(label, &result_hash, &cred_data));
+  EXPECT_EQ(kRootHash4_2, result_hash);
+
+  // Try updating Label "00".
+  ASSERT_TRUE(
+      tree.StoreLabel(SignInHashTree::Label(0, 2, 1), kSampleHash1, cred_data));
+  // Try updating Label "101".
+  ASSERT_TRUE(
+      tree.StoreLabel(SignInHashTree::Label(5, 3, 1), kSampleHash1, cred_data));
+
+  result_hash.clear();
+  ASSERT_TRUE(tree.GetLabelData(SignInHashTree::Label(0, 2, 1), &result_hash,
+                                &cred_data));
+  EXPECT_EQ(kSampleHash1, result_hash);
+  result_hash.clear();
+  ASSERT_TRUE(tree.GetLabelData(SignInHashTree::Label(5, 3, 1), &result_hash,
+                                &cred_data));
+  EXPECT_EQ(kSampleHash1, result_hash);
+}
+
+// Test that we can insert and retrieve a leaf label when we initialize
+// a SignInHashTree. Also make sure the hash tree can understand that
+// the label has been taken. Also test that once we re-initialize a
+// SignInHashTree, it will have the correct label entry, and the
+// root hash will also be what we expect.
+TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  std::vector<uint8_t> get_value_return;
+  get_value_return.insert(get_value_return.end(), kSampleHash1.begin(),
+                          kSampleHash1.end());
+  get_value_return.insert(get_value_return.end(), kSampleCredData1.begin(),
+                          kSampleCredData1.end());
+
+  auto tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.path());
+  tree->GenerateAndStoreHashCache();
+
+  ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
+                               kSampleCredData1));
+  std::vector<uint8_t> returned_hash, cred_data;
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
+                                 &returned_hash, &cred_data));
+  EXPECT_EQ(kSampleHash1, returned_hash);
+  EXPECT_EQ(kSampleCredData1, cred_data);
+
+  // Regenerate the hash cache so the root hash gets recalculated.
+  tree->GenerateAndStoreHashCache();
+
+  returned_hash.clear();
+  cred_data.clear();
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
+                                 &cred_data));
+  EXPECT_EQ(kRootHash6_4_1, returned_hash);
+
+  // Now clear the tree object, create it again, and see if everything is what
+  // it was.
+  tree.reset();
+  tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.path());
+
+  returned_hash.clear();
+  cred_data.clear();
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
+                                 &cred_data));
+  EXPECT_EQ(kRootHash6_4_1, returned_hash);
+}
+
+}  // namespace cryptohome
