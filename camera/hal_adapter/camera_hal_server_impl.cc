@@ -17,9 +17,11 @@
 #include <deque>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -38,8 +40,9 @@ namespace arc {
 namespace {
 
 const base::FilePath kArcCamera3SocketPath("/run/camera/camera3.sock");
-
-const char kCameraHalDllName[] = "camera_hal.so";
+const base::FilePath kCameraHalDirs[] = {
+    base::FilePath("/usr/lib/camera_hal"),
+    base::FilePath("/usr/lib64/camera_hal")};
 
 }  // namespace
 
@@ -156,37 +159,39 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
 void CameraHalServerImpl::RegisterCameraHal() {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  void* camera_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
-  if (!camera_hal_handle) {
-    LOGF(ERROR) << "Failed to dlopen: " << dlerror();
-    main_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                              base::Unretained(this), ENOENT));
-    return;
+
+  std::vector<camera_module_t*> camera_modules;
+
+  for (base::FilePath dir : kCameraHalDirs) {
+    base::FileEnumerator dlls(dir, false, base::FileEnumerator::FILES, "*.so");
+    for (base::FilePath dll = dlls.Next(); !dll.empty(); dll = dlls.Next()) {
+      LOGF(INFO) << "Try to load camera hal " << dll.value();
+
+      void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);
+      if (!handle) {
+        LOGF(INFO) << "Failed to dlopen: " << dlerror();
+        main_task_runner_->PostTask(
+            FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
+                                  base::Unretained(this), ENOENT));
+        return;
+      }
+
+      auto* module = static_cast<camera_module_t*>(
+          dlsym(handle, HAL_MODULE_INFO_SYM_AS_STR));
+      if (!module) {
+        LOGF(ERROR) << "Failed to get camera_module_t pointer with symbol name "
+                    << HAL_MODULE_INFO_SYM_AS_STR << " from " << dll.value();
+        main_task_runner_->PostTask(
+            FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
+                                  base::Unretained(this), ELIBBAD));
+        return;
+      }
+
+      camera_modules.push_back(module);
+    }
   }
 
-  camera_module_t* camera_module = static_cast<camera_module_t*>(
-      dlsym(camera_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
-  if (!camera_module) {
-    LOGF(ERROR) << "Failed to get camera_module_t pointer with symbol name "
-                << HAL_MODULE_INFO_SYM_AS_STR;
-    main_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                              base::Unretained(this), ELIBBAD));
-    return;
-  }
-
-  if (!camera_module->get_number_of_cameras()) {
-    LOGF(WARNING)
-        << "Number of cameras is zero. Assuming camera isn't initialized yet";
-    sleep(3);
-    main_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                              base::Unretained(this), ENODEV));
-    return;
-  }
-
-  camera_hal_adapter_.reset(new CameraHalAdapter(camera_module));
+  camera_hal_adapter_.reset(new CameraHalAdapter(camera_modules));
   LOGF(INFO) << "Running camera HAL adapter on " << getpid();
 
   if (!camera_hal_adapter_->Start()) {

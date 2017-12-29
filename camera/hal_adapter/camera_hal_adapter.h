@@ -10,12 +10,15 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <hardware/camera3.h>
 
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 
+#include "arc/future.h"
 #include "hal_adapter/mojo/camera3.mojom.h"
 #include "hal_adapter/mojo/camera_common.mojom.h"
 
@@ -27,9 +30,16 @@ class CameraModuleDelegate;
 
 class CameraModuleCallbacksDelegate;
 
-class CameraHalAdapter : public camera_module_callbacks_t {
+class CameraHalAdapter;
+
+struct CameraModuleCallbacksAux : camera_module_callbacks_t {
+  int module_id;
+  CameraHalAdapter* adapter;
+};
+
+class CameraHalAdapter {
  public:
-  explicit CameraHalAdapter(camera_module_t* camera_module);
+  explicit CameraHalAdapter(std::vector<camera_module_t*> camera_module);
 
   ~CameraHalAdapter();
 
@@ -72,14 +82,22 @@ class CameraHalAdapter : public camera_module_callbacks_t {
                                     const char* camera_id,
                                     int new_status);
 
+  // Initialize all underlying camera HALs on |camera_module_thread_| and
+  // build the mapping table for camera id.
+  void StartOnThread(base::Callback<void(bool)> callback);
+
+  // Convert the unified external |camera_id| into the corresponding camera
+  // module and its internal id.
+  std::pair<camera_module_t*, int> GetInternalModuleAndId(int camera_id);
+
   // Clean up the camera device specified by |camera_id| in |device_adapters_|.
   void CloseDevice(int32_t camera_id);
 
   void ResetModuleDelegateOnThread(uint32_t module_id);
   void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
 
-  // The handle to the camera HAL dlopen()'d on process start.
-  camera_module_t* camera_module_;
+  // The handles to the camera HALs dlopen()/dlsym()'d on process start.
+  std::vector<camera_module_t*> camera_modules_;
 
   // The thread that all camera module functions operate on.
   base::Thread camera_module_thread_;
@@ -87,6 +105,15 @@ class CameraHalAdapter : public camera_module_callbacks_t {
   // The thread that all the Mojo communication of camera module callbacks
   // operate on.
   base::Thread camera_module_callbacks_thread_;
+
+  // The mapping tables of internal/external |camera_id|.
+  // (external camera id) <=> (module id, internal camera id)
+  std::vector<std::pair<int, int>> camera_id_map_;
+  std::vector<std::vector<int>> camera_id_inverse_map_;
+
+  // The callback structs with auxiliary metadata for converting |camera_id|
+  // per camera module.
+  std::vector<std::unique_ptr<CameraModuleCallbacksAux>> callbacks_auxs_;
 
   // The delegates that handle the CameraModule mojo IPC.  The key of the map is
   // got from |module_id_|.

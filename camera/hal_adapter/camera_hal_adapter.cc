@@ -6,15 +6,19 @@
 
 #include "hal_adapter/camera_hal_adapter.h"
 
+#include <algorithm>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 
 #include "arc/common.h"
+#include "arc/future.h"
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_delegate.h"
@@ -29,17 +33,17 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
+constexpr base::TimeDelta kInitializationRetryDelay =
+    base::TimeDelta::FromSeconds(3);
+
 }  // namespace
 
-CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module)
-    : camera_module_(camera_module),
+CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
+    : camera_modules_(camera_modules),
       camera_module_thread_("CameraModuleThread"),
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0) {
   VLOGF_ENTER();
-  camera_module_callbacks_t::camera_device_status_change =
-      CameraDeviceStatusChange;
-  camera_module_callbacks_t::torch_mode_status_change = TorchModeStatusChange;
 }
 
 CameraHalAdapter::~CameraHalAdapter() {
@@ -56,6 +60,7 @@ CameraHalAdapter::~CameraHalAdapter() {
 
 bool CameraHalAdapter::Start() {
   VLOGF_ENTER();
+
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
     return false;
@@ -64,8 +69,13 @@ bool CameraHalAdapter::Start() {
     LOGF(ERROR) << "Failed to start CameraCallbacksThread";
     return false;
   }
-  VLOGF(1) << "CameraHalAdapter started";
-  return true;
+
+  auto future = internal::Future<bool>::Create(nullptr);
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraHalAdapter::StartOnThread, base::Unretained(this),
+                 internal::GetFutureCallback(future)));
+  return future->Get();
 }
 
 void CameraHalAdapter::OpenCameraHal(
@@ -88,21 +98,27 @@ void CameraHalAdapter::OpenCameraHal(
 int32_t CameraHalAdapter::OpenDevice(
     int32_t camera_id, mojom::Camera3DeviceOpsRequest device_ops_request) {
   VLOGF_ENTER();
-  if (camera_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
+
+  camera_module_t* camera_module;
+  int internal_camera_id;
+  std::tie(camera_module, internal_camera_id) =
+      GetInternalModuleAndId(camera_id);
+
+  if (!camera_module) {
     return -EINVAL;
   }
+
   if (device_adapters_.find(camera_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
     return -EBUSY;
   }
+
+  hw_module_t* common = &camera_module->common;
   camera3_device_t* camera_device;
-  char name[16];
-  snprintf(name, sizeof(name), "%d", camera_id);
-  int32_t ret = camera_module_->common.methods->open(
-      &camera_module_->common, name,
-      reinterpret_cast<hw_device_t**>(&camera_device));
-  if (ret) {
+  int ret =
+      common->methods->open(common, std::to_string(internal_camera_id).c_str(),
+                            reinterpret_cast<hw_device_t**>(&camera_device));
+  if (ret != 0) {
     LOGF(ERROR) << "Failed to open camera device " << camera_id;
     return ret;
   }
@@ -127,25 +143,32 @@ int32_t CameraHalAdapter::OpenDevice(
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
-  return camera_module_->get_number_of_cameras();
+  return camera_id_map_.size();
 }
 
 int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
                                         mojom::CameraInfoPtr* camera_info) {
   VLOGF_ENTER();
 
-  if (camera_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
+  camera_module_t* camera_module;
+  int internal_camera_id;
+  std::tie(camera_module, internal_camera_id) =
+      GetInternalModuleAndId(camera_id);
+
+  if (!camera_module) {
     camera_info->reset();
     return -EINVAL;
   }
+
   camera_info_t info;
-  int32_t ret = camera_module_->get_camera_info(camera_id, &info);
-  if (ret) {
+  int ret = camera_module->get_camera_info(internal_camera_id, &info);
+  if (ret != 0) {
     LOGF(ERROR) << "Failed to get info of camera " << camera_id;
     camera_info->reset();
     return ret;
   }
+
+  LOGF(INFO) << "camera_id = " << camera_id << ", facing = " << info.facing;
 
   if (VLOG_IS_ON(1)) {
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
@@ -174,10 +197,22 @@ int32_t CameraHalAdapter::SetCallbacks(
                  base::Unretained(this), callbacks_id));
   base::AutoLock l(callbacks_delegates_lock_);
   if (callbacks_delegates_.empty()) {
-    int32_t ret = camera_module_->set_callbacks(this);
-    if (ret) {
-      LOGF(ERROR) << "Failed to set camera module callbacks";
-      return ret;
+    // To prevent some callbacks being fired too early, the call of
+    // set_callbacks is delayed until the first client try to do so.  Note that
+    // the other clients that comes later might still miss some callbacks, and
+    // may cause some problems for external camera support in the future.
+    for (size_t i = 0; i < camera_modules_.size(); i++) {
+      auto aux = base::MakeUnique<CameraModuleCallbacksAux>();
+      aux->camera_device_status_change = CameraDeviceStatusChange;
+      aux->torch_mode_status_change = TorchModeStatusChange;
+      aux->module_id = i;
+      aux->adapter = this;
+      int ret = camera_modules_[i]->set_callbacks(aux.get());
+      if (ret != 0) {
+        LOGF(ERROR) << "Failed to set camera module callbacks";
+        return ret;
+      }
+      callbacks_auxs_.push_back(std::move(aux));
     }
   }
   callbacks_delegates_[callbacks_id] = std::move(callbacks_delegate);
@@ -186,18 +221,25 @@ int32_t CameraHalAdapter::SetCallbacks(
 
 int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   VLOGF_ENTER();
-  if (camera_module_->set_torch_mode) {
-    return camera_module_->set_torch_mode(std::to_string(camera_id).c_str(),
-                                          enabled);
+
+  camera_module_t* camera_module;
+  int internal_camera_id;
+  std::tie(camera_module, internal_camera_id) =
+      GetInternalModuleAndId(camera_id);
+
+  if (!camera_module) {
+    return -EINVAL;
   }
+
+  if (auto fn = camera_module->set_torch_mode) {
+    return fn(std::to_string(internal_camera_id).c_str(), enabled);
+  }
+
   return -ENOSYS;
 }
 
 int32_t CameraHalAdapter::Init() {
   VLOGF_ENTER();
-  if (camera_module_->init) {
-    return camera_module_->init();
-  }
   return 0;
 }
 
@@ -212,11 +254,15 @@ void CameraHalAdapter::CloseDeviceCallback(
 // static
 void CameraHalAdapter::CameraDeviceStatusChange(
     const camera_module_callbacks_t* callbacks,
-    int camera_id,
+    int internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
-  CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
-      static_cast<const CameraHalAdapter*>(callbacks));
+
+  auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
+  CameraHalAdapter* self = aux->adapter;
+  int camera_id =
+      self->camera_id_inverse_map_[aux->module_id][internal_camera_id];
+
   base::AutoLock l(self->callbacks_delegates_lock_);
   for (auto& it : self->callbacks_delegates_) {
     it.second->CameraDeviceStatusChange(camera_id, new_status);
@@ -226,24 +272,97 @@ void CameraHalAdapter::CameraDeviceStatusChange(
 // static
 void CameraHalAdapter::TorchModeStatusChange(
     const camera_module_callbacks_t* callbacks,
-    const char* camera_id,
+    const char* internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
-  CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
-      static_cast<const CameraHalAdapter*>(callbacks));
+
+  auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
+  CameraHalAdapter* self = aux->adapter;
+  int camera_id =
+      self->camera_id_inverse_map_[aux->module_id][atoi(internal_camera_id)];
+
   base::AutoLock l(self->callbacks_delegates_lock_);
-  int camera_id_int = atoi(camera_id);
   for (auto& it : self->callbacks_delegates_) {
-    it.second->TorchModeStatusChange(camera_id_int, new_status);
+    it.second->TorchModeStatusChange(camera_id, new_status);
   }
+}
+
+void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
+  VLOGF_ENTER();
+
+  for (const auto& m : camera_modules_) {
+    if (m->init) {
+      int ret = m->init();
+      if (ret != 0) {
+        LOGF(ERROR) << "Failed to init camera module " << m->common.name;
+        callback.Run(false);
+        return;
+      }
+    }
+  }
+
+  std::vector<std::tuple<int, int, int>> cameras;
+
+  camera_id_inverse_map_.resize(camera_modules_.size());
+  for (size_t module_id = 0; module_id < camera_modules_.size(); module_id++) {
+    camera_module_t* m = camera_modules_[module_id];
+
+    int n = m->get_number_of_cameras();
+    LOGF(INFO) << "Camera module " << module_id << " has " << n << " cameras";
+
+    // TODO(shik): We may need to remove this check in the future to support
+    // external cameras.  The initialization error shuold be detected in HAL,
+    // not here.
+    if (n == 0) {
+      LOGF(WARNING) << "Number of cameras is zero. "
+                    << "Assuming camera isn't initialized yet";
+      sleep(kInitializationRetryDelay.InSeconds());
+      callback.Run(false);
+      return;
+    }
+
+    camera_id_inverse_map_[module_id].resize(n);
+
+    for (int camera_id = 0; camera_id < n; camera_id++) {
+      camera_info_t info;
+      int ret = m->get_camera_info(camera_id, &info);
+      if (ret != 0) {
+        LOGF(ERROR) << "Failed to get info of camera " << camera_id
+                    << " from module " << module_id;
+        callback.Run(false);
+        return;
+      }
+      cameras.emplace_back(info.facing, static_cast<int>(module_id), camera_id);
+    }
+  }
+
+  sort(cameras.begin(), cameras.end());
+  for (size_t i = 0; i < cameras.size(); i++) {
+    int module_id = std::get<1>(cameras[i]);
+    int camera_id = std::get<2>(cameras[i]);
+    camera_id_map_.emplace_back(module_id, camera_id);
+    camera_id_inverse_map_[module_id][camera_id] = i;
+  }
+
+  LOGF(INFO) << "SuperHAL started with " << camera_modules_.size()
+             << " modules and " << camera_id_map_.size() << " cameras";
+
+  callback.Run(true);
+}
+
+std::pair<camera_module_t*, int> CameraHalAdapter::GetInternalModuleAndId(
+    int camera_id) {
+  if (camera_id < 0 ||
+      static_cast<size_t>(camera_id) >= camera_id_map_.size()) {
+    LOGF(ERROR) << "Invalid camera id: " << camera_id;
+    return {};
+  }
+  std::pair<int, int> idx = camera_id_map_[camera_id];
+  return {camera_modules_[idx.first], idx.second};
 }
 
 void CameraHalAdapter::CloseDevice(int32_t camera_id) {
   VLOGF_ENTER();
-  if (camera_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << camera_id;
-    return;
-  }
   if (device_adapters_.find(camera_id) == device_adapters_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << camera_id
                 << ": device is not opened";

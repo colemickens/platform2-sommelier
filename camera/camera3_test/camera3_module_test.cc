@@ -9,6 +9,7 @@
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
 
@@ -41,9 +42,9 @@ bool ResolutionInfo::operator<(const ResolutionInfo& resolution) const {
          (Area() == resolution.Area() && width_ < resolution.Width());
 }
 
-static void InitCameraModule(void** cam_hal_handle) {
-  const char kCameraHalDllName[] = "camera_hal.so";
-  *cam_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
+static void InitCameraModule(void** cam_hal_handle,
+                             const char* camera_hal_path) {
+  *cam_hal_handle = dlopen(camera_hal_path, RTLD_NOW);
   ASSERT_NE(nullptr, *cam_hal_handle) << "Failed to dlopen: " << dlerror();
 
   camera_module_t* cam_module = static_cast<camera_module_t*>(
@@ -959,8 +960,18 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
 
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  base::FilePath camera_hal_path =
+      cmd_line->GetSwitchValuePath("camera_hal_path");
+  if (camera_hal_path.empty()) {
+    LOGF(ERROR) << "camera_hal_path unspecified, please add "
+                << "`--camera_hal_path=` into command line argument.";
+    return false;
+  }
+
   // Open camera HAL and get module
-  camera3_test::InitCameraModule(cam_hal_handle);
+  camera3_test::InitCameraModule(cam_hal_handle,
+                                 camera_hal_path.value().c_str());
   camera3_test::g_module_thread.Start();
 
   // Initialize gtest
