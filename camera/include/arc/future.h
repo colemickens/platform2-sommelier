@@ -72,7 +72,7 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
   }
 
   /* Sets the value and then wake up the waiter. */
-  void Set(T value) {
+  void Set(const T& value) {
     VLOGF_ENTER();
     value_ = value;
     lock_.Signal();
