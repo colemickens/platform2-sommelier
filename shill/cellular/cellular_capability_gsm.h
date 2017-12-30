@@ -163,7 +163,6 @@ class CellularCapabilityGsm : public CellularCapabilityClassic {
 
   KeyValueStore SimLockStatusToProperty(Error* error);
 
-  void SetupApnTryList();
   void FillConnectPropertyMap(KeyValueStore* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(

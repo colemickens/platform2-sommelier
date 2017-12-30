@@ -232,33 +232,9 @@ void CellularCapabilityGsm::OnServiceCreated() {
   cellular()->service()->SetActivationState(kActivationStateActivated);
 }
 
-// Create the list of APNs to try, in the following order:
-// - the APN, if any, that was set by the user
-// - last APN that resulted in a successful connection attempt on the
-//   current network (if any)
-// - the list of APNs found in the mobile broadband provider DB for the
-//   home provider associated with the current SIM
-// - as a last resort, attempt to connect with no APN
-void CellularCapabilityGsm::SetupApnTryList() {
-  apn_try_list_.clear();
-
-  DCHECK(cellular()->service().get());
-  const Stringmap* apn_info = cellular()->service()->GetUserSpecifiedApn();
-  if (apn_info)
-    apn_try_list_.push_back(*apn_info);
-
-  apn_info = cellular()->service()->GetLastGoodApn();
-  if (apn_info)
-    apn_try_list_.push_back(*apn_info);
-
-  apn_try_list_.insert(apn_try_list_.end(),
-                       cellular()->apn_list().begin(),
-                       cellular()->apn_list().end());
-}
-
 void CellularCapabilityGsm::SetupConnectProperties(
     KeyValueStore* properties) {
-  SetupApnTryList();
+  apn_try_list_ = cellular()->BuildApnTryList();
   FillConnectPropertyMap(properties);
 }
 

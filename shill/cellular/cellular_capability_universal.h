@@ -292,7 +292,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   KeyValueStore SimLockStatusToProperty(Error* error);
 
-  void SetupApnTryList();
   void FillConnectPropertyMap(KeyValueStore* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(

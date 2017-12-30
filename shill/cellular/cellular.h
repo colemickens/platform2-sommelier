@@ -17,6 +17,7 @@
 #ifndef SHILL_CELLULAR_CELLULAR_H_
 #define SHILL_CELLULAR_CELLULAR_H_
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <string>
@@ -255,6 +256,14 @@ class Cellular : public Device,
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
+
+  // Returns a list of APNs to try, in the following order:
+  // - the last APN that resulted in a successful connection attempt on the
+  //   current network (if any)
+  // - the APN, if any, that was set by the user
+  // - the list of APNs found in the mobile broadband provider DB for the
+  //   home provider associated with the current SIM
+  std::deque<Stringmap> BuildApnTryList() const;
 
   // ///////////////////////////////////////////////////////////////////////////
   // DBus Properties exposed by the Device interface of shill.

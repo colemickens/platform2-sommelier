@@ -1227,6 +1227,23 @@ void Cellular::RegisterProperties() {
                           &Cellular::SetAllowRoaming);
 }
 
+std::deque<Stringmap> Cellular::BuildApnTryList() const {
+  std::deque<Stringmap> apn_try_list;
+
+  if (service_) {
+    const Stringmap* apn_info = service_->GetUserSpecifiedApn();
+    if (apn_info)
+      apn_try_list.push_back(*apn_info);
+
+    apn_info = service_->GetLastGoodApn();
+    if (apn_info)
+      apn_try_list.push_back(*apn_info);
+  }
+
+  apn_try_list.insert(apn_try_list.end(), apn_list_.begin(), apn_list_.end());
+  return apn_try_list;
+}
+
 void Cellular::set_home_provider(const Stringmap& home_provider) {
   if (home_provider_ == home_provider)
     return;
