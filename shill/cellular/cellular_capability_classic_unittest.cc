@@ -443,37 +443,28 @@ TEST_P(CellularCapabilityClassicTest, TryApns) {
   apn_info.clear();
   props.Clear();
   apn_info[kApnProperty] = kSuppliedApn;
-  // Setting the APN has the side effect of clearing the LastGoodApn,
-  // so the try list will have 5 elements, with the first one being
-  // the supplied APN.
+  // After setting the APN, the last good APN is perserved. We expect the try
+  // list to contain the user-supplied APN, the last good APN, and the 4 APNs
+  // from the mobile provider info database. The user-supplied APN will be
+  // selected before the last good APN.
   cellular_->service()->SetApn(apn_info, &error);
   EXPECT_TRUE(props.IsEmpty());
   gsm_capability->SetupConnectProperties(&props);
-  EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
+  EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
   EXPECT_TRUE(props.ContainsString(kApnProperty));
   EXPECT_EQ(kSuppliedApn, props.GetString(kApnProperty));
 
-  apn_info.clear();
-  props.Clear();
-  apn_info[kApnProperty] = kLastGoodApn;
-  apn_info[kApnUsernameProperty] = kLastGoodUsername;
-  // Now when LastGoodAPN is set, it will be the one selected.
-  cellular_->service()->SetLastGoodApn(apn_info);
-  EXPECT_TRUE(props.IsEmpty());
-  gsm_capability->SetupConnectProperties(&props);
-  // We expect the list to contain the last good APN, plus
-  // the user-supplied APN, plus the 4 APNs from the mobile
-  // provider info database.
-  EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
-  EXPECT_TRUE(props.ContainsString(kApnProperty));
-  EXPECT_EQ(kLastGoodApn, props.GetString(kApnProperty));
+  Stringmap* last_good_apn = cellular_->service()->GetLastGoodApn();
+  ASSERT_NE(nullptr, last_good_apn);
+  EXPECT_EQ(kLastGoodApn, (*last_good_apn)[kApnProperty]);
+  EXPECT_EQ(kLastGoodUsername, (*last_good_apn)[kApnUsernameProperty]);
 
   // Now try all the given APNs.
   using testing::InSequence;
   {
     InSequence dummy;
-    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kLastGoodApn), _, _, _));
     EXPECT_CALL(*simple_proxy_, Connect(HasApn(kSuppliedApn), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kLastGoodApn), _, _, _));
     EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn1), _, _, _));
     EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn2), _, _, _));
     EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn3), _, _, _));

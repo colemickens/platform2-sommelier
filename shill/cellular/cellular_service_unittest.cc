@@ -234,14 +234,8 @@ TEST_F(CellularServiceTest, SetApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
-  {
-    InSequence seq;
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularLastGoodApnProperty,
-                                     _));
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularApnProperty, _));
-  }
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularApnProperty, _));
   service_->SetApn(testapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   Stringmap resultapn = service_->GetApn(&error);
@@ -266,14 +260,8 @@ TEST_F(CellularServiceTest, ClearApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
-  {
-    InSequence seq;
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularLastGoodApnProperty,
-                                     _));
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularApnProperty, _));
-  }
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularApnProperty, _));
   service_->SetApn(testapn, &error);
   Stringmap resultapn = service_->GetApn(&error);
   ASSERT_TRUE(error.IsSuccess());
@@ -306,28 +294,23 @@ TEST_F(CellularServiceTest, LastGoodApn) {
               EmitStringmapChanged(kCellularLastGoodApnProperty, _));
   service_->SetLastGoodApn(testapn);
   Stringmap* resultapn = service_->GetLastGoodApn();
-  EXPECT_NE(nullptr, resultapn);
+  ASSERT_NE(nullptr, resultapn);
   EXPECT_EQ(2, resultapn->size());
-  Stringmap::const_iterator it = resultapn->find(kApnProperty);
-  EXPECT_TRUE(it != resultapn->end() && it->second == kApn);
-  it = resultapn->find(kApnUsernameProperty);
-  EXPECT_TRUE(it != resultapn->end() && it->second == kUsername);
-  // Now set the user-specified APN, and check that LastGoodApn got
-  // cleared.
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
+
+  // Now set the user-specified APN, and check that LastGoodApn is preserved.
   Stringmap userapn;
   userapn[kApnProperty] = kApn;
   userapn[kApnUsernameProperty] = kUsername;
-  {
-    InSequence seq;
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularLastGoodApnProperty,
-                                     _));
-    EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(kCellularApnProperty, _));
-  }
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _));
   Error error;
   service_->SetApn(userapn, &error);
-  EXPECT_EQ(nullptr, service_->GetLastGoodApn());;
+
+  ASSERT_NE(nullptr, service_->GetLastGoodApn());;
+  EXPECT_EQ(2, resultapn->size());
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
 }
 
 TEST_F(CellularServiceTest, IsAutoConnectable) {

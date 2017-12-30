@@ -227,14 +227,6 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
     return false;
   }
   apn_info_ = new_apn_info;
-  if (ContainsKey(apn_info_, kApnProperty)) {
-    // Clear the last good APN, otherwise the one the user just
-    // set won't be used, since LastGoodApn comes first in the
-    // search order when trying to connect. Only do this if a
-    // non-empty user APN has been supplied. If the user APN is
-    // being cleared, leave LastGoodApn alone.
-    ClearLastGoodApn();
-  }
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
   return true;
 }
