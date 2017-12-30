@@ -942,3 +942,45 @@ check your configuration.
 To test at run-time, build a new image and write it to your device. Check that
 the firmware files are installed in /lib/firmware and loaded correctly by your
 kernel driver.
+
+## Adding and testing new properties
+
+To introduce a new property, first add its definition to this file and to
+cros_config_host/validate_config.py. Then to generate the new version of the
+utility familiar with the new property run
+
+  $ cros_workon --host start chromeos-config-host
+  $ sudo emerge chromeos-config-host
+
+Next add the new property and its value to the approritate dtsi file(s) in the
+board's private overlay, in src/private-overlays. Either in
+
+overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/<MODEL>/model.dtsi
+
+if each model has its own configuration file or in
+
+overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.dtsi
+
+in case multiple models' configurations are described in a single file.
+
+To compile the new database run
+
+ $ cros_workon-${BOARD} start chromeos-config-bsp
+ $ emerge-${BOARD} chromeos-config-bsp
+
+and then to install the database into the board file system run
+
+ $ emerge-${BOARD} chromeos-config
+
+At this point the new compiled database is installed in
+/build/${BOARD}/usr/share/chromeos-config/config.dtb.
+
+To query your new item run the test command in the chroot:
+
+ $ cros_config_host_py -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
+    -m <MODEL> get </path/to/property> <property name>
+
+for instance:
+
+ $ cros_config_host_py -c /build/coral/usr/share/chromeos-config/config.dtb \
+    -m robo360 get /firmware key-id
