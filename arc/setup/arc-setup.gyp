@@ -11,6 +11,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libcros_config',
         'libcrypto',
         'libcryptohome-client',
         'libmetrics-<(libbase_ver)',

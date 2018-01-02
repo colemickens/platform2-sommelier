@@ -13,6 +13,18 @@
 
 #include "arc/setup/arc_setup_util.h"
 
+namespace base {
+
+class FilePath;
+
+}  // namespace base
+
+namespace brillo {
+
+class CrosConfigInterface;
+
+}  // namespace brillo
+
 namespace arc {
 
 struct ArcPaths;
@@ -228,6 +240,15 @@ class ArcSetup {
   // Ensures that directories that are necessary for starting a container
   // exist.
   void EnsureContainerDirectories();
+
+  // Creates model-specific build properties from shared unibuild templates.
+  // Called during --onetime-setup.
+  void CreateBuildProperties();
+
+  // Expands a template Android property file into /run/arc/properties.
+  void ExpandPropertyFile(const base::FilePath& input,
+                          const base::FilePath& output,
+                          brillo::CrosConfigInterface* config);
 
   // Mounts image files that are necessary for container startup.
   void MountOnOnetimeSetup();

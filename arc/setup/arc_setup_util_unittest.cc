@@ -23,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
 namespace arc {
@@ -650,6 +651,81 @@ TEST(ArcSetupUtil, TestParseContainerState) {
   EXPECT_TRUE(GetOciContainerState(json_file, &container_pid, &rootfs));
   EXPECT_EQ(4422, container_pid);
   EXPECT_EQ(kRootfsPath, rootfs);
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansions) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
+
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContents("line1\n{brand}\nline3\n{brand} {brand}",
+                                     &config, &expanded));
+  EXPECT_EQ("line1\nalphabet\nline3\nalphabet alphabet\n", expanded);
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansionsUnmatchedBrace) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
+
+  std::string expanded;
+  EXPECT_FALSE(
+      ExpandPropertyContents("line{1\nline}2\nline3", &config, &expanded));
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansionsRecursive) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
+  config.SetString("/arc/build-properties", "model", "{brand} soup");
+
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContents("{model}", &config, &expanded));
+  EXPECT_EQ("alphabet soup\n", expanded);
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansionsMissingProperty) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "model", "{brand} soup");
+
+  std::string expanded;
+
+  EXPECT_FALSE(
+      ExpandPropertyContents("{missing-property}", &config, &expanded));
+  EXPECT_FALSE(ExpandPropertyContents("{model}", &config, &expanded));
+}
+
+// Non-fingerprint property should do simple truncation.
+TEST(ArcSetupUtil, TestPropertyTruncation) {
+  std::string truncated = TruncateAndroidProperty(
+      "property.name="
+      "012345678901234567890123456789012345678901234567890123456789"
+      "01234567890123456789012345678901");
+  EXPECT_EQ(
+      "property.name=0123456789012345678901234567890123456789"
+      "012345678901234567890123456789012345678901234567890",
+      truncated);
+}
+
+// Fingerprint truncation with /release-keys should do simple truncation.
+TEST(ArcSetupUtil, TestPropertyTruncationFingerprintRelease) {
+  std::string truncated = TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/"
+      "release-keys");
+  EXPECT_EQ(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/relea",
+      truncated);
+}
+
+// Fingerprint truncation with /dev-keys needs to preserve the /dev-keys.
+TEST(ArcSetupUtil, TestPropertyTruncationFingerprintDev) {
+  std::string truncated = TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/dev-keys");
+  EXPECT_EQ(
+      "ro.bootimage.build.fingerprint=google/toolongdevicena/"
+      "toolongdevicena_cheets/R65-10299.0.9999/4538390:user/dev-keys",
+      truncated);
 }
 
 }  // namespace arc

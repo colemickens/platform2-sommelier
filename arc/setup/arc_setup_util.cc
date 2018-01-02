@@ -43,11 +43,19 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/values.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <crypto/sha2.h>
 
 namespace arc {
 
 namespace {
+
+// The path in the chromeos-config database where Android properties will be
+// looked up.
+constexpr char kCrosConfigPropertiesPath[] = "/arc/build-properties";
+
+// Maximum length of an Android property value.
+constexpr int kAndroidMaxPropertyLength = 91;
 
 std::string GetLoopDevice(int32_t device) {
   return base::StringPrintf("/dev/loop%d", device);
@@ -776,6 +784,98 @@ bool GetOciContainerState(const base::FilePath& path,
   }
 
   return true;
+}
+
+bool ExpandPropertyContents(const std::string& content,
+                            brillo::CrosConfigInterface* config,
+                            std::string* expanded_content) {
+  const std::vector<std::string> lines = base::SplitString(
+      content, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_ALL);
+
+  std::string new_properties;
+  for (std::string line : lines) {
+    // First expand {property} substitutions in the string.  The insertions
+    // may contain substitutions of their own, so we need to repeat until
+    // nothing more is found.
+    bool inserted;
+    do {
+      inserted = false;
+      size_t match_start = line.find('{');
+      size_t prev_match = 0;  // 1 char past the end of the previous {} match.
+      std::string expanded;
+      // Find all of the {} matches on the line.
+      while (match_start != std::string::npos) {
+        expanded += line.substr(prev_match, match_start - prev_match);
+
+        size_t match_end = line.find('}', match_start);
+        if (match_end == std::string::npos) {
+          LOG(ERROR) << "Unmatched { found in line: " << line;
+          return false;
+        }
+
+        const std::string keyword =
+            line.substr(match_start + 1, match_end - match_start - 1);
+        std::string replacement;
+        if (config->GetString(kCrosConfigPropertiesPath, keyword,
+                              &replacement)) {
+          expanded += replacement;
+          inserted = true;
+        } else {
+          LOG(ERROR) << "Did not find a value for " << keyword
+                     << " while expanding " << line;
+          return false;
+        }
+
+        prev_match = match_end + 1;
+        match_start = line.find('{', match_end);
+      }
+      if (prev_match != std::string::npos)
+        expanded += line.substr(prev_match);
+      line = expanded;
+    } while (inserted);
+
+    new_properties += TruncateAndroidProperty(line) + "\n";
+  }
+
+  *expanded_content = new_properties;
+  return true;
+}
+
+std::string TruncateAndroidProperty(const std::string& line) {
+  // If line looks like key=value, cut value down to the max length of an
+  // Android property.  Build fingerprint needs special handling to preserve the
+  // trailing dev-keys indicator, but other properties can just be truncated.
+  size_t eq_pos = line.find('=');
+  if (eq_pos == std::string::npos)
+    return line;
+
+  std::string val = line.substr(eq_pos + 1);
+  base::TrimWhitespaceASCII(val, base::TRIM_ALL, &val);
+  if (val.length() <= kAndroidMaxPropertyLength)
+    return line;
+
+  const std::string key = line.substr(0, eq_pos);
+  LOG(WARNING) << "Truncating property " << key << " value: " << val;
+  if (key == "ro.bootimage.build.fingerprint" &&
+      base::EndsWith(val, "/dev-keys", base::CompareCase::SENSITIVE)) {
+    // Typical format is brand/product/device/....  We want to remove
+    // characters from product and device to get below the length limit.
+    // Assume device has the format {product}_cheets.
+    std::vector<std::string> fields =
+        base::SplitString(val, "/", base::WhitespaceHandling::KEEP_WHITESPACE,
+                          base::SplitResult::SPLIT_WANT_ALL);
+
+    int remove_chars = (val.length() - kAndroidMaxPropertyLength + 1) / 2;
+    CHECK_GT(fields[1].length(), remove_chars) << fields[1];
+    fields[1] = fields[1].substr(0, fields[1].length() - remove_chars);
+    fields[2] = fields[1] + "_cheets";
+    val = base::JoinString(fields, "/");
+  } else {
+    val = val.substr(0, kAndroidMaxPropertyLength);
+  }
+
+  return key + "=" + val;
 }
 
 }  // namespace arc

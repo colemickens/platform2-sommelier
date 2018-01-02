@@ -35,6 +35,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <metrics/metrics_library.h>
 
 #include "arc/setup/arc_read_ahead.h"
@@ -68,6 +69,7 @@ namespace {
 // Lexicographically sorted. Usually you don't have to use these constants
 // directly. Prefer base::FilePath variables in ArcPaths instead.
 constexpr char kAndroidCmdline[] = "/run/arc/cmdline.android";
+constexpr char kAndroidGeneratedPropertiesDirectory[] = "/run/arc/properties";
 constexpr char kAndroidMutableSource[] =
     "/opt/google/containers/android/rootfs/android-data";
 constexpr char kAndroidRootfsDirectory[] =
@@ -246,6 +248,8 @@ struct ArcPaths {
 
   // Lexicographically sorted.
   const base::FilePath android_cmdline{kAndroidCmdline};
+  const base::FilePath android_generated_properties_directory{
+      kAndroidGeneratedPropertiesDirectory};
   const base::FilePath android_mutable_source{kAndroidMutableSource};
   const base::FilePath android_rootfs_directory{kAndroidRootfsDirectory};
   const base::FilePath arc_bridge_socket_path{kArcBridgeSocketPath};
@@ -558,6 +562,39 @@ void ArcSetup::ApplyPerBoardConfigurations() {
   // environment issues.
   EXIT_IF(!LaunchAndWait(
       {board_hardware_features.value(), platform_xml_file.value()}));
+}
+
+void ArcSetup::CreateBuildProperties() {
+  EXIT_IF(
+      !MkdirRecursively(arc_paths_->android_generated_properties_directory));
+
+  // InitModel won't succeed on non-unibuild boards, but that doesn't matter
+  // because the property files won't contain any templates that need to be
+  // expanded.  On unibuild boards, if it doesn't succeed then
+  // ExpandPropertyFile() will later fail when it can't look up the template
+  // expansions.  Either way, errors here should be ignored.
+  auto config = std::make_unique<brillo::CrosConfig>();
+  IGNORE_ERRORS(config->InitModel());
+
+  constexpr const char* prop_files[] = {"default.prop", "system/build.prop"};
+  for (const auto& prop_file : prop_files) {
+    const base::FilePath in_prop =
+        arc_paths_->android_rootfs_directory.Append(prop_file);
+    const base::FilePath expanded_prop =
+        arc_paths_->android_generated_properties_directory.Append(
+            in_prop.BaseName());
+    ExpandPropertyFile(in_prop, expanded_prop, config.get());
+  }
+}
+
+void ArcSetup::ExpandPropertyFile(const base::FilePath& input,
+                                  const base::FilePath& output,
+                                  brillo::CrosConfigInterface* config) {
+  std::string content;
+  std::string expanded;
+  EXIT_IF(!base::ReadFileToString(input, &content));
+  EXIT_IF(!ExpandPropertyContents(content, config, &expanded));
+  EXIT_IF(!WriteToFile(output, 0644, expanded));
 }
 
 void ArcSetup::MaybeStartUreadaheadInTracingMode() {
@@ -1571,6 +1608,10 @@ void ArcSetup::OnStop() {
 void ArcSetup::OnOnetimeSetup() {
   EnsureContainerDirectories();
   MountOnOnetimeSetup();
+
+  // Build properties are needed to finish booting the container, so we need
+  // to set them up here instead of in the per-board setup.
+  CreateBuildProperties();
 }
 
 void ArcSetup::OnOnetimeStop() {

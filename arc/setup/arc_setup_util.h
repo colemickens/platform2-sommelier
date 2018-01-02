@@ -25,6 +25,12 @@ class TimeDelta;
 
 }  // namespace base
 
+namespace brillo {
+
+class CrosConfigInterface;
+
+}  // namespace brillo
+
 namespace arc {
 
 #if defined(USE_HOUDINI)
@@ -261,6 +267,18 @@ std::string GetChromeOsChannelFromFile(
 bool GetOciContainerState(const base::FilePath& path,
                           pid_t* out_container_pid,
                           base::FilePath* out_rootfs);
+
+// Expands the contents of a template Android property file.  Strings like
+// {property} will be looked up in |config| and replaced with their values.
+// Returns true if all {} strings were successfully expanded, or false if any
+// properties were not found.
+bool ExpandPropertyContents(const std::string& content,
+                            brillo::CrosConfigInterface* config,
+                            std::string* expanded_content);
+
+// Truncates the value side of an Android key=val property line, including
+// handling the special case of build fingerprint.
+std::string TruncateAndroidProperty(const std::string& line);
 
 }  // namespace arc
 
