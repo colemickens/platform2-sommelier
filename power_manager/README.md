@@ -22,11 +22,12 @@ is available:
 -   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for
     taking action (e.g. dimming the backlight or suspending) when the user is
     inactive.
--   [Input](docs/input.md) describes how powerd handle's input events.
+-   [Input](docs/input.md) describes how powerd handles input events.
 -   [Keyboard Backlight](docs/keyboard_backlight.md) describes powerd's logic
     for controlling the keyboard backlight.
 -   [Logging](docs/logging.md) describes where and how powerd logs informative
     messages.
+-   [Power Buttons](docs/power_buttons.md) describes how power buttons work.
 -   [Screen Brightness](docs/screen_brightness.md) describes powerd's logic for
     controlling the display backlight.
 -   [Suspend and Resume](docs/suspend_resume.md) describes powerd's process for
