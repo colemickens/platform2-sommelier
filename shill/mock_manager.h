@@ -88,7 +88,6 @@ class MockManager : public Manager {
                      bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled,
                      bool(Technology::Identifier tech));
-  MOCK_CONST_METHOD1(IsDefaultProfile, bool(const StoreInterface* storage));
   MOCK_METHOD2(RequestScan, void(const std::string& technology, Error* error));
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string&());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
