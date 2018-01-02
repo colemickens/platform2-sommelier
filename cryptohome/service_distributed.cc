@@ -31,6 +31,22 @@ gboolean ServiceDistributed::ConvertPCATypeToACAType(gint pca_type,
   }
 }
 
+// A helper function which maps an integer to a valid VAType.
+gboolean ServiceDistributed::ConvertToVAType(gint type,
+    attestation::VAType* va_type, GError** error) {
+  switch (type) {
+    case Attestation::kDefaultVA:
+      *va_type = attestation::DEFAULT_VA;
+      return TRUE;
+    case Attestation::kTestVA:
+      *va_type = attestation::TEST_VA;
+      return TRUE;
+    default:
+      ReportUnsupportedVAType(error, type);
+      return FALSE;
+  }
+}
+
 // A helper function which maps an integer to a valid CertificateProfile.
 attestation::CertificateProfile ServiceDistributed::GetProfile(
     int profile_value) {
@@ -95,7 +111,14 @@ void ServiceDistributed::ReportUnsupportedPCAType(GError** error,
                                                   int pca_type) {
   VLOG(1) << "PCA type is not supported: " << pca_type;
   g_set_error(error, DBUS_GERROR, DBUS_GERROR_NOT_SUPPORTED,
-              "Alternate PCA type is not supported");
+              "Requested PCA type is not supported");
+}
+
+void ServiceDistributed::ReportUnsupportedVAType(GError** error,
+                                                 int type) {
+  VLOG(1) << "VA type is not supported: " << type;
+  g_set_error(error, DBUS_GERROR, DBUS_GERROR_NOT_SUPPORTED,
+              "Requested VA type is not supported");
 }
 
 template <typename MethodType>
@@ -722,8 +745,37 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseChallenge(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
+  return TpmAttestationSignEnterpriseVaChallenge(attestation::DEFAULT_VA,
+                                                 is_user_specific,
+                                                 username,
+                                                 key_name,
+                                                 domain,
+                                                 device_id,
+                                                 include_signed_public_key,
+                                                 challenge,
+                                                 OUT_async_id,
+                                                 error);
+}
+
+gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
+    gint va_type,
+    gboolean is_user_specific,
+    gchar* username,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    gboolean include_signed_public_key,
+    GArray* challenge,
+    gint* OUT_async_id,
+    GError** error) {
+  VLOG(1) << __func__;
   *OUT_async_id = AllocateAsyncId();
+  attestation::VAType att_va_type;
+  if (!ConvertToVAType(va_type, &att_va_type, error)) {
+    return FALSE;
+  }
   attestation::SignEnterpriseChallengeRequest request;
+  request.set_va_type(att_va_type);
   request.set_key_label(key_name);
   if (is_user_specific) {
     request.set_username(username);
@@ -746,22 +798,6 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseChallenge(
     return FALSE;
   }
   return TRUE;
-}
-
-// TODO(b/69687094): Support test VA servers in attestationd.
-gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
-    gint va_type,
-    gboolean is_user_specific,
-    gchar* username,
-    gchar* key_name,
-    gchar* domain,
-    GArray* device_id,
-    gboolean include_signed_public_key,
-    GArray* challenge,
-    gint* OUT_async_id,
-    GError** error) {
-  LOG(ERROR) << __func__ << " not implemented.";
-  return FALSE;
 }
 
 gboolean ServiceDistributed::TpmAttestationSignSimpleChallenge(

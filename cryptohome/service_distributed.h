@@ -193,6 +193,10 @@ class ServiceDistributed : public Service {
   static gboolean ConvertPCATypeToACAType(gint pca_type,
                                           attestation::ACAType* aca_type,
                                           GError** error);
+  // A helper function which maps an integer to a valid VAType.
+  static gboolean ConvertToVAType(gint type,
+                                  attestation::VAType* va_type,
+                                  GError** error);
 
   // Helper methods that fill GError where an error
   // is returned directly from the original handler.
@@ -200,6 +204,7 @@ class ServiceDistributed : public Service {
                                     attestation::AttestationStatus status);
   static void ReportSendFailure(GError** error);
   static void ReportUnsupportedPCAType(GError** error, int pca_type);
+  static void ReportUnsupportedVAType(GError** error, int type);
 
   std::unique_ptr<attestation::AttestationInterface>
       default_attestation_interface_;
