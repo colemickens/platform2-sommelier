@@ -291,7 +291,7 @@ dbus::Bus::Options options;
 options.bus_type = dbus::Bus::SYSTEM;
 scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
 
-auto frobinator = base::MakeUnique<org::chromium::FrobinatorProxy>(bus);
+auto frobinator = std::make_unique<org::chromium::FrobinatorProxy>(bus);
 brillo::ErrorPtr error;
 if (!frobinator->Frobinate(42, {{ "qux", brillo::Any("squawk") }}, &error))
   LOG(WARNING) << "Frobinate failed: " << error->GetMessage();
