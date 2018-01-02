@@ -400,3 +400,11 @@ message SetSystemSaltRequest {
 message SetSystemSaltReply {
   optional AttestationStatus status = 1;
 }
+
+message GetEnrollmentIdRequest {
+}
+
+message GetEnrollmentIdReply {
+  optional AttestationStatus status = 1;
+  optional string enrollment_id = 2;
+}

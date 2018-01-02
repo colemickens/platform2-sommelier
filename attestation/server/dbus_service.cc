@@ -98,6 +98,9 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_interface->AddMethodHandler(
       kSetSystemSalt, base::Unretained(this),
       &DBusService::HandleSetSystemSalt);
+  dbus_interface->AddMethodHandler(
+      kGetEnrollmentId, base::Unretained(this),
+      &DBusService::HandleGetEnrollmentId);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -488,6 +491,25 @@ void DBusService::HandleSetSystemSalt(
     response->Return(reply);
   };
   service_->SetSystemSalt(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleGetEnrollmentId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        const GetEnrollmentIdReply&>> response,
+    const GetEnrollmentIdRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const GetEnrollmentIdReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetEnrollmentIdReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetEnrollmentId(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

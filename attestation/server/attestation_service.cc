@@ -2207,6 +2207,29 @@ void AttestationService::SetSystemSalt(
   callback.Run(result);
 }
 
+void AttestationService::GetEnrollmentId(
+    const GetEnrollmentIdRequest& request,
+    const GetEnrollmentIdCallback& callback) {
+  auto result = std::make_shared<GetEnrollmentIdReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::GetEnrollmentIdTask,
+                 base::Unretained(this), request, result);
+
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetEnrollmentIdReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetEnrollmentIdTask(
+    const GetEnrollmentIdRequest& request,
+    const std::shared_ptr<GetEnrollmentIdReply>& result) {
+  const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
+  if (enrollment_id.empty())
+    result->set_status(STATUS_NOT_AVAILABLE);
+  result->set_enrollment_id(enrollment_id);
+}
+
 std::string AttestationService::ComputeEnterpriseEnrollmentNonce() {
   if (!abe_data_ || abe_data_->empty()) {
     // If there was no device secret we cannot compute the DEN.
@@ -2217,6 +2240,19 @@ std::string AttestationService::ComputeEnterpriseEnrollmentNonce() {
   std::string data(abe_data_->char_data(), abe_data_->size());
   std::string key(kAttestationBasedEnterpriseEnrollmentContextName);
   return crypto_utility_->HmacSha256(key, data);
+}
+
+std::string AttestationService::ComputeEnterpriseEnrollmentId() {
+  std::string den = ComputeEnterpriseEnrollmentNonce();
+  if (den.empty())
+    return "";
+
+  std::string public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &public_key))
+    return "";
+
+  // Compute the EID based on den and ekm.
+  return crypto_utility_->HmacSha256(public_key, den);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

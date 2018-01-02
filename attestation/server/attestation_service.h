@@ -135,6 +135,9 @@ class AttestationService : public AttestationInterface {
   void SetSystemSalt(
       const SetSystemSaltRequest& request,
       const SetSystemSaltCallback& callback) override;
+  void GetEnrollmentId(
+      const GetEnrollmentIdRequest& request,
+      const GetEnrollmentIdCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -298,6 +301,11 @@ class AttestationService : public AttestationInterface {
   void ResetIdentityTask(
       const ResetIdentityRequest& request,
       const std::shared_ptr<ResetIdentityReply>& result);
+
+  // A synchronous implementation for GetEnrollmentId.
+  void GetEnrollmentIdTask(
+    const GetEnrollmentIdRequest& request,
+    const std::shared_ptr<GetEnrollmentIdReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
@@ -513,6 +521,9 @@ class AttestationService : public AttestationInterface {
 
   // Compute the enterprise DEN for attestation-based enrollment.
   std::string ComputeEnterpriseEnrollmentNonce();
+
+  // Compute the enterprise EID for attestation-based enrollment.
+  std::string ComputeEnterpriseEnrollmentId();
 
   base::WeakPtr<AttestationService> GetWeakPtr();
 

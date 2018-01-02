@@ -89,6 +89,9 @@ class MockAttestationInterface : public AttestationInterface {
   MOCK_METHOD2(SetSystemSalt,
                void(const SetSystemSaltRequest&,
                     const SetSystemSaltCallback&));
+  MOCK_METHOD2(GetEnrollmentId,
+               void(const GetEnrollmentIdRequest&,
+                    const GetEnrollmentIdCallback&));
 };
 
 }  // namespace attestation

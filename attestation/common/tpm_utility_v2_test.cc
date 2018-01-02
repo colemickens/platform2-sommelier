@@ -311,6 +311,8 @@ TEST_F(TpmUtilityTest, GetEndorsementPublicKey) {
 }
 
 TEST_F(TpmUtilityTest, GetEndorsementPublicKeyNoKey) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKey(_))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_utility_, GetEndorsementKey(_, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key;
@@ -321,6 +323,8 @@ TEST_F(TpmUtilityTest, GetEndorsementPublicKeyNoKey) {
 }
 
 TEST_F(TpmUtilityTest, GetEndorsementPublicKeyNoPublic) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKey(_))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key;

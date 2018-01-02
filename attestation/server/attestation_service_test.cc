@@ -20,6 +20,8 @@
 #include <base/callback.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport_fake.h>
@@ -317,6 +319,10 @@ class AttestationServiceTest : public testing::Test {
   void WaitUntilIdleForTesting() {
     MessageLoopIdleEvent idle_event(service_->worker_thread_->message_loop());
     idle_event.Wait();
+  }
+
+  std::string ComputeEnterpriseEnrollmentId() {
+    return service_->ComputeEnterpriseEnrollmentId();
   }
 
   std::shared_ptr<brillo::http::fake::Transport> fake_http_transport_;
@@ -1992,6 +1998,21 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeBadPrefix) {
   request.set_challenge(CreateSignedChallenge("bad_prefix"));
   service_->SignEnterpriseChallenge(request, base::Bind(callback));
   Run();
+}
+
+TEST_F(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("pub_ek")),
+                      Return(true)));
+  brillo::SecureBlob abe_data(0xCA, 32);
+  service_->set_abe_data(&abe_data);
+  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_);
+  service_->set_crypto_utility(&crypto_utility);
+  std::string enrollment_id = ComputeEnterpriseEnrollmentId();
+  EXPECT_EQ(
+      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      base::ToLowerASCII(
+          base::HexEncode(enrollment_id.data(), enrollment_id.size())));
 }
 
 }  // namespace attestation

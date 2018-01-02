@@ -358,4 +358,19 @@ void DBusProxy::SetSystemSalt(
       base::Bind(on_error, callback), request);
 }
 
+void DBusProxy::GetEnrollmentId(
+    const GetEnrollmentIdRequest& request,
+    const GetEnrollmentIdCallback& callback) {
+  auto on_error = [](const GetEnrollmentIdCallback& callback,
+                     brillo::Error* error) {
+    GetEnrollmentIdReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  brillo::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS, object_proxy_, attestation::kAttestationInterface,
+      attestation::kGetEnrollmentId, callback,
+      base::Bind(on_error, callback), request);
+}
+
 }  // namespace attestation

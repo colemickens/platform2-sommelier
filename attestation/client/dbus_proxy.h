@@ -97,6 +97,9 @@ class DBusProxy : public AttestationInterface {
   void SetSystemSalt(
       const SetSystemSaltRequest& request,
       const SetSystemSaltCallback& callback) override;
+  void GetEnrollmentId(
+      const GetEnrollmentIdRequest& request,
+      const GetEnrollmentIdCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {
