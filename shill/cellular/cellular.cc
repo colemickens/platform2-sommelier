@@ -253,6 +253,31 @@ string Cellular::GetDeviceId(Error* error) {
   return device_id_ ? device_id_->AsString() : "";
 }
 
+bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
+  if (!device_id_)
+    return false;
+
+  // The cdc-mbim kernel driver stop draining the receive buffer after the
+  // network interface is brought down. However, some MBIM modem (see
+  // b:71505232) may misbehave if the host stops draining the receiver buffer
+  // before issuing a MBIM command to disconnect the modem from network. To
+  // work around the issue, shill needs to defer bringing down the network
+  // interface until after the modem is disabled.
+  //
+  // TODO(benchan): Investigate if we need to apply the workaround for other
+  // MBIM modems or revert this change once the issue is addressed by the modem
+  // firmware on Fibocom L850-GL.
+  static constexpr DeviceId kAffectedDeviceIds[] = {
+      {DeviceId::BusType::kUsb, 0x2cb7, 0x0007},  // Fibocom L850-GL
+  };
+  for (const auto& affected_device_id : kAffectedDeviceIds) {
+    if (device_id_->Match(affected_device_id))
+      return true;
+  }
+
+  return false;
+}
+
 void Cellular::SetState(State state) {
   SLOG(this, 2) << GetStateString(state_) << " -> "
                 << GetStateString(state);

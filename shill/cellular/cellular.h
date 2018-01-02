@@ -431,6 +431,8 @@ class Cellular : public Device,
   static const char kGenericServiceNamePrefix[];
   static unsigned int friendly_service_name_id_;
 
+  bool ShouldBringNetworkInterfaceDownAfterDisabled() const override;
+
   void SetState(State state);
 
   // Invoked when the modem is connected to the cellular network to transition
