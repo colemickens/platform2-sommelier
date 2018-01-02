@@ -1821,6 +1821,9 @@ void Device::OnEnabledStateChanged(const ResultCallback& callback,
                 << " on " << link_name_;
   if (error.IsSuccess()) {
     enabled_ = enabled_pending_;
+    if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
+      BringNetworkInterfaceDown();
+    }
     manager_->UpdateEnabledTechnologies();
     adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
   }
@@ -1914,8 +1917,8 @@ void Device::SetEnabledUnchecked(bool enable, Error* error,
     running_ = false;
     DestroyIPConfig();         // breaks a reference cycle
     SelectService(nullptr);    // breaks a reference cycle
-    if (!fixed_ip_params_) {
-      rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+    if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
+      BringNetworkInterfaceDown();
     }
     SLOG(this, 3) << "Device " << link_name_ << " ipconfig_ "
                   << (ipconfig_ ? "is set." : "is not set.");
@@ -2010,6 +2013,16 @@ string Device::MakeStringFromHardwareAddress(
 
 bool Device::RequestRoam(const std::string& addr, Error* error) {
   return false;
+}
+
+bool Device::ShouldBringNetworkInterfaceDownAfterDisabled() const {
+  return false;
+}
+
+void Device::BringNetworkInterfaceDown() {
+  // If |fixed_ip_params_| is true, we don't manipulate the interface state.
+  if (!fixed_ip_params_)
+    rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 }  // namespace shill

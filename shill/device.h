@@ -405,6 +405,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(DeviceTest, StopWithFixedIpParams);
+  FRIEND_TEST(DeviceTest, StopWithNetworkInterfaceDisabledAfterward);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
@@ -449,6 +450,11 @@ class Device : public base::RefCounted<Device> {
   // |callback| apply to Stop() as well.
   virtual void Stop(Error* error,
                     const EnabledStateChangedCallback& callback) = 0;
+
+  // Returns true if the associated network interface should be brought down
+  // after the device is disabled, or false if that should be done before the
+  // device is disabled.
+  virtual bool ShouldBringNetworkInterfaceDownAfterDisabled() const;
 
   // The EnabledStateChangedCallback that gets passed to the device's
   // Start() and Stop() methods is bound to this method. |callback|
@@ -685,6 +691,10 @@ class Device : public base::RefCounted<Device> {
   static const char kStoragePowered[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
+
+  // Brings the associated network interface down unless |fixed_ip_params_| is
+  // true, which indicates that the interface state shouldn't be changed.
+  void BringNetworkInterfaceDown();
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();

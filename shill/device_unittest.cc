@@ -109,6 +109,10 @@ class TestDevice : public Device {
         .WillByDefault(Invoke(
             this,
             &TestDevice::DeviceStartDNSTest));
+    ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
+        .WillByDefault(Invoke(
+            this,
+            &TestDevice::DeviceShouldBringNetworkInterfaceDownAfterDisabled));
   }
 
   ~TestDevice() {}
@@ -125,6 +129,7 @@ class TestDevice : public Device {
 
   MOCK_CONST_METHOD0(IsIPv6Allowed, bool());
   MOCK_CONST_METHOD0(IsTrafficMonitorEnabled, bool());
+  MOCK_CONST_METHOD0(ShouldBringNetworkInterfaceDownAfterDisabled, bool());
 
   MOCK_METHOD3(SetIPFlag, bool(IPAddress::Family family,
                                const std::string& flag,
@@ -157,6 +162,10 @@ class TestDevice : public Device {
       const bool retry_until_success,
       const base::Callback<void(const DnsServerTester::Status)>& callback) {
     return Device::StartDNSTest(dns_servers, retry_until_success, callback);
+  }
+
+  virtual bool DeviceShouldBringNetworkInterfaceDownAfterDisabled() const {
+    return Device::ShouldBringNetworkInterfaceDownAfterDisabled();
   }
 };
 
@@ -1056,6 +1065,28 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
   device_->SetEnabled(false);
+  device_->OnEnabledStateChanged(ResultCallback(), Error());
+
+  EXPECT_FALSE(device_->ipconfig_.get());
+  EXPECT_FALSE(device_->selected_service_.get());
+}
+
+TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
+  device_->enabled_ = true;
+  device_->enabled_pending_ = true;
+  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  scoped_refptr<MockService> service(new NiceMock<MockService>(
+      &control_interface_, dispatcher(), metrics(), manager()));
+  SelectService(service);
+
+  EXPECT_CALL(*device_, ShouldBringNetworkInterfaceDownAfterDisabled())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitBoolChanged(kPoweredProperty, false));
+  device_->SetEnabled(false);
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
   EXPECT_FALSE(device_->ipconfig_.get());
