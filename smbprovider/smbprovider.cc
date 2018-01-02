@@ -51,21 +51,6 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
   return error;
 }
 
-// Logs error and sets |error_code|.
-void LogAndSetError(const std::string& operation_name,
-                    int32_t mount_id,
-                    ErrorType error_received,
-                    int32_t* error_code) {
-  LOG(ERROR) << "Error performing " << operation_name
-             << " from mount id: " << mount_id << ": " << error_received;
-  *error_code = static_cast<int32_t>(error_received);
-}
-
-void LogAndSetDBusParseError(const std::string& operation_name,
-                             int32_t* error_code) {
-  LogAndSetError(operation_name, -1, ERROR_DBUS_PARSE_FAILED, error_code);
-}
-
 bool IsValidOptions(const MountOptions& options) {
   return options.has_path();
 }
@@ -117,15 +102,76 @@ std::string GetEntryPath(const OpenFileOptions& options) {
   return options.file_path();
 }
 
+// Template specializations to map a method name to it's Proto argument.
 template <typename Proto>
-bool ParseOptionsProto(const char* method_name,
-                       const ProtoBlob& blob,
+const char* GetMethodName(const Proto& unused) {
+  // Each new Proto type must add a specialization below that maps the options
+  // argument type to the corresponding method name.
+  //
+  // This will only cause a compile error when a specialization is not defined.
+  unused.you_must_define_a_specialization_for_GetMethodName();
+}
+
+template <>
+const char* GetMethodName(const MountOptions& unused) {
+  return kMountMethod;
+}
+
+template <>
+const char* GetMethodName(const UnmountOptions& unused) {
+  return kUnmountMethod;
+}
+
+template <>
+const char* GetMethodName(const GetMetadataEntryOptions& unused) {
+  return kGetMetadataEntryMethod;
+}
+
+template <>
+const char* GetMethodName(const ReadDirectoryOptions& unused) {
+  return kReadDirectoryMethod;
+}
+
+template <>
+const char* GetMethodName(const OpenFileOptions& unused) {
+  return kOpenFileMethod;
+}
+
+template <>
+const char* GetMethodName(const CloseFileOptions& unused) {
+  return kCloseFileMethod;
+}
+
+void LogAndSetError(const char* operation_name,
+                    int32_t mount_id,
+                    ErrorType error_received,
+                    int32_t* error_code) {
+  LOG(ERROR) << "Error performing " << operation_name
+             << " from mount id: " << mount_id << ": " << error_received;
+  *error_code = static_cast<int32_t>(error_received);
+}
+
+// Logs error and sets |error_code|.
+template <typename Proto>
+void LogAndSetError(Proto options,
+                    ErrorType error_received,
+                    int32_t* error_code) {
+  LogAndSetError(GetMethodName(options), options.mount_id(), error_received,
+                 error_code);
+}
+
+void LogAndSetDBusParseError(const char* operation_name, int32_t* error_code) {
+  LogAndSetError(operation_name, -1, ERROR_DBUS_PARSE_FAILED, error_code);
+}
+
+template <typename Proto>
+bool ParseOptionsProto(const ProtoBlob& blob,
                        Proto* options,
                        int32_t* error_code) {
   bool is_valid = options->ParseFromArray(blob.data(), blob.size()) &&
                   IsValidOptions(*options);
   if (!is_valid) {
-    LogAndSetDBusParseError(method_name, error_code);
+    LogAndSetDBusParseError(GetMethodName(*options), error_code);
   }
 
   return is_valid;
@@ -185,9 +231,8 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   *mount_id = -1;
 
   MountOptions options;
-  bool can_mount =
-      ParseOptionsProto(kMountMethod, options_blob, &options, error_code) &&
-      CanMountPath(options.path(), error_code);
+  bool can_mount = ParseOptionsProto(options_blob, &options, error_code) &&
+                   CanMountPath(options.path(), error_code);
 
   if (!can_mount) {
     // ParseOptionsProto() or CanMountPath() already set |error_code|.
@@ -201,7 +246,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptions options;
-  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options, &error_code) ||
+  if (!ParseOptionsProto(options_blob, &options, &error_code) ||
       !RemoveMount(options.mount_id(), &error_code)) {
     return error_code;
   }
@@ -218,23 +263,20 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
 
   std::string full_path;
   ReadDirectoryOptions options;
-  if (!ParseOptionsAndPath(kReadDirectoryMethod, options_blob, &options,
-                           &full_path, error_code)) {
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
 
   int32_t dir_id = -1;
   int32_t open_dir_error = samba_interface_->OpenDirectory(full_path, &dir_id);
   if (open_dir_error != 0) {
-    LogAndSetError(kReadDirectoryMethod, options.mount_id(),
-                   GetErrorFromErrno(open_dir_error), error_code);
+    LogAndSetError(options, GetErrorFromErrno(open_dir_error), error_code);
     return;
   }
   DirectoryEntryList directory_entries;
   int32_t get_dir_error = GetDirectoryEntries(dir_id, &directory_entries);
   if (get_dir_error != 0) {
-    LogAndSetError(kReadDirectoryMethod, options.mount_id(),
-                   GetErrorFromErrno(get_dir_error), error_code);
+    LogAndSetError(options, GetErrorFromErrno(get_dir_error), error_code);
     CloseDirectory(dir_id);
     return;
   }
@@ -252,8 +294,7 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
 
   std::string full_path;
   GetMetadataEntryOptions options;
-  if (!ParseOptionsAndPath(kGetMetadataEntryMethod, options_blob, &options,
-                           &full_path, error_code)) {
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
 
@@ -261,8 +302,7 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
   int32_t get_status_error =
       samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
   if (get_status_error != 0) {
-    LogAndSetError(kGetMetadataEntryMethod, options.mount_id(),
-                   GetErrorFromErrno(get_status_error), error_code);
+    LogAndSetError(options, GetErrorFromErrno(get_status_error), error_code);
     return;
   }
   *error_code = GetDirectoryEntryFromStat(full_path, stat_info, out_entry);
@@ -276,16 +316,14 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
 
   std::string full_path;
   OpenFileOptions options;
-  if (!ParseOptionsAndPath(kOpenFileMethod, options_blob, &options, &full_path,
-                           error_code)) {
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
 
   const int32_t flags = options.writeable() ? O_RDWR : O_RDONLY;
   int32_t result = samba_interface_->OpenFile(full_path, flags, file_id);
   if (result != 0) {
-    LogAndSetError(kOpenFileMethod, options.mount_id(),
-                   GetErrorFromErrno(result), error_code);
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
     *file_id = -1;
     return;
   }
@@ -296,14 +334,13 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
 int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
   int32_t error_code;
   CloseFileOptions options;
-  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options, &error_code)) {
+  if (!ParseOptionsProto(options_blob, &options, &error_code)) {
     return error_code;
   }
 
   int32_t result = samba_interface_->CloseFile(options.file_id());
   if (result != 0) {
-    LogAndSetError(kCloseFileMethod, -1 /* mount_id */,
-                   GetErrorFromErrno(result), &error_code);
+    LogAndSetError(options, GetErrorFromErrno(result), &error_code);
     return error_code;
   }
 
@@ -356,17 +393,16 @@ bool SmbProvider::GetFullPath(const char* operation_name,
 }
 
 template <typename Proto>
-bool SmbProvider::ParseOptionsAndPath(const char* method_name,
-                                      const ProtoBlob& blob,
+bool SmbProvider::ParseOptionsAndPath(const ProtoBlob& blob,
                                       Proto* options,
                                       std::string* full_path,
                                       int32_t* error_code) {
-  if (!ParseOptionsProto(method_name, blob, options, error_code)) {
+  if (!ParseOptionsProto(blob, options, error_code)) {
     return false;
   }
 
-  if (!GetFullPath(method_name, options->mount_id(), GetEntryPath(*options),
-                   full_path)) {
+  if (!GetFullPath(GetMethodName(*options), options->mount_id(),
+                   GetEntryPath(*options), full_path)) {
     *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return false;
   }

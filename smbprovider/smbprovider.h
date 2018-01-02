@@ -101,8 +101,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // On failure |error_code| will be populated and |options| and |full_path|
   // are undefined.
   template <typename Proto>
-  bool ParseOptionsAndPath(const char* method_name,
-                           const ProtoBlob& blob,
+  bool ParseOptionsAndPath(const ProtoBlob& blob,
                            Proto* options,
                            std::string* full_path,
                            int32_t* error_code);
