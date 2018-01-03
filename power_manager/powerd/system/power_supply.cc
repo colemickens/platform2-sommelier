@@ -356,31 +356,8 @@ bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
   NOTREACHED();
 }
 
-PowerStatus::PowerStatus()
-    : line_power_on(false),
-      line_power_voltage(0.0),
-      line_power_max_voltage(0.0),
-      line_power_current(0.0),
-      line_power_max_current(0.0),
-      battery_energy(0.0),
-      battery_energy_rate(0.0),
-      battery_voltage(0.0),
-      battery_current(0.0),
-      battery_charge(0.0),
-      battery_charge_full(0.0),
-      battery_charge_full_design(0.0),
-      observed_battery_charge_rate(0.0),
-      nominal_voltage(0.0),
-      is_calculating_battery_time(false),
-      battery_percentage(-1.0),
-      display_battery_percentage(-1.0),
-      battery_is_present(false),
-      battery_below_shutdown_threshold(false),
-      external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
-      battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT),
-      supports_dual_role_devices(false) {}
-
-PowerStatus::~PowerStatus() {}
+PowerStatus::PowerStatus() = default;
+PowerStatus::~PowerStatus() = default;
 
 base::TimeTicks PowerSupply::TestApi::GetCurrentTime() const {
   return power_supply_->clock_->GetCurrentTime();
@@ -430,15 +407,7 @@ const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
-PowerSupply::PowerSupply()
-    : prefs_(NULL),
-      udev_(NULL),
-      clock_(new Clock),
-      power_status_initialized_(false),
-      low_battery_shutdown_percent_(0.0),
-      usb_min_ac_watts_(0.0),
-      is_suspended_(false),
-      full_factor_(1.0) {}
+PowerSupply::PowerSupply() : clock_(std::make_unique<Clock>()) {}
 
 PowerSupply::~PowerSupply() {
   if (udev_)

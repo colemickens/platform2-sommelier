@@ -101,49 +101,49 @@ struct PowerStatus {
   ~PowerStatus();
 
   // Is a non-battery power source connected?
-  bool line_power_on;
+  bool line_power_on = false;
 
   // String read from sysfs describing the non-battery power source.
   std::string line_power_type;
 
   // Line power statistics. These may be unset even if line power is connected.
-  double line_power_voltage;      // In volts.
-  double line_power_max_voltage;  // In volts.
-  double line_power_current;      // In amperes.
-  double line_power_max_current;  // In amperes.
+  double line_power_voltage = 0.0;      // In volts.
+  double line_power_max_voltage = 0.0;  // In volts.
+  double line_power_current = 0.0;      // In amperes.
+  double line_power_max_current = 0.0;  // In amperes.
 
   // Amount of energy, measured in Wh, in the battery.
-  double battery_energy;
+  double battery_energy = 0.0;
 
   // Amount of energy being drained from the battery, measured in W. It is a
   // positive value irrespective of the battery charging or discharging.
-  double battery_energy_rate;
+  double battery_energy_rate = 0.0;
 
   // Current battery levels.
-  double battery_voltage;  // In volts.
-  double battery_current;  // In amperes.
-  double battery_charge;   // In ampere-hours.
+  double battery_voltage = 0.0;  // In volts.
+  double battery_current = 0.0;  // In amperes.
+  double battery_charge = 0.0;   // In ampere-hours.
 
   // Battery full charge and design-charge levels in ampere-hours.
-  double battery_charge_full;
-  double battery_charge_full_design;
+  double battery_charge_full = 0.0;
+  double battery_charge_full_design = 0.0;
 
   // Observed rate at which the battery's charge has been changing, in amperes
   // (i.e. change in the charge per hour). Positive if the battery's charge has
   // increased, negative if it's decreased, and zero if the charge hasn't
   // changed or if the rate was not calculated because too few samples were
   // available.
-  double observed_battery_charge_rate;
+  double observed_battery_charge_rate = 0.0;
 
   // The battery voltage used in calculating time remaining.  This may or may
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage
   // levels vary over the time the battery is charged or discharged.
-  double nominal_voltage;
+  double nominal_voltage = 0.0;
 
   // Set to true when we have just transitioned states and we might have both a
   // segment of charging and discharging in the calculation. This is done to
   // signal that the time value maybe inaccurate.
-  bool is_calculating_battery_time;
+  bool is_calculating_battery_time = false;
 
   // Estimated time until the battery is empty (while discharging) or full
   // (while charging).
@@ -157,22 +157,24 @@ struct PowerStatus {
 
   // Battery charge in the range [0.0, 100.0], i.e. |battery_charge| /
   // |battery_charge_full| * 100.0.
-  double battery_percentage;
+  double battery_percentage = -1.0;
 
   // Battery charge in the range [0.0, 100.0] that should be displayed to
   // the user. This takes other factors into consideration, such as the
   // percentage at which point we shut down the device and the "full
   // factor".
-  double display_battery_percentage;
+  double display_battery_percentage = -1.0;
 
   // Does the system have a battery?
-  bool battery_is_present;
+  bool battery_is_present = false;
 
   // Is the battery level so low that the machine should be shut down?
-  bool battery_below_shutdown_threshold;
+  bool battery_below_shutdown_threshold = false;
 
-  PowerSupplyProperties::ExternalPower external_power;
-  PowerSupplyProperties::BatteryState battery_state;
+  PowerSupplyProperties::ExternalPower external_power =
+      PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  PowerSupplyProperties::BatteryState battery_state =
+      PowerSupplyProperties_BatteryState_NOT_PRESENT;
 
   // ID of the active source from |ports|.
   std::string external_power_source_id;
@@ -183,7 +185,7 @@ struct PowerStatus {
 
   // True if it is possible for some connected devices to function as either
   // sources or sinks (i.e. to either deliver or receive charge).
-  bool supports_dual_role_devices;
+  bool supports_dual_role_devices = false;
 
   // /sys paths from which the line power and battery information was read.
   std::string line_power_path;
@@ -412,8 +414,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Notifies |observers_| that |power_status_| has been updated.
   void NotifyObservers();
 
-  PrefsInterface* prefs_;  // non-owned
-  UdevInterface* udev_;    // non-owned
+  PrefsInterface* prefs_ = nullptr;  // non-owned
+  UdevInterface* udev_ = nullptr;    // non-owned
 
   std::unique_ptr<Clock> clock_;
 
@@ -423,7 +425,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PowerStatus power_status_;
 
   // True after |power_status_| has been successfully updated at least once.
-  bool power_status_initialized_;
+  bool power_status_initialized_ = false;
 
   // Base sysfs directory containing subdirectories corresponding to power
   // supplies.
@@ -437,14 +439,16 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // range [0.0, 100.0]) at which the system will shut down automatically. 0.0
   // if unset. If both |low_battery_shutdown_time_| and this setting are
   // supplied, only |low_battery_shutdown_percent_| will take effect.
-  double low_battery_shutdown_percent_;
+  double low_battery_shutdown_percent_ = 0.0;
 
   // Minimum maximally-available power in watts that must be reported by a USB
   // power source in order for it to be classified as an AC power source. Read
   // from kUsbMinAcWattsPref.
-  double usb_min_ac_watts_;
+  double usb_min_ac_watts_ = 0.0;
 
-  bool is_suspended_;
+  // Set to true when the system is about to suspend and to false after it's
+  // resumed.
+  bool is_suspended_ = false;
 
   // Amount of time to wait after startup, a power source change, or a
   // resume event before assuming that the current can be used in battery
@@ -474,7 +478,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // The fraction of the full charge at which the battery is considered "full",
   // in the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
-  double full_factor_;
+  double full_factor_ = 1.0;
 
   // Amount of time to wait before updating |power_status_| again after an
   // update.
