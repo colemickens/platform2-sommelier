@@ -35,7 +35,9 @@ int RevokeKey(const char* type, const char* description) {
 
 }  // namespace
 
-bool SavePassword(const Password& password) {
+PasswordProvider::PasswordProvider() {}
+
+bool PasswordProvider::SavePassword(const Password& password) {
   DCHECK_GT(password.size(), 0);
   DCHECK(password.GetRaw());
 
@@ -65,7 +67,7 @@ bool SavePassword(const Password& password) {
   return true;
 }
 
-std::unique_ptr<Password> GetPassword() {
+std::unique_ptr<Password> PasswordProvider::GetPassword() {
   key_serial_t key_serial =
       find_key_by_type_and_desc(kPasswordKeyType, kPasswordKeyDescription, 0);
   if (key_serial == -1) {
@@ -96,7 +98,7 @@ std::unique_ptr<Password> GetPassword() {
   return password;
 }
 
-bool DiscardPassword() {
+bool PasswordProvider::DiscardPassword() {
   int result = RevokeKey(kPasswordKeyType, kPasswordKeyDescription);
   if (result != 0) {
     PLOG(ERROR) << "Error revoking key.";

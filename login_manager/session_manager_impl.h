@@ -13,12 +13,14 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <dbus/file_descriptor.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
@@ -314,6 +316,12 @@ class SessionManagerImpl
     system_clock_last_sync_info_retry_delay_ = delay;
   }
 
+  void SetPasswordProviderForTesting(
+      std::unique_ptr<password_provider::PasswordProviderInterface>
+          password_provider) {
+    password_provider_ = std::move(password_provider);
+  }
+
  private:
   class DBusService;
 
@@ -477,6 +485,9 @@ class SessionManagerImpl
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;
+
+  std::unique_ptr<password_provider::PasswordProviderInterface>
+      password_provider_;
 
   base::WeakPtrFactory<SessionManagerImpl> weak_ptr_factory_;
 

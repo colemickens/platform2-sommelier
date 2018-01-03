@@ -7,27 +7,45 @@
 
 #include <memory>
 
+#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 #include "libpasswordprovider/password.h"
 
 namespace password_provider {
 
+class BRILLO_EXPORT PasswordProviderInterface {
+ public:
+  virtual ~PasswordProviderInterface() {}
+
+  // Saves the given password to the keyring of the calling process.
+  // The password will be available to be retrieved until the process that calls
+  // SavePassword dies.
+  virtual bool SavePassword(const Password& password) = 0;
+
+  // Retrieves the given password. The returned password will be null
+  // terminated. Calling GetPassword after DiscardPassword has been called by
+  // any process will return false.
+  virtual std::unique_ptr<Password> GetPassword() = 0;
+
+  // Discards the saved password.
+  virtual bool DiscardPassword() = 0;
+};
+
 // Implementation of password storage. This is a wrapper around Linux keyring
 // functions.
+class BRILLO_EXPORT PasswordProvider : public PasswordProviderInterface {
+ public:
+  PasswordProvider();
 
-// Saves the given password to the keyring of the calling process. The password
-// will be available to be retrieved until the process that calls SavePassword
-// dies.
-bool BRILLO_EXPORT SavePassword(const Password& password);
+  // PasswordProviderInterface overrides
+  bool BRILLO_EXPORT SavePassword(const Password& password) override;
+  std::unique_ptr<Password> BRILLO_EXPORT GetPassword() override;
+  bool BRILLO_EXPORT DiscardPassword() override;
 
-// Retrieves the given password. The returned password will be null terminated.
-// Calling GetPassword after DiscardPassword has been called by any process will
-// return false.
-std::unique_ptr<Password> BRILLO_EXPORT GetPassword();
-
-// Discards the saved password.
-bool BRILLO_EXPORT DiscardPassword();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PasswordProvider);
+};
 
 }  // namespace password_provider
 

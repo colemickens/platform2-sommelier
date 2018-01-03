@@ -346,6 +346,8 @@ SessionManagerImpl::SessionManagerImpl(
       component_updater_proxy_(component_updater_proxy),
       system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
+      password_provider_(
+          std::make_unique<password_provider::PasswordProvider>()),
       weak_ptr_factory_(this) {
   DCHECK(delegate_);
 }
@@ -666,7 +668,7 @@ bool SessionManagerImpl::SaveLoginPassword(
 
   password.SetSize(data_size);
 
-  if (!password_provider::SavePassword(password)) {
+  if (!password_provider_->SavePassword(password)) {
     LOG(ERROR) << "Could not save password.";
     return false;
   }
@@ -685,7 +687,8 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   // browser_.job->StopSession();
   // user_policy_.reset();
   // session_started_ = false;
-  password_provider::DiscardPassword();
+
+  password_provider_->DiscardPassword();
 }
 
 void SessionManagerImpl::StorePolicy(

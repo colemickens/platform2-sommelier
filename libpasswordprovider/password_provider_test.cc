@@ -25,6 +25,8 @@ class PasswordProviderTest : public testing::Test {
     keyrings_supported_ =
         !(keyctl_clear(KEY_SPEC_PROCESS_KEYRING) == -1 && errno == ENOSYS);
   }
+
+  PasswordProvider password_provider_;
   bool keyrings_supported_ = true;
 };
 
@@ -42,8 +44,9 @@ TEST_F(PasswordProviderTest, SaveAndGetPassword) {
   memcpy(password.GetMutableRaw(), kPasswordStr.c_str(), kPasswordStr.size());
   password.SetSize(kPasswordStr.size());
 
-  EXPECT_TRUE(SavePassword(password));
-  std::unique_ptr<Password> retrieved_password = GetPassword();
+  EXPECT_TRUE(password_provider_.SavePassword(password));
+  std::unique_ptr<Password> retrieved_password =
+      password_provider_.GetPassword();
   ASSERT_TRUE(retrieved_password);
   EXPECT_EQ(std::string(retrieved_password->GetRaw()), kPasswordStr);
   EXPECT_EQ(retrieved_password->size(), kPasswordStr.size());
@@ -63,9 +66,10 @@ TEST_F(PasswordProviderTest, DiscardAndGetPassword) {
   memcpy(password.GetMutableRaw(), kPasswordStr.c_str(), kPasswordStr.size());
   password.SetSize(kPasswordStr.size());
 
-  EXPECT_TRUE(SavePassword(password));
-  EXPECT_TRUE(DiscardPassword());
-  std::unique_ptr<Password> retrieved_password = GetPassword();
+  EXPECT_TRUE(password_provider_.SavePassword(password));
+  EXPECT_TRUE(password_provider_.DiscardPassword());
+  std::unique_ptr<Password> retrieved_password =
+      password_provider_.GetPassword();
   EXPECT_FALSE(retrieved_password);
 }
 
@@ -87,8 +91,9 @@ TEST_F(PasswordProviderTest, GetLongPassword) {
   memcpy(password.GetMutableRaw(), long_password.get(), password_str.size());
   password.SetSize(password_str.size());
 
-  EXPECT_TRUE(SavePassword(password));
-  std::unique_ptr<Password> retrieved_password = GetPassword();
+  EXPECT_TRUE(password_provider_.SavePassword(password));
+  std::unique_ptr<Password> retrieved_password =
+      password_provider_.GetPassword();
   ASSERT_TRUE(retrieved_password);
   EXPECT_EQ(std::string(retrieved_password->GetRaw()), password_str);
 }

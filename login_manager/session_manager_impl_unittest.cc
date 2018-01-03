@@ -48,6 +48,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "libpasswordprovider/fake_password_provider.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
@@ -417,6 +418,11 @@ class SessionManagerImplTest : public ::testing::Test,
         .WillRepeatedly(Return(true));
     impl_->StartDBusService();
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(exported_object()));
+
+    password_provider_ = new password_provider::FakePasswordProvider;
+    impl_->SetPasswordProviderForTesting(
+        std::unique_ptr<password_provider::FakePasswordProvider>(
+            password_provider_));
   }
 
   void TearDown() override {
@@ -429,8 +435,6 @@ class SessionManagerImplTest : public ::testing::Test,
     SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
-
-    password_provider::DiscardPassword();
   }
 
   // SessionManagerImpl::Delegate:
@@ -682,6 +686,7 @@ class SessionManagerImplTest : public ::testing::Test,
   scoped_refptr<MockObjectProxy> component_updater_proxy_;
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
+  password_provider::FakePasswordProvider* password_provider_ = nullptr;
 
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
@@ -775,20 +780,6 @@ class SessionManagerImplTest : public ::testing::Test,
   uint32_t expected_restarts_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
-};
-
-// TODO(maybelle): Create a mock PasswordProvider so that the keyrings behavior
-// can be mocked and we can get rid of this check.
-class SessionManagerImplKeyringsTest : public SessionManagerImplTest {
- protected:
-  void SetUp() override {
-    SessionManagerImplTest::SetUp();
-    // Before running a test, check if keyrings are supported in the kernel.
-    keyrings_supported_ =
-        !(keyctl_clear(KEY_SPEC_PROCESS_KEYRING) == -1 && errno == ENOSYS);
-  }
-
-  bool keyrings_supported_ = true;
 };
 
 const pid_t SessionManagerImplTest::kDummyPid = 4;
@@ -1008,13 +999,7 @@ TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
   EXPECT_FALSE(error.get());
 }
 
-TEST_F(SessionManagerImplKeyringsTest, SaveLoginPasswordForEnterpriseCustomer) {
-  if (!keyrings_supported_) {
-    LOG(WARNING)
-        << "Skipping test because keyrings are not supported by the kernel.";
-    return;
-  }
-
+TEST_F(SessionManagerImplTest, SaveLoginPasswordForEnterpriseCustomer) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillOnce(Return(true));
 
@@ -1024,20 +1009,12 @@ TEST_F(SessionManagerImplKeyringsTest, SaveLoginPasswordForEnterpriseCustomer) {
   EXPECT_TRUE(impl_->SaveLoginPassword(&error, password_fd));
   EXPECT_FALSE(error.get());
 
-  auto retrieved_password = password_provider::GetPassword();
-  EXPECT_EQ(kPassword, std::string(retrieved_password->GetRaw(),
-                                   retrieved_password->size()));
+  EXPECT_TRUE(password_provider_->password_saved());
+
   VerifyAndClearExpectations();
 }
 
-TEST_F(SessionManagerImplKeyringsTest,
-       SaveLoginPasswordForNonEnterpriseCustomer) {
-  if (!keyrings_supported_) {
-    LOG(WARNING)
-        << "Skipping test because keyrings are not supported by the kernel.";
-    return;
-  }
-
+TEST_F(SessionManagerImplTest, SaveLoginPasswordForNonEnterpriseCustomer) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillOnce(Return(false));
 
@@ -1046,10 +1023,14 @@ TEST_F(SessionManagerImplKeyringsTest,
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->SaveLoginPassword(&error, password_fd));
-  auto retrieved_password = password_provider::GetPassword();
-  EXPECT_EQ(nullptr, retrieved_password);
+  EXPECT_FALSE(password_provider_->password_saved());
 
   VerifyAndClearExpectations();
+}
+
+TEST_F(SessionManagerImplTest, DiscardPasswordOnStopSession) {
+  impl_->StopSession("");
+  EXPECT_TRUE(password_provider_->password_discarded());
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
