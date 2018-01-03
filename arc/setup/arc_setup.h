@@ -95,6 +95,9 @@ class ArcSetup {
   // Sets up android-data directory.
   void SetUpAndroidData();
 
+  // Sets up packages cache.
+  void SetUpPackagesCache();
+
   // Sets up shared APK cache directory.
   void SetUpSharedApkDirectory();
 

@@ -1816,6 +1816,30 @@ bool SessionManagerImpl::StartArcInstanceInternal(
           std::to_string(in_request.native_bridge_experiment()),
   };
 
+#if USE_ANDROID_MASTER_CONTAINER
+  // This feature is only available in NYC branch.
+  keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
+  keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
+#else
+  switch (in_request.packages_cache_mode()) {
+    case StartArcInstanceRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case StartArcInstanceRequest_PackageCacheMode_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case StartArcInstanceRequest_PackageCacheMode_DEFAULT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
+      break;
+    default:
+      NOTREACHED() << "Wrong packages cache mode: "
+                   << in_request.packages_cache_mode() << ".";
+  }
+#endif
+
   const bool continue_boot = container_pid > 0;
   android_container_->SetStatefulMode(in_request.for_login_screen()
                                           ? StatefulMode::STATELESS

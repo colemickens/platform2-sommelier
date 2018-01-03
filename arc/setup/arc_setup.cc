@@ -461,8 +461,43 @@ void ArcSetup::SetUpAndroidData() {
   EXIT_IF(
       !InstallDirectory(0770, kSystemUid, kCacheGid,
                         arc_paths_->android_mutable_source.Append("cache")));
+
+  SetUpPackagesCache();
+
   if (kUseMasterContainer)
     SetUpNetwork();
+}
+
+void ArcSetup::SetUpPackagesCache() {
+  if (GetBooleanEnvOrDie(arc_paths_->env.get(), "SKIP_PACKAGES_CACHE_SETUP")) {
+    LOG(INFO) << "Packages cache setup is disabled.";
+    return;
+  }
+
+  // When /data/system/packages.xml does not exist, copy pre-generated
+  // /system/etc/packages_cache.xml to /data/system/packages.xml
+  const base::FilePath packages_cache =
+      arc_paths_->android_mutable_source.Append("data/system/packages.xml");
+  if (base::PathExists(packages_cache))
+    return;
+
+  const base::FilePath source_cache =
+      arc_paths_->android_rootfs_directory.Append(
+          "system/etc/packages_cache.xml");
+  // Test if packages cache exists. Manually pushed images may not contain it.
+  if (!base::PathExists(source_cache)) {
+    LOG(INFO) << "Packages cache was not found "
+              << "(this expected for manually-pushed images).";
+    return;
+  }
+
+  LOG(INFO) << "Installing packages cache to " << packages_cache.value() << ".";
+
+  EXIT_IF(!InstallDirectory(0775, kSystemUid, kSystemGid,
+                            packages_cache.DirName()));
+  EXIT_IF(!base::CopyFile(source_cache, packages_cache));
+  EXIT_IF(!Chown(kSystemUid, kSystemGid, packages_cache));
+  EXIT_IF(!base::SetPosixFilePermissions(packages_cache, 0660));
 }
 
 void ArcSetup::SetUpDalvikCacheInternal(
@@ -815,6 +850,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
   std::string disable_boot_completed;
   std::string vendor_privileged;
   std::string container_boot_type;
+  std::string copy_packages_cache;
   if (!for_login_screen) {
     serialno = base::StringPrintf("androidboot.serialno=%s ",
                                   GetSerialNumber().c_str());
@@ -827,6 +863,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
         GetBooleanEnvOrDie(arc_paths_->env.get(), "ENABLE_VENDOR_PRIVILEGED"));
     container_boot_type =
         base::StringPrintf("androidboot.container_boot_type=%d ", boot_type);
+    copy_packages_cache = base::StringPrintf(
+        "androidboot.copy.packages.cache=%d ",
+        GetBooleanEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"));
   }
   std::string native_bridge;
   switch (bin_type) {
@@ -869,13 +908,14 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
       "%s"  // disable_boot_completed
       "%s"  // vendor_privileged
       "%s"  // container_boot_type
+      "%s"  // copy_packages_cache
       "\n",
       is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density.c_str(),
       arc_ui_scale.c_str(), arc_container_ipv4_address.c_str(),
       arc_gateway_ipv4_address.c_str(), for_login_screen, native_bridge.c_str(),
       chromeos_channel.c_str(), serialno.c_str(),
       disable_boot_completed.c_str(), vendor_privileged.c_str(),
-      container_boot_type.c_str());
+      container_boot_type.c_str(), copy_packages_cache.c_str());
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
 
@@ -1389,8 +1429,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type) {
   // remove or reduce [u]mount operations from the container, especially from
   // its /init, and then to enforce it with SELinux.
   const std::vector<std::string> command_line = {
-      "/usr/bin/nsenter",
-      "-t",
+      "/usr/bin/nsenter", "-t",
       GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID"),
       "-m",  // enter mount namespace
       "-U",  // enter user namespace
@@ -1399,16 +1438,17 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type) {
       "-p",  // enter pid namespace
       "-r",  // set the root directory
       "-w",  // set the working directory
-      "--",
-      kCommand,
-      "--serialno",
-      GetSerialNumber(),
+      "--", kCommand, "--serialno", GetSerialNumber(),
       "--disable-boot-completed",
       GetEnvOrDie(arc_paths_->env.get(), "DISABLE_BOOT_COMPLETED_BROADCAST"),
       "--vendor-privileged",
       GetEnvOrDie(arc_paths_->env.get(), "ENABLE_VENDOR_PRIVILEGED"),
-      "--container-boot-type",
-      std::to_string(static_cast<int>(boot_type)),
+      "--container-boot-type", std::to_string(static_cast<int>(boot_type)),
+      // When this COPY_PACKAGES_CACHE is set to "1", SystemServer copies
+      // /data/system/pacakges.xml to /data/system/pacakges_copy.xml after the
+      // initialization stage of PackageManagerService.
+      "--copy-packages-cache",
+      GetEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"),
   };
 
   base::ElapsedTimer timer;
