@@ -9,6 +9,7 @@ brk: 1
 clock_getres: 1
 clock_gettime: 1
 close: 1
+connect: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
@@ -23,6 +24,7 @@ getresgid32: 1
 getresuid32: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid32: 1
 # Allow the following ALSA sequencer IOCTLs:
 # - TCGETS
@@ -49,6 +51,7 @@ poll: 1
 read: 1
 recvmsg: 1
 rt_sigprocmask: 1
+send: 1
 sendmsg: 1
 # Allow socket(domain == AF_UNIX)
 socket: arg0 == 0x1
