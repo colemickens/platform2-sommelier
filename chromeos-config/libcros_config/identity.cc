@@ -249,8 +249,8 @@ bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
   *name_out = GetString(table, table.data.system.name);
   std::string sku_str = GetString(table, table.data.system.sku_number);
   if (std::sscanf(sku_str.c_str(), "sku%d", sku_id_out) != 1) {
-    LOG(ERROR) << "Invalid SKU string: " << sku_str;
-    return false;
+    LOG(WARNING) << "Invalid SKU string: " << sku_str;
+    *sku_id_out = -1;
   }
   if (!base::ReadFileToString(vpd_file, customization_id_out)) {
     LOG(WARNING) << "No customization_id in VPD";
