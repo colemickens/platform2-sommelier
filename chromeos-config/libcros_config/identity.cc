@@ -42,16 +42,14 @@ struct SmbiosTableSystem {
 } __attribute__((packed));
 
 // This is our internal format for a decoded table. It includes the header, the
-// data specific to this table type, and a pointer to the strings.
-// The strings are stored one after another, each with a trailing nul, and with
-// a final additional nul after the last string.
+// data specific to this table type, and a table of strings.
 struct SmbiosTable {
   SmbiosHeader header;
   union {
     SmbiosTableSystem system;
     uint8_t data[1024];
   } data;
-  std::string strings;
+  std::vector<std::string> strings;
 };
 
 bool CrosConfig::WriteFakeTables(base::File& smbios_file,
@@ -185,10 +183,12 @@ bool CrosConfig::FindAndCopyTable(enum SmbiosTypes type,
 
   // Figure out the size of the string table, then copy that too.
   const char* strings_ptr = ptr + hdr->length;
-  int strings_len = StringTableLength(strings_ptr);
-  table_out->strings.assign(strings_ptr, strings_len);
-  VLOG(1) << "found table at " << (uintptr_t)hdr << " strings "
-          << table_out->strings.c_str() << " " << strings_len;
+  while (*strings_ptr) {
+    const int len = strlen(strings_ptr);
+    table_out->strings.emplace_back(strings_ptr, len);
+    strings_ptr += len + 1;
+  }
+  VLOG(1) << "found SMBIOS table";
 
   return true;
 }
@@ -223,16 +223,15 @@ bool CrosConfig::GetSystemTable(const base::FilePath& smbios_file,
   return ok;
 }
 
-std::string CrosConfig::GetString(const SmbiosTable& table, int string_id) {
-  const char* strings = table.strings.c_str();
-  const char* ptr;
-  int i;
-  for (i = 1, ptr = strings; i < string_id; i++, ptr += strlen(ptr) + 1) {
-    if (!*ptr) {
-      return "";
-    }
+std::string CrosConfig::GetSmbiosString(const SmbiosTable& table,
+                                        unsigned int string_id) {
+  // The first string is numbered 1, so we need to subtract one first.
+  string_id--;
+  if (string_id < table.strings.size()) {
+    return table.strings[string_id];
   }
-  return std::string(ptr);
+
+  return std::string();
 }
 
 bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
@@ -246,8 +245,8 @@ bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
   }
 
   // Get the system name and decode the SKU ID from its string.
-  *name_out = GetString(table, table.data.system.name);
-  std::string sku_str = GetString(table, table.data.system.sku_number);
+  *name_out = GetSmbiosString(table, table.data.system.name);
+  std::string sku_str = GetSmbiosString(table, table.data.system.sku_number);
   if (std::sscanf(sku_str.c_str(), "sku%d", sku_id_out) != 1) {
     LOG(WARNING) << "Invalid SKU string: " << sku_str;
     *sku_id_out = -1;

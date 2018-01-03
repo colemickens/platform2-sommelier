@@ -195,7 +195,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @string_id: ID of string to read. The value 1 means to pick the first
   // string from the the table, i.e. strings are numbered from 1, not 0.
   // @return string found, or "" if not found
-  std::string GetString(const SmbiosTable& table, int string_id);
+  std::string GetSmbiosString(const SmbiosTable& table, unsigned int string_id);
 
   // Read the system table from memory
   // @smbios_file: File containing SMBIOS tables to scan (typically this is
