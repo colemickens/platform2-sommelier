@@ -10,8 +10,8 @@ set -e
 # available on the login screen, even after OOBE (see crbug.com/216422). Note
 # that the machine-info.conf upstart config file takes care of deleting the
 # $MACHINE_INFO file before a user session starts.
-touch $MACHINE_INFO
-chmod 0644 $MACHINE_INFO
+touch "${MACHINE_INFO}"
+chmod 0644 "${MACHINE_INFO}"
 if crossystem "mainfw_type?nonchrome"; then
   echo "serial_number=\"nonchrome-$(date -u +%s)\""
 else
@@ -20,4 +20,4 @@ else
   # Dynamic information.
   echo "customization_id=\"$(mosys platform customization)\""
   echo "rlz_brand_code=\"$(mosys platform brand)\""
-fi >> $MACHINE_INFO
+fi >> "${MACHINE_INFO}"
