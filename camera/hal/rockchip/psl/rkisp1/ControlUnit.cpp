@@ -374,9 +374,8 @@ void RequestCtrlState::init(Camera3Request *req,
     if (entry.count > 0)
         ctrlUnitResult->update(entry);
 
-    entry = settings->find(ANDROID_CONTROL_AF_TRIGGER);
-    if (entry.count > 0)
-        ctrlUnitResult->update(entry);
+    uint8_t afTrigger = ANDROID_CONTROL_AF_TRIGGER_IDLE;
+    ctrlUnitResult->update(ANDROID_CONTROL_AF_TRIGGER, &afTrigger, 1);
 
     uint8_t afState = ANDROID_CONTROL_AF_STATE_INACTIVE;
     ctrlUnitResult->update(ANDROID_CONTROL_AF_STATE, &afState, 1);
@@ -753,6 +752,7 @@ status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
     mMetadata->writeAwbMetadata(*reqState);
     mMetadata->writeSensorMetadata(*reqState);
     mMetadata->writeLensMetadata(*reqState);
+    mMetadata->writeLSCMetadata(reqState);
     mMetadata->fillTonemapCurve(*reqState);
 
     // TODO: calculate proper rolling shutter skew

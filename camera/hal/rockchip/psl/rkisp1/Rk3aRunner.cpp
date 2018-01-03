@@ -214,10 +214,8 @@ status_t Rk3aRunner::processAeResults(RequestCtrlState &reqState)
     mAeState->processResult(aeResult, *reqState.ctrlUnitResult,
                             reqState.request->getId());
 
+    /* not support aeRegions now */
     //# ANDROID_METADATA_Dynamic android.control.aeRegions done
-    reqState.ctrlUnitResult->update(ANDROID_CONTROL_AE_REGIONS,
-                        reqState.captureSettings->aeRegion.meteringRectangle(),
-                        5);
 
     //# ANDROID_METADATA_Dynamic android.control.aeExposureCompensation done
     // TODO get step size (currently 1/3) from static metadata
