@@ -1581,6 +1581,9 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
     if (!mobile_apn->password.empty()) {
       props[kApnPasswordProperty] = mobile_apn->password;
     }
+    if (!mobile_apn->authentication.empty()) {
+      props[kApnAuthenticationProperty] = mobile_apn->authentication;
+    }
 
     // Find the first localized and non-localized name, if any.
     if (!mobile_apn->operator_name_list.empty()) {

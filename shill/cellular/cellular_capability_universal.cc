@@ -87,6 +87,8 @@ const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
 
 namespace {
 
+const char kConnectAllowedAuth[] = "allowed-auth";
+
 const char kPhoneNumber[] = "*99#";
 
 // This identifier is specified in the serviceproviders.prototxt file.
@@ -680,6 +682,10 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
       properties->SetString(kConnectUser, apn_info[kApnUsernameProperty]);
     if (base::ContainsKey(apn_info, kApnPasswordProperty))
       properties->SetString(kConnectPassword, apn_info[kApnPasswordProperty]);
+    if (ContainsKey(apn_info, kApnAuthenticationProperty)) {
+      properties->SetString(kConnectAllowedAuth,
+                            apn_info[kApnAuthenticationProperty]);
+    }
   }
 }
 
