@@ -147,7 +147,7 @@ void ImgEncoderCore::mainBufferDownScale(EncodePackage & pkg)
             props.width  = pkg.jpegOut->width();
             props.height = pkg.jpegOut->height();
             props.stride = pkg.jpegOut->width();
-            props.format = pkg.jpegOut->v4l2Fmt();
+            props.format = pkg.main->v4l2Fmt();
             props.type   = BMT_HEAP;
             // Use pkg.jpegOut->width() as stride for the heap buffer
             mMainScaled = std::make_shared<CommonBuffer>(props);
@@ -204,6 +204,7 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
             props.height = pkg.jpegOut->height();
             props.stride = pkg.jpegOut->stride();
             props.format = pkg.jpegOut->v4l2Fmt();
+            props.size   = pkg.jpegOut->size();
             props.type   = BMT_HEAP;
             mJpegDataBuf = std::make_shared<CommonBuffer>(props);
             if (!mJpegDataBuf) {
