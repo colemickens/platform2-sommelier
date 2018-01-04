@@ -786,6 +786,14 @@ ControlUnit::handleNewStat(Message &msg)
         return UNKNOWN_ERROR;
     }
 
+    /**
+     * Cache the generated metadata to mLatestAiqMetadata, since the
+     * corresponding aiq results would not take effect in this request.
+     */
+    mLatestAiqMetadata.clear();
+    CameraMetadata *ctrlUnitResult = reqState->ctrlUnitResult;
+    reqState->ctrlUnitResult = &mLatestAiqMetadata;
+
     std::shared_ptr<rk_aiq_statistics_input_params> stats = msg.stats;
     unsigned long long statsId = UINT64_MAX;
     if (stats != nullptr) {
@@ -805,6 +813,7 @@ ControlUnit::handleNewStat(Message &msg)
     status = m3ARunner->run2A(*reqState, forceUpdated);
     if (status != NO_ERROR) {
        LOGE("Error in running run2AandCapture for frame id %llu", statsId);
+       reqState->ctrlUnitResult = ctrlUnitResult;
        return status;
     }
 
@@ -842,6 +851,7 @@ ControlUnit::handleNewStat(Message &msg)
     mLatestAiqResults = reqState->captureSettings->aiqResults;
     /* dump3A(mLatestAiqResults); */
 
+    reqState->ctrlUnitResult = ctrlUnitResult;
     return status;
 }
 
@@ -910,7 +920,9 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
          */
         reqState->processingSettings->android3Actrl = reqState->aaaControls;
 
+        // Apply cached aiqResults and metadata
         reqState->captureSettings->aiqResults = mLatestAiqResults;
+        reqState->ctrlUnitResult->append(mLatestAiqMetadata);
 
         fillMetadata(reqState);
 
