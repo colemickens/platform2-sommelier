@@ -23,6 +23,9 @@ const int kMaxRtrSolicitations = 3;
 
 namespace arc_networkd {
 
+RouterFinder::RouterFinder() = default;
+RouterFinder::~RouterFinder() = default;
+
 bool RouterFinder::Start(const std::string& ifname,
     const base::Callback<void(const struct in6_addr& prefix,
                               int prefix_len,

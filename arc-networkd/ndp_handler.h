@@ -23,8 +23,8 @@ namespace arc_networkd {
 // network interface |ifname|, then calls OnNdpMsg() when one is received.
 class NdpHandler : public MessageLoopForIO::Watcher {
  public:
-  NdpHandler() {}
-  virtual ~NdpHandler();
+  NdpHandler();
+  ~NdpHandler() override;
 
  protected:
   bool StartNdp(const std::string& ifname, enum ndp_msg_type msg_type);

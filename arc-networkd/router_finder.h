@@ -24,8 +24,8 @@ namespace arc_networkd {
 // cannot directly access the host's LAN interface.
 class RouterFinder : public NdpHandler {
  public:
-  RouterFinder() {}
-  virtual ~RouterFinder() {}
+  RouterFinder();
+  ~RouterFinder() override;
 
   bool Start(const std::string& ifname,
              const base::Callback<void(const struct in6_addr& prefix,
