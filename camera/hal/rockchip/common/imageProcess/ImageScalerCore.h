@@ -47,25 +47,6 @@ protected:
         const int src_skip_lines_top = 0,
         const int src_skip_lines_bottom = 0);
 
-    static void trimNv12Image(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride,
-        const int src_skip_lines_top = 0,
-        const int src_skip_lines_bottom = 0);
-
-    static void downScaleAndCropNv12ImageQvga(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
-
-    static void downScaleAndCropNv12ImageQcif(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
-
-    static void downScaleNv12ImageFrom800x600ToQvga(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
-
 private:
     static const int MFP = 16;            // Fractional bits for fixed point calculations
 
