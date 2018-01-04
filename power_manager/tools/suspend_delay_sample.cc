@@ -92,7 +92,7 @@ void HandleSuspendImminent(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
 
   LOG(INFO) << "Got notification about suspend attempt " << suspend_id;
   LOG(INFO) << "Sleeping " << delay_ms << " ms before responding";
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&SendSuspendReady, powerd_proxy, delay_id, suspend_id),
       base::TimeDelta::FromMilliseconds(delay_ms));

@@ -61,7 +61,7 @@ class CommandHandler final {
         // cloud status doesn't get updated and we get into a reboot loop.
         //
         // TODO(kemp): This should be removed once brbug.com/1265 is fixed.
-        base::MessageLoop::current()->PostDelayedTask(
+        base::MessageLoop::current()->task_runner()->PostDelayedTask(
             FROM_HERE, reboot_callback_,
             base::TimeDelta::FromSeconds(kRebootDelayInSeconds));
       }

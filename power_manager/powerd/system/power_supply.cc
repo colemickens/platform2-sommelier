@@ -1060,8 +1060,8 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
     } else {
       notify_observers_task_.Reset(
           base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
-      base::MessageLoop::current()->PostTask(FROM_HERE,
-                                             notify_observers_task_.callback());
+      base::MessageLoop::current()->task_runner()->PostTask(
+          FROM_HERE, notify_observers_task_.callback());
     }
   }
   return success;

@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
 
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE, base::Bind(&OnTimeout),
         base::TimeDelta::FromSeconds(FLAGS_timeout));
   }

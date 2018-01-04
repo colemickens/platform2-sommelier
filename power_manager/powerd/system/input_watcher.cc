@@ -203,8 +203,8 @@ LidState InputWatcher::QueryLidState() {
   if (!queued_events_.empty()) {
     send_queued_events_task_.Reset(
         base::Bind(&InputWatcher::SendQueuedEvents, base::Unretained(this)));
-    base::MessageLoop::current()->PostTask(FROM_HERE,
-                                           send_queued_events_task_.callback());
+    base::MessageLoop::current()->task_runner()->PostTask(
+        FROM_HERE, send_queued_events_task_.callback());
   }
 
   return lid_state_;
