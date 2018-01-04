@@ -20,6 +20,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 namespace smbprovider {
 
 class DirectoryEntryList;
+class MountManager;
 class SambaInterface;
 
 // Used as buffer for serialized protobufs.
@@ -43,10 +44,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
  public:
   SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
               std::unique_ptr<SambaInterface> samba_interface,
+              std::unique_ptr<MountManager> mount_manager,
               size_t buffer_size);
 
   SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-              std::unique_ptr<SambaInterface> samba_interface);
+              std::unique_ptr<SambaInterface> samba_interface,
+              std::unique_ptr<MountManager> mount_manager);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -112,21 +115,13 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // directory fails to close.
   void CloseDirectory(int32_t dir_id);
 
-  // Returns true if |mount_id| is already mounted.
-  bool IsAlreadyMounted(int32_t mount_id) const;
-
-  // Adds |mount_root| to the |mounts_| map and returns the mount id
-  // that was assigned to this mount.
-  int32_t AddMount(const std::string& mount_root);
-
-  // Removes |mount_id| from the |mounts_| map and returns ERROR_OK
-  // on success or ERROR_FAILED otherwise.
-  int32_t RemoveMount(int32_t mount_id);
+  // Removes |mount_id| from the |mount_manager_| object and sets |error_code|
+  // on failure.
+  bool RemoveMount(int32_t mount_id, int32_t* error_code);
 
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  std::map<int32_t, std::string> mounts_;
-  int32_t current_mount_id_ = 0;
+  std::unique_ptr<MountManager> mount_manager_;
 
   // |dir_buf_| is used as the buffer for reading directory entries in
   // GetDirectoryEntries(). Its initial capacity is specified in the

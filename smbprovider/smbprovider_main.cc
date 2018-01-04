@@ -12,6 +12,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/mount_manager.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
 
@@ -69,10 +70,12 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
       exit(EXIT_FAILURE);
     }
 
+    std::unique_ptr<MountManager> mount_manager =
+        std::make_unique<MountManager>();
     smb_provider_ = std::make_unique<SmbProvider>(
         std::make_unique<brillo::dbus_utils::DBusObject>(
             nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),
-        std::move(samba_interface));
+        std::move(samba_interface), std::move(mount_manager));
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));
   }

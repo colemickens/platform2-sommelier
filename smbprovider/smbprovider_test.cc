@@ -11,6 +11,7 @@
 
 #include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -117,10 +118,13 @@ class SmbProviderTest : public testing::Test {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
+    std::unique_ptr<MountManager> mount_manager_ptr =
+        std::make_unique<MountManager>();
+    mount_manager_ = mount_manager_ptr.get();
     const ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(fake_ptr), buffer_size);
+        std::move(fake_ptr), std::move(mount_manager_ptr), buffer_size);
   }
 
   // Helper method that asserts there are no entries that have not been
@@ -139,6 +143,7 @@ class SmbProviderTest : public testing::Test {
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
   FakeSambaInterface* fake_samba_;
+  MountManager* mount_manager_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);
@@ -165,6 +170,8 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidProto) {
   ProtoBlob empty_blob;
   smbprovider_->Mount(empty_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  ExpectNoOpenDirectories();
 }
 
 // Mount fails when mounting a share that doesn't exist.
@@ -174,6 +181,7 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   ProtoBlob proto_blob = CreateMountOptionsBlob("smb://test/invalid");
   smbprovider_->Mount(proto_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
+  EXPECT_EQ(0, mount_manager_->MountCount());
   ExpectNoOpenDirectories();
 }
 
@@ -197,13 +205,22 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
   fake_samba_->AddDirectory("smb://wdshare");
   fake_samba_->AddDirectory("smb://wdshare/dogs");
   fake_samba_->AddDirectory("smb://wdshare/cats");
-  int32_t mount1_id = -1;
-  int32_t mount2_id = -1;
+
   int32_t error;
+  int32_t mount1_id;
   ProtoBlob proto_blob_1 = CreateMountOptionsBlob("smb://wdshare/dogs");
-  ProtoBlob proto_blob_2 = CreateMountOptionsBlob("smb://wdshare/cats");
   smbprovider_->Mount(proto_blob_1, &error, &mount1_id);
+  EXPECT_EQ(ERROR_OK, error);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount1_id));
+
+  int32_t mount2_id;
+  ProtoBlob proto_blob_2 = CreateMountOptionsBlob("smb://wdshare/cats");
   smbprovider_->Mount(proto_blob_2, &error, &mount2_id);
+  EXPECT_EQ(ERROR_OK, error);
+  EXPECT_EQ(2, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount2_id));
+
   EXPECT_NE(mount1_id, mount2_id);
 }
 
@@ -211,31 +228,45 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
 // using the |mount_id| from |Mount|.
 TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
-  EXPECT_EQ(0, mount_id);
+  EXPECT_GE(0, mount_id);
   ExpectNoOpenDirectories();
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
 
   ProtoBlob proto_blob = CreateUnmountOptionsBlob(mount_id);
   int32_t error = smbprovider_->Unmount(proto_blob);
   EXPECT_EQ(ERROR_OK, CastError(error));
   ExpectNoOpenDirectories();
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
 }
 
 // Mount ids should not be reused.
 TEST_F(SmbProviderTest, MountIdsDontGetReused) {
   fake_samba_->AddDirectory("smb://wdshare");
   fake_samba_->AddDirectory("smb://wdshare/dogs");
-  int32_t mount_id1 = -1;
+
+  // Create the first mount.
   int32_t error;
-  ProtoBlob mount_options_blob1 = CreateMountOptionsBlob("smb://wdshare/dogs");
-  smbprovider_->Mount(mount_options_blob1, &error, &mount_id1);
+  int32_t mount_id_1;
+  ProtoBlob mount_options_blob_1 = CreateMountOptionsBlob("smb://wdshare/dogs");
+  smbprovider_->Mount(mount_options_blob_1, &error, &mount_id_1);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id_1));
 
-  ProtoBlob unmount_options_blob = CreateUnmountOptionsBlob(mount_id1);
+  // Unmount the original mount.
+  ProtoBlob unmount_options_blob = CreateUnmountOptionsBlob(mount_id_1);
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Unmount(unmount_options_blob)));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id_1));
 
-  int32_t mount_id2 = -1;
-  ProtoBlob mount_options_blob2 = CreateMountOptionsBlob("smb://wdshare/dogs");
-  smbprovider_->Mount(mount_options_blob2, &error, &mount_id2);
-  EXPECT_NE(mount_id1, mount_id2);
+  // Mount a second mount and verify it got a new id.
+  int32_t mount_id_2;
+  ProtoBlob mount_options_blob_2 = CreateMountOptionsBlob("smb://wdshare/dogs");
+  smbprovider_->Mount(mount_options_blob_2, &error, &mount_id_2);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id_2));
+  EXPECT_NE(mount_id_1, mount_id_2);
 }
 
 // ReadDirectory fails when an invalid protobuf with missing fields is passed.

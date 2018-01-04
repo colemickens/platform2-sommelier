@@ -35,6 +35,8 @@
       'sources': [
         'constants.cc',
         'constants.h',
+        'mount_manager.cc',
+        'mount_manager.h',
         'samba_interface.h',
         'samba_interface_impl.cc',
         'samba_interface_impl.h',
@@ -75,6 +77,7 @@
           'sources': [
             'fake_samba_interface.cc',
             'fake_samba_interface.h',
+            'mount_manager_test.cc',
             'smbprovider_helper_test.cc',
             'smbprovider_test.cc',
           ],

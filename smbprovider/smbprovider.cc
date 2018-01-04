@@ -13,6 +13,7 @@
 #include <base/memory/ptr_util.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -153,17 +154,22 @@ int32_t GetDirectoryEntryFromStat(const std::string& full_path,
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<SambaInterface> samba_interface,
+    std::unique_ptr<MountManager> mount_manager,
     size_t buffer_size)
     : org::chromium::SmbProviderAdaptor(this),
       samba_interface_(std::move(samba_interface)),
       dbus_object_(std::move(dbus_object)),
+      mount_manager_(std::move(mount_manager)),
       dir_buf_(buffer_size) {}
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<SambaInterface> samba_interface)
-    : SmbProvider(
-          std::move(dbus_object), std::move(samba_interface), kBufferSize) {}
+    std::unique_ptr<SambaInterface> samba_interface,
+    std::unique_ptr<MountManager> mount_manager)
+    : SmbProvider(std::move(dbus_object),
+                  std::move(samba_interface),
+                  std::move(mount_manager),
+                  kBufferSize) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -188,18 +194,19 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
     return;
   }
 
-  *mount_id = AddMount(options.path());
+  *mount_id = mount_manager_->AddMount(options.path());
   *error_code = static_cast<int32_t>(ERROR_OK);
 }
 
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptions options;
-  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options, &error_code)) {
+  if (!ParseOptionsProto(kUnmountMethod, options_blob, &options, &error_code) ||
+      !RemoveMount(options.mount_id(), &error_code)) {
     return error_code;
   }
 
-  return RemoveMount(options.mount_id());
+  return ERROR_OK;
 }
 
 void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
@@ -333,19 +340,18 @@ int32_t SmbProvider::GetDirectoryEntries(int32_t dir_id,
   return 0;
 }
 
+// TODO(zentaro): When the proto's with missing mount_id are landed, this can
+// take a generic *Options proto and derive the operation name and entry path
+// itself.
 bool SmbProvider::GetFullPath(const char* operation_name,
                               int32_t mount_id,
                               const std::string& entry_path,
                               std::string* full_path) const {
-  DCHECK(full_path);
-
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  if (!mount_manager_->GetFullPath(mount_id, entry_path, full_path)) {
     LOG(ERROR) << operation_name << " requested unknown mount_id " << mount_id;
     return false;
   }
 
-  *full_path = AppendPath(mount_iter->second, entry_path);
   return true;
 }
 
@@ -388,20 +394,13 @@ void SmbProvider::CloseDirectory(int32_t dir_id) {
   }
 }
 
-bool SmbProvider::IsAlreadyMounted(int32_t mount_id) const {
-  return mounts_.count(mount_id) > 0;
-}
+bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
+  bool removed = mount_manager_->RemoveMount(mount_id);
+  if (!removed) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+  }
 
-int32_t SmbProvider::AddMount(const std::string& mount_root) {
-  DCHECK(!IsAlreadyMounted(current_mount_id_));
-
-  mounts_[current_mount_id_] = mount_root;
-  return current_mount_id_++;
-}
-
-int32_t SmbProvider::RemoveMount(int32_t mount_id) {
-  ErrorType result = mounts_.erase(mount_id) == 0 ? ERROR_NOT_FOUND : ERROR_OK;
-  return static_cast<int32_t>(result);
+  return removed;
 }
 
 }  // namespace smbprovider
