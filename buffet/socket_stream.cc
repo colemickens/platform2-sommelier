@@ -112,7 +112,7 @@ void SocketStream::Read(void* buffer,
           base::Bind(&OnError, base::Bind(callback, 0)), &brillo_error)) {
     weave::ErrorPtr error;
     ConvertError(*brillo_error, &error);
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(callback, 0, base::Passed(&error)));
   }
 }
@@ -125,7 +125,7 @@ void SocketStream::Write(const void* buffer,
                            base::Bind(&OnError, callback), &brillo_error)) {
     weave::ErrorPtr error;
     ConvertError(*brillo_error, &error);
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&error)));
   }
 }

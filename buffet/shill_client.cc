@@ -141,7 +141,7 @@ void ShillClient::Connect(const string& ssid,
     weave::ErrorPtr error;
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
                         "Already connecting to WiFi network");
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&error)));
     return;
   }
@@ -164,7 +164,7 @@ void ShillClient::Connect(const string& ssid,
       !manager_proxy_.RequestScan(shill::kTypeWifi, &brillo_error)) {
     weave::ErrorPtr weave_error;
     ConvertError(*brillo_error, &weave_error);
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&weave_error)));
     return;
   }
@@ -176,7 +176,7 @@ void ShillClient::Connect(const string& ssid,
                  weak_factory_.GetWeakPtr(), service_path),
       base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
                  weak_factory_.GetWeakPtr(), service_path));
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&ShillClient::ConnectToServiceError,
                  weak_factory_.GetWeakPtr(), connecting_service_),
@@ -497,7 +497,7 @@ void ShillClient::OnIpConfigChange(const ObjectPath& ip_config_path,
     ip_address_ = it->second.TryGet<string>();
     LOG(INFO) << "IPConfigProperty address = " << ip_address_ << " at "
               << device_path;
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
                               weak_factory_.GetWeakPtr(),
                               GetConnectionState() == Network::State::kOnline));
@@ -589,7 +589,7 @@ void ShillClient::UpdateConnectivityState() {
   // to allow people to call into ShillClient while some other operation is
   // underway.  Therefore, call our callbacks later, when we're in a good
   // state.
-  base::MessageLoop::current()->PostTask(
+  base::MessageLoop::current()->task_runner()->PostTask(
       FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
                             weak_factory_.GetWeakPtr(),
                             GetConnectionState() == Network::State::kOnline));
@@ -622,7 +622,7 @@ void ShillClient::OpenSslSocket(const std::string& host,
     brillo::errors::system::AddSystemError(&error, FROM_HERE, errno);
     weave::ErrorPtr weave_error;
     ConvertError(*error.get(), &weave_error);
-    base::MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->task_runner()->PostTask(
         FROM_HERE, base::Bind(callback, nullptr, base::Passed(&weave_error)));
     return;
   }

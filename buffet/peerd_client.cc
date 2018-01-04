@@ -62,7 +62,7 @@ void PeerdClient::StopPublishing(const std::string& service_type) {
 void PeerdClient::Update() {
   // Abort pending updates, and wait for more changes.
   restart_weak_ptr_factory_.InvalidateWeakPtrs();
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&PeerdClient::UpdateImpl,
                  restart_weak_ptr_factory_.GetWeakPtr()),
