@@ -51,7 +51,7 @@ void UploadService::Init(const base::TimeDelta& upload_interval,
   skip_upload_ = !uploads_enabled;
 
   if (!testing_) {
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&UploadService::UploadEventCallback,
                    base::Unretained(this),
@@ -71,7 +71,7 @@ void UploadService::StartNewLog() {
 void UploadService::UploadEventCallback(const base::TimeDelta& interval) {
   UploadEvent();
 
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&UploadService::UploadEventCallback,
                  base::Unretained(this),

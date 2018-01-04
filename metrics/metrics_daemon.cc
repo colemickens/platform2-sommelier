@@ -367,7 +367,7 @@ int MetricsDaemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  base::Unretained(this)),
@@ -559,7 +559,7 @@ void MetricsDaemon::ScheduleStatsCallback(int wait) {
   if (testing_) {
     return;
   }
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::StatsCallback, base::Unretained(this)),
       base::TimeDelta::FromSeconds(wait));
@@ -809,7 +809,7 @@ void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
   if (testing_)
     return;
   base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(
           &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait_delta),
@@ -830,7 +830,7 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
       ReportZram(base::FilePath(FILE_PATH_LITERAL("/sys/block/zram0"))) ||
       success;
   if (reschedule) {
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(
             &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait),
@@ -843,7 +843,7 @@ void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
     return;
 
   base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
                  base::FilePath{kHammerSysfsPathPath}, wait_delta),
@@ -892,7 +892,7 @@ void MetricsDaemon::DetachableBaseCallback(
   detachable_base_active_time_ = active_time;
   detachable_base_suspended_time_ = suspended_time;
 
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
                  sysfs_path_path, wait),
@@ -1157,7 +1157,7 @@ void MetricsDaemon::ScheduleMemuseCallback(double interval) {
   if (testing_) {
     return;
   }
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::MemuseCallback, base::Unretained(this)),
       base::TimeDelta::FromSeconds(interval));
@@ -1312,7 +1312,7 @@ void MetricsDaemon::SendCroutonStats() {
   if (PathExists(FilePath("/run/crouton"))) {
     SendLinearSample(kMetricCroutonStarted, 1, 2, 3);
   } else {
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&MetricsDaemon::SendCroutonStats, base::Unretained(this)),
         base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
@@ -1353,7 +1353,7 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
 
 void MetricsDaemon::HandleUpdateStatsTimeout() {
   UpdateStats(TimeTicks::Now(), Time::Now());
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  base::Unretained(this)),
