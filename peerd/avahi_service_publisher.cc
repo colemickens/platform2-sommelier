@@ -111,7 +111,8 @@ bool AvahiServicePublisher::UpdateGroup(
       if (success) { return; }
       LOG(WARNING) << "Failed to connect to StateChange signal "
                       "from EntryGroup.";
-      base::MessageLoop::current()->PostTask(FROM_HERE, on_failure);
+      base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE,
+                                                            on_failure);
     };
     brillo::dbus_utils::ConnectToSignal(
         group_proxy,
@@ -256,7 +257,8 @@ void AvahiServicePublisher::HandleGroupStateChanged(
     const std::string& error_message) {
   if (state == AVAHI_ENTRY_GROUP_COLLISION ||
       state == AVAHI_ENTRY_GROUP_FAILURE) {
-    base::MessageLoop::current()->PostTask(FROM_HERE, on_publish_failure_);
+    base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE,
+                                                          on_publish_failure_);
   }
 }
 

@@ -99,7 +99,8 @@ ObjectProxy* AvahiServiceDiscoverer::BrowseServices(
   if (!resp || !ExtractMethodCallResults(resp.get(), nullptr, &path)) {
     LOG(ERROR) << "Failed to create service browser, not monitoring mDNS.";
     base::Closure failure_cb = base::Bind([cb]() { cb.Run(false); });
-    base::MessageLoop::current()->PostTask(FROM_HERE, failure_cb);
+    base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE,
+                                                          failure_cb);
     return nullptr;
   }
   ObjectProxy* result = bus_->GetObjectProxy(kServiceName, path);
