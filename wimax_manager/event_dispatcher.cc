@@ -5,6 +5,7 @@
 #include "wimax_manager/event_dispatcher.h"
 
 #include <base/location.h>
+#include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace wimax_manager {
@@ -14,7 +15,7 @@ EventDispatcher::EventDispatcher()
       task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 void EventDispatcher::DispatchForever() {
-  base::MessageLoop::current()->Run();
+  base::RunLoop().Run();
 }
 
 bool EventDispatcher::PostTask(const base::Closure& task) {
@@ -27,7 +28,8 @@ bool EventDispatcher::PostDelayedTask(const base::Closure& task,
 }
 
 void EventDispatcher::Stop() {
-  base::MessageLoop::current()->PostTask(
+  // TODO(ejcaruso): move to RunLoop::QuitWhenIdleClosure after libchrome uprev
+  base::MessageLoop::current()->task_runner()->PostTask(
       FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
 }
 
