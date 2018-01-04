@@ -95,9 +95,9 @@ TEST_F(BackgroundTransceiverTest, Synchronous) {
       &next_transceiver_, test_thread_.task_runner());
   std::string output = "not_assigned";
   // Post a synchronous call to be run when we start pumping the loop.
-  message_loop_.PostTask(FROM_HERE,
-                         base::Bind(SendCommandAndWaitAndAssign,
-                                    &background_transceiver, &output));
+  message_loop_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(SendCommandAndWaitAndAssign,
+                            &background_transceiver, &output));
   base::RunLoop run_loop;
   run_loop.RunUntilIdle();
   // The call to our mock should have happened on the background thread.

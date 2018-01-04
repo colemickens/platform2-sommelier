@@ -299,8 +299,8 @@ class PostResponse {
  public:
   explicit PostResponse(const std::string& response) : response_(response) {}
   void operator()(const base::Callback<void(const std::string&)>& callback) {
-    base::MessageLoop::current()->PostTask(FROM_HERE,
-                                           base::Bind(callback, response_));
+    base::MessageLoop::current()->task_runner()->PostTask(
+        FROM_HERE, base::Bind(callback, response_));
   }
 
  private:
