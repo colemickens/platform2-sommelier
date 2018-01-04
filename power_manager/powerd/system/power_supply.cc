@@ -423,6 +423,8 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
 
+  prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
+
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
   battery_stabilized_after_startup_delay_ =
       GetMsPref(kBatteryStabilizedAfterStartupMsPref,
@@ -603,9 +605,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   // Track whether we found at least one (possibly offline) power source.
   bool saw_power_source = false;
 
-  // The battery state is dependent on the line power state, so defer reading it
-  // until all other directories have been examined.
-  base::FilePath battery_path;
+  std::vector<base::FilePath> battery_paths;
 
   // Iterate through sysfs's power supply information.
   base::FileEnumerator file_enum(power_supply_path_, false,
@@ -622,19 +622,17 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
     saw_power_source = true;
 
-    if (type == kBatteryType) {
-      if (battery_path.empty())
-        battery_path = path;
-      else
-        LOG(WARNING) << "Multiple batteries; skipping " << path.value();
-    } else {
+    // The battery state is dependent on the line power state, so defer reading
+    // it until all other directories have been examined.
+    if (type == kBatteryType)
+      battery_paths.push_back(path);
+    else
       ReadLinePowerDirectory(path, &status);
-    }
   }
 
   // If no battery was found, assume that the system is actually on AC power.
   if (!status.line_power_on &&
-      (battery_path.empty() || !IsBatteryPresent(battery_path))) {
+      (battery_paths.empty() || !IsBatteryPresent(battery_paths[0]))) {
     if (saw_power_source) {
       // Batteryless Chromeboxes sometimes don't report any power sources. If we
       // saw at least one source but it wasn't online, the battery status might
@@ -657,16 +655,29 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     power_status_ = status;
 
   // Finally, read the battery status.
-  if (!battery_path.empty() && !ReadBatteryDirectory(battery_path, &status))
-    return false;
+  std::sort(battery_paths.begin(), battery_paths.end());
+  if (!allow_multiple_batteries_ && battery_paths.size() > 1) {
+    for (size_t i = 1; i < battery_paths.size(); i++)
+      LOG(WARNING) << "Ignoring extra battery " << battery_paths[i].value();
+    battery_paths.resize(1);
+  }
+  if (battery_paths.size() == 1) {
+    if (!ReadBatteryDirectory(battery_paths[0], &status))
+      return false;
+  } else if (battery_paths.size() > 1) {
+    if (!ReadMultipleBatteryDirectories(battery_paths, &status))
+      return false;
+  }
 
   // Bail out before recording charge and current samples if this was a spurious
-  // update request.
+  // update request. A change in |battery_charge_full| is used as a proxy for a
+  // battery being added or removed.
   if (policy == UpdatePolicy::ONLY_IF_STATE_CHANGED &&
       power_status_initialized_ &&
       status.external_power == power_status_.external_power &&
       status.battery_state == power_status_.battery_state &&
-      ConnectedSourcesAreEqual(status, power_status_))
+      ConnectedSourcesAreEqual(status, power_status_) &&
+      status.battery_charge_full == power_status_.battery_charge_full)
     return false;
 
   // Update running averages and use them to compute battery estimates.
@@ -959,6 +970,48 @@ void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   } else {
     status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
+}
+
+bool PowerSupply::ReadMultipleBatteryDirectories(
+    const std::vector<base::FilePath>& paths, PowerStatus* status) {
+  DCHECK_GE(paths.size(), 2);
+  std::vector<PowerStatus> battery_statuses;
+  for (const auto& path : paths) {
+    battery_statuses.push_back(PowerStatus(*status));
+    if (!ReadBatteryDirectory(path, &battery_statuses.back()))
+      return false;
+  }
+
+  // Sum data across all directories.
+  *status = battery_statuses[0];
+  for (size_t i = 1; i < battery_statuses.size(); ++i) {
+    const PowerStatus& s = battery_statuses[i];
+    status->battery_energy += s.battery_energy;
+    status->battery_energy_rate += s.battery_energy_rate;
+    status->battery_voltage += s.battery_voltage;
+    status->battery_current += s.battery_current;
+    status->battery_charge += s.battery_charge;
+    status->battery_charge_full += s.battery_charge_full;
+    status->battery_charge_full_design += s.battery_charge_full_design;
+    status->nominal_voltage += s.nominal_voltage;
+
+    if (s.battery_is_present)
+      status->battery_is_present = true;
+
+    // If any battery is charging or full, use charging as the combined status.
+    // Note that UpdateBatteryPercentagesAndState may still choose to report the
+    // battery as full (if the combined charge is high enough) or even
+    // discharging (if the current is zero or negative, or line power is
+    // disconnected and one battery is just charging from another).
+    if (s.battery_status_string == kBatteryStatusCharging ||
+        s.battery_status_string == kBatteryStatusFull)
+      status->battery_status_string = kBatteryStatusCharging;
+  }
+
+  // Compute percentages and state based on the combined values.
+  UpdateBatteryPercentagesAndState(status);
+
+  return true;
 }
 
 bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {

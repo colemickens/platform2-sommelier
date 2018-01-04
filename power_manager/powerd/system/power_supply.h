@@ -389,6 +389,12 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // members based on existing battery information in |status|.
   void UpdateBatteryPercentagesAndState(PowerStatus* status);
 
+  // Helper method for UpdatePowerStatus() that reads multiple battery
+  // directories from sysfs using ReadBatteryDirectory() and merges the results
+  // into |status|.
+  bool ReadMultipleBatteryDirectories(const std::vector<base::FilePath>& paths,
+                                      PowerStatus* status);
+
   // Updates |status|'s time-to-full and time-to-empty estimates or returns
   // false if estimates can't be calculated yet. Negative values are used
   // if the estimates would otherwise be extremely large (due to a very low
@@ -438,6 +444,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Base sysfs directory containing subdirectories corresponding to power
   // supplies.
   base::FilePath power_supply_path_;
+
+  // Should multiple battery directories in sysfs be read and combined?
+  bool allow_multiple_batteries_ = false;
 
   // Remaining battery time at which the system will shut down automatically.
   // Empty if unset.

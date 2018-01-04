@@ -40,19 +40,30 @@ const char* const kCharging = PowerSupply::kBatteryStatusCharging;
 const char* const kDischarging = PowerSupply::kBatteryStatusDischarging;
 const char* const kNotCharging = PowerSupply::kBatteryStatusNotCharging;
 
-// Default voltage reported by sysfs.
-const double kVoltage = 2.5;
+// Default values reported by sysfs.
+constexpr double kDefaultCurrent = 1.0;
+constexpr double kDefaultCharge = 1.0;
+constexpr double kDefaultChargeFull = 1.0;
+constexpr double kDefaultChargeFullDesign = 1.0;
+constexpr double kDefaultSecondCurrent = 0.5;
+constexpr double kDefaultSecondCharge = 2.0;
+constexpr double kDefaultSecondChargeFull = 3.0;
+constexpr double kDefaultSecondChargeFullDesign = 4.0;
+constexpr double kVoltage = 2.5;
 
 // Default value for kPowerSupplyFullFactorPref.
-const double kFullFactor = 0.98;
+constexpr double kFullFactor = 0.98;
 
 // Starting value used by |power_supply_| as "now".
 const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
 
 class TestObserver : public PowerSupplyObserver {
  public:
-  TestObserver() : num_updates_(0) {}
-  ~TestObserver() override {}
+  explicit TestObserver(PowerSupply* power_supply)
+      : power_supply_(power_supply), num_updates_(0) {
+    power_supply_->AddObserver(this);
+  }
+  ~TestObserver() override { power_supply_->RemoveObserver(this); }
 
   int num_updates() const { return num_updates_; }
   void reset_num_updates() { num_updates_ = 0; }
@@ -71,6 +82,8 @@ class TestObserver : public PowerSupplyObserver {
   }
 
  private:
+  PowerSupply* power_supply_ = nullptr;  // Not owned.
+
   // Number of times that OnPowerStatusUpdate() has been called.
   int num_updates_;
 
@@ -100,6 +113,7 @@ class PowerSupplyTest : public ::testing::Test {
 
     ac_dir_ = temp_dir_.GetPath().Append("ac");
     battery_dir_ = temp_dir_.GetPath().Append("battery");
+    second_battery_dir_ = temp_dir_.GetPath().Append("battery_2");
   }
 
  protected:
@@ -142,9 +156,10 @@ class PowerSupplyTest : public ::testing::Test {
     WriteValue(battery_dir_, "type", kBatteryType);
     WriteValue(battery_dir_, "present", "1");
 
-    UpdateChargeAndCurrent(1.0, 0.0);
-    WriteDoubleValue(battery_dir_, "charge_full", 1.0);
-    WriteDoubleValue(battery_dir_, "charge_full_design", 1.0);
+    UpdateChargeAndCurrent(kDefaultCharge, kDefaultCurrent);
+    WriteDoubleValue(battery_dir_, "charge_full", kDefaultChargeFull);
+    WriteDoubleValue(battery_dir_, "charge_full_design",
+                     kDefaultChargeFullDesign);
     WriteDoubleValue(battery_dir_, "voltage_now", kVoltage);
     WriteDoubleValue(battery_dir_, "voltage_min_design", kVoltage);
     WriteValue(battery_dir_, "cycle_count", base::IntToString(10000));
@@ -159,10 +174,33 @@ class PowerSupplyTest : public ::testing::Test {
     WriteValue(battery_dir_, "status", battery_status);
   }
 
-  // Updates the files describing the battery's charge and current.
+  // Updates the files describing |dir|'s charge and current.
+  void UpdateChargeAndCurrentForDir(const base::FilePath& dir,
+                                    double charge,
+                                    double current) {
+    WriteDoubleValue(dir, "charge_now", charge);
+    WriteDoubleValue(dir, "current_now", current);
+  }
+
+  // Updates the files describing |battery_dir_|'s charge and current.
   void UpdateChargeAndCurrent(double charge, double current) {
-    WriteDoubleValue(battery_dir_, "charge_now", charge);
-    WriteDoubleValue(battery_dir_, "current_now", current);
+    UpdateChargeAndCurrentForDir(battery_dir_, charge, current);
+  }
+
+  // Writes base files for a second battery at |second_battery_dir_|.
+  void AddSecondBattery(const std::string& status) {
+    ASSERT_TRUE(base::CreateDirectory(second_battery_dir_));
+    WriteValue(second_battery_dir_, "type", kBatteryType);
+    WriteValue(second_battery_dir_, "present", "1");
+    WriteValue(second_battery_dir_, "status", status);
+    WriteDoubleValue(second_battery_dir_, "current_now", kDefaultSecondCurrent);
+    WriteDoubleValue(second_battery_dir_, "charge_now", kDefaultSecondCharge);
+    WriteDoubleValue(second_battery_dir_, "charge_full",
+                     kDefaultSecondChargeFull);
+    WriteDoubleValue(second_battery_dir_, "charge_full_design",
+                     kDefaultSecondChargeFullDesign);
+    WriteDoubleValue(second_battery_dir_, "voltage_now", kVoltage);
+    WriteDoubleValue(second_battery_dir_, "voltage_min_design", kVoltage);
   }
 
   // Returns a string describing battery estimates. If |time_to_empty_sec| is
@@ -221,6 +259,7 @@ class PowerSupplyTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath ac_dir_;
   base::FilePath battery_dir_;
+  base::FilePath second_battery_dir_;
   UdevStub udev_;
   std::unique_ptr<PowerSupply> power_supply_;
   std::unique_ptr<PowerSupply::TestApi> test_api_;
@@ -1330,13 +1369,11 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
                   kDelay.InMilliseconds());
 
   // Check that observers are notified about updates asynchronously.
-  TestObserver observer;
-  power_supply_->AddObserver(&observer);
+  TestObserver observer(power_supply_.get());
   WriteDefaultValues(PowerSource::AC);
   Init();
   ASSERT_TRUE(power_supply_->RefreshImmediately());
   EXPECT_TRUE(observer.WaitForNotification());
-  power_supply_->RemoveObserver(&observer);
 }
 
 TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
@@ -1351,8 +1388,7 @@ TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
 }
 
 TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
-  TestObserver observer;
-  power_supply_->AddObserver(&observer);
+  TestObserver observer(power_supply_.get());
   WriteDefaultValues(PowerSource::AC);
   prefs_.SetInt64(kMaxCurrentSamplesPref, 3);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 0);
@@ -1451,8 +1487,6 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
-
-  power_supply_->RemoveObserver(&observer);
 }
 
 TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
@@ -1625,6 +1659,130 @@ TEST_F(PowerSupplyTest, NoNominalVoltage) {
   // bad data: http://crbug.com/671374
   WriteDoubleValue(battery_dir_, "voltage_now", 0.0);
   EXPECT_FALSE(UpdateStatus(&status));
+}
+
+TEST_F(PowerSupplyTest, IgnoreMultipleBatteriesWithoutPref) {
+  WriteDefaultValues(PowerSource::AC);
+  AddSecondBattery(kCharging);
+  Init();
+
+  // Without kMultipleBatteriesPref, only the first battery should be read.
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(kVoltage, status.battery_voltage);
+  EXPECT_DOUBLE_EQ(kVoltage, status.nominal_voltage);
+  EXPECT_DOUBLE_EQ(kDefaultCurrent, status.battery_current);
+  EXPECT_DOUBLE_EQ(kDefaultCharge, status.battery_charge);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull, status.battery_charge_full);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFullDesign, status.battery_charge_full_design);
+}
+
+TEST_F(PowerSupplyTest, MultipleBatteriesSummedValues) {
+  WriteDefaultValues(PowerSource::AC);
+  AddSecondBattery(kCharging);
+  prefs_.SetInt64(kMultipleBatteriesPref, 1);
+  constexpr double kShutdownPercent = 5.0;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Most battery-related fields should just contain the sum of the values read
+  // or computed from sysfs.
+  constexpr double kTotalCurrent = kDefaultCurrent + kDefaultSecondCurrent;
+  constexpr double kTotalCharge = kDefaultCharge + kDefaultSecondCharge;
+  constexpr double kTotalFullCharge =
+      kDefaultChargeFull + kDefaultSecondChargeFull;
+  constexpr double kTotalChargeFraction = kTotalCharge / kTotalFullCharge;
+
+  EXPECT_DOUBLE_EQ(2 * kVoltage, status.battery_voltage);
+  EXPECT_DOUBLE_EQ(2 * kVoltage, status.nominal_voltage);
+  EXPECT_DOUBLE_EQ(kTotalCurrent, status.battery_current);
+  EXPECT_DOUBLE_EQ(kTotalCharge, status.battery_charge);
+  EXPECT_DOUBLE_EQ(kTotalFullCharge, status.battery_charge_full);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFullDesign + kDefaultSecondChargeFullDesign,
+                   status.battery_charge_full_design);
+  EXPECT_DOUBLE_EQ(kTotalCharge * kVoltage, status.battery_energy);
+  EXPECT_DOUBLE_EQ(kTotalCurrent * kVoltage, status.battery_energy_rate);
+  EXPECT_DOUBLE_EQ(100.0 * kTotalChargeFraction, status.battery_percentage);
+  EXPECT_DOUBLE_EQ(100.0 * (100.0 * kTotalChargeFraction - kShutdownPercent) /
+                       (100.0 * kFullFactor - kShutdownPercent),
+                   status.display_battery_percentage);
+}
+
+TEST_F(PowerSupplyTest, MultipleBatteriesState) {
+  WriteDefaultValues(PowerSource::AC);
+  AddSecondBattery(kCharging);
+  prefs_.SetInt64(kMultipleBatteriesPref, 1);
+  Init();
+
+  // When line power is online and batteries aren't full, and a positive current
+  // is reported, a charging state should be reported.
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
+
+  // The charging state should still be reported if one battery says it's
+  // discharging.
+  WriteValue(second_battery_dir_, "status", kDischarging);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
+
+  // When both batteries report a full charge while line power is online, a full
+  // state should be reported.
+  WriteValue(second_battery_dir_, "status", kCharging);
+  WriteDoubleValue(battery_dir_, "charge_now", kDefaultChargeFull);
+  WriteDoubleValue(second_battery_dir_, "charge_now", kDefaultSecondChargeFull);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
+
+  // If line power is online but the batteries aren't full and the combined
+  // current is zero, a discharging state should be reported.
+  WriteValue(battery_dir_, "status", kDischarging);
+  WriteValue(second_battery_dir_, "status", kDischarging);
+  WriteDoubleValue(battery_dir_, "current_now", 0.0);
+  UpdateChargeAndCurrentForDir(second_battery_dir_, 0.0, kDefaultSecondCharge);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            status.battery_state);
+
+  // When line power is offline, a discharging state should be reported even if
+  // one battery is charging (e.g. from the other).
+  WriteValue(ac_dir_, "online", "0");
+  WriteValue(battery_dir_, "status", kCharging);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            status.battery_state);
+}
+
+TEST_F(PowerSupplyTest, NotifyForUdevWithMultipleBatteries) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  prefs_.SetInt64(kMultipleBatteriesPref, 1);
+  Init();
+  SendUdevEvent();
+
+  // After adding a second battery, observers should be notified if a udev event
+  // is received (but a second event should be ignored, since nothing's
+  // changed).
+  TestObserver observer(power_supply_.get());
+  AddSecondBattery(kCharging);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+
+  // The same thing should happen when the second battery is removed.
+  ASSERT_TRUE(base::DeleteFile(second_battery_dir_, true /* recursive */));
+  SendUdevEvent();
+  EXPECT_EQ(2, observer.num_updates());
+  SendUdevEvent();
+  EXPECT_EQ(2, observer.num_updates());
 }
 
 }  // namespace system

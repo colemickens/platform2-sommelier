@@ -127,6 +127,9 @@ extern const char kBatteryStabilizedAfterLinePowerConnectedMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[];
 extern const char kBatteryStabilizedAfterResumeMsPref[];
 
+// If true, multiple battery directories will be read from sysfs if present.
+extern const char kMultipleBatteriesPref[];
+
 // Maximum number of current and charge samples that should be averaged.
 extern const char kMaxCurrentSamplesPref[];
 extern const char kMaxChargeSamplesPref[];
