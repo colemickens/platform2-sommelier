@@ -139,6 +139,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     uint8_t intent = 0;
 
     uint8_t controlMode = ANDROID_CONTROL_MODE_AUTO;
+    uint8_t afMode = ANDROID_CONTROL_AF_MODE_OFF;
     uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
     uint8_t awbMode = ANDROID_CONTROL_AWB_MODE_AUTO;
     uint8_t nrMode = ANDROID_NOISE_REDUCTION_MODE_OFF;
@@ -199,11 +200,15 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     camera_metadata_ro_entry ro_entry;
     find_camera_metadata_ro_entry(staticMeta, ANDROID_CONTROL_MAX_REGIONS,
                                   &ro_entry);
-    // AE, AWB
+    // AE, AWB, AF
     if (ro_entry.count == 3) {
         int meteringRegion[METERING_RECT_SIZE] = {0,0,0,0,0};
         if (ro_entry.data.i32[0] == 1) {
             add_camera_metadata_entry(meta, ANDROID_CONTROL_AE_REGIONS,
+                                      meteringRegion, METERING_RECT_SIZE);
+        }
+        if (ro_entry.data.i32[2] == 1) {
+            add_camera_metadata_entry(meta, ANDROID_CONTROL_AF_REGIONS,
                                       meteringRegion, METERING_RECT_SIZE);
         }
         // we do not support AWB region
@@ -223,6 +228,8 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     TAGINFO(ANDROID_CONTROL_AE_LOCK, bogusValue);
     uint8_t value = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
     TAGINFO(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, value);
+    value = ANDROID_CONTROL_AF_TRIGGER_IDLE;
+    TAGINFO(ANDROID_CONTROL_AF_TRIGGER, value);
     value = ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
     TAGINFO(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, value);
     int32_t mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
@@ -267,6 +274,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     TAGINFO(ANDROID_CONTROL_AWB_LOCK, bogusValue);
     TAGINFO(ANDROID_BLACK_LEVEL_LOCK, bogusValue);
     TAGINFO(ANDROID_CONTROL_AWB_STATE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_AF_MODE, afMode);
 
     value = ANDROID_COLOR_CORRECTION_ABERRATION_MODE_OFF;
     TAGINFO(ANDROID_COLOR_CORRECTION_ABERRATION_MODE, value);
