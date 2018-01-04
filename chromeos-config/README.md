@@ -196,6 +196,13 @@ properties.
                 that we should re-sign and generate a read-write firmware image.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
+            *   `no-firmware` (optional): If present this indicates that this
+                model has no firmware at present. This means that it will be
+                omitted from the firmware updater (chromeos-firmware-<board>
+                ebuild) and it will not be included in the signer instructions
+                file sent to the signer. This option is often useful when a
+                model is first added, since it may not have firmware at that
+                point.
 
     *   `mapping`: (optional): Used to determine the model/sub-model for a
         particular device. There can be any number of mappings. At present
@@ -698,6 +705,7 @@ chromeos {
             firmware {
                 shares = <&pinned_version>;
                 key-id = "ELECTRO";
+                no-firmware;
             };
             power {
               power-type = <&power_type>;
