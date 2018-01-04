@@ -38,12 +38,12 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   }
 
   if (path.size() == 0) {
-    LOG(ERROR) << "Path must be specified";
+    CROS_CONFIG_LOG(ERROR) << "Path must be specified";
     return false;
   }
 
   if (path.substr(0, 1) != "/") {
-    LOG(ERROR) << "Path must start with / specifying the root node";
+    CROS_CONFIG_LOG(ERROR) << "Path must start with / specifying the root node";
     return false;
   }
 
@@ -88,7 +88,8 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
                             const std::string& customization_id) {
   std::string config_json_data;
   if (!base::ReadFileToString(config_filepath, &config_json_data)) {
-    LOG(ERROR) << "Could not read file " << config_filepath.MaybeAsASCII();
+    CROS_CONFIG_LOG(ERROR) << "Could not read file "
+                           << config_filepath.MaybeAsASCII();
     return false;
   }
   std::string error_msg;
@@ -100,7 +101,7 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
                                             nullptr /* error_line_out */,
                                             nullptr /* error_column_out */);
   if (!json_config_) {
-    LOG(ERROR) << "Fail to parse config.json: " << error_msg;
+    CROS_CONFIG_LOG(ERROR) << "Fail to parse config.json: " << error_msg;
     return false;
   }
 
@@ -145,8 +146,9 @@ bool CrosConfig::InitCommon(const base::FilePath& config_filepath,
     }
   }
   if (!model_dict_) {
-    LOG(ERROR) << "Failed to find config for name: " << name << " sku_id: " <<
-        sku_id << " customization_id: " << customization_id;
+    CROS_CONFIG_LOG(ERROR) << "Failed to find config for name: " << name
+                           << " sku_id: " << sku_id
+                           << " customization_id: " << customization_id;
     return false;
   }
   inited_ = true;

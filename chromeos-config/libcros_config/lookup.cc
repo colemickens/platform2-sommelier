@@ -24,8 +24,8 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
       fdt_getprop(blob, node, "smbios-name-match", NULL));
   if (smbios_name &&
       (find_name.empty() || strcmp(smbios_name, find_name.c_str()))) {
-    LOG(ERROR) << "SMBIOS name " << smbios_name << " does not match "
-               << find_name;
+    CROS_CONFIG_LOG(ERROR) << "SMBIOS name " << smbios_name
+                           << " does not match " << find_name;
     return 0;
   }
 
@@ -36,11 +36,11 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
   int found_phandle = 0;
   if (data) {
     if (len != sizeof(fdt32_t)) {
-      LOG(ERROR) << "single-sku: Invalid length " << len;
+      CROS_CONFIG_LOG(ERROR) << "single-sku: Invalid length " << len;
       return -1;
     }
     found_phandle = fdt32_to_cpu(*data);
-    LOG(INFO) << "Single SKU match";
+    CROS_CONFIG_LOG(INFO) << "Single SKU match";
   } else {
     // Locate the map and make sure it is a multiple of 2 cells (first is SKU
     // ID, second is phandle).
@@ -48,14 +48,16 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
     data = static_cast<const fdt32_t *>(
         fdt_getprop(blob, node, "simple-sku-map", &len));
     if (!data) {
-      LOG(ERROR) << "Cannot find simple-sku-map: " << fdt_strerror(node);
+      CROS_CONFIG_LOG(ERROR)
+          << "Cannot find simple-sku-map: " << fdt_strerror(node);
       return -1;
     }
     if (len % (sizeof(fdt32_t) * 2)) {
       // Validation of configuration should catch this, so this should never
       // happen. But we don't want to crash.
-      LOG(ERROR) << "single-sku-map: " << fdt_get_name(blob, node, NULL)
-                 << " invalid length " << len;
+      CROS_CONFIG_LOG(ERROR)
+          << "single-sku-map: " << fdt_get_name(blob, node, NULL)
+          << " invalid length " << len;
       return -1;
     }
 
@@ -73,7 +75,7 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
       VLOG(1) << "SKU ID " << find_sku_id << " not found in mapping";
       return 0;
     }
-    LOG(INFO) << "Simple SKU map match ";
+    CROS_CONFIG_LOG(INFO) << "Simple SKU map match ";
   }
 
   const char *pname = static_cast<const char *>(
@@ -82,7 +84,7 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
     *platform_name_out = pname;
   else
     *platform_name_out = "unknown";
-  LOG(INFO) << "Platform name " << *platform_name_out;
+  CROS_CONFIG_LOG(INFO) << "Platform name " << *platform_name_out;
 
   return found_phandle;
 }
@@ -111,15 +113,16 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
   // Follow the phandle to the target
   int node = fdt_node_offset_by_phandle(blob, phandle);
   if (node < 0) {
-    LOG(ERROR) << "Cannot find phandle for sku ID: " << fdt_strerror(node);
+    CROS_CONFIG_LOG(ERROR) << "Cannot find phandle for sku ID: "
+                           << fdt_strerror(node);
     return -1;
   }
 
   // Figure out whether the target is a model or a sub-model
   int parent = fdt_parent_offset(blob, node);
   if (parent < 0) {
-    LOG(ERROR) << "Cannot find parent of phandle target: "
-                << fdt_strerror(node);
+    CROS_CONFIG_LOG(ERROR) << "Cannot find parent of phandle target: "
+                           << fdt_strerror(node);
     return -1;
   }
   const char* parent_name = fdt_get_name(blob, parent, NULL);
@@ -127,13 +130,15 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
   if (!strcmp(parent_name, "submodels")) {
     model_node = fdt_parent_offset(blob, parent);
     if (model_node < 0) {
-      LOG(ERROR) << "Cannot find sub-model parent: " << fdt_strerror(node);
+      CROS_CONFIG_LOG(ERROR)
+          << "Cannot find sub-model parent: " << fdt_strerror(node);
       return -1;
     }
   } else if (!strcmp(parent_name, "models")) {
     model_node = node;
   } else {
-    LOG(ERROR) << "Phandle target parent " << parent_name << " is invalid";
+    CROS_CONFIG_LOG(ERROR) << "Phandle target parent " << parent_name
+                           << " is invalid";
     return -1;
   }
   *target_out = node;
@@ -144,11 +149,13 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
 bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
     int find_sku_id, const std::string& find_whitelabel_name) {
   const void* blob = blob_.c_str();
-  LOG(INFO) << "Looking up name " << find_name << ", SKU ID " << find_sku_id;
+  CROS_CONFIG_LOG(INFO) << "Looking up name " << find_name << ", SKU ID "
+                        << find_sku_id;
 
   int mapping_node = fdt_path_offset(blob, "/chromeos/family/mapping");
   if (mapping_node < 0) {
-    LOG(ERROR) << "Cannot find mapping node: " << fdt_strerror(mapping_node);
+    CROS_CONFIG_LOG(ERROR) << "Cannot find mapping node: "
+                           << fdt_strerror(mapping_node);
     return false;
   }
 
@@ -187,9 +194,9 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
         whitelabel_offset_ = model_offset_;
         model_offset_ = wl_model;
       } else {
-        LOG(ERROR) << "Cannot find whitelabel model "
-                   << find_whitelabel_name << ": using " << model_name_
-                   << ": " << fdt_strerror(wl_model);
+        CROS_CONFIG_LOG(ERROR)
+            << "Cannot find whitelabel model " << find_whitelabel_name
+            << ": using " << model_name_ << ": " << fdt_strerror(wl_model);
       }
     }
   }
@@ -200,9 +207,9 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
     if (wl_tag >= 0) {
       whitelabel_tag_offset_ = wl_tag;
     } else {
-        LOG(ERROR) << "Cannot find whitelabel tag "
-                   << find_whitelabel_name << ": using " << model_name_
-                   << ": " << fdt_strerror(wl_tag);
+      CROS_CONFIG_LOG(ERROR)
+          << "Cannot find whitelabel tag " << find_whitelabel_name << ": using "
+          << model_name_ << ": " << fdt_strerror(wl_tag);
     }
   }
 

@@ -21,8 +21,8 @@ bool FakeCrosConfig::GetString(const std::string& path, const std::string& prop,
                                std::string* val) {
   auto it = values_.find(PathProp{path, prop});
   if (it == values_.end()) {
-    LOG(WARNING) << "Cannot get path " << path << " property " << prop
-                 << ": <fake_error>";
+    CROS_CONFIG_LOG(WARNING) << "Cannot get path " << path << " property "
+                             << prop << ": <fake_error>";
     return false;
   }
   *val = it->second;
@@ -44,8 +44,8 @@ bool FakeCrosConfig::GetAbsPath(const std::string& path,
 
   auto match = target_dirs_.find(prop);
   if (match == target_dirs_.end()) {
-    LOG(ERROR) << "Absolute path requested at path " << path << " property "
-               << prop << " but none is available";
+    CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
+                           << " property " << prop << " but none is available";
     return false;
   }
   *val_out = match->second + "/" + val;

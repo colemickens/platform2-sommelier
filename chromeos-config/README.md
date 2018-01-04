@@ -24,6 +24,12 @@ There are two CLIs built for Chrome OS configuration access, cros_config for use
 on the target, and cros_config_host_py for use on the host/during building. See
 the --help for each tool respectively for help on usage.
 
+## Debugging
+
+libcros_config will emit a lot of debugging log messages if you set the
+CROS_CONFIG_DEBUG environment variable to a non-empty value before calling into
+the library.
+
 ## Binding
 
 This section describes the binding for the master configuration. This defines

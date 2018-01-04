@@ -66,12 +66,12 @@ bool CrosConfig::WriteFakeTables(base::File& smbios_file,
   hdr.length = 100;  // Arbitrary size smaller than the maximum.
   int pos = hdr.length;
   if (smbios_file.Write(0, reinterpret_cast<char*>(&hdr), sizeof(hdr)) < 0) {
-    LOG(ERROR) << "Failed to write header";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write header";
     return false;
   }
   // Write an empty string table after the header record.
   if (smbios_file.Write(pos, "\0\0", 2) < 0) {
-    LOG(ERROR) << "Failed to write empty string table";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write empty string table";
     return false;
   }
 
@@ -86,34 +86,34 @@ bool CrosConfig::WriteFakeTables(base::File& smbios_file,
   hdr.type = SMBIOS_TYPE_SYSTEM;
   hdr.length = sizeof(hdr) + sizeof(system);
   if (smbios_file.Seek(base::File::FROM_BEGIN, pos + 2) == -1) {
-    LOG(ERROR) << "Failed to seek";
+    CROS_CONFIG_LOG(ERROR) << "Failed to seek";
   }
 
   // This is the system table. First write the header and the table data.
   if (smbios_file.WriteAtCurrentPos(reinterpret_cast<char*>(&hdr),
                                     sizeof(hdr)) < 0) {
-    LOG(ERROR) << "Failed to write system header";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write system header";
     return false;
   }
   if (smbios_file.WriteAtCurrentPos(reinterpret_cast<char*>(&system),
                                     sizeof(system)) < 0) {
-    LOG(ERROR) << "Failed to write system table";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write system table";
     return false;
   }
 
   // Next write the string table and terminator.
   if (smbios_file.WriteAtCurrentPos(name.c_str(), name.length() + 1) < 0) {
-    LOG(ERROR) << "Failed to write name";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write name";
     return false;
   }
   if (smbios_file.WriteAtCurrentPos(sku_id_str.c_str(),
                                     sku_id_str.length() + 1) < 0) {
-    LOG(ERROR) << "Failed to write SKU string";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write SKU string";
     return false;
   }
   char zero = 0;
   if (smbios_file.WriteAtCurrentPos(&zero, 1) < 0) {
-    LOG(ERROR) << "Failed to write terminator";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write terminator";
     return false;
   }
   return true;
@@ -126,7 +126,7 @@ bool CrosConfig::FakeIdentity(const std::string& name, int sku_id,
   *vpd_file_out = base::FilePath("vpd");
   if (base::WriteFile(*vpd_file_out, customization_id.c_str(),
                       customization_id.length()) != customization_id.length()) {
-    LOG(ERROR) << "Failed to write VPD file";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write VPD file";
     return false;
   }
 
@@ -135,11 +135,11 @@ bool CrosConfig::FakeIdentity(const std::string& name, int sku_id,
   base::File dev_mem(*smbios_file_out,
                      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   if (!dev_mem.IsValid()) {
-    LOG(ERROR) << "Failed to create dev_mem";
+    CROS_CONFIG_LOG(ERROR) << "Failed to create dev_mem";
     return false;
   }
   if (!WriteFakeTables(dev_mem, name, sku_id)) {
-    LOG(ERROR) << "Failed to write tables";
+    CROS_CONFIG_LOG(ERROR) << "Failed to write tables";
     return false;
   }
 
@@ -174,7 +174,8 @@ bool CrosConfig::FindAndCopyTable(enum SmbiosTypes type,
     }
   }
   if (!hdr || hdr->type != type) {
-    LOG(ERROR) << "Table type " << type << " not found in system table";
+    CROS_CONFIG_LOG(ERROR) << "Table type " << type
+                           << " not found in system table";
     return false;
   }
   // Copy out the table header and contents
@@ -197,21 +198,23 @@ bool CrosConfig::GetSystemTable(const base::FilePath& smbios_file,
                                 SmbiosTable* table_out) {
   int fd = open(smbios_file.MaybeAsASCII().c_str(), O_RDONLY);
   if (fd < 0) {
-    LOG(ERROR) << "Could not open " << smbios_file.MaybeAsASCII() << ": "
-               << strerror(errno);
+    CROS_CONFIG_LOG(ERROR) << "Could not open " << smbios_file.MaybeAsASCII()
+                           << ": " << strerror(errno);
     return false;
   }
   struct stat buf;
   if (fstat(fd, &buf) == -1) {
-    LOG(ERROR) << "Could not get file size of" << smbios_file.MaybeAsASCII()
-               << ": " << strerror(errno);
+    CROS_CONFIG_LOG(ERROR) << "Could not get file size of"
+                           << smbios_file.MaybeAsASCII() << ": "
+                           << strerror(errno);
   }
   unsigned int table_size = buf.st_size;
   void* ptr = mmap(0, table_size, PROT_READ, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
     close(fd);
-    LOG(ERROR) << "Could not map file " << smbios_file.MaybeAsASCII() << ": "
-               << strerror(errno);
+    CROS_CONFIG_LOG(ERROR) << "Could not map file "
+                           << smbios_file.MaybeAsASCII() << ": "
+                           << strerror(errno);
     return false;
   }
 
@@ -240,7 +243,7 @@ bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
                               std::string* customization_id_out) {
   SmbiosTable table;
   if (!GetSystemTable(smbios_file, &table)) {
-    LOG(ERROR) << "Could not get system table";
+    CROS_CONFIG_LOG(ERROR) << "Could not get system table";
     return false;
   }
 
@@ -248,16 +251,16 @@ bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
   *name_out = GetSmbiosString(table, table.data.system.name);
   std::string sku_str = GetSmbiosString(table, table.data.system.sku_number);
   if (std::sscanf(sku_str.c_str(), "sku%d", sku_id_out) != 1) {
-    LOG(WARNING) << "Invalid SKU string: " << sku_str;
+    CROS_CONFIG_LOG(WARNING) << "Invalid SKU string: " << sku_str;
     *sku_id_out = -1;
   }
   if (!base::ReadFileToString(vpd_file, customization_id_out)) {
-    LOG(WARNING) << "No customization_id in VPD";
+    CROS_CONFIG_LOG(WARNING) << "No customization_id in VPD";
     // This file is only used for whitelabels, so may be missing. Without it
     // we rely on just the name and SKU ID.
   }
-  LOG(INFO) << "name: " << *name_out << ", sku_id: " << *sku_id_out
-            << ", customization_id: " << *customization_id_out;
+  CROS_CONFIG_LOG(INFO) << "name: " << *name_out << ", sku_id: " << *sku_id_out
+                        << ", customization_id: " << *customization_id_out;
   return true;
 }
 

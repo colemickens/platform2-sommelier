@@ -10,6 +10,7 @@
 extern "C" {
 #include <libfdt.h>
 };
+#include <stdlib.h>
 
 #include <iostream>
 #include <sstream>
@@ -29,6 +30,12 @@ const char* kFollowPhandles[] = {"audio-type", "power-type"};
 
 namespace brillo {
 
+bool CrosConfigInterface::IsLoggingEnabled() {
+  static const char* logging_var = getenv("CROS_CONFIG_DEBUG");
+  static bool enabled = logging_var && *logging_var;
+  return enabled;
+}
+
 bool CrosConfig::InitModel() {
   return InitForConfig(base::FilePath(kConfigDtbPath));
 }
@@ -40,7 +47,7 @@ std::string CrosConfig::GetFullPath(int offset) {
 
   err = fdt_get_path(blob, offset, buf, sizeof(buf));
   if (err) {
-    LOG(WARNING) << "Cannot get full path: " << fdt_strerror(err);
+    CROS_CONFIG_LOG(WARNING) << "Cannot get full path: " << fdt_strerror(err);
     return "unknown";
   }
 
@@ -70,14 +77,15 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   if (whitelabel_offset_ != -1) {
     wl_subnode = GetPathOffset(whitelabel_offset_, path);
     if (subnode < 0 && wl_subnode >= 0) {
-      LOG(INFO) << "The path " << GetFullPath(base_offset) << path
-                << " does not exist. Falling back to whitelabel path";
+      CROS_CONFIG_LOG(INFO)
+          << "The path " << GetFullPath(base_offset) << path
+          << " does not exist. Falling back to whitelabel path";
       subnode = wl_subnode;
     }
   }
   if (subnode < 0) {
-    LOG(ERROR) << "The path " << GetFullPath(base_offset) << path
-               << " does not exist.";
+    CROS_CONFIG_LOG(ERROR) << "The path " << GetFullPath(base_offset) << path
+                           << " does not exist.";
     return false;
   }
 
@@ -87,8 +95,9 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   if (!ptr && wl_subnode >= 0) {
     ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode, prop.c_str(),
                                                &len));
-    LOG(INFO) << "The property " << prop << " does not exist. Falling back to "
-              << "whitelabel property";
+    CROS_CONFIG_LOG(INFO) << "The property " << prop
+                          << " does not exist. Falling back to "
+                          << "whitelabel property";
   }
   // We would prefer to do this lookup on the host where the full schema info
   // is available. But at present this is not implemented. We want this for
@@ -102,7 +111,8 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
         ptr = static_cast<const char*>(
           fdt_getprop(blob, target_node, prop.c_str(), &len));
         if (ptr) {
-          LOG(INFO) << "Followed " << kFollowPhandles[i] << " phandle";
+          CROS_CONFIG_LOG(INFO)
+              << "Followed " << kFollowPhandles[i] << " phandle";
           break;
         }
       }
@@ -110,9 +120,9 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   }
 
   if (!ptr || len < 0) {
-    LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
-                 << "full path " << GetFullPath(subnode) << ": "
-                 << fdt_strerror(len);
+    CROS_CONFIG_LOG(WARNING)
+        << "Cannot get path " << path << " property " << prop << ": "
+        << "full path " << GetFullPath(subnode) << ": " << fdt_strerror(len);
     return false;
   }
 
@@ -120,8 +130,8 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   // list being used, or perhaps a property that does not contain a valid
   // string at all.
   if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
-    LOG(ERROR) << "String at path " << path << " property " << prop
-               << " is invalid";
+    CROS_CONFIG_LOG(ERROR) << "String at path " << path << " property " << prop
+                           << " is invalid";
     return false;
   }
 
@@ -137,17 +147,17 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   }
 
   if (model_offset_ < 0) {
-    LOG(ERROR) << "Please specify the model to access.";
+    CROS_CONFIG_LOG(ERROR) << "Please specify the model to access.";
     return false;
   }
 
   if (path.size() == 0) {
-    LOG(ERROR) << "Path must be specified";
+    CROS_CONFIG_LOG(ERROR) << "Path must be specified";
     return false;
   }
 
   if (path.substr(0, 1) != "/") {
-    LOG(ERROR) << "Path must start with / specifying the root node";
+    CROS_CONFIG_LOG(ERROR) << "Path must start with / specifying the root node";
     return false;
   }
 
@@ -185,8 +195,9 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   }
 
   if (target_dirs_offset_ == -1) {
-    LOG(ERROR) << "Absolute path requested at path " << path << " property "
-               << prop << " but no target-dirs are available";
+    CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
+                           << " property " << prop
+                           << " but no target-dirs are available";
     return false;
   }
   int len;
@@ -194,8 +205,8 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
       fdt_getprop(blob, target_dirs_offset_, prop.c_str(), &len));
 
   if (!ptr) {
-    LOG(ERROR) << "Absolute path requested at path " << path << " property "
-               << prop << ": " << fdt_strerror(len);
+    CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
+                           << " property " << prop << ": " << fdt_strerror(len);
     return false;
   }
   *val_out = std::string(ptr) + "/" + val;
@@ -218,16 +229,16 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
     return false;
   }
   if (len != sizeof(fdt32_t)) {
-    LOG(ERROR) << prop_name << " phandle for model " << model_
-                << " is of size " << len << " but should be "
-                << sizeof(fdt32_t);
+    CROS_CONFIG_LOG(ERROR) << prop_name << " phandle for model " << model_
+                           << " is of size " << len << " but should be "
+                           << sizeof(fdt32_t);
     return false;
   }
   int phandle = fdt32_to_cpu(*ptr);
   int offset = fdt_node_offset_by_phandle(blob, phandle);
   if (offset < 0) {
-    LOG(ERROR) << prop_name << "lookup for model " << model_
-                << " failed: " << fdt_strerror(offset);
+    CROS_CONFIG_LOG(ERROR) << prop_name << "lookup for model " << model_
+                           << " failed: " << fdt_strerror(offset);
     return false;
   }
   *offset_out = offset;
@@ -244,24 +255,25 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
 
   if (!base::ReadFileToString(filepath, &blob_)) {
-    LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
+    CROS_CONFIG_LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
     return false;
   }
   const void* blob = blob_.c_str();
   int ret = fdt_check_header(blob);
   if (ret) {
-    LOG(ERROR) << "Config file " << filepath.MaybeAsASCII() << " is invalid: "
-               << fdt_strerror(ret);
+    CROS_CONFIG_LOG(ERROR) << "Config file " << filepath.MaybeAsASCII()
+                           << " is invalid: " << fdt_strerror(ret);
     return false;
   }
   std::string name, customization_id;
   int sku_id;
   if (!ReadIdentity(mem_file, vpd_file, &name, &sku_id, &customization_id)) {
-    LOG(ERROR) << "Cannot read identity";
+    CROS_CONFIG_LOG(ERROR) << "Cannot read identity";
     return false;
   }
   if (!SelectModelConfigByIDs(name, sku_id, customization_id)) {
-    LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID " << sku_id;
+    CROS_CONFIG_LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID "
+                           << sku_id;
     return false;
   }
 
@@ -269,8 +281,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   if (target_dirs_offset >= 0) {
     target_dirs_offset_ = target_dirs_offset;
   } else if (target_dirs_offset < 0) {
-    LOG(WARNING) << "Cannot find " << kTargetDirsPath << " node: "
-               << fdt_strerror(target_dirs_offset);
+    CROS_CONFIG_LOG(WARNING) << "Cannot find " << kTargetDirsPath
+                             << " node: " << fdt_strerror(target_dirs_offset);
   }
   // See if there is a whitelabel config for this model.
   if (whitelabel_offset_ == -1) {
@@ -283,21 +295,21 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
        offset = next_offset) {
     if (std::find(default_offsets_.begin(), default_offsets_.end(),
                   next_offset) != default_offsets_.end()) {
-      LOG(ERROR) << "Circular default at " << GetFullPath(offset);
+      CROS_CONFIG_LOG(ERROR) << "Circular default at " << GetFullPath(offset);
       return false;
     }
     default_offsets_.push_back(next_offset);
   }
 
-  LOG(INFO) << "Using master configuration for model " << model_name_
-            << ", submodel "
-            << (submodel_name_.empty() ? "(none)" : submodel_name_);
+  CROS_CONFIG_LOG(INFO) << "Using master configuration for model "
+                        << model_name_ << ", submodel "
+                        << (submodel_name_.empty() ? "(none)" : submodel_name_);
   if (whitelabel_offset_ != -1) {
-    LOG(INFO) << "Whitelabel of  "
-              << fdt_get_name(blob, whitelabel_offset_, NULL);
+    CROS_CONFIG_LOG(INFO) << "Whitelabel of  "
+                          << fdt_get_name(blob, whitelabel_offset_, NULL);
   } else if (whitelabel_tag_offset_ != -1) {
-    LOG(INFO) << "Whitelabel tag "
-              << fdt_get_name(blob, whitelabel_tag_offset_, NULL);
+    CROS_CONFIG_LOG(INFO) << "Whitelabel tag "
+                          << fdt_get_name(blob, whitelabel_tag_offset_, NULL);
   }
   inited_ = true;
 

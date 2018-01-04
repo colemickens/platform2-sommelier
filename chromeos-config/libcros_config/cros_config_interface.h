@@ -43,9 +43,17 @@ class CrosConfigInterface {
   virtual bool GetAbsPath(const std::string& path, const std::string& prop,
                           std::string* val_out) = 0;
 
+  // Return true iff library debug logging is enabled.
+  // Currently this checks for a non-empty CROS_CONFIG_DEBUG environment
+  // variable.
+  static bool IsLoggingEnabled();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosConfigInterface);
 };
+
+#define CROS_CONFIG_LOG(severity) \
+  LOG_IF(severity, CrosConfigInterface::IsLoggingEnabled())
 
 }  // namespace brillo
 

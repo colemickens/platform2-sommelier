@@ -39,7 +39,7 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
   if (!FakeIdentity(name, sku_id, customization_id, &smbios_file, &vpd_file)) {
-    LOG(ERROR) << "FakeIdentity() failed";
+    CROS_CONFIG_LOG(ERROR) << "FakeIdentity() failed";
     return false;
   }
   return InitCommon(filepath, smbios_file, vpd_file);
@@ -47,7 +47,8 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
 
 bool CrosConfig::InitCheck() const {
   if (!inited_) {
-    LOG(ERROR) << "Init*() must be called before accessing configuration";
+    CROS_CONFIG_LOG(ERROR)
+        << "Init*() must be called before accessing configuration";
     return false;
   }
   return true;
@@ -61,12 +62,12 @@ bool CrosConfig::DecodeIdentifiers(const std::string &output,
   std::string line;
   base::StringPairs pairs;
   if (!base::SplitStringIntoKeyValuePairs(output, '=', '\n', &pairs)) {
-    LOG(ERROR) << "Cannot decode mosys output " << output;
+    CROS_CONFIG_LOG(ERROR) << "Cannot decode mosys output " << output;
     return false;
   }
   for (const auto &pair : pairs) {
     if (pair.second.length() < 2) {
-      LOG(ERROR) << "Cannot decode mosys value " << pair.second;
+      CROS_CONFIG_LOG(ERROR) << "Cannot decode mosys value " << pair.second;
       return false;
     }
     std::string value = pair.second.substr(1, pair.second.length() - 2);
