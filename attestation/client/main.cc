@@ -413,7 +413,7 @@ class ClientLoop : public ClientLoopBase {
     } else {
       return EX_USAGE;
     }
-    base::MessageLoop::current()->PostTask(FROM_HERE, task);
+    base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE, task);
     return EX_OK;
   }
 

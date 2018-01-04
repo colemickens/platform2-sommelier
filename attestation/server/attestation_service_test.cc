@@ -107,7 +107,7 @@ class MessageLoopIdleEvent : public base::MessageLoop::TaskObserver {
   void PostTask() {
     auto task = base::Bind(&MessageLoopIdleEvent::RunTask,
                            base::Unretained(this));
-    message_loop_->PostTask(FROM_HERE, task);
+    message_loop_->task_runner()->PostTask(FROM_HERE, task);
   }
 
   // Event to signal when we detect that the message loop is idle.
