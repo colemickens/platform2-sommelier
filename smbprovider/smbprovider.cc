@@ -87,7 +87,7 @@ bool IsValidOptions(const OpenFileOptions& options) {
 }
 
 bool IsValidOptions(const CloseFileOptions& options) {
-  return options.has_file_id();
+  return options.has_mount_id() && options.has_file_id();
 }
 
 template <typename Proto>

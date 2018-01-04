@@ -90,9 +90,10 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
-  ProtoBlob CreateCloseFileOptionsBlob(int32_t file_id) {
+  ProtoBlob CreateCloseFileOptionsBlob(int32_t mount_id, int32_t file_id) {
     ProtoBlob proto_blob;
     CloseFileOptions close_file_options;
+    close_file_options.set_mount_id(mount_id);
     close_file_options.set_file_id(file_id);
     EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(close_file_options, &proto_blob));
     return proto_blob;
@@ -130,8 +131,8 @@ class SmbProviderTest : public testing::Test {
 
   // Helper method that creates a CloseFileOptionsBlob for |file_id| and
   // calls SmbProvider::CloseFile with it, expecting success.
-  void CloseFileHelper(int32_t file_id) {
-    ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(file_id);
+  void CloseFileHelper(int32_t mount_id, int32_t file_id) {
+    ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(mount_id, file_id);
     EXPECT_EQ(ERROR_OK, smbprovider_->CloseFile(close_file_blob));
   }
 
@@ -589,7 +590,7 @@ TEST_F(SmbProviderTest, OpenFileSuceedsOnValidFile) {
   EXPECT_EQ(ERROR_OK, error_code);
   EXPECT_GE(file_id, 0);
 
-  CloseFileHelper(file_id);
+  CloseFileHelper(mount_id, file_id);
 }
 
 // OpenFile fails when called on a directory.
@@ -653,8 +654,8 @@ TEST_F(SmbProviderTest, OpenFileReadandWriteFlagSetCorrectly) {
   EXPECT_TRUE(fake_samba_->HasReadSet(file_id_2));
   EXPECT_TRUE(fake_samba_->HasWriteSet(file_id_2));
 
-  CloseFileHelper(file_id);
-  CloseFileHelper(file_id_2);
+  CloseFileHelper(mount_id, file_id);
+  CloseFileHelper(mount_id, file_id_2);
 }
 
 // CloseFile succeeds on a valid file.
@@ -671,7 +672,7 @@ TEST_F(SmbProviderTest, CloseFileSuceedsOnOpenFile) {
   smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
   EXPECT_EQ(ERROR_OK, error_code);
 
-  CloseFileHelper(file_id);
+  CloseFileHelper(mount_id, file_id);
 }
 
 // CloseFile closes the correct file when multiple files are open.
@@ -698,11 +699,11 @@ TEST_F(SmbProviderTest, CloseFileClosesCorrectFile) {
   EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
   EXPECT_NE(file_id, file_id_2);
 
-  CloseFileHelper(file_id);
+  CloseFileHelper(mount_id, file_id);
   EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
   EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
 
-  CloseFileHelper(file_id_2);
+  CloseFileHelper(mount_id, file_id_2);
 }
 
 // CloseFile closes the correct instance of a file with opened more than once.
@@ -728,11 +729,11 @@ TEST_F(SmbProviderTest, CloseFileClosesCorrectInstanceOfSameFile) {
   EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
   EXPECT_NE(file_id, file_id_2);
 
-  CloseFileHelper(file_id);
+  CloseFileHelper(mount_id, file_id);
   EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
   EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
 
-  CloseFileHelper(file_id_2);
+  CloseFileHelper(mount_id, file_id_2);
 }
 
 // CloseFile fails when called on a closed file.
@@ -748,15 +749,16 @@ TEST_F(SmbProviderTest, CloseFileFailsWhenFileIsNotOpen) {
       mount_id, "/path/dog.jpg", false /* writeable */);
   smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
   EXPECT_EQ(ERROR_OK, error_code);
-  CloseFileHelper(file_id);
+  CloseFileHelper(mount_id, file_id);
 
-  ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(file_id);
+  ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(mount_id, file_id);
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
 }
 
 // CloseFile fails when called with a non-existant file handler.
-TEST_F(SmbProviderTest, TestName) {
-  ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(1564);
+TEST_F(SmbProviderTest, CloseFileFailsOnNonExistantFileHandler) {
+  ProtoBlob close_file_blob =
+      CreateCloseFileOptionsBlob(1 /* mount_id */, 1564 /* file_id */);
 
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
 }
