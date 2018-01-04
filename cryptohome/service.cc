@@ -642,13 +642,13 @@ bool Service::Initialize() {
 
   // Start scheduling periodic cleanup events. Subsequent events are scheduled
   // by the callback itself.
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
 
   // Start scheduling periodic check for low-disk space.  Subsequent events are
   // scheduled by teh callback itself.
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
 
@@ -726,7 +726,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
       new MountTaskPkcs11Init(bridge, mount);
   LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
   pkcs11_tasks_[pkcs11_init_task->sequence_id()] = pkcs11_init_task.get();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskPkcs11Init::Run, pkcs11_init_task.get()));
 }
 
@@ -857,12 +857,12 @@ void Service::OwnershipCallback(bool status, bool took_ownership) {
     for (const auto& mount_pair : mounts_) {
       scoped_refptr<MountTaskResetTpmContext> mount_task =
           new MountTaskResetTpmContext(NULL, mount_pair.second.get());
-      mount_thread_.message_loop()->PostTask(FROM_HERE,
+      mount_thread_.task_runner()->PostTask(FROM_HERE,
           base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
     }
     mounts_lock_.Release();
   }
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::ConfigureOwnedTpm, base::Unretained(this),
                  status, took_ownership));
 }
@@ -927,7 +927,7 @@ gboolean Service::CheckKey(gchar *userid,
       new MountTaskTestCredentials(NULL, NULL, homedirs_, credentials);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
   event.Wait();
   *OUT_result = result.return_status();
@@ -960,7 +960,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   scoped_refptr<MountTaskTestCredentials> mount_task
       = new MountTaskTestCredentials(bridge, NULL, homedirs_, credentials);
   *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
   return TRUE;
 }
@@ -1033,7 +1033,7 @@ gboolean Service::CheckKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoCheckKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1108,7 +1108,7 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoRemoveKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1168,7 +1168,7 @@ gboolean Service::ListKeysEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoListKeysEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1247,7 +1247,7 @@ gboolean Service::GetKeyDataEx(GArray* account_id,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetKeyDataEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1270,7 +1270,7 @@ gboolean Service::MigrateKey(gchar *userid,
       new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
   event.Wait();
   *OUT_result = result.return_status();
@@ -1290,7 +1290,7 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   scoped_refptr<MountTaskMigratePasskey> mount_task =
       new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key);
   *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
   return TRUE;
 }
@@ -1309,7 +1309,7 @@ gboolean Service::AddKey(gchar *userid,
       new MountTaskAddPasskey(NULL, homedirs_, credentials, new_key);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
   event.Wait();
   *OUT_key_id = result.return_code();
@@ -1329,7 +1329,7 @@ gboolean Service::AsyncAddKey(gchar *userid,
   scoped_refptr<MountTaskAddPasskey> mount_task =
       new MountTaskAddPasskey(bridge, homedirs_, credentials, new_key);
   *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
   return TRUE;
 }
@@ -1428,7 +1428,7 @@ gboolean Service::AddKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoAddKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1523,7 +1523,7 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoUpdateKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -1550,7 +1550,7 @@ gboolean Service::Remove(gchar *userid,
       new MountTaskRemove(bridge, NULL, credentials, homedirs_);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskRemove::Run, mount_task.get()));
   event.Wait();
   *OUT_result = result.return_status();
@@ -1567,14 +1567,14 @@ gboolean Service::AsyncRemove(gchar *userid,
     scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
     mount_task->result()->set_return_status(false);
     *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
+    mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskNop::Run, mount_task.get()));
   } else {
     UsernamePasskey credentials(userid, brillo::Blob());
     scoped_refptr<MountTaskRemove> mount_task =
         new MountTaskRemove(bridge, NULL, credentials, homedirs_);
     *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
+    mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskRemove::Run, mount_task.get()));
   }
   return TRUE;
@@ -1594,7 +1594,7 @@ gboolean Service::RenameCryptohome(const GArray* account_id_from,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::DoRenameCryptohome, base::Unretained(this),
                  base::Owned(id_from.release()), base::Owned(id_to.release()),
@@ -1640,7 +1640,7 @@ gboolean Service::GetAccountDiskUsage(const GArray* account_id,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::DoGetAccountDiskUsage, base::Unretained(this),
                  base::Owned(identifier.release()),
@@ -1831,7 +1831,7 @@ gboolean Service::Mount(const gchar *userid,
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
 
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMount::Run, mount_task.get()));
   event.Wait();
   // We only report successful mounts.
@@ -2106,7 +2106,7 @@ gboolean Service::MountEx(const GArray *account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoMountEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
@@ -2222,7 +2222,7 @@ void Service::DoAsyncMount(const std::string& userid,
   if (install_attrs_->is_first_install()) {
     MountTaskInstallAttrsFinalize *finalize =
         new MountTaskInstallAttrsFinalize(NULL, install_attrs_);
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
+    mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskInstallAttrsFinalize::Run, finalize));
   }
 
@@ -2263,7 +2263,7 @@ gboolean Service::AsyncMount(const gchar *userid,
             << " for later PKCS#11 initialization.";
 
   // Just pass the task and the args.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoAsyncMount, base::Unretained(this),
                  std::string(userid),
                  base::Owned(key_blob.release()),
@@ -2296,7 +2296,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
       = new MountTaskMountGuest(NULL, guest_mount.get());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMountGuest::Run, mount_task.get()));
   event.Wait();
   // We only report successful mounts.
@@ -2338,7 +2338,7 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
       = new MountTaskMountGuest(bridge, guest_mount.get());
   mount_task->result()->set_guest(true);
   *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMountGuest::Run, mount_task.get()));
   return TRUE;
 }
@@ -2400,7 +2400,7 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
 
 
   // This should really call DoAsyncMount
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoAsyncMount, base::Unretained(this),
                  std::string(public_mount_id),
                  base::Owned(key_blob.release()),
@@ -2434,7 +2434,7 @@ gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
       new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
   event.Wait();
   *OUT_result = result.return_status();
@@ -2448,7 +2448,7 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
       new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_);
   *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
   return TRUE;
 }
@@ -2785,7 +2785,7 @@ void Service::DoSignBootLockbox(const brillo::SecureBlob& request,
 
 gboolean Service::SignBootLockbox(const GArray* request,
                                   DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2811,7 +2811,7 @@ void Service::DoVerifyBootLockbox(const brillo::SecureBlob& request,
 
 gboolean Service::VerifyBootLockbox(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2834,7 +2834,7 @@ void Service::DoFinalizeBootLockbox(const brillo::SecureBlob& request,
 
 gboolean Service::FinalizeBootLockbox(const GArray* request,
                                       DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2860,7 +2860,7 @@ void Service::DoGetBootAttribute(const brillo::SecureBlob& request,
 
 gboolean Service::GetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2881,7 +2881,7 @@ void Service::DoSetBootAttribute(const brillo::SecureBlob& request,
 
 gboolean Service::SetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2904,7 +2904,7 @@ void Service::DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
 
 gboolean Service::FlushAndSignBootAttributes(const GArray* request,
                                              DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoFlushAndSignBootAttributes, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2931,7 +2931,7 @@ void Service::DoGetLoginStatus(const brillo::SecureBlob& request,
 
 gboolean Service::GetLoginStatus(const GArray* request,
                                  DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -2983,7 +2983,7 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
 
 gboolean Service::GetTpmStatus(const GArray* request,
                                DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
@@ -3023,7 +3023,7 @@ void Service::DoGetFirmwareManagementParameters(
 
 gboolean Service::GetFirmwareManagementParameters(const GArray* request,
     DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetFirmwareManagementParameters,
                  base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
@@ -3070,7 +3070,7 @@ void Service::DoSetFirmwareManagementParameters(
 
 gboolean Service::SetFirmwareManagementParameters(const GArray* request,
                           DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoSetFirmwareManagementParameters,
                  base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
@@ -3100,7 +3100,7 @@ void Service::DoRemoveFirmwareManagementParameters(
 
 gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
                              DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&Service::DoRemoveFirmwareManagementParameters,
                  base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
@@ -3170,7 +3170,7 @@ void Service::AutoCleanupCallback() {
   // Schedule our next call. If the thread is terminating, we would
   // not be called. We use base::Unretained here because the Service object is
   // never destroyed.
-  mount_thread_.message_loop()->PostDelayedTask(
+  mount_thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(auto_cleanup_period_));
@@ -3186,7 +3186,7 @@ void Service::LowDiskCallback() {
                   0 /* signal detail (not used) */,
                   static_cast<uint64_t>(free_disk_space));
 
-  mount_thread_.message_loop()->PostDelayedTask(
+  mount_thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&Service::LowDiskCallback, base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
@@ -3371,7 +3371,7 @@ int Service::PostAsyncCallResult(MountTaskObserver* bridge,
   scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
   mount_task->result()->set_return_code(return_code);
   mount_task->result()->set_return_status(return_status);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskNop::Run, mount_task.get()));
 
   return mount_task->sequence_id();
@@ -3423,7 +3423,7 @@ gboolean Service::MigrateToDircrypto(const GArray* account_id,
   }
   // This Dbus method just kicks the migration task on the mount thread,
   // and replies immediately.
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::DoMigrateToDircrypto,
                  base::Unretained(this),

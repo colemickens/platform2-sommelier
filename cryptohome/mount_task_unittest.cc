@@ -110,7 +110,7 @@ TEST_F(MountTaskTest, EventTest) {
       = new MountTask(NULL, NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTask::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -121,7 +121,7 @@ TEST_F(MountTaskTest, ObserveTest) {
   scoped_refptr<MountTask> mount_task
       = new MountTask(&notifier, NULL);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTask::Run, mount_task.get()));
   for (unsigned int i = 0; i < 64; i++) {
     if (!notifier.notified_) {
@@ -138,7 +138,7 @@ TEST_F(MountTaskTest, NopTest) {
   scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskNop::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -154,7 +154,7 @@ TEST_F(MountTaskTest, MountTest) {
       new MountTaskMount(NULL, mount_.get(), empty_credentials_, mount_args);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMount::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -169,7 +169,7 @@ TEST_F(MountTaskTest, MountGuestTest) {
       = new MountTaskMountGuest(NULL, mount_.get());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMountGuest::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -185,7 +185,7 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
       = new MountTaskMigratePasskey(NULL, &homedirs, empty_credentials_, "");
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -201,7 +201,7 @@ TEST_F(MountTaskTest, AddPasskeyTest) {
       = new MountTaskAddPasskey(NULL, &homedirs, empty_credentials_, "");
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -216,7 +216,7 @@ TEST_F(MountTaskTest, UnmountTest) {
       = new MountTaskUnmount(NULL, mount_.get());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskUnmount::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -232,7 +232,7 @@ TEST_F(MountTaskTest, TestCredentialsMountTest) {
                                      empty_credentials_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -248,7 +248,7 @@ TEST_F(MountTaskTest, TestCredentialsHomeDirsTest) {
       = new MountTaskTestCredentials(NULL, NULL, &homedirs, empty_credentials_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -264,7 +264,7 @@ TEST_F(MountTaskTest, RemoveTest) {
       = new MountTaskRemove(NULL, NULL, empty_credentials_, &homedirs);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskRemove::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -276,7 +276,7 @@ TEST_F(MountTaskTest, ResetTpmContext) {
       = new MountTaskResetTpmContext(NULL, NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
@@ -288,7 +288,7 @@ TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
       = new MountTaskAutomaticFreeDiskSpace(NULL, &homedirs_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE,
+  runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());

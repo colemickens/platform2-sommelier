@@ -155,7 +155,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateEnrollRequest(
       new CreateEnrollRequestTask(observer, attestation_,
                                   GetPCAType(pca_type));
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CreateEnrollRequestTask::Run, task.get()));
   return TRUE;
@@ -184,7 +184,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationEnroll(
   scoped_refptr<EnrollTask> task =
       new EnrollTask(observer, attestation_, GetPCAType(pca_type), blob);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&EnrollTask::Run, task.get()));
   return TRUE;
@@ -227,7 +227,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateCertRequest(
                                 username,
                                 request_origin);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CreateCertRequestTask::Run, task.get()));
   return TRUE;
@@ -276,7 +276,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationFinishCertRequest(
                                 username,
                                 key_name);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&FinishCertRequestTask::Run, task.get()));
   return TRUE;
@@ -352,7 +352,7 @@ gboolean ServiceMonolithic::TpmAttestationRegisterKey(
                           username,
                           key_name);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&RegisterKeyTask::Run, task.get()));
   return TRUE;
@@ -410,7 +410,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
                             include_signed_public_key,
                             challenge_blob);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
@@ -435,7 +435,7 @@ gboolean ServiceMonolithic::TpmAttestationSignSimpleChallenge(
                             key_name,
                             challenge_blob);
   *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
+  mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
@@ -545,7 +545,7 @@ void ServiceMonolithic::DoGetEndorsementInfo(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::GetEndorsementInfo(const GArray* request,
                                      DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&ServiceMonolithic::DoGetEndorsementInfo,
                  base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
@@ -640,7 +640,7 @@ void ServiceMonolithic::DoInitializeCastKey(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::InitializeCastKey(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&ServiceMonolithic::DoInitializeCastKey,
                  base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),

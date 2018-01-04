@@ -503,7 +503,7 @@ TEST_F(ServiceTest, NoDeadlocksInInitializeTpmComplete) {
   base::WaitableEvent event(false, false);  // auto-reset
   base::WaitableEvent event_stop(true, false);  // manual reset
   bool finished = false;
-  service_.mount_thread_.message_loop()->PostTask(FROM_HERE,
+  service_.mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind([](bool* finished,
                     base::WaitableEvent* event,
                     base::WaitableEvent* event_stop) {
