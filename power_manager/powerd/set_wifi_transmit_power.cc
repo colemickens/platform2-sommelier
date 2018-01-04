@@ -10,11 +10,12 @@
 #include <linux/nl80211.h>
 #include <net/if.h>
 
+#include <base/at_exit.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/sys_info.h>
 #include <brillo/flag_helper.h>
 #include <netlink/attr.h>
 #include <netlink/genl/ctrl.h>
@@ -46,6 +47,13 @@
 
 #define IWL_TABLET_PROFILE_INDEX 1
 #define IWL_CLAMSHELL_PROFILE_INDEX 2
+
+// Legacy vendor subcommand used for devices without limits in VPD.
+#define IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT 13
+
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24 13
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L 14
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H 15
 
 namespace {
 
@@ -110,22 +118,56 @@ void FillMessageMwifiex(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_nest_end(msg, limits)) << "Failed in nla_nest_end";
 }
 
+// Returns a vector of three IWL transmit power limits for mode |tablet| if the
+// board doesn't contain limits in VPD, or an empty vector if VPD should be
+// used. VPD limits are expected; this is just a hack for devices (currently
+// only cave) that lack limits in VPD. See b:70549692 for details.
+std::vector<uint32_t> GetNonVpdIwlPowerTable(bool tablet) {
+  // Get the board name minus an e.g. "-signed-mpkeys" suffix.
+  std::string board = base::SysInfo::GetLsbReleaseBoard();
+  const size_t index = board.find("-signed-");
+  if (index != std::string::npos)
+    board.resize(index);
+
+  if (board == "cave") {
+    return tablet ? std::vector<uint32_t>{13, 9, 9}
+                  : std::vector<uint32_t>{13, 9, 9};
+  }
+  return {};
+}
+
 // Fill in nl80211 message for the iwl driver.
 void FillMessageIwl(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, INTEL_OUI))
       << "Failed to put NL80211_ATTR_VENDOR_ID";
+
+  const std::vector<uint32_t> table = GetNonVpdIwlPowerTable(tablet);
+  const bool use_vpd = table.empty();
+
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-                     IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE))
+                     use_vpd ? IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE
+                             : IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT))
       << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
   struct nlattr* limits = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
   CHECK(limits) << "Failed in nla_nest_start";
 
-  int index = tablet ? IWL_TABLET_PROFILE_INDEX : IWL_CLAMSHELL_PROFILE_INDEX;
-  CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE, index))
-      << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE";
-  CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE, index))
-      << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE";
+  if (use_vpd) {
+    int index = tablet ? IWL_TABLET_PROFILE_INDEX : IWL_CLAMSHELL_PROFILE_INDEX;
+    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE, index))
+        << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE";
+    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE, index))
+        << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE";
+  } else {
+    DCHECK_EQ(table.size(), 3);
+    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24, table[0] * 8))
+        << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_24";
+    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L, table[1] * 8))
+        << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52L";
+    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H, table[2] * 8))
+        << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52H";
+  }
+
   CHECK(!nla_nest_end(msg, limits)) << "Failed in nla_nest_end";
 }
 
@@ -205,5 +247,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(tablet, false, "Set wifi transmit power mode to tablet mode");
   brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode");
 
+  base::AtExitManager at_exit_manager;
   return PowerSetter().SetPowerMode(FLAGS_tablet) ? 0 : 1;
 }
