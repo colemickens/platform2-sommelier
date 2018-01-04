@@ -644,7 +644,7 @@ bool Service::Save(StoreInterface* storage) {
 }
 
 void Service::Configure(const KeyValueStore& args, Error* error) {
-  for (const auto it : args.properties()) {
+  for (const auto& it : args.properties()) {
     if (it.second.IsTypeCompatible<bool>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring bool property: " << it.first;
