@@ -498,6 +498,10 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   // Store number of output buffers returned in capture results with frame
   // number as the key
   std::unordered_map<uint32_t, int32_t> num_capture_result_buffers_;
+
+  // Store number of partial metadatas returned in capture results with frame
+  // number as the key
+  std::unordered_map<uint32_t, int32_t> num_capture_result_partial_metadata_;
 };
 
 const int32_t Camera3FlushRequestsTest::kNumberOfConfiguredStreams = 1;
@@ -515,10 +519,18 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
     const camera3_capture_result* result) {
   VLOGF_ENTER();
   ASSERT_NE(nullptr, result) << "Capture result is null";
+
+  if (result->result) {
+    num_capture_result_partial_metadata_[result->frame_number] ++;
+  }
+
   num_capture_result_buffers_[result->frame_number] +=
       result->num_output_buffers;
+
   if (num_capture_result_buffers_[result->frame_number] ==
-      kNumberOfConfiguredStreams) {
+      kNumberOfConfiguredStreams &&
+      num_capture_result_partial_metadata_[result->frame_number] ==
+      cam_device_.GetStaticInfo()->GetPartialResultCount()) {
     num_capture_results_++;
     sem_post(&flush_result_sem_);
   }
