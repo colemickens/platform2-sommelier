@@ -60,7 +60,7 @@ int Manager::OnInit() {
                                            ip_helper_->pid()));
 
   // This needs to execute after DBusDaemon::OnInit() creates bus_.
-  base::MessageLoopForIO::current()->PostTask(
+  base::MessageLoopForIO::current()->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
 

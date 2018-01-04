@@ -35,7 +35,7 @@ bool RouterFinder::Start(const std::string& ifname,
   // FIXME: This magic delay is needed or else the sendto() may return
   // EADDRNOTAVAIL.  Figure out why.
   rs_attempts_ = 0;
-  base::MessageLoopForIO::current()->PostDelayedTask(
+  base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&RouterFinder::CheckForRouter,
                  weak_factory_.GetWeakPtr()),
@@ -53,7 +53,7 @@ void RouterFinder::CheckForRouter() {
   SendRouterSolicitation();
 
   if (++rs_attempts_ < kMaxRtrSolicitations) {
-    base::MessageLoopForIO::current()->PostDelayedTask(
+    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&RouterFinder::CheckForRouter,
                    weak_factory_.GetWeakPtr()),

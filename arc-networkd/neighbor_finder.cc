@@ -31,7 +31,7 @@ bool NeighborFinder::Check(const std::string& ifname,
 
   running_ = true;
   StartNdp(ifname, NDP_MSG_NA);
-  base::MessageLoopForIO::current()->PostDelayedTask(
+  base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&NeighborFinder::Timeout,
                  weak_factory_.GetWeakPtr()),

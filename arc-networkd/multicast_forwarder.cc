@@ -180,7 +180,7 @@ void MulticastForwarder::CleanupTask() {
       it++;
   }
 
-  base::MessageLoopForIO::current()->PostDelayedTask(
+  base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MulticastForwarder::CleanupTask,
                  weak_factory_.GetWeakPtr()),

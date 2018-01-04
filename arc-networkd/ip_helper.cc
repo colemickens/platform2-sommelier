@@ -36,7 +36,7 @@ int IpHelper::OnInit() {
   CHECK(arc_ip_config_->Init());
 
   // This needs to execute after Daemon::OnInit().
-  base::MessageLoopForIO::current()->PostTask(
+  base::MessageLoopForIO::current()->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&IpHelper::InitialSetup, weak_factory_.GetWeakPtr()));
 
@@ -48,7 +48,7 @@ void IpHelper::InitialSetup() {
     if (++con_init_tries_ >= kMaxContainerRetries) {
       LOG(FATAL) << "Container failed to come up";
     } else {
-      base::MessageLoopForIO::current()->PostDelayedTask(
+      base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
           FROM_HERE,
           base::Bind(&IpHelper::InitialSetup, weak_factory_.GetWeakPtr()),
           base::TimeDelta::FromSeconds(kContainerRetryDelaySeconds));
