@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #ifndef __IPU3_STATS_H
 #define __IPU3_STATS_H
 
-#include "statsConverter/ipu3-interface.h"
+#include <linux/intel-ipu3.h>
 #include "stats_3a_public.h"
 
 #include "ia_aiq_types.h"
@@ -44,7 +44,7 @@ struct ipu3_stats_all_stats {
 
 void ipu3_stats_init_3a(struct ipu3_stats_all_stats *all_stats);
 void ipu3_stats_get_3a(struct ipu3_stats_all_stats *all_stats,
-                       const struct imgu_abi_stats_3a *isp_stats);
+                       const struct ipu3_uapi_stats_3a *isp_stats);
 ia_err intel_skycam_statistics_convert(
     const ia_css_4a_statistics& statistics,
     ia_aiq_rgbs_grid* out_rgbs_grid,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -918,7 +918,7 @@ void ipu3_stats_init_3a(struct ipu3_stats_all_stats *all_stats)
 
 void
 ipu3_stats_get_3a(struct ipu3_stats_all_stats *all_stats,
-                  const struct imgu_abi_stats_3a *isp_stats)
+                  const struct ipu3_uapi_stats_3a *isp_stats)
 {
     struct ia_css_4a_statistics *host_stats = &all_stats->ia_css_4a_statistics;
     struct ia_css_4a_private_config stats_config;

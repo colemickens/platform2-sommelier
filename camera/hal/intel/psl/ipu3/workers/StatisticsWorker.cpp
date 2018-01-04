@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     FrameInfo frame;
     int page_size = getpagesize();
-    frame.width = sizeof(imgu_abi_stats_3a) + page_size - (sizeof(imgu_abi_stats_3a) % page_size);
+    frame.width = sizeof(ipu3_uapi_stats_3a) + page_size - (sizeof(ipu3_uapi_stats_3a) % page_size);
     frame.height = 1;
     frame.stride = frame.width;
     frame.format = V4L2_PIX_FMT_YUYV;
@@ -112,12 +112,12 @@ status_t StatisticsWorker::run()
         return status;
     }
 
-    struct imgu_abi_stats_3a in;
+    struct ipu3_uapi_stats_3a in;
     struct ipu3_stats_all_stats out;
     CLEAR(out);
     CLEAR(in);
 
-    MEMCPY_S(&in, sizeof(in), mCameraBuffers[0]->data(), sizeof(imgu_abi_stats_3a));
+    MEMCPY_S(&in, sizeof(in), mCameraBuffers[0]->data(), sizeof(ipu3_uapi_stats_3a));
 
     ipu3_stats_get_3a(&out, &in);
 
