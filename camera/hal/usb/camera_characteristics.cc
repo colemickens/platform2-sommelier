@@ -173,6 +173,8 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
           tmp_device_infos[camera_id].usb_vid = device->second.usb_vid;
           tmp_device_infos[camera_id].usb_pid = device->second.usb_pid;
           tmp_device_infos[camera_id].device_path = device->second.device_path;
+          tmp_device_infos[camera_id].power_line_frequency =
+              device->second.power_line_frequency;
         }
 
         VLOGF(1) << "Camera" << camera_id << " " << kUsbVidPid << ": " << value;
