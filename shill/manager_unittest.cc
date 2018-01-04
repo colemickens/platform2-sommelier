@@ -1162,6 +1162,11 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_TRUE(profiles[0]->GetUser().empty());
   EXPECT_TRUE(profiles[1]->GetUser().empty());
 
+  EXPECT_TRUE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
+
   // Use InsertUserProfile() instead.  Although a machine profile is valid
   // in this state, it cannot be added via InsertUserProfile.
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kMachineProfile1));
@@ -1171,8 +1176,20 @@ TEST_F(ManagerTest, PushPopProfile) {
   const char kUserHash1[] = "userhash1";
   EXPECT_EQ(Error::kSuccess,
             TestInsertUserProfile(&manager, kProfile0, kUserHash0));
+
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
+
   EXPECT_EQ(Error::kSuccess,
             TestInsertUserProfile(&manager, kProfile1, kUserHash1));
+
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
+
   EXPECT_EQ(3, profiles.size());
   EXPECT_EQ(kUserHash0, profiles[1]->GetUserHash());
   EXPECT_EQ(kUserHash1, profiles[2]->GetUserHash());

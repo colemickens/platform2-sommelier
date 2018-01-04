@@ -114,6 +114,23 @@ const char* const kProbeTechnologies[] = {
     kTypeCellular,
 };
 
+// Technologies for which auto-connect is temporarily disabled before a user
+// session has started.
+//
+// shill may manage multiple user profiles and a service may be configured in
+// one of the user profiles, or in the default profile, or in a few of them.
+// However, the AutoConnect property of the same service is not synchronized
+// across multiple profiles, and thus may have a different value depending on
+// which profile is used at a given moment. If one user enables auto-connect on
+// a service while another user disables auto-connect on the same service, it
+// becomes less clear whether auto-connect should be enabled or not before any
+// user has logged in. This is particularly problematic for cellular services,
+// which may incur data cost. To err on the side of caution, we temporarily
+// disable auto-connect for cellular before a user session has started.
+const Technology::Identifier kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
+    Technology::kCellular,
+};
+
 // Name of the default claimer.
 constexpr char kDefaultClaimerName[] = "";
 
@@ -171,6 +188,7 @@ Manager::Manager(ControlInterface* control_interface,
       health_checker_remote_ips_(new IPAddressStore()),
       suppress_autoconnect_(false),
       is_connected_state_(false),
+      has_user_session_(false),
       dhcp_properties_(new DhcpProperties()),
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
@@ -556,6 +574,7 @@ void Manager::InsertUserProfile(const string& name,
   }
   ident.user_hash = user_hash;
   PushProfileInternal(ident, path, error);
+  has_user_session_ = true;
 }
 
 void Manager::PopProfileInternal() {
@@ -647,6 +666,7 @@ void Manager::PopAllUserProfiles(Error* /*error*/) {
   while (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
     PopProfileInternal();
   }
+  has_user_session_ = false;
 }
 
 void Manager::RemoveProfile(const string& name, Error* error) {
@@ -986,6 +1006,12 @@ bool Manager::IsTechnologyLinkMonitorEnabled(
 
 bool Manager::IsTechnologyAutoConnectDisabled(
     Technology::Identifier technology) const {
+  if (!has_user_session_) {
+    for (auto disabled_technology : kNoAutoConnectTechnologiesBeforeLoggedIn) {
+      if (technology == disabled_technology)
+        return true;
+    }
+  }
   return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
 

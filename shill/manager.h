@@ -895,6 +895,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Whether any of the services is in connected state or not.
   bool is_connected_state_;
 
+  // Set to true if there is a user session, which is inferred based on calls
+  // to Manager::InsertUserProfile() and Manager::PopAllUserProfiles().
+  bool has_user_session_;
+
   // List of blacklisted devices specified from command line.
   std::vector<std::string> blacklisted_devices_;
 
