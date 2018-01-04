@@ -216,6 +216,8 @@ public:
     virtual status_t open();
     virtual status_t close();
 
+    virtual status_t setBlock(bool block);
+
     virtual status_t setInput(int index);
     virtual status_t queryCap(struct v4l2_capability *cap);
     virtual status_t enumerateInputs(struct v4l2_input *anInput);

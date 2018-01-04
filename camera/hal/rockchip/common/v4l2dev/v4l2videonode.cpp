@@ -491,6 +491,26 @@ status_t V4L2VideoNode::close()
     return status;
 }
 
+status_t V4L2VideoNode::setBlock(bool block)
+{
+    int ret, flags;
+
+    flags = fcntl(mFd, F_GETFL, 0);
+    if (flags < 0)
+        return UNKNOWN_ERROR;
+
+    if (block)
+        flags &= ~O_NONBLOCK;
+    else
+        flags |= O_NONBLOCK;
+
+    ret = fcntl(mFd, F_SETFL, flags);
+    if (ret < 0)
+        return UNKNOWN_ERROR;
+
+    return NO_ERROR;
+}
+
 /**
  * queries the capabilities of the device and it does some basic sanity checks
  * based on the direction of the video device node
@@ -1468,7 +1488,7 @@ int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
     ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf.get(), mName.c_str());
 
     if (ret < 0) {
-        LOGE("VIDIOC_DQBUF failed: %s", strerror(errno));
+        LOG2("VIDIOC_DQBUF failed: %s", strerror(errno));
         return ret;
     }
     mBuffersInDevice--;

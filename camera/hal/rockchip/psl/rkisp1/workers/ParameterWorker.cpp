@@ -553,6 +553,8 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     mSeenFirstParams = false;
     mMetadatas.resize(mPipelineDepth);
 
+    mNode->setBlock(false);
+
     return OK;
 }
 
@@ -597,62 +599,65 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     return OK;
 }
 
-status_t ParameterWorker::run()
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-
-    return OK;
-}
-
 status_t ParameterWorker::grabFrame()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     LOG1("%s:%d: enter", __func__, __LINE__);
+    status_t status = OK;
 
     V4L2BufferInfo outBuf;
 
-    status_t status = mNode->grabFrame(&outBuf);
-    if (status < 0) {
-        LOGE("grabFrame failed");
-        return UNKNOWN_ERROR;
+    while (mNode->getBufsInDeviceCount()) {
+        status = mNode->grabFrame(&outBuf);
+        if (status < 0) {
+            // No more ready buffers or failed to dqbuf
+            return (errno == EAGAIN) ? OK : status;
+        }
+
+        LOG2("%s, %d: grabFrame: index(%d), sequence(%d)",
+             __func__, __LINE__, outBuf.vbuffer.index(),
+             outBuf.vbuffer.sequence());
+
+        /**
+         * New params been applied, so use the cached metadata for the later
+         * requests.
+         */
+        mLastSeq = mCurSeq;
+        mLastMetadata = mCurMetadata;
+        mCurMetadata = mMetadatas[outBuf.vbuffer.index()];
+        mCurSeq = outBuf.vbuffer.sequence();
     }
-
-    LOG2("%s, %d: grabFrame: index(%d), sequence(%d)",
-         __func__, __LINE__, outBuf.vbuffer.index(), outBuf.vbuffer.sequence());
-
-    /**
-     * New params been applied, so use the cached metadata for the next
-     * request.
-     */
-    mLastSeq = mCurSeq;
-    mLastMetadata = mCurMetadata;
-    mCurMetadata = mMetadatas[outBuf.vbuffer.index()];
-    mCurSeq = outBuf.vbuffer.sequence();
 
     return OK;
 }
 
-status_t ParameterWorker::postRun()
+status_t ParameterWorker::run()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
 
-    if (!mSeenFirstParams) {
-        mSeenFirstParams = true;
-        status = grabFrame();
-        mCurSeq = -1;
+    status = grabFrame();
+    if (status < 0) {
+        LOGE("grabFrame failed");
         mMsg = nullptr;
         return status;
     }
 
+    /**
+     * Due to how we reset the sequence id in the kernel, the first params's
+     * sequence id would be a random value.
+     * And since the first params would always take effect on frame 0, so let's
+     * just override it to -1 here.
+     */
+    if (!mSeenFirstParams) {
+        mSeenFirstParams = true;
+        mLastSeq = mCurSeq = -1;
+        mMsg = nullptr;
+        return OK;
+    }
+
     Camera3Request* request = mMsg->cbMetadataMsg.request;
     int sequence = request->sequenceId();
-
-    while (mCurSeq < sequence && mNode->getBufsInDeviceCount()) {
-        status = grabFrame();
-        if (status != OK)
-            return status;
-    }
 
     CameraMetadata* metadata;
     int activeSeq;
@@ -684,6 +689,13 @@ status_t ParameterWorker::postRun()
     }
 
     mMsg = nullptr;
+    return OK;
+}
+
+status_t ParameterWorker::postRun()
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     return OK;
 }
 
