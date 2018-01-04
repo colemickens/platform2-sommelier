@@ -14,6 +14,7 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
+#include <base/strings/string_split.h>
 #include <jpeglib.h>
 #include <libyuv.h>
 
@@ -259,32 +260,24 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
 }
 
 Camera3FrameFixture::ImageUniquePtr
-Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
-                                              uint32_t height,
-                                              ImageFormat format,
-                                              int32_t color_bars_pattern) {
+Camera3FrameFixture::GenerateColorBarsPattern(
+    uint32_t width,
+    uint32_t height,
+    ImageFormat format,
+    const std::vector<std::tuple<uint8_t, uint8_t, uint8_t>>&
+        color_bars_pattern,
+    int32_t color_bars_pattern_mode) {
   if (format >= ImageFormat::IMAGE_FORMAT_END ||
       std::find(supported_color_bars_test_pattern_modes_.begin(),
                 supported_color_bars_test_pattern_modes_.end(),
-                color_bars_pattern) ==
+                color_bars_pattern_mode) ==
           supported_color_bars_test_pattern_modes_.end()) {
     return nullptr;
   }
   ImageUniquePtr argb_image(
       new Image(width, height, ImageFormat::IMAGE_FORMAT_ARGB));
-  std::vector<std::tuple<uint8_t, uint8_t, uint8_t>> color_bar = {
-      // Color map:   R   , G   , B
-      std::make_tuple(0xFF, 0xFF, 0xFF),  // White
-      std::make_tuple(0xFF, 0xFF, 0x00),  // Yellow
-      std::make_tuple(0x00, 0xFF, 0xFF),  // Cyan
-      std::make_tuple(0x00, 0xFF, 0x00),  // Green
-      std::make_tuple(0xFF, 0x00, 0xFF),  // Magenta
-      std::make_tuple(0xFF, 0x00, 0x00),  // Red
-      std::make_tuple(0x00, 0x00, 0xFF),  // Blue
-      std::make_tuple(0x00, 0x00, 0x00),  // Black
-  };
   uint8_t* pdata = argb_image->planes[0].addr;
-  int color_bar_width = width / color_bar.size();
+  int color_bar_width = width / color_bars_pattern.size();
   int color_bar_height = height / 128 * 128;
   if (color_bar_height == 0) {
     color_bar_height = height;
@@ -294,9 +287,10 @@ Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
         static_cast<float>(color_bar_height - (h % color_bar_height)) /
         color_bar_height;
     for (size_t w = 0; w < width; w++) {
-      int index = (w / color_bar_width) % color_bar.size();
+      int index = (w / color_bar_width) % color_bars_pattern.size();
       auto get_fade_color = [&](uint8_t base_color) {
-        if (color_bars_pattern == ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS) {
+        if (color_bars_pattern_mode ==
+            ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS) {
           return base_color;
         }
         uint8_t color = base_color * gray_factor;
@@ -305,9 +299,9 @@ Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
         }
         return color;
       };
-      *pdata++ = get_fade_color(std::get<2>(color_bar[index]));  // B
-      *pdata++ = get_fade_color(std::get<1>(color_bar[index]));  // G
-      *pdata++ = get_fade_color(std::get<0>(color_bar[index]));  // R
+      *pdata++ = get_fade_color(std::get<2>(color_bars_pattern[index]));  // B
+      *pdata++ = get_fade_color(std::get<1>(color_bars_pattern[index]));  // G
+      *pdata++ = get_fade_color(std::get<0>(color_bars_pattern[index]));  // R
       *pdata++ = 0x00;
     }
   }
@@ -1275,21 +1269,22 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
                                       height_, ImageFormat::IMAGE_FORMAT_I420);
   ASSERT_NE(nullptr, capture_image);
 
-  auto pattern_image =
-      GenerateColorBarsPattern(width_, height_, ImageFormat::IMAGE_FORMAT_I420,
-                               test_pattern_modes.front());
-  ASSERT_NE(nullptr, pattern_image);
+  for (const auto& it : color_bars_test_patterns_) {
+    auto pattern_image = GenerateColorBarsPattern(
+        width_, height_, ImageFormat::IMAGE_FORMAT_I420, it,
+        test_pattern_modes.front());
+    ASSERT_NE(nullptr, pattern_image);
 
-  EXPECT_GT(ComputeSsim(*capture_image, *pattern_image),
-            kContentTestSsimThreshold)
-      << "The frame content is corrupted";
-  if (testing::Test::HasFailure()) {
-    std::stringstream ss;
-    ss << "/tmp/corruption_test_0x" << std::hex << format_ << "_" << std::dec
-       << width_ << "x" << height_ << "_";
-    capture_image->SaveToFile(ss.str() + "capture");
-    pattern_image->SaveToFile(ss.str() + "pattern");
+    if (ComputeSsim(*capture_image, *pattern_image) >
+        kContentTestSsimThreshold) {
+      return;
+    }
   }
+  std::stringstream ss;
+  ss << "/tmp/corruption_test_0x" << std::hex << format_ << "_" << std::dec
+     << width_ << "x" << height_;
+  capture_image->SaveToFile(ss.str());
+  ADD_FAILURE() << "The frame content is corrupted";
 }
 
 TEST_P(Camera3FrameContentTest, DetectGreenLine) {

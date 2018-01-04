@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "camera3_test/camera3_stream_fixture.h"
@@ -20,6 +21,38 @@ class Camera3FrameFixture : public Camera3StreamFixture {
 
   explicit Camera3FrameFixture(int cam_id)
       : Camera3StreamFixture(cam_id),
+        color_bars_test_patterns_(
+            {{
+                 // Android standard
+                 // Color map:   R   , G   , B
+                 std::make_tuple(0xFF, 0xFF, 0xFF),  // White
+                 std::make_tuple(0xFF, 0xFF, 0x00),  // Yellow
+                 std::make_tuple(0x00, 0xFF, 0xFF),  // Cyan
+                 std::make_tuple(0x00, 0xFF, 0x00),  // Green
+                 std::make_tuple(0xFF, 0x00, 0xFF),  // Magenta
+                 std::make_tuple(0xFF, 0x00, 0x00),  // Red
+                 std::make_tuple(0x00, 0x00, 0xFF),  // Blue
+                 std::make_tuple(0x00, 0x00, 0x00),  // Black
+             },
+             {
+                 // OV5670 color bars
+                 std::make_tuple(0xFF, 0xFF, 0xFF),
+                 std::make_tuple(0xC8, 0xC8, 0xC8),
+                 std::make_tuple(0x96, 0x96, 0x96),
+                 std::make_tuple(0x64, 0x64, 0x64),
+                 std::make_tuple(0x32, 0x32, 0x32),
+                 std::make_tuple(0x00, 0x00, 0x00),
+                 std::make_tuple(0xFF, 0x00, 0x00),
+                 std::make_tuple(0xFF, 0x32, 0x00),
+                 std::make_tuple(0xFF, 0x00, 0xE6),
+                 std::make_tuple(0x00, 0xFF, 0x00),
+                 std::make_tuple(0x00, 0xFF, 0x00),
+                 std::make_tuple(0x00, 0xFF, 0x00),
+                 std::make_tuple(0x00, 0x00, 0xFF),
+                 std::make_tuple(0xD2, 0x00, 0xFF),
+                 std::make_tuple(0x00, 0xA0, 0xFF),
+                 std::make_tuple(0xFF, 0xFF, 0xFF),
+             }}),
         supported_color_bars_test_pattern_modes_(
             {ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY,
              ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS}) {}
@@ -75,15 +108,21 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                                 uint32_t height,
                                 ImageFormat format);
 
-  ImageUniquePtr GenerateColorBarsPattern(uint32_t width,
-                                          uint32_t height,
-                                          ImageFormat format,
-                                          int32_t color_bars_pattern);
+  ImageUniquePtr GenerateColorBarsPattern(
+      uint32_t width,
+      uint32_t height,
+      ImageFormat format,
+      const std::vector<std::tuple<uint8_t, uint8_t, uint8_t>>&
+          color_bars_pattern,
+      int32_t color_bars_pattern_mode);
 
   // Computes the structural similarity of given images. Given images must
   // be of the I420 format; otherwise, a value of 0.0 is returned. When given
   // images are very similar, it usually returns a score no less than 0.8.
   double ComputeSsim(const Image& buffer_a, const Image& buffer_b);
+
+  std::vector<std::vector<std::tuple<uint8_t, uint8_t, uint8_t>>>
+      color_bars_test_patterns_;
 
  private:
   // Create and process capture request of given metadata |metadata|. The frame
