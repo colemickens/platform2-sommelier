@@ -724,9 +724,9 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
             for(auto &it : mMetaConfig.deviceWorkers) {
                 status |= (*it).prepareRun(msg);
             }
-            status = mPollerThreadMeta->pollRequest(request->getId(),
-                                                    500000,
-                                                    &(mMetaConfig.nodes));
+            status |= mPollerThreadMeta->pollRequest(request->getId(),
+                                                     500000,
+                                                     &(mMetaConfig.nodes));
         } else {
             mNeedRestartPoll = true;
         }
