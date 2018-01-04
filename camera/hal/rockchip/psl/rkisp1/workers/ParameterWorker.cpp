@@ -571,6 +571,11 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     memset(ispParams, 0, sizeof(rkisp1_isp_params_cfg));
 
     struct AiqResults* aiqResults = &msg->pMsg.processingSettings->captureSettings->aiqResults;
+
+    // Skip duplicate params
+    if (!mConvertor.areNewParams(aiqResults))
+        return OK;
+
     status_t status = mConvertor.convertParams(ispParams, aiqResults);
     if (status != OK) {
         return UNKNOWN_ERROR;
@@ -691,6 +696,11 @@ paramConvertor::paramConvertor()
 paramConvertor::~paramConvertor()
 {
     mpIspParams = NULL;
+}
+
+bool paramConvertor::areNewParams(struct AiqResults* results)
+{
+    return memcmp(results, &mLastAiqResults, sizeof(struct AiqResults));
 }
 
 void paramConvertor::convertDpcc(struct cifisp_dpcc_config* dpcc_config, rk_aiq_dpcc_config* aiq_dpcc_config)

@@ -33,6 +33,7 @@ public:
     paramConvertor();
     ~paramConvertor();
 
+    bool areNewParams(struct AiqResults* aiqResults);
     status_t convertParams(struct rkisp1_isp_params_cfg* isp_cfg, struct AiqResults* aiqResults);
 
 private:

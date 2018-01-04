@@ -71,7 +71,7 @@ struct AiqInputParams {
  * that the AIQ algorithms return as pointers.
  */
 struct AiqResults {
-    int requestId;
+    unsigned long long frame_id;
     rk_aiq_ae_results aeResults;
     rk_aiq_awb_results awbResults;
     rk_aiq_misc_isp_results miscIspResults;

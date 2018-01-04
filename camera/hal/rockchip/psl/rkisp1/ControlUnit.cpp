@@ -289,7 +289,6 @@ void RequestCtrlState::init(Camera3Request *req,
     if (CC_LIKELY(captureSettings)) {
         /* captureSettings->aiqResults.init(); */
         CLEAR(captureSettings->aiqResults);
-        captureSettings->aiqResults.requestId = req->getId();
         captureSettings->aeRegion.init(0);
         captureSettings->makernote.data = nullptr;
         captureSettings->makernote.size = 0;
@@ -344,7 +343,7 @@ void RequestCtrlState::init(Camera3Request *req,
         ctrlUnitResult->update(ANDROID_REQUEST_ID, entry.data.i32,
                 entry.count);
     }
-    int64_t id = captureSettings->aiqResults.requestId;
+    int64_t id = request->getId();
     ctrlUnitResult->update(ANDROID_SYNC_FRAME_NUMBER,
                           &id, 1);
 
@@ -788,7 +787,9 @@ ControlUnit::handleNewStat(Message &msg)
     }
 
     std::shared_ptr<rk_aiq_statistics_input_params> stats = msg.stats;
+    unsigned long long statsId = UINT64_MAX;
     if (stats != nullptr) {
+        statsId = stats->frame_id;
         prepareStats(*reqState, *stats.get());
     } else {
         //only allow the first request stats is NULL
@@ -803,7 +804,7 @@ ControlUnit::handleNewStat(Message &msg)
     bool forceUpdated = (mLatestRequestId < 0 ? true : false);
     status = m3ARunner->run2A(*reqState, forceUpdated);
     if (status != NO_ERROR) {
-       LOGE("Error in running run2AandCapture for frame id %llu", stats->frame_id);
+       LOGE("Error in running run2AandCapture for frame id %llu", statsId);
        return status;
     }
 
@@ -835,8 +836,9 @@ ControlUnit::handleNewStat(Message &msg)
 
     status = applyAeParams(reqState->captureSettings);
     if (status != NO_ERROR) {
-        LOGE("Failed to apply AE settings for frame id %llu", stats->frame_id);
+        LOGE("Failed to apply AE settings for frame id %llu", statsId);
     }
+    reqState->captureSettings->aiqResults.frame_id = statsId;
     mLatestAiqResults = reqState->captureSettings->aiqResults;
     /* dump3A(mLatestAiqResults); */
 
@@ -891,7 +893,7 @@ status_t
 ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    int reqId = reqState->captureSettings->aiqResults.requestId;
+    int reqId = reqState->request->getId();
 
     if (CC_LIKELY((reqState->request != nullptr) &&
                   (reqState->captureSettings.get() != nullptr))) {
