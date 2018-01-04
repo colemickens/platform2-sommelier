@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "smbprovider/smbprovider.h"
+
+#include <errno.h>
+
 #include <map>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/memory/ptr_util.h>
-#include <errno.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/samba_interface_impl.h"
-#include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
 
 using brillo::dbus_utils::DBusObject;
@@ -124,7 +126,7 @@ int32_t GetDirectoryEntryFromStat(const std::string& full_path,
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<smbprovider::SambaInterface> samba_interface,
+    std::unique_ptr<SambaInterface> samba_interface,
     size_t buffer_size)
     : org::chromium::SmbProviderAdaptor(this),
       samba_interface_(std::move(samba_interface)),
@@ -133,7 +135,7 @@ SmbProvider::SmbProvider(
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<smbprovider::SambaInterface> samba_interface)
+    std::unique_ptr<SambaInterface> samba_interface)
     : SmbProvider(
           std::move(dbus_object), std::move(samba_interface), kBufferSize) {}
 

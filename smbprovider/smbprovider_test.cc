@@ -3,17 +3,17 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
+
+#include <dbus/mock_bus.h>
+#include <dbus/object_path.h>
+#include <gtest/gtest.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
-
-#include <dbus/mock_bus.h>
-#include <dbus/object_path.h>
-#include <gtest/gtest.h>
-#include <utility>
 
 using brillo::dbus_utils::DBusObject;
 using dbus::MockBus;
@@ -117,9 +117,9 @@ class SmbProviderTest : public testing::Test {
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
     const ObjectPath object_path("/object/path");
-    smbprovider_.reset(new SmbProvider(
+    smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(fake_ptr), buffer_size));
+        std::move(fake_ptr), buffer_size);
   }
 
   // Helper method that asserts there are no entries that have not been

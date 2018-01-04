@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdlib.h>
+
 #include <memory>
 
 #include <base/files/file_util.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <stdlib.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/samba_interface_impl.h"
@@ -67,10 +68,11 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
       LOG(ERROR) << "SambaInterface failed to initialize";
       exit(EXIT_FAILURE);
     }
-    smb_provider_.reset(new SmbProvider(
+
+    smb_provider_ = std::make_unique<SmbProvider>(
         std::make_unique<brillo::dbus_utils::DBusObject>(
             nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),
-        std::move(samba_interface)));
+        std::move(samba_interface));
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));
   }

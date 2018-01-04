@@ -3,12 +3,14 @@
 // found in the LICENSE file.
 
 #include "smbprovider/fake_samba_interface.h"
-#include "smbprovider/smbprovider.h"
-#include "smbprovider/smbprovider_helper.h"
+
+#include <errno.h>
 
 #include <base/macros.h>
 #include <brillo/any.h>
-#include <errno.h>
+
+#include "smbprovider/smbprovider.h"
+#include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 namespace {

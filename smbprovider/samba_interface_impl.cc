@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/logging.h"
-#include "base/memory/ptr_util.h"
+#include "smbprovider/samba_interface_impl.h"
 
 #include <memory>
 #include <string>
 
-#include "smbprovider/samba_interface_impl.h"
+#include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
 namespace {
 bool IsValidOpenFileFlags(int32_t flags) {

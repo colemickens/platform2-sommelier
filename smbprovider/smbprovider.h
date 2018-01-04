@@ -10,8 +10,9 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/weak_ptr.h"
-#include "dbus_adaptors/org.chromium.SmbProvider.h"
+#include <base/memory/weak_ptr.h>
+#include <dbus_adaptors/org.chromium.SmbProvider.h>
+
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
@@ -41,11 +42,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                     public org::chromium::SmbProviderInterface {
  public:
   SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-              std::unique_ptr<smbprovider::SambaInterface> samba_interface,
+              std::unique_ptr<SambaInterface> samba_interface,
               size_t buffer_size);
 
   SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-              std::unique_ptr<smbprovider::SambaInterface> samba_interface);
+              std::unique_ptr<SambaInterface> samba_interface);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -109,7 +110,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // on success or ERROR_FAILED otherwise.
   int32_t RemoveMount(int32_t mount_id);
 
-  std::unique_ptr<smbprovider::SambaInterface> samba_interface_;
+  std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::map<int32_t, std::string> mounts_;
   int32_t current_mount_id_ = 0;

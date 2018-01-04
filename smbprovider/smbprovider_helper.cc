@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/bits.h>
-#include <base/strings/string_piece.h>
+#include "smbprovider/smbprovider_helper.h"
+
 #include <libsmbclient.h>
 
+#include <base/bits.h>
+#include <base/strings/string_piece.h>
+
 #include "smbprovider/constants.h"
-#include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 

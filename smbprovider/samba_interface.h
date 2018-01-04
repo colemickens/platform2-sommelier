@@ -5,10 +5,10 @@
 #ifndef SMBPROVIDER_SAMBA_INTERFACE_H_
 #define SMBPROVIDER_SAMBA_INTERFACE_H_
 
-#include <base/macros.h>
-
-#include <libsmbclient.h>
 #include <string>
+
+#include <base/macros.h>
+#include <libsmbclient.h>
 
 namespace smbprovider {
 

@@ -5,17 +5,17 @@
 #ifndef SMBPROVIDER_FAKE_SAMBA_INTERFACE_H_
 #define SMBPROVIDER_FAKE_SAMBA_INTERFACE_H_
 
-#include <base/files/file_path.h>
-#include "base/compiler_specific.h"
-
-#include "smbprovider/samba_interface.h"
-
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <base/files/file_path.h>
+#include <base/compiler_specific.h>
+
+#include "smbprovider/samba_interface.h"
 
 namespace smbprovider {
 

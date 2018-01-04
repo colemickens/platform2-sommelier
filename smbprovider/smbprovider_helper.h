@@ -5,11 +5,12 @@
 #ifndef SMBPROVIDER_SMBPROVIDER_HELPER_H_
 #define SMBPROVIDER_SMBPROVIDER_HELPER_H_
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <libsmbclient.h>
-#include <string>
-#include <vector>
 
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 

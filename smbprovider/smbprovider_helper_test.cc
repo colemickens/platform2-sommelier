@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include <gtest/gtest.h>
 #include <libsmbclient.h>
-#include <vector>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
