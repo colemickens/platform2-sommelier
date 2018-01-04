@@ -69,7 +69,8 @@ int CrosConfig::GetPathOffset(int base_offset, const std::string& path) {
 }
 
 bool CrosConfig::GetString(int base_offset, const std::string& path,
-                           const std::string& prop, std::string* val_out) {
+                           const std::string& prop, std::string* val_out,
+                           std::vector<std::string>* log_msgs_out) {
   const void* blob = blob_.c_str();
 
   int subnode = GetPathOffset(base_offset, path);
@@ -84,8 +85,8 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
     }
   }
   if (subnode < 0) {
-    CROS_CONFIG_LOG(ERROR) << "The path " << GetFullPath(base_offset) << path
-                           << " does not exist.";
+    log_msgs_out->push_back("The path " + GetFullPath(base_offset) + path
+                           + " does not exist.");
     return false;
   }
 
@@ -120,9 +121,9 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   }
 
   if (!ptr || len < 0) {
-    CROS_CONFIG_LOG(WARNING)
-        << "Cannot get path " << path << " property " << prop << ": "
-        << "full path " << GetFullPath(subnode) << ": " << fdt_strerror(len);
+    log_msgs_out->push_back("Cannot get path " + path + " property " + prop
+        + ": " + "full path " + GetFullPath(subnode) + ": "
+        + fdt_strerror(len));
     return false;
   }
 
@@ -130,8 +131,8 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
   // list being used, or perhaps a property that does not contain a valid
   // string at all.
   if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
-    CROS_CONFIG_LOG(ERROR) << "String at path " << path << " property " << prop
-                           << " is invalid";
+    log_msgs_out->push_back("String at path " + path + " property " + prop
+                           + " is invalid");
     return false;
   }
 
@@ -141,45 +142,59 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
 }
 
 bool CrosConfig::GetString(const std::string& path, const std::string& prop,
-                           std::string* val_out) {
+                           std::string* val_out,
+                           std::vector<std::string>* log_msgs_out) {
   if (!InitCheck()) {
     return false;
   }
 
   if (model_offset_ < 0) {
-    CROS_CONFIG_LOG(ERROR) << "Please specify the model to access.";
+    log_msgs_out->push_back("Please specify the model to access.");
     return false;
   }
 
   if (path.size() == 0) {
-    CROS_CONFIG_LOG(ERROR) << "Path must be specified";
+    log_msgs_out->push_back("Path must be specified");
     return false;
   }
 
   if (path.substr(0, 1) != "/") {
-    CROS_CONFIG_LOG(ERROR) << "Path must start with / specifying the root node";
+    log_msgs_out->push_back("Path must start with / specifying the root node");
     return false;
   }
 
   if (whitelabel_tag_offset_ != -1) {
-    if (path == "/" && GetString(whitelabel_tag_offset_, "/", prop, val_out)) {
+    if (path == "/" &&
+        GetString(whitelabel_tag_offset_, "/", prop, val_out, log_msgs_out)) {
       return true;
     }
     // TODO(sjg@chromium.org): We are considering moving the key-id to the root
     // of the model schema. If we do, we can drop this special case.
     if (path == "/firmware" && prop == "key-id" &&
-        GetString(whitelabel_tag_offset_, "/", prop, val_out)) {
+        GetString(whitelabel_tag_offset_, "/", prop, val_out, log_msgs_out)) {
       return true;
     }
   }
-  if (!GetString(model_offset_, path, prop, val_out)) {
+  if (!GetString(model_offset_, path, prop, val_out, log_msgs_out)) {
     if (submodel_offset_ != -1 &&
-        GetString(submodel_offset_, path, prop, val_out)) {
+        GetString(submodel_offset_, path, prop, val_out, log_msgs_out)) {
       return true;
     }
     for (int offset : default_offsets_) {
-      if (GetString(offset, path, prop, val_out))
+      if (GetString(offset, path, prop, val_out, log_msgs_out))
         return true;
+    }
+    return false;
+  }
+  return true;
+}
+
+bool CrosConfig::GetString(const std::string& path, const std::string& prop,
+                           std::string* val_out) {
+  std::vector<std::string> log_msgs;
+  if (!GetString(path, prop, val_out, &log_msgs)) {
+    for (std::string msg : log_msgs) {
+      CROS_CONFIG_LOG(ERROR) << msg;
     }
     return false;
   }

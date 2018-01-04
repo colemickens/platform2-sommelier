@@ -53,6 +53,16 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool InitForTest(const base::FilePath& filepath, const std::string& name,
                    int sku_id, const std::string& customization_id);
 
+  // Internal function to obtain a property value and return a list of log
+  // messages on failure. Public for tests.
+  // @path: Path to locate. Must start with "/".
+  // @prop: Property name to look up
+  // @val_out: returns the string value found, if any
+  // @log_msgs_out: returns a list of error messages if this function fails
+  // @return true if found, false if not found
+  bool GetString(const std::string& path, const std::string& prop,
+                 std::string* val_out, std::vector<std::string>* log_msgs_out);
+
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& prop,
@@ -101,9 +111,11 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @path: Path to locate (relative to @base). Must start with "/".
   // @prop: Property name to look up
   // @val_out: returns the string value found, if any
+  // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
   bool GetString(int base_offset, const std::string& path,
-                 const std::string& prop, std::string* val_out);
+                 const std::string& prop, std::string* val_out,
+                 std::vector<std::string>* log_msgs_out);
 
   // Look up a phandle in a node.
   // Looks up a phandle with the given property name in the given node.

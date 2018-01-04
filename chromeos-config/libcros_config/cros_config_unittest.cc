@@ -182,6 +182,15 @@ TEST_F(CrosConfigTest, CheckSubmodel) {
   ASSERT_EQ("no", val);
   ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
   ASSERT_EQ("2mic", val);
+
+  std::vector<std::string> log_msgs;
+  ASSERT_FALSE(cros_config_.GetString("/touch", "presents", &val, &log_msgs));
+  ASSERT_EQ(2, log_msgs.size());
+  ASSERT_EQ("Cannot get path /touch property presents: full path "
+            "/chromeos/models/reef/touch: FDT_ERR_NOTFOUND", log_msgs[0]);
+  ASSERT_EQ("Cannot get path /touch property presents: full path "
+            "/chromeos/models/reef/submodels/notouch/touch: FDT_ERR_NOTFOUND",
+            log_msgs[1]);
 }
 
 TEST_F(CrosConfigTest, CheckFollowPhandle) {
