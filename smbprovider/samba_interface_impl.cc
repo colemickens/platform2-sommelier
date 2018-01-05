@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 
 namespace {
 bool IsValidOpenFileFlags(int32_t flags) {

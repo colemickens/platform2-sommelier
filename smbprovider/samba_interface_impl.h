@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/compiler_specific.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/samba_interface.h"

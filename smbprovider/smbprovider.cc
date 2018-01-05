@@ -18,10 +18,7 @@
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider_helper.h"
 
-using brillo::dbus_utils::DBusObject;
-
 namespace smbprovider {
-
 namespace {
 
 // Maps errno to ErrorType.

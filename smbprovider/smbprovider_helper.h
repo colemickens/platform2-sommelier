@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/logging.h>
 #include <libsmbclient.h>
 
 #include "smbprovider/proto_bindings/directory_entry.pb.h"

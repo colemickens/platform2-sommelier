@@ -17,8 +17,6 @@
 #include "smbprovider/smbprovider_helper.h"
 
 using brillo::dbus_utils::DBusObject;
-using dbus::MockBus;
-using dbus::ObjectPath;
 
 namespace smbprovider {
 
@@ -121,7 +119,7 @@ class SmbProviderTest : public testing::Test {
     std::unique_ptr<MountManager> mount_manager_ptr =
         std::make_unique<MountManager>();
     mount_manager_ = mount_manager_ptr.get();
-    const ObjectPath object_path("/object/path");
+    const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(fake_ptr), std::move(mount_manager_ptr), buffer_size);
@@ -140,7 +138,8 @@ class SmbProviderTest : public testing::Test {
     EXPECT_EQ(ERROR_OK, smbprovider_->CloseFile(close_file_blob));
   }
 
-  scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
+  scoped_refptr<dbus::MockBus> mock_bus_ =
+      new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
   FakeSambaInterface* fake_samba_;
   MountManager* mount_manager_;

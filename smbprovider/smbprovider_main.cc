@@ -8,7 +8,6 @@
 
 #include <base/files/file_util.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
 #include "smbprovider/constants.h"
