@@ -254,6 +254,8 @@ get_fixed_dst_drive() {
         dev=""
       fi
     done
+  else
+    dev=""
   fi
   echo "${dev}"
 }
