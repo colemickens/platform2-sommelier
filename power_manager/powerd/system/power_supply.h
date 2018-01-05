@@ -176,6 +176,9 @@ struct PowerStatus {
   PowerSupplyProperties::BatteryState battery_state =
       PowerSupplyProperties_BatteryState_NOT_PRESENT;
 
+  // Value read from "status" node in battery's sysfs directory.
+  std::string battery_status_string;
+
   // ID of the active source from |ports|.
   std::string external_power_source_id;
 
@@ -380,6 +383,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // |power_supply_path_| corresponding to a battery, and updates |status|.
   // Returns false if an error is encountered.
   bool ReadBatteryDirectory(const base::FilePath& path, PowerStatus* status);
+
+  // Helper method for ReadBatteryDirectory() that updates |status|'s
+  // |battery_percentage|, |display_battery_percentage|, and |battery_state|
+  // members based on existing battery information in |status|.
+  void UpdateBatteryPercentagesAndState(PowerStatus* status);
 
   // Updates |status|'s time-to-full and time-to-empty estimates or returns
   // false if estimates can't be calculated yet. Negative values are used

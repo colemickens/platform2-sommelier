@@ -820,8 +820,7 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   if (!status->battery_is_present)
     return true;
 
-  std::string status_value;
-  ReadAndTrimString(path, "status", &status_value);
+  ReadAndTrimString(path, "status", &status->battery_status_string);
 
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.h>.
@@ -932,18 +931,27 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   status->battery_current = current;
   status->battery_energy_rate = current * voltage;
 
-  status->battery_percentage = util::ClampPercent(100.0 * charge / charge_full);
+  UpdateBatteryPercentagesAndState(status);
+
+  return true;
+}
+
+void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
+  DCHECK(status);
+  status->battery_percentage = util::ClampPercent(
+      100.0 * status->battery_charge / status->battery_charge_full);
   status->display_battery_percentage = util::ClampPercent(
       100.0 * (status->battery_percentage - low_battery_shutdown_percent_) /
       (100.0 * full_factor_ - low_battery_shutdown_percent_));
 
-  const bool is_full = charge >= charge_full * full_factor_;
-
   if (status->line_power_on) {
+    const bool is_full =
+        status->battery_charge >= status->battery_charge_full * full_factor_;
     if (is_full) {
       status->battery_state = PowerSupplyProperties_BatteryState_FULL;
-    } else if (current > 0.0 && (status_value == kBatteryStatusCharging ||
-                                 status_value == kBatteryStatusFull)) {
+    } else if (status->battery_current > 0.0 &&
+               (status->battery_status_string == kBatteryStatusCharging ||
+                status->battery_status_string == kBatteryStatusFull)) {
       status->battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     } else {
       status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
@@ -951,8 +959,6 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   } else {
     status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
-
-  return true;
 }
 
 bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
