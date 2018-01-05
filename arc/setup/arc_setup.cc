@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc_setup.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup.h"
 
 #include <fcntl.h>
 #include <linux/magic.h>
@@ -37,9 +37,9 @@
 #include <base/timer/elapsed_timer.h>
 #include <metrics/metrics_library.h>
 
-#include "arc_read_ahead.h"  // NOLINT - TODO(b/32971714): fix it properly.
-#include "arc_setup_metrics.h"  // NOLINT - TODO(b/32971714): fix it properly.
-#include "art_container.h"   // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_read_ahead.h"
+#include "arc/setup/arc_setup_metrics.h"
+#include "arc/setup/art_container.h"
 
 #define EXIT_IF(f)                            \
   do {                                        \

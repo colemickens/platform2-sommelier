@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc_read_ahead.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_read_ahead.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -21,7 +21,7 @@
 #include <base/timer/elapsed_timer.h>
 
 // TODO(yusukes): Include a different header for P.
-#include "arc_read_ahead_files_nyc.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_read_ahead_files_nyc.h"
 
 namespace arc {
 

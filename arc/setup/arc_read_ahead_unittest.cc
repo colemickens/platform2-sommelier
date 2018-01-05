@@ -4,7 +4,7 @@
 
 // How to build and run the tests: see arc_setup_util_unittest.cc
 
-#include "arc_read_ahead.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_read_ahead.h"
 
 #include <string>
 
@@ -13,7 +13,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "arc_setup_util.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup_util.h"
 
 namespace arc {
 namespace {

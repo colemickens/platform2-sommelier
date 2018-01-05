@@ -10,7 +10,7 @@
 
 #include <base/macros.h>
 
-#include "boot_lockbox_client.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/boot_lockbox_client.h"
 
 namespace base {
 class FilePath;

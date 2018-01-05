@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "priv_code_verifier.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/priv_code_verifier.h"
 
 #include <fcntl.h>
 #include <openssl/sha.h>
@@ -27,8 +27,8 @@
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 
-#include "arc_setup_util.h"  // NOLINT - TODO(b/32971714): fix it properly.
-#include "art_container.h"   // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup_util.h"
+#include "arc/setup/art_container.h"
 
 // Ported from Android art/runtime/base/macros.h.
 #define PACKED(x) __attribute__((__aligned__(x), __packed__))

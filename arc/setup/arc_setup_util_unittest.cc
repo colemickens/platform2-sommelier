@@ -8,7 +8,7 @@
 //
 // Note: only x86 $BOARDs like cyan are supported.
 
-#include "arc_setup_util.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup_util.h"
 
 #include <ifaddrs.h>
 #include <inttypes.h>

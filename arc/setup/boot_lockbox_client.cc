@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "boot_lockbox_client.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/boot_lockbox_client.h"
 
 #include <utility>
 #include <vector>

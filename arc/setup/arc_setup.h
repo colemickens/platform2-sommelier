@@ -11,7 +11,7 @@
 
 #include <base/macros.h>
 
-#include "arc_setup_util.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup_util.h"
 
 namespace arc {
 

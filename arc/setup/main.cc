@@ -12,7 +12,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 
-#include "arc_setup.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/setup/arc_setup.h"
 
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
