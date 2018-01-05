@@ -195,6 +195,8 @@ status_t RKISP1CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &active
 
 status_t RKISP1CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams)
 {
+    int stream_crop_rotate_scale_degrees = -1;
+
     for (const auto* stream : activeStreams) {
         if (stream->stream_type != CAMERA3_STREAM_OUTPUT)
             continue;
@@ -205,6 +207,12 @@ status_t RKISP1CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*
             LOGE("Invalid rotation value %d", stream->crop_rotate_scale_degrees);
             return BAD_VALUE;
         }
+
+        if ((stream_crop_rotate_scale_degrees != -1) &&
+           (stream->crop_rotate_scale_degrees != stream_crop_rotate_scale_degrees))
+            return BAD_VALUE;
+
+        stream_crop_rotate_scale_degrees = stream->crop_rotate_scale_degrees;
     }
 
     return OK;
