@@ -24,8 +24,8 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
       fdt_getprop(blob, node, "smbios-name-match", NULL));
   if (smbios_name &&
       (find_name.empty() || strcmp(smbios_name, find_name.c_str()))) {
-    CROS_CONFIG_LOG(ERROR) << "SMBIOS name " << smbios_name
-                           << " does not match " << find_name;
+    CROS_CONFIG_LOG(INFO) << "SMBIOS name " << smbios_name
+                          << " does not match " << find_name;
     return 0;
   }
 
