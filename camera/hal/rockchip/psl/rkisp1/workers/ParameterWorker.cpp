@@ -563,12 +563,6 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mMsg = msg;
 
-    // Don't queue ISP parameter buffer if test pattern mode is used.
-    if (mMsg->pMsg.processingSettings->captureSettings->testPatternMode
-            != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF) {
-        return OK;
-    }
-
     rkisp1_isp_params_cfg *ispParams = (rkisp1_isp_params_cfg *)mCameraBuffers[mIndex]->data();
     memset(ispParams, 0, sizeof(rkisp1_isp_params_cfg));
 

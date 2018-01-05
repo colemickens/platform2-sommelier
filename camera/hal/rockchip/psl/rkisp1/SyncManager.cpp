@@ -704,7 +704,7 @@ status_t SyncManager::handleMessageStart()
         rk_aiq_exposure_sensor_parameters &expParams =
                   mQueuedSettings[0]->aiqResults.aeResults.sensor_exposure;
 
-        status = applySensorParams(expParams);
+        status = applyParameters(mQueuedSettings[0]);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Failed to apply sensor parameters.");
         }
