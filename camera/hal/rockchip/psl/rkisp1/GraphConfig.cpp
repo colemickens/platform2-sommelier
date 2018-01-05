@@ -2361,8 +2361,11 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                                                                 fourccFormat[1],
                                                                 fourccFormat[2],
                                                                 fourccFormat[3]));
+            /* use limit range if test pattern mode is selected */
+            int quantization = testPatternMode != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF ?
+                V4L2_QUANTIZATION_LIM_RANGE : V4L2_QUANTIZATION_DEFAULT;
             addFormatParams(name, width, height, uids[i].pad,
-                            oMbusFormat, 0, 0, mediaCtlConfig);
+                            oMbusFormat, 0, quantization, mediaCtlConfig);
             // Get isp output crop  info
             ret = getNodeInfo(GCSS_KEY_IMGU_ISM, *pipe, &nodeWidth, &nodeHeight);
             if (ret != OK) {
