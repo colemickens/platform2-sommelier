@@ -472,6 +472,9 @@ status_t OutputFrameWorker::SWPostProcessor::configure(
             "Don't support format 0x%x", inputFmt);
 
     int type = PROCESS_NONE;
+    if (getRotationDegrees(outStream) > 0) {
+        type |= PROCESS_CROP_ROTATE_SCALE;
+    }
     if (outStream->format == HAL_PIXEL_FORMAT_BLOB) {
         type |= PROCESS_JPEG_ENCODING;
     }
@@ -515,10 +518,44 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
 
     status_t status = OK;
 
-    if (!mPostProcessBufs.empty())
-        mPostProcessBufs.erase(mPostProcessBufs.begin());
+    // Rotate input buffer is mPostProcessBufs[0]
+    // and output buffer will be mPostProcessBufs[1] or directly mOutputBuffer
+    if (mProcessType & PROCESS_CROP_ROTATE_SCALE) {
+        int angle = getRotationDegrees(mStream);
+        // Check if any post-processing needed after rotate
+        if (mProcessType & PROCESS_JPEG_ENCODING
+            || mProcessType & PROCESS_SCALING) {
+            if (mPostProcessBufs.empty()
+                || mPostProcessBufs[0]->width() != input->width()
+                || mPostProcessBufs[0]->height() != input->height()) {
+                mPostProcessBufs.clear();
+                // Create rotate output working buffer
+                std::shared_ptr<CameraBuffer> buf;
+                buf = MemoryUtils::allocateHeapBuffer(
+                         input->width(),
+                         input->height(),
+                         input ->width(),
+                         input->v4l2Fmt(),
+                         mCameraId,
+                         PAGE_ALIGN(input->size()));
+                CheckError((buf.get() == nullptr), NO_MEMORY,
+                           "@%s, No memory for rotate", __FUNCTION__);
+                mPostProcessBufs.push_back(buf);
+            }
+            // Rotate to internal post-processing buffer
+            status = cropRotateScaleFrame(input, mPostProcessBufs[0], angle);
+        } else {
+            // Rotate to internal post-processing buffer
+            status = cropRotateScaleFrame(input, output, angle);
+        }
+        CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!",
+                   __FUNCTION__, status);
+    } else {
+        if (!mPostProcessBufs.empty())
+            mPostProcessBufs.erase(mPostProcessBufs.begin());
 
-    mPostProcessBufs.insert(mPostProcessBufs.begin(), input);
+        mPostProcessBufs.insert(mPostProcessBufs.begin(), input);
+    }
 
     // Scale input buffer is mPostProcessBufs[0]
     // and output buffer will be mPostProcessBufs[1] or directly mOutputBuffer
@@ -566,6 +603,25 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
     return status;
 }
 
+int OutputFrameWorker::SWPostProcessor::getRotationDegrees(
+                                  camera3_stream_t* stream) const
+{
+    CheckError((stream == nullptr), 0, "%s, stream is nullptr", __FUNCTION__);
+
+    if (stream->stream_type != CAMERA3_STREAM_OUTPUT) {
+        LOG1("%s, no need rotation for stream type %d", __FUNCTION__,
+             stream->stream_type);
+        return 0;
+    }
+
+    if (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90)
+        return 90;
+    else if (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_270)
+        return 270;
+
+    return 0;
+}
+
 /**
  * Do jpeg conversion
  * \param[in] input
@@ -589,6 +645,97 @@ status_t OutputFrameWorker::SWPostProcessor::convertJpeg(
     }
 
     return status;
+}
+
+status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
+                               std::shared_ptr<CameraBuffer> input,
+                               std::shared_ptr<CameraBuffer> output,
+                               int angle)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    // Check the output buffer resolution with device config resolution
+    CheckError(
+        (output->width() != input->width()
+         || output->height() != input->height()),
+        UNKNOWN_ERROR, "output resolution mis-match [%d x %d] -> [%d x %d]",
+        input->width(), input->height(),
+        output->width(), output->height());
+
+    int width = input->width();
+    int height = input->height();
+    int inStride = input->stride();
+    const uint8* inBuffer = (uint8*)(input->data());
+    int cropped_width = height * height / width;
+    if (cropped_width % 2 == 1) {
+      // Make cropped_width to the closest even number.
+      cropped_width++;
+    }
+    int cropped_height = height;
+    int margin = (width - cropped_width) / 2;
+
+    int rotated_height = cropped_width;
+    int rotated_width = cropped_height;
+
+    libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
+    switch (angle) {
+      case 90:
+        rotation_mode = libyuv::RotationMode::kRotate90;
+        break;
+      case 270:
+        rotation_mode = libyuv::RotationMode::kRotate270;
+        break;
+      default:
+        LOGE("error rotation degree %d", angle);
+        return -EINVAL;
+    }
+    // This libyuv method first crops the frame and then rotates it 90 degrees
+    // clockwise or counterclockwise.
+    if (mRotateBuffer.size() < input->size()) {
+        mRotateBuffer.resize(input->size());
+    }
+
+    uint8* I420RotateBuffer = mRotateBuffer.data();
+    int ret = libyuv::ConvertToI420(
+        inBuffer, inStride,
+        I420RotateBuffer, rotated_width,
+        I420RotateBuffer + rotated_width * rotated_height, rotated_width / 2,
+        I420RotateBuffer + rotated_width * rotated_height * 5 / 4, rotated_width / 2, margin,
+        0, width, height, cropped_width, cropped_height, rotation_mode,
+        libyuv::FourCC::FOURCC_I420);
+    if (ret) {
+      LOGE("ConvertToI420 failed: %d", ret);
+      return ret;
+    }
+
+    if (mScaleBuffer.size() < input->size()) {
+        mScaleBuffer.resize(input->size());
+    }
+
+    uint8* I420ScaleBuffer = mScaleBuffer.data();
+    ret = libyuv::I420Scale(
+        I420RotateBuffer, rotated_width,
+        I420RotateBuffer + rotated_width * rotated_height, rotated_width / 2,
+        I420RotateBuffer + rotated_width * rotated_height * 5 / 4, rotated_width / 2,
+        rotated_width, rotated_height,
+        I420ScaleBuffer, width,
+        I420ScaleBuffer + width * height, width / 2,
+        I420ScaleBuffer + width * height * 5 / 4, width / 2,
+        width, height,
+        libyuv::FilterMode::kFilterNone);
+    if (ret) {
+      LOGE("I420Scale failed: %d", ret);
+    }
+    //convert to NV12
+    uint8* outBuffer = (uint8*)(output->data());
+    int outStride = output->stride();
+    ret = libyuv::I420ToNV12(I420ScaleBuffer, width,
+                             I420ScaleBuffer + width * height, width / 2,
+                             I420ScaleBuffer + width * height * 5 / 4, width / 2,
+                             outBuffer, outStride,
+                             outBuffer +  outStride * height, outStride,
+                             width, height);
+    return ret;
 }
 
 status_t OutputFrameWorker::SWPostProcessor::scaleFrame(

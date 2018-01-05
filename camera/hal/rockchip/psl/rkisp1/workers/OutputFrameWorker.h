@@ -45,8 +45,9 @@ private:
         enum PostProcessType {
             // Processe frame in order
             PROCESS_NONE = 0,
-            PROCESS_SCALING= 1<<0,
-            PROCESS_JPEG_ENCODING = 1<<1
+            PROCESS_CROP_ROTATE_SCALE = 1 << 0,
+            PROCESS_SCALING = 1 << 1,
+            PROCESS_JPEG_ENCODING = 1 << 2
         };
 
     public:
@@ -64,8 +65,13 @@ private:
                               Camera3Request* request);
 
     private:
+        int getRotationDegrees(camera3_stream_t* stream) const;
         status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
                             std::shared_ptr<CameraBuffer> output);
+        status_t cropRotateScaleFrame(
+                             std::shared_ptr<CameraBuffer> input,
+                             std::shared_ptr<CameraBuffer> output,
+                             int angle);
         status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
                              std::shared_ptr<CameraBuffer> jpegBuffer,
                              Camera3Request *request);
@@ -75,6 +81,8 @@ private:
         int mProcessType;
         camera3_stream_t* mStream;
         /* Working buffers for post-processing*/
+        std::vector<uint8_t> mRotateBuffer;
+        std::vector<uint8_t> mScaleBuffer;
         std::vector<std::shared_ptr<CameraBuffer>> mPostProcessBufs;
 
         std::unique_ptr<JpegEncodeTask> mJpegTask;
