@@ -38,7 +38,7 @@ EventDispatcher::EventDispatcher()
 EventDispatcher::~EventDispatcher() {}
 
 void EventDispatcher::DispatchForever() {
-  base::MessageLoop::current()->Run();
+  base::RunLoop().Run();
 }
 
 void EventDispatcher::DispatchPendingEvents() {
@@ -46,12 +46,12 @@ void EventDispatcher::DispatchPendingEvents() {
 }
 
 void EventDispatcher::PostTask(const Location& location, const Closure& task) {
-  base::MessageLoop::current()->PostTask(location, task);
+  base::MessageLoop::current()->task_runner()->PostTask(location, task);
 }
 
 void EventDispatcher::PostDelayedTask(const Location& location,
                                       const Closure& task, int64_t delay_ms) {
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       location, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
