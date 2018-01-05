@@ -69,6 +69,7 @@ typedef struct {
     int formatCode;
     int stride;
     int field;
+    int quantization;
 } MediaCtlFormatParams;
 
 typedef struct {

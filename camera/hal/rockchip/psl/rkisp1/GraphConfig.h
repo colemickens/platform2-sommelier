@@ -385,6 +385,7 @@ private:
                          int pad,
                          int formatCode,
                          int field,
+                         int quantization,
                          MediaCtlConfig* config);
     void addLinkParams(const string &srcName,
                        int srcPad,

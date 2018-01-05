@@ -66,7 +66,7 @@ status_t V4L2Subdevice::close()
 }
 
 status_t V4L2Subdevice::setFormat(int pad, int width, int height, int formatCode,
-                                  int field)
+                                  int field, int quantization)
 {
     LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
     struct v4l2_subdev_format format;
@@ -78,6 +78,7 @@ status_t V4L2Subdevice::setFormat(int pad, int width, int height, int formatCode
     format.format.width = width;
     format.format.height = height;
     format.format.field = field;
+    format.format.quantization = quantization;
     return setFormat(format);
 }
 

@@ -315,7 +315,6 @@ status_t MediaController::setFormat(const MediaCtlFormatParams &formatParams)
         config.height = formatParams.height;
         config.stride = formatParams.stride;
         config.field = formatParams.field;
-
         status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) node);
         if (!node || status != NO_ERROR) {
             LOGE("@%s: error opening device \"%s\"", __FUNCTION__, entityName);
@@ -331,7 +330,7 @@ status_t MediaController::setFormat(const MediaCtlFormatParams &formatParams)
         }
         status = subdev->setFormat(formatParams.pad, formatParams.width,
                                    formatParams.height, formatParams.formatCode,
-                                   formatParams.field);
+                                   formatParams.field, formatParams.quantization);
     }
     return status;
 }

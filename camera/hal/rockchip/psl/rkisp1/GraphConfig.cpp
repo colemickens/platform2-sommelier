@@ -2138,15 +2138,14 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
      * ignore the attributes in pixel_array and binner node due to upstream driver
      * removed binner and scaler subdev.
      */
-    addFormatParams(sourceInfo.pa.name, sourceInfo.output.w, sourceInfo.output.h, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
+    addFormatParams(sourceInfo.pa.name, sourceInfo.output.w, sourceInfo.output.h,
+                    0, sourceInfo.output.mbusFormat, 0, 0, mediaCtlConfig);
 
     // rkisp1-csi2 0 or 1
-    addFormatParams(csi2, csiBESocOutW, csiBESocOutH, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
-    addFormatParams(csi2, csiBESocOutW, csiBESocOutH, 1, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
-
-    // Imgu cio2 format
-    //TODO,zyc
-   // addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, V4L2_PIX_FMT_RKISP1_SGRBG10, 0, mediaCtlConfig);
+    addFormatParams(csi2, csiBESocOutW, csiBESocOutH,
+                    0, sourceInfo.output.mbusFormat, 0, 0, mediaCtlConfig);
+    addFormatParams(csi2, csiBESocOutW, csiBESocOutH,
+                    1, sourceInfo.output.mbusFormat, 0, 0, mediaCtlConfig);
 
     /* Start populating selections into mediaCtlConfig
      * entity name, width, height, left crop, top crop, target, pad, config */
@@ -2313,7 +2312,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 }
             }
             addFormatParams(name, width, height, uids[i].pad,
-                            format, 0, mediaCtlConfig);
+                            format, 0, 0, mediaCtlConfig);
 
             // Get path crop  info
             ret = getNodeInfo(GCSS_KEY_IMGU_PCRP, *pipe, &nodeWidth, &nodeHeight);
@@ -2345,7 +2344,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                                                                 fourccFormat[2],
                                                                 fourccFormat[3]));
             addFormatParams(name, width, height, uids[i].pad,
-                            iMbusFormat, 0, mediaCtlConfig);
+                            iMbusFormat, 0, 0, mediaCtlConfig);
 
             // Get isp input crop  info
             ret = getNodeInfo(GCSS_KEY_IMGU_IAC, *pipe, &nodeWidth, &nodeHeight);
@@ -2363,7 +2362,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                                                                 fourccFormat[2],
                                                                 fourccFormat[3]));
             addFormatParams(name, width, height, uids[i].pad,
-                            oMbusFormat, 0, mediaCtlConfig);
+                            oMbusFormat, 0, 0, mediaCtlConfig);
             // Get isp output crop  info
             ret = getNodeInfo(GCSS_KEY_IMGU_ISM, *pipe, &nodeWidth, &nodeHeight);
             if (ret != OK) {
@@ -2681,6 +2680,8 @@ status_t GraphConfig::getDimensions(const Node *node, int32_t &w, int32_t &h,
  * \param[in] height
  * \param[in] pad
  * \param[in] format
+ * \param[in] filed
+ * \param[in] quantization
  * \param[out] config populate this struct with given values
  */
 void GraphConfig::addFormatParams(const string &entityName,
@@ -2689,6 +2690,7 @@ void GraphConfig::addFormatParams(const string &entityName,
                                   int pad,
                                   int format,
                                   int field,
+                                  int quantization,
                                   MediaCtlConfig *config)
 {
     if (!entityName.empty() && config) {
@@ -2700,6 +2702,7 @@ void GraphConfig::addFormatParams(const string &entityName,
         mediaCtlFormatParams.formatCode = format;
         mediaCtlFormatParams.stride = 0;
         mediaCtlFormatParams.field = field;
+        mediaCtlFormatParams.quantization= quantization;
         config->mFormatParams.push_back(mediaCtlFormatParams);
         LOG2("@%s, entityName:%s, width:%d, height:%d, pad:%d, format:%d, format:%s, field:%d",
             __FUNCTION__, entityName.c_str(), width, height, pad, format, v4l2Fmt2Str(format), field);

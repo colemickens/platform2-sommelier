@@ -319,7 +319,7 @@ public:
     virtual status_t close();
 
     status_t queryFormats(int pad, std::vector<uint32_t> &formats);
-    status_t setFormat(int pad, int width, int height, int formatCode, int field);
+    status_t setFormat(int pad, int width, int height, int formatCode, int field, int quantization);
     status_t setSelection(int pad, int target, int top, int left, int width, int height);
     status_t getPadFormat(int padIndex, int &width, int &height, int &code);
 
