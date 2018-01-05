@@ -965,6 +965,74 @@ TEST_P(CreateInvalidTemplate, ConstructDefaultSettings) {
       << "Should get error due to an invalid template ID";
 }
 
+// Test spec:
+// - Camera ID
+class Camera3AlgoSandboxIPCErrorTest
+    : public Camera3DeviceFixture,
+      public ::testing::WithParamInterface<int> {
+ public:
+  const uint32_t kDefaultTimeoutMs = 1000;
+
+  Camera3AlgoSandboxIPCErrorTest()
+      : Camera3DeviceFixture(GetParam()), cam_id_(GetParam()) {}
+
+  void SetUp() override;
+
+ protected:
+  void Notify(const camera3_notify_msg* msg);
+
+  int cam_id_;
+
+  sem_t ipc_error_sem_;
+};
+
+void Camera3AlgoSandboxIPCErrorTest::SetUp() {
+  Camera3DeviceFixture::SetUp();
+  cam_device_.RegisterNotifyCallback(base::Bind(
+      &Camera3AlgoSandboxIPCErrorTest::Notify, base::Unretained(this)));
+  sem_init(&ipc_error_sem_, 0, 0);
+}
+
+void Camera3AlgoSandboxIPCErrorTest::Notify(const camera3_notify_msg* msg) {
+  VLOGF_ENTER();
+  EXPECT_EQ(CAMERA3_MSG_ERROR, msg->type)
+      << "Unexpected message type " << msg->type << " is notified";
+  EXPECT_EQ(CAMERA3_MSG_ERROR_DEVICE, msg->message.error.error_code)
+      << "Unexpected error code " << msg->message.error.error_code
+      << " is notified";
+  sem_post(&ipc_error_sem_);
+}
+
+TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorBeforeOpen) {
+  // TODO(hywu): skip the test on USB HAL
+  cam_device_.Destroy();
+  (void)system("stop arc-camera-algo");
+  ASSERT_EQ(nullptr, cam_module_.OpenDevice(cam_id_))
+      << "Camera device should not be opened successfully";
+
+  (void)system("start arc-camera-algo");
+  ASSERT_EQ(0, cam_device_.Initialize(&cam_module_))
+      << "Camera device initialization fails";
+}
+
+TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorAfterOpen) {
+  // TODO(hywu): skip the test on USB HAL
+  (void)system("stop arc-camera-algo");
+  struct timespec timeout;
+  memset(&timeout, 0, sizeof(timeout));
+  if (clock_gettime(CLOCK_REALTIME, &timeout)) {
+    LOG(ERROR) << "Failed to get clock time";
+  }
+  timeout.tv_sec += kDefaultTimeoutMs / 1000;
+  timeout.tv_nsec += (kDefaultTimeoutMs % 1000) * 1000;
+  ASSERT_EQ(0, sem_timedwait(&ipc_error_sem_, &timeout));
+
+  (void)system("start arc-camera-algo");
+  cam_device_.Destroy();
+  ASSERT_EQ(0, cam_device_.Initialize(&cam_module_))
+      << "Camera device initialization fails";
+}
+
 INSTANTIATE_TEST_CASE_P(Camera3DeviceTest,
                         Camera3DeviceSimpleTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
@@ -986,5 +1054,9 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
                        ::testing::Values(CAMERA3_TEMPLATE_PREVIEW - 1,
                                          CAMERA3_TEMPLATE_MANUAL + 1)));
+
+INSTANTIATE_TEST_CASE_P(Camera3DeviceTest,
+                        Camera3AlgoSandboxIPCErrorTest,
+                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
 
 }  // namespace camera3_test
