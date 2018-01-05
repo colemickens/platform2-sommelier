@@ -8,7 +8,7 @@
 #include <base/strings/utf_string_conversions.h>
 #include <gtest/gtest.h>
 
-#include "util.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/util.h"
 
 namespace fat {
 

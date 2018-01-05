@@ -16,7 +16,7 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 
-#include "service.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/service.h"
 
 namespace {
 

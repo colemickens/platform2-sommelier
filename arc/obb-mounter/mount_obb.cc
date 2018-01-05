@@ -13,7 +13,7 @@
 #include <base/synchronization/lock.h>
 #include <brillo/syslog_logging.h>
 
-#include "volume.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/volume.h"
 
 namespace {
 

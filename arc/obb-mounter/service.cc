@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "service.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/service.h"
 
 #include <string>
 
@@ -11,7 +11,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "mount.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/mount.h"
 
 namespace arc_obb_mounter {
 

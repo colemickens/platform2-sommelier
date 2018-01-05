@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "volume.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/volume.h"
 
 #include <endian.h>
 #include <linux/msdos_fs.h>
@@ -15,7 +15,7 @@
 #include <base/callback.h>
 #include <base/logging.h>
 
-#include "util.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/util.h"
 
 namespace fat {
 

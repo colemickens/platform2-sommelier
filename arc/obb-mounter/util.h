@@ -12,7 +12,7 @@
 
 #include <base/strings/string16.h>
 
-#include "volume.h"  // NOLINT - TODO(b/32971714): fix it properly.
+#include "arc/obb-mounter/volume.h"
 
 namespace base {
 class File;
