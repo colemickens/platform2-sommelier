@@ -41,7 +41,10 @@ class ContainerManagerInterface : public JobManagerInterface {
   virtual bool StartContainer(const std::vector<std::string>& env,
                               const ExitCallback& exit_callback) = 0;
 
-  // Set the container as stateful or stateless.
+  // Gets the container's statefulness state.
+  virtual StatefulMode GetStatefulMode() const = 0;
+
+  // Sets the container as stateful or stateless.
   // Stateless containers use a faster teardown procedure.
   virtual void SetStatefulMode(StatefulMode mode) = 0;
 

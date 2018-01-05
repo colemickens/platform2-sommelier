@@ -172,6 +172,10 @@ bool ContainerManagerImpl::StartContainer(const std::vector<std::string>& env,
   return true;
 }
 
+StatefulMode ContainerManagerImpl::GetStatefulMode() const {
+  return stateful_mode_;
+}
+
 void ContainerManagerImpl::SetStatefulMode(StatefulMode mode) {
   stateful_mode_ = mode;
 }

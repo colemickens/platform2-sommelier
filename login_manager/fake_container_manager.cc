@@ -30,7 +30,13 @@ bool FakeContainerManager::StartContainer(const std::vector<std::string>& env,
   return true;
 }
 
-void FakeContainerManager::SetStatefulMode(StatefulMode mode) {}
+StatefulMode FakeContainerManager::GetStatefulMode() const {
+  return stateful_mode_;
+}
+
+void FakeContainerManager::SetStatefulMode(StatefulMode mode) {
+  stateful_mode_ = mode;
+}
 
 bool FakeContainerManager::GetContainerPID(pid_t* pid_out) const {
   if (!running_)

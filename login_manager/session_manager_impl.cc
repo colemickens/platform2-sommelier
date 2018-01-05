@@ -1324,9 +1324,10 @@ bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
                                        const std::string& in_account_id) {
 #if USE_CHEETS
   pid_t pid = 0;
-  if (android_container_->GetContainerPID(&pid)) {
+  if (android_container_->GetContainerPID(&pid) &&
+      android_container_->GetStatefulMode() != StatefulMode::STATELESS) {
     *error = CreateError(dbus_error::kArcInstanceRunning,
-                         "ARC is currently running.");
+                         "ARC is currently running in a stateful mode.");
     return false;
   }
 

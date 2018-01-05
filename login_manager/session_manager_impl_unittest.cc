@@ -2537,7 +2537,46 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_OldFileExists) {
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
-TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
+TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateless) {
+  // Test that RemoveArcData proceeds when ARC is running in a stateless mode.
+  ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
+  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
+  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
+
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                  InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  {
+    brillo::ErrorPtr error;
+    StartArcInstanceRequest request;
+    request.set_for_login_screen(true);
+    EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
+    std::string container_instance_id;
+    dbus::FileDescriptor server_socket_fd;
+    EXPECT_TRUE(impl_->StartArcInstance(&error, SerializeAsBlob(request),
+                                        &container_instance_id,
+                                        &server_socket_fd));
+    EXPECT_FALSE(error.get());
+    EXPECT_FALSE(container_instance_id.empty());
+    EXPECT_TRUE(server_socket_fd.is_valid());
+  }
+
+  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
+                      OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
+    ASSERT_FALSE(error.get());
+  }
+  EXPECT_FALSE(utils_.Exists(android_data_dir_));
+}
+
+TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
   // Test that RemoveArcData does nothing when ARC is running.
   ExpectAndRunStartSession(kSaneEmail);
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
