@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
@@ -96,6 +97,6 @@ int main(int argc, char** argv) {
   arc_obb_mounter::Service service;
   CHECK(service.Initialize(bus));
 
-  message_loop.Run();
+  base::RunLoop().Run();
   return 0;
 }
