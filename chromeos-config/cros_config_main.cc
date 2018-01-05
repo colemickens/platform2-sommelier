@@ -23,7 +23,9 @@ int main(int argc, char* argv[]) {
   DEFINE_string(whitelabel_tag, "", "Override whitelabel tag for testing.");
 
   std::string usage = "Chrome OS Model Configuration\n\nUsage: " +
-                      std::string(argv[0]) + " [flags] <path> <key>";
+                      std::string(argv[0]) + " [flags] <path> <key>\n\n" +
+                      "Set CROS_CONFIG_DEBUG=1 in your environment to emit " +
+                      "debug logging messages.\n";
   brillo::FlagHelper::Init(argc, argv, usage);
 
   CHECK_EQ(FLAGS_test_database.empty(), FLAGS_test_name.empty())
