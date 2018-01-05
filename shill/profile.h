@@ -28,12 +28,6 @@
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 
-namespace base {
-
-class FilePath;
-
-}  // namespace base
-
 namespace shill {
 
 class ControlInterface;
