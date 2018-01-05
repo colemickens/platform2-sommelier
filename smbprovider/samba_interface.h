@@ -64,6 +64,22 @@ class SambaInterface {
   virtual int32_t GetEntryStatus(const std::string& full_path,
                                  struct stat* stat) WARN_UNUSED_RESULT = 0;
 
+  // Reads the contents of the file corresponding to the file handle |file_id|.
+  // Returns the number of bytes read on success, and errno on failure.
+  // Returns 0 on success, and errno on failure.
+  // |buffer| is the pointer to a buffer that will receive the file contents.
+  // |buffer_size| is the size of |buffer| in bytes.
+  // |bytes_read| is the number of bytes read, this will undefined on failure.
+  virtual int32_t ReadFile(int32_t file_id,
+                           uint8_t* buffer,
+                           size_t buffer_size,
+                           size_t* bytes_read) WARN_UNUSED_RESULT = 0;
+
+  // Seeks to a specific location in a file with the file handle |file_id|.
+  // |offset| is where the file is seeked to from the beginning of the file.
+  // Returns 0 on success and errno on failure.
+  virtual int32_t Seek(int32_t file_id, int64_t offset) WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "

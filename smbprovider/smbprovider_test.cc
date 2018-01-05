@@ -726,13 +726,17 @@ TEST_F(SmbProviderTest, CloseFileClosesCorrectFile) {
                                              false /* writeable */);
   smbprovider_->OpenFile(open_file_blob, &error_code_2, &file_id_2);
 
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id));
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id));
+  EXPECT_FALSE(fake_samba_->IsDirectoryFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id_2));
+  EXPECT_FALSE(fake_samba_->IsDirectoryFDOpen(file_id_2));
   EXPECT_NE(file_id, file_id_2);
 
   CloseFileHelper(mount_id, file_id);
-  EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_FALSE(fake_samba_->IsFileFDOpen(file_id));
+  EXPECT_FALSE(fake_samba_->IsDirectoryFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id_2));
+  EXPECT_FALSE(fake_samba_->IsDirectoryFDOpen(file_id_2));
 
   CloseFileHelper(mount_id, file_id_2);
 }
@@ -756,13 +760,13 @@ TEST_F(SmbProviderTest, CloseFileClosesCorrectInstanceOfSameFile) {
                                              false /* writeable */);
   smbprovider_->OpenFile(open_file_blob, &error_code_2, &file_id_2);
 
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id));
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id_2));
   EXPECT_NE(file_id, file_id_2);
 
   CloseFileHelper(mount_id, file_id);
-  EXPECT_FALSE(fake_samba_->IsFDOpen(file_id));
-  EXPECT_TRUE(fake_samba_->IsFDOpen(file_id_2));
+  EXPECT_FALSE(fake_samba_->IsFileFDOpen(file_id));
+  EXPECT_TRUE(fake_samba_->IsFileFDOpen(file_id_2));
 
   CloseFileHelper(mount_id, file_id_2);
 }

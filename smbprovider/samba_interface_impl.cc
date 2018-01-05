@@ -86,6 +86,19 @@ int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
   return smbc_stat(full_path.c_str(), stat) >= 0 ? 0 : errno;
 }
 
+int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
+                                     uint8_t* buffer,
+                                     size_t buffer_size,
+                                     size_t* bytes_read) {
+  DCHECK(buffer);
+  *bytes_read = smbc_read(file_id, buffer, buffer_size);
+  return *bytes_read < 0 ? errno : 0;
+}
+
+int32_t SambaInterfaceImpl::Seek(int32_t file_id, int64_t offset) {
+  return smbc_lseek(file_id, offset, SEEK_SET) < 0 ? errno : 0;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }

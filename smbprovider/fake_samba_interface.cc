@@ -6,6 +6,8 @@
 
 #include <errno.h>
 
+#include <algorithm>
+
 #include <base/macros.h>
 #include <brillo/any.h>
 
@@ -19,12 +21,6 @@ constexpr mode_t kFileMode = 33188;  // File entry
 constexpr char kSmbUrlScheme[] = "smb://";
 
 using PathParts = const std::vector<std::string>;
-
-// Returns the file component of a path.
-std::string GetFileName(const std::string& full_path) {
-  base::FilePath file_path(full_path);
-  return file_path.BaseName().value();
-}
 
 // Returns the components of a filepath as a vector<std::string>.
 std::vector<std::string> SplitPath(const std::string& full_path) {
@@ -40,6 +36,12 @@ std::string RemoveURLScheme(const std::string& smb_url) {
   return smb_url.substr(5, std::string::npos);
 }
 
+// Returns the file component of a path.
+std::string GetFileName(const std::string& full_path) {
+  base::FilePath file_path(RemoveURLScheme(full_path));
+  return file_path.BaseName().value();
+}
+
 // Returns a string representing the filepath to the directory above the file.
 std::string GetDirPath(const std::string& full_path) {
   std::string path = RemoveURLScheme(full_path);
@@ -49,7 +51,7 @@ std::string GetDirPath(const std::string& full_path) {
 }  // namespace
 
 FakeSambaInterface::FakeSambaInterface()
-    : root(std::make_unique<FakeDirectory>("/")) {}
+    : root(std::make_unique<FakeDirectory>("smb://")) {}
 
 FakeSambaInterface::~FakeSambaInterface() = default;
 
@@ -58,21 +60,17 @@ int32_t FakeSambaInterface::OpenDirectory(const std::string& directory_path,
   DCHECK(dir_id);
   *dir_id = -1;
 
-  std::string path = RemoveURLScheme(directory_path);
-
   int32_t error;
-  if (!GetDirectory(path, &error)) {
+  if (!GetDirectory(RemoveURLScheme(directory_path), &error)) {
     return error;
   }
 
-  DCHECK(!IsFDOpen(next_fd));
-  open_fds.emplace(next_fd, OpenInfo(path));
-  *dir_id = next_fd++;
+  *dir_id = AddOpenDirectory(directory_path);
   return 0;
 }
 
 int32_t FakeSambaInterface::CloseDirectory(int32_t dir_id) {
-  if (!IsFDOpen(dir_id)) {
+  if (!IsDirectoryFDOpen(dir_id)) {
     return EBADF;
   }
   auto open_info_iter = FindOpenFD(dir_id);
@@ -88,18 +86,18 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
   DCHECK(bytes_read);
   *bytes_read = 0;
 
-  if (!IsFDOpen(dir_id)) {
+  if (!IsDirectoryFDOpen(dir_id)) {
     return EBADF;
   }
 
-  auto open_info_iter = FindOpenFD(dir_id);
+  OpenInfo& open_info = FindOpenFD(dir_id)->second;
 
-  FakeDirectory* directory = GetDirectory(open_info_iter->second.full_path);
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(open_info.full_path));
   DCHECK(directory);
 
-  while (open_info_iter->second.current_entry < directory->entries.size()) {
-    FakeEntry* entry =
-        directory->entries[open_info_iter->second.current_entry].get();
+  DCHECK(open_info.current_index <= directory->entries.size());
+  while (open_info.current_index < directory->entries.size()) {
+    FakeEntry* entry = directory->entries[open_info.current_index].get();
     if (!WriteEntry(entry->name, entry->smbc_type,
                     dirp_buffer_size - *bytes_read, dirp)) {
       // WriteEntry will fail if the buffer size is not large enough to fit the
@@ -109,7 +107,7 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
     *bytes_read += dirp->dirlen;
     DCHECK_GE(dirp_buffer_size, *bytes_read);
     dirp = AdvanceDirEnt(dirp);
-    ++(open_info_iter->second.current_entry);
+    ++open_info.current_index;
   }
   return 0;
 }
@@ -135,8 +133,6 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
   DCHECK(file_id);
   *file_id = -1;
 
-  std::string path = RemoveURLScheme(file_path);
-
   if (!GetFile(file_path)) {
     return ENOENT;
   }
@@ -144,19 +140,65 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
   bool readable = (flags == O_RDONLY || flags == O_RDWR) ? true : false;
   bool writeable = flags == O_RDWR ? true : false;
 
-  DCHECK(!IsFDOpen(next_fd));
-  open_fds.emplace(next_fd, OpenInfo(path, readable, writeable));
-  *file_id = next_fd++;
+  *file_id = AddOpenFile(file_path, readable, writeable);
   return 0;
 }
 
 int32_t FakeSambaInterface::CloseFile(int32_t file_id) {
   DCHECK_GE(file_id, 0);
-  if (!IsFDOpen(file_id)) {
+  if (!IsFileFDOpen(file_id)) {
     return EBADF;
   }
   auto open_info_iter = FindOpenFD(file_id);
   open_fds.erase(open_info_iter);
+  return 0;
+}
+
+int32_t FakeSambaInterface::ReadFile(int32_t file_id,
+                                     uint8_t* buffer,
+                                     size_t buffer_size,
+                                     size_t* bytes_read) {
+  DCHECK(buffer);
+  DCHECK(bytes_read);
+  if (!IsFileFDOpen(file_id)) {
+    return EBADF;
+  }
+
+  OpenInfo& open_info = FindOpenFD(file_id)->second;
+  FakeFile* file = GetFile(open_info.full_path);
+  DCHECK(file);
+  DCHECK(file->has_data);
+  DCHECK(file->size == file->data.size());
+  DCHECK(open_info.current_index <= file->data.size());
+
+  // Only read up to the end of the file.
+  *bytes_read =
+      std::min(buffer_size, file->data.size() - open_info.current_index);
+  if (*bytes_read == 0) {
+    // No need for copy or seek when bytes_read is zero.
+    return 0;
+  }
+
+  // Copy the buffer and update the offset.
+  memcpy(buffer, file->data.data() + open_info.current_index, *bytes_read);
+  open_info.current_index += *bytes_read;
+  DCHECK(open_info.current_index <= file->data.size());
+
+  return 0;
+}
+
+int32_t FakeSambaInterface::Seek(int32_t file_id, int64_t offset) {
+  if (!IsFileFDOpen(file_id)) {
+    return EBADF;
+  }
+
+  OpenInfo& open_info = FindOpenFD(file_id)->second;
+  if (offset > GetFile(open_info.full_path)->data.size()) {
+    // Returning an error when offset is outside the bounds of the file.
+    return EINVAL;
+  }
+
+  open_info.current_index = offset;
   return 0;
 }
 
@@ -200,6 +242,16 @@ void FakeSambaInterface::AddFile(const std::string& path,
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
   directory->entries.emplace_back(std::make_unique<FakeFile>(path, size, date));
+}
+
+void FakeSambaInterface::AddFile(const std::string& path,
+                                 uint64_t date,
+                                 std::vector<uint8_t> file_data) {
+  DCHECK(!IsOpen(path));
+  FakeDirectory* directory = GetDirectory(GetDirPath(path));
+  DCHECK(directory);
+  directory->entries.emplace_back(
+      std::make_unique<FakeFile>(path, date, std::move(file_data)));
 }
 
 void FakeSambaInterface::AddEntry(const std::string& path, uint32_t smbc_type) {
@@ -258,10 +310,23 @@ FakeSambaInterface::FakeEntry* FakeSambaInterface::GetEntry(
   return directory->FindEntry(GetFileName(entry_path));
 }
 
+int32_t FakeSambaInterface::AddOpenDirectory(const std::string& path) {
+  DCHECK(!IsFDOpen(next_fd));
+  open_fds.emplace(next_fd, OpenInfo(path, SMBC_DIR));
+  return next_fd++;
+}
+
+int32_t FakeSambaInterface::AddOpenFile(const std::string& path,
+                                        bool readable,
+                                        bool writeable) {
+  DCHECK(!IsFDOpen(next_fd));
+  open_fds.emplace(next_fd, OpenInfo(path, SMBC_FILE, readable, writeable));
+  return next_fd++;
+}
+
 bool FakeSambaInterface::IsOpen(const std::string& full_path) const {
-  std::string path = RemoveURLScheme(full_path);
   for (auto const& open_it : open_fds) {
-    if (open_it.second.full_path == path) {
+    if (open_it.second.full_path == full_path) {
       return true;
     }
   }
@@ -272,12 +337,28 @@ bool FakeSambaInterface::HasOpenEntries() const {
   return !open_fds.empty();
 }
 
+bool FakeSambaInterface::IsFileFDOpen(uint32_t fd) const {
+  auto open_iter = open_fds.find(fd);
+  return open_iter != open_fds.end() &&
+         open_iter->second.smbc_type == SMBC_FILE;
+}
+
+bool FakeSambaInterface::IsDirectoryFDOpen(uint32_t fd) const {
+  auto open_iter = open_fds.find(fd);
+  return open_iter != open_fds.end() && open_iter->second.smbc_type == SMBC_DIR;
+}
+
 bool FakeSambaInterface::IsFDOpen(uint32_t fd) const {
   return open_fds.count(fd) != 0;
 }
 
 FakeSambaInterface::OpenEntriesIterator FakeSambaInterface::FindOpenFD(
     uint32_t fd) {
+  return open_fds.find(fd);
+}
+
+FakeSambaInterface::OpenEntriesConstIterator FakeSambaInterface::FindOpenFD(
+    uint32_t fd) const {
   return open_fds.find(fd);
 }
 

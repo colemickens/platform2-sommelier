@@ -47,6 +47,13 @@ class FakeSambaInterface : public SambaInterface {
 
   int32_t CloseFile(int32_t file_id) override;
 
+  int32_t ReadFile(int32_t file_id,
+                   uint8_t* buffer,
+                   size_t buffer_size,
+                   size_t* bytes_read) override;
+
+  int32_t Seek(int32_t file_id, int64_t offset) override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
@@ -55,6 +62,9 @@ class FakeSambaInterface : public SambaInterface {
   void AddFile(const std::string& path);
   void AddFile(const std::string& path, size_t size);
   void AddFile(const std::string& path, size_t size, uint64_t date);
+  void AddFile(const std::string& path,
+               uint64_t date,
+               std::vector<uint8_t> file_data);
 
   void AddEntry(const std::string& path, uint32_t smbc_type);
 
@@ -66,8 +76,9 @@ class FakeSambaInterface : public SambaInterface {
   bool HasReadSet(int32_t fd) const;
   bool HasWriteSet(int32_t fd) const;
 
-  // Checks whether a file descriptor is open.
-  bool IsFDOpen(uint32_t fd) const;
+  // Helpers to check whether a given file descriptor |fd| is open.
+  bool IsFileFDOpen(uint32_t fd) const;
+  bool IsDirectoryFDOpen(uint32_t fd) const;
 
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
@@ -105,10 +116,25 @@ class FakeSambaInterface : public SambaInterface {
   };
 
   struct FakeFile : FakeEntry {
-    // TODO(allenvic): Add member to represent file data.
-
     FakeFile(const std::string& full_path, size_t size, uint64_t date)
-        : FakeEntry(full_path, SMBC_FILE, size, date) {}
+        : FakeEntry(full_path, SMBC_FILE, size, date), has_data(false) {}
+
+    FakeFile(const std::string& full_path,
+             uint64_t date,
+             std::vector<uint8_t> file_data)
+        : FakeEntry(full_path, SMBC_FILE, file_data.size(), date),
+          has_data(true),
+          data(std::move(file_data)) {}
+
+    // This is used to track if the file currently has data. This may be false
+    // during initialization, but can be switched to true if data is added
+    // later.
+    bool has_data;
+
+    // Only populated for SMBC_FILE and is optionally provided.
+    // This only contains data if has_data is true.
+    // Contains the data for the file.
+    std::vector<uint8_t> data;
 
     DISALLOW_COPY_AND_ASSIGN(FakeFile);
   };
@@ -116,21 +142,33 @@ class FakeSambaInterface : public SambaInterface {
   struct OpenInfo {
     std::string full_path;
 
-    // Keeps track of the index of the next file to be read from an
-    // open directory. Set to 0 when opening a directory.
-    size_t current_entry = 0;
+    // When type is FakeDirectory, this keeps track of the index of the next
+    // file to be read from the directory. This is set to 0 when opening.
+    // When type is FakeFile, this functions as the current offset of the file.
+    size_t current_index = 0;
+
+    // Type of FakeEntry that this OpenInfo is referring to.
+    uint32_t smbc_type;
 
     // For testing that read/write are set correctly by Open().
     bool readable = false;
     bool writeable = false;
 
-    explicit OpenInfo(const std::string& full_path) : full_path(full_path) {}
-    OpenInfo(const std::string& full_path, bool readable, bool writeable)
-        : full_path(full_path), readable(readable), writeable(writeable) {}
+    OpenInfo(const std::string& full_path, uint32_t smbc_type)
+        : full_path(full_path), smbc_type(smbc_type) {}
+    OpenInfo(const std::string& full_path,
+             uint32_t smbc_type,
+             bool readable,
+             bool writeable)
+        : full_path(full_path),
+          smbc_type(smbc_type),
+          readable(readable),
+          writeable(writeable) {}
 
     OpenInfo(OpenInfo&& other)
         : full_path(std::move(other.full_path)),
-          current_entry(other.current_entry),
+          current_index(other.current_index),
+          smbc_type(other.smbc_type),
           readable(other.readable),
           writeable(other.writeable) {}
 
@@ -139,16 +177,30 @@ class FakeSambaInterface : public SambaInterface {
 
   using OpenEntries = std::map<uint32_t, OpenInfo>;
   using OpenEntriesIterator = OpenEntries::iterator;
+  using OpenEntriesConstIterator = OpenEntries::const_iterator;
+
+  // Adds an open directory to open_fds.
+  int32_t AddOpenDirectory(const std::string& path);
+
+  // Adds an open file to open_fds.
+  int32_t AddOpenFile(const std::string& path, bool readable, bool writeable);
 
   // Checks whether the file/directory at the specified path is open.
   bool IsOpen(const std::string& full_path) const;
 
+  // Checks whether a file descriptor is open.
+  bool IsFDOpen(uint32_t fd) const;
+
   // Returns an iterator to an OpenInfo in open_fds.
   OpenEntriesIterator FindOpenFD(uint32_t fd);
+
+  // Returns a const_iterator to an OpenInfo in open_fds.
+  OpenEntriesConstIterator FindOpenFD(uint32_t fd) const;
 
   // Recurses through the file system, returning a pointer to a directory.
   // Pointer is owned by the class and should not be retained passed the
   // lifetime of a single public method call as it could be invalidated.
+  // |full_path| is expected to be in /foo/bar format.
   FakeDirectory* GetDirectory(const std::string& full_path,
                               int32_t* error) const;
   FakeDirectory* GetDirectory(const std::string& full_path) const;

@@ -42,6 +42,13 @@ class SambaInterfaceImpl : public SambaInterface {
   int32_t GetEntryStatus(const std::string& full_path,
                          struct stat* stat) override;
 
+  int32_t ReadFile(int32_t file_id,
+                   uint8_t* buffer,
+                   size_t buffer_size,
+                   size_t* bytes_read) override;
+
+  int32_t Seek(int32_t file_id, int64_t offset) override;
+
  private:
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;
