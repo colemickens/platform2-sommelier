@@ -53,6 +53,8 @@ DEFINE_boolean skip_postinstall ${FLAGS_FALSE} \
 non-native arch. Note that this will probably break verity."
 DEFINE_string lab_preserve_logs "" "Path to a file containing logs to be \
 preserved"
+DEFINE_boolean storage_diags "${FLAGS_FALSE}" "Print storage diagnostic \
+information on failure"
 
 
 # Parse command line
@@ -352,17 +354,19 @@ check_non_empty_values() {
 cleanup_on_failure() {
   set +e
 
-  if [ -b "${DST-}" ]; then
-    # Generate the diagnostics log that can be used by a caller.
-    echo "Running a hw diagnostics test -- this might take a couple minutes."
-    badblocks -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
-  fi
+  if [ ${FLAGS_storage_diags} -eq ${FLAGS_TRUE} ]; then
+    if [ -b "${DST-}" ]; then
+      # Generate the diagnostics log that can be used by a caller.
+      echo "Running a hw diagnostics test -- this might take a couple minutes."
+      badblocks -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
+    fi
 
-  if [ -f /usr/share/misc/storage-info-common.sh ]; then
-    . /usr/share/misc/storage-info-common.sh
-    # Run a few extra diagnostics and then them to stdout. These will be stored
-    # as part of the recovery.log for recovery images.
-    get_storage_info
+    if [ -f /usr/share/misc/storage-info-common.sh ]; then
+      . /usr/share/misc/storage-info-common.sh
+      # Run a few extra diagnostics with output to stdout. These will
+      # be stored as part of the recovery.log for recovery images.
+      get_storage_info
+    fi
   fi
 
   cleanup

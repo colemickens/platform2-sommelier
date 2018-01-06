@@ -11,4 +11,4 @@ if [ $# -ne 1 ]; then
 fi
 
 export IS_RECOVERY_INSTALL=1
-exec chromeos-install --yes --payload_image="$1"
+exec chromeos-install --storage_diags --yes --payload_image="$1"
