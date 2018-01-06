@@ -47,12 +47,9 @@ static string ObjectID(const EapCredentials* e) { return "(eap_credentials)"; }
 
 const char EapCredentials::kStorageEapAnonymousIdentity[] =
     "EAP.AnonymousIdentity";
-const char EapCredentials::kStorageEapCACert[] = "EAP.CACert";
 const char EapCredentials::kStorageEapCACertID[] = "EAP.CACertID";
-const char EapCredentials::kStorageEapCACertNSS[] = "EAP.CACertNSS";
 const char EapCredentials::kStorageEapCACertPEM[] = "EAP.CACertPEM";
 const char EapCredentials::kStorageEapCertID[] = "EAP.CertID";
-const char EapCredentials::kStorageEapClientCert[] = "EAP.ClientCert";
 const char EapCredentials::kStorageEapEap[] = "EAP.EAP";
 const char EapCredentials::kStorageEapIdentity[] = "EAP.Identity";
 const char EapCredentials::kStorageEapInnerEap[] = "EAP.InnerEAP";
@@ -61,7 +58,6 @@ const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
 const char EapCredentials::kStorageEapPIN[] = "EAP.PIN";
 const char EapCredentials::kStorageEapPassword[] = "EAP.Password";
-const char EapCredentials::kStorageEapPrivateKey[] = "EAP.PrivateKey";
 const char EapCredentials::kStorageEapPrivateKeyPassword[] =
     "EAP.PrivateKeyPassword";
 const char EapCredentials::kStorageEapSubjectMatch[] =
@@ -78,7 +74,7 @@ EapCredentials::~EapCredentials() {}
 // static
 void EapCredentials::PopulateSupplicantProperties(
     CertificateFile* certificate_file, KeyValueStore* params) const {
-  string ca_cert = ca_cert_;
+  string ca_cert;
   if (!ca_cert_pem_.empty()) {
     FilePath certfile =
         certificate_file->CreatePEMFromStrings(ca_cert_pem_);
@@ -89,19 +85,14 @@ void EapCredentials::PopulateSupplicantProperties(
     }
   }
 
-
   using KeyVal = std::pair<const char*, const char*>;
   KeyVal init_propertyvals[] = {
     // Authentication properties.
     KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
            anonymous_identity_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapClientCert,
-           client_cert_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, identity_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapCaPassword,
            password_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKey,
-           private_key_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKeyPassword,
            private_key_password_.c_str()),
 
@@ -189,7 +180,6 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   // Authentication properties.
   store->RegisterString(kEapAnonymousIdentityProperty, &anonymous_identity_);
   store->RegisterString(kEapCertIdProperty, &cert_id_);
-  store->RegisterString(kEapClientCertProperty, &client_cert_);
   store->RegisterString(kEapIdentityProperty, &identity_);
   store->RegisterString(kEapKeyIdProperty, &key_id_);
   HelpRegisterDerivedString(store,
@@ -202,7 +192,6 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
                                      nullptr,
                                      &password_);
   store->RegisterString(kEapPinProperty, &pin_);
-  store->RegisterString(kEapPrivateKeyProperty, &private_key_);
   HelpRegisterWriteOnlyDerivedString(store,
                                      kEapPrivateKeyPasswordProperty,
                                      &EapCredentials::SetEapPrivateKeyPassword,
@@ -212,8 +201,6 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   // Non-authentication properties.
   store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
   store->RegisterString(kEapCaCertIdProperty, &ca_cert_id_);
-  store->RegisterString(kEapCaCertNssProperty, &ca_cert_nss_);
-  store->RegisterString(kEapCaCertProperty, &ca_cert_);
   store->RegisterString(kEapMethodProperty, &eap_);
   store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
   store->RegisterString(kEapTLSVersionMaxProperty, &tls_version_max_);
@@ -228,13 +215,11 @@ bool EapCredentials::IsEapAuthenticationProperty(const string property) {
   return
       property == kEapAnonymousIdentityProperty ||
       property == kEapCertIdProperty ||
-      property == kEapClientCertProperty ||
       property == kEapIdentityProperty ||
       property == kEapKeyIdProperty ||
       property == kEapKeyMgmtProperty ||
       property == kEapPasswordProperty ||
       property == kEapPinProperty ||
-      property == kEapPrivateKeyProperty ||
       property == kEapPrivateKeyPasswordProperty;
 }
 
@@ -245,9 +230,9 @@ bool EapCredentials::IsConnectable() const {
     return false;
   }
 
-  if (!client_cert_.empty() || !cert_id_.empty()) {
+  if (!cert_id_.empty()) {
     // If a client certificate is being used, we must have a private key.
-    if (private_key_.empty() && key_id_.empty()) {
+    if (key_id_.empty()) {
       SLOG(this, 2)
           << "Not connectable: Client certificate but no private key.";
       return false;
@@ -264,8 +249,7 @@ bool EapCredentials::IsConnectable() const {
 
   // For EAP-TLS, a client certificate is required.
   if (eap_.empty() || eap_ == kEapMethodTLS) {
-    if ((!client_cert_.empty() || !cert_id_.empty()) &&
-        (!private_key_.empty() || !key_id_.empty())) {
+    if (!cert_id_.empty() && !key_id_.empty()) {
       SLOG(this, 2) << "Connectable: EAP-TLS with a client cert and key.";
       return true;
     }
@@ -294,7 +278,6 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
                             kStorageEapAnonymousIdentity,
                             &anonymous_identity_);
   storage->GetString(id, kStorageEapCertID, &cert_id_);
-  storage->GetString(id, kStorageEapClientCert, &client_cert_);
   storage->GetCryptedString(id, kStorageEapIdentity, &identity_);
   storage->GetString(id, kStorageEapKeyID, &key_id_);
   string key_management;
@@ -302,15 +285,12 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageEapPassword, &password_);
   storage->GetString(id, kStorageEapPIN, &pin_);
-  storage->GetString(id, kStorageEapPrivateKey, &private_key_);
   storage->GetCryptedString(id,
                             kStorageEapPrivateKeyPassword,
                             &private_key_password_);
 
   // Non-authentication properties.
-  storage->GetString(id, kStorageEapCACert, &ca_cert_);
   storage->GetString(id, kStorageEapCACertID, &ca_cert_id_);
-  storage->GetString(id, kStorageEapCACertNSS, &ca_cert_nss_);
   storage->GetStringList(id, kStorageEapCACertPEM, &ca_cert_pem_);
   storage->GetString(id, kStorageEapEap, &eap_);
   storage->GetString(id, kStorageEapInnerEap, &inner_eap_);
@@ -357,12 +337,6 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       save_credentials);
   Service::SaveString(storage,
                       id,
-                      kStorageEapClientCert,
-                      client_cert_,
-                      false,
-                      save_credentials);
-  Service::SaveString(storage,
-                      id,
                       kStorageEapIdentity,
                       identity_,
                       true,
@@ -393,29 +367,16 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       save_credentials);
   Service::SaveString(storage,
                       id,
-                      kStorageEapPrivateKey,
-                      private_key_,
-                      false,
-                      save_credentials);
-  Service::SaveString(storage,
-                      id,
                       kStorageEapPrivateKeyPassword,
                       private_key_password_,
                       true,
                       save_credentials);
 
   // Non-authentication properties.
-  Service::SaveString(storage, id, kStorageEapCACert, ca_cert_, false, true);
   Service::SaveString(storage,
                       id,
                       kStorageEapCACertID,
                       ca_cert_id_,
-                      false,
-                      true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapCACertNSS,
-                      ca_cert_nss_,
                       false,
                       true);
   if (ca_cert_pem_.empty()) {
@@ -451,19 +412,15 @@ void EapCredentials::Reset() {
   // Authentication properties.
   anonymous_identity_ = "";
   cert_id_ = "";
-  client_cert_ = "";
   identity_ = "";
   key_id_ = "";
   // Do not reset key_management_, since it should never be emptied.
   password_ = "";
   pin_ = "";
-  private_key_ = "";
   private_key_password_ = "";
 
   // Non-authentication properties.
-  ca_cert_ = "";
   ca_cert_id_ = "";
-  ca_cert_nss_ = "";
   ca_cert_pem_.clear();
   eap_ = "";
   inner_eap_ = "";

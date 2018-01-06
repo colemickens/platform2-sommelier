@@ -1615,17 +1615,14 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   static const char* const kEapCredentialProperties[] = {
       kEapAnonymousIdentityProperty,
       kEapCertIdProperty,
-      kEapClientCertProperty,
       kEapIdentityProperty,
       kEapKeyIdProperty,
       kEapPasswordProperty,
       kEapPinProperty,
-      kEapPrivateKeyProperty,
       kEapPrivateKeyPasswordProperty
   };
   static const char* const kEapNonCredentialProperties[] = {
       kEapCaCertIdProperty,
-      kEapCaCertNssProperty,
       kEapMethodProperty,
       kEapPhase2AuthProperty,
       kEapUseSystemCasProperty

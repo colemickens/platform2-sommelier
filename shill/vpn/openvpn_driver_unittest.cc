@@ -803,58 +803,31 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
 }
 
 TEST_F(OpenVPNDriverTest, InitCAOptions) {
-  static const char kHost[] = "192.168.2.254";
-  static const char kCaCert[] = "foo";
-  static const char kCaCertNSS[] = "{1234}";
-
   Error error;
   vector<vector<string>> options;
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
   ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
 
-  options.clear();
-  SetArg(kOpenVPNCaCertProperty, kCaCert);
-  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "ca", kCaCert);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // We should ignore the CaCertNSS property.
-  SetArg(kOpenVPNCaCertNSSProperty, kCaCertNSS);
-  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "ca", kCaCert);
-  EXPECT_TRUE(error.IsSuccess());
-
-  SetArg(kOpenVPNCaCertProperty, "");
-  SetArg(kProviderHostProperty, kHost);
   FilePath empty_cert;
-  error.Reset();
-  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
-  EXPECT_TRUE(error.IsSuccess());
-
-  SetArg(kOpenVPNCaCertProperty, kCaCert);
-  const vector<string> kCaCertPEM{ "---PEM CONTENTS---" };
-  SetArgArray(kOpenVPNCaCertPemProperty, kCaCertPEM);
-  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Can't specify more than one of CACert and CACertPEM.",
-            error.message());
-
   options.clear();
-  SetArg(kOpenVPNCaCertProperty, "");
   SetArg(kProviderHostProperty, "");
+
+  const vector<string> kCaCertPEM{"---PEM CONTENTS---"};
   static const char kPEMCertfile[] = "/tmp/pem-cert";
   FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(pem_cert));
+  SetArgArray(kOpenVPNCaCertPemProperty, kCaCertPEM);
 
+  // |empty_cert| should fail.
   error.Reset();
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("Unable to extract PEM CA certificates.", error.message());
 
+  // |pem_cert| should succeed.
   error.Reset();
   options.clear();
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
@@ -904,61 +877,23 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   static const char kTestValue[] = "foo";
   vector<vector<string>> options;
 
-  // No key or cert, assume user/password authentication.
+  // Assume user/password authentication.
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectNotInFlags(options, "cert");
 
-  // Cert available, no user/password.
+  // Empty PKCS11 certificate id, no user/password.
   options.clear();
-  SetArg(kOpenVPNCertProperty, kTestValue);
-  driver_->InitClientAuthOptions(&options);
-  ExpectNotInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectInFlags(options, "cert", kTestValue);
-
-  // Key available, no user/password.
-  options.clear();
-  SetArg(kOpenVPNKeyProperty, kTestValue);
-  driver_->InitClientAuthOptions(&options);
-  ExpectNotInFlags(options, "auth-user-pass");
-  ExpectInFlags(options, "key", kTestValue);
-
-  // Key available, AuthUserPass set.
-  options.clear();
-  SetArg(kOpenVPNAuthUserPassProperty, kTestValue);
-  driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "auth-user-pass");
-  ExpectInFlags(options, "key", kTestValue);
-
-  // Key available, User set.
-  options.clear();
-  RemoveStringArg(kOpenVPNAuthUserPassProperty);
-  SetArg(kOpenVPNUserProperty, "user");
-  driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "auth-user-pass");
-  ExpectInFlags(options, "key", kTestValue);
-
-  // Empty PKCS11 certificate id, no user/password/cert.
-  options.clear();
-  RemoveStringArg(kOpenVPNKeyProperty);
-  RemoveStringArg(kOpenVPNCertProperty);
   RemoveStringArg(kOpenVPNUserProperty);
   SetArg(kOpenVPNClientCertIdProperty, "");
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectNotInFlags(options, "cert");
   ExpectNotInFlags(options, "pkcs11-id");
 
-  // Non-empty PKCS11 certificate id, no user/password/cert.
+  // Non-empty PKCS11 certificate id, no user/password.
   options.clear();
   SetArg(kOpenVPNClientCertIdProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectNotInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectNotInFlags(options, "cert");
   // The "--pkcs11-id" option is added in InitPKCS11Options(), not here.
   ExpectNotInFlags(options, "pkcs11-id");
 
@@ -967,8 +902,6 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   SetArg(kOpenVPNAuthUserPassProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectNotInFlags(options, "cert");
 
   // PKCS11 certificate id available, User set.
   options.clear();
@@ -976,8 +909,6 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   SetArg(kOpenVPNUserProperty, "user");
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
-  ExpectNotInFlags(options, "key");
-  ExpectNotInFlags(options, "cert");
 }
 
 TEST_F(OpenVPNDriverTest, InitExtraCertOptions) {
@@ -1033,13 +964,6 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
   driver_->InitPKCS11Options(&options);
   ExpectInFlags(options, "pkcs11-id", kID);
   ExpectInFlags(options, "pkcs11-providers", "libchaps.so");
-
-  static const char kProvider[] = "libpkcs11.so";
-  SetArg(kOpenVPNProviderProperty, kProvider);
-  options.clear();
-  driver_->InitPKCS11Options(&options);
-  ExpectInFlags(options, "pkcs11-id", kID);
-  ExpectInFlags(options, "pkcs11-providers", kProvider);
 }
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {

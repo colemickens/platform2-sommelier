@@ -103,12 +103,9 @@ class EapCredentials {
   FRIEND_TEST(EapCredentialsTest, LoadAndSave);
 
   static const char kStorageEapAnonymousIdentity[];
-  static const char kStorageEapCACert[];
   static const char kStorageEapCACertID[];
-  static const char kStorageEapCACertNSS[];
   static const char kStorageEapCACertPEM[];
   static const char kStorageEapCertID[];
-  static const char kStorageEapClientCert[];
   static const char kStorageEapEap[];
   static const char kStorageEapIdentity[];
   static const char kStorageEapInnerEap[];
@@ -117,7 +114,6 @@ class EapCredentials {
   static const char kStorageEapKeyManagement[];
   static const char kStorageEapPIN[];
   static const char kStorageEapPassword[];
-  static const char kStorageEapPrivateKey[];
   static const char kStorageEapPrivateKeyPassword[];
   static const char kStorageEapSubjectMatch[];
   static const char kStorageEapUseProactiveKeyCaching[];
@@ -174,8 +170,6 @@ class EapCredentials {
   std::string anonymous_identity_;
   // Locator for the client certificate within the security token.
   std::string cert_id_;
-  // Filename of the client certificate.
-  std::string client_cert_;
   // Who we identify ourselves as to the EAP authenticator.
   std::string identity_;
   // Locator for the client private key within the security token.
@@ -186,20 +180,14 @@ class EapCredentials {
   std::string password_;
   // PIN code for accessing the security token.
   std::string pin_;
-  // Filename of the client private key.
-  std::string private_key_;
   // Password for decrypting the client private key file.
   std::string private_key_password_;
 
-  // Filename of the certificate authority (CA) certificate.
-  std::string ca_cert_;
   // Locator for the CA certificate within the security token.
   std::string ca_cert_id_;
-  // Locator for the CA certificate within the user NSS database.
-  std::string ca_cert_nss_;
   // Raw PEM contents of the CA certificate.
   std::vector<std::string> ca_cert_pem_;
-  // The outer or only EAP authetnication type.
+  // The outer or only EAP authentication type.
   std::string eap_;
   // The inner EAP authentication type.
   std::string inner_eap_;

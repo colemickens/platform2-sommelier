@@ -96,8 +96,6 @@ class WPASupplicant {
   static const char kNetworkPropertyEapOuterEap[];
   static const char kNetworkPropertyEapInnerEap[];
   static const char kNetworkPropertyEapAnonymousIdentity[];
-  static const char kNetworkPropertyEapClientCert[];
-  static const char kNetworkPropertyEapPrivateKey[];
   static const char kNetworkPropertyEapPrivateKeyPassword[];
   static const char kNetworkPropertyEapCaCert[];
   static const char kNetworkPropertyEapCaPassword[];

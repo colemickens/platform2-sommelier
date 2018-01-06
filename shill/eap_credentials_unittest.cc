@@ -55,14 +55,8 @@ class EapCredentialsTest : public testing::Test {
   void SetAnonymousIdentity(const string& anonymous_identity) {
     eap_.anonymous_identity_ = anonymous_identity;
   }
-  void SetCACertNSS(const string& ca_cert_nss) {
-    eap_.ca_cert_nss_ = ca_cert_nss;
-  }
   void SetCACertPEM(const vector<string>& ca_cert_pem) {
     eap_.ca_cert_pem_ = ca_cert_pem;
-  }
-  void SetClientCert(const string& client_cert) {
-    eap_.client_cert_ = client_cert;
   }
   void SetCertId(const string& cert_id) {
     eap_.cert_id_ = cert_id;
@@ -91,9 +85,6 @@ class EapCredentialsTest : public testing::Test {
   void SetPassword(const string& password) {
     eap_.password_ = password;
   }
-  void SetPrivateKey(const string& private_key) {
-    eap_.private_key_ = private_key;
-  }
   void SetPin(const string& pin) {
     eap_.pin_ = pin;
   }
@@ -105,11 +96,9 @@ class EapCredentialsTest : public testing::Test {
   }
   bool IsReset() {
     return eap_.anonymous_identity_.empty() && eap_.cert_id_.empty() &&
-           eap_.client_cert_.empty() && eap_.identity_.empty() &&
-           eap_.key_id_.empty() && eap_.password_.empty() &&
-           eap_.pin_.empty() && eap_.private_key_.empty() &&
-           eap_.private_key_password_.empty() && eap_.ca_cert_.empty() &&
-           eap_.ca_cert_id_.empty() && eap_.ca_cert_nss_.empty() &&
+           eap_.identity_.empty() && eap_.key_id_.empty() &&
+           eap_.password_.empty() && eap_.pin_.empty() &&
+           eap_.private_key_password_.empty() && eap_.ca_cert_id_.empty() &&
            eap_.ca_cert_pem_.empty() && eap_.eap_.empty() &&
            eap_.inner_eap_.empty() && eap_.tls_version_max_.empty() &&
            eap_.subject_match_.empty() && eap_.use_system_cas_ == true &&
@@ -166,15 +155,8 @@ TEST_F(EapCredentialsTest, Connectable) {
   SetPassword("");
   EXPECT_FALSE(eap_.IsConnectable());
 
-  // A client cert by itself doesn't help.
-  SetClientCert("client-cert");
-  EXPECT_FALSE(eap_.IsConnectable());
-
-  // A client cert and key will, however.
-  SetPrivateKey("client-cert");
-  EXPECT_TRUE(eap_.IsConnectable());
-
-  // A key-id (and cert) doesn't work.
+  // A cert-id + key-id isn't sufficient.
+  SetCertId("client-cert-id");
   SetKeyId("client-key-id");
   EXPECT_FALSE(eap_.IsConnectable());
 
@@ -182,17 +164,13 @@ TEST_F(EapCredentialsTest, Connectable) {
   SetPin("pin");
   EXPECT_TRUE(eap_.IsConnectable());
 
-  // If we clear the "EAP" property, we just assume these valid certificate
-  // credentials are the ones to be used.
-  SetEap("");
-  EXPECT_TRUE(eap_.IsConnectable());
-
-  // Check that clearing the certificate parameter breaks us again.
-  SetClientCert("");
+  // If we clear the "EAP" property, a password is required but a client
+  // cert is not.
+  SetCertId("");
   EXPECT_FALSE(eap_.IsConnectable());
 
-  // Setting the cert-id will fix things.
-  SetCertId("client-cert-id");
+  SetEap("");
+  SetPassword("Angry Tapir");
   EXPECT_TRUE(eap_.IsConnectable());
 }
 
@@ -217,16 +195,12 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
       kEapAnonymousIdentityProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapCertIdProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEapClientCertProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapIdentityProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyIdProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyMgmtProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPasswordProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapPinProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEapPrivateKeyProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPrivateKeyPasswordProperty));
 
@@ -235,8 +209,6 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapCaCertProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapCaCertIdProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapCaCertNssProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapCaCertPemProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapMethodProperty));
@@ -514,16 +486,13 @@ TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
   SetCACertId("foo");
-  SetCACertNSS("foo");
   SetCACertPEM(vector<string>{ "foo" });
-  SetClientCert("foo");
   SetCertId("foo");
   SetEap("foo");
   SetIdentity("foo");
   SetInnerEap("foo");
   SetKeyId("foo");
   SetPassword("foo");
-  SetPrivateKey("foo");
   SetPin("foo");
   SetUseSystemCAs(false);
   SetUseProactiveKeyCaching(true);

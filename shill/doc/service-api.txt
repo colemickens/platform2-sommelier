@@ -488,15 +488,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
-		string EAP.PrivateKey [readwrite]
-
-			The pathname of a file containing the private
-			key for setting up services of type "802_1x".
-			The private key file must be in PEM format.
-
-			This property is included in get requests only
-			when the requester has sufficient privileges.
-
 		string EAP.PrivateKeyPassword [readwrite]
 
 			The password to decrypt a private key given
@@ -513,20 +504,10 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
-		string EAP.CACert [readwrite]
-
-			The pathname of a file containing the Certificate
-			Authority's certificate for validating server
-			certificates during the 802.1x authentication
-			process.
-
-			This property is included in get requests only
-			when the requester has sufficient privileges.
-
 		string EAP.CACertID [readwrite]
 
-			The PKCS#11 ID of the EAP.CACert file for
-			validating server certificate recieved during
+			The PKCS#11 ID of the certificate file for
+			validating server certificate received during
 			the 802.1x authentication process.
 
 			This property is included in get requests only
@@ -547,8 +528,8 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			configured to use the system's installed set
 			of certificate authorities when validating
 			server certificates. Note that if UseSystemCAs
-			is false and no CA is specified with EAP.CACert
-			or EAP.CaCertID - that is, no CAs are configured
+			is false and no CA is specified with
+			EAP.CaCertID - that is, no CAs are configured
 			at all - server certificates will not have their
 			signatures checked. Defaults to true.
 
@@ -732,24 +713,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			must also be set.  The current value of this property
 			is readable in the "Provider" property of this service.
 
-		string OpenVPN.CACert [writeonly]
-
-			(VPN services of type OpenVPN only) Specify the
-			filename of the certificate to be used to verify the
-			OpenVPN server.  Only one of "OpenVPN.CACert" or
-			"OpenVPN.CACertPEM" can be specified.  The current
-			value of this property is readable in the "Provider"
-			property of this service.
-
-		string OpenVPN.CACertNSS [writeonly]
-
-			(VPN services of type OpenVPN only) [Deprecated]
-			This value is no longer honored in shill, but any
-			value stored here is persisted so that callers can
-			migrate this to the correct value of OpenVPN.CACertPEM.
-			The current value of this property is readable in the
-			"Provider" property of this service.
-
 		array{string} OpenVPN.CACertPEM [writeonly]
 
 			(VPN services of type OpenVPN only) The list of
@@ -759,19 +722,13 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			must be in in PEM format; specifically
 			the base64 counterpart of the DER contents, optionally
 			surrounded by a "-----BEGIN CERTIFICATE-----" and
-			"-----END CERTIFICATE-----" line.  Only one of
-			"OpenVPN.CACert" or "OpenVPN.CACertPEM" can be
-			specified.  The current value of this property is
-			readable in the "Provider" property of this service.
+			"-----END CERTIFICATE-----" line.  The current value
+			of this property is readable in the "Provider" property
+			of this service.
 
-		string OpenVPN.Cert [writeonly]
-
-			(VPN services of type OpenVPN only) Specify a
-			filename of to use as the client certificate in
-			authentication.   See the "--cert" option in the
-			OpenVPN documentation.  The current value of this
-			property is readable in the "Provider" property of
-			this service.
+			If unspecified, the systemwide CA list in
+			/etc/ssl/certs/ca-certificates.crt will be used to
+			validate the remote server.
 
 		string OpenVPN.Cipher [writeonly]
 
@@ -837,26 +794,15 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			current value of this property is readable in the
 			"Provider" property of this service.
 
-		string OpenVPN.Key [writeonly]
-
-			(VPN services of type OpenVPN only) Specify the
-			filename of the private key the client uses to
-			verify itself to the OpenVPN server.  See the
-			"--key" option in the OpenVPN documentation.  The
-			current value of this property is readable in the
-			"Provider" property of this service.
-
 		string OpenVPN.KeyDirection [writeonly]
 
-			(VPN services of type OpenVPN only) [Deprecated]
-			This property is only provided for backwards
-			compatibility.
-
-		string OpenVPN.Mgmt.Enable [writeonly]
-
-			(VPN services of type OpenVPN only) [Deprecated]
-			This property is only provided for backwards
-			compatibility.
+			(VPN services of type OpenVPN only) If set, this
+			value is passed in as the "--key-direction" option
+			to OpenVPN.  It allows each data flow direction
+			to use a different set of HMAC and cipher keys,
+			eliminating certain kinds of DoS and message replay
+			attacks.  Refer to the OpenVPN documentation for more
+			details.
 
 		string OpenVPN.NsCertType [writeonly]
 
@@ -894,14 +840,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			(VPN services of type OpenVPN only) Specifies a
 			PIN used to gain access to the cryptographic token
 			when using the "OpenVPN.Pkcs11.ID" property.
-
-		string OpenVPN.Pkcs11.Provider [writeonly]
-
-			(VPN services of type OpenVPN only) Specifies a
-			the provider for the the cryptographic token
-			when using the "OpenVPN.Pkcs11.ID" property.
-			The current value of this property is readable in the
-			"Provider" property of this service.
 
 		string OpenVPN.Ping [writeonly]
 
@@ -1430,9 +1368,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			Passphrase
 			EAP.Identity
 			EAP.AnonymousIdentity
-			EAP.ClientCert
 			EAP.CertID
-			EAP.PrivateKey
 			EAP.PrivateKeyPassword
 			EAP.KeyID
 			EAP.PIN
@@ -1547,7 +1483,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			favor of SavedIPConfig property.
 
 			The properties above are set on a service to present
-			the configuration that was recieved from the DHCP
+			the configuration that was received from the DHCP
 			server prior to applying any "StaticIP.*" parameters
 			during the most recent connection attempt.  All
 			parameters are saved regardless of whether they were

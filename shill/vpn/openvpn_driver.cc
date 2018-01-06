@@ -101,8 +101,6 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNAuthProperty, 0 },
   { kOpenVPNAuthRetryProperty, 0 },
   { kOpenVPNAuthUserPassProperty, 0 },
-  { kOpenVPNCaCertNSSProperty, 0 },
-  { kOpenVPNCaCertProperty, 0 },
   { kOpenVPNCipherProperty, 0 },
   { kOpenVPNClientCertIdProperty, Property::kCredential },
   { kOpenVPNCompLZOProperty, 0 },
@@ -117,7 +115,6 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNPinProperty, Property::kCredential },
   { kOpenVPNPortProperty, 0 },
   { kOpenVPNProtoProperty, 0 },
-  { kOpenVPNProviderProperty, 0 },
   { kOpenVPNPushPeerInfoProperty, 0 },
   { kOpenVPNRemoteCertEKUProperty, 0 },
   { kOpenVPNRemoteCertKUProperty, 0 },
@@ -135,9 +132,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kProviderHostProperty, 0 },
   { kProviderTypeProperty, 0 },
   { kOpenVPNCaCertPemProperty, Property::kArray },
-  { kOpenVPNCertProperty, 0 },
   { kOpenVPNExtraCertPemProperty, Property::kArray },
-  { kOpenVPNKeyProperty, 0 },
   { kOpenVPNPingExitProperty, 0 },
   { kOpenVPNPingProperty, 0 },
   { kOpenVPNPingRestartProperty, 0 },
@@ -698,8 +693,6 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
     AppendOption("remote-cert-tls", remote_cert_tls, options);
   }
 
-  // This is an undocumented command line argument that works like a .cfg file
-  // entry. TODO(sleffler): Maybe roll this into the "tls-auth" option?
   AppendValueOption(kOpenVPNKeyDirectionProperty, "key-direction", options);
   AppendValueOption(kOpenVPNRemoteCertEKUProperty, "remote-cert-eku", options);
   AppendDelimitedValueOption(kOpenVPNRemoteCertKUProperty,
@@ -733,45 +726,25 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
 
 bool OpenVPNDriver::InitCAOptions(
     vector<vector<string>>* options, Error* error) {
-  string ca_cert =
-      args()->LookupString(kOpenVPNCaCertProperty, "");
   vector<string> ca_cert_pem;
   if (args()->ContainsStrings(kOpenVPNCaCertPemProperty)) {
     ca_cert_pem = args()->GetStrings(kOpenVPNCaCertPemProperty);
   }
-
-  int num_ca_cert_types = 0;
-  if (!ca_cert.empty())
-      num_ca_cert_types++;
-  if (!ca_cert_pem.empty())
-      num_ca_cert_types++;
-  if (num_ca_cert_types == 0) {
+  if (ca_cert_pem.empty()) {
     // Use default CAs if no CA certificate is provided.
     AppendOption("ca", kDefaultCACertificates, options);
     return true;
-  } else if (num_ca_cert_types > 1) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments,
-        "Can't specify more than one of CACert and CACertPEM.");
+  }
+
+  FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
+  if (certfile.empty()) {
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
+                          Error::kInvalidArguments,
+                          "Unable to extract PEM CA certificates.");
     return false;
   }
-  string cert_file;
-  if (!ca_cert_pem.empty()) {
-    DCHECK(ca_cert.empty());
-    FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
-    if (certfile.empty()) {
-      Error::PopulateAndLog(
-          FROM_HERE,
-          error,
-          Error::kInvalidArguments,
-          "Unable to extract PEM CA certificates.");
-      return false;
-    }
-    AppendOption("ca", certfile.value(), options);
-    return true;
-  }
-  DCHECK(!ca_cert.empty() && ca_cert_pem.empty());
-  AppendOption("ca", ca_cert, options);
+  AppendOption("ca", certfile.value(), options);
   return true;
 }
 
@@ -820,26 +793,18 @@ bool OpenVPNDriver::InitExtraCertOptions(
 void OpenVPNDriver::InitPKCS11Options(vector<vector<string>>* options) {
   string id = args()->LookupString(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
-    string provider =
-        args()->LookupString(kOpenVPNProviderProperty, "");
-    if (provider.empty()) {
-      provider = kDefaultPKCS11Provider;
-    }
-    AppendOption("pkcs11-providers", provider, options);
+    AppendOption("pkcs11-providers", kDefaultPKCS11Provider, options);
     AppendOption("pkcs11-id", id, options);
   }
 }
 
 void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
-  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "cert", options) ||
-      !args()->LookupString(kOpenVPNClientCertIdProperty, "").empty();
-  bool has_key = AppendValueOption(kOpenVPNKeyProperty, "key", options);
   // If the AuthUserPass property is set, or the User property is non-empty, or
-  // there's neither a key, nor a cert available, specify user-password client
+  // a client cert was not provided, specify user-password client
   // authentication.
   if (args()->ContainsString(kOpenVPNAuthUserPassProperty) ||
       !args()->LookupString(kOpenVPNUserProperty, "").empty() ||
-      (!has_cert && !has_key)) {
+      args()->LookupString(kOpenVPNClientCertIdProperty, "").empty()) {
     AppendOption("auth-user-pass", options);
   }
 }
@@ -1091,9 +1056,8 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
-  if (args()->LookupString(kOpenVPNCaCertProperty, "") != "" ||
-      (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
-       !args()->GetStrings(kOpenVPNCaCertPemProperty).empty())) {
+  if (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
+      !args()->GetStrings(kOpenVPNCaCertPemProperty).empty()) {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
@@ -1128,8 +1092,7 @@ void OpenVPNDriver::ReportConnectionMetrics() {
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(kOpenVPNClientCertIdProperty, "") != "" ||
-      args()->LookupString(kOpenVPNCertProperty, "") != "") {
+  if (args()->LookupString(kOpenVPNClientCertIdProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
