@@ -203,7 +203,7 @@ TEST(LibcontainerTest, DumpConfig) {
 
   // Confirm that container_config_dump() returns a non-empty string.
   std::unique_ptr<char, decltype(&free)> config_str(
-      container_config_dump(config), free);
+      container_config_dump(config, false /* sort_vector */), free);
   ASSERT_NE(nullptr, config_str.get());
   EXPECT_NE(0U, strlen(config_str.get()));
 
@@ -406,7 +406,7 @@ TEST_F(ContainerTest, DumpConfig) {
   struct container_config* config = this->config()->get();
   ASSERT_NE(nullptr, config);
   std::unique_ptr<char, decltype(&free)> config_str(
-      container_config_dump(config), free);
+      container_config_dump(config, true /* sort_vector */), free);
   ASSERT_NE(nullptr, config_str.get());
   EXPECT_NE(0U, strlen(config_str.get()));
   EXPECT_LT(1U, base::SplitString(config_str.get(), "\n", base::KEEP_WHITESPACE,

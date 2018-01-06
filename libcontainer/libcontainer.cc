@@ -15,12 +15,14 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <ostream>
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -315,67 +317,93 @@ std::ostream& operator<<(std::ostream& stream, const Rlimit& rlimit) {
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, const container_config* c) {
-  stream << "config_root: " << QUOTE(c->config_root.value()) << std::endl
-         << "rootfs: " << QUOTE(c->rootfs.value()) << std::endl
-         << "rootfs_mount_flags: 0x" << std::hex << c->rootfs_mount_flags
-         << std::dec << std::endl
-         << "premounted_runfs: " << QUOTE(c->premounted_runfs.value())
-         << std::endl
-         << "pid_file_path: " << QUOTE(c->pid_file_path.value()) << std::endl
-         << "program_argv: size=" << c->program_argv.size() << std::endl;
+void DumpConfig(std::ostream* stream,
+                const container_config* c,
+                bool sort_vectors) {
+  *stream << "config_root: " << QUOTE(c->config_root.value()) << std::endl
+          << "rootfs: " << QUOTE(c->rootfs.value()) << std::endl
+          << "rootfs_mount_flags: 0x" << std::hex << c->rootfs_mount_flags
+          << std::dec << std::endl
+          << "premounted_runfs: " << QUOTE(c->premounted_runfs.value())
+          << std::endl
+          << "pid_file_path: " << QUOTE(c->pid_file_path.value()) << std::endl
+          << "program_argv: size=" << c->program_argv.size() << std::endl;
 
   for (const std::string& argv : c->program_argv)
-    stream << " " << QUOTE(argv) << std::endl;
+    *stream << " " << QUOTE(argv) << std::endl;
 
-  stream << "uid: " << c->uid << std::endl
-         << "uid_map: " << QUOTE(c->uid_map) << std::endl
-         << "gid: " << c->gid << std::endl
-         << "gid_map: " << QUOTE(c->gid_map) << std::endl
-         << "alt_syscall_table: " << QUOTE(c->alt_syscall_table) << std::endl;
+  *stream << "uid: " << c->uid << std::endl
+          << "uid_map: " << QUOTE(c->uid_map) << std::endl
+          << "gid: " << c->gid << std::endl
+          << "gid_map: " << QUOTE(c->gid_map) << std::endl
+          << "alt_syscall_table: " << QUOTE(c->alt_syscall_table) << std::endl;
 
-  for (const auto& mount : c->mounts)
-    stream << mount;
+  auto mount_sorted = c->mounts;
+  if (sort_vectors) {
+    std::stable_sort(mount_sorted.begin(), mount_sorted.end(),
+                     [](const Mount& lhs, const Mount& rhs) {
+                       return std::make_tuple(lhs.destination.value(),
+                                              lhs.source.value(), lhs.flags) <
+                              std::make_tuple(rhs.destination.value(),
+                                              rhs.source.value(), rhs.flags);
+                     });
+  }
+  for (const auto& mount : mount_sorted)
+    *stream << mount;
 
-  stream << "namespaces: size=" << c->namespaces.size() << std::endl;
+  *stream << "namespaces: size=" << c->namespaces.size() << std::endl;
   for (const std::string& ns : c->namespaces)
-    stream << " " << QUOTE(ns) << std::endl;
+    *stream << " " << QUOTE(ns) << std::endl;
 
-  for (const auto& device : c->devices)
-    stream << device;
+  auto devices_sorted = c->devices;
+  if (sort_vectors) {
+    std::stable_sort(devices_sorted.begin(), devices_sorted.end(),
+                     [](const Device& lhs, const Device& rhs) {
+                       return lhs.path.value() < rhs.path.value();
+                     });
+  }
+  for (const auto& device : devices_sorted)
+    *stream << device;
 
-  for (const auto& cgroup_device : c->cgroup_devices)
-    stream << cgroup_device;
+  auto cgroup_devices_sorted = c->cgroup_devices;
+  if (sort_vectors) {
+    std::stable_sort(cgroup_devices_sorted.begin(), cgroup_devices_sorted.end(),
+                     [](const CgroupDevice& lhs, const CgroupDevice& rhs) {
+                       return std::make_tuple(lhs.type, lhs.major, lhs.minor) <
+                              std::make_tuple(rhs.type, rhs.major, rhs.minor);
+                     });
+  }
+  for (const auto& cgroup_device : cgroup_devices_sorted)
+    *stream << cgroup_device;
 
-  stream << "run_setfiles: " << QUOTE(c->run_setfiles) << std::endl
-         << c->cpu_cgparams
-         << "cgroup_parent: " << QUOTE(c->cgroup_parent.value()) << std::endl
-         << "cgroup_owner: " << c->cgroup_owner << std::endl
-         << "cgroup_group: " << c->cgroup_group << std::endl
-         << "keep_fds_open: " << c->keep_fds_open << std::endl;
+  *stream << "run_setfiles: " << QUOTE(c->run_setfiles) << std::endl
+          << c->cpu_cgparams
+          << "cgroup_parent: " << QUOTE(c->cgroup_parent.value()) << std::endl
+          << "cgroup_owner: " << c->cgroup_owner << std::endl
+          << "cgroup_group: " << c->cgroup_group << std::endl
+          << "keep_fds_open: " << c->keep_fds_open << std::endl;
 
-  stream << "num_rlimits: " << c->num_rlimits << std::endl;
+  *stream << "num_rlimits: " << c->num_rlimits << std::endl;
   for (size_t i = 0; i < c->num_rlimits; ++i)
-    stream << c->rlimits[i];
+    *stream << c->rlimits[i];
 
-  stream << "use_capmask: " << c->use_capmask << std::endl
-         << "use_capmask_ambient: " << c->use_capmask_ambient << std::endl
-         << "capmask: 0x" << std::hex << c->capmask << std::dec << std::endl
-         << "securebits_skip_mask: 0x" << std::hex << c->securebits_skip_mask
-         << std::dec << std::endl
-         << "do_init: " << c->do_init << std::endl
-         << "selinux_context: " << QUOTE(c->selinux_context) << std::endl
-         << "pre_start_hook: " << reinterpret_cast<void*>(c->pre_start_hook)
-         << std::endl
-         << "pre_start_hook_payload: " << c->pre_start_hook_payload << std::endl
-         << "inherited_fds: size=" << c->inherited_fds.size() << std::endl;
+  *stream << "use_capmask: " << c->use_capmask << std::endl
+          << "use_capmask_ambient: " << c->use_capmask_ambient << std::endl
+          << "capmask: 0x" << std::hex << c->capmask << std::dec << std::endl
+          << "securebits_skip_mask: 0x" << std::hex << c->securebits_skip_mask
+          << std::dec << std::endl
+          << "do_init: " << c->do_init << std::endl
+          << "selinux_context: " << QUOTE(c->selinux_context) << std::endl
+          << "pre_start_hook: " << reinterpret_cast<void*>(c->pre_start_hook)
+          << std::endl
+          << "pre_start_hook_payload: " << c->pre_start_hook_payload
+          << std::endl
+          << "inherited_fds: size=" << c->inherited_fds.size() << std::endl;
 
   for (int fd : c->inherited_fds)
-    stream << " " << fd << std::endl;
+    *stream << " " << fd << std::endl;
 
-  stream << "hooks: size=" << c->hooks.size() << std::endl;
-
-  return stream;
+  *stream << "hooks: size=" << c->hooks.size() << std::endl;
 }
 
 // Returns the path for |path_in_container| in the outer namespace.
@@ -1584,8 +1612,8 @@ int container_kill(struct container* c) {
   return container_wait(c);
 }
 
-char* container_config_dump(struct container_config* c) {
+char* container_config_dump(struct container_config* c, int sort_vectors) {
   std::stringstream out;
-  out << c;
+  DumpConfig(&out, c, sort_vectors);
   return strdup(out.str().c_str());
 }

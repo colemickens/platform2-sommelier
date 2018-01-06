@@ -365,8 +365,14 @@ BRILLO_EXPORT int container_wait(struct container* c);
 BRILLO_EXPORT int container_kill(struct container* c);
 
 /* Dumps the container config. The returned string has to be passed to free()
-   when it is no longer needed. */
-BRILLO_EXPORT char* container_config_dump(struct container_config* c);
+   when it is no longer needed.
+   c - The config to dump.
+   sort_vectors - When not 0, the function sorts the list of mount points,
+                  devices, and cgroups before dumping to make it easier to
+                  compare two dumps side by side.
+*/
+BRILLO_EXPORT char* container_config_dump(struct container_config* c,
+                                          int sort_vectors);
 
 #ifdef __cplusplus
 }; /* extern "C" */
