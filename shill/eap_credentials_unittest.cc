@@ -98,10 +98,10 @@ class EapCredentialsTest : public testing::Test {
     return eap_.anonymous_identity_.empty() && eap_.cert_id_.empty() &&
            eap_.identity_.empty() && eap_.key_id_.empty() &&
            eap_.password_.empty() && eap_.pin_.empty() &&
-           eap_.private_key_password_.empty() && eap_.ca_cert_id_.empty() &&
-           eap_.ca_cert_pem_.empty() && eap_.eap_.empty() &&
-           eap_.inner_eap_.empty() && eap_.tls_version_max_.empty() &&
-           eap_.subject_match_.empty() && eap_.use_system_cas_ == true &&
+           eap_.ca_cert_id_.empty() && eap_.ca_cert_pem_.empty() &&
+           eap_.eap_.empty() && eap_.inner_eap_.empty() &&
+           eap_.tls_version_max_.empty() && eap_.subject_match_.empty() &&
+           eap_.use_system_cas_ == true &&
            eap_.use_proactive_key_caching_ == false;
   }
 
@@ -110,9 +110,6 @@ class EapCredentialsTest : public testing::Test {
   }
   bool SetEapPassword(const string& password, Error* error) {
     return eap_.SetEapPassword(password, error);
-  }
-  bool SetEapPrivateKeyPassword(const string& password, Error* error) {
-    return eap_.SetEapPrivateKeyPassword(password, error);
   }
 
   EapCredentials eap_;
@@ -201,8 +198,6 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPasswordProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapPinProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEapPrivateKeyPasswordProperty));
 
   // It's easier to test that this function returns TRUE in every situation
   // that it should, than to test all the cases it should return FALSE in.
@@ -542,18 +537,6 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
     EXPECT_TRUE(error.IsSuccess());
     // Set to same value.
     EXPECT_FALSE(SetEapPassword(kPassword, &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-
-  // SetEapPrivateKeyPassword
-  {
-    const string kPrivateKeyPassword("foo");
-    Error error;
-    // Set to known value.
-    EXPECT_TRUE(SetEapPrivateKeyPassword(kPrivateKeyPassword, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    // Set to same value.
-    EXPECT_FALSE(SetEapPrivateKeyPassword(kPrivateKeyPassword, &error));
     EXPECT_TRUE(error.IsSuccess());
   }
 }

@@ -1545,7 +1545,6 @@ INSTANTIATE_TEST_CASE_P(
     WriteOnlyServicePropertyTestInstance,
     WriteOnlyServicePropertyTest,
     Values(
-        brillo::Any(string(kEapPrivateKeyPasswordProperty)),
         brillo::Any(string(kEapPasswordProperty))));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
@@ -1619,7 +1618,6 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
       kEapKeyIdProperty,
       kEapPasswordProperty,
       kEapPinProperty,
-      kEapPrivateKeyPasswordProperty
   };
   static const char* const kEapNonCredentialProperties[] = {
       kEapCaCertIdProperty,

@@ -488,14 +488,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
-		string EAP.PrivateKeyPassword [readwrite]
-
-			The password to decrypt a private key given
-			in EAP.PrivateKey.
-
-			This property is included in get requests only
-			when the requester has sufficient privileges.
-
 		string EAP.KeyID [readwrite]
 
 			The PKCS#11 identifier of the private key to
@@ -1369,7 +1361,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			EAP.Identity
 			EAP.AnonymousIdentity
 			EAP.CertID
-			EAP.PrivateKeyPassword
 			EAP.KeyID
 			EAP.PIN
 			EAP.Password

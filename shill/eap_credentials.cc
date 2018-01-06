@@ -58,8 +58,6 @@ const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
 const char EapCredentials::kStorageEapPIN[] = "EAP.PIN";
 const char EapCredentials::kStorageEapPassword[] = "EAP.Password";
-const char EapCredentials::kStorageEapPrivateKeyPassword[] =
-    "EAP.PrivateKeyPassword";
 const char EapCredentials::kStorageEapSubjectMatch[] =
     "EAP.SubjectMatch";
 const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
@@ -93,8 +91,6 @@ void EapCredentials::PopulateSupplicantProperties(
     KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, identity_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapCaPassword,
            password_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKeyPassword,
-           private_key_password_.c_str()),
 
     // Non-authentication properties.
     KeyVal(WPASupplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
@@ -192,11 +188,6 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
                                      nullptr,
                                      &password_);
   store->RegisterString(kEapPinProperty, &pin_);
-  HelpRegisterWriteOnlyDerivedString(store,
-                                     kEapPrivateKeyPasswordProperty,
-                                     &EapCredentials::SetEapPrivateKeyPassword,
-                                     nullptr,
-                                     &private_key_password_);
 
   // Non-authentication properties.
   store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
@@ -212,15 +203,10 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
 
 // static
 bool EapCredentials::IsEapAuthenticationProperty(const string property) {
-  return
-      property == kEapAnonymousIdentityProperty ||
-      property == kEapCertIdProperty ||
-      property == kEapIdentityProperty ||
-      property == kEapKeyIdProperty ||
-      property == kEapKeyMgmtProperty ||
-      property == kEapPasswordProperty ||
-      property == kEapPinProperty ||
-      property == kEapPrivateKeyPasswordProperty;
+  return property == kEapAnonymousIdentityProperty ||
+         property == kEapCertIdProperty || property == kEapIdentityProperty ||
+         property == kEapKeyIdProperty || property == kEapKeyMgmtProperty ||
+         property == kEapPasswordProperty || property == kEapPinProperty;
 }
 
 bool EapCredentials::IsConnectable() const {
@@ -285,9 +271,6 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageEapPassword, &password_);
   storage->GetString(id, kStorageEapPIN, &pin_);
-  storage->GetCryptedString(id,
-                            kStorageEapPrivateKeyPassword,
-                            &private_key_password_);
 
   // Non-authentication properties.
   storage->GetString(id, kStorageEapCACertID, &ca_cert_id_);
@@ -365,12 +348,6 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       pin_,
                       false,
                       save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapPrivateKeyPassword,
-                      private_key_password_,
-                      true,
-                      save_credentials);
 
   // Non-authentication properties.
   Service::SaveString(storage,
@@ -417,7 +394,6 @@ void EapCredentials::Reset() {
   // Do not reset key_management_, since it should never be emptied.
   password_ = "";
   pin_ = "";
-  private_key_password_ = "";
 
   // Non-authentication properties.
   ca_cert_id_ = "";
@@ -434,15 +410,6 @@ bool EapCredentials::SetEapPassword(const string& password, Error* /*error*/) {
     return false;
   }
   password_ = password;
-  return true;
-}
-
-bool EapCredentials::SetEapPrivateKeyPassword(const string& password,
-                                              Error* /*error*/) {
-  if (private_key_password_ == password) {
-    return false;
-  }
-  private_key_password_ = password;
   return true;
 }
 

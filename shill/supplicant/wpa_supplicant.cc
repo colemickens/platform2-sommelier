@@ -104,8 +104,6 @@ const char WPASupplicant::kNetworkPropertyEapOuterEap[] = "phase1";
 const char WPASupplicant::kNetworkPropertyEapInnerEap[] = "phase2";
 const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[]
     = "anonymous_identity";
-const char WPASupplicant::kNetworkPropertyEapPrivateKeyPassword[]
-    = "private_key_passwd";
 const char WPASupplicant::kNetworkPropertyEapProactiveKeyCaching[]
     = "proactive_key_caching";
 const char WPASupplicant::kNetworkPropertyEapCaCert[] = "ca_cert";

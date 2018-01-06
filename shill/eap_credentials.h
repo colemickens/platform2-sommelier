@@ -114,7 +114,6 @@ class EapCredentials {
   static const char kStorageEapKeyManagement[];
   static const char kStorageEapPIN[];
   static const char kStorageEapPassword[];
-  static const char kStorageEapPrivateKeyPassword[];
   static const char kStorageEapSubjectMatch[];
   static const char kStorageEapUseProactiveKeyCaching[];
   static const char kStorageEapUseSystemCAs[];
@@ -161,7 +160,6 @@ class EapCredentials {
 
   // Setters for write-only RPC properties.
   bool SetEapPassword(const std::string& password, Error* error);
-  bool SetEapPrivateKeyPassword(const std::string& password, Error* error);
 
   // RPC getter for key_management_.
   std::string GetKeyManagement(Error* error);
@@ -180,8 +178,6 @@ class EapCredentials {
   std::string password_;
   // PIN code for accessing the security token.
   std::string pin_;
-  // Password for decrypting the client private key file.
-  std::string private_key_password_;
 
   // Locator for the CA certificate within the security token.
   std::string ca_cert_id_;
