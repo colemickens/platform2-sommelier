@@ -38,6 +38,7 @@
 #include "shill/rpc_task.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/openvpn_management_server.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 using base::FilePath;
@@ -459,6 +460,8 @@ void OpenVPNDriver::ParseIPConfiguration(
     }
   }
   ParseForeignOptions(foreign_options, properties);
+
+  manager()->vpn_provider()->SetDefaultRoutingPolicy(properties);
   SetRoutes(routes, properties);
 
   if (const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {

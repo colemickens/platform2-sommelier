@@ -36,6 +36,7 @@
 #include "shill/mock_process_manager.h"
 #include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 
 using base::FilePath;
@@ -73,6 +74,10 @@ class L2TPIPSecDriverTest : public testing::Test,
   virtual ~L2TPIPSecDriverTest() {}
 
   virtual void SetUp() {
+    manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
+    manager_.vpn_provider_->allowed_uids_.push_back(1000);
+    manager_.UpdateProviderMapping();
+
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   }
 
@@ -173,8 +178,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   void ExpectDeviceConnected(const map<string, string>& ppp_config) {
     EXPECT_CALL(*device_, SetEnabled(true));
     EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
-    EXPECT_CALL(*device_, UpdateIPConfigFromPPPWithMTU(
-                    ppp_config, _, IPConfig::kMinIPv6MTU));
+    EXPECT_CALL(*device_, UpdateIPConfig(_));
   }
 
   void ExpectMetricsReported() {

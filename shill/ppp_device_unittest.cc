@@ -57,7 +57,7 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   config[kPPPMRU] = "1492";
   config["foo"] = "bar";  // Unrecognized keys don't cause crash.
   EXPECT_CALL(metrics, SendSparseToUMA(Metrics::kMetricPPPMTUValue, 1492));
-  IPConfig::Properties props = device->ParseIPConfiguration("in-test", config);
+  IPConfig::Properties props = device->ParseIPConfiguration(config);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ(IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4),
             props.subnet_prefix);
@@ -74,7 +74,7 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   // No gateway specified.
   config.erase(kPPPGatewayAddress);
   EXPECT_CALL(metrics, SendSparseToUMA(Metrics::kMetricPPPMTUValue, 1492));
-  IPConfig::Properties props2 = device->ParseIPConfiguration("in-test", config);
+  IPConfig::Properties props2 = device->ParseIPConfiguration(config);
   EXPECT_EQ("33.44.55.66", props2.gateway);
 }
 

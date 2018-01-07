@@ -56,6 +56,7 @@
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/process_manager.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 using base::Bind;
@@ -469,11 +470,6 @@ void L2TPIPSecDriver::Notify(
     return;
   }
 
-  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
-  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
-  // TODO(benchan): Generalize this when IPv6 support is added.
-  bool blackhole_ipv6 = true;
-
   if (!device_) {
     device_ = ppp_device_factory_->CreatePPPDevice(
         control_, dispatcher(), metrics_, manager(), interface_name,
@@ -482,13 +478,22 @@ void L2TPIPSecDriver::Notify(
   device_->SetEnabled(true);
   device_->SelectService(service_);
 
+  IPConfig::Properties properties = device_->ParseIPConfiguration(dict);
+
+  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
+  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
+  // TODO(benchan): Generalize this when IPv6 support is added.
+  properties.blackhole_ipv6 = true;
+
   // Reduce MTU to the minimum viable for IPv6, since the IPSec layer consumes
   // some variable portion of the payload.  Although this system does not yet
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
   // is also larger than the IPv4 minimum size.
-  device_->UpdateIPConfigFromPPPWithMTU(
-      dict, blackhole_ipv6, IPConfig::kMinIPv6MTU);
+  properties.mtu = IPConfig::kMinIPv6MTU;
+
+  manager()->vpn_provider()->SetDefaultRoutingPolicy(&properties);
+  device_->UpdateIPConfig(properties);
 
   ReportConnectionMetrics();
   StopConnectTimeout();

@@ -401,11 +401,7 @@ void ThirdPartyVpnDriver::SetParameters(
   }
 
   if (error_message->empty()) {
-    // Allow Chrome and crosh UIDs, plus any ARC interface(s) on this system.
-    ip_properties_.allowed_uids = manager()->vpn_provider()->allowed_uids();
-    CHECK(!ip_properties_.allowed_uids.empty());
-    ip_properties_.allowed_iifs = manager()->vpn_provider()->allowed_iifs();
-
+    manager()->vpn_provider()->SetDefaultRoutingPolicy(&ip_properties_);
     ip_properties_.default_route = false;
     ip_properties_.blackhole_ipv6 = true;
     device_->SelectService(service_);

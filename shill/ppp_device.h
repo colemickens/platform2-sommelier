@@ -57,12 +57,11 @@ class PPPDevice : public VirtualDevice {
       const std::map<std::string, std::string>& configuration,
       bool blackhole_ipv6);
 
-  // Same as UpdateIPConfigFromPPP except overriding the default MTU
-  // in the IPConfig.
-  virtual void UpdateIPConfigFromPPPWithMTU(
-      const std::map<std::string, std::string>& configuration,
-      bool blackhole_ipv6,
-      int32_t mtu);
+  // Return an IPConfig::Properties struct parsed from |configuration|,
+  // but don't set the IPConfig.  This lets the caller tweak or inspect
+  // the Properties first.
+  IPConfig::Properties ParseIPConfiguration(
+      const std::map<std::string, std::string>& configuration);
 
 #ifndef DISABLE_DHCPV6
   // Start a DHCPv6 configuration client for this device.  The generic
@@ -80,11 +79,6 @@ class PPPDevice : public VirtualDevice {
 
  private:
   FRIEND_TEST(PPPDeviceTest, GetInterfaceName);
-  FRIEND_TEST(PPPDeviceTest, ParseIPConfiguration);
-
-  IPConfig::Properties ParseIPConfiguration(
-      const std::string& link_name,
-      const std::map<std::string, std::string>& configuration);
 
   DISALLOW_COPY_AND_ASSIGN(PPPDevice);
 };

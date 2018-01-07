@@ -47,21 +47,8 @@ PPPDevice::~PPPDevice() {}
 void PPPDevice::UpdateIPConfigFromPPP(const map<string, string>& configuration,
                                       bool blackhole_ipv6) {
   SLOG(this, 2) << __func__ << " on " << link_name();
-  IPConfig::Properties properties =
-      ParseIPConfiguration(link_name(), configuration);
+  IPConfig::Properties properties = ParseIPConfiguration(configuration);
   properties.blackhole_ipv6 = blackhole_ipv6;
-  UpdateIPConfig(properties);
-}
-
-void PPPDevice::UpdateIPConfigFromPPPWithMTU(
-    const map<string, string>& configuration,
-    bool blackhole_ipv6,
-    int32_t mtu) {
-  SLOG(this, 2) << __func__ << " on " << link_name();
-  IPConfig::Properties properties =
-      ParseIPConfiguration(link_name(), configuration);
-  properties.blackhole_ipv6 = blackhole_ipv6;
-  properties.mtu = mtu;
   UpdateIPConfig(properties);
 }
 
@@ -80,8 +67,7 @@ string PPPDevice::GetInterfaceName(const map<string, string>& configuration) {
 }
 
 IPConfig::Properties PPPDevice::ParseIPConfiguration(
-    const string& link_name, const map<string, string>& configuration) {
-  SLOG(PPP, nullptr, 2) << __func__ << " on " << link_name;
+    const map<string, string>& configuration) {
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
   properties.subnet_prefix = IPAddress::GetMaxPrefixLength(

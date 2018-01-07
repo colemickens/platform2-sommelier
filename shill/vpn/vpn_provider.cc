@@ -389,4 +389,10 @@ void VPNProvider::DisconnectAll() {
   }
 }
 
+void VPNProvider::SetDefaultRoutingPolicy(IPConfig::Properties* properties) {
+  CHECK(!allowed_uids_.empty());
+  properties->allowed_uids = allowed_uids_;
+  properties->allowed_iifs = allowed_iifs_;
+}
+
 }  // namespace shill

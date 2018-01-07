@@ -23,6 +23,7 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/ipconfig.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
@@ -84,10 +85,16 @@ class VPNProvider : public ProviderInterface {
   const std::vector<uint32_t>& allowed_uids() const { return allowed_uids_; }
   const std::vector<std::string>& allowed_iifs() const { return allowed_iifs_; }
 
+  // Allow Chrome and crosh UIDs, plus any ARC interface(s) on this system.
+  // Chrome OS VPNs will use this policy.  ARC VPN will not.
+  void SetDefaultRoutingPolicy(IPConfig::Properties* properties);
+
   VirtualDeviceRefPtr arc_device() const { return arc_device_; }
 
  private:
   friend class ArcVpnDriverTest;
+  friend class L2TPIPSecDriverTest;
+  friend class OpenVPNDriverTest;
   friend class VPNProviderTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, ArcDeviceFound);

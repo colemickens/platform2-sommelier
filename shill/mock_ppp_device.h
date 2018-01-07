@@ -48,10 +48,6 @@ class MockPPPDevice : public PPPDevice {
   MOCK_METHOD2(UpdateIPConfigFromPPP, void(
       const std::map<std::string, std::string>& config,
       bool blackhole_ipv6));
-  MOCK_METHOD3(UpdateIPConfigFromPPPWithMTU, void(
-      const std::map<std::string, std::string>& config,
-      bool blackhole_ipv6,
-      int32_t mtu));
   MOCK_METHOD0(AcquireIPv6Config, bool());
 
  private:

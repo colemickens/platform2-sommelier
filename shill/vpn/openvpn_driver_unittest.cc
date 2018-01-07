@@ -45,6 +45,7 @@
 #include "shill/technology.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/mock_openvpn_management_server.h"
+#include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 #include "shill/vpn/vpn_service.h"
 
@@ -120,6 +121,12 @@ class OpenVPNDriverTest
   }
 
   virtual ~OpenVPNDriverTest() {}
+
+  virtual void SetUp() {
+    manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
+    manager_.vpn_provider_->allowed_uids_.push_back(1000);
+    manager_.UpdateProviderMapping();
+  }
 
   virtual void TearDown() {
     driver_->default_service_callback_tag_ = 0;
