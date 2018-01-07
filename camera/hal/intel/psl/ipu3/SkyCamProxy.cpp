@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,19 +55,10 @@ std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, IPU3ISPPipe 
 #ifdef REMOTE_3A_SERVER
     LOGD("Use IPC implementation");
     proxyObject = std::make_shared<SkyCamMojoProxy>();
-    if (proxyObject == nullptr) {
-        LOGE("Not enough memory to create SkyCamProxy");
-        return nullptr;
-    }
 #else
     LOGD("Use local implementation");
     proxyObject = std::make_shared<SkyCamLocalProxy>();
 #endif
-
-    if (proxyObject == nullptr) {
-        LOGE("Not enough memory to create SkyCamProxy");
-        return nullptr;
-    }
 
     status_t ret = proxyObject->init(cameraId, pipes, numPipes, cmcParsed, aiqb, runtimeParams,
                     dumpAicParameters, testFrameworkDump);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,8 +122,7 @@ status_t FrameWorker::allocateWorkerBuffers()
                 mBuffers[i].length(),
                 mFormat.pixelformat(),
                 mBuffers[i].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
-            if (buf.get() == nullptr)
-                return BAD_VALUE;
+
             break;
         default:
             LOGE("@%s Unsupported memory type %d", __func__, memType);

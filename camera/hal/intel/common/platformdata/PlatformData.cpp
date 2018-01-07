@@ -1058,10 +1058,6 @@ status_t CameraHWInfo::getCSIPortID(const std::string &deviceName, int &portId)
     nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE3);
 
     std::shared_ptr<MediaController> mediaCtl = std::make_shared<MediaController>(mMediaControllerPathName.c_str());
-    if (!mediaCtl) {
-        LOGE("Error creating MediaController");
-        return UNKNOWN_ERROR;
-    }
 
     status = mediaCtl->init();
     if (status != NO_ERROR) {
@@ -1152,10 +1148,6 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
     }
     devname = sDevName.c_str();
     std::shared_ptr<V4L2Subdevice> device = std::make_shared<V4L2Subdevice>(devname);
-    if (device.get() == nullptr) {
-        LOGE("Couldn't open device %s", devname);
-        return UNKNOWN_ERROR;
-    }
 
     ret = device->open();
     if (ret != NO_ERROR) {

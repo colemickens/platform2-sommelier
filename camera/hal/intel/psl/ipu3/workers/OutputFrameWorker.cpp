@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,8 +102,6 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
                 mBuffers[0].length(),
                 mFormat.pixelformat(),
                 mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
-        CheckError((mWorkingBuffer.get() == nullptr), NO_MEMORY,
-            "@%s failed to allocate internal buffer.", __FUNCTION__);
     }
 
     mListenerProcessors.clear();

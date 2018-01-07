@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -151,10 +151,6 @@ status_t CaptureUnit::init()
     }
 
     mLensController = std::make_shared<LensHw>(mCameraId, mMediaCtl);
-    if (mLensController == nullptr) {
-        LOGE("@%s: Error creating LensHw", __FUNCTION__);
-        return NO_INIT;
-    }
 
     status = mLensController->init();
     if (status != NO_ERROR) {

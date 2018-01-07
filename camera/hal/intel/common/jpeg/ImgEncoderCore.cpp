@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,10 +104,7 @@ void ImgEncoderCore::thumbBufferDownScale(EncodePackage & pkg)
                 props.type   = BMT_HEAP;
                 // Using thumbwidth as stride for heap buffer
                 mThumbScaled = std::make_shared<CommonBuffer>(props);
-                if (!mThumbScaled) {
-                    LOGE("Error in creating shared_ptr mThumbScaled");
-                    return;
-                }
+
                 if (mThumbScaled->allocMemory()) {
                     LOGE("Error in allocating buffer with size:%d", mThumbScaled->size());
                     return;
@@ -150,10 +147,7 @@ void ImgEncoderCore::mainBufferDownScale(EncodePackage & pkg)
             props.type   = BMT_HEAP;
             // Use pkg.jpegOut->width() as stride for the heap buffer
             mMainScaled = std::make_shared<CommonBuffer>(props);
-            if (!mMainScaled) {
-                LOGE("Error in creating shared_ptr mMainScaled");
-                return;
-            }
+
             if (mMainScaled->allocMemory()) {
                 LOGE("Error in allocating buffer with size:%d", mMainScaled->size());
                 return;
@@ -205,10 +199,7 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
             props.format = pkg.jpegOut->v4l2Fmt();
             props.type   = BMT_HEAP;
             mJpegDataBuf = std::make_shared<CommonBuffer>(props);
-            if (!mJpegDataBuf) {
-                LOGE("Error in creating shared_ptr mJpegDataBuf");
-                return NO_MEMORY;
-            }
+
             if (mJpegDataBuf->allocMemory()) {
                 LOGE("Error in allocating buffer with size:%d", mJpegDataBuf->size());
                 return NO_MEMORY;
@@ -245,10 +236,7 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
             props.type   = BMT_HEAP;
             // Use thumbwidth as stride for the heap buffer
             mThumbOutBuf = std::make_shared<CommonBuffer>(props);
-            if (!mThumbOutBuf) {
-                LOGE("Error in creating shared_ptr mThumbOutBuf");
-                return NO_MEMORY;
-            }
+
             if (mThumbOutBuf->allocMemory()) {
                 LOGE("Error in allocating buffer with size:%d", mThumbOutBuf->size());
                 return NO_MEMORY;

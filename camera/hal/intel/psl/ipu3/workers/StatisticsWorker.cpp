@@ -139,10 +139,6 @@ status_t StatisticsWorker::run()
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
     outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_2A_STATISTICS;
     std::shared_ptr<IPU3CapturedStatistics> stats = std::make_shared<IPU3CapturedStatistics>();
-    if (stats.get() == nullptr) {
-        LOGE("Not enough memory to allocate stats");
-        return NO_MEMORY;
-    }
     stats->id = mMsg->pMsg.reqId;
     stats->pooledRGBSGrid = rgbsGrid;
     stats->pooledAfGrid = afGrid;
