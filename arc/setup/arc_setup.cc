@@ -1581,12 +1581,11 @@ void ArcSetup::OnPreChroot() {
   // The list of container directories that need to be re-labeled. Note that
   // we don't use "var/run" because some of entries in the directory are on
   // a read-only filesystem.
-  constexpr std::array<const char*, 9> kDirectories{"dev",
+  constexpr std::array<const char*, 8> kDirectories{"dev",
                                                     "oem",
                                                     "var/run/arc/apkcache",
                                                     "var/run/arc/bugreport",
                                                     "var/run/arc/dalvik-cache",
-                                                    "var/run/arc/shared_mounts",
                                                     "var/run/camera",
                                                     "var/run/chrome",
                                                     "var/run/cras"};
