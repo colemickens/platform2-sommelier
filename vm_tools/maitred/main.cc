@@ -29,6 +29,8 @@
 #include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
 
+#include "host.grpc.pb.h"  // NOLINT(build/include)
+
 using std::string;
 
 namespace {
@@ -181,6 +183,19 @@ int main(int argc, char** argv) {
           base::Unretained(server.get()))));
 
   LOG(INFO) << "Server listening on port " << vm_tools::kMaitredPort;
+
+  // Notify the host system that we are ready.
+  vm_tools::StartupListener::Stub stub(
+      grpc::CreateChannel(base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST,
+                                             vm_tools::kStartupListenerPort),
+                          grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub.VmReady(&ctx, empty, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to notify host system that VM is ready: "
+                 << status.error_message();
+  }
 
   // The following call will return once the server has been stopped.
   server->Wait();
