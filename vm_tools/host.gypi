@@ -72,6 +72,7 @@
       'sources': [
         'concierge/mac_address_generator.cc',
         'concierge/service.cc',
+        'concierge/startup_listener_impl.cc',
         'concierge/subnet_pool.cc',
         'concierge/virtual_machine.cc',
       ],
