@@ -19,7 +19,8 @@ class FakeClock : public ClockInterface {
  public:
   FakeClock()
     : monotonic_time_(base::Time::Now()),
-    sleep_called_(true /* manual_reset */, false /* initially_signaled */) {}
+    sleep_called_(base::WaitableEvent::ResetPolicy::MANUAL,
+                  base::WaitableEvent::InitialState::NOT_SIGNALED) {}
 
   virtual void Sleep(const base::TimeDelta& duration) {
     slept_duration_ += duration;
