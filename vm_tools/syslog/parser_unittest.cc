@@ -36,34 +36,22 @@ struct PriorityTestCase {
 // priority values.
 const PriorityTestCase priority_tests[] = {
     {
-        .buf = "<117>",
-        .count = 5,
-        .severity = vm_tools::NOTICE,
+        .buf = "<117>", .count = 5, .severity = vm_tools::NOTICE,
     },
     {
-        .buf = "<24975>",
-        .count = 0,
-        .severity = vm_tools::UNKNOWN,
+        .buf = "<24975>", .count = 0, .severity = vm_tools::MISSING,
     },
     {
-        .buf = "<>",
-        .count = 0,
-        .severity = vm_tools::UNKNOWN,
+        .buf = "<>", .count = 0, .severity = vm_tools::MISSING,
     },
     {
-        .buf = "<0 hi there",
-        .count = 0,
-        .severity = vm_tools::UNKNOWN,
+        .buf = "<0 hi there", .count = 0, .severity = vm_tools::MISSING,
     },
     {
-        .buf = "5> kthxbye",
-        .count = 0,
-        .severity = vm_tools::UNKNOWN,
+        .buf = "5> kthxbye", .count = 0, .severity = vm_tools::MISSING,
     },
     {
-        .buf = "\0\0\0\0\0\0\0",
-        .count = 0,
-        .severity = vm_tools::UNKNOWN,
+        .buf = "\0\0\0\0\0\0\0", .count = 0, .severity = vm_tools::MISSING,
     },
     {
         .buf = "<0> this should work",
@@ -267,7 +255,7 @@ const KernelTestCase kernel_record_tests[] = {
     },
     {
         .buf = " SUBSYSTEM=acpi",
-        .severity = vm_tools::UNKNOWN,
+        .severity = vm_tools::MISSING,
         .micros = 0,
         .sequence = 0,
         .content_offset = 0,
@@ -275,7 +263,7 @@ const KernelTestCase kernel_record_tests[] = {
     },
     {
         .buf = "",
-        .severity = vm_tools::UNKNOWN,
+        .severity = vm_tools::MISSING,
         .micros = 0,
         .sequence = 0,
         .content_offset = 0,
@@ -320,7 +308,7 @@ const KernelTestCase kernel_record_tests[] = {
     },
     {
         .buf = "37,5,3,cThere is no semi-colon in this line",
-        .severity = vm_tools::UNKNOWN,
+        .severity = vm_tools::MISSING,
         .micros = 0,
         .sequence = 5,
         .content_offset = 0,
@@ -328,7 +316,7 @@ const KernelTestCase kernel_record_tests[] = {
     },
     {
         .buf = ";Missing metadata",
-        .severity = vm_tools::UNKNOWN,
+        .severity = vm_tools::MISSING,
         .micros = 0,
         .sequence = 0,
         .content_offset = 1,
@@ -359,7 +347,7 @@ class KernelRecordTest : public ::testing::TestWithParam<KernelTestCase> {
 TEST_P(PriorityTest, ParsesCorrectly) {
   struct PriorityTestCase param = GetParam();
 
-  vm_tools::LogSeverity severity = vm_tools::UNKNOWN;
+  vm_tools::LogSeverity severity = vm_tools::MISSING;
   EXPECT_EQ(param.count, ParseSyslogPriority(param.buf, &severity));
   EXPECT_EQ(param.severity, severity);
 }

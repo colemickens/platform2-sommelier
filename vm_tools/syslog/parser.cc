@@ -43,7 +43,7 @@ vm_tools::LogSeverity PriorityToSeverity(unsigned int priority) {
     case 7:
       return vm_tools::DEBUG;
     default:
-      return vm_tools::UNKNOWN;
+      return vm_tools::MISSING;
   }
 }
 

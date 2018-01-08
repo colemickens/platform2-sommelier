@@ -40,7 +40,7 @@ message Timestamp {
 // default values and the default value for an enum is 0.  In case the severity
 // field is missing it's better to default to UNKNOWN instead of EMERGENCY.
 enum LogSeverity {
-  UNKNOWN = 0;    // Default value.
+  MISSING = 0;    // Default value.
   EMERGENCY = 1;  // System is unusable.
   ALERT = 2;      // Action must be taken immediately.
   CRITICAL = 3;   // Critical conditions.

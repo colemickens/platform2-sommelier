@@ -57,7 +57,7 @@ string ParseProtoSeverity(vm_tools::LogSeverity severity) {
     case vm_tools::DEBUG:
       priority = LOG_DEBUG;
       break;
-    case vm_tools::UNKNOWN:
+    case vm_tools::MISSING:
     default:
       // Use NOTICE for missing severity.
       priority = LOG_NOTICE;
