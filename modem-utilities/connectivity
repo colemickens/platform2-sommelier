@@ -26,7 +26,6 @@ MASKED_PROPERTIES="
   EAP.InnerEAP
   EAP.KeyID
   EAP.PIN
-  EAP.PrivateKey
   EAP.SubjectMatch
   Name
   WiFi.BSSID
