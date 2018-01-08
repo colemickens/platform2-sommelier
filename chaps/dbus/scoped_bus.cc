@@ -40,8 +40,9 @@ ScopedBus::~ScopedBus() {
   if (!task_runner_ || task_runner_->BelongsToCurrentThread()) {
     bus_->ShutdownAndBlock();
   } else {
-    base::WaitableEvent completion_event(false /* manual_reset */,
-                                         false /* initially_signaled */);
+    base::WaitableEvent completion_event(
+        base::WaitableEvent::ResetPolicy::AUTOMATIC,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
     task_runner_->PostTask(
         FROM_HERE,
         base::Bind(&ShutdownBusOnTaskRunner, bus_, &completion_event));

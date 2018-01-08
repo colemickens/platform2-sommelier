@@ -56,8 +56,9 @@ class DBusProxyWrapper : public base::RefCountedThreadSafe<DBusProxyWrapper> {
     DCHECK(!task_runner_->BelongsToCurrentThread());
 
     std::unique_ptr<dbus::Response> resp;
-    base::WaitableEvent completion_event(false /* manual_reset */,
-                                         false /* initially_signaled */);
+    base::WaitableEvent completion_event(
+        base::WaitableEvent::ResetPolicy::AUTOMATIC,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
     task_runner_->PostTask(
         FROM_HERE,
         base::Bind(&DBusProxyWrapper::CallMethodOnTaskRunner<Args...>, this,

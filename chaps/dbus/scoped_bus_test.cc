@@ -43,7 +43,9 @@ TEST(TestScopedBus, DifferentThread) {
   bus_thread.StartWithOptions(options);
 
   ScopedBus bus;
-  base::WaitableEvent completion_event(false, false);
+  base::WaitableEvent completion_event(
+      base::WaitableEvent::ResetPolicy::AUTOMATIC,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
   bus_thread.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CreateScopedBus, &completion_event, &bus));

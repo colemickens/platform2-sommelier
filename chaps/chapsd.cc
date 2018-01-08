@@ -132,7 +132,8 @@ class Daemon : public brillo::DBusServiceDaemon {
     // Initialize the TPM utility and slot manager asynchronously because
     // we might be able to serve some requests while they are being
     // initialized.
-    WaitableEvent init_started(true, false);
+    WaitableEvent init_started(WaitableEvent::ResetPolicy::MANUAL,
+                               WaitableEvent::InitialState::NOT_SIGNALED);
     CHECK(async_init_thread_.StartWithOptions(
         base::Thread::Options(base::MessageLoop::TYPE_IO,
                               0 /* use default stack size */)));
