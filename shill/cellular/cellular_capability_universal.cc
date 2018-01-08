@@ -595,7 +595,10 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   modem_proxy_.reset();
   modem_location_proxy_.reset();
   modem_simple_proxy_.reset();
-  sim_proxy_.reset();
+
+  // Clears both |sim_proxy_| and |sim_path_| via OnSimPathChanged() to keep
+  // them and other related properties in sync.
+  OnSimPathChanged("");
 }
 
 bool CellularCapabilityUniversal::AreProxiesInitialized() const {
