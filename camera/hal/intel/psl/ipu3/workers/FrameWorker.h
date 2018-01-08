@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,11 +37,6 @@ public:
     virtual status_t run() = 0;
     virtual status_t postRun() = 0;
     virtual bool needPolling() { return mPollMe; }
-    std::shared_ptr<V4L2VideoNode> getNode() const
-    {
-        return mNode;
-    }
-    virtual const char *name() { return mNode->name(); }
 
 protected:
     status_t allocateWorkerBuffers();
@@ -54,7 +49,6 @@ protected:
     std::vector<std::shared_ptr<CameraBuffer>> mCameraBuffers;
 
     V4L2Format mFormat;
-    std::shared_ptr<V4L2VideoNode> mNode;
     bool mPollMe;
     size_t mPipelineDepth;
 };

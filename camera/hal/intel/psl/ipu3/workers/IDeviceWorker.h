@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,8 @@ public:
 class IDeviceWorker
 {
 public:
-    explicit IDeviceWorker(int cameraId) : mCameraId(cameraId) {}
+    explicit IDeviceWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
+                                           mNode(node), mCameraId(cameraId) {}
     virtual ~IDeviceWorker() {}
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config) = 0;
@@ -82,11 +83,13 @@ public:
     virtual status_t prepareRun(std::shared_ptr<DeviceMessage> msg) = 0;
     virtual status_t run() = 0;
     virtual status_t postRun() = 0;
+    virtual std::shared_ptr<V4L2VideoNode> getNode() const { return mNode; }
+    virtual const char *name() { return mNode->name(); }
 
 protected:
     std::shared_ptr<DeviceMessage> mMsg; /*!Set in prepareRun and should be valid until
                            postRun is called */
-
+    std::shared_ptr<V4L2VideoNode> mNode;
     int mCameraId;
 private:
     IDeviceWorker();
