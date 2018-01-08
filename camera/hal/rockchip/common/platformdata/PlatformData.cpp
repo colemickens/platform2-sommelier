@@ -190,11 +190,6 @@ void PlatformData::init()
         if (cci->sensorType() != SENSOR_TYPE_RAW)
             continue;
 
-        // TODO: fill static metadata
-        // HACK: for android.hardware.camera2.cts.StillCaptureTest#testJpegExif
-        float av = 1.0f;
-        MetadataHelper::updateMetadata(mInstance->mStaticMeta[i], ANDROID_LENS_INFO_AVAILABLE_APERTURES, &av, 1);
-
         initAiqdInfo(i);
     }
 
