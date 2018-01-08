@@ -9,6 +9,8 @@ namespace vm_tools {
 
 constexpr int kMaitredPort = 8888;
 
+constexpr int kStartupListenerPort = 7777;
+
 }  // namespace vm_tools
 
 #endif  // VM_TOOLS_COMMON_CONSTANTS_H_

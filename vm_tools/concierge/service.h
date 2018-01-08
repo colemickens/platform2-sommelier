@@ -13,11 +13,14 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/threading/thread.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <grpc++/grpc++.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/virtual_machine.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -30,7 +33,7 @@ namespace concierge {
 class Service final : public base::MessageLoopForIO::Watcher {
  public:
   static std::unique_ptr<Service> Create();
-  ~Service() = default;
+  ~Service() override;
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -69,6 +72,15 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;  // Owned by |bus_|.
+
+  // The StartupListener service.
+  StartupListenerImpl startup_listener_;
+
+  // Thread on with the StartupListener service lives.
+  base::Thread grpc_thread_{"gRPC Server Thread"};
+
+  // The server where the StartupListener service lives.
+  std::shared_ptr<grpc::Server> grpc_server_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

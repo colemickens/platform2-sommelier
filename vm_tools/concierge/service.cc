@@ -9,9 +9,12 @@
 #include <stdint.h>
 #include <sys/mount.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <map>
 #include <thread>  // NOLINT(build/c++11)
@@ -23,10 +26,18 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/ptr_util.h>
+#include <base/single_thread_task_runner.h>
+#include <base/strings/stringprintf.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
+
+#include "vm_tools/common/constants.h"
 
 using std::string;
 
@@ -42,6 +53,12 @@ using ProcessStatus = VirtualMachine::ProcessStatus;
 
 // Path to the runtime directory used by VMs.
 constexpr char kRuntimeDir[] = "/run/vm";
+
+// Maximum number of extra disks to be mounted inside the VM.
+constexpr int kMaxExtraDisks = 10;
+
+// How long we should wait for a VM to start up.
+constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(5);
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -68,6 +85,34 @@ bool StringToIPv4Address(const string& address, uint32_t* addr) {
   return true;
 }
 
+// Posted to the grpc thread to run the StartupListener service.  Puts a copy
+// of the pointer to the grpc server in |server_copy| and then signals |event|.
+void RunStartupListenerService(StartupListenerImpl* listener,
+                               base::WaitableEvent* event,
+                               std::shared_ptr<grpc::Server>* server_copy) {
+  // We are not interested in getting SIGCHLD on this thread.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+  // Build the grpc server.
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
+                                              vm_tools::kStartupListenerPort),
+                           grpc::InsecureServerCredentials());
+  builder.RegisterService(listener);
+
+  std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
+
+  *server_copy = server;
+  event->Signal();
+
+  if (server) {
+    server->Wait();
+  }
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create() {
@@ -78,6 +123,12 @@ std::unique_ptr<Service> Service::Create() {
   }
 
   return service;
+}
+
+Service::~Service() {
+  if (grpc_server_) {
+    grpc_server_->Shutdown();
+  }
 }
 
 void Service::OnFileCanReadWithoutBlocking(int fd) {
@@ -175,6 +226,30 @@ bool Service::Init() {
     return false;
   }
 
+  // Start the grpc thread.
+  if (!grpc_thread_.Start()) {
+    LOG(ERROR) << "Failed to start grpc thread";
+    return false;
+  }
+
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool ret = grpc_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&RunStartupListenerService, &startup_listener_,
+                            &event, &grpc_server_));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post server startup task to grpc thread";
+    return false;
+  }
+
+  // Wait for the grpc server to start.
+  event.Wait();
+
+  if (!grpc_server_) {
+    LOG(ERROR) << "grpc server failed to start";
+    return false;
+  }
+
   // Change the umask so that the runtime directory for each VM will get the
   // right permissions.
   umask(002);
@@ -246,6 +321,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
+  if (request.disks_size() > kMaxExtraDisks) {
+    LOG(ERROR) << "Rejecting request with " << request.disks_size()
+               << " extra disks";
+
+    response.set_failure_reason("Too many extra disks");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   base::FilePath kernel(request.vm().kernel());
   if (!base::PathExists(kernel)) {
     LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
@@ -313,6 +397,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
+  // Associate a WaitableEvent with this VM.  This needs to happen before
+  // starting the VM to avoid a race where the VM reports that it's ready
+  // before it gets added as a pending VM.
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  startup_listener_.AddPendingVm(vsock_cid, &event);
+
   // Start the VM and build the response.
   auto vm = VirtualMachine::Create(std::move(kernel), std::move(rootfs),
                                    std::move(disks), std::move(mac_address),
@@ -321,9 +412,85 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
+    startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("Unable to start VM");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
+  }
+
+  // Wait for the VM to finish starting up and for maitre'd to signal that it's
+  // ready.
+  if (!event.TimedWait(kVmStartupTimeout)) {
+    LOG(ERROR) << "VM failed to start in " << kVmStartupTimeout.InSeconds()
+               << " seconds";
+
+    response.set_failure_reason("VM failed to start in time");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // maitre'd is ready.  Finish setting up the VM.
+  if (!vm->ConfigureNetwork()) {
+    LOG(ERROR) << "Failed to configure VM network";
+
+    response.set_failure_reason("Failed to configure VM network");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Do all the mounts.  Assume that the rootfs filesystem was assigned
+  // /dev/vda and that every subsequent image was assigned a letter in
+  // alphabetical order starting from 'b'.
+  unsigned char disk_letter = 'b';
+  unsigned char offset = 0;
+  for (const auto& disk : request.disks()) {
+    string src = base::StringPrintf("/dev/vd%c", disk_letter + offset);
+    ++offset;
+
+    uint64_t flags = disk.flags();
+    if (!disk.writable()) {
+      flags |= MS_RDONLY;
+    }
+    if (!vm->Mount(std::move(src), disk.mount_point(), disk.fstype(), flags,
+                   disk.data())) {
+      LOG(ERROR) << "Failed to mount " << disk.path() << " -> "
+                 << disk.mount_point();
+
+      response.set_failure_reason("Failed to mount extra disk");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  }
+
+  // If at least one extra disk was given, assume that one of them was a
+  // container disk image mounted to /mnt/container_rootfs.  Try to start it
+  // with run_oci.  TODO: Remove this once all the lxc/lxd stuff is ready.
+  if (request.disks_size() > 0) {
+    std::vector<string> run_oci = {
+        "run_oci",
+        "run",
+        "--cgroup_parent=chronos_containers",
+        "--container_path=/mnt/container_rootfs",
+        "termina_container",
+    };
+    LaunchProcessResult result =
+        vm->StartProcess(std::move(run_oci), ProcessExitBehavior::ONE_SHOT);
+    switch (result.status) {
+      case ProcessStatus::UNKNOWN:
+        LOG(WARNING) << "run_oci may or may not be running in the VM";
+        break;
+      case ProcessStatus::EXITED:
+        LOG(WARNING) << "run_oci exited with status " << result.code;
+        break;
+      case ProcessStatus::SIGNALED:
+        LOG(WARNING) << "run_oci was killed by signal" << result.code;
+        break;
+      case ProcessStatus::FAILED:
+        LOG(WARNING) << "Failed to launch run_oci";
+        break;
+      case ProcessStatus::LAUNCHED:
+        break;
+    }
   }
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
