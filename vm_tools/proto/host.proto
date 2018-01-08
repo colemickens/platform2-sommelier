@@ -88,3 +88,10 @@ service CrashCollector {
   // can launch crash-reporter to report the crash.
   rpc CollectCrashReport (CrashReportRequest) returns (EmptyMessage);
 }
+
+// Service that is notified whenever a new VM starts up.
+service StartupListener {
+  // Called by each VM when it starts up to indicate that it is ready to handle
+  // incoming requests.
+  rpc VmReady(EmptyMessage) returns (EmptyMessage);
+}
