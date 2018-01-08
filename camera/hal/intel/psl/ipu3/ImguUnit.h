@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ private:
     void setStreamListeners(IPU3NodeNames nodeName,
                             std::shared_ptr<OutputFrameWorker>& source);
     status_t checkAndSwitchPipe(Camera3Request* request);
-    status_t kickstart();
+    status_t kickstart(Camera3Request* request);
     void clearWorkers();
 
     status_t allocatePublicStatBuffers(int numBufs);
@@ -123,6 +123,9 @@ private:
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it
     std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;
     bool mFirstRequest;
+    bool mFirstPollCallbacked;
+    pthread_mutex_t mFirstLock;
+    pthread_cond_t mFirstCond;
 
     std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
     std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;

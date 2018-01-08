@@ -41,31 +41,64 @@ ImguUnit::ImguUnit(int cameraId,
         mMediaCtlHelper(mediaCtl, nullptr, true),
         mPollerThread(new PollerThread("ImguPollerThread")),
         mFirstRequest(true),
+        mFirstPollCallbacked(false),
         mTakingPicture(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mActiveStreams.inputStream = nullptr;
+    status_t status = OK;
 
-    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "ImguThread"));
-    if (mMessageThread == nullptr) {
-        LOGE("Error creating poller thread");
+    pthread_condattr_t attr;
+    int ret = pthread_condattr_init(&attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
         return;
     }
+
+    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    ret = pthread_cond_init(&mFirstCond, &attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    pthread_condattr_destroy(&attr);
+
+    ret = pthread_mutex_init(&mFirstLock, nullptr);
+    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+
+    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "ImguThread"));
+    CheckError(mMessageThread == nullptr, VOID_VALUE, "Error creating poller thread");
     mMessageThread->run();
 
     mRgbsGridBuffPool = std::make_shared<SharedItemPool<ia_aiq_rgbs_grid>>("RgbsGridBuffPool");
     mAfFilterBuffPool = std::make_shared<SharedItemPool<ia_aiq_af_grid>>("AfFilterBuffPool");
 
-    status_t status = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
-    if (status != NO_ERROR) {
+    status = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
+    if (status != NO_ERROR)
         LOGE("Failed to allocate statistics, status: %d.", status);
-        return;
-    }
 }
 
 ImguUnit::~ImguUnit()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    int ret = pthread_mutex_destroy(&mFirstLock);
+    if (ret != 0)
+        LOGE("@%s, call pthread_mutex_destroy fails, ret: %d", __FUNCTION__, ret);
+
+    ret = pthread_cond_destroy(&mFirstCond);
+    if (ret != 0)
+        LOGE("@%s, call pthread_cond_destroy fails, ret: %d", __FUNCTION__, ret);
+
     status_t status = NO_ERROR;
 
     if (mPollerThread) {
@@ -670,7 +703,7 @@ status_t ImguUnit::processNextRequest()
     mMessagesUnderwork.push_back(msg);
 
     if (mFirstRequest) {
-        status = kickstart();
+        status = kickstart(request);
         if (status != OK) {
             return status;
         }
@@ -694,7 +727,7 @@ status_t ImguUnit::processNextRequest()
     }
 
     status = mPollerThread->pollRequest(request->getId(),
-                                        500000,
+                                        IPU3_EVENT_POLL_TIMEOUT,
                                         &(mCurPipeConfig->nodes));
 
     if (status != OK)
@@ -748,7 +781,7 @@ status_t ImguUnit::checkAndSwitchPipe(Camera3Request* request)
 }
 
 status_t
-ImguUnit::kickstart()
+ImguUnit::kickstart(Camera3Request* request)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
@@ -761,14 +794,46 @@ ImguUnit::kickstart()
         }
     }
 
+    std::vector<std::shared_ptr<V4L2DeviceBase>> firstNodes;
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator firstit = mFirstWorkers.begin();
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
         status |= (*firstit)->prepareRun(mMessagesUnderwork[0]);
+        /* skip polling the node that doesn't queue buffer when test pattern mode is on */
+        if (!(*firstit)->needPolling() &&
+            mMessagesUnderwork[0]->pMsg.processingSettings->captureSettings->testPatternMode
+            != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF)
+            continue;
+        else
+            firstNodes.push_back((*firstit)->getNode());
     }
+
+    CheckError(status != OK, status, "@%s, fail to call prepareRun", __FUNCTION__);
+
+    /* poll first Imgu frame */
+    pthread_mutex_lock(&mFirstLock);
+    status = mPollerThread->pollRequest(request->getId(), IPU3_EVENT_POLL_TIMEOUT, &firstNodes);
     if (status != OK) {
-        return status;
+        LOGE("@%s, poll request for first frame failed", __FUNCTION__);
+        pthread_mutex_unlock(&mFirstLock);
+        return UNKNOWN_ERROR;
     }
+
+    struct timespec ts = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    ts.tv_sec += IPU3_EVENT_POLL_TIMEOUT/1000;
+    int ret = 0;
+
+    while (!mFirstPollCallbacked && !ret) {
+        ret = pthread_cond_timedwait(&mFirstCond, &mFirstLock, &ts);
+    }
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_timedwait failes, ret: %d", __FUNCTION__, ret);
+        pthread_mutex_unlock(&mFirstLock);
+        return UNKNOWN_ERROR;
+    }
+    mFirstPollCallbacked = false;
+    pthread_mutex_unlock(&mFirstLock);
 
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
@@ -786,7 +851,6 @@ ImguUnit::kickstart()
         return status;
     }
 
-    mFirstRequest = false;
     return status;
 }
 
@@ -827,8 +891,14 @@ status_t
 ImguUnit::startProcessing()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
     status_t status = OK;
+
+    /* skip processing the first frame */
+    if (mFirstRequest) {
+        mFirstRequest = false;
+        return OK;
+    }
+
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
     for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
         status |= (*it)->run();
@@ -891,8 +961,20 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
             return -EAGAIN;
         }
 
+        if (mFirstRequest) {
+            pthread_mutex_lock(&mFirstLock);
+            mFirstPollCallbacked = true;
+            int ret = pthread_cond_signal(&mFirstCond);
+            if (ret != 0) {
+                LOGE("@%s, call pthread_cond_signal fails, ret: %d", __FUNCTION__, ret);
+                delete [] msg.pollEvent.activeDevices;
+                msg.pollEvent.activeDevices = nullptr;
+                pthread_mutex_unlock(&mFirstLock);
+                return UNKNOWN_ERROR;
+            }
+            pthread_mutex_unlock(&mFirstLock);
+        }
         mMessageQueue.send(&msg);
-
     } else if (pollMsg->id == POLL_EVENT_ID_ERROR) {
         LOGE("Device poll failed");
         // For now, set number of device to zero in error case

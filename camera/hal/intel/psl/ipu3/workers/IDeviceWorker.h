@@ -83,6 +83,7 @@ public:
     virtual status_t prepareRun(std::shared_ptr<DeviceMessage> msg) = 0;
     virtual status_t run() = 0;
     virtual status_t postRun() = 0;
+    virtual bool needPolling() = 0;
     virtual std::shared_ptr<V4L2VideoNode> getNode() const { return mNode; }
     virtual const char *name() { return mNode->name(); }
 

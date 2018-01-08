@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,6 @@ class MediaEntity;
 
 namespace android {
 namespace camera2 {
-
-const int IPU3_EVENT_POLL_TIMEOUT = 10000;  // msecs
 
 class IStreamConfigProvider;
 
