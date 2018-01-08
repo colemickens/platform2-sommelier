@@ -272,9 +272,7 @@ RkAEModeAuto::processResult(const rk_aiq_ae_results &aeResults,
     case ANDROID_CONTROL_AE_STATE_SEARCHING:
     case ANDROID_CONTROL_AE_STATE_CONVERGED:
     case ANDROID_CONTROL_AE_STATE_FLASH_REQUIRED:
-        // HACK: for capture, since ae status is not ready yet
-        // if (aeResults.converged) {
-        if (!aeResults.converged) {
+         if (aeResults.converged) {
             mEvChanged = false; // converged -> reset
             if (mLastAeControls.aeLock) {
                 mCurrentAeState = ANDROID_CONTROL_AE_STATE_LOCKED;
@@ -293,9 +291,7 @@ RkAEModeAuto::processResult(const rk_aiq_ae_results &aeResults,
         }
         break;
     case ANDROID_CONTROL_AE_STATE_PRECAPTURE:
-        // HACK: for capture, since ae status is not ready yet
-        // if (aeResults.converged) {
-        if (!aeResults.converged) {
+         if (aeResults.converged) {
             mEvChanged = false; // converged -> reset
             if (mLastAeControls.aeLock) {
                 mCurrentAeState = ANDROID_CONTROL_AE_STATE_LOCKED;

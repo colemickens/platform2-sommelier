@@ -225,9 +225,7 @@ RkAWBModeAuto::processResult(const rk_aiq_awb_results &awbResults,
         case ANDROID_CONTROL_AWB_STATE_INACTIVE:
         case ANDROID_CONTROL_AWB_STATE_SEARCHING:
         case ANDROID_CONTROL_AWB_STATE_CONVERGED:
-            // HACK: for capture, since awb status is not ready yet
-            // if (awbResults.converged)
-            if (!awbResults.converged)
+            if (awbResults.converged)
                 mCurrentAwbState = ANDROID_CONTROL_AWB_STATE_CONVERGED;
             else
                 mCurrentAwbState = ANDROID_CONTROL_AWB_STATE_SEARCHING;
