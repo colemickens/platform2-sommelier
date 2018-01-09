@@ -95,10 +95,8 @@ std::unique_ptr<Modem> CreateModem(
 
   // Equipment ID is also pretty important since we use it as a stable
   // identifier that can distinguish between modems of the same type.
-  // Check IMEI first, and if that's not there, check MEID.
   std::string equipment_id;
-  if (!properties[shill::kImeiProperty].GetValue(&equipment_id) &&
-      !properties[shill::kMeidProperty].GetValue(&equipment_id)) {
+  if (!properties[shill::kEquipmentIdProperty].GetValue(&equipment_id)) {
     LOG(INFO) << "Modem " << object_path << " has no equipment ID, ignoring";
     return nullptr;
   }
