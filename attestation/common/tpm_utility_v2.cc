@@ -17,6 +17,7 @@
 #include "attestation/common/tpm_utility_v2.h"
 
 #include <memory>
+#include <vector>
 
 #include <base/logging.h>
 #include <brillo/bind_lambda.h>

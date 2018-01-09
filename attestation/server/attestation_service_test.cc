@@ -58,7 +58,7 @@ namespace attestation {
 // task only), the task runner is idle.
 class MessageLoopIdleEvent : public base::MessageLoop::TaskObserver {
  public:
-  MessageLoopIdleEvent(base::MessageLoop* message_loop)
+  explicit MessageLoopIdleEvent(base::MessageLoop* message_loop)
       : event_(true /* manual_reset */, false /* initially_signalled */),
         observer_added_(false),
         tasks_processed_(0),
