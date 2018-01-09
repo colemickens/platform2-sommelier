@@ -2250,6 +2250,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         { GCSS_KEY_IMGU_PREVIEW, MEDIACTL_PREVIEWNAME, IMGU_NODE_VF_PREVIEW, preview, 0 },
     };
 
+    int ispOutWidth = 0, ispOutHeight = 0;
     for (int i = 0; i < uids.size(); i++) {
         string name = uids[i].name;
         Node *pipe = uids[i].pipe;
@@ -2326,8 +2327,8 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 select.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
                 select.target = V4L2_SEL_TGT_CROP;
                 select.flags = 0;
-                select.r.left = 0;
-                select.r.top = 0;
+                select.r.left = (ispOutWidth - nodeWidth) / 2;
+                select.r.top = (ispOutHeight - nodeHeight) / 2;
                 select.r.width = nodeWidth;
                 select.r.height = nodeHeight;
                 addSelectionVideoParams(name.c_str(), select, mediaCtlConfig);
@@ -2373,6 +2374,8 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 return UNKNOWN_ERROR;
             } else
                 addSelectionParams(name, nodeWidth, nodeHeight, 0, 0, V4L2_SEL_TGT_CROP, uids[i].pad, mediaCtlConfig);
+            ispOutWidth = nodeWidth;
+            ispOutHeight = nodeHeight;
         } else {
             LOGE("pipe log name: wrong node %s !", GCSS::ItemUID::key2str(uids[i].uid));
             return UNKNOWN_ERROR;
