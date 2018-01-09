@@ -19,6 +19,8 @@ DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean fw_errors_fatal ${FLAGS_TRUE} \
                "Abort on firmware errors (subset of --errors_fatal)"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
+DEFINE_boolean pm_print_times ${FLAGS_TRUE} \
+               "Print the time taken by devices to suspend and resume"
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 
@@ -201,13 +203,18 @@ echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 echo "  wakeup source to ignore: ${FLAGS_ignore_wakeup_source}"
 echo "  record_dmesg_dir: ${FLAGS_record_dmesg_dir}"
+echo "  pm_print_times:  $(boolean_value ${FLAGS_pm_print_times})"
 
 initial_successes=$(get_success_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
 wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
 preserved_pm_print_times=$(cat /sys/power/pm_print_times)
 
-echo 1 > /sys/power/pm_print_times
+if [ ${FLAGS_pm_print_times} -eq ${FLAGS_TRUE} ]; then
+  echo 1 > /sys/power/pm_print_times
+else
+  echo 0 > /sys/power/pm_print_times
+fi
 
 trap dump_stats_and_exit INT
 disable_dark_resume
