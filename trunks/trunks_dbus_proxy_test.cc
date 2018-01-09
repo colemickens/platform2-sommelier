@@ -248,8 +248,8 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureWrongThread) {
   set_next_response("response");
   base::Thread other_thread("trunks_dbus_proxy_test other thread");
   ASSERT_TRUE(other_thread.Start());
-  base::WaitableEvent event(true /* manual_reset */,
-                            false /* initially_signaled */);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   auto thread_task = [this, &event]() {
     auto callback = [](const std::string& response) {
       EXPECT_EQ(CreateErrorResponse(TRUNKS_RC_IPC_ERROR), response);
@@ -269,8 +269,8 @@ TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureWrongThread) {
   set_next_response("response");
   base::Thread other_thread("trunks_dbus_proxy_test other thread");
   ASSERT_TRUE(other_thread.Start());
-  base::WaitableEvent event(true /* manual_reset */,
-                            false /* initially_signaled */);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   auto thread_task = [this, &event]() {
     EXPECT_EQ(CreateErrorResponse(TRUNKS_RC_IPC_ERROR),
               proxy_.SendCommandAndWait("command"));

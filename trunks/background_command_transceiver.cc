@@ -78,8 +78,9 @@ std::string BackgroundCommandTransceiver::SendCommandAndWait(
     const std::string& command) {
   if (task_runner_.get()) {
     std::string response;
-    base::WaitableEvent response_ready(true,    // manual_reset
-                                       false);  // initially_signaled
+    base::WaitableEvent response_ready(
+        base::WaitableEvent::ResetPolicy::MANUAL,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
     ResponseCallback callback =
         base::Bind(&AssignAndSignal, &response, &response_ready);
     // Use SendCommandTask instead of binding to next_transceiver_ directly to
