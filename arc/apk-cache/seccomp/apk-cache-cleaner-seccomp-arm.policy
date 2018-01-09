@@ -1,0 +1,40 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+open: 1
+stat64: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+lstat64: 1
+fstat64: 1
+close: 1
+read: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+getdents64: 1
+gettimeofday: 1
+write: 1
+send: 1
+unlink: 1
+brk: 1
+rt_sigaction: 1
+rmdir: 1
+futex: 1
+restart_syscall: 1
+exit: 1
+rt_sigreturn: 1
+uname: 1
+connect: 1
+ugetrlimit: 1
+exit_group: 1
+rt_sigprocmask: 1
+access: 1
+ARM_set_tls: 1
+_llseek: 1
+set_tid_address: 1
+set_robust_list: 1
+munmap: 1
+execve: 1
+# In the line below 1 stands for AF_UNIX.
+socket: arg0 == 1

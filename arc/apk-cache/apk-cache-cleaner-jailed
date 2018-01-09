@@ -1,0 +1,31 @@
+#!/bin/sh
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Run apk-cache-cleaner with minijail0.
+# 656360 is an Android system UID/GID
+
+set -e
+
+# See src/platform2/arc/setup/arc_setup.cc for more info about these values.
+SYSTEM_UID="656360"
+SYSTEM_GID="656360"
+
+# Bind cache directory as writable. Add /var directory to follow /etc/localtime.
+# Enter new pid and cgroup namespaces. Setting no new privileges.
+# Restrict caps to 0. Entering new mount namespace, new UTS namespace,
+# new IPC namespace and new network namespace.
+exec minijail0 --profile minimalistic-mountns \
+  -k none,/mnt,tmpfs \
+  -k none,/mnt/stateful_partition,tmpfs \
+  -k none,/mnt/stateful_partition/unencrypted,tmpfs \
+  -k none,/mnt/stateful_partition/unencrypted/cache,tmpfs \
+  -b /mnt/stateful_partition/unencrypted/cache/apk,\
+/mnt/stateful_partition/unencrypted/cache/apk,1 \
+  -k none,/var,tmpfs \
+  -k none,/var/lib,tmpfs \
+  -b /var/lib/timezone,/var/lib/timezone \
+  -p -N -n -c 0 -v -r --uts -l -e \
+  -S /usr/share/policy/apk-cache-cleaner-seccomp.policy \
+  -u "${SYSTEM_UID}" -g "${SYSTEM_GID}" -- /usr/sbin/apk-cache-cleaner
