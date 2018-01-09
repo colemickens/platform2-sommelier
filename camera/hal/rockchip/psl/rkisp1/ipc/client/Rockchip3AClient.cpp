@@ -94,12 +94,11 @@ bool Rockchip3AClient::isIPCFine()
 void Rockchip3AClient::registerErrorCallback(IErrorCallback* errCb)
 {
     LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
-    CheckError((errCb == nullptr), VOID_VALUE, "@%s, the errCb is nullptr", __FUNCTION__);
 
     std::lock_guard<std::mutex> l(mIPCStatusMutex);
     mErrCb = errCb;
 
-    if (!mIPCStatus) {
+    if (!mIPCStatus && mErrCb) {
         mErrCb->deviceError();
     }
 }
