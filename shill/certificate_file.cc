@@ -46,8 +46,7 @@ const char CertificateFile::kDefaultRootDirectory[] =
 const char CertificateFile::kPEMHeader[] = "-----BEGIN CERTIFICATE-----";
 const char CertificateFile::kPEMFooter[] = "-----END CERTIFICATE-----";
 
-CertificateFile::CertificateFile()
-    : root_directory_(FilePath(kDefaultRootDirectory)) {
+CertificateFile::CertificateFile() : root_directory_(kDefaultRootDirectory) {
   SLOG(this, 2) << __func__;
 }
 

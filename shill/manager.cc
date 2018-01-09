@@ -143,10 +143,10 @@ Manager::Manager(ControlInterface* control_interface,
                  const string& storage_directory,
                  const string& user_storage_directory)
     : dispatcher_(dispatcher),
-      run_path_(FilePath(run_directory)),
-      storage_path_(FilePath(storage_directory)),
+      run_path_(run_directory),
+      storage_path_(storage_directory),
       user_storage_path_(user_storage_directory),
-      user_profile_list_path_(FilePath(Profile::kUserProfileListPathname)),
+      user_profile_list_path_(Profile::kUserProfileListPathname),
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
 #if !defined(DISABLE_CELLULAR)
