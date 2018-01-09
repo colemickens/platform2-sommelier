@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <cinttypes>
 #include <memory>
 #include <vector>
 
@@ -56,7 +57,7 @@ const char* VsockCid::GetName() const {
 }
 
 const std::string VsockCid::GetResourceID() const {
-  return base::StringPrintf("%zu", selected_cid_);
+  return base::StringPrintf("%" PRIu64, selected_cid_);
 }
 
 bool VsockCid::LoadGlobalResources(const std::string& resources) {

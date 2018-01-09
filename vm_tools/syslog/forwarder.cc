@@ -9,6 +9,7 @@
 #include <sys/uio.h>
 
 #include <array>
+#include <cinttypes>
 #include <string>
 #include <utility>
 #include <vector>
@@ -48,12 +49,12 @@ grpc::Status Forwarder::ForwardLogs(grpc::ServerContext* ctx,
                                     bool is_kernel) {
   // CID 0 is reserved so we use it to indicate an unknown peer.
   uint64_t cid = 0;
-  if (sscanf(ctx->peer().c_str(), "vsock:%lu", &cid) != 1) {
+  if (sscanf(ctx->peer().c_str(), "vsock:%" PRIu64, &cid) != 1) {
     LOG(WARNING) << "Failed to parse peer address " << ctx->peer();
   }
 
-  string prefix =
-      base::StringPrintf(" VM(%lu): %s", cid, is_kernel ? "kernel: " : "");
+  string prefix = base::StringPrintf(" VM(%" PRIu64 "): %s", cid,
+                                     is_kernel ? "kernel: " : "");
 
   std::vector<string> priorities, timestamps, contents;
   priorities.reserve(request->records_size());

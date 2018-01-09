@@ -6,6 +6,7 @@
 
 #include <time.h>
 
+#include <cinttypes>
 #include <string>
 #include <vector>
 
@@ -67,7 +68,7 @@ size_t ParseSyslogPriority(const char* buf, vm_tools::LogSeverity* severity) {
   // The priority cannot take up more than 5 characters.  If there is an
   // un-terminated '<' followed by a valid unsigned int, sscanf will return 1
   // but pos will still be 0.
-  if (sscanf(buf, "<%u>%ln", &priority, &pos) == 1 && pos <= 5 && pos > 0) {
+  if (sscanf(buf, "<%u>%zn", &priority, &pos) == 1 && pos <= 5 && pos > 0) {
     // We successfully read out the priority and it is valid.
     *severity = PriorityToSeverity(priority);
     return pos;
@@ -171,8 +172,8 @@ bool ParseKernelRecord(const char* buf,
   int64_t micros;
   int pos;
 
-  if (sscanf(line.data(), "%u,%lu,%ld%n", &priority, sequence, &micros, &pos) !=
-      3) {
+  if (sscanf(line.data(), "%u,%" PRIu64 ",%" PRId64 "%n", &priority, sequence,
+             &micros, &pos) != 3) {
     return false;
   }
 
