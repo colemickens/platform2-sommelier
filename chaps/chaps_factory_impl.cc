@@ -4,6 +4,7 @@
 
 #include "chaps/chaps_factory_impl.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
