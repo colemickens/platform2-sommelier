@@ -1104,10 +1104,12 @@ TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
   ASSERT_TRUE(real_platform.TouchFileDurable(
       from_dir_.path().Append(kFileName)));
   // Wait in SyncFile so that cancellation happens before migration finishes.
-  base::WaitableEvent syncfile_is_called_event(false /* manual_reset */,
-                                               false /* initially_signaled */);
-  base::WaitableEvent cancel_is_called_event(false /* manual_reset */,
-                                             false /* initially_signaled */);
+  base::WaitableEvent syncfile_is_called_event(
+      base::WaitableEvent::ResetPolicy::AUTOMATIC,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent cancel_is_called_event(
+      base::WaitableEvent::ResetPolicy::AUTOMATIC,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
   EXPECT_CALL(mock_platform, SyncFile(to_dir_.path().Append(kFileName)))
       .WillOnce(testing::InvokeWithoutArgs(
           [&syncfile_is_called_event, &cancel_is_called_event]() {

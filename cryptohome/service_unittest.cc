@@ -500,8 +500,11 @@ TEST_F(ServiceTest, NoDeadlocksInInitializeTpmComplete) {
   // Put a task on mount_thread_ that starts before InitializeTpmComplete
   // and finishes after it exits. Verify it doesn't wait for
   // InitializeTpmComplete forever.
-  base::WaitableEvent event(false, false);  // auto-reset
-  base::WaitableEvent event_stop(true, false);  // manual reset
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent event_stop(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool finished = false;
   service_.mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind([](bool* finished,

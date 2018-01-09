@@ -135,8 +135,8 @@ bool ServiceDistributed::Post(const MethodType& method) {
 template <typename MethodType>
 bool ServiceDistributed::PostAndWait(const MethodType& method) {
   VLOG(2) << __func__;
-  base::WaitableEvent event(true /* manual_reset */,
-                            false /* initially_signaled */);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   auto sync_method = base::Bind(
       [](const MethodType& method, base::WaitableEvent* event) {
         method.Run();
@@ -156,8 +156,8 @@ template <typename ReplyProtoType, typename MethodType>
 bool ServiceDistributed::SendRequestAndWait(const MethodType& method,
                                             ReplyProtoType* reply_proto) {
   VLOG(2) << __func__;
-  base::WaitableEvent event(true /* manual_reset */,
-                            false /* initially_signaled */);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   auto callback = base::Bind(
       [](ReplyProtoType* reply_proto, base::WaitableEvent* event,
          const ReplyProtoType& reply) {

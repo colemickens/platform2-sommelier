@@ -922,7 +922,8 @@ gboolean Service::CheckKey(gchar *userid,
   mounts_lock_.Release();
 
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskTestCredentials> mount_task =
       new MountTaskTestCredentials(NULL, NULL, homedirs_, credentials);
   mount_task->set_result(&result);
@@ -1265,7 +1266,8 @@ gboolean Service::MigrateKey(gchar *userid,
                               SecureBlob(to_key, to_key + strlen(to_key)));
 
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
       new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key);
   mount_task->set_result(&result);
@@ -1304,7 +1306,8 @@ gboolean Service::AddKey(gchar *userid,
   UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
 
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskAddPasskey> mount_task =
       new MountTaskAddPasskey(NULL, homedirs_, credentials, new_key);
   mount_task->set_result(&result);
@@ -1543,7 +1546,8 @@ gboolean Service::Remove(gchar *userid,
   }
 
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskRemove> mount_task =
@@ -1815,7 +1819,8 @@ gboolean Service::Mount(const gchar *userid,
 
   ReportTimerStart(kSyncMountTimer);
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
@@ -2291,7 +2296,8 @@ gboolean Service::MountGuest(gint *OUT_error_code,
     GetOrCreateMountForUser(guest_user_);
   ReportTimerStart(kSyncGuestMountTimer);
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskMountGuest> mount_task
       = new MountTaskMountGuest(NULL, guest_mount.get());
   mount_task->set_result(&result);
@@ -2427,7 +2433,8 @@ gboolean Service::UnmountForUser(const gchar *userid, gboolean *OUT_result,
 gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
                                                   GError **error) {
   MountTaskResult result;
-  base::WaitableEvent event(true, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =

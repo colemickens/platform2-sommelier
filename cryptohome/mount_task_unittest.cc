@@ -28,7 +28,8 @@ class MountTaskTest : public ::testing::Test {
  public:
   MountTaskTest()
       : runner_("RunnerThread"),
-        event_(true, false),
+        event_(base::WaitableEvent::ResetPolicy::MANUAL,
+               base::WaitableEvent::InitialState::NOT_SIGNALED),
         mount_(new MockMount),
         homedirs_(),
         result_() {
