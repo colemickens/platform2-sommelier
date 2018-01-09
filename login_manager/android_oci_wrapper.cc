@@ -175,6 +175,10 @@ bool AndroidOciWrapper::GetContainerPID(pid_t* pid_out) const {
   return true;
 }
 
+StatefulMode AndroidOciWrapper::GetStatefulMode() const {
+  return stateful_mode_;
+}
+
 void AndroidOciWrapper::SetStatefulMode(StatefulMode mode) {
   stateful_mode_ = mode;
 }
