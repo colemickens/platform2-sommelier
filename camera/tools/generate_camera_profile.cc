@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -136,6 +137,7 @@ int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  base::AtExitManager at_exit_manager;
 
   int log_flags = brillo::kLogToSyslog;
   if (cl->HasSwitch("foreground")) {
