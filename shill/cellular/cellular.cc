@@ -1229,6 +1229,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kMinProperty, &min_);
   store->RegisterConstString(kManufacturerProperty, &manufacturer_);
   store->RegisterConstString(kModelIdProperty, &model_id_);
+  store->RegisterConstString(kEquipmentIdProperty, &equipment_id_);
   store->RegisterConstBool(kScanningProperty, &scanning_);
 
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
@@ -1300,7 +1301,11 @@ void Cellular::set_scanning_supported(bool scanning_supported) {
 }
 
 void Cellular::set_equipment_id(const string& equipment_id) {
+  if (equipment_id_ == equipment_id)
+    return;
+
   equipment_id_ = equipment_id;
+  adaptor()->EmitStringChanged(kEquipmentIdProperty, equipment_id_);
 }
 
 void Cellular::set_esn(const string& esn) {
