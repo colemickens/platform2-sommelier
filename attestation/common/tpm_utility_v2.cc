@@ -181,8 +181,8 @@ bool TpmUtilityV2::Initialize() {
     return false;
   }
   if (!tpm_owner_ || !tpm_nvram_) {
-    base::WaitableEvent event(true /* manual_reset */,
-                              false /* initially_signaled */);
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
     tpm_manager_thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind([this, &event]() {
           default_tpm_owner_ =
@@ -775,8 +775,8 @@ bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
 template <typename ReplyProtoType, typename MethodType>
 void TpmUtilityV2::SendTpmManagerRequestAndWait(const MethodType& method,
                                                 ReplyProtoType* reply_proto) {
-  base::WaitableEvent event(true /* manual_reset */,
-                            false /* initially_signaled */);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   auto callback =
       base::Bind([reply_proto, &event](const ReplyProtoType& reply) {
         *reply_proto = reply;

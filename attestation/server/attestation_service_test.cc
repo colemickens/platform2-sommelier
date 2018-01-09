@@ -59,7 +59,8 @@ namespace attestation {
 class MessageLoopIdleEvent : public base::MessageLoop::TaskObserver {
  public:
   explicit MessageLoopIdleEvent(base::MessageLoop* message_loop)
-      : event_(true /* manual_reset */, false /* initially_signalled */),
+      : event_(base::WaitableEvent::ResetPolicy::MANUAL,
+               base::WaitableEvent::InitialState::NOT_SIGNALED),
         observer_added_(false),
         tasks_processed_(0),
         was_idle_(false),
