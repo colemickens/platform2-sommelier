@@ -528,7 +528,7 @@ bool TPM2UtilityImpl::Bind(int key_handle,
   int rsa_result = RSA_public_encrypt(
       input.size(),
       reinterpret_cast<const unsigned char*>(input.data()),
-      reinterpret_cast<unsigned char*>(string_as_array(output)),
+      reinterpret_cast<unsigned char*>(base::string_as_array(output)),
       rsa.get(),
       RSA_PKCS1_PADDING);
   if (rsa_result == -1) {
