@@ -618,6 +618,16 @@ bool ParseSkipSecurebitsMask(const base::ListValue& skip_securebits_list,
   return true;
 }
 
+// Parses the cpu node if it is present.
+bool ParseCpuInfo(const base::DictionaryValue& cpu_dict, OciCpu* cpu_out) {
+  ParseIntFromDict(cpu_dict, "shares", &cpu_out->shares);
+  ParseIntFromDict(cpu_dict, "quota", &cpu_out->quota);
+  ParseIntFromDict(cpu_dict, "period", &cpu_out->period);
+  ParseIntFromDict(cpu_dict, "realtimeRuntime", &cpu_out->realtimeRuntime);
+  ParseIntFromDict(cpu_dict, "realtimePeriod", &cpu_out->realtimePeriod);
+  return true;
+}
+
 // Parses the linux node which has information about setting up a user
 // namespace, and the list of devices for the container.
 bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
@@ -686,6 +696,12 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
     }
   } else {
     config_out->linux_config.skipSecurebits = 0;  // Optional
+  }
+
+  const base::DictionaryValue* cpu_dict = nullptr;
+  if (linux_dict->GetDictionary("cpu", &cpu_dict)) {
+    if (!ParseCpuInfo(*cpu_dict, &config_out->linux_config.cpu))
+      return false;
   }
 
   return true;

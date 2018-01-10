@@ -667,6 +667,23 @@ int RunOci(const base::FilePath& bundle_dir,
     container_config_gid_map(config.get(), map_string.c_str());
   }
 
+  if (oci_config->linux_config.cpu.shares) {
+    container_config_set_cpu_shares(config.get(),
+                                    oci_config->linux_config.cpu.shares);
+  }
+  if (oci_config->linux_config.cpu.quota &&
+      oci_config->linux_config.cpu.period) {
+    container_config_set_cpu_cfs_params(config.get(),
+                                        oci_config->linux_config.cpu.quota,
+                                        oci_config->linux_config.cpu.period);
+  }
+  if (oci_config->linux_config.cpu.realtimeRuntime &&
+      oci_config->linux_config.cpu.realtimePeriod) {
+    container_config_set_cpu_rt_params(
+        config.get(), oci_config->linux_config.cpu.realtimeRuntime,
+        oci_config->linux_config.cpu.realtimePeriod);
+  }
+
   if (!oci_config->linux_config.altSyscall.empty()) {
     container_config_alt_syscall_table(
         config.get(), oci_config->linux_config.altSyscall.c_str());

@@ -124,6 +124,15 @@ struct OciNamespace {
   base::FilePath path;  // Optional
 };
 
+struct OciCpu {
+  uint64_t shares;          // Optional
+  int64_t quota;            // Optional
+  uint64_t period;          // Optional
+  int64_t realtimeRuntime;  // Optional
+  uint64_t realtimePeriod;  // Optional
+  // Unused: cpus, mems
+};
+
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
   base::FilePath cgroupsPath;           // Optional
@@ -133,6 +142,7 @@ struct OciLinux {
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional
   OciSeccomp seccomp;                                 // Optional
   int rootfsPropagation = 0;                          // Optional
+  OciCpu cpu;                                         // Optional
   std::string altSyscall;       // Optional, Chrome OS extension.
   uint64_t skipSecurebits = 0;  // Optional, Chrome OS extension.
   // Unused: maskedPaths, readonlyPaths, mountLabel, sysctl

@@ -310,6 +310,13 @@ const char kBasicJsonData[] = R"json(
                         ]
                     }
                 ]
+            },
+            "cpu": {
+                "shares": 1024,
+                "quota": 1000000,
+                "period": 500000,
+                "realtimeRuntime": 950000,
+                "realtimePeriod": 1000000
             }
         }
     }
@@ -497,6 +504,13 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(seccomp->syscalls[1].args[0].value, 255);
   EXPECT_EQ(seccomp->syscalls[1].args[0].value2, 4);
   EXPECT_EQ(seccomp->syscalls[1].args[0].op, "SCMP_CMP_EQ");
+  // cpu
+  OciCpu* cpu = &basic_config->linux_config.cpu;
+  EXPECT_EQ(cpu->shares, 1024);
+  EXPECT_EQ(cpu->quota, 1000000);
+  EXPECT_EQ(cpu->period, 500000);
+  EXPECT_EQ(cpu->realtimeRuntime, 950000);
+  EXPECT_EQ(cpu->realtimePeriod, 1000000);
   // capabilities
   const auto effective_capset =
       basic_config->process.capabilities.find("effective");
