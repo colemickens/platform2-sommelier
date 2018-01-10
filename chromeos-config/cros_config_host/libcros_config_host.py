@@ -989,9 +989,10 @@ class CrosConfigImpl(object):
       if whitelabels:
         for whitelabel in whitelabels.subnodes.values():
           key_id = whitelabel.GetStr('key-id')
-          result[whitelabel.name] = info._replace(
-              model=whitelabel.name, key_id=key_id, have_image=False,
-              sig_id=whitelabel.name)
+          whitelabel_name = '%s-%s' % (base_model.name, whitelabel.name)
+          result[whitelabel_name] = info._replace(
+              model=whitelabel_name, key_id=key_id, have_image=False,
+              sig_id=whitelabel_name)
       return result
 
   class Property(object):
