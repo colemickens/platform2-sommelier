@@ -384,14 +384,14 @@ JpegEncodeTask::handleISPData(ExifMetaData& exifData) const
     camera_metadata_entry focalLengths = staticMeta.find(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
     if (focalLengths.count >= 1) {
         uint32_t den = 100;
-        uint32_t num = (uint32_t)(focalLengths.data.f[0] * den);
+        uint32_t num = (uint32_t)(focalLengths.data.f[0] * den + 0.5);
         ispData->focal_length = num;
     }
 
     camera_metadata_entry apertures = staticMeta.find(ANDROID_LENS_INFO_AVAILABLE_APERTURES);
     if (apertures.count >= 1) {
         uint32_t den = 10;
-        uint32_t num = (uint32_t)(apertures.data.f[0] * den);
+        uint32_t num = (uint32_t)(apertures.data.f[0] * den + 0.5);
         ispData->f_number_curr = num << 16;
     } else {
         ispData->f_number_curr = EXIF_DEF_FNUMBER_NUM << 16;
