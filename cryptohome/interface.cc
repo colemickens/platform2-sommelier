@@ -719,23 +719,6 @@ gboolean cryptohome_install_attributes_is_first_install(
   CRYPTOHOME_WRAP_METHOD(InstallAttributesIsFirstInstall, OUT_is_first_install);
 }
 
-gboolean cryptohome_store_enrollment_state(
-  Cryptohome* self,
-  GArray* enrollment_state,
-  gboolean* OUT_success,
-  GError** error) {
-  CRYPTOHOME_WRAP_METHOD(StoreEnrollmentState, enrollment_state, OUT_success);
-}
-
-gboolean cryptohome_load_enrollment_state(
-  Cryptohome* self,
-  GArray** OUT_enrollment_state,
-  gboolean* OUT_success,
-  GError** error) {
-  CRYPTOHOME_WRAP_METHOD(LoadEnrollmentState, OUT_enrollment_state,
-                         OUT_success);
-}
-
 gboolean cryptohome_sign_boot_lockbox(Cryptohome* self,
                                       GArray* request,
                                       DBusGMethodInvocation* error) {

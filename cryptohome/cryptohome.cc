@@ -115,8 +115,6 @@ namespace switches {
                                    "install_attributes_finalize",
                                    "pkcs11_token_status",
                                    "pkcs11_terminate",
-                                   "store_enrollment_state",
-                                   "load_enrollment_state",
                                    "tpm_live_test",
                                    "tpm_verify_attestation",
                                    "tpm_verify_ek",
@@ -180,8 +178,6 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
     ACTION_PKCS11_TOKEN_STATUS,
     ACTION_PKCS11_TERMINATE,
-    ACTION_STORE_ENROLLMENT,
-    ACTION_LOAD_ENROLLMENT,
     ACTION_TPM_LIVE_TEST,
     ACTION_TPM_VERIFY_ATTESTATION,
     ACTION_TPM_VERIFY_EK,
@@ -1819,52 +1815,6 @@ int main(int argc, char **argv) {
       printf("Finalize() failed: %s.\n", error->message);
     }
     printf("InstallAttributesFinalize(): %d\n", result);
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_STORE_ENROLLMENT],
-      action.c_str())) {
-    gboolean success;
-    std::string random_data = "TEST DATA TO STORE";
-    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    brillo::glib::ScopedError error;
-    g_array_append_vals(data.get(),
-                        random_data.data(),
-                        random_data.length());
-
-    if (!org_chromium_CryptohomeInterface_store_enrollment_state(
-        proxy.gproxy(),
-        data.get(),
-        &success,
-        &brillo::Resetter(&error).lvalue())) {
-      printf("Store enrollment failed: %s.\n", error->message);
-      return 1;
-    }
-    if (!success) {
-      printf("Store enrollment failed but dbus send succeeded.\n");
-      return 1;
-    } else {
-      printf("Stored %s.\n", random_data.c_str());
-    }
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_LOAD_ENROLLMENT],
-      action.c_str())) {
-    gboolean success;
-    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_load_enrollment_state(
-        proxy.gproxy(),
-        &brillo::Resetter(&data).lvalue(),
-        &success,
-        &brillo::Resetter(&error).lvalue())) {
-      printf("Load enrollment failed: %s.\n", error->message);
-      return 1;
-    }
-    if (!success) {
-      printf("Load enrollment failed but dbus send succeeded.\n");
-      return 1;
-    } else {
-      std::string loaded_data(static_cast<char*>(data->data), data->len);
-      printf("Decrypted from disk: %s.\n", loaded_data.c_str());
-    }
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {

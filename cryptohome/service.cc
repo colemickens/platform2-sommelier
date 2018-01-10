@@ -97,12 +97,6 @@ const char kDircryptoMigrationProgressEventType[] =
 // The default entropy source to seed with random data from the TPM on startup.
 const FilePath kDefaultEntropySource("/dev/urandom");
 
-// Location of the path to store basic device enrollment information that
-// will persist across powerwashes.
-const FilePath kPreservedEnrollmentStatePath(
-    "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb");
-const mode_t kPreservedEnrollmentStatePermissions = 0600;
-
 #if USE_TPM2
 const bool kUseInternalAttestationModeByDefault = false;
 const char kAttestationMode[] = "attestation_mode";
@@ -2714,60 +2708,6 @@ gboolean Service::InstallAttributesIsFirstInstall(
     gboolean* OUT_is_first_install,
     GError** error) {
   *OUT_is_first_install = (install_attrs_->is_first_install() == true);
-  return TRUE;
-}
-
-gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
-                                       gboolean* OUT_success,
-                                       GError** error) {
-  *OUT_success = false;
-  if (!enterprise_owned_) {
-    LOG(ERROR) << "Not preserving enrollment state as we are not enrolled.";
-    return TRUE;
-  }
-  SecureBlob data_blob(enrollment_state->data,
-                       enrollment_state->data + enrollment_state->len);
-  std::string encrypted_data;
-  if (!crypto_->EncryptWithTpm(data_blob, &encrypted_data)) {
-    return TRUE;
-  }
-  if (!platform_->WriteStringToFileAtomicDurable(
-          kPreservedEnrollmentStatePath,
-          encrypted_data,
-          kPreservedEnrollmentStatePermissions)) {
-    LOG(ERROR) << "Failed to write out enrollment state to "
-               << kPreservedEnrollmentStatePath.value();
-    return TRUE;
-  }
-  *OUT_success = true;
-  return TRUE;
-}
-
-gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
-                                      gboolean* OUT_success,
-                                      GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_enrollment_state = g_array_new(false, false, 1);
-  *OUT_success = false;
-  brillo::Blob enrollment_blob;
-  if (!platform_->ReadFile(kPreservedEnrollmentStatePath,
-                           &enrollment_blob)) {
-    LOG(ERROR) << "Failed to read out enrollment state from "
-               << kPreservedEnrollmentStatePath.value();
-    return TRUE;
-  }
-  std::string enrollment_string(
-      reinterpret_cast<const char*>(&enrollment_blob.front()),
-      enrollment_blob.size());
-  SecureBlob secure_data;
-  if (!crypto_->DecryptWithTpm(enrollment_string,
-                               &secure_data)) {
-    return TRUE;
-  }
-  g_array_append_vals(*OUT_enrollment_state,
-                      secure_data.char_data(), secure_data.size());
-  *OUT_success = true;
   return TRUE;
 }
 

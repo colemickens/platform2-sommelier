@@ -600,13 +600,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
                                                    GError** error);
 
-  virtual gboolean StoreEnrollmentState(GArray* enrollment_state,
-                                        gboolean* OUT_success,
-                                        GError** error);
-
-  virtual gboolean LoadEnrollmentState(GArray** OUT_enrollment_state,
-                                       gboolean* OUT_success,
-                                       GError** error);
   // Runs on the mount thread.
   virtual void DoSignBootLockbox(const brillo::SecureBlob& request,
                                  DBusGMethodInvocation* context);
@@ -675,8 +668,6 @@ class Service : public brillo::dbus::AbstractDbusService,
 
  protected:
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
-  FRIEND_TEST(ServiceTest, StoreEnrollmentState);
-  FRIEND_TEST(ServiceTest, LoadEnrollmentState);
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
   bool use_tpm_;
