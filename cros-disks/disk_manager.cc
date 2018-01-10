@@ -221,7 +221,7 @@ void DiskManager::ProcessBlockDeviceEvents(udev_device* dev,
   string device_path = device.NativePath();
   if (disk_added) {
     if (device.IsAutoMountable()) {
-      if (ContainsKey(disks_detected_, device_path)) {
+      if (base::ContainsKey(disks_detected_, device_path)) {
         // Disk already exists, so remove it and then add it again.
         events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
       } else {
@@ -232,7 +232,7 @@ void DiskManager::ProcessBlockDeviceEvents(udev_device* dev,
         udev_device* parent = udev_device_get_parent(dev);
         if (parent) {
           string parent_device_path = UdevDevice(parent).NativePath();
-          if (ContainsKey(disks_detected_, parent_device_path)) {
+          if (base::ContainsKey(disks_detected_, parent_device_path)) {
             disks_detected_[parent_device_path].insert(device_path);
           }
         }
@@ -244,7 +244,7 @@ void DiskManager::ProcessBlockDeviceEvents(udev_device* dev,
     events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
   } else if (child_disk_removed) {
     bool no_child_disks_found = true;
-    if (ContainsKey(disks_detected_, device_path)) {
+    if (base::ContainsKey(disks_detected_, device_path)) {
       set<string>& child_disks = disks_detected_[device_path];
       no_child_disks_found = child_disks.empty();
       for (const auto& child_disk : child_disks) {
@@ -267,14 +267,14 @@ void DiskManager::ProcessMmcOrScsiDeviceEvents(udev_device* dev,
 
   string device_path = device.NativePath();
   if (strcmp(action, kUdevAddAction) == 0) {
-    if (ContainsKey(devices_detected_, device_path)) {
+    if (base::ContainsKey(devices_detected_, device_path)) {
       events->push_back(DeviceEvent(DeviceEvent::kDeviceScanned, device_path));
     } else {
       devices_detected_.insert(device_path);
       events->push_back(DeviceEvent(DeviceEvent::kDeviceAdded, device_path));
     }
   } else if (strcmp(action, kUdevRemoveAction) == 0) {
-    if (ContainsKey(devices_detected_, device_path)) {
+    if (base::ContainsKey(devices_detected_, device_path)) {
       devices_detected_.erase(device_path);
       events->push_back(DeviceEvent(DeviceEvent::kDeviceRemoved, device_path));
     }

@@ -79,12 +79,13 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     const std::set<std::string>& reserved_paths) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
 
-  if (!ContainsKey(reserved_paths, *path) && CreateOrReuseEmptyDirectory(*path))
+  if (!base::ContainsKey(reserved_paths, *path) &&
+      CreateOrReuseEmptyDirectory(*path))
     return true;
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
     string fallback_path = GetDirectoryFallbackName(*path, suffix);
-    if (!ContainsKey(reserved_paths, fallback_path) &&
+    if (!base::ContainsKey(reserved_paths, fallback_path) &&
         CreateOrReuseEmptyDirectory(fallback_path)) {
       *path = fallback_path;
       return true;

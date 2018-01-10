@@ -262,16 +262,19 @@ TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
   Disk disk;
   disk.device_file = "/dev/sr0";
   EXPECT_FALSE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_FALSE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
   EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_TRUE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 
   disk.media_type = DEVICE_MEDIA_DVD;
   manager_.devices_to_eject_on_unmount_.clear();
   EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_TRUE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
@@ -280,7 +283,8 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
   manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
   EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(true));
   EXPECT_TRUE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_FALSE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
@@ -289,7 +293,8 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
   manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
   EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(false));
   EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_FALSE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
@@ -299,7 +304,8 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
   manager_.eject_device_on_unmount_ = false;
   EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
   EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_FALSE(
+      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded) {

@@ -56,7 +56,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
     return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
   }
 
-  if (ContainsKey(format_process_, device_path)) {
+  if (base::ContainsKey(format_process_, device_path)) {
     LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
