@@ -103,9 +103,6 @@ enable_debug() {
       printf 'N' > /sys/module/printk/parameters/console_suspend
     fi
   fi
-  if [ -e /sys/power/pm_print_times ]; then
-    printf '1' > /sys/power/pm_print_times
-  fi
 }
 
 is_lumpy() {

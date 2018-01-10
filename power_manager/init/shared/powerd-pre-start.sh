@@ -58,6 +58,10 @@ done
 # Prepare for recovery from dark resume to a full resume.  TODO(chirantan):
 # Remove this when selective resume is ready.
 if [ -e "${PM_TEST_DELAY_FILE}" ]; then
-   # Wait for 5 milliseconds before starting the resume.
-   echo 5 > "${PM_TEST_DELAY_FILE}"
+  # Wait for 5 milliseconds before starting the resume.
+  echo 5 > "${PM_TEST_DELAY_FILE}"
+fi
+
+if [ -e "/sys/power/pm_print_times" ]; then
+  echo 1 > /sys/power/pm_print_times
 fi
