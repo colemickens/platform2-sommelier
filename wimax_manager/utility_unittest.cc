@@ -28,10 +28,10 @@ TEST_F(UtilityTest, GetKeysOfMap) {
 
   set<int> keys = GetKeysOfMap(test_map);
   EXPECT_EQ(3, keys.size());
-  EXPECT_TRUE(ContainsKey(keys, 1));
-  EXPECT_TRUE(ContainsKey(keys, 2));
-  EXPECT_TRUE(ContainsKey(keys, 3));
-  EXPECT_FALSE(ContainsKey(keys, 4));
+  EXPECT_TRUE(base::ContainsKey(keys, 1));
+  EXPECT_TRUE(base::ContainsKey(keys, 2));
+  EXPECT_TRUE(base::ContainsKey(keys, 3));
+  EXPECT_FALSE(base::ContainsKey(keys, 4));
 }
 
 TEST_F(UtilityTest, RemoveKeysFromMapWithEmptySetOfKeys) {
@@ -70,8 +70,8 @@ TEST_F(UtilityTest, RemoveKeysFromMap) {
 
   RemoveKeysFromMap(&test_map, keys_to_remove);
   EXPECT_EQ(2, test_map.size());
-  EXPECT_FALSE(ContainsKey(test_map, 1));
-  EXPECT_FALSE(ContainsKey(test_map, 4));
+  EXPECT_FALSE(base::ContainsKey(test_map, 1));
+  EXPECT_FALSE(base::ContainsKey(test_map, 4));
   EXPECT_EQ('b', test_map[2]);
   EXPECT_EQ('c', test_map[3]);
 }
