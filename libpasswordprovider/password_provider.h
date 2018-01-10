@@ -10,11 +10,12 @@
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
 
+#include "libpasswordprovider/libpasswordprovider_export.h"
 #include "libpasswordprovider/password.h"
 
 namespace password_provider {
 
-class BRILLO_EXPORT PasswordProviderInterface {
+class LIBPASSWORDPROVIDER_EXPORT PasswordProviderInterface {
  public:
   virtual ~PasswordProviderInterface() {}
 
@@ -34,14 +35,15 @@ class BRILLO_EXPORT PasswordProviderInterface {
 
 // Implementation of password storage. This is a wrapper around Linux keyring
 // functions.
-class BRILLO_EXPORT PasswordProvider : public PasswordProviderInterface {
+class LIBPASSWORDPROVIDER_EXPORT PasswordProvider
+    : public PasswordProviderInterface {
  public:
   PasswordProvider();
 
   // PasswordProviderInterface overrides
-  bool BRILLO_EXPORT SavePassword(const Password& password) override;
-  std::unique_ptr<Password> BRILLO_EXPORT GetPassword() override;
-  bool BRILLO_EXPORT DiscardPassword() override;
+  bool SavePassword(const Password& password) override;
+  std::unique_ptr<Password> GetPassword() override;
+  bool DiscardPassword() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PasswordProvider);

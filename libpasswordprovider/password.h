@@ -6,7 +6,8 @@
 #define LIBPASSWORDPROVIDER_PASSWORD_H_
 
 #include <base/macros.h>
-#include <brillo/brillo_export.h>
+
+#include "libpasswordprovider/libpasswordprovider_export.h"
 
 namespace password_provider {
 
@@ -19,7 +20,7 @@ namespace password_provider {
 //
 // Note that the contents size will need to be set once the buffer has been
 // written to.
-class BRILLO_EXPORT Password {
+class LIBPASSWORDPROVIDER_EXPORT Password {
  public:
   Password() = default;
   ~Password();
