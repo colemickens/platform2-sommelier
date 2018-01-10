@@ -24,22 +24,11 @@ namespace run_oci {
 
 namespace {
 
-// Gets a uint32 from the given dictionary.
-bool ParseUint32FromDict(const base::DictionaryValue& dict,
-                         const char* name,
-                         uint32_t* val_out) {
-  double double_val;
-  if (!dict.GetDouble(name, &double_val)) {
-    return false;
-  }
-  *val_out = double_val;
-  return true;
-}
-
-// Gets a uint64 from the given dictionary.
-bool ParseUint64FromDict(const base::DictionaryValue& dict,
-                         const char* name,
-                         uint64_t* val_out) {
+// Gets an integer from the given dictionary.
+template <typename T>
+bool ParseIntFromDict(const base::DictionaryValue& dict,
+                      const char* name,
+                      T* val_out) {
   double double_val;
   if (!dict.GetDouble(name, &double_val)) {
     return false;
@@ -183,11 +172,11 @@ bool ParseRlimitsConfig(const base::ListValue& rlimits_list,
 
     OciProcessRlimit limit;
     limit.type = it->second;
-    if (!ParseUint32FromDict(*rlimits_dict, "hard", &limit.hard)) {
+    if (!ParseIntFromDict(*rlimits_dict, "hard", &limit.hard)) {
       LOG(ERROR) << "Fail to get hard limit of rlimit " << i;
       return false;
     }
-    if (!ParseUint32FromDict(*rlimits_dict, "soft", &limit.soft)) {
+    if (!ParseIntFromDict(*rlimits_dict, "soft", &limit.soft)) {
       LOG(ERROR) << "Fail to get soft limit of rlimit " << i;
       return false;
     }
@@ -214,9 +203,9 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "Failed to get user info from config";
     return false;
   }
-  if (!ParseUint32FromDict(*user_dict, "uid", &config_out->process.user.uid))
+  if (!ParseIntFromDict(*user_dict, "uid", &config_out->process.user.uid))
     return false;
-  if (!ParseUint32FromDict(*user_dict, "gid", &config_out->process.user.gid))
+  if (!ParseIntFromDict(*user_dict, "gid", &config_out->process.user.gid))
     return false;
   // |args_list| stays owned by |process_dict|
   const base::ListValue* args_list = nullptr;
@@ -370,9 +359,9 @@ bool ParseResources(const base::DictionaryValue& resources_dict,
       device.access = "rwm";  // Optional, default to all perms.
     if (!dev->GetString("type", &device.type))
       device.type = "a";  // Optional, default to both a means all.
-    if (!ParseUint32FromDict(*dev, "major", &device.major))
+    if (!ParseIntFromDict(*dev, "major", &device.major))
       device.major = -1;  // Optional, -1 will map to all devices.
-    if (!ParseUint32FromDict(*dev, "minor", &device.minor))
+    if (!ParseIntFromDict(*dev, "minor", &device.minor))
       device.minor = -1;  // Optional, -1 will map to all devices.
 
     resources_out->devices.push_back(device);
@@ -439,7 +428,7 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
             << device.path.value();
       }
     } else {
-      if (!ParseUint32FromDict(*dev, "major", &device.major))
+      if (!ParseIntFromDict(*dev, "major", &device.major))
         return false;
     }
 
@@ -451,14 +440,14 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
             << device.path.value();
       }
     } else {
-      if (!ParseUint32FromDict(*dev, "minor", &device.minor))
+      if (!ParseIntFromDict(*dev, "minor", &device.minor))
         return false;
     }
-    if (!ParseUint32FromDict(*dev, "fileMode", &device.fileMode))
+    if (!ParseIntFromDict(*dev, "fileMode", &device.fileMode))
       return false;
-    if (!ParseUint32FromDict(*dev, "uid", &device.uid))
+    if (!ParseIntFromDict(*dev, "uid", &device.uid))
       return false;
-    if (!ParseUint32FromDict(*dev, "gid", &device.gid))
+    if (!ParseIntFromDict(*dev, "gid", &device.gid))
       return false;
 
     config_out->linux_config.devices.push_back(device);
@@ -477,11 +466,11 @@ bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
       LOG(ERROR) << "Fail to get id map " << i;
       return false;
     }
-    if (!ParseUint32FromDict(*map, "hostID", &new_map.hostID))
+    if (!ParseIntFromDict(*map, "hostID", &new_map.hostID))
       return false;
-    if (!ParseUint32FromDict(*map, "containerID", &new_map.containerID))
+    if (!ParseIntFromDict(*map, "containerID", &new_map.containerID))
       return false;
-    if (!ParseUint32FromDict(*map, "size", &new_map.size))
+    if (!ParseIntFromDict(*map, "size", &new_map.size))
       return false;
     mappings_out->push_back(new_map);
   }
@@ -500,11 +489,11 @@ bool ParseSeccompArgs(const base::DictionaryValue& syscall_dict,
         return false;
       }
       OciSeccompArg this_arg;
-      if (!ParseUint32FromDict(*args_dict, "index", &this_arg.index))
+      if (!ParseIntFromDict(*args_dict, "index", &this_arg.index))
         return false;
-      if (!ParseUint64FromDict(*args_dict, "value", &this_arg.value))
+      if (!ParseIntFromDict(*args_dict, "value", &this_arg.value))
         return false;
-      if (!ParseUint64FromDict(*args_dict, "value2", &this_arg.value2))
+      if (!ParseIntFromDict(*args_dict, "value2", &this_arg.value2))
         return false;
       if (!args_dict->GetString("op", &this_arg.op)) {
         LOG(ERROR) << "Failed to parse op for arg " << this_arg.index << " of "
