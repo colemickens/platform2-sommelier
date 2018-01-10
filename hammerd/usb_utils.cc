@@ -85,20 +85,28 @@ UsbConnectStatus UsbEndpoint::Connect() {
   }
 
   // Confirm the device has valid vendor/product ID.
+  // (b/70955082): Only return |kInvalidDevice| when the VID/PID files exist but
+  // aren't the expected values.  This is to prevent mis-reporting an invalid
+  // device on AP suspend/resume, when the files may not yet be ready.
   const base::FilePath usb_path = GetUsbSysfsPath(bus_, port_);
   if (!base::DirectoryExists(usb_path)) {
     LOG(ERROR) << "USB sysfs does not exist.";
     return UsbConnectStatus::kUsbPathEmpty;
   }
-  if (!CheckFileIntValue(usb_path.Append("idVendor"), vendor_id_) ||
-      !CheckFileIntValue(usb_path.Append("idProduct"), product_id_)) {
+  int vendor_id, product_id;
+  if (!ReadFileToInt(usb_path.Append("idVendor"), &vendor_id) ||
+      !ReadFileToInt(usb_path.Append("idProduct"), &product_id)) {
+    LOG(ERROR) << "Failed to read VID and PID.";
+    return UsbConnectStatus::kUnknownError;
+  }
+  if (vendor_id_ != vendor_id || product_id_ != product_id) {
     LOG(ERROR) << "Invalid VID and PID.";
     return UsbConnectStatus::kInvalidDevice;
   }
   if (!base::ReadFileToString(usb_path.Append("configuration"),
                               &configuration_string_)) {
     LOG(ERROR) << "Failed to read configuration file.";
-    return UsbConnectStatus::kInvalidDevice;
+    return UsbConnectStatus::kUnknownError;
   }
   base::TrimWhitespaceASCII(configuration_string_, base::TRIM_ALL,
                             &configuration_string_);
@@ -108,6 +116,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
   // The endpoint address is composed of:
   // - Bits 0..6: Endpoint Number
   // - Bits 7:    Direction 0 = Out, 1 = In
+  bool is_found = false;
   base::FileEnumerator iface_paths(
       usb_path, false,
       base::FileEnumerator::FileType::DIRECTORIES,
@@ -123,11 +132,11 @@ UsbConnectStatus UsbEndpoint::Connect() {
                           kUsbProtocolGoogleUpdate)) {
       if (!ReadFileToInt(iface_path.Append("bInterfaceNumber"), &iface_num_)) {
         LOG(ERROR) << "Failed to read interface number.";
-        return UsbConnectStatus::kInvalidDevice;
+        return UsbConnectStatus::kUnknownError;
       }
       if (!CheckFileIntValue(iface_path.Append("bNumEndpoints"), 2)) {
         LOG(ERROR) << "Interface should only have 2 Endpoints.";
-        return UsbConnectStatus::kInvalidDevice;
+        return UsbConnectStatus::kUnknownError;
       }
       // Get endpoint number and chunk size. Two endpoints should have the same
       // endpoint number, so just calculate it by the first one.
@@ -137,25 +146,30 @@ UsbConnectStatus UsbEndpoint::Connect() {
       if (!ReadFileToInt(ep_path.Append("bEndpointAddress"), &ep_num_) ||
           !ReadFileToInt(ep_path.Append("wMaxPacketSize"), &chunk_len_)) {
         LOG(ERROR) << "Failed to read endpoint address and chunk size.";
-        return UsbConnectStatus::kInvalidDevice;
+        return UsbConnectStatus::kUnknownError;
       }
       ep_num_ = ep_num_ & 0x7f;  // Bit mask of 0~6 bits.
+      DLOG(INFO) << "found interface " << iface_num_ << ", endpoint "
+                 << static_cast<int>(ep_num_) << ", chunk_len " << chunk_len_;
+      is_found = true;
       break;
     }
   }
-  LOG(INFO) << "found interface " << iface_num_ << ", endpoint "
-            << static_cast<int>(ep_num_) << ", chunk_len " << chunk_len_;
+  if (!is_found) {
+    LOG(ERROR) << "Failed to find a valid interface.";
+    return UsbConnectStatus::kUnknownError;
+  }
 
   // Open the usbfs file, and claim the interface.
   base::FilePath usbfs_path;
   if (!GetUsbDevicePath(bus_, port_, &usbfs_path)) {
-    return UsbConnectStatus::kInvalidDevice;
+    return UsbConnectStatus::kUnknownError;
   }
   fd_ = open(usbfs_path.value().c_str(), O_RDWR | O_CLOEXEC);
   if (fd_ < 0) {
     PLOG(ERROR) << "Failed to open usbfs file";
     Close();
-    return UsbConnectStatus::kInvalidDevice;
+    return UsbConnectStatus::kUnknownError;
   }
   if (ioctl(fd_, USBDEVFS_CLAIMINTERFACE, &iface_num_)) {
     PLOG(ERROR) << "Failed to claim interface";

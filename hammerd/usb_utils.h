@@ -41,10 +41,10 @@ constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 const base::FilePath GetUsbSysfsPath(uint16_t bus, uint16_t port);
 
 enum class UsbConnectStatus {
-  kSuccess,
-  kUsbPathEmpty,
-  kInvalidDevice,
-  kUnknownError,
+  kSuccess,  // USB device is connected successfully.
+  kUsbPathEmpty,  // Sysfs path of USB device is not found.
+  kInvalidDevice,  // USB device has wrong VID/PID.
+  kUnknownError,  // Other failure.
 };
 
 class UsbEndpointInterface {
