@@ -19,7 +19,7 @@ ModemFlasher::ModemFlasher(
 
 void ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
-  if (ContainsValue(blacklist_, equipment_id)) {
+  if (base::ContainsKey(blacklist_, equipment_id)) {
     LOG(WARNING) << "Modem with equipment ID \"" << equipment_id
                  << "\" is blacklisted; not flashing";
     return;
@@ -28,7 +28,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
 
   FirmwareFileInfo file_info;
   // Check if we need to update the main firmware.
-  if (!ContainsValue(main_fw_checked_, equipment_id) &&
+  if (!base::ContainsKey(main_fw_checked_, equipment_id) &&
       firmware_directory_->FindMainFirmware(device_id, &file_info)) {
     DLOG(INFO) << "Found main firmware blob " << file_info.version
                << ", currently installed main firmware version: "
