@@ -1086,10 +1086,10 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
 #endif
   modulus->resize(BN_num_bytes(rsa.get()->n), 0);
   BN_bn2bin(rsa.get()->n,
-            reinterpret_cast<unsigned char*>(string_as_array(modulus)));
+            reinterpret_cast<unsigned char*>(base::string_as_array(modulus)));
   prime_factor->resize(BN_num_bytes(rsa.get()->p), 0);
-  BN_bn2bin(rsa.get()->p,
-            reinterpret_cast<unsigned char*>(string_as_array(prime_factor)));
+  BN_bn2bin(rsa.get()->p, reinterpret_cast<unsigned char*>(
+                              base::string_as_array(prime_factor)));
   if (public_key) {
     unsigned char* buffer = NULL;
     int length = i2d_RSAPublicKey(rsa.get(), &buffer);
@@ -1109,8 +1109,8 @@ bool TrunksClientTest::VerifyRSASignature(const std::string& public_key,
   std::string digest = crypto::SHA256HashString(data);
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
-  unsigned char* signature_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(&mutable_signature));
+  unsigned char* signature_buffer = reinterpret_cast<unsigned char*>(
+      base::string_as_array(&mutable_signature));
   return (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
                      signature.size(), rsa.get()) == 1);
 }

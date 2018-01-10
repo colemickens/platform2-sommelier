@@ -82,7 +82,7 @@ TPM_RC SessionManagerImpl::StartSession(
 
   std::string salt(SHA256_DIGEST_SIZE, 0);
   unsigned char* salt_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(&salt));
+      reinterpret_cast<unsigned char*>(base::string_as_array(&salt));
   CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
       << "Error generating a cryptographically random salt.";
   // First we encrypt the cryptographically secure salt using PKCS1_OAEP
@@ -203,7 +203,7 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   encrypted_salt->resize(out_length);
   if (!EVP_PKEY_encrypt(
           salt_encrypt_context.get(),
-          reinterpret_cast<uint8_t*>(string_as_array(encrypted_salt)),
+          reinterpret_cast<uint8_t*>(base::string_as_array(encrypted_salt)),
           &out_length, reinterpret_cast<const uint8_t*>(salt.data()),
           salt.size())) {
     LOG(ERROR) << "Error encrypting salt: " << GetOpenSSLError();
