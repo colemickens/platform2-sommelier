@@ -19,7 +19,7 @@
 namespace shill {
 
 namespace {
-base::LazyInstance<Ares> g_ares = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<Ares>::Leaky g_ares = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 Ares::Ares() { }

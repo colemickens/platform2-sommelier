@@ -21,7 +21,7 @@
 namespace shill {
 
 namespace {
-base::LazyInstance<IcmpSessionFactory> g_icmp_session_factory =
+base::LazyInstance<IcmpSessionFactory>::Leaky g_icmp_session_factory =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 

@@ -26,8 +26,12 @@ namespace shill {
 
 namespace shims {
 
-static base::LazyInstance<Environment> g_environment =
+namespace {
+
+base::LazyInstance<Environment>::Leaky g_environment =
     LAZY_INSTANCE_INITIALIZER;
+
+}  // namespace
 
 Environment::Environment() {}
 

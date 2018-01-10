@@ -25,8 +25,8 @@ namespace shill {
 
 namespace {
 
-base::LazyInstance<DnsClientFactory> g_dns_client_factory
-    = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<DnsClientFactory>::Leaky g_dns_client_factory =
+    LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

@@ -25,7 +25,7 @@ namespace shill {
 
 namespace {
 
-base::LazyInstance<FileIO> g_file_io = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<FileIO>::Leaky g_file_io = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

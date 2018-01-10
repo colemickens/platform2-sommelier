@@ -39,7 +39,7 @@ static string ObjectID(Resolver* r) { return "(resolver)"; }
 }
 
 namespace {
-base::LazyInstance<Resolver> g_resolver = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<Resolver>::Leaky g_resolver = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";

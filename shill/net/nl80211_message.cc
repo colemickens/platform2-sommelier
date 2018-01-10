@@ -62,7 +62,7 @@ using std::string;
 namespace shill {
 
 namespace {
-LazyInstance<Nl80211MessageDataCollector> g_datacollector =
+LazyInstance<Nl80211MessageDataCollector>::Leaky g_datacollector =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 

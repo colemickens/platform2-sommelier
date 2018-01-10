@@ -23,8 +23,8 @@
 namespace shill {
 
 namespace {
-base::LazyInstance<DBusServiceWatcherFactory> g_dbus_service_watcher_factory =
-    LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<DBusServiceWatcherFactory>::Leaky
+    g_dbus_service_watcher_factory = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 DBusServiceWatcherFactory::DBusServiceWatcherFactory() {}

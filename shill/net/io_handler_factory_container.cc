@@ -20,8 +20,8 @@ namespace shill {
 
 namespace {
 
-base::LazyInstance<IOHandlerFactoryContainer> g_io_handler_factory_container
-    = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<IOHandlerFactoryContainer>::Leaky
+    g_io_handler_factory_container = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

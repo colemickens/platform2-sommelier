@@ -24,8 +24,8 @@ namespace shill {
 
 namespace {
 
-base::LazyInstance<PPPDeviceFactory> g_ppp_device_factory
-    = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<PPPDeviceFactory>::Leaky g_ppp_device_factory =
+    LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 
