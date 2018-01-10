@@ -58,12 +58,12 @@ class ChromeosManagerDBusAdaptorTest : public Test {
 
   virtual ~ChromeosManagerDBusAdaptorTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     manager_adaptor_.dbus_service_watcher_factory_ =
         &dbus_service_watcher_factory_;
   }
 
-  virtual void TearDown() {}
+  void TearDown() override {}
 
  protected:
   scoped_refptr<MockBus> adaptor_bus_;

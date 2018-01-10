@@ -73,7 +73,7 @@ class L2TPIPSecDriverTest : public testing::Test,
 
   virtual ~L2TPIPSecDriverTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->allowed_uids_.push_back(1000);
     manager_.UpdateProviderMapping();
@@ -81,7 +81,7 @@ class L2TPIPSecDriverTest : public testing::Test,
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
     ASSERT_TRUE(temp_dir_.Delete());
@@ -202,8 +202,8 @@ class L2TPIPSecDriverTest : public testing::Test,
   }
 
   // Inherited from RPCTaskDelegate.
-  virtual void GetLogin(string* user, string* password);
-  virtual void Notify(const string& reason, const map<string, string>& dict);
+  void GetLogin(string* user, string* password) override;
+  void Notify(const string& reason, const map<string, string>& dict) override;
 
   base::ScopedTempDir temp_dir_;
   NiceMockControl control_;

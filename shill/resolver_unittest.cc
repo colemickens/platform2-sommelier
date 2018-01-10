@@ -58,13 +58,13 @@ class ResolverTest : public Test {
  public:
   ResolverTest() : resolver_(Resolver::GetInstance()) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     path_ = temp_dir_.path().Append("resolver");
     resolver_->set_path(path_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     resolver_->set_path(FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }

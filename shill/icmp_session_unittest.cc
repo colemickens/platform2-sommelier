@@ -75,7 +75,7 @@ class IcmpSessionTest : public Test {
   IcmpSessionTest() : icmp_session_(&dispatcher_) {}
   virtual ~IcmpSessionTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     icmp_session_.tick_clock_ = &testing_clock_;
     icmp_ = new NiceMock<MockIcmp>();
     // Passes ownership.
@@ -83,7 +83,7 @@ class IcmpSessionTest : public Test {
     ON_CALL(*icmp_, IsStarted()).WillByDefault(Return(false));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     EXPECT_CALL(*icmp_, IsStarted());
     IcmpSession::kNextUniqueEchoId = 0;
   }

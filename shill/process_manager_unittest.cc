@@ -47,12 +47,12 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest() : process_manager_(ProcessManager::GetInstance()) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     process_manager_->dispatcher_ = &dispatcher_;
     process_manager_->minijail_ = &minijail_;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     process_manager_->watched_processes_.clear();
     process_manager_->pending_termination_processes_.clear();
   }

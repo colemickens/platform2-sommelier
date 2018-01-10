@@ -52,13 +52,13 @@ class KeyFileStoreTest : public Test {
  public:
   KeyFileStoreTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_file_ = temp_dir_.path().Append("test-key-file-store");
     store_.reset(new KeyFileStore(test_file_));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ASSERT_TRUE(temp_dir_.Delete());
   }
 

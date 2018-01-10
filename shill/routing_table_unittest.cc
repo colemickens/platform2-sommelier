@@ -68,12 +68,12 @@ class RoutingTableTest : public Test {
 
   RoutingTableTest() : routing_table_(new RoutingTable()) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     routing_table_->rtnl_handler_ = &rtnl_handler_;
     ON_CALL(rtnl_handler_, SendMessage(_)).WillByDefault(Return(true));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     RTNLHandler::GetInstance()->Stop();
   }
 

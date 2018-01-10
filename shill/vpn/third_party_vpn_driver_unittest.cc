@@ -58,12 +58,12 @@ class ThirdPartyVpnDriverTest : public testing::Test {
 
   virtual ~ThirdPartyVpnDriverTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     driver_->adaptor_interface_.reset(adaptor_interface_);
     driver_->file_io_ = &mock_file_io_;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
     driver_->file_io_ = nullptr;

@@ -55,12 +55,12 @@ class IPConfigTest : public Test {
     ipconfig_->time_ = &time_;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     ScopeLogger::GetInstance()->EnableScopesByName("inet");
     ScopeLogger::GetInstance()->set_verbose_level(3);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ScopeLogger::GetInstance()->EnableScopesByName("-inet");
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }

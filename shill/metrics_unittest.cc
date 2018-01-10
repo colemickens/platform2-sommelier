@@ -90,7 +90,7 @@ class MetricsTest : public Test {
 
   virtual ~MetricsTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     metrics_.set_library(&library_);
 #if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.

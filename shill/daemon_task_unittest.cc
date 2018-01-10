@@ -91,7 +91,7 @@ class DaemonTaskTest : public Test {
         device_info_(control_, dispatcher_, metrics_, manager_) {
   }
   virtual ~DaemonTaskTest() {}
-  virtual void SetUp() {
+  void SetUp() override {
     // Tests initialization done by the daemon's constructor
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;

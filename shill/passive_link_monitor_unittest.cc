@@ -88,7 +88,7 @@ class PassiveLinkMonitorTest : public Test {
         interface_name_(kInterfaceName) {}
   virtual ~PassiveLinkMonitorTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ScopeLogger::GetInstance()->EnableScopesByName("link");
     ScopeLogger::GetInstance()->set_verbose_level(4);
     link_monitor_.arp_client_.reset(client_);
@@ -97,7 +97,7 @@ class PassiveLinkMonitorTest : public Test {
         .WillRepeatedly(ReturnRef(interface_name_));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ScopeLogger::GetInstance()->EnableScopesByName("-link");
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }

@@ -43,7 +43,7 @@ class RTNLListenerTest : public Test {
 
   MOCK_METHOD1(ListenerCallback, void(const RTNLMessage&));
 
-  virtual void SetUp() {
+  void SetUp() override {
     // RTNLHandler is a singleton, there's no guarentee that it is not
     // setup/used by other unittests. Clear "listeners_" field before we run
     // tests.

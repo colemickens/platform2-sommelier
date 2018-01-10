@@ -38,7 +38,7 @@ class CertificateFileTest : public testing::Test {
  public:
   CertificateFileTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     certificate_directory_ = temp_dir_.path().Append("certificates");
     certificate_file_.set_root_directory(certificate_directory_);

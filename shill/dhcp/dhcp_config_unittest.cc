@@ -94,7 +94,7 @@ class DHCPConfigTest : public PropertyStoreTest {
                                    kDhcpMethod,
                                    kLeaseFileSuffix)) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     config_->process_manager_ = &process_manager_;
   }
 
@@ -176,7 +176,7 @@ namespace {
 
 class DHCPConfigCallbackTest : public DHCPConfigTest {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     DHCPConfigTest::SetUp();
     config_->RegisterUpdateCallback(
         Bind(&DHCPConfigCallbackTest::SuccessCallback, Unretained(this)));

@@ -111,7 +111,7 @@ class WiFiProviderTest : public testing::Test {
 
   virtual ~WiFiProviderTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*default_profile_, IsDefault()).WillRepeatedly(Return(true));
     EXPECT_CALL(*default_profile_, GetStorage())
         .WillRepeatedly(Return(&default_profile_storage_));

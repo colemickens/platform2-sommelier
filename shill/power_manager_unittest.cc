@@ -107,13 +107,13 @@ class PowerManagerTest : public Test {
   MOCK_METHOD0(DarkSuspendImminentAction, void());
 
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     power_manager_.Start(kTimeout, suspend_imminent_callback_,
                          suspend_done_callback_,
                          dark_suspend_imminent_callback_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     power_manager_.Stop();
   }
 

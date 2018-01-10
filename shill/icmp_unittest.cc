@@ -55,13 +55,13 @@ class IcmpTest : public Test {
   IcmpTest() {}
   virtual ~IcmpTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();
     // Passes ownership.
     icmp_.sockets_.reset(sockets_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (icmp_.IsStarted()) {
       EXPECT_CALL(*sockets_, Close(kSocketFD));
       icmp_.Stop();

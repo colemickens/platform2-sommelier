@@ -635,7 +635,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   WakeOnWiFiTest() : metrics_(nullptr) {}
   virtual ~WakeOnWiFiTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     // Assume our NIC has reported its wiphy index, and that it supports wake
     // all wake triggers.

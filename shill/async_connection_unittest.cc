@@ -56,11 +56,11 @@ class AsyncConnectionTest : public Test {
         ipv4_address_(IPAddress::kFamilyIPv4),
         ipv6_address_(IPAddress::kFamilyIPv6) { }
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_TRUE(ipv4_address_.SetAddressFromString(kIPv4Address));
     EXPECT_TRUE(ipv6_address_.SetAddressFromString(kIPv6Address));
   }
-  virtual void TearDown() {
+  void TearDown() override {
     if (async_connection_.get() && async_connection_->fd_ >= 0) {
       EXPECT_CALL(sockets(), Close(kSocketFD))
           .WillOnce(Return(0));

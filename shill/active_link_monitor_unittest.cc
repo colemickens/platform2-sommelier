@@ -149,7 +149,7 @@ class ActiveLinkMonitorTest : public Test {
                  observer_.success_callback()) {}
   virtual ~ActiveLinkMonitorTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     link_scope_logging_was_enabled_ = SLOG_IS_ON(Link, 0);
     if (!link_scope_logging_was_enabled_) {
       ScopeLogger::GetInstance()->EnableScopesByName("link");
@@ -173,7 +173,7 @@ class ActiveLinkMonitorTest : public Test {
         .WillRepeatedly(ReturnRef(interface_name_));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (!link_scope_logging_was_enabled_) {
       ScopeLogger::GetInstance()->EnableScopesByName("-link");
       ScopeLogger::GetInstance()->set_verbose_level(0);

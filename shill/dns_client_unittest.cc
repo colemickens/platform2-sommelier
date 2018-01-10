@@ -79,13 +79,13 @@ class DnsClientTest : public Test {
     hostent_.h_addr_list = kReturnAddressList;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
     SetInActive();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     // We need to make sure the dns_client instance releases ares_
     // before the destructor for DnsClientTest deletes ares_.
     if (dns_client_.get()) {

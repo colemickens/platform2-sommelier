@@ -45,7 +45,7 @@ class EapListenerTest : public testing::Test {
   EapListenerTest() : listener_(&dispatcher_, kInterfaceIndex) {}
   virtual ~EapListenerTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();
     // Passes ownership.
     listener_.sockets_.reset(sockets_);
@@ -53,7 +53,7 @@ class EapListenerTest : public testing::Test {
         base::Bind(&EapListenerTest::ReceiveCallback, base::Unretained(this)));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (GetSocket() == kSocketFD) {
       EXPECT_CALL(*sockets_, Close(kSocketFD));
       listener_.Stop();

@@ -157,7 +157,7 @@ class ManagerTest : public PropertyStoreTest {
   }
   virtual ~ManagerTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
                                                      metrics(),
@@ -188,7 +188,7 @@ class ManagerTest : public PropertyStoreTest {
                                                      3));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     mock_devices_.clear();
   }
 

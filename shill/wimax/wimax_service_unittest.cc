@@ -78,7 +78,7 @@ class WiMaxServiceTest : public testing::Test {
   virtual ~WiMaxServiceTest() {}
 
  protected:
-  virtual void TearDown() {
+  void TearDown() override {
     service_->device_ = nullptr;
   }
 

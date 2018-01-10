@@ -56,7 +56,7 @@ class JsonStoreTest : public Test {
       : kStringWithEmbeddedNulls({0, 'a', 0, 'z'}),
         kNonUtf8String("ab\xc0") {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ScopeLogger::GetInstance()->EnableScopesByName("+storage");
     ASSERT_FALSE(base::IsStringUTF8(kNonUtf8String));
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -65,7 +65,7 @@ class JsonStoreTest : public Test {
     EXPECT_CALL(log_, Log(_, _, _)).Times(AnyNumber());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ScopeLogger::GetInstance()->EnableScopesByName("-storage");
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }

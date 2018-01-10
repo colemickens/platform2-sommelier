@@ -61,7 +61,7 @@ class ExternalTaskTest : public testing::Test,
 
   virtual ~ExternalTaskTest() {}
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (!external_task_) {
       return;
     }

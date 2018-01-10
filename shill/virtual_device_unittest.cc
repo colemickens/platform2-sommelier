@@ -54,7 +54,7 @@ class VirtualDeviceTest : public testing::Test {
 
   virtual ~VirtualDeviceTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     device_->rtnl_handler_ = &rtnl_handler_;
   }
 

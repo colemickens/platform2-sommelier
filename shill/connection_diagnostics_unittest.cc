@@ -162,7 +162,7 @@ class ConnectionDiagnosticsTest : public Test {
         portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {}
   virtual ~ConnectionDiagnosticsTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4LocalAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4ServerAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4GatewayAddress.family());
@@ -193,7 +193,7 @@ class ConnectionDiagnosticsTest : public Test {
         MockIcmpSessionFactory::GetInstance();
   }
 
-  virtual void TearDown() {}
+  void TearDown() override {}
 
  protected:
   class CallbackTarget {

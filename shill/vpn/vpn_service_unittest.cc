@@ -60,14 +60,14 @@ class VPNServiceTest : public testing::Test {
   virtual ~VPNServiceTest() {}
 
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     ON_CALL(*connection_, interface_name())
         .WillByDefault(ReturnRef(interface_name_));
     ON_CALL(*connection_, ipconfig_rpc_identifier())
         .WillByDefault(ReturnRef(ipconfig_rpc_identifier_));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     EXPECT_CALL(device_info_, FlushAddresses(0));
   }
 

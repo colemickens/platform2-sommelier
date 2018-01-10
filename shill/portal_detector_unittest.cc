@@ -80,7 +80,7 @@ class PortalDetectorTest : public Test {
     current_time_.tv_sec = current_time_.tv_usec = 0;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*connection_.get(), IsIPv6())
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_.get(), interface_name())
@@ -95,7 +95,7 @@ class PortalDetectorTest : public Test {
     EXPECT_TRUE(portal_detector()->connectivity_trial_.get());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (portal_detector()->connectivity_trial_.get()) {
       EXPECT_CALL(*connectivity_trial(), Stop());
 

@@ -188,7 +188,7 @@ class DeviceTest : public PropertyStoreTest {
   }
   virtual ~DeviceTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     device_->metrics_ = &metrics_;
     device_->rtnl_handler_ = &rtnl_handler_;
   }
@@ -2018,7 +2018,7 @@ class DevicePortalDetectionTest : public DeviceTest {
                                              &manager_)),
         portal_detector_(new StrictMock<MockPortalDetector>(connection_)) {}
     virtual ~DevicePortalDetectionTest() {}
-  virtual void SetUp() {
+  void SetUp() override {
     DeviceTest::SetUp();
     SelectService(service_);
     SetConnection(connection_.get());
@@ -2681,7 +2681,7 @@ class DeviceByteCountTest : public DeviceTest {
         tx_stored_byte_count_(0) {}
   virtual ~DeviceByteCountTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     DeviceTest::SetUp();
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(device_info_, GetByteCounts(kDeviceInterfaceIndex, _, _))

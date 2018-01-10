@@ -640,7 +640,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->all_scan_frequencies_.insert(kRandomScanFrequency3);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     // EnableScopes... so that we can EXPECT_CALL for scoped log messages.
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
@@ -655,7 +655,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     InstallMockWakeOnWiFi();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(_))
         .WillRepeatedly(Return(nullptr));
     wifi_->SelectService(nullptr);

@@ -62,7 +62,7 @@ class DnsServerTesterTest : public Test {
         interface_name_(kInterfaceName),
         dns_servers_(kDnsServers, kDnsServers + 2) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*connection_.get(), interface_name())
           .WillRepeatedly(ReturnRef(interface_name_));
     dns_server_tester_.reset(

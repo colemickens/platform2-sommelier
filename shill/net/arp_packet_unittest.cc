@@ -58,7 +58,7 @@ class ArpPacketTest : public Test {
         inserted_byte_(kInsertedByte, arraysize(kInsertedByte)) {}
   virtual ~ArpPacketTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_TRUE(ipv4_address0_.SetAddressFromString(kIPv4Address0));
     EXPECT_TRUE(ipv4_address1_.SetAddressFromString(kIPv4Address1));
     EXPECT_TRUE(ipv6_address0_.SetAddressFromString(kIPv6Address0));

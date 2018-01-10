@@ -102,7 +102,7 @@ class DeviceInfoTest : public Test {
   }
   virtual ~DeviceInfoTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.routing_table_ = &routing_table_;
 #if !defined(DISABLE_WIFI)
@@ -1409,7 +1409,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
         test_device_name_(kTestDeviceName) {}
   virtual ~DeviceInfoTechnologyTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     device_info_root_ = temp_dir_.path().Append("sys/class/net");
     device_info_.device_info_root_ = device_info_root_;

@@ -47,7 +47,7 @@ class NetlinkSocketTest : public Test {
   NetlinkSocketTest() {}
   virtual ~NetlinkSocketTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     mock_sockets_ = new MockSockets();
     netlink_socket_.sockets_.reset(mock_sockets_);
   }

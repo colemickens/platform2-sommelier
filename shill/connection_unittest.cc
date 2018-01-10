@@ -131,7 +131,7 @@ class ConnectionTest : public Test {
         default_address_(IPAddress::kFamilyIPv4),
         local_ipv6_address_(IPAddress::kFamilyIPv6) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ReplaceSingletons(connection_);
     properties_.address = kIPAddress0;
     properties_.subnet_prefix = kPrefix0;
@@ -154,7 +154,7 @@ class ConnectionTest : public Test {
     EXPECT_TRUE(local_ipv6_address_.SetAddressFromString(kIPv6Address));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     AddDestructorExpectations();
     connection_ = nullptr;
   }

@@ -81,7 +81,7 @@ class TrafficMonitorTest : public Test {
   MOCK_METHOD1(OnNoOutgoingPackets, void(int));
 
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     monitor_.socket_info_reader_.reset(
         mock_socket_info_reader_);  // Passes ownership
     monitor_.connection_info_reader_.reset(

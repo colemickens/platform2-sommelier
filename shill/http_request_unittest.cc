@@ -123,7 +123,7 @@ class HttpRequestTest : public Test {
     Callback<void(HttpRequest::Result, const ByteString&)> result_callback_;
   };
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*connection_.get(), IsIPv6())
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_.get(), interface_name())
@@ -137,7 +137,7 @@ class HttpRequestTest : public Test {
     // Passes ownership.
     request_->server_async_connection_.reset(server_async_connection_);
   }
-  virtual void TearDown() {
+  void TearDown() override {
     if (request_->is_running_) {
       ExpectStop();
 

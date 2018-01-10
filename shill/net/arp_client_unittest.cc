@@ -45,14 +45,14 @@ class ArpClientTest : public Test {
   ArpClientTest() : client_(kInterfaceIndex) {}
   virtual ~ArpClientTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();
     // Passes ownership.
     client_.sockets_.reset(sockets_);
     memset(&recvfrom_sender_, 0, sizeof(recvfrom_sender_));
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (GetSocket() == kSocketFD) {
       EXPECT_CALL(*sockets_, Close(kSocketFD));
       client_.Stop();

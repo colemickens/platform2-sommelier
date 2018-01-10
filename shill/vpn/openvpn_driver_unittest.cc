@@ -122,13 +122,13 @@ class OpenVPNDriverTest
 
   virtual ~OpenVPNDriverTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->allowed_uids_.push_back(1000);
     manager_.UpdateProviderMapping();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     driver_->default_service_callback_tag_ = 0;
     driver_->pid_ = 0;
     driver_->device_ = nullptr;
@@ -255,8 +255,8 @@ class OpenVPNDriverTest
   void SetupLSBRelease();
 
   // Inherited from RPCTaskDelegate.
-  virtual void GetLogin(string* user, string* password);
-  virtual void Notify(const string& reason, const map<string, string>& dict);
+  void GetLogin(string* user, string* password) override;
+  void Notify(const string& reason, const map<string, string>& dict) override;
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;

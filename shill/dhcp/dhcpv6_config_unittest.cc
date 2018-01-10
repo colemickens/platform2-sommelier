@@ -72,7 +72,7 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
                                  kDeviceName,
                                  kLeaseFileSuffix)) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     config_->process_manager_ = &process_manager_;
   }
 
@@ -259,7 +259,7 @@ namespace {
 
 class DHCPv6ConfigCallbackTest : public DHCPv6ConfigTest {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     DHCPv6ConfigTest::SetUp();
     config_->RegisterUpdateCallback(
         Bind(&DHCPv6ConfigCallbackTest::SuccessCallback, Unretained(this)));

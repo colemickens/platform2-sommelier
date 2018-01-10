@@ -86,12 +86,12 @@ class CryptoUtilProxyTest : public testing::Test {
     test_ssid_.push_back(69);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     crypto_util_proxy_.process_manager_ = &process_manager_;
     crypto_util_proxy_.file_io_ = &file_io_;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     // Note that |crypto_util_proxy_| needs its process manager reference in
     // order not to segfault when it tries to kill any outstanding shims on
     // shutdown.  Thus we don't clear out those fields here, and we make sure

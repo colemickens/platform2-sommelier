@@ -96,7 +96,7 @@ class LinkMonitorTest : public Test {
                  observer_.gateway_change_callback()) {}
   virtual ~LinkMonitorTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     monitor_.active_link_monitor_.reset(active_link_monitor_);
     monitor_.passive_link_monitor_.reset(passive_link_monitor_);
     monitor_.time_ = &time_;

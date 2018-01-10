@@ -55,7 +55,7 @@ class ConnectionTesterTest : public Test {
         connectivity_trial_(new StrictMock<MockConnectivityTrial>(
             connection_, ConnectionTester::kTrialTimeoutSeconds)) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*connection_.get(), IsIPv6())
         .WillRepeatedly(Return(false));
     connection_tester_->connectivity_trial_
@@ -63,7 +63,7 @@ class ConnectionTesterTest : public Test {
     EXPECT_TRUE(connection_tester()->connectivity_trial_.get());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (connection_tester()->connectivity_trial_.get()) {
       EXPECT_CALL(*connectivity_trial(), Stop());
 

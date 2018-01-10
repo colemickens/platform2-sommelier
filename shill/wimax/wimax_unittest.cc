@@ -71,11 +71,11 @@ class WiMaxTest : public testing::Test {
     MOCK_METHOD1(EnabledStateChanged, void(const Error& error));
   };
 
-  virtual void SetUp() {
+  void SetUp() override {
     device_->set_dhcp_provider(&dhcp_provider_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     device_->SelectService(nullptr);
     device_->pending_service_ = nullptr;
   }

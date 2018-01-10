@@ -83,7 +83,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
                                  dhcp_props_,
                                  &metrics_)) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     config_->process_manager_ = &process_manager_;
   }
 
@@ -504,7 +504,7 @@ namespace {
 
 class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     DHCPv4ConfigTest::SetUp();
     config_->RegisterUpdateCallback(
         Bind(&DHCPv4ConfigCallbackTest::SuccessCallback, Unretained(this)));

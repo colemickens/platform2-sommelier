@@ -45,7 +45,7 @@ class ResultAggregatorTest : public ::testing::Test {
             Bind(&ResultAggregatorTest::ReportResult, Unretained(this)))) {}
   virtual ~ResultAggregatorTest() {}
 
-  virtual void TearDown() {
+  void TearDown() override {
     aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
   }
 

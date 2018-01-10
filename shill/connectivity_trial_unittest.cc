@@ -76,7 +76,7 @@ class ConnectivityTrialTest : public Test {
     current_time_.tv_sec = current_time_.tv_usec = 0;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(*connection_.get(), IsIPv6())
                 .WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_.get(), interface_name())
@@ -88,7 +88,7 @@ class ConnectivityTrialTest : public Test {
     EXPECT_FALSE(connectivity_trial_->request_.get());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     Mock::VerifyAndClearExpectations(&http_request_);
     if (connectivity_trial_->request_.get()) {
       EXPECT_CALL(*http_request(), Stop());

@@ -78,12 +78,12 @@ class RTNLHandlerTest : public Test {
                        IPAddress::kFamilyUnknown) {
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
     RTNLHandler::GetInstance()->sockets_.reset(sockets_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     RTNLHandler::GetInstance()->Stop();
   }
 
