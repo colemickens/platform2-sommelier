@@ -65,7 +65,6 @@ preserve_files() {
   if [ "$SAFE_WIPE" = "safe" ]; then
     PRESERVED_FILES="
       unencrypted/preserve/attestation.epb
-      unencrypted/preserve/enrollment_state.epb
       unencrypted/preserve/local_tpm_data
       unencrypted/preserve/powerwash_count
       unencrypted/preserve/update_engine/prefs/rollback-version
