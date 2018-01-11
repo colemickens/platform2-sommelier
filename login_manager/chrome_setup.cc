@@ -379,6 +379,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--touchscreen-usable-while-screen-off");
   if (builder->UseFlagIsSet("oobe_skip_to_login"))
     builder->AddArg("--oobe-skip-to-login");
+  if (builder->UseFlagIsSet("oobe_skip_postlogin"))
+    builder->AddArg("--oobe-skip-postlogin");
 
   if (builder->UseFlagIsSet("voice_interaction"))
     builder->AddArg("--enable-voice-interaction");
