@@ -32,12 +32,12 @@ class LivenessCheckerImpl : public LivenessChecker {
                       dbus::ObjectProxy* chrome_dbus_proxy,
                       bool enable_aborting,
                       base::TimeDelta interval);
-  virtual ~LivenessCheckerImpl();
+  ~LivenessCheckerImpl() override;
 
   // Implementation of LivenessChecker.
-  void Start();
-  void Stop();
-  bool IsRunning();
+  void Start() override;
+  void Stop() override;
+  bool IsRunning() override;
 
   // If a liveness check is outstanding, kills the browser and clears liveness
   // tracking state.  This instance will be stopped at that point in time.

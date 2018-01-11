@@ -16,7 +16,7 @@ class PolicyKey;
 class MockMetrics : public LoginMetrics {
  public:
   MockMetrics();
-  virtual ~MockMetrics();
+  ~MockMetrics() override;
 
   MOCK_METHOD1(SendConsumerAllowsNewUsers, void(bool));
   MOCK_METHOD3(SendLoginUserType, void(bool, bool, bool));

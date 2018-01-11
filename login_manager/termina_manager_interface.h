@@ -16,7 +16,7 @@ namespace login_manager {
 // Provides methods for starting and stopping virtual machines.
 class TerminaManagerInterface : public JobManagerInterface {
  public:
-  virtual ~TerminaManagerInterface() {}
+  ~TerminaManagerInterface() override {}
 
   // Starts the container image from |image_path| in a termina VM. Give the
   // running vm |name| so it can be referred to later.

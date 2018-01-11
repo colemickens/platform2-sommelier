@@ -36,7 +36,7 @@ class BrowserJobTest : public ::testing::Test {
  public:
   BrowserJobTest() {}
 
-  virtual ~BrowserJobTest() {}
+  ~BrowserJobTest() override {}
 
   void SetUp() override;
 

@@ -18,7 +18,7 @@ class SessionManagerService;
 class MockKeyGenerator : public KeyGenerator {
  public:
   MockKeyGenerator();
-  virtual ~MockKeyGenerator();
+  ~MockKeyGenerator() override;
   MOCK_METHOD1(Start, bool(const std::string&));
 };
 }  // namespace login_manager

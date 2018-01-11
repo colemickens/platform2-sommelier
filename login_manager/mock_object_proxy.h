@@ -59,7 +59,7 @@ class MockObjectProxy : public dbus::ObjectProxy {
                void(WaitForServiceToBeAvailableCallback callback));
 
  protected:
-  virtual ~MockObjectProxy() {}
+  ~MockObjectProxy() override {}
 };
 
 }  // namespace login_manager

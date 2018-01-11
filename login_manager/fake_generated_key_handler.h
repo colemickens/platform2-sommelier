@@ -16,7 +16,7 @@ namespace login_manager {
 class FakeGeneratedKeyHandler : public KeyGenerator::Delegate {
  public:
   FakeGeneratedKeyHandler();
-  virtual ~FakeGeneratedKeyHandler();
+  ~FakeGeneratedKeyHandler() override;
 
   const std::string& key_username() { return key_username_; }
   const std::string& key_contents() { return key_contents_; }

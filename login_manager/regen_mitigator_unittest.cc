@@ -28,7 +28,7 @@ namespace login_manager {
 class RegenMitigatorTest : public ::testing::Test {
  public:
   RegenMitigatorTest() {}
-  virtual ~RegenMitigatorTest() {}
+  ~RegenMitigatorTest() override {}
 
  protected:
   SystemUtilsImpl utils_;

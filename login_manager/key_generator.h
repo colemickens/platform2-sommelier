@@ -32,7 +32,7 @@ class KeyGenerator : public JobManagerInterface {
   };
 
   KeyGenerator(uid_t uid, SystemUtils* utils);
-  virtual ~KeyGenerator();
+  ~KeyGenerator() override;
 
   void set_delegate(Delegate* delegate) { delegate_ = delegate; }
 

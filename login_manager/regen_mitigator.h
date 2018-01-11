@@ -21,7 +21,7 @@ class PolicyKey;
 class RegenMitigator : public OwnerKeyLossMitigator {
  public:
   explicit RegenMitigator(KeyGenerator* generator);
-  virtual ~RegenMitigator();
+  ~RegenMitigator() override;
 
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.

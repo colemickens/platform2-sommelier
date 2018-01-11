@@ -28,7 +28,7 @@ namespace login_manager {
 class LivenessCheckerImplTest : public ::testing::Test {
  public:
   LivenessCheckerImplTest() {}
-  virtual ~LivenessCheckerImplTest() {}
+  ~LivenessCheckerImplTest() override {}
 
   void SetUp() override {
     fake_loop_.SetAsCurrent();

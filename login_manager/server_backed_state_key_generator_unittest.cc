@@ -34,7 +34,7 @@ namespace {
 class FakeSystemUtils : public SystemUtilsImpl {
  public:
   FakeSystemUtils() : time_(0) {}
-  virtual ~FakeSystemUtils() {}
+  ~FakeSystemUtils() override {}
 
   time_t time(time_t* t) override {
     if (t)
@@ -63,7 +63,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     EXPECT_CALL(metrics_, SendStateKeyGenerationStatus(_))
         .WillRepeatedly(SaveArg<0>(&last_state_key_generation_status_));
   }
-  virtual ~ServerBackedStateKeyGeneratorTest() {}
+  ~ServerBackedStateKeyGeneratorTest() override {}
 
   // Installs mock data for the required parameters.
   void InitMachineInfo() {

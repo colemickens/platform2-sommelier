@@ -18,7 +18,7 @@ class PolicyKey;
 class MockMitigator : public OwnerKeyLossMitigator {
  public:
   MockMitigator();
-  virtual ~MockMitigator();
+  ~MockMitigator() override;
 
   MOCK_METHOD1(Mitigate, bool(const std::string&));
   MOCK_METHOD0(Mitigating, bool());

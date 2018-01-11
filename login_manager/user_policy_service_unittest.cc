@@ -70,7 +70,7 @@ class UserPolicyServiceTest : public ::testing::Test {
  public:
   UserPolicyServiceTest() = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     key_copy_file_ = tmpdir_.path().Append("hash/key_copy.pub");

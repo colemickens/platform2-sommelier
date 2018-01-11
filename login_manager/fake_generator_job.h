@@ -24,7 +24,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
     Factory(pid_t pid,
             const std::string& name,
             const std::string& key_contents);
-    virtual ~Factory();
+    ~Factory() override;
     std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
@@ -42,7 +42,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
                    const std::string& name,
                    const std::string& key_contents,
                    const std::string& filename);
-  virtual ~FakeGeneratorJob();
+  ~FakeGeneratorJob() override;
 
   bool RunInBackground() override;
   MOCK_METHOD2(KillEverything, void(int, const std::string&));

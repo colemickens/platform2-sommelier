@@ -18,7 +18,7 @@ class GeneratorJobInterface;
 class MockProcessManagerService : public ProcessManagerServiceInterface {
  public:
   MockProcessManagerService();
-  virtual ~MockProcessManagerService();
+  ~MockProcessManagerService() override;
 
   MOCK_METHOD0(ScheduleShutdown, void());
   MOCK_METHOD0(ShouldRunBrowser, bool());

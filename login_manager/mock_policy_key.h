@@ -23,7 +23,7 @@ namespace login_manager {
 class MockPolicyKey : public PolicyKey {
  public:
   MockPolicyKey();
-  virtual ~MockPolicyKey();
+  ~MockPolicyKey() override;
   MOCK_CONST_METHOD1(Equals, bool(const std::string&));
   MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8_t>&));
   MOCK_CONST_METHOD0(HaveCheckedDisk, bool());

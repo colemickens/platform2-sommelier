@@ -24,9 +24,9 @@ struct UserTypeTestParams {
 class LoginMetricsTest : public testing::Test {
  public:
   LoginMetricsTest() {}
-  virtual ~LoginMetricsTest() {}
+  ~LoginMetricsTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     metrics_.reset(new LoginMetrics(tmpdir_.path()));
   }

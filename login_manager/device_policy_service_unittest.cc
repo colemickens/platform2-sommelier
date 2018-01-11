@@ -95,7 +95,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
  public:
   DevicePolicyServiceTest() = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     install_attributes_file_ =

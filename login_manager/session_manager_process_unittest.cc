@@ -163,8 +163,9 @@ class HandleSuspendReadinessMethodMatcher
   HandleSuspendReadinessMethodMatcher(int delay_id, int suspend_id)
       : delay_id_(delay_id), suspend_id_(suspend_id) {}
 
-  virtual bool MatchAndExplain(dbus::MethodCall* method_call,
-                               ::testing::MatchResultListener* listener) const {
+  bool MatchAndExplain(
+      dbus::MethodCall* method_call,
+      ::testing::MatchResultListener* listener) const override {
     // Make sure we've got the right kind of method call.
     if (method_call->GetInterface() != power_manager::kPowerManagerInterface) {
       *listener << "interface was " << method_call->GetInterface();
@@ -193,12 +194,12 @@ class HandleSuspendReadinessMethodMatcher
     return true;
   }
 
-  virtual void DescribeTo(::std::ostream* os) const {
+  void DescribeTo(::std::ostream* os) const override {
     *os << "HandleSuspendReadiness method call with delay ID " << delay_id_
         << " and suspend ID " << suspend_id_;
   }
 
-  virtual void DescribeNegationTo(::std::ostream* os) const {
+  void DescribeNegationTo(::std::ostream* os) const override {
     *os << "non-HandleSuspendReadiness method call, or method call "
         << "not with delay ID " << delay_id_ << " and suspend ID "
         << suspend_id_;

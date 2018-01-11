@@ -17,9 +17,9 @@ class PolicyStoreTest : public ::testing::Test {
  public:
   PolicyStoreTest() {}
 
-  virtual ~PolicyStoreTest() {}
+  ~PolicyStoreTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
 
     // Create a temporary filename that's guaranteed to not exist, but is
@@ -28,7 +28,7 @@ class PolicyStoreTest : public ::testing::Test {
     ASSERT_TRUE(base::DeleteFile(tmpfile_, false));
   }
 
-  virtual void TearDown() {}
+  void TearDown() override {}
 
   void CheckExpectedPolicy(PolicyStore* store,
                            const em::PolicyFetchResponse& policy) {

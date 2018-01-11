@@ -52,7 +52,7 @@ class PolicyServiceTest : public testing::Test {
  public:
   PolicyServiceTest() = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
     service_ = std::make_unique<PolicyService>(base::FilePath(), &key_);
@@ -424,7 +424,7 @@ class PolicyServiceNamespaceTest : public testing::Test {
  public:
   PolicyServiceNamespaceTest() = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     fake_loop_.SetAsCurrent();
     service_ = std::make_unique<PolicyService>(temp_dir_.path(), nullptr);

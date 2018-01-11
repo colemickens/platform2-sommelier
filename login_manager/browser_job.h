@@ -28,7 +28,7 @@ class SystemUtils;
 
 class BrowserJobInterface : public ChildJobInterface {
  public:
-  virtual ~BrowserJobInterface() {}
+  ~BrowserJobInterface() override {}
 
   // Overridden from ChildJobInterface
   bool RunInBackground() override = 0;
@@ -85,7 +85,7 @@ class BrowserJob : public BrowserJobInterface {
              FileChecker* checker,
              LoginMetrics* metrics,
              SystemUtils* utils);
-  virtual ~BrowserJob();
+  ~BrowserJob() override;
 
   // Overridden from BrowserJobInterface
   bool RunInBackground() override;

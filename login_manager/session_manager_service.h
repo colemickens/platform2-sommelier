@@ -122,7 +122,7 @@ class SessionManagerService
                         base::TimeDelta hang_detection_interval,
                         LoginMetrics* metrics,
                         SystemUtils* system);
-  virtual ~SessionManagerService();
+  ~SessionManagerService() override;
 
   // TestApi exposes internal routines for testing purposes.
   TestApi test_api() { return TestApi(this); }

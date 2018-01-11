@@ -18,18 +18,7 @@ namespace login_manager {
 
 class SystemUtils;
 
-class GeneratorJobInterface : public ChildJobInterface {
- public:
-  virtual ~GeneratorJobInterface() {}
-
-  // Overridden from ChildJobInterface
-  virtual bool RunInBackground() = 0;
-  virtual void KillEverything(int signal, const std::string& message) = 0;
-  virtual void Kill(int signal, const std::string& message) = 0;
-  virtual void WaitAndAbort(base::TimeDelta timeout) = 0;
-  virtual const std::string GetName() const = 0;
-  virtual pid_t CurrentPid() const = 0;
-};
+class GeneratorJobInterface : public ChildJobInterface {};
 
 class GeneratorJobFactoryInterface {
  public:
@@ -46,7 +35,7 @@ class GeneratorJob : public GeneratorJobInterface {
   class Factory : public GeneratorJobFactoryInterface {
    public:
     Factory();
-    virtual ~Factory();
+    ~Factory() override;
     std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
@@ -57,7 +46,7 @@ class GeneratorJob : public GeneratorJobInterface {
     DISALLOW_COPY_AND_ASSIGN(Factory);
   };
 
-  virtual ~GeneratorJob();
+  ~GeneratorJob() override;
 
   // Overridden from GeneratorJobInterface
   bool RunInBackground() override;

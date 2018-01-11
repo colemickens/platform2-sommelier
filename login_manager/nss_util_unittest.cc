@@ -22,7 +22,7 @@ namespace login_manager {
 class NssUtilTest : public ::testing::Test {
  public:
   NssUtilTest() : util_(NssUtil::Create()) {}
-  virtual ~NssUtilTest() {}
+  ~NssUtilTest() override {}
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());

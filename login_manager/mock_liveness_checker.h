@@ -15,7 +15,7 @@ namespace login_manager {
 class MockLivenessChecker : public LivenessChecker {
  public:
   MockLivenessChecker();
-  virtual ~MockLivenessChecker();
+  ~MockLivenessChecker() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

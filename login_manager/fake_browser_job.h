@@ -24,7 +24,7 @@ class FakeBrowserJob : public BrowserJobInterface {
  public:
   explicit FakeBrowserJob(const std::string& name);
   FakeBrowserJob(const std::string& name, bool schedule_exit);
-  virtual ~FakeBrowserJob();
+  ~FakeBrowserJob() override;
 
   void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake) {
     fake_process_ = std::move(fake);

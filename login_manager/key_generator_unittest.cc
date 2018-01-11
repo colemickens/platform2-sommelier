@@ -46,15 +46,15 @@ class KeyGeneratorTest : public ::testing::Test {
   KeyGeneratorTest()
       : original_user_prefix_(GetUserPathPrefix()), fake_salt_("fake salt") {}
 
-  virtual ~KeyGeneratorTest() {}
+  ~KeyGeneratorTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     SetUserHomePrefix(tmpdir_.path().value() + "/");
     SetSystemSalt(&fake_salt_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     SetUserHomePrefix(original_user_prefix_.value());
     SetSystemSalt(NULL);
   }

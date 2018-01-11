@@ -33,7 +33,7 @@ class ContainerManagerInterface : public JobManagerInterface {
   // The path to the location of containers.
   constexpr static const char kContainerRunPath[] = "/run/containers";
 
-  virtual ~ContainerManagerInterface() {}
+  ~ContainerManagerInterface() override {}
 
   // Starts the container. Returns true on success.
   // If successful, |exit_callback| will be notified when the process exits.

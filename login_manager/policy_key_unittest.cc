@@ -29,15 +29,15 @@ namespace login_manager {
 class PolicyKeyTest : public ::testing::Test {
  public:
   PolicyKeyTest() {}
-  virtual ~PolicyKeyTest() {}
+  ~PolicyKeyTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
     ASSERT_EQ(2, base::WriteFile(tmpfile_, "a", 2));
   }
 
-  virtual void TearDown() {}
+  void TearDown() override {}
 
   void StartUnowned() { base::DeleteFile(tmpfile_, false); }
 
