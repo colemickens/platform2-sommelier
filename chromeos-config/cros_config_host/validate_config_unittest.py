@@ -659,7 +659,7 @@ class UnitTests(cros_test_lib.TestCase):
   def testWhiteLabel(self):
     result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + WHITELABEL)
     self._CheckAllIn([
-        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "/bad: Unexpected subnode 'thermal', valid list is (",
         "bad/firmware: Unexpected property 'shares', valid list is "
         '(key-id, no-firmware)',
         ], result)
@@ -668,7 +668,7 @@ class UnitTests(cros_test_lib.TestCase):
     """Test that we can validate config coming from multiple .dtsi files"""
     result = self.RunMultiple([MODELS, FAMILY_FIRMWARE, WHITELABEL])
     self._CheckAllIn([
-        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "/bad: Unexpected subnode 'thermal', valid list is (",
         "bad/firmware: Unexpected property 'shares', valid list is "
         '(key-id, no-firmware)',
         ], result)
@@ -688,7 +688,7 @@ class UnitTests(cros_test_lib.TestCase):
     self.assertEqual(self.returncode, 1)
     self._CheckAllIn([
         '/tmp/',
-        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "/bad: Unexpected subnode 'thermal', valid list is (",
         "bad/firmware: Unexpected property 'shares', valid list is "
         '(key-id, no-firmware)',
         ], result)
@@ -697,7 +697,7 @@ class UnitTests(cros_test_lib.TestCase):
     self.assertEqual(self.returncode, 1)
     self._CheckAllIn([
         '/tmp/',
-        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "/bad: Unexpected subnode 'thermal', valid list is (",
         "bad/firmware: Unexpected property 'shares', valid list is "
         '(key-id, no-firmware)',
         ], result)

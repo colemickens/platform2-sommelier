@@ -74,6 +74,44 @@ properties.
         repeat the filename in each model that uses a particular manufacturer's
         card, since the naming convention is typically consistent for that
         manufacturer.
+    *   `arc` (optional): Contains information for the Android container
+        used by this family.
+
+        *    `build-properties` (optional): Contains information that will be
+             set into the Android property system inside the container.  Each
+             subnode is defined as a phandle that can be referenced from the
+             model-specific configuration using the `arc-properties-type`
+             property. The information here is not to be used for Chrome OS
+             itself. It is purely for the container environment.
+
+             The Android build fingerprint is generated from these properties.
+             Currently the fingerprint is:
+
+             `google/{product}/{device}:{version_rel}/{id}/{version_inc}:{type}/{tags}`
+
+            Of these, the first three fields come from the properties here. The
+            rest are defined by the build system.
+
+            *   `<arc-properties-type>`: Node containing the base cheets
+                configuration for use by models.
+                *   `product`: Product name to report in `ro.product.name`. This
+                    may be the model name, or it can be something else, to allow
+                    several models to be grouped into one product.
+                *   `device`: Device name to report in `ro.product.device`. This
+                    is often `{product}_cheets` but it can be something else if
+                    desired.
+                *   `oem`: Original Equipment Manufacturer for this model. This
+                    generally means the OEM name printed on the device.
+                *   `marketing-name`: Name of this model as it is called in the
+                    market, reported in `ro.product.model`. This often starts
+                    with `{oem} `.
+                *   `metrics-tag`: Tag to use to track metrics for this model.
+                    The tag can be shared across many models if desired, but
+                    this will result in larger granularity for metrics
+                    reporting.  Ideally the metrics system should support
+                    collation of metrics with different tags into groups, but if
+                    this is not supported, this tag can be used to achieve the
+                    same end.  This is reported in `ro.product.metrics.tag`.
 
     *   `power` (optional): Contains information about power devices used by
             this family. Each subnode is defined as a phandle that can be
@@ -257,6 +295,12 @@ properties.
         *   `arc` (optional): Contains arc++ configuration information
             *   `hw-features`: Script filename that configures the Arc++
                     hardware features (by probing or hard-coding) for a model.
+            *   `build-properties` (optional): Contains information for the
+                Android container system properties used by this model.
+                Properties here are the same as in the family node above, with
+                one addition to provide common values:
+                *   `arc-properties-type`: Phandle pointing to a subnode of the
+                    family arc build-properties configuration.
         *   `audio` (optional): Contains information about audio devices
                 used by this model.
             *   `<audio_system>`: Contains information about a particular
@@ -277,6 +321,7 @@ properties.
         *   `brand-code`: (optional): Brand code of the model (also called RLZ
             code). See [list](go/chromeos-rlz) and
             [one-pager](gi/chromeos-rlz-onepager).
+
         *   `default` (optional): Indicates that all of the nodes and properties
             of this model should default to the same as another model. The value
             is a phandle pointing to the model. It is not possible to 'remove'
@@ -513,6 +558,14 @@ chromeos {
                 firmware-symlink = "wdt87xx.bin";
             };
         };
+
+        arc {
+            build-properties {
+                arc_properties_type: arc-properties-type {
+                    device = "{product}_cheets";
+                };
+            };
+        };
     };
 
     models {
@@ -522,6 +575,13 @@ chromeos {
             brand-code = "ABCD";
             arc {
                 hw-features = "reef/arc++/hardware_features";
+                build-properties {
+                    arc-properties-type = <&arc_properties_type>;
+                    product = "robo";
+                    oem = "Whyhub";
+                    marketing-name = "{oem} Chromebook 23";
+                    metrics-tag = "robo";
+                };
             };
             firmware {
                 shares = <&shared>;

@@ -450,7 +450,11 @@ class CrosConfigImpl(object):
       Returns:
         Node that the share points to, or None if none
       """
-      share_prop = [i for i in ['shares', 'whitelabel'] if i in self.properties]
+      # It's confusing that arc-properties-type shows up as a "shares" property
+      # here, but it has the same semantics as the other auto-follow properties
+      # and validation makes sure it can't appear in places where it shouldn't.
+      share_prop = [i for i in ['arc-properties-type', 'shares', 'whitelabel']
+                    if i in self.properties]
       if share_prop:
         return self.FollowPhandle(share_prop[0])
       return None

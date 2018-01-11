@@ -25,7 +25,8 @@ extern "C" {
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
-const char* kFollowPhandles[] = {"audio-type", "power-type"};
+const char* kFollowPhandles[] = {"audio-type", "arc-properties-type",
+                                 "power-type"};
 }  // namespace
 
 namespace brillo {

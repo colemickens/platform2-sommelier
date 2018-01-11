@@ -477,6 +477,14 @@ BASE_AUDIO_SCHEMA = [
     PropString('ucm-suffix', False, r'[\w${}]+'),
 ]
 
+ARC_PROPERTIES_SCHEMA = [
+    PropString('product', False, '[a-z0-9]+', {'../whitelabel': False}),
+    PropString('device', False, '[{}a-z0-9_]+', {'../whitelabel': False}),
+    PropString('oem', False),
+    PropString('marketing-name', False),
+    PropString('metrics-tag', False),
+]
+
 BASE_AUDIO_NODE = [
     NodeAny(r'main', [
         PropPhandle('audio-type', '/chromeos/family/audio/ANY',
@@ -521,6 +529,12 @@ SCHEMA = NodeDesc('/', True, [
             NodeDesc('power', elements=[
                 NodeAny('', [PropPhandleTarget()] +
                         copy.deepcopy(BASE_POWER_SCHEMA)),
+            ]),
+            NodeDesc('arc', elements=[
+                NodeDesc('build-properties', elements=[
+                    NodeAny('', [PropPhandleTarget()] +
+                            copy.deepcopy(ARC_PROPERTIES_SCHEMA)),
+                ]),
             ]),
             NodeDesc('firmware', elements=[
                 PropString('script', True, r'updater4\.sh'),
@@ -571,6 +585,11 @@ SCHEMA = NodeDesc('/', True, [
                 NodeDesc('arc', False, [
                     PropFile('hw-features', False, '',
                              target_dir=ARC_SBIN_DIR),
+                    NodeDesc('build-properties', False, [
+                        PropPhandle('arc-properties-type',
+                                    '/chromeos/family/arc/build-properties/ANY',
+                                    False, {'../whitelabel': False})
+                    ] + copy.deepcopy(ARC_PROPERTIES_SCHEMA)),
                 ], conditional_props=NOT_WL),
                 NodeDesc('power', False, [
                     PropPhandle('power-type', '/chromeos/family/power/ANY',
