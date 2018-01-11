@@ -48,7 +48,7 @@ class EspeciallyMockedBus : public dbus::MockBus {
                     const GetServiceOwnerCallback& callback));
 
  protected:
-  virtual ~EspeciallyMockedBus() = default;
+  ~EspeciallyMockedBus() override = default;
 };
 
 }  // namespace

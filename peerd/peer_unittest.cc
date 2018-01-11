@@ -53,7 +53,7 @@ namespace peerd {
 
 class PeerTest : public ::testing::Test {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
