@@ -77,11 +77,13 @@ TEST_F(ChromeSetupTest, TestOem) {
   paths_.insert(GetPath("oem", "large"));
   login_manager::SetUpWallpaperFlags(&builder_, nullptr, kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
-  ASSERT_EQ(5, argv.size());
+  ASSERT_EQ(7, argv.size());
 
   for (std::string size : kSizes) {
     EXPECT_EQ(GetPath("oem", size),
               GetFlag(argv, GetFlagName("default", size)));
+    EXPECT_EQ(GetPath("child", size),
+              GetFlag(argv, GetFlagName("child", size)));
     EXPECT_EQ(GetPath("guest", size),
               GetFlag(argv, GetFlagName("guest", size)));
   }
