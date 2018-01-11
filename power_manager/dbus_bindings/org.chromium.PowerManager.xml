@@ -149,6 +149,14 @@
       </tp:docstring>
       <arg name="serialized_proto" direction="in" type="ay" />
     </method>
+    <method name="GetInactivityDelays">
+      <tp:docstring>
+        |serialized_reply_proto| is a serialized
+        power_manager::PowerManagementPolicy::Delays protobuf describing the
+        current inactivity delays.
+      </tp:docstring>
+      <arg name="serialized_reply_proto" direction="out" type="ay" />
+    </method>
 
     <!-- Signals -->
     <signal name="BrightnessChanged">
@@ -204,6 +212,7 @@
       </tp:docstring>
       <arg name="serialized_proto" type="ay" />
     </signal>
+
     <signal name="IdleActionImminent">
       <tp:docstring>
         The |serialized_proto| arg is a serialized
@@ -212,5 +221,22 @@
       <arg name="serialized_proto" type="ay" />
     </signal>
     <signal name="IdleActionDeferred" />
+
+    <signal name="ScreenIdleStateChanged">
+      <tp:docstring>
+        The |serialized_proto| arg is a serialized
+        power_manager::ScreenIdleState protobuf describing the current
+        idle-related state of the display.
+      </tp:docstring>
+      <arg name="serialized_proto" type="ay" />
+    </signal>
+    <signal name="InactivityDelaysChanged">
+      <tp:docstring>
+        The |serialized_proto| arg is a serialized
+        power_manager::PowerManagementPolicy::Delays protobuf describing the
+        current inactivity delays.
+      </tp:docstring>
+      <arg name="serialized_proto" type="ay" />
+    </signal>
   </interface>
 </node>

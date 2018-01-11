@@ -158,6 +158,13 @@ bool StateController::TestApi::TriggerInitialStateTimeout() {
   return true;
 }
 
+bool StateController::Delays::operator!=(
+    const StateController::Delays& o) const {
+  return idle != o.idle || idle_warning != o.idle_warning ||
+         screen_off != o.screen_off || screen_dim != o.screen_dim ||
+         screen_lock != o.screen_lock;
+}
+
 class StateController::ActivityInfo {
  public:
   ActivityInfo() = default;
@@ -466,6 +473,21 @@ void StateController::HandleTpmStatus(int dictionary_attack_count) {
   UpdateSettingsAndState();
 }
 
+PowerManagementPolicy::Delays StateController::GetInactivityDelays() const {
+  PowerManagementPolicy::Delays proto;
+  if (!delays_.idle.is_zero())
+    proto.set_idle_ms(delays_.idle.InMilliseconds());
+  if (!delays_.idle_warning.is_zero())
+    proto.set_idle_warning_ms(delays_.idle_warning.InMilliseconds());
+  if (!delays_.screen_off.is_zero())
+    proto.set_screen_off_ms(delays_.screen_off.InMilliseconds());
+  if (!delays_.screen_dim.is_zero())
+    proto.set_screen_dim_ms(delays_.screen_dim.InMilliseconds());
+  if (!delays_.screen_lock.is_zero())
+    proto.set_screen_lock_ms(delays_.screen_lock.InMilliseconds());
+  return proto;
+}
+
 void StateController::OnPrefChanged(const std::string& pref_name) {
   CHECK(initialized_);
   if (pref_name == kDisableIdleSuspendPref ||
@@ -716,7 +738,7 @@ void StateController::LoadPrefs() {
 void StateController::UpdateSettingsAndState() {
   const Action old_idle_action = idle_action_;
   const Action old_lid_closed_action = lid_closed_action_;
-  const base::TimeDelta old_idle_delay = delays_.idle;
+  const Delays old_delays = delays_;
 
   const bool on_ac = power_source_ == PowerSource::AC;
   const bool presenting = display_mode_ == DisplayMode::PRESENTATION;
@@ -828,7 +850,7 @@ void StateController::UpdateSettingsAndState() {
   // updated time-until-idle-action.
   resend_idle_warning_ = sent_idle_warning_ &&
                          delays_.idle_warning != base::TimeDelta() &&
-                         delays_.idle != old_idle_delay;
+                         delays_.idle != old_delays.idle;
 
   LOG(INFO) << "Updated settings:"
             << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
@@ -850,6 +872,9 @@ void StateController::UpdateSettingsAndState() {
     LOG(INFO) << "Deferring inactivity-triggered actions until user activity "
               << "is observed each time a session starts";
   }
+
+  if (delays_ != old_delays)
+    delegate_->EmitInactivityDelaysChanged(GetInactivityDelays());
 
   UpdateState();
 }

@@ -52,6 +52,18 @@ std::string GetIdleImminentAction(base::TimeDelta time_until_idle_action) {
                             time_until_idle_action.InMilliseconds());
 }
 
+std::string GetInactivityDelaysChangedAction(base::TimeDelta idle,
+                                             base::TimeDelta idle_warning,
+                                             base::TimeDelta screen_off,
+                                             base::TimeDelta screen_dim,
+                                             base::TimeDelta screen_lock) {
+  return base::StringPrintf(
+      "delays(%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ")",
+      idle.InMilliseconds(), idle_warning.InMilliseconds(),
+      screen_off.InMilliseconds(), screen_dim.InMilliseconds(),
+      screen_lock.InMilliseconds());
+}
+
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate, public ActionRecorder {
  public:
@@ -63,6 +75,9 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   }
   void set_record_screen_idle_state_actions(bool record) {
     record_screen_idle_state_actions_ = record;
+  }
+  void set_record_inactivity_delays_changed_actions(bool record) {
+    record_inactivity_delays_changed_actions_ = record;
   }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -112,6 +127,17 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
                        : kScreenIdleStateUndimmedOn);
     }
   }
+  void EmitInactivityDelaysChanged(
+      const PowerManagementPolicy::Delays& delays) override {
+    if (record_inactivity_delays_changed_actions_) {
+      AppendAction(GetInactivityDelaysChangedAction(
+          base::TimeDelta::FromMilliseconds(delays.idle_ms()),
+          base::TimeDelta::FromMilliseconds(delays.idle_warning_ms()),
+          base::TimeDelta::FromMilliseconds(delays.screen_off_ms()),
+          base::TimeDelta::FromMilliseconds(delays.screen_dim_ms()),
+          base::TimeDelta::FromMilliseconds(delays.screen_lock_ms())));
+    }
+  }
   void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
     AppendAction(GetIdleImminentAction(time_until_idle_action));
   }
@@ -122,11 +148,11 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   }
 
  private:
-  // Should calls to ReportUserActivityMetrics() and EmitScreenIdleStateChanged
-  // be recorded in |actions_|? These are noisy, so by default, they aren't
-  // recorded.
+  // Should calls to various methods be recorded in |actions_|? These are noisy,
+  // so by default, they aren't recorded.
   bool record_metrics_actions_ = false;
   bool record_screen_idle_state_actions_ = false;
+  bool record_inactivity_delays_changed_actions_ = false;
 
   // Should IsUsbInputDeviceConnected() return true?
   bool usb_input_device_connected_ = false;
@@ -303,11 +329,20 @@ class StateControllerTest : public testing::Test {
 // Tests the basic operation of the different delays.
 TEST_F(StateControllerTest, BasicDelays) {
   delegate_.set_record_screen_idle_state_actions(true);
+  delegate_.set_record_inactivity_delays_changed_actions(true);
   Init();
 
-  // An initial message reporting that the screen is undimmed and turned on
-  // should be sent at startup.
-  EXPECT_EQ(kScreenIdleStateUndimmedOn, delegate_.GetActions());
+  // Initial messages describing the inactivity delays and reporting that the
+  // screen is undimmed and turned on should be sent at startup.
+  EXPECT_EQ(
+      JoinActions(
+          GetInactivityDelaysChangedAction(
+              default_ac_suspend_delay_, base::TimeDelta() /* idle_warning */,
+              default_ac_screen_off_delay_, default_ac_screen_dim_delay_,
+              base::TimeDelta() /* lock */)
+              .c_str(),
+          kScreenIdleStateUndimmedOn, nullptr),
+      delegate_.GetActions());
 
   // The screen should be dimmed after the configured interval and then undimmed
   // in response to user activity.
@@ -1732,6 +1767,66 @@ TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
   EXPECT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleUserActivity();
+}
+
+TEST_F(StateControllerTest, ReportInactivityDelays) {
+  send_initial_policy_ = false;
+  Init();
+  delegate_.set_record_inactivity_delays_changed_actions(true);
+
+  constexpr base::TimeDelta kIdle = base::TimeDelta::FromSeconds(300);
+  constexpr base::TimeDelta kIdleWarn = base::TimeDelta::FromSeconds(270);
+  constexpr base::TimeDelta kScreenOff = base::TimeDelta::FromSeconds(180);
+  constexpr base::TimeDelta kScreenDim = base::TimeDelta::FromSeconds(170);
+  constexpr base::TimeDelta kScreenLock = base::TimeDelta::FromSeconds(190);
+  constexpr double kScreenDimFactor = 3.0;
+
+  // Send an initial policy change and check that its delays are announced.
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_idle_ms(kIdle.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_warning_ms(kIdleWarn.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kScreenOff.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_dim_ms(kScreenDim.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kScreenLock.InMilliseconds());
+  policy.set_presentation_screen_dim_delay_factor(kScreenDimFactor);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(GetInactivityDelaysChangedAction(kIdle, kIdleWarn, kScreenOff,
+                                             kScreenDim, kScreenLock)
+                .c_str(),
+            delegate_.GetActions());
+
+  // Nothing should be announced if the policy didn't change.
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Clear a few fields and check that an update is sent.
+  policy.mutable_ac_delays()->clear_idle_warning_ms();
+  policy.mutable_ac_delays()->clear_screen_lock_ms();
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(GetInactivityDelaysChangedAction(
+                kIdle, base::TimeDelta() /* idle_warn */, kScreenOff,
+                kScreenDim, base::TimeDelta() /* screen_lock */)
+                .c_str(),
+            delegate_.GetActions());
+
+  // GetInactivityDelays() should return the correct values as well.
+  PowerManagementPolicy::Delays delays = controller_.GetInactivityDelays();
+  EXPECT_EQ(kIdle.InMilliseconds(), delays.idle_ms());
+  EXPECT_FALSE(delays.has_idle_warning_ms());
+  EXPECT_EQ(kScreenOff.InMilliseconds(), delays.screen_off_ms());
+  EXPECT_EQ(kScreenDim.InMilliseconds(), delays.screen_dim_ms());
+  EXPECT_FALSE(delays.has_screen_lock_ms());
+
+  // Enter presentation mode and check that the reported delays are adjusted.
+  const base::TimeDelta kScaledScreenDim = kScreenDim * kScreenDimFactor;
+  const base::TimeDelta kDelayDiff = kScaledScreenDim - kScreenDim;
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  EXPECT_EQ(GetInactivityDelaysChangedAction(
+                kIdle + kDelayDiff, base::TimeDelta() /* idle_warning */,
+                kScreenOff + kDelayDiff, kScaledScreenDim,
+                base::TimeDelta() /* screen_lock */)
+                .c_str(),
+            delegate_.GetActions());
 }
 
 }  // namespace policy

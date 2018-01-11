@@ -244,19 +244,25 @@ class Daemon::StateControllerDelegate
     daemon_->SetBacklightsDocked(docked);
   }
 
-  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
-    IdleActionImminent proto;
-    proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
-    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
-        kIdleActionImminentSignal, proto);
-  }
-
   void EmitScreenIdleStateChanged(bool dimmed, bool off) override {
     ScreenIdleState proto;
     proto.set_dimmed(dimmed);
     proto.set_off(off);
     daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
         kScreenIdleStateChangedSignal, proto);
+  }
+
+  void EmitInactivityDelaysChanged(
+      const PowerManagementPolicy::Delays& delays) override {
+    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
+        kInactivityDelaysChangedSignal, delays);
+  }
+
+  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
+    IdleActionImminent proto;
+    proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
+    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
+        kIdleActionImminentSignal, proto);
   }
 
   void EmitIdleActionDeferred() override {
@@ -910,6 +916,7 @@ void Daemon::InitDBus() {
        &Daemon::HandlePowerButtonAcknowledgment},
       {kIgnoreNextPowerButtonPressMethod,
        &Daemon::HandleIgnoreNextPowerButtonPressMethod},
+      {kGetInactivityDelaysMethod, &Daemon::HandleGetInactivityDelaysMethod},
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
@@ -1511,6 +1518,15 @@ std::unique_ptr<dbus::Response> Daemon::HandleIgnoreNextPowerButtonPressMethod(
   input_event_handler_->IgnoreNextPowerButtonPress(
       base::TimeDelta::FromInternalValue(timeout_internal));
   return std::unique_ptr<dbus::Response>();
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleGetInactivityDelaysMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(state_controller_->GetInactivityDelays());
+  return response;
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {

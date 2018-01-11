@@ -91,6 +91,10 @@ class StateController : public PrefsObserver {
     // changed.
     virtual void EmitScreenIdleStateChanged(bool dimmed, bool off) = 0;
 
+    // Announces that the currently-used inactivity delays have changed.
+    virtual void EmitInactivityDelaysChanged(
+        const PowerManagementPolicy::Delays& delays) = 0;
+
     // Announces that the idle action will be performed after
     // |time_until_idle_action|.
     virtual void EmitIdleActionImminent(
@@ -169,17 +173,22 @@ class StateController : public PrefsObserver {
   // Handles updates to the TPM status.
   void HandleTpmStatus(int dictionary_attack_count);
 
+  // Constructs a PowerManagementPolicy::Delays protocol message containing the
+  // currently-active inactivity delays.
+  PowerManagementPolicy::Delays GetInactivityDelays() const;
+
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
 
  private:
-  // Holds a collection of delays.
+  // Holds a collection of delays. Unset delays take the zero value.
   struct Delays {
     base::TimeDelta idle;
     base::TimeDelta idle_warning;
     base::TimeDelta screen_off;
     base::TimeDelta screen_dim;
     base::TimeDelta screen_lock;
+    bool operator!=(const Delays& o) const;
   };
 
   // Tracks the state of an activity that starts and stops.

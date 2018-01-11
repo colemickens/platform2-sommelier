@@ -247,6 +247,8 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleIgnoreNextPowerButtonPressMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleGetInactivityDelaysMethod(
+      dbus::MethodCall* method_call);
 
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
