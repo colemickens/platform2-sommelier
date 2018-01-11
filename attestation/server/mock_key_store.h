@@ -29,7 +29,7 @@ namespace attestation {
 class MockKeyStore : public KeyStore {
  public:
   MockKeyStore();
-  virtual ~MockKeyStore();
+  ~MockKeyStore() override;
 
   MOCK_METHOD3(Read,
                bool(const std::string& username,

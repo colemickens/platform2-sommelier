@@ -35,7 +35,7 @@ namespace attestation {
 class DBusProxy : public AttestationInterface {
  public:
   DBusProxy();
-  virtual ~DBusProxy();
+  ~DBusProxy() override;
 
   // AttestationInterface methods.
   bool Initialize() override;
