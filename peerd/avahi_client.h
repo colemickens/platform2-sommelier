@@ -5,6 +5,7 @@
 #ifndef PEERD_AVAHI_CLIENT_H_
 #define PEERD_AVAHI_CLIENT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

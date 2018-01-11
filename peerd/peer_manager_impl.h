@@ -6,6 +6,7 @@
 #define PEERD_PEER_MANAGER_IMPL_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/time/time.h>

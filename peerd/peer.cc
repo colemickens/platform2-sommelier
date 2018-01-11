@@ -4,6 +4,8 @@
 
 #include "peerd/peer.h"
 
+#include <utility>
+
 #include <base/format_macros.h>
 #include <base/guid.h>
 #include <base/memory/weak_ptr.h>

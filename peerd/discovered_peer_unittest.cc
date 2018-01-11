@@ -4,6 +4,7 @@
 
 #include "peerd/discovered_peer.h"
 
+#include <memory>
 #include <string>
 
 #include <base/time/time.h>

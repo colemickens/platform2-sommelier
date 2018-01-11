@@ -7,6 +7,9 @@
 #include <arpa/inet.h>
 #include <avahi-common/address.h>
 #include <avahi-common/defs.h>
+
+#include <utility>
+
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <brillo/bind_lambda.h>

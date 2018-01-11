@@ -4,6 +4,7 @@
 
 #include "peerd/published_peer.h"
 
+#include <memory>
 #include <string>
 
 #include <brillo/errors/error.h>

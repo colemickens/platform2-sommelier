@@ -7,6 +7,7 @@
 #include <bitset>
 #include <limits>
 #include <string>
+#include <utility>
 
 using brillo::dbus_utils::ExportedObjectManager;
 using peerd::technologies::TechnologySet;

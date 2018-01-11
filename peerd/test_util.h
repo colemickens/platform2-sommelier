@@ -5,6 +5,7 @@
 #ifndef PEERD_TEST_UTIL_H_
 #define PEERD_TEST_UTIL_H_
 
+#include <memory>
 #include <string>
 
 #include <brillo/dbus/mock_dbus_object.h>

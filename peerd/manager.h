@@ -6,6 +6,7 @@
 #define PEERD_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <stdint.h>
 #include <string>
