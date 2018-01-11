@@ -48,7 +48,7 @@ class DisplayPowerSetterInterface {
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
  public:
   DisplayPowerSetter();
-  virtual ~DisplayPowerSetter();
+  ~DisplayPowerSetter() override;
 
   // Ownership of |dbus_wrapper| remains with the caller.
   void Init(DBusWrapperInterface* dbus_wrapper);

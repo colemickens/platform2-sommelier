@@ -21,7 +21,7 @@ namespace system {
 class BacklightStub : public BacklightInterface {
  public:
   BacklightStub(int64_t max_level, int64_t current_level);
-  virtual ~BacklightStub();
+  ~BacklightStub() override;
 
   void set_clock(Clock* clock) { clock_ = clock; }
   void set_device_exists(bool exists) { device_exists_ = exists; }

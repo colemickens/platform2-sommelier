@@ -43,7 +43,7 @@ class TestPrefsObserver : public PrefsObserver {
   explicit TestPrefsObserver(Prefs* prefs) : prefs_(prefs) {
     prefs_->AddObserver(this);
   }
-  virtual ~TestPrefsObserver() { prefs_->RemoveObserver(this); }
+  ~TestPrefsObserver() override { prefs_->RemoveObserver(this); }
 
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
@@ -74,9 +74,9 @@ class TestPrefsObserver : public PrefsObserver {
 class PrefsTest : public testing::Test {
  public:
   PrefsTest() : test_api_(&prefs_) {}
-  virtual ~PrefsTest() {}
+  ~PrefsTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     paths_.clear();
     // Create new temp directories.
     for (int i = 0; i < kNumPrefDirectories; ++i) {

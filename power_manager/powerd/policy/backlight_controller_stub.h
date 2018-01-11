@@ -21,7 +21,7 @@ namespace policy {
 class BacklightControllerStub : public policy::BacklightController {
  public:
   BacklightControllerStub();
-  virtual ~BacklightControllerStub();
+  ~BacklightControllerStub() override;
 
   const std::vector<PowerSource>& power_source_changes() const {
     return power_source_changes_;

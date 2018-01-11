@@ -111,7 +111,7 @@ class Prefs : public PrefsInterface {
   };
 
   Prefs();
-  virtual ~Prefs();
+  ~Prefs() override;
 
   // Returns the default writable store of prefs, to be passed to Init().
   static std::unique_ptr<PrefsStoreInterface> GetDefaultStore();

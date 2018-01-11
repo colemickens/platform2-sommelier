@@ -21,7 +21,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
     controller_.Init(&display_watcher_, &display_power_setter_);
   }
 
-  virtual ~ExternalBacklightControllerTest() {
+  ~ExternalBacklightControllerTest() override {
     controller_.RemoveObserver(&observer_);
   }
 

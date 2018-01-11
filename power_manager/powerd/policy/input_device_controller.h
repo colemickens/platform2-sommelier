@@ -66,7 +66,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   };
 
   InputDeviceController();
-  virtual ~InputDeviceController();
+  ~InputDeviceController() override;
 
   void Init(policy::BacklightController* backlight_controller,
             system::UdevInterface* udev,

@@ -137,7 +137,7 @@ class StateController : public PrefsObserver {
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
   StateController();
-  virtual ~StateController();
+  ~StateController() override;
 
   base::TimeTicks last_user_activity_time() const {
     return last_user_activity_time_;

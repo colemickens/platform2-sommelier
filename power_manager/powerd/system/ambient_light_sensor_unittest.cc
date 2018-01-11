@@ -33,7 +33,7 @@ const int kPollIntervalMs = 100;
 class TestObserver : public AmbientLightObserver {
  public:
   TestObserver() {}
-  virtual ~TestObserver() {}
+  ~TestObserver() override {}
 
   // Runs |loop_| until OnAmbientLightUpdated() is called.
   bool RunUntilAmbientLightUpdated() {
@@ -57,7 +57,7 @@ class TestObserver : public AmbientLightObserver {
 class AmbientLightSensorTest : public ::testing::Test {
  public:
   AmbientLightSensorTest() {}
-  virtual ~AmbientLightSensorTest() {}
+  ~AmbientLightSensorTest() override {}
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());

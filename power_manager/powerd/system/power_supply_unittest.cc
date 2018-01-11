@@ -52,7 +52,7 @@ const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
 class TestObserver : public PowerSupplyObserver {
  public:
   TestObserver() : num_updates_(0) {}
-  virtual ~TestObserver() {}
+  ~TestObserver() override {}
 
   int num_updates() const { return num_updates_; }
   void reset_num_updates() { num_updates_ = 0; }
@@ -85,7 +85,7 @@ class PowerSupplyTest : public ::testing::Test {
  public:
   PowerSupplyTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir_.IsValid());
 

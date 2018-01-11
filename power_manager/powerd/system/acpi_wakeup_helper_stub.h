@@ -18,7 +18,7 @@ namespace system {
 class AcpiWakeupHelperStub : public AcpiWakeupHelperInterface {
  public:
   AcpiWakeupHelperStub();
-  virtual ~AcpiWakeupHelperStub();
+  ~AcpiWakeupHelperStub() override;
 
   // Implementation of AcpiWakeupHelperInterface.
   bool IsSupported() override;

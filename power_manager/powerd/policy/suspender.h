@@ -195,7 +195,7 @@ class Suspender : public SuspendDelayObserver {
   };
 
   Suspender();
-  virtual ~Suspender();
+  ~Suspender() override;
 
   void Init(Delegate* delegate,
             system::DBusWrapperInterface* dbus_wrapper,

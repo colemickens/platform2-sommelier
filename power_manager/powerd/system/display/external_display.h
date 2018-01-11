@@ -139,7 +139,7 @@ class ExternalDisplay {
   class RealDelegate : public Delegate {
    public:
     RealDelegate();
-    virtual ~RealDelegate();
+    ~RealDelegate() override;
 
     // Initializes the object to use the I2C device at |i2c_path|.
     void Init(const base::FilePath& i2c_path);

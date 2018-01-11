@@ -27,7 +27,7 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
   };
 
   BacklightControllerObserverStub();
-  virtual ~BacklightControllerObserverStub();
+  ~BacklightControllerObserverStub() override;
 
   const std::vector<ChangeTuple>& changes() const { return changes_; }
 

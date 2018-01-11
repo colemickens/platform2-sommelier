@@ -21,7 +21,7 @@ const base::FilePath kAcpiWakeupPath("/proc/acpi/wakeup");
 class AcpiWakeupFile : public AcpiWakeupFileInterface {
  public:
   AcpiWakeupFile() {}
-  virtual ~AcpiWakeupFile() {}
+  ~AcpiWakeupFile() override {}
 
   bool Exists() override { return base::PathExists(kAcpiWakeupPath); }
 

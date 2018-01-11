@@ -63,7 +63,7 @@ class InternalBacklightController : public BacklightController,
   static const int kAmbientLightSensorTimeoutSec;
 
   InternalBacklightController();
-  virtual ~InternalBacklightController();
+  ~InternalBacklightController() override;
 
   Clock* clock() { return clock_.get(); }
 

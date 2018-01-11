@@ -53,7 +53,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
   static const char kDrmStatusConnected[];
 
   DisplayWatcher();
-  virtual ~DisplayWatcher();
+  ~DisplayWatcher() override;
 
   void set_sysfs_drm_path_for_testing(const base::FilePath& path) {
     sysfs_drm_path_for_testing_ = path;

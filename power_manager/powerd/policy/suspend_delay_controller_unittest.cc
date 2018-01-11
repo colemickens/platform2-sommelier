@@ -25,7 +25,7 @@ class TestObserver : public SuspendDelayObserver {
  public:
   TestObserver()
       : timeout_(base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs)) {}
-  virtual ~TestObserver() {}
+  ~TestObserver() override {}
 
   // Must be called before RunUntilReadyForSuspend().
   void set_timeout(base::TimeDelta timeout) { timeout_ = timeout; }
@@ -54,7 +54,7 @@ class SuspendDelayControllerTest : public ::testing::Test {
     controller_.AddObserver(&observer_);
   }
 
-  virtual ~SuspendDelayControllerTest() {
+  ~SuspendDelayControllerTest() override {
     controller_.RemoveObserver(&observer_);
   }
 

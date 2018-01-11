@@ -63,7 +63,7 @@ class KeyboardBacklightController : public BacklightController,
   static const double kDimPercent;
 
   KeyboardBacklightController();
-  virtual ~KeyboardBacklightController();
+  ~KeyboardBacklightController() override;
 
   // Initializes the object. Ownership of passed-in pointers remains with the
   // caller. |sensor| and |display_backlight_controller| may be NULL.

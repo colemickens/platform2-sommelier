@@ -23,7 +23,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
   TestDelegate()
       : percent_(-1.0),
         cause_(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT) {}
-  virtual ~TestDelegate() {}
+  ~TestDelegate() override {}
 
   double percent() const { return percent_; }
   AmbientLightHandler::BrightnessChangeCause cause() const { return cause_; }
@@ -49,7 +49,7 @@ class AmbientLightHandlerTest : public ::testing::Test {
         handler_(&light_sensor_, &delegate_),
         initial_brightness_percent_(0.0) {}
 
-  virtual ~AmbientLightHandlerTest() {}
+  ~AmbientLightHandlerTest() override {}
 
  protected:
   // Initializes |handler_|.

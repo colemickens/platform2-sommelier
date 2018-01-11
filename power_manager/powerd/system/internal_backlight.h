@@ -33,7 +33,7 @@ class InternalBacklight : public BacklightInterface {
   static const char kBlPowerFilename[];
 
   InternalBacklight();
-  virtual ~InternalBacklight();
+  ~InternalBacklight() override;
 
   // Initialize the backlight object.
   //

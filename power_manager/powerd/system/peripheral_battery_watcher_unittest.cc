@@ -37,21 +37,21 @@ const char kDeviceModelName[] = "Test HID Mouse";
 class TestWrapper : public DBusWrapperStub {
  public:
   TestWrapper() {}
-  virtual ~TestWrapper() {}
+  ~TestWrapper() override {}
 
   // Runs |loop_| until battery status is sent through D-Bus.
   bool RunUntilSignalSent(const base::TimeDelta& timeout) {
     return loop_runner_.StartLoop(timeout);
   }
 
-  virtual void EmitBareSignal(const std::string& signal_name) {
+  void EmitBareSignal(const std::string& signal_name) override {
     DBusWrapperStub::EmitBareSignal(signal_name);
     loop_runner_.StopLoop();
   }
 
-  virtual void EmitSignalWithProtocolBuffer(
+  void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
-      const google::protobuf::MessageLite& protobuf) {
+      const google::protobuf::MessageLite& protobuf) override {
     DBusWrapperStub::EmitSignalWithProtocolBuffer(signal_name, protobuf);
     loop_runner_.StopLoop();
   }
@@ -67,7 +67,7 @@ class TestWrapper : public DBusWrapperStub {
 class PeripheralBatteryWatcherTest : public ::testing::Test {
  public:
   PeripheralBatteryWatcherTest() {}
-  virtual ~PeripheralBatteryWatcherTest() {}
+  ~PeripheralBatteryWatcherTest() override {}
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());

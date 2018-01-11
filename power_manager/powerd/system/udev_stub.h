@@ -24,7 +24,7 @@ namespace system {
 class UdevStub : public UdevInterface {
  public:
   UdevStub();
-  virtual ~UdevStub();
+  ~UdevStub() override;
 
   // Returns true if |observer| is registered for |subsystem|.
   bool HasSubsystemObserver(const std::string& subsystem,

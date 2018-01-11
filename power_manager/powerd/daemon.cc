@@ -162,7 +162,7 @@ class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {
  public:
   explicit StateControllerDelegate(Daemon* daemon) : daemon_(daemon) {}
-  virtual ~StateControllerDelegate() { daemon_ = NULL; }
+  ~StateControllerDelegate() override { daemon_ = NULL; }
 
   // Overridden from policy::StateController::Delegate:
   bool IsUsbInputDeviceConnected() override {

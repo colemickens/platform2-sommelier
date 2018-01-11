@@ -39,7 +39,7 @@ class AcpiWakeupFileInterface {
 class AcpiWakeupHelper : public AcpiWakeupHelperInterface {
  public:
   AcpiWakeupHelper();
-  virtual ~AcpiWakeupHelper();
+  ~AcpiWakeupHelper() override;
 
   // Forces use of a fake implementation instead of /proc/acpi/wakeup. Only for
   // testing.

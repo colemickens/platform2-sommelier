@@ -57,7 +57,7 @@ class InputWatcher : public InputWatcherInterface,
   static const char kPowerButtonToSkipForLegacy[];
 
   InputWatcher();
-  virtual ~InputWatcher();
+  ~InputWatcher() override;
 
   void set_dev_input_path_for_testing(const base::FilePath& path) {
     dev_input_path_ = path;

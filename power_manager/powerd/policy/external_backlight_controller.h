@@ -33,7 +33,7 @@ class ExternalBacklightController : public BacklightController,
                                     public system::DisplayWatcherObserver {
  public:
   ExternalBacklightController();
-  virtual ~ExternalBacklightController();
+  ~ExternalBacklightController() override;
 
   // Initializes the object. Ownership of |display_watcher| and
   // |display_power_setter| remain with the caller.

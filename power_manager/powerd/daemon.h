@@ -80,7 +80,7 @@ class Daemon : public policy::BacklightControllerObserver,
                public system::PowerSupplyObserver {
  public:
   Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
-  virtual ~Daemon();
+  ~Daemon() override;
 
   void set_wakeup_count_path_for_testing(const base::FilePath& path) {
     wakeup_count_path_ = path;

@@ -16,7 +16,7 @@ namespace system {
 class InputWatcherStub : public InputWatcherInterface {
  public:
   InputWatcherStub();
-  virtual ~InputWatcherStub();
+  ~InputWatcherStub() override;
 
   void set_lid_state(LidState state) { lid_state_ = state; }
   void set_tablet_mode(TabletMode tablet_mode) { tablet_mode_ = tablet_mode; }

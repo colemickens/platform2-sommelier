@@ -46,7 +46,7 @@ class MetricsSenderStub : public MetricsSenderInterface {
   // The c'tor and d'tor call SetInstance() to register and unregister this
   // instance.
   MetricsSenderStub();
-  virtual ~MetricsSenderStub();
+  ~MetricsSenderStub() override;
 
   int num_metrics() const { return metrics_.size(); }
   void clear_metrics() { metrics_.clear(); }

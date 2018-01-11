@@ -74,7 +74,7 @@ class InputEventHandler : public system::InputObserver {
   static const int kPowerButtonAcknowledgmentTimeoutMs = 2000;
 
   InputEventHandler();
-  virtual ~InputEventHandler();
+  ~InputEventHandler() override;
 
   Clock* clock_for_testing() { return clock_.get(); }
 

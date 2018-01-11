@@ -23,7 +23,7 @@ class EventDevice : public EventDeviceInterface,
                     public base::MessageLoopForIO::Watcher {
  public:
   EventDevice(int fd, const base::FilePath& path);
-  virtual ~EventDevice();
+  ~EventDevice() override;
 
   // Implementation of EventDeviceInterface.
   std::string GetDebugName() override;
@@ -62,7 +62,7 @@ class EventDevice : public EventDeviceInterface,
 class EventDeviceFactory : public EventDeviceFactoryInterface {
  public:
   EventDeviceFactory();
-  virtual ~EventDeviceFactory();
+  ~EventDeviceFactory() override;
 
   // Implementation of EventDeviceFactoryInterface.
   linked_ptr<EventDeviceInterface> Open(const base::FilePath& path) override;

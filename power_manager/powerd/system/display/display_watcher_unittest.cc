@@ -50,7 +50,7 @@ class DisplayWatcherTest : public testing::Test {
     CHECK(device_dir_.CreateUniqueTempDir());
     watcher_.set_i2c_dev_path_for_testing(device_dir_.path());
   }
-  virtual ~DisplayWatcherTest() {}
+  ~DisplayWatcherTest() override {}
 
  protected:
   // Creates a directory named |device_name| in |device_dir_| and adds a symlink

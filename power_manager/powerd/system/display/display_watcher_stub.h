@@ -16,7 +16,7 @@ namespace system {
 class DisplayWatcherStub : public DisplayWatcherInterface {
  public:
   DisplayWatcherStub();
-  virtual ~DisplayWatcherStub();
+  ~DisplayWatcherStub() override;
 
   void set_displays(const std::vector<DisplayInfo>& displays) {
     displays_ = displays;

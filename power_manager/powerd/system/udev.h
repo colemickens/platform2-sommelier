@@ -93,7 +93,7 @@ class UdevInterface {
 class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
  public:
   Udev();
-  virtual ~Udev();
+  ~Udev() override;
 
   // Initializes the object to listen for events. Returns true on success.
   bool Init();

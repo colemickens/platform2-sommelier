@@ -102,7 +102,7 @@ class DBusWrapperInterface {
 // bus.
 class DBusWrapper : public DBusWrapperInterface {
  public:
-  virtual ~DBusWrapper();
+  ~DBusWrapper() override;
 
   // Factory method for DBusWrapper. Returns nullptr on failure.
   static std::unique_ptr<DBusWrapper> Create();

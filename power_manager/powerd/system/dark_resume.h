@@ -94,7 +94,7 @@ class DarkResume : public DarkResumeInterface {
   static const char kUnknown[];
 
   DarkResume();
-  virtual ~DarkResume();
+  ~DarkResume() override;
 
   void set_legacy_state_path_for_testing(const base::FilePath& path) {
     legacy_state_path_ = path;

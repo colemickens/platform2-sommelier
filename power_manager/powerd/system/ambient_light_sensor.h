@@ -46,7 +46,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   static const int kNumInitAttemptsBeforeGivingUp;
 
   AmbientLightSensor();
-  virtual ~AmbientLightSensor();
+  ~AmbientLightSensor() override;
 
   void set_device_list_path_for_testing(const base::FilePath& path) {
     device_list_path_ = path;

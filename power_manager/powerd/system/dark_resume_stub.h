@@ -14,7 +14,7 @@ namespace system {
 class DarkResumeStub : public DarkResumeInterface {
  public:
   DarkResumeStub();
-  virtual ~DarkResumeStub();
+  ~DarkResumeStub() override;
 
   void set_action(Action action) { action_ = action; }
   void set_suspend_duration(const base::TimeDelta& duration) {

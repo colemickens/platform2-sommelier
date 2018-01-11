@@ -76,7 +76,7 @@ class AsyncFileReaderTest : public ::testing::Test {
     CHECK(temp_dir_->IsValid());
     path_ = temp_dir_->path().Append(kDummyFileName);
   }
-  virtual ~AsyncFileReaderTest() {}
+  ~AsyncFileReaderTest() override {}
 
  protected:
   // Creates a file containing |file_size| bytes and uses AsyncFileReader to

@@ -18,7 +18,7 @@ namespace system {
 class PowerSupplyStub : public PowerSupplyInterface {
  public:
   PowerSupplyStub();
-  virtual ~PowerSupplyStub();
+  ~PowerSupplyStub() override;
 
   void set_refresh_result(bool result) { refresh_result_ = result; }
   void set_status(const PowerStatus& status) { status_ = status; }

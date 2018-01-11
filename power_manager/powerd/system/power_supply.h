@@ -314,7 +314,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
                                        const PowerStatus& b);
 
   PowerSupply();
-  virtual ~PowerSupply();
+  ~PowerSupply() override;
 
   base::TimeTicks battery_stabilized_timestamp() const {
     return battery_stabilized_timestamp_;

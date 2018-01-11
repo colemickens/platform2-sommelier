@@ -32,7 +32,7 @@ std::string Hex(uint8_t byte) {
 class TestDelegate : public ExternalDisplay::Delegate {
  public:
   TestDelegate() : report_write_failure_(false), report_read_failure_(false) {}
-  virtual ~TestDelegate() {}
+  ~TestDelegate() override {}
 
   void set_reply_message(const std::vector<uint8_t>& message) {
     reply_message_ = message;
@@ -140,7 +140,7 @@ class ExternalDisplayTest : public testing::Test {
             ExternalDisplay::kDdcGetCommand ^
             ExternalDisplay::kDdcBrightnessIndex);
   }
-  virtual ~ExternalDisplayTest() {}
+  ~ExternalDisplayTest() override {}
 
  protected:
   // Updates the checksum byte that's already present at the end of |message|.

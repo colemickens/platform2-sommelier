@@ -16,7 +16,7 @@ namespace system {
 class EcWakeupHelper : public EcWakeupHelperInterface {
  public:
   EcWakeupHelper();
-  virtual ~EcWakeupHelper();
+  ~EcWakeupHelper() override;
 
   // Implementation of EcWakeupHelperInterface.
   bool IsSupported() override;

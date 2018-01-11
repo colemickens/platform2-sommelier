@@ -25,9 +25,9 @@ namespace system {
 class InternalBacklightTest : public ::testing::Test {
  public:
   InternalBacklightTest() {}
-  virtual ~InternalBacklightTest() {}
+  ~InternalBacklightTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path();
   }

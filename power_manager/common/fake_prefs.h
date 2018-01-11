@@ -22,7 +22,7 @@ namespace power_manager {
 class FakePrefs : public PrefsInterface {
  public:
   FakePrefs();
-  virtual ~FakePrefs();
+  ~FakePrefs() override;
 
   // Deletes |name| from |*_prefs_|.
   void Unset(const std::string& name);

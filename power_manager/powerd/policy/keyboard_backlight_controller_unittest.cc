@@ -45,7 +45,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     controller_.AddObserver(&observer_);
   }
 
-  virtual ~KeyboardBacklightControllerTest() {
+  ~KeyboardBacklightControllerTest() override {
     controller_.RemoveObserver(&observer_);
   }
 

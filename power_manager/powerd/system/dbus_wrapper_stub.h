@@ -35,7 +35,7 @@ class DBusWrapperStub : public DBusWrapperInterface {
   };
 
   DBusWrapperStub();
-  virtual ~DBusWrapperStub();
+  ~DBusWrapperStub() override;
 
   bool service_published() const { return service_published_; }
   size_t num_sent_signals() const { return sent_signals_.size(); }

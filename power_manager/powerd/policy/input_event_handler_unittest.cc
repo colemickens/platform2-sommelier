@@ -77,7 +77,7 @@ class TestInputEventHandlerDelegate : public InputEventHandler::Delegate,
                                       public ActionRecorder {
  public:
   TestInputEventHandlerDelegate() {}
-  virtual ~TestInputEventHandlerDelegate() {}
+  ~TestInputEventHandlerDelegate() override {}
 
   // InputEventHandler::Delegate implementation:
   void HandleLidClosed() override { AppendAction(kLidClosed); }
@@ -114,7 +114,7 @@ class InputEventHandlerTest : public ::testing::Test {
     handler_.clock_for_testing()->set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
   }
-  virtual ~InputEventHandlerTest() {}
+  ~InputEventHandlerTest() override {}
 
  protected:
   // Initializes |handler_|.

@@ -19,7 +19,7 @@ namespace system {
 class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
  public:
   DisplayPowerSetterStub();
-  virtual ~DisplayPowerSetterStub();
+  ~DisplayPowerSetterStub() override;
 
   chromeos::DisplayPowerState state() const { return state_; }
   base::TimeDelta delay() const { return delay_; }

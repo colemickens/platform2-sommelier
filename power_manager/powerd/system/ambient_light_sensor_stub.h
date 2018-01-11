@@ -16,7 +16,7 @@ namespace system {
 class AmbientLightSensorStub : public AmbientLightSensorInterface {
  public:
   explicit AmbientLightSensorStub(int lux);
-  virtual ~AmbientLightSensorStub();
+  ~AmbientLightSensorStub() override;
 
   void set_lux(int lux) { lux_ = lux; }
 
