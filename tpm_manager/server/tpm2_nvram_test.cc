@@ -59,9 +59,9 @@ using trunks::TPM_RC_HANDLE;
 class Tpm2NvramTest : public testing::Test {
  public:
   Tpm2NvramTest() = default;
-  virtual ~Tpm2NvramTest() = default;
+  ~Tpm2NvramTest() override = default;
 
-  void SetUp() {
+  void SetUp() override {
     factory_.set_hmac_session(&mock_hmac_session_);
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);

@@ -38,7 +38,7 @@ namespace tpm_manager {
 class TPM_MANAGER_EXPORT TpmNvramDBusProxy : public TpmNvramInterface {
  public:
   TpmNvramDBusProxy() = default;
-  virtual ~TpmNvramDBusProxy();
+  ~TpmNvramDBusProxy() override;
 
   // Performs initialization tasks. This method must be called before calling
   // any other method in this class. Returns true on success.

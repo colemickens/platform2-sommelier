@@ -43,7 +43,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   DBusService(scoped_refptr<dbus::Bus> bus,
               TpmNvramInterface* nvram_service,
               TpmOwnershipInterface* ownership_service);
-  virtual ~DBusService() = default;
+  ~DBusService() override = default;
 
   // Registers objects exported by this service.
   void RegisterDBusObjectsAsync(

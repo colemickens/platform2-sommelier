@@ -43,9 +43,9 @@ namespace tpm_manager {
 class Tpm2InitializerTest : public testing::Test {
  public:
   Tpm2InitializerTest() = default;
-  virtual ~Tpm2InitializerTest() = default;
+  ~Tpm2InitializerTest() override = default;
 
-  void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(mock_data_store_, Read(_))
         .WillRepeatedly(Invoke([this](LocalData* arg) {
           *arg = fake_local_data_;

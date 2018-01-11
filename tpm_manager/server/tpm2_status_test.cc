@@ -33,9 +33,9 @@ namespace tpm_manager {
 class Tpm2StatusTest : public testing::Test {
  public:
   Tpm2StatusTest() = default;
-  virtual ~Tpm2StatusTest() = default;
+  ~Tpm2StatusTest() override = default;
 
-  void SetUp() {
+  void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
     tpm_status_.reset(new Tpm2StatusImpl(factory_));
   }
