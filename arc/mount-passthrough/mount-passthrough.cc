@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse/fuse.h>
+#include <fuse/fuse_common.h>
 #include <linux/limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -44,7 +45,7 @@ int passthrough_create(const char* path,
   return 0;
 }
 
-int passthrough_fgetattr(const char* path,
+int passthrough_fgetattr(const char*,
                          struct stat* buf,
                          struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
@@ -52,24 +53,18 @@ int passthrough_fgetattr(const char* path,
   return WRAP_FS_CALL(fstat(fd, buf));
 }
 
-int passthrough_fsync(const char* path,
-                      int datasync,
-                      struct fuse_file_info* fi) {
+int passthrough_fsync(const char*, int datasync, struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return datasync ? WRAP_FS_CALL(fdatasync(fd)) : WRAP_FS_CALL(fsync(fd));
 }
 
-int passthrough_fsyncdir(const char* path,
-                         int datasync,
-                         struct fuse_file_info* fi) {
+int passthrough_fsyncdir(const char*, int datasync, struct fuse_file_info* fi) {
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
   int fd = dirfd(dirp);
   return datasync ? WRAP_FS_CALL(fdatasync(fd)) : WRAP_FS_CALL(fsync(fd));
 }
 
-int passthrough_ftruncate(const char* path,
-                          off_t size,
-                          struct fuse_file_info* fi) {
+int passthrough_ftruncate(const char*, off_t size, struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return WRAP_FS_CALL(ftruncate(fd, size));
 }
@@ -101,11 +96,8 @@ int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
   return 0;
 }
 
-int passthrough_read(const char* path,
-                     char* buf,
-                     size_t size,
-                     off_t off,
-                     struct fuse_file_info* fi) {
+int passthrough_read(
+    const char*, char* buf, size_t size, off_t off, struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   int res = pread(fd, buf, size, off);
   if (res < 0) {
@@ -114,24 +106,24 @@ int passthrough_read(const char* path,
   return res;
 }
 
-/*
-// TODO(nya): Use this faster version after we update libfuse.
-int passthrough_read_buf(
-    const char* path, struct fuse_bufvec** srcp, size_t size, off_t off,
-    struct fuse_file_info* fi) {
+int passthrough_read_buf(const char*,
+                         struct fuse_bufvec** srcp,
+                         size_t size,
+                         off_t off,
+                         struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
-  struct fuse_bufvec* src = static_cast<struct fuse_bufvec*>(
-      malloc(sizeof(struct fuse_bufvec)));
-  *src = FUSE_BUFVEC_INIT(0);
-  src->buf[0].flags = FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK;
+  struct fuse_bufvec* src =
+      static_cast<struct fuse_bufvec*>(malloc(sizeof(struct fuse_bufvec)));
+  *src = FUSE_BUFVEC_INIT(size);
+  src->buf[0].flags =
+      static_cast<fuse_buf_flags>(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
   src->buf[0].fd = fd;
   src->buf[0].pos = off;
   *srcp = src;
   return 0;
 }
-*/
 
-int passthrough_readdir(const char* path,
+int passthrough_readdir(const char*,
                         void* buf,
                         fuse_fill_dir_t filler,
                         off_t off,
@@ -153,12 +145,12 @@ int passthrough_readdir(const char* path,
   return -errno;
 }
 
-int passthrough_release(const char* path, struct fuse_file_info* fi) {
+int passthrough_release(const char*, struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
   return WRAP_FS_CALL(close(fd));
 }
 
-int passthrough_releasedir(const char* path, struct fuse_file_info* fi) {
+int passthrough_releasedir(const char*, struct fuse_file_info* fi) {
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
   return WRAP_FS_CALL(closedir(dirp));
 }
@@ -187,7 +179,7 @@ int passthrough_utimens(const char* path, const struct timespec tv[2]) {
   return WRAP_FS_CALL(utimensat(AT_FDCWD, path, tv, 0));
 }
 
-int passthrough_write(const char* path,
+int passthrough_write(const char*,
                       const char* buf,
                       size_t size,
                       off_t off,
@@ -200,19 +192,18 @@ int passthrough_write(const char* path,
   return res;
 }
 
-/*
-// TODO(nya): Use this faster version after we update libfuse.
-int passthrough_write_buf(
-    const char* path, const fuse_bufvec* src, off_t off,
-    struct fuse_file_info* fi) {
+int passthrough_write_buf(const char*,
+                          struct fuse_bufvec* src,
+                          off_t off,
+                          struct fuse_file_info* fi) {
   int fd = static_cast<int>(fi->fh);
-  struct fuse_bufvec dst = FUSE_BUFVEC_INIT(0);
-  dst.buf[0].flags = FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK;
+  struct fuse_bufvec dst = FUSE_BUFVEC_INIT(fuse_buf_size(src));
+  dst.buf[0].flags =
+      static_cast<fuse_buf_flags>(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
   dst.buf[0].fd = fd;
   dst.buf[0].pos = off;
-  return fuse_buf_copy(&dst, src, 0);
+  return fuse_buf_copy(&dst, src, static_cast<fuse_buf_copy_flags>(0));
 }
-*/
 
 void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   memset(passthrough_ops, 0, sizeof(*passthrough_ops));
@@ -227,6 +218,7 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(open);
   FILL_OP(opendir);
   FILL_OP(read);
+  FILL_OP(read_buf);
   FILL_OP(readdir);
   FILL_OP(release);
   FILL_OP(releasedir);
@@ -237,7 +229,10 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(unlink);
   FILL_OP(utimens);
   FILL_OP(write);
+  FILL_OP(write_buf);
 #undef FILL_OP
+  passthrough_ops->flag_nullpath_ok = 1;
+  passthrough_ops->flag_nopath = 1;
 }
 
 }  // namespace
