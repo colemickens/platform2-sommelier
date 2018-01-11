@@ -52,7 +52,7 @@ struct SmbiosTable {
   std::vector<std::string> strings;
 };
 
-bool CrosConfig::WriteFakeTables(base::File& smbios_file,
+bool CrosConfig::WriteFakeTables(base::File* smbios_file,
                                  const std::string& name,
                                  int sku_id) {
   // Write a header for a BIOS table
@@ -65,12 +65,12 @@ bool CrosConfig::WriteFakeTables(base::File& smbios_file,
   hdr.type = SMBIOS_TYPE_BIOS;
   hdr.length = 100;  // Arbitrary size smaller than the maximum.
   int pos = hdr.length;
-  if (smbios_file.Write(0, reinterpret_cast<char*>(&hdr), sizeof(hdr)) < 0) {
+  if (smbios_file->Write(0, reinterpret_cast<char*>(&hdr), sizeof(hdr)) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write header";
     return false;
   }
   // Write an empty string table after the header record.
-  if (smbios_file.Write(pos, "\0\0", 2) < 0) {
+  if (smbios_file->Write(pos, "\0\0", 2) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write empty string table";
     return false;
   }
@@ -85,34 +85,34 @@ bool CrosConfig::WriteFakeTables(base::File& smbios_file,
   std::string sku_id_str = base::StringPrintf("sku%d", sku_id);
   hdr.type = SMBIOS_TYPE_SYSTEM;
   hdr.length = sizeof(hdr) + sizeof(system);
-  if (smbios_file.Seek(base::File::FROM_BEGIN, pos + 2) == -1) {
+  if (smbios_file->Seek(base::File::FROM_BEGIN, pos + 2) == -1) {
     CROS_CONFIG_LOG(ERROR) << "Failed to seek";
   }
 
   // This is the system table. First write the header and the table data.
-  if (smbios_file.WriteAtCurrentPos(reinterpret_cast<char*>(&hdr),
-                                    sizeof(hdr)) < 0) {
+  if (smbios_file->WriteAtCurrentPos(reinterpret_cast<char*>(&hdr),
+                                     sizeof(hdr)) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write system header";
     return false;
   }
-  if (smbios_file.WriteAtCurrentPos(reinterpret_cast<char*>(&system),
-                                    sizeof(system)) < 0) {
+  if (smbios_file->WriteAtCurrentPos(reinterpret_cast<char*>(&system),
+                                     sizeof(system)) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write system table";
     return false;
   }
 
   // Next write the string table and terminator.
-  if (smbios_file.WriteAtCurrentPos(name.c_str(), name.length() + 1) < 0) {
+  if (smbios_file->WriteAtCurrentPos(name.c_str(), name.length() + 1) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write name";
     return false;
   }
-  if (smbios_file.WriteAtCurrentPos(sku_id_str.c_str(),
-                                    sku_id_str.length() + 1) < 0) {
+  if (smbios_file->WriteAtCurrentPos(sku_id_str.c_str(),
+                                     sku_id_str.length() + 1) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write SKU string";
     return false;
   }
   char zero = 0;
-  if (smbios_file.WriteAtCurrentPos(&zero, 1) < 0) {
+  if (smbios_file->WriteAtCurrentPos(&zero, 1) < 0) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write terminator";
     return false;
   }
@@ -138,7 +138,7 @@ bool CrosConfig::FakeIdentity(const std::string& name, int sku_id,
     CROS_CONFIG_LOG(ERROR) << "Failed to create dev_mem";
     return false;
   }
-  if (!WriteFakeTables(dev_mem, name, sku_id)) {
+  if (!WriteFakeTables(&dev_mem, name, sku_id)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write tables";
     return false;
   }

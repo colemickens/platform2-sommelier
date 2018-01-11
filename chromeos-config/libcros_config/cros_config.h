@@ -268,7 +268,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @name: Platform name to write (e.g. 'Reef')
   // @sku_id: SKU ID number to write (e.g. 8)
   // @return true if OK, false on error
-  bool WriteFakeTables(base::File& smbios_file, const std::string& name,
+  bool WriteFakeTables(base::File* smbios_file, const std::string& name,
                        int sku_id);
 
   // Decode the device identifiers to resolve the model / submodel
