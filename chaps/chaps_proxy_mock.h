@@ -35,7 +35,7 @@ class ChapsProxyMock : public ChapsInterface {
     EnableMockProxy(this, &isolate_credential_, is_initialized);
   }
 
-  virtual ~ChapsProxyMock() {
+  ~ChapsProxyMock() override {
     DisableMockProxy();
   }
 

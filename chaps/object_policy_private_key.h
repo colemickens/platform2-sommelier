@@ -13,9 +13,9 @@ namespace chaps {
 class ObjectPolicyPrivateKey : public ObjectPolicyKey {
  public:
   ObjectPolicyPrivateKey();
-  virtual ~ObjectPolicyPrivateKey();
-  virtual bool IsObjectComplete();
-  virtual void SetDefaultAttributes();
+  ~ObjectPolicyPrivateKey() override;
+  bool IsObjectComplete() override;
+  void SetDefaultAttributes() override;
 };
 
 }  // namespace chaps

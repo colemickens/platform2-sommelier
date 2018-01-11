@@ -35,7 +35,7 @@ namespace chaps {
 class TestProxyWrapperConstruction : public ::testing::Test {
  public:
   TestProxyWrapperConstruction() : dbus_thread_("dbus_thread") {}
-  virtual ~TestProxyWrapperConstruction() {}
+  ~TestProxyWrapperConstruction() override {}
 
  protected:
   void SetUp() override {

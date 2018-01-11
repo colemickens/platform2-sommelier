@@ -37,7 +37,7 @@ extern void DisableMock();
 
 class TestPamModule : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     user_ = string("user");
     password_old_ = SecureBlob("password_old");
     password_new_ = SecureBlob("password_new");

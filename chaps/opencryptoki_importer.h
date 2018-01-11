@@ -28,11 +28,11 @@ class OpencryptokiImporter : public ObjectImporter {
                        const base::FilePath& path,
                        TPMUtility* tpm,
                        ChapsFactory* factory);
-  virtual ~OpencryptokiImporter();
+  ~OpencryptokiImporter() override;
 
   // ObjectImporter interface.
-  virtual bool ImportObjects(ObjectPool* object_pool);
-  virtual bool FinishImportAsync(ObjectPool* object_pool);
+  bool ImportObjects(ObjectPool* object_pool) override;
+  bool FinishImportAsync(ObjectPool* object_pool) override;
 
  private:
   // Parses an opencryptoki object file and extracts the object data and whether

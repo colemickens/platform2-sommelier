@@ -17,7 +17,7 @@ namespace chaps {
 class ObjectStoreMock : public ObjectStore {
  public:
   ObjectStoreMock();
-  virtual ~ObjectStoreMock();
+  ~ObjectStoreMock() override;
   MOCK_METHOD2(GetInternalBlob,
       bool(int blob_id, std::string* blob));
   MOCK_METHOD2(SetInternalBlob,

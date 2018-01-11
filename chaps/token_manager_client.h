@@ -37,22 +37,22 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
   virtual ~TokenManagerClient();
 
   // TokenManagerInterface methods.
-  virtual bool OpenIsolate(brillo::SecureBlob* isolate_credential,
-                           bool* new_isolate_created);
-  virtual void CloseIsolate(const brillo::SecureBlob& isolate_credential);
-  virtual bool LoadToken(const brillo::SecureBlob& isolate_credential,
-                         const base::FilePath& path,
-                         const brillo::SecureBlob& auth_data,
-                         const std::string& label,
-                         int* slot_id);
-  virtual void UnloadToken(const brillo::SecureBlob& isolate_credential,
-                           const base::FilePath& path);
-  virtual void ChangeTokenAuthData(const base::FilePath& path,
-                                   const brillo::SecureBlob& old_auth_data,
-                                   const brillo::SecureBlob& new_auth_data);
-  virtual bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
-                            int slot_id,
-                            base::FilePath* path);
+  bool OpenIsolate(brillo::SecureBlob* isolate_credential,
+                   bool* new_isolate_created) override;
+  void CloseIsolate(const brillo::SecureBlob& isolate_credential) override;
+  bool LoadToken(const brillo::SecureBlob& isolate_credential,
+                 const base::FilePath& path,
+                 const brillo::SecureBlob& auth_data,
+                 const std::string& label,
+                 int* slot_id) override;
+  void UnloadToken(const brillo::SecureBlob& isolate_credential,
+                   const base::FilePath& path) override;
+  void ChangeTokenAuthData(const base::FilePath& path,
+                           const brillo::SecureBlob& old_auth_data,
+                           const brillo::SecureBlob& new_auth_data) override;
+  bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
+                    int slot_id,
+                    base::FilePath* path) override;
 
   // Convenience method, not on TokenManagerInterface.
   // Returns true on success, false on failure. If it succeeds, stores a list of

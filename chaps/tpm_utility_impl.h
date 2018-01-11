@@ -25,62 +25,62 @@ class TPMUtilityImpl : public TPMUtility {
   const uint32_t kMaxModulusSize = 256;
 
   explicit TPMUtilityImpl(const std::string& srk_auth_data);
-  virtual ~TPMUtilityImpl();
-  virtual size_t MinRSAKeyBits() { return kMinModulusSize * 8; }
-  virtual size_t MaxRSAKeyBits() { return kMaxModulusSize * 8; }
-  virtual bool Init();
-  virtual bool IsTPMAvailable();
-  virtual bool Authenticate(int slot_id,
-                            const brillo::SecureBlob& auth_data,
-                            const std::string& auth_key_blob,
-                            const std::string& encrypted_master_key,
-                            brillo::SecureBlob* master_key);
-  virtual bool ChangeAuthData(int slot_id,
-                              const brillo::SecureBlob& old_auth_data,
-                              const brillo::SecureBlob& new_auth_data,
-                              const std::string& old_auth_key_blob,
-                              std::string* new_auth_key_blob);
-  virtual bool GenerateRandom(int num_bytes, std::string* random_data);
-  virtual bool StirRandom(const std::string& entropy_data);
-  virtual bool GenerateKey(int slot,
-                           int modulus_bits,
-                           const std::string& public_exponent,
-                           const brillo::SecureBlob& auth_data,
-                           std::string* key_blob,
-                           int* key_handle);
-  virtual bool GetPublicKey(int key_handle,
-                            std::string* public_exponent,
-                            std::string* modulus);
-  virtual bool WrapKey(int slot,
-                       const std::string& public_exponent,
-                       const std::string& modulus,
-                       const std::string& prime_factor,
-                       const brillo::SecureBlob& auth_data,
-                       std::string* key_blob,
-                       int* key_handle);
-  virtual bool LoadKey(int slot,
-                       const std::string& key_blob,
-                       const brillo::SecureBlob& auth_data,
-                       int* key_handle);
-  virtual bool LoadKeyWithParent(int slot,
-                                 const std::string& key_blob,
-                                 const brillo::SecureBlob& auth_data,
-                                 int parent_key_handle,
-                                 int* key_handle);
-  virtual void UnloadKeysForSlot(int slot);
-  virtual bool Bind(int key_handle,
-                    const std::string& input,
-                    std::string* output);
-  virtual bool Unbind(int key_handle,
-                      const std::string& input,
-                      std::string* output);
-  virtual bool Sign(int key_handle,
-                    const std::string& input,
-                    std::string* signature);
-  virtual bool Verify(int key_handle,
-                      const std::string& input,
-                      const std::string& signature);
-  virtual bool IsSRKReady();
+  ~TPMUtilityImpl() override;
+  size_t MinRSAKeyBits() override { return kMinModulusSize * 8; }
+  size_t MaxRSAKeyBits() override { return kMaxModulusSize * 8; }
+  bool Init() override;
+  bool IsTPMAvailable() override;
+  bool Authenticate(int slot_id,
+                    const brillo::SecureBlob& auth_data,
+                    const std::string& auth_key_blob,
+                    const std::string& encrypted_master_key,
+                    brillo::SecureBlob* master_key) override;
+  bool ChangeAuthData(int slot_id,
+                      const brillo::SecureBlob& old_auth_data,
+                      const brillo::SecureBlob& new_auth_data,
+                      const std::string& old_auth_key_blob,
+                      std::string* new_auth_key_blob) override;
+  bool GenerateRandom(int num_bytes, std::string* random_data) override;
+  bool StirRandom(const std::string& entropy_data) override;
+  bool GenerateKey(int slot,
+                   int modulus_bits,
+                   const std::string& public_exponent,
+                   const brillo::SecureBlob& auth_data,
+                   std::string* key_blob,
+                   int* key_handle) override;
+  bool GetPublicKey(int key_handle,
+                    std::string* public_exponent,
+                    std::string* modulus) override;
+  bool WrapKey(int slot,
+               const std::string& public_exponent,
+               const std::string& modulus,
+               const std::string& prime_factor,
+               const brillo::SecureBlob& auth_data,
+               std::string* key_blob,
+               int* key_handle) override;
+  bool LoadKey(int slot,
+               const std::string& key_blob,
+               const brillo::SecureBlob& auth_data,
+               int* key_handle) override;
+  bool LoadKeyWithParent(int slot,
+                         const std::string& key_blob,
+                         const brillo::SecureBlob& auth_data,
+                         int parent_key_handle,
+                         int* key_handle) override;
+  void UnloadKeysForSlot(int slot) override;
+  bool Bind(int key_handle,
+            const std::string& input,
+            std::string* output) override;
+  bool Unbind(int key_handle,
+              const std::string& input,
+              std::string* output) override;
+  bool Sign(int key_handle,
+            const std::string& input,
+            std::string* signature) override;
+  bool Verify(int key_handle,
+              const std::string& input,
+              const std::string& signature) override;
+  bool IsSRKReady() override;
   // Stringifies TSS error codes.
   static std::string ResultToString(TSS_RESULT result);
 

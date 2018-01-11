@@ -20,7 +20,7 @@ namespace chaps {
 class SlotManagerMock : public SlotManager {
  public:
   SlotManagerMock();
-  virtual ~SlotManagerMock();
+  ~SlotManagerMock() override;
 
   MOCK_METHOD0(GetSlotCount, int());
   MOCK_CONST_METHOD2(IsTokenPresent, bool(const brillo::SecureBlob&, int));

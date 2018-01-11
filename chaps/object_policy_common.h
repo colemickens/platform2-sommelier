@@ -25,13 +25,13 @@ struct AttributePolicy {
 class ObjectPolicyCommon : public ObjectPolicy {
  public:
   ObjectPolicyCommon();
-  virtual ~ObjectPolicyCommon();
-  virtual void Init(Object* object);
-  virtual bool IsReadAllowed(CK_ATTRIBUTE_TYPE type);
-  virtual bool IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
-                               const std::string& value);
-  virtual bool IsObjectComplete();
-  virtual void SetDefaultAttributes();
+  ~ObjectPolicyCommon() override;
+  void Init(Object* object) override;
+  bool IsReadAllowed(CK_ATTRIBUTE_TYPE type) override;
+  bool IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
+                       const std::string& value) override;
+  bool IsObjectComplete() override;
+  void SetDefaultAttributes() override;
 
  protected:
   Object* object_;  // The object this policy is associated with.

@@ -33,9 +33,9 @@ namespace chaps {
 class TPM2UtilityTest : public testing::Test {
  public:
   TPM2UtilityTest() : factory_(new trunks::TrunksFactoryForTest()) {}
-  virtual ~TPM2UtilityTest() {}
+  ~TPM2UtilityTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     factory_->set_tpm(&mock_tpm_);
     factory_->set_tpm_state(&mock_tpm_state_);
     factory_->set_tpm_utility(&mock_tpm_utility_);

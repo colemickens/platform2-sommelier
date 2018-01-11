@@ -15,7 +15,7 @@ namespace chaps {
 class ChapsFactoryMock : public ChapsFactory {
  public:
   ChapsFactoryMock();
-  virtual ~ChapsFactoryMock();
+  ~ChapsFactoryMock() override;
 
   MOCK_METHOD5(CreateSession, Session*(int,
                                        ObjectPool*,

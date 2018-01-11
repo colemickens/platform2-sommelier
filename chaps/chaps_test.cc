@@ -127,7 +127,7 @@ TEST(TestLibInfo, LibInfoNotInit) {
 // Slot List Tests
 class TestSlotList : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     uint64_t slot_array[3] = {1, 2, 3};
     slot_list_all_.assign(&slot_array[0], &slot_array[3]);
     slot_list_present_.assign(&slot_array[1], &slot_array[3]);
@@ -384,7 +384,7 @@ TEST(TestWaitSlotEvent, SlotEventBadArgs) {
 // Mechanism List Tests
 class TestMechList : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     uint64_t mech_array[3] = {1, 2, 3};
     mech_list_all_.assign(&mech_array[0], &mech_array[3]);
     mech_list_present_.assign(&mech_array[1], &mech_array[3]);
@@ -742,7 +742,7 @@ TEST(TestGetSessionInfo, GetSessionInfoFail) {
 // Get Operation State Tests
 class TestGetOperationState : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     uint8_t tmp[3] = {1, 2, 3};
     buffer_ = vector<uint8_t>(&tmp[0], &tmp[3]);
   }
@@ -917,7 +917,7 @@ TEST(TestLogout, LogoutFail) {
 // CreateObject Tests
 class TestAttributes : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     attribute_template_[0].type = CKA_ID;
     attribute_template_[0].ulValueLen = 4;
     attribute_template_[0].pValue = const_cast<char*>("test");

@@ -16,7 +16,7 @@ namespace chaps {
 class ObjectPolicyMock : public ObjectPolicy {
  public:
   ObjectPolicyMock();
-  virtual ~ObjectPolicyMock();
+  ~ObjectPolicyMock() override;
   MOCK_METHOD1(Init,
       void(Object* object));
   MOCK_METHOD1(IsReadAllowed,

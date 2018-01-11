@@ -21,7 +21,7 @@ namespace chaps {
 class ObjectMock : public Object {
  public:
   ObjectMock();
-  virtual ~ObjectMock();
+  ~ObjectMock() override;
   MOCK_CONST_METHOD0(GetStage, ObjectStage());
   MOCK_CONST_METHOD0(GetObjectClass, CK_OBJECT_CLASS());
   MOCK_CONST_METHOD0(IsTokenObject, bool());

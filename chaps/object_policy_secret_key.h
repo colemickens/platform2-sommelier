@@ -13,8 +13,8 @@ namespace chaps {
 class ObjectPolicySecretKey : public ObjectPolicyKey {
  public:
   ObjectPolicySecretKey();
-  virtual ~ObjectPolicySecretKey();
-  virtual void SetDefaultAttributes();
+  ~ObjectPolicySecretKey() override;
+  void SetDefaultAttributes() override;
 };
 
 }  // namespace chaps

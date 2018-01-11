@@ -519,9 +519,9 @@ class SoftwareOnlyTest : public TestSlotManager {
         set_encryption_key_num_calls_(0),
         delete_all_num_calls_(0),
         pool_write_result_(true) {}
-  virtual ~SoftwareOnlyTest() {}
+  ~SoftwareOnlyTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     // Use our own ObjectPoolFactory.
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(
@@ -531,7 +531,7 @@ class SoftwareOnlyTest : public TestSlotManager {
     ASSERT_TRUE(slot_manager_->Init());
   }
 
-  void TearDown() {
+  void TearDown() override {
     // Destroy the slot manager before its dependencies.
     slot_manager_.reset();
   }

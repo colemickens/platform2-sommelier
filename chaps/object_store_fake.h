@@ -16,43 +16,42 @@ namespace chaps {
 class ObjectStoreFake : public ObjectStore {
  public:
   ObjectStoreFake() : last_handle_(0) {}
-  virtual ~ObjectStoreFake() {}
-  virtual bool GetInternalBlob(int blob_id, std::string* blob) {
+  ~ObjectStoreFake() override {}
+  bool GetInternalBlob(int blob_id, std::string* blob) override {
     if (internal_blobs_.find(blob_id) == internal_blobs_.end())
       return false;
     *blob = internal_blobs_[blob_id];
     return true;
   }
-  virtual bool SetInternalBlob(int blob_id, const std::string& blob) {
+  bool SetInternalBlob(int blob_id, const std::string& blob) override {
     internal_blobs_[blob_id] = blob;
     return true;
   }
-  virtual bool SetEncryptionKey(const brillo::SecureBlob& key) {
+  bool SetEncryptionKey(const brillo::SecureBlob& key) override {
     return true;
   }
-  virtual bool InsertObjectBlob(const ObjectBlob& blob,
-                                int* handle) {
+  bool InsertObjectBlob(const ObjectBlob& blob, int* handle) override {
     *handle = ++last_handle_;
     object_blobs_[*handle] = blob;
     return true;
   }
-  virtual bool DeleteObjectBlob(int handle) {
+  bool DeleteObjectBlob(int handle) override {
     object_blobs_.erase(handle);
     return true;
   }
-  virtual bool DeleteAllObjectBlobs() {
+  bool DeleteAllObjectBlobs() override {
     object_blobs_.clear();
     return true;
   }
-  virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob) {
+  bool UpdateObjectBlob(int handle, const ObjectBlob& blob) override {
     object_blobs_[handle] = blob;
     return true;
   }
-  virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs) {
+  bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs) override {
     *blobs = object_blobs_;
     return true;
   }
-  virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) {
+  bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) override {
     return true;
   }
 

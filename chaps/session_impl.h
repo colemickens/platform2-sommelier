@@ -44,66 +44,66 @@ class SessionImpl : public Session {
               ChapsFactory* factory,
               HandleGenerator* handle_generator,
               bool is_read_only);
-  virtual ~SessionImpl();
+  ~SessionImpl() override;
 
   // General state management.
-  virtual int GetSlot() const;
-  virtual CK_STATE GetState() const;
-  virtual bool IsReadOnly() const;
-  virtual bool IsOperationActive(OperationType type) const;
+  int GetSlot() const override;
+  CK_STATE GetState() const override;
+  bool IsReadOnly() const override;
+  bool IsOperationActive(OperationType type) const override;
   // Object management.
-  virtual CK_RV CreateObject(const CK_ATTRIBUTE_PTR attributes,
-                             int num_attributes,
-                             int* new_object_handle);
-  virtual CK_RV CopyObject(const CK_ATTRIBUTE_PTR attributes,
-                           int num_attributes,
-                           int object_handle,
-                           int* new_object_handle);
-  virtual CK_RV DestroyObject(int object_handle);
-  virtual bool GetObject(int object_handle, const Object** object);
-  virtual bool GetModifiableObject(int object_handle, Object** object);
-  virtual CK_RV FlushModifiableObject(Object* object);
-  virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
-                                int num_attributes);
-  virtual CK_RV FindObjects(int max_object_count,
-                            std::vector<int>* object_handles);
-  virtual CK_RV FindObjectsFinal();
+  CK_RV CreateObject(const CK_ATTRIBUTE_PTR attributes,
+                     int num_attributes,
+                     int* new_object_handle) override;
+  CK_RV CopyObject(const CK_ATTRIBUTE_PTR attributes,
+                   int num_attributes,
+                   int object_handle,
+                   int* new_object_handle) override;
+  CK_RV DestroyObject(int object_handle) override;
+  bool GetObject(int object_handle, const Object** object) override;
+  bool GetModifiableObject(int object_handle, Object** object) override;
+  CK_RV FlushModifiableObject(Object* object) override;
+  CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
+                        int num_attributes) override;
+  CK_RV FindObjects(int max_object_count,
+                    std::vector<int>* object_handles) override;
+  CK_RV FindObjectsFinal() override;
   // Cryptographic operations (encrypt, decrypt, digest, sign, verify).
-  virtual CK_RV OperationInit(OperationType operation,
-                              CK_MECHANISM_TYPE mechanism,
-                              const std::string& mechanism_parameter,
-                              const Object* key);
-  virtual CK_RV OperationUpdate(OperationType operation,
-                                const std::string& data_in,
-                                int* required_out_length,
-                                std::string* data_out);
-  virtual CK_RV OperationFinal(OperationType operation,
-                               int* required_out_length,
-                               std::string* data_out);
-  virtual void OperationCancel(OperationType operation);
-  virtual CK_RV VerifyFinal(const std::string& signature);
-  virtual CK_RV OperationSinglePart(OperationType operation,
-                                    const std::string& data_in,
-                                    int* required_out_length,
-                                    std::string* data_out);
+  CK_RV OperationInit(OperationType operation,
+                      CK_MECHANISM_TYPE mechanism,
+                      const std::string& mechanism_parameter,
+                      const Object* key) override;
+  CK_RV OperationUpdate(OperationType operation,
+                        const std::string& data_in,
+                        int* required_out_length,
+                        std::string* data_out) override;
+  CK_RV OperationFinal(OperationType operation,
+                       int* required_out_length,
+                       std::string* data_out) override;
+  void OperationCancel(OperationType operation) override;
+  CK_RV VerifyFinal(const std::string& signature) override;
+  CK_RV OperationSinglePart(OperationType operation,
+                            const std::string& data_in,
+                            int* required_out_length,
+                            std::string* data_out) override;
   // Key generation.
-  virtual CK_RV GenerateKey(CK_MECHANISM_TYPE mechanism,
-                            const std::string& mechanism_parameter,
-                            const CK_ATTRIBUTE_PTR attributes,
-                            int num_attributes,
-                            int* new_key_handle);
-  virtual CK_RV GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
-                                const std::string& mechanism_parameter,
-                                const CK_ATTRIBUTE_PTR public_attributes,
-                                int num_public_attributes,
-                                const CK_ATTRIBUTE_PTR private_attributes,
-                                int num_private_attributes,
-                                int* new_public_key_handle,
-                                int* new_private_key_handle);
+  CK_RV GenerateKey(CK_MECHANISM_TYPE mechanism,
+                    const std::string& mechanism_parameter,
+                    const CK_ATTRIBUTE_PTR attributes,
+                    int num_attributes,
+                    int* new_key_handle) override;
+  CK_RV GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
+                        const std::string& mechanism_parameter,
+                        const CK_ATTRIBUTE_PTR public_attributes,
+                        int num_public_attributes,
+                        const CK_ATTRIBUTE_PTR private_attributes,
+                        int num_private_attributes,
+                        int* new_public_key_handle,
+                        int* new_private_key_handle) override;
   // Random number generation.
-  virtual CK_RV SeedRandom(const std::string& seed);
-  virtual CK_RV GenerateRandom(int num_bytes, std::string* random_data);
-  virtual bool IsPrivateLoaded();
+  CK_RV SeedRandom(const std::string& seed) override;
+  CK_RV GenerateRandom(int num_bytes, std::string* random_data) override;
+  bool IsPrivateLoaded() override;
 
  private:
   struct OperationContext {

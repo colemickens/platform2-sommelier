@@ -14,21 +14,21 @@ namespace chaps {
 class ChapsFactoryImpl : public ChapsFactory {
  public:
   ChapsFactoryImpl() {}
-  virtual ~ChapsFactoryImpl() {}
-  virtual Session* CreateSession(int slot_id,
-                                 ObjectPool* token_object_pool,
-                                 TPMUtility* tpm_utility,
-                                 HandleGenerator* handle_generator,
-                                 bool is_read_only);
-  virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
-                                       ObjectStore* store,
-                                       ObjectImporter* importer);
-  virtual ObjectStore* CreateObjectStore(const base::FilePath& file_name);
-  virtual Object* CreateObject();
-  virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type);
-  virtual ObjectImporter* CreateObjectImporter(int slot_id,
-                                               const base::FilePath& path,
-                                               TPMUtility* tpm_utility);
+  ~ChapsFactoryImpl() override {}
+  Session* CreateSession(int slot_id,
+                         ObjectPool* token_object_pool,
+                         TPMUtility* tpm_utility,
+                         HandleGenerator* handle_generator,
+                         bool is_read_only) override;
+  ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
+                               ObjectStore* store,
+                               ObjectImporter* importer) override;
+  ObjectStore* CreateObjectStore(const base::FilePath& file_name) override;
+  Object* CreateObject() override;
+  ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) override;
+  ObjectImporter* CreateObjectImporter(int slot_id,
+                                       const base::FilePath& path,
+                                       TPMUtility* tpm_utility) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryImpl);

@@ -13,8 +13,8 @@ namespace chaps {
 class ObjectPolicyData : public ObjectPolicyCommon {
  public:
   ObjectPolicyData();
-  virtual ~ObjectPolicyData();
-  virtual void SetDefaultAttributes();
+  ~ObjectPolicyData() override;
+  void SetDefaultAttributes() override;
 };
 
 }  // namespace chaps

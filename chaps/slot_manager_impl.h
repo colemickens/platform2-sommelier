@@ -41,56 +41,56 @@ class SlotManagerImpl : public SlotManager,
   SlotManagerImpl(ChapsFactory* factory,
                   TPMUtility* tpm_utility,
                   bool auto_load_system_token);
-  virtual ~SlotManagerImpl();
+  ~SlotManagerImpl() override;
 
   // Initializes the slot manager. Returns true on success.
   virtual bool Init();
 
   // SlotManager methods.
-  virtual int GetSlotCount();
-  virtual bool IsTokenAccessible(const brillo::SecureBlob& isolate_credential,
-                                 int slot_id) const;
-  virtual bool IsTokenPresent(const brillo::SecureBlob& isolate_credential,
-                              int slot_id) const;
-  virtual void GetSlotInfo(const brillo::SecureBlob& isolate_credential,
-                           int slot_id,
-                           CK_SLOT_INFO* slot_info) const;
-  virtual void GetTokenInfo(const brillo::SecureBlob& isolate_credential,
-                            int slot_id,
-                            CK_TOKEN_INFO* token_info) const;
-  virtual const MechanismMap* GetMechanismInfo(
-                            const brillo::SecureBlob& isolate_credential,
-                            int slot_id) const;
-  virtual int OpenSession(const brillo::SecureBlob& isolate_credential,
-                          int slot_id,
-                          bool is_read_only);
-  virtual bool CloseSession(const brillo::SecureBlob& isolate_credential,
-                            int session_id);
-  virtual void CloseAllSessions(const brillo::SecureBlob& isolate_credential,
-                                int slot_id);
-  virtual bool GetSession(const brillo::SecureBlob& isolate_credential,
-                          int session_id, Session** session) const;
+  int GetSlotCount() override;
+  bool IsTokenAccessible(const brillo::SecureBlob& isolate_credential,
+                         int slot_id) const override;
+  bool IsTokenPresent(const brillo::SecureBlob& isolate_credential,
+                      int slot_id) const override;
+  void GetSlotInfo(const brillo::SecureBlob& isolate_credential,
+                   int slot_id,
+                   CK_SLOT_INFO* slot_info) const override;
+  void GetTokenInfo(const brillo::SecureBlob& isolate_credential,
+                    int slot_id,
+                    CK_TOKEN_INFO* token_info) const override;
+  const MechanismMap* GetMechanismInfo(
+                    const brillo::SecureBlob& isolate_credential,
+                    int slot_id) const override;
+  int OpenSession(const brillo::SecureBlob& isolate_credential,
+                  int slot_id,
+                  bool is_read_only) override;
+  bool CloseSession(const brillo::SecureBlob& isolate_credential,
+                    int session_id) override;
+  void CloseAllSessions(const brillo::SecureBlob& isolate_credential,
+                        int slot_id) override;
+  bool GetSession(const brillo::SecureBlob& isolate_credential,
+                  int session_id, Session** session) const override;
 
   // TokenManagerInterface methods.
-  virtual bool OpenIsolate(brillo::SecureBlob* isolate_credential,
-                           bool* new_isolate_created);
-  virtual void CloseIsolate(const brillo::SecureBlob& isolate_credential);
-  virtual bool LoadToken(const brillo::SecureBlob& isolate_credential,
-                         const base::FilePath& path,
-                         const brillo::SecureBlob& auth_data,
-                         const std::string& label,
-                         int* slot_id);
-  virtual void UnloadToken(const brillo::SecureBlob& isolate_credential,
-                           const base::FilePath& path);
-  virtual void ChangeTokenAuthData(const base::FilePath& path,
-                                   const brillo::SecureBlob& old_auth_data,
-                                   const brillo::SecureBlob& new_auth_data);
-  virtual bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
-                            int slot_id,
-                            base::FilePath* path);
+  bool OpenIsolate(brillo::SecureBlob* isolate_credential,
+                   bool* new_isolate_created) override;
+  void CloseIsolate(const brillo::SecureBlob& isolate_credential) override;
+  bool LoadToken(const brillo::SecureBlob& isolate_credential,
+                 const base::FilePath& path,
+                 const brillo::SecureBlob& auth_data,
+                 const std::string& label,
+                 int* slot_id) override;
+  void UnloadToken(const brillo::SecureBlob& isolate_credential,
+                   const base::FilePath& path) override;
+  void ChangeTokenAuthData(const base::FilePath& path,
+                           const brillo::SecureBlob& old_auth_data,
+                           const brillo::SecureBlob& new_auth_data) override;
+  bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
+                    int slot_id,
+                    base::FilePath* path) override;
 
   // HandleGenerator methods.
-  virtual int CreateHandle();
+  int CreateHandle() override;
 
  private:
   // Holds all information associated with a particular isolate.

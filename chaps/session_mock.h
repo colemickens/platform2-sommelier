@@ -20,7 +20,7 @@ namespace chaps {
 class SessionMock : public Session {
  public:
   SessionMock();
-  virtual ~SessionMock();
+  ~SessionMock() override;
 
   MOCK_CONST_METHOD0(GetSlot, int());
   MOCK_CONST_METHOD0(GetState, CK_STATE());

@@ -32,7 +32,7 @@ namespace chaps {
 
 class TestIsolateLoginClient : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     user_ = string("user");
     auth_old_ = SecureBlob("auth_old");
     auth_new_ = SecureBlob("auth_new");

@@ -20,7 +20,7 @@ namespace chaps {
 class ObjectPoolMock : public ObjectPool {
  public:
   ObjectPoolMock();
-  virtual ~ObjectPoolMock();
+  ~ObjectPoolMock() override;
 
   MOCK_METHOD2(GetInternalBlob, bool(int, std::string*));
   MOCK_METHOD2(SetInternalBlob, bool(int, const std::string&));

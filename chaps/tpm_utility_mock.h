@@ -17,7 +17,7 @@ namespace chaps {
 class TPMUtilityMock : public TPMUtility {
  public:
   TPMUtilityMock();
-  virtual ~TPMUtilityMock();
+  ~TPMUtilityMock() override;
 
   MOCK_METHOD0(MinRSAKeyBits, size_t());
   MOCK_METHOD0(MaxRSAKeyBits, size_t());

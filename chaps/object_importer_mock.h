@@ -15,7 +15,7 @@ namespace chaps {
 class ObjectImporterMock : public ObjectImporter {
  public:
   ObjectImporterMock();
-  virtual ~ObjectImporterMock();
+  ~ObjectImporterMock() override;
 
   MOCK_METHOD1(ImportObjects, bool(ObjectPool*));  // NOLINT - 'unnamed' param
   MOCK_METHOD1(FinishImportAsync, bool(ObjectPool*));  // NOLINT - 'unnamed'

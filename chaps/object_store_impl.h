@@ -24,7 +24,7 @@ namespace chaps {
 class ObjectStoreImpl : public ObjectStore {
  public:
   ObjectStoreImpl();
-  virtual ~ObjectStoreImpl();
+  ~ObjectStoreImpl() override;
 
   // Initializes the object store with the given database path. The magic file
   // name ":memory:" will cause the store to create a memory-only database which
@@ -32,15 +32,15 @@ class ObjectStoreImpl : public ObjectStore {
   bool Init(const base::FilePath& database_path);
 
   // ObjectStore methods.
-  virtual bool GetInternalBlob(int blob_id, std::string* blob);
-  virtual bool SetInternalBlob(int blob_id, const std::string& blob);
-  virtual bool SetEncryptionKey(const brillo::SecureBlob& key);
-  virtual bool InsertObjectBlob(const ObjectBlob& blob, int* handle);
-  virtual bool DeleteObjectBlob(int handle);
-  virtual bool DeleteAllObjectBlobs();
-  virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob);
-  virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs);
-  virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs);
+  bool GetInternalBlob(int blob_id, std::string* blob) override;
+  bool SetInternalBlob(int blob_id, const std::string& blob) override;
+  bool SetEncryptionKey(const brillo::SecureBlob& key) override;
+  bool InsertObjectBlob(const ObjectBlob& blob, int* handle) override;
+  bool DeleteObjectBlob(int handle) override;
+  bool DeleteAllObjectBlobs() override;
+  bool UpdateObjectBlob(int handle, const ObjectBlob& blob) override;
+  bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs) override;
+  bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) override;
 
  private:
   enum BlobType {

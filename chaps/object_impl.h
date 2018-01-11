@@ -23,35 +23,35 @@ class ObjectPolicy;
 class ObjectImpl : public Object {
  public:
   explicit ObjectImpl(ChapsFactory* factory);
-  virtual ~ObjectImpl();
-  virtual ObjectStage GetStage() const;
-  virtual int GetSize() const;
-  virtual CK_OBJECT_CLASS GetObjectClass() const;
-  virtual bool IsTokenObject() const;
-  virtual bool IsModifiable() const;
-  virtual bool IsPrivate() const;
-  virtual CK_RV FinalizeNewObject();
-  virtual CK_RV Copy(const Object* original);
-  virtual CK_RV GetAttributes(CK_ATTRIBUTE_PTR attributes,
-                              int num_attributes) const;
-  virtual CK_RV SetAttributes(const CK_ATTRIBUTE_PTR attributes,
-                              int num_attributes);
-  virtual bool IsAttributePresent(CK_ATTRIBUTE_TYPE type) const;
-  virtual bool GetAttributeBool(CK_ATTRIBUTE_TYPE type,
-                                bool default_value) const;
-  virtual void SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value);
-  virtual int GetAttributeInt(CK_ATTRIBUTE_TYPE type,
-                              int default_value) const;
-  virtual void SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value);
-  virtual std::string GetAttributeString(CK_ATTRIBUTE_TYPE type) const;
-  virtual void SetAttributeString(CK_ATTRIBUTE_TYPE type,
-                                  const std::string& value);
-  virtual void RemoveAttribute(CK_ATTRIBUTE_TYPE type);
-  virtual const AttributeMap* GetAttributeMap() const;
-  virtual int handle() const {return handle_;}
-  virtual void set_handle(int handle) {handle_ = handle;}
-  virtual int store_id() const {return store_id_;}
-  virtual void set_store_id(int store_id) {store_id_ = store_id;}
+  ~ObjectImpl() override;
+  ObjectStage GetStage() const override;
+  int GetSize() const override;
+  CK_OBJECT_CLASS GetObjectClass() const override;
+  bool IsTokenObject() const override;
+  bool IsModifiable() const override;
+  bool IsPrivate() const override;
+  CK_RV FinalizeNewObject() override;
+  CK_RV Copy(const Object* original) override;
+  CK_RV GetAttributes(CK_ATTRIBUTE_PTR attributes,
+                      int num_attributes) const override;
+  CK_RV SetAttributes(const CK_ATTRIBUTE_PTR attributes,
+                      int num_attributes) override;
+  bool IsAttributePresent(CK_ATTRIBUTE_TYPE type) const override;
+  bool GetAttributeBool(CK_ATTRIBUTE_TYPE type,
+                        bool default_value) const override;
+  void SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) override;
+  int GetAttributeInt(CK_ATTRIBUTE_TYPE type,
+                      int default_value) const override;
+  void SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) override;
+  std::string GetAttributeString(CK_ATTRIBUTE_TYPE type) const override;
+  void SetAttributeString(CK_ATTRIBUTE_TYPE type,
+                          const std::string& value) override;
+  void RemoveAttribute(CK_ATTRIBUTE_TYPE type) override;
+  const AttributeMap* GetAttributeMap() const override;
+  int handle() const override { return handle_; }
+  void set_handle(int handle) override { handle_ = handle; }
+  int store_id() const override { return store_id_; }
+  void set_store_id(int store_id) override { store_id_ = store_id; }
 
  private:
   ChapsFactory* factory_;

@@ -129,10 +129,10 @@ class TokenInitThread : public base::PlatformThread::Delegate {
                   TPMUtility* tpm_utility,
                   ObjectPool* object_pool);
 
-  virtual ~TokenInitThread() {}
+  ~TokenInitThread() override {}
 
   // PlatformThread::Delegate interface.
-  void ThreadMain();
+  void ThreadMain() override;
 
  private:
   bool InitializeKeyHierarchy(SecureBlob* master_key);
@@ -152,10 +152,10 @@ class TokenTermThread : public base::PlatformThread::Delegate {
       : slot_id_(slot_id),
         tpm_utility_(tpm_utility) {}
 
-  virtual ~TokenTermThread() {}
+  ~TokenTermThread() override {}
 
   // PlatformThread::Delegate interface.
-  void ThreadMain() {
+  void ThreadMain() override {
     tpm_utility_->UnloadKeysForSlot(slot_id_);
   }
 

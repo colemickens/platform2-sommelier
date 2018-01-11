@@ -43,7 +43,7 @@ class TPM2UtilityImpl : public TPMUtility {
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
   // Does not take ownership of |factory|.
   explicit TPM2UtilityImpl(trunks::TrunksFactory* factory);
-  virtual ~TPM2UtilityImpl();
+  ~TPM2UtilityImpl() override;
   size_t MinRSAKeyBits() override { return kMinModulusSize * 8; }
   size_t MaxRSAKeyBits() override { return kMaxModulusSize * 8; }
   bool Init() override;

@@ -55,7 +55,7 @@ static vector<uint8_t> SubVector(const vector<uint8_t>& v,
 // Default test fixture for PKCS #11 calls.
 class TestP11 : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     // The current user's token will be used so the token will already be
     // initialized and changes to token objects will persist.  The user pin can
     // be assumed to be "111111" and the so pin can be assumed to be "000000".
@@ -75,7 +75,7 @@ class TestP11 : public ::testing::Test {
 // Test fixture for testing with a valid open session.
 class TestP11PublicSession : public TestP11 {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     TestP11::SetUp();
     ASSERT_EQ(CKR_OK, chaps_->OpenSession(credential_, 0,
                                           CKF_SERIAL_SESSION|CKF_RW_SESSION,
@@ -83,7 +83,7 @@ class TestP11PublicSession : public TestP11 {
     uint32_t result = chaps_->Logout(credential_, session_id_);
     ASSERT_TRUE(result == CKR_OK || result == CKR_USER_NOT_LOGGED_IN);
   }
-  virtual void TearDown() {
+  void TearDown() override {
     SecureBlob isolate_credential;
     uint32_t result = chaps_->Logout(credential_, session_id_);
     ASSERT_TRUE(result == CKR_OK || result == CKR_USER_NOT_LOGGED_IN);
@@ -95,33 +95,33 @@ class TestP11PublicSession : public TestP11 {
 
 class TestP11UserSession : public TestP11PublicSession {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     TestP11PublicSession::SetUp();
     uint32_t result = chaps_->Login(credential_, session_id_,
                                     CKU_USER, &user_pin_);
     ASSERT_TRUE(result == CKR_OK || result == CKR_USER_ALREADY_LOGGED_IN);
   }
-  virtual void TearDown() {
+  void TearDown() override {
     TestP11PublicSession::TearDown();
   }
 };
 
 class TestP11SOSession : public TestP11PublicSession {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     TestP11PublicSession::SetUp();
     uint32_t result = chaps_->Login(credential_, session_id_,
                                     CKU_SO, &so_pin_);
     ASSERT_TRUE(result == CKR_OK || result == CKR_USER_ALREADY_LOGGED_IN);
   }
-  virtual void TearDown() {
+  void TearDown() override {
     TestP11PublicSession::TearDown();
   }
 };
 
 class TestP11Object : public TestP11PublicSession {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     TestP11PublicSession::SetUp();
     CK_OBJECT_CLASS class_value = CKO_DATA;
     CK_UTF8CHAR label[] = "A data object";
@@ -142,7 +142,7 @@ class TestP11Object : public TestP11PublicSession {
                                            serialized,
                                            &object_handle_));
   }
-  virtual void TearDown() {
+  void TearDown() override {
     ASSERT_EQ(CKR_OK, chaps_->DestroyObject(credential_,
                                             session_id_,
                                             object_handle_));

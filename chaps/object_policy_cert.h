@@ -13,9 +13,9 @@ namespace chaps {
 class ObjectPolicyCert : public ObjectPolicyCommon {
  public:
   ObjectPolicyCert();
-  virtual ~ObjectPolicyCert();
-  virtual bool IsObjectComplete();
-  virtual void SetDefaultAttributes();
+  ~ObjectPolicyCert() override;
+  bool IsObjectComplete() override;
+  void SetDefaultAttributes() override;
 };
 
 }  // namespace chaps

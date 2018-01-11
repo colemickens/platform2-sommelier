@@ -40,21 +40,21 @@ class ObjectPoolImpl : public ObjectPool {
                  HandleGenerator* handle_generator,
                  ObjectStore* store,
                  ObjectImporter* importer);
-  virtual ~ObjectPoolImpl();
+  ~ObjectPoolImpl() override;
   virtual bool Init();
-  virtual bool GetInternalBlob(int blob_id, std::string* blob);
-  virtual bool SetInternalBlob(int blob_id, const std::string& blob);
-  virtual bool SetEncryptionKey(const brillo::SecureBlob& key);
-  virtual Result Insert(Object* object);
-  virtual Result Import(Object* object);
-  virtual Result Delete(const Object* object);
-  virtual Result DeleteAll();
-  virtual Result Find(const Object* search_template,
-                      std::vector<const Object*>* matching_objects);
-  virtual Result FindByHandle(int handle, const Object** object);
-  virtual Object* GetModifiableObject(const Object* object);
-  virtual Result Flush(const Object* object);
-  virtual bool IsPrivateLoaded();
+  bool GetInternalBlob(int blob_id, std::string* blob) override;
+  bool SetInternalBlob(int blob_id, const std::string& blob) override;
+  bool SetEncryptionKey(const brillo::SecureBlob& key) override;
+  Result Insert(Object* object) override;
+  Result Import(Object* object) override;
+  Result Delete(const Object* object) override;
+  Result DeleteAll() override;
+  Result Find(const Object* search_template,
+              std::vector<const Object*>* matching_objects) override;
+  Result FindByHandle(int handle, const Object** object) override;
+  Object* GetModifiableObject(const Object* object) override;
+  Result Flush(const Object* object) override;
+  bool IsPrivateLoaded() override;
 
  private:
   // An object matches a template when it holds values for all template

@@ -34,7 +34,7 @@ TEST(InitDeathTest, InvalidInit) {
 // Test fixture for an initialized service instance.
 class TestService : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     service_.reset(new ChapsServiceImpl(&slot_manager_));
     // Setup parsable and un-parsable serialized attributes.
     CK_ATTRIBUTE attributes[] = {{CKA_VALUE, nullptr, 0}};
