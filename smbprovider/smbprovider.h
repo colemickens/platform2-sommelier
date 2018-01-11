@@ -14,6 +14,7 @@
 #include <dbus_adaptors/org.chromium.SmbProvider.h>
 
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/temp_file_manager.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 
@@ -121,6 +122,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
+  TempFileManager temp_file_manager_;
 
   // |dir_buf_| is used as the buffer for reading directory entries in
   // GetDirectoryEntries(). Its initial capacity is specified in the

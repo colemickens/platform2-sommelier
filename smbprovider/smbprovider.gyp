@@ -44,6 +44,8 @@
         'smbprovider.h',
         'smbprovider_helper.cc',
         'smbprovider_helper.h',
+        'temp_file_manager.cc',
+        'temp_file_manager.h',
       ],
     },
     {
@@ -80,6 +82,7 @@
             'mount_manager_test.cc',
             'smbprovider_helper_test.cc',
             'smbprovider_test.cc',
+            'temp_file_manager_test.cc',
           ],
         },
       ],
