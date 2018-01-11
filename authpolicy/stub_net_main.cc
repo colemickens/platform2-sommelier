@@ -349,7 +349,7 @@ int HandleJoin(const std::string& command_line,
     LOG(ERROR) << "Failed to read password";
     return kExitCodeError;
   }
-  const std::string kUserFlag = "-U ";
+  const std::string kUserFlag(std::string(kUserParam) + " ");
   const std::string kCreatecomputer = "createcomputer=";
 
   // Read machine name from smb.conf.
@@ -505,7 +505,7 @@ int HandleSearch(const std::string& command_line) {
 int HandleCommandLine(const std::string& command_line,
                       const std::string& smb_conf_path) {
   // Make sure the caller adds the debug level.
-  CHECK(Contains(command_line, " -d "));
+  CHECK(Contains(command_line, kDebugParam));
 
   // Stub net ads workgroup.
   if (StartsWithCaseSensitive(command_line, "ads workgroup"))
@@ -540,7 +540,8 @@ int HandleCommandLine(const std::string& command_line,
 
 int main(int argc, char* argv[]) {
   // Find Samba configuration path ("-s" argument).
-  const std::string smb_conf_path = authpolicy::GetArgValue(argc, argv, "-s");
+  const std::string smb_conf_path =
+      authpolicy::GetArgValue(argc, argv, authpolicy::kConfigParam);
   if (smb_conf_path.empty()) {
     authpolicy::WriteOutput("", authpolicy::kSmbConfArgMissingError);
     return authpolicy::kExitCodeError;

@@ -564,9 +564,10 @@ ErrorType SambaInterface::JoinMachine(
   }
 
   // Call net ads join to join the machine to the Active Directory domain.
-  std::vector<std::string> args(
-      {paths_->Get(Path::NET), "ads", "join", "-U", normalized_upn, "-s",
-       paths_->Get(Path::DEVICE_SMB_CONF), "-d", flags_.net_log_level()});
+  std::vector<std::string> args({paths_->Get(Path::NET), "ads", "join",
+                                 kUserParam, normalized_upn, kConfigParam,
+                                 paths_->Get(Path::DEVICE_SMB_CONF),
+                                 kDebugParam, flags_.net_log_level()});
   if (!machine_ou.empty()) {
     args.push_back("createcomputer=" +
                    BuildDistinguishedName(machine_ou, join_realm));
@@ -711,8 +712,8 @@ ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
   // Call net ads info to get the KDC IP.
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
-                                       "-s", smb_conf_path, "-d",
-                                       flags_.net_log_level()});
+                                       kConfigParam, smb_conf_path, kDebugParam,
+                                       flags_.net_log_level(), kKerberosParam});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
   anonymizer_->ReplaceSearchArg(kKeyKdcServer, kIpAddressPlaceholder);
@@ -751,8 +752,8 @@ ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
   // Call net ads lookup to get the domain controller name.
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "lookup",
-                                       "-s", smb_conf_path, "-d",
-                                       flags_.net_log_level()});
+                                       kConfigParam, smb_conf_path, kDebugParam,
+                                       flags_.net_log_level(), kKerberosParam});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
   anonymizer_->ReplaceSearchArg(kKeyForest, kForestPlaceholder);
@@ -844,8 +845,9 @@ ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
 
 ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) {
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
-                           smb_conf_path, "-d", flags_.net_log_level()});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup",
+                           kConfigParam, smb_conf_path, kDebugParam,
+                           flags_.net_log_level(), kKerberosParam});
   // Parse workgroup from the net_cmd output immediately, see SearchAccountInfo
   // for an explanation. Also replace a bunch of other server names.
   anonymizer_->ReplaceSearchArg(kKeyWorkgroup, kWorkgroupPlaceholder);
@@ -1097,12 +1099,12 @@ ErrorType SambaInterface::SearchAccountInfo(
     ActiveDirectoryAccountInfo* account_info) {
   // Set up net ads search to find the user's account info.
   const std::string& smb_conf_path = paths_->Get(user_account_.smb_conf_path);
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
-                           search_string, kSearchObjectGUID,
-                           kSearchSAMAccountName, kSearchCommonName,
-                           kSearchDisplayName, kSearchGivenName,
-                           kSearchPwdLastSet, kSearchUserAccountControl, "-s",
-                           smb_conf_path, "-d", flags_.net_log_level()});
+  ProcessExecutor net_cmd(
+      {paths_->Get(Path::NET), "ads", "search", search_string,
+       kSearchObjectGUID, kSearchSAMAccountName, kSearchCommonName,
+       kSearchDisplayName, kSearchGivenName, kSearchPwdLastSet,
+       kSearchUserAccountControl, kConfigParam, smb_conf_path, kDebugParam,
+       flags_.net_log_level(), kKerberosParam});
 
   // Parse the search args from the net_cmd output immediately. This resolves
   // the chicken-egg-problem that replacement strings cannot be set before the
@@ -1179,8 +1181,9 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
 
   // Machine names are names ending with $, anything else is a user name.
   authpolicy::ProcessExecutor net_cmd(
-      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
-       paths_->Get(account.smb_conf_path), "-d", flags_.net_log_level()});
+      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name,
+       kConfigParam, paths_->Get(account.smb_conf_path), kDebugParam,
+       flags_.net_log_level(), kKerberosParam});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
@@ -1313,10 +1316,10 @@ ErrorType SambaInterface::DownloadGpos(
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
-                                  paths_->Get(account.smb_conf_path), "-k",
-                                  "-d", flags_.net_log_level(), "-c",
-                                  smb_command});
+  ProcessExecutor smb_client_cmd(
+      {paths_->Get(Path::SMBCLIENT), service, kConfigParam,
+       paths_->Get(account.smb_conf_path), kKerberosParam, kDebugParam,
+       flags_.net_log_level(), kCommandParam, smb_command});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   smb_client_cmd.SetEnv(kKrb5CCEnvKey,

@@ -22,6 +22,13 @@ const int kGpFlagInvalid = 0x04;
 
 extern const char* const kGpFlagsStr[];
 
+// Params for samba executables.
+extern const char kKerberosParam[];
+extern const char kConfigParam[];
+extern const char kDebugParam[];
+extern const char kCommandParam[];
+extern const char kUserParam[];
+
 // Parses user_name@some.realm into its components and normalizes (uppercases)
 // the part behind the @. |user_name| is 'user_name', |realm| is |SOME.REALM|
 // and |normalized_user_principal_name| is user_name@SOME.REALM.

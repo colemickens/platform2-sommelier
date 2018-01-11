@@ -73,7 +73,7 @@ std::vector<DownloadItem> GetDownloadItems(const std::string& command_line) {
 
 int HandleCommandLine(const std::string& command_line) {
   // Make sure the caller adds the debug level.
-  CHECK(Contains(command_line, " -d "));
+  CHECK(Contains(command_line, kDebugParam));
 
   if (!Contains(command_line, kHostAndShare)) {
     WriteOutput(kConnectionFailedError, "");

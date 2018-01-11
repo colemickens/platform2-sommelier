@@ -74,6 +74,12 @@ const char* const kGpFlagsStr[] = {
     "3 GPFLAGS_ALL_DISABLED",
 };
 
+constexpr char kKerberosParam[] = "--kerberos";
+constexpr char kConfigParam[] = "--configfile";
+constexpr char kDebugParam[] = "--debuglevel";
+constexpr char kCommandParam[] = "--command";
+constexpr char kUserParam[] = "-U";
+
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* user_name,
                             std::string* realm,
