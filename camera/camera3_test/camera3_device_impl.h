@@ -22,7 +22,7 @@ namespace camera3_test {
 const uint32_t kInitialFrameNumber = 0;
 
 // This class is thread-safe except the Flush function, which must be called
-// after the Initialzie function returns successfully.
+// after the Initialize function returns successfully.
 class Camera3DeviceImpl : protected camera3_callback_ops {
  public:
   explicit Camera3DeviceImpl(int cam_id);
