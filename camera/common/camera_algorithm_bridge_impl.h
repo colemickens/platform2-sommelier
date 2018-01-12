@@ -29,7 +29,7 @@ namespace arc {
 class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
                                   public mojo::edk::ProcessDelegate {
  public:
-  static std::unique_ptr<CameraAlgorithmBridgeImpl> CreateInstance();
+  CameraAlgorithmBridgeImpl();
 
   ~CameraAlgorithmBridgeImpl();
 
@@ -51,8 +51,6 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
   void OnShutdownComplete() {}
 
  private:
-  CameraAlgorithmBridgeImpl();
-
   void PreInitializeOnIpcThread(base::Callback<void(void)> cb);
 
   void InitializeOnIpcThread(
@@ -70,12 +68,6 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
                           int32_t buffer_handle);
 
   void DeregisterBuffersOnIpcThread(mojo::Array<int32_t> buffer_handles);
-
-  // Lock to protect |bridge_impl_|
-  static base::Lock bridge_impl_lock_;
-
-  // Singleton of bridge implementation
-  static CameraAlgorithmBridgeImpl* bridge_impl_;
 
   // Return callback registered by HAL
   const camera_algorithm_callback_ops_t* callback_ops_;

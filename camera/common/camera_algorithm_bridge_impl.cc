@@ -30,24 +30,11 @@
 
 namespace arc {
 
-base::Lock CameraAlgorithmBridgeImpl::bridge_impl_lock_;
-CameraAlgorithmBridgeImpl* CameraAlgorithmBridgeImpl::bridge_impl_ = nullptr;
-
 // static
 std::unique_ptr<CameraAlgorithmBridge> CameraAlgorithmBridge::CreateInstance() {
   VLOGF_ENTER();
-  return CameraAlgorithmBridgeImpl::CreateInstance();
-}
-
-std::unique_ptr<CameraAlgorithmBridgeImpl>
-CameraAlgorithmBridgeImpl::CreateInstance() {
-  VLOGF_ENTER();
-  base::AutoLock l(bridge_impl_lock_);
-  if (!bridge_impl_) {
-    bridge_impl_ = new CameraAlgorithmBridgeImpl;
-    return std::unique_ptr<CameraAlgorithmBridgeImpl>(bridge_impl_);
-  }
-  return nullptr;
+  return std::unique_ptr<CameraAlgorithmBridgeImpl>(
+      new CameraAlgorithmBridgeImpl);
 }
 
 CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl()
@@ -59,8 +46,6 @@ CameraAlgorithmBridgeImpl::~CameraAlgorithmBridgeImpl() {
       FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::DestroyOnIpcThread,
                             base::Unretained(this)));
   ipc_thread_.Stop();
-  base::AutoLock l(bridge_impl_lock_);
-  bridge_impl_ = nullptr;
   VLOGF_EXIT();
 }
 

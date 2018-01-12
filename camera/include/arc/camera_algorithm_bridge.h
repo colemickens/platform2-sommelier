@@ -22,7 +22,7 @@ namespace arc {
 // Example usage:
 //
 //  #include <arc/camera_algorithm_bridge.h>
-//  CameraAlgorithmBridge* algo = CameraAlgorithmBridge::GetInstance();
+//  auto algo = CameraAlgorithmBridge::CreateInstance();
 //  algo->Initialize(this);
 //  std::vector<int32_t> handles[2];
 //  handles[0] = algo->RegisterBuffer(buffer_fd0);
@@ -35,13 +35,10 @@ namespace arc {
 
 class CameraAlgorithmBridge {
  public:
-  // This method creates and returns the CameraAlgorithmBridge singleton. Only
-  // one client can create the singleton at the same time; the second client
-  // trying to create one will get a null pointer unless the first client has
-  // already freed it.
+  // This method creates and returns the CameraAlgorithmBridge instance.
   //
   // Returns:
-  //    Unique pointer to singleton on success; nullptr on failure.
+  //    Unique pointer to instance on success; nullptr on failure.
   static std::unique_ptr<CameraAlgorithmBridge> CreateInstance();
 
   virtual ~CameraAlgorithmBridge() {}
