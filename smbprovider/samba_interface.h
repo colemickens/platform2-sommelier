@@ -90,6 +90,14 @@ class SambaInterface {
   virtual int32_t RemoveDirectory(const std::string& dir_path)
       WARN_UNUSED_RESULT = 0;
 
+  // Creates a file in a given |file_path|. |file_id| will be the file handle of
+  // the created file and will be -1 on failure. The file that is created will
+  // have 755 as permissions and will be opened as write only. If a file with
+  // the same path exists, this will return an error. Returns 0 on success and
+  // errno on failure.
+  virtual int32_t CreateFile(const std::string& file_path,
+                             int32_t* file_id) WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "

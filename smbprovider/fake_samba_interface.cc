@@ -230,6 +230,16 @@ int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
   return 0;
 }
 
+int32_t FakeSambaInterface::CreateFile(const std::string& file_path,
+                                       int32_t* file_id) {
+  if (EntryExists(file_path)) {
+    return EEXIST;
+  }
+  AddFile(file_path);
+  *file_id = AddOpenFile(file_path, false /* readable */, true /* writeable */);
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {

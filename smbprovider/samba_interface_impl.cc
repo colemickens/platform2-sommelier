@@ -9,6 +9,8 @@
 
 #include <base/logging.h>
 
+#include "smbprovider/constants.h"
+
 namespace {
 bool IsValidOpenFileFlags(int32_t flags) {
   return flags == O_RDONLY || flags == O_RDWR;
@@ -105,6 +107,17 @@ int32_t SambaInterfaceImpl::Unlink(const std::string& file_path) {
 
 int32_t SambaInterfaceImpl::RemoveDirectory(const std::string& dir_path) {
   return smbc_rmdir(dir_path.c_str()) < 0 ? errno : 0;
+}
+
+int32_t SambaInterfaceImpl::CreateFile(const std::string& file_path,
+                                       int32_t* file_id) {
+  *file_id =
+      smbc_open(file_path.c_str(), kCreateFileFlags, kCreateFilePermissions);
+  if (*file_id < 0) {
+    *file_id = -1;
+    return errno;
+  }
+  return 0;
 }
 
 SambaInterfaceImpl::~SambaInterfaceImpl() {
