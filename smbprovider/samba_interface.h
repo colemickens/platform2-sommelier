@@ -66,7 +66,6 @@ class SambaInterface {
                                  struct stat* stat) WARN_UNUSED_RESULT = 0;
 
   // Reads the contents of the file corresponding to the file handle |file_id|.
-  // Returns the number of bytes read on success, and errno on failure.
   // Returns 0 on success, and errno on failure.
   // |buffer| is the pointer to a buffer that will receive the file contents.
   // |buffer_size| is the size of |buffer| in bytes.
