@@ -188,7 +188,6 @@ int CameraClient::ConfigureStreams(
 const camera_metadata_t* CameraClient::ConstructDefaultRequestSettings(
     int type) {
   VLOGFID(1, id_) << "type=" << type;
-  DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   return metadata_handler_->GetDefaultRequestSettings(type);
 }
@@ -253,12 +252,10 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
 
 void CameraClient::Dump(int fd) {
   VLOGFID(1, id_);
-  DCHECK(ops_thread_checker_.CalledOnValidThread());
 }
 
 int CameraClient::Flush(const camera3_device_t* dev) {
   VLOGFID(1, id_);
-  DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   // Do nothing if stream is off.
   if (!request_handler_.get()) {
