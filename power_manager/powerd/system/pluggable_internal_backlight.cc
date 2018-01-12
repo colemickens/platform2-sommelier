@@ -79,8 +79,8 @@ void PluggableInternalBacklight::UpdateDevice() {
   } else {
     LOG(INFO) << "Found backlight at " << device_->device_path().value();
   }
-  FOR_EACH_OBSERVER(BacklightObserver, observers_,
-                    OnBacklightDeviceChanged(this));
+  for (BacklightObserver& observer : observers_)
+    observer.OnBacklightDeviceChanged(this);
 }
 
 void PluggableInternalBacklight::OnUdevEvent(const UdevEvent& event) {

@@ -19,7 +19,8 @@ void FakePrefs::Unset(const std::string& name) {
 }
 
 void FakePrefs::NotifyObservers(const std::string& name) {
-  FOR_EACH_OBSERVER(PrefsObserver, observers_, OnPrefChanged(name));
+  for (PrefsObserver& observer : observers_)
+    observer.OnPrefChanged(name);
 }
 
 void FakePrefs::AddObserver(PrefsObserver* observer) {

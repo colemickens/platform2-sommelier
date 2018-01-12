@@ -104,8 +104,8 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
   if (base::StringToInt(trimmed_data, &value)) {
     lux_value_ = value;
     VLOG(1) << "Read lux " << lux_value_;
-    FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
-                      OnAmbientLightUpdated(this));
+    for (AmbientLightObserver& observer : observers_)
+      observer.OnAmbientLightUpdated(this);
   } else {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";

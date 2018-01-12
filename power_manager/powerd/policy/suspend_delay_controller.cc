@@ -222,8 +222,8 @@ void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
 void SuspendDelayController::NotifyObservers(int suspend_id) {
   LOG(INFO) << "Notifying observers that " << GetLogDescription()
             << " is ready";
-  FOR_EACH_OBSERVER(SuspendDelayObserver, observers_,
-                    OnReadyForSuspend(this, suspend_id));
+  for (SuspendDelayObserver& observer : observers_)
+    observer.OnReadyForSuspend(this, suspend_id);
 }
 
 }  // namespace policy

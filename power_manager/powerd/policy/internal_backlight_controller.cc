@@ -682,8 +682,8 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   }
 
   current_level_ = level;
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChange(percent, cause, this));
+  for (BacklightControllerObserver& observer : observers_)
+    observer.OnBrightnessChange(percent, cause, this);
   return true;
 }
 

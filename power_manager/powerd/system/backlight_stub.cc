@@ -13,8 +13,8 @@ BacklightStub::BacklightStub(int64_t max_level, int64_t current_level)
 BacklightStub::~BacklightStub() {}
 
 void BacklightStub::NotifyDeviceChanged() {
-  FOR_EACH_OBSERVER(BacklightObserver, observers_,
-                    OnBacklightDeviceChanged(this));
+  for (BacklightObserver& observer : observers_)
+    observer.OnBacklightDeviceChanged(this);
 }
 
 void BacklightStub::AddObserver(BacklightObserver* observer) {

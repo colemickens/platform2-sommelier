@@ -23,23 +23,25 @@ bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
 
 void UdevStub::NotifySubsystemObservers(const UdevEvent& event) {
   auto it = subsystem_observers_.find(event.subsystem);
-  if (it != subsystem_observers_.end())
-    FOR_EACH_OBSERVER(UdevSubsystemObserver, *it->second, OnUdevEvent(event));
+  if (it != subsystem_observers_.end()) {
+    for (UdevSubsystemObserver& observer : *it->second)
+      observer.OnUdevEvent(event);
+  }
 }
 
 void UdevStub::TaggedDeviceChanged(const std::string& syspath,
                                    const std::string& tags) {
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
-                    OnTaggedDeviceChanged(device));
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+    observer.OnTaggedDeviceChanged(device);
 }
 
 void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
   TaggedDevice device = tagged_devices_[syspath];
   tagged_devices_.erase(syspath);
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
-                    OnTaggedDeviceRemoved(device));
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+    observer.OnTaggedDeviceRemoved(device);
 }
 
 void UdevStub::AddSubsystemObserver(const std::string& subsystem,

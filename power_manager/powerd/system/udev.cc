@@ -241,8 +241,10 @@ void Udev::HandleSubsystemEvent(UdevEvent::Action action,
     event.sysname = sysname;
 
   auto it = subsystem_observers_.find(subsystem);
-  if (it != subsystem_observers_.end())
-    FOR_EACH_OBSERVER(UdevSubsystemObserver, *it->second, OnUdevEvent(event));
+  if (it != subsystem_observers_.end()) {
+    for (UdevSubsystemObserver& observer : *it->second)
+      observer.OnUdevEvent(event);
+  }
 }
 
 void Udev::HandleTaggedDevice(UdevEvent::Action action,
@@ -278,8 +280,8 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
   // Replace existing device with same syspath.
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
-                    OnTaggedDeviceChanged(device));
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+    observer.OnTaggedDeviceChanged(device);
 }
 
 void Udev::TaggedDeviceRemoved(const std::string& syspath) {
@@ -287,8 +289,8 @@ void Udev::TaggedDeviceRemoved(const std::string& syspath) {
   if (!device.tags().empty())
     LOG(INFO) << "Removing device " << syspath;
   tagged_devices_.erase(syspath);
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
-                    OnTaggedDeviceRemoved(device));
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+    observer.OnTaggedDeviceRemoved(device);
 }
 
 bool Udev::EnumerateTaggedDevices() {

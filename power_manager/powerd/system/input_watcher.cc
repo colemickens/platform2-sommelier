@@ -297,7 +297,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetLidStateFromEvent(event, &lid_state)) {
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
             << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
+    for (InputObserver& observer : observers_)
+      observer.OnLidEvent(lid_state);
   }
 
   TabletMode tablet_mode = TabletMode::OFF;
@@ -306,8 +307,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
     tablet_mode_ = tablet_mode;
     VLOG(1) << "Notifying observers about tablet mode "
             << TabletModeToString(tablet_mode) << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_,
-                      OnTabletModeEvent(tablet_mode));
+    for (InputObserver& observer : observers_)
+      observer.OnTabletModeEvent(tablet_mode);
   }
 
   ButtonState button_state = ButtonState::DOWN;
@@ -315,8 +316,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_,
-                      OnPowerButtonEvent(button_state));
+    for (InputObserver& observer : observers_)
+      observer.OnPowerButtonEvent(button_state);
   }
 
   if (device_types & DEVICE_HOVER)
@@ -373,8 +374,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
       VLOG(1) << "Notifying observers about hover state change to "
               << (hovering ? "on" : "off");
       hovering_ = hovering;
-      FOR_EACH_OBSERVER(InputObserver, observers_,
-                        OnHoverStateChange(hovering_));
+      for (InputObserver& observer : observers_)
+        observer.OnHoverStateChange(hovering_);
     }
   }
 }

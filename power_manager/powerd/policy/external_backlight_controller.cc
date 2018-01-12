@@ -188,9 +188,10 @@ void ExternalBacklightController::UpdateScreenPowerState() {
 }
 
 void ExternalBacklightController::NotifyObservers() {
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
-                                       BrightnessChangeCause::AUTOMATED, this));
+  for (BacklightControllerObserver& observer : observers_) {
+    observer.OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
+                                BrightnessChangeCause::AUTOMATED, this);
+  }
 }
 
 void ExternalBacklightController::UpdateDisplays(

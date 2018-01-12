@@ -131,7 +131,8 @@ void Prefs::HandlePrefChanged(const std::string& name) {
   // 1. SetInt64() is called and pref is written to disk.
   // 2. SetInt64() is called and and the new value is queued.
   // 3. HandleFileChanged() is called regarding the initial write.
-  FOR_EACH_OBSERVER(PrefsObserver, observers_, OnPrefChanged(name));
+  for (PrefsObserver& observer : observers_)
+    observer.OnPrefChanged(name);
 }
 
 void Prefs::GetPrefResults(const std::string& name,

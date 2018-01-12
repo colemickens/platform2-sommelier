@@ -12,7 +12,8 @@ PowerSupplyStub::PowerSupplyStub() : refresh_result_(true) {}
 PowerSupplyStub::~PowerSupplyStub() {}
 
 void PowerSupplyStub::NotifyObservers() {
-  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
+  for (PowerSupplyObserver& observer : observers_)
+    observer.OnPowerStatusUpdate();
 }
 
 void PowerSupplyStub::AddObserver(PowerSupplyObserver* observer) {

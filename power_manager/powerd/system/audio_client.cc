@@ -149,10 +149,12 @@ void AudioClient::UpdateNumActiveStreams() {
 
   if (num_active_streams_ && !old_num_streams) {
     VLOG(1) << "Audio playback started";
-    FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(true));
+    for (AudioObserver& observer : observers_)
+      observer.OnAudioStateChange(true);
   } else if (!num_active_streams_ && old_num_streams) {
     VLOG(1) << "Audio playback stopped";
-    FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(false));
+    for (AudioObserver& observer : observers_)
+      observer.OnAudioStateChange(false);
   }
 }
 

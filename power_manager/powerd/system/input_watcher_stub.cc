@@ -17,19 +17,23 @@ InputWatcherStub::InputWatcherStub()
 InputWatcherStub::~InputWatcherStub() {}
 
 void InputWatcherStub::NotifyObserversAboutLidState() {
-  FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state_));
+  for (InputObserver& observer : observers_)
+    observer.OnLidEvent(lid_state_);
 }
 
 void InputWatcherStub::NotifyObserversAboutTabletMode() {
-  FOR_EACH_OBSERVER(InputObserver, observers_, OnTabletModeEvent(tablet_mode_));
+  for (InputObserver& observer : observers_)
+    observer.OnTabletModeEvent(tablet_mode_);
 }
 
 void InputWatcherStub::NotifyObserversAboutPowerButtonEvent(ButtonState state) {
-  FOR_EACH_OBSERVER(InputObserver, observers_, OnPowerButtonEvent(state));
+  for (InputObserver& observer : observers_)
+    observer.OnPowerButtonEvent(state);
 }
 
 void InputWatcherStub::NotifyObserversAboutHoverState(bool hovering) {
-  FOR_EACH_OBSERVER(InputObserver, observers_, OnHoverStateChange(hovering));
+  for (InputObserver& observer : observers_)
+    observer.OnHoverStateChange(hovering);
 }
 
 void InputWatcherStub::AddObserver(InputObserver* observer) {

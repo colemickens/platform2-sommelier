@@ -1093,7 +1093,8 @@ void PowerSupply::HandlePollTimeout() {
 }
 
 void PowerSupply::NotifyObservers() {
-  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
+  for (PowerSupplyObserver& observer : observers_)
+    observer.OnPowerStatusUpdate();
 }
 
 }  // namespace system
