@@ -217,8 +217,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     EXPECT_EQ(nullptr, capability_->modem_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_location_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_simple_proxy_);
-    EXPECT_EQ(nullptr, capability_->sim_proxy_);
-    EXPECT_EQ("", capability_->sim_path_);
   }
 
   void SetRegistrationDroppedUpdateTimeout(int64_t timeout_milliseconds) {
