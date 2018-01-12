@@ -167,7 +167,8 @@ class InstallAttributes {
   }
 
   void NotifyFinalized() {
-    FOR_EACH_OBSERVER(Observer, observer_list_, OnFinalized());
+    for (Observer& observer : observer_list_)
+      observer.OnFinalized();
   }
 
   // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
