@@ -303,7 +303,7 @@ bool GetAuthorityPublicKey(
 
 namespace attestation {
 
-const size_t kChallengeSignatureNonceSize = 20; // For all TPMs.
+const size_t kChallengeSignatureNonceSize = 20;  // For all TPMs.
 
 AttestationService::AttestationService(brillo::SecureBlob* abe_data)
     : abe_data_(abe_data), weak_factory_(this) {}
@@ -413,7 +413,8 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   std::string certificate_request;
   std::string message_id;
   if (!CreateCertificateRequestInternal(request.username(), key,
-                                        request.certificate_profile(), request.origin(),
+                                        request.certificate_profile(),
+                                        request.origin(),
                                         &certificate_request, &message_id)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
@@ -817,8 +818,9 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
   return true;
 }
 
-bool AttestationService::FinishEnrollInternal(const std::string& enroll_response,
-                                              std::string* server_error) {
+bool AttestationService::FinishEnrollInternal(
+    const std::string& enroll_response,
+    std::string* server_error) {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
@@ -1465,7 +1467,8 @@ bool AttestationService::VerifyIdentityBinding(
             identity_public_key_info,
             header + digest + binding.identity_public_key(),
             binding.identity_binding())) {
-      LOG(ERROR) << __func__ << ": Failed to verify identity binding signature.";
+      LOG(ERROR) << __func__
+                 << ": Failed to verify identity binding signature.";
       return false;
     }
   } else if (tpm_utility_->GetVersion() == TPM_2_0) {
@@ -1558,7 +1561,8 @@ bool AttestationService::GetCertifiedKeyDigest(
   } else if (tpm_utility_->GetVersion() == TPM_2_0) {
     // TPM_ALG_SHA256 = 0x000B, here in big-endian order.
     std::string prefix("\x00\x0B", 2);
-    key_digest->assign(prefix + crypto::SHA256HashString(public_key_tpm_format));
+    key_digest->assign(
+        prefix + crypto::SHA256HashString(public_key_tpm_format));
     return true;
   }
   LOG(ERROR) << __func__ << ": Unsupported TPM version.";
@@ -1614,7 +1618,8 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
     return false;
   }
   std::string public_key_info;
-  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, public_key_der, &public_key_info)) {
+  if (!GetSubjectPublicKeyInfo(
+          KEY_TYPE_RSA, public_key_der, &public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get public key info.";
     return false;
   }

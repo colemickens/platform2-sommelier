@@ -20,6 +20,7 @@
 #include "attestation/common/tpm_utility.h"
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -97,7 +98,7 @@ class TpmUtilityV2 : public TpmUtility {
   // Tpm_manager communication thread class that cleans up after stopping.
   class TpmManagerThread : public base::Thread {
    public:
-    TpmManagerThread(TpmUtilityV2* tpm_utility)
+    explicit TpmManagerThread(TpmUtilityV2* tpm_utility)
         : base::Thread("tpm_manager_thread"), tpm_utility_(tpm_utility) {
       DCHECK(tpm_utility_);
     }

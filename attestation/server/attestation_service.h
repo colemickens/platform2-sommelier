@@ -19,6 +19,7 @@
 
 #include "attestation/common/attestation_interface.h"
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -71,7 +72,7 @@ class AttestationService : public AttestationInterface {
  public:
   // If abe_data is not an empty blob, its contents will be
   // used to enable attestation-based enterprise enrollment.
-  AttestationService(brillo::SecureBlob* abe_data);
+  explicit AttestationService(brillo::SecureBlob* abe_data);
   ~AttestationService() override = default;
 
   // AttestationInterface methods.
@@ -167,7 +168,7 @@ class AttestationService : public AttestationInterface {
   // Attestation service worker thread class that cleans up after stopping.
   class ServiceWorkerThread : public base::Thread {
    public:
-    ServiceWorkerThread(AttestationService* service)
+    explicit ServiceWorkerThread(AttestationService* service)
         : base::Thread("Attestation Service Worker"), service_(service) {
       DCHECK(service_);
     }

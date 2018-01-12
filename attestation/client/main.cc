@@ -372,7 +372,7 @@ class ClientLoop : public ClientLoopBase {
           input,
           command_line->GetSwitchValueASCII("label"),
           command_line->GetSwitchValueASCII("user"));
-    } else if(args.front() == kSignChallengeCommand) {
+    } else if (args.front() == kSignChallengeCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
       }
@@ -385,10 +385,11 @@ class ClientLoop : public ClientLoopBase {
       if (command_line->HasSwitch("enterprise")) {
         VAType va_type = DEFAULT_VA;
         std::string va_server(command_line->GetSwitchValueASCII("va_server"));
-          va_type = DEFAULT_VA;
+        va_type = DEFAULT_VA;
         if (va_server == "test") {
           va_type = TEST_VA;
-        } if (va_server != "" && va_server != "default") {
+        }
+        if (va_server != "" && va_server != "default") {
           LOG(ERROR) << "Invalid va_server value: " << va_server;
           return EX_USAGE;
         }
@@ -723,8 +724,9 @@ class ClientLoop : public ClientLoopBase {
     request.set_key_label(label);
     request.set_username(username);
     attestation_->FinishCertificateRequest(
-        request, base::Bind(&ClientLoop::PrintReplyAndQuit<FinishCertificateRequestReply>,
-        weak_factory_.GetWeakPtr()));
+        request, base::Bind(
+            &ClientLoop::PrintReplyAndQuit<FinishCertificateRequestReply>,
+            weak_factory_.GetWeakPtr()));
   }
 
   void CallSignEnterpriseChallenge(VAType va_type,

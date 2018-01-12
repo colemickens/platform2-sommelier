@@ -107,7 +107,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 class AttestationDaemon : public brillo::DBusServiceDaemon {
  public:
-  AttestationDaemon(brillo::SecureBlob abe_data)
+  explicit AttestationDaemon(brillo::SecureBlob abe_data)
       : brillo::DBusServiceDaemon(attestation::kAttestationServiceName),
         abe_data_(std::move(abe_data)),
         attestation_service_(&abe_data_) {}

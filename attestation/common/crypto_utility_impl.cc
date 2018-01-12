@@ -18,6 +18,7 @@
 
 #include <limits>
 #include <string>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <base/sha1.h>
@@ -774,7 +775,6 @@ bool CryptoUtilityImpl::CreateSPKAC(const std::string& key_blob,
   if (!ASN1_STRING_set(spki.get()->spkac->challenge,
                        challenge_hex.data(),
                        challenge_hex.size())) {
-
     LOG(ERROR) << __func__ << ": Failed to set challenge in SPKAC.";
     return false;
   }

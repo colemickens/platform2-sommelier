@@ -195,7 +195,6 @@ class AttestationInterface {
   virtual void SetSystemSalt(
       const SetSystemSaltRequest& request,
       const SetSystemSaltCallback& callback) = 0;
-
 };
 
 }  // namespace attestation
