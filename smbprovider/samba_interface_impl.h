@@ -48,6 +48,10 @@ class SambaInterfaceImpl : public SambaInterface {
 
   int32_t Seek(int32_t file_id, int64_t offset) override;
 
+  int32_t Unlink(const std::string& file_path) override;
+
+  int32_t RemoveDirectory(const std::string& dir_path) override;
+
  private:
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;

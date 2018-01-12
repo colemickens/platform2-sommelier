@@ -98,6 +98,14 @@ int32_t SambaInterfaceImpl::Seek(int32_t file_id, int64_t offset) {
   return smbc_lseek(file_id, offset, SEEK_SET) < 0 ? errno : 0;
 }
 
+int32_t SambaInterfaceImpl::Unlink(const std::string& file_path) {
+  return smbc_unlink(file_path.c_str()) < 0 ? errno : 0;
+}
+
+int32_t SambaInterfaceImpl::RemoveDirectory(const std::string& dir_path) {
+  return smbc_rmdir(dir_path.c_str()) < 0 ? errno : 0;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }

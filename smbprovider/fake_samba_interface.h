@@ -50,6 +50,10 @@ class FakeSambaInterface : public SambaInterface {
 
   int32_t Seek(int32_t file_id, int64_t offset) override;
 
+  int32_t Unlink(const std::string& file_path) override;
+
+  int32_t RemoveDirectory(const std::string& dir_path) override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
@@ -104,6 +108,14 @@ class FakeSambaInterface : public SambaInterface {
 
     // Returns a pointer to the entry in the directory with |name|.
     FakeEntry* FindEntry(const std::string& name);
+
+    // Removes the entry in entries with |name| from the directory.
+    // This function must only be called on files and empty directories.
+    // Returns true if the entry was found and deleted. Otherwise returns false.
+    bool RemoveEntry(const std::string& name);
+
+    // Checks whether the provided FakeEntry is a file or an empty directory.
+    bool IsFileOrEmptyDirectory(FakeEntry* entry) const;
 
     // Contains pointers to entries that can be found in this directory.
     std::vector<std::unique_ptr<FakeEntry>> entries;

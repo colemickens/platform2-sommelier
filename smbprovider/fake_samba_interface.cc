@@ -202,6 +202,33 @@ int32_t FakeSambaInterface::Seek(int32_t file_id, int64_t offset) {
   return 0;
 }
 
+int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
+  if (!GetFile(file_path)) {
+    return ENOENT;
+  }
+
+  FakeDirectory* directory = GetDirectory(GetDirPath(file_path));
+  bool result = directory->RemoveEntry(GetFileName(file_path));
+  DCHECK(result);
+  return 0;
+}
+
+int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
+  FakeDirectory* directory = GetDirectory(dir_path);
+  if (!directory) {
+    return ENOENT;
+  }
+  if (!directory->entries.empty()) {
+    return ENOTEMPTY;
+  }
+
+  FakeDirectory* parent = GetDirectory(GetDirPath(dir_path));
+
+  bool result = parent->RemoveEntry(GetFileName(dir_path));
+  DCHECK(result);
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {
@@ -210,6 +237,28 @@ FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     }
   }
   return nullptr;
+}
+
+bool FakeSambaInterface::FakeDirectory::IsFileOrEmptyDirectory(
+    FakeEntry* entry) const {
+  DCHECK(entry->smbc_type == SMBC_FILE || entry->smbc_type == SMBC_DIR);
+  if (entry->smbc_type == SMBC_FILE) {
+    return true;
+  }
+
+  FakeDirectory* directory = static_cast<FakeDirectory*>(entry);
+  return directory->entries.empty();
+}
+
+bool FakeSambaInterface::FakeDirectory::RemoveEntry(const std::string& name) {
+  for (auto it = entries.begin(); it != entries.end(); ++it) {
+    if ((*it)->name == name) {
+      DCHECK(IsFileOrEmptyDirectory(it->get()));
+      entries.erase(it);
+      return true;
+    }
+  }
+  return false;
 }
 
 FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,

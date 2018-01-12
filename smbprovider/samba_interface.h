@@ -81,6 +81,16 @@ class SambaInterface {
   // Returns 0 on success and errno on failure.
   virtual int32_t Seek(int32_t file_id, int64_t offset) WARN_UNUSED_RESULT = 0;
 
+  // Unlinks (deletes) a file with the smb url |file_path|.
+  // Returns 0 on success and errno on failure.
+  virtual int32_t Unlink(const std::string& file_path) WARN_UNUSED_RESULT = 0;
+
+  // Removes the directory with the smb url |dir_path|.
+  // Directory must be empty.
+  // Returns 0 on success and errno on failure.
+  virtual int32_t RemoveDirectory(const std::string& dir_path)
+      WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "
