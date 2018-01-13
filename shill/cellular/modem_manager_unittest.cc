@@ -168,7 +168,7 @@ TEST_F(ModemManagerClassicTest, Connect) {
                   Pointee(Field(&Modem::path_, StrEq(kModemPath)))));
   modem_manager_.Connect();
   EXPECT_EQ(1, modem_manager_.modems_.size());
-  ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  ASSERT_TRUE(base::ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
 class ModemManager1MockInit : public ModemManager1 {
@@ -239,7 +239,7 @@ TEST_F(ModemManager1Test, StartStop) {
 TEST_F(ModemManager1Test, Connect) {
   Connect(GetModemWithProperties());
   EXPECT_EQ(1, modem_manager_.modems_.size());
-  EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  EXPECT_TRUE(base::ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
 TEST_F(ModemManager1Test, AddRemoveInterfaces) {

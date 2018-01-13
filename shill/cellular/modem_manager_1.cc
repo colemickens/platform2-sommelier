@@ -101,7 +101,7 @@ void ModemManager1::InitModem1(Modem1* modem,
 void ModemManager1::OnInterfacesAddedSignal(
     const string& object_path,
     const InterfaceToProperties& properties) {
-  if (ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
+  if (base::ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     AddModem1(object_path, properties);
   } else {
     LOG(ERROR) << "Interfaces added, but not modem interface.";

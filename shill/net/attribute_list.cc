@@ -39,7 +39,7 @@ AttributeList::~AttributeList() {}
 
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
@@ -138,7 +138,7 @@ bool AttributeList::GetU8AttributeValue(int id, uint8_t* value) const {
 }
 
 bool AttributeList::CreateU8Attribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -164,7 +164,7 @@ bool AttributeList::GetU16AttributeValue(int id, uint16_t* value) const {
 }
 
 bool AttributeList::CreateU16Attribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -189,7 +189,7 @@ bool AttributeList::GetU32AttributeValue(int id, uint32_t* value) const {
 }
 
 bool AttributeList::CreateU32Attribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -214,7 +214,7 @@ bool AttributeList::GetU64AttributeValue(int id, uint64_t* value) const {
 }
 
 bool AttributeList::CreateU64Attribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -239,7 +239,7 @@ bool AttributeList::GetFlagAttributeValue(int id, bool* value) const {
 }
 
 bool AttributeList::CreateFlagAttribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -272,7 +272,7 @@ bool AttributeList::GetStringAttributeValue(int id, string* value) const {
 }
 
 bool AttributeList::CreateStringAttribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -281,7 +281,7 @@ bool AttributeList::CreateStringAttribute(int id, const char* id_string) {
 }
 
 bool AttributeList::CreateSsidAttribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -322,7 +322,7 @@ bool AttributeList::SetNestedAttributeHasAValue(int id) {
 }
 
 bool AttributeList::CreateNestedAttribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
@@ -357,7 +357,7 @@ bool AttributeList::SetRawAttributeValue(int id, ByteString value) {
 }
 
 bool AttributeList::CreateRawAttribute(int id, const char* id_string) {
-  if (ContainsKey(attributes_, id)) {
+  if (base::ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }

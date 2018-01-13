@@ -908,7 +908,7 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
                                            metrics_,
                                            this,
                                            entry_name);
-  } else if (ContainsKey(providers_, technology)) {
+  } else if (base::ContainsKey(providers_, technology)) {
     service =
         providers_[technology]->CreateTemporaryServiceFromProfile(
             profile, entry_name, error);
@@ -2111,7 +2111,7 @@ void Manager::ConnectToBestServicesTask() {
       // Non-primary services need some other service connected first.
       continue;
     }
-    if (ContainsKey(connecting_technologies, technology)) {
+    if (base::ContainsKey(connecting_technologies, technology)) {
       // We have already started a connection for this technology.
       continue;
     }
@@ -2392,7 +2392,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
 
   string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
-  if (!ContainsKey(providers_, technology)) {
+  if (!base::ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
     return nullptr;
@@ -2484,7 +2484,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
 
-  if (!ContainsKey(providers_, technology)) {
+  if (!base::ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
     return nullptr;

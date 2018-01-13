@@ -743,7 +743,7 @@ ConnectionRefPtr Connection::GetCarrierConnection() {
   set<Connection*> visited;
   ConnectionRefPtr carrier = this;
   while (carrier->GetLowerConnection()) {
-    if (ContainsKey(visited, carrier.get())) {
+    if (base::ContainsKey(visited, carrier.get())) {
       LOG(ERROR) << "Circular connection chain starting at: "
                  << carrier->interface_name();
       // If a loop is detected return a NULL value to signal that the carrier

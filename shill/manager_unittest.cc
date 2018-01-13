@@ -711,8 +711,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   vector<string> rpc_ids = manager.EnumerateAvailableServices(&error);
   set<string> ids(rpc_ids.begin(), rpc_ids.end());
   EXPECT_EQ(2, ids.size());
-  EXPECT_TRUE(ContainsKey(ids, mock_service->GetRpcIdentifier()));
-  EXPECT_TRUE(ContainsKey(ids, mock_service2->GetRpcIdentifier()));
+  EXPECT_TRUE(base::ContainsKey(ids, mock_service->GetRpcIdentifier()));
+  EXPECT_TRUE(base::ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
   EXPECT_NE(nullptr, manager.FindService(service1_name).get());
   EXPECT_NE(nullptr, manager.FindService(service2_name).get());
@@ -4506,8 +4506,8 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   map<string, string> entries =
       manager()->GetLoadableProfileEntriesForService(service);
   EXPECT_EQ(2, entries.size());
-  EXPECT_TRUE(ContainsKey(entries, kProfileRpc0));
-  EXPECT_TRUE(ContainsKey(entries, kProfileRpc2));
+  EXPECT_TRUE(base::ContainsKey(entries, kProfileRpc0));
+  EXPECT_TRUE(base::ContainsKey(entries, kProfileRpc2));
   EXPECT_EQ(kEntry0, entries[kProfileRpc0]);
   EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
@@ -4724,7 +4724,7 @@ TEST_F(ManagerTest, GeoLocation) {
   manager()->OnDeviceGeolocationInfoUpdated(device);
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
-  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
 
   auto cellular_device = make_scoped_refptr(
       new NiceMock<MockDevice>(control_interface(),
@@ -4744,8 +4744,8 @@ TEST_F(ManagerTest, GeoLocation) {
   manager()->OnDeviceGeolocationInfoUpdated(cellular_device);
   location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(2, location_infos.size());
-  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
-  EXPECT_TRUE(ContainsKey(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::ContainsKey(location_infos, kGeoCellTowersProperty));
 }
 
 TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
@@ -4788,7 +4788,7 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
 
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
-  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
 
   // Check that both entries are in the list.
   EXPECT_EQ(2, location_infos[kGeoWifiAccessPointsProperty].size());
@@ -4813,7 +4813,7 @@ TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
 
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
-  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
 
   // When we deregister, the entries should go away.
   manager()->DeregisterDevice(device);

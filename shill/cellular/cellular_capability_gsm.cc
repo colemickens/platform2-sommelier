@@ -251,10 +251,10 @@ void CellularCapabilityGsm::FillConnectPropertyMap(
     Stringmap apn_info = apn_try_list_.front();
     SLOG(this, 2) << __func__ << ": Using APN " << apn_info[kApnProperty];
     properties->SetString(kConnectPropertyApn, apn_info[kApnProperty]);
-    if (ContainsKey(apn_info, kApnUsernameProperty))
+    if (base::ContainsKey(apn_info, kApnUsernameProperty))
       properties->SetString(kConnectPropertyApnUsername,
                             apn_info[kApnUsernameProperty]);
-    if (ContainsKey(apn_info, kApnPasswordProperty))
+    if (base::ContainsKey(apn_info, kApnPasswordProperty))
       properties->SetString(kConnectPropertyApnPassword,
                             apn_info[kApnPasswordProperty]);
   }
@@ -571,9 +571,9 @@ Stringmap CellularCapabilityGsm::ParseScanResult(const GsmScanResult& result) {
   }
   // If the long name is not available but the network ID is, look up the long
   // name in the mobile provider database.
-  if ((!ContainsKey(parsed, kLongNameProperty) ||
+  if ((!base::ContainsKey(parsed, kLongNameProperty) ||
        parsed[kLongNameProperty].empty()) &&
-      ContainsKey(parsed, kNetworkIdProperty)) {
+      base::ContainsKey(parsed, kNetworkIdProperty)) {
     mobile_operator_info_->Reset();
     mobile_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
     if (mobile_operator_info_->IsMobileNetworkOperatorKnown() &&

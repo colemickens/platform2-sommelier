@@ -67,7 +67,7 @@ void ModemManager::OnVanished() {
 
 bool ModemManager::ModemExists(const std::string& path) const {
   CHECK(service_connected_);
-  if (ContainsKey(modems_, path)) {
+  if (base::ContainsKey(modems_, path)) {
     LOG(INFO) << "ModemExists: " << path << " already exists.";
     return true;
   } else {

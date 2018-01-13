@@ -156,8 +156,8 @@ TEST_F(WiMaxTest, OnNetworksChanged) {
   networks.push_back("bar");
   device_->OnNetworksChanged(networks);
   EXPECT_EQ(2, device_->networks_.size());
-  EXPECT_TRUE(ContainsKey(device_->networks_, "bar"));
-  EXPECT_TRUE(ContainsKey(device_->networks_, "zoo"));
+  EXPECT_TRUE(base::ContainsKey(device_->networks_, "bar"));
+  EXPECT_TRUE(base::ContainsKey(device_->networks_, "zoo"));
 }
 
 TEST_F(WiMaxTest, OnConnectComplete) {
@@ -263,7 +263,7 @@ TEST_F(WiMaxTest, OnEnableComplete) {
   Error error;
   device_->OnEnableComplete(callback, error);
   EXPECT_EQ(1, device_->networks_.size());
-  EXPECT_TRUE(ContainsKey(device_->networks_, "path"));
+  EXPECT_TRUE(base::ContainsKey(device_->networks_, "path"));
 
   EXPECT_TRUE(device_->proxy_.get());
   error.Populate(Error::kOperationFailed);

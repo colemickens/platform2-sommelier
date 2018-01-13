@@ -155,7 +155,7 @@ class WiFiProviderTest : public testing::Test {
     if (!value) {
       return false;
     }
-    if (ContainsKey(profile_frequency_data_, key)) {
+    if (base::ContainsKey(profile_frequency_data_, key)) {
       *value = profile_frequency_data_[key];
       return true;
     }
@@ -168,7 +168,7 @@ class WiFiProviderTest : public testing::Test {
     if (!value) {
       return false;
     }
-    if (ContainsKey(profile_frequency_data_, key)) {
+    if (base::ContainsKey(profile_frequency_data_, key)) {
       *value = profile_frequency_data_[kIllegalDayProfile];
       return true;
     }
@@ -1860,8 +1860,8 @@ TEST_F(WiFiProviderTest, IncrementConnectCount) {
   expected[7002] = 2;
   EXPECT_THAT(provider_.connect_count_by_frequency_, ContainerEq(expected));
   // Make sure we didn't delete the oldest block.
-  EXPECT_TRUE(ContainsKey(provider_.connect_count_by_frequency_dated_,
-                          kFirstWeek));
+  EXPECT_TRUE(base::ContainsKey(provider_.connect_count_by_frequency_dated_,
+                                kFirstWeek));
   // Make sure we didn't create a new block.
   time_t newest_week_at_end =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
@@ -1891,14 +1891,14 @@ TEST_F(WiFiProviderTest, IncrementConnectCountCreateNew) {
   expected[7002] = 2;
   EXPECT_THAT(provider_.connect_count_by_frequency_, ContainerEq(expected));
   // Verify that the oldest block is gone.
-  EXPECT_FALSE(ContainsKey(provider_.connect_count_by_frequency_dated_,
-                           kFirstWeek));
+  EXPECT_FALSE(base::ContainsKey(provider_.connect_count_by_frequency_dated_,
+                                 kFirstWeek));
   // Make sure we created a new block and that it is for the current week.
   time_t newest_week_at_end =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
   EXPECT_NE(newest_week_at_start, newest_week_at_end);
-  EXPECT_TRUE(ContainsKey(provider_.connect_count_by_frequency_dated_,
-                          this_week));
+  EXPECT_TRUE(base::ContainsKey(provider_.connect_count_by_frequency_dated_,
+                                this_week));
 }
 
 TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {

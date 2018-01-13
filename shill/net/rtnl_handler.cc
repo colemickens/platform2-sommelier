@@ -288,8 +288,8 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             message << "sequence " << hdr->nlmsg_seq << " received error "
                     << error_number << " ("
                     << strerror(error_number) << ")";
-            if (!ContainsValue(GetAndClearErrorMask(hdr->nlmsg_seq),
-                               error_number)) {
+            if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
+                                   error_number)) {
               LOG(ERROR) << message.str();
             } else {
               VLOG(3) << message.str();

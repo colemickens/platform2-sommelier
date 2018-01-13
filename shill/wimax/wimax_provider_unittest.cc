@@ -264,7 +264,7 @@ TEST_F(WiMaxProviderTest, OnDeviceInfoAvailable) {
   provider_.OnDeviceInfoAvailable(GetTestLinkName(1));
   EXPECT_TRUE(provider_.pending_devices_.empty());
   ASSERT_EQ(1, provider_.devices_.size());
-  ASSERT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(1)));
+  ASSERT_TRUE(base::ContainsKey(provider_.devices_, GetTestLinkName(1)));
   EXPECT_EQ(GetTestLinkName(1),
             provider_.devices_[GetTestLinkName(1)]->link_name());
 }
@@ -284,7 +284,7 @@ TEST_F(WiMaxProviderTest, CreateDevice) {
   provider_.CreateDevice(GetTestLinkName(1), GetTestPath(1));
   EXPECT_TRUE(provider_.pending_devices_.empty());
   ASSERT_EQ(1, provider_.devices_.size());
-  ASSERT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(1)));
+  ASSERT_TRUE(base::ContainsKey(provider_.devices_, GetTestLinkName(1)));
   EXPECT_EQ(GetTestLinkName(1),
             provider_.devices_[GetTestLinkName(1)]->link_name());
 
@@ -316,11 +316,13 @@ TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
   EXPECT_CALL(device_info_, DeregisterDevice(_)).Times(2);
   provider_.DestroyDeadDevices(live_devices);
   ASSERT_EQ(2, provider_.devices_.size());
-  EXPECT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(0)));
-  EXPECT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(3)));
+  EXPECT_TRUE(base::ContainsKey(provider_.devices_, GetTestLinkName(0)));
+  EXPECT_TRUE(base::ContainsKey(provider_.devices_, GetTestLinkName(3)));
   EXPECT_EQ(2, provider_.pending_devices_.size());
-  EXPECT_TRUE(ContainsKey(provider_.pending_devices_, GetTestLinkName(4)));
-  EXPECT_TRUE(ContainsKey(provider_.pending_devices_, GetTestLinkName(7)));
+  EXPECT_TRUE(
+      base::ContainsKey(provider_.pending_devices_, GetTestLinkName(4)));
+  EXPECT_TRUE(
+      base::ContainsKey(provider_.pending_devices_, GetTestLinkName(7)));
 }
 
 TEST_F(WiMaxProviderTest, GetLinkName) {
@@ -342,7 +344,7 @@ TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
 
   provider_.RetrieveNetworkInfo(network_path);
   EXPECT_EQ(1, provider_.networks_.size());
-  EXPECT_TRUE(ContainsKey(provider_.networks_, network_path));
+  EXPECT_TRUE(base::ContainsKey(provider_.networks_, network_path));
   EXPECT_EQ(kName, provider_.networks_[network_path].name);
   EXPECT_EQ(kNetworkId, provider_.networks_[network_path].id);
   provider_.RetrieveNetworkInfo(network_path);
@@ -446,8 +448,8 @@ TEST_F(WiMaxProviderTest, StopDeadServices) {
   provider_.networks_[GetTestNetworkPath(101)].id = "12345678";
   provider_.StopDeadServices();
   EXPECT_EQ(3, provider_.services_.size());
-  EXPECT_FALSE(ContainsKey(provider_.services_,
-                           services[3]->GetStorageIdentifier()));
+  EXPECT_FALSE(base::ContainsKey(provider_.services_,
+                                 services[3]->GetStorageIdentifier()));
 }
 
 TEST_F(WiMaxProviderTest, OnNetworksChanged) {
@@ -502,7 +504,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   provider_.networks_["/org/chromium/foo"].id = "foo";
   provider_.OnNetworksChanged();
   EXPECT_EQ(1, provider_.networks_.size());
-  EXPECT_TRUE(ContainsKey(provider_.networks_, GetTestNetworkPath(101)));
+  EXPECT_TRUE(base::ContainsKey(provider_.networks_, GetTestNetworkPath(101)));
 }
 
 TEST_F(WiMaxProviderTest, GetUniqueService) {

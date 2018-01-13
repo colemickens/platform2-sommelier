@@ -67,7 +67,7 @@ TEST_F(EnvironmentTest, AsMap) {
   }
   map<string, string> env = environment_->AsMap();
   for (size_t i = 0; i < arraysize(kVarNames); i++) {
-    EXPECT_TRUE(ContainsKey(env, kVarNames[i])) << kVarNames[i];
+    EXPECT_TRUE(base::ContainsKey(env, kVarNames[i])) << kVarNames[i];
     EXPECT_EQ(kVarValues[i], env[kVarNames[i]]) << kVarNames[i];
     EXPECT_EQ(0, unsetenv(kVarNames[i])) << kVarNames[i];
   }

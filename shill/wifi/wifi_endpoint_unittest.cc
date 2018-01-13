@@ -239,9 +239,9 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
       make_key_management_args(make_string_vector1("something-eap")),
       &parsed_methods);
   EXPECT_TRUE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
   EXPECT_FALSE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
 }
 
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
@@ -250,9 +250,9 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
       make_key_management_args(make_string_vector1("something-psk")),
       &parsed_methods);
   EXPECT_TRUE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
   EXPECT_FALSE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
 }
 
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
@@ -262,9 +262,9 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
           make_string_vector2("something-eap", "something-psk")),
       &parsed_methods);
   EXPECT_TRUE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
   EXPECT_TRUE(
-      ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+      base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
@@ -628,10 +628,14 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
         MakeOpenEndpoint(nullptr, nullptr, string(1, 0), "00:00:00:00:00:01");
     SetVendorInformation(endpoint, vendor_information);
     map<string, string> vendor_stringmap(endpoint->GetVendorInformation());
-    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSManufacturerProperty));
-    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSModelNameProperty));
-    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSModelNumberProperty));
-    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSDeviceNameProperty));
+    EXPECT_FALSE(
+        base::ContainsKey(vendor_stringmap, kVendorWPSManufacturerProperty));
+    EXPECT_FALSE(
+        base::ContainsKey(vendor_stringmap, kVendorWPSModelNameProperty));
+    EXPECT_FALSE(
+        base::ContainsKey(vendor_stringmap, kVendorWPSModelNumberProperty));
+    EXPECT_FALSE(
+        base::ContainsKey(vendor_stringmap, kVendorWPSDeviceNameProperty));
     EXPECT_EQ("aa-bb-cc", vendor_stringmap[kVendorOUIListProperty]);
   }
   {
@@ -691,7 +695,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ(kModelName, vendor_stringmap[kVendorWPSModelNameProperty]);
     EXPECT_EQ(kModelNumber, vendor_stringmap[kVendorWPSModelNumberProperty]);
     EXPECT_EQ(kDeviceName, vendor_stringmap[kVendorWPSDeviceNameProperty]);
-    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorOUIListProperty));
+    EXPECT_FALSE(base::ContainsKey(vendor_stringmap, kVendorOUIListProperty));
   }
   {
     vector<uint8_t> ies;

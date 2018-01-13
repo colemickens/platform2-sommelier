@@ -123,7 +123,7 @@ void WiMaxProvider::OnNetworksChanged() {
   // Removes dead networks from |networks_|.
   for (auto it = networks_.begin(); it != networks_.end(); ) {
     const RpcIdentifier& path = it->first;
-    if (ContainsKey(live_networks, path)) {
+    if (base::ContainsKey(live_networks, path)) {
       ++it;
     } else {
       LOG(INFO) << "WiMAX network disappeared: " << path;
@@ -321,7 +321,7 @@ void WiMaxProvider::OnDevicesChanged(const RpcIdentifiers& devices) {
 void WiMaxProvider::CreateDevice(const string& link_name,
                                  const RpcIdentifier& path) {
   SLOG(this, 2) << __func__ << "(" << link_name << ", " << path << ")";
-  if (ContainsKey(devices_, link_name)) {
+  if (base::ContainsKey(devices_, link_name)) {
     SLOG(this, 2) << "Device already exists.";
     CHECK_EQ(path, devices_[link_name]->path());
     return;
@@ -390,7 +390,7 @@ string WiMaxProvider::GetLinkName(const RpcIdentifier& path) {
 }
 
 void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier& path) {
-  if (ContainsKey(networks_, path)) {
+  if (base::ContainsKey(networks_, path)) {
     // Nothing to do, the network info is already available.
     return;
   }
@@ -479,7 +479,7 @@ void WiMaxProvider::StopDeadServices() {
     // Keeps a local reference until we're done with this service.
     WiMaxServiceRefPtr service = it->second;
     if (service->IsStarted() &&
-        !ContainsKey(networks_, service->GetNetworkObjectPath())) {
+        !base::ContainsKey(networks_, service->GetNetworkObjectPath())) {
       service->Stop();
       // Default services are created and registered when a network becomes
       // live. They need to be deregistered and destroyed when the network

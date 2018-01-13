@@ -475,7 +475,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                           "No triggers to configure.");
     return false;
   }
-  if (trigs.find(kWakeTriggerPattern) != trigs.end() && addrs.Empty() &&
+  if (base::ContainsKey(trigs, kWakeTriggerPattern) && addrs.Empty() &&
       wake_on_packet_types.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No IP addresses to configure.");
@@ -806,21 +806,21 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   AttributeListConstRefPtr unused_list;
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &unused_flag) &&
-      trigs.find(kWakeTriggerDisconnect) == trigs.end()) {
+      !base::ContainsKey(trigs, kWakeTriggerDisconnect)) {
     SLOG(WiFi, nullptr, 3)
         << __func__ << "Wake on disconnect trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
                                             &unused_list) &&
-      trigs.find(kWakeTriggerPattern) == trigs.end()) {
+      !base::ContainsKey(trigs, kWakeTriggerPattern)) {
     SLOG(WiFi, nullptr, 3) << __func__
                            << "Wake on pattern trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                             &unused_list) &&
-      trigs.find(kWakeTriggerSSID) == trigs.end()) {
+      !base::ContainsKey(trigs, kWakeTriggerSSID)) {
     SLOG(WiFi, nullptr, 3) << __func__
                            << "Wake on SSID trigger not expected but found";
     return false;
@@ -911,9 +911,9 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                        << "Could not get attribute NL80211_PKTPAT_PATTERN";
             return false;
           }
-          if (expected_patt_mask_pairs.find(pair<ByteString, ByteString>(
-                  returned_pattern, returned_mask)) ==
-              expected_patt_mask_pairs.end()) {
+          if (!base::ContainsKey(
+                  expected_patt_mask_pairs,
+                  std::make_pair(returned_pattern, returned_mask))) {
             pattern_mismatch_found = true;
             break;
           } else {
@@ -983,7 +983,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                           "NL80211_SCHED_SCAN_MATCH_ATTR_SSID";
             return false;
           }
-          if (expected_ssids.find(ssid) == expected_ssids.end()) {
+          if (!base::ContainsKey(expected_ssids, ssid)) {
             ssid_mismatch_found = true;
             break;
           } else {
@@ -1010,8 +1010,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
 void WakeOnWiFi::AddWakeOnPacketConnection(const string& ip_endpoint,
                                            Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
@@ -1041,7 +1041,8 @@ void WakeOnWiFi::AddWakeOnPacketOfTypes(
     const std::vector<std::string>& packet_types, Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   set<uint8_t> ip_proto_enums;
-  if (!ContainsValue(wake_on_wifi_triggers_supported_, kWakeTriggerPattern)) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
     return;
@@ -1066,8 +1067,8 @@ void WakeOnWiFi::AddWakeOnPacketOfTypes(
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
                                               Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
@@ -1093,7 +1094,8 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
 void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
     const std::vector<std::string>& packet_types, Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!ContainsValue(wake_on_wifi_triggers_supported_, kWakeTriggerPattern)) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
     return;
@@ -1104,8 +1106,8 @@ void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
     return;
 
   for (auto ip_proto_enum : ip_proto_enums) {
-    if (ContainsValue(wake_on_packet_types_, ip_proto_enum))
-        wake_on_packet_types_.erase(ip_proto_enum);
+    if (base::ContainsKey(wake_on_packet_types_, ip_proto_enum))
+      wake_on_packet_types_.erase(ip_proto_enum);
   }
 
 
@@ -1117,8 +1119,8 @@ void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
@@ -1313,8 +1315,8 @@ bool WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported() {
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledDarkConnect) {
     return false;
   }
-  if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerPattern)) {
     return false;
   }
   return true;
@@ -1327,10 +1329,9 @@ bool WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported() {
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
     return false;
   }
-  if (wake_on_wifi_triggers_supported_.find(kWakeTriggerDisconnect) ==
-          wake_on_wifi_triggers_supported_.end() ||
-      wake_on_wifi_triggers_supported_.find(kWakeTriggerSSID) ==
-          wake_on_wifi_triggers_supported_.end()) {
+  if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
+                         kWakeTriggerDisconnect) ||
+      !base::ContainsKey(wake_on_wifi_triggers_supported_, kWakeTriggerSSID)) {
     return false;
   }
   return true;

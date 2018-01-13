@@ -136,7 +136,7 @@ bool Technology::GetTechnologyVectorFromString(
       return false;
     }
 
-    if (ContainsKey(seen, identifier)) {
+    if (base::ContainsKey(seen, identifier)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             name + " is duplicated in the list");
       return false;

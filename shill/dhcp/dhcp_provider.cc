@@ -151,7 +151,7 @@ void DHCPProvider::RetireUnboundPID(int pid) {
 }
 
 bool DHCPProvider::IsRecentlyUnbound(int pid) {
-  return ContainsValue(recently_unbound_pids_, pid);
+  return base::ContainsKey(recently_unbound_pids_, pid);
 }
 
 void DHCPProvider::DestroyLease(const string& name) {

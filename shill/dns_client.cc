@@ -311,7 +311,7 @@ bool DnsClient::RefreshHandles() {
       Bind(&DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
-      if (ContainsKey(old_read, sockets[i])) {
+      if (base::ContainsKey(old_read, sockets[i])) {
         resolver_state_->read_handlers[sockets[i]] =
             std::move(old_read[sockets[i]]);
       } else {
@@ -321,7 +321,7 @@ bool DnsClient::RefreshHandles() {
       }
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
-      if (ContainsKey(old_write, sockets[i])) {
+      if (base::ContainsKey(old_write, sockets[i])) {
         resolver_state_->write_handlers[sockets[i]] =
             std::move(old_write[sockets[i]]);
       } else {

@@ -196,7 +196,7 @@ void DeviceInfo::RemoveDeviceFromBlackList(const string& device_name) {
 }
 
 bool DeviceInfo::IsDeviceBlackListed(const string& device_name) {
-  return ContainsKey(black_list_, device_name);
+  return base::ContainsKey(black_list_, device_name);
 }
 
 void DeviceInfo::Start() {
@@ -241,7 +241,7 @@ vector<string> DeviceInfo::GetUninitializedTechnologies() const {
       continue;
     }
     if (Technology::IsPrimaryConnectivityTechnology(technology) &&
-        !ContainsKey(initialized_technologies, technology))
+        !base::ContainsKey(initialized_technologies, technology))
       unique_technologies.insert(Technology::NameFromIdentifier(technology));
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
@@ -688,8 +688,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     RemoveInfo(dev_index);
   }
 
-  bool new_device =
-      !ContainsKey(infos_, dev_index) || infos_[dev_index].has_addresses_only;
+  bool new_device = !base::ContainsKey(infos_, dev_index) ||
+                    infos_[dev_index].has_addresses_only;
   SLOG(this, 2) << __func__ << "(index=" << dev_index
                 << std::showbase << std::hex
                 << ", flags=" << flags << ", change=" << change << ")"
@@ -1118,7 +1118,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   SLOG(this, 2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeAddress);
   int interface_index = msg.interface_index();
-  if (!ContainsKey(infos_, interface_index)) {
+  if (!base::ContainsKey(infos_, interface_index)) {
     SLOG(this, 2) << "Got advance address information for unknown index "
                   << interface_index;
     infos_[interface_index].has_addresses_only = true;
@@ -1164,7 +1164,7 @@ void DeviceInfo::RdnssMsgHandler(const RTNLMessage& msg) {
   SLOG(this, 2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
   int interface_index = msg.interface_index();
-  if (!ContainsKey(infos_, interface_index)) {
+  if (!base::ContainsKey(infos_, interface_index)) {
     SLOG(this, 2) << "Got RDNSS option for unknown index "
                   << interface_index;
   }
@@ -1200,7 +1200,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     int dev_index = *it;
     delayed_devices_.erase(it);
 
-    DCHECK(ContainsKey(infos_, dev_index));
+    DCHECK(base::ContainsKey(infos_, dev_index));
     DCHECK(!GetDevice(dev_index));
 
     const string& link_name = infos_[dev_index].name;
