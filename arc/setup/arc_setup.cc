@@ -429,15 +429,6 @@ void ArcSetup::SetUpBinFmtMisc(ArcBinaryTranslationType bin_type) {
   EXIT_IF(!RegisterAllBinFmtMiscEntries(
       arc_mounter_.get(), root_directory.Append("etc/binfmt_misc"),
       arc_paths_->binfmt_misc_directory));
-
-  // Chrome OS on x86_64 by default sets to 65536, but ARM binaries
-  // live in 0x8000, reduce that to 32768.
-  base::File mmap_min_addr(base::FilePath("/proc/sys/vm/mmap_min_addr"),
-                           base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  CHECK(mmap_min_addr.IsValid());
-  constexpr char kNewMmapMinAddr[] = "32768";
-  EXIT_IF(
-      !mmap_min_addr.Write(0, kNewMmapMinAddr, arraysize(kNewMmapMinAddr) - 1));
 }
 
 void ArcSetup::SetUpAndroidData() {
