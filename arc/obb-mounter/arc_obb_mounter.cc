@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
   CHECK(bus->Connect());
 
   // Initialize the service.
-  arc_obb_mounter::Service service;
+  arc::obb_mounter::Service service;
   CHECK(service.Initialize(bus));
 
   base::RunLoop().Run();

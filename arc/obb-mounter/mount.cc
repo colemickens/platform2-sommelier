@@ -14,7 +14,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 
-namespace arc_obb_mounter {
+namespace arc {
+namespace obb_mounter {
 
 namespace {
 
@@ -118,4 +119,5 @@ bool UnmountObb(const std::string& mount_path) {
   return true;
 }
 
-}  // namespace arc_obb_mounter
+}  // namespace obb_mounter
+}  // namespace arc

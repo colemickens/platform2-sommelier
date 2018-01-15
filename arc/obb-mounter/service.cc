@@ -8,31 +8,14 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
 #include "arc/obb-mounter/mount.h"
 
-namespace arc_obb_mounter {
-
-namespace {
-
-// TODO(hashimoto): Share these constants with chrome.
-// D-Bus service constants.
-const char kArcObbMounterInterface[] = "org.chromium.ArcObbMounterInterface";
-const char kArcObbMounterServicePath[] = "/org/chromium/ArcObbMounter";
-const char kArcObbMounterServiceName[] = "org.chromium.ArcObbMounter";
-
-// Method names.
-const char kMountObbMethod[] = "MountObb";
-const char kUnmountObbMethod[] = "UnmountObb";
-
-// Error names.
-const char kErrorInvalidArgument[] =
-    "org.chromium.ArcObbMounter.InvalidArgument";
-const char kErrorFailed[] = "org.chromium.ArcObbMounter.Failed";
-
-}  // namespace
+namespace arc {
+namespace obb_mounter {
 
 Service::Service() : weak_ptr_factory_(this) {}
 
@@ -76,12 +59,12 @@ void Service::MountObb(dbus::MethodCall* method_call,
   if (!reader.PopString(&obb_file) || !reader.PopString(&mount_path) ||
       !reader.PopInt32(&owner_gid)) {
     response_sender.Run(dbus::ErrorResponse::FromMethodCall(
-        method_call, kErrorInvalidArgument, ""));
+        method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
     return;
   }
-  if (!arc_obb_mounter::MountObb(obb_file, mount_path, owner_gid)) {
-    response_sender.Run(
-        dbus::ErrorResponse::FromMethodCall(method_call, kErrorFailed, ""));
+  if (!obb_mounter::MountObb(obb_file, mount_path, owner_gid)) {
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, std::string()));
     return;
   }
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
@@ -93,15 +76,16 @@ void Service::UnmountObb(dbus::MethodCall* method_call,
   std::string mount_path;
   if (!reader.PopString(&mount_path)) {
     response_sender.Run(dbus::ErrorResponse::FromMethodCall(
-        method_call, kErrorInvalidArgument, ""));
+        method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
     return;
   }
-  if (!arc_obb_mounter::UnmountObb(mount_path)) {
-    response_sender.Run(
-        dbus::ErrorResponse::FromMethodCall(method_call, kErrorFailed, ""));
+  if (!obb_mounter::UnmountObb(mount_path)) {
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, std::string()));
     return;
   }
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
-}  // namespace arc_obb_mounter
+}  // namespace obb_mounter
+}  // namespace arc

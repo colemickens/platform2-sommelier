@@ -14,7 +14,8 @@ class Bus;
 class MethodCall;
 }  // namespace dbus
 
-namespace arc_obb_mounter {
+namespace arc {
+namespace obb_mounter {
 
 // This class handles incoming D-Bus method calls.
 class Service {
@@ -41,6 +42,7 @@ class Service {
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 
-}  // namespace arc_obb_mounter
+}  // namespace obb_mounter
+}  // namespace arc
 
 #endif  // ARC_OBB_MOUNTER_SERVICE_H_

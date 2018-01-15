@@ -9,7 +9,8 @@
 
 #include <string>
 
-namespace arc_obb_mounter {
+namespace arc {
+namespace obb_mounter {
 
 // Mounts the specified OBB file.
 bool MountObb(const std::string& obb_file,
@@ -19,6 +20,7 @@ bool MountObb(const std::string& obb_file,
 // Unmounts the OBB file mounted at the specified path.
 bool UnmountObb(const std::string& mount_path);
 
-}  // namespace arc_obb_mounter
+}  // namespace obb_mounter
+}  // namespace arc
 
 #endif  // ARC_OBB_MOUNTER_MOUNT_H_
