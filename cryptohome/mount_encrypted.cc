@@ -31,20 +31,13 @@
 #include <vboot/tlcl.h>
 
 #include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/tpm.h"
 #include "cryptohome/mount_helpers.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
 #define BUF_SIZE 1024
 #define PROP_SIZE 64
-#define LOCKBOX_SIZE_MAX 0x45
-
-/* TPM2 NVRAM space attributes. */
-#define TPMA_NV_AUTHWRITE (1U << 2)
-#define TPMA_NV_WRITELOCKED (1U << 11)
-#define TPMA_NV_WRITEDEFINE (1U << 13)
-#define TPMA_NV_AUTHREAD (1U << 18)
-#define TPMA_NV_READ_STCLEAR (1U << 31)
 
 static const gchar* const kKernelCmdline = "/proc/cmdline";
 static const gchar* const kKernelCmdlineOption = " encrypted-stateful-key=";
@@ -53,14 +46,6 @@ static const gchar* const kCryptDevName = "encstateful";
 static const gchar* const kNvramExport = "/tmp/lockbox.nvram";
 static const float kSizePercent = 0.3;
 static const float kMigrationSizeMultiplier = 1.1;
-#if USE_TPM2
-static const uint32_t kLockboxIndex = 0x800004;
-#else
-static const uint32_t kLockboxIndex = 0x20000004;
-#endif
-static const uint32_t kLockboxSizeV1 = 0x2c;
-static const uint32_t kLockboxSizeV2 = LOCKBOX_SIZE_MAX;
-static const uint32_t kLockboxSaltOffset = 0x5;
 static const uint64_t kSectorSize = 512;
 static const uint64_t kExt4BlockSize = 4096;
 static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
@@ -71,18 +56,6 @@ static const int kModeProduction = 0;
 static const int kModeFactory = 1;
 static const int kCryptAllowDiscard = 1;
 
-/* TPM2 NVRAM area and related constants. */
-static const uint32_t kNvramAreaTpm2Index = 0x800005;
-static const uint32_t kNvramAreaTpm2Magic = 0x54504D32;
-static const uint32_t kNvramAreaTpm2VersionMask = 0x000000FF;
-static const uint32_t kNvramAreaTpm2CurrentVersion = 1;
-
-struct nvram_area_tpm2 {
-  uint32_t magic;
-  uint32_t ver_flags;
-  uint8_t salt[DIGEST_LENGTH];
-};
-
 enum migration_method {
   MIGRATE_TEST_ONLY,
   MIGRATE_FOR_REAL,
@@ -91,11 +64,6 @@ enum migration_method {
 enum bind_dir {
   BIND_SOURCE,
   BIND_DEST,
-};
-
-enum result_code {
-  RESULT_SUCCESS = 0,
-  RESULT_FAIL_FATAL = 1,
 };
 
 #define str_literal(s) (const_cast<char *>(s))
@@ -136,92 +104,9 @@ static gchar* block_path = NULL;
 static gchar* encrypted_mount = NULL;
 static gchar* dmcrypt_name = NULL;
 static gchar* dmcrypt_dev = NULL;
-static int has_tpm = 0;
-static int tpm_init_called = 0;
-static uint8_t nvram_data[LOCKBOX_SIZE_MAX];
-static uint32_t nvram_size = 0;
-
-static void tpm_init(void) {
-  uint32_t result;
-
-  if (tpm_init_called)
-    return;
-
-  DEBUG("Opening TPM");
-
-  setenv("TPM_NO_EXIT", "1", 1);
-  result = TlclLibInit();
-
-  tpm_init_called = 1;
-  has_tpm = (result == TPM_SUCCESS);
-  INFO("TPM %s", has_tpm ? "ready" : "not available");
-}
-
-/* Returns TPM result status code, and on TPM_SUCCESS, stores ownership
- * flag to "owned".
- */
-static uint32_t tpm_owned(uint8_t* owned) {
-  uint32_t result;
-
-  tpm_init();
-  DEBUG("Reading TPM Ownership Flag");
-  if (!has_tpm)
-    result = TPM_E_NO_DEVICE;
-  else
-    result = TlclGetOwnership(owned);
-  DEBUG("TPM Ownership Flag returned: %s", result ? "FAIL" : "ok");
-
-  return result;
-}
-
-static void tpm_close(void) {
-  if (!has_tpm || !tpm_init_called)
-    return;
-  TlclLibClose();
-  tpm_init_called = 0;
-}
-
-static int check_tpm_result(uint32_t result, const char* operation) {
-  INFO("%s %s.", operation, result == TPM_SUCCESS ? "succeeded" : "failed");
-  return result == TPM_SUCCESS;
-}
-#define RETURN_ON_FAILURE(x, y) \
-  if (!check_tpm_result(x, y))  \
-    return RESULT_FAIL_FATAL
-#define LOG_RESULT(x, y) check_tpm_result(x, y)
 
 static void sha256(char const* str, uint8_t* digest) {
   SHA256((unsigned char*)(str), strlen(str), digest);
-}
-
-static result_code get_random_bytes_tpm(unsigned char* buffer, int wanted) {
-  uint32_t remaining = wanted;
-
-  tpm_init();
-  /* Read random bytes from TPM, which can return short reads. */
-  while (remaining) {
-    uint32_t result, size;
-
-    result = TlclGetRandom(buffer + (wanted - remaining), remaining, &size);
-    if (result != TPM_SUCCESS || size > remaining) {
-      ERROR("TPM GetRandom failed: error 0x%02x.", result);
-      return RESULT_FAIL_FATAL;
-    }
-    remaining -= size;
-  }
-
-  return RESULT_SUCCESS;
-}
-
-static result_code get_random_bytes(unsigned char* buffer, int wanted) {
-  if (has_tpm && get_random_bytes_tpm(buffer, wanted) == RESULT_SUCCESS)
-    return RESULT_SUCCESS;
-
-  if (RAND_bytes(buffer, wanted))
-    return RESULT_SUCCESS;
-  SSL_ERROR("RAND_bytes");
-
-  return RESULT_FAIL_FATAL;
 }
 
 /* Extract the desired system key from the kernel's boot command line. */
@@ -297,278 +182,6 @@ static int is_cr48(void) {
   else
     state = strstr(hwid, "MARIO") != NULL;
   return state;
-}
-
-static int is_tpm2(void) {
-#if USE_TPM2
-  return 1;
-#else
-  return 0;
-#endif
-}
-
-static uint32_t _read_nvram(uint8_t* buffer,
-                            size_t len,
-                            uint32_t index,
-                            uint32_t size) {
-  uint32_t result;
-
-  if (size > len) {
-    ERROR("NVRAM size (0x%x > 0x%zx) is too big", size, len);
-    return 0;
-  }
-
-  tpm_init();
-  DEBUG("Reading NVRAM area 0x%x (size %u)", index, size);
-  if (!has_tpm)
-    result = TPM_E_NO_DEVICE;
-  else
-    result = TlclRead(index, buffer, size);
-  DEBUG("NVRAM read returned: %s", result == TPM_SUCCESS ? "ok" : "FAIL");
-
-  return result;
-}
-
-/*
- * Cache Lockbox NVRAM area in nvram_data, set nvram_size to the actual size.
- * Set *migrate to 0 for Version 2 Lockbox area, and 1 otherwise.
- */
-result_code read_lockbox_nvram_area(int* migrate) {
-  uint8_t owned = 0;
-  uint8_t bytes_anded, bytes_ored;
-  uint32_t result, i;
-
-  /* Default to allowing migration (disallow when owned with NVRAMv2). */
-  *migrate = 1;
-
-  /* Ignore unowned TPM's NVRAM area. */
-  result = tpm_owned(&owned);
-  if (result != TPM_SUCCESS) {
-    INFO("Could not read TPM Permanent Flags: error 0x%02x.", result);
-    return RESULT_FAIL_FATAL;
-  }
-  if (!owned) {
-    INFO("TPM not Owned, ignoring Lockbox NVRAM area.");
-    return RESULT_FAIL_FATAL;
-  }
-
-  /* Reading the NVRAM takes 40ms. Instead of querying the NVRAM area
-   * for its size (which takes time), just read the expected size. If
-   * it fails, then fall back to the older size. This means cleared
-   * devices take 80ms (2 failed reads), legacy devices take 80ms
-   * (1 failed read, 1 good read), and populated devices take 40ms,
-   * which is the minimum possible time (instead of 40ms + time to
-   * query NVRAM size).
-   */
-  result = _read_nvram(nvram_data, sizeof(nvram_data), kLockboxIndex,
-                       kLockboxSizeV2);
-  if (result != TPM_SUCCESS) {
-    result = _read_nvram(nvram_data, sizeof(nvram_data), kLockboxIndex,
-                         kLockboxSizeV1);
-    if (result != TPM_SUCCESS) {
-      /* No NVRAM area at all. */
-      INFO("No Lockbox NVRAM area defined: error 0x%02x", result);
-      return RESULT_FAIL_FATAL;
-    }
-    /* Legacy NVRAM area. */
-    nvram_size = kLockboxSizeV1;
-    INFO("Version 1 Lockbox NVRAM area found.");
-  } else {
-    *migrate = 0;
-    nvram_size = kLockboxSizeV2;
-    INFO("Version 2 Lockbox NVRAM area found.");
-  }
-
-  debug_dump_hex("lockbox nvram", value, nvram_size);
-
-  /* Ignore defined but unwritten NVRAM area. */
-  bytes_ored = 0x0;
-  bytes_anded = 0xff;
-  for (i = 0; i < nvram_size; ++i) {
-    bytes_ored |= nvram_data[i];
-    bytes_anded &= nvram_data[i];
-  }
-  if (bytes_ored == 0x0 || bytes_anded == 0xff) {
-    INFO("NVRAM area has been defined but not written.");
-    nvram_size = 0;
-    return RESULT_FAIL_FATAL;
-  }
-
-  return RESULT_SUCCESS;
-}
-
-/*
- * For TPM2, NVRAM area is separate from Lockbox.
- * No legacy systems, so migration is never allowed.
- * Cases:
- *  - wrong-size NVRAM or invalid write-locked NVRAM: tampered with / corrupted
- *    ignore
- *    will never have the salt in NVRAM (finalization_needed forever)
- *    return FAIL_FATAL (will re-create the mounts, if existed)
- *  - read-locked NVRAM: already started / tampered with
- *    ignore
- *    return FAIL_FATAL (will re-create the mounts, if existed)
- *  - no NVRAM or invalid but not write-locked NVRAM: OOBE or interrupted OOBE
- *    generate new salt, write to NVRAM, write-lock, read-lock
- *    return SUCCESS
- *  - valid NVRAM not write-locked: interrupted OOBE
- *    use NVRAM, write-lock, read-lock
- *    (security-wise not worse than finalization_needed forever)
- *    return SUCCESS
- *  - valid NVRAM:
- *    use NVRAM, read-lock
- *    return SUCCESS
- *
- * In case of success: (NVRAM area found and used)
- *  - *digest populated with NVRAM area entropy.
- *  - *migrate is 0
- * In case of failure: (NVRAM missing or error)
- *  - *digest untouched.
- *  - *migrate is 0
- */
-static result_code get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
-  uint32_t result;
-  uint32_t perm;
-  struct nvram_area_tpm2 area;
-
-  /* "Export" lockbox nvram data for use after the helper.
-   * Don't ever allow migration, we have no legacy TPM2 systems.
-   */
-  read_lockbox_nvram_area(migrate);
-  *migrate = 0;
-
-  INFO("Getting key from TPM2 NVRAM index 0x%x", kNvramAreaTpm2Index);
-
-  tpm_init();
-  if (!has_tpm)
-    return RESULT_FAIL_FATAL;
-
-  result = TlclGetPermissions(kNvramAreaTpm2Index, &perm);
-  if (result == TPM_SUCCESS) {
-    DEBUG("NVRAM area permissions = 0x%08x", perm);
-    DEBUG("Reading %d bytes from NVRAM", sizeof(area));
-    RETURN_ON_FAILURE(TlclRead(kNvramAreaTpm2Index, &area, sizeof(area)),
-                      "Reading NVRAM area");
-    debug_dump_hex("key nvram", reinterpret_cast<uint8_t*>(&area),
-                   sizeof(area));
-  } else {
-    INFO("NVRAM area doesn't exist or can't check permissions");
-    memset(&area, 0, sizeof(area));
-    perm = TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD | TPMA_NV_WRITEDEFINE |
-           TPMA_NV_READ_STCLEAR;
-    DEBUG("Defining NVRAM area 0x%x, perm 0x%08x, size %d", kNvramAreaTpm2Index,
-          perm, sizeof(area));
-    RETURN_ON_FAILURE(TlclDefineSpace(kNvramAreaTpm2Index, perm, sizeof(area)),
-                      "Defining NVRAM area");
-  }
-
-  if (area.magic != kNvramAreaTpm2Magic ||
-      (area.ver_flags & kNvramAreaTpm2VersionMask) !=
-          kNvramAreaTpm2CurrentVersion) {
-    unsigned char rand_bytes[DIGEST_LENGTH];
-    if (perm & TPMA_NV_WRITELOCKED) {
-      ERROR("NVRAM area is not valid and write-locked");
-      return RESULT_FAIL_FATAL;
-    }
-    INFO("NVRAM area is new or not valid -- generating new key");
-
-    if (get_random_bytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
-      ERROR(
-          "No entropy source found -- "
-          "using uninitialized stack");
-
-    area.magic = kNvramAreaTpm2Magic;
-    area.ver_flags = kNvramAreaTpm2CurrentVersion;
-    memcpy(area.salt, rand_bytes, DIGEST_LENGTH);
-    debug_dump_hex("key nvram", reinterpret_cast<uint8_t*>(&area),
-                   sizeof(area));
-
-    RETURN_ON_FAILURE(TlclWrite(kNvramAreaTpm2Index, &area, sizeof(area)),
-                      "Writing NVRAM area");
-  }
-
-  /* Lock the area as needed. Write-lock may be already set.
-   * Read-lock is never set at this point, since we were able to read.
-   * Not being able to lock is not fatal, though exposes the key.
-   */
-  if (!(perm & TPMA_NV_WRITELOCKED))
-    LOG_RESULT(TlclWriteLock(kNvramAreaTpm2Index), "Write-locking NVRAM area");
-  LOG_RESULT(TlclReadLock(kNvramAreaTpm2Index), "Read-locking NVRAM area");
-
-  /* Use the salt from the area to generate the key. */
-  SHA256(area.salt, DIGEST_LENGTH, digest);
-  debug_dump_hex("system key", digest, DIGEST_LENGTH);
-
-  return RESULT_SUCCESS;
-}
-
-/*
- * TPM cases:
- *  - does not exist at all (disabled in test firmware or non-chrome device).
- *  - exists (below).
- *
- * TPM ownership cases:
- *  - unowned (OOBE):
- *    - expect modern lockbox (no migration allowed).
- *  - owned: depends on NVRAM area (below).
- *
- * NVRAM area cases:
- *  - no NVRAM area at all:
- *    - interrupted install (cryptohome has the TPM password)
- *    - ancient device (cr48, cryptohome has thrown away TPM password)
- *    - broken device (cryptohome has thrown away/never had TPM password)
- *      - must expect worst-case: no lockbox ever, and migration allowed.
- *  - defined NVRAM area, but not written to ("Finalized"); interrupted OOBE:
- *    - if legacy size, allow migration.
- *    - if not, disallow migration.
- *  - written ("Finalized") NVRAM area:
- *    - if legacy size, allow migration.
- *    - if not, disallow migration.
- *
- * In case of success: (NVRAM area found and used)
- *  - *digest populated with NVRAM area entropy.
- *  - *migrate is 1 for NVRAM v1, 0 for NVRAM v2.
- * In case of failure: (NVRAM missing or error)
- *  - *digest untouched.
- *  - *migrate always 1
- */
-static result_code get_nvram_key_tpm1(uint8_t* digest, int* migrate) {
-  uint8_t* rand_bytes;
-  uint32_t rand_size;
-  result_code rc;
-
-  /* Read lockbox nvram data and "export" it for use after the helper. */
-  rc = read_lockbox_nvram_area(migrate);
-  if (rc != RESULT_SUCCESS)
-    return rc;
-
-  /* Choose random bytes to use based on NVRAM version. */
-  if (nvram_size == kLockboxSizeV1) {
-    rand_bytes = nvram_data;
-    rand_size = nvram_size;
-  } else {
-    rand_bytes = nvram_data + kLockboxSaltOffset;
-    if (kLockboxSaltOffset + DIGEST_LENGTH > nvram_size) {
-      INFO("Impossibly small NVRAM area size (%d).", nvram_size);
-      return RESULT_FAIL_FATAL;
-    }
-    rand_size = DIGEST_LENGTH;
-  }
-  if (rand_size < DIGEST_LENGTH) {
-    INFO("Impossibly small rand_size (%d).", rand_size);
-    return RESULT_FAIL_FATAL;
-  }
-  debug_dump_hex("rand_bytes", rand_bytes, rand_size);
-
-  SHA256(rand_bytes, rand_size, digest);
-  debug_dump_hex("system key", digest, DIGEST_LENGTH);
-
-  return RESULT_SUCCESS;
-}
-
-static result_code get_nvram_key(uint8_t* digest, int* migrate) {
-  return is_tpm2() ? get_nvram_key_tpm2(digest, migrate)
-                   : get_nvram_key_tpm1(digest, migrate);
 }
 
 /* Find the system key used for decrypting the stored encryption key.

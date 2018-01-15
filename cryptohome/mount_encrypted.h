@@ -7,6 +7,9 @@
 #ifndef CRYPTOHOME_MOUNT_ENCRYPTED_H_
 #define CRYPTOHOME_MOUNT_ENCRYPTED_H_
 
+#include <sys/types.h>
+#include <unistd.h>
+
 /* #define DEBUG_ENABLED 1 */
 #define DEBUG_TIME_DELTA 1
 

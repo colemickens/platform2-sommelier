@@ -197,7 +197,24 @@
       },
       'sources': [
         'mount_encrypted.cc',
+        'mount_encrypted/tpm.cc',
         'mount_helpers.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'defines': [
+            # This selects TPM2 code in vboot_host headers.
+            'TPM2_MODE=1',
+          ],
+          'sources': [
+            'mount_encrypted/tpm2.cc',
+          ],
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'mount_encrypted/tpm1.cc',
+          ],
+        }],
       ],
     },
     {
