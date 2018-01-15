@@ -93,10 +93,10 @@ sleep 1
 check_log 4
 
 # Emit a service failure with restarts to messages. Check that it is collected
-# only once.
+# only once, and that the correct exit status is reported.
 cat "${SRC}/TEST_SERVICE_FAILURE" >> messages
 sleep 1
-check_log 5
+check_log 5 '-exit2-'
 
 # Emit a different service to messages. Check that it is collected once.
 sed s/crash-crash/fresh-fresh/ < "${SRC}/TEST_SERVICE_FAILURE" >> messages

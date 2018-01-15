@@ -29,7 +29,9 @@
 
 #include "metrics/c_metrics_library.h"
 
-int ReportServiceFailure(const char *service_name);
+char *cur_service_name;
+
+int ReportServiceFailure(const char *service_name, const int exit_status);
 int KernelWarnStart(void);
 void KernelWarnEnd(void);
 void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
@@ -53,19 +55,32 @@ CUT_HERE        {PREFIX}" ------------[ cut here".*
 WARNING         {PREFIX}" WARNING:"(" CPU: "{D}+" PID: "{D}+)?" at "
 END_TRACE       {PREFIX}" ---[ end trace".*
 
-/* The only meaningful information is the name of the process that failed. */
+/* The two meaningful pieces of information are: the name of the process
+ * that failed, and its exit status.
+ */
 UPSTART_WARN {PREFIX}" init: "
-SERVICE_FAIL [^ ]+" main process ("{D}+") terminated"
+SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 
 /* Use exclusive start conditions. */
-%x PRE_WARN WARN SERVICE_FAIL
+%x PRE_WARN WARN SERVICE_FAIL SERVICE_FAIL_SKIP SERVICE_FAIL_EXIT
 
 %%
  /* The scanner itself. */
 
- /* Detect service failures. */
+ /* Detect service failures. Retrieve service name and exit status. */
 {UPSTART_WARN}/{SERVICE_FAIL}   BEGIN(SERVICE_FAIL);
-<SERVICE_FAIL>[^ ]+             ReportServiceFailure(yytext); BEGIN(0);
+<SERVICE_FAIL>[^ ]+             {
+                                  cur_service_name = strdup(yytext);
+                                  BEGIN(SERVICE_FAIL_SKIP);
+                                }
+<SERVICE_FAIL_SKIP>status       BEGIN(SERVICE_FAIL_EXIT);
+<SERVICE_FAIL_EXIT>[^ \n]+      {
+                                  ReportServiceFailure(cur_service_name,
+                                                       atoi(yytext));
+                                  free(cur_service_name);
+                                  cur_service_name = NULL;
+                                  BEGIN(0);
+                                }
 
  /* Detect kernel warnings. */
 ^{CUT_HERE}\n{WARNING}          BEGIN(PRE_WARN);
@@ -185,7 +200,7 @@ static void AnomalyEnd(const char *crash_reporter_command) {
   RunCrashReporter(crash_reporter_command);
 }
 
-int ReportServiceFailure(const char *service_name) {
+int ReportServiceFailure(const char *service_name, const int exit_status) {
   uint32_t hash;
 
   if (filter)
@@ -196,7 +211,8 @@ int ReportServiceFailure(const char *service_name) {
                     service_failure_hash_bitmap, hash))
     return 0;
 
-  fprintf(yyout, "%08x-%s\n", hash, service_name);
+  /* Include exit status in the "stable signature" for crash reports. */
+  fprintf(yyout, "%08x-exit%d-%s\n", hash, exit_status, service_name);
 
   AnomalyEnd(service_fail_crash_reporter_command);
   return 1;
