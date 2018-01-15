@@ -1035,7 +1035,7 @@ void paramConvertor::convertAwb(struct cifisp_awb_meas_config* awb_config, rk_ai
     awb_config->frames = 0;//fx
     awb_config->awb_ref_cr = aiq_awb_config->awb_meas_cfg.ref_cr_max_r;
     awb_config->awb_ref_cb = aiq_awb_config->awb_meas_cfg.ref_cb_max_b;
-    awb_config->enable_ymax_cmp = false;//fx
+    awb_config->enable_ymax_cmp = awb_config->max_y == 0 ? false : true;
 
     awb_config->awb_wnd.h_offs = aiq_awb_config->awb_win.h_offset;
     awb_config->awb_wnd.v_offs = aiq_awb_config->awb_win.v_offset;
