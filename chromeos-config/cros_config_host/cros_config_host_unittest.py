@@ -89,16 +89,6 @@ class CrosConfigHostTest(unittest.TestCase):
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep)
 
-  def testGetPropAllModels(self):
-    call_args = '{} -c {} --all-models get / wallpaper'.format(
-        CLI_FILE, self.dtb_file).split()
-    output = subprocess.check_output(call_args)
-    self.assertEqual(
-        output,
-        'default{ls}caroline{ls}epic{ls}caroline{ls}{ls}shark{ls}'
-        'more_shark{ls}{ls}'.
-        format(ls=os.linesep))
-
   def testGetFirmwareUris(self):
     call_args = '{} -c {} --model=pyro get-firmware-uris'.format(
         CLI_FILE, self.dtb_file).split()

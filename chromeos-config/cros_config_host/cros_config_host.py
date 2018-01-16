@@ -28,7 +28,7 @@ def ListModels(config):
   for model_name in config.GetModelList():
     print(model_name)
 
-def GetProperty(models, path, prop):
+def GetProperty(model, path, prop):
   """Prints a property from the config tree for all models in the list models.
 
   Args:
@@ -36,9 +36,8 @@ def GetProperty(models, path, prop):
     path: The path (relative to a model) for the node containing the property.
     prop: The property to get (by name).
   """
-  for model in models or []:
-    config_prop = model.PathProperty(path, prop)
-    print(config_prop.value if config_prop else '')
+  config_prop = model.PathProperty(path, prop)
+  print(config_prop.value if config_prop else '')
 
 
 def GetFirmwareUris(config):
@@ -200,8 +199,6 @@ def GetParser(description):
                            'stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
-  parser.add_argument('-a', '--all-models', action='store_true',
-                      help='Runs the subcommand on all models, one per line.')
   parser.add_argument('-y', '--yaml',
                       help='Use YAML format instead of DTB.')
   subparsers = parser.add_subparsers(dest='subcommand')
@@ -294,20 +291,21 @@ def main(argv=None):
     return
   config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
   # Get all models we are invoking on (if any).
-  models = None
-  if opts.model and opts.model in config.models:
-    models = [config.models[opts.model]]
-  elif opts.all_models:
-    models = config.models.values()
+  model = None
+  if opts.model:
+    model = config.models.get(opts.model)
+    if not model:
+      print("Unknown model '%s'" % opts.model, file=sys.stderr)
+      return
   # Main command branch
   if opts.subcommand == 'list-models':
     ListModels(config)
   elif opts.subcommand == 'get':
-    if not opts.model and not opts.all_models:
-      print('You must specify --model or --all-models for this command. See '
-            '--help for more info.')
+    if not model:
+      print('You must specify --model for this command. See --help for more '
+            'info.', file=sys.stderr)
       return
-    GetProperty(models, opts.path, opts.prop)
+    GetProperty(model, opts.path, opts.prop)
   elif opts.subcommand == 'get-touch-firmware-files':
     GetTouchFirmwareFiles(config)
   elif opts.subcommand == 'get-firmware-uris':
