@@ -65,8 +65,14 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      CreateFirmwareDirectory(firmware_dir_path_));
+  auto firmware_directory = CreateFirmwareDirectory(firmware_dir_path_);
+  if (!firmware_directory) {
+    LOG(ERROR) << "Could not load firmware directory (bad manifest?)";
+    return EX_UNAVAILABLE;
+  }
+
+  modem_flasher_ =
+      std::make_unique<modemfwd::ModemFlasher>(std::move(firmware_directory));
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,

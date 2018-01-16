@@ -37,8 +37,11 @@ bool ReadProtobuf(const base::FilePath& proto_file,
   DCHECK(out_proto);
 
   base::File file(proto_file, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid())
+  if (!file.IsValid()) {
+    DLOG(ERROR) << "Could not open \"" << proto_file.value()
+                << "\": " << base::File::ErrorToString(file.error_details());
     return false;
+  }
 
   FileInputStream input_stream(std::move(file));
   google::protobuf::io::CopyingInputStreamAdaptor adaptor(&input_stream);
