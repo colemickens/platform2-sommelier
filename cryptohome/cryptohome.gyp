@@ -191,12 +191,15 @@
       'variables': {
         'deps': [
           'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'openssl',
           'vboot_host',
         ],
       },
       'sources': [
         'mount_encrypted.cc',
+        'mount_encrypted/encryption_key.cc',
         'mount_encrypted/tpm.cc',
         'mount_helpers.cc',
       ],

@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#include "cryptohome/mount_encrypted.h"
+
 #define LOCKBOX_SIZE_MAX 0x45
 
 const uint32_t kLockboxSizeV1 = 0x2c;
@@ -23,11 +25,6 @@ static const uint32_t kLockboxIndex = 0x20000004;
 extern int has_tpm;
 extern uint8_t nvram_data[LOCKBOX_SIZE_MAX];
 extern uint32_t nvram_size;
-
-enum result_code {
-  RESULT_SUCCESS = 0,
-  RESULT_FAIL_FATAL = 1,
-};
 
 // Load the encryption key from TPM NVRAM. Returns true if successful and fills
 // in key, false if the key is not available or there is an error.

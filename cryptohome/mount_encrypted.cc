@@ -30,7 +30,10 @@
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
+#include <base/strings/string_number_conversions.h>
+
 #include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/encryption_key.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 #include "cryptohome/mount_helpers.h"
 
@@ -39,8 +42,6 @@
 #define BUF_SIZE 1024
 #define PROP_SIZE 64
 
-static const gchar* const kKernelCmdline = "/proc/cmdline";
-static const gchar* const kKernelCmdlineOption = " encrypted-stateful-key=";
 static const gchar* const kEncryptedFSType = "ext4";
 static const gchar* const kCryptDevName = "encstateful";
 static const gchar* const kNvramExport = "/tmp/lockbox.nvram";
@@ -49,11 +50,6 @@ static const float kMigrationSizeMultiplier = 1.1;
 static const uint64_t kSectorSize = 512;
 static const uint64_t kExt4BlockSize = 4096;
 static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
-static const char* const kStaticKeyDefault = "default unsafe static key";
-static const char* const kStaticKeyFactory = "factory unsafe static key";
-static const char* const kStaticKeyFinalizationNeeded = "needs finalization";
-static const int kModeProduction = 0;
-static const int kModeFactory = 1;
 static const int kCryptAllowDiscard = 1;
 
 enum migration_method {
@@ -96,10 +92,10 @@ struct timeval tick_start = {};
 #endif
 
 static struct bind_mount* bind_mounts = NULL;
+
 static gchar* rootdir = NULL;
 static gchar* stateful_mount = NULL;
 static gchar* key_path = NULL;
-static gchar* needs_finalization_path = NULL;
 static gchar* block_path = NULL;
 static gchar* encrypted_mount = NULL;
 static gchar* dmcrypt_name = NULL;
@@ -107,40 +103,6 @@ static gchar* dmcrypt_dev = NULL;
 
 static void sha256(char const* str, uint8_t* digest) {
   SHA256((unsigned char*)(str), strlen(str), digest);
-}
-
-/* Extract the desired system key from the kernel's boot command line. */
-static result_code get_key_from_cmdline(uint8_t* digest) {
-  result_code rc = RESULT_FAIL_FATAL;
-  gchar* buffer;
-  gsize length;
-  char *cmdline, *option_end;
-  /* Option name without the leading space. */
-  const gchar* option = kKernelCmdlineOption + 1;
-
-  if (!g_file_get_contents(kKernelCmdline, &buffer, &length, NULL)) {
-    PERROR("%s", kKernelCmdline);
-    return RESULT_FAIL_FATAL;
-  }
-
-  /* Find a string match either at start of string or following
-   * a space.
-   */
-  cmdline = buffer;
-  if (strncmp(cmdline, option, strlen(option)) == 0 ||
-      (cmdline = strstr(cmdline, kKernelCmdlineOption))) {
-    /* The "=" exists because it is in kKernelCmdlineOption. */
-    cmdline = strstr(cmdline, "=");
-    /* strchrnul() cannot return NULL. */
-    option_end = strchrnul(cmdline, ' ');
-    *option_end = '\0';
-    sha256(cmdline, digest);
-    debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    rc = RESULT_SUCCESS;
-  }
-
-  g_free(buffer);
-  return rc;
 }
 
 static result_code get_system_property(const char* prop, char* buf,
@@ -182,75 +144,6 @@ static int is_cr48(void) {
   else
     state = strstr(hwid, "MARIO") != NULL;
   return state;
-}
-
-/* Find the system key used for decrypting the stored encryption key.
- * ChromeOS devices are required to use the NVRAM area, all the rest will
- * fallback through various places (kernel command line, BIOS UUID, and
- * finally a static value) for a system key.
- */
-static result_code find_system_key(int mode, uint8_t* digest,
-                                   int* migration_allowed) {
-  gchar* key;
-  gsize length;
-
-  /* By default, do not allow migration. */
-  *migration_allowed = 0;
-
-  /* Factory mode uses a static system key. */
-  if (mode == kModeFactory) {
-    INFO("Using factory insecure system key.");
-    sha256(kStaticKeyFactory, digest);
-    debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    return RESULT_SUCCESS;
-  }
-
-  /* Force ChromeOS devices into requiring the system key come from
-   * NVRAM.
-   */
-  if (has_chromefw()) {
-    result_code rc;
-    rc = get_nvram_key(digest, migration_allowed);
-
-    if (rc == RESULT_SUCCESS) {
-      INFO("Using NVRAM as system key; already populated%s.",
-           *migration_allowed ? " (legacy)" : "");
-    } else {
-      INFO("Using NVRAM as system key; finalization needed.");
-    }
-    return rc;
-  }
-
-  if (get_key_from_cmdline(digest) == RESULT_SUCCESS) {
-    INFO("Using kernel command line argument as system key.");
-    return RESULT_SUCCESS;
-  }
-  if (g_file_get_contents("/sys/class/dmi/id/product_uuid", &key, &length,
-                          NULL)) {
-    sha256(key, digest);
-    debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    g_free(key);
-    INFO("Using UUID as system key.");
-    return RESULT_SUCCESS;
-  }
-
-  INFO("Using default insecure system key.");
-  sha256(kStaticKeyDefault, digest);
-  debug_dump_hex("system key", digest, DIGEST_LENGTH);
-  return RESULT_SUCCESS;
-}
-
-static char* choose_encryption_key(void) {
-  unsigned char rand_bytes[DIGEST_LENGTH];
-  unsigned char digest[DIGEST_LENGTH];
-
-  if (get_random_bytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
-    ERROR("No entropy source found -- using uninitialized stack");
-
-  SHA256(rand_bytes, DIGEST_LENGTH, digest);
-  debug_dump_hex("encryption key", digest, DIGEST_LENGTH);
-
-  return stringify_hex(digest, DIGEST_LENGTH);
 }
 
 static result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
@@ -367,25 +260,8 @@ mark_for_removal:
   return RESULT_SUCCESS;
 }
 
-static void finalized(void) {
-  /* TODO(keescook): once ext4 supports secure delete, just unlink. */
-  if (access(needs_finalization_path, R_OK) == 0) {
-    /* This is nearly useless on SSDs. */
-    shred(needs_finalization_path);
-    unlink(needs_finalization_path);
-  }
-}
-
-static void finalize(uint8_t* system_key, char* encryption_key) {
+void remove_pending() {
   struct bind_mount* bind;
-
-  INFO("Writing keyfile %s.", key_path);
-  if (!keyfile_write(key_path, system_key, encryption_key)) {
-    ERROR("Failed to write %s -- aborting.", key_path);
-    return;
-  }
-
-  finalized();
 
   for (bind = bind_mounts; bind->src; ++bind) {
     if (!bind->pending || access(bind->pending, R_OK))
@@ -398,17 +274,6 @@ static void finalize(uint8_t* system_key, char* encryption_key) {
   }
 }
 
-static void needs_finalization(char* encryption_key) {
-  uint8_t useless_key[DIGEST_LENGTH];
-  sha256(kStaticKeyFinalizationNeeded, useless_key);
-
-  INFO("Writing finalization intent %s.", needs_finalization_path);
-  if (!keyfile_write(needs_finalization_path, useless_key, encryption_key)) {
-    ERROR("Failed to write %s -- aborting.", needs_finalization_path);
-    return;
-  }
-}
-
 /* This triggers the live encryption key to be written to disk, encrypted
  * by the system key. It is intended to be called by Cryptohome once the
  * TPM is done being set up. If the system key is passed as an argument,
@@ -417,7 +282,6 @@ static void needs_finalization(char* encryption_key) {
 static result_code finalize_from_cmdline(char* key) {
   uint8_t system_key[DIGEST_LENGTH];
   char* encryption_key;
-  int migrate;
   result_code rc;
 
   /* For TPM2 mount-encrypted itself generates the system-key, and
@@ -435,6 +299,8 @@ static result_code finalize_from_cmdline(char* key) {
     return RESULT_FAIL_FATAL;
   }
 
+  // Load the system key.
+  EncryptionKey key_manager(rootdir);
   if (key) {
     if (strlen(key) != 2 * DIGEST_LENGTH) {
       ERROR("Invalid key length.");
@@ -445,24 +311,38 @@ static result_code finalize_from_cmdline(char* key) {
       ERROR("Failed to convert hex string to byte array");
       return RESULT_FAIL_FATAL;
     }
+
+    rc = key_manager.SetSystemKey(
+        brillo::SecureBlob(system_key, system_key + DIGEST_LENGTH));
+    if (rc != RESULT_SUCCESS) {
+      return rc;
+    }
   } else {
     /* Factory mode will never call finalize from the command
      * line, so force Production mode here.
      */
-    rc = find_system_key(kModeProduction, system_key, &migrate);
+    rc = key_manager.FindSystemKey(kModeProduction, has_chromefw());
     if (rc != RESULT_SUCCESS) {
       ERROR("Could not locate system key.");
       return rc;
     }
   }
 
+  // Load the encryption key.
   encryption_key = dm_get_key(dmcrypt_dev);
   if (!encryption_key) {
     ERROR("Could not locate encryption key for %s.", dmcrypt_dev);
     return RESULT_FAIL_FATAL;
   }
+  brillo::SecureBlob encryption_key_blob;
+  if (!base::HexStringToBytes(encryption_key, &encryption_key_blob)) {
+    ERROR("Failed to decode encryption key.");
+    return RESULT_FAIL_FATAL;
+  }
+  key_manager.SetEncryptionKey(encryption_key_blob);
 
-  finalize(system_key, encryption_key);
+  // Persist the encryption key to disk.
+  key_manager.Persist();
 
   return RESULT_SUCCESS;
 }
@@ -506,15 +386,12 @@ out:
   exit(RESULT_SUCCESS);
 }
 
-/* Do all the work needed to actually set up the encrypted partition.
- * Takes "mode" argument to help determine where the system key should
- * come from.
- */
-static result_code setup_encrypted(int mode) {
-  int has_system_key = 0;
-  uint8_t system_key[DIGEST_LENGTH];
-  char* encryption_key = NULL;
-  int migrate_allowed = 0, migrate_needed = 0, rebuild = 0;
+/* Do all the work needed to actually set up the encrypted partition. */
+static result_code setup_encrypted(const char* encryption_key,
+                                   int rebuild,
+                                   int migrate_allowed) {
+  brillo::SecureBlob system_key;
+  int migrate_needed = 0;
   gchar* lodev = NULL;
   gchar* dirty_expire_centisecs = NULL;
   char* mount_opts = NULL;
@@ -524,52 +401,12 @@ static result_code setup_encrypted(int mode) {
   int sparsefd;
   struct statvfs stateful_statbuf;
   uint64_t blocks_min, blocks_max;
-  int valid_keyfile = 0;
-  result_code rc;
-
-  /* Use the "system key" to decrypt the "encryption key" stored in
-   * the stateful partition.
-   */
-  rc = find_system_key(mode, system_key, &migrate_allowed);
-  if (rc == RESULT_SUCCESS) {
-    has_system_key = 1;
-    encryption_key = keyfile_read(key_path, system_key);
-  } else {
-    INFO("No usable system key found.");
-  }
-  /* Set rc back to fail by default; will be set to success at the end. */
-  rc = RESULT_FAIL_FATAL;
-
-  if (encryption_key) {
-    /* If we found a stored encryption key, we've already
-     * finished a complete login and Cryptohome Finalize
-     * so migration is finished.
-     */
-    migrate_allowed = 0;
-    valid_keyfile = 1;
-  } else {
-    uint8_t useless_key[DIGEST_LENGTH];
-    sha256(kStaticKeyFinalizationNeeded, useless_key);
-    encryption_key = keyfile_read(needs_finalization_path, useless_key);
-    if (!encryption_key) {
-      /* This is a brand new system with no keys. */
-      INFO("Generating new encryption key.");
-      encryption_key = choose_encryption_key();
-      if (!encryption_key)
-        goto finished;
-      rebuild = 1;
-    } else {
-      ERROR(
-          "Finalization unfinished! "
-          "Encryption key still on disk!");
-    }
-  }
+  result_code rc = RESULT_FAIL_FATAL;
 
   if (rebuild) {
     uint64_t fs_bytes_max;
 
     /* Wipe out the old files, and ignore errors. */
-    unlink(key_path);
     unlink(block_path);
 
     /* Calculate the desired size of the new partition. */
@@ -742,40 +579,6 @@ static result_code setup_encrypted(int mode) {
     }
   }
 
-  /* When we are creating the encrypted mount for the first time,
-   * either finalize immediately, or write the encryption key to
-   * disk (*sigh*) to handle the seemingly endless broken or
-   * wedged TPM states.
-   */
-  if (rebuild) {
-    /* Devices that already have the NVRAM area populated and
-     * are being rebuilt don't need to wait for Cryptohome
-     * because the NVRAM area isn't going to change.
-     *
-     * Devices that do not have the NVRAM area populated
-     * may potentially never have the NVRAM area populated,
-     * which means we have to write the encryption key to
-     * disk until we finalize. Once secure deletion is
-     * supported on ext4, this won't be as horrible.
-     */
-    if (has_system_key)
-      finalize(system_key, encryption_key);
-    else
-      needs_finalization(encryption_key);
-  } else {
-    /* If we're not rebuilding and we have a sane system
-     * key, then we must either need finalization (if we
-     * failed to finalize in Cryptohome), or we have already
-     * finalized, but maybe failed to clean up.
-     */
-    if (has_system_key) {
-      if (!valid_keyfile)
-        finalize(system_key, encryption_key);
-      else
-        finalized();
-    }
-  }
-
   /* Everything completed without error.*/
   rc = RESULT_SUCCESS;
   goto finished;
@@ -804,7 +607,6 @@ lo_cleanup:
   loop_detach(lodev);
 
 finished:
-  free(encryption_key);
   free(lodev);
   free(mount_opts);
 
@@ -1039,9 +841,6 @@ static result_code prepare_paths(void) {
     goto fail;
   if (asprintf(&key_path, "%s%s", rootdir, STATEFUL_MNT "/encrypted.key") == -1)
     goto fail;
-  if (asprintf(&needs_finalization_path, "%s%s", rootdir,
-               STATEFUL_MNT "/encrypted.needs-finalization") == -1)
-    goto fail;
   if (asprintf(&block_path, "%s%s", rootdir, STATEFUL_MNT "/encrypted.block") ==
       -1)
     goto fail;
@@ -1106,7 +905,6 @@ int main(int argc, char* argv[]) {
       return RESULT_FAIL_FATAL;
     }
   }
-
   /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
    * chromeos_startup do the stateful wipe.
    */
@@ -1114,9 +912,21 @@ int main(int argc, char* argv[]) {
   if (rc != RESULT_SUCCESS)
     return rc;
 
-  rc = setup_encrypted(mode);
-  if (rc == RESULT_SUCCESS)
+  EncryptionKey key(rootdir);
+  rc = key.LoadEncryptionKey(mode, has_chromefw());
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  rc = setup_encrypted(key.get_encryption_key(), key.is_fresh(),
+                       key.is_migration_allowed());
+  if (rc == RESULT_SUCCESS) {
+    key.Persist();
+    if (key.did_finalize()) {
+      remove_pending();
+    }
     nvram_export(nvram_data, nvram_size);
+  }
 
   INFO_DONE("Done.");
 

@@ -41,8 +41,4 @@ int filesystem_build(const char* device,
                      uint64_t blocks_max);
 int filesystem_resize(const char* device, uint64_t blocks, uint64_t blocks_max);
 
-/* Encrypted keyfile handling. */
-char* keyfile_read(const char* keyfile, uint8_t* system_key);
-int keyfile_write(const char* keyfile, uint8_t* system_key, char* plain);
-
 #endif  // CRYPTOHOME_MOUNT_HELPERS_H_

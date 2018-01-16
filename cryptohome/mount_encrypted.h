@@ -168,4 +168,9 @@ static inline void debug_dump_hex(const char* name,
   } while (0)
 #endif
 
+enum result_code {
+  RESULT_SUCCESS = 0,
+  RESULT_FAIL_FATAL = 1,
+};
+
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_H_
