@@ -207,42 +207,23 @@ void AuthPolicy::AuthenticateUser(
   *int_error = static_cast<int>(error);
 }
 
-void AuthPolicy::GetUserStatus(dbus::MethodCall* method_call,
-                               brillo::dbus_utils::ResponseSender sender) {
-  // Read input arguments.
-  dbus::MessageReader reader(method_call);
-  GetUserStatusRequest request;
-  bool success = reader.PopArrayOfBytesAsProto(&request) ||
-                 reader.PopString(request.mutable_account_id());
-
-  int32_t error = ERROR_NONE;
-  std::vector<uint8_t> user_status_blob;
-  if (success) {
-    GetUserStatus(request, &error, &user_status_blob);
-  } else {
-    error = ERROR_DBUS_FAILURE;
-  }
-
-  // Send response.
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendInt32(error);
-  writer.AppendArrayOfBytes(user_status_blob.data(), user_status_blob.size());
-  sender.Run(std::move(response));
-}
-
-void AuthPolicy::GetUserStatus(const GetUserStatusRequest& request,
-                               int32_t* int_error,
-                               std::vector<uint8_t>* user_status_blob) {
+void AuthPolicy::GetUserStatus(
+    const std::vector<uint8_t>& get_status_request_blob,
+    int32_t* int_error,
+    std::vector<uint8_t>* user_status_blob) {
   LOG(INFO) << "Received 'GetUserStatus' request";
   ScopedTimerReporter timer(TIMER_GET_USER_STATUS);
+  authpolicy::GetUserStatusRequest request;
+  ErrorType error = ParseProto(&request, get_status_request_blob);
 
   ActiveDirectoryUserStatus user_status;
-  ErrorType error = samba_.GetUserStatus(request.user_principal_name(),
-                                         request.account_id(), &user_status);
+  if (error == ERROR_NONE) {
+    error = samba_.GetUserStatus(request.user_principal_name(),
+                                 request.account_id(), &user_status);
+  }
   if (error == ERROR_NONE)
     error = SerializeProto(user_status, user_status_blob);
+
   PrintError("GetUserStatus", error);
   metrics_->ReportDBusResult(DBUS_CALL_GET_USER_STATUS, error);
   *int_error = static_cast<int>(error);

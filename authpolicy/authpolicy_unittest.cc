@@ -492,7 +492,9 @@ class AuthPolicyTest : public testing::Test {
     GetUserStatusRequest request;
     request.set_user_principal_name(user_principal);
     request.set_account_id(account_id);
-    authpolicy_->GetUserStatus(request, &error, &user_status_blob);
+    std::vector<uint8_t> blob(request.ByteSizeLong());
+    request.SerializeToArray(blob.data(), blob.size());
+    authpolicy_->GetUserStatus(blob, &error, &user_status_blob);
     MaybeParseProto(error, user_status_blob, user_status);
     return CastError(error);
   }

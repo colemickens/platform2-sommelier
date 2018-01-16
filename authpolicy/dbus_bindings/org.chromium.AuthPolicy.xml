@@ -32,9 +32,7 @@
       <arg name="get_status_request_blob" type="ay" direction="in" />
       <arg name="error_code" type="i" direction="out"/>
       <arg name="user_status_blob" type="ay" direction="out" />
-      <!-- Changing to raw handle both strings and protobufs by hand. Eventually
-           will switch to protobufs only. (see https://crbug.com/785956) -->
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <!--

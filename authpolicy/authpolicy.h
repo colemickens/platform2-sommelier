@@ -65,6 +65,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   }
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
+
   // |auth_user_request_blob| is a serialized AuthenticateUserRequest protobuf.
   // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
   void AuthenticateUser(const std::vector<uint8_t>& auth_user_request_blob,
@@ -72,12 +73,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                         int32_t* error,
                         std::vector<uint8_t>* account_info_blob) override;
 
-  void GetUserStatus(dbus::MethodCall* method_call,
-                     brillo::dbus_utils::ResponseSender sender) override;
-
-  void GetUserStatus(const GetUserStatusRequest& request,
+  // |get_status_request_blob| is a serialized GetUserStatusRequest protobuf.
+  // |user_status_blob| is a serialized ActiveDirectoryUserStatus protobuf.
+  void GetUserStatus(const std::vector<uint8_t>& get_status_request_blob,
                      int32_t* error,
-                     std::vector<uint8_t>* user_status_blob);
+                     std::vector<uint8_t>* user_status_blob) override;
 
   // |kerberos_files_blob| is a serialized KerberosFiles profobuf.
   void GetUserKerberosFiles(const std::string& account_id,
