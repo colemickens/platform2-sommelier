@@ -813,7 +813,7 @@ TEST_F(AuthPolicyTest, JoinSucceedsWithOrganizationalUnit) {
 TEST_F(AuthPolicyTest, AuthSucceeds) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Successful user authentication with given account id.
@@ -823,7 +823,7 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_info));
   EXPECT_EQ(kAccountId, account_info.account_id());
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Program should die if trying to auth with different account ids.
@@ -832,7 +832,7 @@ TEST_F(AuthPolicyTest, AuthFailsDifferentAccountIds) {
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
   EXPECT_DEATH(Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
                kMultiUserNotSupported);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // User authentication fails with bad (non-existent) account id.
@@ -856,7 +856,7 @@ TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   EXPECT_EQ(kCommonName, account_info.common_name());
   EXPECT_EQ(kPwdLastSet, account_info.pwd_last_set());
   EXPECT_EQ(kUserAccountControl, account_info.user_account_control());
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for badly formatted user principal name.
@@ -871,7 +871,7 @@ TEST_F(AuthPolicyTest, AuthFailsBadUpn) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kNonExistingUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for wrong password.
@@ -879,7 +879,7 @@ TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_PASSWORD,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWrongPassword)));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for expired password.
@@ -887,7 +887,7 @@ TEST_F(AuthPolicyTest, AuthFailsExpiredPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for rejected password.
@@ -895,7 +895,7 @@ TEST_F(AuthPolicyTest, AuthFailsRejectedPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_PASSWORD_REJECTED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kRejectedPassword)));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication succeeds if the "password will expire" warning is shown.
@@ -903,7 +903,7 @@ TEST_F(AuthPolicyTest, AuthSucceedsPasswordWillExpire) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWillExpirePassword)));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails if there's a network issue.
@@ -911,26 +911,19 @@ TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NETWORK_PROBLEM,
             Auth(kNetworkErrorUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication retries without KDC if it fails the first time.
 TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kKdcRetryUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Can't get user status before domain join.
 TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
   EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kUserPrincipal, kAccountId));
-}
-
-// GetUserStatus fails with bad account id.
-TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
-  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kUserPrincipal, kBadAccountId));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Program should die if trying to get user status with different account ids
@@ -940,16 +933,18 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
   EXPECT_DEATH(GetUserStatus(kUserPrincipal, kAltAccountId),
                kMultiUserNotSupported);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
-// GetUserStatus succeeds without auth, but tgt is invalid.
+// GetUserStatus succeeds without auth, reporting TGT_NOT_FOUND and lacking
+// account info and password status.
 TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtNotFound) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_NOT_FOUND, status.tgt_status());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_FALSE(status.has_account_info());
+  EXPECT_FALSE(status.has_password_status());
 }
 
 // GetUserStatus succeeds with join and auth, but with an expired TGT.
@@ -959,7 +954,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus succeeds with join and auth.
@@ -990,7 +985,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   EXPECT_TRUE(expected_status.SerializeToString(&expected_status_blob));
   EXPECT_EQ(expected_status_blob, status_blob);
 
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus actually contains the last auth error.
@@ -1001,7 +996,7 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsLastAuthError) {
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED, status.last_auth_error());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus reports to expire the password.
@@ -1014,7 +1009,7 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsExpiredPasswords) {
             GetUserStatus(kUserPrincipal, kExpiredPasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_EXPIRED,
             status.password_status());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus does not report expired passwords if UF_DONT_EXPIRE_PASSWD is
@@ -1028,7 +1023,7 @@ TEST_F(AuthPolicyTest, GetUserStatusDontReportNeverExpirePasswords) {
                                       kNeverExpirePasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
             status.password_status());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus reports password changes.
@@ -1041,7 +1036,7 @@ TEST_F(AuthPolicyTest, GetUserStatusReportChangedPasswords) {
             GetUserStatus(kUserPrincipal, kPasswordChangedAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
             status.password_status());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserKerberosFiles succeeds with empty files if not joined.
@@ -1082,7 +1077,7 @@ TEST_F(AuthPolicyTest, GetUserKerberosFilesSucceeds) {
   EXPECT_TRUE(files.has_krb5conf());
   EXPECT_EQ(kValidKrb5CCData, files.krb5cc());
   EXPECT_NE(std::string::npos, files.krb5conf().find("allow_weak_crypto"));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Changes of krb5.conf should trigger the UserKerberosFilesChanged signal. This
@@ -1094,15 +1089,15 @@ TEST_F(AuthPolicyTest, ConfigChangeTriggersFilesChangedSignal) {
   // TGT, so that the last step won't change the TGT.
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(1, user_kerberos_files_changed_count_);
-  // 1x machine and 1x user TGT.
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  // 1x user TGT.
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 
   // Try to auth again, but trigger a KDC retry to change JUST the config.
   EXPECT_EQ(ERROR_CONTACTING_KDC_FAILED,
             Auth(kKdcRetryFailsUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
-  // 1x machine TGT, 2x user TGT because of KDC retry.
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  // 2x user TGT because of KDC retry.
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 
   // Once the config is changed, it shouldn't change again.
   EXPECT_EQ(ERROR_KERBEROS_TICKET_EXPIRED,
@@ -1120,7 +1115,7 @@ TEST_F(AuthPolicyTest, RenewTriggersFilesChangedSignal) {
   EXPECT_EQ(1, user_kerberos_files_changed_count_);
   EXPECT_EQ(ERROR_NONE, authpolicy_->RenewUserTgtForTesting());
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Join fails if there's a network issue.
@@ -1184,7 +1179,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
   validate_user_policy_ = &CheckUserPolicyEmpty;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
@@ -1215,7 +1210,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1238,7 +1233,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithDataAndExtensions) {
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_EQ(2, extension_policy_validated_count_);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1265,7 +1260,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1298,7 +1293,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   EXPECT_EQ(ERROR_NONE,
             Join(kTwoGposMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1329,7 +1324,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1357,7 +1352,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(4, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1385,7 +1380,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(4, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1399,7 +1394,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1411,7 +1406,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
   EXPECT_EQ(ERROR_NONE, Join(kGpoDownloadErrorMachineName, kUserPrincipal,
                              MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_SMBCLIENT_FAILED);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
@@ -1562,7 +1557,7 @@ TEST_F(AuthPolicyTest, CleanStateDir) {
   EXPECT_FALSE(base::IsDirectoryEmpty(state_path));
   EXPECT_TRUE(AuthPolicy::CleanState(paths_.get()));
   EXPECT_TRUE(base::IsDirectoryEmpty(state_path));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // By default, nothing should call the (expensive) anonymizer since no sensitive
@@ -1579,7 +1574,7 @@ TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
 
   EXPECT_FALSE(
       authpolicy_->GetAnonymizerForTesting()->process_called_for_testing());
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 

@@ -402,9 +402,9 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (!account_id.empty())
     SetUser(account_id);
 
-  // We need the device account here to authenticate while getting the user's
-  // account info.
-  ErrorType error = CheckDeviceAccountValid();
+  // We technically don't have to be in joined state, but check it anyway,
+  // because the device should always be joined during auth.
+  ErrorType error = CheckDeviceJoined();
   if (error != ERROR_NONE)
     return error;
 
@@ -416,20 +416,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   }
   SetUserRealm(user_realm);
 
-  // Get account info for the user.
-  error = GetAccountInfo(user_name, normalized_upn, account_id, account_info);
-  if (error != ERROR_NONE)
-    return error;
-
-  if (account_id.empty())
-    SetUser(account_info->account_id());
-
-  // Update normalized_upn. This handles the situation when the user name
-  // changes on the server and the user logs in with their old user name (e.g.
-  // from the pods screen in Chrome).
-  normalized_upn = account_info->sam_account_name() + "@" + user_account_.realm;
-
-  // Update IPs, server names etc. for the user account.
+  // Update smb.conf, IPs, server names etc. for the user account.
   error = UpdateAccountData(&user_account_);
   if (error != ERROR_NONE)
     return error;
@@ -444,6 +431,14 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   // Renew TGT periodically. The usual validity lifetime is about 10 hours, so
   // this won't happen too often.
   user_tgt_manager_.EnableTgtAutoRenewal(true);
+
+  // Get account info for the user.
+  error = GetAccountInfo(user_name, normalized_upn, account_id, account_info);
+  if (error != ERROR_NONE)
+    return error;
+
+  if (account_id.empty())
+    SetUser(account_info->account_id());
 
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName. Also note that pwd_last_set is zero and stale
@@ -462,38 +457,46 @@ ErrorType SambaInterface::GetUserStatus(
   ReloadDebugFlags();
   SetUser(account_id);
 
-  // The device account is needed here to get the user's account info.
-  ErrorType error = CheckDeviceAccountValid();
+  // We technically don't have to be in joined state, but check it anyway,
+  // because the device should always be joined during getting status.
+  ErrorType error = CheckDeviceJoined();
   if (error != ERROR_NONE)
     return error;
 
-  if (!user_principal_name.empty()) {
-    std::string user_name, user_realm, normalized_upn;
-    if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
-                                &normalized_upn)) {
-      return ERROR_PARSE_UPN_FAILED;
-    }
-    SetUserRealm(user_realm);
-  } else {
-    // Backwards compatibility for old interface not taking UPN: Use device
-    // realm. Can be removed after interface is switched to new protobuf
-    // interface.
-    if (user_account_.realm.empty())
-      SetUserRealm(device_account_.realm);
+  // Split user_principal_name into parts and normalize.
+  std::string user_name, user_realm, normalized_upn;
+  if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
+                              &normalized_upn)) {
+    return ERROR_PARSE_UPN_FAILED;
   }
-
-  // Get account info for the user.
-  ActiveDirectoryAccountInfo account_info;
-  error =
-      GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
-                     account_id, &account_info);
-  if (error != ERROR_NONE)
-    return error;
+  SetUserRealm(user_realm);
 
   // Determine the status of the TGT.
   ActiveDirectoryUserStatus::TgtStatus tgt_status =
       ActiveDirectoryUserStatus::TGT_VALID;
   error = GetUserTgtStatus(&tgt_status);
+  if (error != ERROR_NONE)
+    return error;
+
+  // If we don't have a valid TGT, we can't GetAccountInfo() because that uses
+  // the TGT to authenticate. Thus, just return the TGT status and the last auth
+  // error.
+  if (tgt_status != ActiveDirectoryUserStatus::TGT_VALID) {
+    user_status->set_tgt_status(tgt_status);
+    user_status->set_last_auth_error(last_auth_error_);
+    return ERROR_NONE;
+  }
+
+  // Update smb.conf, IPs, server names etc. for the user account.
+  error = UpdateAccountData(&user_account_);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Get account info for the user. Note that this might fail
+  ActiveDirectoryAccountInfo account_info;
+  error =
+      GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
+                     account_id, &account_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -524,7 +527,7 @@ ErrorType SambaInterface::JoinMachine(
     std::string* joined_domain) {
   ReloadDebugFlags();
 
-  // Split user principal name into parts.
+  // Split user_principal_name into parts and normalize.
   std::string user_name, user_realm, normalized_upn;
   if (!ParseUserPrincipalName(user_principal_name, &user_name, &user_realm,
                               &normalized_upn)) {
@@ -553,7 +556,7 @@ ErrorType SambaInterface::JoinMachine(
   device_account_.netbios_name = base::ToUpperASCII(machine_name);
   device_account_.realm = join_realm;
 
-  // Update IPs, server names etc. for the device account.
+  // Update smb.conf, IPs, server names etc. for the device account.
   ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE) {
     Reset();
@@ -610,7 +613,7 @@ ErrorType SambaInterface::FetchUserGpos(
   DCHECK(!user_sam_account_name_.empty());
   DCHECK(!user_account_.realm.empty());
 
-  // Update IPs, server names etc for the user account.
+  // Update smb.conf, IPs, server names etc for the user account.
   ErrorType error = UpdateAccountData(&user_account_);
   if (error != ERROR_NONE)
     return error;
@@ -647,11 +650,11 @@ ErrorType SambaInterface::FetchDeviceGpos(
   ReloadDebugFlags();
 
   // Check if the device is domain joined.
-  ErrorType error = CheckDeviceAccountValid();
+  ErrorType error = CheckDeviceJoined();
   if (error != ERROR_NONE)
     return error;
 
-  // Update IPs, server names etc.
+  // Update smb.conf, IPs, server names etc for the device account.
   error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
@@ -1062,29 +1065,6 @@ ErrorType SambaInterface::GetAccountInfo(
     const std::string& normalized_upn,
     const std::string& account_id,
     ActiveDirectoryAccountInfo* account_info) {
-  // The user TGT might not be accessible at this point (we need the
-  // sAMAccountName returned in |account_info| to fetch the user TGT). Thus, we
-  // have to query the account info using the DEVICE account. Thus, first make
-  // sure we have everything we need.
-  ErrorType error = UpdateAccountData(&device_account_);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Refresh the device TGT used by SearchAccountInfo() below.
-  std::string machine_principal =
-      device_account_.netbios_name + "$@" + device_account_.realm;
-  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
-  error = device_tgt_manager_.AcquireTgtWithKeytab(
-      machine_principal, Path::MACHINE_KT_STATE, false, device_account_.realm,
-      device_account_.kdc_ip);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Write the user's smb.conf for SearchAccountInfo().
-  error = WriteSmbConf(user_account_);
-  if (error != ERROR_NONE)
-    return error;
-
   // If |account_id| is provided, search by objectGUID only.
   if (!account_id.empty()) {
     // Searching by objectGUID has to use the octet string representation!
@@ -1100,7 +1080,7 @@ ErrorType SambaInterface::GetAccountInfo(
   anonymizer_->SetReplacement(user_name, kSAMAccountNamePlaceholder);
   std::string search_string =
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
-  error = SearchAccountInfo(search_string, account_info);
+  ErrorType error = SearchAccountInfo(search_string, account_info);
   if (error != ERROR_BAD_USER_NAME)  // ERROR_BAD_USER_NAME means there were
     return error;                    // no search results.
 
@@ -1115,9 +1095,7 @@ ErrorType SambaInterface::GetAccountInfo(
 ErrorType SambaInterface::SearchAccountInfo(
     const std::string& search_string,
     ActiveDirectoryAccountInfo* account_info) {
-  // Call net ads search to find the user's account info. Note that we're
-  // authenticating with the device account, but we're searching on the user's
-  // realm!
+  // Set up net ads search to find the user's account info.
   const std::string& smb_conf_path = paths_->Get(user_account_.smb_conf_path);
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
                            search_string, kSearchObjectGUID,
@@ -1137,9 +1115,9 @@ ErrorType SambaInterface::SearchAccountInfo(
                                 kSAMAccountNamePlaceholder);
   anonymizer_->ReplaceSearchArg(kSearchCommonName, kCommonNamePlaceholder);
 
-  // Use the machine TGT to query the account info.
+  // Use the user's TGT to query the account info.
   net_cmd.SetEnv(kKrb5CCEnvKey,
-                 paths_->Get(device_tgt_manager_.GetCredentialCachePath()));
+                 paths_->Get(user_tgt_manager_.GetCredentialCachePath()));
   const bool net_result = jail_helper_.SetupJailAndRun(
       &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH);
   anonymizer_->ResetSearchArgReplacements();
@@ -1452,7 +1430,7 @@ void SambaInterface::AnonymizeRealm(const std::string& realm,
     anonymizer_->SetReplacementAllCases(parts[n], placeholder);
 }
 
-ErrorType SambaInterface::CheckDeviceAccountValid() const {
+ErrorType SambaInterface::CheckDeviceJoined() const {
   if (device_account_.realm.empty() || device_account_.netbios_name.empty()) {
     LOG(ERROR) << "Device is not joined. Must call JoinMachine first.";
     return ERROR_NOT_JOINED;

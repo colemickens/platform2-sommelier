@@ -211,7 +211,8 @@ class SambaInterface {
   // |user_name| and - if that fails - by userPrincipalName = |normalized_upn|.
   // Note that sAMAccountName can be different from the name-part of the
   // userPrincipalName and that kinit/Windows prefer sAMAccountName over
-  // userPrincipalName. Refreshes the device TGT.
+  // userPrincipalName. Assumes that the account is up-to-date and the user's
+  // TGT is valid.
   ErrorType GetAccountInfo(const std::string& user_name,
                            const std::string& normalized_upn,
                            const std::string& account_id,
@@ -259,7 +260,7 @@ class SambaInterface {
 
   // Returns ERROR_NOT_JOINED if the device is not in a 'joined' state and
   // ERROR_NONE otherwise.
-  ErrorType CheckDeviceAccountValid() const;
+  ErrorType CheckDeviceJoined() const;
 
   // Resets internal state to an 'unenrolled' state by wiping configuration and
   // user data.
