@@ -107,9 +107,10 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
                              &vendor_id, &product_id))
       continue;
 
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceAdded(sys_path, bus_number, device_address,
-                                       vendor_id, product_id));
+    for (UsbDeviceEventObserver& observer : observer_list_) {
+      observer.OnUsbDeviceAdded(sys_path, bus_number, device_address, vendor_id,
+                                product_id);
+    }
   }
   return true;
 }
@@ -171,15 +172,16 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
       return;
     }
 
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceAdded(sys_path, bus_number, device_address,
-                                       vendor_id, product_id));
+    for (UsbDeviceEventObserver& observer : observer_list_) {
+      observer.OnUsbDeviceAdded(sys_path, bus_number, device_address, vendor_id,
+                                product_id);
+    }
     return;
   }
 
   if (action == "remove") {
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceRemoved(sys_path));
+    for (UsbDeviceEventObserver& observer : observer_list_)
+      observer.OnUsbDeviceRemoved(sys_path);
   }
 }
 
