@@ -44,6 +44,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case ENOTEMPTY:
       error = ERROR_NOT_EMPTY;
       break;
+    case EEXIST:
+      error = ERROR_EXISTS;
+      break;
     default:
       error = ERROR_FAILED;
       break;
@@ -98,6 +101,10 @@ bool IsValidOptions(const ReadFileOptions& options) {
          options.offset() >= 0 && options.length() >= 0;
 }
 
+bool IsValidOptions(const CreateFileOptions& options) {
+  return options.has_mount_id() && options.has_file_path();
+}
+
 // Template specializations to extract the entry path from the various protos
 // even when the fields have different names.
 template <typename Proto>
@@ -127,6 +134,11 @@ std::string GetEntryPath(const OpenFileOptions& options) {
 template <>
 std::string GetEntryPath(const DeleteEntryOptions& options) {
   return options.entry_path();
+}
+
+template <>
+std::string GetEntryPath(const CreateFileOptions& options) {
+  return options.file_path();
 }
 
 // Template specializations to map a method name to it's Proto argument.
@@ -177,6 +189,11 @@ const char* GetMethodName(const DeleteEntryOptions& unused) {
 template <>
 const char* GetMethodName(const ReadFileOptions& unused) {
   return kReadFileMethod;
+}
+
+template <>
+const char* GetMethodName(const CreateFileOptions& unused) {
+  return kCreateFileMethod;
 }
 
 void LogAndSetError(const char* operation_name,
@@ -442,6 +459,41 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
       Seek(options, error_code) &&
       ReadFileIntoBuffer(options, error_code, &buffer) &&
       WriteTempFile(options, buffer, error_code, temp_fd);
+}
+
+int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
+  int32_t error_code;
+  std::string full_path;
+  CreateFileOptions options;
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, &error_code)) {
+    return error_code;
+  }
+
+  int32_t file_id;
+  // CreateFile() gives us back an open file descriptor to the newly created
+  // file.
+  int32_t create_result = samba_interface_->CreateFile(full_path, &file_id);
+  if (create_result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(create_result), &error_code);
+    return error_code;
+  }
+
+  // Close the file handle from CreateFile().
+  int32_t close_result = samba_interface_->CloseFile(file_id);
+  if (close_result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(close_result), &error_code);
+
+    // Attempt to delete the file since file will not be usable.
+    int32_t unlink_result = samba_interface_->Unlink(full_path);
+    if (unlink_result != 0) {
+      // Log the unlink error but return the original error.
+      LOG(ERROR) << "Error unlinking after error closing file: "
+                 << GetErrorFromErrno(unlink_result);
+    }
+    return error_code;
+  }
+
+  return static_cast<int32_t>(ERROR_OK);
 }
 
 // This is a helper method that has a similar return structure as

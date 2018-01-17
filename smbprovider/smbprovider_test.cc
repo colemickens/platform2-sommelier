@@ -125,6 +125,16 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
+  ProtoBlob CreateCreateFileOptionsBlob(int32_t mount_id,
+                                        const std::string& file_path) {
+    ProtoBlob proto_blob;
+    CreateFileOptions options;
+    options.set_mount_id(mount_id);
+    options.set_file_path(file_path);
+    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(options, &proto_blob));
+    return proto_blob;
+  }
+
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
   int32_t PrepareMount() {
@@ -1125,6 +1135,89 @@ TEST_F(SmbProviderTest, ReadFileReadsCorrectFile) {
   // Close files.
   CloseFileHelper(mount_id, file_id1);
   CloseFileHelper(mount_id, file_id2);
+}
+
+// CreateFile fails when passed an invalid protobuf.
+TEST_F(SmbProviderTest, CreateFileFailsWithInvalidProto) {
+  ProtoBlob empty_blob;
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->CreateFile(empty_blob)));
+}
+
+// CreateFile fails when passed an invalid mount.
+TEST_F(SmbProviderTest, CreateFileFailsWithInvalidMount) {
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(999, "/path/dog.jpg");
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CreateFile(create_blob)));
+}
+
+// CreateFile succeeds when passed valid parameters and closes the file handle.
+TEST_F(SmbProviderTest, CreateFileSucceeds) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(mount_id, "/dog.jpg");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateFile(create_blob)));
+  EXPECT_TRUE(fake_samba_->EntryExists("smb://wdshare/test/dog.jpg"));
+  ExpectNoOpenEntries();
+}
+
+// Created file should be able to be opened.
+TEST_F(SmbProviderTest, CreatedFileCanBeOpened) {
+  const int32_t mount_id = PrepareMount();
+  const std::string path = "/dog.jpg";
+
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(mount_id, path);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateFile(create_blob)));
+
+  int32_t file_id;
+  int32_t error_code;
+  ProtoBlob open_file_blob =
+      CreateOpenFileOptionsBlob(mount_id, path, false /* writeable */);
+  smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(file_id, 0);
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+// CreateFile should be able to create multiple files with different paths.
+TEST_F(SmbProviderTest, CreateMultipleFiles) {
+  const int32_t mount_id = PrepareMount();
+  const std::string path1 = "/dog.jpg";
+  const std::string path2 = "/cat.jpg";
+
+  ProtoBlob create_blob1 = CreateCreateFileOptionsBlob(mount_id, path1);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateFile(create_blob1)));
+  EXPECT_TRUE(fake_samba_->EntryExists("smb://wdshare/test/dog.jpg"));
+
+  ProtoBlob create_blob2 = CreateCreateFileOptionsBlob(mount_id, path2);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateFile(create_blob2)));
+  EXPECT_TRUE(fake_samba_->EntryExists("smb://wdshare/test/cat.jpg"));
+}
+
+// CreateFile should fail if a file already exists in the path.
+TEST_F(SmbProviderTest, CreateFileFailsFileAlreadyExists) {
+  const int32_t mount_id = PrepareMount();
+  const std::string path = "/dog.jpg";
+
+  fake_samba_->AddFile("smb://wdshare/test/dog.jpg");
+
+  ProtoBlob create_blob2 = CreateCreateFileOptionsBlob(mount_id, path);
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateFile(create_blob2)));
+}
+
+// CreateFile should fail if a directory already exists in the path.
+TEST_F(SmbProviderTest, CreateFileFailsDirectoryExists) {
+  const int32_t mount_id = PrepareMount();
+
+  // Add a directory located at "/dogs".
+  fake_samba_->AddDirectory("smb://wdshare/test/dogs");
+
+  // Attempt to add a file located at "/dogs".
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(mount_id, "/dogs");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateFile(create_blob)));
 }
 
 }  // namespace smbprovider
