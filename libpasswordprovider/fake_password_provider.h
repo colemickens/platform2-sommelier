@@ -40,6 +40,9 @@ class FakePasswordProvider : public PasswordProviderInterface {
     }
 
     auto password = std::make_unique<Password>();
+    if (!password->Init()) {
+      return nullptr;
+    }
 
     memcpy(password->GetMutableRaw(), password_.c_str(), password_.size());
     password->SetSize(password_.size());
