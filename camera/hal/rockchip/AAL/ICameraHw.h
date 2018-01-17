@@ -23,6 +23,8 @@
 
 NAMESPACE_DECLARATION {
 
+class IErrorCallback;
+
 class ICameraHw {
 public:
     static ICameraHw * createCameraHW(int cameraId);
@@ -61,6 +63,12 @@ public:
     virtual status_t configStreams(std::vector<camera3_stream_t*> &activeStreams,
                                    uint32_t operation_mode = 0) = 0;
 
+    /**
+     * when hardware error happens, device error
+     * will be sent out via the IErrorCallback which belongs to ResultProcessor.
+     * before the ResultProcessor be terminated, set nullptr in the function.
+     */
+    virtual void registerErrorCallback(IErrorCallback* errCb) = 0;
     /**
      * For debugging
      */

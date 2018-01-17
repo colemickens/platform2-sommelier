@@ -53,6 +53,7 @@ class RKISP1CameraHw: public ICameraHw {
     virtual status_t configStreams(std::vector<camera3_stream_t*> &activeStreams,
                                    uint32_t operation_mode);
     virtual status_t processRequest(Camera3Request* request, int inFlightCount);
+    virtual void registerErrorCallback(IErrorCallback* errCb);
     virtual status_t flush();
     virtual void dump(int fd);
 

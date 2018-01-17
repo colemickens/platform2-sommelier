@@ -451,6 +451,13 @@ RKISP1CameraHw::flush()
 }
 
 void
+RKISP1CameraHw::registerErrorCallback(IErrorCallback* errCb)
+{
+    if (mImguUnit)
+        mImguUnit->registerErrorCallback(errCb);
+}
+
+void
 RKISP1CameraHw::dump(int fd)
 {
     UNUSED(fd);

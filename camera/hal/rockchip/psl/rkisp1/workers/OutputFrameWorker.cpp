@@ -208,7 +208,8 @@ status_t OutputFrameWorker::run()
 
     V4L2BufferInfo outBuf;
 
-    status = mNode->grabFrame(&outBuf);
+    if (!mDevError)
+        status = mNode->grabFrame(&outBuf);
 
     LOG2("%s:%d: buffer frame_id(%d)", __func__, __LINE__, outBuf.vbuffer.sequence());
 
@@ -219,6 +220,13 @@ status_t OutputFrameWorker::run()
         request->setSequenceId(sequence);
 
     int index = outBuf.vbuffer.index();
+    if (mDevError) {
+        for (int i = 0; i < mPipelineDepth; i++)
+            if (mOutputBuffers[(i + mIndex) % mPipelineDepth]) {
+                index = (i + mIndex) % mPipelineDepth;
+                break;
+            }
+    }
     mOutputBuffer = mOutputBuffers[index];
     mWorkingBuffer = mWorkingBuffers[index];
     mOutputBuffers[index] = nullptr;
@@ -315,7 +323,6 @@ status_t OutputFrameWorker::postRun()
             mOutputBuffer->dumpImage(CAMERA_DUMP_PREVIEW, "PREVIEW");
         }
     }
-
     // call capturedone for the stream of the buffer
     stream->captureDone(mOutputBuffer, request);
 

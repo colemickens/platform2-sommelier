@@ -53,6 +53,7 @@ public:
 
     // IPollEvenListener
     virtual status_t notifyPollEvent(PollEventMessage *msg);
+    virtual void registerErrorCallback(IErrorCallback* errCb) { mErrCb = errCb; }
 
 private:
     status_t configureVideoNodes(std::shared_ptr<GraphConfig> graphConfig);
@@ -127,6 +128,7 @@ private:
     std::map<NodeTypes, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;
     bool mFirstRequest;
     bool mNeedRestartPoll;  //only for starting stats poll request in right time
+    IErrorCallback  *  mErrCb;
 
     std::map<NodeTypes, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
     std::map<camera3_stream_t*, NodeTypes> mStreamListenerMapping;

@@ -534,6 +534,7 @@ void ResultProcessor::returnPendingPartials(RequestState_t* reqState)
  * \param reqState[IN]: Request State control structure
  * \param returnIndex[IN]: index of the result buffer in the array of result
  *                         buffers stored in the request
+ *                         -1 means null metadata
  */
 status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex)
 {
@@ -541,21 +542,21 @@ status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex
     camera3_capture_result result;
     CameraMetadata *resultMetadata;
     CLEAR(result);
-    resultMetadata = reqState->request->getPartialResultBuffer(returnIndex);
-    if (resultMetadata == nullptr) {
-        LOGE("Cannot get partial result buffer");
-        return UNKNOWN_ERROR;
-    }
+    if (returnIndex >= 0)
+        resultMetadata = reqState->request->getPartialResultBuffer(returnIndex);
+    else
+        resultMetadata = nullptr;
     // This value should be between 1 and android.request.partialResultCount
     // The index goes between 0-partialResultCount -1
     result.partial_result = returnIndex + 1;
     result.frame_number = reqState->reqId;
-    result.result = resultMetadata->getAndLock();
+    result.result = resultMetadata ? resultMetadata->getAndLock() : nullptr;
     result.num_output_buffers = 0;
 
     mCallbackOps->process_capture_result(mCallbackOps, &result);
 
-    resultMetadata->unlock(result.result);
+    if (resultMetadata)
+        resultMetadata->unlock(result.result);
 
     reqState->partialResultReturned += 1;
     LOGR("<Request %d> camera id %d result cb done", reqState->reqId, reqState->request->getCameraId());

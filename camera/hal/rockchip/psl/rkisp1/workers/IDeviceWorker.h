@@ -23,6 +23,7 @@
 #include "GraphConfig.h"
 #include "tasks/ExecuteTaskBase.h"
 #include "Camera3Request.h"
+#include "IErrorCallback.h"
 
 namespace android {
 namespace camera2 {
@@ -72,10 +73,10 @@ public:
         id(MESSAGE_ID_MAX) {}
 };
 
-class IDeviceWorker
+class IDeviceWorker: public IErrorCallback
 {
 public:
-    explicit IDeviceWorker(int cameraId) : mCameraId(cameraId) {}
+    explicit IDeviceWorker(int cameraId) : mCameraId(cameraId), mDevError(false) {}
     virtual ~IDeviceWorker() {}
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config) = 0;
@@ -85,12 +86,14 @@ public:
     virtual status_t run() = 0;
     virtual status_t postRun() = 0;
     virtual std::shared_ptr<V4L2VideoNode> getNode() const = 0;
+    virtual status_t deviceError(void) { mDevError = true; return NO_ERROR; }
 
 protected:
     std::shared_ptr<DeviceMessage> mMsg; /*!Set in prepareRun and should be valid until
                            postRun is called */
 
     int mCameraId;
+    bool mDevError;
 private:
     IDeviceWorker();
 };

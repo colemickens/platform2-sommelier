@@ -85,6 +85,7 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
 #ifdef REMOTE_3A_SERVER
     PlatformData::getRockchip3AClient()->registerErrorCallback(mResultProcessor);
 #endif
+    mCameraHw->registerErrorCallback(mResultProcessor);
     mInitialized = true;
     return NO_ERROR;
 }
@@ -396,7 +397,11 @@ status_t RequestThread::flush(void)
     nsecs_t interval = 0;
 
     // wait 1000ms at most while there are requests in the HAL
-    while (mRequestsInHAL > 0 && interval / 1000 <= 1000000) {
+    // TODO: pending requst couldn't be returned in 1000ms. Because the
+    // poll timeout limit of pending request is 3000ms now, and adding
+    // the onter processing time, the worst case for flush may spend more
+    // than 3000ms, and we think 5000ms is safe now. This should be optimized.
+    while (mRequestsInHAL > 0 && interval / 1000 <= 5 * 1000000) {
         usleep(10000); // wait 10ms
         interval = systemTime() - startTime;
     }

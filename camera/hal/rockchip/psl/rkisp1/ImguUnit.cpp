@@ -44,6 +44,7 @@ ImguUnit::ImguUnit(int cameraId,
         mFlushing(false),
         mFirstRequest(true),
         mNeedRestartPoll(true),
+        mErrCb(nullptr),
         mTakingPicture(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
@@ -581,7 +582,7 @@ status_t ImguUnit::processNextRequest()
             status |= (*it).prepareRun(msg);
         }
         status |= mPollerThreadMeta->pollRequest(request->getId(),
-                                                 500000,
+                                                 3000,
                                                  &(mMetaConfig.nodes));
         if (status != OK) {
             return status;
@@ -611,7 +612,7 @@ status_t ImguUnit::processNextRequest()
 
     LOG2("%s:%d: poll request id(%d)", __func__, __LINE__, request->getId());
     status = mPollerThread->pollRequest(request->getId(),
-                                        500000,
+                                        3000,
                                         &(mCurPipeConfig->nodes));
 
     return status;
@@ -707,9 +708,26 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
 
     status_t status = OK;
     std::shared_ptr<V4L2VideoNode> *activeNodes = pollmsg.pollEvent.activeDevices;
+    int processReqNum = 1;
 
-    if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
-              (std::shared_ptr<V4L2DeviceBase>&)activeNodes[0]) != mMetaConfig.nodes.end()) {
+    /* tell workers and AAL that device error occured */
+    if (!activeNodes) {
+        for (const auto &it : mCurPipeConfig->deviceWorkers)
+             (*it).deviceError();
+
+        for (const auto &it : mMetaConfig.deviceWorkers)
+             (*it).deviceError();
+
+        if (mErrCb)
+            mErrCb->deviceError();
+        /* clear the polling msg*/
+        mPollerThread->flush(false);
+        mPollerThreadMeta->flush(false);
+        processReqNum =  mMessagesUnderwork.size();
+    }
+
+    if (activeNodes && std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
+          (std::shared_ptr<V4L2DeviceBase>&)activeNodes[0]) != mMetaConfig.nodes.end()) {
 
         LOG2("%s:%d: mMetaConfig node polled, reqId(%d)", __func__, __LINE__, pollmsg.pollEvent.requestId);
         for(auto &it : mMetaConfig.deviceWorkers) {
@@ -725,7 +743,7 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
                 status |= (*it).prepareRun(msg);
             }
             status |= mPollerThreadMeta->pollRequest(request->getId(),
-                                                     500000,
+                                                     3000,
                                                      &(mMetaConfig.nodes));
         } else {
             mNeedRestartPoll = true;
@@ -734,36 +752,40 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
     }
 
     unsigned int reqId = pollmsg.pollEvent.requestId;
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mRequestToWorkMap[reqId].begin();
-    for (;it != mRequestToWorkMap[reqId].end(); ++it) {
-        std::shared_ptr<FrameWorker> worker = (std::shared_ptr<FrameWorker>&)(*it);
-        status |= worker->asyncPollDone(*(mMessagesUnderwork.begin()), true);
+    for ( int i = 0; i < processReqNum; i++) {
+        std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mRequestToWorkMap[reqId].begin();
+        for (;it != mRequestToWorkMap[reqId].end(); ++it) {
+            std::shared_ptr<FrameWorker> worker = (std::shared_ptr<FrameWorker>&)(*it);
+            status |= worker->asyncPollDone(*(mMessagesUnderwork.begin()), true);
+        }
+
+        it = mRequestToWorkMap[reqId].begin();
+        for (;it != mRequestToWorkMap[reqId].end(); ++it) {
+            status |= (*it)->run();
+        }
+
+        it = mRequestToWorkMap[reqId].begin();
+        for (;it != mRequestToWorkMap[reqId].end(); ++it) {
+            status |= (*it)->postRun();
+        }
+        mRequestToWorkMap.erase(reqId);
+
+        //HACK: return metadata after updated it
+        std::shared_ptr<DeviceMessage> msg = *(mMessagesUnderwork.begin());
+        Camera3Request *request = msg->cbMetadataMsg.request;
+        LOG2("%s: request %d done", __func__, request->getId());
+        ICaptureEventListener::CaptureMessage outMsg;
+        outMsg.data.event.reqId = request->getId();
+        outMsg.data.event.type = ICaptureEventListener::CAPTURE_REQUEST_DONE;
+        outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
+        for (const auto &listener : mListeners)
+            listener->notifyCaptureEvent(&outMsg);
+
+        /* return null metadata if device error occured */
+        request->mCallback->metadataDone(request, activeNodes ? CONTROL_UNIT_PARTIAL_RESULT : -1);
+        mMessagesUnderwork.erase(mMessagesUnderwork.begin());
+        reqId++;
     }
-
-    it = mRequestToWorkMap[reqId].begin();
-    for (;it != mRequestToWorkMap[reqId].end(); ++it) {
-        status |= (*it)->run();
-    }
-
-    it = mRequestToWorkMap[reqId].begin();
-    for (;it != mRequestToWorkMap[reqId].end(); ++it) {
-        status |= (*it)->postRun();
-    }
-    mRequestToWorkMap.erase(reqId);
-
-    //HACK: return metadata after updated it
-    std::shared_ptr<DeviceMessage> msg = *(mMessagesUnderwork.begin());
-    Camera3Request *request = msg->cbMetadataMsg.request;
-    LOG2("%s: request %d done", __func__, request->getId());
-    ICaptureEventListener::CaptureMessage outMsg;
-    outMsg.data.event.reqId = request->getId();
-    outMsg.data.event.type = ICaptureEventListener::CAPTURE_REQUEST_DONE;
-    outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
-    for (const auto &listener : mListeners)
-		listener->notifyCaptureEvent(&outMsg);
-
-    request->mCallback->metadataDone(request, CONTROL_UNIT_PARTIAL_RESULT);
-    mMessagesUnderwork.erase(mMessagesUnderwork.begin());
 
     return status;
 }
@@ -832,6 +854,13 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         // For now, set number of device to zero in error case
         msg.pollEvent.numDevices = 0;
         msg.pollEvent.polledDevices = 0;
+        /* report poll error */
+        auto &it = *(pollMsg->data.polledDevices);
+        if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
+                      it[0]) == mMetaConfig.nodes.end())
+            msg.id = MESSAGE_ID_POLL;
+        else
+            msg.id = MESSAGE_ID_POLL_META;
         mMessageQueue.send(&msg);
     } else {
         LOGW("unknown poll event id (%d)", pollMsg->id);

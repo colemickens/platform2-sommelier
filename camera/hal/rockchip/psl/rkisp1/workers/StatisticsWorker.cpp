@@ -70,6 +70,10 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
+
+    if (mDevError)
+        return OK;
+
     mMsg = msg;
 
     status |= mNode->putFrame(mBuffers[mIndex]);
@@ -125,6 +129,10 @@ static void dumpStats(struct rkisp1_stat_buffer* stats) {
 status_t StatisticsWorker::run()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    if (mDevError)
+        return OK;
+
     if (!mMsg) {
         LOGE("Message is not set - Fix the bug");
         return UNKNOWN_ERROR;

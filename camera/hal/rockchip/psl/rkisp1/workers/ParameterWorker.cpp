@@ -561,6 +561,10 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    if (mDevError)
+        return OK;
+
     mMsg = msg;
 
     rkisp1_isp_params_cfg *ispParams = (rkisp1_isp_params_cfg *)mCameraBuffers[mIndex]->data();
@@ -629,6 +633,9 @@ status_t ParameterWorker::run()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
+
+    if (mDevError)
+        return OK;
 
     status = grabFrame();
     if (status < 0) {
