@@ -86,7 +86,7 @@ def GetCurrentVersion(paths):
     str: gs path for current component version.
   """
   current_version = LooseVersion('0.0.0.0')
-  current_version_path = ''
+  current_version_path = None
 
   for version_path in paths:
     if version_path[-1] != '/':
@@ -121,12 +121,14 @@ def DecideVersion(version, current_version):
   version = ParseVersion(version)
   current_version = ParseVersion(current_version)
   if (len(version) != 3 and len(version) != 4) or \
-     (len(current_version) != 3 and len(current_version)) != 4:
-    logger.fatal("version_path is in wrong format")
-  if version[0] < current_version[0] or version[1] < current_version[1] or \
-     version[2] < current_version[2]:
-    logger.fatal("component being built is outdated.")
-    return []
+     (len(current_version) != 3 and len(current_version) != 4):
+    logger.fatal('version is in wrong format.')
+    return None
+
+  if LooseVersion('.'.join([str(x) for x in version[0:3]])) < \
+     LooseVersion('.'.join([str(x) for x in current_version[0:3]])):
+    logger.fatal('component being built is outdated.')
+    return None
   if version[0] == current_version[0] and version[1] == current_version[1] and \
      version[2] == current_version[2]:
     # Rev bug fix on top of current_version.
@@ -158,7 +160,7 @@ def CheckValidMetadata(metadata):
       not "pkgpath" in metadata or \
       not "name" in metadata or \
       not "manifest" in metadata:
-    logger.fatal("attribute is missing.")
+    cros_build_lib.Die('attribute is missing.')
     return False
   else:
     return True
@@ -175,8 +177,9 @@ def CheckComponentFilesExistence(paths):
   """
   for path in paths:
     if not os.path.exists(path):
-      logger.fatal('component file is missing:%s', path)
+      cros_build_lib.Die('component file is missing: %s', path)
       return False
+    logger.info('File to be included to final component: %s', path)
   return True
 
 
@@ -207,7 +210,7 @@ def CreateComponent(manifest_path, version, package_version, platform, files,
     gsbucket: (str) Omaha gsbucket path.
   """
   if not os.path.exists(manifest_path):
-    logger.fatal('manifest file is missing:%s', manifest_path)
+    cros_build_lib.Die('manifest file is missing: %s', manifest_path)
   with open(manifest_path) as f:
     # Construct final manifest file.
     data = json.load(f)
@@ -257,19 +260,51 @@ def GetCurrentPackageVersion(current_version_path, platform):
           return manifest[MANIFEST_PACKAGE_VERSION_FIELD]
   return '0.0.0.0'
 
-def IsPackage(folder_name, package_name):
-  """Check if folder is for a package.
+def FixPackageVersion(version):
+  """Fix version to the format of X.Y.Z-rN
+
+  Package name in ebuild is in the format of (X){1,3}-rN, we convert it
+  to X.Y.Z-rN by padding 0 to Z (and Y).
+  This function is added because a package like arc++ has version numbers
+  (X)-rN which is not consistent with the rest of the packages.
+
+  Args:
+    version: (str) version to format.
+
+  Returns:
+    str: fixed version.
+    Or None: if version is not fixable.
+  """
+  pattern = re.compile('([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(-r[0-9]+)?$')
+  m = pattern.match(version)
+  if m is None or m.group(1) is None:
+    logger.info('version %s is in wrong format.', version)
+    return None
+  version = m.group(1)
+  for i in range(2, 4):
+    version = (version + '.0') if m.group(i) is None else (version + m.group(i))
+  if m.group(4) is not None:
+    version += m.group(4)
+  return version
+
+def GetPackageVersion(folder_name, package_name):
+  """Get the version of the package.
+
+  It checks if the folder is for the package. If yes, return the version of the
+  package.
 
   Args:
     folder_name: (str) name of the folder.
     package_name: (str) name of the package.
 
   Returns:
-    Bool: whether folder is for the package.
+    str: fixed version.
   """
-  pattern = re.compile('(^[\\w-]*)-[0-9]+(\\.[0-9]+){2}(-r[0-9]+){0,1}$')
+  pattern = re.compile('(^[\\w-]*)-[0-9]+(\\.[0-9]+){0,2}(-r[0-9]+)?$')
   m = pattern.match(folder_name)
-  return m.group(1) == package_name
+  if m is not None and m.group(1) == package_name:
+    return FixPackageVersion(folder_name[len(package_name)+1:])
+  return None
 
 def BuildComponent(component_to_build, components, board, platform,
                    upload=False):
@@ -292,14 +327,13 @@ def BuildComponent(component_to_build, components, board, platform,
         files = [os.path.join(cros_build_lib.GetSysroot(), 'build', board, x) \
                  for x in metadata["files"]]
         if not CheckComponentFilesExistence(files):
-          logger.fatal('component files are missing.')
-          return
+          cros_build_lib.Die('component files are missing.')
 
         # Check release versions on gs.
         gsbucket = metadata['gsbucket']
         dirs = CheckGsBucket(gsbucket)
         if len(dirs) == 0:
-          logger.fatal('gsbucket %s has no subfolders', gsbucket)
+          cros_build_lib.Die('gsbucket %s has no subfolders', gsbucket)
         logger.info('Dirs in gsbucket:%s', dirs)
         current_version, current_version_path = GetCurrentVersion(dirs)
         logger.info('latest component version on Omaha gs: %s', current_version)
@@ -311,9 +345,8 @@ def BuildComponent(component_to_build, components, board, platform,
         name = metadata["name"]
         for f in os.listdir(os.path.join(cros_build_lib.GetSysroot(), 'build',
                                          board, metadata["pkgpath"])):
-          if IsPackage(f, name):
-            # Decide component's next release version.
-            package_version = f[len(name)+1:]
+          package_version = GetPackageVersion(f, name)
+          if package_version is not None:
             logger.info('current package version: %s', package_version)
             logger.info('package version of current component: %s',
                         current_package_version)
@@ -329,6 +362,8 @@ def BuildComponent(component_to_build, components, board, platform,
             CreateComponent(manifest_path, version, package_version, platform,
                             files, upload, gsbucket)
             return
+        cros_build_lib.Die('Package could not be found, component could not be'
+                           'built.')
 
 
 def GetComponentsToBuild(path):
