@@ -965,9 +965,8 @@ void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
 }
 
 void MobileOperatorInfoImpl::NotifyOperatorChanged() {
-  FOR_EACH_OBSERVER(MobileOperatorInfo::Observer,
-                    observers_,
-                    OnOperatorChanged());
+  for (MobileOperatorInfo::Observer& observer : observers_)
+    observer.OnOperatorChanged();
 }
 
 bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
