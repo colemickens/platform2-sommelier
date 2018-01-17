@@ -746,6 +746,17 @@ int RunOci(const base::FilePath& bundle_dir,
                   << container_pid_path.value();
       return -1;
     }
+
+    // Create another symlink similar to mountpoints/container-root. Unlike
+    // mountpoints/container-root, this one provides the view from inside the
+    // container.
+    base::FilePath procfs_path(base::StringPrintf("/proc/%d/root", child_pid));
+    base::FilePath symlink_path = container_dir.Append("root");
+    if (!base::CreateSymbolicLink(procfs_path, symlink_path)) {
+      PLOG(ERROR) << "Failed to create root/ symlink";
+      container_kill(container.get());
+      return -1;
+    }
   }
 
   if (!RunHooks(oci_config->post_start_hooks, &child_pid, container_id,
