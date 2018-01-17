@@ -142,14 +142,12 @@ uSNCreated: 287406
 uSNChanged: 307152
 name: John Doe
 objectGUID: %s
-userAccountControl: %u
 badPwdCount: 0
 codePage: 0
 countryCode: 0
 badPasswordTime: 131309487458845506
 lastLogoff: 0
 lastLogon: 131320568639495686
-pwdLastSet: %lu
 primaryGroupID: 513
 objectSid: S-1-5-21-250062649-3667841115-373469193-1134
 accountExpires: 9223372036854775807
@@ -165,6 +163,11 @@ dSCorePropagationData: 16010101000000.0Z
 lastLogonTimestamp: 131318125471489990
 msDS-SupportedEncryptionTypes: 0)!!!";
 
+// Password related fields in search response.
+const char kStubSearchPwdFormat[] = R"!!!(
+pwdLastSet: %lu
+userAccountControl: %u)!!!";
+
 // Search that doesn't find anything.
 const char kStubBadSearch[] = "Got 0 replies";
 
@@ -175,10 +178,17 @@ class SearchBuilder {
  public:
   // Prints out a stub net ads search result with the set parameters.
   std::string GetResult() {
-    return base::StringPrintf(
+    std::string result = base::StringPrintf(
         kStubSearchFormat, common_name_.c_str(), given_name_.c_str(),
         common_name_.c_str(), display_name_.c_str(), object_guid_.c_str(),
-        user_account_control_, pwd_last_set_, sam_account_name_.c_str());
+        sam_account_name_.c_str());
+
+    if (output_pwd_fields) {
+      result += base::StringPrintf(kStubSearchPwdFormat, pwd_last_set_,
+                                   user_account_control_);
+    }
+
+    return result;
   }
 
   // Sets the value of the givenName key.
@@ -223,6 +233,12 @@ class SearchBuilder {
     return *this;
   }
 
+  // Prevents output of pwdLastSet and userAccountControl fields.
+  SearchBuilder& NoPwdFields() {
+    output_pwd_fields = false;
+    return *this;
+  }
+
  private:
   std::string given_name_ = kGivenName;
   std::string display_name_ = kDisplayName;
@@ -231,6 +247,7 @@ class SearchBuilder {
   std::string common_name_ = kCommonName;
   uint32_t user_account_control_ = kUserAccountControl;
   uint64_t pwd_last_set_ = kPwdLastSet;
+  bool output_pwd_fields = true;
 };
 
 // Searches |str| for (|searchKey|=value) and returns value. Returns an empty
@@ -313,6 +330,10 @@ std::string GetSearchResultFromObjectGUID(const std::string& object_guid) {
   if (object_guid == kPasswordChangedAccountId)
     return search_builder.SetPwdLastSet(kPwdLastSet + 1).GetResult();
 
+  // Pretend missing pwdLastSet and userAccountControl fields.
+  if (object_guid == kNoPwdFieldsAccountId)
+    return search_builder.NoPwdFields().GetResult();
+
   NOTREACHED() << "UNHANDLED OBJECT GUID " << object_guid;
   return std::string();
 }
@@ -324,10 +345,15 @@ std::string GetSearchResultFromSAMAccountName(
   SearchBuilder search_builder;
   search_builder.SetSAMAccountName(sam_account_name);
 
-  // Set a special |kPasswordChangedAccountId|, required during auth for a
-  // test that uses that id in GetUserStatus().
+  // Set special account ids, required during auth for tests that use the ids in
+  // GetUserStatus().
   if (sam_account_name == kPasswordChangedUserName)
     return search_builder.SetObjectGuid(kPasswordChangedAccountId).GetResult();
+  if (sam_account_name == kNoPwdFieldsUserName) {
+    return search_builder.SetObjectGuid(kNoPwdFieldsAccountId)
+        .NoPwdFields()
+        .GetResult();
+  }
 
   // In all cases, just return a search result with the proper sAMAccountName.
   return search_builder.GetResult();

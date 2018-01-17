@@ -110,6 +110,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   void SetDeviceIsLockedForTesting() { device_is_locked_ = true; }
 
+  bool IsUserTgtAutoRenewalEnabledForTesting() {
+    return samba_.GetUserTgtManagerForTesting()
+        .IsTgtAutoRenewalEnabledForTesting();
+  }
+
  private:
   // Gets triggered by when the Kerberos credential cache or the configuration
   // file of the currently logged in user change. Triggers the

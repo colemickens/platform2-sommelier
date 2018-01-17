@@ -181,7 +181,8 @@ int HandleCommandLine(const std::string& command_line) {
 
   // Stub valid user principal. Switch behavior based on password.
   if (StartsWithCaseSensitive(command_line, kUserPrincipal) ||
-      StartsWithCaseSensitive(command_line, kPasswordChangedUserPrincipal)) {
+      StartsWithCaseSensitive(command_line, kPasswordChangedUserPrincipal) ||
+      StartsWithCaseSensitive(command_line, kNoPwdFieldsUserPrincipal)) {
     // Stub wrong password error.
     if (password == kWrongPassword) {
       WriteOutput("", kWrongPasswordError);

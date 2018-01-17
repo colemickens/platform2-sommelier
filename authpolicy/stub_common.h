@@ -43,6 +43,10 @@ extern const char kExpiredTgtUserPrincipal[];
 extern const char kPasswordChangedUserPrincipal[];
 // Corresponding user name.
 extern const char kPasswordChangedUserName[];
+// Triggers net ads search to return |kNoPwdFieldsAccountId| as objectGUID.
+extern const char kNoPwdFieldsUserPrincipal[];
+// Corresponding user name.
+extern const char kNoPwdFieldsUserName[];
 // Triggers an error in net ads join for missing or bad createcomputer argument.
 extern const char kExpectOuUserPrincipal[];
 
@@ -75,8 +79,8 @@ extern const char kExpiredPasswordAccountId[];
 extern const char kNeverExpirePasswordAccountId[];
 // Triggers a different pwdLastSet timestamp in net ads search.
 extern const char kPasswordChangedAccountId[];
-// User name corresponding to |kPasswordChangedAccountId|.
-extern const char kPasswordChangedUserName[];
+// Triggers missing pwdLastSet and userAccountControl fields in net ads search.
+extern const char kNoPwdFieldsAccountId[];
 
 // Default, valid Kerberos crendentials cache contents (in particular, TGT).
 extern const char kValidKrb5CCData[];

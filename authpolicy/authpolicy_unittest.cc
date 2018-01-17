@@ -962,6 +962,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_TRUE(authpolicy_->IsUserTgtAutoRenewalEnabledForTesting());
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
 
   ActiveDirectoryUserStatus expected_status;
@@ -1036,6 +1037,22 @@ TEST_F(AuthPolicyTest, GetUserStatusReportChangedPasswords) {
             GetUserStatus(kUserPrincipal, kPasswordChangedAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
             status.password_status());
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// GetUserStatus reports valid password if the LDAP attributes pwdLastSet or
+// userAccountControl are missing for some reason.
+TEST_F(AuthPolicyTest, GetUserStatusReportValidPasswordsWithoutPwdFields) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kNoPwdFieldsUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE,
+            GetUserStatus(kUserPrincipal, kNoPwdFieldsAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
+            status.password_status());
+  EXPECT_FALSE(status.account_info().has_pwd_last_set());
+  EXPECT_FALSE(status.account_info().has_user_account_control());
+  EXPECT_FALSE(authpolicy_->IsUserTgtAutoRenewalEnabledForTesting());
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 

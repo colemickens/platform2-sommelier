@@ -428,14 +428,26 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (error != ERROR_NONE)
     return error;
 
-  // Renew TGT periodically. The usual validity lifetime is about 10 hours, so
-  // this won't happen too often.
-  user_tgt_manager_.EnableTgtAutoRenewal(true);
-
   // Get account info for the user.
   error = GetAccountInfo(user_name, normalized_upn, account_id, account_info);
   if (error != ERROR_NONE)
     return error;
+
+  // Renew TGT periodically. The usual validity lifetime is 1 day, so this won't
+  // happen too often. There's a corner-case if pwdLastSet or userAccountControl
+  // are missing, see crbug.com/795758. In that case, GetUserStatus cannot
+  // determine the password validity and just *assumes* it's valid. However, the
+  // AD admin might have requested the user to change their password. To limit
+  // the impact, don't renew the TGT automatically, so that the user will be
+  // prompted to relog after 1 day instead of the renewal lifetime of usually 1
+  // week.
+  bool should_auto_renew = account_info->has_pwd_last_set() &&
+                           account_info->has_user_account_control();
+  LOG_IF(WARNING, !should_auto_renew)
+      << "pwdLastSet or userAccountControl fields missing. Will not "
+         "be able to determine password validity. Turning off TGT "
+         "renewal to limit lifetime.";
+  user_tgt_manager_.EnableTgtAutoRenewal(should_auto_renew);
 
   if (account_id.empty())
     SetUser(account_info->account_id());
@@ -445,7 +457,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   // at this point if AcquireTgtWithPassword() set a new password, but that's
   // fine, the timestamp is updated in the next GetUserStatus() call.
   user_sam_account_name_ = account_info->sam_account_name();
-  user_pwd_last_set_ = account_info->pwd_last_set();
+  if (account_info->has_pwd_last_set())
+    user_pwd_last_set_ = account_info->pwd_last_set();
   user_logged_in_ = true;
   return ERROR_NONE;
 }
@@ -817,6 +830,12 @@ ErrorType SambaInterface::GetUserTgtStatus(
 ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
     const ActiveDirectoryAccountInfo& account_info) {
   // See https://msdn.microsoft.com/en-us/library/ms679430(v=vs.85).aspx.
+
+  // Gracefully handle missing fields, see crbug.com/795758.
+  if (!account_info.has_pwd_last_set() ||
+      !account_info.has_user_account_control()) {
+    return ActiveDirectoryUserStatus::PASSWORD_VALID;
+  }
 
   // Password is always valid if it never expires.
   if ((account_info.user_account_control() & UF_DONT_EXPIRE_PASSWD) != 0)

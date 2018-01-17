@@ -186,36 +186,47 @@ int ParseAccountInfo(const std::string& net_out) {
   if (base::StartsWith(net_out, kToken_NoResults, base::CompareCase::SENSITIVE))
     return OutputForCaller("");
 
+  // Parse required attributes.
   std::string object_guid;
   std::string sam_account_name;
   std::string common_name;
-  std::string pwd_last_set_str;
-  std::string user_account_control_str;
   if (!FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
       !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name) ||
-      !FindToken(net_out, ':', kSearchCommonName, &common_name) ||
-      !FindToken(net_out, ':', kSearchPwdLastSet, &pwd_last_set_str) ||
-      !FindToken(net_out, ':', kSearchUserAccountControl,
-                 &user_account_control_str)) {
+      !FindToken(net_out, ':', kSearchCommonName, &common_name)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
 
-  uint64_t pwd_last_set = 0;
-  uint32_t user_account_control = 0;
-  if (!base::StringToUint64(pwd_last_set_str, &pwd_last_set) ||
-      !base::StringToUint(user_account_control_str, &user_account_control)) {
-    LOG(ERROR) << "Failed to parse account info";
-    return EXIT_CODE_PARSE_INPUT_FAILED;
-  }
-
-  // Output data as proto blob.
+  // Put data into proto.
   ActiveDirectoryAccountInfo account_info;
   account_info.set_account_id(object_guid);
   account_info.set_sam_account_name(sam_account_name);
   account_info.set_common_name(common_name);
-  account_info.set_pwd_last_set(pwd_last_set);
-  account_info.set_user_account_control(user_account_control);
+
+  // pwdLastSet might be missing, see crbug.com/795758. Handle it gracefully.
+  std::string pwd_last_set_str;
+  if (FindToken(net_out, ':', kSearchPwdLastSet, &pwd_last_set_str)) {
+    uint64_t pwd_last_set;
+    if (!base::StringToUint64(pwd_last_set_str, &pwd_last_set)) {
+      LOG(WARNING) << "Failed to convert pwdLastSet string '"
+                   << pwd_last_set_str << "' to integer";
+    } else {
+      account_info.set_pwd_last_set(pwd_last_set);
+    }
+  }
+
+  // Likewise, handle missing userAccountControl just in case.
+  std::string user_account_control_str;
+  if (FindToken(net_out, ':', kSearchUserAccountControl,
+                &user_account_control_str)) {
+    uint32_t user_account_control;
+    if (!base::StringToUint(user_account_control_str, &user_account_control)) {
+      LOG(WARNING) << "Failed to convert userAccountControl string '"
+                   << user_account_control_str << "' to integer";
+    } else {
+      account_info.set_user_account_control(user_account_control);
+    }
+  }
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for
   // accounts like 'Administrator' or for partially set up accounts.

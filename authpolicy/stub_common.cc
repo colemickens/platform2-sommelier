@@ -34,6 +34,8 @@ const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserPrincipal[] =
     "password_changed@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserName[] = "password_changed";
+const char kNoPwdFieldsUserPrincipal[] = "no_pwd_fields@REALM.EXAMPLE.COM";
+const char kNoPwdFieldsUserName[] = "no_pwd_fields";
 const char kExpectOuUserPrincipal[] = "expect_ou@REALM.EXAMPLE.COM";
 
 const char kExpectedOuCreatecomputer[] =
@@ -55,6 +57,7 @@ const char kExpiredPasswordAccountId[] = "21094d26-2720-4ba4-942c-c8cd12a6f83b";
 const char kNeverExpirePasswordAccountId[] =
     "a95a88c0-862d-48f1-b9f6-ee726d0190f6";
 const char kPasswordChangedAccountId[] = "c7297a6d-2b7f-4063-bfa2-c7223e635549";
+const char kNoPwdFieldsAccountId[] = "f5ebf5a8-2fc2-46b5-a326-afd958c71f4a";
 
 const char kValidKrb5CCData[] = "valid";
 const char kExpiredKrb5CCData[] = "expired";

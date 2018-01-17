@@ -142,6 +142,9 @@ class SambaInterface {
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
 
+  // Returns the ticket-granting-ticket manager for the user account.
+  TgtManager& GetUserTgtManagerForTesting() { return user_tgt_manager_; }
+
  private:
   // User or device specific information. The user might be logging on to a
   // different realm than the machine was joined to.

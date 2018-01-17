@@ -99,6 +99,9 @@ class TgtManager {
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() { kinit_retry_sleep_enabled_ = false; }
 
+  // Returns whether TGT auto renewal is active, see EnableTgtAutoRenewal().
+  bool IsTgtAutoRenewalEnabledForTesting() { return tgt_autorenewal_enabled_; }
+
  private:
   // Writes the Kerberos configuration and runs |kinit_cmd|. If
   // |propagation_retry| is true, tries up to |kKinitMaxRetries| times as long
