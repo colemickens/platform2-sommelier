@@ -80,6 +80,9 @@ class FakeSambaInterface : public SambaInterface {
   bool IsFileFDOpen(uint32_t fd) const;
   bool IsDirectoryFDOpen(uint32_t fd) const;
 
+  // Checks whether an entry exists in a given |path|.
+  bool EntryExists(const std::string& path) const;
+
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
   struct FakeEntry {
@@ -225,9 +228,6 @@ class FakeSambaInterface : public SambaInterface {
 
   // Checks whether the directory has more entries.
   bool HasMoreEntries(uint32_t dir_fd) const;
-
-  // Checks whether an entry exists in a given |path|.
-  bool EntryExists(const std::string& path) const;
 
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;

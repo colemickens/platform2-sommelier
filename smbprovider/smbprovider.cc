@@ -41,6 +41,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case ENOTDIR:
       error = ERROR_NOT_A_DIRECTORY;
       break;
+    case ENOTEMPTY:
+      error = ERROR_NOT_EMPTY;
+      break;
     default:
       error = ERROR_FAILED;
       break;
@@ -73,6 +76,11 @@ bool IsValidOptions(const CloseFileOptions& options) {
   return options.has_mount_id() && options.has_file_id();
 }
 
+bool IsValidOptions(const DeleteEntryOptions& options) {
+  return options.has_mount_id() && options.has_entry_path() &&
+         options.has_recursive();
+}
+
 // Template specializations to extract the entry path from the various protos
 // even when the fields have different names.
 template <typename Proto>
@@ -97,6 +105,11 @@ std::string GetEntryPath(const GetMetadataEntryOptions& options) {
 template <>
 std::string GetEntryPath(const OpenFileOptions& options) {
   return options.file_path();
+}
+
+template <>
+std::string GetEntryPath(const DeleteEntryOptions& options) {
+  return options.entry_path();
 }
 
 // Template specializations to map a method name to it's Proto argument.
@@ -139,6 +152,11 @@ const char* GetMethodName(const CloseFileOptions& unused) {
   return kCloseFileMethod;
 }
 
+template <>
+const char* GetMethodName(const DeleteEntryOptions& unused) {
+  return kDeleteEntryMethod;
+}
+
 void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,
@@ -174,13 +192,23 @@ bool ParseOptionsProto(const ProtoBlob& blob,
   return is_valid;
 }
 
+// Helper method to determine whether a stat struct represents a Directory.
+bool IsDirectory(const struct stat& stat_info) {
+  return S_ISDIR(stat_info.st_mode);
+}
+
+// Helper method to detemine whether a stat struct represents a File.
+bool IsFile(const struct stat& stat_info) {
+  return S_ISREG(stat_info.st_mode);
+}
+
 // Helper method to get |DirectoryEntry| from a struct stat. Returns ERROR_OK
 // on success and ERROR_FAILED otherwise.
 int32_t GetDirectoryEntryFromStat(const std::string& full_path,
                                   const struct stat& stat_info,
                                   ProtoBlob* proto_blob) {
   DCHECK(proto_blob);
-  bool is_directory = S_ISDIR(stat_info.st_mode);
+  bool is_directory = IsDirectory(stat_info);
   int64_t size = is_directory ? 0 : stat_info.st_size;
   const base::FilePath path(full_path);
 
@@ -344,6 +372,40 @@ int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
   return static_cast<int32_t>(ERROR_OK);
 }
 
+int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
+  int32_t error_code;
+  DeleteEntryOptions options;
+  std::string full_path;
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, &error_code)) {
+    return error_code;
+  }
+
+  if (options.recursive()) {
+    NOTIMPLEMENTED();
+  }
+
+  bool is_directory;
+  int32_t get_type_result;
+  if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
+    LogAndSetError(options, GetErrorFromErrno(get_type_result), &error_code);
+    return error_code;
+  }
+
+  int32_t result;
+  if (is_directory) {
+    result = samba_interface_->RemoveDirectory(full_path.c_str());
+  } else {
+    result = samba_interface_->Unlink(full_path.c_str());
+  }
+
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), &error_code);
+    return error_code;
+  }
+
+  return static_cast<int32_t>(ERROR_OK);
+}
+
 // This is a helper method that has a similar return structure as
 // samba_interface_ methods, where it will return errno as an error in case of
 // failure.
@@ -405,6 +467,27 @@ bool SmbProvider::ParseOptionsAndPath(const ProtoBlob& blob,
   }
 
   return true;
+}
+
+bool SmbProvider::GetEntryType(const std::string& full_path,
+                               int32_t* error_code,
+                               bool* is_directory) {
+  struct stat stat_info;
+  *error_code = samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
+  if (*error_code != 0) {
+    return false;
+  }
+
+  if (IsDirectory(stat_info)) {
+    *is_directory = true;
+    return true;
+  }
+  if (IsFile(stat_info)) {
+    *is_directory = false;
+    return true;
+  }
+  *error_code = ENOENT;
+  return false;
 }
 
 bool SmbProvider::CanMountPath(const std::string& mount_root,

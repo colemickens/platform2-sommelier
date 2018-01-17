@@ -128,5 +128,22 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+
+    <method name="DeleteEntry">
+      <tp:docstring>
+        Deletes the entry with a specified path.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized DeleteEntryOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">\
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

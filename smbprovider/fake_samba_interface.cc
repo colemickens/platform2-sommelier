@@ -18,6 +18,7 @@ namespace smbprovider {
 namespace {
 
 constexpr mode_t kFileMode = 33188;  // File entry
+constexpr mode_t kDirMode = 16877;   // Dir entry
 constexpr char kSmbUrlScheme[] = "smb://";
 
 using PathParts = const std::vector<std::string>;
@@ -122,7 +123,7 @@ int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
   }
 
   stat->st_size = entry->size;
-  stat->st_mode = kFileMode;
+  stat->st_mode = entry->smbc_type == SMBC_FILE ? kFileMode : kDirMode;
   stat->st_mtime = entry->date;
   return 0;
 }
@@ -214,7 +215,7 @@ int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
 }
 
 int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
-  FakeDirectory* directory = GetDirectory(dir_path);
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(dir_path));
   if (!directory) {
     return ENOENT;
   }

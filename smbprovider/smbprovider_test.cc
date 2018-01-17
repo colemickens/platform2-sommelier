@@ -98,6 +98,19 @@ class SmbProviderTest : public testing::Test {
     return proto_blob;
   }
 
+  ProtoBlob CreateDeleteEntryOptionsBlob(int32_t mount_id,
+                                         const std::string& entry_path,
+                                         bool recursive) {
+    ProtoBlob proto_blob;
+    DeleteEntryOptions delete_entry_options;
+    delete_entry_options.set_mount_id(mount_id);
+    delete_entry_options.set_entry_path(entry_path);
+    delete_entry_options.set_recursive(recursive);
+    EXPECT_EQ(ERROR_OK,
+              SerializeProtoToBlob(delete_entry_options, &proto_blob));
+    return proto_blob;
+  }
+
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
   int32_t PrepareMount() {
@@ -479,7 +492,7 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithNonFileNonDirectory) {
   EXPECT_EQ(ERROR_NOT_A_DIRECTORY, CastError(error_code));
 }
 
-// Read directory suceeds and omits non files / non directories.
+// Read directory succeeds and omits non files / non directories.
 TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnNonFileNonDir) {
   int32_t mount_id = PrepareMount();
 
@@ -603,7 +616,7 @@ TEST_F(SmbProviderTest, OpenFileFailsFileDoesNotExist) {
 }
 
 // OpenFile succeeds and returns a valid file_id when called on a valid file.
-TEST_F(SmbProviderTest, OpenFileSuceedsOnValidFile) {
+TEST_F(SmbProviderTest, OpenFileSucceedsOnValidFile) {
   int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory("smb://wdshare/test/path");
@@ -687,7 +700,7 @@ TEST_F(SmbProviderTest, OpenFileReadandWriteFlagSetCorrectly) {
 }
 
 // CloseFile succeeds on a valid file.
-TEST_F(SmbProviderTest, CloseFileSuceedsOnOpenFile) {
+TEST_F(SmbProviderTest, CloseFileSucceedsOnOpenFile) {
   int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory("smb://wdshare/test/path");
@@ -793,6 +806,97 @@ TEST_F(SmbProviderTest, CloseFileFailsOnNonExistantFileHandler) {
       CreateCloseFileOptionsBlob(1 /* mount_id */, 1564 /* file_id */);
 
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
+}
+
+// DeleteEntry succeeds when called without recursive on an empty directory.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnEmptyDirectory) {
+  int32_t mount_id = PrepareMount();
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+
+  ProtoBlob delete_entry_blob =
+      CreateDeleteEntryOptionsBlob(mount_id, "/path", false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+}
+
+// DeleteEntry succeeds when called on a file.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+}
+
+// DeleteEntry fails when called without recursive on a non-empty directory.
+TEST_F(SmbProviderTest, DeleteEntryFailsWithoutRecursiveOnNonEmptyDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+
+  ProtoBlob delete_entry_blob =
+      CreateDeleteEntryOptionsBlob(mount_id, "/path", false /* recursive */);
+  EXPECT_EQ(ERROR_NOT_EMPTY, smbprovider_->DeleteEntry(delete_entry_blob));
+}
+
+// DeleteEntry fails when called on non-existent file or directory.
+TEST_F(SmbProviderTest, DeleteEntryFailsOnNonExistentEntries) {
+  int32_t mount_id = PrepareMount();
+
+  ProtoBlob delete_entry_blob =
+      CreateDeleteEntryOptionsBlob(mount_id, "/path", false /* recursive */);
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  ProtoBlob delete_entry_blob_2 =
+      CreateDeleteEntryOptionsBlob(mount_id, "/cat.png", false /* recursive */);
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->DeleteEntry(delete_entry_blob_2));
+}
+
+// DeleteEntry deletes the correct file.
+TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectFile) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddFile("smb://wdshare/test/path/dog.jpg", kFileSize, kFileDate);
+  fake_samba_->AddFile("smb://wdshare/test/path/cat.jpg", kFileSize, kFileDate);
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, "/path/dog.jpg", false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists("smb://wdshare/test/path/dog.jpg"));
+  EXPECT_TRUE(fake_samba_->EntryExists("smb://wdshare/test/path/cat.jpg"));
+}
+
+// DeleteEntry deletes the correct directory.
+TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddDirectory("smb://wdshare/test/path/dogs");
+  fake_samba_->AddDirectory("smb://wdshare/test/path/cats");
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, "/path/dogs", false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists("smb://wdshare/test/path/dogs"));
+  EXPECT_TRUE(fake_samba_->EntryExists("smb://wdshare/test/path/cats"));
+}
+
+// DeleteEntry should fail on a non-file, non-directory.
+TEST_F(SmbProviderTest, DeleteEntryFailsOnNonFileNonDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory("smb://wdshare/test/path");
+  fake_samba_->AddEntry("smb://wdshare/test/path/canon.cn", SMBC_PRINTER_SHARE);
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, "path/canon.cn", false /* recursive */);
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->DeleteEntry(delete_entry_blob));
 }
 
 }  // namespace smbprovider

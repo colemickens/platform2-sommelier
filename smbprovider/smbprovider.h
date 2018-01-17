@@ -73,6 +73,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t CloseFile(const ProtoBlob& options_blob) override;
 
+  int32_t DeleteEntry(const ProtoBlob& options_blob) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
@@ -110,6 +112,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Tests whether |mount_root| is a valid path to be mounted by attemping
   // to open the directory.
   bool CanMountPath(const std::string& mount_root, int32_t* error_code);
+
+  // Helper method to get the type of an entry. Returns boolean indicating
+  // success. Sets is_directory to true for directory, and false for file.
+  // Fails when called on non-file, non-directory.
+  // On failure, returns false and sets |error_code|.
+  bool GetEntryType(const std::string& full_path,
+                    int32_t* error_code,
+                    bool* is_directory);
 
   // Helper method to close the directory with id |dir_id|. Logs an error if the
   // directory fails to close.
