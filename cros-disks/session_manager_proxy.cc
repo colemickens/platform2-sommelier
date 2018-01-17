@@ -44,22 +44,22 @@ void SessionManagerProxy::AddObserver(
 }
 
 void SessionManagerProxy::OnScreenIsLocked() {
-  FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                    OnScreenIsLocked());
+  for (SessionManagerObserverInterface& observer : observer_list_)
+    observer.OnScreenIsLocked();
 }
 
 void SessionManagerProxy::OnScreenIsUnlocked() {
-  FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                    OnScreenIsUnlocked());
+  for (SessionManagerObserverInterface& observer : observer_list_)
+    observer.OnScreenIsUnlocked();
 }
 
 void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
   if (state == "started") {
-    FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                      OnSessionStarted());
+    for (SessionManagerObserverInterface& observer : observer_list_)
+      observer.OnSessionStarted();
   } else if (state == "stopped") {
-    FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                      OnSessionStopped());
+    for (SessionManagerObserverInterface& observer : observer_list_)
+      observer.OnSessionStopped();
   }
 }
 
