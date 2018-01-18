@@ -177,6 +177,7 @@ class Tpm2Impl : public Tpm {
   // default_tpm_owner_ and default_tpm_nvram_ if necessary. Returns true if the
   // thread was started and both tpm_owner_ and tpm_nvram_ are valid.
   bool InitializeTpmManagerClients();
+  void InitializeClientsOnTpmManagerThread(base::WaitableEvent* completion);
 
   // Sends a request to the TPM Manager daemon that expects a ReplyProtoType and
   // waits for a reply. The |method| will be called on the |tpm_manager_thread_|

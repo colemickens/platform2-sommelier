@@ -1052,6 +1052,22 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   return true;
 }
 
+void Tpm2Impl::InitializeClientsOnTpmManagerThread(
+    base::WaitableEvent* completion) {
+  CHECK(completion);
+  CHECK(tpm_manager_thread_.task_runner()->RunsTasksOnCurrentThread());
+
+  default_tpm_owner_ = std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
+  default_tpm_nvram_ = std::make_unique<tpm_manager::TpmNvramDBusProxy>();
+  if (default_tpm_owner_->Initialize()) {
+    tpm_owner_ = default_tpm_owner_.get();
+  }
+  if (default_tpm_nvram_->Initialize()) {
+    tpm_nvram_ = default_tpm_nvram_.get();
+  }
+  completion->Signal();
+}
+
 bool Tpm2Impl::InitializeTpmManagerClients() {
   if (!tpm_manager_thread_.IsRunning() &&
       !tpm_manager_thread_.StartWithOptions(base::Thread::Options(
@@ -1063,19 +1079,8 @@ bool Tpm2Impl::InitializeTpmManagerClients() {
     base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                               base::WaitableEvent::InitialState::NOT_SIGNALED);
     tpm_manager_thread_.task_runner()->PostTask(
-        FROM_HERE, base::Bind([this, &event]() {
-          default_tpm_owner_ =
-              std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
-          default_tpm_nvram_ =
-              std::make_unique<tpm_manager::TpmNvramDBusProxy>();
-          if (default_tpm_owner_->Initialize()) {
-            tpm_owner_ = default_tpm_owner_.get();
-          }
-          if (default_tpm_nvram_->Initialize()) {
-            tpm_nvram_ = default_tpm_nvram_.get();
-          }
-          event.Signal();
-        }));
+        FROM_HERE, base::Bind(&Tpm2Impl::InitializeClientsOnTpmManagerThread,
+                              base::Unretained(this), &event));
     event.Wait();
   }
   if (!tpm_owner_ || !tpm_nvram_) {
@@ -1090,15 +1095,15 @@ void Tpm2Impl::SendTpmManagerRequestAndWait(const MethodType& method,
                                             ReplyProtoType* reply_proto) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
-  auto callback =
-      base::Bind([reply_proto, &event](const ReplyProtoType& reply) {
-        *reply_proto = reply;
-        event.Signal();
-      });
-  tpm_manager_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind([&method, &callback]() {
-        method.Run(callback); }));
+  auto callback = base::Bind(
+      [](ReplyProtoType* target, base::WaitableEvent* completion,
+         const ReplyProtoType& reply) {
+        *target = reply;
+        completion->Signal();
+      },
+      reply_proto, &event);
+  tpm_manager_thread_.task_runner()->PostTask(FROM_HERE,
+                                              base::Bind(method, callback));
   event.Wait();
 }
 
