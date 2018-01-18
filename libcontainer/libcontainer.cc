@@ -249,6 +249,38 @@ struct container {
 
 namespace {
 
+std::string GetMountFlagsAsString(int flags) {
+#define CHECK_MOUNT_FLAG(flag) \
+  do {                         \
+    if (flags & flag)          \
+      result.push_back(#flag); \
+  } while (false)
+
+  std::vector<std::string> result;
+  CHECK_MOUNT_FLAG(MS_RDONLY);
+  CHECK_MOUNT_FLAG(MS_NOSUID);
+  CHECK_MOUNT_FLAG(MS_NODEV);
+  CHECK_MOUNT_FLAG(MS_NOEXEC);
+  CHECK_MOUNT_FLAG(MS_SYNCHRONOUS);
+  CHECK_MOUNT_FLAG(MS_REMOUNT);
+  CHECK_MOUNT_FLAG(MS_MANDLOCK);
+  CHECK_MOUNT_FLAG(MS_DIRSYNC);
+  CHECK_MOUNT_FLAG(MS_NOATIME);
+  CHECK_MOUNT_FLAG(MS_NODIRATIME);
+  CHECK_MOUNT_FLAG(MS_BIND);
+  CHECK_MOUNT_FLAG(MS_MOVE);
+  CHECK_MOUNT_FLAG(MS_REC);
+  CHECK_MOUNT_FLAG(MS_SILENT);
+  CHECK_MOUNT_FLAG(MS_POSIXACL);
+  CHECK_MOUNT_FLAG(MS_UNBINDABLE);
+  CHECK_MOUNT_FLAG(MS_PRIVATE);
+  CHECK_MOUNT_FLAG(MS_SLAVE);
+  CHECK_MOUNT_FLAG(MS_SHARED);
+  return result.empty() ? "no flags" : base::JoinString(result, " | ");
+
+#undef CHECK_MOUNT_FLAG
+}
+
 std::ostream& operator<<(std::ostream& stream, const Mount& mount) {
   stream << "mount:" << std::endl
          << " name: " << QUOTE(mount.name) << std::endl
@@ -257,7 +289,8 @@ std::ostream& operator<<(std::ostream& stream, const Mount& mount) {
          << " type: " << QUOTE(mount.type) << std::endl
          << " data: " << QUOTE(mount.data) << std::endl
          << " verity: " << QUOTE(mount.verity) << std::endl
-         << " flags: 0x" << std::hex << mount.flags << std::dec << std::endl
+         << " flags: 0x" << std::hex << mount.flags << std::dec << " ("
+         << GetMountFlagsAsString(mount.flags) << ")" << std::endl
          << " uid: " << mount.uid << std::endl
          << " gid: " << mount.gid << std::endl
          << " mode: 0" << std::oct << mount.mode << std::dec << std::endl
@@ -323,7 +356,8 @@ void DumpConfig(std::ostream* stream,
   *stream << "config_root: " << QUOTE(c->config_root.value()) << std::endl
           << "rootfs: " << QUOTE(c->rootfs.value()) << std::endl
           << "rootfs_mount_flags: 0x" << std::hex << c->rootfs_mount_flags
-          << std::dec << std::endl
+          << std::dec << " (" << GetMountFlagsAsString(c->rootfs_mount_flags)
+          << ")" << std::endl
           << "premounted_runfs: " << QUOTE(c->premounted_runfs.value())
           << std::endl
           << "pid_file_path: " << QUOTE(c->pid_file_path.value()) << std::endl
