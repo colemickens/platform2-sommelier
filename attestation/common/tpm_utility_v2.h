@@ -116,6 +116,10 @@ class TpmUtilityV2 : public TpmUtility {
     DISALLOW_COPY_AND_ASSIGN(TpmManagerThread);
   };
 
+  // Initialization operation that must be performed on the tpm_manager
+  // thread.
+  void InitializationTask(base::WaitableEvent* completion);
+
   // Shutdown operation that must be performed on the tpm_manager thread.
   void ShutdownTask();
 
