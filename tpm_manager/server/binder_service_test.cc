@@ -55,7 +55,10 @@ class BinderServiceTest : public testing::Test {
   base::Callback<void(const ResponseProtobufType&)> GetCallback(
       ResponseProtobufType* proto) {
     return base::Bind(
-        [proto](const ResponseProtobufType& response) { *proto = response; });
+        [](ResponseProtobufType* target, const ResponseProtobufType& response) {
+          *target = response;
+        },
+        proto);
   }
 
  protected:
