@@ -108,7 +108,7 @@ class SmbProviderTest : public testing::Test {
     ProtoBlob proto_blob = CreateMountOptionsBlob("smb://wdshare/test");
     smbprovider_->Mount(proto_blob, &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
-    ExpectNoOpenDirectories();
+    ExpectNoOpenEntries();
     return mount_id;
   }
 
@@ -127,9 +127,7 @@ class SmbProviderTest : public testing::Test {
 
   // Helper method that asserts there are no entries that have not been
   // closed.
-  void ExpectNoOpenDirectories() {
-    EXPECT_FALSE(fake_samba_->HasOpenEntries());
-  }
+  void ExpectNoOpenEntries() { EXPECT_FALSE(fake_samba_->HasOpenEntries()); }
 
   // Helper method that creates a CloseFileOptionsBlob for |file_id| and
   // calls SmbProvider::CloseFile with it, expecting success.
@@ -170,7 +168,7 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidProto) {
   smbprovider_->Mount(empty_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
   EXPECT_EQ(0, mount_manager_->MountCount());
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
 }
 
 // Mount fails when mounting a share that doesn't exist.
@@ -181,7 +179,7 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   smbprovider_->Mount(proto_blob, &err, &mount_id);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
   EXPECT_EQ(0, mount_manager_->MountCount());
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
 }
 
 // Unmount fails when an invalid protobuf with missing fields is passed.
@@ -196,7 +194,7 @@ TEST_F(SmbProviderTest, UnmountFailsWithUnmountedShare) {
   ProtoBlob proto_blob = CreateUnmountOptionsBlob(123);
   int32_t error = smbprovider_->Unmount(proto_blob);
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(error));
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
 }
 
 // Mounting different shares should return different mount ids.
@@ -228,14 +226,14 @@ TEST_F(SmbProviderTest, MountReturnsDifferentMountIds) {
 TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   int32_t mount_id = PrepareMount();
   EXPECT_GE(0, mount_id);
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
   EXPECT_EQ(1, mount_manager_->MountCount());
   EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
 
   ProtoBlob proto_blob = CreateUnmountOptionsBlob(mount_id);
   int32_t error = smbprovider_->Unmount(proto_blob);
   EXPECT_EQ(ERROR_OK, CastError(error));
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
   EXPECT_EQ(0, mount_manager_->MountCount());
   EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
 }
@@ -287,7 +285,7 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithUnmountedShare) {
   smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
   EXPECT_TRUE(results.empty());
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
 }
 
 // Read directory fails when passed a path that doesn't exist.
@@ -320,7 +318,7 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
 
   EXPECT_EQ(ERROR_OK, CastError(err));
   EXPECT_EQ(0, entries.entries_size());
-  ExpectNoOpenDirectories();
+  ExpectNoOpenEntries();
 }
 
 // Read directory succeeds but does not return files when it exceeds the buffer
