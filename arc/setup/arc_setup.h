@@ -108,8 +108,8 @@ class ArcSetup {
   // Sets up android-data/data/dalvik-cache directory for login screen.
   void SetUpDalvikCache();
 
-  // Creates directories needed by containers.
-  void CreateContainerDirectories();
+  // Creates files and directories needed by the container.
+  void CreateContainerFilesAndDirectories();
 
   // Detects and applies per-board hardware configurations.
   void ApplyPerBoardConfigurations();
@@ -204,6 +204,9 @@ class ArcSetup {
 
   // Removes the pipe for 'bugreport'.
   void RemoveBugreportPipe();
+
+  // Removes the FIFO file for emulating /dev/kmsg.
+  void RemoveAndroidKmsgFifo();
 
   // Gets a fingerprint in the build.prop file. Since the file is in our system
   // image, the operation should never fail.

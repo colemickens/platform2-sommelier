@@ -70,6 +70,7 @@ namespace {
 // directly. Prefer base::FilePath variables in ArcPaths instead.
 constexpr char kAndroidCmdline[] = "/run/arc/cmdline.android";
 constexpr char kAndroidGeneratedPropertiesDirectory[] = "/run/arc/properties";
+constexpr char kAndroidKmsgFifo[] = "/run/arc/android.kmsg.fifo";
 constexpr char kAndroidMutableSource[] =
     "/opt/google/containers/android/rootfs/android-data";
 constexpr char kAndroidRootfsDirectory[] =
@@ -260,6 +261,7 @@ struct ArcPaths {
   const base::FilePath android_cmdline{kAndroidCmdline};
   const base::FilePath android_generated_properties_directory{
       kAndroidGeneratedPropertiesDirectory};
+  const base::FilePath android_kmsg_fifo{kAndroidKmsgFifo};
   const base::FilePath android_mutable_source{kAndroidMutableSource};
   const base::FilePath android_rootfs_directory{kAndroidRootfsDirectory};
   const base::FilePath arc_bridge_socket_path{kArcBridgeSocketPath};
@@ -535,15 +537,32 @@ void ArcSetup::CleanUpDalvikCache() {
       arc_mounter_->UmountLazily(dalvik_cache_directory.Append("x86_64")));
 }
 
-void ArcSetup::CreateContainerDirectories() {
+void ArcSetup::CreateContainerFilesAndDirectories() {
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             base::FilePath("/run/arc")));
   EXIT_IF(!InstallDirectory(0755, kShellUid, kLogGid,
                             base::FilePath("/run/arc/bugreport")));
 
+  // If the log file exists, change the UID/GID here. We used to use
+  // android-root for the file, but now we use just root. The Upstart
+  // job does not (and cannot efficiently) do it.
+  // TODO(yusukes): This is a temporary migration code. Remove it once
+  // we hit M68.
   const base::FilePath android_kmsg("/var/log/android.kmsg");
-  EXIT_IF(!CreateOrTruncate(android_kmsg, 0644));
-  EXIT_IF(!Chown(kRootUid, kRootGid, android_kmsg));
+  if (base::PathExists(android_kmsg))
+    EXIT_IF(!Chown(kHostRootUid, kHostRootGid, android_kmsg));
+
+  // Create the FIFO file and start its reader job.
+  RemoveAndroidKmsgFifo();
+  EXIT_IF(mkfifo(arc_paths_->android_kmsg_fifo.value().c_str(), 0644) < 0);
+  {
+    base::ScopedFD fd =
+        OpenFifoSafely(arc_paths_->android_kmsg_fifo, O_RDONLY, 0);
+    EXIT_IF(!fd.is_valid());
+    EXIT_IF(fchown(fd.get(), kRootUid, kRootGid) < 0);
+  }
+  EXIT_IF(!LaunchAndWait(
+      {"/sbin/initctl", "start", "--no-wait", "arc-kmsg-logger"}));
 
   // TODO(b/28988348)
   EXIT_IF(!base::SetPosixFilePermissions(base::FilePath("/run/chrome"), 0755));
@@ -1245,6 +1264,13 @@ void ArcSetup::RemoveBugreportPipe() {
                                  false /* recursive */));
 }
 
+void ArcSetup::RemoveAndroidKmsgFifo() {
+  // This function is for Mode::STOP. Use IGNORE_ERRORS to make sure to run all
+  // clean up code.
+  IGNORE_ERRORS(
+      base::DeleteFile(arc_paths_->android_kmsg_fifo, false /* recursive */));
+}
+
 std::string ArcSetup::GetSystemImageFingerprint() {
   constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 
@@ -1611,7 +1637,7 @@ void ArcSetup::OnSetup(bool for_login_screen) {
   }
 
   SetUpSharedMountPoints(for_login_screen);
-  CreateContainerDirectories();
+  CreateContainerFilesAndDirectories();
   ApplyPerBoardConfigurations();
   if (!for_login_screen) {
     // We don't trace the container startup when |for_login_screen| is true
@@ -1686,6 +1712,7 @@ void ArcSetup::OnStop() {
   CleanUpDalvikCache();
   UnmountOnStop();
   RemoveBugreportPipe();
+  RemoveAndroidKmsgFifo();
 }
 
 void ArcSetup::OnOnetimeSetup() {
