@@ -271,6 +271,8 @@ FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,
       date(date) {}
 
 void FakeSambaInterface::AddDirectory(const std::string& path) {
+  // Make sure that no entry exists in that path.
+  DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
@@ -287,6 +289,8 @@ void FakeSambaInterface::AddFile(const std::string& path, size_t size) {
 void FakeSambaInterface::AddFile(const std::string& path,
                                  size_t size,
                                  uint64_t date) {
+  // Make sure that no entry exists in that path.
+  DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
@@ -296,6 +300,8 @@ void FakeSambaInterface::AddFile(const std::string& path,
 void FakeSambaInterface::AddFile(const std::string& path,
                                  uint64_t date,
                                  std::vector<uint8_t> file_data) {
+  // Make sure that no entry exists in that path.
+  DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
@@ -304,6 +310,8 @@ void FakeSambaInterface::AddFile(const std::string& path,
 }
 
 void FakeSambaInterface::AddEntry(const std::string& path, uint32_t smbc_type) {
+  // Make sure that no entry exists in that path.
+  DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
@@ -423,6 +431,10 @@ bool FakeSambaInterface::HasReadSet(int32_t fd) const {
 bool FakeSambaInterface::HasWriteSet(int32_t fd) const {
   DCHECK(IsFDOpen(fd));
   return open_fds.at(fd).writeable;
+}
+
+bool FakeSambaInterface::EntryExists(const std::string& path) const {
+  return GetEntry(path);
 }
 
 }  // namespace smbprovider

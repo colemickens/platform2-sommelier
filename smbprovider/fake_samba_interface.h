@@ -226,6 +226,9 @@ class FakeSambaInterface : public SambaInterface {
   // Checks whether the directory has more entries.
   bool HasMoreEntries(uint32_t dir_fd) const;
 
+  // Checks whether an entry exists in a given |path|.
+  bool EntryExists(const std::string& path) const;
+
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;
 
