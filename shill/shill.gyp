@@ -215,6 +215,7 @@
         'exported_deps': [
           'libcares',
           'libmetrics-<(libbase_ver)',
+          'libpasswordprovider',
           'libpower_manager-client',
           'protobuf-lite',
         ],

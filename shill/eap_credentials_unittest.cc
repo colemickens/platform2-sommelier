@@ -19,7 +19,11 @@
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 
+// TODO(maybelle): move this after creating a libpasswordprovider test lib.
+#include <libpasswordprovider/fake_password_provider.h>
 #include "shill/key_value_store.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_event_dispatcher.h"
@@ -94,6 +98,9 @@ class EapCredentialsTest : public testing::Test {
   void SetUseSystemCAs(bool use_system_cas) {
     eap_.use_system_cas_ = use_system_cas;
   }
+  void SetUseLoginPassword(bool use_login_password) {
+    eap_.use_login_password_ = use_login_password;
+  }
   bool IsReset() {
     return eap_.anonymous_identity_.empty() && eap_.cert_id_.empty() &&
            eap_.identity_.empty() && eap_.key_id_.empty() &&
@@ -102,7 +109,8 @@ class EapCredentialsTest : public testing::Test {
            eap_.eap_.empty() && eap_.inner_eap_.empty() &&
            eap_.tls_version_max_.empty() && eap_.subject_match_.empty() &&
            eap_.use_system_cas_ == true &&
-           eap_.use_proactive_key_caching_ == false;
+           eap_.use_proactive_key_caching_ == false &&
+           eap_.use_login_password_ == false;
   }
 
   const string& GetKeyManagement() {
@@ -110,6 +118,20 @@ class EapCredentialsTest : public testing::Test {
   }
   bool SetEapPassword(const string& password, Error* error) {
     return eap_.SetEapPassword(password, error);
+  }
+
+  void SaveLoginPassword(const string& password_str) {
+    eap_.password_provider_ =
+        std::make_unique<password_provider::FakePasswordProvider>();
+
+    password_provider::Password password;
+    ASSERT_TRUE(password.Init());
+    // TODO(maybelle): Update this once Password::CreateFrom has been submitted
+    // in platform2.
+    memcpy(password.GetMutableRaw(), password_str.c_str(), password_str.size());
+    password.SetSize(password_str.size());
+
+    eap_.password_provider_->SavePassword(password);
   }
 
   EapCredentials eap_;
@@ -198,6 +220,8 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPasswordProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapPinProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
+      kEapUseLoginPasswordProperty));
 
   // It's easier to test that this function returns TRUE in every situation
   // that it should, than to test all the cases it should return FALSE in.
@@ -491,6 +515,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetPin("foo");
   SetUseSystemCAs(false);
   SetUseProactiveKeyCaching(true);
+  SetUseLoginPassword(false);
   eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());
@@ -539,6 +564,32 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
     EXPECT_FALSE(SetEapPassword(kPassword, &error));
     EXPECT_TRUE(error.IsSuccess());
   }
+
+}
+
+TEST_F(EapCredentialsTest, TestUseLoginPassword) {
+  const string kPasswordStr("thepassword");
+  SaveLoginPassword(kPasswordStr);
+
+  SetUseLoginPassword(true);
+  PopulateSupplicantProperties();
+
+  EXPECT_TRUE(
+      params_.ContainsString(WPASupplicant::kNetworkPropertyEapCaPassword));
+  string used_password =
+      params_.GetString(WPASupplicant::kNetworkPropertyEapCaPassword);
+  EXPECT_EQ(used_password, kPasswordStr);
+}
+
+TEST_F(EapCredentialsTest, TestDontUseLoginPassword) {
+  const string kPasswordStr("thepassword");
+  SaveLoginPassword(kPasswordStr);
+
+  SetUseLoginPassword(false);
+  PopulateSupplicantProperties();
+
+  EXPECT_FALSE(
+      params_.ContainsString(WPASupplicant::kNetworkPropertyEapCaPassword));
 }
 
 }  // namespace shill

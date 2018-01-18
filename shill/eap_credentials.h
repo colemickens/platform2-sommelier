@@ -22,6 +22,7 @@
 
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <libpasswordprovider/password_provider.h>
 
 #include "shill/technology.h"
 
@@ -117,6 +118,7 @@ class EapCredentials {
   static const char kStorageEapSubjectMatch[];
   static const char kStorageEapUseProactiveKeyCaching[];
   static const char kStorageEapUseSystemCAs[];
+  static const char kStorageEapUseLoginPassword[];
 
   // Returns true if the current EAP authentication type requires certificate
   // authentication and any of the client credentials are provided via
@@ -195,6 +197,11 @@ class EapCredentials {
   bool use_system_cas_;
   // If true, use per network proactive key caching.
   bool use_proactive_key_caching_;
+  // If true, use the user's stored login password as the password.
+  bool use_login_password_;
+
+  std::unique_ptr<password_provider::PasswordProviderInterface>
+      password_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(EapCredentials);
 };

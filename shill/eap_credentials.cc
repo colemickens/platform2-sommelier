@@ -21,6 +21,8 @@
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "shill/certificate_file.h"
 #include "shill/key_value_store.h"
@@ -63,9 +65,15 @@ const char EapCredentials::kStorageEapSubjectMatch[] =
 const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
     "EAP.UseProactiveKeyCaching";
 const char EapCredentials::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
+const char EapCredentials::kStorageEapUseLoginPassword[] =
+    "EAP.UseLoginPassword";
 
-EapCredentials::EapCredentials() : use_system_cas_(true),
-                                   use_proactive_key_caching_(false) {}
+EapCredentials::EapCredentials()
+    : use_system_cas_(true),
+      use_proactive_key_caching_(false),
+      use_login_password_(false),
+      password_provider_(
+          std::make_unique<password_provider::PasswordProvider>()) {}
 
 EapCredentials::~EapCredentials() {}
 
@@ -85,23 +93,18 @@ void EapCredentials::PopulateSupplicantProperties(
 
   using KeyVal = std::pair<const char*, const char*>;
   KeyVal init_propertyvals[] = {
-    // Authentication properties.
-    KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
-           anonymous_identity_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, identity_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapCaPassword,
-           password_.c_str()),
+      // Authentication properties.
+      KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
+             anonymous_identity_.c_str()),
+      KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, identity_.c_str()),
 
-    // Non-authentication properties.
-    KeyVal(WPASupplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapCaCertId,
-           ca_cert_id_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapEap, eap_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapInnerEap,
-           inner_eap_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
-           subject_match_.c_str())
-  };
+      // Non-authentication properties.
+      KeyVal(WPASupplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
+      KeyVal(WPASupplicant::kNetworkPropertyEapCaCertId, ca_cert_id_.c_str()),
+      KeyVal(WPASupplicant::kNetworkPropertyEapEap, eap_.c_str()),
+      KeyVal(WPASupplicant::kNetworkPropertyEapInnerEap, inner_eap_.c_str()),
+      KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
+             subject_match_.c_str())};
 
   vector<KeyVal> propertyvals(init_propertyvals,
                               init_propertyvals + arraysize(init_propertyvals));
@@ -151,6 +154,22 @@ void EapCredentials::PopulateSupplicantProperties(
                       WPASupplicant::kFlagDisableEapTLS1p2);
   }
 
+  if (use_login_password_) {
+    std::unique_ptr<password_provider::Password> password =
+        password_provider_->GetPassword();
+    if (password == nullptr || password->size() == 0) {
+      LOG(WARNING) << "Unable to retrieve user password";
+    } else {
+      params->SetString(WPASupplicant::kNetworkPropertyEapCaPassword,
+                        std::string(password->GetRaw(), password->size()));
+    }
+  } else {
+    if (password_.size() > 0) {
+      params->SetString(WPASupplicant::kNetworkPropertyEapCaPassword,
+                        password_);
+    }
+  }
+
   for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
       params->SetString(keyval.first, keyval.second);
@@ -188,6 +207,7 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
                                      nullptr,
                                      &password_);
   store->RegisterString(kEapPinProperty, &pin_);
+  store->RegisterBool(kEapUseLoginPasswordProperty, &use_login_password_);
 
   // Non-authentication properties.
   store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
@@ -206,7 +226,8 @@ bool EapCredentials::IsEapAuthenticationProperty(const string property) {
   return property == kEapAnonymousIdentityProperty ||
          property == kEapCertIdProperty || property == kEapIdentityProperty ||
          property == kEapKeyIdProperty || property == kEapKeyMgmtProperty ||
-         property == kEapPasswordProperty || property == kEapPinProperty;
+         property == kEapPasswordProperty || property == kEapPinProperty ||
+         property == kEapUseLoginPasswordProperty;
 }
 
 bool EapCredentials::IsConnectable() const {
@@ -271,6 +292,7 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageEapPassword, &password_);
   storage->GetString(id, kStorageEapPIN, &pin_);
+  storage->GetBool(id, kStorageEapUseLoginPassword, &use_login_password_);
 
   // Non-authentication properties.
   storage->GetString(id, kStorageEapCACertID, &ca_cert_id_);
@@ -348,6 +370,7 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       pin_,
                       false,
                       save_credentials);
+  storage->SetBool(id, kStorageEapUseLoginPassword, use_login_password_);
 
   // Non-authentication properties.
   Service::SaveString(storage,
@@ -380,8 +403,8 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       subject_match_,
                       false,
                       true);
-  storage->SetBool(id, kStorageEapUseProactiveKeyCaching,
-                   use_proactive_key_caching_);
+  storage->SetBool(
+      id, kStorageEapUseProactiveKeyCaching, use_proactive_key_caching_);
   storage->SetBool(id, kStorageEapUseSystemCAs, use_system_cas_);
 }
 
@@ -394,6 +417,7 @@ void EapCredentials::Reset() {
   // Do not reset key_management_, since it should never be emptied.
   password_ = "";
   pin_ = "";
+  use_login_password_ = false;
 
   // Non-authentication properties.
   ca_cert_id_ = "";
@@ -406,6 +430,12 @@ void EapCredentials::Reset() {
 }
 
 bool EapCredentials::SetEapPassword(const string& password, Error* /*error*/) {
+  if (use_login_password_) {
+    LOG(WARNING) << "Setting EAP password for configuration requiring the "
+                    "user's login password";
+    return false;
+  }
+
   if (password_ == password) {
     return false;
   }
