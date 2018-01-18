@@ -45,6 +45,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD2(StirRandom, TPM_RC(const std::string&, AuthorizationDelegate*));
   MOCK_METHOD3(GenerateRandom,
                TPM_RC(size_t, AuthorizationDelegate*, std::string*));
+  MOCK_METHOD1(GetAlertsData, TPM_RC(TpmAlertsData*));
   MOCK_METHOD3(ExtendPCR,
                TPM_RC(int, const std::string&, AuthorizationDelegate*));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));

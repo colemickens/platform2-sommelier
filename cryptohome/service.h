@@ -219,6 +219,10 @@ class Service : public brillo::dbus::AbstractDbusService,
     low_disk_notification_period_ms_ = value;
   }
 
+  virtual void set_upload_alerts_period_ms(int value) {
+    upload_alerts_period_ms_ = value;
+  }
+
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
   virtual gboolean MigrateKey(gchar *user,
@@ -691,6 +695,8 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Called periodically on Mount thread to detect low disk space and emit a
   // signal if detected.
   virtual void LowDiskCallback();
+  // Called periodically to fetch alerts data from TPM and upload it to UMA.
+  virtual void UploadAlertsDataCallback();
   // Filters out active mounts from |mounts|, populating |active_mounts| set.
   // If |force| is set, stale mounts with open files are ignored.
   // Returns true if stale mount filtered out because of open files.
@@ -854,6 +860,7 @@ class Service : public brillo::dbus::AbstractDbusService,
       default_firmware_management_params_;
   FirmwareManagementParameters* firmware_management_parameters_;
   int low_disk_notification_period_ms_;
+  int upload_alerts_period_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

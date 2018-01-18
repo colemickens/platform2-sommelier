@@ -43,6 +43,7 @@ class TpmImpl : public Tpm {
   bool IsBeingOwned() override { return is_being_owned_; }
   void SetIsBeingOwned(bool value) override { is_being_owned_ = value; }
   bool GetRandomData(size_t length, brillo::Blob* data) override;
+  bool GetAlertsData(Tpm::AlertsData* alerts) override;
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;
   bool DestroyNvram(uint32_t index) override;
   bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;

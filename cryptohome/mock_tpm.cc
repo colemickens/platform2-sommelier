@@ -40,6 +40,8 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, GetRandomData(_, _))
       .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
+  ON_CALL(*this, GetAlertsData(_))
+      .WillByDefault(Return(true));
   ON_CALL(*this, CreateDelegate(_, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _))

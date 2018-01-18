@@ -22,6 +22,7 @@
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/sys_byteorder.h>
 #include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_hash.h>
@@ -56,6 +57,7 @@ const uint32_t kCr50VendorCC = 0x20000000 | 0; /* Vendor Bit Set + 0 */
 // Vendor-specific subcommand codes.
 const uint16_t kCr50SubcmdInvalidateInactiveRW = 20;
 const uint16_t kCr50SubcmdManageCCDPwd = 33;
+const uint16_t kCr50SubcmdGetAlertsData = 35;
 
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
@@ -2255,6 +2257,63 @@ TPM_RC TpmUtilityImpl::DoesPersistentKeyExist(TPMI_DH_PERSISTENT key_handle,
   }
   TPML_HANDLE& handles = capability_data.data.handles;
   *exists = (handles.count == 1 && handles.handle[0] == key_handle);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetAlertsData(TpmAlertsData* alerts) {
+  memset(alerts, 0, sizeof(TpmAlertsData));
+
+  if (!IsCr50()) {
+    alerts->chip_family = kFamilyUndefined;
+    return TPM_RC_SUCCESS;
+  }
+  std::string out;
+  TPM_RC rc = Cr50VendorCommand(kCr50SubcmdGetAlertsData,
+                                std::string(), &out);
+  if (rc != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Unable to read alerts data: 0x"
+                 << std::hex << rc;
+    return rc;
+  }
+
+  if (out.size() < 2 * sizeof(uint16_t)) {
+    // 2 * sizeof represents TpmAlertsData first 2 required fields
+    LOG(WARNING) << "TPM AlertsData response is too short";
+    return TPM_RC_FAILURE;
+  }
+
+  const TpmAlertsData* received_alerts = reinterpret_cast<const TpmAlertsData*>(
+    out.data());
+
+  // convert byte-order from one specified by TPM specification to host order
+  alerts->chip_family = base::NetToHost16(received_alerts->chip_family);
+  if (alerts->chip_family != kFamilyH1) {
+    LOG(WARNING) << "TPM AlertsData unsupported TPM family identifier "
+                 << alerts->chip_family;
+
+    // return kFamilyUndefined to tell CrOS to stop querying alerts data
+    alerts->chip_family = kFamilyUndefined;
+    return TPM_RC_SUCCESS;
+  }
+
+  alerts->alerts_num = base::NetToHost16(received_alerts->alerts_num);
+  if (alerts->alerts_num > kAlertsMaxSize) {
+    LOG(WARNING) << "TPM AlertsData response is too long";
+    return TPM_RC_FAILURE;
+  }
+
+  size_t expected_size = 2 * sizeof(uint16_t)
+         + alerts->alerts_num * sizeof(uint16_t);
+  if (out.size() != expected_size) {
+    LOG(WARNING) << "TPM AlertsData response size does not match alerts_num "
+                 << out.size() << " vs " << expected_size;
+    return TPM_RC_FAILURE;
+  }
+
+  for (int i = 0; i < alerts->alerts_num; i++) {
+    alerts->counters[i] = base::NetToHost16(received_alerts->counters[i]);
+  }
+
   return TPM_RC_SUCCESS;
 }
 

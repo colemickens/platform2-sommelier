@@ -940,6 +940,10 @@ bool TpmImpl::GetRandomData(size_t length, brillo::Blob* data) {
   return true;
 }
 
+bool TpmImpl::GetAlertsData(Tpm::AlertsData* alerts) {
+  return false;
+}
+
 bool TpmImpl::DestroyNvram(uint32_t index) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;

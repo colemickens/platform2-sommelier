@@ -19,6 +19,7 @@
 #include <trunks/blob_parser.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
+#include <trunks/tpm_alerts.h>
 #include <trunks/tpm_constants.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/trunks_dbus_proxy.h>
@@ -114,6 +115,109 @@ void SetOwnerDependency(TpmPersistentState::TpmOwnerDependency dependency,
 
 namespace cryptohome {
 
+// Keep it with sync to UMA enum list
+// https://chromium.googlesource.com/chromium/src/+/master/tools/metrics/histograms/enums.xml
+// These values are persisted to logs, and should therefore never be renumbered
+// nor reused.
+enum TpmAlerts {
+  kCamoBreach = 1,
+  kDmemParity = 2,
+  kDrfParity = 3,
+  kImemParity = 4,
+  kPgmFault = 5,
+  kCpuDIfBusError = 6,
+  kCpuDIfUpdateWatchdog = 7,
+  kCpuIIfBusError = 8,
+  kCpuIIfUpdateWatchdog = 9,
+  kCpuSIfBusError = 10,
+  kCpuSIfUpdateWatchdog = 11,
+  kDmaIfBusErr = 12,
+  kDmaIfUpdateWatchdog = 13,
+  kSpsIfBusErr = 14,
+  kSpsIfUpdateWatchdog = 15,
+  kUsbIfBusErr = 16,
+  kUsbIfUpdateWatchdog = 17,
+  kFuseDefaults = 18,
+  kDiffFail = 19,
+  kSoftwareAlert0 = 20,
+  kSoftwareAlert1 = 21,
+  kSoftwareAlert2 = 22,
+  kSoftwareAlert3 = 23,
+  kHearbitFail = 24,
+  kProcOpcodeHash = 25,
+  kSramParityScrub = 26,
+  kAesExecCtrMax = 27,
+  kAesHkey = 28,
+  kCertLookup = 29,
+  kFlashEntry = 30,
+  kPw = 31,
+  kShaExecCtrMax = 32,
+  kShaFault = 33,
+  kShaHkey = 34,
+  kPmuBatteryMon = 35,
+  kPmuWatchdog = 36,
+  kRtcDead = 37,
+  kTempMax = 38,
+  kTempMaxDiff = 39,
+  kTempMin = 40,
+  kRngOutOfSpec = 41,
+  kRngTimeout = 42,
+  kVoltageError = 43,
+  kXoJitteryTrim = 44,
+
+  kTPMAlertNumBuckets,  // Must be the last entry.
+};
+static_assert(kTPMAlertNumBuckets <= trunks::kAlertsMaxSize + 1,
+  "Number of UMA enums less than alerts set size");
+
+// Maps alerts identifiers received from TMP firmware to UMA identifiers
+const TpmAlerts h1AlertsMap[trunks::kH1AlertsSize] = {
+  kCamoBreach,
+  kDmemParity,
+  kDrfParity,
+  kImemParity,
+  kPgmFault,
+  kCpuDIfBusError,
+  kCpuDIfUpdateWatchdog,
+  kCpuIIfBusError,
+  kCpuIIfUpdateWatchdog,
+  kCpuSIfBusError,
+  kCpuSIfUpdateWatchdog,
+  kDmaIfBusErr,
+  kDmaIfUpdateWatchdog,
+  kSpsIfBusErr,
+  kSpsIfUpdateWatchdog,
+  kUsbIfBusErr,
+  kUsbIfUpdateWatchdog,
+  kFuseDefaults,
+  kDiffFail,
+  kSoftwareAlert0,
+  kSoftwareAlert1,
+  kSoftwareAlert2,
+  kSoftwareAlert3,
+  kHearbitFail,
+  kProcOpcodeHash,
+  kSramParityScrub,
+  kAesExecCtrMax,
+  kAesHkey,
+  kCertLookup,
+  kFlashEntry,
+  kPw,
+  kShaExecCtrMax,
+  kShaFault,
+  kShaHkey,
+  kPmuBatteryMon,
+  kPmuWatchdog,
+  kRtcDead,
+  kTempMax,
+  kTempMaxDiff,
+  kTempMin,
+  kRngOutOfSpec,
+  kRngTimeout,
+  kVoltageError,
+  kXoJitteryTrim,
+};
+
 Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
                    tpm_manager::TpmOwnershipInterface* tpm_owner,
                    tpm_manager::TpmNvramInterface* tpm_nvram)
@@ -205,6 +309,41 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
     return false;
   }
   data->assign(random_data.begin(), random_data.end());
+  return true;
+}
+
+bool Tpm2Impl::GetAlertsData(Tpm::AlertsData* alerts) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return true;
+  }
+
+  trunks::TpmAlertsData trunks_alerts;
+  TPM_RC result = trunks->tpm_utility->GetAlertsData(&trunks_alerts);
+  if (result == trunks::TPM_RC_NO_SUCH_COMMAND) {
+    LOG(INFO) << "TPM GetAlertsData vendor command is not implemented";
+    return false;
+  } else if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting alerts data: " << GetErrorString(result);
+    memset(alerts, 0, sizeof(Tpm::AlertsData));
+    return true;
+  } else if (trunks_alerts.chip_family != trunks::kFamilyH1) {
+    // Currently we support only H1 alerts
+    LOG(ERROR) << "Unknown alerts family: " << trunks_alerts.chip_family;
+    return false;
+  }
+
+  memset(alerts, 0, sizeof(Tpm::AlertsData));
+  for (int i = 0; i < trunks_alerts.alerts_num; i++) {
+    size_t uma_idx = h1AlertsMap[i];
+    if (uma_idx <= 0 || uma_idx >= kTPMAlertNumBuckets) {
+      LOG(ERROR) << "Alert index " << i << " maps into invalid UMA enum index "
+                 << uma_idx;
+    } else {
+      alerts->counters[uma_idx] = trunks_alerts.counters[i];
+    }
+  }
+
   return true;
 }
 

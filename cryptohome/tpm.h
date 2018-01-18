@@ -158,6 +158,13 @@ class Tpm {
     uint16_t field_upgrade_counter;
   };
 
+  // Number of alerts supported by UMA
+  static constexpr size_t kAlertsNumber = 45;
+  struct AlertsData {
+    // alert counters with UMA enum index
+    uint16_t counters[kAlertsNumber];
+  };
+
   static Tpm* GetSingleton();
 
   static const uint32_t kLockboxIndex;
@@ -245,6 +252,13 @@ class Tpm {
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
   virtual bool GetRandomData(size_t length, brillo::Blob* data) = 0;
+
+  // Gets alerts data the TPM
+  //
+  // Parameters
+  //   alerts (OUT) - Struct that contains TPM alerts information
+  // Returns true is hardware supports Alerts reporting, false otherwise
+  virtual bool GetAlertsData(Tpm::AlertsData* alerts) = 0;
 
   // Creates a NVRAM space in the TPM
   //

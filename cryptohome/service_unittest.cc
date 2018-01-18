@@ -520,6 +520,24 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
   g_signal_remove_emission_hook(low_disk_space_signal, hook_id);
 }
 
+TEST_F(ServiceTestNotInitialized, UploadAlertsCallback) {
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
+
+  service_.set_use_tpm(true);
+  service_.set_tpm(&tpm);
+  service_.set_tpm_init(&tpm_init);
+  service_.set_initialize_tpm(true);
+
+  // Checks that LowDiskCallback is called periodically.
+  EXPECT_CALL(tpm, GetAlertsData(_)).Times(::testing::AtLeast(1));
+
+  service_.Initialize();
+
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+  // TODO(anatol): check that alerts are written to /var/lib/metrics/uma-events
+}
+
 TEST_F(ServiceTest, NoDeadlocksInInitializeTpmComplete) {
   char user[] = "chromeos-user";
   SetupMount(user);

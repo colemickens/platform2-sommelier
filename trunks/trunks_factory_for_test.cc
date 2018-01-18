@@ -181,6 +181,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GenerateRandom(num_bytes, delegate, random_data);
   }
 
+  TPM_RC GetAlertsData(TpmAlertsData* alerts) override {
+    return target_->GetAlertsData(alerts);
+  }
+
   TPM_RC ExtendPCR(int pcr_index,
                    const std::string& extend_data,
                    AuthorizationDelegate* delegate) override {

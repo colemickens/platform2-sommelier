@@ -99,6 +99,7 @@ const char kChapsSystemToken[] = "/var/lib/chaps";
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
 const int kUpdateUserActivityPeriod = 24;  // divider of the former
 const int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
+const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;  // 6 hours
 const int64_t kNotifyDiskSpaceThreshold = 1 << 30;  // 1GB
 const int kDefaultRandomSeedLength = 64;
 const char kMountThreadName[] = "MountThread";
@@ -218,7 +219,8 @@ Service::Service()
       boot_lockbox_(nullptr),
       boot_attributes_(nullptr),
       firmware_management_parameters_(nullptr),
-      low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS) {
+      low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
+      upload_alerts_period_ms_(kUploadAlertsPeriodMS) {
 }
 
 Service::~Service() {
@@ -657,6 +659,12 @@ bool Service::Initialize() {
       FROM_HERE,
       base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
 
+  // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
+  // scheduled by the callback itself.
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::UploadAlertsDataCallback, base::Unretained(this)));
+
   // TODO(keescook,ellyjones) Make this mock-able.
   StatefulRecovery recovery(platform_, this);
   if (recovery.Requested()) {
@@ -746,6 +754,34 @@ bool Service::SeedUrandom() {
     return false;
   }
   return true;
+}
+
+void Service::UploadAlertsDataCallback() {
+  Tpm::AlertsData alerts;
+
+  if (!use_tpm_) {
+    LOG(WARNING) << "TPM is not enabled. Disabling TPM alert metrics";
+    return;
+  }
+
+  if (tpm_) {
+    bool supported = tpm_->GetAlertsData(&alerts);
+    if (!supported) {
+      // success return code and unknown chip family means that chip does not
+      // support GetAlerts information. Return here as no need to reschedule
+      // the delayed task.
+      LOG(INFO) << "The TPM chip does not support GetAlertsData. "
+                << "Stop UploadAlertsData task.";
+      return;
+    }
+
+    ReportAlertsData(alerts);
+  }
+
+  mount_thread_.task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&Service::UploadAlertsDataCallback, base::Unretained(this)),
+      base::TimeDelta::FromMilliseconds(upload_alerts_period_ms_));
 }
 
 bool Service::Reset() {

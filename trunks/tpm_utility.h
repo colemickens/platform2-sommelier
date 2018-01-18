@@ -23,6 +23,7 @@
 #include <base/macros.h>
 
 #include "trunks/hmac_session.h"
+#include "trunks/tpm_alerts.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
 
@@ -33,6 +34,9 @@ const TPMI_DH_PERSISTENT kRSAStorageRootKey = PERSISTENT_FIRST;
 const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
 const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
 const TPMI_DH_PERSISTENT kRSAEndorsementKey = PERSISTENT_FIRST + 3;
+
+// VENDOR_RC_ERR | VENDOR_RC_NO_SUCH_COMMAND
+const int TPM_RC_NO_SUCH_COMMAND = 0x57f;
 
 // This value to used to specify that no pcr are needed in the creation data
 // for a key.
@@ -386,6 +390,12 @@ class TRUNKS_EXPORT TpmUtility {
   // TPM firmware has no notion of restricting the CCD password and doesn't need
   // a signal to lock things down at login.
   virtual TPM_RC ManageCCDPwd(bool allow_pwd) = 0;
+
+  // Reads TPM alerts information from the chip.
+  // If alerts->chip_family equals to kFamilyUndefined then
+  // this operation is not supported by the chip.
+  // Returns TPM_RC_SUCCESS on success.
+  virtual TPM_RC GetAlertsData(TpmAlertsData* alerts) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);

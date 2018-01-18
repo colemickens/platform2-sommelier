@@ -198,6 +198,10 @@ void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code);
 void ReportDircryptoMigrationFailedOperationType(
     DircryptoMigrationFailedOperationType type);
 
+// The |alerts| data set is reported to the
+// "Platform.TPM.HardwareAlerts" enum histogram.
+void ReportAlertsData(const Tpm::AlertsData& alerts);
+
 // The |type| value is reported to the
 // "Cryptohome.DircryptoMigrationFailedPathType"
 // enum histogram.
