@@ -125,6 +125,7 @@ def CheckSubdirs():
       'libweave',
       'lorgnette',
       'modem-utilities',
+      'mtpd',
       'peerd',
       'permission_broker',
       'regions',

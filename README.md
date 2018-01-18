@@ -67,6 +67,7 @@ copies.
 | [mist](./mist/) | Modem USB Interface Switching Tool |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
+| [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
 | [peerd](./peerd/) | Daemon for communicating with local peers |
 | [permission_broker](./permission_broker/) ||
