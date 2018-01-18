@@ -25,7 +25,7 @@
       'sources': [
         'dbus_bindings/org.chromium.Mtpd.xml',
       ],
-      'includes': ['../../platform2/common-mk/generate-dbus-adaptors.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'libmtpd',
@@ -60,11 +60,11 @@
         {
           'target_name': 'mtpd_testrunner',
           'type': 'executable',
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libmtpd',
             'mtpd-adaptors',
-            '../../platform2/common-mk/testrunner.gyp:testrunner',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'device_manager_unittest.cc',
