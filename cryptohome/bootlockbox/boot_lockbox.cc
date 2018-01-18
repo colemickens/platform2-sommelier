@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/bootlockbox/boot_lockbox.h"
 
 #include <sys/types.h>
 
@@ -109,6 +109,13 @@ bool BootLockbox::IsFinalized() {
   brillo::SecureBlob actual_pcr_value;
   return tpm_->ReadPCR(kPCRIndex, &actual_pcr_value) &&
          actual_pcr_value != initial_pcr_value_;
+}
+
+bool BootLockbox::PreLoadKey() {
+  if (!key_.has_key_blob() && !LoadKey() && !CreateKey()) {
+    return false;
+  }
+  return true;
 }
 
 bool BootLockbox::GetKeyBlob(brillo::SecureBlob* key_blob) {

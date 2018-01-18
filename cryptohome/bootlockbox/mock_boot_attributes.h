@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOCK_BOOT_ATTRIBUTES_H_
-#define CRYPTOHOME_MOCK_BOOT_ATTRIBUTES_H_
+#ifndef CRYPTOHOME_BOOTLOCKBOX_MOCK_BOOT_ATTRIBUTES_H_
+#define CRYPTOHOME_BOOTLOCKBOX_MOCK_BOOT_ATTRIBUTES_H_
 
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "cryptohome/boot_attributes.h"
+#include "cryptohome/bootlockbox/boot_attributes.h"
 
 namespace cryptohome {
 
@@ -26,4 +26,4 @@ class MockBootAttributes : public BootAttributes {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_MOCK_BOOT_ATTRIBUTES_H_
+#endif  // CRYPTOHOME_BOOTLOCKBOX_MOCK_BOOT_ATTRIBUTES_H_

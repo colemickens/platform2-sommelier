@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/boot_attributes.h"
+#include "cryptohome/bootlockbox/boot_attributes.h"
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/platform.h"
 
 #include "install_attributes.pb.h"  // NOLINT(build/include)

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOT_LOCKBOX_H_
-#define CRYPTOHOME_BOOT_LOCKBOX_H_
+#ifndef CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_H_
+#define CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_H_
 
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
@@ -54,6 +54,9 @@ class BootLockbox {
   // Checks if BootLockbox has been finalized.
   virtual bool IsFinalized();
 
+  // This function tries to preload the lockbox key if available.
+  virtual bool PreLoadKey();
+
  protected:
   // Returns the TPM |key_blob| for the lockbox key.  Returns true on success.
   bool GetKeyBlob(brillo::SecureBlob* key_blob);
@@ -90,4 +93,4 @@ class BootLockbox {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOT_LOCKBOX_H_
+#endif  // CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_H_

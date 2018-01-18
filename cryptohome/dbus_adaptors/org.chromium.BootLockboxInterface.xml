@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+  Copyright 2018 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<node name="/org/chromium/BootLockbox">
+  <interface name="org.chromium.BootLockboxInterface">
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: SignBootLockboxRequest
+         reply: BaseReply with a SignBootLockboxReply extension on success
+    -->
+    <method name="SignBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: VerifyBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="VerifyBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: FinalizeBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="FinalizeBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+  </interface>
+</node>

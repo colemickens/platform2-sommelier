@@ -27,12 +27,12 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/bootlockbox/mock_boot_attributes.h"
+#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_attestation.h"
-#include "cryptohome/mock_boot_attributes.h"
-#include "cryptohome/mock_boot_lockbox.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_dbus_transition.h"
 #include "cryptohome/mock_firmware_management_parameters.h"

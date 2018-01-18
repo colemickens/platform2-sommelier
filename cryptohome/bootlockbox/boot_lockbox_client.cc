@@ -1,21 +1,22 @@
-// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/setup/boot_lockbox_client.h"
+#include "cryptohome/bootlockbox/boot_lockbox_client.h"
 
 #include <utility>
 #include <vector>
 
 #include <base/timer/elapsed_timer.h>
 #include <brillo/glib/object.h>
-#include <cryptohome-client/cryptohome/dbus-proxies.h>
-#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/dbus-glib.h>
-#include <dbus/dbus.h>  // NOLINT - sort not stable
+#include <dbus/dbus.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 
-namespace arc {
+#include "cryptohome/dbus-proxies.h"
+
+namespace cryptohome {
 
 std::unique_ptr<BootLockboxClient>
 BootLockboxClient::CreateBootLockboxClient() {
@@ -27,39 +28,20 @@ BootLockboxClient::CreateBootLockboxClient() {
     return nullptr;
   }
 
-  auto cryptohome_proxy =
-      std::make_unique<org::chromium::CryptohomeInterfaceProxy>(bus);
+  auto bootlockbox_proxy =
+      std::make_unique<org::chromium::BootLockboxInterfaceProxy>(bus);
 
   return std::unique_ptr<BootLockboxClient>(
-      new BootLockboxClient(std::move(cryptohome_proxy), bus));
+      new BootLockboxClient(std::move(bootlockbox_proxy), bus));
 }
 
 BootLockboxClient::BootLockboxClient(
-    std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
-        cryptohome,
+    std::unique_ptr<org::chromium::BootLockboxInterfaceProxy> bootlockbox,
     scoped_refptr<dbus::Bus> bus)
-    : cryptohome_(std::move(cryptohome)), bus_(bus) {}
+    : bootlockbox_(std::move(bootlockbox)), bus_(bus) {}
 
 BootLockboxClient::~BootLockboxClient() {
   bus_->ShutdownAndBlock();
-}
-
-bool BootLockboxClient::IsServiceReady() {
-  std::string owner = bus_->GetServiceOwnerAndBlock(
-      cryptohome::kCryptohomeServiceName, dbus::Bus::SUPPRESS_ERRORS);
-  return !owner.empty();
-}
-
-bool BootLockboxClient::IsTpmReady() {
-  bool is_tpm_ready = false;
-  brillo::ErrorPtr error;
-  // Return false if call fails.
-  if (!cryptohome_->TpmIsReady(&is_tpm_ready, &error)) {
-    LOG(ERROR) << "Failed to call TpmIsReady, error: " << error->GetMessage();
-    return false;
-  }
-  LOG(INFO) << "Is TPM ready: " << is_tpm_ready;
-  return is_tpm_ready;
 }
 
 bool BootLockboxClient::Sign(const std::string& digest,
@@ -68,11 +50,11 @@ bool BootLockboxClient::Sign(const std::string& digest,
   cryptohome::SignBootLockboxRequest request;
   request.set_data(digest);
   std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
+  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
   std::vector<uint8_t> reply_array;
   brillo::ErrorPtr error;
-  if (!cryptohome_->SignBootLockbox(request_array, &reply_array, &error)) {
+  if (!bootlockbox_->SignBootLockbox(request_array, &reply_array, &error)) {
     LOG(ERROR) << "Failed to call SignBootLockbox, error: "
                << error->GetMessage();
     return false;
@@ -90,7 +72,7 @@ bool BootLockboxClient::Sign(const std::string& digest,
   }
 
   if (!base_reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
-    LOG(ERROR) << "Missing reply field in SignBootLockboxReply";
+    LOG(ERROR) << "Missing reply in SignBootLockboxReply";
     return false;
   }
 
@@ -113,11 +95,11 @@ bool BootLockboxClient::Verify(const std::string& digest,
   request.set_data(digest);
   request.set_signature(signature);
   std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
+  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
   std::vector<uint8_t> reply_array;
   brillo::ErrorPtr error;
-  if (!cryptohome_->VerifyBootLockbox(request_array, &reply_array, &error)) {
+  if (!bootlockbox_->VerifyBootLockbox(request_array, &reply_array, &error)) {
     LOG(ERROR) << "Failed to call VerifyBootLockbox, " << error->GetMessage();
     return false;
   }
@@ -133,8 +115,8 @@ bool BootLockboxClient::Verify(const std::string& digest,
                << base_reply.error();
     return false;
   }
-  LOG(INFO) << "Verifing took " << timer.Elapsed().InMillisecondsRoundedUp()
-            << "ms";
+  LOG(INFO) << "BootLockboxClient::Verify took " <<
+            timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   return true;
 }
 
@@ -142,11 +124,11 @@ bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
   cryptohome::FinalizeBootLockboxRequest request;
   std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
+  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
   std::vector<uint8_t> reply_array;
   brillo::ErrorPtr error;
-  if (!cryptohome_->FinalizeBootLockbox(request_array, &reply_array, &error)) {
+  if (!bootlockbox_->FinalizeBootLockbox(request_array, &reply_array, &error)) {
     LOG(ERROR) << "Failed to call FinalizeBootLockbox";
     return false;
   }
@@ -167,4 +149,4 @@ bool BootLockboxClient::Finalize() {
   return true;
 }
 
-}  // namespace arc
+}  // namespace cryptohome

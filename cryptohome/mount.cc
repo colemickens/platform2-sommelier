@@ -29,7 +29,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/chaps_client_factory.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"

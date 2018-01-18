@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/boot_attributes.h"
+#include "cryptohome/bootlockbox/boot_attributes.h"
 
 #include <map>
 #include <memory>
@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/mock_boot_lockbox.h"
+#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"

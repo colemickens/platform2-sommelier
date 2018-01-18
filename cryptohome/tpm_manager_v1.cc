@@ -13,7 +13,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "cryptohome/attestation.h"
-#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/install_attributes.h"

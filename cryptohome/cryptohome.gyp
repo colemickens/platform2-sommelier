@@ -142,7 +142,7 @@
       },
       'sources': [
         'attestation.cc',
-        'boot_lockbox.cc',
+        'bootlockbox/boot_lockbox.cc',
         'crc32.c',
         'crc8.c',
         'crypto.cc',
@@ -199,7 +199,7 @@
       ],
       'sources': [
         'attestation_task.cc',
-        'boot_attributes.cc',
+        'bootlockbox/boot_attributes.cc',
         'chaps_client_factory.cc',
         'crypto.cc',
         'cryptohome_event_source.cc',
@@ -240,7 +240,88 @@
         }],
       ],
     },
-
+    {
+      'target_name': 'bootlockbox-adaptors',
+      'type': 'none',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/dbus_adaptors',
+        'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
+      },
+      'sources': [
+        'dbus_adaptors/org.chromium.BootLockboxInterface.xml',
+      ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
+    # BootLockbox dbus client.
+    {
+      'target_name': 'bootlockbox-proxies',
+      'type': 'none',
+      'actions': [{
+        'action_name': 'generate-dbus-proxies',
+        'variables': {
+          'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
+          'proxy_output_file': 'include/cryptohome/dbus-proxies.h',
+          'mock_output_file': 'include/cryptohome/dbus-proxy-mocks.h',
+          'proxy_path_in_mocks': 'cryptohome/dbus-proxies.h',
+        },
+        'sources': [
+          'dbus_adaptors/org.chromium.BootLockboxInterface.xml',
+        ],
+        'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+      }],
+    },
+    # An executable that communicates with bootlockbox daemon.
+    {
+      'target_name': 'bootlockboxtool',
+      'type': 'executable',
+      'dependencies': [
+        'bootlockbox-proxies',
+        'cryptohome-proto',
+      ],
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+          'libbrillo-<(libbase_ver)',
+          'protobuf',
+        ],
+      },
+      'sources': [
+        'bootlockbox/boot_lockbox_client.cc',
+        'bootlockbox/boot_lockbox_tool.cc',
+      ],
+    },
+    {
+      'target_name': 'bootlockboxd',
+      'type': 'executable',
+      'dependencies': [
+        'libcrostpm',
+        'bootlockbox-adaptors',
+        'cryptohome-proto',
+      ],
+      'link_settings': {
+        'libraries': [
+          '-lscrypt',
+          '-lchaps',
+          '-lkeyutils',
+        ],
+      },
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+          'libbrillo-<(libbase_ver)',
+          'protobuf',
+          'openssl',
+          'libmetrics-<(libbase_ver)',
+          'libecryptfs',
+          'vboot_host',
+        ],
+      },
+      'sources': [
+        'bootlockbox/boot_lockbox_dbus_adaptor.cc',
+        'bootlockbox/boot_lockbox_service.cc',
+        'bootlockbox/boot_lockboxd.cc',
+      ],
+    },
     # Main programs.
     {
       'target_name': 'cryptohome',
@@ -566,7 +647,10 @@
           'sources': [
             'attestation_unittest.cc',
             'boot_attributes_unittest.cc',
-            'boot_lockbox_unittest.cc',
+            'bootlockbox/boot_lockbox_dbus_adaptor.cc',
+            'bootlockbox/boot_lockbox_service.cc',
+            'bootlockbox/boot_lockbox_service_unittest.cc',
+            'bootlockbox/boot_lockbox_unittest.cc',
             'crypto_unittest.cc',
             'cryptohome_event_source_unittest.cc',
             'dircrypto_data_migrator/migration_helper_unittest.cc',

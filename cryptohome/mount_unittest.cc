@@ -25,12 +25,12 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/make_tests.h"
-#include "cryptohome/mock_boot_lockbox.h"
 #include "cryptohome/mock_chaps_client_factory.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_homedirs.h"

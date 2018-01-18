@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOT_ATTRIBUTES_H_
-#define CRYPTOHOME_BOOT_ATTRIBUTES_H_
+#ifndef CRYPTOHOME_BOOTLOCKBOX_BOOT_ATTRIBUTES_H_
+#define CRYPTOHOME_BOOTLOCKBOX_BOOT_ATTRIBUTES_H_
 
 #include <map>
 #include <string>
@@ -64,4 +64,4 @@ class BootAttributes {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOT_ATTRIBUTES_H_
+#endif  // CRYPTOHOME_BOOTLOCKBOX_BOOT_ATTRIBUTES_H_

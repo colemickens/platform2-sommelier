@@ -38,8 +38,8 @@
 #include <string>
 #include <vector>
 
-#include "cryptohome/boot_attributes.h"
-#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/bootlockbox/boot_attributes.h"
+#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
