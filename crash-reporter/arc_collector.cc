@@ -50,6 +50,7 @@ const char kChromePath[] = "/opt/google/chrome/chrome";
 const char kArcProduct[] = "ChromeOS_ARC";
 
 // Metadata fields included in reports.
+const char kAndroidVersionField[] = "android_version";
 const char kArcVersionField[] = "arc_version";
 const char kBoardField[] = "board";
 const char kChromeOsVersionField[] = "chrome_os_version";
@@ -232,6 +233,36 @@ bool ArcCollector::GetArcPid(pid_t *arc_pid) {
   return false;
 }
 
+// static
+std::string ArcCollector::GetVersionFromFingerprint(
+    const std::string &fingerprint) {
+  // fingerprint has the following format:
+  //   $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/
+  //     ..$(BUILD_ID)/$(BF_BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/
+  //     ..$(BUILD_VERSION_TAGS)
+  // eg:
+  //   google/caroline/caroline_cheets:7.1.1/R65-10317.0.9999/
+  //     ..4548207:user/release-keys
+  // we want to get the $(PLATFORM_VERSION). eg: 7.1.1
+
+  std::string android_version;
+  // Assuming the fingerprint format won't change. Everything between ':' and
+  // '/R' is the version.
+  auto begin = fingerprint.find(':');
+  if (begin == std::string::npos)
+    return kUnknownVersion;
+
+  // Make begin point to the start of the "version".
+  begin++;
+
+  // Version must have at least one digit.
+  const auto end = fingerprint.find("/R", begin + 1);
+  if (end == std::string::npos)
+    return kUnknownVersion;
+
+  return fingerprint.substr(begin, end - begin);
+}
+
 bool ArcCollector::ArcContext::GetArcPid(pid_t *pid) const {
   return ArcCollector::GetArcPid(pid);
 }
@@ -385,14 +416,16 @@ void ArcCollector::AddArcMetaData(const std::string &process,
   AddCrashMetaUploadData(kCrashTypeField, crash_type);
   AddCrashMetaUploadData(kChromeOsVersionField, CrashCollector::GetVersion());
 
-  std::string version, device, board, cpu_abi;
+  std::string fingerprint, device, board, cpu_abi;
 
   if (add_arc_properties &&
-      GetArcProperties(&version, &device, &board, &cpu_abi)) {
-    AddCrashMetaUploadData(kArcVersionField, version);
+      GetArcProperties(&fingerprint, &device, &board, &cpu_abi)) {
+    AddCrashMetaUploadData(kArcVersionField, fingerprint);
     AddCrashMetaUploadData(kDeviceField, device);
     AddCrashMetaUploadData(kBoardField, board);
     AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
+    AddCrashMetaUploadData(kAndroidVersionField,
+                           GetVersionFromFingerprint(fingerprint));
   }
 
   int64_t start_time;
@@ -491,7 +524,10 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   }
 
   AddArcMetaData(process, crash_type, false);
-  AddCrashMetaUploadData(kArcVersionField, GetCrashLogHeader(map, kBuildKey));
+  const std::string fingerprint = GetCrashLogHeader(map, kBuildKey);
+  AddCrashMetaUploadData(kArcVersionField, fingerprint);
+  AddCrashMetaUploadData(kAndroidVersionField,
+                         GetVersionFromFingerprint(fingerprint));
   AddCrashMetaUploadData(kDeviceField, device);
   AddCrashMetaUploadData(kBoardField, board);
   AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
@@ -657,7 +693,7 @@ bool GetArcRoot(FilePath *root) {
   return false;
 }
 
-bool GetArcProperties(std::string *version,
+bool GetArcProperties(std::string *fingerprint,
                       std::string *device,
                       std::string *board,
                       std::string *cpu_abi) {
@@ -665,7 +701,7 @@ bool GetArcProperties(std::string *version,
   brillo::KeyValueStore store;
   if (GetArcRoot(&root) &&
       store.Load(root.Append(kArcBuildProp)) &&
-      store.GetString(kFingerprintProperty, version) &&
+      store.GetString(kFingerprintProperty, fingerprint) &&
       store.GetString(kDeviceProperty, device) &&
       store.GetString(kBoardProperty, board) &&
       store.GetString(kCpuAbiProperty, cpu_abi))

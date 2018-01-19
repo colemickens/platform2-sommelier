@@ -59,6 +59,7 @@ class ArcCollector : public UserCollectorBase {
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
   FRIEND_TEST(ArcCollectorTest, ShouldDump);
   FRIEND_TEST(ArcCollectorTest, ParseCrashLog);
+  FRIEND_TEST(ArcContextTest, GetAndroidVersion);
 
   // Shift for UID namespace in ARC.
   static constexpr uid_t kUserShift = 655360;
@@ -110,6 +111,9 @@ class ArcCollector : public UserCollectorBase {
                             std::stringstream *stream,
                             CrashLogHeaderMap *map,
                             std::string *exception_info);
+
+  // Returns the Android version (eg: 7.1.1) from the fingerprint.
+  static std::string GetVersionFromFingerprint(const std::string &fingerprint);
 
   bool CreateReportForJavaCrash(const std::string &crash_type,
                                 const std::string &device,

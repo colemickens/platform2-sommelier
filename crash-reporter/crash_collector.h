@@ -59,15 +59,16 @@ class CrashCollector {
 
  protected:
   friend class CrashCollectorTest;
+  FRIEND_TEST(ArcContextTest, GetAndroidVersion);
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityCorrectBasename);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityStrangeNames);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityUsual);
+  FRIEND_TEST(CrashCollectorTest, ForkExecAndPipe);
+  FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
-  FRIEND_TEST(CrashCollectorTest, ForkExecAndPipe);
-  FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, Initialize);
   FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
   FRIEND_TEST(CrashCollectorTest, MetaData);
@@ -77,15 +78,15 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, StripSensitiveDataSample);
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
-  FRIEND_TEST(ForkExecAndPipeTest, Basic);
-  FRIEND_TEST(ForkExecAndPipeTest, NonZeroReturnValue);
-  FRIEND_TEST(ForkExecAndPipeTest, BadOutputFile);
-  FRIEND_TEST(ForkExecAndPipeTest, ExistingOutputFile);
   FRIEND_TEST(ForkExecAndPipeTest, BadExecutable);
-  FRIEND_TEST(ForkExecAndPipeTest, StderrCaptured);
+  FRIEND_TEST(ForkExecAndPipeTest, BadOutputFile);
+  FRIEND_TEST(ForkExecAndPipeTest, Basic);
+  FRIEND_TEST(ForkExecAndPipeTest, ExistingOutputFile);
   FRIEND_TEST(ForkExecAndPipeTest, NULLParam);
   FRIEND_TEST(ForkExecAndPipeTest, NoParams);
+  FRIEND_TEST(ForkExecAndPipeTest, NonZeroReturnValue);
   FRIEND_TEST(ForkExecAndPipeTest, SegFaultHandling);
+  FRIEND_TEST(ForkExecAndPipeTest, StderrCaptured);
 
   // Default value if version cannot be determined.
   static const char * const kUnknownVersion;
