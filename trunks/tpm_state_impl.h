@@ -81,8 +81,10 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
                        uint32_t max_properties_per_call);
   // Queries TPM properties and populates tpm_properties_.
   TPM_RC CacheTpmProperties();
+  uint32_t TpmPropertiesCallback(const TPMU_CAPABILITIES& capability_data);
   // Queries algorithm properties and populates algorithm_properties_.
   TPM_RC CacheAlgorithmProperties();
+  uint32_t AlgorithmCallback(const TPMU_CAPABILITIES& capability_data);
 
   const TrunksFactory& factory_;
   bool initialized_{false};
