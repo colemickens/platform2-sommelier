@@ -20,7 +20,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace smbprovider {
 
-class DirectoryEntryList;
+class DirectoryEntryListProto;
 class MountManager;
 class SambaInterface;
 
@@ -88,11 +88,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
  private:
   // Gets entries from |samba_interface_| in the directory |dir_id| and places
   // the entries in a buffer. It then transforms the data into a
-  // DirectoryEntryList which is passed into |entries|. This should not be be
-  // called on a directory that is not open. Returns 0 on success, and errno on
-  // failure.
-  // |entries| will be empty in case of failure.
-  int32_t GetDirectoryEntries(int32_t dir_id, DirectoryEntryList* entries);
+  // DirectoryEntryListProto which is passed into |entries|. This should not be
+  // called on a directory that is not open. Returns 0 on success, and errno
+  // on failure. |entries| will be empty in case of failure.
+  int32_t GetDirectoryEntries(int32_t dir_id, DirectoryEntryListProto* entries);
 
   // Looks up the |mount_id| and appends |entry_path| to the root share path
   // and sets |full_path| to the result. |full_path| will be unmodified on
@@ -137,14 +136,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   // Helper method to read a file with valid |options| and output the results
   // into a |buffer|. This sets |error_code| on failure.
-  bool ReadFileIntoBuffer(const ReadFileOptions& options,
+  bool ReadFileIntoBuffer(const ReadFileOptionsProto& options,
                           int32_t* error_code,
                           std::vector<uint8_t>* buffer);
 
   // Helper method to write data from a |buffer| into a temporary file and
   // outputs the resulting file descriptor into |temp_fd|. |options| is used for
   // logging purposes. This sets |error_code| on failure.
-  bool WriteTempFile(const ReadFileOptions& options,
+  bool WriteTempFile(const ReadFileOptionsProto& options,
                      const std::vector<uint8_t>& buffer,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);

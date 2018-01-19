@@ -52,13 +52,13 @@ TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
   EXPECT_EQ(CalculateEntrySize(name), dirent->dirlen);
 }
 
-// "." and ".." entries shouldn't be added to DirectoryEntryList.
+// "." and ".." entries shouldn't be added to DirectoryEntryListProto.
 TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
   std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry(".", SMBC_DIR, dir_buf.size(), dirent));
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   AddEntryIfValid(*dirent, &entries);
   EXPECT_EQ(0, entries.entries_size());
 
@@ -67,13 +67,13 @@ TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
   EXPECT_EQ(0, entries.entries_size());
 }
 
-// Incorrect smbc_type should not be added to DirectoryEntryList.
+// Incorrect smbc_type should not be added to DirectoryEntryListProto.
 TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
   std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry("printer1", SMBC_PRINTER_SHARE, kBufferSize, dirent));
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   AddEntryIfValid(*dirent, &entries);
   EXPECT_EQ(0, entries.entries_size());
 }
@@ -83,14 +83,14 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
   std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string file_name("dog.jpg");
   uint32_t file_type = SMBC_FILE;
   EXPECT_TRUE(WriteEntry(file_name, file_type, kBufferSize, dirent));
 
   AddEntryIfValid(*dirent, &entries);
   EXPECT_EQ(1, entries.entries_size());
-  const DirectoryEntry& file_entry = entries.entries(0);
+  const DirectoryEntryProto& file_entry = entries.entries(0);
   EXPECT_FALSE(file_entry.is_directory());
   EXPECT_EQ(file_name, file_entry.name());
   EXPECT_EQ(-1, file_entry.size());
@@ -103,7 +103,7 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
 
   AddEntryIfValid(*dirent, &entries);
   EXPECT_EQ(2, entries.entries_size());
-  const DirectoryEntry& dir_entry = entries.entries(1);
+  const DirectoryEntryProto& dir_entry = entries.entries(1);
   EXPECT_TRUE(dir_entry.is_directory());
   EXPECT_EQ(dir_name, dir_entry.name());
   EXPECT_EQ(-1, dir_entry.size());

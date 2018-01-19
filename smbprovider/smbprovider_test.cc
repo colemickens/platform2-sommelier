@@ -41,7 +41,7 @@ class SmbProviderTest : public testing::Test {
 
   ProtoBlob CreateMountOptionsBlob(const std::string& path) {
     ProtoBlob proto_blob;
-    MountOptions mount_options;
+    MountOptionsProto mount_options;
     mount_options.set_path(path);
     EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(mount_options, &proto_blob));
     return proto_blob;
@@ -49,7 +49,7 @@ class SmbProviderTest : public testing::Test {
 
   ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id) {
     ProtoBlob proto_blob;
-    UnmountOptions unmount_options;
+    UnmountOptionsProto unmount_options;
     unmount_options.set_mount_id(mount_id);
     EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(unmount_options, &proto_blob));
     return proto_blob;
@@ -58,7 +58,7 @@ class SmbProviderTest : public testing::Test {
   ProtoBlob CreateReadDirectoryOptionsBlob(int32_t mount_id,
                                            const std::string& directory_path) {
     ProtoBlob proto_blob;
-    ReadDirectoryOptions read_directory_options;
+    ReadDirectoryOptionsProto read_directory_options;
     read_directory_options.set_mount_id(mount_id);
     read_directory_options.set_directory_path(directory_path);
     EXPECT_EQ(ERROR_OK,
@@ -69,7 +69,7 @@ class SmbProviderTest : public testing::Test {
   ProtoBlob CreateGetMetadataOptionsBlob(int32_t mount_id,
                                          const std::string& entry_path) {
     ProtoBlob proto_blob;
-    GetMetadataEntryOptions get_metadata_options;
+    GetMetadataEntryOptionsProto get_metadata_options;
     get_metadata_options.set_mount_id(mount_id);
     get_metadata_options.set_entry_path(entry_path);
     EXPECT_EQ(ERROR_OK,
@@ -81,7 +81,7 @@ class SmbProviderTest : public testing::Test {
                                       const std::string& file_path,
                                       bool writeable) {
     ProtoBlob proto_blob;
-    OpenFileOptions open_file_options;
+    OpenFileOptionsProto open_file_options;
     open_file_options.set_mount_id(mount_id);
     open_file_options.set_file_path(file_path);
     open_file_options.set_writeable(writeable);
@@ -91,7 +91,7 @@ class SmbProviderTest : public testing::Test {
 
   ProtoBlob CreateCloseFileOptionsBlob(int32_t mount_id, int32_t file_id) {
     ProtoBlob proto_blob;
-    CloseFileOptions close_file_options;
+    CloseFileOptionsProto close_file_options;
     close_file_options.set_mount_id(mount_id);
     close_file_options.set_file_id(file_id);
     EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(close_file_options, &proto_blob));
@@ -102,7 +102,7 @@ class SmbProviderTest : public testing::Test {
                                          const std::string& entry_path,
                                          bool recursive) {
     ProtoBlob proto_blob;
-    DeleteEntryOptions delete_entry_options;
+    DeleteEntryOptionsProto delete_entry_options;
     delete_entry_options.set_mount_id(mount_id);
     delete_entry_options.set_entry_path(entry_path);
     delete_entry_options.set_recursive(recursive);
@@ -116,7 +116,7 @@ class SmbProviderTest : public testing::Test {
                                       int64_t offset,
                                       int32_t length) {
     ProtoBlob proto_blob;
-    ReadFileOptions options;
+    ReadFileOptionsProto options;
     options.set_mount_id(mount_id);
     options.set_file_id(file_id);
     options.set_offset(offset);
@@ -128,7 +128,7 @@ class SmbProviderTest : public testing::Test {
   ProtoBlob CreateCreateFileOptionsBlob(int32_t mount_id,
                                         const std::string& file_path) {
     ProtoBlob proto_blob;
-    CreateFileOptions options;
+    CreateFileOptionsProto options;
     options.set_mount_id(mount_id);
     options.set_file_path(file_path);
     EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(options, &proto_blob));
@@ -242,13 +242,13 @@ class SmbProviderTest : public testing::Test {
 // Should properly serialize protobuf.
 TEST_F(SmbProviderTest, ShouldSerializeProto) {
   const std::string path("smb://192.168.0.1/test");
-  MountOptions mount_options;
+  MountOptionsProto mount_options;
   mount_options.set_path(path);
   ProtoBlob buffer;
   EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(mount_options, &buffer));
   EXPECT_EQ(mount_options.ByteSizeLong(), buffer.size());
 
-  MountOptions deserialized_proto;
+  MountOptionsProto deserialized_proto;
   EXPECT_TRUE(deserialized_proto.ParseFromArray(buffer.data(), buffer.size()));
   EXPECT_EQ(path, deserialized_proto.path());
 }
@@ -405,7 +405,7 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
@@ -434,7 +434,7 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnEntryWithSmallBuffer) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
@@ -462,18 +462,18 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithMultipleUsageOfSmallBuffer) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
   EXPECT_EQ(2, entries.entries_size());
 
-  const DirectoryEntry& entry1 = entries.entries(0);
+  const DirectoryEntryProto& entry1 = entries.entries(0);
   EXPECT_FALSE(entry1.is_directory());
   EXPECT_EQ("file1.jpg", entry1.name());
 
-  const DirectoryEntry& entry2 = entries.entries(1);
+  const DirectoryEntryProto& entry2 = entries.entries(1);
   EXPECT_FALSE(entry2.is_directory());
   EXPECT_EQ("file2.jpg", entry2.name());
 }
@@ -493,18 +493,18 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
   EXPECT_EQ(2, entries.entries_size());
 
-  const DirectoryEntry& entry1 = entries.entries(0);
+  const DirectoryEntryProto& entry1 = entries.entries(0);
   EXPECT_FALSE(entry1.is_directory());
   EXPECT_EQ("file.jpg", entry1.name());
 
-  const DirectoryEntry& entry2 = entries.entries(1);
+  const DirectoryEntryProto& entry2 = entries.entries(1);
   EXPECT_TRUE(entry2.is_directory());
   EXPECT_EQ("images", entry2.name());
 }
@@ -525,14 +525,14 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParentEntries) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
   EXPECT_EQ(1, entries.entries_size());
 
-  const DirectoryEntry& entry = entries.entries(0);
+  const DirectoryEntryProto& entry = entries.entries(0);
   EXPECT_FALSE(entry.is_directory());
   EXPECT_EQ("file.jpg", entry.name());
 }
@@ -589,14 +589,14 @@ TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnNonFileNonDir) {
       CreateReadDirectoryOptionsBlob(mount_id, "/path");
   smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
-  DirectoryEntryList entries;
+  DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
   EXPECT_EQ(1, entries.entries_size());
 
-  const DirectoryEntry& entry = entries.entries(0);
+  const DirectoryEntryProto& entry = entries.entries(0);
   EXPECT_FALSE(entry.is_directory());
   EXPECT_EQ("file.jpg", entry.name());
 }
@@ -668,7 +668,7 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
       CreateGetMetadataOptionsBlob(mount_id, "/path/dog.jpg");
   smbprovider_->GetMetadataEntry(get_metadata_blob, &error_code, &result);
 
-  DirectoryEntry entry;
+  DirectoryEntryProto entry;
   const std::string parsed_proto(result.begin(), result.end());
   EXPECT_TRUE(entry.ParseFromString(parsed_proto));
 

@@ -65,43 +65,43 @@ void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
   DCHECK(dbus_fd->is_valid());
 }
 
-bool IsValidOptions(const MountOptions& options) {
+bool IsValidOptions(const MountOptionsProto& options) {
   return options.has_path();
 }
 
-bool IsValidOptions(const UnmountOptions& options) {
+bool IsValidOptions(const UnmountOptionsProto& options) {
   return options.has_mount_id();
 }
 
-bool IsValidOptions(const ReadDirectoryOptions& options) {
+bool IsValidOptions(const ReadDirectoryOptionsProto& options) {
   return options.has_mount_id() && options.has_directory_path();
 }
 
-bool IsValidOptions(const GetMetadataEntryOptions& options) {
+bool IsValidOptions(const GetMetadataEntryOptionsProto& options) {
   return options.has_mount_id() && options.has_entry_path();
 }
 
-bool IsValidOptions(const OpenFileOptions& options) {
+bool IsValidOptions(const OpenFileOptionsProto& options) {
   return options.has_file_path() && options.has_writeable() &&
          options.has_mount_id();
 }
 
-bool IsValidOptions(const CloseFileOptions& options) {
+bool IsValidOptions(const CloseFileOptionsProto& options) {
   return options.has_mount_id() && options.has_file_id();
 }
 
-bool IsValidOptions(const DeleteEntryOptions& options) {
+bool IsValidOptions(const DeleteEntryOptionsProto& options) {
   return options.has_mount_id() && options.has_entry_path() &&
          options.has_recursive();
 }
 
-bool IsValidOptions(const ReadFileOptions& options) {
+bool IsValidOptions(const ReadFileOptionsProto& options) {
   return options.has_mount_id() && options.has_file_id() &&
          options.has_offset() && options.has_length() &&
          options.offset() >= 0 && options.length() >= 0;
 }
 
-bool IsValidOptions(const CreateFileOptions& options) {
+bool IsValidOptions(const CreateFileOptionsProto& options) {
   return options.has_mount_id() && options.has_file_path();
 }
 
@@ -117,27 +117,27 @@ std::string GetEntryPath(const Proto& options) {
 }
 
 template <>
-std::string GetEntryPath(const ReadDirectoryOptions& options) {
+std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
   return options.directory_path();
 }
 
 template <>
-std::string GetEntryPath(const GetMetadataEntryOptions& options) {
+std::string GetEntryPath(const GetMetadataEntryOptionsProto& options) {
   return options.entry_path();
 }
 
 template <>
-std::string GetEntryPath(const OpenFileOptions& options) {
+std::string GetEntryPath(const OpenFileOptionsProto& options) {
   return options.file_path();
 }
 
 template <>
-std::string GetEntryPath(const DeleteEntryOptions& options) {
+std::string GetEntryPath(const DeleteEntryOptionsProto& options) {
   return options.entry_path();
 }
 
 template <>
-std::string GetEntryPath(const CreateFileOptions& options) {
+std::string GetEntryPath(const CreateFileOptionsProto& options) {
   return options.file_path();
 }
 
@@ -152,47 +152,47 @@ const char* GetMethodName(const Proto& unused) {
 }
 
 template <>
-const char* GetMethodName(const MountOptions& unused) {
+const char* GetMethodName(const MountOptionsProto& unused) {
   return kMountMethod;
 }
 
 template <>
-const char* GetMethodName(const UnmountOptions& unused) {
+const char* GetMethodName(const UnmountOptionsProto& unused) {
   return kUnmountMethod;
 }
 
 template <>
-const char* GetMethodName(const GetMetadataEntryOptions& unused) {
+const char* GetMethodName(const GetMetadataEntryOptionsProto& unused) {
   return kGetMetadataEntryMethod;
 }
 
 template <>
-const char* GetMethodName(const ReadDirectoryOptions& unused) {
+const char* GetMethodName(const ReadDirectoryOptionsProto& unused) {
   return kReadDirectoryMethod;
 }
 
 template <>
-const char* GetMethodName(const OpenFileOptions& unused) {
+const char* GetMethodName(const OpenFileOptionsProto& unused) {
   return kOpenFileMethod;
 }
 
 template <>
-const char* GetMethodName(const CloseFileOptions& unused) {
+const char* GetMethodName(const CloseFileOptionsProto& unused) {
   return kCloseFileMethod;
 }
 
 template <>
-const char* GetMethodName(const DeleteEntryOptions& unused) {
+const char* GetMethodName(const DeleteEntryOptionsProto& unused) {
   return kDeleteEntryMethod;
 }
 
 template <>
-const char* GetMethodName(const ReadFileOptions& unused) {
+const char* GetMethodName(const ReadFileOptionsProto& unused) {
   return kReadFileMethod;
 }
 
 template <>
-const char* GetMethodName(const CreateFileOptions& unused) {
+const char* GetMethodName(const CreateFileOptionsProto& unused) {
   return kCreateFileMethod;
 }
 
@@ -241,17 +241,17 @@ bool IsFile(const struct stat& stat_info) {
   return S_ISREG(stat_info.st_mode);
 }
 
-// Helper method to get |DirectoryEntry| from a struct stat. Returns ERROR_OK
-// on success and ERROR_FAILED otherwise.
-int32_t GetDirectoryEntryFromStat(const std::string& full_path,
-                                  const struct stat& stat_info,
-                                  ProtoBlob* proto_blob) {
+// Helper method to get |DirectoryEntryProto| from a struct stat. Returns
+// ERROR_OK on success and ERROR_FAILED otherwise.
+int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
+                                       const struct stat& stat_info,
+                                       ProtoBlob* proto_blob) {
   DCHECK(proto_blob);
   bool is_directory = IsDirectory(stat_info);
   int64_t size = is_directory ? 0 : stat_info.st_size;
   const base::FilePath path(full_path);
 
-  DirectoryEntry entry;
+  DirectoryEntryProto entry;
   entry.set_is_directory(is_directory);
   entry.set_name(path.BaseName().value());
   entry.set_size(size);
@@ -294,7 +294,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   DCHECK(mount_id);
   *mount_id = -1;
 
-  MountOptions options;
+  MountOptionsProto options;
   bool can_mount = ParseOptionsProto(options_blob, &options, error_code) &&
                    CanMountPath(options.path(), error_code);
 
@@ -309,7 +309,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
 
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
-  UnmountOptions options;
+  UnmountOptionsProto options;
   if (!ParseOptionsProto(options_blob, &options, &error_code) ||
       !RemoveMount(options.mount_id(), &error_code)) {
     return error_code;
@@ -326,7 +326,7 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
   out_entries->clear();
 
   std::string full_path;
-  ReadDirectoryOptions options;
+  ReadDirectoryOptionsProto options;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
@@ -337,7 +337,7 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
     LogAndSetError(options, GetErrorFromErrno(open_dir_error), error_code);
     return;
   }
-  DirectoryEntryList directory_entries;
+  DirectoryEntryListProto directory_entries;
   int32_t get_dir_error = GetDirectoryEntries(dir_id, &directory_entries);
   if (get_dir_error != 0) {
     LogAndSetError(options, GetErrorFromErrno(get_dir_error), error_code);
@@ -357,7 +357,7 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
   out_entry->clear();
 
   std::string full_path;
-  GetMetadataEntryOptions options;
+  GetMetadataEntryOptionsProto options;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
@@ -369,7 +369,7 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
     LogAndSetError(options, GetErrorFromErrno(get_status_error), error_code);
     return;
   }
-  *error_code = GetDirectoryEntryFromStat(full_path, stat_info, out_entry);
+  *error_code = GetDirectoryEntryProtoFromStat(full_path, stat_info, out_entry);
 }
 
 void SmbProvider::OpenFile(const ProtoBlob& options_blob,
@@ -379,7 +379,7 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
   DCHECK(file_id);
 
   std::string full_path;
-  OpenFileOptions options;
+  OpenFileOptionsProto options;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     return;
   }
@@ -397,7 +397,7 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
 
 int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
   int32_t error_code;
-  CloseFileOptions options;
+  CloseFileOptionsProto options;
   if (!ParseOptionsProto(options_blob, &options, &error_code)) {
     return error_code;
   }
@@ -413,7 +413,7 @@ int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
 
 int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
   int32_t error_code;
-  DeleteEntryOptions options;
+  DeleteEntryOptionsProto options;
   std::string full_path;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, &error_code)) {
     return error_code;
@@ -453,7 +453,7 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
 
   // TODO(allenvic): Investigate having a single shared buffer in the class.
   std::vector<uint8_t> buffer;
-  ReadFileOptions options;
+  ReadFileOptionsProto options;
 
   ParseOptionsProto(options_blob, &options, error_code) &&
       Seek(options, error_code) &&
@@ -464,7 +464,7 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
 int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
   int32_t error_code;
   std::string full_path;
-  CreateFileOptions options;
+  CreateFileOptionsProto options;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, &error_code)) {
     return error_code;
   }
@@ -500,7 +500,7 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
 // samba_interface_ methods, where it will return errno as an error in case of
 // failure.
 int32_t SmbProvider::GetDirectoryEntries(int32_t dir_id,
-                                         DirectoryEntryList* entries) {
+                                         DirectoryEntryListProto* entries) {
   DCHECK(entries);
   int32_t bytes_read = 0;
   do {
@@ -619,7 +619,7 @@ bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
   return removed;
 }
 
-bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptions& options,
+bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptionsProto& options,
                                      int32_t* error_code,
                                      std::vector<uint8_t>* buffer) {
   DCHECK(buffer);
@@ -641,7 +641,7 @@ bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptions& options,
   return true;
 }
 
-bool SmbProvider::WriteTempFile(const ReadFileOptions& options,
+bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
                                 const std::vector<uint8_t>& buffer,
                                 int32_t* error_code,
                                 dbus::FileDescriptor* temp_fd) {

@@ -15,8 +15,9 @@
 
 namespace smbprovider {
 
-// Helper method to transform and add |dirent| to a DirectoryEntryList.
-void AddEntryIfValid(const smbc_dirent& dirent, DirectoryEntryList* entries);
+// Helper method to transform and add |dirent| to a DirectoryEntryListProto.
+void AddEntryIfValid(const smbc_dirent& dirent,
+                     DirectoryEntryListProto* entries);
 
 // Helper method to advance |dirp| to the next entry.
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);

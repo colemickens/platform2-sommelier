@@ -13,14 +13,14 @@
 namespace smbprovider {
 
 void AddEntryIfValid(const smbc_dirent& dirent,
-                     DirectoryEntryList* directory_entries) {
+                     DirectoryEntryListProto* directory_entries) {
   const std::string name(dirent.name);
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
   if (IsSelfOrParentDir(name) || !ShouldProcessEntryType(dirent.smbc_type)) {
     return;
   }
-  DirectoryEntry* entry = directory_entries->add_entries();
+  DirectoryEntryProto* entry = directory_entries->add_entries();
   bool is_directory = dirent.smbc_type == SMBC_DIR;
   entry->set_is_directory(is_directory);
   entry->set_name(name);
