@@ -42,23 +42,24 @@ bootstat other-processes-terminated
 # If run_oci exists, let run_oci perform the task first before falling back to
 # general cleanup. Note that the cleanup is done here only when session_manager
 # (e.g. crashes and) fails to kill/destroy the containers.
-if [ -f /usr/bin/run_oci ]; then
-  for container in /run/containers/* ; do
-    if [ -d "${container}" ]; then
-      run_oci --signal=KILL kill "${container##*/}"
-      NUM_RETRIES=3
-      for i in $(seq ${NUM_RETRIES}) ; do
-        # Both sleep and polling are needed here because 'run_oci destroy' fails
-        # if the container process is still alive.
-        sleep 1
-        run_oci destroy "${container##*/}" && break
-        if [ ${i} = ${NUM_RETRIES} ]; then
-          logger -i -p crit "Failed to destroy ${container##*/}"
-        fi
-      done
-    fi
-  done
-fi
+for container in /run/containers/*-run_oci ; do
+  # The '-run_oci' suffix above ensures that the run_oci commands below are
+  # executed only for containers started by run_oci. When run_oci is not
+  # installed in the rootfs, for example, these commands are never executed.
+  if [ -d "${container}" ]; then
+    run_oci --signal=KILL kill "${container##*/}"
+    NUM_RETRIES=3
+    for i in $(seq ${NUM_RETRIES}) ; do
+      # Both sleep and polling are needed here because 'run_oci destroy' fails
+      # if the container process is still alive.
+      sleep 1
+      run_oci destroy "${container##*/}" && break
+      if [ ${i} = ${NUM_RETRIES} ]; then
+        logger -i -p crit "Failed to destroy ${container##*/}"
+      fi
+    done
+  fi
+done
 
 # If there are any orphaned containers, they should also be cleaned up.
 # This needs to be done prior to cryptohome unmounting so that there are no
