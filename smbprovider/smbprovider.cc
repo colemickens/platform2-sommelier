@@ -451,6 +451,11 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
   return static_cast<int32_t>(ERROR_OK);
 }
 
+int32_t SmbProvider::Truncate(const ProtoBlob& options_blob) {
+  NOTIMPLEMENTED();
+  return 0;
+}
+
 // This is a helper method that has a similar return structure as
 // samba_interface_ methods, where it will return errno as an error in case of
 // failure.

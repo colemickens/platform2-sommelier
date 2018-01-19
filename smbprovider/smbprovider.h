@@ -81,6 +81,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t CreateFile(const ProtoBlob& options_blob) override;
 
+  int32_t Truncate(const ProtoBlob& options_blob) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
