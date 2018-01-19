@@ -17,6 +17,7 @@
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
 #include "authpolicy/jail_helper.h"
+#include "authpolicy/log_colors.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_helper.h"
@@ -501,7 +502,7 @@ void TgtManager::OutputKinitTrace() const {
     if (!base::ReadFileToString(base::FilePath(trace_path), &trace))
       trace = "<failed to read>";
   }
-  LogLongString("Kinit trace: ", trace, anonymizer_);
+  LogLongString(kColorKinitTrace, "Kinit trace: ", trace, anonymizer_);
 }
 
 void TgtManager::UpdateTgtAutoRenewal() {

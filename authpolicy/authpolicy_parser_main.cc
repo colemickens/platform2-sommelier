@@ -28,6 +28,7 @@
 
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/constants.h"
+#include "authpolicy/log_colors.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -91,10 +92,10 @@ struct GpoEntry {
   }
 
   void Log() const {
-    LOG(INFO) << "  Name:        " << name;
-    LOG(INFO) << "  Version:     " << version_user << " (user) "
-              << version_machine << " (machine)";
-    LOG(INFO) << "  GPFLags:     " << gp_flags;
+    LOG(INFO) << kColorGpo << "  Name:        " << name << kColorReset;
+    LOG(INFO) << kColorGpo << "  Version:     " << version_user << " (user) "
+              << version_machine << " (machine)" << kColorReset;
+    LOG(INFO) << kColorGpo << "  GPFLags:     " << gp_flags << kColorReset;
   }
 
   std::string name;
@@ -112,7 +113,7 @@ void PushGpo(const GpoEntry& gpo,
     return;
 
   if (!gpo.IsValid() && flags.log_gpo()) {
-    LOG(INFO) << "Ignoring invalid GPO";
+    LOG(INFO) << kColorGpo << "Ignoring invalid GPO" << kColorReset;
     gpo.Log();
     return;
   }
@@ -138,7 +139,8 @@ void PushGpo(const GpoEntry& gpo,
   if (!filter_reason) {
     gpo_list->push_back(gpo);
   } else if (flags.log_gpo()) {
-    LOG(INFO) << "Filtered out GPO (" << filter_reason << ")";
+    LOG(INFO) << kColorGpo << "Filtered out GPO (" << filter_reason << ")"
+              << kColorReset;
     gpo.Log();
   }
 }
@@ -251,8 +253,8 @@ int ParseGpoList(const std::string& net_out,
   std::vector<GpoEntry> gpo_list;
   const std::vector<std::string> lines = base::SplitString(
       net_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  LOG_IF(INFO, flags.log_gpo())
-      << "Parsing GPO list (" << lines.size() << " lines)";
+  LOG_IF(INFO, flags.log_gpo()) << kColorGpo << "Parsing GPO list ("
+                                << lines.size() << " lines)" << kColorReset;
   bool found_separator = false;
   for (const std::string& line : lines) {
     if (line.find(kGpoToken_Separator) == 0) {
@@ -319,9 +321,10 @@ int ParseGpoList(const std::string& net_out,
   }
 
   if (flags.log_gpo() && LOG_IS_ON(INFO)) {
-    LOG(INFO) << "Found " << gpo_list.size() << " GPOs.";
+    LOG(INFO) << kColorGpo << "Found " << gpo_list.size() << " GPOs."
+              << kColorReset;
     for (size_t n = 0; n < gpo_list.size(); ++n) {
-      LOG(INFO) << n + 1 << ")";
+      LOG(INFO) << kColorGpo << n + 1 << ")" << kColorReset;
       gpo_list[n].Log();
     }
   }

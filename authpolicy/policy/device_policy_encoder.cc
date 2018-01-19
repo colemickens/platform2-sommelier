@@ -12,11 +12,19 @@
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
 
+#include "authpolicy/log_colors.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/policy_constants.h"
 
 namespace em = enterprise_management;
+
+namespace {
+
+const char* kColorPolicy = authpolicy::kColorPolicy;
+const char* kColorReset = authpolicy::kColorReset;
+
+}  // namespace
 
 namespace policy {
 
@@ -142,7 +150,8 @@ bool EncodeDeviceOffHoursIntervalProto(const base::Value& value,
 
 void DevicePolicyEncoder::EncodePolicy(
     em::ChromeDeviceSettingsProto* policy) const {
-  LOG_IF(INFO, log_policy_values_) << "Device policy";
+  LOG_IF(INFO, log_policy_values_)
+      << kColorPolicy << "Device policy" << kColorReset;
   EncodeLoginPolicies(policy);
   EncodeNetworkPolicies(policy);
   EncodeAutoUpdatePolicies(policy);
@@ -515,7 +524,8 @@ void DevicePolicyEncoder::EncodeBoolean(
   }
 
   LOG_IF(INFO, log_policy_values_)
-      << "  " << policy_name << " = " << (bool_value ? "true" : "false");
+      << kColorPolicy << "  " << policy_name << " = "
+      << (bool_value ? "true" : "false") << kColorReset;
 
   // Create proto and set value.
   set_policy(bool_value);
@@ -535,7 +545,8 @@ void DevicePolicyEncoder::EncodeInteger(
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_) << "  " << policy_name << " = " << int_value;
+  LOG_IF(INFO, log_policy_values_) << kColorPolicy << "  " << policy_name
+                                   << " = " << int_value << kColorReset;
 
   // Create proto and set value.
   set_policy(int_value);
@@ -555,8 +566,8 @@ void DevicePolicyEncoder::EncodeString(
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_)
-      << "  " << policy_name << " = " << string_value;
+  LOG_IF(INFO, log_policy_values_) << kColorPolicy << "  " << policy_name
+                                   << " = " << string_value << kColorReset;
 
   // Create proto and set value.
   set_policy(string_value);
@@ -587,9 +598,9 @@ void DevicePolicyEncoder::EncodeStringList(
   }
 
   if (log_policy_values_ && LOG_IS_ON(INFO)) {
-    LOG(INFO) << "  " << policy_name;
+    LOG(INFO) << kColorPolicy << "  " << policy_name << kColorReset;
     for (const std::string& value : string_values)
-      LOG(INFO) << "    " << value;
+      LOG(INFO) << kColorPolicy << "    " << value << kColorReset;
   }
 
   // Create proto and set values.

@@ -92,6 +92,7 @@
         'authpolicy_metrics.cc',
         'constants.cc',
         'jail_helper.cc',
+        'log_colors.cc',
         'path_service.cc',
         'platform_helper.cc',
         'policy/device_policy_encoder.cc',

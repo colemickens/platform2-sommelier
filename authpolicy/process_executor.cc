@@ -17,6 +17,7 @@
 #include <scoped_minijail.h>
 
 #include "authpolicy/anonymizer.h"
+#include "authpolicy/log_colors.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/samba_helper.h"
 
@@ -108,7 +109,8 @@ bool ProcessExecutor::Execute() {
     std::string cmd = args_[0];
     for (size_t n = 1; n < args_.size(); ++n)
       cmd += base::StringPrintf(" '%s'", args_[n].c_str());
-    LOG(INFO) << "Executing " << anonymizer_->Process(cmd);
+    LOG(INFO) << kColorCommand << "Executing " << anonymizer_->Process(cmd)
+              << kColorReset;
   }
 
   // Convert args to array of pointers. Must be nullptr terminated.
@@ -198,7 +200,8 @@ bool ProcessExecutor::Execute() {
   output_logged_ = false;
   if (log_output_ || (log_output_on_error_ && exit_code_ != 0))
     LogOutputOnce();
-  LOG_IF(INFO, log_command_) << "Exit code: " << exit_code_;
+  LOG_IF(INFO, log_command_)
+      << kColorCommand << "Exit code: " << exit_code_ << kColorReset;
 
   return exit_code_ == 0;
 }
@@ -206,8 +209,10 @@ bool ProcessExecutor::Execute() {
 void ProcessExecutor::LogOutputOnce() {
   if (output_logged_ || args_.empty() || !(log_output_on_error_ || log_output_))
     return;
-  LogLongString(args_[0] + " stdout: ", out_data_, anonymizer_);
-  LogLongString(args_[0] + " stderr: ", err_data_, anonymizer_);
+  LogLongString(kColorCommandStdout, args_[0] + " stdout: ", out_data_,
+                anonymizer_);
+  LogLongString(kColorCommandStderr, args_[0] + " stderr: ", err_data_,
+                anonymizer_);
   output_logged_ = true;
 }
 

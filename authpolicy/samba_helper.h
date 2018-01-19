@@ -83,8 +83,9 @@ std::string GetAccountIdKey(const std::string& account_id);
 // Logs |str| to INFO, prepending |header|. Splits |str| into lines and logs the
 // lines. This works around a restriction of syslog of 8kb per log and fixes
 // unreadable logs where \n is replaced by #012. Anonymizes logs with
-// |anonymizer| to remove sensitive data.
-void LogLongString(const std::string& header,
+// |anonymizer| to remove sensitive data. |color| is a color from log_colors.h.
+void LogLongString(const char* color,
+                   const std::string& header,
                    const std::string& str,
                    Anonymizer* anonymizer);
 

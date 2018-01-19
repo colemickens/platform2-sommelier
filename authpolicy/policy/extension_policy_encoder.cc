@@ -12,11 +12,14 @@
 #include <base/values.h>
 #include <components/policy/core/common/registry_dict.h>
 
+#include "authpolicy/log_colors.h"
 #include "bindings/authpolicy_containers.pb.h"
 
 namespace policy {
-
 namespace {
+
+const char* kColorPolicy = authpolicy::kColorPolicy;
+const char* kColorReset = authpolicy::kColorReset;
 
 // Converts a RegistryDict to a DictionaryValue by converting all keys() to
 // Values. In case of name collisions, keys win over values. Similar to
@@ -85,11 +88,12 @@ void ExtensionPolicyEncoder::EncodePolicy(ExtensionPolicies* policies) const {
       JSONStringValueSerializer pretty_serializer(&pretty_json);
       pretty_serializer.set_pretty_print(true);
       pretty_serializer.Serialize(*value);
-      LOG(INFO) << "Extension policy (id '" << extension_id << "')";
+      LOG(INFO) << kColorPolicy << "Extension policy (id '" << extension_id
+                << "')" << kColorReset;
       std::vector<std::string> lines = base::SplitString(
           pretty_json, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
       for (const std::string& line : lines)
-        LOG(INFO) << line;
+        LOG(INFO) << kColorPolicy << line << kColorReset;
     }
   }
 }

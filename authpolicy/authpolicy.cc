@@ -16,6 +16,7 @@
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
 #include "authpolicy/authpolicy_metrics.h"
+#include "authpolicy/log_colors.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
@@ -188,7 +189,8 @@ void AuthPolicy::AuthenticateUser(
     const dbus::FileDescriptor& password_fd,
     int32_t* int_error,
     std::vector<uint8_t>* account_info_blob) {
-  LOG(INFO) << "Received 'AuthenticateUser' request";
+  LOG(INFO) << kColorRequest << "Received 'AuthenticateUser' request"
+            << kColorReset;
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
   authpolicy::AuthenticateUserRequest request;
   ErrorType error = ParseProto(&request, auth_user_request_blob);
@@ -211,7 +213,8 @@ void AuthPolicy::GetUserStatus(
     const std::vector<uint8_t>& get_status_request_blob,
     int32_t* int_error,
     std::vector<uint8_t>* user_status_blob) {
-  LOG(INFO) << "Received 'GetUserStatus' request";
+  LOG(INFO) << kColorRequest << "Received 'GetUserStatus' request"
+            << kColorReset;
   ScopedTimerReporter timer(TIMER_GET_USER_STATUS);
   authpolicy::GetUserStatusRequest request;
   ErrorType error = ParseProto(&request, get_status_request_blob);
@@ -233,7 +236,8 @@ void AuthPolicy::GetUserKerberosFiles(
     const std::string& account_id,
     int32_t* int_error,
     std::vector<uint8_t>* kerberos_files_blob) {
-  LOG(INFO) << "Received 'GetUserKerberosFiles' request";
+  LOG(INFO) << kColorRequest << "Received 'GetUserKerberosFiles' request"
+            << kColorReset;
   ScopedTimerReporter timer(TIMER_GET_USER_KERBEROS_FILES);
 
   KerberosFiles kerberos_files;
@@ -250,7 +254,8 @@ void AuthPolicy::JoinADDomain(
     const dbus::FileDescriptor& password_fd,
     int32_t* int_error,
     std::string* joined_domain) {
-  LOG(INFO) << "Received 'JoinADDomain' request";
+  LOG(INFO) << kColorRequest << "Received 'JoinADDomain' request"
+            << kColorReset;
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
   JoinDomainRequest request;
@@ -272,7 +277,8 @@ void AuthPolicy::JoinADDomain(
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
                                    const std::string& account_id) {
-  LOG(INFO) << "Received 'RefreshUserPolicy' request";
+  LOG(INFO) << kColorRequest << "Received 'RefreshUserPolicy' request"
+            << kColorReset;
   auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
@@ -295,7 +301,8 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 }
 
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
-  LOG(INFO) << "Received 'RefreshDevicePolicy' request";
+  LOG(INFO) << kColorRequest << "Received 'RefreshDevicePolicy' request"
+            << kColorReset;
   auto timer =
       std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_DEVICE_POLICY);
 
@@ -333,7 +340,8 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
 }
 
 std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
-  LOG(INFO) << "Received 'SetDefaultLogLevel' request";
+  LOG(INFO) << kColorRequest << "Received 'SetDefaultLogLevel' request"
+            << kColorReset;
   if (level < AuthPolicyFlags::kMinLevel ||
       level > AuthPolicyFlags::kMaxLevel) {
     std::string message = base::StringPrintf("Level must be between %i and %i.",

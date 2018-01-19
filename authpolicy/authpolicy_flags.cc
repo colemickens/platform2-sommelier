@@ -15,6 +15,8 @@
 #include <base/strings/string_split.h>
 #include <base/values.h>
 
+#include "authpolicy/log_colors.h"
+
 namespace authpolicy {
 namespace {
 
@@ -65,8 +67,8 @@ class BoolFlag {
 
   // Prints out the value of this flag.
   void Log(const protos::DebugFlags* flags) const {
-    LOG(INFO) << "  " << name_ << Align(name_)
-              << ((flags->*getter_)() ? "ON" : "OFF");
+    LOG(INFO) << kColorFlags << "  " << name_ << Align(name_)
+              << ((flags->*getter_)() ? "ON" : "OFF") << kColorReset;
   }
 
  private:
@@ -96,7 +98,8 @@ class StringFlag {
 
   // Prints out the value of this flag.
   void Log(const protos::DebugFlags* flags) const {
-    LOG(INFO) << "  " << name_ << Align(name_) << (flags->*getter_)();
+    LOG(INFO) << kColorFlags << "  " << name_ << Align(name_)
+              << (flags->*getter_)() << kColorReset;
   }
 
  private:
@@ -214,7 +217,7 @@ void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
 }
 
 void AuthPolicyFlags::Dump() const {
-  LOG(INFO) << "Debug flags:";
+  LOG(INFO) << kColorFlags << "Debug flags:" << kColorReset;
   for (const BoolFlag& flag : kBoolFlags)
     flag.Log(&flags_);
   for (const StringFlag& flag : kStringFlags)

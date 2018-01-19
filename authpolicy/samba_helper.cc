@@ -13,6 +13,7 @@
 #include <base/strings/string_util.h>
 
 #include "authpolicy/anonymizer.h"
+#include "authpolicy/log_colors.h"
 
 namespace {
 
@@ -194,7 +195,8 @@ std::string GetAccountIdKey(const std::string& account_id) {
   return kActiveDirectoryPrefix + account_id;
 }
 
-void LogLongString(const std::string& header,
+void LogLongString(const char* color,
+                   const std::string& header,
                    const std::string& str,
                    Anonymizer* anonymizer) {
   if (!LOG_IS_ON(INFO))
@@ -204,11 +206,11 @@ void LogLongString(const std::string& header,
   std::vector<std::string> lines = base::SplitString(
       anonymized_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (lines.size() <= 1) {
-    LOG(INFO) << header << anonymized_str;
+    LOG(INFO) << color << header << anonymized_str << kColorReset;
   } else {
-    LOG(INFO) << header;
+    LOG(INFO) << color << header << kColorReset;
     for (const std::string& line : lines)
-      LOG(INFO) << "  " << line;
+      LOG(INFO) << color << "  " << line << kColorReset;
   }
 }
 

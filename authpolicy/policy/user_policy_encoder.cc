@@ -11,11 +11,19 @@
 #include <base/values.h>
 #include <components/policy/core/common/registry_dict.h>
 
+#include "authpolicy/log_colors.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "bindings/cloud_policy.pb.h"
 #include "bindings/policy_constants.h"
 
 namespace em = enterprise_management;
+
+namespace {
+
+const char* kColorPolicy = authpolicy::kColorPolicy;
+const char* kColorReset = authpolicy::kColorReset;
+
+}  // namespace
 
 namespace policy {
 
@@ -25,9 +33,9 @@ UserPolicyEncoder::UserPolicyEncoder(const RegistryDict* dict,
 
 void UserPolicyEncoder::EncodePolicy(em::CloudPolicySettings* policy) const {
   LOG_IF(INFO, log_policy_values_)
-      << "User policy ("
+      << kColorPolicy << "User policy ("
       << (level_ == POLICY_LEVEL_RECOMMENDED ? "recommended" : "mandatory")
-      << ")";
+      << ")" << kColorReset;
   EncodeList(policy, kBooleanPolicyAccess, &UserPolicyEncoder::EncodeBoolean);
   EncodeList(policy, kIntegerPolicyAccess, &UserPolicyEncoder::EncodeInteger);
   EncodeList(policy, kStringPolicyAccess, &UserPolicyEncoder::EncodeString);
@@ -58,7 +66,8 @@ void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
   }
 
   LOG_IF(INFO, log_policy_values_)
-      << "  " << policy_name << " = " << (bool_value ? "true" : "false");
+      << kColorPolicy << "  " << policy_name << " = "
+      << (bool_value ? "true" : "false") << kColorReset;
 
   // Create proto and set value.
   em::BooleanPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -82,7 +91,8 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_) << "  " << policy_name << " = " << int_value;
+  LOG_IF(INFO, log_policy_values_) << kColorPolicy << "  " << policy_name
+                                   << " = " << int_value << kColorReset;
 
   // Create proto and set value.
   em::IntegerPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -106,8 +116,8 @@ void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, log_policy_values_)
-      << "  " << policy_name << " = " << string_value;
+  LOG_IF(INFO, log_policy_values_) << kColorPolicy << "  " << policy_name
+                                   << " = " << string_value << kColorReset;
 
   // Create proto and set value.
   em::StringPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -143,9 +153,9 @@ void UserPolicyEncoder::EncodeStringList(
   }
 
   if (log_policy_values_ && LOG_IS_ON(INFO)) {
-    LOG(INFO) << "  " << policy_name << " = ";
+    LOG(INFO) << kColorPolicy << "  " << policy_name << " = " << kColorReset;
     for (const std::string& value : string_values)
-      LOG(INFO) << "    " << value;
+      LOG(INFO) << kColorPolicy << "    " << value << kColorReset;
   }
 
   // Create proto and set value.

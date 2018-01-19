@@ -1,0 +1,25 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef AUTHPOLICY_LOG_COLORS_H_
+#define AUTHPOLICY_LOG_COLORS_H_
+
+namespace authpolicy {
+
+// Terminal colors for LOG outputs. See .cc for actual colors.
+// Usage: LOG(INFO) << kColorCommand << "Red text" << kColorReset
+
+extern const char kColorReset[];
+extern const char kColorCommand[];
+extern const char kColorCommandStdout[];
+extern const char kColorCommandStderr[];
+extern const char kColorKinitTrace[];
+extern const char kColorPolicy[];
+extern const char kColorGpo[];
+extern const char kColorFlags[];
+extern const char kColorRequest[];
+
+}  // namespace authpolicy
+
+#endif  // AUTHPOLICY_LOG_COLORS_H_
