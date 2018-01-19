@@ -383,6 +383,19 @@ session_manager() {
       "org.chromium.SessionManagerInterface.${method}" "$@"
 }
 
+# Check if a particular Chrome feature is enabled.
+# Use the DBus method name as the parameter.
+is_chrome_feature_enabled() {
+  local method="$1"
+  local reply status
+  reply=$(dbus-send --system --type=method_call --print-reply \
+    --dest=org.chromium.ChromeFeaturesService \
+    /org/chromium/ChromeFeaturesService \
+    "org.chromium.ChromeFeaturesServiceInterface.${method}" 2>/dev/null)
+  status=$?
+  [ ${status} -eq 0 -a ${reply##* } == "true" ]
+}
+
 # Set the vars to pass the unittests ...
 USAGE_vmc=''
 HELP_vmc=''
@@ -390,7 +403,10 @@ EXEC_vmc='/usr/bin/vm_launcher'
 # ... then unset them to hide the command from "help" output.
 unset USAGE_vmc HELP_vmc
 cmd_vmc() (
-  local reply
+  if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
+    echo "This command is not available."
+    return 1
+  fi
   local cmd="$1"; shift
   case "${cmd}" in
   start)
