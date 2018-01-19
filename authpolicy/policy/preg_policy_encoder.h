@@ -21,7 +21,8 @@ class ChromeDeviceSettingsProto;
 namespace authpolicy {
 namespace protos {
 class ExtensionPolicy;
-}
+class WindowsPolicy;
+}  // namespace protos
 }  // namespace authpolicy
 
 namespace policy {
@@ -29,7 +30,7 @@ namespace policy {
 using ExtensionPolicies = std::vector<authpolicy::protos::ExtensionPolicy>;
 
 // Loads the given set of |preg_files| and encodes all user policies into the
-// given |policy| blob. Note that user policy can contain mandatory and
+// given |policy| protobuf. Note that user policy can contain mandatory and
 // recommended policies. If multiple files f1,...,fN are passed in, policies
 // are merged with following rules:
 // - Mandatory policies in fn overwrite mandatory policies in fm if n > m.
@@ -44,7 +45,7 @@ bool ParsePRegFilesIntoUserPolicy(
     bool log_policy_values);
 
 // Loads the given set of |preg_files| and encodes all device policies into the
-// given |policy| blob. If multiple files f1,...,fN are passed in, policies
+// given |policy| protobuf. If multiple files f1,...,fN are passed in, policies
 // are merged with following rule:
 // - Policies in fn overwrite policies in fm if n > m.
 // |log_policy_values| toggles debug logging of policy values.
@@ -61,6 +62,17 @@ bool ParsePRegFilesIntoDevicePolicy(
 bool ParsePRegFilesIntoExtensionPolicy(
     const std::vector<base::FilePath>& preg_files,
     ExtensionPolicies* policies,
+    bool log_policy_values);
+
+// Loads the given set of |preg_files| and encodes all Windows policies, which
+// the AuthPolicy daemon is interested in, into the given |policy| protobuf.
+// If multiple files f1,...,fN are passed in, policies are merged with following
+// rule:
+// - Policies in fn overwrite policies in fm if n > m.
+// |log_policy_values| toggles debug logging of policy values.
+bool ParsePRegFilesIntoWindowsPolicy(
+    const std::vector<base::FilePath>& preg_files,
+    authpolicy::protos::WindowsPolicy* policy,
     bool log_policy_values);
 
 }  // namespace policy

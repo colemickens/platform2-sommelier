@@ -48,6 +48,10 @@ class PRegPolicyWriter {
   // these keys.
   void SetKeysForExtensionPolicy(const std::string& extension_id);
 
+  // Sets registry keys suitable for writing Windows policy. Subsequent Append*
+  // calls will use these keys.
+  void SetKeysForWindowsPolicy();
+
   // Appends a boolean policy value. Must set keys beforehand.
   void AppendBoolean(const char* policy_name,
                      bool value,
@@ -114,6 +118,12 @@ class PRegUserDevicePolicyWriter : public PRegPolicyWriter {
 class PRegExtensionPolicyWriter : public PRegPolicyWriter {
  public:
   explicit PRegExtensionPolicyWriter(const std::string& extension_id);
+};
+
+// Shortcut to create a writer and set keys for writing Windows policy.
+class PRegWindowsPolicyWriter : public PRegPolicyWriter {
+ public:
+  PRegWindowsPolicyWriter();
 };
 
 }  // namespace policy

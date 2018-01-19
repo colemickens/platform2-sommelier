@@ -23,6 +23,9 @@ extern const char kKeyUserDevice[];
 // Registry key path for Chrome extension policy.
 extern const char kKeyExtensions[];
 
+// Registry key path for Windows policy we're interested in.
+extern const char kKeyWindows[];
+
 // Registry key for recommended user and extension policy.
 extern const char kKeyRecommended[];
 
@@ -47,10 +50,20 @@ bool GetAsInteger(const base::Value* value, int* int_value);
 // Same as base::Value::GetAsString(), no type conversion (yet).
 bool GetAsString(const base::Value* value, std::string* string_value);
 
+// Prints an error log. Used if value cannot be converted to a target type.
 void PrintConversionError(const base::Value* value,
                           const char* target_type,
                           const char* policy_name,
                           const std::string* index_str = nullptr);
+
+// Gets value as integer, checks that it's in [range_min, range_max] and returns
+// it in |int_value|. Prints errors and returns false if there's a conversion
+// error or the value is not in range.
+bool GetAsIntegerInRangeAndPrintError(const base::Value* value,
+                                      int range_min,
+                                      int range_max,
+                                      const char* policy_name,
+                                      int* int_value);
 
 }  // namespace policy
 

@@ -78,6 +78,7 @@ const char kOneGpoMachineName[] = "onegpo";
 const char kTwoGposMachineName[] = "twogpos";
 const char kZeroUserVersionMachineName[] = "zerouserversion";
 const char kDisableUserFlagMachineName[] = "disableuserflag";
+const char kLoopbackGpoMachineName[] = "loopback";
 const char kPropagationRetryMachineName[] = "propagat.nretry";
 
 extern const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";

@@ -282,8 +282,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   auto timer = std::make_unique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
-  std::unique_ptr<protos::GpoPolicyData> gpo_policy_data =
-      std::make_unique<protos::GpoPolicyData>();
+  auto gpo_policy_data = std::make_unique<protos::GpoPolicyData>();
   ErrorType error = samba_.FetchUserGpos(account_id, gpo_policy_data.get());
   PrintError("User policy fetch and parsing", error);
 
@@ -315,8 +314,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   }
 
   // Fetch GPOs for the device.
-  std::unique_ptr<protos::GpoPolicyData> gpo_policy_data =
-      std::make_unique<protos::GpoPolicyData>();
+  auto gpo_policy_data = std::make_unique<protos::GpoPolicyData>();
   ErrorType error = samba_.FetchDeviceGpos(gpo_policy_data.get());
   PrintError("Device policy fetch and parsing", error);
 
@@ -421,7 +419,7 @@ void AuthPolicy::StoreSinglePolicy(
   policy_data.set_policy_value(policy_blob);
   policy_data.set_policy_type(policy_type);
   if (descriptor.account_type() == login_manager::ACCOUNT_TYPE_USER) {
-    policy_data.set_username(samba_.GetUserAndRealm());
+    policy_data.set_username(samba_.GetUserPrincipal());
     // Device id in the proto also could be used as an account/client id.
     policy_data.set_device_id(samba_.user_account_id());
   } else {

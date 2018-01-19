@@ -97,16 +97,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   std::string SetDefaultLogLevel(int32_t level) override;
 
-  // Disable retry sleep for unit tests.
-  void DisableRetrySleepForTesting() { samba_.DisableRetrySleepForTesting(); }
-
-  // Returns the anonymizer.
-  const Anonymizer* GetAnonymizerForTesting() const {
-    return samba_.GetAnonymizerForTesting();
-  }
-
-  // Renew the user ticket-granting-ticket.
-  ErrorType RenewUserTgtForTesting() { return samba_.RenewUserTgtForTesting(); }
+  SambaInterface& GetSambaInterfaceForTesting() { return samba_; }
 
   void SetDeviceIsLockedForTesting() { device_is_locked_ = true; }
 

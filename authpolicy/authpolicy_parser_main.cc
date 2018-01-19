@@ -396,7 +396,7 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
   for (int n = 0; n < gpo_file_paths_proto.entries_size(); ++n)
     gpo_file_paths.push_back(base::FilePath(gpo_file_paths_proto.entries(n)));
 
-  std::string policy_blob;
+  protos::GpoPolicyData data;
   switch (scope) {
     case PolicyScope::USER: {
       // Parse files into a user policy proto.
@@ -407,7 +407,7 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
       }
 
       // Serialize user policy proto to string.
-      if (!policy.SerializeToString(&policy_blob))
+      if (!policy.SerializeToString(data.mutable_user_or_device_policy()))
         return EXIT_CODE_WRITE_OUTPUT_FAILED;
       break;
     }
@@ -419,8 +419,15 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
         return EXIT_CODE_PARSE_INPUT_FAILED;
       }
 
+      // Also extract interesting Windows policy from the files.
+      if (!policy::ParsePRegFilesIntoWindowsPolicy(
+              gpo_file_paths, data.mutable_windows_policy(),
+              flags.log_policy_values())) {
+        return EXIT_CODE_PARSE_INPUT_FAILED;
+      }
+
       // Serialize policy proto to string.
-      if (!policy.SerializeToString(&policy_blob))
+      if (!policy.SerializeToString(data.mutable_user_or_device_policy()))
         return EXIT_CODE_WRITE_OUTPUT_FAILED;
       break;
     }
@@ -436,18 +443,13 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
           gpo_file_paths, &extension_policies, flags.log_policy_values())) {
     return EXIT_CODE_PARSE_INPUT_FAILED;
   }
-
-  // Store policy blob and extension policy in a GpoPolicyData struct.
-  protos::GpoPolicyData data;
-  data.set_user_or_device_policy(policy_blob);
   for (protos::ExtensionPolicy& proto : extension_policies)
     *data.add_extension_policies() = std::move(proto);
 
+  // Output |data| as serialized string to stdout.
   std::string data_blob;
   if (!data.SerializeToString(&data_blob))
     return EXIT_CODE_WRITE_OUTPUT_FAILED;
-
-  // Print the serialized policy data to stdout.
   return OutputForCaller(data_blob);
 }
 

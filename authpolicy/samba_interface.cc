@@ -12,6 +12,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -333,7 +334,9 @@ SambaInterface::SambaInterface(
                           &jail_helper_,
                           anonymizer_.get(),
                           Path::DEVICE_KRB5_CONF,
-                          Path::DEVICE_CREDENTIAL_CACHE) {
+                          Path::DEVICE_CREDENTIAL_CACHE),
+      windows_policy_manager_(
+          base::FilePath(paths_->Get(Path::WINDOWS_POLICY))) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
   user_tgt_manager_.SetKerberosFilesChangedCallback(
@@ -362,6 +365,9 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
     if (error != ERROR_NONE)
       return error;
   }
+
+  // Try to read Windows policy if present.
+  windows_policy_manager_.LoadFromDisk();
 
   return ERROR_NONE;
 }
@@ -456,7 +462,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   // wants the sAMAccountName. Also note that pwd_last_set is zero and stale
   // at this point if AcquireTgtWithPassword() set a new password, but that's
   // fine, the timestamp is updated in the next GetUserStatus() call.
-  user_sam_account_name_ = account_info->sam_account_name();
+  user_account_.user_name = account_info->sam_account_name();
   if (account_info->has_pwd_last_set())
     user_pwd_last_set_ = account_info->pwd_last_set();
   user_logged_in_ = true;
@@ -566,7 +572,9 @@ ErrorType SambaInterface::JoinMachine(
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
+
   device_account_.netbios_name = base::ToUpperASCII(machine_name);
+  device_account_.user_name = device_account_.netbios_name + "$";
   device_account_.realm = join_realm;
 
   // Update smb.conf, IPs, server names etc. for the device account.
@@ -621,33 +629,61 @@ ErrorType SambaInterface::FetchUserGpos(
   SetUser(account_id);
 
   if (!user_logged_in_) {
-    LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
+    LOG(ERROR) << "User not logged in. Please call AuthenticateUser() first.";
     return ERROR_NOT_LOGGED_IN;
   }
-  DCHECK(!user_sam_account_name_.empty());
+  DCHECK(!user_account_.user_name.empty());
   DCHECK(!user_account_.realm.empty());
 
-  // Update smb.conf, IPs, server names etc for the user account.
-  ErrorType error = UpdateAccountData(&user_account_);
-  if (error != ERROR_NONE)
-    return error;
+  // We need WindowsPolicy::UserPolicyMode to properly fetch user policy, thus
+  // WindowsPolicy has to be present. WindowsPolicy is fetched along with
+  // FetchDeviceGpos().
+  const protos::WindowsPolicy* win_policy = windows_policy_manager_.policy();
+  if (!win_policy) {
+    LOG(ERROR)
+        << "No Windows policy available. Please call FetchDeviceGpos() first.";
+    return ERROR_NO_WINDOWS_POLICY;
+  }
+  protos::WindowsPolicy::UserPolicyMode mode = win_policy->user_policy_mode();
 
-  // FetchDeviceGpos writes a krb5.conf here. For user policy, there's no need
-  // to do that here since we're reusing the TGT generated in AuthenticateUser.
-
-  // Get the list of GPOs for the given user name.
-  protos::GpoList gpo_list;
-  error = GetGpoList(user_sam_account_name_, user_account_, PolicyScope::USER,
-                     &gpo_list);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Download GPOs from Active Directory server.
+  // Download GPOs for the given user, taking the loopback processing |mode|
+  // into account:
+  //   USER_POLICY_MODE_DEFAULT: Process user GPOs as usual.
+  //   USER_POLICY_MODE_MERGE:   Apply user policy from device GPOs on top of
+  //                             user policy from user GPOs.
+  //   USER_POLICY_MODE_REPLACE: Only apply user policy from device GPOs.
+  ErrorType error;
   std::vector<base::FilePath> gpo_file_paths;
-  error =
-      DownloadGpos(gpo_list, user_account_, PolicyScope::USER, &gpo_file_paths);
-  if (error != ERROR_NONE)
-    return error;
+  if (mode != protos::WindowsPolicy::USER_POLICY_MODE_REPLACE) {
+    // Update smb.conf, IPs, server names etc for the user account.
+    error = UpdateAccountData(&user_account_);
+    if (error != ERROR_NONE)
+      return error;
+
+    // Download user GPOs with user policy data.
+    error = GetGpos(GpoSource::USER, PolicyScope::USER, &gpo_file_paths);
+    if (error != ERROR_NONE)
+      return error;
+  }
+  if (mode != protos::WindowsPolicy::USER_POLICY_MODE_DEFAULT) {
+    // Update smb.conf, IPs, server names etc for the device account.
+    error = UpdateAccountData(&device_account_);
+    if (error != ERROR_NONE)
+      return error;
+
+    // Refresh TGT just in case.
+    DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
+    error = device_tgt_manager_.AcquireTgtWithKeytab(
+        device_account_.GetPrincipal(), Path::MACHINE_KT_STATE,
+        retry_machine_kinit_, device_account_.realm, device_account_.kdc_ip);
+    if (error != ERROR_NONE)
+      return error;
+
+    // Download device GPOs with user policy data.
+    error = GetGpos(GpoSource::MACHINE, PolicyScope::USER, &gpo_file_paths);
+    if (error != ERROR_NONE)
+      return error;
+  }
 
   // Parse GPOs and store them in a user+extension policy protobuf.
   std::string gpo_policy_data_blob;
@@ -677,27 +713,17 @@ ErrorType SambaInterface::FetchDeviceGpos(
   // is true for the first device policy fetch after joining Active Directory,
   // which can be very slow because machine credentials need to propagate
   // through the AD deployment.
-  std::string machine_principal =
-      device_account_.netbios_name + "$@" + device_account_.realm;
   DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
   error = device_tgt_manager_.AcquireTgtWithKeytab(
-      machine_principal, Path::MACHINE_KT_STATE, retry_machine_kinit_,
-      device_account_.realm, device_account_.kdc_ip);
+      device_account_.GetPrincipal(), Path::MACHINE_KT_STATE,
+      retry_machine_kinit_, device_account_.realm, device_account_.kdc_ip);
   retry_machine_kinit_ = false;
   if (error != ERROR_NONE)
     return error;
 
-  // Get the list of GPOs for the machine.
-  protos::GpoList gpo_list;
-  error = GetGpoList(device_account_.netbios_name + "$", device_account_,
-                     PolicyScope::MACHINE, &gpo_list);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Download GPOs from Active Directory server.
+  // Download device GPOs with device policy data.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(gpo_list, device_account_, PolicyScope::MACHINE,
-                       &gpo_file_paths);
+  error = GetGpos(GpoSource::MACHINE, PolicyScope::MACHINE, &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
@@ -708,17 +734,20 @@ ErrorType SambaInterface::FetchDeviceGpos(
   if (error != ERROR_NONE)
     return error;
 
-  return ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
+  error = ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Store Windows policy.
+  CHECK(gpo_policy_data->has_windows_policy());
+  return windows_policy_manager_.UpdateAndSaveToDisk(
+      base::WrapUnique(gpo_policy_data->release_windows_policy()));
 }
 
 void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
   flags_default_level_ = level;
   LOG(INFO) << "Flags default level = " << flags_default_level_;
   SaveFlagsDefaultLevel();
-}
-
-std::string SambaInterface::GetUserAndRealm() const {
-  return user_sam_account_name_ + "@" + user_account_.realm;
 }
 
 ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
@@ -1020,8 +1049,10 @@ ErrorType SambaInterface::ReadConfiguration() {
     return ERROR_LOCAL_IO;
   }
 
-  device_account_.realm = config->realm();
   device_account_.netbios_name = config->machine_name();
+  device_account_.user_name = device_account_.netbios_name + "$";
+  device_account_.realm = config->realm();
+
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
 
   AnonymizeRealm(device_account_.realm, kDeviceRealmPlaceholder);
@@ -1190,21 +1221,36 @@ ErrorType SambaInterface::SearchAccountInfo(
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
-                                     const AccountData& account,
+ErrorType SambaInterface::GetGpos(GpoSource source,
+                                  PolicyScope scope,
+                                  std::vector<base::FilePath>* gpo_file_paths) {
+  // There's no use case for machine policy from user GPOs right now.
+  DCHECK(!(source == GpoSource::USER && scope == PolicyScope::MACHINE));
+
+  // Query list of GPOs from Active Directory server.
+  protos::GpoList gpo_list;
+  ErrorType error = GetGpoList(source, scope, &gpo_list);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Download GPOs from Active Directory server.
+  return DownloadGpos(gpo_list, source, scope, gpo_file_paths);
+}
+
+ErrorType SambaInterface::GetGpoList(GpoSource source,
                                      PolicyScope scope,
                                      protos::GpoList* gpo_list) const {
   DCHECK(gpo_list);
   LOG(INFO) << "Getting " << (scope == PolicyScope::USER ? "user" : "device")
-            << " GPO list";
+            << " GPO list for "
+            << (source == GpoSource::USER ? "user" : "device") << " account";
 
-  // Machine names are names ending with $, anything else is a user name.
+  const AccountData& account = GetAccount(source);
+  const TgtManager& tgt_manager = GetTgtManager(source);
   authpolicy::ProcessExecutor net_cmd(
-      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name,
+      {paths_->Get(Path::NET), "ads", "gpo", "list", account.user_name,
        kConfigParam, paths_->Get(account.smb_conf_path), kDebugParam,
        flags_.net_log_level(), kKerberosParam});
-  const TgtManager& tgt_manager =
-      scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(tgt_manager.GetCredentialCachePath()));
   if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
@@ -1215,7 +1261,9 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   // GPO data is written to stderr, not stdin!
   const std::string& net_out = net_cmd.GetStderr();
 
-  // Parse the GPO list. Enclose in a sandbox for security considerations.
+  // Parse the GPO list. Enclose in a sandbox for security considerations. Note
+  // that |cmd| depends on |scope| since the parse command is concerned with the
+  // type of policy, not which account a GPO came from.
   const char* cmd = scope == PolicyScope::USER ? kCmdParseUserGpoList
                                                : kCmdParseDeviceGpoList;
   ProcessExecutor parse_cmd(
@@ -1248,7 +1296,7 @@ struct GpoPaths {
 
 ErrorType SambaInterface::DownloadGpos(
     const protos::GpoList& gpo_list,
-    const AccountData& account,
+    GpoSource source,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
   metrics_->Report(METRIC_DOWNLOAD_GPO_COUNT, gpo_list.entries_size());
@@ -1322,6 +1370,7 @@ ErrorType SambaInterface::DownloadGpos(
     }
   }
 
+  const AccountData& account = GetAccount(source);
   DCHECK(!account.dc_name.empty());
   const std::string service =
       base::StringPrintf("//%s/%s", account.dc_name.c_str(), gpo_share.c_str());
@@ -1339,8 +1388,7 @@ ErrorType SambaInterface::DownloadGpos(
       {paths_->Get(Path::SMBCLIENT), service, kConfigParam,
        paths_->Get(account.smb_conf_path), kKerberosParam, kDebugParam,
        flags_.net_log_level(), kCommandParam, smb_command});
-  const TgtManager& tgt_manager =
-      scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
+  const TgtManager& tgt_manager = GetTgtManager(source);
   smb_client_cmd.SetEnv(kKrb5CCEnvKey,
                         paths_->Get(tgt_manager.GetCredentialCachePath()));
   smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
@@ -1454,7 +1502,7 @@ void SambaInterface::AnonymizeRealm(const std::string& realm,
 
 ErrorType SambaInterface::CheckDeviceJoined() const {
   if (device_account_.realm.empty() || device_account_.netbios_name.empty()) {
-    LOG(ERROR) << "Device is not joined. Must call JoinMachine first.";
+    LOG(ERROR) << "Device is not joined. Must call JoinMachine() first.";
     return ERROR_NOT_JOINED;
   }
   return ERROR_NONE;
@@ -1462,7 +1510,6 @@ ErrorType SambaInterface::CheckDeviceJoined() const {
 
 void SambaInterface::Reset() {
   user_account_id_.clear();
-  user_sam_account_name_.clear();
   user_pwd_last_set_ = 0;
   user_logged_in_ = false;
   user_account_ = AccountData(Path::USER_SMB_CONF);

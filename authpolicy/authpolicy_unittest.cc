@@ -31,9 +31,11 @@
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/preg_policy_writer.h"
+#include "authpolicy/policy/windows_policy_keys.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_interface.h"
 #include "authpolicy/stub_common.h"
+#include "authpolicy/windows_policy_manager.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -342,7 +344,10 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
 
     // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
-    authpolicy_->DisableRetrySleepForTesting();
+    samba().DisableRetrySleepForTesting();
+
+    // Install empty Windows policy since it's expected by some tests.
+    SetEmptyWindowsPolicy();
 
     // Set up mock object proxy for session manager called from authpolicy.
     mock_session_manager_proxy_ = new MockObjectProxy(
@@ -678,7 +683,30 @@ class AuthPolicyTest : public testing::Test {
     return base::SetPosixFilePermissions(config_path, mode);
   }
 
+  SambaInterface& samba() { return authpolicy_->GetSambaInterfaceForTesting(); }
   void MarkDeviceAsLocked() { authpolicy_->SetDeviceIsLockedForTesting(); }
+
+  // Mehotds for overriding Windows policy.
+  void SetWindowsPolicy(std::unique_ptr<protos::WindowsPolicy> policy) {
+    samba().GetWindowsPolicyManagerForTesting().UpdateAndSaveToDisk(
+        std::move(policy));
+  }
+  void SetEmptyWindowsPolicy() {
+    SetWindowsPolicy(std::make_unique<protos::WindowsPolicy>());
+  }
+  void ClearWindowsPolicy() {
+    EXPECT_TRUE(
+        samba().GetWindowsPolicyManagerForTesting().ClearPolicyForTesting());
+  }
+  const protos::WindowsPolicy* GetWindowsPolicy() {
+    return samba().GetWindowsPolicyManagerForTesting().policy();
+  }
+  void CheckWindowsPolicyEmpty() {
+    const protos::WindowsPolicy* windows_policy = GetWindowsPolicy();
+    ASSERT_NE(nullptr, windows_policy);
+    protos::WindowsPolicy empty_policy;
+    EXPECT_EQ(windows_policy->ByteSize(), empty_policy.ByteSize());
+  }
 
   // Writes one file to |gpo_path| with a few policies. Sets up
   // |validate_device_policy_| callback with corresponding expectations.
@@ -1117,8 +1145,7 @@ TEST_F(AuthPolicyTest, ConfigChangeTriggersFilesChangedSignal) {
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 
   // Once the config is changed, it shouldn't change again.
-  EXPECT_EQ(ERROR_KERBEROS_TICKET_EXPIRED,
-            authpolicy_->RenewUserTgtForTesting());
+  EXPECT_EQ(ERROR_KERBEROS_TICKET_EXPIRED, samba().RenewUserTgtForTesting());
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
   // 1x user TGT.
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -1130,7 +1157,7 @@ TEST_F(AuthPolicyTest, RenewTriggersFilesChangedSignal) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(1, user_kerberos_files_changed_count_);
-  EXPECT_EQ(ERROR_NONE, authpolicy_->RenewUserTgtForTesting());
+  EXPECT_EQ(ERROR_NONE, samba().RenewUserTgtForTesting());
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
@@ -1417,6 +1444,128 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
+// User policy fetch fails if there's no windows policy (e.g. device policy not
+// fetched yet).
+TEST_F(AuthPolicyTest, UserPolicyFetchFailsNoWindowsPolicy) {
+  ClearWindowsPolicy();
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NO_WINDOWS_POLICY);
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// User policy fetch succeeds if a device policy fetch gets Windows policy
+// first.
+TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithWindowsPolicy) {
+  ClearWindowsPolicy();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// User policy fetch works properly with loopback processing.
+TEST_F(AuthPolicyTest, UserPolicyFetchObeysLoopbackProcessing) {
+  // Write 2 GPO files with 2 policies each:
+  //
+  //   GPO  Policy 1 2 3
+  //   GPO1        x y
+  //   GPO2        A   B
+  //
+  // 'x' is the value of policy 1 in GPO1 etc. Now for the test,
+  //   GPO1 is used as user GPO and
+  //   GPO2 is used as device GPO.
+  //
+  // Depending on the loopback processing mode, this should result in
+  //
+  //   Mode    Policy 1 2 3
+  //   Default        x y    <-- Only take user GPO1
+  //   Merge          A y B  <-- Merge device GPO2 on top of user GPO1
+  //   Replace        A   B  <-- Only take device GPO2
+
+  const char* policy1 = policy::key::kSearchSuggestEnabled;
+  const char* policy2 = policy::key::kPolicyRefreshRate;
+  const char* policy3 = policy::key::kHomepageLocation;
+
+  const bool value_x = kPolicyBool;
+  const int value_y = kPolicyInt;
+  const bool value_A = kOtherPolicyBool;
+  const char* value_B = kOtherPolicyStr;
+
+  policy::PRegUserDevicePolicyWriter writer1;
+  writer1.AppendBoolean(policy1, value_x);
+  writer1.AppendInteger(policy2, value_y);
+  writer1.WriteToFile(stub_gpo1_path_);
+
+  policy::PRegUserDevicePolicyWriter writer2;
+  writer2.AppendBoolean(policy1, value_A);
+  writer2.AppendString(policy3, value_B);
+  writer2.WriteToFile(stub_gpo2_path_);
+
+  // |kLoopbackGpoMachineName| triggers stub_net to
+  //   - return GPO1 for net ads gpo list <user_principal> and
+  //   - return GPO2 for net ads gpo list <device_principal>.
+  EXPECT_EQ(ERROR_NONE,
+            Join(kLoopbackGpoMachineName, kUserPrincipal, MakePasswordFd()));
+
+  const int mode_min = protos::WindowsPolicy::UserPolicyMode_MIN;
+  const int mode_max = protos::WindowsPolicy::UserPolicyMode_MAX;
+  for (int int_mode = mode_min; int_mode <= mode_max; ++int_mode) {
+    const auto mode =
+        static_cast<protos::WindowsPolicy::UserPolicyMode>(int_mode);
+    auto windows_policy = std::make_unique<protos::WindowsPolicy>();
+    windows_policy->set_user_policy_mode(mode);
+    SetWindowsPolicy(std::move(windows_policy));
+
+    validate_user_policy_ = [value_x, value_y, value_A, value_B,
+                             mode](const em::CloudPolicySettings& policy) {
+      const bool has_policy1 = policy.has_searchsuggestenabled();
+      const bool has_policy2 = policy.has_policyrefreshrate();
+      const bool has_policy3 = policy.has_homepagelocation();
+
+      const bool policy1_value = policy.searchsuggestenabled().value();
+      const int policy2_value = policy.policyrefreshrate().value();
+      const std::string& policy3_value = policy.homepagelocation().value();
+
+      EXPECT_TRUE(has_policy1);
+      switch (mode) {
+        case protos::WindowsPolicy::USER_POLICY_MODE_DEFAULT:
+          EXPECT_TRUE(has_policy2);
+          EXPECT_FALSE(has_policy3);
+          EXPECT_EQ(value_x, policy1_value);
+          EXPECT_EQ(value_y, policy2_value);
+          break;
+
+        case protos::WindowsPolicy::USER_POLICY_MODE_MERGE:
+          EXPECT_TRUE(has_policy2);
+          EXPECT_TRUE(has_policy3);
+          EXPECT_EQ(value_A, policy1_value);
+          EXPECT_EQ(value_y, policy2_value);
+          EXPECT_EQ(value_B, policy3_value);
+          break;
+
+        case protos::WindowsPolicy::USER_POLICY_MODE_REPLACE:
+          EXPECT_FALSE(has_policy2);
+          EXPECT_TRUE(has_policy3);
+          EXPECT_EQ(value_A, policy1_value);
+          EXPECT_EQ(value_B, policy3_value);
+          break;
+      }
+    };
+    FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  }
+  // 3x for user TGT during auth, 2x for device TGT for MERGE and REPLACE.
+  EXPECT_EQ(5, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  // 1x for DEFAULT, 2x for MERGE, 1x for REPLACE.
+  EXPECT_EQ(4,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  // 1x for DEFAULT, 2x for MERGE, 1x for REPLACE.
+  EXPECT_EQ(4, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
 // User policy fetch fails if a file fails to download (unless it's missing,
 // see UserPolicyFetchSucceedsMissingFile).
 TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
@@ -1474,6 +1623,55 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   EXPECT_EQ(1,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// Device policy fetch reads Windows policy as well.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSetsWindowsPolicy) {
+  const base::FilePath windows_policy_path =
+      base::FilePath(paths_->Get(Path::WINDOWS_POLICY));
+
+  // Clear windows policy and make sure it worked.
+  ClearWindowsPolicy();
+  EXPECT_EQ(nullptr, GetWindowsPolicy());
+  EXPECT_FALSE(base::PathExists(windows_policy_path));
+
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // Check that a device policy fetch brings back Windows policy.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_NE(nullptr, GetWindowsPolicy());
+  EXPECT_TRUE(base::PathExists(windows_policy_path));
+  CheckWindowsPolicyEmpty();
+
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// Device policy fetch reads actual data from Windows policy.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSetsWindowsPolicyWithData) {
+  policy::PRegWindowsPolicyWriter writer;
+  const int kUserPolicyModeReplace = 2;
+  writer.AppendInteger(policy::kKeyUserPolicyMode, kUserPolicyModeReplace);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  const protos::WindowsPolicy* policy = GetWindowsPolicy();
+  ASSERT_NE(nullptr, policy);
+  EXPECT_TRUE(policy->has_user_policy_mode());
+  EXPECT_EQ(policy->user_policy_mode(),
+            protos::WindowsPolicy::USER_POLICY_MODE_REPLACE);
+
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
 }
 
 // Authpolicy caches device policy when device is not locked.
@@ -1589,8 +1787,7 @@ TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
   validate_device_policy_ = &CheckDevicePolicyEmpty;
   FetchAndValidateDevicePolicy(ERROR_NONE);
 
-  EXPECT_FALSE(
-      authpolicy_->GetAnonymizerForTesting()->process_called_for_testing());
+  EXPECT_FALSE(samba().GetAnonymizerForTesting()->process_called_for_testing());
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }

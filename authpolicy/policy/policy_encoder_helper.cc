@@ -36,6 +36,7 @@ const char* GetValueTypeName(const base::Value* value) {
 constexpr char kKeyUserDevice[] = "Software\\Policies\\Google\\ChromeOS";
 constexpr char kKeyExtensions[] =
     "Software\\Policies\\Google\\Chrome\\3rdparty\\Extensions";
+constexpr char kKeyWindows[] = "Software\\Policies\\Microsoft\\Windows\\System";
 constexpr char kKeyRecommended[] = "Recommended";
 constexpr char kKeyMandatoryExtension[] = "Policy";
 
@@ -84,7 +85,6 @@ bool GetAsString(const base::Value* value, std::string* string_value) {
   return value->GetAsString(string_value);
 }
 
-// Prints an error log. Used if value cannot be converted to a target type.
 void PrintConversionError(const base::Value* value,
                           const char* target_type,
                           const char* policy_name,
@@ -93,6 +93,28 @@ void PrintConversionError(const base::Value* value,
              << GetValueTypeName(value) << "'"
              << " to " << target_type << " for policy '" << policy_name << "'"
              << (index_str ? " at index " + *index_str : "");
+}
+
+bool GetAsIntegerInRangeAndPrintError(const base::Value* value,
+                                      int range_min,
+                                      int range_max,
+                                      const char* policy_name,
+                                      int* int_value) {
+  *int_value = 0;
+  if (!GetAsInteger(value, int_value)) {
+    PrintConversionError(value, "integer", policy_name);
+    return false;
+  }
+
+  if (*int_value < range_min || *int_value > range_max) {
+    *int_value = 0;
+    LOG(ERROR) << "Value of policy '" << policy_name << "' is " << value
+               << ", outside of expected range [" << range_min << ","
+               << range_max << "]";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace policy

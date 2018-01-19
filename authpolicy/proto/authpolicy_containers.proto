@@ -92,4 +92,30 @@ message GpoPolicyData {
 
   // Extension policy can be both in user and device GPOs.
   repeated ExtensionPolicy extension_policies = 2;
+
+  // Windows policy is found in device GPOs.
+  optional WindowsPolicy windows_policy = 3;
+}
+
+// Container for a subset of Windows policy that is relevant to AuthPolicy.
+message WindowsPolicy {
+  // Mode for user policy loopback processing, see e.g.
+  // https://technet.microsoft.com/en-us/library/cc978513.aspx
+  enum UserPolicyMode {
+    // No loopback processing, just get user policy from user GPOs.
+    USER_POLICY_MODE_DEFAULT = 0;
+
+    // Merge user policy in user GPOs with user policy in computer GPOs
+    // (computer GPOs take preference).
+    USER_POLICY_MODE_MERGE = 1;
+
+    // Replace user policy in user GPOs by user policy in computer GPOs (user
+    // GPOs are completely ignored).
+    USER_POLICY_MODE_REPLACE = 2;
+  }
+
+  // If set, enables user policy loopback processing. Maps to registry
+  // key Software\Policies\Microsoft\Windows\System, value UserPolicyMode.
+  optional UserPolicyMode user_policy_mode = 1
+      [default = USER_POLICY_MODE_DEFAULT];
 }

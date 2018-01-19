@@ -48,9 +48,17 @@ enum ExitCodes {
   EXIT_CODE_WRITE_OUTPUT_FAILED = 5,
 };
 
+// Specifies the source of GPOs (user vs machine/device GPOs).
+enum class GpoSource {
+  USER,
+  MACHINE,
+};
+
+// Specifies the type of policy (user vs machine/device policy). Note that
+// sometimes user policy from device GPOs is needed (see 'loopback processing').
 enum class PolicyScope {
-  USER,     // User policy
-  MACHINE,  // Machine/device policy
+  USER,
+  MACHINE,
 };
 
 }  // namespace authpolicy

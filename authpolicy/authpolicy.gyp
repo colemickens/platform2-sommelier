@@ -100,10 +100,13 @@
         'policy/policy_encoder_helper.cc',
         'policy/preg_policy_encoder.cc',
         'policy/user_policy_encoder.cc',
+        'policy/windows_policy_encoder.cc',
+        'policy/windows_policy_keys.cc',
         'process_executor.cc',
         'samba_helper.cc',
         'samba_interface.cc',
         'tgt_manager.cc',
+        'windows_policy_manager.cc',
       ],
       'link_settings': {
         'libraries': [
@@ -199,8 +202,10 @@
             'policy/preg_policy_encoder_unittest.cc',
             'policy/preg_policy_writer.cc',
             'policy/user_policy_encoder_unittest.cc',
+            'policy/windows_policy_encoder_unittest.cc',
             'process_executor_unittest.cc',
             'samba_helper_unittest.cc',
+            'windows_policy_manager_unittest.cc',
           ],
         },
         {

@@ -14,6 +14,7 @@
 #include "authpolicy/policy/extension_policy_encoder.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/user_policy_encoder.h"
+#include "authpolicy/policy/windows_policy_encoder.h"
 
 namespace em = enterprise_management;
 
@@ -84,6 +85,25 @@ bool ParsePRegFilesIntoExtensionPolicy(
   }
 
   ExtensionPolicyEncoder enc(&policy_dict);
+  enc.LogPolicyValues(log_policy_values);
+  enc.EncodePolicy(policy);
+
+  return true;
+}
+
+bool ParsePRegFilesIntoWindowsPolicy(
+    const std::vector<base::FilePath>& preg_files,
+    authpolicy::protos::WindowsPolicy* policy,
+    bool log_policy_values) {
+  DCHECK(policy);
+
+  RegistryDict policy_dict;
+  for (const base::FilePath& preg_file : preg_files) {
+    if (!LoadPRegFile(preg_file, kKeyWindows, &policy_dict))
+      return false;
+  }
+
+  WindowsPolicyEncoder enc(&policy_dict);
   enc.LogPolicyValues(log_policy_values);
   enc.EncodePolicy(policy);
 

@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include <authpolicy/anonymizer.h>
+#include "authpolicy/anonymizer.h"
 
 namespace {
 

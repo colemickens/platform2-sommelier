@@ -15,8 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <authpolicy/anonymizer.h>
-#include <authpolicy/process_executor.h>
+#include "authpolicy/anonymizer.h"
+#include "authpolicy/process_executor.h"
 
 namespace {
 

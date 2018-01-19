@@ -119,6 +119,9 @@ extern const char kTwoGposMachineName[];
 extern const char kZeroUserVersionMachineName[];
 // Triggers downloading a GPO with the kGpFlagUserDisabled flag set.
 extern const char kDisableUserFlagMachineName[];
+// Triggers downloading GPO1 for the user and GPO2 for the device. Used to test
+// loopback processing for user policy.
+extern const char kLoopbackGpoMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];

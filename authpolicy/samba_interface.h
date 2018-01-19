@@ -23,6 +23,7 @@
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/tgt_manager.h"
+#include "authpolicy/windows_policy_manager.h"
 #include "bindings/authpolicy_containers.pb.h"
 
 // Helper methods for Samba Active Directory authentication, machine (device)
@@ -119,8 +120,8 @@ class SambaInterface {
   // reboot.
   void SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level);
 
-  // Returns sam_account_name_ @ realm.
-  std::string GetUserAndRealm() const;
+  // Returns the user's principal name (sAMAccountName @ realm).
+  std::string GetUserPrincipal() const { return user_account_.GetPrincipal(); }
 
   const std::string& user_account_id() const { return user_account_id_; }
 
@@ -139,6 +140,11 @@ class SambaInterface {
     return anonymizer_.get();
   }
 
+  // Returns the Windows policy manager.
+  WindowsPolicyManager& GetWindowsPolicyManagerForTesting() {
+    return windows_policy_manager_;
+  }
+
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
 
@@ -154,9 +160,13 @@ class SambaInterface {
     std::string netbios_name;  // Netbios name is empty for user.
     std::string kdc_ip;        // IPv4/IPv6 address of key distribution center.
     std::string dc_name;       // DNS name of the domain controller
+    std::string user_name;     // User sAMAccountName or device netbios_name+$.
     Path smb_conf_path;        // Path of the Samba configuration file.
 
     explicit AccountData(Path _smb_conf_path) : smb_conf_path(_smb_conf_path) {}
+
+    // Returns user_name @ realm.
+    std::string GetPrincipal() const { return user_name + "@" + realm; }
   };
 
   // Actual implementation of AuthenticateUser() (see above). The method is
@@ -226,20 +236,27 @@ class SambaInterface {
   ErrorType SearchAccountInfo(const std::string& search_string,
                               ActiveDirectoryAccountInfo* account_info);
 
-  // Calls net ads gpo list to retrieve a list of GPOs. |user_or_machine_name|
-  // may be a user or machine sAMAccountName. (The machine sAMAccountName is the
-  // machine name postfixed with '$'). |account| is the account used for
-  // authentication.
-  ErrorType GetGpoList(const std::string& user_or_machine_name,
-                       const AccountData& account,
+  // Downloads GPOs and returns the |gpo_file_paths|. |source| determines
+  // whether to get GPOs that apply to the user or the device. |scope|
+  // determines whether user or device policy is to be loaded from the GPOs.
+  // Note that some use cases like user policy loopback processing require
+  // reading user policy from device GPOs. Calls GetGpoList() and DownloadGpos()
+  // internally.
+  ErrorType GetGpos(GpoSource source,
+                    PolicyScope scope,
+                    std::vector<base::FilePath>* gpo_file_paths);
+
+  // Calls net ads gpo list to retrieve a list of GPOs in |gpo_list|. See
+  // GetGpos() for an explanation of |source| and |scope|.
+  ErrorType GetGpoList(GpoSource source,
                        PolicyScope scope,
                        protos::GpoList* gpo_list) const;
 
-  // Downloads user or device GPOs in the given |gpo_list|. |scope| determines
-  // a sub-folder where GPOs are downloaded to. It should match |scope| from
-  // |GetGpoList|. |account| is the account used for authentication.
+  // Downloads user or device GPOs in the given |gpo_list|. See GetGpos() for an
+  // explanation of |source| and |scope|. Returns the downloaded GPO file paths
+  // in |gpo_file_paths|.
   ErrorType DownloadGpos(const protos::GpoList& gpo_list,
-                         const AccountData& account,
+                         GpoSource source,
                          PolicyScope scope,
                          std::vector<base::FilePath>* gpo_file_paths) const;
 
@@ -248,6 +265,19 @@ class SambaInterface {
       const std::vector<base::FilePath>& gpo_file_paths,
       const char* parser_cmd_string,
       std::string* policy_blob) const;
+
+  // Get user or device AccountData. Depends on GpoSource, not on PolicyScope,
+  // since that determines what account to download GPOs for.
+  const AccountData& GetAccount(GpoSource source) const {
+    return source == GpoSource::USER ? user_account_ : device_account_;
+  }
+
+  // Get user or device TGT manager. Depends on GpoSource, not on PolicyScope,
+  // since that determines what account to download GPOs for and the TGT is tied
+  // to the account.
+  const TgtManager& GetTgtManager(GpoSource source) const {
+    return source == GpoSource::USER ? user_tgt_manager_ : device_tgt_manager_;
+  }
 
   // Sets and fixes the current user by account id key. Only one account id is
   // allowed per user. Calling this multiple times with different account ids
@@ -319,6 +349,9 @@ class SambaInterface {
   // User and device ticket-granting-ticket managers.
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
+
+  // Manager for interesting Windows policy.
+  WindowsPolicyManager windows_policy_manager_;
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;

@@ -23,6 +23,8 @@ namespace authpolicy {
 namespace {
 
 const char kStubKeytab[] = "Stub keytab file";
+const char kSmbConfDevice[] = "smb_device.conf";
+const char kSmbConfUser[] = "smb_user.conf";
 
 // Various stub error messages.
 const char kSmbConfArgMissingError[] =
@@ -292,8 +294,8 @@ std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   // We need the device smb.conf here, the user smb.conf doesn't contain the
   // netbios name.
   std::string device_smb_conf_path = smb_conf_path;
-  base::ReplaceFirstSubstringAfterOffset(&device_smb_conf_path, 0,
-                                         "smb_user.conf", "smb_device.conf");
+  base::ReplaceFirstSubstringAfterOffset(&device_smb_conf_path, 0, kSmbConfUser,
+                                         kSmbConfDevice);
   std::string smb_conf;
   CHECK(
       base::ReadFileToString(base::FilePath(device_smb_conf_path), &smb_conf));
@@ -499,9 +501,18 @@ int HandleGpoList(const std::string& smb_conf_path) {
     // Stub GPO list that contains a GPO with kGpFlagUserDisabled set (should be
     // ignored during user policy fetch).
     gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagUserDisabled);
+  } else if (machine_name == base::ToUpperASCII(kLoopbackGpoMachineName)) {
+    // Stub GPO list that contains
+    //   - GPO1 when querying GPOs for the user account and
+    //   - GPO2 when querying GPOs for the device account.
+    bool requesting_user_gpos = Contains(smb_conf_path, kSmbConfUser);
+    if (requesting_user_gpos)
+      gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
+    else
+      gpos += PrintGpo(kGpo2Guid, 1, 1, kGpFlagAllEnabled);
   }
 
-  WriteOutput("", gpos);
+  WriteOutput(smb_conf_path, gpos);
   return kExitCodeOk;
 }
 

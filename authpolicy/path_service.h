@@ -62,6 +62,7 @@ enum class Path {
   FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
                         // AuthPolicyFlags::DefaultLevel.
   KRB5_TRACE,           // kinit trace log.
+  WINDOWS_POLICY,       // Storage location of protos::WindowsPolicy.
 };
 
 // Simple path service.

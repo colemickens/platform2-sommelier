@@ -60,6 +60,8 @@ const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
 const char kFlagsDefaultLevelPath[] = "/run/authpolicyd/flags_default_level";
 // kinit trace logs.
 const char kKrb5Trace[] = "/krb5_trace";
+// protos::WindowsPolicy.
+const char kWindowsPolicy[] = "/windows_policy";
 
 }  // namespace
 
@@ -117,6 +119,7 @@ void PathService::Initialize() {
   Insert(Path::FLAGS_DEFAULT_LEVEL, kFlagsDefaultLevelPath);
   // Trace has to be in a place writable for authpolicyd-exec!
   Insert(Path::KRB5_TRACE, samba_dir + kKrb5Trace);
+  Insert(Path::WINDOWS_POLICY, state_dir + kWindowsPolicy);
 }
 
 const std::string& PathService::Get(Path path_key) const {
