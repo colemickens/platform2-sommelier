@@ -1,0 +1,44 @@
+// Copyright 2016 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module arc;
+
+struct MojoDeviceInfo {
+  string device_path@0;
+  string usb_vid@1;
+  string usb_pid@2;
+  [MinVersion=1] uint32 lens_facing@3;
+  [MinVersion=1] int32 sensor_orientation@4;
+  [MinVersion=1] uint32 frames_to_skip_after_streamon@5;
+  [MinVersion=1] float horizontal_view_angle_16_9@6;
+  [MinVersion=1] float horizontal_view_angle_4_3@7;
+  [MinVersion=1] array<float>? lens_info_available_focal_lengths@8;
+  [MinVersion=1] float lens_info_minimum_focus_distance@9;
+  [MinVersion=1] float lens_info_optimal_focus_distance@10;
+  [MinVersion=1] float vertical_view_angle_16_9@11;
+  [MinVersion=1] float vertical_view_angle_4_3@12;
+};
+
+struct MojoSupportedFormat {
+  uint32 width;
+  uint32 height;
+  uint32 fourcc;
+  array<float> frameRates;
+};
+
+interface ArcCameraService {
+  Connect@0(string device_path) => (int32 result);
+  Disconnect@1() => ();
+  StreamOn@2(uint32 width, uint32 height, uint32 pixel_format, float frame_rate)
+      => (array<handle> fds, uint32 buffer_size, int32 result);
+  StreamOff@3() => (int32 result);
+  GetNextFrameBuffer@4() => (uint32 buffer_id, uint32 data_size, int32 result);
+  ReuseFrameBuffer@5(uint32 buffer_id) => (int32 result);
+  GetDeviceSupportedFormats@6(string device_path)
+      => (array<MojoSupportedFormat> supported_formats);
+  GetCameraDeviceInfos@7() => (array<MojoDeviceInfo> device_infos);
+};
+
+interface ArcCameraInstance {
+};
