@@ -98,6 +98,13 @@ class SambaInterface {
   virtual int32_t CreateFile(const std::string& file_path,
                              int32_t* file_id) WARN_UNUSED_RESULT = 0;
 
+  // Truncates a file corresponding to the file handle |file_id| to the
+  // specified |size|. If the file was previously larger than |size|, the extra
+  // data is lost. If the file was shorter, it is extended and the extended part
+  // reads as null bytes. The file offset is not changed. Returns 0 on success
+  // and errno on failure.
+  virtual int32_t Truncate(int32_t file_id, size_t size) WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "

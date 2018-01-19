@@ -240,6 +240,22 @@ int32_t FakeSambaInterface::CreateFile(const std::string& file_path,
   return 0;
 }
 
+int32_t FakeSambaInterface::Truncate(int32_t file_id, size_t size) {
+  if (!IsFileFDOpen(file_id)) {
+    return EBADFD;
+  }
+  OpenInfo& open_info = FindOpenFD(file_id)->second;
+  FakeFile* file = GetFile(open_info.full_path);
+  DCHECK(file);
+  file->size = size;
+  if (file->has_data) {
+    file->data.resize(size, 0);
+  }
+  // Adjust offset to end of file if the previous offset was larger than size.
+  open_info.current_index = std::min(open_info.current_index, size);
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {
