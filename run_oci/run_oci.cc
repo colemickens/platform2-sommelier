@@ -871,8 +871,11 @@ int OciDestroy(const std::string& container_id) {
     return -1;
   }
 
-  if (kill(container_pid, 0) != -1 || errno != ESRCH) {
-    PLOG(ERROR) << "Container " << container_id << " is still running.";
+  if (kill(container_pid, 0) == 0) {
+    LOG(ERROR) << "Container " << container_id << " is still running.";
+    return -1;
+  } else if (errno != ESRCH) {
+    PLOG(ERROR) << "The state of container " << container_id << " is unknown.";
     return -1;
   }
 
