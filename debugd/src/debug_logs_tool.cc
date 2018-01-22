@@ -40,7 +40,7 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed,
   // Create a temporary file and write ARC log to the file if ARC is running.
   if (base::PathExists(base::FilePath(kArcBugreportPipe))) {
     if (arc_temp_dir.CreateUniqueTempDir())
-      WriteArcBugreport(arc_temp_dir.path().Append(kArcBugreportFile));
+      WriteArcBugreport(arc_temp_dir.GetPath().Append(kArcBugreportFile));
     else
       PLOG(WARNING) << "Failed to create a temporary directory";
   }
@@ -53,7 +53,7 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed,
 
   if (arc_temp_dir.IsValid()) {
     p.AddArg("-C");
-    p.AddArg(arc_temp_dir.path().value());
+    p.AddArg(arc_temp_dir.GetPath().value());
     p.AddArg(kArcBugreportFile);
   }
   p.AddArg(kSystemLogs);

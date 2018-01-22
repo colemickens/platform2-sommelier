@@ -44,7 +44,7 @@ class DevFeaturesPasswordHelperTest : public Test {
                              Return(true)));
     // Start with an empty temp directory but no password file.
     CHECK(temp_dir_.CreateUniqueTempDir());
-    file_path_ = temp_dir_.path().Append("password.temp");
+    file_path_ = temp_dir_.GetPath().Append("password.temp");
   }
 
  protected:

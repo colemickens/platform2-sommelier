@@ -263,7 +263,7 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
   }
 
   base::FilePath temp_ppd;
-  if (!WriteTempPPDFile(temp_dir.path(), ppd_contents, &temp_ppd)) {
+  if (!WriteTempPPDFile(temp_dir.GetPath(), ppd_contents, &temp_ppd)) {
     return CupsResult::CUPS_FATAL;
   }
 
