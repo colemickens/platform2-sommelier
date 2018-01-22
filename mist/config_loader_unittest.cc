@@ -71,7 +71,7 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
 
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
@@ -109,7 +109,7 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
 TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.path(), &config_file));
+  ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.GetPath(), &config_file));
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
   Config* config = config_loader_.config_.get();
@@ -120,7 +120,7 @@ TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {
 TEST_F(ConfigLoaderTest, LoadInvalidConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir("<invalid config>", temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir("<invalid config>", temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_FALSE(config_loader_.LoadConfig(config_file));
@@ -135,7 +135,7 @@ TEST_F(ConfigLoaderTest, LoadNonExistentConfigFile) {
 TEST_F(ConfigLoaderTest, LoadValidConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
