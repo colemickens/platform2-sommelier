@@ -67,7 +67,7 @@ class BiodStorageTest : public ::testing::Test {
  public:
   BiodStorageTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    root_path_ = temp_dir_.path().AppendASCII("biod_storage_unittest_root");
+    root_path_ = temp_dir_.GetPath().AppendASCII("biod_storage_unittest_root");
     biod_storage_.reset(new BiodStorage(
         kBiometricsManagerName,
         base::Bind(&BiodStorageTest::LoadRecord, base::Unretained(this))));
@@ -75,7 +75,7 @@ class BiodStorageTest : public ::testing::Test {
   }
 
   ~BiodStorageTest() override {
-    EXPECT_TRUE(base::DeleteFile(temp_dir_.path(), true));
+    EXPECT_TRUE(base::DeleteFile(temp_dir_.GetPath(), true));
   }
 
  protected:
