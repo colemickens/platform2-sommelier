@@ -146,11 +146,11 @@ class FirmwareDirectoryTest : public ::testing::Test {
 
  protected:
   void SetUpDirectory(const std::vector<char>& manifest) {
-    base::File file(temp_dir_.path().Append("manifest.proto"),
+    base::File file(temp_dir_.GetPath().Append("manifest.proto"),
                     base::File::FLAG_CREATE | base::File::FLAG_WRITE);
     CHECK(file.IsValid());
     file.WriteAtCurrentPos(manifest.data(), manifest.size());
-    firmware_directory_ = CreateFirmwareDirectory(temp_dir_.path());
+    firmware_directory_ = CreateFirmwareDirectory(temp_dir_.GetPath());
   }
 
   std::unique_ptr<FirmwareDirectory> firmware_directory_;
