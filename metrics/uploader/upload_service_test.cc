@@ -48,7 +48,7 @@ class UploadServiceTest : public testing::Test {
 
     chromeos_metrics::PersistentInteger::SetTestingMode(true);
     cache_.session_id_.reset(new chromeos_metrics::PersistentInteger(
-        dir_.path().Append("session_id").value()));
+        dir_.GetPath().Append("session_id").value()));
   }
 
   std::unique_ptr<metrics::MetricSample> Crash(const std::string& name) {
@@ -204,7 +204,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
       metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
   local_cache_->session_id_.reset(new chromeos_metrics::PersistentInteger(
-      dir_.path().Append("session_id").value()));
+      dir_.GetPath().Append("session_id").value()));
 
   upload_service_.system_profile_setter_.reset(local_cache_);
   // Reset to create the new log with the profile setter.
@@ -226,7 +226,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
 }
 
 TEST_F(UploadServiceTest, PersistentGUID) {
-  std::string tmp_file = dir_.path().Append("tmpfile").value();
+  std::string tmp_file = dir_.GetPath().Append("tmpfile").value();
 
   std::string first_guid = SystemProfileCache::GetPersistentGUID(tmp_file);
   std::string second_guid = SystemProfileCache::GetPersistentGUID(tmp_file);

@@ -24,7 +24,7 @@ class SerializationUtilsTest : public testing::Test {
   SerializationUtilsTest() {
     bool success = temporary_dir_.CreateUniqueTempDir();
     if (success) {
-      base::FilePath dir_path = temporary_dir_.path();
+      base::FilePath dir_path = temporary_dir_.GetPath();
       filepath_ = dir_path.Append("chromeossampletest");
       filename_ = filepath_.value();
     }
