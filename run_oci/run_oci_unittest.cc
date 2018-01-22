@@ -32,7 +32,7 @@ run /run tmpfs rw,seclabel,nosuid,nodev,noexec,relatime,mode=755 0 0
 tmpfs /run/containers/android-master-33lymv/rootfs/root/dev tmpfs rw 0 0
 debugfs /run/sync_export debugfs rw 0 0
   )";
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   EXPECT_EQ(
       base::WriteFile(mounts, kSelfProcMountsData, sizeof(kSelfProcMountsData)),
       sizeof(kSelfProcMountsData));
