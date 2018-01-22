@@ -96,7 +96,7 @@ class FeedbackServiceTest : public testing::Test {
  protected:
   virtual void SetUp() {
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
-    CreateDirectory(temp_dir_.path().Append(kFeedbackReportPath));
+    CreateDirectory(temp_dir_.GetPath().Append(kFeedbackReportPath));
 
     pool_ = new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName);
   }
@@ -112,7 +112,7 @@ class FeedbackServiceTest : public testing::Test {
 };
 
 TEST_F(FeedbackServiceTest, SendFeedback) {
-  MockFeedbackUploaderQueue uploader(temp_dir_.path(), pool_.get());
+  MockFeedbackUploaderQueue uploader(temp_dir_.GetPath(), pool_.get());
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
@@ -125,7 +125,7 @@ TEST_F(FeedbackServiceTest, SendFeedback) {
 }
 
 TEST_F(FeedbackServiceTest, DispatchTest) {
-  MockFeedbackUploader uploader(temp_dir_.path(), pool_.get());
+  MockFeedbackUploader uploader(temp_dir_.GetPath(), pool_.get());
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
@@ -138,7 +138,7 @@ TEST_F(FeedbackServiceTest, DispatchTest) {
 }
 
 TEST_F(FeedbackServiceTest, UploadFailure) {
-  FailedFeedbackUploader uploader(temp_dir_.path(), pool_.get());
+  FailedFeedbackUploader uploader(temp_dir_.GetPath(), pool_.get());
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
