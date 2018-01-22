@@ -83,7 +83,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
 
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
@@ -127,7 +127,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
 TEST_F(ManagerTest, LoadEmptyConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.path(), &config_file));
+  ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.GetPath(), &config_file));
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
   Config* config = manager_.config_.get();
@@ -138,7 +138,7 @@ TEST_F(ManagerTest, LoadEmptyConfigFile) {
 TEST_F(ManagerTest, LoadInvalidConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir("<invalid config>", temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir("<invalid config>", temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_FALSE(manager_.LoadConfig(config_file));
@@ -153,7 +153,7 @@ TEST_F(ManagerTest, LoadNonExistentConfigFile) {
 TEST_F(ManagerTest, LoadValidConfigFile) {
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.path(),
+  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.GetPath(),
                                     &config_file));
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
