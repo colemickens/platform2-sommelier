@@ -146,6 +146,10 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
 }
 
 int32_t FakeSambaInterface::CloseFile(int32_t file_id) {
+  if (close_file_error_ != 0) {
+    return close_file_error_;
+  }
+
   DCHECK_GE(file_id, 0);
   if (!IsFileFDOpen(file_id)) {
     return EBADF;
@@ -241,6 +245,10 @@ int32_t FakeSambaInterface::CreateFile(const std::string& file_path,
 }
 
 int32_t FakeSambaInterface::Truncate(int32_t file_id, size_t size) {
+  if (truncate_error_ != 0) {
+    return truncate_error_;
+  }
+
   if (!IsFileFDOpen(file_id)) {
     return EBADFD;
   }
@@ -474,6 +482,14 @@ bool FakeSambaInterface::HasWriteSet(int32_t fd) const {
 
 bool FakeSambaInterface::EntryExists(const std::string& path) const {
   return GetEntry(path);
+}
+
+void FakeSambaInterface::SetCloseFileError(int32_t error) {
+  close_file_error_ = error;
+}
+
+void FakeSambaInterface::SetTruncateError(int32_t error) {
+  truncate_error_ = error;
 }
 
 }  // namespace smbprovider

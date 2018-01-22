@@ -93,6 +93,12 @@ class FakeSambaInterface : public SambaInterface {
   // Gets the current file size of a file in |path|.
   size_t GetFileSize(const std::string& path) const;
 
+  // Helper method to set the errno CloseFile() should return.
+  void SetCloseFileError(int32_t error);
+
+  // Helper method to set the errno Truncate() should return.
+  void SetTruncateError(int32_t error);
+
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
   struct FakeEntry {
@@ -244,6 +250,14 @@ class FakeSambaInterface : public SambaInterface {
 
   // Root directory of the file system.
   std::unique_ptr<FakeDirectory> root;
+
+  // Errno for CloseFile() to return. If this is set to anything other than
+  // 0, CloseFile() will return the error this is set to.
+  int32_t close_file_error_ = 0;
+
+  // Errno for Truncate() to return. If this is set to anything other than
+  // 0, Truncate() will return the error this is set to.
+  int32_t truncate_error_ = 0;
 
   // Keeps track of open files and directories.
   // Key: fd of the file/directory.
