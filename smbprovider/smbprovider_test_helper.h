@@ -37,6 +37,10 @@ ReadFileOptionsProto CreateReadFileOptionsProto(int32_t mount_id,
                                                 int64_t offset,
                                                 int32_t length);
 
+TruncateOptionsProto CreateTruncateOptionsProto(int32_t mount_id,
+                                                const std::string& file_path,
+                                                int64_t length);
+
 CreateFileOptionsProto CreateCreateFileOptionsProto(
     int32_t mount_id, const std::string& file_path);
 
@@ -67,6 +71,10 @@ ProtoBlob CreateReadFileOptionsBlob(int32_t mount_id,
 
 ProtoBlob CreateCreateFileOptionsBlob(int32_t mount_id,
                                       const std::string& file_path);
+
+ProtoBlob CreateTruncateOptionsBlob(int32_t mount_id,
+                                    const std::string& file_path,
+                                    int64_t length);
 
 }  // namespace smbprovider
 

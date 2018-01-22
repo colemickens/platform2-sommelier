@@ -13,7 +13,7 @@
 
 namespace {
 bool IsValidOpenFileFlags(int32_t flags) {
-  return flags == O_RDONLY || flags == O_RDWR;
+  return flags == O_RDONLY || flags == O_RDWR || flags == O_WRONLY;
 }
 }  // namespace
 

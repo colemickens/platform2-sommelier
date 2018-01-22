@@ -90,6 +90,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   CreateFileOptionsProto create_file_proto = CreateCreateFileOptionsProto(
       3 /* mount_id */, "smb://testShare/dir1/pic.png");
   EXPECT_TRUE(IsValidOptions(create_file_proto));
+
+  TruncateOptionsProto truncate_proto = CreateTruncateOptionsProto(
+      3 /* mount_id */, "smb://testShare/dir1/pic.png", 0 /* length */);
+  EXPECT_TRUE(IsValidOptions(truncate_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -120,6 +124,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   CreateFileOptionsProto create_file_proto_blank;
   EXPECT_FALSE(IsValidOptions(create_file_proto_blank));
+
+  TruncateOptionsProto truncate_proto_blank;
+  EXPECT_FALSE(IsValidOptions(truncate_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -135,6 +142,17 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsChecksReadFileRanges) {
   ReadFileOptionsProto read_file_proto_bad_length = CreateReadFileOptionsProto(
       3 /* mount_id */, 4 /* file_id */, 0 /* offset */, -10 /* length */);
   EXPECT_FALSE(IsValidOptions(read_file_proto_bad_length));
+}
+
+// IsValidOptions checks length for TruncateOptionsProto.
+TEST_F(SmbProviderProtoTest, IsValidOptionsChecksTruncateLength) {
+  TruncateOptionsProto truncate_proto = CreateTruncateOptionsProto(
+      3 /* mount_id */, "smb://testShare/dir1/pic.png", 0 /* length */);
+  EXPECT_TRUE(IsValidOptions(truncate_proto));
+
+  TruncateOptionsProto truncate_proto_bad_length = CreateTruncateOptionsProto(
+      3 /* mount_id */, "smb://testShare/dir1/pic.png", -10 /* length */);
+  EXPECT_FALSE(IsValidOptions(truncate_proto_bad_length));
 }
 
 // GetEntryPath gets the correct part of corresponding protos.

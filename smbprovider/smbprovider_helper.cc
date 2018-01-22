@@ -164,4 +164,8 @@ int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
   return options.writeable() ? O_RDWR : O_RDONLY;
 }
 
+int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused) {
+  return O_WRONLY;
+}
+
 }  // namespace smbprovider

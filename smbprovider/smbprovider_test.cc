@@ -1163,4 +1163,129 @@ TEST_F(SmbProviderTest, CreateFileFailsDirectoryExists) {
   EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateFile(create_blob)));
 }
 
+// Truncate should fail when passed an invalid protobuf.
+TEST_F(SmbProviderTest, TruncateFailsWithInvalidProto) {
+  ProtoBlob empty_blob;
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->Truncate(empty_blob)));
+}
+
+// Truncate should fail when passed a mount id that does not exist.
+TEST_F(SmbProviderTest, TruncateFailsWithMountThatDoesntExist) {
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(999, GetDefaultFilePath(), 0 /* length */);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->Truncate(blob)));
+}
+
+// Truncate should fail when passed a file path that does not exist.
+TEST_F(SmbProviderTest, TruncateFailsWithFilePathThatDoesntExist) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(mount_id, "/foo/bar.txt", 0 /* length */);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->Truncate(blob)));
+}
+
+// Truncate should fail when passed a negative length.
+TEST_F(SmbProviderTest, TruncateFailsWithNegativeLength) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+
+  ProtoBlob blob = CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(),
+                                             -1 /* length */);
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->Truncate(blob)));
+}
+
+// Truncate should close the file when truncate returns an error.
+TEST_F(SmbProviderTest, TruncateReturnsCorrectError) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t expected_error = EACCES;
+
+  fake_samba_->SetTruncateError(expected_error);
+
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(), 1 /* length */);
+
+  EXPECT_EQ(GetErrorFromErrno(expected_error),
+            CastError(smbprovider_->Truncate(blob)));
+  ExpectNoOpenEntries();
+}
+
+// Truncate should return the error from truncate even if CloseFile fails.
+TEST_F(SmbProviderTest, TruncateReturnsCorrectErrorWhenCloseFileFails) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int32_t truncate_error = EACCES;
+
+  // Set the errors that Truncate and Close will return.
+  fake_samba_->SetTruncateError(truncate_error);
+  fake_samba_->SetCloseFileError(EMFILE);
+
+  // Call Truncate.
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(), 1 /* length */);
+
+  // Error returned should be the one that Truncate returned.
+  EXPECT_EQ(GetErrorFromErrno(truncate_error),
+            CastError(smbprovider_->Truncate(blob)));
+}
+
+// Truncate should successfully change the file size to a smaller length.
+TEST_F(SmbProviderTest, TruncateChangesFileSizeToSmallerLength) {
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int64_t new_length = 5;
+
+  // Truncate the length to the smaller size.
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(), new_length);
+
+  // Truncate should be successful.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Truncate(blob)));
+
+  // Resize the original vector to get the expected value.
+  file_data.resize(new_length, 0);
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), file_data));
+  ExpectNoOpenEntries();
+}
+
+// Truncate should successfully change the file size to a larger length.
+TEST_F(SmbProviderTest, TruncateChangesFileSizeToLargerLength) {
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+  const int64_t new_length = 50;
+
+  // Truncate the length to the larger size.
+  ProtoBlob blob =
+      CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(), new_length);
+
+  // Truncate should be successful.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Truncate(blob)));
+
+  // Resize the original vector to get the expected value. The appended values
+  // should be initialized to '0'.
+  file_data.resize(new_length, 0);
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), file_data));
+  ExpectNoOpenEntries();
+}
+
+TEST_F(SmbProviderTest, TruncateSucceedsWithSameLength) {
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
+
+  // Truncate the length to the same size.
+  ProtoBlob blob = CreateTruncateOptionsBlob(mount_id, GetDefaultFilePath(),
+                                             file_data.size());
+
+  // Truncate should be successful.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Truncate(blob)));
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), file_data));
+  ExpectNoOpenEntries();
+}
+
 }  // namespace smbprovider

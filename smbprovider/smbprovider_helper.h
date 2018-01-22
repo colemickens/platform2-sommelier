@@ -105,6 +105,7 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
 
 // Gets the correct permissions flag for |options|.
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
+int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);
 
 }  // namespace smbprovider
 

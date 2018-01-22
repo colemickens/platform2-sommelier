@@ -172,6 +172,15 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   template <typename Proto>
   bool CloseFile(const Proto& options, int32_t file_id, int32_t* error);
 
+  // Truncates a file with handle |file_id| to the desired |length| and closes
+  // the file whether or not the truncate was successful. |options| is used for
+  // logging purposes. |error| is set on failure. Returns true on success.
+  template <typename Proto>
+  bool TruncateAndCloseFile(const Proto& options,
+                            int32_t file_id,
+                            int64_t length,
+                            int32_t* error);
+
   // Helper method to seek given a proto |options|.
   // On failure |error_code| will be populated.
   template <typename Proto>

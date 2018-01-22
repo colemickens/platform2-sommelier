@@ -255,8 +255,17 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
 }
 
 int32_t SmbProvider::Truncate(const ProtoBlob& options_blob) {
-  NOTIMPLEMENTED();
-  return 0;
+  int32_t error_code;
+  std::string full_path;
+  TruncateOptionsProto options;
+  int32_t file_id;
+
+  const bool result =
+      ParseOptionsAndPath(options_blob, &options, &full_path, &error_code) &&
+      OpenFile(options, full_path, &error_code, &file_id) &&
+      TruncateAndCloseFile(options, file_id, options.length(), &error_code);
+
+  return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
 // This is a helper method that has a similar return structure as
@@ -483,6 +492,31 @@ bool SmbProvider::CloseFile(const Proto& options,
     return false;
   }
   return true;
+}
+
+template <typename Proto>
+bool SmbProvider::TruncateAndCloseFile(const Proto& options,
+                                       const int32_t file_id,
+                                       int64_t length,
+                                       int32_t* error) {
+  int32_t truncate_result = samba_interface_->Truncate(file_id, length);
+  if (truncate_result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(truncate_result), error);
+    // Continue to close on error.
+  }
+
+  int32_t close_error;
+  if (!CloseFile(options, file_id, &close_error)) {
+    if (truncate_result == 0) {
+      // If Truncate was successful, set error to the close error, otherwise
+      // keep the truncate error.
+      *error = close_error;
+    }
+    return false;
+  }
+
+  // Return if the truncate was successful.
+  return truncate_result == 0;
 }
 
 }  // namespace smbprovider
