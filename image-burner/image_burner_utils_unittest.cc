@@ -25,8 +25,8 @@ class BurnReaderTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(test_dir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateTemporaryFileInDir(
-                    test_dir_.path(), &test_file_path_));
+    ASSERT_TRUE(
+        base::CreateTemporaryFileInDir(test_dir_.GetPath(), &test_file_path_));
   }
 
  protected:
@@ -52,8 +52,8 @@ class BurnWriterTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(test_dir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateTemporaryFileInDir(
-                    test_dir_.path(), &test_file_path_));
+    ASSERT_TRUE(
+        base::CreateTemporaryFileInDir(test_dir_.GetPath(), &test_file_path_));
   }
 
  protected:
@@ -137,7 +137,7 @@ TEST_F(BurnReaderTest, HandlingEmptyFile) {
 }
 
 TEST_F(BurnReaderTest, HandlingNonExistingFile) {
-  base::FilePath non_existent_file =  test_dir_.path().Append("non-existent");
+  base::FilePath non_existent_file = test_dir_.GetPath().Append("non-existent");
   ASSERT_FALSE(base::PathExists(non_existent_file));
 
   EXPECT_FALSE(file_reader_.Open(non_existent_file.value().c_str()));
@@ -201,7 +201,7 @@ TEST_F(BurnWriterTest, ReusingClosedReader) {
 }
 
 TEST_F(BurnWriterTest, HandlingNonExistingFile) {
-  base::FilePath non_existent_file =  test_dir_.path().Append("non-existent");
+  base::FilePath non_existent_file = test_dir_.GetPath().Append("non-existent");
   ASSERT_FALSE(base::PathExists(non_existent_file));
 
   EXPECT_FALSE(file_writer_.Open(non_existent_file.value().c_str()));
