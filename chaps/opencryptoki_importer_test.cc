@@ -149,7 +149,7 @@ class TestImporterBase {
   TestImporterBase() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     importer_.reset(new OpencryptokiImporter(
-        0, temp_dir_.path().Append(kTokenPath), &tpm_, &factory_));
+        0, temp_dir_.GetPath().Append(kTokenPath), &tpm_, &factory_));
     // Set expectations for the TPM utility mock.
     EXPECT_CALL(tpm_, Unbind(_, _, _)).WillRepeatedly(Invoke(MockUnbind));
     EXPECT_CALL(tpm_, LoadKey(_, _, _, _))
@@ -173,9 +173,8 @@ class TestImporterBase {
  protected:
   void PrepareSampleToken() {
     CHECK(temp_dir_.IsValid());
-    RunCommand(base::StringPrintf("tar -xzf %s -C %s",
-                                  kSampleToken,
-                                  temp_dir_.path().value().c_str()));
+    RunCommand(base::StringPrintf("tar -xzf %s -C %s", kSampleToken,
+                                  temp_dir_.GetPath().value().c_str()));
   }
 
   ChapsFactoryMock factory_;
@@ -217,7 +216,7 @@ class TestImporterWithModifier
 TEST_P(TestImporterWithModifier, ImportSample) {
   PrepareSampleToken();
   FilePath object_path =
-      temp_dir_.path().Append(kTokenPath).Append(kTokenObjectPath);
+      temp_dir_.GetPath().Append(kTokenPath).Append(kTokenObjectPath);
   ModifierCallback modifier = GetParam();
   ModifierResult expected_result = modifier(object_path.value().c_str());
   EXPECT_EQ(expected_result.import_public_result,
