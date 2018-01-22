@@ -294,7 +294,7 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  const FilePath mount_dir = temp_dir.path().Append(FilePath(kMountDir));
+  const FilePath mount_dir = temp_dir.GetPath().Append(FilePath(kMountDir));
   ASSERT_TRUE(base::CreateDirectory(mount_dir));
 
   const FilePath::CharType* const kDirectories[] = {
@@ -318,16 +318,16 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
   for (const auto& directory : kDirectories) {
     SCOPED_TRACE(directory);
     FilePath result;
-    EXPECT_TRUE(homedirs_.GetTrackedDirectory(
-        temp_dir.path(), FilePath(directory), &result));
+    EXPECT_TRUE(homedirs_.GetTrackedDirectory(temp_dir.GetPath(),
+                                              FilePath(directory), &result));
     EXPECT_EQ(mount_dir.Append(FilePath(directory)).value(), result.value());
   }
   // Return false for unknown directories.
   FilePath result;
   EXPECT_FALSE(homedirs_.GetTrackedDirectory(
-      temp_dir.path(), FilePath(FILE_PATH_LITERAL("zzz")), &result));
+      temp_dir.GetPath(), FilePath(FILE_PATH_LITERAL("zzz")), &result));
   EXPECT_FALSE(homedirs_.GetTrackedDirectory(
-      temp_dir.path(), FilePath(FILE_PATH_LITERAL("aaa/zzz")), &result));
+      temp_dir.GetPath(), FilePath(FILE_PATH_LITERAL("aaa/zzz")), &result));
 }
 
 class FreeDiskSpaceTest : public HomeDirsTest {
