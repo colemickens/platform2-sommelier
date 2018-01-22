@@ -22,7 +22,7 @@ TempFileManager::TempFileManager() {
 TempFileManager::~TempFileManager() = default;
 
 const base::FilePath& TempFileManager::GetTempDirectoryPath() const {
-  return temp_dir_.path();
+  return temp_dir_.GetPath();
 }
 
 base::ScopedFD TempFileManager::CreateTempFile(
@@ -50,7 +50,7 @@ base::ScopedFD TempFileManager::CreateTempFile(
 }
 
 base::ScopedFD TempFileManager::CreateTempFile() {
-  const std::string str = temp_dir_.path().Append("XXXXXX").value();
+  const std::string str = temp_dir_.GetPath().Append("XXXXXX").value();
   // Make sure that the string we are passing is null-terminated.
   std::unique_ptr<char[]> file_path = std::make_unique<char[]>(str.size() + 1);
   memcpy(file_path.get(), str.c_str(), str.size());
