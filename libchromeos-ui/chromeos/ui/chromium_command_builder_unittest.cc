@@ -21,7 +21,7 @@ class ChromiumCommandBuilderTest : public testing::Test {
       : write_use_flags_file_(true),
         write_lsb_release_file_(true) {
     PCHECK(temp_dir_.CreateUniqueTempDir());
-    base_path_ = temp_dir_.path();
+    base_path_ = temp_dir_.GetPath();
     builder_.set_base_path_for_testing(base_path_);
 
     pepper_dir_ = util::GetReparentedPath(
