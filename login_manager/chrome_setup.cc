@@ -191,10 +191,14 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
 
   // Ensure the existence of the directory in which the whitelist and other
   // ownership-related state will live. Yes, it should be owned by root. The
-  // permissions are set such that the chronos user can see the content of known
-  // files inside whitelist, but not anything else.
+  // permissions are set such that the policy-readers group can see the content
+  // of known files inside whitelist. The policy-readers group is composed of
+  // the chronos user and other daemon accessing the device policies but not
+  // anything else.
+  gid_t policy_readers_gid;
+  CHECK(brillo::userdb::GetGroupInfo("policy-readers", &policy_readers_gid));
   CHECK(EnsureDirectoryExists(base::FilePath("/var/lib/whitelist"), kRootUid,
-                              gid, 0710));
+                              policy_readers_gid, 0750));
 
   // Create the directory where policies for extensions installed in
   // device-local accounts are cached. This data is read and written by chronos.
