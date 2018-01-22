@@ -442,6 +442,12 @@ size_t FakeSambaInterface::GetFileOffset(int32_t fd) const {
   return open_info.current_index;
 }
 
+size_t FakeSambaInterface::GetFileSize(const std::string& path) const {
+  FakeFile* file = GetFile(path);
+  DCHECK(file);
+  return file->size;
+}
+
 FakeSambaInterface::OpenEntriesIterator FakeSambaInterface::FindOpenFD(
     uint32_t fd) {
   return open_fds.find(fd);

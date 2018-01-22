@@ -90,6 +90,9 @@ class FakeSambaInterface : public SambaInterface {
   // Gets current offset of file.
   size_t GetFileOffset(int32_t fd) const;
 
+  // Gets the current file size of a file in |path|.
+  size_t GetFileSize(const std::string& path) const;
+
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
   struct FakeEntry {
