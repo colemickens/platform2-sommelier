@@ -28,7 +28,7 @@ class LoginMetricsTest : public testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    metrics_.reset(new LoginMetrics(tmpdir_.path()));
+    metrics_.reset(new LoginMetrics(tmpdir_.GetPath()));
   }
 
   int PolicyFilesStatusCode(LoginMetrics::PolicyFilesStatus status) {

@@ -63,7 +63,7 @@ class SessionManagerProcessTest : public ::testing::Test {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
 
-    aborted_browser_pid_path_ = tmpdir_.path().Append("aborted_browser_pid");
+    aborted_browser_pid_path_ = tmpdir_.GetPath().Append("aborted_browser_pid");
   }
 
   void TearDown() override {

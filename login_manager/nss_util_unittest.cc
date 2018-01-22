@@ -26,9 +26,9 @@ class NssUtilTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(
-        base::CreateDirectory(tmpdir_.path().Append(util_->GetNssdbSubpath())));
-    slot_ = util_->OpenUserDB(tmpdir_.path());
+    ASSERT_TRUE(base::CreateDirectory(
+        tmpdir_.GetPath().Append(util_->GetNssdbSubpath())));
+    slot_ = util_->OpenUserDB(tmpdir_.GetPath());
   }
 
  protected:

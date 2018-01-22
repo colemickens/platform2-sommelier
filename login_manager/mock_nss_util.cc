@@ -53,7 +53,7 @@ crypto::ScopedPK11Slot MockNssUtil::OpenUserDB(
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
   if (!EnsureTempDir())
     return base::FilePath();
-  return temp_dir_.path().AppendASCII("dummy");
+  return temp_dir_.GetPath().AppendASCII("dummy");
 }
 
 PK11SlotInfo* MockNssUtil::GetSlot() {

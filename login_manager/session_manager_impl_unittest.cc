@@ -354,7 +354,7 @@ class SessionManagerImplTest : public ::testing::Test,
     ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(10LL << 30));
 
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    real_utils_.set_base_dir_for_testing(tmpdir_.path());
+    real_utils_.set_base_dir_for_testing(tmpdir_.GetPath());
     SetSystemSalt(&fake_salt_);
 
 #if USE_CHEETS
@@ -398,7 +398,8 @@ class SessionManagerImplTest : public ::testing::Test,
             this,
             &SessionManagerImplTest::ReturnUserPolicyServiceForHiddenUserHome));
 
-    device_local_accounts_dir_ = tmpdir_.path().Append(kDeviceLocalAccountsDir);
+    device_local_accounts_dir_ =
+        tmpdir_.GetPath().Append(kDeviceLocalAccountsDir);
     auto device_local_account_manager =
         std::make_unique<DeviceLocalAccountManager>(device_local_accounts_dir_,
                                                     &owner_key_);
@@ -1948,7 +1949,8 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   base::FilePath key_file_path;
   string key("key_contents");
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &key_file_path));
+  ASSERT_TRUE(
+      base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &key_file_path));
   ASSERT_EQ(base::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 

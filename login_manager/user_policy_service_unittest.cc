@@ -73,11 +73,11 @@ class UserPolicyServiceTest : public ::testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    key_copy_file_ = tmpdir_.path().Append("hash/key_copy.pub");
+    key_copy_file_ = tmpdir_.GetPath().Append("hash/key_copy.pub");
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(tmpdir_.path(),
+    service_.reset(new UserPolicyService(tmpdir_.GetPath(),
                                          std::unique_ptr<PolicyKey>(key_),
                                          key_copy_file_, &system_utils_));
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),

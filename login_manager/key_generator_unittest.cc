@@ -50,7 +50,7 @@ class KeyGeneratorTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    SetUserHomePrefix(tmpdir_.path().value() + "/");
+    SetUserHomePrefix(tmpdir_.GetPath().value() + "/");
     SetSystemSalt(&fake_salt_);
   }
 
@@ -97,8 +97,8 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
       .WillByDefault(InvokeWithoutArgs(&nss, &MockNssUtil::CreateShortKey));
   EXPECT_CALL(nss, GenerateKeyPairForUser(_)).Times(1);
 
-  const base::FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
-  ASSERT_EQ(keygen::GenerateKey(key_file_path, tmpdir_.path(), &nss), 0);
+  const base::FilePath key_file_path(tmpdir_.GetPath().AppendASCII("foo.pub"));
+  ASSERT_EQ(keygen::GenerateKey(key_file_path, tmpdir_.GetPath(), &nss), 0);
   ASSERT_TRUE(base::PathExists(key_file_path));
 
   int32_t file_size = 0;

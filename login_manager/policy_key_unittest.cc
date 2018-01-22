@@ -33,7 +33,7 @@ class PolicyKeyTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &tmpfile_));
     ASSERT_EQ(2, base::WriteFile(tmpfile_, "a", 2));
   }
 

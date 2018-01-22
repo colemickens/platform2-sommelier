@@ -52,13 +52,13 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
     brillo::cryptohome::home::SetSystemSalt(&salt_);
 
     fake_account_policy_path_ =
-        temp_dir_.path()
+        temp_dir_.GetPath()
             .Append(brillo::cryptohome::home::SanitizeUserName(fake_account_))
             .Append(DeviceLocalAccountManager::kPolicyDir)
             .Append(PolicyService::kChromePolicyFileName);
 
     manager_ =
-        std::make_unique<DeviceLocalAccountManager>(temp_dir_.path(), &key_);
+        std::make_unique<DeviceLocalAccountManager>(temp_dir_.GetPath(), &key_);
   }
 
   void SetupAccount() {
@@ -132,10 +132,10 @@ TEST_F(DeviceLocalAccountManagerTest, MigrateUppercaseDirs) {
   const char* kDir2Lower = "da4b9237bacccdf19c0760cab7aec4a8359010b0";
   const char* kUnrelated = "foobar";
 
-  base::FilePath fp1(temp_dir_.path().Append(kDir1));
-  base::FilePath fp2(temp_dir_.path().Append(kDir2));
-  base::FilePath fp2lower(temp_dir_.path().Append(kDir2Lower));
-  base::FilePath fpunrel(temp_dir_.path().Append(kUnrelated));
+  base::FilePath fp1(temp_dir_.GetPath().Append(kDir1));
+  base::FilePath fp2(temp_dir_.GetPath().Append(kDir2));
+  base::FilePath fp2lower(temp_dir_.GetPath().Append(kDir2Lower));
+  base::FilePath fpunrel(temp_dir_.GetPath().Append(kUnrelated));
 
   EXPECT_TRUE(base::CreateDirectory(fp1));
   EXPECT_TRUE(base::CreateDirectory(fp2));

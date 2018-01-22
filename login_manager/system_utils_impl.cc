@@ -218,7 +218,7 @@ bool SystemUtilsImpl::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
   if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir())
     return false;
   base::FilePath local_temp_file;
-  if (base::CreateTemporaryFileInDir(temp_dir_.path(), &local_temp_file)) {
+  if (base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &local_temp_file)) {
     if (chmod(local_temp_file.value().c_str(), 0644) == 0) {
       *temp_file = local_temp_file;
       return true;

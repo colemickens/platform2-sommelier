@@ -428,7 +428,7 @@ class PolicyServiceNamespaceTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     fake_loop_.SetAsCurrent();
-    service_ = std::make_unique<PolicyService>(temp_dir_.path(), nullptr,
+    service_ = std::make_unique<PolicyService>(temp_dir_.GetPath(), nullptr,
                                                nullptr, false);
 
     const std::string extension_id = "abcdefghijklmnopabcdefghijklmnop";
@@ -436,8 +436,8 @@ class PolicyServiceNamespaceTest : public testing::Test {
     ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, extension_id);
 
     policy_path1_ =
-        temp_dir_.path().Append(PolicyService::kChromePolicyFileName);
-    policy_path2_ = temp_dir_.path().Append(
+        temp_dir_.GetPath().Append(PolicyService::kChromePolicyFileName);
+    policy_path2_ = temp_dir_.GetPath().Append(
         PolicyService::kExtensionsPolicyFileNamePrefix + extension_id);
   }
 

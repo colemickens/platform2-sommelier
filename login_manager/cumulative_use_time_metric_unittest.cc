@@ -258,7 +258,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   // the time is in line with current test state.
   void ResetCumulativeUseTimeMetric() {
     cumulative_use_time_metric_.reset(new CumulativeUseTimeMetric(
-        kTestMetricName, &metrics_library_, temp_dir_.path(),
+        kTestMetricName, &metrics_library_, temp_dir_.GetPath(),
         std::make_unique<TestClockCopy>(&clock_),
         std::make_unique<TestTickClockCopy>(&tick_clock_)));
   }

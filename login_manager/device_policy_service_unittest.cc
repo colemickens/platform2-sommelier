@@ -99,7 +99,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     install_attributes_file_ =
-        tmpdir_.path().AppendASCII("install_attributes.pb");
+        tmpdir_.GetPath().AppendASCII("install_attributes.pb");
   }
 
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
@@ -124,7 +124,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     metrics_ = std::make_unique<MockMetrics>();
     mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
-        tmpdir_.path(), &key_, install_attributes_file_, metrics_.get(),
+        tmpdir_.GetPath(), &key_, install_attributes_file_, metrics_.get(),
         mitigator_.get(), nss, &crossystem_, &vpd_process_));
     if (use_mock_store) {
       auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
