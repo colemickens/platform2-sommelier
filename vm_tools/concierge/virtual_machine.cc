@@ -7,9 +7,11 @@
 #include <arpa/inet.h>
 #include <linux/capability.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -76,6 +78,18 @@ bool StringToIPv4Address(const string& address, uint32_t* addr) {
     return false;
   }
   *addr = in.s_addr;
+  return true;
+}
+
+// Sets the pgid of the current process to its pid.  This is needed because
+// crosvm assumes that only it and its children are in the same process group
+// and indiscriminately sends a SIGKILL if it needs to shut them down.
+bool SetPgid() {
+  if (setpgid(0, 0) != 0) {
+    PLOG(ERROR) << "Failed to change process group id";
+    return false;
+  }
+
   return true;
 }
 
@@ -155,6 +169,10 @@ bool VirtualMachine::Start(base::FilePath kernel,
   for (string& arg : args) {
     process_.AddArg(std::move(arg));
   }
+
+  // Change the process group before exec so that crosvm sending SIGKILL to the
+  // whole process group doesn't kill us as well.
+  process_.SetPreExecCallback(base::Bind(&SetPgid));
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";
