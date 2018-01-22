@@ -229,7 +229,7 @@ class ContainerTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     ASSERT_TRUE(base::CreateTemporaryDirInDir(
-        temp_dir_.path(), FILE_PATH_LITERAL("container_test"), &rootfs_));
+        temp_dir_.GetPath(), FILE_PATH_LITERAL("container_test"), &rootfs_));
 
     mount_flags_ = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
@@ -303,7 +303,7 @@ class ContainerTest : public ::testing::Test {
 
     base::FilePath rundir;
     ASSERT_TRUE(base::CreateTemporaryDirInDir(
-        temp_dir_.path(), FILE_PATH_LITERAL("container_test_run"), &rundir));
+        temp_dir_.GetPath(), FILE_PATH_LITERAL("container_test_run"), &rundir));
     container_.reset(new Container("containerUT", rundir));
     ASSERT_NE(nullptr, container_.get());
   }

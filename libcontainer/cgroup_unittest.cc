@@ -55,7 +55,7 @@ bool FileHasLine(const base::FilePath& path, const std::string& expected) {
 TEST(CgroupTest, CgroupNewWithParent) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath cgroup_root = temp_dir.path();
+  base::FilePath cgroup_root = temp_dir.GetPath();
 
   for (const char* subsystem :
        {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
@@ -113,7 +113,7 @@ class BasicCgroupManipulationTest : public ::testing::Test {
 
     base::FilePath cgroup_root;
     ASSERT_TRUE(base::CreateTemporaryDirInDir(
-        temp_dir_.path(), FILE_PATH_LITERAL("cgtest"), &cgroup_root));
+        temp_dir_.GetPath(), FILE_PATH_LITERAL("cgtest"), &cgroup_root));
 
     for (const char* subsystem :
          {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
