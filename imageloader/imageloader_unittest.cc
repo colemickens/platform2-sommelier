@@ -30,7 +30,7 @@ class ImageLoaderTest : public testing::Test {
  public:
   ImageLoaderTest() {
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
-    temp_dir_ = scoped_temp_dir_.path();
+    temp_dir_ = scoped_temp_dir_.GetPath();
     CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
   }
 
@@ -127,7 +127,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports
@@ -136,13 +136,13 @@ TEST_F(ImageLoaderTest, MountValidImage) {
                                        GetTestComponentPath().value()));
 
   const std::string expected_path =
-      scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
+      scoped_mount_dir.GetPath().value() + "/PepperFlashPlayer/22.0.0.158";
   EXPECT_EQ(expected_path,
             loader.LoadComponent(kTestComponentName, helper_mock.get()));
 
   // Let's also test mounting the component at a fixed point.
   const std::string expected_path2 =
-      scoped_mount_dir.path().value() + "/FixedMountPoint";
+      scoped_mount_dir.GetPath().value() + "/FixedMountPoint";
   EXPECT_TRUE(loader.LoadComponent(kTestComponentName, expected_path2,
                                    helper_mock.get()));
 }
@@ -162,11 +162,11 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   const std::string expected_path =
-      scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
+      scoped_mount_dir.GetPath().value() + "/PepperFlashPlayer/22.0.0.158";
   const std::string mnt_path = loader.LoadComponentAtPath(
       kTestComponentName, GetTestComponentPath(), helper_mock.get());
   EXPECT_EQ(expected_path, mnt_path);
@@ -187,7 +187,7 @@ TEST_F(ImageLoaderTest, CleanupAll) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   base::FilePath rootpath("/");
@@ -209,7 +209,7 @@ TEST_F(ImageLoaderTest, Cleanup) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   base::FilePath path("/");
@@ -231,11 +231,11 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   const std::string expected_path =
-      scoped_mount_dir.path().value() + "/ext4/9824.0.4";
+      scoped_mount_dir.GetPath().value() + "/ext4/9824.0.4";
   const std::string mnt_path = loader.LoadComponentAtPath(
       "ext4", GetTestDataPath("ext4_component"), helper_mock.get());
   EXPECT_EQ(expected_path, mnt_path);
@@ -249,13 +249,13 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // Make a copy to avoid permanent loss of test data.
   base::ScopedTempDir component_root;
   ASSERT_TRUE(component_root.CreateUniqueTempDir());
-  base::FilePath component_path = component_root.path().Append("9824.0.4");
+  base::FilePath component_path = component_root.GetPath().Append("9824.0.4");
   ASSERT_TRUE(base::CreateDirectory(component_path));
   std::unique_ptr<Component> component =
       Component::Create(base::FilePath(GetTestDataPath("ext4_component")),
@@ -263,9 +263,9 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {
   ASSERT_TRUE(component->CopyTo(component_path));
 
   // Remove the component.
-  EXPECT_TRUE(loader.RemoveComponentAtPath(
-      "ext4", component_root.path(), component_path));
-  EXPECT_FALSE(base::PathExists(component_root.path()));
+  EXPECT_TRUE(loader.RemoveComponentAtPath("ext4", component_root.GetPath(),
+                                           component_path));
+  EXPECT_FALSE(base::PathExists(component_root.GetPath()));
 }
 
 TEST_F(ImageLoaderTest, RemoveImageAtPathNotRemovable) {
@@ -276,13 +276,13 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathNotRemovable) {
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // Make a copy to avoid permanent loss of test data.
   base::ScopedTempDir component_root;
   ASSERT_TRUE(component_root.CreateUniqueTempDir());
-  base::FilePath component_path = component_root.path().Append("9824.0.4");
+  base::FilePath component_path = component_root.GetPath().Append("9824.0.4");
   ASSERT_TRUE(base::CreateDirectory(component_path));
   std::unique_ptr<Component> component =
       Component::Create(base::FilePath(GetTestComponentPath()),
@@ -291,8 +291,8 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathNotRemovable) {
 
   // Remove the component.
   EXPECT_FALSE(loader.RemoveComponentAtPath(
-      kTestComponentName, component_root.path(), component_path));
-  EXPECT_TRUE(base::PathExists(component_root.path()));
+      kTestComponentName, component_root.GetPath(), component_path));
+  EXPECT_TRUE(base::PathExists(component_root.GetPath()));
 }
 
 TEST_F(ImageLoaderTest, MountInvalidImage) {
@@ -310,7 +310,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
+                           scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports

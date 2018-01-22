@@ -34,7 +34,7 @@ class ComponentTest : public testing::Test {
     keys_.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
                                          std::end(kDevPublicKey)));
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
-    temp_dir_ = scoped_temp_dir_.path();
+    temp_dir_ = scoped_temp_dir_.GetPath();
     CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
   }
 
