@@ -230,7 +230,7 @@ void CollectorTest::SetUp() {
       FROM_HERE,
       base::Bind(&StartFakeLogCollectorService,
                  base::ThreadTaskRunnerHandle::Get(),
-                 temp_dir_.path().Append(kServerSocket),
+                 temp_dir_.GetPath().Append(kServerSocket),
                  base::Bind(&CollectorTest::ServerStartCallback,
                             weak_factory_.GetWeakPtr(), run_loop.QuitClosure()),
                  base::Bind(&CollectorTest::HandleUserLogs,
@@ -252,7 +252,7 @@ void CollectorTest::SetUp() {
   // Create the stub to the FakeLogCollectorService.
   std::unique_ptr<vm_tools::LogCollector::Stub> stub =
       vm_tools::LogCollector::NewStub(grpc::CreateChannel(
-          "unix:" + temp_dir_.path().Append(kServerSocket).value(),
+          "unix:" + temp_dir_.GetPath().Append(kServerSocket).value(),
           grpc::InsecureChannelCredentials()));
   ASSERT_TRUE(stub);
 
