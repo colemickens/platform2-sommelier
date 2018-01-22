@@ -104,7 +104,7 @@ TEST_F(ChromeCollectorTest, BadValues) {
 TEST_F(ChromeCollectorTest, File) {
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const FilePath& dir = scoped_temp_dir.path();
+  const FilePath& dir = scoped_temp_dir.GetPath();
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithFile,
                                        dir, dir.Append("minidump.dmp"),
                                        "base"));
@@ -122,7 +122,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
   base::AutoReset<bool> auto_reset(&s_allow_crash, true);
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const FilePath& dir = scoped_temp_dir.path();
+  const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath dump_file = dir.Append("test.dmp");
   ASSERT_EQ(strlen(kCrashFormatWithFile),
             base::WriteFile(dump_file, kCrashFormatWithFile,

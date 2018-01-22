@@ -73,10 +73,10 @@ class ECCollectorTest : public ::testing::Test {
 
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 
-    collector_.set_crash_directory_for_test(temp_dir_generator_.path());
+    collector_.set_crash_directory_for_test(temp_dir_generator_.GetPath());
 
     FilePath debugfs_path =
-        temp_dir_generator_.path().Append(kDevCoredumpDirectory);
+        temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
     ASSERT_TRUE(base::CreateDirectory(debugfs_path));
     collector_.debugfs_path_ = debugfs_path;
   }

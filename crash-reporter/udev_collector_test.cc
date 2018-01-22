@@ -115,12 +115,12 @@ class UdevCollectorTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 
     FilePath log_config_path =
-        temp_dir_generator_.path().Append(kLogConfigFileName);
+        temp_dir_generator_.GetPath().Append(kLogConfigFileName);
     collector_.log_config_path_ = log_config_path;
-    collector_.set_crash_directory_for_test(temp_dir_generator_.path());
+    collector_.set_crash_directory_for_test(temp_dir_generator_.GetPath());
 
     FilePath dev_coredump_path =
-        temp_dir_generator_.path().Append(kDevCoredumpDirectory);
+        temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
     collector_.dev_coredump_directory_ = dev_coredump_path.value();
 
     // Write to a dummy log config file.
@@ -138,33 +138,37 @@ class UdevCollectorTest : public ::testing::Test {
 TEST_F(UdevCollectorTest, TestNoConsent) {
   s_consent_given = false;
   HandleCrash("ACTION=change:KERNEL=card0:SUBSYSTEM=drm");
-  EXPECT_EQ(0, GetNumFiles(temp_dir_generator_.path(), kCrashLogFilePattern));
+  EXPECT_EQ(0,
+            GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
 
 TEST_F(UdevCollectorTest, TestNoMatch) {
   // No rule should match this.
   HandleCrash("ACTION=change:KERNEL=foo:SUBSYSTEM=bar");
-  EXPECT_EQ(0, GetNumFiles(temp_dir_generator_.path(), kCrashLogFilePattern));
+  EXPECT_EQ(0,
+            GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
 
 TEST_F(UdevCollectorTest, TestMatches) {
   // Try multiple udev events in sequence.  The number of log files generated
   // should increase.
   HandleCrash("ACTION=change:KERNEL=card0:SUBSYSTEM=drm");
-  EXPECT_EQ(1, GetNumFiles(temp_dir_generator_.path(), kCrashLogFilePattern));
+  EXPECT_EQ(1,
+            GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
   HandleCrash("ACTION=add:KERNEL=state0:SUBSYSTEM=cpu");
-  EXPECT_EQ(2, GetNumFiles(temp_dir_generator_.path(), kCrashLogFilePattern));
+  EXPECT_EQ(2,
+            GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
 
 TEST_F(UdevCollectorTest, TestDevCoredump) {
   GenerateDevCoredump("devcd0");
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(1, GetNumFiles(temp_dir_generator_.path(),
-                           kDevCoredumpFilePattern));
+  EXPECT_EQ(
+      1, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
   GenerateDevCoredump("devcd1");
   HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(2, GetNumFiles(temp_dir_generator_.path(),
-                           kDevCoredumpFilePattern));
+  EXPECT_EQ(
+      2, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
 }
 
 // TODO(sque, crosbug.com/32238) - test wildcard cases, multiple identical udev

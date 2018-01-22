@@ -66,7 +66,7 @@ class KernelCollectorTest : public ::testing::Test {
 
     collector_.Initialize(CountCrash, IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    test_kcrash_ = scoped_temp_dir_.path().Append("kcrash");
+    test_kcrash_ = scoped_temp_dir_.GetPath().Append("kcrash");
     ASSERT_TRUE(base::CreateDirectory(test_kcrash_));
     collector_.OverridePreservedDumpPath(test_kcrash_);
 
@@ -77,10 +77,11 @@ class KernelCollectorTest : public ::testing::Test {
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_kcrash_));
 
-    test_crash_directory_ = scoped_temp_dir_.path().Append("crash_directory");
+    test_crash_directory_ =
+        scoped_temp_dir_.GetPath().Append("crash_directory");
     ASSERT_TRUE(base::CreateDirectory(test_crash_directory_));
 
-    test_eventlog_ = scoped_temp_dir_.path().Append("eventlog.txt");
+    test_eventlog_ = scoped_temp_dir_.GetPath().Append("eventlog.txt");
     ASSERT_FALSE(base::PathExists(test_eventlog_));
     collector_.OverrideEventLogPath(test_eventlog_);
     brillo::ClearLog();

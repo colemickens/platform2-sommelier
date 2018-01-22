@@ -528,7 +528,7 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
 TEST_F(UserCollectorTest, ValidateProcFiles) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath container_dir = temp_dir.path();
+  FilePath container_dir = temp_dir.GetPath();
 
   // maps file not exists (i.e. GetFileSize fails)
   EXPECT_FALSE(collector_.ValidateProcFiles(container_dir));
@@ -549,7 +549,7 @@ TEST_F(UserCollectorTest, ValidateProcFiles) {
 TEST_F(UserCollectorTest, ValidateCoreFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath container_dir = temp_dir.path();
+  FilePath container_dir = temp_dir.GetPath();
   FilePath core_file = container_dir.Append("core");
 
   // Core file does not exist

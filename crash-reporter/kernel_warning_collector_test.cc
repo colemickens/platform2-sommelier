@@ -53,10 +53,11 @@ class KernelWarningCollectorTest : public ::testing::Test {
 
     collector_.Initialize(CountCrash, IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    test_path_ = scoped_temp_dir_.path().Append(kTestFilename);
+    test_path_ = scoped_temp_dir_.GetPath().Append(kTestFilename);
     collector_.warning_report_path_ = test_path_.value();
 
-    test_crash_directory_ = scoped_temp_dir_.path().Append(kTestCrashDirectory);
+    test_crash_directory_ =
+        scoped_temp_dir_.GetPath().Append(kTestCrashDirectory);
     CreateDirectory(test_crash_directory_);
     collector_.set_crash_directory_for_test(test_crash_directory_);
   }

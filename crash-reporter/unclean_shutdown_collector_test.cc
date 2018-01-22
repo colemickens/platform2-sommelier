@@ -59,7 +59,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
     brillo::ClearLog();
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    test_dir_ = scoped_temp_dir_.path();
+    test_dir_ = scoped_temp_dir_.GetPath();
     test_crash_spool_ = test_dir_.Append("crash");
     test_crash_lib_dir_ = test_dir_.Append("var_lib_crash_reporter");
   }
