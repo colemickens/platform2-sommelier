@@ -20,10 +20,10 @@ namespace cros_disks {
 TEST(SystemMounterTest, RunAsRootMount) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  SystemMounter mounter("/dev/null", temp_dir.path().value(), "tmpfs",
+  SystemMounter mounter("/dev/null", temp_dir.GetPath().value(), "tmpfs",
                         MountOptions());
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
-  umount2(temp_dir.path().value().c_str(), MNT_FORCE);
+  umount2(temp_dir.GetPath().value().c_str(), MNT_FORCE);
 }
 
 TEST(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
@@ -32,7 +32,7 @@ TEST(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
   // about source path.
-  SystemMounter mounter("/nonexistent", temp_dir.path().value(), "ext2",
+  SystemMounter mounter("/nonexistent", temp_dir.GetPath().value(), "ext2",
                         MountOptions());
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
 }
@@ -45,8 +45,8 @@ TEST(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
 TEST(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  SystemMounter mounter("/dev/null", temp_dir.path().value(), "nonexistentfs",
-                        MountOptions());
+  SystemMounter mounter("/dev/null", temp_dir.GetPath().value(),
+                        "nonexistentfs", MountOptions());
   EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, mounter.Mount());
 }
 

@@ -46,20 +46,20 @@ TEST_F(PlatformTest, GetRealPath) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath subdir_path;
   ASSERT_TRUE(
-      base::CreateTemporaryDirInDir(temp_dir.path(), "test", &subdir_path));
+      base::CreateTemporaryDirInDir(temp_dir.GetPath(), "test", &subdir_path));
   FilePath file_path;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(subdir_path, &file_path));
-  FilePath file_symlink = temp_dir.path().Append("file_symlink");
+  FilePath file_symlink = temp_dir.GetPath().Append("file_symlink");
   ASSERT_TRUE(base::CreateSymbolicLink(file_path, file_symlink));
-  FilePath subdir_symlink = temp_dir.path().Append("subdir_symlink");
+  FilePath subdir_symlink = temp_dir.GetPath().Append("subdir_symlink");
   ASSERT_TRUE(base::CreateSymbolicLink(subdir_path, subdir_symlink));
 
   string real_path;
   EXPECT_FALSE(platform_.GetRealPath("", &real_path));
   EXPECT_FALSE(platform_.GetRealPath("/nonexistent", &real_path));
 
-  EXPECT_TRUE(platform_.GetRealPath(temp_dir.path().value(), &real_path));
-  EXPECT_EQ(temp_dir.path().value(), real_path);
+  EXPECT_TRUE(platform_.GetRealPath(temp_dir.GetPath().value(), &real_path));
+  EXPECT_EQ(temp_dir.GetPath().value(), real_path);
 
   EXPECT_TRUE(platform_.GetRealPath(file_path.value(), &real_path));
   EXPECT_EQ(file_path.value(), real_path);
@@ -72,7 +72,7 @@ TEST_F(PlatformTest, GetRealPath) {
 
   FilePath relative_path = subdir_path.Append("..");
   EXPECT_TRUE(platform_.GetRealPath(relative_path.value(), &real_path));
-  EXPECT_EQ(temp_dir.path().value(), real_path);
+  EXPECT_EQ(temp_dir.GetPath().value(), real_path);
 
   relative_path = subdir_path.Append("..")
                       .Append(subdir_path.BaseName())
@@ -92,7 +92,7 @@ TEST_F(PlatformTest, CreateDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.path().Append("test");
+  FilePath new_dir = temp_dir.GetPath().Append("test");
   string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateDirectory(path));
 
@@ -110,7 +110,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.path().Append("test");
+  FilePath new_dir = temp_dir.GetPath().Append("test");
   string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
 
@@ -129,7 +129,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   set<string> reserved_paths;
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.path().Append("test1");
+  FilePath new_dir = temp_dir.GetPath().Append("test1");
   string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 10, reserved_paths));
@@ -149,7 +149,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
       &path, 0, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 1, reserved_paths));
-  FilePath new_dir1 = temp_dir.path().Append("test1 (1)");
+  FilePath new_dir1 = temp_dir.GetPath().Append("test1 (1)");
   EXPECT_EQ(new_dir1.value(), path);
 
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir1, &temp_file));
@@ -160,7 +160,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
       &path, 1, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 2, reserved_paths));
-  FilePath new_dir2 = temp_dir.path().Append("test1 (2)");
+  FilePath new_dir2 = temp_dir.GetPath().Append("test1 (2)");
   EXPECT_EQ(new_dir2.value(), path);
 }
 
@@ -169,20 +169,20 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   set<string> reserved_paths;
 
-  FilePath new_dir = temp_dir.path().Append("test");
+  FilePath new_dir = temp_dir.GetPath().Append("test");
   string path = new_dir.value();
   reserved_paths.insert(path);
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 0, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
-  reserved_paths.insert(temp_dir.path().Append("test 1").value());
-  reserved_paths.insert(temp_dir.path().Append("test 2").value());
+  reserved_paths.insert(temp_dir.GetPath().Append("test 1").value());
+  reserved_paths.insert(temp_dir.GetPath().Append("test 2").value());
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 2, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
-  FilePath expected_dir = temp_dir.path().Append("test 3");
+  FilePath expected_dir = temp_dir.GetPath().Append("test 3");
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 3, reserved_paths));
   EXPECT_EQ(expected_dir.value(), path);
@@ -222,7 +222,7 @@ TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
 TEST_F(PlatformTest, GetOwnershipOfDirectory) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.path().value();
+  string path = temp_dir.GetPath().value();
 
   uid_t user_id;
   gid_t group_id;
@@ -235,7 +235,7 @@ TEST_F(PlatformTest, GetOwnershipOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
   string path = temp_file.value();
 
   uid_t user_id;
@@ -249,7 +249,7 @@ TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
   string file_path = temp_file.value();
   string symlink_path = file_path + "-symlink";
   FilePath temp_symlink(symlink_path);
@@ -272,7 +272,7 @@ TEST_F(PlatformTest, GetOwnershipOfNonexistentPath) {
 TEST_F(PlatformTest, GetPermissionsOfDirectory) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.path().value();
+  string path = temp_dir.GetPath().value();
 
   mode_t mode = 0;
   EXPECT_TRUE(platform_.GetPermissions(path, &mode));
@@ -292,7 +292,7 @@ TEST_F(PlatformTest, GetPermissionsOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
   string path = temp_file.value();
 
   mode_t mode = 0;
@@ -313,7 +313,7 @@ TEST_F(PlatformTest, GetPermissionsOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
   string file_path = temp_file.value();
   string symlink_path = file_path + "-symlink";
   FilePath temp_symlink(symlink_path);
@@ -343,7 +343,7 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.path().Append("test");
+  FilePath new_dir = temp_dir.GetPath().Append("test");
   string path = new_dir.value();
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
 
@@ -382,7 +382,7 @@ TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {
 TEST_F(PlatformTest, SetOwnershipOfExistentPath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.path().value();
+  string path = temp_dir.GetPath().value();
 
   EXPECT_TRUE(platform_.SetOwnership(path, getuid(), getgid()));
   EXPECT_TRUE(CheckOwnership(path, getuid(), getgid()));
@@ -395,7 +395,7 @@ TEST_F(PlatformTest, SetPermissionsOfNonExistentPath) {
 TEST_F(PlatformTest, SetPermissionsOfExistentPath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.path().value();
+  string path = temp_dir.GetPath().value();
 
   mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
   EXPECT_TRUE(platform_.SetPermissions(path, mode));
