@@ -71,7 +71,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    base::FilePath device_dir = temp_dir_.path().Append("hid-1-battery");
+    base::FilePath device_dir = temp_dir_.GetPath().Append("hid-1-battery");
     CHECK(base::CreateDirectory(device_dir));
     scope_file_ = device_dir.Append(PeripheralBatteryWatcher::kScopeFile);
     WriteFile(scope_file_, PeripheralBatteryWatcher::kScopeValueDevice);
@@ -80,7 +80,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
         device_dir.Append(PeripheralBatteryWatcher::kModelNameFile);
     WriteFile(model_name_file_, kDeviceModelName);
     capacity_file_ = device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
-    battery_.set_battery_path_for_testing(temp_dir_.path());
+    battery_.set_battery_path_for_testing(temp_dir_.GetPath());
   }
 
  protected:

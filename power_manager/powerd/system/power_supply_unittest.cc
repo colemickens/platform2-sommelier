@@ -98,13 +98,13 @@ class PowerSupplyTest : public ::testing::Test {
     test_api_.reset(new PowerSupply::TestApi(power_supply_.get()));
     test_api_->SetCurrentTime(kStartTime);
 
-    ac_dir_ = temp_dir_.path().Append("ac");
-    battery_dir_ = temp_dir_.path().Append("battery");
+    ac_dir_ = temp_dir_.GetPath().Append("ac");
+    battery_dir_ = temp_dir_.GetPath().Append("battery");
   }
 
  protected:
   // Initializes |power_supply_|.
-  void Init() { power_supply_->Init(temp_dir_.path(), &prefs_, &udev_); }
+  void Init() { power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_); }
 
   // Sets the time so that |power_supply_| will believe that the current
   // has stabilized.
@@ -390,7 +390,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   const char kLine1Id[] = "line1";
   const char kLine1Manufacturer[] = "04fe";
   const char kLine1ModelName[] = "0256";
-  const base::FilePath line1_dir = temp_dir_.path().Append(kLine1Id);
+  const base::FilePath line1_dir = temp_dir_.GetPath().Append(kLine1Id);
   ASSERT_TRUE(base::CreateDirectory(line1_dir));
   WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "0");
@@ -403,7 +403,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   const char kLine2Id[] = "line2";
   const char kLine2Manufacturer[] = "587b";
   const char kLine2ModelName[] = "3402";
-  const base::FilePath line2_dir = temp_dir_.path().Append(kLine2Id);
+  const base::FilePath line2_dir = temp_dir_.GetPath().Append(kLine2Id);
   ASSERT_TRUE(base::CreateDirectory(line2_dir));
   WriteValue(line2_dir, "type", kUnknownType);
   WriteValue(line2_dir, "online", "0");
@@ -600,7 +600,7 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
   WriteDefaultValues(PowerSource::AC);
 
   // Connect a second, idle power source.
-  const base::FilePath kSecondDir = temp_dir_.path().Append(kSecondName);
+  const base::FilePath kSecondDir = temp_dir_.GetPath().Append(kSecondName);
   ASSERT_TRUE(base::CreateDirectory(kSecondDir));
   WriteValue(kSecondDir, "online", "1");
   WriteValue(kSecondDir, "type", kUsbType);
@@ -608,7 +608,7 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
 
   // Add a third port that isn't described by the pref.
   const char kThirdName[] = "port3";
-  const base::FilePath kThirdDir = temp_dir_.path().Append(kThirdName);
+  const base::FilePath kThirdDir = temp_dir_.GetPath().Append(kThirdName);
   ASSERT_TRUE(base::CreateDirectory(kThirdDir));
   WriteValue(kThirdDir, "online", "1");
   WriteValue(kThirdDir, "type", kUsbType);
@@ -1424,7 +1424,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // Add a power supply with an unknown type and check that it doesn't trigger a
   // notification.
   observer.reset_num_updates();
-  const base::FilePath dir = temp_dir_.path().Append("foo");
+  const base::FilePath dir = temp_dir_.GetPath().Append("foo");
   ASSERT_TRUE(base::CreateDirectory(dir));
   WriteValue(dir, "type", kUnknownType);
   WriteValue(dir, "online", "1");

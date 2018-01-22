@@ -29,7 +29,7 @@ class InternalBacklightTest : public ::testing::Test {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    test_path_ = temp_dir_.path();
+    test_path_ = temp_dir_.GetPath();
   }
 
   // Create files to make the given directory look like it is a sysfs backlight

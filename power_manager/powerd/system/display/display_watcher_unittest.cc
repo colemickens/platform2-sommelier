@@ -46,9 +46,9 @@ class DisplayWatcherTest : public testing::Test {
  public:
   DisplayWatcherTest() {
     CHECK(drm_dir_.CreateUniqueTempDir());
-    watcher_.set_sysfs_drm_path_for_testing(drm_dir_.path());
+    watcher_.set_sysfs_drm_path_for_testing(drm_dir_.GetPath());
     CHECK(device_dir_.CreateUniqueTempDir());
-    watcher_.set_i2c_dev_path_for_testing(device_dir_.path());
+    watcher_.set_i2c_dev_path_for_testing(device_dir_.GetPath());
   }
   ~DisplayWatcherTest() override {}
 
@@ -56,17 +56,17 @@ class DisplayWatcherTest : public testing::Test {
   // Creates a directory named |device_name| in |device_dir_| and adds a symlink
   // to it in |drm_dir_|. Returns the path to the directory.
   base::FilePath CreateDrmDevice(const std::string& device_name) {
-    base::FilePath device_path = device_dir_.path().Append(device_name);
+    base::FilePath device_path = device_dir_.GetPath().Append(device_name);
     CHECK(base::CreateDirectory(device_path));
     CHECK(base::CreateSymbolicLink(device_path,
-                                   drm_dir_.path().Append(device_name)));
+                                   drm_dir_.GetPath().Append(device_name)));
     return device_path;
   }
 
   // Creates a file named |device_name| in |device_dir_|. Returns the path to
   // the file.
   base::FilePath CreateI2CDevice(const std::string& device_name) {
-    base::FilePath device_path = device_dir_.path().Append(device_name);
+    base::FilePath device_path = device_dir_.GetPath().Append(device_name);
     CHECK_EQ(base::WriteFile(device_path, "\n", 1), 1);
     return device_path;
   }
@@ -121,7 +121,7 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
                               kConnectedNewline.size()));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
-  EXPECT_EQ(drm_dir_.path().Append(device_path.BaseName()).value(),
+  EXPECT_EQ(drm_dir_.GetPath().Append(device_path.BaseName()).value(),
             watcher_.GetDisplays()[0].drm_path.value());
 
   // Add a second disconnected device.
@@ -132,7 +132,7 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
                               strlen(kDisconnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
-  EXPECT_EQ(drm_dir_.path().Append(device_path.BaseName()).value(),
+  EXPECT_EQ(drm_dir_.GetPath().Append(device_path.BaseName()).value(),
             watcher_.GetDisplays()[0].drm_path.value());
 
   // Connect the second device. It should be reported first since devices are
@@ -142,9 +142,9 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
                               strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(2), watcher_.GetDisplays().size());
-  EXPECT_EQ(drm_dir_.path().Append(second_device_path.BaseName()).value(),
+  EXPECT_EQ(drm_dir_.GetPath().Append(second_device_path.BaseName()).value(),
             watcher_.GetDisplays()[0].drm_path.value());
-  EXPECT_EQ(drm_dir_.path().Append(device_path.BaseName()).value(),
+  EXPECT_EQ(drm_dir_.GetPath().Append(device_path.BaseName()).value(),
             watcher_.GetDisplays()[1].drm_path.value());
 
   // Disconnect both devices and create a new device that has a

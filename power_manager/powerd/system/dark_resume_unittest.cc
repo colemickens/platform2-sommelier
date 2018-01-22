@@ -151,9 +151,9 @@ class DarkResumeTest : public ::testing::Test {
   DarkResumeTest() : dark_resume_(new DarkResume) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
-    pm_test_path_ = temp_dir_.path().Append("pm_test");
-    pm_test_delay_path_ = temp_dir_.path().Append("pm_test_delay");
-    power_state_path_ = temp_dir_.path().Append("power_state");
+    pm_test_path_ = temp_dir_.GetPath().Append("pm_test");
+    pm_test_delay_path_ = temp_dir_.GetPath().Append("pm_test_delay");
+    power_state_path_ = temp_dir_.GetPath().Append("power_state");
   }
 
  protected:
@@ -165,9 +165,9 @@ class DarkResumeTest : public ::testing::Test {
     // Override both the legacy and wakeup-type paths to ensure that DarkResume
     // doesn't actually read from sysfs.
     dark_resume_->set_legacy_state_path_for_testing(
-        temp_dir_.path().Append(LegacySystem::kStateFile));
+        temp_dir_.GetPath().Append(LegacySystem::kStateFile));
     dark_resume_->set_wakeup_state_path_for_testing(
-        temp_dir_.path().Append(WakeupTypeSystem::kStateFile));
+        temp_dir_.GetPath().Append(WakeupTypeSystem::kStateFile));
     dark_resume_->set_pm_test_path_for_testing(pm_test_path_);
     dark_resume_->set_pm_test_delay_path_for_testing(pm_test_delay_path_);
     dark_resume_->set_power_state_path_for_testing(power_state_path_);
@@ -180,8 +180,9 @@ class DarkResumeTest : public ::testing::Test {
   void WriteDarkResumeState(bool in_dark_resume) {
     const char* state = in_dark_resume ? SystemType::kInDarkResume
                                        : SystemType::kNotInDarkResume;
-    ASSERT_TRUE(util::WriteFileFully(
-        temp_dir_.path().Append(SystemType::kStateFile), state, strlen(state)));
+    ASSERT_TRUE(
+        util::WriteFileFully(temp_dir_.GetPath().Append(SystemType::kStateFile),
+                             state, strlen(state)));
   }
 
   // Updates the status returned by |power_supply_|.
@@ -355,7 +356,7 @@ TYPED_TEST(DarkResumeTest, LinePower) {
 }
 
 TYPED_TEST(DarkResumeTest, EnableAndDisable) {
-  const base::FilePath kDeviceDir = this->temp_dir_.path().Append("foo");
+  const base::FilePath kDeviceDir = this->temp_dir_.GetPath().Append("foo");
   const base::FilePath kPowerDir = kDeviceDir.Append(DarkResume::kPowerDir);
   const base::FilePath kActivePath = kPowerDir.Append(DarkResume::kActiveFile);
   const base::FilePath kSourcePath = kPowerDir.Append(TypeParam::kSourceFile);

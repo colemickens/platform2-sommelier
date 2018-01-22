@@ -33,9 +33,9 @@ class LockfileCheckerTest : public ::testing::Test {
  public:
   LockfileCheckerTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    proc_dir_ = temp_dir_.path().Append("proc");
+    proc_dir_ = temp_dir_.GetPath().Append("proc");
     CHECK(base::CreateDirectory(proc_dir_));
-    lock_dir_ = temp_dir_.path().Append("lock");
+    lock_dir_ = temp_dir_.GetPath().Append("lock");
     CHECK(base::CreateDirectory(lock_dir_));
   }
   ~LockfileCheckerTest() override = default;
@@ -82,12 +82,13 @@ TEST_F(LockfileCheckerTest, DirLockfile) {
 }
 
 TEST_F(LockfileCheckerTest, HardcodedLockfile) {
-  const base::FilePath path = temp_dir_.path().Append("valid.lock");
+  const base::FilePath path = temp_dir_.GetPath().Append("valid.lock");
   const std::string kPid = "5";
   ASSERT_TRUE(util::WriteFileFully(path, kPid.c_str(), kPid.size()));
   CreateProcDir(kPid);
 
-  auto checker = CreateChecker({temp_dir_.path().Append("missing.lock"), path});
+  auto checker =
+      CreateChecker({temp_dir_.GetPath().Append("missing.lock"), path});
   EXPECT_EQ(path.value(), JoinPaths(checker->GetValidLockfiles()));
 
   // Create a second lockfile in the dir and check that it's reported as well.

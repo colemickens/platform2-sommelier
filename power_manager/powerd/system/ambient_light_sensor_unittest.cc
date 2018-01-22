@@ -61,11 +61,11 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    base::FilePath device_dir = temp_dir_.path().Append("device0");
+    base::FilePath device_dir = temp_dir_.GetPath().Append("device0");
     CHECK(base::CreateDirectory(device_dir));
     data_file_ = device_dir.Append("illuminance0_input");
     sensor_.reset(new AmbientLightSensor);
-    sensor_->set_device_list_path_for_testing(temp_dir_.path());
+    sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
     sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
     sensor_->AddObserver(&observer_);
     sensor_->Init();

@@ -59,7 +59,7 @@ class PluggableInternalBacklightTest : public ::testing::Test {
  public:
   PluggableInternalBacklightTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    backlight_.Init(&udev_, kSubsystem, temp_dir_.path(), kPattern);
+    backlight_.Init(&udev_, kSubsystem, temp_dir_.GetPath(), kPattern);
   }
   ~PluggableInternalBacklightTest() override = default;
 
@@ -70,7 +70,7 @@ class PluggableInternalBacklightTest : public ::testing::Test {
   base::FilePath CreateBacklightDir(const std::string& device_name,
                                     int64_t brightness,
                                     int64_t max_brightness) {
-    const base::FilePath path = temp_dir_.path().Append(device_name);
+    const base::FilePath path = temp_dir_.GetPath().Append(device_name);
     CHECK(base::CreateDirectory(path));
     CHECK(util::WriteInt64File(
         path.Append(InternalBacklight::kBrightnessFilename), brightness));

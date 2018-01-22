@@ -109,12 +109,12 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
 
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
-    wakeup_count_path_ = temp_dir_.path().Append("wakeup_count");
-    oobe_completed_path_ = temp_dir_.path().Append("oobe_completed");
-    suspended_state_path_ = temp_dir_.path().Append("suspended_state");
-    flashrom_lock_path_ = temp_dir_.path().Append("flashrom_lock");
-    battery_tool_lock_path_ = temp_dir_.path().Append("battery_tool_lock");
-    proc_path_ = temp_dir_.path().Append("proc");
+    wakeup_count_path_ = temp_dir_.GetPath().Append("wakeup_count");
+    oobe_completed_path_ = temp_dir_.GetPath().Append("oobe_completed");
+    suspended_state_path_ = temp_dir_.GetPath().Append("suspended_state");
+    flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
+    battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
+    proc_path_ = temp_dir_.GetPath().Append("proc");
   }
   ~DaemonTest() override {}
 
@@ -133,7 +133,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     prefs_->SetInt64(kUnpluggedOffMsPref, 360000);
     prefs_->SetInt64(kUnpluggedDimMsPref, 300000);
 
-    daemon_.reset(new Daemon(this, run_dir_.path()));
+    daemon_.reset(new Daemon(this, run_dir_.GetPath()));
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
@@ -783,7 +783,8 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
 
   // The system should stay up if a lockfile exists.
-  lockfile_checker_->set_files_to_return({temp_dir_.path().Append("lockfile")});
+  lockfile_checker_->set_files_to_return(
+      {temp_dir_.GetPath().Append("lockfile")});
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
   ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
   EXPECT_EQ(0, async_commands_.size());

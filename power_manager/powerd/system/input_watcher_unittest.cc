@@ -120,11 +120,11 @@ class InputWatcherTest : public testing::Test {
         detect_hover_pref_(0) {
     CHECK(temp_dir_.CreateUniqueTempDir());
 
-    dev_input_path_ = temp_dir_.path().Append(base::FilePath("dev/input"));
+    dev_input_path_ = temp_dir_.GetPath().Append(base::FilePath("dev/input"));
     CHECK(base::CreateDirectory(dev_input_path_));
 
     sys_class_input_path_ =
-        temp_dir_.path().Append(base::FilePath("sys/class/input"));
+        temp_dir_.GetPath().Append(base::FilePath("sys/class/input"));
     CHECK(base::CreateDirectory(sys_class_input_path_));
   }
   ~InputWatcherTest() override {}
