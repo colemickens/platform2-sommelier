@@ -74,10 +74,13 @@ TerminaManagerImpl::TerminaManagerImpl(SystemUtils* system_utils)
 }
 
 bool TerminaManagerImpl::IsManagedJob(pid_t pid) {
-  return !VmNameFromPid(pid).empty();
+  return VmEnabled() && !VmNameFromPid(pid).empty();
 }
 
 void TerminaManagerImpl::HandleExit(const siginfo_t& status) {
+  if (!VmEnabled())
+    return;
+
   std::string vm_name = VmNameFromPid(status.si_pid);
   if (vm_name.empty())
     return;
