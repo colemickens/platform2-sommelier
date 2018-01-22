@@ -230,7 +230,7 @@ class AdaptorGeneratorTest : public Test {
  protected:
   base::FilePath CreateInputFile(const string& contents) {
     base::FilePath path;
-    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &path));
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &path));
     int written = base::WriteFile(path, contents.c_str(), contents.size());
     EXPECT_EQ(contents.size(), static_cast<size_t>(written));
     return path;
@@ -300,7 +300,7 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface2.methods.back().kind = Interface::Method::Kind::kAsync;
   interface2.methods.back().include_dbus_message = true;
 
-  base::FilePath output_path = temp_dir_.path().Append("output.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
   EXPECT_TRUE(AdaptorGenerator::GenerateAdaptors({interface, interface2},
                                                  output_path));
   string contents;

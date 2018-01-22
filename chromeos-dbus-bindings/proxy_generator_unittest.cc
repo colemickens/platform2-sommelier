@@ -1456,7 +1456,7 @@ class ProxyGeneratorTest : public Test {
  protected:
   base::FilePath CreateInputFile(const string& contents) {
     base::FilePath path;
-    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &path));
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &path));
     int written = base::WriteFile(path, contents.c_str(), contents.size());
     EXPECT_EQ(contents.size(), static_cast<size_t>(written));
     return path;
@@ -1500,7 +1500,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
           {"name", kDBusTypeString},
           {"age", kDBusTypeInt32}});
   vector<Interface> interfaces{interface, interface2};
-  base::FilePath output_path = temp_dir_.path().Append("output.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
   ServiceConfig config;
   EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
   string contents;
@@ -1518,7 +1518,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
   Interface interface2;
   interface2.name = "org.chromium.TestInterface2";
   vector<Interface> interfaces{interface, interface2};
-  base::FilePath output_path = temp_dir_.path().Append("output2.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
   EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
@@ -1536,7 +1536,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithProperties) {
   interface.properties.emplace_back("Data", "s", "read");
   interface.properties.emplace_back("Name", "s", "readwrite");
   vector<Interface> interfaces{interface};
-  base::FilePath output_path = temp_dir_.path().Append("output2.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
   EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
@@ -1557,7 +1557,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   Interface interface2;
   interface2.name = "org.chromium.Itf2";
   vector<Interface> interfaces{interface, interface2};
-  base::FilePath output_path = temp_dir_.path().Append("output3.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output3.h");
   ServiceConfig config;
   config.object_manager.name = "org.chromium.ObjectManager";
   config.object_manager.object_path = "/org/chromium/Test";
@@ -1578,7 +1578,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManagerAndServiceName) {
   Interface interface2;
   interface2.name = "org.chromium.Itf2";
   vector<Interface> interfaces{interface, interface2};
-  base::FilePath output_path = temp_dir_.path().Append("output4.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output4.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
   config.object_manager.name = "org.chromium.ObjectManager";

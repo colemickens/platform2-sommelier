@@ -175,7 +175,7 @@ class ProxyGeneratorMockTest : public Test {
  protected:
   base::FilePath CreateInputFile(const string& contents) {
     base::FilePath path;
-    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &path));
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &path));
     int written = base::WriteFile(path, contents.c_str(), contents.size());
     EXPECT_EQ(contents.size(), static_cast<size_t>(written));
     return path;
@@ -236,8 +236,8 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   interface2.properties.emplace_back("Data", "s", "read");
   interface2.properties.emplace_back("Name", "s", "readwrite");
   vector<Interface> interfaces{interface, interface2};
-  base::FilePath output_path = temp_dir_.path().Append("output.h");
-  base::FilePath proxy_path = temp_dir_.path().Append("proxies.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
+  base::FilePath proxy_path = temp_dir_.GetPath().Append("proxies.h");
   ServiceConfig config;
   config.object_manager.name = "ObjectManager";
   EXPECT_TRUE(ProxyGenerator::GenerateMocks(config, interfaces, output_path,

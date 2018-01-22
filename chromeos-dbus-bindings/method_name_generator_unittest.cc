@@ -43,7 +43,7 @@ class MethodNameGeneratorTest : public Test {
  protected:
   base::FilePath CreateInputFile(const string& contents) {
     base::FilePath path;
-    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &path));
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &path));
     int written = base::WriteFile(path, contents.c_str(), contents.size());
     EXPECT_EQ(contents.size(), static_cast<size_t>(written));
     return path;
@@ -58,7 +58,7 @@ TEST_F(MethodNameGeneratorTest, GnerateMethodNames) {
   interface.methods.emplace_back(kMethodName0);
   interface.methods.emplace_back(kMethodName1);
   interface.methods.emplace_back(kMethodName2);
-  base::FilePath output_path = temp_dir_.path().Append("output.h");
+  base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
   EXPECT_TRUE(MethodNameGenerator::GenerateMethodNames({interface},
                                                        output_path));
   string contents;
