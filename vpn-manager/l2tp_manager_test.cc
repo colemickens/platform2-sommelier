@@ -24,7 +24,7 @@ class L2tpManagerTest : public ::testing::Test {
  public:
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
+    test_path_ = temp_dir_.GetPath().Append("l2tp_manager_testdir");
     base::DeleteFile(test_path_, true);
     base::CreateDirectory(test_path_);
     remote_address_text_ = "1.2.3.4";

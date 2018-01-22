@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
     PLOG(ERROR) << "Unable create temp directory under " << run_path.value();
     return vpn_manager::kServiceErrorInternal;
   }
-  const base::FilePath& temp_path = scoped_temp_dir.path();
+  const base::FilePath& temp_path = scoped_temp_dir.GetPath();
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
   int log_flags = brillo::kLogToSyslog;

@@ -37,7 +37,7 @@ class DaemonTest : public ::testing::Test {
   void SetUp() override {
     FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
-    FilePath test_path = temp_dir_.path().Append("daemon_testdir");
+    FilePath test_path = temp_dir_.GetPath().Append("daemon_testdir");
     base::DeleteFile(test_path, true);
     base::CreateDirectory(test_path);
     pid_file_path_ = test_path.Append("process.pid");
