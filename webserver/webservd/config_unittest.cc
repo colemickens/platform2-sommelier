@@ -140,7 +140,7 @@ TEST(Config, LoadConfigFromString) {
 TEST(Config, LoadConfigFromFile) {
   base::ScopedTempDir temp;
   ASSERT_TRUE(temp.CreateUniqueTempDir());
-  base::FilePath config_path{temp.path().Append("test.config")};
+  base::FilePath config_path{temp.GetPath().Append("test.config")};
   // For the record: I hate base::WriteFile() and its usage of ints.
   int data_len = sizeof(kTestConfig) - 1;
   ASSERT_EQ(data_len, base::WriteFile(config_path, kTestConfig, data_len));

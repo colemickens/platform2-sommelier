@@ -59,10 +59,8 @@ class LogManagerTest : public testing::Test {
   // Get the list of current log files in the test log directory.
   std::set<std::string> GetLogFiles() const {
     std::set<std::string> log_files;
-    base::FileEnumerator enumerator{temp_dir.path(),
-                                    false,
-                                    base::FileEnumerator::FILES,
-                                    "*.log"};
+    base::FileEnumerator enumerator{temp_dir.GetPath(), false,
+                                    base::FileEnumerator::FILES, "*.log"};
     base::FilePath file = enumerator.Next();
     while (!file.empty()) {
       log_files.insert(file.BaseName().value());
@@ -93,7 +91,7 @@ TEST_F(LogManagerTest, OnRequestCompleted) {
 }
 
 TEST_F(LogManagerTest, LogFileManagement) {
-  LogManager::Init(temp_dir.path());
+  LogManager::Init(temp_dir.GetPath());
   EXPECT_TRUE(GetLogFiles().empty());
   // Feb 25, 2015, 0:00:00 Local time
   tm date = {0, 0, 0, 25, 1, 115, 2, 55, 0};
@@ -119,7 +117,7 @@ TEST_F(LogManagerTest, LogFileManagement) {
 
 TEST_F(LogManagerTest, LargeLogs) {
   const size_t log_line_len = 78;  // Test log entries are 78 chars long.
-  LogManager::Init(temp_dir.path());
+  LogManager::Init(temp_dir.GetPath());
   EXPECT_TRUE(GetLogFiles().empty());
   // Feb 25, 2015, 0:00:00 Local time
   tm date = {0, 0, 0, 25, 1, 115, 2, 55, 0};
@@ -130,7 +128,7 @@ TEST_F(LogManagerTest, LargeLogs) {
   timestamp += base::TimeDelta::FromDays(1);
   // Write a large 2015-02-26.log but with enough room for one more log line.
   std::vector<char> data(1024 * 1024 - (log_line_len * 3 / 2), ' ');
-  base::FilePath current_file = temp_dir.path().Append("2015-02-26.log");
+  base::FilePath current_file = temp_dir.GetPath().Append("2015-02-26.log");
   ASSERT_EQ(static_cast<int>(data.size()),
             base::WriteFile(current_file, data.data(), data.size()));
   // Add the line. Should still go to the same file.
