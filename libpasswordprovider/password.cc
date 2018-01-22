@@ -7,7 +7,8 @@
 #include <errno.h>
 #include <sys/mman.h>
 
-#include "base/logging.h"
+#include <base/files/file_util.h>
+#include <base/logging.h>
 
 namespace password_provider {
 
@@ -22,6 +23,31 @@ Password::~Password() {
       PLOG(ERROR) << "Error calling munmap.";
     }
   }
+}
+
+std::unique_ptr<Password> Password::CreateFromFileDescriptor(int fd,
+                                                             size_t bytes) {
+  auto password = std::make_unique<Password>();
+  if (!password->Init()) {
+    LOG(ERROR) << "Could not initialize Password";
+    return nullptr;
+  }
+
+  if (bytes > password->max_size()) {
+    LOG(ERROR) << "Requested size " << bytes << " is larger than max size "
+               << password->max_size();
+    return nullptr;
+  }
+
+  if (!base::ReadFromFD(fd, password->GetMutableRaw(), bytes)) {
+    PLOG(ERROR) << "Could not read password from file descriptor.";
+    return nullptr;
+  }
+
+  password->SetSize(bytes);
+  password->GetMutableRaw()[bytes] = '\0';
+
+  return password;
 }
 
 bool Password::Init() {
@@ -82,6 +108,9 @@ bool Password::Init() {
 
   // Subtract one byte because we need to reserve space for a null terminator.
   max_size_ = buffer_alloc_size_ - 1;
+
+  // Make sure to null terminate the buffer.
+  password_[0] = '\0';
 
   return true;
 }

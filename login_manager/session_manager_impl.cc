@@ -619,12 +619,6 @@ bool SessionManagerImpl::SaveLoginPassword(
     return false;
   }
 
-  password_provider::Password password;
-  if (!password.Init()) {
-    LOG(ERROR) << "Could not initialize buffer.";
-    return false;
-  }
-
   size_t data_size = 0;
   if (!base::ReadFromFD(in_password_fd.value(),
                         reinterpret_cast<char*>(&data_size), sizeof(size_t))) {
@@ -638,21 +632,15 @@ bool SessionManagerImpl::SaveLoginPassword(
     return false;
   }
 
-  if (data_size > password.max_size()) {
-    LOG(ERROR) << "Password size too large for buffer. Password size: "
-               << data_size << " Max buffer size: " << password.max_size();
+  auto password = password_provider::Password::CreateFromFileDescriptor(
+      in_password_fd.value(), data_size);
+
+  if (!password) {
+    LOG(ERROR) << "Could not create Password from file descriptor.";
     return false;
   }
 
-  if (!base::ReadFromFD(in_password_fd.value(), password.GetMutableRaw(),
-                        data_size)) {
-    PLOG(ERROR) << "Could not read password from file descriptor.";
-    return false;
-  }
-
-  password.SetSize(data_size);
-
-  if (!password_provider_->SavePassword(password)) {
+  if (!password_provider_->SavePassword(*password.get())) {
     LOG(ERROR) << "Could not save password.";
     return false;
   }

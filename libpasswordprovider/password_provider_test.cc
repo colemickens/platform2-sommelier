@@ -14,6 +14,7 @@
 #include "base/logging.h"
 #include "libpasswordprovider/password.h"
 #include "libpasswordprovider/password_provider.h"
+#include "libpasswordprovider/password_provider_test_utils.h"
 
 namespace password_provider {
 
@@ -39,12 +40,9 @@ TEST_F(PasswordProviderTest, SaveAndGetPassword) {
   }
 
   const std::string kPasswordStr("thepassword");
-  Password password;
-  ASSERT_TRUE(password.Init());
-  memcpy(password.GetMutableRaw(), kPasswordStr.c_str(), kPasswordStr.size());
-  password.SetSize(kPasswordStr.size());
+  auto password = password_provider::test::CreatePassword(kPasswordStr);
 
-  EXPECT_TRUE(password_provider_.SavePassword(password));
+  EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   std::unique_ptr<Password> retrieved_password =
       password_provider_.GetPassword();
   ASSERT_TRUE(retrieved_password);
@@ -61,12 +59,9 @@ TEST_F(PasswordProviderTest, DiscardAndGetPassword) {
   }
 
   const std::string kPasswordStr("thepassword");
-  Password password;
-  ASSERT_TRUE(password.Init());
-  memcpy(password.GetMutableRaw(), kPasswordStr.c_str(), kPasswordStr.size());
-  password.SetSize(kPasswordStr.size());
+  auto password = password_provider::test::CreatePassword(kPasswordStr);
 
-  EXPECT_TRUE(password_provider_.SavePassword(password));
+  EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   EXPECT_TRUE(password_provider_.DiscardPassword());
   std::unique_ptr<Password> retrieved_password =
       password_provider_.GetPassword();
@@ -81,17 +76,15 @@ TEST_F(PasswordProviderTest, GetLongPassword) {
     return;
   }
 
-  Password password;
-  ASSERT_TRUE(password.Init());
+  // Create a very long password.
+  // (page size - 1) is the max size of the Password buffer.
+  size_t max_size = sysconf(_SC_PAGESIZE) - 1;
+  auto long_password = std::make_unique<char[]>(max_size);
+  memset(long_password.get(), 'a', max_size);
+  std::string password_str(long_password.get(), max_size);
+  auto password = password_provider::test::CreatePassword(password_str);
 
-  // Create a very long password
-  auto long_password = std::make_unique<char[]>(password.max_size());
-  memset(long_password.get(), 'a', password.max_size());
-  std::string password_str(long_password.get(), password.max_size());
-  memcpy(password.GetMutableRaw(), long_password.get(), password_str.size());
-  password.SetSize(password_str.size());
-
-  EXPECT_TRUE(password_provider_.SavePassword(password));
+  EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   std::unique_ptr<Password> retrieved_password =
       password_provider_.GetPassword();
   ASSERT_TRUE(retrieved_password);

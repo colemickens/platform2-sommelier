@@ -17,6 +17,8 @@
 namespace password_provider {
 
 // Fake implementation of password storage.
+//
+// TODO(maybelle): Export this into libpasswordprovider-test
 class FakePasswordProvider : public PasswordProviderInterface {
  public:
   FakePasswordProvider() {}
