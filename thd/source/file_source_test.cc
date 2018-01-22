@@ -19,7 +19,7 @@ class FileSourceTest : public ::testing::Test {
  public:
   FileSourceTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    file_ = temp_dir_.path().Append("content");
+    file_ = temp_dir_.GetPath().Append("content");
     source_ = std::make_unique<FileSource>(file_);
   }
   ~FileSourceTest() override {}

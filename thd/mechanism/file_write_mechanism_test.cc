@@ -33,7 +33,7 @@ class FileWriteMechanismTest : public ::testing::Test {
  public:
   FileWriteMechanismTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    file_ = temp_dir_.path().Append("content");
+    file_ = temp_dir_.GetPath().Append("content");
   }
   ~FileWriteMechanismTest() override {}
 
