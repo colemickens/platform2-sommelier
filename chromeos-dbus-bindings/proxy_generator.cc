@@ -676,7 +676,8 @@ void ProxyGenerator::AddProperties(const Interface& interface,
       text->PopOffset();
       if (!declaration_only) {
         text->AddLineWithOffset(
-            StringPrintf("property_set_->%s.Set(value, callback);", name.c_str()),
+            StringPrintf("property_set_->%s.Set(value, callback);",
+                         name.c_str()),
             kBlockOffset);
         text->AddLine("}");
       }
