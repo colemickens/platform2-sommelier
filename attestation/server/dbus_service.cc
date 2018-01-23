@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <brillo/bind_lambda.h>
 #include <dbus/bus.h>
