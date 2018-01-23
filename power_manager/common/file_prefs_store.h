@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_FILE_PREFS_STORE_H_
 #define POWER_MANAGER_COMMON_FILE_PREFS_STORE_H_
 
+#include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>

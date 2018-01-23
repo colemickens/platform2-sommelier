@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "power_manager/common/file_prefs_store.h"
 
