@@ -114,4 +114,4 @@ TEST(DeviceManager, ReadFileFromSynthesizedRootNodeFails) {
 }
 
 }  // namespace
-}  // namespace mtp
+}  // namespace mtpd

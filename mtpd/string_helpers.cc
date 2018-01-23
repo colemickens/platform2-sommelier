@@ -12,4 +12,4 @@ std::string EnsureUTF8String(const std::string& str) {
   return base::IsStringUTF8(str) ? str : "";
 }
 
-}  // namespace
+}  // namespace mtpd

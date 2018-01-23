@@ -84,7 +84,7 @@ std::vector<uint8_t> FileEntry::EmptyFileEntriesToDBusFormat() {
 
 // static
 std::vector<uint8_t> FileEntry::FileEntriesToDBusFormat(
-    std::vector<FileEntry>& entries) {
+    const std::vector<FileEntry>& entries) {
   MtpFileEntries protobuf;
   std::vector<uint8_t> serialized_proto;
 

@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MTPD_SERVER_IMPL_H_
-#define MTPD_SERVER_IMPL_H_
+#ifndef MTPD_MTPD_SERVER_IMPL_H_
+#define MTPD_MTPD_SERVER_IMPL_H_
 
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -115,4 +117,4 @@ class MtpdServer : public org::chromium::MtpdInterface,
 
 }  // namespace mtpd
 
-#endif  // MTPD_SERVER_IMPL_H_
+#endif  // MTPD_MTPD_SERVER_IMPL_H_

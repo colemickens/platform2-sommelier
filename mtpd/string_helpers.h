@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef STRING_HELPERS_H_
-#define STRING_HELPERS_H_
+#ifndef MTPD_STRING_HELPERS_H_
+#define MTPD_STRING_HELPERS_H_
 
 #include <string>
 
@@ -13,6 +13,6 @@ namespace mtpd {
 // base::IsStringUTF8) or an empty string otherwise.
 std::string EnsureUTF8String(const std::string& str);
 
-}  // namespace
+}  // namespace mtpd
 
-#endif  // STRING_HELPERS_H_
+#endif  // MTPD_STRING_HELPERS_H_

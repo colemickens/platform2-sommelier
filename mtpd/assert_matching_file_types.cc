@@ -8,8 +8,10 @@
 
 #include "system_api/proto_bindings/mtp_file_entry.pb.h"
 
-#define COMPILE_ASSERT_MATCH(libmtp_type, protobuf_type) \
-  static_assert(int(libmtp_type) == int(protobuf_type), "Mismatching types")
+#define COMPILE_ASSERT_MATCH(libmtp_type, protobuf_type)                \
+  static_assert(                                                        \
+      static_cast<int>(libmtp_type) == static_cast<int>(protobuf_type), \
+      "Mismatching types")
 
 COMPILE_ASSERT_MATCH(LIBMTP_FILETYPE_FOLDER,
                      MtpFileEntry_FileType_FILE_TYPE_FOLDER);

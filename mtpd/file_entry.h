@@ -27,7 +27,7 @@ class FileEntry {
 
   static std::vector<uint8_t> EmptyFileEntriesToDBusFormat();
   static std::vector<uint8_t> FileEntriesToDBusFormat(
-      std::vector<FileEntry>& entries);
+      const std::vector<FileEntry>& entries);
 
   uint32_t item_id() const { return item_id_; }
   uint32_t parent_id() const { return parent_id_; }
