@@ -29,6 +29,10 @@ camera_profile: tools/generate_camera_profile
 
 .PHONY: camera_profile
 
+cros-camera-tool: tools/cros-camera-tool
+
+.PHONY: cros-camera-tool
+
 hal_adapter:
 	$(MAKE) hal_adapter/mojo/mojo_templates
 	$(MAKE) hal_adapter/arc_camera3_service
