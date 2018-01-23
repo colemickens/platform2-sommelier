@@ -7,9 +7,38 @@
 
 #include <string>
 
-#include "smbprovider/smbprovider.h"
+#include "smbprovider/proto.h"
+#include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 namespace smbprovider {
+
+MountOptionsProto CreateMountOptionsProto(const std::string& path);
+
+UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
+
+ReadDirectoryOptionsProto CreateReadDirectoryOptionsProto(
+    int32_t mount_id, const std::string& directory_path);
+
+GetMetadataEntryOptionsProto CreateGetMetadataOptionsProto(
+    int32_t mount_id, const std::string& entry_path);
+
+OpenFileOptionsProto CreateOpenFileOptionsProto(int32_t mount_id,
+                                                const std::string& file_path,
+                                                bool writeable);
+
+CloseFileOptionsProto CreateCloseFileOptionsProto(int32_t mount_id,
+                                                  int32_t file_id);
+
+DeleteEntryOptionsProto CreateDeleteEntryOptionsProto(
+    int32_t mount_id, const std::string& entry_path, bool recursive);
+
+ReadFileOptionsProto CreateReadFileOptionsProto(int32_t mount_id,
+                                                int32_t file_id,
+                                                int64_t offset,
+                                                int32_t length);
+
+CreateFileOptionsProto CreateCreateFileOptionsProto(
+    int32_t mount_id, const std::string& file_path);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
