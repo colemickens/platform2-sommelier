@@ -82,6 +82,8 @@
             'mount_manager_test.cc',
             'smbprovider_helper_test.cc',
             'smbprovider_test.cc',
+            'smbprovider_test_helper.cc',
+            'smbprovider_test_helper.h',
             'temp_file_manager_test.cc',
           ],
         },

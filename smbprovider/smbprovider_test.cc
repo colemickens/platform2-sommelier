@@ -15,6 +15,7 @@
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
+#include "smbprovider/smbprovider_test_helper.h"
 
 using brillo::dbus_utils::DBusObject;
 
@@ -38,102 +39,6 @@ class SmbProviderTest : public testing::Test {
 
  protected:
   using DirEntries = std::vector<smbc_dirent>;
-
-  ProtoBlob CreateMountOptionsBlob(const std::string& path) {
-    ProtoBlob proto_blob;
-    MountOptionsProto mount_options;
-    mount_options.set_path(path);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(mount_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id) {
-    ProtoBlob proto_blob;
-    UnmountOptionsProto unmount_options;
-    unmount_options.set_mount_id(mount_id);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(unmount_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateReadDirectoryOptionsBlob(int32_t mount_id,
-                                           const std::string& directory_path) {
-    ProtoBlob proto_blob;
-    ReadDirectoryOptionsProto read_directory_options;
-    read_directory_options.set_mount_id(mount_id);
-    read_directory_options.set_directory_path(directory_path);
-    EXPECT_EQ(ERROR_OK,
-              SerializeProtoToBlob(read_directory_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateGetMetadataOptionsBlob(int32_t mount_id,
-                                         const std::string& entry_path) {
-    ProtoBlob proto_blob;
-    GetMetadataEntryOptionsProto get_metadata_options;
-    get_metadata_options.set_mount_id(mount_id);
-    get_metadata_options.set_entry_path(entry_path);
-    EXPECT_EQ(ERROR_OK,
-              SerializeProtoToBlob(get_metadata_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateOpenFileOptionsBlob(int32_t mount_id,
-                                      const std::string& file_path,
-                                      bool writeable) {
-    ProtoBlob proto_blob;
-    OpenFileOptionsProto open_file_options;
-    open_file_options.set_mount_id(mount_id);
-    open_file_options.set_file_path(file_path);
-    open_file_options.set_writeable(writeable);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(open_file_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateCloseFileOptionsBlob(int32_t mount_id, int32_t file_id) {
-    ProtoBlob proto_blob;
-    CloseFileOptionsProto close_file_options;
-    close_file_options.set_mount_id(mount_id);
-    close_file_options.set_file_id(file_id);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(close_file_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateDeleteEntryOptionsBlob(int32_t mount_id,
-                                         const std::string& entry_path,
-                                         bool recursive) {
-    ProtoBlob proto_blob;
-    DeleteEntryOptionsProto delete_entry_options;
-    delete_entry_options.set_mount_id(mount_id);
-    delete_entry_options.set_entry_path(entry_path);
-    delete_entry_options.set_recursive(recursive);
-    EXPECT_EQ(ERROR_OK,
-              SerializeProtoToBlob(delete_entry_options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateReadFileOptionsBlob(int32_t mount_id,
-                                      int32_t file_id,
-                                      int64_t offset,
-                                      int32_t length) {
-    ProtoBlob proto_blob;
-    ReadFileOptionsProto options;
-    options.set_mount_id(mount_id);
-    options.set_file_id(file_id);
-    options.set_offset(offset);
-    options.set_length(length);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(options, &proto_blob));
-    return proto_blob;
-  }
-
-  ProtoBlob CreateCreateFileOptionsBlob(int32_t mount_id,
-                                        const std::string& file_path) {
-    ProtoBlob proto_blob;
-    CreateFileOptionsProto options;
-    options.set_mount_id(mount_id);
-    options.set_file_path(file_path);
-    EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(options, &proto_blob));
-    return proto_blob;
-  }
 
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
