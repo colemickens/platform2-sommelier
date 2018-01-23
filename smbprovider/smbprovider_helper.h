@@ -48,6 +48,15 @@ bool WriteEntry(const std::string& entry_name,
                 size_t buffer_size,
                 smbc_dirent* dirp);
 
+// Maps errno to ErrorType.
+ErrorType GetErrorFromErrno(int32_t error_code);
+
+// Helper method to determine whether a stat struct represents a Directory.
+bool IsDirectory(const struct stat& stat_info);
+
+// Helper method to detemine whether a stat struct represents a File.
+bool IsFile(const struct stat& stat_info);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_SMBPROVIDER_HELPER_H_

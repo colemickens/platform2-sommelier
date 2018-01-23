@@ -4,8 +4,6 @@
 
 #include "smbprovider/smbprovider.h"
 
-#include <errno.h>
-
 #include <map>
 #include <utility>
 
@@ -20,39 +18,6 @@
 
 namespace smbprovider {
 namespace {
-
-// Maps errno to ErrorType.
-ErrorType GetErrorFromErrno(int32_t error_code) {
-  ErrorType error;
-  switch (error_code) {
-    case EPERM:
-    case EACCES:
-      error = ERROR_ACCESS_DENIED;
-      break;
-    case EBADF:
-    case ENODEV:
-    case ENOENT:
-      error = ERROR_NOT_FOUND;
-      break;
-    case EMFILE:
-    case ENFILE:
-      error = ERROR_TOO_MANY_OPENED;
-      break;
-    case ENOTDIR:
-      error = ERROR_NOT_A_DIRECTORY;
-      break;
-    case ENOTEMPTY:
-      error = ERROR_NOT_EMPTY;
-      break;
-    case EEXIST:
-      error = ERROR_EXISTS;
-      break;
-    default:
-      error = ERROR_FAILED;
-      break;
-  }
-  return error;
-}
 
 // Helper method to get a valid DBus FileDescriptor |dbus_fd| from a scoped
 // file descriptor |fd|.
@@ -229,16 +194,6 @@ bool ParseOptionsProto(const ProtoBlob& blob,
   }
 
   return is_valid;
-}
-
-// Helper method to determine whether a stat struct represents a Directory.
-bool IsDirectory(const struct stat& stat_info) {
-  return S_ISDIR(stat_info.st_mode);
-}
-
-// Helper method to detemine whether a stat struct represents a File.
-bool IsFile(const struct stat& stat_info) {
-  return S_ISREG(stat_info.st_mode);
 }
 
 // Helper method to get |DirectoryEntryProto| from a struct stat. Returns

@@ -147,4 +147,50 @@ TEST_F(SmbProviderHelperTest, ShouldProcessEntryType) {
   EXPECT_FALSE(ShouldProcessEntryType(SMBC_LINK));
 }
 
+// Errors should be returned correctly.
+TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
+  EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrno(EPERM));
+  EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrno(EACCES));
+
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(EBADF));
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(ENODEV));
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(ENOENT));
+
+  EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrno(EMFILE));
+  EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrno(ENFILE));
+
+  EXPECT_EQ(ERROR_NOT_A_DIRECTORY, GetErrorFromErrno(ENOTDIR));
+
+  EXPECT_EQ(ERROR_NOT_EMPTY, GetErrorFromErrno(ENOTEMPTY));
+
+  EXPECT_EQ(ERROR_EXISTS, GetErrorFromErrno(EEXIST));
+
+  // Errors without an explicit mapping get mapped
+  // to ERROR_FAILED.
+  EXPECT_EQ(ERROR_FAILED, GetErrorFromErrno(ENOSPC));
+  EXPECT_EQ(ERROR_FAILED, GetErrorFromErrno(ESPIPE));
+}
+
+// IsDirectory should only return true on directory stats.
+TEST_F(SmbProviderHelperTest, IsDirectory) {
+  struct stat dir_info;
+  dir_info.st_mode = 16877;  // Dir mode
+  struct stat file_info;
+  file_info.st_mode = 33188;  // File mode
+
+  EXPECT_TRUE(IsDirectory(dir_info));
+  EXPECT_FALSE(IsDirectory(file_info));
+}
+
+// IsFile should only return true on File stats.
+TEST_F(SmbProviderHelperTest, IsFile) {
+  struct stat dir_info;
+  dir_info.st_mode = 16877;  // Dir mode
+  struct stat file_info;
+  file_info.st_mode = 33188;  // File mode
+
+  EXPECT_TRUE(IsFile(file_info));
+  EXPECT_FALSE(IsFile(dir_info));
+}
+
 }  // namespace smbprovider

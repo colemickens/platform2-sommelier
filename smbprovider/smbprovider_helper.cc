@@ -4,6 +4,8 @@
 
 #include "smbprovider/smbprovider_helper.h"
 
+#include <errno.h>
+
 #include <base/bits.h>
 #include <base/strings/string_piece.h>
 #include <libsmbclient.h>
@@ -78,6 +80,47 @@ bool WriteEntry(const std::string& entry_name,
   dirp->dirlen = entry_size;
   memcpy(dirp->name, entry_name.c_str(), entry_name.size() + 1);
   return true;
+}
+
+ErrorType GetErrorFromErrno(int32_t error_code) {
+  DCHECK_GT(error_code, 0);
+  ErrorType error;
+  switch (error_code) {
+    case EPERM:
+    case EACCES:
+      error = ERROR_ACCESS_DENIED;
+      break;
+    case EBADF:
+    case ENODEV:
+    case ENOENT:
+      error = ERROR_NOT_FOUND;
+      break;
+    case EMFILE:
+    case ENFILE:
+      error = ERROR_TOO_MANY_OPENED;
+      break;
+    case ENOTDIR:
+      error = ERROR_NOT_A_DIRECTORY;
+      break;
+    case ENOTEMPTY:
+      error = ERROR_NOT_EMPTY;
+      break;
+    case EEXIST:
+      error = ERROR_EXISTS;
+      break;
+    default:
+      error = ERROR_FAILED;
+      break;
+  }
+  return error;
+}
+
+bool IsDirectory(const struct stat& stat_info) {
+  return S_ISDIR(stat_info.st_mode);
+}
+
+bool IsFile(const struct stat& stat_info) {
+  return S_ISREG(stat_info.st_mode);
 }
 
 }  // namespace smbprovider
