@@ -113,8 +113,8 @@ TEST_F(ConnectionInfoReaderTest, LoadConnectionInfo) {
   EXPECT_FALSE(reader_.LoadConnectionInfo(&info_list));
 
   // Loading an empty file should succeed.
-  CreateConnectionInfoFile(kConnectionInfoLines, 0, temp_dir.path(),
-                           &info_file);
+  CreateConnectionInfoFile(
+      kConnectionInfoLines, 0, temp_dir.GetPath(), &info_file);
   EXPECT_CALL(reader_, GetConnectionInfoFilePath()).WillOnce(Return(info_file));
   EXPECT_TRUE(reader_.LoadConnectionInfo(&info_list));
   EXPECT_TRUE(info_list.empty());
@@ -122,7 +122,7 @@ TEST_F(ConnectionInfoReaderTest, LoadConnectionInfo) {
   // Loading a non-empty file should succeed.
   CreateConnectionInfoFile(kConnectionInfoLines,
                            arraysize(kConnectionInfoLines),
-                           temp_dir.path(),
+                           temp_dir.GetPath(),
                            &info_file);
   EXPECT_CALL(reader_, GetConnectionInfoFilePath()).WillOnce(Return(info_file));
   EXPECT_TRUE(reader_.LoadConnectionInfo(&info_list));

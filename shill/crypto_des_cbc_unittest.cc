@@ -56,7 +56,7 @@ TEST_F(CryptoDesCbcTest, LoadKeyMatter) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const char kKeyMatterFile[] = "key-matter-file";
-  FilePath key_matter = temp_dir.path().Append(kKeyMatterFile);
+  FilePath key_matter = temp_dir.GetPath().Append(kKeyMatterFile);
 
   EXPECT_FALSE(crypto_.LoadKeyMatter(key_matter));
   EXPECT_TRUE(crypto_.key().empty());

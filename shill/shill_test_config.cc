@@ -32,11 +32,11 @@ TestConfig::~TestConfig() {
 }
 
 string TestConfig::GetRunDirectory() {
-  return dir_.path().value();
+  return dir_.GetPath().value();
 }
 
 string TestConfig::GetStorageDirectory() {
-  return dir_.path().value();
+  return dir_.GetPath().value();
 }
 
 }  // namespace shill

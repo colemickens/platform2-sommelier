@@ -54,7 +54,7 @@ class KeyFileStoreTest : public Test {
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    test_file_ = temp_dir_.path().Append("test-key-file-store");
+    test_file_ = temp_dir_.GetPath().Append("test-key-file-store");
     store_.reset(new KeyFileStore(test_file_));
   }
 
@@ -91,9 +91,8 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_EQ(1, store_->crypto_.cryptos_.size());
   ASSERT_TRUE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
-  FileEnumerator file_enumerator(temp_dir_.path(),
-                                 false /* not recursive */,
-                                 FileEnumerator::FILES);
+  FileEnumerator file_enumerator(
+      temp_dir_.GetPath(), false /* not recursive */, FileEnumerator::FILES);
 
   // Verify that the file actually got written with the right name.
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());

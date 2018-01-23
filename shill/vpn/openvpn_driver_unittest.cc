@@ -117,7 +117,7 @@ class OpenVPNDriverTest
         extra_certificates_file_);  // Passes ownership.
     CHECK(temporary_directory_.CreateUniqueTempDir());
     driver_->openvpn_config_directory_ =
-        temporary_directory_.path().Append(kOpenVPNConfigDirectory);
+        temporary_directory_.GetPath().Append(kOpenVPNConfigDirectory);
   }
 
   virtual ~OpenVPNDriverTest() {}
@@ -1395,7 +1395,7 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
       { kOption2, kOption2Argument0, kOption2Argument1 }
   };
   FilePath config_directory(
-      temporary_directory_.path().Append(kOpenVPNConfigDirectory));
+      temporary_directory_.GetPath().Append(kOpenVPNConfigDirectory));
   FilePath config_file;
   EXPECT_FALSE(base::PathExists(config_directory));
   EXPECT_TRUE(driver_->WriteConfigFile(options, &config_file));

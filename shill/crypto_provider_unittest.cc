@@ -69,7 +69,7 @@ TEST_F(CryptoProviderTest, Init) {
 
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.path()));
+  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.GetPath()));
   provider_.Init();
   ASSERT_EQ(2, provider_.cryptos_.size());
   EXPECT_EQ("des-cbc", provider_.cryptos_[0]->GetId());
@@ -90,7 +90,7 @@ TEST_F(CryptoProviderTest, Encrypt) {
 
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.path()));
+  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.GetPath()));
   provider_.Init();
   EXPECT_EQ(kROT47Text, provider_.Encrypt(kPlainText));
 }
@@ -101,7 +101,7 @@ TEST_F(CryptoProviderTest, Decrypt) {
 
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.path()));
+  provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.GetPath()));
   provider_.Init();
   EXPECT_EQ(kPlainText, provider_.Decrypt(kROT47Text));
   EXPECT_EQ(kPlainText, provider_.Decrypt(kDESCBCText));

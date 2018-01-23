@@ -40,7 +40,7 @@ class CertificateFileTest : public testing::Test {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    certificate_directory_ = temp_dir_.path().Append("certificates");
+    certificate_directory_ = temp_dir_.GetPath().Append("certificates");
     certificate_file_.set_root_directory(certificate_directory_);
   }
 
@@ -131,7 +131,7 @@ TEST_F(CertificateFileTest, Destruction) {
   FilePath outfile;
   {
     CertificateFile certificate_file;
-    certificate_file.set_root_directory(temp_dir_.path());
+    certificate_file.set_root_directory(temp_dir_.GetPath());
     outfile = certificate_file.CreatePEMFromStrings(vector<string>{ kPEMData });
     EXPECT_TRUE(base::PathExists(outfile));
   }

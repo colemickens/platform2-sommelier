@@ -60,7 +60,7 @@ class JsonStoreTest : public Test {
     ScopeLogger::GetInstance()->EnableScopesByName("+storage");
     ASSERT_FALSE(base::IsStringUTF8(kNonUtf8String));
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    test_file_ = temp_dir_.path().Append("test-json-store");
+    test_file_ = temp_dir_.GetPath().Append("test-json-store");
     store_.reset(new JsonStore(test_file_));
     EXPECT_CALL(log_, Log(_, _, _)).Times(AnyNumber());
   }
@@ -923,9 +923,8 @@ TEST_F(JsonStoreTest, ClosePersistsData) {
   ASSERT_TRUE(store_->Close());
 
   // Verify that the file actually got written with the right name.
-  FileEnumerator file_enumerator(temp_dir_.path(),
-                                 false /* not recursive */,
-                                 FileEnumerator::FILES);
+  FileEnumerator file_enumerator(
+      temp_dir_.GetPath(), false /* not recursive */, FileEnumerator::FILES);
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
 
   // Verify that the profile is a regular file, readable and writeable by the
@@ -940,9 +939,8 @@ TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
   ASSERT_TRUE(store_->Flush());
 
   // Verify that the file actually got written with the right name.
-  FileEnumerator file_enumerator(temp_dir_.path(),
-                                 false /* not recursive */,
-                                 FileEnumerator::FILES);
+  FileEnumerator file_enumerator(
+      temp_dir_.GetPath(), false /* not recursive */, FileEnumerator::FILES);
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
 
   // Verify that the profile is a regular file, readable and writeable by the

@@ -113,8 +113,8 @@ TEST_F(SocketInfoReaderTest, LoadTcpSocketInfo) {
   FilePath invalid_path("/non-existent-file"), v4_path, v6_path;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  CreateSocketInfoFile(kIPv4SocketInfoLines, 2, temp_dir.path(), &v4_path);
-  CreateSocketInfoFile(kIPv6SocketInfoLines, 2, temp_dir.path(), &v6_path);
+  CreateSocketInfoFile(kIPv4SocketInfoLines, 2, temp_dir.GetPath(), &v4_path);
+  CreateSocketInfoFile(kIPv6SocketInfoLines, 2, temp_dir.GetPath(), &v6_path);
 
   SocketInfo v4_info(SocketInfo::kConnectionStateListen,
                      StringToIPv4Address(kIPv4Address_127_0_0_1),
@@ -176,7 +176,7 @@ TEST_F(SocketInfoReaderTest, AppendSocketInfo) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  CreateSocketInfoFile(kIPv4SocketInfoLines, 1, temp_dir.path(), &file_path);
+  CreateSocketInfoFile(kIPv4SocketInfoLines, 1, temp_dir.GetPath(), &file_path);
   EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_TRUE(info_list.empty());
 
@@ -213,15 +213,19 @@ TEST_F(SocketInfoReaderTest, AppendSocketInfo) {
                       0,
                       SocketInfo::kTimerStateNoTimerPending);
 
-  CreateSocketInfoFile(kIPv4SocketInfoLines, arraysize(kIPv4SocketInfoLines),
-                       temp_dir.path(), &file_path);
+  CreateSocketInfoFile(kIPv4SocketInfoLines,
+                       arraysize(kIPv4SocketInfoLines),
+                       temp_dir.GetPath(),
+                       &file_path);
   EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_EQ(arraysize(kIPv4SocketInfoLines) - 1, info_list.size());
   ExpectSocketInfoEqual(v4_info1, info_list[0]);
   ExpectSocketInfoEqual(v4_info2, info_list[1]);
 
-  CreateSocketInfoFile(kIPv6SocketInfoLines, arraysize(kIPv6SocketInfoLines),
-                       temp_dir.path(), &file_path);
+  CreateSocketInfoFile(kIPv6SocketInfoLines,
+                       arraysize(kIPv6SocketInfoLines),
+                       temp_dir.GetPath(),
+                       &file_path);
   EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_EQ(
       arraysize(kIPv4SocketInfoLines) + arraysize(kIPv6SocketInfoLines) - 2,

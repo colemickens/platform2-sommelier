@@ -200,11 +200,11 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
   EXPECT_EQ(config->vendor_class_, vendorclass);
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
-  config->root_ = temp_dir_.path();
-  FilePath varrun = temp_dir_.path().Append("var/run/dhcpcd");
+  config->root_ = temp_dir_.GetPath();
+  FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varrun));
   pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s-4.pid", kDeviceName));
-  FilePath varlib = temp_dir_.path().Append("var/lib/dhcpcd");
+  FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varlib));
   lease_file_ =
       varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));

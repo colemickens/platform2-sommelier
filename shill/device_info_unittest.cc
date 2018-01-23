@@ -1011,18 +1011,18 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
 TEST_F(DeviceInfoTest, HasSubdir) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  EXPECT_TRUE(base::CreateDirectory(temp_dir.path().Append("child1")));
-  FilePath child2 = temp_dir.path().Append("child2");
+  EXPECT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("child1")));
+  FilePath child2 = temp_dir.GetPath().Append("child2");
   EXPECT_TRUE(base::CreateDirectory(child2));
   FilePath grandchild = child2.Append("grandchild");
   EXPECT_TRUE(base::CreateDirectory(grandchild));
   EXPECT_TRUE(base::CreateDirectory(grandchild.Append("greatgrandchild")));
-  EXPECT_TRUE(DeviceInfo::HasSubdir(temp_dir.path(),
-                                    FilePath("grandchild")));
-  EXPECT_TRUE(DeviceInfo::HasSubdir(temp_dir.path(),
-                                    FilePath("greatgrandchild")));
-  EXPECT_FALSE(DeviceInfo::HasSubdir(temp_dir.path(),
-                                     FilePath("nonexistent")));
+  EXPECT_TRUE(
+      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("grandchild")));
+  EXPECT_TRUE(
+      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("greatgrandchild")));
+  EXPECT_FALSE(
+      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("nonexistent")));
 }
 
 TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
@@ -1411,7 +1411,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    device_info_root_ = temp_dir_.path().Append("sys/class/net");
+    device_info_root_ = temp_dir_.GetPath().Append("sys/class/net");
     device_info_.device_info_root_ = device_info_root_;
     // Most tests require that the uevent file exist.
     CreateInfoFile("uevent", "xxx");
@@ -1552,7 +1552,7 @@ TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
 //   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether or /drivers/cdc_ncm
 //   /sys/devices/virtual/0/01/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
-  FilePath device_root(temp_dir_.path().Append("sys/devices/virtual/0"));
+  FilePath device_root(temp_dir_.GetPath().Append("sys/devices/virtual/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
@@ -1574,7 +1574,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
 //   /sys/device_dir/0/01/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
-  FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
+  FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
@@ -1595,7 +1595,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
 //   /sys/device_dir/0/01/yyy/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
-  FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
+  FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));

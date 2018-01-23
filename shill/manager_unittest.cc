@@ -978,7 +978,7 @@ TEST_F(ManagerTest, CreateProfile) {
                   metrics(),
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.GetPath().value());
 
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
@@ -996,7 +996,7 @@ TEST_F(ManagerTest, CreateProfile) {
   {
     Error error;
     string path;
-    ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
+    ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
     manager.CreateProfile(kProfile, &path, &error);
     EXPECT_EQ(Error::kSuccess, error.type());
     EXPECT_EQ("/profile_rpc", path);
@@ -1014,7 +1014,7 @@ TEST_F(ManagerTest, PushPopProfile) {
                   metrics(),
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.GetPath().value());
   vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
@@ -1038,7 +1038,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
 
   // Create a couple of profiles.
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
@@ -1203,7 +1203,7 @@ TEST_F(ManagerTest, RemoveProfile) {
                   metrics(),
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -1314,7 +1314,7 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
                   metrics(),
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -4521,14 +4521,15 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
                   metrics(),
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.GetPath().value());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
   MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>();
   manager.wifi_provider_.reset(wifi_provider);  // pass ownership
   manager.UpdateProviderMapping();
   // Give manager a valid place to write the user profile list.
-  manager.user_profile_list_path_ = temp_dir.path().Append("user_profile_list");
+  manager.user_profile_list_path_ =
+      temp_dir.GetPath().Append("user_profile_list");
 
   // With no user profiles, the WiFiProvider should be called once
   // (for the default profile).
@@ -4542,7 +4543,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   const char kProfile1[] = "~user/profile1";
   string profile_rpc_path;
   Error error;
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
   manager.CreateProfile(kProfile0, &profile_rpc_path, &error);
   manager.PushProfile(kProfile0, &profile_rpc_path, &error);
   manager.CreateProfile(kProfile1, &profile_rpc_path, &error);
@@ -4574,8 +4575,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             dispatcher(),
                             metrics(),
                             run_path(),
-                            temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.GetPath().value(),
+                            temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4600,8 +4601,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             dispatcher(),
                             metrics(),
                             run_path(),
-                            temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.GetPath().value(),
+                            temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
 
@@ -4612,8 +4613,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             dispatcher(),
                             metrics(),
                             run_path(),
-                            temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.GetPath().value(),
+                            temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4627,8 +4628,8 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
                             dispatcher(),
                             metrics(),
                             run_path(),
-                            temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.GetPath().value(),
+                            temp_dir.GetPath().value()));
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -4638,7 +4639,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
   const char kProfile2[] = "~user/profile2";
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
   TestCreateProfile(manager.get(), kProfile0);
   TestCreateProfile(manager.get(), kProfile1);
   TestCreateProfile(manager.get(), kProfile2);

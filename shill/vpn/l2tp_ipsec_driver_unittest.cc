@@ -238,7 +238,7 @@ void L2TPIPSecDriverTest::ExpectInFlags(
 
 FilePath L2TPIPSecDriverTest::SetupPSKFile() {
   FilePath psk_file;
-  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
+  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &psk_file));
   EXPECT_FALSE(psk_file.empty());
   EXPECT_TRUE(base::PathExists(psk_file));
   driver_->psk_file_ = psk_file;
@@ -247,7 +247,7 @@ FilePath L2TPIPSecDriverTest::SetupPSKFile() {
 
 FilePath L2TPIPSecDriverTest::SetupXauthCredentialsFile() {
   FilePath xauth_credentials_file;
-  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(),
+  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(),
                                              &xauth_credentials_file));
   EXPECT_FALSE(xauth_credentials_file.empty());
   EXPECT_TRUE(base::PathExists(xauth_credentials_file));
@@ -321,7 +321,7 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
 
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(pem_cert));
-  const FilePath temp_dir(temp_dir_.path());
+  const FilePath temp_dir(temp_dir_.GetPath());
   // Once each for PSK and Xauth options.
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(temp_dir))
@@ -346,7 +346,7 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   vector<string> options;
   static const char kPSK[] = "foobar";
   const FilePath bad_dir("/non/existent/directory");
-  const FilePath temp_dir(temp_dir_.path());
+  const FilePath temp_dir(temp_dir_.GetPath());
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(bad_dir))
       .WillOnce(ReturnRef(temp_dir));
@@ -423,7 +423,7 @@ TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
 
   SetArg(kL2tpIpsecXauthUserProperty, kUser);
   const FilePath bad_dir("/non/existent/directory");
-  const FilePath temp_dir(temp_dir_.path());
+  const FilePath temp_dir(temp_dir_.GetPath());
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(bad_dir))
       .WillOnce(ReturnRef(temp_dir));

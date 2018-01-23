@@ -60,7 +60,7 @@ class ResolverTest : public Test {
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    path_ = temp_dir_.path().Append("resolver");
+    path_ = temp_dir_.GetPath().Append("resolver");
     resolver_->set_path(path_);
   }
 

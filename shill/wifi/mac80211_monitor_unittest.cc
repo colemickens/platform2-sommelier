@@ -97,10 +97,10 @@ class Mac80211MonitorTest : public testing::Test {
   }
   void FakeUpSysfs() {
     CHECK(fake_sysfs_tree_.CreateUniqueTempDir());
-    CHECK(base::CreateTemporaryFileInDir(
-        fake_sysfs_tree_.path(), &fake_queue_state_file_path_));
-    CHECK(base::CreateTemporaryFileInDir(
-        fake_sysfs_tree_.path(), &fake_wake_queues_file_path_));
+    CHECK(base::CreateTemporaryFileInDir(fake_sysfs_tree_.GetPath(),
+                                         &fake_queue_state_file_path_));
+    CHECK(base::CreateTemporaryFileInDir(fake_sysfs_tree_.GetPath(),
+                                         &fake_wake_queues_file_path_));
     PlumbFakeSysfs();
   }
   void DeleteQueueStateFile() {

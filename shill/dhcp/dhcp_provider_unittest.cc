@@ -78,7 +78,7 @@ TEST_F(DHCPProviderTest, DestroyLease) {
   ScopedTempDir temp_dir;
   FilePath lease_file;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  provider_->root_ = temp_dir.path();
+  provider_->root_ = temp_dir.GetPath();
   lease_file = provider_->root_.Append(base::StringPrintf(
       DHCPProvider::kDHCPCDPathFormatLease,
       kDeviceName));

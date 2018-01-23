@@ -102,7 +102,8 @@ HttpRequest::Result HttpRequest::Start(
   request_data_ = ByteString(StringPrintf(kHttpRequestTemplate,
                                           url.path().c_str(),
                                           url.host().c_str(),
-                                          url.port()), false);
+                                          url.port()),
+                             false);
   server_hostname_ = url.host();
   server_port_ = url.port();
   connection_->RequestRouting();

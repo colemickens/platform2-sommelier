@@ -57,7 +57,7 @@ TEST_F(FileReaderTest, OpenEmptyFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &path));
 
   EXPECT_TRUE(reader_.Open(path));
   string line;
@@ -76,7 +76,7 @@ TEST_F(FileReaderTest, ReadLine) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &path));
 
   // Test a file not ending with a new-line character
   ASSERT_EQ(content.size(),
