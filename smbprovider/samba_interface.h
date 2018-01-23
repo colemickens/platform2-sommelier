@@ -105,6 +105,13 @@ class SambaInterface {
   // and errno on failure.
   virtual int32_t Truncate(int32_t file_id, size_t size) WARN_UNUSED_RESULT = 0;
 
+  // Writes the contents of |buffer| into the file with |file_id|. |buffer_size|
+  // is the size of the data being written. Returns 0 on success and errno on
+  // failure.
+  virtual int32_t WriteFile(int32_t file_id,
+                            const uint8_t* buffer,
+                            size_t buffer_size) WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "

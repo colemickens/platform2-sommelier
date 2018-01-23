@@ -56,6 +56,10 @@ class SambaInterfaceImpl : public SambaInterface {
 
   int32_t Truncate(int32_t file_id, size_t size) override;
 
+  int32_t WriteFile(int32_t file_id,
+                    const uint8_t* buffer,
+                    size_t buffer_size) override;
+
  private:
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;

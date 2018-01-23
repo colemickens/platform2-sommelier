@@ -264,6 +264,13 @@ int32_t FakeSambaInterface::Truncate(int32_t file_id, size_t size) {
   return 0;
 }
 
+int32_t FakeSambaInterface::WriteFile(int32_t file_id,
+                                      const uint8_t* buffer,
+                                      size_t buffer_size) {
+  NOTIMPLEMENTED();
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {

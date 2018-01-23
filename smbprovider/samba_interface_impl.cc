@@ -124,6 +124,12 @@ int32_t SambaInterfaceImpl::Truncate(int32_t file_id, size_t size) {
   return smbc_ftruncate(file_id, size) < 0 ? errno : 0;
 }
 
+int32_t SambaInterfaceImpl::WriteFile(int32_t file_id,
+                                      const uint8_t* buffer,
+                                      size_t buffer_size) {
+  return smbc_write(file_id, buffer, buffer_size) < 0 ? errno : 0;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }
