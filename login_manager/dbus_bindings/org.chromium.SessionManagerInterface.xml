@@ -62,9 +62,6 @@
       <arg type="as" name="extra_arguments" direction="in" />
       <arg type="as" name="extra_environment_variables" direction="in" />
       <arg type="s" name="filepath" direction="out" />
-      <!-- TODO(derat): Remove raw after callers pass env vars:
-           https://crbug.com/793668 -->
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
     </method>
 
     <!--

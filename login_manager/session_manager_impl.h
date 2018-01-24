@@ -190,8 +190,12 @@ class SessionManagerImpl
 
   // org::chromium::SessionManagerInterfaceInterface implementation.
   void EmitLoginPromptVisible() override;
-  void EnableChromeTesting(dbus::MethodCall* call,
-                           brillo::dbus_utils::ResponseSender sender) override;
+  bool EnableChromeTesting(
+      brillo::ErrorPtr* error,
+      bool in_force_relaunch,
+      const std::vector<std::string>& in_extra_arguments,
+      const std::vector<std::string>& in_extra_environment_variables,
+      std::string* out_filepath) override;
   bool SaveLoginPassword(brillo::ErrorPtr* error,
                          const dbus::FileDescriptor& in_password_fd) override;
   bool StartSession(brillo::ErrorPtr* error,

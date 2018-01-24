@@ -501,33 +501,21 @@ void SessionManagerImpl::EmitLoginPromptVisible() {
                                    InitDaemonController::TriggerMode::ASYNC);
 }
 
-void SessionManagerImpl::EnableChromeTesting(
-    dbus::MethodCall* method_call, brillo::dbus_utils::ResponseSender sender) {
-  // TODO(derat): Remove unmarshaling in favor of using generated code after all
-  // callers are passing env vars: https://crbug.com/793668
-  bool in_force_relaunch = false;
-  std::vector<std::string> in_extra_arguments;
-  std::vector<std::string> in_extra_environment_variables;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopBool(&in_force_relaunch) ||
-      !reader.PopArrayOfStrings(&in_extra_arguments)) {
-    sender.Run(dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_INVALID_ARGS, "Invalid args."));
-    return;
-  }
-  // Not all callers pass this arg yet, so this may fail.
-  reader.PopArrayOfStrings(&in_extra_environment_variables);
-
+bool SessionManagerImpl::EnableChromeTesting(
+    brillo::ErrorPtr* error,
+    bool in_force_relaunch,
+    const std::vector<std::string>& in_extra_arguments,
+    const std::vector<std::string>& in_extra_environment_variables,
+    std::string* out_filepath) {
   // Check to see if we already have Chrome testing enabled.
   bool already_enabled = !chrome_testing_path_.empty();
 
   if (!already_enabled) {
     base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
     if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
-      sender.Run(dbus::ErrorResponse::FromMethodCall(
-          method_call, dbus_error::kTestingChannelError,
-          "Could not create testing channel filename."));
-      return;
+      *error = CreateError(dbus_error::kTestingChannelError,
+                           "Could not create testing channel filename.");
+      return false;
     }
     chrome_testing_path_ = temp_file_path;
   }
@@ -544,12 +532,8 @@ void SessionManagerImpl::EnableChromeTesting(
     manager_->RestartBrowserWithArgs(extra_args, true /* args_are_extra */,
                                      in_extra_environment_variables);
   }
-
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter(response.get())
-      .AppendString(chrome_testing_path_.value());
-  sender.Run(std::move(response));
+  *out_filepath = chrome_testing_path_.value();
+  return true;
 }
 
 bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
