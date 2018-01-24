@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <dbus/smbprovider/dbus-constants.h>
 #include <gtest/gtest.h>
 
 #include "smbprovider/constants.h"
@@ -13,6 +14,14 @@
 #include "smbprovider/smbprovider_test_helper.h"
 
 namespace smbprovider {
+namespace {
+
+template <typename Proto>
+void CheckMethodName(const char* name, const Proto& proto) {
+  EXPECT_EQ(0, strcmp(name, GetMethodName(proto)));
+}
+
+}  // namespace
 
 class SmbProviderProtoTest : public testing::Test {
  public:
@@ -144,6 +153,19 @@ TEST_F(SmbProviderProtoTest, GetEntryPath) {
   CreateFileOptionsProto create_file_proto =
       CreateCreateFileOptionsProto(3 /* mount_id */, expected_file_path);
   EXPECT_EQ(expected_file_path, GetEntryPath(create_file_proto));
+}
+
+// GetMethodName returns the correct name for each proto.
+TEST_F(SmbProviderProtoTest, GetMethodName) {
+  CheckMethodName(kMountMethod, MountOptionsProto());
+  CheckMethodName(kUnmountMethod, UnmountOptionsProto());
+  CheckMethodName(kGetMetadataEntryMethod, GetMetadataEntryOptionsProto());
+  CheckMethodName(kReadDirectoryMethod, ReadDirectoryOptionsProto());
+  CheckMethodName(kOpenFileMethod, OpenFileOptionsProto());
+  CheckMethodName(kCloseFileMethod, CloseFileOptionsProto());
+  CheckMethodName(kDeleteEntryMethod, DeleteEntryOptionsProto());
+  CheckMethodName(kReadFileMethod, ReadFileOptionsProto());
+  CheckMethodName(kCreateFileMethod, CreateFileOptionsProto());
 }
 
 }  // namespace smbprovider

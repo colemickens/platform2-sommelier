@@ -4,6 +4,8 @@
 
 #include "smbprovider/proto.h"
 
+#include <dbus/smbprovider/dbus-constants.h>
+
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 namespace smbprovider {
@@ -66,6 +68,42 @@ std::string GetEntryPath(const DeleteEntryOptionsProto& options) {
 
 std::string GetEntryPath(const CreateFileOptionsProto& options) {
   return options.file_path();
+}
+
+const char* GetMethodName(const MountOptionsProto& unused) {
+  return kMountMethod;
+}
+
+const char* GetMethodName(const UnmountOptionsProto& unused) {
+  return kUnmountMethod;
+}
+
+const char* GetMethodName(const GetMetadataEntryOptionsProto& unused) {
+  return kGetMetadataEntryMethod;
+}
+
+const char* GetMethodName(const ReadDirectoryOptionsProto& unused) {
+  return kReadDirectoryMethod;
+}
+
+const char* GetMethodName(const OpenFileOptionsProto& unused) {
+  return kOpenFileMethod;
+}
+
+const char* GetMethodName(const CloseFileOptionsProto& unused) {
+  return kCloseFileMethod;
+}
+
+const char* GetMethodName(const DeleteEntryOptionsProto& unused) {
+  return kDeleteEntryMethod;
+}
+
+const char* GetMethodName(const ReadFileOptionsProto& unused) {
+  return kReadFileMethod;
+}
+
+const char* GetMethodName(const CreateFileOptionsProto& unused) {
+  return kCreateFileMethod;
 }
 
 }  // namespace smbprovider

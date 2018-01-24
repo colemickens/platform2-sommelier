@@ -46,6 +46,17 @@ std::string GetEntryPath(const OpenFileOptionsProto& options);
 std::string GetEntryPath(const DeleteEntryOptionsProto& options);
 std::string GetEntryPath(const CreateFileOptionsProto& options);
 
+// Helper method to get the corresponding method name for each proto.
+const char* GetMethodName(const MountOptionsProto& unused);
+const char* GetMethodName(const UnmountOptionsProto& unused);
+const char* GetMethodName(const GetMetadataEntryOptionsProto& unused);
+const char* GetMethodName(const ReadDirectoryOptionsProto& unused);
+const char* GetMethodName(const OpenFileOptionsProto& unused);
+const char* GetMethodName(const CloseFileOptionsProto& unused);
+const char* GetMethodName(const DeleteEntryOptionsProto& unused);
+const char* GetMethodName(const ReadFileOptionsProto& unused);
+const char* GetMethodName(const CreateFileOptionsProto& unused);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_PROTO_H_

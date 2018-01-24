@@ -31,61 +31,6 @@ void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
   DCHECK(dbus_fd->is_valid());
 }
 
-// Template specializations to map a method name to it's Proto argument.
-template <typename Proto>
-const char* GetMethodName(const Proto& unused) {
-  // Each new Proto type must add a specialization below that maps the options
-  // argument type to the corresponding method name.
-  //
-  // This will only cause a compile error when a specialization is not defined.
-  unused.you_must_define_a_specialization_for_GetMethodName();
-}
-
-template <>
-const char* GetMethodName(const MountOptionsProto& unused) {
-  return kMountMethod;
-}
-
-template <>
-const char* GetMethodName(const UnmountOptionsProto& unused) {
-  return kUnmountMethod;
-}
-
-template <>
-const char* GetMethodName(const GetMetadataEntryOptionsProto& unused) {
-  return kGetMetadataEntryMethod;
-}
-
-template <>
-const char* GetMethodName(const ReadDirectoryOptionsProto& unused) {
-  return kReadDirectoryMethod;
-}
-
-template <>
-const char* GetMethodName(const OpenFileOptionsProto& unused) {
-  return kOpenFileMethod;
-}
-
-template <>
-const char* GetMethodName(const CloseFileOptionsProto& unused) {
-  return kCloseFileMethod;
-}
-
-template <>
-const char* GetMethodName(const DeleteEntryOptionsProto& unused) {
-  return kDeleteEntryMethod;
-}
-
-template <>
-const char* GetMethodName(const ReadFileOptionsProto& unused) {
-  return kReadFileMethod;
-}
-
-template <>
-const char* GetMethodName(const CreateFileOptionsProto& unused) {
-  return kCreateFileMethod;
-}
-
 void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,
