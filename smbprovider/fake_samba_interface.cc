@@ -274,7 +274,26 @@ int32_t FakeSambaInterface::Truncate(int32_t file_id, size_t size) {
 int32_t FakeSambaInterface::WriteFile(int32_t file_id,
                                       const uint8_t* buffer,
                                       size_t buffer_size) {
-  NOTIMPLEMENTED();
+  DCHECK(buffer);
+  OpenInfo& open_info = FindOpenFD(file_id)->second;
+  DCHECK(open_info.smbc_type == SMBC_DIR || open_info.smbc_type == SMBC_FILE);
+  if (open_info.smbc_type != SMBC_FILE) {
+    return EISDIR;
+  }
+
+  if (!open_info.writeable) {
+    return EINVAL;
+  }
+
+  FakeFile* file = GetFile(open_info.full_path);
+  DCHECK(file);
+
+  // Write the data into the file.
+  file->WriteData(open_info.current_index, buffer, buffer_size);
+
+  // Adjust to the new offset.
+  open_info.current_index += buffer_size;
+
   return 0;
 }
 
@@ -308,6 +327,24 @@ bool FakeSambaInterface::FakeDirectory::RemoveEntry(const std::string& name) {
     }
   }
   return false;
+}
+
+void FakeSambaInterface::FakeFile::WriteData(size_t offset,
+                                             const uint8_t* buffer,
+                                             size_t buffer_size) {
+  // Ensure that the current size of the file greater than or equal to the
+  // offset.
+  DCHECK(this->data.size() >= offset);
+
+  // Resize the data to the new length if necessary.
+  const size_t new_length = std::max(offset + buffer_size, this->data.size());
+  this->data.resize(new_length, 0);
+  this->size = new_length;
+
+  // Copy the data from buffer into the vector starting from the offset.
+  memcpy(this->data.data() + offset, buffer, buffer_size);
+
+  this->has_data = true;
 }
 
 FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,

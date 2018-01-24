@@ -172,6 +172,10 @@ class FakeSambaInterface : public SambaInterface {
     // Contains the data for the file.
     std::vector<uint8_t> data;
 
+    // Writes |buffer_size| bytes from |buffer| into the file starting from
+    // |offset|.
+    void WriteData(size_t offset, const uint8_t* buffer, size_t buffer_size);
+
     DISALLOW_COPY_AND_ASSIGN(FakeFile);
   };
 

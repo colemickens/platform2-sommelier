@@ -82,6 +82,7 @@
           'sources': [
             'fake_samba_interface.cc',
             'fake_samba_interface.h',
+            'fake_samba_test.cc',
             'mount_manager_test.cc',
             'proto_test.cc',
             'smbprovider_helper_test.cc',
