@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <string>
 #include "ia_cmc_types.h"
 #include "cpffData.h"
 #include "Pipe.h"
