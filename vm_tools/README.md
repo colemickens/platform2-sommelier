@@ -5,12 +5,21 @@
 This directory contains various tools for managing the lifetime of VM instances
 and for providing any services those VMs may need while they are running.
 
-## vm_launcher
+## vm_concierge
 
-`vm_launcher` is responsible for starting up a new VM instance.  It first
-allocates some pooled resources for the VM (like a mac address, IPv4 subnet,
-unique identifier, and virtual socket host id) and then invokes the userspace
-hypervisor (`crosvm` or `lkvm`) to actually start running the VM.
+`vm_concierge` is a system daemon that runs in Chrome OS userspace and is
+responsible for managing the lifetime of all VMs.  It exposes a [DBus
+API](https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/vm_concierge/)
+for starting and stopping VMs.
+
+When `vm_concierge` receives a request to start a VM it allocates various
+resources for that VM (IPv4 address, vsock context id, etc) from a shared pool
+of resources.  It then launches a new instance of `crosvm` to actually run the
+VM.
+
+Once the VM has started up `vm_concierge` communicates with the `maitred`
+instance inside the VM to finish setting it up.  This includes configuring the
+network and mounting disk images.
 
 ## maitred
 
@@ -18,7 +27,7 @@ hypervisor (`crosvm` or `lkvm`) to actually start running the VM.
 the VM instance.  It acts as the init system, starting up system services,
 mounting file systems, and launching the container with the actual application
 that the user wants to run.  It is responsible for shutting down the VM once the
-user's application exits or if requested by a process on the host.
+user's application exits or if requested to by `vm_concierge`.
 
 See [docs/init.md](docs/init.md) for more details on the duties maitred carries
 out as pid 1.
@@ -43,11 +52,11 @@ See [docs/logging.md](docs/logging.md) for more details on log handling.
 
 `crash_collector` is responsible for collecting crash reports of applications
 running inside the VM and forwarding them out to the crash collector service
-provided by `vm_launcher`.  When `maitred` first starts up it configures
+running on the host system.  When `maitred` first starts up it configures
 `/proc/sys/kernel/core_pattern` to start the `crash_collector` program and send
 the core dump over a pipe to that program.  `crash_collector` then parses the
-core dump and converts it to a minidump before sending it out to `vm_launcher`.
-`vm_launcher` passes the report on to `crash-reporter`, which takes care of
+core dump and converts it to a minidump before sending it out to the host.
+The host daemon passes the report on to `crash-reporter`, which takes care of
 uploading it to Google servers.
 
 ## VM <-> host communication
@@ -56,8 +65,6 @@ All communication between `vm_launcher` and the applications inside the VM
 happen over a [vsock](https://lwn.net/Articles/695981/) transport. The actual
 RPC communication uses the [gRPC](http://grpc.io) framework. Every `maitred`
 instance listens on a known port in the vsock namespace (port 8888).
-`vm_launcher` instances allocate a port number via a shared pool and communicate
-that port number to the VM via the linux kernel command line.
 
 See [docs/vsock.md](docs/vsock.md) for more details about vsock.
 
