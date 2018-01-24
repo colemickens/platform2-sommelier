@@ -55,6 +55,12 @@ bool IsValidOptions(const TruncateOptionsProto& options) {
          options.has_length() && options.length() >= 0;
 }
 
+bool IsValidOptions(const WriteFileOptionsProto& options) {
+  return options.has_mount_id() && options.has_file_id() &&
+         options.has_offset() && options.has_length() &&
+         options.offset() >= 0 && options.length() >= 0;
+}
+
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
   return options.directory_path();
 }
@@ -117,6 +123,10 @@ const char* GetMethodName(const CreateFileOptionsProto& unused) {
 
 const char* GetMethodName(const TruncateOptionsProto& unused) {
   return kTruncateMethod;
+}
+
+const char* GetMethodName(const WriteFileOptionsProto& unused) {
+  return kWriteFileMethod;
 }
 
 void SerializeDirEntryVectorToProto(

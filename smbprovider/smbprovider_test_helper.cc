@@ -105,6 +105,18 @@ TruncateOptionsProto CreateTruncateOptionsProto(int32_t mount_id,
   return options;
 }
 
+WriteFileOptionsProto CreateWriteFileOptionsProto(int32_t mount_id,
+                                                  int32_t file_id,
+                                                  int64_t offset,
+                                                  int32_t length) {
+  WriteFileOptionsProto options;
+  options.set_mount_id(mount_id);
+  options.set_file_id(file_id);
+  options.set_offset(offset);
+  options.set_length(length);
+  return options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(path));
 }
@@ -164,6 +176,14 @@ ProtoBlob CreateTruncateOptionsBlob(int32_t mount_id,
                                     int64_t length) {
   return SerializeProtoToBlobAndCheck(
       CreateTruncateOptionsProto(mount_id, file_path, length));
+}
+
+ProtoBlob CreateWriteFileOptionsBlob(int32_t mount_id,
+                                     int32_t file_id,
+                                     int64_t offset,
+                                     int32_t length) {
+  return SerializeProtoToBlobAndCheck(
+      CreateWriteFileOptionsProto(mount_id, file_id, offset, length));
 }
 
 }  // namespace smbprovider

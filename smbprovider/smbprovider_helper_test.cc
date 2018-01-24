@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include <dbus/file_descriptor.h>
 #include <gtest/gtest.h>
 #include <libsmbclient.h>
 
@@ -11,6 +12,8 @@
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider_helper.h"
+#include "smbprovider/smbprovider_test_helper.h"
+#include "smbprovider/temp_file_manager.h"
 
 namespace smbprovider {
 
@@ -18,6 +21,9 @@ class SmbProviderHelperTest : public testing::Test {
  public:
   SmbProviderHelperTest() = default;
   ~SmbProviderHelperTest() override = default;
+
+ protected:
+  TempFileManager temp_file_manager_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderHelperTest);
@@ -201,6 +207,82 @@ TEST_F(SmbProviderHelperTest, IsValidOpenFileFlags) {
   EXPECT_TRUE(IsValidOpenFileFlags(O_WRONLY));
   EXPECT_FALSE(IsValidOpenFileFlags(O_CREAT));
   EXPECT_FALSE(IsValidOpenFileFlags(O_TRUNC));
+}
+
+TEST_F(SmbProviderHelperTest, ReadFromFDErrorOnInvalidFd) {
+  std::vector<uint8_t> buffer;
+  int32_t error;
+
+  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
+      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, 0 /* length */);
+
+  // Create a file descriptor that is invalid.
+  dbus::FileDescriptor invalid_fd;
+  EXPECT_FALSE(invalid_fd.is_valid());
+
+  // Should return an error when passing in an invalid file descriptor.
+  EXPECT_FALSE(ReadFromFD(proto, invalid_fd, &error, &buffer));
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, static_cast<ErrorType>(error));
+}
+
+TEST_F(SmbProviderHelperTest, ReadFromFDFailsWithLengthLargerThanData) {
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Send in options with length larger than the data.
+  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
+      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size() + 1);
+  int32_t error;
+
+  // Ensure that the fd created is valid.
+  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
+  fd.CheckValidity();
+  EXPECT_TRUE(fd.is_valid());
+
+  // Should fail since it can't read that much data.
+  std::vector<uint8_t> buffer;
+  EXPECT_FALSE(ReadFromFD(proto, fd, &error, &buffer));
+  EXPECT_EQ(ERROR_IO, static_cast<ErrorType>(error));
+}
+
+TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithLengthSmallerThanData) {
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Send in options with length smaller than the data.
+  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
+      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size() - 1);
+  int32_t error;
+
+  // Ensure that the fd created is valid.
+  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
+  fd.CheckValidity();
+  EXPECT_TRUE(fd.is_valid());
+
+  // Should be OK.
+  std::vector<uint8_t> buffer;
+  EXPECT_TRUE(ReadFromFD(proto, fd, &error, &buffer));
+
+  // Should be equal to the truncated data.
+  const std::vector<uint8_t> expected = {0, 1, 2};
+  EXPECT_EQ(expected, buffer);
+}
+
+TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithExactSize) {
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Send in options with length equal to the data.
+  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
+      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size());
+  int32_t error;
+
+  // Ensure that the fd created is valid.
+  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
+  fd.CheckValidity();
+  EXPECT_TRUE(fd.is_valid());
+
+  // Should be OK.
+  std::vector<uint8_t> buffer;
+  EXPECT_TRUE(ReadFromFD(proto, fd, &error, &buffer));
+  EXPECT_EQ(data, buffer);
 }
 
 }  // namespace smbprovider

@@ -159,6 +159,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);
 
+  // Helper method to write data from a |buffer| into a file specified in
+  // |options|. Returns true on success, and sets |error_code| on failure.
+  bool WriteFileFromBuffer(const WriteFileOptionsProto& options,
+                           const std::vector<uint8_t>& buffer,
+                           int32_t* error_code);
+
   // Opens a file located at |full_path| with permissions based on the protobuf.
   // |file_id| is the file handle for the opened file, and error will be set on
   // failure. |options| is used for logging purposes. GetOpenFilePermissions

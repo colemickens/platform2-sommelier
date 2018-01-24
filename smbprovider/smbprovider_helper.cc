@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include <base/bits.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_piece.h>
 #include <dbus/file_descriptor.h>
 #include <libsmbclient.h>
@@ -162,6 +163,28 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
 
 bool IsValidOpenFileFlags(int32_t flags) {
   return flags == O_RDONLY || flags == O_RDWR || flags == O_WRONLY;
+}
+
+bool ReadFromFD(const WriteFileOptionsProto& options,
+                const dbus::FileDescriptor& fd,
+                int32_t* error,
+                std::vector<uint8_t>* buffer) {
+  DCHECK(buffer);
+  DCHECK(error);
+
+  if (!fd.is_valid()) {
+    LogAndSetError(options, ERROR_DBUS_PARSE_FAILED, error);
+    return false;
+  }
+
+  buffer->resize(options.length());
+  if (!base::ReadFromFD(fd.value(), reinterpret_cast<char*>(buffer->data()),
+                        buffer->size())) {
+    LogAndSetError(options, ERROR_IO, error);
+    return false;
+  }
+
+  return true;
 }
 
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {

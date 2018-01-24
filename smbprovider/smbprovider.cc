@@ -475,6 +475,20 @@ bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
   return true;
 }
 
+bool SmbProvider::WriteFileFromBuffer(const WriteFileOptionsProto& options,
+                                      const std::vector<uint8_t>& buffer,
+                                      int32_t* error_code) {
+  DCHECK(error_code);
+
+  int32_t result = samba_interface_->WriteFile(options.file_id(), buffer.data(),
+                                               buffer.size());
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+  return true;
+}
+
 template <typename Proto>
 bool SmbProvider::OpenFile(const Proto& options,
                            const std::string& full_path,

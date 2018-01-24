@@ -94,6 +94,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   TruncateOptionsProto truncate_proto = CreateTruncateOptionsProto(
       3 /* mount_id */, "smb://testShare/dir1/pic.png", 0 /* length */);
   EXPECT_TRUE(IsValidOptions(truncate_proto));
+
+  WriteFileOptionsProto write_file_proto = CreateWriteFileOptionsProto(
+      3 /* mount_id */, 4 /* file_id */, 0 /* offset */, 0 /* length */);
+  EXPECT_TRUE(IsValidOptions(write_file_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -127,6 +131,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   TruncateOptionsProto truncate_proto_blank;
   EXPECT_FALSE(IsValidOptions(truncate_proto_blank));
+
+  WriteFileOptionsProto write_file_proto_blank;
+  EXPECT_FALSE(IsValidOptions(write_file_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -153,6 +160,23 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsChecksTruncateLength) {
   TruncateOptionsProto truncate_proto_bad_length = CreateTruncateOptionsProto(
       3 /* mount_id */, "smb://testShare/dir1/pic.png", -10 /* length */);
   EXPECT_FALSE(IsValidOptions(truncate_proto_bad_length));
+}
+
+// IsValidOptions checks offset and length ranges for WriteFileOptionsProto.
+TEST_F(SmbProviderProtoTest, IsValidOptionsChecksWriteFileRanges) {
+  WriteFileOptionsProto write_file_proto = CreateWriteFileOptionsProto(
+      3 /* mount_id */, 4 /* file_id */, 0 /* offset */, 0 /* length */);
+  EXPECT_TRUE(IsValidOptions(write_file_proto));
+
+  WriteFileOptionsProto write_file_proto_bad_offset =
+      CreateWriteFileOptionsProto(3 /* mount_id */, 4 /* file_id */,
+                                  -1 /* offset */, 0 /* length */);
+  EXPECT_FALSE(IsValidOptions(write_file_proto_bad_offset));
+
+  WriteFileOptionsProto write_file_proto_bad_length =
+      CreateWriteFileOptionsProto(3 /* mount_id */, 4 /* file_id */,
+                                  0 /* offset */, -1 /* length */);
+  EXPECT_FALSE(IsValidOptions(write_file_proto_bad_length));
 }
 
 // GetEntryPath gets the correct part of corresponding protos.
@@ -192,6 +216,7 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kDeleteEntryMethod, DeleteEntryOptionsProto());
   CheckMethodName(kReadFileMethod, ReadFileOptionsProto());
   CheckMethodName(kCreateFileMethod, CreateFileOptionsProto());
+  CheckMethodName(kWriteFileMethod, WriteFileOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.
