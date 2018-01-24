@@ -203,5 +203,28 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="WriteFile">
+      <tp:docstring>
+        Reads data from a temporary file and writes the data into the samba file with the specified
+        handler.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized WriteFileOptionsProto protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="temp_fd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor of the temporary file that contains the data to be written.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">\
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
   </interface>
 </node>
