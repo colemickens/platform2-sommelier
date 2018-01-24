@@ -31,42 +31,6 @@ void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
   DCHECK(dbus_fd->is_valid());
 }
 
-// Template specializations to extract the entry path from the various protos
-// even when the fields have different names.
-template <typename Proto>
-std::string GetEntryPath(const Proto& options) {
-  // Each new Proto type that uses ParseProtoAndPath must add a specialization
-  // below that extracts the field from the proto that represents the path.
-  //
-  // This will only cause a compile error when a specialization is not defined.
-  options.you_must_define_a_specialization_for_GetEntryPath();
-}
-
-template <>
-std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
-  return options.directory_path();
-}
-
-template <>
-std::string GetEntryPath(const GetMetadataEntryOptionsProto& options) {
-  return options.entry_path();
-}
-
-template <>
-std::string GetEntryPath(const OpenFileOptionsProto& options) {
-  return options.file_path();
-}
-
-template <>
-std::string GetEntryPath(const DeleteEntryOptionsProto& options) {
-  return options.entry_path();
-}
-
-template <>
-std::string GetEntryPath(const CreateFileOptionsProto& options) {
-  return options.file_path();
-}
-
 // Template specializations to map a method name to it's Proto argument.
 template <typename Proto>
 const char* GetMethodName(const Proto& unused) {

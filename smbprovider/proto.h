@@ -39,6 +39,13 @@ bool IsValidOptions(const DeleteEntryOptionsProto& options);
 bool IsValidOptions(const ReadFileOptionsProto& options);
 bool IsValidOptions(const CreateFileOptionsProto& options);
 
+// Helper method to get the entry path from a proto.
+std::string GetEntryPath(const ReadDirectoryOptionsProto& options);
+std::string GetEntryPath(const GetMetadataEntryOptionsProto& options);
+std::string GetEntryPath(const OpenFileOptionsProto& options);
+std::string GetEntryPath(const DeleteEntryOptionsProto& options);
+std::string GetEntryPath(const CreateFileOptionsProto& options);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_PROTO_H_

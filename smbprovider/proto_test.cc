@@ -120,4 +120,30 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsChecksReadFileRanges) {
   EXPECT_FALSE(IsValidOptions(read_file_proto_bad_length));
 }
 
+// GetEntryPath gets the correct part of corresponding protos.
+TEST_F(SmbProviderProtoTest, GetEntryPath) {
+  const std::string expected_dir_path = "smb://testShare/dir1";
+  const std::string expected_file_path = "smb://testShare/dir1/pic.png";
+
+  ReadDirectoryOptionsProto read_directory_proto =
+      CreateReadDirectoryOptionsProto(3 /* mount_id */, expected_dir_path);
+  EXPECT_EQ(expected_dir_path, GetEntryPath(read_directory_proto));
+
+  GetMetadataEntryOptionsProto get_metadata_proto =
+      CreateGetMetadataOptionsProto(3 /* mount_id */, expected_file_path);
+  EXPECT_EQ(expected_file_path, GetEntryPath(get_metadata_proto));
+
+  OpenFileOptionsProto open_file_proto = CreateOpenFileOptionsProto(
+      3 /* mount_id */, expected_file_path, false /* writeable */);
+  EXPECT_EQ(expected_file_path, GetEntryPath(open_file_proto));
+
+  DeleteEntryOptionsProto delete_entry_proto = CreateDeleteEntryOptionsProto(
+      3 /* mount_id */, expected_file_path, false /* recursive */);
+  EXPECT_EQ(expected_file_path, GetEntryPath(delete_entry_proto));
+
+  CreateFileOptionsProto create_file_proto =
+      CreateCreateFileOptionsProto(3 /* mount_id */, expected_file_path);
+  EXPECT_EQ(expected_file_path, GetEntryPath(create_file_proto));
+}
+
 }  // namespace smbprovider

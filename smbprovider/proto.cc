@@ -48,4 +48,24 @@ bool IsValidOptions(const CreateFileOptionsProto& options) {
   return options.has_mount_id() && options.has_file_path();
 }
 
+std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
+  return options.directory_path();
+}
+
+std::string GetEntryPath(const GetMetadataEntryOptionsProto& options) {
+  return options.entry_path();
+}
+
+std::string GetEntryPath(const OpenFileOptionsProto& options) {
+  return options.file_path();
+}
+
+std::string GetEntryPath(const DeleteEntryOptionsProto& options) {
+  return options.entry_path();
+}
+
+std::string GetEntryPath(const CreateFileOptionsProto& options) {
+  return options.file_path();
+}
+
 }  // namespace smbprovider
