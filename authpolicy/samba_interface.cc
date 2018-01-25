@@ -41,7 +41,7 @@ const char kSmbConfData[] =
     "\tstate directory = %s\n"
     "\tprivate directory = %s\n"
     "\tkerberos method = secrets and keytab\n"
-    "\tkerberos encryption types = strong\n"
+    "\tkerberos encryption types = %s\n"
     "\tclient signing = mandatory\n"
     "\tclient min protocol = SMB2\n"
     // TODO(ljusten): Remove this line once crbug.com/662440 is resolved.
@@ -152,6 +152,11 @@ const char kKeyClientSiteName[] = "Client Site Name";
 const char kKeyKdcServer[] = "KDC server";
 const char kKeyLdapServer[] = "LDAP server";
 const char kKeyLdapServerName[] = "LDAP server name";
+
+// Kerberos encryption types strings for smb.conf.
+constexpr char kEncTypesAll[] = "all";
+constexpr char kEncTypesStrong[] = "strong";
+constexpr char kEncTypesLegacy[] = "legacy";
 
 // Maximum time that logging through SetDefaultLogLevel() should stay enabled.
 // The method is called through the authpolicy_debug crosh command. The time is
@@ -306,6 +311,19 @@ ErrorType ParsePolicyData(const std::string& gpo_policy_data_blob,
   return ERROR_NONE;
 }
 
+// Returns the string representation of |encryption_types| for smb.conf.
+const char* GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
+  switch (encryption_types) {
+    case ENC_TYPES_ALL:
+      return kEncTypesAll;
+    case ENC_TYPES_STRONG:
+      return kEncTypesStrong;
+    case ENC_TYPES_LEGACY:
+      return kEncTypesLegacy;
+  }
+  CHECK(false);
+}
+
 }  // namespace
 
 SambaInterface::SambaInterface(
@@ -410,9 +428,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
 
   // We technically don't have to be in joined state, but check it anyway,
   // because the device should always be joined during auth.
-  ErrorType error = CheckDeviceJoined();
-  if (error != ERROR_NONE)
-    return error;
+  if (!IsDeviceJoined())
+    return ERROR_NOT_JOINED;
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, user_realm, normalized_upn;
@@ -423,7 +440,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   SetUserRealm(user_realm);
 
   // Update smb.conf, IPs, server names etc. for the user account.
-  error = UpdateAccountData(&user_account_);
+  ErrorType error = UpdateAccountData(&user_account_);
   if (error != ERROR_NONE)
     return error;
 
@@ -478,9 +495,8 @@ ErrorType SambaInterface::GetUserStatus(
 
   // We technically don't have to be in joined state, but check it anyway,
   // because the device should always be joined during getting status.
-  ErrorType error = CheckDeviceJoined();
-  if (error != ERROR_NONE)
-    return error;
+  if (!IsDeviceJoined())
+    return ERROR_NOT_JOINED;
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, user_realm, normalized_upn;
@@ -493,7 +509,7 @@ ErrorType SambaInterface::GetUserStatus(
   // Determine the status of the TGT.
   ActiveDirectoryUserStatus::TgtStatus tgt_status =
       ActiveDirectoryUserStatus::TGT_VALID;
-  error = GetUserTgtStatus(&tgt_status);
+  ErrorType error = GetUserTgtStatus(&tgt_status);
   if (error != ERROR_NONE)
     return error;
 
@@ -542,9 +558,15 @@ ErrorType SambaInterface::JoinMachine(
     const std::string& machine_domain,
     const std::vector<std::string>& machine_ou,
     const std::string& user_principal_name,
+    KerberosEncryptionTypes encryption_types,
     int password_fd,
     std::string* joined_domain) {
   ReloadDebugFlags();
+
+  // Prevent joining a second time for security reasons (a hacked Chrome might
+  // call this).
+  if (IsDeviceJoined())
+    return ERROR_ALREADY_JOINED;
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, user_realm, normalized_upn;
@@ -576,6 +598,10 @@ ErrorType SambaInterface::JoinMachine(
   device_account_.netbios_name = base::ToUpperASCII(machine_name);
   device_account_.user_name = device_account_.netbios_name + "$";
   device_account_.realm = join_realm;
+
+  // Note: Encryption types stay valid through the initial device policy fetch,
+  // which, if it succeeds, resets or updates the value.
+  encryption_types_ = encryption_types;
 
   // Update smb.conf, IPs, server names etc. for the device account.
   ErrorType error = UpdateAccountData(&device_account_);
@@ -700,12 +726,11 @@ ErrorType SambaInterface::FetchDeviceGpos(
   ReloadDebugFlags();
 
   // Check if the device is domain joined.
-  ErrorType error = CheckDeviceJoined();
-  if (error != ERROR_NONE)
-    return error;
+  if (!IsDeviceJoined())
+    return ERROR_NOT_JOINED;
 
   // Update smb.conf, IPs, server names etc for the device account.
-  error = UpdateAccountData(&device_account_);
+  ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
 
@@ -740,8 +765,14 @@ ErrorType SambaInterface::FetchDeviceGpos(
 
   // Store Windows policy.
   CHECK(gpo_policy_data->has_windows_policy());
-  return windows_policy_manager_.UpdateAndSaveToDisk(
+  error = windows_policy_manager_.UpdateAndSaveToDisk(
       base::WrapUnique(gpo_policy_data->release_windows_policy()));
+  if (error != ERROR_NONE)
+    return error;
+
+  // Reset encryption types.
+  OnDevicePolicyChanged(gpo_policy_data->user_or_device_policy());
+  return error;
 }
 
 void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
@@ -943,7 +974,8 @@ ErrorType SambaInterface::WriteSmbConf(const AccountData& account) const {
       account.realm.c_str(), paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
       paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
       paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
-      paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
+      paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str(),
+      GetEncryptionTypesString(encryption_types_));
 
   const base::FilePath smbconf_path(paths_->Get(account.smb_conf_path));
   const int data_size = static_cast<int>(data.size());
@@ -1471,6 +1503,14 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   return ERROR_NONE;
 }
 
+void SambaInterface::OnDevicePolicyChanged(
+    const std::string& device_policy_blob) {
+  // Right now, just reset the encryption type at this point. In the future we
+  // will have device policy for specifying encryption types, which we will get
+  // here from the policy blob.
+  encryption_types_ = ENC_TYPES_STRONG;
+}
+
 void SambaInterface::SetUser(const std::string& account_id) {
   // Don't allow authenticating multiple users. Chrome should prevent that.
   CHECK(!account_id.empty());
@@ -1500,12 +1540,10 @@ void SambaInterface::AnonymizeRealm(const std::string& realm,
     anonymizer_->SetReplacementAllCases(parts[n], placeholder);
 }
 
-ErrorType SambaInterface::CheckDeviceJoined() const {
-  if (device_account_.realm.empty() || device_account_.netbios_name.empty()) {
-    LOG(ERROR) << "Device is not joined. Must call JoinMachine() first.";
-    return ERROR_NOT_JOINED;
-  }
-  return ERROR_NONE;
+bool SambaInterface::IsDeviceJoined() const {
+  DCHECK(device_account_.realm.empty() ^ !device_account_.netbios_name.empty());
+  return !device_account_.realm.empty() &&
+         !device_account_.netbios_name.empty();
 }
 
 void SambaInterface::Reset() {
@@ -1515,6 +1553,7 @@ void SambaInterface::Reset() {
   user_account_ = AccountData(Path::USER_SMB_CONF);
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   retry_machine_kinit_ = false;
+  encryption_types_ = ENC_TYPES_STRONG;
 }
 
 void SambaInterface::LoadFlagsDefaultLevel() {

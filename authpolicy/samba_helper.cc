@@ -81,6 +81,10 @@ constexpr char kDebugParam[] = "--debuglevel";
 constexpr char kCommandParam[] = "--command";
 constexpr char kUserParam[] = "-U";
 
+constexpr char kEncTypesAll[] = "all";
+constexpr char kEncTypesStrong[] = "strong";
+constexpr char kEncTypesLegacy[] = "legacy";
+
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* user_name,
                             std::string* realm,

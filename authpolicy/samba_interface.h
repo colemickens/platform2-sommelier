@@ -91,12 +91,14 @@ class SambaInterface {
   // empty, it is derived from |user_principal_name|. |machine_ou| is a vector
   // of organizational units where the machine is placed into, ordered
   // leaf-to-root. If empty, the machine is placed in the default location (e.g.
-  // Computers OU). On success, |joined_domain| is set to the domain that was
-  // joined.
+  // Computers OU). |encryption_types| specifies the allowed encryption types
+  // for Kerberos authentication. On success, |joined_domain| is set to the
+  // domain that was joined.
   ErrorType JoinMachine(const std::string& machine_name,
                         const std::string& machine_domain,
                         const std::vector<std::string>& machine_ou,
                         const std::string& user_principal_name,
+                        KerberosEncryptionTypes encryption_types,
                         int password_fd,
                         std::string* joined_domain);
 
@@ -150,6 +152,9 @@ class SambaInterface {
 
   // Returns the ticket-granting-ticket manager for the user account.
   TgtManager& GetUserTgtManagerForTesting() { return user_tgt_manager_; }
+
+  // Resets internal state (useful for doing multiple domain joins).
+  void ResetForTesting() { Reset(); }
 
  private:
   // User or device specific information. The user might be logging on to a
@@ -266,6 +271,9 @@ class SambaInterface {
       const char* parser_cmd_string,
       std::string* policy_blob) const;
 
+  // Called whenever new device policy is available.
+  void OnDevicePolicyChanged(const std::string& device_policy_blob);
+
   // Get user or device AccountData. Depends on GpoSource, not on PolicyScope,
   // since that determines what account to download GPOs for.
   const AccountData& GetAccount(GpoSource source) const {
@@ -291,9 +299,8 @@ class SambaInterface {
   // instance, if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
   void AnonymizeRealm(const std::string& realm, const char* placeholder);
 
-  // Returns ERROR_NOT_JOINED if the device is not in a 'joined' state and
-  // ERROR_NONE otherwise.
-  ErrorType CheckDeviceJoined() const;
+  // Returns true if the device is not in a 'joined' state.
+  bool IsDeviceJoined() const;
 
   // Resets internal state to an 'unenrolled' state by wiping configuration and
   // user data.
@@ -349,6 +356,9 @@ class SambaInterface {
   // User and device ticket-granting-ticket managers.
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
+
+  // Encryption types to use for kinit and Samba commands.
+  KerberosEncryptionTypes encryption_types_ = ENC_TYPES_STRONG;
 
   // Manager for interesting Windows policy.
   WindowsPolicyManager windows_policy_manager_;

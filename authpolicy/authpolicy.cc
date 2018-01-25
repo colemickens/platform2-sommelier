@@ -267,6 +267,7 @@ void AuthPolicy::JoinADDomain(
 
     error = samba_.JoinMachine(request.machine_name(), request.machine_domain(),
                                machine_ou, request.user_principal_name(),
+                               request.kerberos_encryption_types(),
                                password_fd.value(), joined_domain);
   }
 

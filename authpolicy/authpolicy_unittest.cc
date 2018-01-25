@@ -87,6 +87,12 @@ constexpr char kRecommendedKey[] = "Recommended";
 // Error message when passing different account IDs to authpolicy.
 const char kMultiUserNotSupported[] = "Multi-user not supported";
 
+struct SmbConf {
+  std::string machine_name;
+  std::string realm;
+  std::string kerberos_encryption_types;
+};
+
 // Checks and casts an integer |error| to the corresponding ErrorType.
 ErrorType CastError(int error) {
   EXPECT_GE(error, 0);
@@ -133,13 +139,13 @@ void MaybeParseProto(int error,
 }
 
 // Reads the smb.conf file at |smb_conf_path| and extracts some values.
-void ReadSmbConf(const std::string& smb_conf_path,
-                 std::string* machine_name,
-                 std::string* realm) {
+void ReadSmbConf(const std::string& smb_conf_path, SmbConf* conf) {
   std::string smb_conf;
   EXPECT_TRUE(base::ReadFileToString(base::FilePath(smb_conf_path), &smb_conf));
-  EXPECT_TRUE(FindToken(smb_conf, '=', "netbios name", machine_name));
-  EXPECT_TRUE(FindToken(smb_conf, '=', "realm", realm));
+  FindToken(smb_conf, '=', "netbios name", &conf->machine_name);
+  EXPECT_TRUE(FindToken(smb_conf, '=', "realm", &conf->realm));
+  EXPECT_TRUE(FindToken(smb_conf, '=', "kerberos encryption types",
+                        &conf->kerberos_encryption_types));
 }
 
 // Helper class that points some paths to convenient locations we can write to.
@@ -800,11 +806,12 @@ TEST_F(AuthPolicyTest, JoinSucceeds) {
   request.set_user_principal_name(kUserPrincipal);
   std::string joined_realm;
   EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
-  std::string machine_name, config_realm;
-  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &machine_name, &config_realm);
-  EXPECT_EQ(base::ToUpperASCII(kMachineName), machine_name);
-  EXPECT_EQ(kUserRealm, config_realm);
+  SmbConf conf;
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
+  EXPECT_EQ(base::ToUpperASCII(kMachineName), conf.machine_name);
+  EXPECT_EQ(kUserRealm, conf.realm);
   EXPECT_EQ(kUserRealm, joined_realm);
+  EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
 }
 
 // Successful domain join with separate machine domain specified.
@@ -815,10 +822,10 @@ TEST_F(AuthPolicyTest, JoinSucceedsWithDifferentDomain) {
   request.set_user_principal_name(kUserPrincipal);
   std::string joined_realm;
   EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
-  std::string machine_name, config_realm;
-  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &machine_name, &config_realm);
-  EXPECT_EQ(base::ToUpperASCII(kMachineName), machine_name);
-  EXPECT_EQ(kMachineRealm, config_realm);
+  SmbConf conf;
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
+  EXPECT_EQ(base::ToUpperASCII(kMachineName), conf.machine_name);
+  EXPECT_EQ(kMachineRealm, conf.realm);
   EXPECT_EQ(kMachineRealm, joined_realm);
 }
 
@@ -835,6 +842,68 @@ TEST_F(AuthPolicyTest, JoinSucceedsWithOrganizationalUnit) {
   // because there's no state for that in authpolicy. The only indicator is the
   // 'createcomputer' parameter to net ads join, but that can only be tested in
   // stub_net, see kExpectOuUserPrincipal.
+}
+
+// Encryption types are written properly to smb.conf.
+TEST_F(AuthPolicyTest, JoinSetsProperEncryptionTypes) {
+  KerberosEncryptionTypes enc_types_list[] = {ENC_TYPES_ALL, ENC_TYPES_STRONG,
+                                              ENC_TYPES_LEGACY};
+
+  for (KerberosEncryptionTypes enc_types : enc_types_list) {
+    JoinDomainRequest request;
+    request.set_machine_name(kMachineName);
+    request.set_user_principal_name(kUserPrincipal);
+    request.set_kerberos_encryption_types(enc_types);
+    std::string joined_realm_unused;
+    EXPECT_EQ(ERROR_NONE,
+              JoinEx(request, MakePasswordFd(), &joined_realm_unused));
+    SmbConf conf;
+    ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
+    switch (enc_types) {
+      case ENC_TYPES_ALL:
+        EXPECT_EQ(kEncTypesAll, conf.kerberos_encryption_types);
+        break;
+      case ENC_TYPES_STRONG:
+        EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
+        break;
+      case ENC_TYPES_LEGACY:
+        EXPECT_EQ(kEncTypesLegacy, conf.kerberos_encryption_types);
+        break;
+    }
+    EXPECT_TRUE(MakeConfigWriteable());
+    samba().ResetForTesting();
+  }
+}
+
+// The encryption types reset to strong after device policy fetch.
+TEST_F(AuthPolicyTest, EncTypeResetsAfterDevicePolicyFetch) {
+  SmbConf conf;
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_user_principal_name(kUserPrincipal);
+  request.set_kerberos_encryption_types(ENC_TYPES_ALL);
+  std::string joined_realm_unused;
+  EXPECT_EQ(ERROR_NONE,
+            JoinEx(request, MakePasswordFd(), &joined_realm_unused));
+  MarkDeviceAsLocked();
+
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
+  EXPECT_EQ(kEncTypesAll, conf.kerberos_encryption_types);
+
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
+  EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
+
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &conf);
+  EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
+
+  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful user authentication.
@@ -1218,6 +1287,13 @@ TEST_F(AuthPolicyTest, JoinFailsInsufficientQuota) {
       Join(kMachineName, kInsufficientQuotaUserPrincipal, MakePasswordFd()));
 }
 
+// A second domain join is blocked.
+TEST_F(AuthPolicyTest, JoinFailsAlreadyJoined) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_ALREADY_JOINED,
+            Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+}
+
 // Successful user policy fetch with empty policy.
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
   validate_user_policy_ = &CheckUserPolicyEmpty;
@@ -1393,6 +1469,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
     EXPECT_TRUE(policy.has_searchsuggestenabled());
   };
   EXPECT_TRUE(MakeConfigWriteable());
+  samba().ResetForTesting();
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
@@ -1421,6 +1498,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
     EXPECT_TRUE(policy.has_searchsuggestenabled());
   };
   EXPECT_TRUE(MakeConfigWriteable());
+  samba().ResetForTesting();
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);

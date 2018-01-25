@@ -29,6 +29,11 @@ extern const char kDebugParam[];
 extern const char kCommandParam[];
 extern const char kUserParam[];
 
+// Kerberos encryption types strings for the Kerberos configuration.
+extern const char kEncTypesAll[];
+extern const char kEncTypesStrong[];
+extern const char kEncTypesLegacy[];
+
 // Parses user_name@some.realm into its components and normalizes (uppercases)
 // the part behind the @. |user_name| is 'user_name', |realm| is |SOME.REALM|
 // and |normalized_user_principal_name| is user_name@SOME.REALM.
