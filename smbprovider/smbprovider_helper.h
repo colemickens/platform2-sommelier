@@ -9,9 +9,17 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <libsmbclient.h>
 
+#include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+
+namespace dbus {
+
+class FileDescriptor;
+
+}  // namespace dbus
 
 namespace smbprovider {
 
@@ -56,6 +64,47 @@ bool IsDirectory(const struct stat& stat_info);
 
 // Helper method to detemine whether a stat struct represents a File.
 bool IsFile(const struct stat& stat_info);
+
+// Helper method to get a valid DBus FileDescriptor |dbus_fd| from a scoped
+// file descriptor |fd|.
+void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd);
+void LogAndSetError(const char* operation_name,
+                    int32_t mount_id,
+                    ErrorType error_received,
+                    int32_t* error_code);
+
+// Logs error and sets |error_code|.
+template <typename Proto>
+void LogAndSetError(Proto options,
+                    ErrorType error_received,
+                    int32_t* error_code) {
+  LogAndSetError(GetMethodName(options), options.mount_id(), error_received,
+                 error_code);
+}
+
+void LogAndSetDBusParseError(const char* operation_name, int32_t* error_code);
+
+template <typename Proto>
+bool ParseOptionsProto(const ProtoBlob& blob,
+                       Proto* options,
+                       int32_t* error_code) {
+  bool is_valid = options->ParseFromArray(blob.data(), blob.size()) &&
+                  IsValidOptions(*options);
+  if (!is_valid) {
+    LogAndSetDBusParseError(GetMethodName(*options), error_code);
+  }
+
+  return is_valid;
+}
+
+// Helper method to get |DirectoryEntryProto| from a struct stat. Returns
+// ERROR_OK on success and ERROR_FAILED otherwise.
+int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
+                                       const struct stat& stat_info,
+                                       ProtoBlob* proto_blob);
+
+// Gets the correct permissions flag for |options|.
+int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
 
 }  // namespace smbprovider
 

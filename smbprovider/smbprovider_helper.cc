@@ -8,6 +8,7 @@
 
 #include <base/bits.h>
 #include <base/strings/string_piece.h>
+#include <dbus/file_descriptor.h>
 #include <libsmbclient.h>
 
 #include "smbprovider/constants.h"
@@ -121,6 +122,48 @@ bool IsDirectory(const struct stat& stat_info) {
 
 bool IsFile(const struct stat& stat_info) {
   return S_ISREG(stat_info.st_mode);
+}
+
+void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
+  DCHECK(dbus_fd);
+  DCHECK(fd);
+  DCHECK(fd->is_valid());
+  dbus_fd->PutValue(fd->release());
+  dbus_fd->CheckValidity();
+  DCHECK(dbus_fd->is_valid());
+}
+
+void LogAndSetError(const char* operation_name,
+                    int32_t mount_id,
+                    ErrorType error_received,
+                    int32_t* error_code) {
+  LOG(ERROR) << "Error performing " << operation_name
+             << " from mount id: " << mount_id << ": " << error_received;
+  *error_code = static_cast<int32_t>(error_received);
+}
+
+void LogAndSetDBusParseError(const char* operation_name, int32_t* error_code) {
+  LogAndSetError(operation_name, -1, ERROR_DBUS_PARSE_FAILED, error_code);
+}
+
+int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
+                                       const struct stat& stat_info,
+                                       ProtoBlob* proto_blob) {
+  DCHECK(proto_blob);
+  bool is_directory = IsDirectory(stat_info);
+  int64_t size = is_directory ? 0 : stat_info.st_size;
+  const base::FilePath path(full_path);
+
+  DirectoryEntryProto entry;
+  entry.set_is_directory(is_directory);
+  entry.set_name(path.BaseName().value());
+  entry.set_size(size);
+  entry.set_last_modified_time(stat_info.st_mtime);
+  return static_cast<int32_t>(SerializeProtoToBlob(entry, proto_blob));
+}
+
+int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
+  return options.writeable() ? O_RDWR : O_RDONLY;
 }
 
 }  // namespace smbprovider
