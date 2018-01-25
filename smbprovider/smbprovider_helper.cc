@@ -12,23 +12,21 @@
 #include <libsmbclient.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/proto.h"
 
 namespace smbprovider {
 
 void AddEntryIfValid(const smbc_dirent& dirent,
-                     DirectoryEntryListProto* directory_entries) {
+                     std::vector<DirectoryEntry>* directory_entries) {
   const std::string name(dirent.name);
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
   if (IsSelfOrParentDir(name) || !ShouldProcessEntryType(dirent.smbc_type)) {
     return;
   }
-  DirectoryEntryProto* entry = directory_entries->add_entries();
   bool is_directory = dirent.smbc_type == SMBC_DIR;
-  entry->set_is_directory(is_directory);
-  entry->set_name(name);
-  entry->set_size(-1);
-  entry->set_last_modified_time(-1);
+  directory_entries->emplace_back(is_directory, name, -1 /* size */,
+                                  -1 /* last_modified_time */);
 }
 
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp) {

@@ -57,6 +57,33 @@ const char* GetMethodName(const DeleteEntryOptionsProto& unused);
 const char* GetMethodName(const ReadFileOptionsProto& unused);
 const char* GetMethodName(const CreateFileOptionsProto& unused);
 
+// Struct mapping to DirectoryEntryProto.
+struct DirectoryEntry {
+  bool is_directory;
+  std::string name;
+  int64_t size;
+  int64_t last_modified_time;
+
+  DirectoryEntry(bool is_directory,
+                 const std::string& name,
+                 int64_t size,
+                 int64_t last_modified_time)
+      : is_directory(is_directory),
+        name(name),
+        size(size),
+        last_modified_time(last_modified_time) {}
+};
+
+// Converts a vector of DirectoryEnts into a DirectoryEntryListProto.
+void SerializeDirEntryVectorToProto(
+    const std::vector<DirectoryEntry>& entries_vector,
+    DirectoryEntryListProto* entries_proto);
+
+void AddDirectoryEntry(const DirectoryEntry& entry,
+                       DirectoryEntryListProto* proto);
+
+void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_PROTO_H_

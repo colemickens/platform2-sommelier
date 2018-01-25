@@ -82,6 +82,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // called on a directory that is not open. Returns 0 on success, and errno
   // on failure. |entries| will be empty in case of failure.
   int32_t GetDirectoryEntries(int32_t dir_id, DirectoryEntryListProto* entries);
+  int32_t GetDirectoryEntriesVector(int32_t dir_id,
+                                    std::vector<DirectoryEntry>* entries);
 
   // Looks up the |mount_id| and appends |entry_path| to the root share path
   // and sets |full_path| to the result. |full_path| will be unmodified on

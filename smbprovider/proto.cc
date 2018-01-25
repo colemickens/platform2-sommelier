@@ -106,4 +106,27 @@ const char* GetMethodName(const CreateFileOptionsProto& unused) {
   return kCreateFileMethod;
 }
 
+void SerializeDirEntryVectorToProto(
+    const std::vector<DirectoryEntry>& entries_vector,
+    DirectoryEntryListProto* entries_proto) {
+  for (const auto& e : entries_vector) {
+    AddDirectoryEntry(e, entries_proto);
+  }
+}
+
+void AddDirectoryEntry(const DirectoryEntry& entry,
+                       DirectoryEntryListProto* proto) {
+  DCHECK(proto);
+  DirectoryEntryProto* new_entry_proto = proto->add_entries();
+  ConvertToProto(entry, new_entry_proto);
+}
+
+void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto) {
+  DCHECK(proto);
+  proto->set_is_directory(entry.is_directory);
+  proto->set_name(entry.name);
+  proto->set_size(entry.size);
+  proto->set_last_modified_time(entry.last_modified_time);
+}
+
 }  // namespace smbprovider

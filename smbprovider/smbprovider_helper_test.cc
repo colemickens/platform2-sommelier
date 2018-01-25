@@ -8,6 +8,7 @@
 #include <libsmbclient.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider_helper.h"
 
@@ -58,13 +59,13 @@ TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry(".", SMBC_DIR, dir_buf.size(), dirent));
 
-  DirectoryEntryListProto entries;
+  std::vector<DirectoryEntry> entries;
   AddEntryIfValid(*dirent, &entries);
-  EXPECT_EQ(0, entries.entries_size());
+  EXPECT_EQ(0, entries.size());
 
   EXPECT_TRUE(WriteEntry("..", SMBC_DIR, dir_buf.size(), dirent));
   AddEntryIfValid(*dirent, &entries);
-  EXPECT_EQ(0, entries.entries_size());
+  EXPECT_EQ(0, entries.size());
 }
 
 // Incorrect smbc_type should not be added to DirectoryEntryListProto.
@@ -73,9 +74,9 @@ TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   EXPECT_TRUE(WriteEntry("printer1", SMBC_PRINTER_SHARE, kBufferSize, dirent));
 
-  DirectoryEntryListProto entries;
+  std::vector<DirectoryEntry> entries;
   AddEntryIfValid(*dirent, &entries);
-  EXPECT_EQ(0, entries.entries_size());
+  EXPECT_EQ(0, entries.size());
 }
 
 // AddEntryIfValid should properly add proper file and directory entries.
@@ -83,18 +84,18 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
   std::vector<uint8_t> dir_buf(kBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
 
-  DirectoryEntryListProto entries;
+  std::vector<DirectoryEntry> entries;
   const std::string file_name("dog.jpg");
   uint32_t file_type = SMBC_FILE;
   EXPECT_TRUE(WriteEntry(file_name, file_type, kBufferSize, dirent));
 
   AddEntryIfValid(*dirent, &entries);
-  EXPECT_EQ(1, entries.entries_size());
-  const DirectoryEntryProto& file_entry = entries.entries(0);
-  EXPECT_FALSE(file_entry.is_directory());
-  EXPECT_EQ(file_name, file_entry.name());
-  EXPECT_EQ(-1, file_entry.size());
-  EXPECT_EQ(-1, file_entry.last_modified_time());
+  EXPECT_EQ(1, entries.size());
+  const DirectoryEntry& file_entry = entries[0];
+  EXPECT_FALSE(file_entry.is_directory);
+  EXPECT_EQ(file_name, file_entry.name);
+  EXPECT_EQ(-1, file_entry.size);
+  EXPECT_EQ(-1, file_entry.last_modified_time);
 
   AdvanceDirEnt(dirent);
   const std::string dir_name("dogs");
@@ -102,12 +103,12 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
   EXPECT_TRUE(WriteEntry(dir_name, dir_type, kBufferSize, dirent));
 
   AddEntryIfValid(*dirent, &entries);
-  EXPECT_EQ(2, entries.entries_size());
-  const DirectoryEntryProto& dir_entry = entries.entries(1);
-  EXPECT_TRUE(dir_entry.is_directory());
-  EXPECT_EQ(dir_name, dir_entry.name());
-  EXPECT_EQ(-1, dir_entry.size());
-  EXPECT_EQ(-1, dir_entry.last_modified_time());
+  EXPECT_EQ(2, entries.size());
+  const DirectoryEntry& dir_entry = entries[1];
+  EXPECT_TRUE(dir_entry.is_directory);
+  EXPECT_EQ(dir_name, dir_entry.name);
+  EXPECT_EQ(-1, dir_entry.size);
+  EXPECT_EQ(-1, dir_entry.last_modified_time);
 }
 
 // Tests that AppendPath properly appends with or without the trailing separator

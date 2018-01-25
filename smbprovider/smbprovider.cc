@@ -256,6 +256,17 @@ int32_t SmbProvider::Truncate(const ProtoBlob& options_blob) {
 // failure.
 int32_t SmbProvider::GetDirectoryEntries(int32_t dir_id,
                                          DirectoryEntryListProto* entries) {
+  std::vector<DirectoryEntry> entries_vector;
+  int32_t result = GetDirectoryEntriesVector(dir_id, &entries_vector);
+  if (result != 0) {
+    return result;
+  }
+  SerializeDirEntryVectorToProto(entries_vector, entries);
+  return 0;
+}
+
+int32_t SmbProvider::GetDirectoryEntriesVector(
+    int32_t dir_id, std::vector<DirectoryEntry>* entries) {
   DCHECK(entries);
   int32_t bytes_read = 0;
   do {

@@ -21,6 +21,14 @@ void CheckMethodName(const char* name, const Proto& proto) {
   EXPECT_EQ(0, strcmp(name, GetMethodName(proto)));
 }
 
+void CheckDirectoryEntryAndDirectoryEntryProtoAreEqual(
+    const DirectoryEntry& entry, const DirectoryEntryProto& proto) {
+  EXPECT_EQ(entry.is_directory, proto.is_directory());
+  EXPECT_EQ(entry.name, proto.name());
+  EXPECT_EQ(entry.size, proto.size());
+  EXPECT_EQ(entry.last_modified_time, proto.last_modified_time());
+}
+
 }  // namespace
 
 class SmbProviderProtoTest : public testing::Test {
@@ -166,6 +174,67 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kDeleteEntryMethod, DeleteEntryOptionsProto());
   CheckMethodName(kReadFileMethod, ReadFileOptionsProto());
   CheckMethodName(kCreateFileMethod, CreateFileOptionsProto());
+}
+
+// DirectoryEntryCtor initializes a DirectoryEntry correctly.
+TEST_F(SmbProviderProtoTest, DirectoryEntry) {
+  const bool is_dir = false;
+  const std::string name = "testentry.jpg";
+  int64_t size = 23;
+  int64_t last_modified_time = 456;
+  DirectoryEntry entry(is_dir, name, size, last_modified_time);
+
+  EXPECT_EQ(is_dir, entry.is_directory);
+  EXPECT_EQ(name, entry.name);
+  EXPECT_EQ(size, entry.size);
+  EXPECT_EQ(last_modified_time, entry.last_modified_time);
+}
+
+// ConvertToProto correctly converts a DirectoryEntry to a DirectoryEntryProto.
+TEST_F(SmbProviderProtoTest, ConvertToProto) {
+  DirectoryEntry entry(false /* is_directory */, "testentry.jpg", 23 /* size */,
+                       456 /* last_modified_time */);
+
+  DirectoryEntryProto proto;
+  ConvertToProto(entry, &proto);
+
+  CheckDirectoryEntryAndDirectoryEntryProtoAreEqual(entry, proto);
+}
+
+// AddDirectoryEntry adds a DirectoryEntry to a DirectoryEntryListProto as a
+// DirectoryEntryProto.
+TEST_F(SmbProviderProtoTest, AddDirectoryEntry) {
+  DirectoryEntry entry(false /* is_directory */, "testentry.jpg", 23 /* size */,
+                       456 /* last_modified_time */);
+
+  DirectoryEntryListProto entries_proto;
+
+  EXPECT_EQ(0, entries_proto.entries_size());
+  AddDirectoryEntry(entry, &entries_proto);
+  EXPECT_EQ(1, entries_proto.entries_size());
+
+  DirectoryEntryProto entry_proto = entries_proto.entries(0);
+  CheckDirectoryEntryAndDirectoryEntryProtoAreEqual(entry, entry_proto);
+}
+
+// SerializeDirEntryVectorToProto correctly serializes a vector of dirents.
+TEST_F(SmbProviderProtoTest, SerializeDirEntryVectorToProto) {
+  std::vector<DirectoryEntry> entries;
+  DirectoryEntry entry1(false /* is_directory */, "testentry.jpg",
+                        23 /* size */, 456 /* last_modified_time */);
+  DirectoryEntry entry2(true /* is_directory */, "stuff", 5 /* size */,
+                        789 /* last_modified_time */);
+  entries.push_back(entry1);
+  entries.push_back(entry2);
+
+  DirectoryEntryListProto entries_proto;
+  SerializeDirEntryVectorToProto(entries, &entries_proto);
+
+  EXPECT_EQ(2, entries_proto.entries_size());
+  CheckDirectoryEntryAndDirectoryEntryProtoAreEqual(entry1,
+                                                    entries_proto.entries(0));
+  CheckDirectoryEntryAndDirectoryEntryProtoAreEqual(entry2,
+                                                    entries_proto.entries(1));
 }
 
 }  // namespace smbprovider
