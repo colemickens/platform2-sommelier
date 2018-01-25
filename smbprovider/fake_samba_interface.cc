@@ -492,4 +492,13 @@ void FakeSambaInterface::SetTruncateError(int32_t error) {
   truncate_error_ = error;
 }
 
+bool FakeSambaInterface::IsFileDataEqual(
+    const std::string& path, const std::vector<uint8_t>& expected) const {
+  FakeFile* file = GetFile(path);
+  if (!file || !file->has_data) {
+    return false;
+  }
+  return expected == file->data;
+}
+
 }  // namespace smbprovider

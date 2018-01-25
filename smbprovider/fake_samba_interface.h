@@ -93,6 +93,11 @@ class FakeSambaInterface : public SambaInterface {
   // Gets the current file size of a file in |path|.
   size_t GetFileSize(const std::string& path) const;
 
+  // Checks if a files data is equal to the expected value. Returns true if
+  // equal.
+  bool IsFileDataEqual(const std::string& path,
+                       const std::vector<uint8_t>& expected) const;
+
   // Helper method to set the errno CloseFile() should return.
   void SetCloseFileError(int32_t error);
 
