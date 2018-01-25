@@ -138,6 +138,22 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);
 
+  // Opens a file located at |full_path| with permissions based on the protobuf.
+  // |file_id| is the file handle for the opened file, and error will be set on
+  // failure. |options| is used for logging purposes. GetOpenFilePermissions
+  // must be overloaded to new protobufs using this method. Returns true on
+  // success.
+  template <typename Proto>
+  bool OpenFile(const Proto& options,
+                const std::string& full_path,
+                int32_t* error,
+                int32_t* file_id);
+
+  // Closes a file with handle |file_id|. |options| is used for logging
+  // purposes. |error| is set on failure. Returns true on success.
+  template <typename Proto>
+  bool CloseFile(const Proto& options, int32_t file_id, int32_t* error);
+
   // Helper method to seek given a proto |options|.
   // On failure |error_code| will be populated.
   template <typename Proto>

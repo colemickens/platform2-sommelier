@@ -139,6 +139,10 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
   return static_cast<int32_t>(SerializeProtoToBlob(entry, proto_blob));
 }
 
+int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
+  return options.writeable() ? O_RDWR : O_RDONLY;
+}
+
 }  // namespace
 
 SmbProvider::SmbProvider(
@@ -264,10 +268,7 @@ void SmbProvider::OpenFile(const ProtoBlob& options_blob,
     return;
   }
 
-  const int32_t flags = options.writeable() ? O_RDWR : O_RDONLY;
-  int32_t result = samba_interface_->OpenFile(full_path, flags, file_id);
-  if (result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+  if (!OpenFile(options, full_path, error_code, file_id)) {
     *file_id = -1;
     return;
   }
@@ -282,9 +283,7 @@ int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
     return error_code;
   }
 
-  int32_t result = samba_interface_->CloseFile(options.file_id());
-  if (result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(result), &error_code);
+  if (!CloseFile(options, options.file_id(), &error_code)) {
     return error_code;
   }
 
@@ -359,10 +358,7 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
   }
 
   // Close the file handle from CreateFile().
-  int32_t close_result = samba_interface_->CloseFile(file_id);
-  if (close_result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(close_result), &error_code);
-
+  if (!CloseFile(options, file_id, &error_code)) {
     // Attempt to delete the file since file will not be usable.
     int32_t unlink_result = samba_interface_->Unlink(full_path);
     if (unlink_result != 0) {
@@ -538,6 +534,32 @@ bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
 
   GetValidDBusFD(&scoped_fd, temp_fd);
   *error_code = static_cast<int32_t>(ERROR_OK);
+  return true;
+}
+
+template <typename Proto>
+bool SmbProvider::OpenFile(const Proto& options,
+                           const std::string& full_path,
+                           int32_t* error,
+                           int32_t* file_id) {
+  int32_t result = samba_interface_->OpenFile(
+      full_path, GetOpenFilePermissions(options), file_id);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error);
+    return false;
+  }
+  return true;
+}
+
+template <typename Proto>
+bool SmbProvider::CloseFile(const Proto& options,
+                            int32_t file_id,
+                            int32_t* error) {
+  int32_t result = samba_interface_->CloseFile(file_id);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error);
+    return false;
+  }
   return true;
 }
 
