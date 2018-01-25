@@ -530,7 +530,7 @@ class AuthPolicyTest : public testing::Test {
   void FetchAndValidateUserPolicy(const std::string& account_id,
                                   ErrorType expected_error) {
     dbus::MethodCall method_call(kAuthPolicyInterface,
-                                 kAuthPolicyRefreshUserPolicy);
+                                 kRefreshUserPolicyMethod);
     method_call.SetSerial(kDBusSerial);
     store_policy_called_ = false;
     user_policy_validated_ = false;
@@ -563,7 +563,7 @@ class AuthPolicyTest : public testing::Test {
   // validate the contents.
   void FetchAndValidateDevicePolicy(ErrorType expected_error) {
     dbus::MethodCall method_call(kAuthPolicyInterface,
-                                 kAuthPolicyRefreshDevicePolicy);
+                                 kRefreshDevicePolicyMethod);
     method_call.SetSerial(kDBusSerial);
     store_policy_called_ = false;
     user_policy_validated_ = false;
