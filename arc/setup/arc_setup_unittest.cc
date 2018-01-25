@@ -115,7 +115,6 @@ TEST(ArcSetup, TestOnetimeSetupStop) {
   std::unique_ptr<base::Environment> env(base::Environment::Create());
 
   // ArcSetup needs some environment variables.
-  ASSERT_TRUE(env->SetVar("SHARE_FONTS", "1"));
   ASSERT_TRUE(env->SetVar("WRITABLE_MOUNT", "0"));
 
   ArcSetup setup;
@@ -124,10 +123,6 @@ TEST(ArcSetup, TestOnetimeSetupStop) {
   // Do the one-time setup and confirm both loop and non-loop mount points are
   // not empty.
   setup.MountOnOnetimeSetupForTesting();
-  // Check that |mount_points_| has shared fonts.
-  EXPECT_FALSE(
-      static_cast<const MockArcMounter*>(setup.arc_mounter_for_testing())
-          ->mount_points_.empty());
   // Check that |loop_mount_points_| has system and vendor images etc.
   EXPECT_FALSE(
       static_cast<const MockArcMounter*>(setup.arc_mounter_for_testing())

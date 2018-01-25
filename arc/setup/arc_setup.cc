@@ -110,7 +110,6 @@ constexpr char kSdcardRootfsImage[] =
 constexpr char kSharedMountDirectory[] = "/run/arc/shared_mounts";
 constexpr char kSysfsCpu[] = "/sys/devices/system/cpu";
 constexpr char kSysfsTracing[] = "/sys/kernel/debug/tracing";
-constexpr char kSystemFontsDirectoryRelative[] = "system/fonts/chromeos";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
 constexpr char kUsbDevicesDirectory[] = "/dev/bus/usb";
@@ -121,9 +120,6 @@ constexpr char kVendorRootfsDirectory[] =
 // Names for possible binfmt_misc entries.
 constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
                                                  "arm64_dyn", "arm64_exe"};
-
-// Environment variables defined in arc-*.conf.
-constexpr char kEnvVarShareFonts[] = "SHARE_FONTS";
 
 constexpr uid_t kHostRootUid = 0;
 constexpr gid_t kHostRootGid = 0;
@@ -291,8 +287,6 @@ struct ArcPaths {
   const base::FilePath shared_mount_directory{kSharedMountDirectory};
   const base::FilePath sysfs_cpu{kSysfsCpu};
   const base::FilePath sysfs_tracing{kSysfsTracing};
-  const base::FilePath system_fonts_directory_relative{
-      kSystemFontsDirectoryRelative};
   const base::FilePath system_lib_arm_directory_relative{
       kSystemLibArmDirectoryRelative};
   const base::FilePath usb_devices_directory{kUsbDevicesDirectory};
@@ -1485,18 +1479,6 @@ void ArcSetup::MountOnOnetimeSetup() {
       kSystemImage, arc_paths_->android_rootfs_directory,
       MS_NOEXEC | MS_NOSUID | MS_NODEV | writable_flag));
 
-  // If SHARE_FONTS is set, bind-mount Chrome OS font directory into the
-  // container.
-  // TODO(yusukes): Do this in config.json.
-  if (GetBooleanEnvOrDie(arc_paths_->env.get(), kEnvVarShareFonts)) {
-    const base::FilePath chrome_os_font_directory("/usr/share/fonts");
-    const base::FilePath arc_font_directory =
-        arc_paths_->android_rootfs_directory.Append(
-            arc_paths_->system_fonts_directory_relative);
-    EXIT_IF(
-        !arc_mounter_->BindMount(chrome_os_font_directory, arc_font_directory));
-  }
-
   unsigned long kBaseFlags =  // NOLINT(runtime/int)
       writable_flag | MS_NOEXEC | MS_NOSUID;
   EXIT_IF(!arc_mounter_->LoopMount(kVendorImage,
@@ -1521,12 +1503,6 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->sdcard_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->media_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->vendor_rootfs_directory));
-  if (GetBooleanEnvOrDie(arc_paths_->env.get(), kEnvVarShareFonts)) {
-    base::FilePath arc_font_directory =
-        arc_paths_->android_rootfs_directory.Append(
-            arc_paths_->system_fonts_directory_relative);
-    IGNORE_ERRORS(arc_mounter_->Umount(arc_font_directory));
-  }
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
