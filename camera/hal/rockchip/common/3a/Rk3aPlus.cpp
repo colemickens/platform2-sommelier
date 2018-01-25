@@ -204,25 +204,25 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
     }
 
     // num_exposures
-    aiqInputParams->aeInputParams.num_exposures = NUM_EXPOSURES;
+    aiqInputParams->aeParams.num_exposures = NUM_EXPOSURES;
 
     /* frame_use
      *  BEWARE - THIS VALUE WILL NOT WORK WITH AIQ WHICH RUNS PRE-CAPTURE
      *  WITH STILL FRAME_USE, WHILE THE HAL GETS PREVIEW INTENTS DURING PRE-
      *  CAPTURE!!!
      */
-    aiqInputParams->aeInputParams.frame_use = getFrameUseFromIntent(settings);
+    aiqInputParams->aeParams.frame_use = getFrameUseFromIntent(settings);
 
     // ******** manual_limits (defaults)
-    aiqInputParams->aeInputParams.manual_limits->manual_exposure_time_us_min = -1;
-    aiqInputParams->aeInputParams.manual_limits->manual_exposure_time_us_max = -1;
-    aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_min = -1;
-    aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_max = -1;
-    aiqInputParams->aeInputParams.manual_limits->manual_iso_min = -1;
-    aiqInputParams->aeInputParams.manual_limits->manual_iso_max = -1;
+    aiqInputParams->aeParams.manual_limits->manual_exposure_time_us_min = -1;
+    aiqInputParams->aeParams.manual_limits->manual_exposure_time_us_max = -1;
+    aiqInputParams->aeParams.manual_limits->manual_frame_time_us_min = -1;
+    aiqInputParams->aeParams.manual_limits->manual_frame_time_us_max = -1;
+    aiqInputParams->aeParams.manual_limits->manual_iso_min = -1;
+    aiqInputParams->aeParams.manual_limits->manual_iso_max = -1;
 
     // ******** flash_mode is unsupported now, so set ture off to aiq parameter.
-    aiqInputParams->aeInputParams.flash_mode = rk_aiq_flash_mode_off;
+    aiqInputParams->aeParams.flash_mode = rk_aiq_flash_mode_off;
 
     //# METADATA_Control control.mode done
     entry = settings->find(ANDROID_CONTROL_MODE);
@@ -232,21 +232,20 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
         aeInputParams->aaaControls->controlMode = controlMode;
         if (controlMode == ANDROID_CONTROL_MODE_AUTO ||
             controlMode == ANDROID_CONTROL_MODE_USE_SCENE_MODE)
-            aiqInputParams->aeInputParams.operation_mode = rk_aiq_ae_operation_mode_automatic;
+            aiqInputParams->aeParams.operation_mode = rk_aiq_ae_operation_mode_automatic;
         else
-            aiqInputParams->aeInputParams.operation_mode = rk_aiq_ae_operation_mode_off;
-
+            aiqInputParams->aeParams.operation_mode = rk_aiq_ae_operation_mode_off;
     }
 
     // ******** metering_mode
     // TODO: implement the metering mode. For now the metering mode is fixed
     // to whole frame
-    aiqInputParams->aeInputParams.metering_mode = rk_aiq_ae_metering_mode_evaluative;
+    aiqInputParams->aeParams.metering_mode = rk_aiq_ae_metering_mode_evaluative;
 
     // ******** priority_mode
     // TODO: check if there is something that can be mapped to the priority mode
     // maybe NIGHT_PORTRAIT to highlight for example?
-    aiqInputParams->aeInputParams.priority_mode = rk_aiq_ae_priority_mode_normal;
+    aiqInputParams->aeParams.priority_mode = rk_aiq_ae_priority_mode_normal;
 
     // ******** flicker_reduction_mode
     //# METADATA_Control control.aeAntibandingMode done
@@ -257,16 +256,16 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
 
         switch (flickerMode) {
             case ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF:
-                aiqInputParams->aeInputParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_off;
+                aiqInputParams->aeParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_off;
                 break;
             case ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ:
-                aiqInputParams->aeInputParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_50hz;
+                aiqInputParams->aeParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_50hz;
                 break;
             case ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ:
-                aiqInputParams->aeInputParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_60hz;
+                aiqInputParams->aeParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_60hz;
                 break;
             case ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO:
-                aiqInputParams->aeInputParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_auto;
+                aiqInputParams->aeParams.flicker_reduction_mode = rk_aiq_ae_flicker_reduction_auto;
                 break;
             default:
                 LOGE("ERROR @%s: Unknow flicker mode %d", __FUNCTION__, flickerMode);
@@ -274,7 +273,7 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
         }
     }
 
-    *aiqInputParams->aeInputParams.sensor_descriptor = *sensorDescriptor;
+    *aiqInputParams->aeParams.sensor_descriptor = *sensorDescriptor;
 
     CameraWindow *aeRegion = aeInputParams->aeRegion;
     CameraWindow *croppingRegion = aeInputParams->croppingRegion;
@@ -287,10 +286,10 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
             if (croppingRegion->isValid())
                 aeRegion->clip(*croppingRegion);
 
-            aiqInputParams->aeInputParams.window->h_offset = aeRegion->left();
-            aiqInputParams->aeInputParams.window->v_offset = aeRegion->top();
-            aiqInputParams->aeInputParams.window->width = aeRegion->width();
-            aiqInputParams->aeInputParams.window->height = aeRegion->height();
+            aiqInputParams->aeParams.window->h_offset = aeRegion->left();
+            aiqInputParams->aeParams.window->v_offset = aeRegion->top();
+            aiqInputParams->aeParams.window->width = aeRegion->width();
+            aiqInputParams->aeParams.window->height = aeRegion->height();
         }
     }
     // ******** exposure_coordinate
@@ -314,18 +313,18 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
                         timeMicros, mMinExposureTime / 1000);
                     return BAD_VALUE;
                 }
-                aiqInputParams->aeInputParams.manual_exposure_time_us[0] =
+                aiqInputParams->aeParams.manual_exposure_time_us[0] =
                   (int)timeMicros;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                   manual_exposure_time_us_min = (int)timeMicros;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                   manual_exposure_time_us_max = (int)timeMicros;
             } else {
                 // Don't constrain AIQ.
-                aiqInputParams->aeInputParams.manual_exposure_time_us = nullptr;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_exposure_time_us = nullptr;
+                aiqInputParams->aeParams.manual_limits->
                     manual_exposure_time_us_min = -1;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                     manual_exposure_time_us_max = -1;
             }
         }
@@ -341,20 +340,20 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
                         timeMicros, mMaxFrameDuration / 1000);
                     return BAD_VALUE;
                 }
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                   manual_frame_time_us_min = (int)timeMicros;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                   manual_frame_time_us_max = (int)timeMicros;
             } else {
                 // Don't constrain AIQ.
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                     manual_frame_time_us_min = -1;
-                aiqInputParams->aeInputParams.manual_limits->
+                aiqInputParams->aeParams.manual_limits->
                     manual_frame_time_us_max = -1;
             }
         }
         // ******** manual_analog_gain
-        aiqInputParams->aeInputParams.manual_analog_gain = nullptr;
+        aiqInputParams->aeParams.manual_analog_gain = nullptr;
 
         // ******** manual_iso
         //# METADATA_Control sensor.sensitivity done
@@ -362,13 +361,13 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
         if (entry.count == 1) {
             int32_t iso = entry.data.i32[0];
             if (iso >= mMinSensitivity && iso <= mMaxSensitivity) {
-                aiqInputParams->aeInputParams.manual_iso[0] = iso;
-                aiqInputParams->aeInputParams.manual_limits->
-                    manual_iso_min = aiqInputParams->aeInputParams.manual_iso[0];
-                aiqInputParams->aeInputParams.manual_limits->
-                    manual_iso_max = aiqInputParams->aeInputParams.manual_iso[0];
+                aiqInputParams->aeParams.manual_iso[0] = iso;
+                aiqInputParams->aeParams.manual_limits->
+                    manual_iso_min = aiqInputParams->aeParams.manual_iso[0];
+                aiqInputParams->aeParams.manual_limits->
+                    manual_iso_max = aiqInputParams->aeParams.manual_iso[0];
             } else
-                aiqInputParams->aeInputParams.manual_iso = nullptr;
+                aiqInputParams->aeParams.manual_iso = nullptr;
         }
         // fill target fps range, it needs to be proper in results anyway
         entry = settings->find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
@@ -391,13 +390,13 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
             aeCtrl->evCompensation = evCompensation;
 
             float step = PlatformData::getStepEv(mCameraId);
-            aiqInputParams->aeInputParams.ev_shift = evCompensation * step;
+            aiqInputParams->aeParams.ev_shift = evCompensation * step;
         } else {
-            aiqInputParams->aeInputParams.ev_shift = 0.0f;
+            aiqInputParams->aeParams.ev_shift = 0.0f;
         }
-        aiqInputParams->aeInputParams.manual_exposure_time_us = nullptr;
-        aiqInputParams->aeInputParams.manual_analog_gain = nullptr;
-        aiqInputParams->aeInputParams.manual_iso = nullptr;
+        aiqInputParams->aeParams.manual_exposure_time_us = nullptr;
+        aiqInputParams->aeParams.manual_analog_gain = nullptr;
+        aiqInputParams->aeParams.manual_iso = nullptr;
 
         // ******** target fps
         int32_t maxSupportedFps = INT_MAX;
@@ -412,9 +411,9 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
             aeCtrl->aeTargetFpsRange[0] = minFps;
             aeCtrl->aeTargetFpsRange[1] = maxFps;
 
-            aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_min =
+            aiqInputParams->aeParams.manual_limits->manual_frame_time_us_min =
                     (long) ((1.0f / maxFps) * 1000000);
-            aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_max =
+            aiqInputParams->aeParams.manual_limits->manual_frame_time_us_max =
                     (long) ((1.0f / minFps) * 1000000);
         }
 

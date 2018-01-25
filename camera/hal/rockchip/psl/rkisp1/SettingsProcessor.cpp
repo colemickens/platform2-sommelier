@@ -421,7 +421,7 @@ SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
          * config.
          */
         rk_aiq_ae_input_params *aeParams = nullptr;
-        aeParams = &aeInputParams.aiqInputParams->aeInputParams;
+        aeParams = &aeInputParams.aiqInputParams->aeParams;
         aeParams->flicker_reduction_mode = rk_aiq_ae_flicker_reduction_off;
         if (aeParams->manual_limits->manual_frame_time_us_min < mMinSensorModeFrameTime) {
             aeParams->manual_limits->manual_frame_time_us_min = mMinSensorModeFrameTime;

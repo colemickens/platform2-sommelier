@@ -41,7 +41,7 @@ struct AiqInputParams {
     void init();
     void restorePointers();
     AiqInputParams &operator=(const AiqInputParams &other);
-    rk_aiq_ae_input_params  aeInputParams;
+    rk_aiq_ae_input_params  aeParams;
     rk_aiq_awb_input_params awbParams;
     rk_aiq_misc_isp_input_params miscParams;
     bool aeLock;

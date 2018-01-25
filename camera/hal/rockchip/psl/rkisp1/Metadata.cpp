@@ -258,7 +258,7 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
          * In manual mode, use input value if delta to expResult is small.
          */
         exposureTime = AeExpResult->exposure.exposure_time_us;
-        rk_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeInputParams;
+        rk_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeParams;
 
         if (inParams.manual_exposure_time_us != nullptr)
             manualExpTime = inParams.manual_exposure_time_us[0];

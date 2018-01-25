@@ -98,8 +98,8 @@ status_t Rk3aRunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
      *  1) ev_shift changes
      *  2) FPS rate changes (TODO)
      */
-    bool forceAeRun = mLatestInputParams.aeInputParams.ev_shift !=
-                      reqState.aiqInputParams.aeInputParams.ev_shift;
+    bool forceAeRun = mLatestInputParams.aeParams.ev_shift !=
+                      reqState.aiqInputParams.aeParams.ev_shift;
 
     // process state when the request is actually processed
     mAeState->processState(reqState.aaaControls.controlMode,
@@ -111,7 +111,7 @@ status_t Rk3aRunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
 
     if (forceAeRun || mAeState->getState() != ANDROID_CONTROL_AE_STATE_LOCKED) {
         status = m3aWrapper->runAe(nullptr,
-                                   &reqState.aiqInputParams.aeInputParams,
+                                   &reqState.aiqInputParams.aeParams,
                                    &reqState.captureSettings->aiqResults.aeResults);
 
         if (CC_LIKELY(status == OK)) {
@@ -191,7 +191,7 @@ status_t Rk3aRunner::processAeResults(RequestCtrlState &reqState)
         return BAD_VALUE;
     }
 
-    rk_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeInputParams;
+    rk_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeParams;
     uint8_t sceneFlickerMode = ANDROID_STATISTICS_SCENE_FLICKER_NONE;
     switch (inParams.flicker_reduction_mode) {
     case rk_aiq_ae_flicker_reduction_50hz:
@@ -224,7 +224,7 @@ status_t Rk3aRunner::processAeResults(RequestCtrlState &reqState)
     //# ANDROID_METADATA_Dynamic android.control.aeExposureCompensation done
     // TODO get step size (currently 1/3) from static metadata
     int32_t exposureCompensation =
-            round((reqState.aiqInputParams.aeInputParams.ev_shift) * 3);
+            round((reqState.aiqInputParams.aeParams.ev_shift) * 3);
 
     reqState.ctrlUnitResult->update(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
                                     &exposureCompensation,

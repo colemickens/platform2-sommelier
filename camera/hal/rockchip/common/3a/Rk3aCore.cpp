@@ -30,7 +30,7 @@
 NAMESPACE_DECLARATION {
 void AiqInputParams::init()
 {
-    CLEAR(aeInputParams);
+    CLEAR(aeParams);
     CLEAR(awbParams);
     CLEAR(miscParams);
     CLEAR(sensorDescriptor);
@@ -46,12 +46,12 @@ void AiqInputParams::init()
 
 void AiqInputParams::restorePointers()
 {
-    aeInputParams.sensor_descriptor = &sensorDescriptor;
-    aeInputParams.window = &exposureWindow;
-    aeInputParams.manual_limits = &aeManualLimits;
-    aeInputParams.manual_exposure_time_us = &manual_exposure_time_us[0];
-    aeInputParams.manual_analog_gain = &manual_analog_gain[0];
-    aeInputParams.manual_iso = &manual_iso[0];
+    aeParams.sensor_descriptor = &sensorDescriptor;
+    aeParams.window = &exposureWindow;
+    aeParams.manual_limits = &aeManualLimits;
+    aeParams.manual_exposure_time_us = &manual_exposure_time_us[0];
+    aeParams.manual_analog_gain = &manual_analog_gain[0];
+    aeParams.manual_iso = &manual_iso[0];
 
     awbParams.window = &awbWindow;
     awbParams.manual_cct_range = &manualCctRange;
