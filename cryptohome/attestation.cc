@@ -2438,8 +2438,18 @@ bool Attestation::ComputeEnterpriseEnrollmentId(
   }
 
   brillo::SecureBlob ekm;
-  if (!tpm_->GetEndorsementPublicKey(&ekm))
-    return false;
+  if (database_pb_.has_delegate()) {
+    SecureBlob delegate_blob(database_pb_.delegate().blob());
+    SecureBlob delegate_secret(database_pb_.delegate().secret());
+    if (!tpm_->GetEndorsementPublicKeyWithDelegate(
+            &ekm, delegate_blob, delegate_secret)) {
+      return false;
+    }
+  } else {
+    if (!tpm_->GetEndorsementPublicKey(&ekm))
+      return false;
+  }
+
   if (ekm.empty()) {
     enterprise_enrollment_id->clear();
     return true;

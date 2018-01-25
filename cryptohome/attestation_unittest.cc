@@ -466,6 +466,21 @@ TEST_F(AttestationTest, ComputeEnterpriseEnrollmentId) {
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
 }
 
+TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdHasDelegate) {
+  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+      &install_attributes_, brillo::SecureBlob("abe_data"),
+      false /* retain_endorsement_data */);
+
+  attestation_.PrepareForEnrollment();
+  brillo::SecureBlob ekm("ekm");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(ekm), Return(true)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_EQ("b700ce97051051a65b8b2f6449717e7748e9c337c71d89e7a37c6c00ccda24ed",
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
 TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdEmptyAbeData) {
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
       &install_attributes_, brillo::SecureBlob(""),

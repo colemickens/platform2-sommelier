@@ -55,6 +55,10 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(WriteLockNvram, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
   MOCK_METHOD1(GetEndorsementPublicKey, bool(brillo::SecureBlob*));
+  MOCK_METHOD3(GetEndorsementPublicKeyWithDelegate,
+      bool(brillo::SecureBlob*,
+           const brillo::SecureBlob&,
+           const brillo::SecureBlob&));
   MOCK_METHOD1(GetEndorsementCredential, bool(brillo::SecureBlob*));
   MOCK_METHOD9(MakeIdentity, bool(brillo::SecureBlob*,
                                   brillo::SecureBlob*,

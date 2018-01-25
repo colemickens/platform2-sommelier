@@ -62,6 +62,11 @@ class StubTpm : public Tpm {
     { return false; }
   bool GetEndorsementPublicKey(SecureBlob* ek_public_key) override
     { return false; }
+  bool GetEndorsementPublicKeyWithDelegate(
+      brillo::SecureBlob* ek_public_key,
+      const brillo::SecureBlob& delegate_blob,
+      const brillo::SecureBlob& delegate_secret) override
+    { return false; }
   bool GetEndorsementCredential(SecureBlob* credential) override
     { return false; }
   bool MakeIdentity(SecureBlob* identity_public_key_der,

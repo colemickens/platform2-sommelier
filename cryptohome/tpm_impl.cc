@@ -1358,6 +1358,23 @@ bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
   return true;
 }
 
+bool TpmImpl::GetEndorsementPublicKeyWithDelegate(
+    brillo::SecureBlob* ek_public_key,
+    const brillo::SecureBlob& delegate_blob,
+    const brillo::SecureBlob& delegate_secret) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  // Connect to the TPM as the owner delegate.
+  if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
+                                context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) <<
+        "GetEndorsementPublicKeyFromDelegate: Could not connect to the TPM.";
+  }
+
+  return GetEndorsementPublicKeyInternal(
+      ek_public_key, context_handle.ptr(), &tpm_handle);
+}
+
 bool TpmImpl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
   // Connect to the TPM as the owner if owned, user otherwise.
   ScopedTssContext context_handle;
@@ -1373,17 +1390,26 @@ bool TpmImpl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
       return false;
     }
   }
+
+  return GetEndorsementPublicKeyInternal(
+      ek_public_key, context_handle.ptr(), &tpm_handle);
+}
+
+bool TpmImpl::GetEndorsementPublicKeyInternal(
+    brillo::SecureBlob* ek_public_key,
+    TSS_HCONTEXT* context_handle,
+    TSS_HTPM* tpm_handle) {
   // Get a handle to the EK public key.
-  ScopedTssKey ek_public_key_object(context_handle);
-  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle, is_owned_, NULL,
-                                                    ek_public_key_object.ptr());
+  ScopedTssKey ek_public_key_object(*context_handle);
+  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(
+      *tpm_handle, is_owned_, NULL, ek_public_key_object.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "GetEndorsementPublicKey: Failed to get key.";
     return false;
   }
   // Get the public key in TPM_PUBKEY form.
   SecureBlob ek_public_key_blob;
-  if (!GetDataAttribute(context_handle,
+  if (!GetDataAttribute(*context_handle,
                         ek_public_key_object,
                         TSS_TSPATTRIB_KEY_BLOB,
                         TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
@@ -2159,7 +2185,8 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
   const UINT32 permissions = TPM_DELEGATE_ActivateIdentity |
                              TPM_DELEGATE_DAA_Join |
                              TPM_DELEGATE_DAA_Sign |
-                             TPM_DELEGATE_ResetLockValue;
+                             TPM_DELEGATE_ResetLockValue |
+                             TPM_DELEGATE_OwnerReadInternalPub;
   result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                 TSS_TSPATTRIB_POLDEL_PER1, permissions);
   if (TPM_ERROR(result)) {

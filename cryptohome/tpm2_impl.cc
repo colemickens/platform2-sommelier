@@ -392,6 +392,14 @@ bool Tpm2Impl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
   return true;
 }
 
+bool Tpm2Impl::GetEndorsementPublicKeyWithDelegate(
+    brillo::SecureBlob* ek_public_key,
+    const brillo::SecureBlob& delegate_blob,
+    const brillo::SecureBlob& delegate_secret) {
+  LOG(ERROR) << __func__ << ": Not supported.";
+  return false;
+}
+
 bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {
   LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;

@@ -52,6 +52,10 @@ class TpmImpl : public Tpm {
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
   bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) override;
+  bool GetEndorsementPublicKeyWithDelegate(
+      brillo::SecureBlob* ek_public_key,
+      const brillo::SecureBlob& delegate_blob,
+      const brillo::SecureBlob& delegate_secret) override;
   bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
   bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
                     brillo::SecureBlob* identity_public_key,
@@ -293,6 +297,12 @@ class TpmImpl : public Tpm {
                      UINT32 sub_capability,
                      brillo::Blob* data,
                      UINT32* value) const;
+
+  // Get the endorsement public key based on context and tpm handle previously
+  // obtained. Returns true on success.
+  bool GetEndorsementPublicKeyInternal(brillo::SecureBlob* ek_public_key,
+                                       TSS_HCONTEXT* context_handle,
+                                       TSS_HTPM* tpm_handle);
 
   // Member variables
   bool initialized_;

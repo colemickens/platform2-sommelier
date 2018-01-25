@@ -324,6 +324,17 @@ class Tpm {
   // Returns true on success.
   virtual bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) = 0;
 
+  // Get the endorsement public key. This method assumes the TPM is locked.
+  //
+  // Parameters
+  //   ek_public_key - The EK public key in DER encoded form.
+  //
+  // Returns true on success.
+  virtual bool GetEndorsementPublicKeyWithDelegate(
+      brillo::SecureBlob* ek_public_key,
+      const brillo::SecureBlob& delegate_blob,
+      const brillo::SecureBlob& delegate_secret) = 0;
+
   // Get the endorsement credential. This method requires TPM owner privilege.
   //
   // Parameters
