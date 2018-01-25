@@ -8,12 +8,12 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <google/protobuf/message_lite.h>
+#include <google/protobuf/message.h>
 
 namespace modemfwd {
 
 bool ReadProtobuf(const base::FilePath& proto_file,
-                  google::protobuf::MessageLite* out_proto);
+                  google::protobuf::Message* out_proto);
 
 }  // namespace modemfwd
 

@@ -15,7 +15,7 @@
 
 namespace {
 
-const char kManifestName[] = "manifest.proto";
+const char kManifestName[] = "firmware_manifest.prototxt";
 
 }  // namespace
 

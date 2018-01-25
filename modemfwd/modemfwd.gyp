@@ -9,11 +9,10 @@
         'libchrome-<(libbase_ver)',
         'libbrillo-<(libbase_ver)',
         'libshill-client',
-        # system_api depends on protobuf (or protobuf-lite). It must appear
-        # before protobuf here or the linker flags won't be in the right
-        # order.
+        # system_api depends on protobuf. It must appear before protobuf
+        # here or the linker flags won't be in the right order.
         'system_api',
-        'protobuf-lite',
+        'protobuf',
       ],
     },
   },

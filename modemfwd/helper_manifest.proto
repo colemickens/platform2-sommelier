@@ -5,7 +5,6 @@
 syntax = "proto3";
 
 package modemfwd;
-option optimize_for = LITE_RUNTIME;
 
 message HelperEntry {
   string filename = 1;

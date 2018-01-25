@@ -17,7 +17,7 @@
 
 namespace {
 
-constexpr char kManifestName[] = "manifest.proto";
+constexpr char kManifestName[] = "helper_manifest.prototxt";
 
 }  // namespace
 

@@ -8,32 +8,13 @@
 
 #include <base/files/file.h>
 #include <base/macros.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-
-namespace {
-
-class FileInputStream : public google::protobuf::io::CopyingInputStream {
- public:
-  explicit FileInputStream(base::File file) : file_(std::move(file)) {}
-  ~FileInputStream() override = default;
-
-  // CopyingInputStream overrides.
-  int Read(void* buffer, int size) override {
-    return file_.ReadAtCurrentPos(static_cast<char*>(buffer), size);
-  }
-
- private:
-  base::File file_;
-
-  DISALLOW_COPY_AND_ASSIGN(FileInputStream);
-};
-
-}  // namespace
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 
 namespace modemfwd {
 
 bool ReadProtobuf(const base::FilePath& proto_file,
-                  google::protobuf::MessageLite* out_proto) {
+                  google::protobuf::Message* out_proto) {
   DCHECK(out_proto);
 
   base::File file(proto_file, base::File::FLAG_OPEN | base::File::FLAG_READ);
@@ -43,9 +24,8 @@ bool ReadProtobuf(const base::FilePath& proto_file,
     return false;
   }
 
-  FileInputStream input_stream(std::move(file));
-  google::protobuf::io::CopyingInputStreamAdaptor adaptor(&input_stream);
-  return out_proto->ParseFromZeroCopyStream(&adaptor);
+  google::protobuf::io::FileInputStream input_stream(file.GetPlatformFile());
+  return google::protobuf::TextFormat::Parse(&input_stream, out_proto);
 }
 
 }  // namespace modemfwd
