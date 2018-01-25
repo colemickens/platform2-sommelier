@@ -52,6 +52,12 @@ TEST_F(FakeSambaTest, FileEqualReturnsFalseOnFileThatDoesntExist) {
                                            std::vector<uint8_t>()));
 }
 
+TEST_F(FakeSambaTest, FileEqualReturnsFalseOnDirectory) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  EXPECT_FALSE(fake_samba_.IsFileDataEqual(GetDefaultDirectoryPath(),
+                                           std::vector<uint8_t>()));
+}
+
 TEST_F(FakeSambaTest, FileEqualReturnsFalseOnFileWithNoData) {
   fake_samba_.AddFile(GetDefaultFilePath());
 
@@ -67,6 +73,31 @@ TEST_F(FakeSambaTest, FileEqualReturnsFalseOnUnequalData) {
   // Provide vector with different data.
   const std::vector<uint8_t> other_data = {1};
   EXPECT_FALSE(fake_samba_.IsFileDataEqual(GetDefaultFilePath(), other_data));
+}
+
+TEST_F(FakeSambaTest, FileEqualReturnsFalseOnSamePrefix) {
+  const std::vector<uint8_t> file_data = {0, 1, 2};
+  fake_samba_.AddFile(GetDefaultFilePath(), kFileDate, file_data);
+
+  // Provide vector with different data but same prefix.
+  const std::vector<uint8_t> other_data = {0, 1, 2, 3};
+  EXPECT_FALSE(fake_samba_.IsFileDataEqual(GetDefaultFilePath(), other_data));
+}
+
+TEST_F(FakeSambaTest, FileEqualReturnsFalseOnSamePrefix2) {
+  const std::vector<uint8_t> file_data = {0, 1, 2, 3};
+  fake_samba_.AddFile(GetDefaultFilePath(), kFileDate, file_data);
+
+  // Provide vector with different data but same prefix.
+  const std::vector<uint8_t> other_data = {0, 1, 2};
+  EXPECT_FALSE(fake_samba_.IsFileDataEqual(GetDefaultFilePath(), other_data));
+}
+
+TEST_F(FakeSambaTest, FileEqualReturnsTrueOnEmptyData) {
+  fake_samba_.AddFile(GetDefaultFilePath(), kFileDate, std::vector<uint8_t>());
+
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(GetDefaultFilePath(),
+                                          std::vector<uint8_t>()));
 }
 
 TEST_F(FakeSambaTest, FileEqualReturnsTrueOnEqualData) {
