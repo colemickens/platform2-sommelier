@@ -124,6 +124,13 @@ if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
 fi
 
+# Create a directory where PID files can be placed to override suspend and
+# shutdown (e.g. during firmware updates). This needs to happen early since
+# flashrom may run before the powerd job has started.
+POWER_OVERRIDE_DIR="/run/lock/power_override"
+mkdir -p "${POWER_OVERRIDE_DIR}"
+chmod 1777 "${POWER_OVERRIDE_DIR}"
+
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
