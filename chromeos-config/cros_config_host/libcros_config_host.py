@@ -671,25 +671,21 @@ class CrosConfigImpl(object):
       firmware = self.PathNode('/firmware')
       if not firmware or firmware.GetBool('no-firmware'):
         return []
-      shared = firmware.FollowPhandle('shares')
       props = self.GetMergedProperties(firmware, 'shares')
-      if shared:
-        base_model = shared.name
-      else:
-        base_model = self.name
 
       if 'bcs-overlay' not in props:
         return []
       # Strip "overlay-" from bcs_overlay
       bcs_overlay = props['bcs-overlay'][8:]
+      ebuild_name = bcs_overlay.split('-')[0]
       valid_images = [p for n, p in props.iteritems()
                       if n.endswith('-image') and p.startswith('bcs://')]
       # Strip "bcs://" from bcs_from images (to get the file names only)
       file_names = [p[6:] for p in valid_images]
       uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
-                    'chromeos-base/chromeos-firmware-{base_model}/{fname}')
+                    'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
       return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname,
-                                base_model=base_model)
+                                ebuild_name=ebuild_name)
               for fname in file_names]
 
     def SetupModelProps(self, props):

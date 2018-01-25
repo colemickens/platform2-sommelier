@@ -25,9 +25,7 @@ PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
                'overlay-pyro-private/chromeos-base/chromeos-firmware-pyro/')
 REEF_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
                'overlay-reef-private/chromeos-base/chromeos-firmware-reef/')
-CAROLINE_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
-                   'overlay-reef-private/chromeos-base/'
-                   'chromeos-firmware-caroline/')
+CAROLINE_BUCKET = REEF_BUCKET
 REEF_FIRMWARE_FILES = ['Reef_EC.9042.87.1.tbz2',
                        'Reef.9042.87.1.tbz2',
                        'Reef.9042.110.0.tbz2']
