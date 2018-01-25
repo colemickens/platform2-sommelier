@@ -18,6 +18,14 @@
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
+namespace {
+
+void AppendEntries(const std::vector<DirectoryEntry>& batch,
+                   std::vector<DirectoryEntry>* entries) {
+  entries->insert(entries->end(), batch.begin(), batch.end());
+}
+
+}  // namespace
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
@@ -270,26 +278,55 @@ int32_t SmbProvider::GetDirectoryEntriesVector(
   DCHECK(entries);
   int32_t bytes_read = 0;
   do {
-    int32_t result = samba_interface_->GetDirectoryEntries(
-        dir_id, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
-        &bytes_read);
+    std::vector<DirectoryEntry> entries_batch;
+    int32_t result =
+        GetDirectoryEntriesVectorOnce(dir_id, &entries_batch, &bytes_read);
     if (result != 0) {
-      // The result will be set to errno on failure.
       return result;
     }
-    int32_t bytes_left = bytes_read;
-    smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
-    while (bytes_left > 0) {
-      AddEntryIfValid(*dirent, entries);
-      DCHECK_GT(dirent->dirlen, 0);
-      DCHECK_GE(bytes_left, dirent->dirlen);
-      bytes_left -= dirent->dirlen;
-      dirent = AdvanceDirEnt(dirent);
-      DCHECK(dirent);
-    }
-    DCHECK_EQ(bytes_left, 0);
+    AppendEntries(entries_batch, entries);
   } while (bytes_read > 0);
   return 0;
+}
+
+int32_t SmbProvider::GetDirectoryEntriesVectorOnce(
+    int32_t dir_id, std::vector<DirectoryEntry>* entries, int32_t* bytes_read) {
+  DCHECK(entries);
+  DCHECK(bytes_read);
+  DCHECK_EQ(0, entries->size());  // entries should be empty.
+  *bytes_read = 0;
+
+  int32_t result = ReadDirectoryEntriesToBuffer(dir_id, bytes_read);
+  if (result != 0) {
+    // The result will be set to errno on failure.
+    return result;
+  }
+
+  ConvertBufferToEntries(entries, *bytes_read);
+
+  return 0;
+}
+
+int32_t SmbProvider::ReadDirectoryEntriesToBuffer(int32_t dir_id,
+                                                  int32_t* bytes_read) {
+  return samba_interface_->GetDirectoryEntries(
+      dir_id, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
+      bytes_read);
+}
+
+void SmbProvider::ConvertBufferToEntries(std::vector<DirectoryEntry>* entries,
+                                         int32_t bytes_read) {
+  int32_t bytes_left = bytes_read;
+  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
+  while (bytes_left > 0) {
+    AddEntryIfValid(*dirent, entries);
+    DCHECK_GT(dirent->dirlen, 0);
+    DCHECK_GE(bytes_left, dirent->dirlen);
+    bytes_left -= dirent->dirlen;
+    dirent = AdvanceDirEnt(dirent);
+    DCHECK(dirent);
+  }
+  DCHECK_EQ(bytes_left, 0);
 }
 
 // TODO(zentaro): When the proto's with missing mount_id are landed, this can
