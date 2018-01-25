@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
@@ -15,8 +16,30 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
+namespace {
+
+// Escapes |str| so it can be printed as a value.
+std::string Escape(const std::string& str) {
+  std::string out;
+  base::ReplaceChars(str, "\n", " ", &out);
+  return out;
+}
+
+}  // namespace
+
 int main(int argc, char** argv) {
-  brillo::FlagHelper::Init(argc, argv, "Print power information for tests.");
+  brillo::FlagHelper::Init(
+      argc, argv,
+      "Print power supply information.\n"
+      "\n"
+      "This program shares powerd's code for reading information from\n"
+      "/sys/class/power_supply. It prints data in a format that can be\n"
+      "parsed by tests and by other programs.\n"
+      "\n"
+      "Each line of output consists of a name, followed by a single space,\n"
+      "followed by a value, followed by a newline. String values are\n"
+      "untrimmed and may contain whitespace or be empty, but any newlines\n"
+      "are replaced with spaces.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
   logging::SetMinLogLevel(logging::LOG_WARNING);
@@ -34,8 +57,10 @@ int main(int argc, char** argv) {
   const power_manager::system::PowerStatus status =
       power_supply.GetPowerStatus();
 
-  // Do not change the format of this output without updating tests.
+  // Do not change the format of this output.
   printf("line_power_connected %d\n", status.line_power_on);
+  printf("line_power_type %s\n", Escape(status.line_power_type).c_str());
+  printf("line_power_current %0.2f\n", status.line_power_current);
   printf("battery_present %d\n", status.battery_is_present);
   printf("battery_percent %0.2f\n", status.battery_percentage);
   printf("battery_display_percent %0.2f\n", status.display_battery_percentage);
@@ -47,6 +72,7 @@ int main(int argc, char** argv) {
   printf("battery_energy %0.2f\n", status.battery_energy);
   printf("battery_energy_rate %0.2f\n", status.battery_energy_rate);
   printf("battery_voltage %0.2f\n", status.battery_voltage);
+  printf("battery_status %s\n", Escape(status.battery_status_string).c_str());
   printf("battery_discharging %d\n",
          status.battery_state ==
              power_manager::PowerSupplyProperties_BatteryState_DISCHARGING);
