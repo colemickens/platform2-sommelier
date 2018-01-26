@@ -46,7 +46,7 @@ TEST(UtilTest, ReadFileAllocationTable) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::File file;
   file.Initialize(
-      temp_dir.path().AppendASCII("test"),
+      temp_dir.GetPath().AppendASCII("test"),
       base::File::FLAG_CREATE | base::File::FLAG_READ | base::File::FLAG_WRITE);
   ASSERT_TRUE(file.IsValid());
 
