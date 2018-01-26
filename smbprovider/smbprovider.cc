@@ -272,8 +272,16 @@ int32_t SmbProvider::Truncate(const ProtoBlob& options_blob) {
 
 int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
                                const dbus::FileDescriptor& temp_fd) {
-  NOTIMPLEMENTED();
-  return 0;
+  int32_t error_code;
+  WriteFileOptionsProto options;
+  std::vector<uint8_t> buffer;
+
+  const bool result = ParseOptionsProto(options_blob, &options, &error_code) &&
+                      ReadFromFD(options, temp_fd, &error_code, &buffer) &&
+                      Seek(options, &error_code) &&
+                      WriteFileFromBuffer(options, buffer, &error_code);
+
+  return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
 // This is a helper method that has a similar return structure as

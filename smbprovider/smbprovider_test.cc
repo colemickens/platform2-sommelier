@@ -1298,4 +1298,316 @@ TEST_F(SmbProviderTest, TruncateSucceedsWithSameLength) {
   ExpectNoOpenEntries();
 }
 
+TEST_F(SmbProviderTest, WriteFileFailsWithEmptyProto) {
+  ProtoBlob empty_blob;
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
+                                         empty_blob, dbus::FileDescriptor())));
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithNegativeOffset) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, -1 /* offset */, 0 /* length */);
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
+                                         write_blob, dbus::FileDescriptor())));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithNegativeLength) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, -1 /* length */);
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
+                                         write_blob, dbus::FileDescriptor())));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithFileIdThatDoesntExist) {
+  const int32_t mount_id = PrepareSingleFileMount();
+
+  // Pass in an invalid file id to options.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, 999 /* file_id */, 0 /* offset */, 0 /* length */);
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
+                                         write_blob, dbus::FileDescriptor())));
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithInvalidFileDescriptor) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+
+  // Create blob with valid parameters.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, 0 /* length */);
+
+  // Create an invalid file descriptor.
+  dbus::FileDescriptor fd;
+  EXPECT_FALSE(fd.is_valid());
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithDirectoryId) {
+  const int32_t mount_id = PrepareSingleFileMount();
+
+  // Create a temporary file with a valid file descriptor.
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+
+  const int32_t dir_id = OpenAddedDirectory(GetAddedFullDirectoryPath());
+
+  // Pass in the directory id to options.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, dir_id, 0 /* offset */, 0 /* length */);
+
+  EXPECT_EQ(ERROR_NOT_FOUND,
+            CastError(smbprovider_->WriteFile(write_blob, fd)));
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithLengthTooLarge) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+
+  // Attempt to read size() + 1 bytes.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size() + 1);
+
+  // Should return error since it read the wrong number of bytes.
+  EXPECT_EQ(ERROR_IO, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileSucceedsWithShorterLength) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+
+  // Attempt to read size() - 1 bytes.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size() - 1);
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileSucceedsWithExactLength) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+
+  // Attempt to read size() bytes.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size());
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithReadOnlyFile) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Open a file with read-only permissions.
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), false /* writeable */);
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size());
+
+  // Should return error since it attempted to write to a read-only file.
+  EXPECT_EQ(ERROR_INVALID_OPERATION,
+            CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileCorrectlyWritesToFileInSamba) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Validate that the file does not have the same data.
+  EXPECT_FALSE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), data));
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size());
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  // File should have the correct data.
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), data));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileCorrectlyWritesFromOffset) {
+  const std::vector<uint8_t> original_data = {0, 1, 2, 3, 4, 5};
+  const int32_t mount_id = PrepareSingleFileMountWithData(original_data);
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> new_data = {'a', 'b'};
+
+  // Create a temporary file with a valid file descriptor.
+  const int64_t offset = 1;
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(new_data, &fd);
+  ProtoBlob write_blob =
+      CreateWriteFileOptionsBlob(mount_id, file_id, offset, new_data.size());
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  // File should have the correct data.
+  const std::vector<uint8_t> expected = {0, 'a', 'b', 3, 4, 5};
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), expected));
+
+  // Offset should be equal to original offset + the write size.
+  EXPECT_EQ(offset + new_data.size(), fake_samba_->GetFileOffset(file_id));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileFailsWithOffsetBiggerThanSize) {
+  const std::vector<uint8_t> original_data = {0, 1};
+  const int32_t mount_id = PrepareSingleFileMountWithData(original_data);
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> new_data = {'a'};
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(new_data, &fd);
+
+  // Attempt to write with offset size() + 1.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, original_data.size() + 1, new_data.size());
+
+  // Should return error since offset is bigger than current size.
+  EXPECT_EQ(ERROR_INVALID_OPERATION,
+            CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileCorrectlyWritesTwice) {
+  const int32_t mount_id = PrepareSingleFileMount();
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+
+  // Create a temporary file with a valid file descriptor.
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(data, &fd);
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, data.size());
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  // File should have the correct data.
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), data));
+
+  // Create another temporary file with a valid file descriptor.
+  const std::vector<uint8_t> new_data = {4, 5, 6, 7};
+  dbus::FileDescriptor fd2;
+  WriteToTempFileWithData(new_data, &fd2);
+
+  // Write starting at the end of the first written data.
+  ProtoBlob write_blob2 = CreateWriteFileOptionsBlob(
+      mount_id, file_id, data.size(), new_data.size());
+
+  // Should return OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob2, fd2)));
+
+  // File should have the correct data.
+  const std::vector<uint8_t> expected = {0, 1, 2, 3, 4, 5, 6, 7};
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), expected));
+  EXPECT_EQ(expected.size(), fake_samba_->GetFileOffset(file_id));
+
+  CloseFileHelper(mount_id, file_id);
+}
+
+TEST_F(SmbProviderTest, WriteFileCorrectlyWritesToCorrectFile) {
+  const std::vector<uint8_t> original_data = {0, 1};
+  const int32_t mount_id = PrepareSingleFileMountWithData(original_data);
+  const int32_t file_id =
+      OpenAddedFile(mount_id, GetDefaultFilePath(), true /* writeable */);
+
+  // Add a second file with the same data.
+  const std::string file_path2 = "/path/cat.jpg";
+  fake_samba_->AddFile(GetDefaultFullPath(file_path2), kFileDate,
+                       original_data);
+  const int32_t file_id2 =
+      OpenAddedFile(mount_id, file_path2, true /* writeable */);
+
+  // Create a temporary file with a valid file descriptor.
+  const std::vector<uint8_t> new_data = {'a', 'b'};
+  dbus::FileDescriptor fd;
+  WriteToTempFileWithData(new_data, &fd);
+
+  // Write to the file1.
+  ProtoBlob write_blob = CreateWriteFileOptionsBlob(
+      mount_id, file_id, 0 /* offset */, new_data.size());
+
+  // Should be OK.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->WriteFile(write_blob, fd)));
+
+  // File1 should have the new data.
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), new_data));
+  EXPECT_EQ(new_data.size(), fake_samba_->GetFileOffset(file_id));
+
+  // File2 should have the original data still.
+  EXPECT_TRUE(fake_samba_->IsFileDataEqual(GetDefaultFullPath(file_path2),
+                                           original_data));
+  EXPECT_EQ(0, fake_samba_->GetFileOffset(file_id2));
+
+  CloseFileHelper(mount_id, file_id);
+  CloseFileHelper(mount_id, file_id2);
+}
+
 }  // namespace smbprovider
