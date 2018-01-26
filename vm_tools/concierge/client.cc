@@ -100,38 +100,47 @@ int StartVm(dbus::ObjectProxy* proxy,
     std::vector<base::StringPiece> tokens = base::SplitStringPiece(
         disk, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-    if (tokens.size() < 3) {
-      LOG(ERROR) << "Invalid disk specification: " << disk;
+    // disk path[,writable[,mount target,fstype[,flags[,data]]]]
+    if (tokens.empty()) {
+      LOG(ERROR) << "Disk description is empty";
       return -1;
     }
-
     vm_tools::concierge::DiskImage* disk_image = request.add_disks();
     disk_image->set_path(tokens[0].data(), tokens[0].size());
-    disk_image->set_mount_point(tokens[1].data(), tokens[1].size());
-    disk_image->set_fstype(tokens[2].data(), tokens[2].size());
+    disk_image->set_do_mount(false);
 
-    if (tokens.size() > 3) {
+    if (tokens.size() > 1) {
+      int writable = 0;
+      if (!base::StringToInt(tokens[1], &writable)) {
+        LOG(ERROR) << "Unable to parse writable token: " << tokens[1];
+        return -1;
+      }
+
+      disk_image->set_writable(writable != 0);
+    }
+
+    if (tokens.size() > 2) {
+      if (tokens.size() == 3) {
+        LOG(ERROR) << "Missing fstype for " << disk;
+        return -1;
+      }
+      disk_image->set_mount_point(tokens[2].data(), tokens[2].size());
+      disk_image->set_fstype(tokens[3].data(), tokens[3].size());
+      disk_image->set_do_mount(true);
+    }
+
+    if (tokens.size() > 4) {
       uint64_t flags;
-      if (!base::HexStringToUInt64(tokens[3], &flags)) {
-        LOG(ERROR) << "Unable to parse flags: " << tokens[3];
+      if (!base::HexStringToUInt64(tokens[4], &flags)) {
+        LOG(ERROR) << "Unable to parse flags: " << tokens[4];
         return -1;
       }
 
       disk_image->set_flags(flags);
     }
 
-    if (tokens.size() > 4) {
-      disk_image->set_data(tokens[4].data(), tokens[4].size());
-    }
-
     if (tokens.size() > 5) {
-      int writable = 0;
-      if (!base::StringToInt(tokens[5], &writable)) {
-        LOG(ERROR) << "Unable to parse writable token: " << tokens[5];
-        return -1;
-      }
-
-      disk_image->set_writable(writable != 0);
+      disk_image->set_data(tokens[5].data(), tokens[5].size());
     }
 
     if (!base::PathExists(base::FilePath(disk_image->path()))) {
@@ -142,12 +151,13 @@ int StartVm(dbus::ObjectProxy* proxy,
     char flag_buf[20];
     snprintf(flag_buf, sizeof(flag_buf), "0x%x", disk_image->flags());
 
-    LOG(INFO) << "Mounting " << disk_image->path() << " -> "
-              << disk_image->mount_point();
-    LOG(INFO) << "    type:     " << disk_image->fstype();
-    LOG(INFO) << "    flags:    " << flag_buf;
-    LOG(INFO) << "    data:     " << disk_image->data();
-    LOG(INFO) << "    writable: " << disk_image->writable();
+    LOG(INFO) << "Disk " << disk_image->path();
+    LOG(INFO) << "    mnt point: " << disk_image->mount_point();
+    LOG(INFO) << "    type:      " << disk_image->fstype();
+    LOG(INFO) << "    flags:     " << flag_buf;
+    LOG(INFO) << "    data:      " << disk_image->data();
+    LOG(INFO) << "    writable:  " << disk_image->writable();
+    LOG(INFO) << "    do_mount:  " << disk_image->do_mount();
   }
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {

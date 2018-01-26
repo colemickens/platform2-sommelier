@@ -449,6 +449,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     string src = base::StringPrintf("/dev/vd%c", disk_letter + offset);
     ++offset;
 
+    if (!disk.do_mount())
+      continue;
+
     uint64_t flags = disk.flags();
     if (!disk.writable()) {
       flags |= MS_RDONLY;
