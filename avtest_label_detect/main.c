@@ -17,6 +17,7 @@ struct detector {
 
 struct detector detectors[] = {
   { "hw_jpeg_acc_dec", detect_jpeg_acc_dec },
+  { "hw_jpeg_acc_enc", detect_jpeg_acc_enc },
   { "hw_video_acc_h264", detect_video_acc_h264 },
   { "hw_video_acc_vp8", detect_video_acc_vp8 },
   { "hw_video_acc_vp9", detect_video_acc_vp9 },

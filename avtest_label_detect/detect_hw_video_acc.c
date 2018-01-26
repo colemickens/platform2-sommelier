@@ -318,3 +318,46 @@ bool detect_jpeg_acc_dec(void) {
     return true;
   return false;
 }
+
+/* Helper function for detect_jpeg_acc_enc.
+ * Determine given |fd| is a VAAPI device supports JPEG encoding, i.e. it
+ * supports JPEG profile, has encoding entry point, and accepts YUV420
+ * as input.
+ */
+static bool is_vaapi_enc_jpeg_device(int fd) {
+#ifdef HAS_VAAPI
+  VAProfile va_profiles[] = {
+    VAProfileJPEGBaseline,
+    VAProfileNone
+  };
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncPicture,
+        VA_RT_FORMAT_YUV420))
+    return true;
+#endif
+  return false;
+}
+
+/* Helper function for detect_jpeg_acc_enc.
+ * A V4L2 device supports JPEG encoding, if it's a mem-to-mem V4L2 device,
+ * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
+ * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_JPEG as it's
+ * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE queue.
+*/
+static bool is_v4l2_enc_jpeg_device(int fd) {
+  return is_hw_jpeg_acc_device(fd) &&
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+         V4L2_PIX_FMT_JPEG);
+}
+
+/* Determines "hw_jpeg_acc_enc" label. That is, either the VAAPI device
+ * supports jpeg profile, has encoding entry point, and output JPEG
+ * formats. Or there is a /dev/jpeg* device supporting JPEG encoding.
+ */
+bool detect_jpeg_acc_enc(void) {
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_jpeg_device))
+    return true;
+
+  if (is_any_device(kJpegDevicePattern, is_v4l2_enc_jpeg_device))
+    return true;
+  return false;
+}
