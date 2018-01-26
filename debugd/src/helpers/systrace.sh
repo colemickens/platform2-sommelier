@@ -135,7 +135,7 @@ is_enabled=$(cat ${tracing_path}/tracing_on)
 
 case "$CMD" in
 start)
-    local events
+    events=""
     shift
     for cat; do
         events="${events} $(parse_category $cat)"
