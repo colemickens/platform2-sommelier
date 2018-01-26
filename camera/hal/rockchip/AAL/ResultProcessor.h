@@ -175,6 +175,7 @@ private:  /* methods */
     void returnPendingBuffers(RequestState_t *reqState);
     void returnPendingPartials(RequestState_t *reqState);
     void returnShutterDone(RequestState_t *reqState);
+    void returnRequestError(int reqId);
     status_t returnStoredPartials(void);
     status_t returnResult(RequestState_t* reqState, int returnIndex);
     status_t getRequestsInTransit(RequestState_t** reqState, int index);

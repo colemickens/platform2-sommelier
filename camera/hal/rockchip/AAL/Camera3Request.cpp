@@ -186,6 +186,7 @@ Camera3Request::init(camera3_capture_request* req,
     mCallback = cb;
     mSettings = settings;   // Read only setting metadata buffer
     mInitialized = true;
+    mError = false;
     LOG2("<Request %d> camera id %d successfully initialized", mRequestId, mCameraId);
     return NO_ERROR;
 }

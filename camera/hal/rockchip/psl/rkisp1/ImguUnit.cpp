@@ -516,6 +516,7 @@ status_t
 ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    status_t status = OK;
 
     Camera3Request *request = msg.cbMetadataMsg.request;
     if (request == nullptr) {
@@ -526,7 +527,22 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
     std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
     mMessagesPending.push_back(tmp);
 
-    return processNextRequest();
+    mCurPipeConfig->nodes.clear();
+    status = processNextRequest();
+    if (status != OK) {
+        LOGE("Process request %d failed", request->getId());
+        request->setError();
+    }
+
+    /**
+     * Send poll request for every requests(even when error), so that we can
+     * handle them in the right order.
+     */
+    LOG2("%s:%d: poll request id(%d)", __func__, __LINE__, request->getId());
+    status |= mPollerThread->pollRequest(request->getId(), 3000,
+                                         &(mCurPipeConfig->nodes));
+
+    return status;
 }
 
 status_t ImguUnit::processNextRequest()
@@ -547,9 +563,12 @@ status_t ImguUnit::processNextRequest()
     request = msg->cbMetadataMsg.request;
     if (request == nullptr) {
         LOGE("Request is nullptr");
-        return BAD_VALUE;
+        // Ignore this request
+        return NO_ERROR;
     }
     LOG2("@%s:handleExecuteReq for Req id %d, ", __FUNCTION__, request->getId());
+
+    mMessagesUnderwork.push_back(msg);
 
     // Pass settings to the listening tasks *before* sending metadata
     // up to framework. Some tasks might need e.g. the result data.
@@ -565,8 +584,6 @@ status_t ImguUnit::processNextRequest()
 
     if (msg->cbMetadataMsg.updateMeta)
         updateProcUnitResults(*request, msg->pMsg.processingSettings);
-
-    mMessagesUnderwork.push_back(msg);
 
     if (mFirstRequest) {
         status = kickstart();
@@ -592,10 +609,7 @@ status_t ImguUnit::processNextRequest()
 
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
     for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
-        status = (*it)->prepareRun(msg);
-        if (status != OK) {
-            return status;
-        }
+        status |= (*it)->prepareRun(msg);
     }
 
     mCurPipeConfig->nodes.clear();
@@ -609,11 +623,6 @@ status_t ImguUnit::processNextRequest()
         }
     }
     mRequestToWorkMap[request->getId()].push_back(*(mFirstWorkers.begin()));
-
-    LOG2("%s:%d: poll request id(%d)", __func__, __LINE__, request->getId());
-    status = mPollerThread->pollRequest(request->getId(),
-                                        3000,
-                                        &(mCurPipeConfig->nodes));
 
     return status;
 }
@@ -709,9 +718,18 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
     status_t status = OK;
     std::shared_ptr<V4L2VideoNode> *activeNodes = pollmsg.pollEvent.activeDevices;
     int processReqNum = 1;
+    bool deviceError = pollmsg.pollEvent.polledDevices && !activeNodes;
+
+    std::shared_ptr<DeviceMessage> msg;
+    Camera3Request *request;
+
+    if (!mMessagesUnderwork.empty()) {
+        msg = *(mMessagesUnderwork.begin());
+        request = msg->cbMetadataMsg.request;
+    }
 
     /* tell workers and AAL that device error occured */
-    if (!activeNodes) {
+    if (deviceError) {
         for (const auto &it : mCurPipeConfig->deviceWorkers)
              (*it).deviceError();
 
@@ -737,7 +755,6 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
             status |= (*it).postRun();
         }
         if (!mMessagesUnderwork.empty()) {
-            std::shared_ptr<DeviceMessage> msg = *(mMessagesUnderwork.begin());
             Camera3Request *request = msg->cbMetadataMsg.request;
             for(auto &it : mMetaConfig.deviceWorkers) {
                 status |= (*it).prepareRun(msg);
@@ -750,6 +767,9 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
         }
         return status;
     }
+
+    if (mMessagesUnderwork.empty())
+        return status;
 
     unsigned int reqId = pollmsg.pollEvent.requestId;
     for ( int i = 0; i < processReqNum; i++) {
@@ -770,9 +790,25 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
         }
         mRequestToWorkMap.erase(reqId);
 
+        // Report request error when anything wrong
+        if (status != OK)
+            request->setError();
+
+        // Make sure all buffers returned at the end
+        CameraStream *s = nullptr;
+        std::shared_ptr<CameraBuffer> buffer = nullptr;
+        const std::vector<camera3_stream_buffer>* outBufs =
+            request->getOutputBuffers();
+        for (camera3_stream_buffer outputBuffer : *outBufs) {
+            s = reinterpret_cast<CameraStream *>(outputBuffer.stream->priv);
+            buffer = request->findBuffer(s, false);
+            if (!buffer || !buffer->isRegistered())
+                continue;
+
+            buffer->getOwner()->captureDone(buffer, request);
+        }
+
         //HACK: return metadata after updated it
-        std::shared_ptr<DeviceMessage> msg = *(mMessagesUnderwork.begin());
-        Camera3Request *request = msg->cbMetadataMsg.request;
         LOG2("%s: request %d done", __func__, request->getId());
         ICaptureEventListener::CaptureMessage outMsg;
         outMsg.data.event.reqId = request->getId();
@@ -782,7 +818,7 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
             listener->notifyCaptureEvent(&outMsg);
 
         /* return null metadata if device error occured */
-        request->mCallback->metadataDone(request, activeNodes ? CONTROL_UNIT_PARTIAL_RESULT : -1);
+        request->mCallback->metadataDone(request, deviceError ? -1 : CONTROL_UNIT_PARTIAL_RESULT);
         mMessagesUnderwork.erase(mMessagesUnderwork.begin());
         reqId++;
     }
@@ -853,14 +889,16 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         LOGE("Device poll failed");
         // For now, set number of device to zero in error case
         msg.pollEvent.numDevices = 0;
-        msg.pollEvent.polledDevices = 0;
+        msg.pollEvent.polledDevices = pollMsg->data.polledDevices->size();
+        msg.id = MESSAGE_ID_POLL;
+
         /* report poll error */
-        auto &it = *(pollMsg->data.polledDevices);
-        if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
-                      it[0]) == mMetaConfig.nodes.end())
-            msg.id = MESSAGE_ID_POLL;
-        else
-            msg.id = MESSAGE_ID_POLL_META;
+        if (msg.pollEvent.polledDevices) {
+            auto &it = *(pollMsg->data.polledDevices);
+            if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
+                        it[0]) != mMetaConfig.nodes.end())
+                msg.id = MESSAGE_ID_POLL_META;
+        }
         mMessageQueue.send(&msg);
     } else {
         LOGW("unknown poll event id (%d)", pollMsg->id);

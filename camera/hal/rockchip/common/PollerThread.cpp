@@ -175,8 +175,19 @@ status_t PollerThread::handlePollRequest(Message &msg)
     int ret;
     IPollEventListener::PollEventMessage outMsg;
 
-    if (msg.devices.size() > 0)
+    if (msg.devices.size() > 0) {
         mPollingDevices = msg.devices;
+    } else {
+        // Return error for empty poll request
+        outMsg.id = IPollEventListener::POLL_EVENT_ID_ERROR;
+        outMsg.data.reqId = msg.data.request.reqId;
+        outMsg.data.activeDevices = &msg.devices;
+        outMsg.data.inactiveDevices = &msg.devices;
+        outMsg.data.polledDevices = &msg.devices;
+        outMsg.data.pollStatus = 0;
+
+        return notifyListener(&outMsg);
+    }
 
     do {
         ret = V4L2DeviceBase::pollDevices(mPollingDevices, mActiveDevices,

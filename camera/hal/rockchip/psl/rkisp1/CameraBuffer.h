@@ -88,6 +88,7 @@ public:
     status_t lock(int flags);
     status_t unlock();
 
+    bool isRegistered() const { return mRegistered; };
     bool isLocked() const { return mLocked; };
     buffer_handle_t * getBufferHandle() { return &mHandle; };
     status_t waitOnAcquireFence();

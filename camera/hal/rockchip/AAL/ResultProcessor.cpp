@@ -276,6 +276,21 @@ status_t ResultProcessor::handleMetadataDone(Message &msg)
         return BAD_VALUE;
     }
 
+    /**
+     * Currently the metadataDone() is the last step, so return any pending
+     * buffers and report request error here
+     */
+    if (request->getError()) {
+        if (!reqState->pendingBuffers.empty())
+            returnPendingBuffers(reqState);
+
+        /**
+         * Note: the android will remove request in the first result after
+         * request error recieved, which would be this metadata.
+         */
+        returnRequestError(request->getId());
+    }
+
     if (msg.data.meta.resultIndex >= 0) {
         /**
          * New Partial metadata result path. The result buffer is not the
@@ -458,7 +473,9 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
             result.num_output_buffers = 1;
         }
         result.frame_number = reqState->reqId;
-        buf.status = pendingBuf->status();
+        // Force drop buffers when request error
+        buf.status = request->getError() ? CAMERA3_BUFFER_STATUS_ERROR :
+                        pendingBuf->status();
         buf.stream = pendingBuf->getOwner()->getStream();
         buf.buffer = pendingBuf->getBufferHandle();
         pendingBuf->getFence(&buf);
@@ -607,6 +624,19 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
     mRequestThread->returnRequest(req);
     LOGR("<Request %d> camera id %d OUT from ResultProcessor",id, reqState->request->getCameraId());
     return status;
+}
+
+void ResultProcessor::returnRequestError(int reqId)
+{
+    LOGR("%s for <Request : %d", __FUNCTION__, reqId);
+
+    camera3_notify_msg msg;
+    CLEAR(msg);
+    msg.type = CAMERA3_MSG_ERROR;
+    msg.message.error.frame_number = reqId;
+    msg.message.error.error_stream = nullptr;
+    msg.message.error.error_code = CAMERA3_MSG_ERROR_REQUEST;
+    mCallbackOps->notify(mCallbackOps, &msg);
 }
 
 status_t ResultProcessor::deviceError(void)

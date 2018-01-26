@@ -131,6 +131,10 @@ public:
     void setSequenceId(int sequenceId) {mSequenceId = sequenceId; }
     int sequenceId() const {return mSequenceId; }
 
+    // Something wrong when process this request.
+    void setError() {mError = true; }
+    bool getError() const {return mError; }
+
     class Members {
     public:
         CameraMetadata mSettings;
@@ -154,6 +158,8 @@ private:  /* types and members */
     mutable std::mutex mLock; /* protects mMembers and SharedObjects */
     friend class SharedObject<Camera3Request, Camera3Request::Members>;
     friend class SharedObject<const Camera3Request, const Camera3Request::Members>;
+
+    bool mError;
 
     bool  mInitialized;
     CameraMetadata mSettings; /* request settings metadata. Always contains a

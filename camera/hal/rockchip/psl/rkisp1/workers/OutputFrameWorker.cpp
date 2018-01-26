@@ -118,10 +118,10 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     status_t status = NO_ERROR;
 
     mOutputBuffers[mIndex] = nullptr;
-    if (!mStream) {
-        mPollMe = false;
+    mPollMe = false;
+
+    if (!mStream)
         return NO_ERROR;
-    }
 
     Camera3Request* request = mMsg->cbMetadataMsg.request;
     request->setSequenceId(-1);
