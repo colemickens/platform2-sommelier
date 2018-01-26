@@ -184,13 +184,14 @@ int StartVm(dbus::ObjectProxy* proxy,
     return -1;
   }
 
+  vm_tools::concierge::VmInfo vm_info = response.vm_info();
   string address;
-  IPv4AddressToString(response.ipv4_address(), &address);
+  IPv4AddressToString(vm_info.ipv4_address(), &address);
 
   LOG(INFO) << "Started VM with";
   LOG(INFO) << "    ip address: " << address;
-  LOG(INFO) << "    vsock cid:  " << response.cid();
-  LOG(INFO) << "    process id: " << response.pid();
+  LOG(INFO) << "    vsock cid:  " << vm_info.cid();
+  LOG(INFO) << "    process id: " << vm_info.pid();
 
   return 0;
 }
@@ -255,6 +256,52 @@ int StopAllVms(dbus::ObjectProxy* proxy) {
   return 0;
 }
 
+int GetVmInfo(dbus::ObjectProxy* proxy, string name) {
+  LOG(INFO) << "Getting VM info";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kGetVmInfoMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::GetVmInfoRequest request;
+  request.set_name(std::move(name));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode GetVmInfo protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::GetVmInfoResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to get VM info";
+    return -1;
+  }
+
+  vm_tools::concierge::VmInfo vm_info = response.vm_info();
+  string address;
+  IPv4AddressToString(vm_info.ipv4_address(), &address);
+
+  LOG(INFO) << "VM:           " << name;
+  LOG(INFO) << "IPv4 address: " << address;
+  LOG(INFO) << "pid:          " << vm_info.pid();
+  LOG(INFO) << "vsock cid:    " << vm_info.cid();
+  LOG(INFO) << "Done";
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -264,6 +311,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(start, false, "Start a VM");
   DEFINE_bool(stop, false, "Stop a running VM");
   DEFINE_bool(stop_all, false, "Stop all running VMs");
+  DEFINE_bool(get_vm_info, false, "Get info for the given VM");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -297,9 +345,9 @@ int main(int argc, char** argv) {
 
   // The standard says that bool to int conversion is implicit and that
   // false => 0 and true => 1.
-  if (FLAGS_start + FLAGS_stop + FLAGS_stop_all != 1) {
-    LOG(ERROR) << "Exactly one of --start, --stop, or --stop_all must be "
-               << "provided";
+  if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info != 1) {
+    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info"
+               << "must be provided";
     return -1;
   }
 
@@ -310,6 +358,8 @@ int main(int argc, char** argv) {
     return StopVm(proxy, std::move(FLAGS_name));
   } else if (FLAGS_stop_all) {
     return StopAllVms(proxy);
+  } else if (FLAGS_get_vm_info) {
+    return GetVmInfo(proxy, std::move(FLAGS_name));
   }
 
   // Unreachable.

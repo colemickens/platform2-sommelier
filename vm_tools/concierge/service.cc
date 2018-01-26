@@ -196,6 +196,7 @@ bool Service::Init() {
       {kStartVmMethod, &Service::StartVm},
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
+      {kGetVmInfoMethod, &Service::GetVmInfo},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -462,10 +463,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
+  VmInfo* vm_info = response.mutable_vm_info();
   response.set_success(true);
-  response.set_ipv4_address(vm->IPv4Address());
-  response.set_pid(vm->pid());
-  response.set_cid(vsock_cid);
+  vm_info->set_ipv4_address(vm->IPv4Address());
+  vm_info->set_pid(vm->pid());
+  vm_info->set_cid(vsock_cid);
   writer.AppendProtoAsArrayOfBytes(response);
 
   vms_[request.name()] = std::move(vm);
@@ -540,6 +542,46 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
   vms_.clear();
 
   return nullptr;
+}
+
+std::unique_ptr<dbus::Response> Service::GetVmInfo(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received GetVmInfo request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetVmInfoRequest request;
+  GetVmInfoResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse GetVmInfoRequest from message";
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto& vm = iter->second;
+  VmInfo* vm_info = response.mutable_vm_info();
+  vm_info->set_ipv4_address(vm->IPv4Address());
+  vm_info->set_pid(vm->pid());
+  vm_info->set_cid(vm->cid());
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
 }
 
 }  // namespace concierge

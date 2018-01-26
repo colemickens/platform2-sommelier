@@ -57,6 +57,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to stop all running VMs.
   std::unique_ptr<dbus::Response> StopAllVms(dbus::MethodCall* method_call);
 
+  // Handles a request to get VM info.
+  std::unique_ptr<dbus::Response> GetVmInfo(dbus::MethodCall* method_call);
+
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
   SubnetPool subnet_pool_;
