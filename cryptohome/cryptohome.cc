@@ -86,7 +86,6 @@ namespace switches {
   static const char* kActions[] = {"mount",
                                    "mount_ex",
                                    "mount_guest",
-                                   "mount_public",
                                    "unmount",
                                    "is_mounted",
                                    "test_auth",
@@ -149,7 +148,6 @@ namespace switches {
     ACTION_MOUNT,
     ACTION_MOUNT_EX,
     ACTION_MOUNT_GUEST,
-    ACTION_MOUNT_PUBLIC,
     ACTION_UNMOUNT,
     ACTION_MOUNTED,
     ACTION_TEST_AUTH,
@@ -233,6 +231,7 @@ namespace switches {
   static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
   static const char kHiddenMount[] = "hidden_mount";
   static const char kMinimalMigration[] = "minimal_migration";
+  static const char kPublicMount[] = "public_mount";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -382,13 +381,17 @@ bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier *id) {
 
 bool BuildAuthorization(base::CommandLine* cl,
                         const brillo::dbus::Proxy& proxy,
+                        bool need_password,
                         cryptohome::AuthorizationRequest* auth) {
-  std::string password;
-  GetPassword(proxy, cl, switches::kPasswordSwitch,
-              "Enter the password",
-              &password);
+  if (need_password) {
+    std::string password;
+    GetPassword(proxy, cl, switches::kPasswordSwitch,
+                "Enter the password",
+                &password);
 
-  auth->mutable_key()->set_secret(password);
+    auth->mutable_key()->set_secret(password);
+  }
+
   if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
     auth->mutable_key()->mutable_data()->set_label(
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
@@ -738,11 +741,13 @@ int main(int argc, char **argv) {
     printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX],
                 action.c_str())) {
+    bool is_public_mount = cl->HasSwitch(switches::kPublicMount);
+
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
       return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, &auth))
+    if (!BuildAuthorization(cl, proxy, !is_public_mount, &auth))
       return 1;
 
     cryptohome::MountRequest mount_req;
@@ -751,9 +756,18 @@ int main(int argc, char **argv) {
     mount_req.set_to_migrate_from_ecryptfs(
         cl->HasSwitch(switches::kToMigrateFromEcryptfsSwitch));
     mount_req.set_hidden_mount(cl->HasSwitch(switches::kHiddenMount));
+    mount_req.set_public_mount(is_public_mount);
     if (cl->HasSwitch(switches::kCreateSwitch)) {
       cryptohome::CreateRequest* create = mount_req.mutable_create();
-      create->set_copy_authorization_key(true);
+      if (cl->HasSwitch(switches::kPublicMount)) {
+        cryptohome::Key* key = create->add_keys();
+        key->mutable_data()->set_label(auth.key().data().label());
+        // The proto definition defaults all privileges to true but we only want
+        // mount, add, remove, and update.
+        key->mutable_data()->mutable_privileges()->set_authorized_update(false);
+      } else {
+        create->set_copy_authorization_key(true);
+      }
       if (cl->HasSwitch(switches::kEcryptfsSwitch)) {
         create->set_force_ecryptfs(true);
       }
@@ -831,51 +845,6 @@ int main(int argc, char **argv) {
       return 1;
     }
     printf("Mount succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_PUBLIC],
-                     action.c_str())) {
-    std::string account_id;
-
-    if (!GetAccountId(cl, &account_id)) {
-      printf("No account_id specified.\n");
-      return 1;
-    }
-
-    gboolean done = false;
-    gint mount_error = 0;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_mount_public(proxy.gproxy(),
-               account_id.c_str(),
-               cl->HasSwitch(switches::kCreateSwitch),
-               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
-               &mount_error,
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("Mount call failed: %s, with reason code: %d.\n", error->message,
-               mount_error);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_mount_public(proxy.gproxy(),
-               account_id.c_str(),
-               cl->HasSwitch(switches::kCreateSwitch),
-               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("Mount call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-      }
-    }
-    if (!done) {
-      printf("Mount failed.\n");
-      return 1;
-    }
-    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_TEST_AUTH],
                      action.c_str())) {
     std::string account_id, password;
@@ -926,7 +895,7 @@ int main(int argc, char **argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
       return 1;
 
     cryptohome::RemoveKeyRequest remove_req;
@@ -1097,7 +1066,7 @@ int main(int argc, char **argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
       return 1;
 
     cryptohome::CheckKeyRequest check_req;
@@ -1256,7 +1225,7 @@ int main(int argc, char **argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
       return 1;
 
     cryptohome::AddKeyRequest key_req;
@@ -1339,7 +1308,7 @@ int main(int argc, char **argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
       return 1;
 
     cryptohome::UpdateKeyRequest key_req;

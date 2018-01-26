@@ -155,20 +155,6 @@
     <method name="AsyncMountGuest">
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="MountPublic">
-      <arg type="s" name="public_mount_id" direction="in" />
-      <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="ensure_ephemeral" direction="in" />
-      <arg type="i" name="error_num" direction="out" />
-      <arg type="b" name="done" direction="out" />
-    </method>
-    <method name="AsyncMountPublic">
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="s" name="public_mount_id" direction="in" />
-      <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="ensure_ephemeral" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="RenameCryptohome">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="cryptohome_id_from" direction="in" />

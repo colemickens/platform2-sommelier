@@ -359,16 +359,6 @@ class Service : public brillo::dbus::AbstractDbusService,
                               GError **error);
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
-  virtual gboolean MountPublic(const gchar* public_mount_id,
-                               gboolean create_if_missing,
-                               gboolean ensure_ephemeral,
-                               gint* OUT_error_code,
-                               gboolean* OUT_result,
-                               GError** error);
-  virtual gboolean AsyncMountPublic(const gchar* public_mount_id,
-                                    gboolean create_if_missing,
-                                    gboolean ensure_ephemeral,
-                                    DBusGMethodInvocation* context);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);

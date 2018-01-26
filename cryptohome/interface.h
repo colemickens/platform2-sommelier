@@ -156,18 +156,6 @@ gboolean cryptohome_mount_ex(Cryptohome* self,
                              GArray* auth,
                              GArray* params,
                              DBusGMethodInvocation* resp);
-gboolean cryptohome_mount_public(Cryptohome* self,
-                                 gchar* public_mount_id,
-                                 gboolean create_if_missing,
-                                 gboolean ensure_ephemeral,
-                                 gint* OUT_error_code,
-                                 gboolean* OUT_result,
-                                 GError** error);
-gboolean cryptohome_async_mount_public(Cryptohome* self,
-                                       gchar* public_mount_id,
-                                       gboolean create_if_missing,
-                                       gboolean ensure_ephemeral,
-                                       DBusGMethodInvocation* context);
 gboolean cryptohome_unmount(Cryptohome* self,
                             gboolean* OUT_result,
                             GError** error);

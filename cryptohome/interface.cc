@@ -237,24 +237,6 @@ gboolean cryptohome_async_mount_guest(Cryptohome* self,
                                       GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMountGuest, OUT_async_id);
 }
-gboolean cryptohome_mount_public(Cryptohome* self,
-                                 gchar* public_mount_id,
-                                 gboolean create_if_missing,
-                                 gboolean ensure_ephemeral,
-                                 gint* OUT_error_code,
-                                 gboolean* OUT_result,
-                                 GError** error) {
-  CRYPTOHOME_WRAP_METHOD(MountPublic, public_mount_id, create_if_missing,
-                         ensure_ephemeral, OUT_error_code, OUT_result);
-}
-gboolean cryptohome_async_mount_public(Cryptohome* self,
-                                       gchar* public_mount_id,
-                                       gboolean create_if_missing,
-                                       gboolean ensure_ephemeral,
-                                       DBusGMethodInvocation* error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncMountPublic, public_mount_id, create_if_missing,
-                         ensure_ephemeral);
-}
 gboolean cryptohome_unmount(Cryptohome* self,
                             gboolean* OUT_result,
                             GError** error) {
