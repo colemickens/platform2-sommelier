@@ -1453,6 +1453,43 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
+void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
+  // The list of container directories that need to be re-labeled. Note that
+  // we don't use "var/run" because some of entries in the directory are on
+  // a read-only filesystem.
+  constexpr std::array<const char*, 8> kDirectories{"dev",
+                                                    "oem",
+                                                    "var/run/arc/apkcache",
+                                                    "var/run/arc/bugreport",
+                                                    "var/run/arc/dalvik-cache",
+                                                    "var/run/camera",
+                                                    "var/run/chrome",
+                                                    "var/run/cras"};
+
+  // Transform |kDirectories| because the mount points are visible only in
+  // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
+  // the |rootfs| prefix.
+  std::vector<base::FilePath> host_paths;
+  std::transform(kDirectories.begin(), kDirectories.end(),
+                 std::back_inserter(host_paths),
+                 [&rootfs](const char* container_path) {
+                   return rootfs.Append(container_path);
+                 });
+
+  EXIT_IF(!RestoreconRecursively(host_paths));
+
+  // Restore context of the arc/ directory itself non-recursively.
+  EXIT_IF(!Restorecon({rootfs.Append("var/run/arc")}));
+}
+
+void ArcSetup::CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs) {
+  const base::FilePath coldboot_done = rootfs.Append("dev/.coldboot_done");
+  // TODO(yusukes): Once N finishes migrating to run_oci, add an auto test for
+  // checking this file to cheets_LoginScreen.
+  EXIT_IF(!CreateOrTruncate(coldboot_done, 0755));
+  EXIT_IF(!Chown(kRootUid, kRootGid, coldboot_done));
+}
+
 void ArcSetup::OnSetup(bool for_login_screen) {
   const bool is_dev_mode =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
@@ -1610,18 +1647,6 @@ void ArcSetup::OnOnetimeStop() {
 }
 
 void ArcSetup::OnPreChroot() {
-  // The list of container directories that need to be re-labeled. Note that
-  // we don't use "var/run" because some of entries in the directory are on
-  // a read-only filesystem.
-  constexpr std::array<const char*, 8> kDirectories{"dev",
-                                                    "oem",
-                                                    "var/run/arc/apkcache",
-                                                    "var/run/arc/bugreport",
-                                                    "var/run/arc/dalvik-cache",
-                                                    "var/run/camera",
-                                                    "var/run/chrome",
-                                                    "var/run/cras"};
-
   int container_pid;
   base::FilePath rootfs;
 
@@ -1635,20 +1660,8 @@ void ArcSetup::OnPreChroot() {
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 
-  // Transform |kDirectories| because the mount points are visible only in
-  // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
-  // the |rootfs| prefix.
-  std::vector<base::FilePath> host_paths;
-  std::transform(kDirectories.begin(), kDirectories.end(),
-                 std::back_inserter(host_paths),
-                 [&rootfs](const char* container_path) {
-                   return rootfs.Append(container_path);
-                 });
-
-  EXIT_IF(!RestoreconRecursively(host_paths));
-
-  // Restore context of the arc/ directory itself non-recursively.
-  EXIT_IF(!Restorecon({rootfs.Append("var/run/arc")}));
+  RestoreContextOnPreChroot(rootfs);
+  CreateDevColdbootDoneOnPreChroot(rootfs);
 }
 
 void ArcSetup::OnReadAhead() {

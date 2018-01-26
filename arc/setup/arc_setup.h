@@ -256,6 +256,12 @@ class ArcSetup {
   // Unmounts image files that have been mounted in MountOnOnetimeSetup.
   void UnmountOnOnetimeStop();
 
+  // Restores SELinux contexts of files inside the container's mount namespace.
+  void RestoreContextOnPreChroot(const base::FilePath& rootfs);
+
+  // Creates /dev/.coldboot_done file in the container's mount namespace
+  void CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs);
+
   // Called when arc-setup is called with --setup or --setup-for-login-screen.
   void OnSetup(bool for_login_screen);
 
