@@ -72,18 +72,6 @@ void HandleSynchronousDBusMethodCall(
   response_sender.Run(std::move(response));
 }
 
-// Converts a string into an IPv4 address in network byte order.
-bool StringToIPv4Address(const string& address, uint32_t* addr) {
-  CHECK(addr);
-
-  struct in_addr in = {};
-  if (inet_pton(AF_INET, address.c_str(), &in) != 1) {
-    return false;
-  }
-  *addr = in.s_addr;
-  return true;
-}
-
 // Posted to the grpc thread to run the StartupListener service.  Puts a copy
 // of the pointer to the grpc server in |server_copy| and then signals |event|.
 void RunStartupListenerService(StartupListenerImpl* listener,
@@ -377,7 +365,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Allocate resources for the VM.
   MacAddress mac_address = mac_address_generator_.Generate();
-  std::unique_ptr<Subnet> subnet = subnet_pool_.Allocate();
+  std::unique_ptr<Subnet> subnet = subnet_pool_.AllocateVM();
   if (!subnet) {
     LOG(ERROR) << "No available subnets; unable to start VM";
 
@@ -386,17 +374,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-
-  // Get the address in network byte order.
-  uint32_t addr;
-  if (!StringToIPv4Address(subnet->IPv4Address(), &addr)) {
-    LOG(ERROR) << "Unable to parse subnet address " << subnet->IPv4Address();
-
-    response.set_failure_reason(
-        "Internal error: unable to parse subnet address");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   // Associate a WaitableEvent with this VM.  This needs to happen before
   // starting the VM to avoid a race where the VM reports that it's ready
@@ -486,7 +463,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
   response.set_success(true);
-  response.set_ipv4_address(addr);
+  response.set_ipv4_address(vm->IPv4Address());
   response.set_pid(vm->pid());
   response.set_cid(vsock_cid);
   writer.AppendProtoAsArrayOfBytes(response);

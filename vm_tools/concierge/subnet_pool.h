@@ -9,7 +9,6 @@
 
 #include <bitset>
 #include <memory>
-#include <string>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -18,8 +17,8 @@
 namespace vm_tools {
 namespace concierge {
 
-// Manages IPv4 subnets that can be assigned to virtual machines.  VMs are
-// assigned non-publicly routable addresses in the range 100.115.92.0/24.
+// Manages IPv4 subnets that can be assigned to virtual machines and containers.
+// These use non-publicly routable addresses in the range 100.115.92.0/24.
 class SubnetPool {
  public:
   SubnetPool();
@@ -30,21 +29,30 @@ class SubnetPool {
    public:
     ~Subnet();
 
-    // Returns the gateway address for this subnet.
-    std::string GatewayAddress() const;
+    // Returns the available IPv4 addresses in network byte order. Returns
+    // INADDR_ANY if the offset exceeds the available IPs in the subnet.
+    // Available IPs do not include the network identifier or the broadcast
+    // address.
+    uint32_t AddressAtOffset(uint32_t offset) const;
 
-    // Returns the assigned IPv4 address.
-    std::string IPv4Address() const;
+    // Returns the number of available IPs in this subnet.
+    size_t AvailableCount() const;
 
     // Returns the netmask.
-    std::string Netmask() const;
+    uint32_t Netmask() const;
+
+    // Returns the prefix.
+    size_t Prefix() const;
 
    private:
     friend class SubnetPool;
-    Subnet(size_t index, base::Closure release_cb);
+    Subnet(uint32_t network_id, size_t prefix, base::Closure release_cb);
 
-    // The index of the subnet assigned to this object.
-    size_t index_;
+    // Subnet network id in host byte order.
+    uint32_t network_id_;
+
+    // Prefix.
+    size_t prefix_;
 
     // Callback to run when this object is deleted.
     base::Closure release_cb_;
@@ -53,18 +61,31 @@ class SubnetPool {
   };
 
   // Create a new subnet for testing.
-  std::unique_ptr<Subnet> CreateForTesting(size_t index);
+  std::unique_ptr<Subnet> CreateVMForTesting(size_t index);
 
-  // Allocates and returns a new Subnet in the range 100.115.92.0/24.  Returns
+  // Create a new subnet for testing.
+  std::unique_ptr<Subnet> CreateContainerForTesting(size_t index);
+
+  // Allocates and returns a new VM Subnet in the range 100.115.92.0/24. Returns
   // nullptr if no subnets are available.
-  std::unique_ptr<Subnet> Allocate();
+  std::unique_ptr<Subnet> AllocateVM();
+
+  // Allocates and returns a new Container Subnet in the range 100.115.92.0/24.
+  // Returns nullptr if no subnets are available.
+  std::unique_ptr<Subnet> AllocateContainer();
 
  private:
   // Called by Subnets on destruction to free a given subnet.
-  void Release(size_t index);
+  void ReleaseVM(size_t index);
 
-  // The /24 subnet is split up into 64 /30 subnets before being handed out.
-  std::bitset<64> subnets_;
+  // Called by Subnets on destruction to free a given subnet.
+  void ReleaseContainer(size_t index);
+
+  // There are 31 /30 subnets.
+  std::bitset<32> vm_subnets_;
+
+  // There are 4 /28 subnets.
+  std::bitset<4> container_subnets_;
 
   base::WeakPtrFactory<SubnetPool> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(SubnetPool);

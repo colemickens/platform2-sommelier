@@ -118,8 +118,36 @@ class VirtualMachine {
              uint64_t mountflags,
              std::string options);
 
+  // Sets the container subnet for this VM to |subnet|. This subnet is intended
+  // to be provided to a container runtime as a DHCP pool.
+  void SetContainerSubnet(std::unique_ptr<SubnetPool::Subnet> subnet);
+
   // The pid of the child process.
   pid_t pid() { return process_.pid(); }
+
+  // The VM's cid.
+  uint32_t cid() const { return vsock_cid_; }
+
+  // The IPv4 address of the VM's gateway in network byte order.
+  uint32_t GatewayAddress() const;
+
+  // The IPv4 address of the VM in network byte order.
+  uint32_t IPv4Address() const;
+
+  // The netmask of the VM's subnet in network byte order.
+  uint32_t Netmask() const;
+
+  // The VM's container subnet netmask in network byte order. Returns INADDR_ANY
+  // if there is no container subnet.
+  uint32_t ContainerNetmask() const;
+
+  // The VM's container subnet prefix. Returns 0 if there is no container
+  // subnet.
+  size_t ContainerPrefix() const;
+
+  // The first address in the VM's container subnet in network byte order.
+  // Returns INADDR_ANY if there is no container subnet.
+  uint32_t ContainerSubnet() const;
 
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
@@ -154,6 +182,9 @@ class VirtualMachine {
 
   // The /30 subnet assigned to the VM.
   std::unique_ptr<SubnetPool::Subnet> subnet_;
+
+  // An optional /28 container subnet.
+  std::unique_ptr<SubnetPool::Subnet> container_subnet_;
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;

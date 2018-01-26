@@ -362,13 +362,13 @@ void VirtualMachineTest::SetUp() {
   // Allocate resources for the VM.
   MacAddress mac_addr = mac_address_generator_.Generate();
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  std::unique_ptr<Subnet> subnet = subnet_pool_.Allocate();
+  std::unique_ptr<Subnet> subnet = subnet_pool_.AllocateVM();
 
   ASSERT_TRUE(subnet);
 
-  address_ = subnet->IPv4Address();
-  netmask_ = subnet->Netmask();
-  gateway_ = subnet->GatewayAddress();
+  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(1), &address_));
+  ASSERT_TRUE(IPv4AddressToString(subnet->Netmask(), &netmask_));
+  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(0), &gateway_));
 
   // Create the VirtualMachine.
   vm_ = VirtualMachine::CreateForTesting(std::move(mac_addr), std::move(subnet),

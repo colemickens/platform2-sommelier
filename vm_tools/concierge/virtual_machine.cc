@@ -49,6 +49,12 @@ constexpr int64_t kShutdownTimeoutSeconds = 6;
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 2;
 
+// Offset in a subnet of the gateway/host.
+constexpr size_t kHostAddressOffset = 0;
+
+// Offset in a subnet of the client/guest.
+constexpr size_t kGuestAddressOffset = 1;
+
 // Calculates the amount of memory to give the virtual machine. Currently
 // configured to provide 75% of system memory. This is deliberately over
 // provisioned with the expectation that we will use the balloon driver to
@@ -69,15 +75,15 @@ string MacAddressToString(const MacAddress& addr) {
                             addr[3], addr[4], addr[5]);
 }
 
-// Converts a string into an IPv4 address in network byte order.
-bool StringToIPv4Address(const string& address, uint32_t* addr) {
-  CHECK(addr);
+// Converts an IPv4 address to a string.
+bool IPv4AddressToString(const uint32_t address, std::string* str) {
+  CHECK(str);
 
-  struct in_addr in = {};
-  if (inet_pton(AF_INET, address.c_str(), &in) != 1) {
+  char result[INET_ADDRSTRLEN];
+  if (inet_ntop(AF_INET, &address, result, sizeof(result)) != result) {
     return false;
   }
-  *addr = in.s_addr;
+  *str = std::string(result);
   return true;
 }
 
@@ -135,6 +141,19 @@ std::unique_ptr<VirtualMachine> VirtualMachine::Create(
 bool VirtualMachine::Start(base::FilePath kernel,
                            base::FilePath rootfs,
                            std::vector<VirtualMachine::Disk> disks) {
+  std::string host_ip;
+  std::string netmask;
+
+  if (!IPv4AddressToString(subnet_->AddressAtOffset(kHostAddressOffset),
+                           &host_ip)) {
+    LOG(ERROR) << "Failed to convert host IP to string";
+    return false;
+  }
+  if (!IPv4AddressToString(subnet_->Netmask(), &netmask)) {
+    LOG(ERROR) << "Failed to convert netmask to string";
+    return false;
+  }
+
   // Build up the process arguments.
   // clang-format off
   std::vector<string> args = {
@@ -143,8 +162,8 @@ bool VirtualMachine::Start(base::FilePath kernel,
       "--mem",          GetVmMemoryMiB(),
       "--root",         rootfs.value(),
       "--mac",          MacAddressToString(mac_addr_),
-      "--host_ip",      subnet_->GatewayAddress(),
-      "--netmask",      subnet_->Netmask(),
+      "--host_ip",      std::move(host_ip),
+      "--netmask",      std::move(netmask),
       "--cid",          std::to_string(vsock_cid_),
       "--socket",       runtime_dir_.path().Append(kCrosvmSocket).value(),
       "--wayland-sock", kWaylandSocket,
@@ -321,25 +340,9 @@ bool VirtualMachine::ConfigureNetwork() {
   vm_tools::EmptyMessage response;
 
   vm_tools::IPv4Config* config = request.mutable_ipv4_config();
-  uint32_t addr;
-
-  if (!StringToIPv4Address(subnet_->IPv4Address().c_str(), &addr)) {
-    LOG(ERROR) << "Failed to parse guest IPv4 address";
-    return false;
-  }
-  config->set_address(addr);
-
-  if (!StringToIPv4Address(subnet_->Netmask().c_str(), &addr)) {
-    LOG(ERROR) << "Failed to parse subnet netmask";
-    return false;
-  }
-  config->set_netmask(addr);
-
-  if (!StringToIPv4Address(subnet_->GatewayAddress().c_str(), &addr)) {
-    LOG(ERROR) << "Failed to parse subnet gateway address";
-    return false;
-  }
-  config->set_gateway(addr);
+  config->set_address(IPv4Address());
+  config->set_gateway(GatewayAddress());
+  config->set_netmask(Netmask());
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
@@ -388,6 +391,44 @@ bool VirtualMachine::Mount(string source,
   }
 
   return true;
+}
+
+void VirtualMachine::SetContainerSubnet(
+    std::unique_ptr<SubnetPool::Subnet> subnet) {
+  container_subnet_ = std::move(subnet);
+}
+
+uint32_t VirtualMachine::GatewayAddress() const {
+  return subnet_->AddressAtOffset(kHostAddressOffset);
+}
+
+uint32_t VirtualMachine::IPv4Address() const {
+  return subnet_->AddressAtOffset(kGuestAddressOffset);
+}
+
+uint32_t VirtualMachine::Netmask() const {
+  return subnet_->Netmask();
+}
+
+uint32_t VirtualMachine::ContainerNetmask() const {
+  if (container_subnet_)
+    return container_subnet_->Netmask();
+
+  return INADDR_ANY;
+}
+
+size_t VirtualMachine::ContainerPrefix() const {
+  if (container_subnet_)
+    return container_subnet_->Prefix();
+
+  return 0;
+}
+
+uint32_t VirtualMachine::ContainerSubnet() const {
+  if (container_subnet_)
+    return container_subnet_->AddressAtOffset(0);
+
+  return INADDR_ANY;
 }
 
 void VirtualMachine::set_stub_for_testing(
