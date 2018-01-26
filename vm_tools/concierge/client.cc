@@ -302,6 +302,44 @@ int GetVmInfo(dbus::ObjectProxy* proxy, string name) {
   return 0;
 }
 
+int StartLxd(dbus::ObjectProxy* proxy, string name) {
+  LOG(INFO) << "Starting lxd";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStartLxdMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::StartLxdRequest request;
+  request.set_name(std::move(name));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartLxdRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::StartLxdResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to start lxd: " << response.failure_reason();
+    return -1;
+  }
+
+  LOG(INFO) << "Done";
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -311,6 +349,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(start, false, "Start a VM");
   DEFINE_bool(stop, false, "Stop a running VM");
   DEFINE_bool(stop_all, false, "Stop all running VMs");
+  DEFINE_bool(start_lxd, false, "Start lxd on the given VM");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
 
   // Parameters.
@@ -345,9 +384,12 @@ int main(int argc, char** argv) {
 
   // The standard says that bool to int conversion is implicit and that
   // false => 0 and true => 1.
-  if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info != 1) {
-    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info"
-               << "must be provided";
+  // clang-format off
+  if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
+      FLAGS_start_lxd != 1) {
+    // clang-format on
+    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
+               << "--start_lxd must be provided";
     return -1;
   }
 
@@ -360,6 +402,8 @@ int main(int argc, char** argv) {
     return StopAllVms(proxy);
   } else if (FLAGS_get_vm_info) {
     return GetVmInfo(proxy, std::move(FLAGS_name));
+  } else if (FLAGS_start_lxd) {
+    return StartLxd(proxy, std::move(FLAGS_name));
   }
 
   // Unreachable.

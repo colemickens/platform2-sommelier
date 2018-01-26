@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/service.h"
 
 #include <arpa/inet.h>
+#include <net/route.h>
 #include <signal.h>
 #include <stdint.h>
 #include <sys/mount.h>
@@ -56,6 +57,10 @@ constexpr char kRuntimeDir[] = "/run/vm";
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;
 
+// How long to wait before timing out on `lxd waitready`.
+constexpr base::TimeDelta kLxdWaitreadyTimeout =
+    base::TimeDelta::FromSeconds(10);
+
 // How long we should wait for a VM to start up.
 constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(5);
 
@@ -98,6 +103,19 @@ void RunStartupListenerService(StartupListenerImpl* listener,
   if (server) {
     server->Wait();
   }
+}
+
+// Converts an IPv4 address to a string. The result will be stored in |str|
+// on success.
+bool IPv4AddressToString(const uint32_t address, std::string* str) {
+  CHECK(str);
+
+  char result[INET_ADDRSTRLEN];
+  if (inet_ntop(AF_INET, &address, result, sizeof(result)) != result) {
+    return false;
+  }
+  *str = std::string(result);
+  return true;
 }
 
 }  // namespace
@@ -197,6 +215,7 @@ bool Service::Init() {
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
+      {kStartLxdMethod, &Service::StartLxd},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -577,6 +596,162 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_cid(vm->cid());
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StartLxd(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received StartLxd request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartLxdRequest request;
+  StartLxdResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartLxdRequest from message";
+
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto& vm = iter->second;
+
+  // Common environment for all LXD functionality.
+  std::map<string, string> lxd_env = {{"LXD_DIR", "/mnt/stateful/lxd"},
+                                      {"LXD_CONF", "/mnt/stateful/lxd_conf"}};
+
+  // Set up the stateful disk. This will format the disk if necessary, then
+  // mount it.
+  if (!vm->RunProcess({"stateful_setup.sh"}, lxd_env)) {
+    LOG(ERROR) << "Stateful setup failed";
+
+    response.set_failure_reason("Stateful setup failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Launch the main lxd process.
+  if (!vm->StartProcess({"lxd", "--group", "lxd"}, lxd_env,
+                        ProcessExitBehavior::RESPAWN_ON_EXIT)) {
+    LOG(ERROR) << "lxd failed to start";
+
+    response.set_failure_reason("lxd status unknown");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Wait for lxd to be ready. The first start may take a few seconds, so use
+  // a longer timeout than the default.
+  if (!vm->RunProcessWithTimeout({"lxd", "waitready"}, lxd_env,
+                                 kLxdWaitreadyTimeout)) {
+    LOG(ERROR) << "lxd waitready failed";
+
+    response.set_failure_reason("lxd waitready failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Perform any setup for lxd to be usable. On first run, this sets up the
+  // lxd configuration (network bridge, storage pool, etc).
+  if (!vm->RunProcess({"lxd_setup.sh"}, lxd_env)) {
+    LOG(ERROR) << "lxd setup failed";
+
+    response.set_failure_reason("lxd setup failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Allocate the subnet for lxd's bridge to use.
+  std::unique_ptr<SubnetPool::Subnet> container_subnet =
+      subnet_pool_.AllocateContainer();
+  if (!container_subnet) {
+    LOG(ERROR) << "Could not allocate container subnet";
+
+    response.set_failure_reason("Could not allocate container subnet");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  vm->SetContainerSubnet(std::move(container_subnet));
+
+  // Set up a route for the container using the VM as a gateway.
+  uint32_t container_gateway_addr = vm->IPv4Address();
+  uint32_t container_netmask = vm->ContainerNetmask();
+  uint32_t container_subnet_addr = vm->ContainerSubnet();
+
+  struct rtentry route;
+  memset(&route, 0, sizeof(route));
+
+  struct sockaddr_in* gateway =
+      reinterpret_cast<struct sockaddr_in*>(&route.rt_gateway);
+  gateway->sin_family = AF_INET;
+  gateway->sin_addr.s_addr = static_cast<in_addr_t>(container_gateway_addr);
+
+  struct sockaddr_in* dst =
+      reinterpret_cast<struct sockaddr_in*>(&route.rt_dst);
+  dst->sin_family = AF_INET;
+  dst->sin_addr.s_addr = (container_subnet_addr & container_netmask);
+
+  struct sockaddr_in* genmask =
+      reinterpret_cast<struct sockaddr_in*>(&route.rt_genmask);
+  genmask->sin_family = AF_INET;
+  genmask->sin_addr.s_addr = container_netmask;
+
+  route.rt_flags = RTF_UP | RTF_GATEWAY;
+
+  base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!fd.is_valid()) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to create socket";
+    response.set_failure_reason(string("Failed to create socket: ") +
+                                strerror(saved_errno));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (HANDLE_EINTR(ioctl(fd.get(), SIOCADDRT, &route)) != 0) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to set route for container";
+    response.set_failure_reason(string("Failed to add route for container: ") +
+                                strerror(saved_errno));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string dst_addr;
+  IPv4AddressToString(container_subnet_addr, &dst_addr);
+  size_t prefix = vm->ContainerPrefix();
+
+  // The route has been installed on the host, so inform lxd of its subnet.
+  std::string container_subnet_cidr =
+      base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix);
+  if (!vm->RunProcess({"lxc", "network", "set", "lxdbr0", "ipv4.address",
+                       std::move(container_subnet_cidr)},
+                      lxd_env)) {
+    LOG(ERROR) << "lxc network config failed";
+
+    response.set_failure_reason("lxc network config failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
