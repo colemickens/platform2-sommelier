@@ -76,6 +76,13 @@ TEST_F(SecureBlobTest, IteratorConstructorTest) {
   EXPECT_TRUE(SecureBlobTest::FindBlobInBlob(from_blob, blob));
 }
 
+// Disable ResizeTest with address sanitizer.
+// https://crbug.com/806013
+#if defined(__has_feature) && __has_feature(address_sanitizer)
+#define BRILLO_DISABLE_RESIZETEST 1
+#endif
+
+#ifndef BRILLO_DISABLE_RESIZETEST
 TEST_F(SecureBlobTest, ResizeTest) {
   // Check that resizing a SecureBlob wipes the excess memory.  The test assumes
   // that resize() down by one will not re-allocate the memory, so the last byte
@@ -93,6 +100,7 @@ TEST_F(SecureBlobTest, ResizeTest) {
   EXPECT_EQ(length - 1, blob.size());
   EXPECT_EQ(0, blob.data()[length - 1]);
 }
+#endif
 
 TEST_F(SecureBlobTest, CombineTest) {
   SecureBlob blob1(32);
