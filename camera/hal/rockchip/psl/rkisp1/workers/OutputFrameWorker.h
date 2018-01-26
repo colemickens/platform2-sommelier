@@ -25,7 +25,7 @@
 namespace android {
 namespace camera2 {
 
-class OutputFrameWorker: public FrameWorker, public ICaptureEventSource
+class OutputFrameWorker: public FrameWorker, public ICaptureEventSource, public IMessageHandler
 {
 public:
     OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream,
@@ -89,12 +89,41 @@ private:
     };
 
 private:
+    struct PostProcFrame {
+        PostProcFrame() :
+                    processingSettings(nullptr),
+                    processBuffer(nullptr),
+                    listenBuffer(nullptr),
+                    stream(nullptr),
+                    request(nullptr) {}
+        std::shared_ptr<ProcUnitSettings> processingSettings;
+        std::shared_ptr<CameraBuffer> processBuffer;
+        std::shared_ptr<CameraBuffer> listenBuffer;
+        camera3_stream_t* stream;
+        Camera3Request *request;
+    };
+private:
+    enum MessageId {
+        MESSAGE_ID_EXIT = 0,            // call requestExitAndWait
+        MESSAGE_ID_PROCESS,
+        MESSAGE_ID_MAX
+    };
+    struct Message {
+        Message() : id(MESSAGE_ID_MAX) {}
+        MessageId id;
+        std::shared_ptr<PostProcFrame> frame;
+    };
+
+private:
     bool isHalUsingRequestBuffer();
     std::shared_ptr<CameraBuffer> findBuffer(Camera3Request* request,
                                              camera3_stream_t* stream);
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
     bool checkListenerBuffer(Camera3Request* request);
     std::shared_ptr<CameraBuffer> getOutputBufferForListener();
+    status_t allocListenerProcessBuffers();
+    virtual void messageThreadLoop(void);
+    status_t handleMessageProcess(Message & msg);
 
 private:
     std::vector<std::shared_ptr<CameraBuffer>> mOutputBuffers;
@@ -109,9 +138,15 @@ private:
 
     // For listeners
     std::vector<camera3_stream_t*> mListeners;
-    std::vector<std::unique_ptr<SWPostProcessor> > mListenerProcessors;
+    std::map<camera3_stream_t*, std::unique_ptr<SWPostProcessor>> mStreamToSWProcessMap;
     // Put to ISP if requests require listeners'buffer only
     std::shared_ptr<CameraBuffer> mOutputForListener;
+    SharedItemPool<PostProcFrame> mPostProcFramePool;
+
+    std::unique_ptr<MessageThread> mMessageThread;
+    MessageQueue<Message, MessageId> mMessageQueue;
+    bool mThreadRunning;
+
 };
 
 } /* namespace camera2 */

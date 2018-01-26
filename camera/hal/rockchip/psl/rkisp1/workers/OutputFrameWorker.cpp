@@ -36,11 +36,19 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
                 mStream(stream),
                 mNeedPostProcess(false),
                 mNodeName(nodeName),
-                mProcessor(cameraId)
+                mProcessor(cameraId),
+                mPostProcFramePool("PostProcFramePool"),
+                mMessageQueue("PostProcThread", MESSAGE_ID_MAX)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mNode)
         LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->name());
+    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "PostProcThread"));
+    if (mMessageThread == nullptr) {
+        LOGE("Error creating postproc thread");
+        return;
+    }
+    mMessageThread->run();
 }
 
 OutputFrameWorker::~OutputFrameWorker()
@@ -49,8 +57,70 @@ OutputFrameWorker::~OutputFrameWorker()
     if (mOutputForListener.get() && mOutputForListener->isLocked()) {
         mOutputForListener->unlock();
     }
+
+    if (mThreadRunning) {
+        Message msg;
+        msg.id = MESSAGE_ID_EXIT;
+        mMessageQueue.send(&msg);
+        mMessageThread->requestExitAndWait();
+    }
+
+    if (mMessageThread != nullptr) {
+        mMessageThread.reset();
+        mMessageThread = nullptr;
+    }
 }
 
+status_t
+OutputFrameWorker::handleMessageProcess(Message & msg)
+{
+    status_t status = mStreamToSWProcessMap[msg.frame->stream]->processFrame(msg.frame->processBuffer,
+                                                  msg.frame->listenBuffer,
+                                                  msg.frame->processingSettings,
+                                                  msg.frame->request);
+    if (status != OK) {
+        LOGE("@%s, process for listener %p failed! [%d]!", __FUNCTION__,
+             msg.frame->stream, status);
+        return status;
+    }
+    CameraStream *stream = msg.frame->listenBuffer->getOwner();
+    stream->captureDone(msg.frame->listenBuffer, msg.frame->request);
+
+    return NO_ERROR;
+}
+
+void
+OutputFrameWorker::messageThreadLoop(void)
+{
+    mThreadRunning = true;
+    while (mThreadRunning) {
+        status_t status = NO_ERROR;
+
+        Message msg;
+        mMessageQueue.receive(&msg);
+
+        LOG2("%s:%d: receive message id:%d", __func__, __LINE__, msg.id);
+        switch (msg.id) {
+        case MESSAGE_ID_EXIT:
+            mThreadRunning = false;
+            break;
+        case MESSAGE_ID_PROCESS:
+            status = handleMessageProcess(msg);
+            break;
+        default:
+            LOGE("ERROR Unknown message %d in thread loop", msg.id);
+            status = BAD_VALUE;
+            break;
+        }
+        if (status != NO_ERROR)
+            LOGE("error %d in handling message: %d",
+                 status, static_cast<int>(msg.id));
+        LOG2("%s:%d: finish message id:%d", __func__, __LINE__, msg.id);
+        mMessageQueue.reply(msg.id, status);
+    }
+    LOG2("%s:%d: exit", __func__, __LINE__);
+
+}
 void OutputFrameWorker::addListener(camera3_stream_t* stream)
 {
     if (stream != nullptr) {
@@ -62,12 +132,40 @@ void OutputFrameWorker::addListener(camera3_stream_t* stream)
 void OutputFrameWorker::clearListeners()
 {
     mListeners.clear();
+    mPostProcFramePool.deInit();
+}
+
+
+status_t OutputFrameWorker::allocListenerProcessBuffers()
+{
+    mPostProcFramePool.init(mPipelineDepth);
+    for (size_t i = 0; i < mPipelineDepth; i++)
+    {
+        std::shared_ptr<PostProcFrame> frame = nullptr;
+        mPostProcFramePool.acquireItem(frame);
+        if (frame.get() == nullptr) {
+            LOGE("postproc task busy, no idle postproc frame!");
+            return UNKNOWN_ERROR;
+        }
+        frame->processBuffer = MemoryUtils::allocateHeapBuffer(mFormat.width(),
+                                              mFormat.height(),
+                                              mFormat.bytesperline(),
+                                              mFormat.pixelformat(),
+                                              mCameraId,
+                                              PAGE_ALIGN(mFormat.sizeimage()));
+        if (frame->processBuffer.get() == nullptr)
+            return NO_MEMORY;
+
+        LOG2("%s:%d: postproc buffer allocated, address(%p)", __func__, __LINE__, frame->processBuffer.get());
+    }
+    return OK;
 }
 
 status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
+    bool listenerNeedPostProcess = false;
     status_t ret = mNode->getFormat(mFormat);
     if (ret != OK)
         return ret;
@@ -99,14 +197,18 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
                    __FUNCTION__);
     }
 
-    mListenerProcessors.clear();
+    mStreamToSWProcessMap.clear();
     for (size_t i = 0; i < mListeners.size(); i++) {
         camera3_stream_t* listener = mListeners[i];
         std::unique_ptr<SWPostProcessor> processor(new SWPostProcessor(mCameraId));
         processor->configure(listener, mFormat.width(),
                              mFormat.height());
-        mListenerProcessors.push_back(std::move(processor));
+        mStreamToSWProcessMap[listener] = std::move(processor);
+        if (mStreamToSWProcessMap[listener]->needPostProcess())
+            listenerNeedPostProcess = true;
     }
+    if (listenerNeedPostProcess)
+        allocListenerProcessBuffers();
 
     return OK;
 }
@@ -196,6 +298,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         mWorkingBuffers[mIndex] = mCameraBuffers[mIndex];
     }
     status |= mNode->putFrame(mBuffers[mIndex]);
+    LOG2("%s:%d:instance(%p), requestId(%d), index(%d)", __func__, __LINE__, this, request->getId(), mIndex);
     mIndex = (mIndex + 1) % mPipelineDepth;
 
     return (status < 0) ? status : OK;
@@ -211,7 +314,6 @@ status_t OutputFrameWorker::run()
     if (!mDevError)
         status = mNode->grabFrame(&outBuf);
 
-    LOG2("%s:%d: buffer frame_id(%d)", __func__, __LINE__, outBuf.vbuffer.sequence());
 
     // Update request sequence if needed
     Camera3Request* request = mMsg->cbMetadataMsg.request;
@@ -240,6 +342,7 @@ status_t OutputFrameWorker::run()
     outMsg.data.event.sequence = outBuf.vbuffer.sequence();
     notifyListeners(&outMsg);
 
+    LOG2("%s:%d:instance(%p), frame_id(%d), requestId(%d), index(%d)", __func__, __LINE__, this, outBuf.vbuffer.sequence(), request->getId(), index);
     return (status < 0) ? status : OK;
 }
 
@@ -277,23 +380,27 @@ status_t OutputFrameWorker::postRun()
             LOGE("prepare listener buffer error!");
             goto exit;
         }
-        if (mListenerProcessors[i]->needPostProcess()) {
-            status = mListenerProcessors[i]->processFrame(
-                                                 mWorkingBuffer,
-                                                 listenerBuf,
-                                                 mMsg->pMsg.processingSettings,
-                                                 request);
-            if (status != OK) {
-                LOGE("@%s, process for listener %p failed! [%d]!", __FUNCTION__,
-                     listener, status);
-                goto exit;
-            }
+        if (mStreamToSWProcessMap[listener]->needPostProcess()) {
+            Message msg;
+            mPostProcFramePool.acquireItem(msg.frame);
+
+            msg.id = MESSAGE_ID_PROCESS;
+            msg.frame->request = request;
+            msg.frame->stream = listener;
+            msg.frame->processingSettings = mMsg->pMsg.processingSettings;
+            msg.frame->listenBuffer = listenerBuf;
+
+            MEMCPY_S(msg.frame->processBuffer->data(), msg.frame->processBuffer->size(),
+                     mWorkingBuffer->data(), mWorkingBuffer->size());
+
+            mMessageQueue.send(&msg);
         } else {
             MEMCPY_S(listenerBuf->data(), listenerBuf->size(),
                      mWorkingBuffer->data(), mWorkingBuffer->size());
+            stream->captureDone(listenerBuf, request);
         }
-        stream->captureDone(listenerBuf, request);
     }
+
 
     // All done
     if (mOutputBuffer == nullptr)
