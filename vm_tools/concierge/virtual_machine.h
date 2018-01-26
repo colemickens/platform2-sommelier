@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -99,12 +100,14 @@ class VirtualMachine {
   // exit. |args[0]| must be either the name of a program in the default PATH
   // inside the VM or the path to the program to be executed.
   LaunchProcessResult StartProcess(std::vector<std::string> args,
+                                   std::map<std::string, std::string> env,
                                    ProcessExitBehavior exit_behavior);
 
   // Launches a process inside the VM and synchronously waits for it to exit.
   // |args[0]| must be either the name of a program in the default PATH
   // inside the VM or the path to the program to be executed.
-  LaunchProcessResult RunProcess(std::vector<std::string> args);
+  LaunchProcessResult RunProcess(std::vector<std::string> args,
+                                 std::map<std::string, std::string> env);
 
   // Configures the network interfaces inside the VM.  Returns true if
   // successful, false otherwise.
@@ -142,6 +145,7 @@ class VirtualMachine {
   // Launches a process inside the VM.  Shared implementation of both
   // StartProcess and RunProcess.
   LaunchProcessResult LaunchProcess(std::vector<std::string> args,
+                                    std::map<std::string, std::string> env,
                                     bool respawn,
                                     bool wait_for_exit);
 

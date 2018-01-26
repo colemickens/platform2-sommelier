@@ -249,6 +249,7 @@ bool VirtualMachine::Shutdown() {
 }
 
 LaunchProcessResult VirtualMachine::LaunchProcess(std::vector<string> args,
+                                                  std::map<string, string> env,
                                                   bool respawn,
                                                   bool wait_for_exit) {
   CHECK(!args.empty());
@@ -261,6 +262,10 @@ LaunchProcessResult VirtualMachine::LaunchProcess(std::vector<string> args,
 
   google::protobuf::RepeatedPtrField<string> argv(args.begin(), args.end());
   request.mutable_argv()->Swap(&argv);
+
+  google::protobuf::Map<string, string> environ(env.begin(), env.end());
+  request.mutable_env()->swap(environ);
+
   request.set_respawn(respawn);
   request.set_wait_for_exit(wait_for_exit);
 
@@ -301,14 +306,17 @@ LaunchProcessResult VirtualMachine::LaunchProcess(std::vector<string> args,
 }
 
 LaunchProcessResult VirtualMachine::StartProcess(
-    std::vector<string> args, ProcessExitBehavior exit_behavior) {
-  return LaunchProcess(std::move(args),
+    std::vector<string> args,
+    std::map<string, string> env,
+    ProcessExitBehavior exit_behavior) {
+  return LaunchProcess(std::move(args), std::move(env),
                        exit_behavior == ProcessExitBehavior::RESPAWN_ON_EXIT,
                        false);
 }
 
-LaunchProcessResult VirtualMachine::RunProcess(std::vector<string> args) {
-  return LaunchProcess(std::move(args), false, true);
+LaunchProcessResult VirtualMachine::RunProcess(std::vector<string> args,
+                                               std::map<string, string> env) {
+  return LaunchProcess(std::move(args), std::move(env), false, true);
 }
 
 bool VirtualMachine::ConfigureNetwork() {

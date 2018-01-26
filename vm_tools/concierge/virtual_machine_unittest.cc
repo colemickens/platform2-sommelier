@@ -409,19 +409,25 @@ TEST_F(VirtualMachineTest, ConfigureNetwork) {
 TEST_F(VirtualMachineTest, LaunchProcess) {
   struct {
     std::vector<string> argv;
+    std::map<string, string> env;
     bool respawn;
     bool wait_for_exit;
   } messages[] = {
       {
-          .argv = {"test", "program"}, .respawn = true, .wait_for_exit = false,
+          .argv = {"test", "program"},
+          .env = {{"HELLO", "WORLD"}},
+          .respawn = true,
+          .wait_for_exit = false,
       },
       {
           .argv = {"other", "program"},
+          .env = {},
           .respawn = false,
           .wait_for_exit = false,
       },
       {
           .argv = {"synchronous", "program"},
+          .env = {{"test", "env"}},
           .respawn = false,
           .wait_for_exit = true,
       },
@@ -434,6 +440,8 @@ TEST_F(VirtualMachineTest, LaunchProcess) {
     google::protobuf::RepeatedPtrField<string> argv(msg.argv.begin(),
                                                     msg.argv.end());
     request.mutable_argv()->Swap(&argv);
+    google::protobuf::Map<string, string> env(msg.env.begin(), msg.env.end());
+    request.mutable_env()->swap(env);
     request.set_respawn(msg.respawn);
     request.set_wait_for_exit(msg.wait_for_exit);
 
@@ -443,9 +451,9 @@ TEST_F(VirtualMachineTest, LaunchProcess) {
   // Now make the requests.
   for (auto& msg : messages) {
     if (msg.wait_for_exit) {
-      vm_->RunProcess(std::move(msg.argv));
+      vm_->RunProcess(std::move(msg.argv), std::move(msg.env));
     } else {
-      vm_->StartProcess(std::move(msg.argv),
+      vm_->StartProcess(std::move(msg.argv), std::move(msg.env),
                         msg.respawn ? ProcessExitBehavior::RESPAWN_ON_EXIT
                                     : ProcessExitBehavior::ONE_SHOT);
     }

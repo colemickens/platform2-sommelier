@@ -479,7 +479,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         "termina_container",
     };
     LaunchProcessResult result =
-        vm->StartProcess(std::move(run_oci), ProcessExitBehavior::ONE_SHOT);
+        vm->StartProcess(std::move(run_oci), {}, ProcessExitBehavior::ONE_SHOT);
     switch (result.status) {
       case ProcessStatus::UNKNOWN:
         LOG(WARNING) << "run_oci may or may not be running in the VM";
