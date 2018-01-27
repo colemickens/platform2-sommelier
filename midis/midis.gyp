@@ -72,7 +72,6 @@
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
           'libmojo-<(libbase_ver)',
-          'libudev',
           'alsa',
         ],
         'deps': ['>@(exported_deps)'],
