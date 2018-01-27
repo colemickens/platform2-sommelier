@@ -216,6 +216,8 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
   std::vector<uint8_t> buffer;
   ReadFileOptionsProto options;
 
+  // The functions below will set the error if they fail.
+  *error_code = static_cast<int32_t>(ERROR_OK);
   ParseOptionsProto(options_blob, &options, error_code) &&
       Seek(options, error_code) &&
       ReadFileIntoBuffer(options, error_code, &buffer) &&
@@ -470,7 +472,6 @@ bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
   }
 
   GetValidDBusFD(&scoped_fd, temp_fd);
-  *error_code = static_cast<int32_t>(ERROR_OK);
   return true;
 }
 
