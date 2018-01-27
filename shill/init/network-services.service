@@ -8,5 +8,3 @@ After=boot-services.target
 [Service]
 RemainAfterExit=yes
 Type=oneshot
-ExecStart=/bin/sh -c "@load_cfg80211@ || \
-  logger -p err -t \"%n\" \"Failed to load cfg80211\""
