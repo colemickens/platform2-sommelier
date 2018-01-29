@@ -13661,21 +13661,6 @@ mno {
       }
     }
   }
-  mvno {
-    mvno_filter {
-      type : IMSI
-      regex : "31026097[0-9]{7}"
-    }
-    data {
-      uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
-      localized_name {
-        name : "Fi Network"
-      }
-      mobile_apn {
-        apn : "h2g2"
-      }
-    }
-  }
 }
 
 mno {
@@ -14472,6 +14457,22 @@ mno {
 
 # ##############################################################################
 # International MVNOs.
+
+mvno {
+  mvno_filter {
+    type : IMSI
+    regex : "31026097[0-9]{7}"
+  }
+  data {
+    uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
+    localized_name {
+      name : "Fi Network"
+    }
+    mobile_apn {
+      apn : "h2g2"
+    }
+  }
+}
 
 # - We add a fake MNO since we don't support international MVNOs yet. MCCMNC /
 #   operator name are added to the MNO data, to allow us to match the MNO.
