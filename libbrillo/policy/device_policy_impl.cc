@@ -98,9 +98,7 @@ std::string DecodeConnectionType(int type) {
 }  // namespace
 
 DevicePolicyImpl::DevicePolicyImpl()
-    : policy_path_(kPolicyPath),
-      keyfile_path_(kPublicKeyPath),
-      verify_root_ownership_(true) {}
+    : policy_path_(kPolicyPath), keyfile_path_(kPublicKeyPath) {}
 
 DevicePolicyImpl::~DevicePolicyImpl() {}
 
@@ -523,7 +521,7 @@ bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
     return false;
   }
 
-  bool verify_policy = true;
+  bool verify_policy = verify_policy_;
   if (!install_attributes_reader_) {
     install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
   }

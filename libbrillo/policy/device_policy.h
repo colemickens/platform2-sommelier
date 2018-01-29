@@ -38,7 +38,7 @@ class DevicePolicy {
   DevicePolicy();
   virtual ~DevicePolicy();
 
-  // Load the signed policy off of disk into |policy_|.
+  // Load device policy off of disk into |policy_|.
   // Returns true unless there is a policy on disk and loading it fails.
   virtual bool LoadPolicy() = 0;
 
@@ -90,7 +90,7 @@ class DevicePolicy {
   // Writes the value of the EphemeralUsersEnabled policy in
   // |ephemeral_users_enabled|. Returns true on success.
   virtual bool GetEphemeralUsersEnabled(
-      bool* ephemeral_users_enabled) const =  0;
+      bool* ephemeral_users_enabled) const = 0;
 
   // Writes the value of the release channel policy in |release_channel|.
   // Returns true on success.
@@ -152,8 +152,7 @@ class DevicePolicy {
 
   // Writes the value of the kiosk app id into |app_id_out|.
   // Only succeeds if the device is in auto-launched kiosk mode.
-  virtual bool GetAutoLaunchedKioskAppId(
-      std::string* app_id_out) const = 0;
+  virtual bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const = 0;
 
   // Returns true if the policy data indicates that the device is enterprise
   // managed. Note that this potentially could be faked by an exploit, therefore

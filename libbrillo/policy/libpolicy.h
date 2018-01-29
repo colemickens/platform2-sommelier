@@ -22,6 +22,7 @@ class DevicePolicy;
 // its signature.
 class PolicyProvider {
  public:
+  // The default constructor does not load policy.
   PolicyProvider();
   virtual ~PolicyProvider();
 
