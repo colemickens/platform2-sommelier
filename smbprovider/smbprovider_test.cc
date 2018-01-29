@@ -55,6 +55,15 @@ class SmbProviderTest : public testing::Test {
   }
 
   // Helper method that calls PrepareMount() and adds a single directory with a
+  // single file in the mount.
+  int32_t PrepareSingleFileMount() {
+    const int32_t mount_id = PrepareMount();
+    fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+    fake_samba_->AddFile(GetAddedFullFilePath());
+    return mount_id;
+  }
+
+  // Helper method that calls PrepareMount() and adds a single directory with a
   // single file in the mount. |file_data| is the data that will be in the file.
   int32_t PrepareSingleFileMountWithData(std::vector<uint8_t> file_data) {
     const int32_t mount_id = PrepareMount();
@@ -65,22 +74,42 @@ class SmbProviderTest : public testing::Test {
   }
 
   // Helper method that opens an already added file located in
-  // GetDefaultFilePath(). PrepareSingleFileMountWithData() must be called
-  // beforehand.
+  // GetDefaultFilePath(). PrepareSingleFileMount() or
+  // PrepareSingleFileMountWithData() must be called beforehand.
   int32_t OpenAddedFile(int32_t mount_id) {
     return OpenAddedFile(mount_id, GetDefaultFilePath());
   }
 
   // Helper method that opens an already added file located in |path|.
-  // PrepareSingleFileMountWithData() must be called beforehand.
+  // PrepareSingleFileMount() or PrepareSingleFileMountWithData() must be called
+  // beforehand.
   int32_t OpenAddedFile(int32_t mount_id, const std::string& path) {
+    return OpenAddedFile(mount_id, path, false);
+  }
+
+  // Helper method that opens an already added file located in |path|.
+  // PrepareSingleFileMount() or PrepareSingleFileMountWithData() must be called
+  // beforehand. Permissions will be O_RDWR if |writeable| is true, otherwise it
+  // will be O_RDONLY.
+  int32_t OpenAddedFile(int32_t mount_id,
+                        const std::string& path,
+                        bool writeable) {
     int32_t file_id;
     int32_t error_code;
     ProtoBlob open_file_blob =
-        CreateOpenFileOptionsBlob(mount_id, path, false /* writeable */);
+        CreateOpenFileOptionsBlob(mount_id, path, writeable);
     smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
     DCHECK_EQ(static_cast<int32_t>(ERROR_OK), error_code);
     return file_id;
+  }
+
+  // Helper method that opens an already added directory located in |path|.
+  // Returns the directory id.
+  int32_t OpenAddedDirectory(const std::string& path) {
+    int32_t dir_id;
+    int32_t error_code = fake_samba_->OpenDirectory(path, &dir_id);
+    DCHECK_EQ(0, error_code);
+    return dir_id;
   }
 
   void SetSmbProviderBuffer(int32_t buffer_size) {
@@ -135,11 +164,20 @@ class SmbProviderTest : public testing::Test {
                            buffer.begin(), buffer.end()));
   }
 
+  void WriteToTempFileWithData(const std::vector<uint8_t>& data,
+                               dbus::FileDescriptor* fd) {
+    EXPECT_FALSE(fd->is_valid());
+    fd->PutValue(temp_file_manager_.CreateTempFile(data).release());
+    fd->CheckValidity();
+    EXPECT_TRUE(fd->is_valid());
+  }
+
   scoped_refptr<dbus::MockBus> mock_bus_ =
       new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
   FakeSambaInterface* fake_samba_;
   MountManager* mount_manager_;
+  TempFileManager temp_file_manager_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);

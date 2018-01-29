@@ -108,6 +108,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case EEXIST:
       error = ERROR_EXISTS;
       break;
+    case EINVAL:
+      error = ERROR_INVALID_OPERATION;
+      break;
     default:
       error = ERROR_FAILED;
       break;
