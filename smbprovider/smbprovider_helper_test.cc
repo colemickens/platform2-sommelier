@@ -194,4 +194,13 @@ TEST_F(SmbProviderHelperTest, IsFile) {
   EXPECT_FALSE(IsFile(dir_info));
 }
 
+// IsValidOpenFileFlags should return true on valid flags.
+TEST_F(SmbProviderHelperTest, IsValidOpenFileFlags) {
+  EXPECT_TRUE(IsValidOpenFileFlags(O_RDWR));
+  EXPECT_TRUE(IsValidOpenFileFlags(O_RDONLY));
+  EXPECT_TRUE(IsValidOpenFileFlags(O_WRONLY));
+  EXPECT_FALSE(IsValidOpenFileFlags(O_CREAT));
+  EXPECT_FALSE(IsValidOpenFileFlags(O_TRUNC));
+}
+
 }  // namespace smbprovider

@@ -49,6 +49,11 @@ std::string GetDirPath(const std::string& full_path) {
   return base::FilePath(path).DirName().value();
 }
 
+// Returns if |flag| is set in |flags|.
+bool IsFlagSet(int32_t flags, int32_t flag) {
+  return (flags & flag) == flag;
+}
+
 }  // namespace
 
 FakeSambaInterface::FakeSambaInterface()
@@ -138,8 +143,10 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
     return ENOENT;
   }
 
-  bool readable = (flags == O_RDONLY || flags == O_RDWR) ? true : false;
-  bool writeable = flags == O_RDWR ? true : false;
+  DCHECK(IsValidOpenFileFlags(flags));
+  bool readable = IsFlagSet(flags, O_RDONLY) || IsFlagSet(flags, O_RDWR);
+  bool writeable = IsFlagSet(flags, O_WRONLY) || IsFlagSet(flags, O_RDWR);
+  DCHECK(readable || writeable);
 
   *file_id = AddOpenFile(file_path, readable, writeable);
   return 0;

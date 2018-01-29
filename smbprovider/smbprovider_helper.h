@@ -103,6 +103,10 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
                                        const struct stat& stat_info,
                                        ProtoBlob* proto_blob);
 
+// Helper method to determine if the open file flags are valid. Valid flags
+// include: O_RDONLY, O_RDWR, O_WRONLY.
+bool IsValidOpenFileFlags(int32_t flags);
+
 // Gets the correct permissions flag for |options|.
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
 int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);

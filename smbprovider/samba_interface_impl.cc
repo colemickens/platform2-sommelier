@@ -10,12 +10,7 @@
 #include <base/logging.h>
 
 #include "smbprovider/constants.h"
-
-namespace {
-bool IsValidOpenFileFlags(int32_t flags) {
-  return flags == O_RDONLY || flags == O_RDWR || flags == O_WRONLY;
-}
-}  // namespace
+#include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 

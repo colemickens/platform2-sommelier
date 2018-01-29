@@ -160,6 +160,10 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
   return static_cast<int32_t>(SerializeProtoToBlob(entry, proto_blob));
 }
 
+bool IsValidOpenFileFlags(int32_t flags) {
+  return flags == O_RDONLY || flags == O_RDWR || flags == O_WRONLY;
+}
+
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
   return options.writeable() ? O_RDWR : O_RDONLY;
 }
