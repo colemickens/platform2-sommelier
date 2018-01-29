@@ -67,6 +67,8 @@ struct DirectoryEntry {
   int64_t size;
   int64_t last_modified_time;
 
+  DirectoryEntry() = default;
+
   DirectoryEntry(bool is_directory,
                  const std::string& name,
                  int64_t size,
