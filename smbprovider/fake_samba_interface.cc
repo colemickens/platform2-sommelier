@@ -498,6 +498,11 @@ bool FakeSambaInterface::IsFileDataEqual(
   if (!file || !file->has_data) {
     return false;
   }
+
+  if (file->size != expected.size()) {
+    return false;
+  }
+
   return expected == file->data;
 }
 
