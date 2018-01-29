@@ -36,6 +36,55 @@
       'sources': ['mount_obb.cc'],
       'dependencies': ['libmount_obb'],
     },
+    {
+      'target_name': 'rootfs.squashfs',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'mkdir_squashfs_source_dir',
+          'inputs': [],
+          'outputs': [
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+          'action': [
+            'mkdir', '-p', '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+        },
+        {
+          'action_name': 'generate_squashfs',
+          'inputs': [
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+          'outputs': [
+            'rootfs.squashfs',
+          ],
+          'action': [
+            'mksquashfs',
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+            '<(PRODUCT_DIR)/rootfs.squashfs',
+            '-no-progress',
+            '-info',
+            '-all-root',
+            '-noappend',
+            '-comp', 'lzo',
+            '-b', '4K',
+            '-p', '/data d 700 0 0',
+            '-p', '/dev d 700 0 0',
+            '-p', '/dev/fuse c 666 root root 10 229',
+            '-p', '/lib d 700 0 0',
+            '-p', '/lib64 d 700 0 0',
+            '-p', '/proc d 700 0 0',
+            '-p', '/run d 700 0 0',
+            '-p', '/run/dbus d 700 0 0',
+            '-p', '/usr d 700 0 0',
+            '-p', '/var d 700 0 0',
+            '-p', '/var/run d 700 0 0',
+            '-p', '/var/run/arc d 700 0 0',
+            '-p', '/var/run/arc/obb d 700 0 0',
+          ],
+        },
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
