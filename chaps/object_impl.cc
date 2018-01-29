@@ -40,7 +40,7 @@ int ObjectImpl::GetSize() const {
 }
 
 CK_OBJECT_CLASS ObjectImpl::GetObjectClass() const {
-  return GetAttributeInt(CKA_CLASS, -1);
+  return GetAttributeInt(CKA_CLASS, CK_UNAVAILABLE_INFORMATION);
 }
 
 bool ObjectImpl::IsTokenObject() const {
@@ -153,16 +153,16 @@ void ObjectImpl::SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) {
   attributes_[type] = string(1, value ? 1 : 0);
 }
 
-int ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
-                                int default_value) const {
+CK_ULONG ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
+                                     CK_ULONG default_value) const {
   AttributeMap::const_iterator it = attributes_.find(type);
   if (it == attributes_.end())
     return default_value;
   switch (it->second.length()) {
-    case 1: return it->second[0];
-    case 2: return *reinterpret_cast<const uint16_t*>(it->second.data());
-    case 4: return *reinterpret_cast<const uint32_t*>(it->second.data());
-    case 8: return *reinterpret_cast<const uint64_t*>(it->second.data());
+    case 1: return ExtractFromByteString<uint8_t>(it->second);
+    case 2: return ExtractFromByteString<uint16_t>(it->second);
+    case 4: return ExtractFromByteString<uint32_t>(it->second);
+    case 8: return ExtractFromByteString<uint64_t>(it->second);
     default:
       LOG(WARNING) << "GetAttributeInt: invalid length: "
                    << it->second.length();
@@ -170,10 +170,9 @@ int ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
   return default_value;
 }
 
-void ObjectImpl::SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) {
-  CK_ULONG long_value = value;
-  attributes_[type] = string(reinterpret_cast<const char*>(&long_value),
-                             sizeof(CK_ULONG));
+void ObjectImpl::SetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) {
+  attributes_[type] = string(reinterpret_cast<const char*>(&value),
+                             sizeof(value));
 }
 
 string ObjectImpl::GetAttributeString(CK_ATTRIBUTE_TYPE type) const {

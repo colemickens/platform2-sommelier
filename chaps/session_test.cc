@@ -113,7 +113,7 @@ class TestSession: public ::testing::Test {
                                    &handle_generator_, false));
   }
   void GenerateSecretKey(CK_MECHANISM_TYPE mechanism,
-                         int size,
+                         CK_ULONG size,
                          const Object** obj) {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;
@@ -136,7 +136,7 @@ class TestSession: public ::testing::Test {
     ASSERT_EQ(CKR_OK, session_->GenerateKey(mechanism, "", attr, 4, &handle));
     ASSERT_TRUE(session_->GetObject(handle, obj));
   }
-  void GenerateRSAKeyPair(bool signing, int size,
+  void GenerateRSAKeyPair(bool signing, CK_ULONG size,
                           const Object** pub, const Object** priv) {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;

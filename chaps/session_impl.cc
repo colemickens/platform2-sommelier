@@ -240,10 +240,9 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
   if (operation != kDigest) {
     // Make sure the key is valid for the mechanism.
     CHECK(key);
-    if (!IsValidKeyType(operation,
-                        mechanism,
-                        key->GetObjectClass(),
-                        key->GetAttributeInt(CKA_KEY_TYPE, -1))) {
+    if (!IsValidKeyType(
+            operation, mechanism, key->GetObjectClass(),
+            key->GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION))) {
       LOG(ERROR) << "Key type mismatch.";
       return CKR_KEY_TYPE_INCONSISTENT;
     }
@@ -523,7 +522,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
       key_type = CKK_AES;
       if (!object->IsAttributePresent(CKA_VALUE_LEN))
         return CKR_TEMPLATE_INCOMPLETE;
-      int key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
+      CK_ULONG key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
       if (key_length != 16 && key_length != 24 && key_length != 32)
         return CKR_KEY_SIZE_RANGE;
       key_material = GenerateRandomSoftware(key_length);
@@ -533,7 +532,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
       key_type = CKK_GENERIC_SECRET;
       if (!object->IsAttributePresent(CKA_VALUE_LEN))
         return CKR_TEMPLATE_INCOMPLETE;
-      int key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
+      CK_ULONG key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
       if (key_length < 1)
         return CKR_KEY_SIZE_RANGE;
       key_material = GenerateRandomSoftware(key_length);
@@ -597,7 +596,7 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   private_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
   if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
     return CKR_TEMPLATE_INCOMPLETE;
-  int modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
+  CK_ULONG modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
   if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
     return CKR_KEY_SIZE_RANGE;
   ObjectPool* public_pool = (public_object->IsTokenObject() ?

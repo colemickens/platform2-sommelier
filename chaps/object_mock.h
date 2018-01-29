@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "chaps/attributes.h"
+#include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -35,8 +36,8 @@ class ObjectMock : public Object {
   MOCK_CONST_METHOD1(IsAttributePresent, bool(CK_ATTRIBUTE_TYPE));
   MOCK_CONST_METHOD2(GetAttributeBool, bool(CK_ATTRIBUTE_TYPE, bool));
   MOCK_METHOD2(SetAttributeBool, void(CK_ATTRIBUTE_TYPE, bool));
-  MOCK_CONST_METHOD2(GetAttributeInt, int(CK_ATTRIBUTE_TYPE, int));
-  MOCK_METHOD2(SetAttributeInt, void(CK_ATTRIBUTE_TYPE, int));
+  MOCK_CONST_METHOD2(GetAttributeInt, CK_ULONG(CK_ATTRIBUTE_TYPE, CK_ULONG));
+  MOCK_METHOD2(SetAttributeInt, void(CK_ATTRIBUTE_TYPE, CK_ULONG));
   MOCK_CONST_METHOD1(GetAttributeString, std::string(CK_ATTRIBUTE_TYPE));
   MOCK_METHOD2(SetAttributeString, void(CK_ATTRIBUTE_TYPE,
                                         const std::string&));
@@ -125,12 +126,18 @@ class ObjectMock : public Object {
       return default_value;
     return (0 != s[0]);
   }
-  int FakeGetAttributeInt(CK_ATTRIBUTE_TYPE type, int default_value) {
+  CK_ULONG FakeGetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG default_value) {
     std::string s = FakeGetAttributeString(type);
-    if (s.length() < sizeof(int)) {
+    if (s.empty())
       return default_value;
+    switch (s.length()) {
+      case 1: return ExtractFromByteString<uint8_t>(s);
+      case 2: return ExtractFromByteString<uint16_t>(s);
+      case 4: return ExtractFromByteString<uint32_t>(s);
+      case 8: return ExtractFromByteString<uint64_t>(s);
+      default: NOTREACHED();
     }
-    return *reinterpret_cast<const int*>(s.data());
+    return default_value;
   }
   std::string FakeGetAttributeString(CK_ATTRIBUTE_TYPE type) {
     std::string s;
@@ -142,9 +149,9 @@ class ObjectMock : public Object {
   void FakeSetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) {
     attributes_[type] = std::string(1, value ? 1 : 0);
   }
-  void FakeSetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) {
+  void FakeSetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) {
     attributes_[type] = std::string(reinterpret_cast<const char*>(&value),
-                                    sizeof(int));
+                                    sizeof(value));
   }
   void FakeSetAttributeString(CK_ATTRIBUTE_TYPE type,
                               const std::string& value) {

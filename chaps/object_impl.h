@@ -40,9 +40,9 @@ class ObjectImpl : public Object {
   bool GetAttributeBool(CK_ATTRIBUTE_TYPE type,
                         bool default_value) const override;
   void SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) override;
-  int GetAttributeInt(CK_ATTRIBUTE_TYPE type,
-                      int default_value) const override;
-  void SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) override;
+  CK_ULONG GetAttributeInt(CK_ATTRIBUTE_TYPE type,
+                           CK_ULONG default_value) const override;
+  void SetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) override;
   std::string GetAttributeString(CK_ATTRIBUTE_TYPE type) const override;
   void SetAttributeString(CK_ATTRIBUTE_TYPE type,
                           const std::string& value) override;

@@ -80,10 +80,10 @@ class Object {
   virtual void SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) = 0;
   // Queries an integral attribute. If the attribute does not exist or is not
   // valid, 'default_value' is returned.
-  virtual int GetAttributeInt(CK_ATTRIBUTE_TYPE type,
-                              int default_value) const = 0;
+  virtual CK_ULONG GetAttributeInt(CK_ATTRIBUTE_TYPE type,
+                                   CK_ULONG default_value) const = 0;
   // Sets an integral attribute. Policies will not be enforced.
-  virtual void SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) = 0;
+  virtual void SetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) = 0;
   // Queries an attribute value as a string.
   virtual std::string GetAttributeString(CK_ATTRIBUTE_TYPE type) const = 0;
   // Sets an attribute as a string. Policies will not be enforced.

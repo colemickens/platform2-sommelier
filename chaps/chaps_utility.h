@@ -5,6 +5,8 @@
 #ifndef CHAPS_CHAPS_UTILITY_H_
 #define CHAPS_CHAPS_UTILITY_H_
 
+#include <string.h>
+
 #include <sstream>
 #include <string>
 #include <vector>
@@ -191,6 +193,17 @@ inline std::vector<uint8_t> ConvertByteBufferToVector(CK_BYTE_PTR buffer,
   if (!buffer)
     return std::vector<uint8_t>();
   return std::vector<uint8_t>(buffer, buffer + buffer_size);
+}
+
+// This function returns a value composed of the bytes in the given string.
+// It only accepts strings whose length is the same as the size of the given
+// type. The type must be default-constructible.
+template <typename T>
+T ExtractFromByteString(const std::string& s) {
+  CHECK(s.length() == sizeof(T));
+  T ret;
+  memcpy(&ret, s.data(), sizeof(ret));
+  return ret;
 }
 
 // This class preserves a variable that needs to be temporarily converted to
