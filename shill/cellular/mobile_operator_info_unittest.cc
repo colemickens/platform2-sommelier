@@ -126,7 +126,7 @@ class MobileOperatorInfoInitTest : public Test {
 
   void AssertDatabaseEmpty() {
     EXPECT_EQ(0, operator_info_impl_->database()->mno_size());
-    EXPECT_EQ(0, operator_info_impl_->database()->imvno_size());
+    EXPECT_EQ(0, operator_info_impl_->database()->mvno_size());
   }
 
   const MobileOperatorDB* GetDatabase() {
@@ -183,7 +183,7 @@ TEST_F(MobileOperatorInfoInitTest, SuccessfulInit) {
               arraysize(mobile_operator_db::init_test_successful_init));
   EXPECT_TRUE(operator_info_->Init());
   EXPECT_GT(GetDatabase()->mno_size(), 0);
-  EXPECT_GT(GetDatabase()->imvno_size(), 0);
+  EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
 
 TEST_F(MobileOperatorInfoInitTest, MultipleDBInit) {
@@ -196,7 +196,7 @@ TEST_F(MobileOperatorInfoInitTest, MultipleDBInit) {
               arraysize(mobile_operator_db::init_test_multiple_db_init_2));
   operator_info_->Init();
   EXPECT_GT(GetDatabase()->mno_size(), 0);
-  EXPECT_GT(GetDatabase()->imvno_size(), 0);
+  EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
 
 TEST_F(MobileOperatorInfoInitTest, InitWithObserver) {
@@ -891,6 +891,28 @@ TEST_P(MobileOperatorInfoMainTest, MVNOSIDMatch) {
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid120002");
   EXPECT_EQ("120002", operator_info_->sid());
+}
+
+TEST_P(MobileOperatorInfoMainTest, InternationalMVNOMatch) {
+  // message: international MVNO (imsi filter).
+  // match by: MNO matches by MCCMNC,
+  //           MVNO matches by IMSI after first IMSI update,
+  //           MVNO matches again after MCCMNC change.
+  // verify: Three Observer events: MNO followed by MVNO twice.
+  ExpectEventCount(1);
+  UpdateMCCMNC("127001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid127001");
+
+  ExpectEventCount(1);
+  UpdateIMSI("1270015432154322");
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid127001-mvno");
+
+  ExpectEventCount(1);
+  UpdateMCCMNC("118001");
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid127001-mvno");
 }
 
 TEST_P(MobileOperatorInfoMainTest, MVNOAllMatch) {

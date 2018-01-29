@@ -449,12 +449,6 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
                                    &mno);
     }
   }
-
-  if (database_->imvno_size() > 0) {
-    // TODO(pprabhu) Support IMVNOs.
-    LOG(ERROR) << "InternationalMobileVirtualNetworkOperators are not "
-               << "supported yet. Ignoring all IMVNOs.";
-  }
 }
 
 // This function assumes that duplicate |values| are never inserted for the
@@ -632,23 +626,30 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
 
 bool MobileOperatorInfoImpl::UpdateMVNO() {
   SLOG(this, 3) << __func__;
-  if (current_mno_ == nullptr) {
-    return false;
+
+  vector<const MobileVirtualNetworkOperator*> candidate_mvnos;
+  for (const auto& mvno : database_->mvno()) {
+    candidate_mvnos.push_back(&mvno);
+  }
+  if (current_mno_) {
+    for (const auto& mvno : current_mno_->mvno()) {
+      candidate_mvnos.push_back(&mvno);
+    }
   }
 
-  for (const auto& candidate_mvno : current_mno_->mvno()) {
+  for (const auto* candidate_mvno : candidate_mvnos) {
     bool passed_all_filters = true;
-    for (const auto& filter : candidate_mvno.mvno_filter()) {
+    for (const auto& filter : candidate_mvno->mvno_filter()) {
       if (!FilterMatches(filter)) {
         passed_all_filters = false;
         break;
       }
     }
     if (passed_all_filters) {
-      if (current_mvno_ == &candidate_mvno) {
+      if (current_mvno_ == candidate_mvno) {
         return false;
       }
-      current_mvno_ = &candidate_mvno;
+      current_mvno_ = candidate_mvno;
       RefreshDBInformation();
       return true;
     }

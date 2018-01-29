@@ -207,6 +207,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         new MockMobileOperatorInfo(dispatcher_, "HomeProvider");
     mock_serving_operator_info_ =
         new MockMobileOperatorInfo(dispatcher_, "ServingOperator");
+    mock_home_provider_info_->Init();
+    mock_serving_operator_info_->Init();
     cellular_->set_home_provider_info(mock_home_provider_info_);
     cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
