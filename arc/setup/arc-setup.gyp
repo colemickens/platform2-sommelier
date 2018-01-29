@@ -61,6 +61,49 @@
         'libarc_setup',
       ],
     },
+    {
+      'target_name': 'dev-rootfs.squashfs',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'mkdir_squashfs_source_dir',
+          'inputs': [],
+          'outputs': [
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+          'action': [
+            'mkdir', '-p', '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+        },
+        {
+          'action_name': 'generate_squashfs',
+          'inputs': [
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+          ],
+          'outputs': [
+            'dev-rootfs.squashfs',
+          ],
+          'action': [
+            'mksquashfs',
+            '<(INTERMEDIATE_DIR)/squashfs_source_dir',
+            '<(PRODUCT_DIR)/dev-rootfs.squashfs',
+            '-no-progress',
+            '-info',
+            '-all-root',
+            '-noappend',
+            '-comp', 'lzo',
+            '-b', '4K',
+            # Create rootfs and necessary dev nodes for art container.
+            # ashmem minor number is dynamic determined and will be bind
+            # mounted.
+            '-p', '/dev d 700 0 0',
+            '-p', '/dev/ashmem c 666 root root 1 3',
+            '-p', '/dev/random c 666 root root 1 8',
+            '-p', '/dev/urandom c 666 root root 1 9',
+          ],
+        },
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
