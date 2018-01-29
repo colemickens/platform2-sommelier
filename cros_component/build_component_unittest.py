@@ -71,6 +71,7 @@ class TestBuildComponent(unittest.TestCase):
 
   def test_GetCurrentPackageVersion(self):
     self.assertEqual(GetCurrentPackageVersion('', '[platform]'), '0.0.0.0')
+    self.assertEqual(GetCurrentPackageVersion(None, '[platform]'), '0.0.0.0')
 
   def test_FixPackageVersion(self):
     self.assertEqual(FixPackageVersion('1.2.3-r0'), '1.2.3-r0')

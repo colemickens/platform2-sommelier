@@ -39,6 +39,8 @@ def GetParser():
   parser.add_argument('--platform', default='chromeos_intel64-archive',
                       help='name for the platform folder in Omaha.'
                            '{chromeos_arm32-archive, chromeos_intel64-archive}')
+  parser.add_argument('--gsbucket', default=None,
+                      help='Override the gsbucket field in config json file.')
   parser.add_argument('--upload', dest='upload', action='store_true',
                       default=False,
                       help='Upload to Omaha gs bucket.')
@@ -246,18 +248,20 @@ def GetCurrentPackageVersion(current_version_path, platform):
   Returns:
     str: package version of current component.
   """
-  ctx = gs.GSContext(False)
-  src = os.path.join(current_version_path, platform, COMPONENT_ZIP)
-  if len(current_version_path) != 0 and ctx.Exists(src):
-    with osutils.TempDir(prefix='component_') as tempdir:
-      ctx.Copy(src, tempdir)
-      cros_build_lib.RunCommand(
-          ['unzip', '-o', '-d', tempdir, os.path.join(tempdir, COMPONENT_ZIP)],
-          redirect_stdout=True, redirect_stderr=True)
-      with open(os.path.join(tempdir, MANIFEST_FILE_NAME)) as f:
-        manifest = json.load(f)
-        if MANIFEST_PACKAGE_VERSION_FIELD in manifest:
-          return manifest[MANIFEST_PACKAGE_VERSION_FIELD]
+  if current_version_path:
+    ctx = gs.GSContext(False)
+    src = os.path.join(current_version_path, platform, COMPONENT_ZIP)
+    if ctx.Exists(src):
+      with osutils.TempDir(prefix='component_') as tempdir:
+        ctx.Copy(src, tempdir)
+        cros_build_lib.RunCommand(
+            ['unzip', '-o', '-d',
+             tempdir, os.path.join(tempdir, COMPONENT_ZIP)],
+            redirect_stdout=True, redirect_stderr=True)
+        with open(os.path.join(tempdir, MANIFEST_FILE_NAME)) as f:
+          manifest = json.load(f)
+          if MANIFEST_PACKAGE_VERSION_FIELD in manifest:
+            return manifest[MANIFEST_PACKAGE_VERSION_FIELD]
   return '0.0.0.0'
 
 def FixPackageVersion(version):
@@ -307,7 +311,7 @@ def GetPackageVersion(folder_name, package_name):
   return None
 
 def BuildComponent(component_to_build, components, board, platform,
-                   upload=False):
+                   gsbucket_override=None, upload=False):
   """Build a component.
 
   Args:
@@ -315,6 +319,8 @@ def BuildComponent(component_to_build, components, board, platform,
     components: ([object]) a list of components.
     board: (str) board to build the component on.
     platform: (str) platform name in omaha.
+    gsbucket_override: (str) gsbucket value to override in components if not
+                       None.
     upload: (bool) True if uploading to Omaha; False if not uploading to Omaha.
   """
   for component in components:
@@ -330,7 +336,11 @@ def BuildComponent(component_to_build, components, board, platform,
           cros_build_lib.Die('component files are missing.')
 
         # Check release versions on gs.
-        gsbucket = metadata['gsbucket']
+        if gsbucket_override is not None:
+          gsbucket = gsbucket_override
+        else:
+          gsbucket = metadata['gsbucket']
+        logger.info('Use %s gsbucket for component.', gsbucket)
         dirs = CheckGsBucket(gsbucket)
         if len(dirs) == 0:
           cros_build_lib.Die('gsbucket %s has no subfolders', gsbucket)
@@ -381,10 +391,12 @@ def GetComponentsToBuild(path):
 
 def main(argv):
   opts = GetParser().parse_args(argv)
-  BuildComponent(opts.component,
-                 GetComponentsToBuild(opts.config_path),
-                 opts.board, opts.platform,
-                 opts.upload)
+  BuildComponent(component_to_build=opts.component,
+                 components=GetComponentsToBuild(opts.config_path),
+                 board=opts.board,
+                 platform=opts.platform,
+                 gsbucket_override=opts.gsbucket,
+                 upload=opts.upload)
 
 if __name__ == '__main__':
   commandline.ScriptWrapperMain(lambda _: main)
