@@ -25,7 +25,7 @@ int64_t GetCurrentOffset(int32_t fd) {
 class TempFileManagerTest : public testing::Test {
  public:
   TempFileManagerTest() = default;
-  ~TempFileManagerTest() = default;
+  ~TempFileManagerTest() override = default;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TempFileManagerTest);
