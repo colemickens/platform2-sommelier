@@ -10,7 +10,7 @@
 
 namespace arc_networkd {
 
-NdpHandler::NdpHandler() = default;
+NdpHandler::NdpHandler() : watcher_(FROM_HERE) {}
 
 NdpHandler::~NdpHandler() {
   StopNdp();

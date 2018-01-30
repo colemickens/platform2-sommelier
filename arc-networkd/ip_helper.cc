@@ -23,7 +23,8 @@ const int kMaxContainerRetries = 60;
 
 namespace arc_networkd {
 
-IpHelper::IpHelper(const Options& opt, base::ScopedFD control_fd) {
+IpHelper::IpHelper(const Options& opt, base::ScopedFD control_fd)
+    : control_watcher_(FROM_HERE) {
   arc_ip_config_.reset(
       new ArcIpConfig(opt.int_ifname, opt.con_ifname, opt.con_netns));
   control_fd_ = std::move(control_fd);

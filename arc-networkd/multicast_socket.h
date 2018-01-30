@@ -24,7 +24,7 @@ namespace arc_networkd {
 // Wrapper around various syscalls used for multicast socket communications.
 class MulticastSocket {
  public:
-  MulticastSocket() {}
+  MulticastSocket() : watcher_(FROM_HERE) {}
   virtual ~MulticastSocket();
 
   bool Bind(const std::string& ifname,
