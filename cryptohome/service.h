@@ -331,7 +331,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   // an async_id in |mount_task| and returns it to the caller.
   virtual void  DoAsyncMount(const std::string& userid,
                              SecureBlob *key,
-                             bool public_mount,
                              MountTaskMount* mount_task);
   virtual gboolean AsyncMount(
       const gchar *user,

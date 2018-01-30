@@ -2138,35 +2138,12 @@ void Service::SendDircryptoMigrationProgressSignal(
 // Pass in the MountTaskMount so the async_id stays consistent.
 void Service::DoAsyncMount(const std::string& userid,
                            SecureBlob *key,
-                           bool public_mount,
                            MountTaskMount* mount_task) {
   CleanUpHiddenMounts();
 
   // Clean up stale mounts if this is the only mount.
-  if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
-    // Don't proceed if there is any existing mount or stale mount.
-    if (public_mount) {
-      LOG(ERROR) << "Public mount requested with other mounts active.";
-      PostAsyncCallResultForUser(userid, mount_task,
-                                 MOUNT_ERROR_MOUNT_POINT_BUSY, false);
-      return;
-    }
-  }
-
-  if (public_mount) {
-    std::string public_mount_passkey;
-    if (!GetPublicMountPassKey(userid, &public_mount_passkey)) {
-      LOG(ERROR) << "Could not get public mount passkey.";
-      PostAsyncCallResultForUser(userid, mount_task,
-                                 MOUNT_ERROR_KEY_FAILURE, false);
-      return;
-    }
-    SecureBlob public_key(public_mount_passkey);
-    key->swap(public_key);
-    // Override the mount_task credentials with the public key.
-    UsernamePasskey credentials(userid.c_str(), *key);
-    mount_task->set_credentials(credentials);
-  }
+  if (mounts_.size() == 0)
+    CleanUpStaleMounts(false);
 
   scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
   mount_task->set_mount(guest_mount);
@@ -2266,7 +2243,6 @@ gboolean Service::AsyncMount(const gchar *userid,
       base::Bind(&Service::DoAsyncMount, base::Unretained(this),
                  std::string(userid),
                  base::Owned(key_blob.release()),
-                 false,
                  base::RetainedRef(mount_task)));
 
   return TRUE;
