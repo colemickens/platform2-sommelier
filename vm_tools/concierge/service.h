@@ -40,7 +40,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
-  Service() = default;
+  Service();
 
   // Initializes the service by connecting to the system DBus daemon, exporting
   // its methods, and taking ownership of it's name.

@@ -125,6 +125,8 @@ std::unique_ptr<Service> Service::Create() {
   return service;
 }
 
+Service::Service() : watcher_(FROM_HERE) {}
+
 Service::~Service() {
   if (grpc_server_) {
     grpc_server_->Shutdown();

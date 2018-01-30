@@ -893,7 +893,7 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
     std::list<base::Time> spawn_times;
   };
 
-  Worker() = default;
+  Worker() : watcher_(FROM_HERE) {}
   ~Worker() = default;
 
   // Start the worker.  This will set up a signalfd for receiving SIGHCHLD

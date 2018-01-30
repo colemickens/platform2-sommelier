@@ -173,7 +173,11 @@ void Collector::OnFileCanWriteWithoutBlocking(int fd) {
 }
 
 Collector::Collector(base::Closure shutdown_closure)
-    : shutdown_closure_(std::move(shutdown_closure)), weak_factory_(this) {}
+    : syslog_controller_(FROM_HERE),
+      kmsg_controller_(FROM_HERE),
+      signal_controller_(FROM_HERE),
+      shutdown_closure_(std::move(shutdown_closure)),
+      weak_factory_(this) {}
 
 bool Collector::Init() {
   // Start listening on the syslog socket.
