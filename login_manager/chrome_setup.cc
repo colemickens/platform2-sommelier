@@ -311,8 +311,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   base::DeleteFile(data_dir.Append("SingletonLock"), false);
   base::DeleteFile(data_dir.Append("SingletonSocket"), false);
 
-  builder->AddArg("--max-unused-resource-memory-usage-percentage=5");
-
   // Some targets (embedded, VMs) do not need component updates.
   if (!builder->UseFlagIsSet("compupdates"))
     builder->AddArg("--disable-component-update");
