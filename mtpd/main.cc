@@ -43,7 +43,7 @@ namespace mtpd {
 class Daemon : public brillo::DBusServiceDaemon,
                public MessageLoopForIO::Watcher {
  public:
-  Daemon() : DBusServiceDaemon(kMtpdServiceName) {}
+  Daemon() : DBusServiceDaemon(kMtpdServiceName), watcher_(FROM_HERE) {}
 
  protected:
   // brillo::DBusServiceDaemon overrides.
