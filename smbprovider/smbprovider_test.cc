@@ -31,34 +31,6 @@ ErrorType CastError(int error) {
   return static_cast<ErrorType>(error);
 }
 
-std::string GetDefaultServer() {
-  return "smb://wdshare";
-}
-
-std::string GetDefaultMountRoot() {
-  return "smb://wdshare/test";
-}
-
-std::string GetDefaultDirectoryPath() {
-  return "/path";
-}
-
-std::string GetDefaultFilePath() {
-  return "/path/dog.jpg";
-}
-
-std::string GetDefaultFullPath(const std::string& relative_path) {
-  return GetDefaultMountRoot() + relative_path;
-}
-
-std::string GetAddedFullDirectoryPath() {
-  return GetDefaultMountRoot() + GetDefaultDirectoryPath();
-}
-
-std::string GetAddedFullFilePath() {
-  return GetDefaultMountRoot() + GetDefaultFilePath();
-}
-
 }  // namespace
 
 class SmbProviderTest : public testing::Test {

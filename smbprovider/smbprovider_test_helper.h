@@ -76,6 +76,35 @@ ProtoBlob CreateTruncateOptionsBlob(int32_t mount_id,
                                     const std::string& file_path,
                                     int64_t length);
 
+// FakeSamba URL helper methods
+inline std::string GetDefaultServer() {
+  return "smb://wdshare";
+}
+
+inline std::string GetDefaultMountRoot() {
+  return "smb://wdshare/test";
+}
+
+inline std::string GetDefaultDirectoryPath() {
+  return "/path";
+}
+
+inline std::string GetDefaultFilePath() {
+  return "/path/dog.jpg";
+}
+
+inline std::string GetDefaultFullPath(const std::string& relative_path) {
+  return GetDefaultMountRoot() + relative_path;
+}
+
+inline std::string GetAddedFullDirectoryPath() {
+  return GetDefaultMountRoot() + GetDefaultDirectoryPath();
+}
+
+inline std::string GetAddedFullFilePath() {
+  return GetDefaultMountRoot() + GetDefaultFilePath();
+}
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_SMBPROVIDER_TEST_HELPER_H_
