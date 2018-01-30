@@ -60,7 +60,9 @@ void CameraAlgorithmOpsImpl::Unbind() {
   cb_ptr_.reset();
   ipc_task_runner_ = nullptr;
   cam_algo_ = nullptr;
-  binding_.Unbind();
+  if (binding_.is_bound()) {
+    binding_.Unbind();
+  }
 }
 
 void CameraAlgorithmOpsImpl::Initialize(
