@@ -29,21 +29,29 @@ MANIFEST_PACKAGE_VERSION_FIELD = u'package_version'
 
 def GetParser():
   parser = commandline.ArgumentParser(description=__doc__)
-  parser.add_argument('--component',
-                      default='net-print/epson-inkjet-printer-escpr',
-                      help='component to build')
-  parser.add_argument('--config-path', default='./cros_components.json',
-                      help='path to config file.')
-  parser.add_argument('--board', default='amd64-generic',
-                      help='board to build the component for.')
-  parser.add_argument('--platform', default='chromeos_intel64-archive',
-                      help='name for the platform folder in Omaha.'
-                           '{chromeos_arm32-archive, chromeos_intel64-archive}')
-  parser.add_argument('--gsbucket', default=None,
-                      help='Override the gsbucket field in config json file.')
+  # Optional arguments:
+  parser.add_argument('--gsbucket', default=None, metavar='GS_BUCKET_URI',
+                      help="Override the gsbucket field (Google Cloud Storage"
+                           " bucket where component is uploaded to) in config"
+                           " file.")
   parser.add_argument('--upload', dest='upload', action='store_true',
                       default=False,
-                      help='Upload to Omaha gs bucket.')
+                      help='Upload to Omaha gsbucket.')
+  # Required arguments:
+  required = parser.add_argument_group('required arguments')
+  required.add_argument('--board', metavar='BOARD',
+                        help='Board to build the component for.',
+                        required=True)
+  required.add_argument('--config_path', metavar='CONFIG',
+                        help='Path to the config file.', required=True)
+  required.add_argument('--platform', metavar='PLATFORM',
+                        help='Name for the platform folder in Omaha.',
+                        choices=['chromeos_arm32-archive',
+                                 'chromeos_intel64-archive'], required=True)
+  # Positional arguments:
+  parser.add_argument('component', metavar='COMPONENT',
+                      help="The component to build (key inside the config"
+                           " file)")
   return parser
 
 
