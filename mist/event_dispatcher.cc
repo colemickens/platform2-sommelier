@@ -59,9 +59,10 @@ bool EventDispatcher::StartWatchingFileDescriptor(
   FileDescriptorWatcherMap::iterator it =
       file_descriptor_watchers_.find(file_descriptor);
   if (it == file_descriptor_watchers_.end()) {
-    file_descriptor_watcher = new MessageLoopForIO::FileDescriptorWatcher();
+    scoped_file_descriptor_watcher =
+        std::make_unique<MessageLoopForIO::FileDescriptorWatcher>(FROM_HERE);
+    file_descriptor_watcher = scoped_file_descriptor_watcher.get();
     CHECK(file_descriptor_watcher);
-    scoped_file_descriptor_watcher.reset(file_descriptor_watcher);
   } else {
     // MessageLoopForIO::WatchFileDescriptor supports watching the same file
     // descriptor again, using the same mode or a different one.
