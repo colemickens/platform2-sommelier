@@ -33,7 +33,7 @@ bool ParseIntFromDict(const base::DictionaryValue& dict,
   if (!dict.GetDouble(name, &double_val)) {
     return false;
   }
-  *val_out = double_val;
+  *val_out = static_cast<T>(double_val);
   return true;
 }
 

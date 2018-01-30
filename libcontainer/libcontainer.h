@@ -8,6 +8,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 
 #include <brillo/brillo_export.h>
@@ -102,8 +103,8 @@ BRILLO_EXPORT int container_config_alt_syscall_table(
 /* Add a runtime limit for the contained process. */
 BRILLO_EXPORT int container_config_add_rlimit(struct container_config* c,
                                               int type,
-                                              uint32_t cur,
-                                              uint32_t max);
+                                              rlim_t cur,
+                                              rlim_t max);
 
 /*
  * Add a filesystem to mount in the new VFS namespace.

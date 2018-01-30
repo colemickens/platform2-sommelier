@@ -121,8 +121,8 @@ struct CpuCgroup {
 
 struct Rlimit {
   int type;
-  uint32_t cur;
-  uint32_t max;
+  rlim_t cur;
+  rlim_t max;
 };
 
 }  // namespace
@@ -996,8 +996,8 @@ int container_config_alt_syscall_table(struct container_config* c,
 
 int container_config_add_rlimit(struct container_config* c,
                                 int type,
-                                uint32_t cur,
-                                uint32_t max) {
+                                rlim_t cur,
+                                rlim_t max) {
   if (c->num_rlimits >= kMaxRlimits) {
     errno = ENOMEM;
     return -1;

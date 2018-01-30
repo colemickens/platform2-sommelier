@@ -10,6 +10,7 @@
 
 #include <linux/capability.h>
 #include <stdint.h>
+#include <sys/resource.h>
 
 #include <bitset>
 #include <map>
@@ -36,8 +37,8 @@ using CapSet = std::bitset<CAP_LAST_CAP + 1>;
 
 struct OciProcessRlimit {
   int type;
-  uint32_t hard;
-  uint32_t soft;
+  rlim_t hard;
+  rlim_t soft;
 };
 
 using OciEnvironment = std::map<std::string, std::string>;
