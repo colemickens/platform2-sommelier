@@ -63,6 +63,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to start lxd on a VM.
   std::unique_ptr<dbus::Response> StartLxd(dbus::MethodCall* method_call);
 
+  // Handles a request to create a disk image.
+  std::unique_ptr<dbus::Response> CreateDiskImage(
+      dbus::MethodCall* method_call);
+
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
   SubnetPool subnet_pool_;

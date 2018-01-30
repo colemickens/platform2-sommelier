@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/at_exit.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -34,6 +35,11 @@ using std::string;
 namespace {
 
 constexpr int kDefaultTimeoutMs = 30 * 1000;
+
+constexpr char kImageTypeQcow2[] = "qcow2";
+constexpr char kImageTypeRaw[] = "raw";
+constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
+constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 
 // Converts an IPv4 address in network byte order into a string.
 void IPv4AddressToString(uint32_t addr, string* address) {
@@ -100,11 +106,12 @@ int StartVm(dbus::ObjectProxy* proxy,
     std::vector<base::StringPiece> tokens = base::SplitStringPiece(
         disk, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-    // disk path[,writable[,mount target,fstype[,flags[,data]]]]
+    // disk path[,writable[,image type[,mount target,fstype[,flags[,data]]]]]
     if (tokens.empty()) {
       LOG(ERROR) << "Disk description is empty";
       return -1;
     }
+
     vm_tools::concierge::DiskImage* disk_image = request.add_disks();
     disk_image->set_path(tokens[0].data(), tokens[0].size());
     disk_image->set_do_mount(false);
@@ -120,27 +127,45 @@ int StartVm(dbus::ObjectProxy* proxy,
     }
 
     if (tokens.size() > 2) {
-      if (tokens.size() == 3) {
+      if (tokens[2] == kImageTypeRaw) {
+        disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_RAW);
+      } else if (tokens[2] == kImageTypeQcow2) {
+        disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
+      } else {
+        LOG(ERROR) << "Invalid disk image type: " << tokens[2];
+        return -1;
+      }
+    }
+
+    if (tokens.size() > 3) {
+      if (tokens.size() == 4) {
         LOG(ERROR) << "Missing fstype for " << disk;
         return -1;
       }
-      disk_image->set_mount_point(tokens[2].data(), tokens[2].size());
-      disk_image->set_fstype(tokens[3].data(), tokens[3].size());
+      disk_image->set_mount_point(tokens[3].data(), tokens[3].size());
+      disk_image->set_fstype(tokens[4].data(), tokens[4].size());
       disk_image->set_do_mount(true);
     }
 
-    if (tokens.size() > 4) {
+    if (tokens.size() > 5) {
       uint64_t flags;
-      if (!base::HexStringToUInt64(tokens[4], &flags)) {
-        LOG(ERROR) << "Unable to parse flags: " << tokens[4];
+      if (!base::HexStringToUInt64(tokens[5], &flags)) {
+        LOG(ERROR) << "Unable to parse flags: " << tokens[5];
         return -1;
       }
 
       disk_image->set_flags(flags);
     }
 
-    if (tokens.size() > 5) {
-      disk_image->set_data(tokens[5].data(), tokens[5].size());
+    if (tokens.size() > 6) {
+      // Unsplit the rest of the string since data is comma-separated.
+      string data(tokens[6].as_string());
+      for (int i = 7; i < tokens.size(); i++) {
+        data += ",";
+        tokens[i].AppendToString(&data);
+      }
+
+      disk_image->set_data(std::move(data));
     }
 
     if (!base::PathExists(base::FilePath(disk_image->path()))) {
@@ -340,6 +365,86 @@ int StartLxd(dbus::ObjectProxy* proxy, string name) {
   return 0;
 }
 
+int CreateDiskImage(dbus::ObjectProxy* proxy,
+                    string cryptohome_id,
+                    string disk_path,
+                    uint64_t disk_size,
+                    string image_type,
+                    string storage_location,
+                    string* result_path) {
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "Cryptohome id cannot be empty";
+    return -1;
+  } else if (disk_path.empty()) {
+    LOG(ERROR) << "Disk path cannot be empty";
+    return -1;
+  } else if (disk_size == 0) {
+    LOG(ERROR) << "Disk size cannot be 0";
+    return -1;
+  }
+
+  LOG(INFO) << "Creating disk image";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kCreateDiskImageMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::CreateDiskImageRequest request;
+  request.set_cryptohome_id(std::move(cryptohome_id));
+  request.set_disk_path(std::move(disk_path));
+  request.set_disk_size(std::move(disk_size));
+
+  if (image_type == kImageTypeRaw) {
+    request.set_image_type(vm_tools::concierge::DISK_IMAGE_RAW);
+  } else if (image_type == kImageTypeQcow2) {
+    request.set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
+  } else {
+    LOG(ERROR) << "'" << image_type << "' is not a valid disk image type";
+    return -1;
+  }
+
+  if (storage_location == kStorageCryptohomeRoot) {
+    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
+  } else if (storage_location == kStorageCryptohomeDownloads) {
+    request.set_storage_location(
+        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
+  } else {
+    LOG(ERROR) << "'" << storage_location
+               << "' is not a valid storage location";
+    return -1;
+  }
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode CreateDiskImageRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::CreateDiskImageResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (response.status() != vm_tools::concierge::DISK_STATUS_EXISTS &&
+      response.status() != vm_tools::concierge::DISK_STATUS_CREATED) {
+    LOG(ERROR) << "Failed to create disk image: " << response.failure_reason();
+    return -1;
+  }
+
+  if (result_path)
+    *result_path = response.disk_path();
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -351,6 +456,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(stop_all, false, "Stop all running VMs");
   DEFINE_bool(start_lxd, false, "Start lxd on the given VM");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
+  DEFINE_bool(create_disk, false, "Create a disk image");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -358,6 +464,14 @@ int main(int argc, char** argv) {
   DEFINE_string(name, "", "Name to assign to the VM");
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
+
+  // create_disk parameters.
+  DEFINE_string(cryptohome_id, "", "User cryptohome id");
+  DEFINE_string(disk_path, "", "Path to the disk image to create");
+  DEFINE_uint64(disk_size, 0, "Size of the disk image to create");
+  DEFINE_string(image_type, "qcow2", "Disk image type");
+  DEFINE_string(storage_location, "cryptohome-root",
+                "Location to store the disk image");
 
   brillo::FlagHelper::Init(argc, argv, "vm_concierge client tool");
   brillo::InitLog(brillo::kLogToStderrIfTty);
@@ -386,10 +500,10 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
-      FLAGS_start_lxd != 1) {
+      FLAGS_start_lxd + FLAGS_create_disk != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
-               << "--start_lxd must be provided";
+               << "--start_lxd, --create_disk must be provided";
     return -1;
   }
 
@@ -404,6 +518,11 @@ int main(int argc, char** argv) {
     return GetVmInfo(proxy, std::move(FLAGS_name));
   } else if (FLAGS_start_lxd) {
     return StartLxd(proxy, std::move(FLAGS_name));
+  } else if (FLAGS_create_disk) {
+    return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
+                           std::move(FLAGS_disk_path), FLAGS_disk_size,
+                           std::move(FLAGS_image_type),
+                           std::move(FLAGS_storage_location), nullptr);
   }
 
   // Unreachable.

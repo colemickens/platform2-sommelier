@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/service.h"
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <net/route.h>
 #include <signal.h>
 #include <stdint.h>
@@ -12,6 +13,7 @@
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -36,6 +38,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <crosvm/qcow_utils.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
@@ -63,6 +66,18 @@ constexpr base::TimeDelta kLxdWaitreadyTimeout =
 
 // How long we should wait for a VM to start up.
 constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(5);
+
+// crosvm directory name.
+constexpr char kCrosvmDir[] = "crosvm";
+
+// Cryptohome root base path.
+constexpr char kCryptohomeRoot[] = "/home/root";
+
+// Cryptohome user base path.
+constexpr char kCryptohomeUser[] = "/home/user";
+
+// Downloads directory for a user.
+constexpr char kDownloadsDir[] = "Downloads";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -216,6 +231,7 @@ bool Service::Init() {
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kStartLxdMethod, &Service::StartLxd},
+      {kCreateDiskImageMethod, &Service::CreateDiskImage},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -366,8 +382,22 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       return dbus_response;
     }
 
+    VirtualMachine::DiskImageType image_type;
+    if (disk.image_type() == vm_tools::concierge::DISK_IMAGE_RAW) {
+      image_type = VirtualMachine::DiskImageType::RAW;
+    } else if (disk.image_type() == vm_tools::concierge::DISK_IMAGE_QCOW2) {
+      image_type = VirtualMachine::DiskImageType::QCOW2;
+    } else {
+      LOG(ERROR) << "Invalid disk type";
+      response.set_failure_reason("Invalid disk type specified");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
     disks.emplace_back(VirtualMachine::Disk{
-        .path = base::FilePath(disk.path()), .writable = disk.writable(),
+        .path = base::FilePath(disk.path()),
+        .writable = disk.writable(),
+        .image_type = image_type,
     });
   }
 
@@ -747,9 +777,9 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
                        std::move(container_subnet_cidr)},
                       lxd_env)) {
     LOG(ERROR) << "lxc network config failed";
-
     response.set_failure_reason("lxc network config failed");
     writer.AppendProtoAsArrayOfBytes(response);
+
     return dbus_response;
   }
 
@@ -759,5 +789,127 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::CreateDiskImage(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received CreateDiskImage request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CreateDiskImageRequest request;
+  CreateDiskImageResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CreateDiskImageRequest from message";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Unable to parse CreateImageDiskRequest");
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath disk_path;
+  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
+    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
+                                    .Append(request.cryptohome_id())
+                                    .Append(kCrosvmDir);
+    base::File::Error dir_error;
+    if (!base::DirectoryExists(crosvm_dir) &&
+        !base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
+      string error_description = base::File::ErrorToString(dir_error);
+      LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
+                 << error_description;
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason(
+          "Failed to create crosvm directory in /home/root: " +
+          error_description);
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+    disk_path = crosvm_dir.Append(request.disk_path());
+  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
+    disk_path = base::FilePath(kCryptohomeUser)
+                    .Append(request.cryptohome_id())
+                    .Append(kDownloadsDir)
+                    .Append(request.disk_path());
+  } else {
+    LOG(ERROR) << "Unknown storage location type";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Unknown storage location type");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (disk_path.ReferencesParent()) {
+    LOG(ERROR) << "Disk path references parent";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Disk path references parent");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (base::PathExists(disk_path)) {
+    response.set_status(DISK_STATUS_EXISTS);
+    response.set_disk_path(disk_path.value());
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (request.image_type() == DISK_IMAGE_RAW) {
+    LOG(INFO) << "Creating raw disk at: " << disk_path.value() << " size "
+              << request.disk_size();
+    base::ScopedFD fd(
+        open(disk_path.value().c_str(), O_CREAT | O_NONBLOCK | O_WRONLY, 0600));
+    if (!fd.is_valid()) {
+      PLOG(ERROR) << "Failed to create raw disk";
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Failed to create raw disk file");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    int ret = ftruncate(fd.get(), request.disk_size());
+    if (ret != 0) {
+      PLOG(ERROR) << "Failed to truncate raw disk";
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Failed to truncate raw disk file");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+    response.set_status(DISK_STATUS_CREATED);
+    response.set_disk_path(disk_path.value());
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "
+            << request.disk_size();
+  int ret =
+      create_qcow_with_size(disk_path.value().c_str(), request.disk_size());
+  if (ret != 0) {
+    LOG(ERROR) << "Failed to create qcow2 disk image: " << strerror(ret);
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Failed to create qcow2 disk image");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  response.set_disk_path(disk_path.value());
+  response.set_status(DISK_STATUS_CREATED);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
 }  // namespace concierge
 }  // namespace vm_tools

@@ -58,6 +58,15 @@ class VirtualMachine {
     FAILED,
   };
 
+  // Type of a disk image.
+  enum class DiskImageType {
+    // Raw disk image file.
+    RAW,
+
+    // QCOW2 disk image.
+    QCOW2,
+  };
+
   // Describes a disk image to be mounted inside the VM.
   struct Disk {
     // Path to the disk image on the host.
@@ -65,6 +74,9 @@ class VirtualMachine {
 
     // Whether the disk should be writable by the VM.
     bool writable;
+
+    // Type of the disk image.
+    DiskImageType image_type;
   };
 
   // Starts a new virtual machine.  Returns nullptr if the virtual machine

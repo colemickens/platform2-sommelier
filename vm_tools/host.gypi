@@ -70,6 +70,7 @@
       'dependencies': ['vm-rpcs'],
       'variables': {
         'exported_deps': [
+          'libqcow_utils',
           'system_api',
         ],
         'deps': ['<@(exported_deps)'],
