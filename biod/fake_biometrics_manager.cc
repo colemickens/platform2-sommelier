@@ -10,6 +10,7 @@
 #include <uuid/uuid.h>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -89,7 +90,8 @@ FakeBiometricsManager::FakeBiometricsManager()
   CHECK_GE(fake_input_.get(), 0)
       << "Failed to open FakeBiometricsManager input";
 
-  fd_watcher_.reset(new base::MessageLoopForIO::FileDescriptorWatcher);
+  fd_watcher_ = std::make_unique<base::MessageLoopForIO::FileDescriptorWatcher>(
+      FROM_HERE);
 
   CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
       fake_input_.get(),
