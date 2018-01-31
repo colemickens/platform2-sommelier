@@ -202,7 +202,8 @@ TEST_F(HammerUpdaterFlowTest, Run_LoadEcImageFailed) {
   EXPECT_CALL(*fw_updater_, TryConnectUsb()).Times(0);
   EXPECT_CALL(*hammer_updater_, RunOnce()).Times(0);
 
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kInvalidFirmware);
 }
 
 // Sends reset command if RunOnce returns kNeedReset.
@@ -215,7 +216,8 @@ TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
       .WillRepeatedly(Return(true));
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNeedReset);  // FAILURE
 }
 
 // A fatal error occurred during update.
@@ -226,7 +228,8 @@ TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
       .WillOnce(Return(true));
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNeedReset);  // FAILURE
 }
 
 // After three attempts, Run reports no update needed.
@@ -241,7 +244,8 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
       .WillRepeatedly(Return(true));
 
   ExpectUsbConnections(Exactly(4));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Fails if the base connected is invalid.
@@ -255,7 +259,8 @@ TEST_F(HammerUpdaterFlowTest, RunOnce_InvalidDevice) {
   EXPECT_CALL(*dbus_wrapper_, SendSignal(kInvalidBaseConnectedSignal));
 
   // Do not call ExpectUsbConnections since it conflicts with our EXPECT_CALLs.
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNeedJump);  // FAILURE
 }
 
 // Check PendingRWUpdate metric:
@@ -272,7 +277,8 @@ TEST_F(HammerUpdaterFlowTest,
             static_cast<int>(PendingRWUpdate::kCommunicationError),
             static_cast<int>(PendingRWUpdate::kCount)));
 
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNeedJump);  // FAILURE
 }
 
 // Check PendingRWUpdate metric:
@@ -290,7 +296,8 @@ TEST_F(HammerUpdaterFlowTest,
             static_cast<int>(PendingRWUpdate::kCount)));
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Check PendingRWUpdate metric:
@@ -308,7 +315,8 @@ TEST_F(HammerUpdaterFlowTest,
             static_cast<int>(PendingRWUpdate::kCount)));
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Check PendingRWUpdatemetric:
@@ -326,7 +334,8 @@ TEST_F(HammerUpdaterFlowTest,
             static_cast<int>(PendingRWUpdate::kCount)));
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // In "never" update condition, send DBus signal only if a critical update
@@ -351,7 +360,8 @@ TEST_F(HammerUpdaterRWTest, Run_NeverUpdateCriticalUpdate) {
   EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // In "mismatch" update condition, no update is performed.
@@ -366,7 +376,8 @@ TEST_F(HammerUpdaterRWTest, Run_MismatchUpdateRWMismatch) {
   EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW)).Times(0);
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // In "never" update condition, send DBus signal only if RW is broken.
@@ -393,7 +404,8 @@ TEST_F(HammerUpdaterRWTest, Run_NeverUpdateRWBroken) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_FALSE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNeedReset);  // FAILURE
 }
 
 // In "never" update condition, do nothing if there is only normal update.
@@ -411,7 +423,8 @@ TEST_F(HammerUpdaterRWTest, Run_NeverUpdateNothing) {
       .Times(0);
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Return kInvalidFirmware if the layout of the firmware is changed.
@@ -461,7 +474,8 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Inject Entropy.
@@ -511,7 +525,8 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Update the RW and continue.
@@ -702,7 +717,8 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateLockedRW) {
 
   task_->update_rw = true;
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_TRUE(hammer_updater_->Run());
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Successfully Pair with Hammer.
@@ -820,7 +836,8 @@ TEST_F(HammerUpdaterPostRWTest, Run_SkipUpdateWhenKeyChanged) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Test updating to new key version on a dogfood device.
@@ -886,7 +903,8 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 
 // Test the return value if we can't get touchpad infomation.
@@ -966,6 +984,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_UpdateTouchpadOnBoot) {
   }
 
   ExpectUsbConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_EQ(hammer_updater_->Run(),
+            HammerUpdater::RunStatus::kNoUpdate);
 }
 }  // namespace hammerd

@@ -76,7 +76,7 @@ class HammerUpdater {
 
   // Handle the whole update process, including pre-processing, main update
   // logic loop, and the post-processing.
-  virtual bool Run();
+  virtual RunStatus Run();
   // Handle the main update logic loop. For each round, it establishes the USB
   // connection, calls RunOnce() method, and runs some actions according the
   // returned status.

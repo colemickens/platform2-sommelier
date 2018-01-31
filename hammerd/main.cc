@@ -23,6 +23,17 @@
 namespace {
 // The lock file used to prevent multiple hammerd be invoked at the same time.
 constexpr char kLockFile[] = "/run/lock/hammerd.lock";
+
+enum class ExitStatus {
+  kSuccess                = EXIT_SUCCESS,  // 0
+  kUnknownError           = 1,
+  kNeedUsbInfo            = 10,
+  kEcImageNotFound        = 11,
+  kTouchpadImageNotFound  = 12,
+  kUnknownUpdateCondition = 13,
+  kConnectionError        = 14,
+  kInvalidFirmware        = 15,
+};
 }  // namespace
 
 int main(int argc, const char* argv[]) {
@@ -57,19 +68,19 @@ int main(int argc, const char* argv[]) {
   hammerd::ProcessLock lock(file_path);
   if (!lock.Acquire()) {
     LOG(INFO) << "Other hammerd process is running, exit.";
-    return EXIT_SUCCESS;
+    return static_cast<int>(ExitStatus::kSuccess);
   }
 
   if (FLAGS_vendor_id < 0 || FLAGS_product_id < 0 ||
       FLAGS_usb_bus < 0 || FLAGS_usb_port < 0) {
     LOG(ERROR) << "Must specify USB vendor/product ID and bus/port number.";
-    return EXIT_FAILURE;
+    return static_cast<int>(ExitStatus::kNeedUsbInfo);
   }
 
   std::string ec_image;
   if (!base::ReadFileToString(base::FilePath(FLAGS_ec_image_path), &ec_image)) {
     LOG(ERROR) << "EC image file is not found: " << FLAGS_ec_image_path;
-    return EXIT_FAILURE;
+    return static_cast<int>(ExitStatus::kEcImageNotFound);
   }
 
   std::string touchpad_image;
@@ -83,20 +94,20 @@ int main(int argc, const char* argv[]) {
                                      &touchpad_image)) {
     LOG(ERROR) << "Touchpad image is not found with path ["
                << FLAGS_touchpad_image_path << "]. Abort.";
-    return EXIT_FAILURE;
+    return static_cast<int>(ExitStatus::kTouchpadImageNotFound);
   } else if (!hammerd::HammerUpdater::ParseTouchpadInfoFromFilename(
         FLAGS_touchpad_image_path, &touchpad_product_id, &touchpad_fw_ver)) {
     LOG(ERROR) << "Not able to get version info from filename. "
                << "Check if [" << FLAGS_touchpad_image_path << "] follows "
                << "<product_id>_<fw_version>.bin format (applied to symbolic "
                << "link as well).";
-    return EXIT_FAILURE;
+    return static_cast<int>(ExitStatus::kInvalidFirmware);
   }
   hammerd::HammerUpdater::UpdateCondition update_condition =
       hammerd::HammerUpdater::ToUpdateCondition(FLAGS_update_if);
   if (update_condition == hammerd::HammerUpdater::UpdateCondition::kUnknown) {
     LOG(ERROR) << "Unknown update condition: " << FLAGS_update_if;
-    return EXIT_FAILURE;
+    return static_cast<int>(ExitStatus::kUnknownUpdateCondition);
   }
 
   // The message loop registers a task runner with the current thread, which
@@ -106,8 +117,9 @@ int main(int argc, const char* argv[]) {
       ec_image, touchpad_image, touchpad_product_id, touchpad_fw_ver,
       FLAGS_vendor_id, FLAGS_product_id,
       FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot, update_condition);
-  bool ret = updater.Run();
-  if (ret && FLAGS_autosuspend_delay_ms >= 0) {
+  hammerd::HammerUpdater::RunStatus ret = updater.Run();
+  if (ret == hammerd::HammerUpdater::RunStatus::kNoUpdate &&
+      FLAGS_autosuspend_delay_ms >= 0) {
     LOG(INFO) << "Enable USB autosuspend with delay "
               << FLAGS_autosuspend_delay_ms << " ms.";
     base::FilePath base_path =
@@ -122,5 +134,16 @@ int main(int argc, const char* argv[]) {
     base::WriteFile(base_path.Append(base::FilePath(kAutosuspendDelayMsPath)),
                     delay_ms.data(), delay_ms.size());
   }
-  return ret ? EXIT_SUCCESS : EXIT_FAILURE;
+  switch (ret) {
+    case hammerd::HammerUpdater::RunStatus::kNoUpdate:
+      return static_cast<int>(ExitStatus::kSuccess);
+    case hammerd::HammerUpdater::RunStatus::kLostConnection:
+    case hammerd::HammerUpdater::RunStatus::kNeedJump:
+    case hammerd::HammerUpdater::RunStatus::kNeedReset:
+      return static_cast<int>(ExitStatus::kConnectionError);
+    case hammerd::HammerUpdater::RunStatus::kInvalidFirmware:
+      return static_cast<int>(ExitStatus::kInvalidFirmware);
+    default:
+      return static_cast<int>(ExitStatus::kUnknownError);
+  }
 }

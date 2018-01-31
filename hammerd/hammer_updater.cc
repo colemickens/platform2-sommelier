@@ -89,11 +89,11 @@ HammerUpdater::HammerUpdater(
       dbus_notified_(false),
       metrics_(std::move(metrics)) {}
 
-bool HammerUpdater::Run() {
+HammerUpdater::RunStatus HammerUpdater::Run() {
   LOG(INFO) << "Load and validate the EC image.";
   if (!fw_updater_->LoadEcImage(ec_image_)) {
     LOG(ERROR) << "Failed to load EC image.";
-    return false;
+    return HammerUpdater::RunStatus::kInvalidFirmware;
   }
 
   if (at_boot_) {
@@ -101,17 +101,16 @@ bool HammerUpdater::Run() {
     metrics_->SendBoolToUMA(kMetricAttachedOnBoot, is_attached);
     if (!is_attached) {
       LOG(INFO) << "USB device is not found.";
-      return false;
+      return HammerUpdater::RunStatus::kLostConnection;
     }
   }
 
   HammerUpdater::RunStatus status = RunLoop();
-  bool ret = (status == HammerUpdater::RunStatus::kNoUpdate);
   WaitUsbReady(status);
   if (update_condition_ != UpdateCondition::kNever) {
-    NotifyUpdateFinished(ret);
+    NotifyUpdateFinished(status == HammerUpdater::RunStatus::kNoUpdate);
   }
-  return ret;
+  return status;
 }
 
 HammerUpdater::RunStatus HammerUpdater::RunLoop() {
