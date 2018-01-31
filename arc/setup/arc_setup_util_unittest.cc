@@ -187,6 +187,34 @@ TEST(ArcSetupUtil, TestWriteToFile) {
   EXPECT_EQ(3, size);
 }
 
+TEST(ArcSetupUtil, TestWriteToFileWithSymlink) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  base::ScopedTempDir temp_directory2;
+  ASSERT_TRUE(temp_directory2.CreateUniqueTempDir());
+
+  const base::FilePath symlink = temp_directory.path().Append("symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.path(), symlink));
+
+  // WriteToFile should fail when the path points to a symlink.
+  EXPECT_FALSE(WriteToFile(symlink, 0777, "abc"));
+
+  // WriteToFile should also fail when a path component in the middle is a
+  // symlink.
+  const base::FilePath path_with_symlink = symlink.Append("not-a-symlink");
+  EXPECT_FALSE(WriteToFile(path_with_symlink, 0777, "abcde"));
+}
+
+TEST(ArcSetupUtil, TestWriteToFileWithFifo) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath fifo = temp_directory.path().Append("fifo");
+  ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
+
+  // WriteToFile should fail when the path points to a fifo.
+  EXPECT_FALSE(WriteToFile(fifo, 0777, "abc"));
+}
+
 TEST(ArcSetupUtil, TestGetPropertyFromFile) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
@@ -399,6 +427,14 @@ TEST(ArcSetupUtil, TestMkdirRecursively) {
   // Call the API again which should still succeed.
   EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a/b")));
   EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a")));
+
+  // Try to create an existing directory ("/") should still succeed.
+  EXPECT_TRUE(MkdirRecursively(base::FilePath("/")));
+
+  // Try to pass a relative or empty directory. They should all fail.
+  EXPECT_FALSE(MkdirRecursively(base::FilePath("foo")));
+  EXPECT_FALSE(MkdirRecursively(base::FilePath("bar/")));
+  EXPECT_FALSE(MkdirRecursively(base::FilePath()));
 }
 
 TEST(ArcSetupUtil, TestInstallDirectory) {
@@ -448,6 +484,34 @@ TEST(ArcSetupUtil, TestInstallDirectory) {
   mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.path(), &mode));
   EXPECT_EQ(0707, mode);
+}
+
+TEST(ArcSetupUtil, TestInstallDirectoryWithSymlink) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  base::ScopedTempDir temp_directory2;
+  ASSERT_TRUE(temp_directory2.CreateUniqueTempDir());
+
+  const base::FilePath symlink = temp_directory.path().Append("symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.path(), symlink));
+
+  // InstallDirectory should fail when the path points to a symlink.
+  EXPECT_FALSE(InstallDirectory(0777, getuid(), getgid(), symlink));
+
+  // InstallDirectory should also fail when a path component in the middle
+  // is a symlink.
+  const base::FilePath path_with_symlink = symlink.Append("not-a-symlink");
+  EXPECT_FALSE(InstallDirectory(0777, getuid(), getgid(), path_with_symlink));
+}
+
+TEST(ArcSetupUtil, TestInstallDirectoryWithFifo) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath fifo = temp_directory.path().Append("fifo");
+  ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
+
+  // InstallDirectory should fail when the path points to a fifo.
+  EXPECT_FALSE(InstallDirectory(0777, getuid(), getgid(), fifo));
 }
 
 TEST(ArcSetupUtil, TestDeleteFilesInDir) {

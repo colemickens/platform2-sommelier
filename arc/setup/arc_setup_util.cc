@@ -206,24 +206,78 @@ bool FindLine(
   return false;
 }
 
-// Sets the permission of the given |path|. If |path| is symbolic link, sets
-// the permission of a file which the symlink points to.
-bool SetFilePermissions(const base::FilePath& path, mode_t mode) {
+// Sets the permission of the given |fd|.
+bool SetPermissions(base::PlatformFile fd, mode_t mode) {
   struct stat st;
-  if (stat(path.value().c_str(), &st) < 0) {
-    PLOG(ERROR) << "Failed to stat " << path.value();
+  if (fstat(fd, &st) < 0) {
+    PLOG(ERROR) << "Failed to stat";
     return false;
   }
   if ((st.st_mode & 07000) && ((st.st_mode & 07000) != (mode & 07000))) {
-    LOG(INFO) << "Changing permissions of " << path.value() << " from "
-              << (st.st_mode & ~S_IFMT) << " to " << (mode & ~S_IFMT);
+    LOG(INFO) << "Changing permissions from " << (st.st_mode & ~S_IFMT)
+              << " to " << (mode & ~S_IFMT);
   }
 
-  if (chmod(path.value().c_str(), mode) != 0) {
-    PLOG(ERROR) << "Failed to chmod " << path.value() << " to " << mode;
+  if (fchmod(fd, mode) != 0) {
+    PLOG(ERROR) << "Failed to fchmod " << mode;
     return false;
   }
   return true;
+}
+
+// Opens the |path| with safety checks and returns a FD. This function returns
+// an invalid FD if open() fails or the returned fd is not safe for use. The
+// function also returns an invalid FD when |path| is relative. |mode| is
+// ignored unless |flags| has either O_CREAT or O_TMPFILE.
+// TODO(yusukes): Consider moving this to libbrillo. Add HANDLE_EINTR and
+// O_CLOEXEC when doing that.
+base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
+  if (!path.IsAbsolute()) {
+    LOG(INFO) << "Relative paths are not supported: " << path.value();
+    return base::ScopedFD();
+  }
+
+  base::ScopedFD fd(
+      open(path.value().c_str(), flags | O_NOFOLLOW | O_NONBLOCK, mode));
+  if (!fd.is_valid()) {
+    // open(2) fails with ELOOP whtn the last component of the |path| is a
+    // symlink. It fails with ENXIO when |path| is a FIFO and |flags| is for
+    // writing because of the O_NONBLOCK flag added above.
+    if (errno == ELOOP || errno == ENXIO)
+      PLOG(WARNING) << "Failed to open " << path.value() << " safely.";
+    return base::ScopedFD();
+  }
+
+  // Ensure the opened file is a regular file or directory.
+  struct stat st;
+  if (fstat(fd.get(), &st) < 0) {
+    PLOG(ERROR) << "Failed to fstat " << path.value();
+    return base::ScopedFD();
+  }
+
+  if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode)) {
+    // This detects a FIFO opened for reading, for example.
+    LOG(ERROR) << path.value()
+               << " is not a regular file/directory: " << st.st_mode;
+    return base::ScopedFD();
+  }
+
+  // Finally, check if there are symlink(s) in other path components.
+  const base::FilePath proc_fd(
+      base::StringPrintf("/proc/self/fd/%d", fd.get()));
+  base::FilePath resolved;
+  if (!base::ReadSymbolicLink(proc_fd, &resolved)) {
+    LOG(ERROR) << "Failed to read " << proc_fd.value();
+    return base::ScopedFD();
+  }
+  // Note: |path| has to be absolute to pass this check.
+  if (resolved != path) {
+    LOG(ERROR) << "Symbolic link detected in " << path.value()
+               << ". Resolved path=" << resolved.value();
+    return base::ScopedFD();
+  }
+
+  return fd;
 }
 
 class ArcMounterImpl : public ArcMounter {
@@ -507,34 +561,68 @@ base::FilePath Realpath(const base::FilePath& path) {
   return base::FilePath(buf);
 }
 
-// Taken from Chromium r403830 then slightly modified (see comments below.)
 bool MkdirRecursively(const base::FilePath& full_path) {
-  std::vector<base::FilePath> subpaths;
-
-  // Collect a list of all parent directories.
-  base::FilePath last_path = full_path;
-  subpaths.push_back(full_path);
-  for (base::FilePath path = full_path.DirName();
-       path.value() != last_path.value(); path = path.DirName()) {
-    subpaths.push_back(path);
-    last_path = path;
+  if (!full_path.IsAbsolute()) {
+    LOG(INFO) << "Relative paths are not supported: " << full_path.value();
+    return false;
   }
 
-  // Iterate through the parents and create the missing ones.
-  for (std::vector<base::FilePath>::reverse_iterator i = subpaths.rbegin();
-       i != subpaths.rend(); ++i) {
-    if (base::DirectoryExists(*i))
-      continue;
-    // Note: the original Chromium code uses 0700. We use 0755.
-    if (mkdir(i->value().c_str(), 0755) == 0)
-      continue;
+  // Collect a list of all parent directories.
+  std::vector<std::string> components;
+  full_path.GetComponents(&components);
+  DCHECK(!components.empty());
+
+  base::ScopedFD fd(OpenSafely(base::FilePath("/"), O_RDONLY, 0));
+  if (!fd.is_valid())
     return false;
+
+  // Iterate through the parents and create the missing ones. '+ 1' is for
+  // skipping "/".
+  for (std::vector<std::string>::const_iterator i = components.begin() + 1;
+       i != components.end(); ++i) {
+    // Try to create the directory. Note that Chromium's MkdirRecursively() uses
+    // 0700, but we use 0755.
+    if (mkdirat(fd.get(), i->c_str(), 0755) != 0) {
+      if (errno != EEXIST) {
+        PLOG(ERROR) << "Failed to mkdirat " << *i
+                    << ": full_path=" << full_path.value();
+        return false;
+      }
+
+      // The path already exists. Make sure that the path is a directory.
+      struct stat st;
+      if (fstatat(fd.get(), i->c_str(), &st, AT_SYMLINK_NOFOLLOW) != 0) {
+        PLOG(ERROR) << "Failed to fstatat " << *i
+                    << ": full_path=" << full_path.value();
+        return false;
+      }
+      if (!S_ISDIR(st.st_mode)) {
+        LOG(ERROR) << *i << " is not a directory: st_mode=" << st.st_mode
+                   << ", full_path=" << full_path.value();
+        return false;
+      }
+    }
+
+    // Updates the FD so it refers to the new directory created or checked
+    // above.
+    const int new_fd =
+        openat(fd.get(), i->c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK, 0);
+    if (new_fd < 0) {
+      PLOG(ERROR) << "Failed to openat " << *i
+                  << ": full_path=" << full_path.value();
+      return false;
+    }
+    fd.reset(new_fd);
+    continue;
   }
   return true;
 }
 
 bool Chown(uid_t uid, gid_t gid, const base::FilePath& path) {
-  return chown(path.value().c_str(), uid, gid) == 0;
+  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  if (!fd.is_valid())
+    return false;
+  return fchown(fd.get(), uid, gid) == 0;
 }
 
 bool Chcon(const std::string& context, const base::FilePath& path) {
@@ -553,29 +641,35 @@ bool InstallDirectory(mode_t mode,
   if (!MkdirRecursively(path))
     return false;
 
+  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  if (!fd.is_valid())
+    return false;
+
   // Unlike 'mkdir -m mode -p' which does not change modes when the path already
   // exists, 'install -d' always sets modes and owner regardless of whether the
   // path exists or not.
-  const bool chown_result = Chown(uid, gid, path);
-  const bool chmod_result = SetFilePermissions(path, mode);
+  const bool chown_result = (fchown(fd.get(), uid, gid) == 0);
+  const bool chmod_result = SetPermissions(fd.get(), mode);
   return chown_result && chmod_result;
 }
 
 bool WriteToFile(const base::FilePath& file_path,
                  mode_t mode,
                  const std::string& content) {
-  base::File file(file_path,
-                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-  if (!file.IsValid())
+  // Use the same mode as base/files/file_posix.cc's.
+  constexpr mode_t kMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+
+  base::ScopedFD fd(OpenSafely(file_path, O_WRONLY | O_CREAT | O_TRUNC, kMode));
+  if (!fd.is_valid())
     return false;
-  if (!SetFilePermissions(file_path, mode))
+  if (!SetPermissions(fd.get(), mode))
     return false;
   if (content.empty())
     return true;
-  // Note: Write() makes a best effort to write all data. While-loop is not
-  // needed here.
-  return file.Write(0, content.c_str(), content.size()) ==
-         static_cast<int>(content.size());
+
+  // Note: WriteFileDescriptor() makes a best effort to write all data.
+  // While-loop for handling partial-write is not needed here.
+  return base::WriteFileDescriptor(fd.get(), content.c_str(), content.size());
 }
 
 bool GetPropertyFromFile(const base::FilePath& prop_file_path,
