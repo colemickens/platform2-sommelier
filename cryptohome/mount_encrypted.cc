@@ -30,6 +30,8 @@
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
+#include <string>
+
 #include <base/strings/string_number_conversions.h>
 
 #include "cryptohome/mount_encrypted.h"
@@ -300,7 +302,7 @@ static result_code finalize_from_cmdline(char* key) {
   }
 
   // Load the system key.
-  EncryptionKey key_manager(rootdir);
+  EncryptionKey key_manager((base::FilePath(rootdir)));
   if (key) {
     if (strlen(key) != 2 * DIGEST_LENGTH) {
       ERROR("Invalid key length.");
@@ -910,7 +912,7 @@ int main(int argc, char* argv[]) {
   if (rc != RESULT_SUCCESS)
     return rc;
 
-  EncryptionKey key(rootdir);
+  EncryptionKey key((base::FilePath(rootdir)));
   if (use_factory_system_key) {
     rc = key.SetFactorySystemKey();
   } else if (has_chromefw()) {
@@ -927,7 +929,9 @@ int main(int argc, char* argv[]) {
     return rc;
   }
 
-  rc = setup_encrypted(key.get_encryption_key(), key.is_fresh(),
+  std::string encryption_key_hex =
+      base::HexEncode(key.encryption_key().data(), key.encryption_key().size());
+  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh(),
                        key.is_migration_allowed());
   if (rc == RESULT_SUCCESS) {
     key.Persist();

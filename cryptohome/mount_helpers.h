@@ -7,6 +7,8 @@
 #ifndef CRYPTOHOME_MOUNT_HELPERS_H_
 #define CRYPTOHOME_MOUNT_HELPERS_H_
 
+#include <glib.h>
+
 /* General utility functions. */
 uint64_t blk_size(const char* device);
 int remove_tree(const char* tree);

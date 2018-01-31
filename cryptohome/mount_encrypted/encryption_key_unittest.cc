@@ -15,6 +15,7 @@
 
 #include <gtest/gtest.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/tlcl_stub.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
@@ -123,7 +124,7 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
-    key_ = std::make_unique<EncryptionKey>(tmpdir_.GetPath().value().c_str());
+    key_ = std::make_unique<EncryptionKey>(tmpdir_.GetPath());
   }
 
   void SetOwned() {
@@ -148,35 +149,32 @@ class EncryptionKeyTest : public testing::Test {
   void ExpectNeedsFinalization() {
     key_->Persist();
     EXPECT_FALSE(key_->did_finalize());
-    EXPECT_TRUE(base::PathExists(key_->GetNeedsFinalizationPath()));
-    EXPECT_FALSE(base::PathExists(key_->GetKeyPath()));
+    EXPECT_TRUE(base::PathExists(key_->needs_finalization_path()));
+    EXPECT_FALSE(base::PathExists(key_->key_path()));
   }
 
   void ExpectFinalized(bool did_finalize_expectation) {
     key_->Persist();
     EXPECT_EQ(did_finalize_expectation, key_->did_finalize());
-    EXPECT_FALSE(base::PathExists(key_->GetNeedsFinalizationPath()));
-    EXPECT_TRUE(base::PathExists(key_->GetKeyPath()));
+    EXPECT_FALSE(base::PathExists(key_->needs_finalization_path()));
+    EXPECT_TRUE(base::PathExists(key_->key_path()));
   }
 
   void ExpectFreshKey() {
     key_->LoadChromeOSSystemKey();
     key_->LoadEncryptionKey();
-    EXPECT_TRUE(key_->get_encryption_key());
+    EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     EXPECT_TRUE(key_->is_fresh());
   }
 
   void ExpectExistingKey(const uint8_t* expected_key) {
     key_->LoadChromeOSSystemKey();
     key_->LoadEncryptionKey();
-    EXPECT_TRUE(key_->get_encryption_key());
+    EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     if (expected_key) {
-      std::vector<uint8_t> binary_encryption_key;
-      EXPECT_TRUE(base::HexStringToBytes(key_->get_encryption_key(),
-                                         &binary_encryption_key));
       EXPECT_EQ(
           std::vector<uint8_t>(expected_key, expected_key + kEncryptionKeySize),
-          binary_encryption_key);
+          key_->encryption_key());
     }
     EXPECT_FALSE(key_->is_fresh());
   }
@@ -226,7 +224,7 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadKey) {
   SetupSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2,
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
   std::vector<uint8_t> wrapped_key(sizeof(kWrappedKeyEncStatefulTpm2), 0xa5);
-  WriteWrappedKey(key_->GetKeyPath(), wrapped_key.data());
+  WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
   EXPECT_FALSE(key_->is_migration_allowed());
@@ -269,7 +267,7 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadContents) {
 TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
   SetupSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2,
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
-  WriteWrappedKey(key_->GetKeyPath(), kWrappedKeyEncStatefulTpm2);
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm2);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm2);
   EXPECT_FALSE(key_->is_migration_allowed());
@@ -316,7 +314,7 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalized) {
   SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, kLockboxV2Contents,
              sizeof(kLockboxV2Contents));
   SetOwned();
-  WriteWrappedKey(key_->GetKeyPath(), kWrappedKeyLockboxV2);
+  WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_FALSE(key_->is_migration_allowed());
@@ -328,7 +326,7 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
              sizeof(kLockboxV2Contents));
   SetOwned();
   std::vector<uint8_t> wrapped_key(sizeof(kWrappedKeyLockboxV2), 0xa5);
-  WriteWrappedKey(key_->GetKeyPath(), wrapped_key.data());
+  WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
   EXPECT_FALSE(key_->is_migration_allowed());
@@ -336,7 +334,7 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
 }
 
 TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
-  WriteWrappedKey(key_->GetNeedsFinalizationPath(),
+  WriteWrappedKey(key_->needs_finalization_path(),
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);
@@ -346,7 +344,7 @@ TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
 
 TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
   SetOwned();
-  WriteWrappedKey(key_->GetNeedsFinalizationPath(),
+  WriteWrappedKey(key_->needs_finalization_path(),
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);

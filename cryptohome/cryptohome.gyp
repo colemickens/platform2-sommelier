@@ -223,6 +223,7 @@
       'target_name': 'mount-encrypted',
       'type': 'executable',
       'dependencies': [
+        'libcrostpm',
         'mount_encrypted_lib',
       ],
       'variables': {

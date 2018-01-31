@@ -10,12 +10,10 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
+#include <base/files/file_path.h>
 
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
 
 // EncryptionKey takes care of the lifecycle of the encryption key protecting
@@ -24,8 +22,7 @@
 // storing and loading the key to/from disk.
 class EncryptionKey {
  public:
-  explicit EncryptionKey(const char* rootdir);
-  ~EncryptionKey();
+  explicit EncryptionKey(const base::FilePath& rootdir);
 
   // Loads the system key from TPM NVRAM.
   result_code SetTpmSystemKey();
@@ -58,19 +55,17 @@ class EncryptionKey {
   // encryption key is written to disk so it can be recovered after reboot.
   void Persist();
 
-  const char* get_encryption_key() const { return encryption_key; }
-  bool is_fresh() const { return rebuild; }
+  const brillo::SecureBlob& encryption_key() const { return encryption_key_; }
+  bool is_fresh() const { return is_fresh_; }
   bool is_migration_allowed() const { return migration_allowed_; }
   bool did_finalize() const { return did_finalize_; }
 
-  base::FilePath GetKeyPath() const { return base::FilePath(key_path); }
-  base::FilePath GetNeedsFinalizationPath() const {
-    return base::FilePath(needs_finalization_path);
+  base::FilePath key_path() const { return key_path_; }
+  base::FilePath needs_finalization_path() const {
+    return needs_finalization_path_;
   }
 
  private:
-  char* GenerateFreshEncryptionKey();
-
   // Clean up disk state once the encryption key is properly wrapped by the
   // system key and persisted to disk.
   void Finalized();
@@ -85,15 +80,15 @@ class EncryptionKey {
   void NeedsFinalization();
 
   // Paths.
-  char* key_path = nullptr;
-  char* needs_finalization_path = nullptr;
+  base::FilePath key_path_;
+  base::FilePath needs_finalization_path_;
 
   // Whether we found a valid wrapped key file on disk on Load().
-  int valid_keyfile = 0;
+  bool valid_keyfile_ = false;
 
   // Whether the key is generated freshly, which happens if the system key is
   // missing or the key file on disk didn't exist, failed to decrypt, etc.
-  int rebuild = 0;
+  bool is_fresh_ = false;
 
   // Whether it is OK to migrate an already existing unencrypted stateful
   // file system to a freshly created encrypted stateful file system. This is
@@ -101,17 +96,14 @@ class EncryptionKey {
   // the stateful encryption feature yet.
   //
   // TODO(mnissler): Remove migration, it's no longer relevant.
-  int migration_allowed_ = 0;
-
-  // Whether the system key exists and is loaded into |system_key_|.
-  bool has_system_key = false;
+  bool migration_allowed_ = false;
 
   // The system key is usually the key stored in TPM NVRAM that wraps the actual
   // encryption key. Empty if not available.
-  uint8_t digest[DIGEST_LENGTH];
+  brillo::SecureBlob system_key_;
 
   // The encryption key used for file system encryption.
-  char* encryption_key = nullptr;
+  brillo::SecureBlob encryption_key_;
 
   // Whether finalization took place during Persist().
   bool did_finalize_ = false;
