@@ -35,6 +35,8 @@
       'sources': [
         'constants.cc',
         'constants.h',
+        'iterator/depth_first_iterator.cc',
+        'iterator/depth_first_iterator.h',
         'iterator/directory_iterator.cc',
         'iterator/directory_iterator.h',
         'mount_manager.cc',
@@ -84,6 +86,7 @@
             'fake_samba_interface.cc',
             'fake_samba_interface.h',
             'fake_samba_test.cc',
+            'iterator/depth_first_iterator_test.cc',
             'iterator/directory_iterator_test.cc',
             'mount_manager_test.cc',
             'proto_test.cc',
