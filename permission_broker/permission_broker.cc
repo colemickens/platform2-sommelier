@@ -112,13 +112,15 @@ PermissionBroker::PermissionBroker(
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
 
-#if USE_DEVICE_JAIL
+#if USE_CONTAINERS
   // Try to serve device_jail requests. If we can't, it's not a huge deal.
   jail_server_ = device_jail::DeviceJailServer::CreateAndListen(
       std::make_unique<JailRequestHandler>(&rule_engine_),
       base::MessageLoopForIO::current());
   if (!jail_server_)
     LOG(WARNING) << "Jail server failed to start";
+#else
+  DLOG(INFO) << "Device jail support is turned off";
 #endif
 }
 
