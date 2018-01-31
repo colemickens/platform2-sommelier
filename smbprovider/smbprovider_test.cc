@@ -36,6 +36,7 @@ ErrorType CastError(int error) {
 class SmbProviderTest : public testing::Test {
  public:
   SmbProviderTest() { SetSmbProviderBuffer(kBufferSize); }
+  ~SmbProviderTest() override = default;
 
  protected:
   using DirEntries = std::vector<smbc_dirent>;
