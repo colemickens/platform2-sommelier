@@ -1115,7 +1115,7 @@ void Daemon::HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal) {
 
 void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
   DCHECK(audio_client_);
-  audio_client_->UpdateNumActiveStreams();
+  audio_client_->UpdateNumOutputStreams();
 }
 
 void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {

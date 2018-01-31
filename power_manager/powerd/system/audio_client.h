@@ -40,20 +40,20 @@ class AudioClient : public AudioClientInterface {
   void SetSuspended(bool suspended) override;
   void LoadInitialState() override;
   void UpdateDevices() override;
-  void UpdateNumActiveStreams() override;
+  void UpdateNumOutputStreams() override;
 
  private:
-  DBusWrapperInterface* dbus_wrapper_;  // weak
-  dbus::ObjectProxy* cras_proxy_;       // weak
+  DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
+  dbus::ObjectProxy* cras_proxy_ = nullptr;       // weak
 
-  // Number of audio streams (either input or output) currently active.
-  int num_active_streams_;
+  // Number of audio output streams currently active.
+  int num_output_streams_ = 0;
 
   // Is something plugged in to a headphone jack?
-  bool headphone_jack_plugged_;
+  bool headphone_jack_plugged_ = false;
 
   // Is an HDMI output active?
-  bool hdmi_active_;
+  bool hdmi_active_ = false;
 
   base::ObserverList<AudioObserver> observers_;
 

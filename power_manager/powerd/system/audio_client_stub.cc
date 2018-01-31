@@ -49,7 +49,7 @@ void AudioClientStub::UpdateDevices() {
   device_updates_++;
 }
 
-void AudioClientStub::UpdateNumActiveStreams() {
+void AudioClientStub::UpdateNumOutputStreams() {
   stream_updates_++;
 }
 

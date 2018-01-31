@@ -35,9 +35,9 @@ class AudioClientInterface {
   // Updates the client's view of connected audio devices.
   virtual void UpdateDevices() = 0;
 
-  // Updates the client's view of the number of active audio streams and
+  // Updates the client's view of the number of active audio output streams and
   // notifies observers if the state changed.
-  virtual void UpdateNumActiveStreams() = 0;
+  virtual void UpdateNumOutputStreams() = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AudioClientInterface);

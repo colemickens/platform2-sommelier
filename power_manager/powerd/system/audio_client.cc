@@ -34,14 +34,9 @@ const char kHdmiNodeType[] = "HDMI";
 
 }  // namespace
 
-AudioClient::AudioClient()
-    : dbus_wrapper_(nullptr),
-      cras_proxy_(nullptr),
-      num_active_streams_(0),
-      headphone_jack_plugged_(false),
-      hdmi_active_(false) {}
+AudioClient::AudioClient() = default;
 
-AudioClient::~AudioClient() {}
+AudioClient::~AudioClient() = default;
 
 void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
@@ -70,7 +65,7 @@ void AudioClient::RemoveObserver(AudioObserver* observer) {
 
 void AudioClient::LoadInitialState() {
   UpdateDevices();
-  UpdateNumActiveStreams();
+  UpdateNumOutputStreams();
 }
 
 void AudioClient::UpdateDevices() {
@@ -128,9 +123,9 @@ void AudioClient::UpdateDevices() {
   }
 }
 
-void AudioClient::UpdateNumActiveStreams() {
+void AudioClient::UpdateNumOutputStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
-                               cras::kGetNumberOfActiveStreams);
+                               cras::kGetNumberOfActiveOutputStreams);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
       cras_proxy_, &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
@@ -138,20 +133,20 @@ void AudioClient::UpdateNumActiveStreams() {
   if (response) {
     dbus::MessageReader reader(response.get());
     if (!reader.PopInt32(&num_streams))
-      LOG(WARNING) << "Unable to read " << cras::kGetNumberOfActiveStreams
+      LOG(WARNING) << "Unable to read " << cras::kGetNumberOfActiveOutputStreams
                    << " args";
   } else {
-    LOG(WARNING) << cras::kGetNumberOfActiveStreams << " call failed";
+    LOG(WARNING) << cras::kGetNumberOfActiveOutputStreams << " call failed";
   }
 
-  const int old_num_streams = num_active_streams_;
-  num_active_streams_ = std::max(num_streams, 0);
+  const int old_num_streams = num_output_streams_;
+  num_output_streams_ = std::max(num_streams, 0);
 
-  if (num_active_streams_ && !old_num_streams) {
+  if (num_output_streams_ && !old_num_streams) {
     VLOG(1) << "Audio playback started";
     for (AudioObserver& observer : observers_)
       observer.OnAudioStateChange(true);
-  } else if (!num_active_streams_ && old_num_streams) {
+  } else if (!num_output_streams_ && old_num_streams) {
     VLOG(1) << "Audio playback stopped";
     for (AudioObserver& observer : observers_)
       observer.OnAudioStateChange(false);

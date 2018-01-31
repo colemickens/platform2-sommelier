@@ -40,7 +40,7 @@ class AudioClientStub : public AudioClientInterface {
   void SetSuspended(bool suspended) override;
   void LoadInitialState() override;
   void UpdateDevices() override;
-  void UpdateNumActiveStreams() override;
+  void UpdateNumOutputStreams() override;
 
  private:
   bool headphone_jack_plugged_;
@@ -49,7 +49,7 @@ class AudioClientStub : public AudioClientInterface {
   bool suspended_;
 
   // Number of times that LoadInitialState(), UpdateDevices(), and
-  // UpdateNumActiveStreams() have been called.
+  // UpdateNumOutputStreams() have been called.
   int initial_loads_;
   int device_updates_;
   int stream_updates_;
