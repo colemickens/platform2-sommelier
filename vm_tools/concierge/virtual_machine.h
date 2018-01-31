@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <brillo/process.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
@@ -57,16 +58,6 @@ class VirtualMachine {
     FAILED,
   };
 
-  // Describes the result of attempting to launch a process inside the VM.
-  struct LaunchProcessResult {
-    // The current status of the process.
-    ProcessStatus status;
-
-    // If |status| is either EXITED or SIGNALED, then this holds the exit code
-    // or signal number, respectively.  Otherwise this value is undefined.
-    int32_t code;
-  };
-
   // Describes a disk image to be mounted inside the VM.
   struct Disk {
     // Path to the disk image on the host.
@@ -99,15 +90,21 @@ class VirtualMachine {
   // Launches a process inside the VM and returns without waiting for it to
   // exit. |args[0]| must be either the name of a program in the default PATH
   // inside the VM or the path to the program to be executed.
-  LaunchProcessResult StartProcess(std::vector<std::string> args,
-                                   std::map<std::string, std::string> env,
-                                   ProcessExitBehavior exit_behavior);
+  bool StartProcess(std::vector<std::string> args,
+                    std::map<std::string, std::string> env,
+                    ProcessExitBehavior exit_behavior);
 
   // Launches a process inside the VM and synchronously waits for it to exit.
   // |args[0]| must be either the name of a program in the default PATH
   // inside the VM or the path to the program to be executed.
-  LaunchProcessResult RunProcess(std::vector<std::string> args,
-                                 std::map<std::string, std::string> env);
+  bool RunProcess(std::vector<std::string> args,
+                  std::map<std::string, std::string> env);
+
+  // Like RunProcess, but overrides the default timeout for a process to exit
+  // with |timeout_seconds|.
+  bool RunProcessWithTimeout(std::vector<std::string> args,
+                             std::map<std::string, std::string> env,
+                             base::TimeDelta timeout);
 
   // Configures the network interfaces inside the VM.  Returns true if
   // successful, false otherwise.
@@ -144,10 +141,11 @@ class VirtualMachine {
 
   // Launches a process inside the VM.  Shared implementation of both
   // StartProcess and RunProcess.
-  LaunchProcessResult LaunchProcess(std::vector<std::string> args,
-                                    std::map<std::string, std::string> env,
-                                    bool respawn,
-                                    bool wait_for_exit);
+  bool LaunchProcess(std::vector<std::string> args,
+                     std::map<std::string, std::string> env,
+                     bool respawn,
+                     bool wait_for_exit,
+                     int64_t timeout_seconds);
 
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 

@@ -46,7 +46,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-using LaunchProcessResult = VirtualMachine::LaunchProcessResult;
 using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
 using ProcessStatus = VirtualMachine::ProcessStatus;
 using Subnet = SubnetPool::Subnet;

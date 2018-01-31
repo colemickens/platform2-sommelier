@@ -47,7 +47,6 @@ namespace concierge {
 namespace {
 
 using Subnet = SubnetPool::Subnet;
-using LaunchProcessResult = VirtualMachine::LaunchProcessResult;
 using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
 using ProcessStatus = VirtualMachine::ProcessStatus;
 
@@ -478,23 +477,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         "--container_path=/mnt/container_rootfs",
         "termina_container",
     };
-    LaunchProcessResult result =
-        vm->StartProcess(std::move(run_oci), {}, ProcessExitBehavior::ONE_SHOT);
-    switch (result.status) {
-      case ProcessStatus::UNKNOWN:
-        LOG(WARNING) << "run_oci may or may not be running in the VM";
-        break;
-      case ProcessStatus::EXITED:
-        LOG(WARNING) << "run_oci exited with status " << result.code;
-        break;
-      case ProcessStatus::SIGNALED:
-        LOG(WARNING) << "run_oci was killed by signal" << result.code;
-        break;
-      case ProcessStatus::FAILED:
-        LOG(WARNING) << "Failed to launch run_oci";
-        break;
-      case ProcessStatus::LAUNCHED:
-        break;
+    if (!vm->StartProcess(std::move(run_oci), {},
+                          ProcessExitBehavior::ONE_SHOT)) {
+      LOG(WARNING) << "run_oci did not launch successfully";
     }
   }
 
