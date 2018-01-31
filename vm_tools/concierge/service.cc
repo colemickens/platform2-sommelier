@@ -27,6 +27,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
@@ -37,6 +38,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/time/time.h>
+#include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crosvm/qcow_utils.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
@@ -56,6 +58,15 @@ using ProcessStatus = VirtualMachine::ProcessStatus;
 
 // Path to the runtime directory used by VMs.
 constexpr char kRuntimeDir[] = "/run/vm";
+
+// Default path to VM kernel image and rootfs.
+constexpr char kVmDefaultPath[] = "/run/imageloader/cros-termina";
+
+// Name of the VM kernel image.
+constexpr char kVmKernelName[] = "vm_kernel";
+
+// Name of the VM rootfs image.
+constexpr char kVmRootfsName[] = "vm_rootfs.img";
 
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;
@@ -131,6 +142,30 @@ bool IPv4AddressToString(const uint32_t address, std::string* str) {
   }
   *str = std::string(result);
   return true;
+}
+
+// Get the path to the latest available cros-termina component.
+base::FilePath GetLatestVMPath() {
+  base::FilePath component_dir(kVmDefaultPath);
+  base::FileEnumerator dir_enum(component_dir, false,
+                                base::FileEnumerator::DIRECTORIES);
+
+  base::Version latest_version("0");
+  base::FilePath latest_path;
+
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    base::Version version(path.BaseName().value());
+    if (!version.IsValid())
+      continue;
+
+    if (version > latest_version) {
+      latest_version = version;
+      latest_path = path;
+    }
+  }
+
+  return latest_path;
 }
 
 }  // namespace
@@ -230,7 +265,6 @@ bool Service::Init() {
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
-      {kStartLxdMethod, &Service::StartLxd},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
   };
 
@@ -355,7 +389,25 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  base::FilePath kernel(request.vm().kernel());
+  base::FilePath kernel, rootfs;
+
+  if (request.start_termina()) {
+    base::FilePath component_path = GetLatestVMPath();
+    if (component_path.empty()) {
+      LOG(ERROR) << "Termina component is not loaded";
+
+      response.set_failure_reason("Termina component is not loaded");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    kernel = component_path.Append(kVmKernelName);
+    rootfs = component_path.Append(kVmRootfsName);
+  } else {
+    kernel = base::FilePath(request.vm().kernel());
+    rootfs = base::FilePath(request.vm().rootfs());
+  }
+
   if (!base::PathExists(kernel)) {
     LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
 
@@ -364,7 +416,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  base::FilePath rootfs(request.vm().rootfs());
   if (!base::PathExists(rootfs)) {
     LOG(ERROR) << "Missing VM rootfs path: " << rootfs.value();
 
@@ -509,6 +560,12 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       LOG(WARNING) << "run_oci did not launch successfully";
     }
   }
+  string failure_reason;
+  if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
+    response.set_failure_reason(std::move(failure_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
@@ -633,37 +690,8 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   return dbus_response;
 }
 
-std::unique_ptr<dbus::Response> Service::StartLxd(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "Received StartLxd request";
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  StartLxdRequest request;
-  StartLxdResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse StartLxdRequest from message";
-
-    response.set_failure_reason("Unable to parse protobuf");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  auto iter = vms_.find(request.name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
-
-    response.set_failure_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  auto& vm = iter->second;
+bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
+  LOG(INFO) << "Starting lxd";
 
   // Common environment for all LXD functionality.
   std::map<string, string> lxd_env = {{"LXD_DIR", "/mnt/stateful/lxd"},
@@ -673,20 +701,16 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
   // mount it.
   if (!vm->RunProcess({"stateful_setup.sh"}, lxd_env)) {
     LOG(ERROR) << "Stateful setup failed";
-
-    response.set_failure_reason("Stateful setup failed");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "stateful setup failed";
+    return false;
   }
 
   // Launch the main lxd process.
   if (!vm->StartProcess({"lxd", "--group", "lxd"}, lxd_env,
                         ProcessExitBehavior::RESPAWN_ON_EXIT)) {
     LOG(ERROR) << "lxd failed to start";
-
-    response.set_failure_reason("lxd status unknown");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "lxd failed to start";
+    return false;
   }
 
   // Wait for lxd to be ready. The first start may take a few seconds, so use
@@ -694,20 +718,16 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
   if (!vm->RunProcessWithTimeout({"lxd", "waitready"}, lxd_env,
                                  kLxdWaitreadyTimeout)) {
     LOG(ERROR) << "lxd waitready failed";
-
-    response.set_failure_reason("lxd waitready failed");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "lxd waitready failed";
+    return false;
   }
 
   // Perform any setup for lxd to be usable. On first run, this sets up the
   // lxd configuration (network bridge, storage pool, etc).
   if (!vm->RunProcess({"lxd_setup.sh"}, lxd_env)) {
     LOG(ERROR) << "lxd setup failed";
-
-    response.set_failure_reason("lxd setup failed");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "lxd setup failed";
+    return false;
   }
 
   // Allocate the subnet for lxd's bridge to use.
@@ -715,10 +735,8 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
       subnet_pool_.AllocateContainer();
   if (!container_subnet) {
     LOG(ERROR) << "Could not allocate container subnet";
-
-    response.set_failure_reason("Could not allocate container subnet");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "could not allocate container subnet";
+    return false;
   }
   vm->SetContainerSubnet(std::move(container_subnet));
 
@@ -749,21 +767,15 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
 
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!fd.is_valid()) {
-    int saved_errno = errno;
     PLOG(ERROR) << "Failed to create socket";
-    response.set_failure_reason(string("Failed to create socket: ") +
-                                strerror(saved_errno));
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "failed to create socket";
+    return false;
   }
 
   if (HANDLE_EINTR(ioctl(fd.get(), SIOCADDRT, &route)) != 0) {
-    int saved_errno = errno;
     PLOG(ERROR) << "Failed to set route for container";
-    response.set_failure_reason(string("Failed to add route for container: ") +
-                                strerror(saved_errno));
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    *failure_reason = "failed to set route for container";
+    return false;
   }
 
   std::string dst_addr;
@@ -777,16 +789,11 @@ std::unique_ptr<dbus::Response> Service::StartLxd(
                        std::move(container_subnet_cidr)},
                       lxd_env)) {
     LOG(ERROR) << "lxc network config failed";
-    response.set_failure_reason("lxc network config failed");
-    writer.AppendProtoAsArrayOfBytes(response);
-
-    return dbus_response;
+    *failure_reason = "lxc network config failed";
+    return false;
   }
 
-  response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return true;
 }
 
 std::unique_ptr<dbus::Response> Service::CreateDiskImage(

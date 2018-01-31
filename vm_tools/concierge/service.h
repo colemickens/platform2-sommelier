@@ -60,12 +60,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to get VM info.
   std::unique_ptr<dbus::Response> GetVmInfo(dbus::MethodCall* method_call);
 
-  // Handles a request to start lxd on a VM.
-  std::unique_ptr<dbus::Response> StartLxd(dbus::MethodCall* method_call);
-
   // Handles a request to create a disk image.
   std::unique_ptr<dbus::Response> CreateDiskImage(
       dbus::MethodCall* method_call);
+
+  // Helper for starting termina VMs, e.g. starting lxd.
+  bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;

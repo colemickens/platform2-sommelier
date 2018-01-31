@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/at_exit.h>
-#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -21,6 +20,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
+#include <base/sys_info.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -36,8 +37,10 @@ namespace {
 
 constexpr int kDefaultTimeoutMs = 30 * 1000;
 
+constexpr char kDefaultDiskName[] = "lxd_state.qcow2";
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
+constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 
@@ -327,44 +330,6 @@ int GetVmInfo(dbus::ObjectProxy* proxy, string name) {
   return 0;
 }
 
-int StartLxd(dbus::ObjectProxy* proxy, string name) {
-  LOG(INFO) << "Starting lxd";
-
-  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
-                               vm_tools::concierge::kStartLxdMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  vm_tools::concierge::StartLxdRequest request;
-  request.set_name(std::move(name));
-
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode StartLxdRequest protobuf";
-    return -1;
-  }
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return -1;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  vm_tools::concierge::StartLxdResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed to parse response protobuf";
-    return -1;
-  }
-
-  if (!response.success()) {
-    LOG(ERROR) << "Failed to start lxd: " << response.failure_reason();
-    return -1;
-  }
-
-  LOG(INFO) << "Done";
-  return 0;
-}
-
 int CreateDiskImage(dbus::ObjectProxy* proxy,
                     string cryptohome_id,
                     string disk_path,
@@ -445,6 +410,85 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int StartTerminaVm(dbus::ObjectProxy* proxy,
+                   string name,
+                   string cryptohome_id) {
+  if (name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "--cryptohome_id is required";
+    return -1;
+  }
+
+  int64_t disk_size =
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+  disk_size = (disk_size * 9) / 10;
+
+  if (disk_size < kMinimumDiskSize)
+    disk_size = kMinimumDiskSize;
+
+  string disk_path;
+  if (CreateDiskImage(proxy, std::move(cryptohome_id), kDefaultDiskName,
+                      disk_size, kImageTypeQcow2, kStorageCryptohomeRoot,
+                      &disk_path) != 0) {
+    return -1;
+  }
+
+  LOG(INFO) << "Starting Termina VM '" << name << "'";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStartVmMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::StartVmRequest request;
+  request.set_name(std::move(name));
+  request.set_start_termina(true);
+
+  vm_tools::concierge::DiskImage* disk_image = request.add_disks();
+  disk_image->set_path(std::move(disk_path));
+  disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
+  disk_image->set_writable(true);
+  disk_image->set_do_mount(false);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::StartVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to start VM: " << response.failure_reason();
+    return -1;
+  }
+
+  vm_tools::concierge::VmInfo vm_info = response.vm_info();
+  string address;
+  IPv4AddressToString(vm_info.ipv4_address(), &address);
+
+  LOG(INFO) << "Started Termina VM with";
+  LOG(INFO) << "    ip address: " << address;
+  LOG(INFO) << "    vsock cid:  " << vm_info.cid();
+  LOG(INFO) << "    process id: " << vm_info.pid();
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -454,9 +498,10 @@ int main(int argc, char** argv) {
   DEFINE_bool(start, false, "Start a VM");
   DEFINE_bool(stop, false, "Stop a running VM");
   DEFINE_bool(stop_all, false, "Stop all running VMs");
-  DEFINE_bool(start_lxd, false, "Start lxd on the given VM");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
   DEFINE_bool(create_disk, false, "Create a disk image");
+  DEFINE_bool(start_termina_vm, false,
+              "Start a termina VM with a default config");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -500,10 +545,10 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
-      FLAGS_start_lxd + FLAGS_create_disk != 1) {
+      FLAGS_create_disk + FLAGS_start_termina_vm != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
-               << "--start_lxd, --create_disk must be provided";
+               << "--create_disk, --start_termina_vm must be provided";
     return -1;
   }
 
@@ -516,13 +561,14 @@ int main(int argc, char** argv) {
     return StopAllVms(proxy);
   } else if (FLAGS_get_vm_info) {
     return GetVmInfo(proxy, std::move(FLAGS_name));
-  } else if (FLAGS_start_lxd) {
-    return StartLxd(proxy, std::move(FLAGS_name));
   } else if (FLAGS_create_disk) {
     return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
                            std::move(FLAGS_image_type),
                            std::move(FLAGS_storage_location), nullptr);
+  } else if (FLAGS_start_termina_vm) {
+    return StartTerminaVm(proxy, std::move(FLAGS_name),
+                          std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.
