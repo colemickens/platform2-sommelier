@@ -36,7 +36,23 @@ base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
                               bool write) {
   base::FilePath path = cgroup_path.Append(name);
   int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
-  return base::ScopedFD(open(path.value().c_str(), flags, 0664));
+  // Adding O_NONBLOCK to avoid blocking in case we were tricked into opening a
+  // blocking file (e.g. an unopened FIFO or a device).
+  flags |= O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC;
+  base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), flags, 0664)));
+  if (!fd.is_valid())
+    return base::ScopedFD();
+  // Ensure the opened file is a regular file.
+  struct stat st;
+  if (fstat(fd.get(), &st) < 0) {
+    PLOG(ERROR) << "Failed to fstat " << path.value();
+    return base::ScopedFD();
+  }
+  if (!S_ISREG(st.st_mode)) {
+    LOG(ERROR) << path.value() << " is not a regular file";
+    return base::ScopedFD();
+  }
+  return fd;
 }
 
 bool WriteCgroupFile(const base::FilePath& cgroup_path,

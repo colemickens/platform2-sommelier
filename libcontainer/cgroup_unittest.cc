@@ -5,6 +5,7 @@
 
 #include <errno.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -262,6 +263,37 @@ TEST_F(BasicCgroupManipulationTest, set_cpu_rt_runtime) {
 TEST_F(BasicCgroupManipulationTest, set_cpu_rt_period) {
   EXPECT_TRUE(ccg_->SetCpuRtPeriod(500000));
   EXPECT_TRUE(FileHasString(cpu_cg_.Append("cpu.rt_period_us"), "500000"));
+}
+
+TEST_F(BasicCgroupManipulationTest, OpenCgroupFileRefusesToWriteToSymlink) {
+  base::FilePath cpu_rt_period_us_path = cpu_cg_.Append("cpu.rt_period_us");
+  base::FilePath target_path = cpu_cg_.Append("symlink_target");
+  ASSERT_TRUE(base::DeleteFile(cpu_rt_period_us_path, false));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_path, cpu_rt_period_us_path));
+
+  // This should fail since we are trying to write to a symlink.
+  EXPECT_FALSE(ccg_->SetCpuRtPeriod(500000));
+}
+
+TEST_F(BasicCgroupManipulationTest, OpenCgroupFileRefusesToWriteToNonOpenFIFO) {
+  base::FilePath cpu_rt_period_us_path = cpu_cg_.Append("cpu.rt_period_us");
+  ASSERT_TRUE(base::DeleteFile(cpu_rt_period_us_path, false));
+  ASSERT_NE(mkfifo(cpu_rt_period_us_path.value().c_str(), 0664), -1);
+
+  // This should fail since we are trying to write to a FIFO.
+  EXPECT_FALSE(ccg_->SetCpuRtPeriod(500000));
+}
+
+TEST_F(BasicCgroupManipulationTest, OpenCgroupFileRefusesToWriteToOpenFIFO) {
+  base::FilePath cpu_rt_period_us_path = cpu_cg_.Append("cpu.rt_period_us");
+  ASSERT_TRUE(base::DeleteFile(cpu_rt_period_us_path, false));
+  ASSERT_NE(mkfifo(cpu_rt_period_us_path.value().c_str(), 0664), -1);
+  base::ScopedFD fd(
+      open(cpu_rt_period_us_path.value().c_str(), O_RDONLY | O_NONBLOCK));
+  ASSERT_TRUE(fd.is_valid());
+
+  // This should fail since we are trying to write to a FIFO.
+  EXPECT_FALSE(ccg_->SetCpuRtPeriod(500000));
 }
 
 }  // namespace libcontainer
