@@ -9,7 +9,6 @@
 #include <dbus/object_path.h>
 #include <gtest/gtest.h>
 
-#include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -35,7 +34,7 @@ ErrorType CastError(int error) {
 
 class SmbProviderTest : public testing::Test {
  public:
-  SmbProviderTest() { SetSmbProviderBuffer(kBufferSize); }
+  SmbProviderTest() { SetUpSmbProvider(); }
   ~SmbProviderTest() override = default;
 
  protected:
@@ -113,7 +112,7 @@ class SmbProviderTest : public testing::Test {
     return dir_id;
   }
 
-  void SetSmbProviderBuffer(int32_t buffer_size) {
+  void SetUpSmbProvider() {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
@@ -123,7 +122,7 @@ class SmbProviderTest : public testing::Test {
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(fake_ptr), std::move(mount_manager_ptr), buffer_size);
+        std::move(fake_ptr), std::move(mount_manager_ptr));
   }
 
   // Helper method that asserts there are no entries that have not been
@@ -357,70 +356,6 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
   EXPECT_EQ(ERROR_OK, CastError(err));
   EXPECT_EQ(0, entries.entries_size());
   ExpectNoOpenEntries();
-}
-
-// Read directory succeeds but does not return files when it exceeds the buffer
-// size.
-TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnEntryWithSmallBuffer) {
-  // Construct smbprovider_ with buffer size of 1.
-  SetSmbProviderBuffer(1);
-  int32_t mount_id = PrepareMount();
-
-  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
-
-  const std::string file_path =
-      AppendPath(GetAddedFullDirectoryPath(), "file.jpg");
-
-  fake_samba_->AddFile(file_path, kFileSize);
-
-  ProtoBlob results;
-  int32_t error_code;
-  ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
-  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
-
-  DirectoryEntryListProto entries;
-  const std::string parsed_proto(results.begin(), results.end());
-  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_EQ(0, entries.entries_size());
-}
-
-// Read directory succeeds when the buffer size is just big enough for one
-// entry. This should return one entry, and ReadDirectory will loop through the
-// buffer again from the beginning.
-TEST_F(SmbProviderTest, ReadDirectorySucceedsWithMultipleUsageOfSmallBuffer) {
-  size_t buffer_size = CalculateEntrySize("file1.jpg") + 1;
-
-  SetSmbProviderBuffer(buffer_size);
-  int32_t mount_id = PrepareMount();
-
-  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
-
-  fake_samba_->AddFile(GetDefaultFullPath("/path/file1.jpg"), kFileSize);
-  fake_samba_->AddFile(GetDefaultFullPath("/path/file2.jpg"), kFileSize);
-
-  ProtoBlob results;
-  int32_t error_code;
-  ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
-  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
-
-  DirectoryEntryListProto entries;
-  const std::string parsed_proto(results.begin(), results.end());
-  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_EQ(2, entries.entries_size());
-
-  const DirectoryEntryProto& entry1 = entries.entries(0);
-  EXPECT_FALSE(entry1.is_directory());
-  EXPECT_EQ("file1.jpg", entry1.name());
-
-  const DirectoryEntryProto& entry2 = entries.entries(1);
-  EXPECT_FALSE(entry2.is_directory());
-  EXPECT_EQ("file2.jpg", entry2.name());
 }
 
 // Read directory succeeds and returns expected entries.

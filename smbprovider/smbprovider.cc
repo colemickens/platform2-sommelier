@@ -11,6 +11,7 @@
 #include <base/memory/ptr_util.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -18,34 +19,15 @@
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
-namespace {
-
-void AppendEntries(const std::vector<DirectoryEntry>& batch,
-                   std::vector<DirectoryEntry>* entries) {
-  entries->insert(entries->end(), batch.begin(), batch.end());
-}
-
-}  // namespace
-
-SmbProvider::SmbProvider(
-    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<SambaInterface> samba_interface,
-    std::unique_ptr<MountManager> mount_manager,
-    size_t buffer_size)
-    : org::chromium::SmbProviderAdaptor(this),
-      samba_interface_(std::move(samba_interface)),
-      dbus_object_(std::move(dbus_object)),
-      mount_manager_(std::move(mount_manager)),
-      dir_buf_(buffer_size) {}
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<SambaInterface> samba_interface,
     std::unique_ptr<MountManager> mount_manager)
-    : SmbProvider(std::move(dbus_object),
-                  std::move(samba_interface),
-                  std::move(mount_manager),
-                  kBufferSize) {}
+    : org::chromium::SmbProviderAdaptor(this),
+      samba_interface_(std::move(samba_interface)),
+      dbus_object_(std::move(dbus_object)),
+      mount_manager_(std::move(mount_manager)) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -97,22 +79,23 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
     return;
   }
 
-  int32_t dir_id = -1;
-  int32_t open_dir_error = samba_interface_->OpenDirectory(full_path, &dir_id);
-  if (open_dir_error != 0) {
-    LogAndSetError(options, GetErrorFromErrno(open_dir_error), error_code);
-    return;
-  }
   DirectoryEntryListProto directory_entries;
-  int32_t get_dir_error = GetDirectoryEntries(dir_id, &directory_entries);
-  if (get_dir_error != 0) {
-    LogAndSetError(options, GetErrorFromErrno(get_dir_error), error_code);
-    CloseDirectory(dir_id);
-    return;
+
+  DirectoryIterator it = GetDirectoryIterator(full_path);
+  int32_t result = it.Init();
+  while (result == 0) {
+    if (it.IsDone()) {
+      *error_code = static_cast<int32_t>(
+          SerializeProtoToBlob(directory_entries, out_entries));
+      return;
+    }
+    AddDirectoryEntry(it.Get(), &directory_entries);
+    result = it.Next();
   }
-  *error_code = static_cast<int32_t>(
-      SerializeProtoToBlob(directory_entries, out_entries));
-  CloseDirectory(dir_id);
+
+  // The while-loop is only exited if there is an error. A full successful
+  // execution will return from inside the above while-loop.
+  LogAndSetError(options, GetErrorFromErrno(result), error_code);
 }
 
 void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
@@ -284,76 +267,6 @@ int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
   return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
-// This is a helper method that has a similar return structure as
-// samba_interface_ methods, where it will return errno as an error in case of
-// failure.
-int32_t SmbProvider::GetDirectoryEntries(int32_t dir_id,
-                                         DirectoryEntryListProto* entries) {
-  std::vector<DirectoryEntry> entries_vector;
-  int32_t result = GetDirectoryEntriesVector(dir_id, &entries_vector);
-  if (result != 0) {
-    return result;
-  }
-  SerializeDirEntryVectorToProto(entries_vector, entries);
-  return 0;
-}
-
-int32_t SmbProvider::GetDirectoryEntriesVector(
-    int32_t dir_id, std::vector<DirectoryEntry>* entries) {
-  DCHECK(entries);
-  int32_t bytes_read = 0;
-  do {
-    std::vector<DirectoryEntry> entries_batch;
-    int32_t result =
-        GetDirectoryEntriesVectorOnce(dir_id, &entries_batch, &bytes_read);
-    if (result != 0) {
-      return result;
-    }
-    AppendEntries(entries_batch, entries);
-  } while (bytes_read > 0);
-  return 0;
-}
-
-int32_t SmbProvider::GetDirectoryEntriesVectorOnce(
-    int32_t dir_id, std::vector<DirectoryEntry>* entries, int32_t* bytes_read) {
-  DCHECK(entries);
-  DCHECK(bytes_read);
-  DCHECK_EQ(0, entries->size());  // entries should be empty.
-  *bytes_read = 0;
-
-  int32_t result = ReadDirectoryEntriesToBuffer(dir_id, bytes_read);
-  if (result != 0) {
-    // The result will be set to errno on failure.
-    return result;
-  }
-
-  ConvertBufferToEntries(entries, *bytes_read);
-
-  return 0;
-}
-
-int32_t SmbProvider::ReadDirectoryEntriesToBuffer(int32_t dir_id,
-                                                  int32_t* bytes_read) {
-  return samba_interface_->GetDirectoryEntries(
-      dir_id, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
-      bytes_read);
-}
-
-void SmbProvider::ConvertBufferToEntries(std::vector<DirectoryEntry>* entries,
-                                         int32_t bytes_read) {
-  int32_t bytes_left = bytes_read;
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
-  while (bytes_left > 0) {
-    AddEntryIfValid(*dirent, entries);
-    DCHECK_GT(dirent->dirlen, 0);
-    DCHECK_GE(bytes_left, dirent->dirlen);
-    bytes_left -= dirent->dirlen;
-    dirent = AdvanceDirEnt(dirent);
-    DCHECK(dirent);
-  }
-  DCHECK_EQ(bytes_left, 0);
-}
-
 // TODO(zentaro): When the proto's with missing mount_id are landed, this can
 // take a generic *Options proto and derive the operation name and entry path
 // itself.
@@ -495,6 +408,11 @@ bool SmbProvider::WriteFileFromBuffer(const WriteFileOptionsProto& options,
     return false;
   }
   return true;
+}
+
+DirectoryIterator SmbProvider::GetDirectoryIterator(
+    const std::string& full_path) {
+  return DirectoryIterator(full_path, samba_interface_.get());
 }
 
 template <typename Proto>

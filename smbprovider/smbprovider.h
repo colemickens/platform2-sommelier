@@ -23,6 +23,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 namespace smbprovider {
 
 class DirectoryEntryListProto;
+class DirectoryIterator;
 class MountManager;
 class SambaInterface;
 
@@ -79,31 +80,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
  private:
-  // Gets entries from |samba_interface_| in the directory |dir_id| and places
-  // the entries in a buffer. It then transforms the data into
-  // std::vector<DirectoryEntry>. Returns 0 on success, and errno on failure.
-  int32_t GetDirectoryEntriesVectorOnce(int32_t dir_id,
-                                        std::vector<DirectoryEntry>* entries,
-                                        int32_t* bytes_read);
-
-  // Calls GetDirectoryEntriesVectorOnce until all the entries in a directory
-  // have been read. Returns 0 on success, and errno on failure.
-  int32_t GetDirectoryEntriesVector(int32_t dir_id,
-                                    std::vector<DirectoryEntry>* entries);
-
-  // Calls GetDirectoryEntriesVector, then transforms the data into a
-  // DirectoryEntryListProto which is passed into |entries|. This should not be
-  // called on a directory that is not open. Returns 0 on success, and errno
-  // on failure. |entries| will be empty in case of failure.
-  int32_t GetDirectoryEntries(int32_t dir_id, DirectoryEntryListProto* entries);
-
-  // Reads the entries at |dir_id| into the buffer.
-  int32_t ReadDirectoryEntriesToBuffer(int32_t dir_id, int32_t* bytes_read);
-
-  // Converts the buffer into a std::vector<DirectoryEntry>.
-  void ConvertBufferToEntries(std::vector<DirectoryEntry>* entries,
-                              int32_t bytes_read);
-
   // Looks up the |mount_id| and appends |entry_path| to the root share path
   // and sets |full_path| to the result. |full_path| will be unmodified on
   // failure.
@@ -165,6 +141,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                            const std::vector<uint8_t>& buffer,
                            int32_t* error_code);
 
+  // Helper method to construct a DirectoryIterator for a given |full_path|.
+  DirectoryIterator GetDirectoryIterator(const std::string& full_path);
+
   // Opens a file located at |full_path| with permissions based on the protobuf.
   // |file_id| is the file handle for the opened file, and error will be set on
   // failure. |options| is used for logging purposes. GetOpenFilePermissions
@@ -199,11 +178,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
   TempFileManager temp_file_manager_;
-
-  // |dir_buf_| is used as the buffer for reading directory entries in
-  // GetDirectoryEntries(). Its initial capacity is specified in the
-  // constructor.
-  std::vector<uint8_t> dir_buf_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
 };
