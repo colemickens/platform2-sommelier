@@ -747,7 +747,9 @@ TEST_F(DaemonTest, RequestRestart) {
   ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
 
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(base::StringPrintf("%s --action=reboot", kSetuidHelperPath),
+  EXPECT_EQ(base::StringPrintf(
+                "%s --action=reboot --shutdown_reason=%s", kSetuidHelperPath,
+                ShutdownReasonToString(ShutdownReason::SYSTEM_UPDATE).c_str()),
             async_commands_[0]);
 }
 
@@ -798,7 +800,8 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   lockfile_checker_->set_files_to_return({});
   ASSERT_TRUE(daemon_->TriggerRetryShutdownTimerForTesting());
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetShutdownCommand(ShutdownReason::UNKNOWN), async_commands_[0]);
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::OTHER_REQUEST_TO_POWERD),
+            async_commands_[0]);
 
   // The timer should've been stopped.
   EXPECT_FALSE(daemon_->TriggerRetryShutdownTimerForTesting());

@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
                 "Hexadecimal byte, e.g. \"0xa7\", "
                 "describing the event being logged.");
   DEFINE_string(shutdown_reason, "",
-                "Optional shutdown reason starting with a "
+                "Optional shutdown or reboot reason starting with a "
                 "lowercase letter and consisting only of lowercase letters and "
                 "dashes.");
   DEFINE_int64(suspend_duration, -1,
@@ -87,13 +87,7 @@ int main(int argc, char* argv[]) {
         << "Invalid event code";
     RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
                NULL);
-  } else if (FLAGS_action == "reboot") {
-    RunCommand("shutdown", "-r", "now", NULL);
-  } else if (FLAGS_action == "set_wifi_transmit_power") {
-    const char* tablet =
-        FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
-    RunCommand("set_wifi_transmit_power", tablet, NULL);
-  } else if (FLAGS_action == "shut_down") {
+  } else if (FLAGS_action == "reboot" || FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {
       for (size_t i = 0; i < FLAGS_shutdown_reason.size(); ++i) {
@@ -103,8 +97,14 @@ int main(int argc, char* argv[]) {
       }
       reason_arg = "SHUTDOWN_REASON=" + FLAGS_shutdown_reason;
     }
-    RunCommand("initctl", "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
+    std::string runlevel_arg =
+        std::string("RUNLEVEL=") + (FLAGS_action == "reboot" ? "6" : "0");
+    RunCommand("initctl", "emit", "--no-wait", "runlevel", runlevel_arg.c_str(),
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
+  } else if (FLAGS_action == "set_wifi_transmit_power") {
+    const char* tablet =
+        FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
+    RunCommand("set_wifi_transmit_power", tablet, NULL);
   } else if (FLAGS_action == "suspend") {
     std::string duration_flag =
         "--suspend_duration=" + base::IntToString(FLAGS_suspend_duration);

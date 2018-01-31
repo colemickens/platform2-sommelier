@@ -1155,14 +1155,14 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
   // Both arguments are optional.
   dbus::MessageReader reader(method_call);
   int32_t arg = 0;
-  ShutdownReason reason = ShutdownReason::UNKNOWN;
+  ShutdownReason reason = ShutdownReason::OTHER_REQUEST_TO_POWERD;
   if (reader.PopInt32(&arg)) {
     switch (static_cast<RequestShutdownReason>(arg)) {
       case REQUEST_SHUTDOWN_FOR_USER:
         reason = ShutdownReason::USER_REQUEST;
         break;
       case REQUEST_SHUTDOWN_OTHER:
-        reason = ShutdownReason::UNKNOWN;
+        reason = ShutdownReason::OTHER_REQUEST_TO_POWERD;
         break;
       default:
         LOG(WARNING) << "Got unknown shutdown reason " << arg;
@@ -1185,7 +1185,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
   // Both arguments are optional.
   dbus::MessageReader reader(method_call);
   int32_t arg = 0;
-  ShutdownReason reason = ShutdownReason::UNKNOWN;
+  ShutdownReason reason = ShutdownReason::OTHER_REQUEST_TO_POWERD;
   if (reader.PopInt32(&arg)) {
     switch (static_cast<RequestRestartReason>(arg)) {
       case REQUEST_RESTART_FOR_USER:
@@ -1195,7 +1195,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
         reason = ShutdownReason::SYSTEM_UPDATE;
         break;
       case REQUEST_RESTART_OTHER:
-        reason = ShutdownReason::UNKNOWN;
+        reason = ShutdownReason::OTHER_REQUEST_TO_POWERD;
         break;
       default:
         LOG(WARNING) << "Got unknown restart reason " << arg;
@@ -1608,7 +1608,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
       break;
     case ShutdownMode::REBOOT:
       LOG(INFO) << "Restarting, reason: " << reason_str;
-      RunSetuidHelper("reboot", "", false);
+      RunSetuidHelper("reboot", "--shutdown_reason=" + reason_str, false);
       break;
   }
 }

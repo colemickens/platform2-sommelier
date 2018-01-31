@@ -184,8 +184,8 @@ std::string ButtonStateToString(ButtonState state) {
 
 std::string ShutdownReasonToString(ShutdownReason reason) {
   // These are passed as SHUTDOWN_REASON arguments to an initctl command to
-  // switch to runlevel 0 (i.e. don't change these strings without checking that
-  // other upstart jobs aren't depending on them).
+  // switch to runlevel 0 (shutdown) or 6 (reboot). Don't change these strings
+  // without checking that other Upstart jobs aren't depending on them.
   switch (reason) {
     case ShutdownReason::USER_REQUEST:
       return "user-request";
@@ -201,8 +201,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "system-update";
     case ShutdownReason::EXIT_DARK_RESUME_FAILED:
       return "exit-dark-resume-failed";
-    case ShutdownReason::UNKNOWN:
-      return "unknown";
+    case ShutdownReason::OTHER_REQUEST_TO_POWERD:
+      return "other-request-to-powerd";
   }
   NOTREACHED() << "Unhandled shutdown reason " << reason;
   return "unknown";
