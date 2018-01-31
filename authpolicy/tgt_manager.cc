@@ -46,13 +46,17 @@ static_assert(kTgtRenewValidityLifetimeFraction < 1.0f, "");
 // Size limit for GetKerberosFiles (1 MB).
 const size_t kKrb5FileSizeLimit = 1024 * 1024;
 
+// Encryption types for Kerberos configuration
+constexpr char kEncTypesAES[] =
+    "aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96";
+constexpr char kEncTypesRC4[] = "rc4-hmac";
+
 // Kerberos configuration file data.
 const char kKrb5ConfData[] =
     "[libdefaults]\n"
-    // Only allow AES. (No DES, no RC4.)
-    "\tdefault_tgs_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
-    "\tdefault_tkt_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
-    "\tpermitted_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
+    "\tdefault_tgs_enctypes = %s\n"
+    "\tdefault_tkt_enctypes = %s\n"
+    "\tpermitted_enctypes = %s\n"
     // Prune weak ciphers from the above list. With current settings it’s a
     // no-op, but still.
     "\tallow_weak_crypto = false\n"
@@ -207,6 +211,17 @@ ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
 
   LOG(ERROR) << "klist failed with exit code " << klist_cmd.GetExitCode();
   return ERROR_KLIST_FAILED;
+}
+
+std::string GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
+  switch (encryption_types) {
+    case ENC_TYPES_ALL:
+      return base::StringPrintf("%s %s", kEncTypesAES, kEncTypesRC4);
+    case ENC_TYPES_STRONG:
+      return kEncTypesAES;
+    case ENC_TYPES_LEGACY:
+      return kEncTypesRC4;
+  }
 }
 
 }  // namespace
@@ -452,7 +467,10 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
 }
 
 ErrorType TgtManager::WriteKrb5Conf() const {
-  std::string data = base::StringPrintf(kKrb5ConfData, realm_.c_str());
+  const std::string enc_types = GetEncryptionTypesString(encryption_types_);
+  std::string data =
+      base::StringPrintf(kKrb5ConfData, enc_types.c_str(), enc_types.c_str(),
+                         enc_types.c_str(), realm_.c_str());
   if (!kdc_ip_.empty())
     data += base::StringPrintf(kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(),
                                kdc_ip_.c_str());

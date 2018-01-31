@@ -240,6 +240,11 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
       key::kDeviceHostnameTemplate, [policy](const std::string& value) {
         policy->mutable_network_hostname()->set_device_hostname_template(value);
       });
+
+  EncodeInteger(key::kDeviceKerberosEncryptionTypes, [policy](int value) {
+    policy->mutable_device_kerberos_encryption_types()->set_types(
+        static_cast<em::DeviceKerberosEncryptionTypesProto_Types>(value));
+  });
 }
 
 void DevicePolicyEncoder::EncodeAutoUpdatePolicies(

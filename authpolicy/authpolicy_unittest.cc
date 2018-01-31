@@ -27,6 +27,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
+#include <policy/device_policy_impl.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/path_service.h"
@@ -84,6 +85,12 @@ constexpr char kExtensionPolicy2[] = "Policy2";
 constexpr char kMandatoryKey[] = "Policy";
 constexpr char kRecommendedKey[] = "Recommended";
 
+// Encryption types in krb5.conf.
+constexpr char kKrb5EncTypesAll[] =
+    "aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96 rc4-hmac";
+constexpr char kKrb5EncTypesStrong[] =
+    "aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96";
+
 // Error message when passing different account IDs to authpolicy.
 const char kMultiUserNotSupported[] = "Multi-user not supported";
 
@@ -91,6 +98,13 @@ struct SmbConf {
   std::string machine_name;
   std::string realm;
   std::string kerberos_encryption_types;
+};
+
+struct Krb5Conf {
+  std::string default_tgs_enctypes;
+  std::string default_tkt_enctypes;
+  std::string permitted_enctypes;
+  std::string allow_weak_crypto;
 };
 
 // Checks and casts an integer |error| to the corresponding ErrorType.
@@ -146,6 +160,42 @@ void ReadSmbConf(const std::string& smb_conf_path, SmbConf* conf) {
   EXPECT_TRUE(FindToken(smb_conf, '=', "realm", &conf->realm));
   EXPECT_TRUE(FindToken(smb_conf, '=', "kerberos encryption types",
                         &conf->kerberos_encryption_types));
+}
+
+// Checks whether the file at smb_conf_path is an smb.conf file and has the
+// expected encryption types |expected_enc_types| set.
+void CheckSmbEncTypes(const std::string& smb_conf_path,
+                      const char* expected_enc_types) {
+  SmbConf conf;
+  ReadSmbConf(smb_conf_path, &conf);
+  EXPECT_EQ(expected_enc_types, conf.kerberos_encryption_types);
+}
+
+// Reads the krb5.conf file at |krb5_conf_path| and extracts some values.
+void ReadKrb5Conf(const std::string& krb5_conf_path, Krb5Conf* conf) {
+  std::string krb5_conf;
+  EXPECT_TRUE(
+      base::ReadFileToString(base::FilePath(krb5_conf_path), &krb5_conf));
+  EXPECT_TRUE(FindToken(krb5_conf, '=', "default_tgs_enctypes",
+                        &conf->default_tgs_enctypes));
+  EXPECT_TRUE(FindToken(krb5_conf, '=', "default_tkt_enctypes",
+                        &conf->default_tkt_enctypes));
+  EXPECT_TRUE(FindToken(krb5_conf, '=', "permitted_enctypes",
+                        &conf->permitted_enctypes));
+  EXPECT_TRUE(
+      FindToken(krb5_conf, '=', "allow_weak_crypto", &conf->allow_weak_crypto));
+}
+
+// Checks whether the file at krb5_conf_path is a krb5.conf file and has the
+// expected encryption types |expected_enc_types| set.
+void CheckKrb5EncTypes(const std::string& krb5_conf_path,
+                       const char* expected_enc_types) {
+  Krb5Conf conf;
+  ReadKrb5Conf(krb5_conf_path, &conf);
+  EXPECT_EQ(expected_enc_types, conf.default_tgs_enctypes);
+  EXPECT_EQ(expected_enc_types, conf.default_tkt_enctypes);
+  EXPECT_EQ(expected_enc_types, conf.permitted_enctypes);
+  EXPECT_EQ("false", conf.allow_weak_crypto);
 }
 
 // Helper class that points some paths to convenient locations we can write to.
@@ -739,6 +789,20 @@ class AuthPolicyTest : public testing::Test {
     };
   }
 
+  // Writes a device policy file to |policy_path|. The file can be read with
+  // libpolicy.
+  void WriteDevicePolicyFile(const base::FilePath& policy_path,
+                             const em::ChromeDeviceSettingsProto& policy) {
+    em::PolicyData policy_data;
+    policy_data.set_policy_value(policy.SerializeAsString());
+    em::PolicyFetchResponse policy_fetch_response;
+    policy_fetch_response.set_policy_data(policy_data.SerializeAsString());
+    std::string policy_blob = policy_fetch_response.SerializeAsString();
+    int policy_size = static_cast<int>(policy_blob.size());
+    EXPECT_EQ(policy_size,
+              base::WriteFile(policy_path, policy_blob.data(), policy_size));
+  }
+
   std::unique_ptr<base::MessageLoop> message_loop_;
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
@@ -845,39 +909,28 @@ TEST_F(AuthPolicyTest, JoinSucceedsWithOrganizationalUnit) {
 }
 
 // Encryption types are written properly to smb.conf.
-TEST_F(AuthPolicyTest, JoinSetsProperEncryptionTypes) {
-  KerberosEncryptionTypes enc_types_list[] = {ENC_TYPES_ALL, ENC_TYPES_STRONG,
-                                              ENC_TYPES_LEGACY};
+TEST_F(AuthPolicyTest, JoinSetsProperEncTypes) {
+  std::pair<KerberosEncryptionTypes, const char*> enc_types_list[] = {
+      {ENC_TYPES_ALL, kEncTypesAll},
+      {ENC_TYPES_STRONG, kEncTypesStrong},
+      {ENC_TYPES_LEGACY, kEncTypesLegacy}};
 
-  for (KerberosEncryptionTypes enc_types : enc_types_list) {
+  for (const auto& enc_types : enc_types_list) {
     JoinDomainRequest request;
     request.set_machine_name(kMachineName);
     request.set_user_principal_name(kUserPrincipal);
-    request.set_kerberos_encryption_types(enc_types);
+    request.set_kerberos_encryption_types(enc_types.first);
     std::string joined_realm_unused;
     EXPECT_EQ(ERROR_NONE,
               JoinEx(request, MakePasswordFd(), &joined_realm_unused));
-    SmbConf conf;
-    ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
-    switch (enc_types) {
-      case ENC_TYPES_ALL:
-        EXPECT_EQ(kEncTypesAll, conf.kerberos_encryption_types);
-        break;
-      case ENC_TYPES_STRONG:
-        EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
-        break;
-      case ENC_TYPES_LEGACY:
-        EXPECT_EQ(kEncTypesLegacy, conf.kerberos_encryption_types);
-        break;
-    }
+    CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), enc_types.second);
     EXPECT_TRUE(MakeConfigWriteable());
     samba().ResetForTesting();
   }
 }
 
 // The encryption types reset to strong after device policy fetch.
-TEST_F(AuthPolicyTest, EncTypeResetsAfterDevicePolicyFetch) {
-  SmbConf conf;
+TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
   JoinDomainRequest request;
   request.set_machine_name(kMachineName);
   request.set_user_principal_name(kUserPrincipal);
@@ -887,23 +940,115 @@ TEST_F(AuthPolicyTest, EncTypeResetsAfterDevicePolicyFetch) {
             JoinEx(request, MakePasswordFd(), &joined_realm_unused));
   MarkDeviceAsLocked();
 
+  // After the first device policy fetch, the enc types should be 'strong'
+  // internally, but the conf files used should still contain 'all' types.
   validate_device_policy_ = &CheckDevicePolicyEmpty;
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
-  EXPECT_EQ(kEncTypesAll, conf.kerberos_encryption_types);
+  CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), kEncTypesAll);
+  CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesAll);
 
-  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  // After the second device policy fetch, the conf files should contain
+  // 'strong' enc types.
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &conf);
-  EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
+  CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), kEncTypesStrong);
+  CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesStrong);
 
+  // Likewise, auth should only use 'strong' types.
   validate_user_policy_ = &CheckUserPolicyEmpty;
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &conf);
-  EXPECT_EQ(kEncTypesStrong, conf.kerberos_encryption_types);
+  CheckSmbEncTypes(paths_->Get(Path::USER_SMB_CONF), kEncTypesStrong);
+  CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
 
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// If The encryption types reset to strong after device policy fetch.
+TEST_F(AuthPolicyTest, LoadsDevicePolicyOnStartup) {
+  // Join to bootstrap a config file.
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // Write a device policy file with Kerberos encryption types set to 'all'.
+  em::ChromeDeviceSettingsProto device_policy;
+  device_policy.mutable_device_kerberos_encryption_types()->set_types(
+      em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL);
+  const base::FilePath policy_path = base_path_.Append("policy");
+  WriteDevicePolicyFile(policy_path, device_policy);
+
+  // Set up a device policy instance that reads from our fake file. Verification
+  // has to be disabled since MarkDeviceAsLocked() applies to authpolicy only,
+  // but doesn't actually set the real install attributes read by the impl.
+  auto policy_impl = std::make_unique<policy::DevicePolicyImpl>();
+  policy_impl->set_policy_path_for_testing(policy_path);
+  policy_impl->set_verify_policy_for_testing(false);
+
+  // Initialize again. This should load the device policy file.
+  samba().ResetForTesting();
+  samba().SetDevicePolicyImplForTesting(std::move(policy_impl));
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+
+  // Now an auth operation should use the loaded encryption types.
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesAll);
+
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// Both Samba commands (smb) and kinit (krb5) use the encryption types from the
+// previous device policy fetch.
+TEST_F(AuthPolicyTest, UsesEncTypesFromDevicePolicy) {
+  // Write a GPO with DeviceKerberosEncryptionTypes set to 'all'.
+  auto enc_types_all = em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL;
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendInteger(policy::key::kDeviceKerberosEncryptionTypes,
+                       enc_types_all);
+  writer.WriteToFile(stub_gpo1_path_);
+  validate_device_policy_ = [enc_types_all](
+                                const em::ChromeDeviceSettingsProto& policy) {
+    EXPECT_EQ(enc_types_all, policy.device_kerberos_encryption_types().types());
+  };
+
+  // Join and fetch device policy. This should set encryption types to 'all' in
+  // Samba.
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  // Now subsequent calls should use encryption types 'all', both for stuff
+  // using smb.conf (policy fetch) as well as stuff using Kerberos tickets (user
+  // auth, device policy fetch).
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+
+  // User and device smb.conf has enc types 'all'.
+  CheckSmbEncTypes(paths_->Get(Path::USER_SMB_CONF), kEncTypesAll);
+  CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), kEncTypesAll);
+
+  // User and device krb5.conf has aes_* + rc4_hmac enc types.
+  CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesAll);
+  CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesAll);
+
+  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(3,
+            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// By default, the user's and device's krb5.conf files only have strong crypto.
+TEST_F(AuthPolicyTest, TgtsUseStrongEncTypesByDefault) {
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesStrong);
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful user authentication.

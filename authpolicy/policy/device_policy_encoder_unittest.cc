@@ -141,6 +141,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceHostnameTemplate, kString);
   EXPECT_EQ(kString, policy.network_hostname().device_hostname_template());
 
+  // The encoder of this policy converts ints to
+  // DeviceKerberosEncryptionTypes::Types enums.
+  EncodeInteger(&policy, key::kDeviceKerberosEncryptionTypes,
+                em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL);
+  EXPECT_EQ(em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL,
+            policy.device_kerberos_encryption_types().types());
+
   //
   // Auto update policies.
   //

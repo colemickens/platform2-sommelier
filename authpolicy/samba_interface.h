@@ -30,6 +30,14 @@
 // joining and policy fetching. Note: "Device" and "machine" can be used
 // interchangably here.
 
+namespace enterprise_management {
+class ChromeDeviceSettingsProto;
+}
+
+namespace policy {
+class DevicePolicyImpl;
+}
+
 namespace authpolicy {
 
 class Anonymizer;
@@ -46,8 +54,10 @@ class SambaInterface {
 
   ~SambaInterface();
 
-  // Creates directories required by Samba code and loads configuration, if it
-  // exists. Also loads the debug flags file. Returns error
+  // Creates directories required by Samba code. If |expect_config| is true,
+  // loads configuration and device policy and initializes dependent stuff like
+  // |encryption_types_|.
+  // Returns an error
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
   ErrorType Initialize(bool expect_config);
@@ -152,6 +162,11 @@ class SambaInterface {
 
   // Returns the ticket-granting-ticket manager for the user account.
   TgtManager& GetUserTgtManagerForTesting() { return user_tgt_manager_; }
+
+  // Sets the container used to load device policy during Initialize(). Can be
+  // used to load device policy from a different location and without key check.
+  void SetDevicePolicyImplForTesting(
+      std::unique_ptr<policy::DevicePolicyImpl> policy_impl);
 
   // Resets internal state (useful for doing multiple domain joins).
   void ResetForTesting() { Reset(); }
@@ -271,8 +286,10 @@ class SambaInterface {
       const char* parser_cmd_string,
       std::string* policy_blob) const;
 
-  // Called whenever new device policy is available.
-  void OnDevicePolicyChanged(const std::string& device_policy_blob);
+  // Update stuff that depends on device policy like |encryption_types_|. Should
+  // be called whenever new device policy is available.
+  void UpdateDevicePolicyDependencies(
+      const enterprise_management::ChromeDeviceSettingsProto& device_policy);
 
   // Get user or device AccountData. Depends on GpoSource, not on PolicyScope,
   // since that determines what account to download GPOs for.
@@ -294,6 +311,9 @@ class SambaInterface {
 
   // Similar to SetUser, but sets user_account_.realm.
   void SetUserRealm(const std::string& user_realm);
+
+  // Sets encryption types used by Kerberos tickets.
+  void SetKerberosEncryptionTypes(KerberosEncryptionTypes encryption_types);
 
   // Anonymizes |realm| in different capitalizations as well as all parts. For
   // instance, if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
@@ -357,11 +377,15 @@ class SambaInterface {
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
 
-  // Encryption types to use for kinit and Samba commands.
+  // Encryption types to use for kinit and Samba commands. Don't set directly,
+  // always set through SetKerberosEncryptionTypes().
   KerberosEncryptionTypes encryption_types_ = ENC_TYPES_STRONG;
 
   // Manager for interesting Windows policy.
   WindowsPolicyManager windows_policy_manager_;
+
+  // For testing only. Used/consumed during Initialize().
+  std::unique_ptr<policy::DevicePolicyImpl> device_policy_impl_for_testing;
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;

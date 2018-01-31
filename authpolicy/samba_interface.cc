@@ -20,11 +20,15 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <policy/device_policy_impl.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
+#include "bindings/device_management_backend.pb.h"
+
+namespace em = enterprise_management;
 
 namespace authpolicy {
 namespace {
@@ -324,6 +328,30 @@ const char* GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
   CHECK(false);
 }
 
+// Gets Kerberos encryption types from the corresponding device policy. Returns
+// ENC_TYPES_STRONG if the policy is not set or invalid.
+KerberosEncryptionTypes GetEncryptionTypesFromDevicePolicy(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  if (!device_policy.has_device_kerberos_encryption_types() ||
+      !device_policy.device_kerberos_encryption_types().has_types()) {
+    return ENC_TYPES_STRONG;
+  }
+
+  em::DeviceKerberosEncryptionTypesProto::Types policy_encryption_types =
+      device_policy.device_kerberos_encryption_types().types();
+
+  switch (policy_encryption_types) {
+    case em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL:
+      return ENC_TYPES_ALL;
+    case em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_STRONG:
+      return ENC_TYPES_STRONG;
+    case em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_LEGACY:
+      return ENC_TYPES_LEGACY;
+  }
+
+  CHECK(false);
+}
+
 }  // namespace
 
 SambaInterface::SambaInterface(
@@ -382,6 +410,21 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
     error = ReadConfiguration();
     if (error != ERROR_NONE)
       return error;
+
+    // Load device policy and update stuff that depends on device policy. If
+    // there's a config, it means the device is locked and there should also be
+    // device policy at this point.
+    std::unique_ptr<policy::DevicePolicyImpl> policy_impl =
+        std::move(device_policy_impl_for_testing);
+    if (!policy_impl)
+      policy_impl = std::make_unique<policy::DevicePolicyImpl>();
+    if (policy_impl->LoadPolicy()) {
+      UpdateDevicePolicyDependencies(policy_impl->get_device_policy());
+    } else {
+      LOG(ERROR) << "Failed to load device policy. Authentication and policy "
+                    "fetch might behave unexpectedly until the next device "
+                    "policy fetch.";
+    }
   }
 
   // Try to read Windows policy if present.
@@ -601,7 +644,7 @@ ErrorType SambaInterface::JoinMachine(
 
   // Note: Encryption types stay valid through the initial device policy fetch,
   // which, if it succeeds, resets or updates the value.
-  encryption_types_ = encryption_types;
+  SetKerberosEncryptionTypes(encryption_types);
 
   // Update smb.conf, IPs, server names etc. for the device account.
   ErrorType error = UpdateAccountData(&device_account_);
@@ -770,15 +813,27 @@ ErrorType SambaInterface::FetchDeviceGpos(
   if (error != ERROR_NONE)
     return error;
 
-  // Reset encryption types.
-  OnDevicePolicyChanged(gpo_policy_data->user_or_device_policy());
-  return error;
+  // Update stuff that depends on device policy.
+  em::ChromeDeviceSettingsProto device_policy;
+  if (!device_policy.ParseFromString(
+          gpo_policy_data->user_or_device_policy())) {
+    LOG(ERROR) << "Failed to parse device policy";
+    return ERROR_PARSE_FAILED;
+  }
+  UpdateDevicePolicyDependencies(device_policy);
+
+  return ERROR_NONE;
 }
 
 void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
   flags_default_level_ = level;
   LOG(INFO) << "Flags default level = " << flags_default_level_;
   SaveFlagsDefaultLevel();
+}
+
+void SambaInterface::SetDevicePolicyImplForTesting(
+    std::unique_ptr<policy::DevicePolicyImpl> policy_impl) {
+  device_policy_impl_for_testing = std::move(policy_impl);
 }
 
 ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
@@ -1503,12 +1558,13 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   return ERROR_NONE;
 }
 
-void SambaInterface::OnDevicePolicyChanged(
-    const std::string& device_policy_blob) {
-  // Right now, just reset the encryption type at this point. In the future we
-  // will have device policy for specifying encryption types, which we will get
-  // here from the policy blob.
-  encryption_types_ = ENC_TYPES_STRONG;
+void SambaInterface::UpdateDevicePolicyDependencies(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  // Get Kerberos encryption types policy. Note that we fall back to strong
+  // encryption if the policy is not set.
+  KerberosEncryptionTypes enc_types =
+      GetEncryptionTypesFromDevicePolicy(device_policy);
+  SetKerberosEncryptionTypes(enc_types);
 }
 
 void SambaInterface::SetUser(const std::string& account_id) {
@@ -1528,6 +1584,17 @@ void SambaInterface::SetUserRealm(const std::string& user_realm) {
       << "Multi-user not supported";
   user_account_.realm = user_realm;
   AnonymizeRealm(user_realm, kUserRealmPlaceholder);
+}
+
+void SambaInterface::SetKerberosEncryptionTypes(
+    KerberosEncryptionTypes encryption_types) {
+  if (encryption_types_ != encryption_types) {
+    LOG(INFO) << "Kerberos encryption types changed to "
+              << GetEncryptionTypesString(encryption_types);
+  }
+  encryption_types_ = encryption_types;
+  user_tgt_manager_.SetKerberosEncryptionTypes(encryption_types_);
+  device_tgt_manager_.SetKerberosEncryptionTypes(encryption_types_);
 }
 
 void SambaInterface::AnonymizeRealm(const std::string& realm,
@@ -1553,7 +1620,7 @@ void SambaInterface::Reset() {
   user_account_ = AccountData(Path::USER_SMB_CONF);
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   retry_machine_kinit_ = false;
-  encryption_types_ = ENC_TYPES_STRONG;
+  SetKerberosEncryptionTypes(ENC_TYPES_STRONG);
 }
 
 void SambaInterface::LoadFlagsDefaultLevel() {

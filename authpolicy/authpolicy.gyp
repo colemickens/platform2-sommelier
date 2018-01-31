@@ -111,6 +111,7 @@
       'link_settings': {
         'libraries': [
           '-linstallattributes-<(libbase_ver)',
+          '-lpolicy-<(libbase_ver)',
         ],
       },
     },

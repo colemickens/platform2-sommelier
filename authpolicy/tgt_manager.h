@@ -43,6 +43,11 @@ class TgtManager {
              Path credential_cache_path);
   ~TgtManager();
 
+  // Set the encryption types to use for kinit.
+  void SetKerberosEncryptionTypes(KerberosEncryptionTypes encryption_types) {
+    encryption_types_ = encryption_types;
+  }
+
   // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
   // and password file descriptor |password_fd|. |realm| is the Active Directory
   // realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is the key distribution center IP.
@@ -158,6 +163,9 @@ class TgtManager {
 
   // Whether to sleep when retrying kinit (disable for testing).
   bool kinit_retry_sleep_enabled_ = true;
+
+  // Encryption types to use for kinit.
+  KerberosEncryptionTypes encryption_types_ = ENC_TYPES_STRONG;
 
   // If true, the Kerberos files changed and |kerberos_files_changed_| needs to
   // be called if it exists. Prevents that signals are fired too often, e.g. if

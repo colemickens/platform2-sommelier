@@ -161,7 +161,7 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
 
 ErrorType AuthPolicy::Initialize(bool device_is_locked) {
   device_is_locked_ = device_is_locked;
-  return samba_.Initialize(/* expect_config */ device_is_locked_);
+  return samba_.Initialize(device_is_locked_ /* expect_config */);
 }
 
 void AuthPolicy::RegisterAsync(
