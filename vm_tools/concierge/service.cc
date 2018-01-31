@@ -37,6 +37,7 @@
 #include <base/single_thread_task_runner.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
@@ -108,10 +109,11 @@ void HandleSynchronousDBusMethodCall(
 void RunStartupListenerService(StartupListenerImpl* listener,
                                base::WaitableEvent* event,
                                std::shared_ptr<grpc::Server>* server_copy) {
-  // We are not interested in getting SIGCHLD on this thread.
+  // We are not interested in getting SIGCHLD or SIGTERM on this thread.
   sigset_t mask;
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
+  sigaddset(&mask, SIGTERM);
   sigprocmask(SIG_BLOCK, &mask, nullptr);
 
   // Build the grpc server.
@@ -170,8 +172,8 @@ base::FilePath GetLatestVMPath() {
 
 }  // namespace
 
-std::unique_ptr<Service> Service::Create() {
-  auto service = base::WrapUnique(new Service());
+std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
+  auto service = base::WrapUnique(new Service(std::move(quit_closure)));
 
   if (!service->Init()) {
     service.reset();
@@ -180,7 +182,8 @@ std::unique_ptr<Service> Service::Create() {
   return service;
 }
 
-Service::Service() : watcher_(FROM_HERE) {}
+Service::Service(base::Closure quit_closure)
+    : watcher_(FROM_HERE), quit_closure_(std::move(quit_closure)) {}
 
 Service::~Service() {
   if (grpc_server_) {
@@ -196,44 +199,14 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
     PLOG(ERROR) << "Failed to read from signalfd";
     return;
   }
-  DCHECK_EQ(siginfo.ssi_signo, SIGCHLD);
 
-  // We can't just rely on the information in the siginfo structure because
-  // more than one child may have exited but only one SIGCHLD will be
-  // generated.
-  while (true) {
-    int status;
-    pid_t pid = waitpid(-1, &status, WNOHANG);
-    if (pid <= 0) {
-      if (pid == -1 && errno != ECHILD) {
-        PLOG(ERROR) << "Unable to reap child processes";
-      }
-      break;
-    }
-
-    // See if this is a process we launched.
-    string name;
-    for (const auto& pair : vms_) {
-      if (pid == pair.second->pid()) {
-        name = pair.first;
-        break;
-      }
-    }
-
-    if (WIFEXITED(status)) {
-      LOG(INFO) << " Process " << pid << " exited with status "
-                << WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-      LOG(INFO) << " Process " << pid << " killed by signal "
-                << WTERMSIG(status)
-                << (WCOREDUMP(status) ? " (core dumped)" : "");
-    } else {
-      LOG(WARNING) << "Unknown exit status " << status << " for process "
-                   << pid;
-    }
-
-    // Remove this process from the our set of VMs.
-    vms_.erase(std::move(name));
+  if (siginfo.ssi_signo == SIGCHLD) {
+    HandleChildExit();
+  } else if (siginfo.ssi_signo == SIGTERM) {
+    HandleSigterm();
+  } else {
+    LOG(ERROR) << "Received unknown signal from signal fd: "
+               << strsignal(siginfo.ssi_signo);
   }
 }
 
@@ -313,10 +286,11 @@ bool Service::Init() {
   // right permissions.
   umask(002);
 
-  // Set up the signalfd for receiving SIGCHLD events.
+  // Set up the signalfd for receiving SIGCHLD and SIGTERM.
   sigset_t mask;
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
+  sigaddset(&mask, SIGTERM);
 
   signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
   if (!signal_fd_.is_valid()) {
@@ -332,14 +306,60 @@ bool Service::Init() {
     return false;
   }
 
-  // Now block SIGCHLD from the normal signal handling path so that we will get
-  // it via the signalfd.
+  // Now block signals from the normal signal handling path so that we will get
+  // them via the signalfd.
   if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
-    PLOG(ERROR) << "Failed to block SIGCHLD via sigprocmask";
+    PLOG(ERROR) << "Failed to block signals via sigprocmask";
     return false;
   }
 
   return true;
+}
+
+void Service::HandleChildExit() {
+  // We can't just rely on the information in the siginfo structure because
+  // more than one child may have exited but only one SIGCHLD will be
+  // generated.
+  while (true) {
+    int status;
+    pid_t pid = waitpid(-1, &status, WNOHANG);
+    if (pid <= 0) {
+      if (pid == -1 && errno != ECHILD) {
+        PLOG(ERROR) << "Unable to reap child processes";
+      }
+      break;
+    }
+
+    // See if this is a process we launched.
+    string name;
+    for (const auto& pair : vms_) {
+      if (pid == pair.second->pid()) {
+        name = pair.first;
+        break;
+      }
+    }
+
+    if (WIFEXITED(status)) {
+      LOG(INFO) << " Process " << pid << " exited with status "
+                << WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      LOG(INFO) << " Process " << pid << " killed by signal "
+                << WTERMSIG(status)
+                << (WCOREDUMP(status) ? " (core dumped)" : "");
+    } else {
+      LOG(WARNING) << "Unknown exit status " << status << " for process "
+                   << pid;
+    }
+
+    // Remove this process from the our set of VMs.
+    vms_.erase(std::move(name));
+  }
+}
+
+void Service::HandleSigterm() {
+  LOG(INFO) << "Shutting down due to SIGTERM";
+
+  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
 }
 
 std::unique_ptr<dbus::Response> Service::StartVm(

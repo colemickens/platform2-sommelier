@@ -21,9 +21,12 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  auto service = vm_tools::concierge::Service::Create();
+  base::RunLoop run_loop;
+
+  auto service = vm_tools::concierge::Service::Create(run_loop.QuitClosure());
   CHECK(service);
 
-  base::RunLoop().Run();
+  run_loop.Run();
+
   return 0;
 }

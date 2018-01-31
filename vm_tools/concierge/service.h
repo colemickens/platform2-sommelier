@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -32,7 +33,9 @@ namespace concierge {
 // starting, stopping, and otherwise managing VMs.
 class Service final : public base::MessageLoopForIO::Watcher {
  public:
-  static std::unique_ptr<Service> Create();
+  // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
+  // for the current thread when this process receives a SIGTERM.
+  static std::unique_ptr<Service> Create(base::Closure quit_closure);
   ~Service() override;
 
   // base::MessageLoopForIO::Watcher overrides.
@@ -40,11 +43,17 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
-  Service();
+  explicit Service(base::Closure quit_closure);
 
   // Initializes the service by connecting to the system DBus daemon, exporting
   // its methods, and taking ownership of it's name.
   bool Init();
+
+  // Handles the termination of a child process.
+  void HandleChildExit();
+
+  // Handles a SIGTERM.
+  void HandleSigterm();
 
   // Handles a request to start a VM.  |method_call| must have a StartVmRequest
   // protobuf serialized as an array of bytes.
@@ -91,6 +100,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // The server where the StartupListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_;
+
+  // Closure that's posted to the current thread's TaskRunner when the service
+  // receives a SIGTERM.
+  base::Closure quit_closure_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
