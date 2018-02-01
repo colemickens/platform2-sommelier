@@ -56,17 +56,17 @@ namespace gcu = graphconfig::utils;
 
 const string csi2_without_port = "ipu3-csi2 ";
 
-const string MEDIACTL_INPUTNAME = "input";
+const string MEDIACTL_INPUTNAME = "ipu3-imgu input";
 
-const string MEDIACTL_PARAMETERNAME = "parameters";
+const string MEDIACTL_PARAMETERNAME = "ipu3-imgu parameters";
 
-const string MEDIACTL_VIDEONAME = "output";
-const string MEDIACTL_STILLNAME = "output";
+const string MEDIACTL_VIDEONAME = "ipu3-imgu output";
+const string MEDIACTL_STILLNAME = "ipu3-imgu output";
 
-const string MEDIACTL_PREVIEWNAME = "viewfinder";
-const string MEDIACTL_POSTVIEWNAME = "postview";
+const string MEDIACTL_PREVIEWNAME = "ipu3-imgu viewfinder";
+const string MEDIACTL_POSTVIEWNAME = "ipu3-imgu postview";
 
-const string MEDIACTL_STATNAME = "3a stat";
+const string MEDIACTL_STATNAME = "ipu3-imgu 3a stat";
 
 GraphConfig::GraphConfig() :
         mManager(nullptr),
