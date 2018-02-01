@@ -98,6 +98,11 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   WriteFileOptionsProto write_file_proto = CreateWriteFileOptionsProto(
       3 /* mount_id */, 4 /* file_id */, 0 /* offset */, 0 /* length */);
   EXPECT_TRUE(IsValidOptions(write_file_proto));
+
+  CreateDirectoryOptionsProto create_dir_proto =
+      CreateCreateDirectoryOptionsProto(
+          3 /* mount_id */, "smb://testShare/dir1", true /* recursive */);
+  EXPECT_TRUE(IsValidOptions(create_dir_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -134,6 +139,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   WriteFileOptionsProto write_file_proto_blank;
   EXPECT_FALSE(IsValidOptions(write_file_proto_blank));
+
+  CreateDirectoryOptionsProto create_dir_proto_blank;
+  EXPECT_FALSE(IsValidOptions(create_dir_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.

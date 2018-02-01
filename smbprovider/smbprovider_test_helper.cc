@@ -117,6 +117,15 @@ WriteFileOptionsProto CreateWriteFileOptionsProto(int32_t mount_id,
   return options;
 }
 
+CreateDirectoryOptionsProto CreateCreateDirectoryOptionsProto(
+    int32_t mount_id, const std::string& directory_path, bool recursive) {
+  CreateDirectoryOptionsProto options;
+  options.set_mount_id(mount_id);
+  options.set_directory_path(directory_path);
+  options.set_recursive(recursive);
+  return options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(path));
 }
@@ -184,6 +193,13 @@ ProtoBlob CreateWriteFileOptionsBlob(int32_t mount_id,
                                      int32_t length) {
   return SerializeProtoToBlobAndCheck(
       CreateWriteFileOptionsProto(mount_id, file_id, offset, length));
+}
+
+ProtoBlob CreateCreateDirectoryOptionsBlob(int32_t mount_id,
+                                           const std::string& directory_path,
+                                           bool recursive) {
+  return SerializeProtoToBlobAndCheck(
+      CreateCreateDirectoryOptionsProto(mount_id, directory_path, recursive));
 }
 
 }  // namespace smbprovider

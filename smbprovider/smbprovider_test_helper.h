@@ -49,6 +49,9 @@ WriteFileOptionsProto CreateWriteFileOptionsProto(int32_t mount_id,
                                                   int64_t offset,
                                                   int32_t length);
 
+CreateDirectoryOptionsProto CreateCreateDirectoryOptionsProto(
+    int32_t mount_id, const std::string& directory_path, bool recursive);
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
@@ -85,6 +88,10 @@ ProtoBlob CreateWriteFileOptionsBlob(int32_t mount_id,
                                      int32_t file_id,
                                      int64_t offset,
                                      int32_t length);
+
+ProtoBlob CreateCreateDirectoryOptionsBlob(int32_t mount_id,
+                                           const std::string& directory_path,
+                                           bool recursive);
 // FakeSamba URL helper methods
 inline std::string GetDefaultServer() {
   return "smb://wdshare";
