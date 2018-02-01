@@ -346,7 +346,7 @@ bool Mount::AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
 
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  const Mount::MountArgs& mount_args,
-                                 bool recreate_decrypt_fatal,
+                                 bool recreate_on_decrypt_fatal,
                                  MountError* mount_error) {
   current_user_->Reset();
 
@@ -420,7 +420,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
                           &index, &local_mount_error)) {
     *mount_error = local_mount_error;
-    if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
+    if (recreate_on_decrypt_fatal && (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
       if (!homedirs_->Remove(credentials.username())) {
