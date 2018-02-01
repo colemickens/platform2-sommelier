@@ -50,7 +50,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     frame.width = sizeof(ipu3_uapi_stats_3a) + page_size - (sizeof(ipu3_uapi_stats_3a) % page_size);
     frame.height = 1;
     frame.stride = frame.width;
-    frame.format = V4L2_PIX_FMT_YUYV;
+    frame.format = V4L2_META_FMT_IPU3_STAT_3A;
     status_t ret = setWorkerDeviceFormat(frame);
     if (ret != OK)
         return ret;
