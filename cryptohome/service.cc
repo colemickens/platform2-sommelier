@@ -80,6 +80,17 @@ const std::string& GetAccountId(const AccountIdentifier& id) {
   return id.email();
 }
 
+bool KeyHasWrappedAuthorizationSecrets(const Key& k) {
+  for (const KeyAuthorizationData& auth_data : k.data().authorization_data()) {
+    for (const KeyAuthorizationSecret& secret : auth_data.secrets()) {
+      // If wrapping becomes richer in the future, this may change.
+      if (secret.wrapped())
+        return true;
+    }
+  }
+  return false;
+}
+
 }  // anonymous namespace
 
 const char kSaltFile[] = "salt";
@@ -1326,19 +1337,10 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
   }
 
   // Ensure any new keys do not contain a wrapped authorization key.
-  for (int ad = 0;
-       ad < add_key_request->key().data().authorization_data_size();
-       ++ad) {
-    const KeyAuthorizationData auth_data =
-      add_key_request->key().data().authorization_data(ad);
-    for (int s = 0; s < auth_data.secrets_size(); ++s) {
-      if (auth_data.secrets(s).wrapped()) {
-        // If wrapping becomes richer in the future, this may change.
-        SendInvalidArgsReply(context,
-                             "KeyAuthorizationSecrets may not be wrapped");
-        return;
-      }
-    }
+  if (KeyHasWrappedAuthorizationSecrets(add_key_request->key())) {
+    SendInvalidArgsReply(context,
+                         "KeyAuthorizationSecrets may not be wrapped");
+    return;
   }
 
   UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
@@ -1424,19 +1426,10 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  for (int ad = 0;
-       ad < update_key_request->changes().data().authorization_data_size();
-       ++ad) {
-    const KeyAuthorizationData auth_data =
-      update_key_request->changes().data().authorization_data(ad);
-    for (int s = 0; s < auth_data.secrets_size(); ++s) {
-      if (auth_data.secrets(s).wrapped()) {
-        // If wrapping becomes richer in the future, this may change.
-        SendInvalidArgsReply(context,
-                             "KeyAuthorizationSecrets may not be wrapped");
-        return;
-      }
-    }
+  if (KeyHasWrappedAuthorizationSecrets(update_key_request->changes())) {
+    SendInvalidArgsReply(context,
+                         "KeyAuthorizationSecrets may not be wrapped");
+    return;
   }
 
   UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
@@ -1895,19 +1888,10 @@ void Service::DoMountEx(AccountIdentifier* identifier,
                              "CreateRequest Keys are not fully specified");
         return;
       }
-      // TODO(wad): Refactor out this check and other incoming Key validations
-      //            in a helper.  crbug.com/353644
-      for (int ad = 0; ad < key.data().authorization_data_size(); ++ad) {
-        const KeyAuthorizationData auth_data =
-          key.data().authorization_data(ad);
-        for (int s = 0; s < auth_data.secrets_size(); ++s) {
-          if (auth_data.secrets(s).wrapped()) {
-          // If wrapping becomes richer in the future, this may change.
-          SendInvalidArgsReply(context,
-                               "KeyAuthorizationSecrets may not be wrapped");
-          return;
-          }
-        }
+      if (KeyHasWrappedAuthorizationSecrets(key)) {
+        SendInvalidArgsReply(context,
+                             "KeyAuthorizationSecrets may not be wrapped");
+        return;
       }
     }
   }
