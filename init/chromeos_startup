@@ -93,6 +93,12 @@ mkdir -p /dev/pts /dev/shm
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
+# Mount configfs, if present.
+if [ -d /sys/kernel/config ]; then
+  mount -n -t configfs -o nodev,nosuid,noexec,mode=0750 configfs \
+    /sys/kernel/config
+fi
+
 if [ -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
   DISABLE_STATEFUL_SECURITY_HARDENING="true"
 else
