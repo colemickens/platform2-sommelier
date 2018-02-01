@@ -20,10 +20,10 @@ this_dir = os.path.dirname(__file__)
 CHROMEOS = 'chromeos'
 MODELS = 'models'
 BUILD_ONLY_ELEMENTS = [
-  '/firmware',
-  '/audio/main/card',
-  '/audio/main/cras-config-subdir',
-  '/audio/main/files'
+    '/firmware',
+    '/audio/main/card',
+    '/audio/main/cras-config-subdir',
+    '/audio/main/files'
 ]
 CRAS_CONFIG_DIR = '/etc/cras'
 
@@ -132,10 +132,10 @@ def _GetAudioFiles(model_dict):
   """
   files = []
   model = GetNamedTuple(model_dict)
-  def _AddAudioFile(source, dest, file):
+  def _AddAudioFile(source, dest, fname):
     files.append(
-        {'source': os.path.join(source, file),
-         'dest': os.path.join(dest, file)})
+        {'source': os.path.join(source, fname),
+         'dest': os.path.join(dest, fname)})
   card = model.audio.main.card
   subdir = model.audio.main.cras_config_subdir
   subdir_path = '%s/' % subdir if subdir else ''
@@ -211,6 +211,7 @@ def _FilterBuildElements(config, path):
 
   Args:
     config: Dict that will be checked.
+    path: Path of elements to filter.
   """
   to_delete = []
   for key in config:
@@ -290,7 +291,13 @@ def Main(schema, config, output, filter_build_details=False):
     else:
       print (json_transform)
 
-def main(argv=None):
+def main(_argv=None):
+  """Main program which parses args and runs
+
+  Args:
+    _argv: Intended to be the list of arguments to the program, or None to use
+        sys.argv (but at present this is unused)
+  """
   args = ParseArgs(sys.argv[1:])
   Main(args.schema, args.config, args.output, args.filter)
 

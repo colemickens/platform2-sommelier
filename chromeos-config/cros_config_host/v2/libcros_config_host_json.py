@@ -11,14 +11,11 @@ for CLI access to this library.
 
 from __future__ import print_function
 
-from collections import namedtuple, OrderedDict
 import json
 import os
-import sys
 
 from .cros_config_schema import TransformConfig, GetNamedTuple
-from ..libcros_config_host import BaseFile, FirmwareInfo, PathComponent
-from ..libcros_config_host import TouchFile
+from ..libcros_config_host import BaseFile, TouchFile
 
 LIB_FIRMWARE = '/lib/firmware'
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
@@ -79,10 +76,10 @@ class CrosConfigJson(object):
     """
     file_set = set()
     for model in self.models.values():
-      for file in model.GetTouchFirmwareFiles():
-        file_set.add(file)
+      for fname in model.GetTouchFirmwareFiles():
+        file_set.add(fname)
 
-    return sorted(file_set, key=lambda file: file.firmware)
+    return sorted(file_set, key=lambda fname: fname.firmware)
 
   def GetAudioFiles(self):
     """Get a list of unique audio files for all models
@@ -143,7 +140,6 @@ class CrosConfigJson(object):
         List of audio files for the given model.
       """
       files = []
-      for file in self._model.audio.main.files:
-        files.append(BaseFile(file.source, file.dest))
+      for fname in self._model.audio.main.files:
+        files.append(BaseFile(fname.source, fname.dest))
       return files
-
