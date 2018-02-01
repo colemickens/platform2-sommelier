@@ -17,8 +17,8 @@ constexpr size_t kBufferSize = 1024 * 32;
 // Default flags for created files.
 constexpr int kCreateFileFlags = O_CREAT | O_WRONLY | O_TRUNC | O_EXCL;
 
-// Default permissions for created files.
-constexpr mode_t kCreateFilePermissions = 0755;
+// Default permissions for created entries.
+constexpr mode_t kCreateEntryPermissions = 0755;
 
 // SMB Url scheme
 constexpr char kSmbUrlScheme[] = "smb://";

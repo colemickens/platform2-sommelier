@@ -107,7 +107,7 @@ int32_t SambaInterfaceImpl::RemoveDirectory(const std::string& dir_path) {
 int32_t SambaInterfaceImpl::CreateFile(const std::string& file_path,
                                        int32_t* file_id) {
   *file_id =
-      smbc_open(file_path.c_str(), kCreateFileFlags, kCreateFilePermissions);
+      smbc_open(file_path.c_str(), kCreateFileFlags, kCreateEntryPermissions);
   if (*file_id < 0) {
     *file_id = -1;
     return errno;
