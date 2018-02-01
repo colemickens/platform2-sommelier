@@ -57,6 +57,9 @@ constexpr char kVshUsage[] =
     "vsh client\n"
     "Usage: vsh [flags] -- ENV1=VALUE1 ENV2=VALUE2 ...";
 
+// TODO(smbarber): Globals are bad. Refactor vsh/vshd into classes.
+int exit_code = EXIT_FAILURE;
+
 // Sends a WindowResizeMessage with the current window size of |ttyfd|
 // to |sockfd|.
 bool SendCurrentWindowSize(int sockfd, int ttyfd) {
@@ -135,6 +138,7 @@ void HandleVsockReadable(int sockfd) {
       vm_tools::vsh::ConnectionStatus status = status_message.status();
 
       if (status == vm_tools::vsh::EXITED) {
+        exit_code = status_message.code();
         Shutdown();
       } else if (status != vm_tools::vsh::READY) {
         LOG(ERROR) << "vsh connection has exited abnormally: " << status;
@@ -239,6 +243,7 @@ int main(int argc, char** argv) {
   DEFINE_uint64(cid, 0, "Cid of VM");
   DEFINE_string(vm_name, "", "Target VM name");
   DEFINE_string(user, "chronos", "Target user in the VM");
+  DEFINE_string(command, "", "Command to run in the VM");
 
   brillo::FlagHelper::Init(argc, argv, kVshUsage);
 
@@ -294,6 +299,7 @@ int main(int argc, char** argv) {
   vm_tools::vsh::SetupConnectionRequest connection_request;
   connection_request.set_target(vm_tools::vsh::kVmShell);
   connection_request.set_user(FLAGS_user);
+  connection_request.set_command(FLAGS_command);
 
   auto env = connection_request.mutable_env();
 
@@ -377,5 +383,5 @@ int main(int argc, char** argv) {
       base::Bind(&HandleStdinReadable, sockfd.get()));
   message_loop.Run();
 
-  return EXIT_SUCCESS;
+  return exit_code;
 }

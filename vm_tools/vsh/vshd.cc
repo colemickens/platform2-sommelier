@@ -145,7 +145,6 @@ void PrepareExec(
     }
   }
 
-  // TODO(smbarber): Allow running something other than a shell.
   // Get shell from passwd file and prefix argv[0] with "-" to indicate a
   // login shell.
   std::string login_shell = base::FilePath(passwd->pw_shell).BaseName().value();
@@ -183,9 +182,22 @@ void PrepareExec(
   }
   envp.emplace_back(nullptr);
 
-  char* const argv[] = {const_cast<char*>(login_shell.c_str()), nullptr};
-  if (execve(passwd->pw_shell, argv, envp.data()) < 0) {
-    PLOG(ERROR) << "Failed to exec shell";
+  std::string command = connection_request.command();
+  std::vector<char* const> argv;
+
+  if (command.empty()) {
+    argv = std::vector<char* const>({const_cast<char*>(login_shell.c_str()),
+                                     nullptr});
+  } else {
+    // Use `sh -c <command>` to execute the command.
+    argv = std::vector<char* const>({passwd->pw_shell,
+                                     const_cast<char*>("-c"),
+                                     const_cast<char*>(command.c_str()),
+                                     nullptr});
+  }
+
+  if (execve(passwd->pw_shell, argv.data(), envp.data()) < 0) {
+      PLOG(ERROR) << "Failed to exec shell";
   }
 }
 
@@ -197,6 +209,7 @@ bool HandleSigchld(int sockfd, const struct signalfd_siginfo& siginfo) {
       host_message.mutable_status_message();
   status_message->set_status(vm_tools::vsh::EXITED);
   status_message->set_description("target process has exited");
+  status_message->set_code(siginfo.ssi_status);
 
   if (!SendMessage(sockfd, host_message)) {
     LOG(ERROR) << "Failed to send host message";

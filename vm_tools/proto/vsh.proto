@@ -32,6 +32,8 @@ message SetupConnectionRequest {
   string user = 2;
   // Map of environment variables to forward.
   map<string, string> env = 3;
+  // Target command. Empty indicates a login shell.
+  string command = 4;
 }
 
 // Response to a SetupConnectionRequest.
@@ -51,6 +53,8 @@ message ConnectionStatusMessage {
   ConnectionStatus status = 1;
   // Short description of any error that triggered the status change.
   string description = 2;
+  // Return code of the command, if any.
+  sint32 code = 3;
 }
 
 // Type of stdio stream that is being sent.
