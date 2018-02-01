@@ -12,7 +12,7 @@ touchscreen should be ignored while the system is in docked mode with its lid
 closed.
 
 This behavior is configured via udev tags that are set on devices by the
-[90-power-id.rules] and [91-powerd-tags.rules] files:
+[90-power-id.rules] and [92-powerd-tags.rules] files:
 
 |Tag|Description|
 |---|-----------|
@@ -33,7 +33,11 @@ If only the `wakeup` tag is set, wakeup will be unconditionally enabled. If one
 or more `wakeup_when_*` tags are also present, wakeup will be enabled only while
 in the requested modes.
 
+Boards can create and install their own udev rules with prefix `91-` to override
+generic `internal/external_[type]` roles, or create udev rules with prefix `93-`
+to override the specific tags above.
+
 [InputDeviceController]: ../powerd/policy/input_device_controller.h
 [wakeup sysfs attributes]: https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-power
 [90-power-id.rules]: ../udev/90-powerd-id.rules
-[91-powerd-tags.rules]: ../udev/91-powerd-tags.rules
+[92-powerd-tags.rules]: ../udev/92-powerd-tags.rules
