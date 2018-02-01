@@ -268,6 +268,20 @@ int32_t FakeSambaInterface::WriteFile(int32_t file_id,
   return 0;
 }
 
+int32_t FakeSambaInterface::CreateDirectory(const std::string& directory_path) {
+  if (EntryExists(directory_path)) {
+    return EEXIST;
+  }
+
+  FakeDirectory* parent = GetDirectory(GetDirPath(directory_path));
+  if (!parent) {
+    return ENOENT;
+  }
+
+  AddDirectory(directory_path);
+  return 0;
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {

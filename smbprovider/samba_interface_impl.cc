@@ -125,6 +125,11 @@ int32_t SambaInterfaceImpl::WriteFile(int32_t file_id,
   return smbc_write(file_id, buffer, buffer_size) < 0 ? errno : 0;
 }
 
+int32_t SambaInterfaceImpl::CreateDirectory(const std::string& directory_path) {
+  int32_t result = smbc_mkdir(directory_path.c_str(), kCreateEntryPermissions);
+  return result < 0 ? errno : 0;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }

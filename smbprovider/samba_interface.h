@@ -112,6 +112,14 @@ class SambaInterface {
                             const uint8_t* buffer,
                             size_t buffer_size) WARN_UNUSED_RESULT = 0;
 
+  // Creates the directory at |directory_path|. The directory that is created
+  // will have 755 as permissions. If a directory with the same path exists,
+  // this will return an error. If the parent directory of the directory doesn't
+  // exist, this will return an error. Returns 0 on success and errno on
+  // failure.
+  virtual int32_t CreateDirectory(const std::string& directory_path)
+      WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "

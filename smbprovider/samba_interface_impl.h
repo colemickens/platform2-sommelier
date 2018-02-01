@@ -60,6 +60,8 @@ class SambaInterfaceImpl : public SambaInterface {
                     const uint8_t* buffer,
                     size_t buffer_size) override;
 
+  int32_t CreateDirectory(const std::string& directory_path) override;
+
  private:
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;

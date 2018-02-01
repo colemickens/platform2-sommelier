@@ -286,4 +286,23 @@ TEST_F(FakeSambaTest, WriteFileShouldWriteTwice) {
   EXPECT_EQ(0, fake_samba_.CloseFile(file_id));
 }
 
+TEST_F(FakeSambaTest, CreateDirectoryFailsOnMissingParentDir) {
+  EXPECT_EQ(ENOENT,
+            fake_samba_.CreateDirectory("smb://wdshare/test/invalid/path"));
+}
+
+TEST_F(FakeSambaTest, CreateDirectoryFailsOnExistingDir) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  EXPECT_EQ(EEXIST, fake_samba_.CreateDirectory(GetDefaultDirectoryPath()));
+}
+
+TEST_F(FakeSambaTest, CreateDirectoryFailsOnExistingFile) {
+  fake_samba_.AddFile(GetDefaultFilePath());
+  EXPECT_EQ(EEXIST, fake_samba_.CreateDirectory(GetDefaultFilePath()));
+}
+
+TEST_F(FakeSambaTest, CreateDirectorySucceedsOnValidPath) {
+  EXPECT_EQ(0, fake_samba_.CreateDirectory(GetDefaultDirectoryPath()));
+}
+
 }  // namespace smbprovider
