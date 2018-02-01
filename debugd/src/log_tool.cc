@@ -58,6 +58,7 @@ const Log kCommandLogs[] = {
   { "bios_times", "/bin/cat /var/log/bios_times.txt" },
   { "board-specific",
     "/usr/share/userfeedback/scripts/get_board_specific_info" },
+  { "buddyinfo", "/bin/cat /proc/buddyinfo" },
   { "cheets_log", "/usr/bin/collect-cheets-logs 2>&1" },
   { "clobber.log", "/bin/cat /var/log/clobber.log 2> /dev/null" },
   { "clobber-state.log", "/bin/cat /var/log/clobber-state.log 2> /dev/null" },
