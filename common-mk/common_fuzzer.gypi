@@ -8,7 +8,7 @@
 
 {
   'cflags': [
-    '-fsanitize=fuzzer,address',
+    '-fsanitize=fuzzer-no-link,address',
   ],
   'ldflags': [
     '-fsanitize=fuzzer,address',

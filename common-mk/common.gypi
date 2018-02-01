@@ -39,7 +39,7 @@
     'USE_direncryption%': 0,
     'USE_feedback%': 0,
     'USE_ftdi_tpm%': 0,
-    'USE_fuzzing%': 0,
+    'USE_fuzzer%': 0,
     'USE_gdmwimax%': 0,
     'USE_hammerd_api%': 0,
     'USE_iwlwifi_dump%': 0,
