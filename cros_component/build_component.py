@@ -31,9 +31,9 @@ def GetParser():
   parser = commandline.ArgumentParser(description=__doc__)
   # Optional arguments:
   parser.add_argument('--gsbucket', default=None, metavar='GS_BUCKET_URI',
-                      help="Override the gsbucket field (Google Cloud Storage"
-                           " bucket where component is uploaded to) in config"
-                           " file.")
+                      help='Override the gsbucket field (Google Cloud Storage '
+                           'bucket where component is uploaded to) in config '
+                           'file.')
   parser.add_argument('--upload', dest='upload', action='store_true',
                       default=False,
                       help='Upload to Omaha gsbucket.')
@@ -50,8 +50,8 @@ def GetParser():
                                  'chromeos_intel64-archive'], required=True)
   # Positional arguments:
   parser.add_argument('component', metavar='COMPONENT',
-                      help="The component to build (key inside the config"
-                           " file)")
+                      help='The component to build (key inside the config '
+                           'file).')
   return parser
 
 
