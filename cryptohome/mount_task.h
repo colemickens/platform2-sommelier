@@ -368,28 +368,6 @@ class MountTaskMigratePasskey : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskMigratePasskey);
 };
 
-// TODO(ellyjones,wad): move this out of MountTask, as it doesn't take a Mount.
-class MountTaskAddPasskey : public MountTask {
- public:
-  MountTaskAddPasskey(MountTaskObserver* observer,
-            HomeDirs* homedirs,
-            const UsernamePasskey& credentials,
-            const char* new_key)
-      : MountTask(observer, NULL, credentials), homedirs_(homedirs) {
-    new_key_.resize(strlen(new_key));
-    memcpy(new_key_.data(), new_key, new_key_.size());
-  }
-  virtual ~MountTaskAddPasskey() { }
-
-  virtual void Run();
-
- private:
-  brillo::SecureBlob new_key_;
-  HomeDirs* homedirs_;
-
-  DISALLOW_COPY_AND_ASSIGN(MountTaskAddPasskey);
-};
-
 // Implements asychronous calls to Mount::Unmount()
 class MountTaskUnmount : public MountTask {
  public:

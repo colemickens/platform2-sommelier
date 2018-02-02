@@ -192,22 +192,6 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-TEST_F(MountTaskTest, AddPasskeyTest) {
-  MockHomeDirs homedirs;
-  EXPECT_CALL(homedirs, AddKeyset(_, _, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-
-  ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskAddPasskey> mount_task
-      = new MountTaskAddPasskey(NULL, &homedirs, empty_credentials_, "");
-  mount_task->set_complete_event(&event_);
-  mount_task->set_result(&result_);
-  runner_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
-  event_.TimedWait(wait_time_);
-  ASSERT_TRUE(event_.IsSignaled());
-}
-
 TEST_F(MountTaskTest, UnmountTest) {
   EXPECT_CALL(*mount_, UnmountCryptohome())
       .WillOnce(Return(true));

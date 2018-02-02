@@ -116,23 +116,6 @@ gboolean cryptohome_async_migrate_key(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(AsyncMigrateKey, userid, from_key, to_key,
                          OUT_async_id);
 }
-gboolean cryptohome_add_key(Cryptohome* self,
-                            gchar* userid,
-                            gchar* key,
-                            gchar* new_key,
-                            gint* OUT_key_id,
-                            gboolean* OUT_result,
-                            GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AddKey, userid, key, new_key, OUT_key_id, OUT_result);
-}
-gboolean cryptohome_async_add_key(Cryptohome* self,
-                                  gchar* userid,
-                                  gchar* key,
-                                  gchar* new_key,
-                                  gint* OUT_async_id,
-                                  GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncAddKey, userid, key, new_key, OUT_async_id);
-}
 gboolean cryptohome_add_key_ex(Cryptohome* self,
                                GArray* id,
                                GArray* auth,

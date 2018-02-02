@@ -75,20 +75,6 @@
       <arg type="s" name="to_key" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="AddKey">
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="s" name="new_key" direction="in" />
-      <arg type="i" name="key_id" direction="out" />
-      <arg type="b" name="success" direction="out" />
-    </method>
-    <method name="AsyncAddKey">
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="s" name="new_key" direction="in" />
-      <!-- key_id will be returned in the return_code -->
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <!-- This may be called asynchronously. -->
     <method name="AddKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>

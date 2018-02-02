@@ -103,18 +103,6 @@ void MountTaskMigratePasskey::Run() {
   MountTask::Notify();
 }
 
-void MountTaskAddPasskey::Run() {
-  CHECK(homedirs_);
-  int index = -1;
-  bool status = (homedirs_->AddKeyset(credentials_, new_key_,
-                                      NULL, false, &index) ==
-                 CRYPTOHOME_ERROR_NOT_SET);
-  result()->set_return_status(status);
-  // Failure will yield a -1 return code.
-  result()->set_return_code(static_cast<MountError>(index));
-  MountTask::Notify();
-}
-
 void MountTaskUnmount::Run() {
   if (mount_) {
     bool status = mount_->UnmountCryptohome();

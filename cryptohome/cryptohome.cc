@@ -94,7 +94,6 @@ namespace switches {
                                    "get_key_data_ex",
                                    "list_keys_ex",
                                    "migrate_key",
-                                   "add_key",
                                    "add_key_ex",
                                    "update_key_ex",
                                    "remove",
@@ -156,7 +155,6 @@ namespace switches {
     ACTION_GET_KEY_DATA_EX,
     ACTION_LIST_KEYS_EX,
     ACTION_MIGRATE_KEY,
-    ACTION_ADD_KEY,
     ACTION_ADD_KEY_EX,
     ACTION_UPDATE_KEY_EX,
     ACTION_REMOVE,
@@ -1161,59 +1159,6 @@ int main(int argc, char **argv) {
       printf("Key migration failed.\n");
     } else {
       printf("Key migration succeeded.\n");
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY],
-                     action.c_str())) {
-    std::string account_id, password, new_password;
-
-    if (!GetAccountId(cl, &account_id)) {
-      return 1;
-    }
-
-    GetPassword(
-        proxy, cl, switches::kPasswordSwitch,
-        StringPrintf("Enter a current password for <%s>", account_id.c_str()),
-        &password);
-    GetPassword(
-        proxy, cl, switches::kNewPasswordSwitch,
-        StringPrintf("Enter the new password for <%s>", account_id.c_str()),
-        &new_password);
-
-    gboolean done = false;
-    gint key_index = -1;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_add_key(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               new_password.c_str(),
-               &key_index,
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("AddKey call failed: %s.\n", error->message);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_add_key(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               new_password.c_str(),
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("AddKey call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-        key_index = client_loop.get_return_code();
-      }
-    }
-    if (!done) {
-      printf("Key addition failed.\n");
-    } else {
-      printf("Key %d was added.\n", key_index);
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                 action.c_str())) {
