@@ -49,7 +49,7 @@ SecureBlob SecureBlob::Combine(const SecureBlob& blob1,
   return result;
 }
 
-void* SecureMemset(void* v, int c, size_t n) {
+BRILLO_DISABLE_ASAN void* SecureMemset(void* v, int c, size_t n) {
   volatile uint8_t* p = reinterpret_cast<volatile uint8_t*>(v);
   while (n--)
     *p++ = c;

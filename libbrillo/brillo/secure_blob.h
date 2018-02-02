@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/asan.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {
@@ -46,7 +47,10 @@ class BRILLO_EXPORT SecureBlob : public Blob {
 // While memset() can be optimized out in certain situations (since most
 // compilers implement this function as intrinsic and know of its side effects),
 // this function will not be optimized out.
-BRILLO_EXPORT void* SecureMemset(void* v, int c, size_t n);
+//
+// SecureMemset is used to write beyond the size() in several functions.
+// Since this is intentional, disable address sanitizer from analying it.
+BRILLO_EXPORT BRILLO_DISABLE_ASAN void* SecureMemset(void* v, int c, size_t n);
 
 // Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,
 // 1 if they don't. Time taken to perform the comparison is only dependent on

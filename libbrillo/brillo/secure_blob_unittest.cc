@@ -4,6 +4,7 @@
 
 // Unit tests for SecureBlob.
 
+#include "brillo/asan.h"
 #include "brillo/secure_blob.h"
 
 #include <algorithm>
@@ -78,11 +79,7 @@ TEST_F(SecureBlobTest, IteratorConstructorTest) {
 
 // Disable ResizeTest with address sanitizer.
 // https://crbug.com/806013
-#if defined(__has_feature) && __has_feature(address_sanitizer)
-#define BRILLO_DISABLE_RESIZETEST 1
-#endif
-
-#ifndef BRILLO_DISABLE_RESIZETEST
+#ifndef BRILLO_ASAN_BUILD
 TEST_F(SecureBlobTest, ResizeTest) {
   // Check that resizing a SecureBlob wipes the excess memory.  The test assumes
   // that resize() down by one will not re-allocate the memory, so the last byte
