@@ -559,7 +559,7 @@ class UnitTests(cros_test_lib.TestCase):
          'valid for this node',
          "/chromeos/models/reef/firmware: Phandle 'shares' " +
          "targets node '/chromeos/family/firmware/reef/build-targets' "
-         "which does not match pattern '/chromeos/family/firmware/MODEL'",
+         "which does not match pattern '/chromeos/family/firmware/ANY'",
         ], result)
 
   def testFamilyFirmwareBadShares(self):
