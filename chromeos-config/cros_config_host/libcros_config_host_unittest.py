@@ -463,7 +463,8 @@ class CrosConfigHostTest(unittest.TestCase):
         ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
          'whitetip1', 'whitetip2'], config.GetModelList())
 
-  def testFirmware(self):
+  # TODO(crbug.com/808583)
+  def disabled_testFirmware(self):
     """Test access to firmware information"""
     config = CrosConfig(self.filepath)
     self.assertEqual('updater4.sh', config.GetFirmwareScript())
