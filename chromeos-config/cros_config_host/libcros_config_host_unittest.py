@@ -328,6 +328,16 @@ class CrosConfigHostTest(unittest.TestCase):
                   '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
                   '.reefucm.conf')])
 
+  def testBadAudioFiles(self):
+    path = os.path.join(os.path.dirname(__file__),
+                        '../libcros_config/test_bad_audio.dts')
+    (filepath, temp_file) = fdt_util.EnsureCompiled(path)
+    config = CrosConfig(filepath)
+    os.remove(temp_file.name)
+    with self.assertRaisesRegexp(
+        ValueError, "pyro/audio/main': Should have a cras-config-dir"):
+      config.GetAudioFiles()
+
   def testGetThermalFiles(self):
     config = CrosConfig(self.filepath)
     thermal_files = config.GetThermalFiles()

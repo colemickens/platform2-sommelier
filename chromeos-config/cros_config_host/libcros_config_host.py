@@ -870,7 +870,7 @@ class CrosConfigImpl(object):
           cras_dir = props.get('cras-config-dir')
           if not cras_dir:
             raise ValueError(("node '%s': Should have a cras-config-dir") %
-                             (card.GetPath().path))
+                             (card.GetPath()))
           _AddAudioFile('volume', '{card}', cras_dir)
           _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
