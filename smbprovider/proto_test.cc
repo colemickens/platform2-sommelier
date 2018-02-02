@@ -223,19 +223,22 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
 TEST_F(SmbProviderProtoTest, DirectoryEntry) {
   const bool is_dir = false;
   const std::string name = "testentry.jpg";
+  const std::string full_path = "smb://testUrl/testentry.jpg";
   int64_t size = 23;
   int64_t last_modified_time = 456;
-  DirectoryEntry entry(is_dir, name, size, last_modified_time);
+  DirectoryEntry entry(is_dir, name, full_path, size, last_modified_time);
 
   EXPECT_EQ(is_dir, entry.is_directory);
   EXPECT_EQ(name, entry.name);
+  EXPECT_EQ(full_path, entry.full_path);
   EXPECT_EQ(size, entry.size);
   EXPECT_EQ(last_modified_time, entry.last_modified_time);
 }
 
 // ConvertToProto correctly converts a DirectoryEntry to a DirectoryEntryProto.
 TEST_F(SmbProviderProtoTest, ConvertToProto) {
-  DirectoryEntry entry(false /* is_directory */, "testentry.jpg", 23 /* size */,
+  DirectoryEntry entry(false /* is_directory */, "testentry.jpg",
+                       "smb://testUrl/testentry.jpg", 23 /* size */,
                        456 /* last_modified_time */);
 
   DirectoryEntryProto proto;
@@ -247,7 +250,8 @@ TEST_F(SmbProviderProtoTest, ConvertToProto) {
 // AddDirectoryEntry adds a DirectoryEntry to a DirectoryEntryListProto as a
 // DirectoryEntryProto.
 TEST_F(SmbProviderProtoTest, AddDirectoryEntry) {
-  DirectoryEntry entry(false /* is_directory */, "testentry.jpg", 23 /* size */,
+  DirectoryEntry entry(false /* is_directory */, "testentry.jpg",
+                       "smb://testUrl/testentry.jpg", 23 /* size */,
                        456 /* last_modified_time */);
 
   DirectoryEntryListProto entries_proto;
@@ -264,8 +268,10 @@ TEST_F(SmbProviderProtoTest, AddDirectoryEntry) {
 TEST_F(SmbProviderProtoTest, SerializeDirEntryVectorToProto) {
   std::vector<DirectoryEntry> entries;
   DirectoryEntry entry1(false /* is_directory */, "testentry.jpg",
-                        23 /* size */, 456 /* last_modified_time */);
-  DirectoryEntry entry2(true /* is_directory */, "stuff", 5 /* size */,
+                        "smb://testUrl/testentry.jpg", 23 /* size */,
+                        456 /* last_modified_time */);
+  DirectoryEntry entry2(true /* is_directory */, "stuff",
+                        "smb://testUrl/testentry.jpg", 5 /* size */,
                         789 /* last_modified_time */);
   entries.push_back(entry1);
   entries.push_back(entry2);

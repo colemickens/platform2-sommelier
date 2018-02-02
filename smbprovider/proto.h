@@ -66,6 +66,7 @@ const char* GetMethodName(const WriteFileOptionsProto& unused);
 struct DirectoryEntry {
   bool is_directory;
   std::string name;
+  std::string full_path;
   int64_t size;
   int64_t last_modified_time;
 
@@ -73,12 +74,23 @@ struct DirectoryEntry {
 
   DirectoryEntry(bool is_directory,
                  const std::string& name,
+                 const std::string& full_path,
                  int64_t size,
                  int64_t last_modified_time)
       : is_directory(is_directory),
         name(name),
+        full_path(full_path),
         size(size),
         last_modified_time(last_modified_time) {}
+
+  DirectoryEntry(bool is_directory,
+                 const std::string& name,
+                 const std::string& full_path)
+      : DirectoryEntry(is_directory,
+                       name,
+                       full_path,
+                       -1 /* size */,
+                       -1 /* last_modified_time */) {}
 };
 
 // Converts a vector of DirectoryEnts into a DirectoryEntryListProto.

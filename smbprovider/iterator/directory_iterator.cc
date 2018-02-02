@@ -133,7 +133,7 @@ void DirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
 
   int32_t bytes_left = bytes_read;
   while (bytes_left > 0) {
-    AddEntryIfValid(*dirent, &entries_);
+    AddEntryIfValid(*dirent, &entries_, dir_path_);
     DCHECK_GT(dirent->dirlen, 0);
     DCHECK_GE(bytes_left, dirent->dirlen);
 

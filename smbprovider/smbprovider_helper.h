@@ -27,7 +27,8 @@ using PathParts = const std::vector<std::string>;
 
 // Helper method to transform and add |dirent| to a DirectoryEntryListProto.
 void AddEntryIfValid(const smbc_dirent& dirent,
-                     std::vector<DirectoryEntry>* directory_entries);
+                     std::vector<DirectoryEntry>* directory_entries,
+                     const std::string& full_path);
 
 // Helper method to advance |dirp| to the next entry.
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);

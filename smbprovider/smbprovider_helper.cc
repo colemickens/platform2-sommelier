@@ -18,7 +18,8 @@
 namespace smbprovider {
 
 void AddEntryIfValid(const smbc_dirent& dirent,
-                     std::vector<DirectoryEntry>* directory_entries) {
+                     std::vector<DirectoryEntry>* directory_entries,
+                     const std::string& parent_dir_path) {
   const std::string name(dirent.name);
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
@@ -26,8 +27,8 @@ void AddEntryIfValid(const smbc_dirent& dirent,
     return;
   }
   bool is_directory = dirent.smbc_type == SMBC_DIR;
-  directory_entries->emplace_back(is_directory, name, -1 /* size */,
-                                  -1 /* last_modified_time */);
+  directory_entries->emplace_back(is_directory, name,
+                                  AppendPath(parent_dir_path, name));
 }
 
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp) {

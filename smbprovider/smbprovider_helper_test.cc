@@ -66,11 +66,11 @@ TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
   EXPECT_TRUE(WriteEntry(".", SMBC_DIR, dir_buf.size(), dirent));
 
   std::vector<DirectoryEntry> entries;
-  AddEntryIfValid(*dirent, &entries);
+  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
   EXPECT_EQ(0, entries.size());
 
   EXPECT_TRUE(WriteEntry("..", SMBC_DIR, dir_buf.size(), dirent));
-  AddEntryIfValid(*dirent, &entries);
+  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
   EXPECT_EQ(0, entries.size());
 }
 
@@ -81,7 +81,7 @@ TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
   EXPECT_TRUE(WriteEntry("printer1", SMBC_PRINTER_SHARE, kBufferSize, dirent));
 
   std::vector<DirectoryEntry> entries;
-  AddEntryIfValid(*dirent, &entries);
+  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
   EXPECT_EQ(0, entries.size());
 }
 
@@ -95,11 +95,12 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
   uint32_t file_type = SMBC_FILE;
   EXPECT_TRUE(WriteEntry(file_name, file_type, kBufferSize, dirent));
 
-  AddEntryIfValid(*dirent, &entries);
+  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
   EXPECT_EQ(1, entries.size());
   const DirectoryEntry& file_entry = entries[0];
   EXPECT_FALSE(file_entry.is_directory);
   EXPECT_EQ(file_name, file_entry.name);
+  EXPECT_EQ("smb://testUrl/dog.jpg", file_entry.full_path);
   EXPECT_EQ(-1, file_entry.size);
   EXPECT_EQ(-1, file_entry.last_modified_time);
 
@@ -108,11 +109,12 @@ TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
   uint32_t dir_type = SMBC_DIR;
   EXPECT_TRUE(WriteEntry(dir_name, dir_type, kBufferSize, dirent));
 
-  AddEntryIfValid(*dirent, &entries);
+  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
   EXPECT_EQ(2, entries.size());
   const DirectoryEntry& dir_entry = entries[1];
   EXPECT_TRUE(dir_entry.is_directory);
   EXPECT_EQ(dir_name, dir_entry.name);
+  EXPECT_EQ("smb://testUrl/dogs", dir_entry.full_path);
   EXPECT_EQ(-1, dir_entry.size);
   EXPECT_EQ(-1, dir_entry.last_modified_time);
 }
