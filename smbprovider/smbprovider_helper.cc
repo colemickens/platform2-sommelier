@@ -198,4 +198,27 @@ int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused) {
   return O_WRONLY;
 }
 
+PathParts SplitPath(const std::string& full_path) {
+  DCHECK(!full_path.empty());
+  base::FilePath path(full_path);
+  std::vector<std::string> result;
+  path.GetComponents(&result);
+  return result;
+}
+
+std::string RemoveURLScheme(const std::string& smb_url) {
+  DCHECK_EQ(0, smb_url.compare(0, 6, kSmbUrlScheme));
+  return smb_url.substr(5, std::string::npos);
+}
+
+std::string GetFileName(const std::string& full_path) {
+  base::FilePath file_path(RemoveURLScheme(full_path));
+  return file_path.BaseName().value();
+}
+
+std::string GetDirPath(const std::string& full_path) {
+  std::string path = RemoveURLScheme(full_path);
+  return base::FilePath(path).DirName().value();
+}
+
 }  // namespace smbprovider

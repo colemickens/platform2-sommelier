@@ -23,6 +23,8 @@ class FileDescriptor;
 
 namespace smbprovider {
 
+using PathParts = const std::vector<std::string>;
+
 // Helper method to transform and add |dirent| to a DirectoryEntryListProto.
 void AddEntryIfValid(const smbc_dirent& dirent,
                      std::vector<DirectoryEntry>* directory_entries);
@@ -119,6 +121,19 @@ bool ReadFromFD(const WriteFileOptionsProto& options,
 // Gets the correct permissions flag for |options|.
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
 int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);
+
+// Returns the components of a filepath as a vector<std::string>.
+PathParts SplitPath(const std::string& full_path);
+
+// Removes smb:// from url. |smb_url| must start with "smb://".
+std::string RemoveURLScheme(const std::string& smb_url);
+
+// Returns the file component of a path.|full_path| must be an SMB Url.
+std::string GetFileName(const std::string& full_path);
+
+// Returns a string representing the filepath to the directory above the file.
+// |full_path| must be an SMB Url.
+std::string GetDirPath(const std::string& full_path);
 
 }  // namespace smbprovider
 

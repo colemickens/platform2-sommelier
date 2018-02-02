@@ -20,6 +20,9 @@ constexpr int kCreateFileFlags = O_CREAT | O_WRONLY | O_TRUNC | O_EXCL;
 // Default permissions for created files.
 constexpr mode_t kCreateFilePermissions = 0755;
 
+// SMB Url scheme
+constexpr char kSmbUrlScheme[] = "smb://";
+
 // Entries returned by smbc_getdents() that we ignore.
 extern const char kEntryParent[];
 extern const char kEntrySelf[];

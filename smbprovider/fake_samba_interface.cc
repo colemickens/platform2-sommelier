@@ -19,35 +19,6 @@ namespace {
 
 constexpr mode_t kFileMode = 33188;  // File entry
 constexpr mode_t kDirMode = 16877;   // Dir entry
-constexpr char kSmbUrlScheme[] = "smb://";
-
-using PathParts = const std::vector<std::string>;
-
-// Returns the components of a filepath as a vector<std::string>.
-std::vector<std::string> SplitPath(const std::string& full_path) {
-  base::FilePath path(full_path);
-  std::vector<std::string> result;
-  path.GetComponents(&result);
-  return result;
-}
-
-// Removes smb:// from url.
-std::string RemoveURLScheme(const std::string& smb_url) {
-  DCHECK_EQ(0, smb_url.compare(0, 6, kSmbUrlScheme));
-  return smb_url.substr(5, std::string::npos);
-}
-
-// Returns the file component of a path.
-std::string GetFileName(const std::string& full_path) {
-  base::FilePath file_path(RemoveURLScheme(full_path));
-  return file_path.BaseName().value();
-}
-
-// Returns a string representing the filepath to the directory above the file.
-std::string GetDirPath(const std::string& full_path) {
-  std::string path = RemoveURLScheme(full_path);
-  return base::FilePath(path).DirName().value();
-}
 
 // Returns if |flag| is set in |flags|.
 bool IsFlagSet(int32_t flags, int32_t flag) {

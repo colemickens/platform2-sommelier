@@ -287,4 +287,86 @@ TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithExactSize) {
   EXPECT_EQ(data, buffer);
 }
 
+// SplitPath correctly splits a relative path into a vector of its components.
+TEST_F(SmbProviderHelperTest, SplitPathCorrectlySplitsPath) {
+  const std::string relative_path = "/testShare/dogs/lab.jpg";
+
+  PathParts parts = SplitPath(relative_path);
+
+  EXPECT_EQ(4, parts.size());
+  EXPECT_EQ("/", parts[0]);
+  EXPECT_EQ("testShare", parts[1]);
+  EXPECT_EQ("dogs", parts[2]);
+  EXPECT_EQ("lab.jpg", parts[3]);
+}
+
+// SplitPath correctly splits a standalone leading slash and a standalone
+// directory.
+TEST_F(SmbProviderHelperTest, SplitPathCorrectlySplitsRoot) {
+  const std::string root_path = "/";
+
+  PathParts parts = SplitPath(root_path);
+
+  EXPECT_EQ(1, parts.size());
+  EXPECT_EQ("/", parts[0]);
+}
+
+// SplitPath correctly splits a standalone directory.
+TEST_F(SmbProviderHelperTest, SplitPathCorrectlySplitsDirPath) {
+  const std::string dir_path = "/foo";
+
+  PathParts parts = SplitPath(dir_path);
+
+  EXPECT_EQ(2, parts.size());
+  EXPECT_EQ("/", parts[0]);
+  EXPECT_EQ("foo", parts[1]);
+}
+
+// RemoveUrlScheme correctly removes the SMB Url scheme from an SMB Url.
+TEST_F(SmbProviderHelperTest, RemoveUrlSchemeCorrectlyRemovesUrl) {
+  EXPECT_EQ("/testShare/dogs", RemoveURLScheme("smb://testShare/dogs"));
+}
+
+// GetFileName correctly returns root when passed "smb://".
+TEST_F(SmbProviderHelperTest, GetFileNameReturnsRoot) {
+  const std::string full_path = "smb://";
+
+  EXPECT_EQ("/", GetFileName(full_path));
+}
+
+// GetFileName correctly returns the filename when passed "smb://foo".
+TEST_F(SmbProviderHelperTest, GetFileNameReturnsFileNameOnSingleDepth) {
+  const std::string full_path = "smb://foo";
+
+  EXPECT_EQ("foo", GetFileName(full_path));
+}
+
+// GetFileName correctly returns the filename from an SMB Url.
+TEST_F(SmbProviderHelperTest, GetFileNameReturnsFileName) {
+  const std::string full_path = "smb://testShare/dogs/lab.jpg";
+
+  EXPECT_EQ("lab.jpg", GetFileName(full_path));
+}
+
+// GetDirPath correctly returns root when passed "smb://".
+TEST_F(SmbProviderHelperTest, GetDirPathReturnsRoot) {
+  const std::string full_path = "smb://";
+
+  EXPECT_EQ("/", GetDirPath(full_path));
+}
+
+// GetDirPath correctly returns the dirpath when passed "smb://foo".
+TEST_F(SmbProviderHelperTest, GetDirPathReturnsRootOnSingleDepth) {
+  const std::string full_path = "smb://foo";
+
+  EXPECT_EQ("/", GetDirPath(full_path));
+}
+
+// GetDirPath correctly returns the dirpath from an SMB Url.
+TEST_F(SmbProviderHelperTest, GetDirPathReturnsParent) {
+  const std::string full_path = "smb://testShare/dogs/lab.jpg";
+
+  EXPECT_EQ("/testShare/dogs", GetDirPath(full_path));
+}
+
 }  // namespace smbprovider
