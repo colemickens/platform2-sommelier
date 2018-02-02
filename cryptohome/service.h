@@ -764,14 +764,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual CryptohomeErrorCode MountErrorToCryptohomeError(
       const MountError code) const;
 
-  // Posts a message back from the mount_thread_ to the main thread to
-  // reply to a DBus message that still uses async_id-based responses.
-  // Only call from mount_thread_ and do not add new DBus methods using
-  // async_ids.
-  virtual void SendLegacyAsyncReply(MountTaskMount* mount_task,
-                                    MountError return_code,
-                                    bool return_status);
-
   // Sends a signal for notifying the migration progress.
   // Runs on the mount thread.
   virtual void SendDircryptoMigrationProgressSignal(
@@ -810,13 +802,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   int PostAsyncCallResult(MountTaskObserver* bridge,
                           MountError return_code,
                           bool return_status);
-
-  // Posts the mount_task and failure code back to the main
-  // thread for migrated legacy calls.
-  void PostAsyncCallResultForUser(const std::string& user_id,
-                                  MountTaskMount* mount_task,
-                                  MountError return_code,
-                                  bool return_status);
 
   // Called on Mount thread. This method calls ReportDictionaryAttackResetStatus
   // exactly once (i.e. records one sample) with the status of the operation.

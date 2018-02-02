@@ -2053,17 +2053,6 @@ gboolean Service::MountEx(const GArray *account_id,
   return TRUE;
 }
 
-void Service::SendLegacyAsyncReply(MountTaskMount* mount_task,
-                                   MountError return_code,
-                                   bool return_status) {
-    MountTaskResult *result = new MountTaskResult(*mount_task->result());
-    result->set_mount(mount_task->mount());
-    result->set_return_code(return_code);
-    result->set_return_status(return_status);
-    event_source_.AddEvent(result);
-    return;
-}
-
 void Service::SendDircryptoMigrationProgressSignal(
     DircryptoMigrationStatus status,
     uint64_t current_bytes,
@@ -3064,20 +3053,6 @@ int Service::PostAsyncCallResult(MountTaskObserver* bridge,
       base::Bind(&MountTaskNop::Run, mount_task.get()));
 
   return mount_task->sequence_id();
-}
-
-void Service::PostAsyncCallResultForUser(const std::string& user_id,
-                                         MountTaskMount* mount_task,
-                                         MountError return_code,
-                                         bool return_status) {
-  // Create a ref-counted mount for async use and then throw it away.
-  scoped_refptr<cryptohome::Mount> mount = GetOrCreateMountForUser(user_id);
-  mount_task->set_mount(GetOrCreateMountForUser(user_id));
-  // Drop it from the map now that the MountTask has a ref.
-  if (!RemoveMountForUser(user_id))
-    LOG(ERROR) << "Unexpectedly cannot drop unused mount from map.";
-
-  SendLegacyAsyncReply(mount_task, return_code, return_status);
 }
 
 void Service::DispatchEvents() {
