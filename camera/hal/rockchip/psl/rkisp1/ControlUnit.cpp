@@ -773,6 +773,7 @@ ControlUnit::handleNewStat(Message &msg)
 {
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> reqState = nullptr;
+    AiqResults *latestResults = m3ARunner->getLatestResults();
     std::map<int, std::shared_ptr<RequestCtrlState>>::iterator it =
                                     mWaitingForCapture.begin();
     if (it == mWaitingForCapture.end()) {
@@ -847,9 +848,10 @@ ControlUnit::handleNewStat(Message &msg)
     if (status != NO_ERROR) {
         LOGE("Failed to apply AE settings for frame id %llu", statsId);
     }
+
     reqState->captureSettings->aiqResults.frame_id = statsId;
-    mLatestAiqResults = reqState->captureSettings->aiqResults;
-    /* dump3A(mLatestAiqResults); */
+    *latestResults = reqState->captureSettings->aiqResults;
+    /* dump3A(latestResults); */
 
     reqState->ctrlUnitResult = ctrlUnitResult;
     return status;
@@ -921,7 +923,7 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
         reqState->processingSettings->android3Actrl = reqState->aaaControls;
 
         // Apply cached aiqResults and metadata
-        reqState->captureSettings->aiqResults = mLatestAiqResults;
+        reqState->captureSettings->aiqResults = *m3ARunner->getLatestResults();
         reqState->ctrlUnitResult->append(mLatestAiqMetadata);
 
         fillMetadata(reqState);
@@ -1216,11 +1218,10 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         LOG1("preparing statistics from exp %lld that we do not track", params->frame_id);
 
         // default to latest results
-        /* AiqResults& latestResults = m3ARunner->getLatestResults(); */
-        AiqResults& latestResults = mLatestAiqResults;
-        params->ae_results = &latestResults.aeResults;
-        params->awb_results = &latestResults.awbResults;
-        params->misc_results = &latestResults.miscIspResults;
+        AiqResults *latestResults = m3ARunner->getLatestResults();
+        params->ae_results = &latestResults->aeResults;
+        params->awb_results = &latestResults->awbResults;
+        params->misc_results = &latestResults->miscIspResults;
     }
 
     status = m3aWrapper->setStatistics(params, &mSensorDescriptor);

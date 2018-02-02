@@ -68,7 +68,7 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
       * TODO: Consider moving this to common code in 3A class
       */
      rk_aiq_awb_results &awbResults = reqState.captureSettings->aiqResults.awbResults;
-     float gains[4];
+     float gains[4] = {1.0, 1.0, 1.0, 1.0};
      gains[0] = awbResults.awb_gain_cfg.awb_gains.red_gain;
      gains[1] = awbResults.awb_gain_cfg.awb_gains.green_r_gain;
      gains[2] = awbResults.awb_gain_cfg.awb_gains.green_b_gain;

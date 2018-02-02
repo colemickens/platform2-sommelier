@@ -57,6 +57,8 @@ status_t Rk3aRunner::init()
      */
     mAwbState = new RkAWBStateMachine(mCameraId);
 
+    CLEAR(mLatestResults);
+
     return OK;
 }
 
@@ -118,6 +120,8 @@ status_t Rk3aRunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
             LOGE("Run AE failed for request Id %d", reqId);
             return UNKNOWN_ERROR;
         }
+    } else {
+        reqState.captureSettings->aiqResults.aeResults = mLatestResults.aeResults;
     }
 
     status = mAwbState->processState(reqState.aaaControls.controlMode,

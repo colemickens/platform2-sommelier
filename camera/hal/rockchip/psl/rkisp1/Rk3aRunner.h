@@ -39,6 +39,7 @@ public:
     void reset();
 
     status_t run2A(RequestCtrlState &reqState, bool forceUpdated = false);
+    AiqResults *getLatestResults() { return &mLatestResults; }
     void updateInputParams(const AiqInputParams &update) { mLatestInputParams = update; }
 
 private:

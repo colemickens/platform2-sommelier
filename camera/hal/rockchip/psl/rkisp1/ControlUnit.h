@@ -175,7 +175,6 @@ private:  /* Members */
     SharedItemPool<ProcUnitSettings> mProcUnitSettingsPool;
 
     std::map<int, std::shared_ptr<RequestCtrlState>> mWaitingForCapture;
-    AiqResults mLatestAiqResults;
     CameraMetadata mLatestAiqMetadata;
     int64_t mLatestRequestId;
 
