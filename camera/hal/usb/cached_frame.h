@@ -67,11 +67,12 @@ class CachedFrame {
   const FrameBuffer* source_frame_;
 
   // Temporary buffer for cropped and rotated results.
-  std::unique_ptr<AllocatedFrameBuffer> rotated_frame_;
+  std::unique_ptr<SharedFrameBuffer> rotated_frame_;
 
   // Cache YU12 decoded results.
-  std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;
+  std::unique_ptr<SharedFrameBuffer> yu12_frame_;
 
+  // ImageProcessor instance.
   std::unique_ptr<ImageProcessor> image_processor_;
 };
 

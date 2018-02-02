@@ -14,8 +14,10 @@
 // Declarations of HAL_PIXEL_FORMAT_XXX.
 #include <system/graphics.h>
 
+#include <base/memory/ptr_util.h>
 #include <camera/camera_metadata.h>
 
+#include "cros-camera/jpeg_decode_accelerator.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
 #include "hal/usb/frame_buffer.h"
 
@@ -61,9 +63,19 @@ class ImageProcessor {
                      const FrameBuffer& in_frame,
                      FrameBuffer* out_frame);
 
+  int MJPGToI420(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+
   std::unique_ptr<JpegEncodeAccelerator> jpeg_encoder_;
   // Whether |jpeg_encoder_| is started and ready to be used.
   bool jpeg_encoder_started_;
+
+  // Used for jpeg decode accelerator.
+  std::unique_ptr<JpegDecodeAccelerator> jda_;
+  // Indicate if we can use the jpeg decoder accelerator or not.
+  bool jda_available_;
+
+  // If test mode enabled or not.
+  bool test_enabled_;
 };
 
 }  // namespace cros

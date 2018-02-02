@@ -83,7 +83,7 @@ bool TestPattern::GenerateColorBar() {
       std::make_tuple(0x00, 0x00, 0x00),  // Black
   };
   size_t argb_size = resolution_.width * resolution_.height * 4;
-  pattern_image_rgb_.reset(new AllocatedFrameBuffer(argb_size));
+  pattern_image_rgb_.reset(new SharedFrameBuffer(argb_size));
 
   uint8_t* data = pattern_image_rgb_->GetData();
   int color_bar_width = resolution_.width / color_bar.size();
@@ -113,7 +113,7 @@ bool TestPattern::GenerateColorBarFadeToGray() {
       std::make_tuple(0x00, 0x00, 0x00),  // Black
   };
   size_t argb_size = resolution_.width * resolution_.height * 4;
-  pattern_image_rgb_.reset(new AllocatedFrameBuffer(argb_size));
+  pattern_image_rgb_.reset(new SharedFrameBuffer(argb_size));
 
   uint8_t* data = pattern_image_rgb_->GetData();
   int color_bar_width = resolution_.width / color_bar.size();
@@ -146,7 +146,7 @@ bool TestPattern::GenerateColorBarFadeToGray() {
 
 bool TestPattern::ConvertToYU12() {
   size_t yuv_size = resolution_.width * resolution_.height * 1.5;
-  pattern_image_yuv_.reset(new AllocatedFrameBuffer(yuv_size));
+  pattern_image_yuv_.reset(new SharedFrameBuffer(yuv_size));
   pattern_image_yuv_->SetDataSize(yuv_size);
 
   int ret = libyuv::ARGBToI420(

@@ -39,8 +39,8 @@ class TestPattern {
 
   Size resolution_;
   int32_t pattern_mode_;
-  std::unique_ptr<AllocatedFrameBuffer> pattern_image_rgb_;
-  std::unique_ptr<AllocatedFrameBuffer> pattern_image_yuv_;
+  std::unique_ptr<SharedFrameBuffer> pattern_image_rgb_;
+  std::unique_ptr<SharedFrameBuffer> pattern_image_yuv_;
 
   DISALLOW_COPY_AND_ASSIGN(TestPattern);
 };

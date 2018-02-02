@@ -74,12 +74,11 @@ class FrameBuffer {
   uint32_t num_planes_;
 };
 
-// AllocatedFrameBuffer is used for the buffer from hal malloc-ed. User should
-// be aware to manage the memory.
-class AllocatedFrameBuffer : public FrameBuffer {
+// SharedFrameBuffer is used for the buffer from base::SharedMemory.
+class SharedFrameBuffer : public FrameBuffer {
  public:
-  explicit AllocatedFrameBuffer(int buffer_size);
-  ~AllocatedFrameBuffer() override;
+  explicit SharedFrameBuffer(int buffer_size);
+  ~SharedFrameBuffer() override;
 
   // No-op for the two functions.
   int Map() override { return 0; }

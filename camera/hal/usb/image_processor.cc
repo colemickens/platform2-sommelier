@@ -10,7 +10,11 @@
 #include <time.h>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
+
+#include <cros-camera/constants.h>
 #include <cros-camera/exif_utils.h>
 #include <cros-camera/jpeg_compressor.h>
 #include <hardware/camera3.h>
@@ -70,7 +74,16 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 static const int kRationalPrecision = 10000;
 
 ImageProcessor::ImageProcessor() :
-    jpeg_encoder_(nullptr), jpeg_encoder_started_(false) {}
+    jpeg_encoder_(nullptr), jpeg_encoder_started_(false) {
+  const base::FilePath kCrosCameraTestModePath(
+      constants::kCrosCameraTestModePathString);
+  test_enabled_ = base::PathExists(kCrosCameraTestModePath);
+  LOGF(INFO) << "Test mode enabled: " << test_enabled_;
+
+  jda_ = JpegDecodeAccelerator::CreateInstance();
+  jda_available_ = jda_->Start();
+  LOGF(INFO) << "JDA Available: " << jda_available_;
+}
 
 ImageProcessor::~ImageProcessor() {}
 
@@ -228,17 +241,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
     switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M: {  // YM12, multiple planes YU12
-        int res =
-            libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
-                               out_frame->GetData(FrameBuffer::YPLANE),
-                               out_frame->GetStride(FrameBuffer::YPLANE),
-                               out_frame->GetData(FrameBuffer::UPLANE),
-                               out_frame->GetStride(FrameBuffer::UPLANE),
-                               out_frame->GetData(FrameBuffer::VPLANE),
-                               out_frame->GetStride(FrameBuffer::VPLANE),
-                               in_frame.GetWidth(), in_frame.GetHeight(),
-                               out_frame->GetWidth(), out_frame->GetHeight());
-        LOGF_IF(ERROR, res) << "MJPEGToI420() returns " << res;
+        int res = MJPGToI420(in_frame, out_frame);
         return res ? -EINVAL : 0;
       }
       default:
@@ -340,6 +343,45 @@ int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
 
   LOGF_IF(ERROR, ret) << "ConvertToI420 failed: " << ret;
   return ret;
+}
+
+int ImageProcessor::MJPGToI420(const FrameBuffer& in_frame,
+                               FrameBuffer* out_frame) {
+  if (jda_available_) {
+    int input_fd = in_frame.GetFd();
+    int output_fd = out_frame->GetFd();
+    if (input_fd > 0 && output_fd > 0) {
+      JpegDecodeAccelerator::Error error = jda_->DecodeSync(
+          input_fd, in_frame.GetDataSize(), in_frame.GetWidth(),
+          in_frame.GetHeight(), output_fd, out_frame->GetBufferSize());
+      if (error == JpegDecodeAccelerator::Error::NO_ERRORS)
+        return 0;
+      if (error == JpegDecodeAccelerator::Error::TRY_START_AGAIN) {
+        LOGF(WARNING)
+            << "Restart JDA, possibly due to Mojo communication error";
+        // If we can't Start JDA successfully, we just consider that we have no
+        // JDA.
+        jda_available_ = jda_->Start();
+      }
+      LOGF(WARNING) << "JDA Fail: " << error;
+      // Don't fallback in test mode. So we can know the JDA is not working.
+      if (test_enabled_)
+        return -EINVAL;
+    }
+  }
+
+  int res = libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               in_frame.GetWidth(), in_frame.GetHeight(),
+                               out_frame->GetWidth(), out_frame->GetHeight());
+  LOGF_IF(ERROR, res) << "libyuv::MJPEGToI420() returns " << res;
+
+  return res;
 }
 
 bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,

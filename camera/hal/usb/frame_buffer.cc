@@ -54,7 +54,7 @@ int FrameBuffer::SetDataSize(size_t data_size) {
   return 0;
 }
 
-AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
+SharedFrameBuffer::SharedFrameBuffer(int buffer_size) {
   shm_buffer_.reset(new base::SharedMemory);
   shm_buffer_->CreateAndMapAnonymous(buffer_size);
   buffer_size_ = buffer_size;
@@ -64,33 +64,36 @@ AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
   stride_.resize(num_planes_, 0);
 }
 
-AllocatedFrameBuffer::~AllocatedFrameBuffer() {}
+SharedFrameBuffer::~SharedFrameBuffer() {}
 
-void AllocatedFrameBuffer::SetWidth(uint32_t width) {
+void SharedFrameBuffer::SetWidth(uint32_t width) {
   width_ = width;
   if (fourcc_ && height_) {
     SetStride();
   }
 }
 
-void AllocatedFrameBuffer::SetHeight(uint32_t height) {
+void SharedFrameBuffer::SetHeight(uint32_t height) {
   height_ = height;
   if (fourcc_ && width_) {
     SetStride();
   }
 }
 
-void AllocatedFrameBuffer::SetFourcc(uint32_t fourcc) {
+void SharedFrameBuffer::SetFourcc(uint32_t fourcc) {
   fourcc_ = fourcc;
   if (width_ && height_) {
     SetStride();
   }
 }
 
-int AllocatedFrameBuffer::SetDataSize(size_t size) {
+int SharedFrameBuffer::SetDataSize(size_t size) {
   if (size > buffer_size_) {
     shm_buffer_.reset(new base::SharedMemory);
-    shm_buffer_->CreateAndMapAnonymous(size);
+    if (!shm_buffer_->CreateAndMapAnonymous(size)) {
+      LOGF(ERROR) << "Created Shared Memory Fail";
+      return -ENOMEM;
+    }
     buffer_size_ = size;
   }
   data_size_ = size;
@@ -98,7 +101,7 @@ int AllocatedFrameBuffer::SetDataSize(size_t size) {
   return 0;
 }
 
-void AllocatedFrameBuffer::SetData() {
+void SharedFrameBuffer::SetData() {
   switch (fourcc_) {
     case V4L2_PIX_FMT_YUV420:   // YU12
     case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
@@ -118,7 +121,7 @@ void AllocatedFrameBuffer::SetData() {
   }
 }
 
-void AllocatedFrameBuffer::SetStride() {
+void SharedFrameBuffer::SetStride() {
   if (!width_ || !height_ || !fourcc_) {
     LOGF(ERROR) << "Invalid width (" << width_ << ") or height (" << height_
                 << ") or fourcc (" << FormatToString(fourcc_) << ")";

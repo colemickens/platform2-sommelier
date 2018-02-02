@@ -14,8 +14,8 @@ namespace cros {
 
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
-      rotated_frame_(new AllocatedFrameBuffer(0)),
-      yu12_frame_(new AllocatedFrameBuffer(0)),
+      rotated_frame_(new SharedFrameBuffer(0)),
+      yu12_frame_(new SharedFrameBuffer(0)),
       image_processor_(new ImageProcessor()) {}
 
 CachedFrame::~CachedFrame() {
