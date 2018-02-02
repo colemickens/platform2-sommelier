@@ -45,7 +45,7 @@ class CrosConfigJson(object):
       self._json = json.loads(TransformConfig(infile.read()))
 
     self.models = {}
-    for model in self._json['models']:
+    for model in self._json['chromeos']['models']:
       self.models[model['name']] = CrosConfigJson.Model(model)
 
   def GetModelList(self):

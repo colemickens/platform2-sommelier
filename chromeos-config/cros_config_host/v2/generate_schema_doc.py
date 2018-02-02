@@ -111,7 +111,7 @@ def Main(schema, output):
     type_def_outputs.append('## CrOS Config Type Definitions (v2)')
     PopulateTypeDef(
         'model',
-        schema_yaml['properties']['models']['items'],
+        schema_yaml['properties']['chromeos']['properties']['models']['items'],
         ref_types,
         type_def_outputs)
     type_def_outputs.append('')

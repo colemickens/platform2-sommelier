@@ -17,6 +17,7 @@ import yaml
 
 this_dir = os.path.dirname(__file__)
 
+CHROMEOS = 'chromeos'
 MODELS = 'models'
 BUILD_ONLY_ELEMENTS = [
   '/firmware',
@@ -101,14 +102,14 @@ def TransformConfig(config):
   json_config = json.loads(json_from_yaml)
   # Drop everything except for models since they were just used as shared
   # config in the source yaml.
-  json_config = {MODELS: json_config[MODELS]}
+  json_config = {CHROMEOS: {MODELS: json_config[CHROMEOS][MODELS]}}
 
   # For now, this reaches parity with the --abspath option on cros_config,
   # except it does it at build time.
   # We may standardize this, but for now doing it in the transform works.
   cras_config_dir_name = 'cras-config-dir'
   cras_config_subdir_name = 'cras-config-subdir'
-  for model in json_config[MODELS]:
+  for model in json_config[CHROMEOS][MODELS]:
     audio = model['audio']['main']
     main_dir = audio.get(cras_config_dir_name, CRAS_CONFIG_DIR)
     sub_dir = audio.get(cras_config_subdir_name, None)
@@ -200,7 +201,7 @@ def FilterBuildElements(config):
     config: Config (transformed) that will be filtered
   """
   json_config = json.loads(config)
-  for model in json_config[MODELS]:
+  for model in json_config[CHROMEOS][MODELS]:
     _FilterBuildElements(model, "")
 
   return json.dumps(json_config, sort_keys=True, indent=2)
@@ -253,7 +254,7 @@ def ValidateConfig(config):
     config: Config (transformed) that will be verified.
   """
   json_config = json.loads(config)
-  model_names = [model['name'] for model in json_config['models']]
+  model_names = [model['name'] for model in json_config['chromeos']['models']]
   if len(model_names) != len(set(model_names)):
     raise ValidationError("Model names are not unique: %s" % model_names)
 

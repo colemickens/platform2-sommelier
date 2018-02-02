@@ -15,64 +15,65 @@ reef-9042-fw: &reef-9042-fw
     libpayload: 'reef'
     cr50: 'cr50'
 
-models:
-  - name: 'basking'
-    identity:
-      smbios-name-match: 'Reef'
-      sku-id: 0
-      customization-id: 'BASKING'
-    audio:
-      main:
-        card: 'bxtda7219max'
-        cras-config-subdir: 'basking'
-        ucm-suffix: 'basking'
-    brand-code: 'ASUN'
-    firmware:
-      <<: *reef-9042-fw
-      key-id: 'OEM2'
-    powerd-prefs: 'reef'
-    test-alias: 'reef'
-    touch:
-      present: 'probe'
-      probe-regex: '[Tt]ouchscreen\|WCOMNTN2'
-      stylus:
-        firmware-bin: 'wacom/wacom_4209.hex'
-        firmware-symlink: 'wacom_firmware_BASKING.hex'
-      touchpad:
-        firmware-bin: 'elan/97.0_6.0.bin'
-        firmware-symlink: 'elan_i2c_97.0.bin'
-      touchscreen@0:
-        firmware-bin: 'elan/3062_5602.bin'
-        firmware-symlink: 'elants_i2c_3062.bin'
-      touchscreen@1:
-        firmware-bin: 'elan/306e_5611.bin'
-        firmware-symlink: 'elants_i2c_306e.bin'
+chromeos:
+  models:
+    - name: 'basking'
+      identity:
+        smbios-name-match: 'Reef'
+        sku-id: 0
+        customization-id: 'BASKING'
+      audio:
+        main:
+          card: 'bxtda7219max'
+          cras-config-subdir: 'basking'
+          ucm-suffix: 'basking'
+      brand-code: 'ASUN'
+      firmware:
+        <<: *reef-9042-fw
+        key-id: 'OEM2'
+      powerd-prefs: 'reef'
+      test-alias: 'reef'
+      touch:
+        present: 'probe'
+        probe-regex: '[Tt]ouchscreen\|WCOMNTN2'
+        stylus:
+          firmware-bin: 'wacom/wacom_4209.hex'
+          firmware-symlink: 'wacom_firmware_BASKING.hex'
+        touchpad:
+          firmware-bin: 'elan/97.0_6.0.bin'
+          firmware-symlink: 'elan_i2c_97.0.bin'
+        touchscreen@0:
+          firmware-bin: 'elan/3062_5602.bin'
+          firmware-symlink: 'elants_i2c_3062.bin'
+        touchscreen@1:
+          firmware-bin: 'elan/306e_5611.bin'
+          firmware-symlink: 'elants_i2c_306e.bin'
 
-  - name: 'electro'
-    identity:
-      smbios-name-match: 'Reef'
-      sku-id: 8
-      customization-id: 'ELECTRO'
-    audio:
-      main:
-        card: 'bxtda7219max'
-        cras-config-subdir: 'electro'
-        ucm-suffix: 'electro'
-    brand-code: 'ACBB'
-    firmware:
-      <<: *reef-9042-fw
-      key-id: 'PARMA'
-    powerd-prefs: 'reef'
-    test-alias: 'reef'
-    touch:
-      present: 'probe'
-      probe-regex: '[Tt]ouchscreen\|WCOMNTN2'
-      stylus:
-        firmware-bin: 'wacom/wacom_1636.hex'
-        firmware-symlink: 'wacom_firmware_ELECTRO.hex'
-      touchpad:
-        firmware-bin: 'elan/154.0_2.0.bin'
-        firmware-symlink: 'elan_i2c_154.0.bin'
-      touchscreen:
-        firmware-bin: 'elan/1cd2_5602.bin'
-        firmware-symlink: 'elants_i2c_1cd2.bin'
+    - name: 'electro'
+      identity:
+        smbios-name-match: 'Reef'
+        sku-id: 8
+        customization-id: 'ELECTRO'
+      audio:
+        main:
+          card: 'bxtda7219max'
+          cras-config-subdir: 'electro'
+          ucm-suffix: 'electro'
+      brand-code: 'ACBB'
+      firmware:
+        <<: *reef-9042-fw
+        key-id: 'PARMA'
+      powerd-prefs: 'reef'
+      test-alias: 'reef'
+      touch:
+        present: 'probe'
+        probe-regex: '[Tt]ouchscreen\|WCOMNTN2'
+        stylus:
+          firmware-bin: 'wacom/wacom_1636.hex'
+          firmware-symlink: 'wacom_firmware_ELECTRO.hex'
+        touchpad:
+          firmware-bin: 'elan/154.0_2.0.bin'
+          firmware-symlink: 'elan_i2c_154.0.bin'
+        touchscreen:
+          firmware-bin: 'elan/1cd2_5602.bin'
+          firmware-symlink: 'elants_i2c_1cd2.bin'

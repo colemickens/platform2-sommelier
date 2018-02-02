@@ -25,21 +25,22 @@ reef-9042-fw: &reef-9042-fw
   build-targets:
     coreboot: 'reef'
 
-models:
-  - name: 'basking'
-    identity:
-      sku-id: 0
-    audio:
-      main:
-        card: 'bxtda7219max'
-        cras-config-subdir: 'basking'
-        ucm-suffix: 'basking'
-    brand-code: 'ASUN'
-    firmware:
-      <<: *reef-9042-fw
-      key-id: 'OEM2'
-    powerd-prefs: 'reef'
-    test-alias: 'reef'
+chromeos:
+  models:
+    - name: 'basking'
+      identity:
+        sku-id: 0
+      audio:
+        main:
+          card: 'bxtda7219max'
+          cras-config-subdir: 'basking'
+          ucm-suffix: 'basking'
+      brand-code: 'ASUN'
+      firmware:
+        <<: *reef-9042-fw
+        key-id: 'OEM2'
+      powerd-prefs: 'reef'
+      test-alias: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)
@@ -78,8 +79,8 @@ class TransformConfigTests(unittest.TestCase):
     json_dict = json.loads(result)
     self.assertEqual(len(json_dict), 1)
     json_obj = cros_config_schema.GetNamedTuple(json_dict)
-    self.assertEqual(1, len(json_obj.models))
-    model = json_obj.models[0]
+    self.assertEqual(1, len(json_obj.chromeos.models))
+    model = json_obj.chromeos.models[0]
     self.assertEqual(
         'basking',
         model.name)
@@ -121,23 +122,24 @@ reef-9042-fw: &reef-9042-fw
   main-rw-image: 'Reef.9042.110.0.tbz2'
   build-targets:
     coreboot: 'reef'
-models:
-  - name: 'astronaut'
-    audio:
-      main:
-        card: 'bxtda7219max'
-        cras-config-subdir: 'astronaut'
-    firmware:
-      <<: *reef-9042-fw
-      key-id: 'OEM2'
-  - name: 'astronaut'
-    audio:
-      main:
-        card: 'bxtda7219max'
-        cras-config-subdir: 'astronaut'
-    firmware:
-      <<: *reef-9042-fw
-      key-id: 'OEM2'
+chromeos:
+  models:
+    - name: 'astronaut'
+      audio:
+        main:
+          card: 'bxtda7219max'
+          cras-config-subdir: 'astronaut'
+      firmware:
+        <<: *reef-9042-fw
+        key-id: 'OEM2'
+    - name: 'astronaut'
+      audio:
+        main:
+          card: 'bxtda7219max'
+          cras-config-subdir: 'astronaut'
+      firmware:
+        <<: *reef-9042-fw
+        key-id: 'OEM2'
 """
     try:
       cros_config_schema.ValidateConfig(
@@ -150,7 +152,7 @@ class FilterBuildElements(unittest.TestCase):
   def testBasicFilterBuildElements(self):
     json_dict = json.loads(cros_config_schema.FilterBuildElements(
         cros_config_schema.TransformConfig(BASIC_CONFIG)))
-    self.assertNotIn('firmware', json_dict['models'][0])
+    self.assertNotIn('firmware', json_dict['chromeos']['models'][0])
 
 
 class MainTests(unittest.TestCase):
