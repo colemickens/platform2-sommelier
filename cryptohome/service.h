@@ -311,18 +311,6 @@ class Service : public brillo::dbus::AbstractDbusService,
                          gboolean *OUT_result,
                          GError **error);
 
-  // mount_thread_ executed handler for AsyncMount DBus calls.
-  // All real work is done here, while the DBus thread merely generates
-  // an async_id in |mount_task| and returns it to the caller.
-  virtual void DoAsyncMount(const std::string& userid,
-                            brillo::SecureBlob* key,
-                            MountTaskMount* mount_task);
-  virtual gboolean AsyncMount(
-      const gchar *user,
-      const gchar *key,
-      gboolean create_if_missing,
-      gboolean ensure_ephemeral,
-      DBusGMethodInvocation *context);
   virtual void DoMountEx(
       AccountIdentifier* identifier,
       AuthorizationRequest* authorization,

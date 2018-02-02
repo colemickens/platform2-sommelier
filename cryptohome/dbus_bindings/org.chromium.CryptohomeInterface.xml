@@ -98,24 +98,6 @@
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="sanitized" direction="out" />
     </method>
-    <method name="Mount">
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="ensure_ephemeral" direction="in" />
-      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
-      <arg type="i" name="error_num" direction="out" />
-      <arg type="b" name="done" direction="out" />
-    </method>
-    <method name="AsyncMount">
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="ensure_ephemeral" direction="in" />
-      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <!-- This may be called asynchronously. -->
     <method name="MountEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>

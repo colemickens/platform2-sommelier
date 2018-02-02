@@ -81,8 +81,7 @@ namespace switches {
     { nullptr,    cryptohome::Attestation::kMaxVAType }
   };
   static const char kActionSwitch[] = "action";
-  static const char* kActions[] = {"mount",
-                                   "mount_ex",
+  static const char* kActions[] = {"mount_ex",
                                    "mount_guest",
                                    "unmount",
                                    "is_mounted",
@@ -141,7 +140,6 @@ namespace switches {
                                    "get_supported_key_policies",
                                    NULL};
   enum ActionEnum {
-    ACTION_MOUNT,
     ACTION_MOUNT_EX,
     ACTION_MOUNT_GUEST,
     ACTION_UNMOUNT,
@@ -725,59 +723,7 @@ int main(int argc, char **argv) {
 
   cryptohome::Platform platform;
 
-  if (!strcmp(switches::kActions[switches::ACTION_MOUNT], action.c_str())) {
-    std::string account_id, password;
-
-    if (!GetAccountId(cl, &account_id)) {
-      printf("No account_id specified.\n");
-      return 1;
-    }
-
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", account_id.c_str()),
-                &password);
-
-    gboolean done = false;
-    gint mount_error = 0;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               cl->HasSwitch(switches::kCreateSwitch),
-               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
-               NULL,
-               &mount_error,
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("Mount call failed: %s, with reason code: %d.\n", error->message,
-               mount_error);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_mount(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               cl->HasSwitch(switches::kCreateSwitch),
-               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
-               NULL,
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("Mount call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-      }
-    }
-    if (!done) {
-      printf("Mount failed.\n");
-      return 1;
-    }
-    printf("Mount succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX],
+  if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX],
                 action.c_str())) {
     bool is_public_mount = cl->HasSwitch(switches::kPublicMount);
 
