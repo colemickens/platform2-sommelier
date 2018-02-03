@@ -522,17 +522,13 @@
          returns immediately. The actual results are notified back by:
          DircryptoMigrationProgress signal.
          account_id: AccountIdentifier
+         migrate_request: MigrateToDircryptoRequest
     -->
     <method name="MigrateToDircrypto">
       <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="migrate_request" direction="in" />
     </method>
-    <!-- The account_id argument is a protobuf. Since the migration process
-         may take arbitrary long time, this dbus method just kicks it and
-         returns immediately. The actual results are notified back by:
-         DircryptoMigrationProgress signal.
-         account_id: AccountIdentifier
-         migrate_request: MigrateToDircryptoRequest
-    -->
+    <!-- Dupe of MigrateToDircrypto while changing its arguments. -->
     <method name="MigrateToDircryptoEx">
       <arg type="ay" name="account_id" direction="in" />
       <arg type="ay" name="migrate_request" direction="in" />

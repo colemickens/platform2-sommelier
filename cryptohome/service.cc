@@ -3215,29 +3215,20 @@ void Service::DispatchEvents() {
 gboolean Service::MigrateToDircrypto(const GArray* account_id,
                                      const GArray* migrate_request,
                                      GError** error) {
-  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-
+  auto identifier = std::make_unique<AccountIdentifier>();
   if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
     LOG(ERROR) << "Failed to parse identifier.";
     return FALSE;
   }
 
-  MigrationType migration_type = MigrationType::FULL;
-  // TODO(bug758837,pmarko): Currently, cryptohomed offers MigrateToDircrypto
-  // and MigrateToDircryptoEx. Only the latter has |migrate_request|. With
-  // bug758837, MigrateToDircrypto will have |migrate_request| and it will not
-  // be optional here anymore.
-  if (migrate_request) {
-    std::unique_ptr<MigrateToDircryptoRequest> request =
-        std::make_unique<MigrateToDircryptoRequest>();
-    if (!request->ParseFromArray(migrate_request->data,
-                                 migrate_request->len)) {
-      LOG(ERROR) << "Failed to parse migrate_request.";
-      return FALSE;
-    }
-    if (request->minimal_migration())
-      migration_type = MigrationType::MINIMAL;
+  auto request = std::make_unique<MigrateToDircryptoRequest>();
+  if (!request->ParseFromArray(migrate_request->data, migrate_request->len)) {
+    LOG(ERROR) << "Failed to parse migrate_request.";
+    return FALSE;
   }
+  MigrationType migration_type = request->minimal_migration()
+                                     ? MigrationType::MINIMAL
+                                     : MigrationType::FULL;
   // This Dbus method just kicks the migration task on the mount thread,
   // and replies immediately.
   mount_thread_.task_runner()->PostTask(
