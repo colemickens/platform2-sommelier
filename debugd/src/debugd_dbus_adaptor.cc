@@ -5,6 +5,7 @@
 #include "debugd/src/debugd_dbus_adaptor.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -56,6 +57,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   systrace_tool_ = std::make_unique<SystraceTool>();
   tracepath_tool_ = std::make_unique<TracePathTool>();
   u2f_tool_ = std::make_unique<U2fTool>();
+  vm_concierge_tool_ = std::make_unique<VmConciergeTool>(bus);
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
   wimax_status_tool_ = std::make_unique<WiMaxStatusTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
@@ -410,6 +412,15 @@ bool DebugdDBusAdaptor::RunShillScriptStart(
 bool DebugdDBusAdaptor::RunShillScriptStop(brillo::ErrorPtr* error,
                                            const std::string& handle) {
   return shill_scripts_tool_->Stop(handle, error);
+}
+
+void DebugdDBusAdaptor::StartVmConcierge(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  vm_concierge_tool_->StartVmConcierge(std::move(response));
+}
+
+void DebugdDBusAdaptor::StopVmConcierge() {
+  vm_concierge_tool_->StopVmConcierge();
 }
 
 }  // namespace debugd

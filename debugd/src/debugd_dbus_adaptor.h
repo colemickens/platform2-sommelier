@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/file_descriptor.h>
@@ -47,6 +48,7 @@
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
 #include "debugd/src/u2f_tool.h"
+#include "debugd/src/vm_concierge_tool.h"
 #include "debugd/src/wifi_power_tool.h"
 #include "debugd/src/wimax_status_tool.h"
 
@@ -165,6 +167,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                            std::string* handle) override;
   bool RunShillScriptStop(brillo::ErrorPtr* error,
                           const std::string& handle) override;
+  void StartVmConcierge(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+  void StopVmConcierge() override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -197,6 +203,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
   std::unique_ptr<U2fTool> u2f_tool_;
+  std::unique_ptr<VmConciergeTool> vm_concierge_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };
