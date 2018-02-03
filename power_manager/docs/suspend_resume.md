@@ -93,10 +93,10 @@ the system. Otherwise, it re-suspends immediately.
 
 powerd will avoid suspending (or shutting down) if it believes that the firmware
 is being updated. After seeing the presence of a lockfile in
-`/run/lock/power_override`, a `/run/lock/flashrom_powerd.lock` file created by
-`flashrom`, or a `/run/lock/battery_tool_powerd.lock` file created by
-`battery_tool`, powerd will act as if the suspend attempt failed and retry it
-later. There are additional details on the [flashrom] page.
+`/run/lock/power_override`, powerd will act as if the suspend attempt failed and
+retry it later. Files in this directory are created by various programs
+including `flashrom` and `battery_tool`. There are additional details on the
+[flashrom] page.
 
 [suspend delays]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/suspend.proto
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/

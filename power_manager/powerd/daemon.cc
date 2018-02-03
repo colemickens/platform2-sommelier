@@ -75,11 +75,6 @@ const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 // shut down the system (typically due to a firmware update).
 const char kPowerOverrideLockfileDir[] = "/run/lock/power_override";
 
-// Legacy lockfiles indicating that firmware is being updated.
-// TODO(derat): Move these into kPowerOverrideLockfileDir.
-const char kFlashromLockfilePath[] = "/run/lock/flashrom_powerd.lock";
-const char kBatteryToolLockfilePath[] = "/run/lock/battery_tool_powerd.lock";
-
 // Basename appended to |run_dir| (see Daemon's c'tor) to produce
 // |suspend_announced_path_|.
 const char kSuspendAnnouncedFile[] = "suspend_announced";
@@ -426,9 +421,7 @@ void Daemon::Init() {
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
-      base::FilePath(kPowerOverrideLockfileDir),
-      {base::FilePath(kFlashromLockfilePath),
-       base::FilePath(kBatteryToolLockfilePath)});
+      base::FilePath(kPowerOverrideLockfileDir), {});
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
