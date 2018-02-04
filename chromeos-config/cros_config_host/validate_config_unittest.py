@@ -204,24 +204,19 @@ TOUCH = r'''
 &models {
   reef {
     touch {
-      #address-cells = <1>;
-      #size-cells = <0>;
       present = "probe";
       probe-regex = "[Tt]ouchscreen|WCOMNTN2";
       touchscreen@0 {
-        reg = <0>;
         touch-type = <&elan_touchscreen>;
         pid = "0a97";
         version = "1012";
       };
       touchscreen@1 {
-        reg = <1>;
         touch-type = <&shared>;
         pid = "0b10";
         version = "002n";
       };
       touchscreen@2 {
-        reg = <2>;
         touch-type = <&weida_touchscreen>;
         pid = "01017401";
         version = "2082";
@@ -323,10 +318,7 @@ POWER = r'''
 MAPPING = '''
 &family {
   mapping {
-    #address-cells = <1>;
-    #size-cells = <0>;
     sku-map@0 {
-      reg = <0>;
       platform-name = "Reef";
       smbios-name-match = "reef";
       /* This is an example! It does not match any real family */
@@ -340,13 +332,11 @@ MAPPING = '''
         256 &reef_5>;
     };
     sku-map@1 {
-      reg = <1>;
       platform-name = "Pyro";
       smbios-name-match = "pyro";
       single-sku = <&pyro>;
     };
     sku-map@2 {
-      reg = <2>;
       platform-name = "Snappy";
       smbios-name-match = "snappy";
       single-sku = <&snappy>;

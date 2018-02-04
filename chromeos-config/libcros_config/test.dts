@@ -82,10 +82,7 @@
 		};
 	};
 	mapping {
-		#address-cells = <1>;
-		#size-cells = <0>;
 		sku-map@0 {
-			reg = <0>;
 			platform-name = "Reef";
 			smbios-name-match = "Reef";
 			/*
@@ -104,7 +101,6 @@
 				21 &broken>;
 		};
 		sku-map@1 {
-			reg = <1>;
 			platform-name = "Pyro";
 			smbios-name-match = "Pyro";
 			single-sku = <&pyro>;
@@ -241,8 +237,6 @@
 			dptf-dv = "reef/dptf.dv";
 		};
 		touch {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			stylus {
 				touch-type = <&wacom_stylus>;
 				version = "4209";
@@ -253,13 +247,11 @@
 				version = "6.0";
 			};
 			touchscreen@0 {
-				reg = <0>;
 				touch-type = <&elan_touchscreen>;
 				pid = "3062";
 				version = "5602";
 			};
 			touchscreen@1 {
-				reg = <1>;
 				touch-type = <&elan_touchscreen>;
 				pid = "306e";
 				version = "5611";
@@ -291,8 +283,6 @@
 			};
 		};
 		touch {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			present = "yes";
 			stylus {
 				touch-type = <&wacom_stylus>;

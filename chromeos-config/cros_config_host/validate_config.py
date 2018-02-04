@@ -125,6 +125,9 @@ class CrosConfigValidator(object):
     This checks for 'reg', '#address-cells' and '#size-cells' properties which
     are valid when correctly used in a device-tree context.
 
+    TODO(sjg@chromium.org): Remove this function once users are converted to
+    not use this syntax.
+
     Args:
       node: fdt.Node where the property appears
       prop_name: Name of the property

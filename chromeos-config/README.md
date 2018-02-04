@@ -499,10 +499,7 @@ chromeos {
         };
 
         mapping {
-            #address-cells = <1>;
-            #size-cells = <0>;
             sku-map@0 {
-                reg = <0>;
                 platform-name = "Reef";
                 smbios-name-match = "reef";
                 /* This is an example! It does not match any real family */
@@ -513,19 +510,16 @@ chromeos {
                    8 &electro>;
             };
             sku-map@1 {
-                reg = <1>;
                 platform-name = "Pyro";
                 smbios-name-match = "pyro";
                 single-sku = <&pyro>;
             };
             sku-map@2 {
-                reg = <2>;
                 platform-name = "Snappy";
                 smbios-name-match = "snappy";
                 single-sku = <&snappy>;
             };
             sku-map@3 {
-                reg = <3>;
                 platform-name = "Sand";
                 smbios-name-match = "sand";
                 single-sku = <&sand>;
@@ -708,8 +702,6 @@ chromeos {
               power-type = <&power_type>;
             };
             touch {
-                #address-cells = <1>;
-                #size-cells = <0>;
                 present = "yes";
                 stylus {
                     touch-type = <&wacom_stylus>;
@@ -721,13 +713,11 @@ chromeos {
                     version = "6.0";
                 };
                 touchscreen@0 {
-                    reg = <0>;
                     touch-type = <&elan_touchscreen>;
                     pid = "3062";
                     version = "5602";
                 };
                 touchscreen@1 {
-                    reg = <1>;
                     touch-type = <&weida_touchscreen>;
                     pid = "01017401";
                     version = "2082";
