@@ -169,10 +169,10 @@ class MainTests(unittest.TestCase):
         self.assertEqual(
             expected_stream.read(),
             output_stream.read(),
-            ('To regenerate the expected output, run:\n\t'
-             'python cros_config_schema.py '
-             '-c cros_config_schema_example.yaml '
-             '-o cros_config_schema_example.json'))
+            ('To regenerate the expected output, run:\n'
+             '\tpython -m cros_config_host.v2.cros_config_schema '
+             '-c cros_config_host/v2/cros_config_schema_example.yaml '
+             '-o cros_config_host/v2/cros_config_schema_example.json'))
 
     os.remove(output)
 
