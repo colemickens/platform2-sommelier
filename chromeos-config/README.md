@@ -624,7 +624,7 @@ chromeos {
             };
             touch {
                 present = "probe";
-                probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+                probe-regex = "[Tt]ouchscreen|WCOMNTN2";
                 touchscreen {
                     touch-type = <&elan_touchscreen>;
                     pid = "0a97";

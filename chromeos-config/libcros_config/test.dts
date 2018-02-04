@@ -167,7 +167,7 @@
 		};
 		touch {
 			present = "probe";
-			probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+			probe-regex = "[Tt]ouchscreen|WCOMNTN2";
 			stylus {
 				touch-type = <&wacom_stylus>;
 				version = "4209";

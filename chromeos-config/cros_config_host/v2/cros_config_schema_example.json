@@ -58,7 +58,7 @@
         "test-alias": "reef", 
         "touch": {
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
           "stylus": {
             "firmware-bin": "wacom/wacom_4209.hex", 
             "firmware-symlink": "wacom_firmware_BASKING.hex"
@@ -134,7 +134,7 @@
         "test-alias": "reef", 
         "touch": {
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen\\|WCOMNTN2", 
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
           "stylus": {
             "firmware-bin": "wacom/wacom_1636.hex", 
             "firmware-symlink": "wacom_firmware_ELECTRO.hex"

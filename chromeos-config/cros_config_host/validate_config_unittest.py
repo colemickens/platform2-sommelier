@@ -207,7 +207,7 @@ TOUCH = r'''
       #address-cells = <1>;
       #size-cells = <0>;
       present = "probe";
-      probe-regex = "[Tt]ouchscreen\|WCOMNTN2";
+      probe-regex = "[Tt]ouchscreen|WCOMNTN2";
       touchscreen@0 {
         reg = <0>;
         touch-type = <&elan_touchscreen>;
