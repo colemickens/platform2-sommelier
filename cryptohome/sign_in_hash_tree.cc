@@ -13,6 +13,8 @@
 
 #include "cryptohome/cryptolib.h"
 
+#include "hash_tree_leaf_data.pb.h"  // NOLINT(build/include)
+
 namespace {
 const char kHashCacheFileName[] = "hashcache";
 }
@@ -80,6 +82,19 @@ std::vector<SignInHashTree::Label> SignInHashTree::GetAuxiliaryLabels(
 }
 
 void SignInHashTree::GenerateAndStoreHashCache() {
+  // First, call a GetLabel() on each leaf node and update
+  // the corresponding |hash_cache_| indices.
+  for (uint64_t i = 0; i < (1 << leaf_length_); i++) {
+    std::vector<uint8_t> hmac, cred_metadata;
+    Label label(i, leaf_length_, bits_per_level_);
+    if (!GetLabelData(label, &hmac, &cred_metadata)) {
+      LOG(ERROR) << "Error getting leaf HMAC, can't regenerate HashCache.";
+      return;
+    }
+    memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
+  }
+
+  // Then, calculate all the inner label hashes.
   CalculateHash(Label(0, 0, bits_per_level_));
 }
 
@@ -87,13 +102,18 @@ bool SignInHashTree::StoreLabel(const Label& label,
                                 const std::vector<uint8_t>& hmac,
                                 const std::vector<uint8_t>& cred_metadata) {
   if (IsLeafLabel(label)) {
-    std::vector<uint8_t> merged_blob;
+    // Place the data in a protobuf and then write out to storage.
+    HashTreeLeafData leaf_data;
+    leaf_data.set_mac(hmac.data(), hmac.size());
+    leaf_data.set_credential_metadata(cred_metadata.data(),
+                                      cred_metadata.size());
 
-    merged_blob.reserve(hmac.size() + cred_metadata.size());
-    merged_blob.insert(merged_blob.end(), hmac.begin(), hmac.end());
-    merged_blob.insert(merged_blob.end(), cred_metadata.begin(),
-                       cred_metadata.end());
-    if (!plt_.StoreValue(label.value(), merged_blob)) {
+    std::vector<uint8_t> merged_blob(leaf_data.ByteSize());
+    if (!leaf_data.SerializeToArray(merged_blob.data(), merged_blob.size())) {
+      LOG(ERROR) << "Couldn't serialize leaf data, label: " << label.value();
+      return false;
+    }
+    if (plt_.StoreValue(label.value(), merged_blob) != PLT_SUCCESS) {
       LOG(ERROR) << "Couldn't store label: " << label.value() << " in PLT.";
       return false;
     }
@@ -111,7 +131,7 @@ bool SignInHashTree::RemoveLabel(const Label& label) {
     return false;
   }
 
-  if (!plt_.RemoveKey(label.value())) {
+  if (plt_.RemoveKey(label.value()) != PLT_SUCCESS) {
     LOG(ERROR) << "Couldn't remove label: " << label.value() << " in PLT.";
     return false;
   }
@@ -126,19 +146,28 @@ bool SignInHashTree::GetLabelData(const Label& label,
                                   std::vector<uint8_t>* hmac,
                                   std::vector<uint8_t>* cred_metadata) {
   // If it is a leaf node, just get all the data from the PLT directly.
-  hmac->reserve(32);
   if (IsLeafLabel(label)) {
     std::vector<uint8_t> merged_blob;
-    if (!plt_.GetValue(label.value(), &merged_blob)) {
-      LOG(WARNING) << "Couldn't get key: " << label.value() << " in PLT.";
-      // Assume that the label doesn't exist, so return all-zero HMAC.
+    PLTError ret_val = plt_.GetValue(label.value(), &merged_blob);
+    if (ret_val == PLT_KEY_NOT_FOUND) {
+      // Return an all-zero HMAC.
       hmac->assign(32, 0);
-      LOG(INFO) << "Returning HMAC 0 for empty key.";
       return true;
     }
-    cred_metadata->reserve(merged_blob.size() - 32);
-    hmac->assign(merged_blob.begin(), merged_blob.begin() + 32);
-    cred_metadata->assign(merged_blob.begin() + 32, merged_blob.end());
+
+    if (ret_val != PLT_SUCCESS) {
+      LOG(WARNING) << "Couldn't get key: " << label.value() << " in PLT.";
+      return false;
+    }
+
+    HashTreeLeafData leaf_data;
+    if (!leaf_data.ParseFromArray(merged_blob.data(), merged_blob.size())) {
+      LOG(INFO) << "Couldn't deserialize leaf data, label: " << label.value();
+      return false;
+    }
+    hmac->assign(leaf_data.mac().begin(), leaf_data.mac().end());
+    cred_metadata->assign(leaf_data.credential_metadata().begin(),
+                          leaf_data.credential_metadata().end());
   } else {
     // If it is a inner leaf, get the value from the HashCache file.
     hmac->assign(hash_cache_array_[label.cache_index()],
@@ -166,31 +195,21 @@ SignInHashTree::Label SignInHashTree::GetFreeLabel() {
 std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   std::vector<uint8_t> ret_val;
   if (IsLeafLabel(label)) {
-    // This is a leaf node, so just get HMAC from the PersistentLookupTable and
-    // store it here.
-    std::vector<uint8_t> merged_blob;
-    if (plt_.GetValue(label.value(), &merged_blob)) {
-      std::vector<uint8_t> hmac;
-      hmac.assign(merged_blob.begin(), merged_blob.begin() + 32);
-      ret_val = hmac;
-    } else {
-      // If the PLT isn't available or the GetValue() failed, we assume an empty
-      // credential and assign it an HMAC of 32 bytes of 0.
-      std::vector<uint8_t> empty_hmac(32, 0);
-      ret_val = empty_hmac;
-    }
-  } else {
-    // Join all the child hashes / HMACs together, and hash the result.
-    std::vector<uint8_t> input_buffer;
-    for (uint64_t i = 0; i < fan_out_; i++) {
-      Label child_label = label.Extend(i);
-      std::vector<uint8_t> child_hash = CalculateHash(child_label);
-      input_buffer.insert(input_buffer.end(), child_hash.begin(),
-                          child_hash.end());
-    }
-    brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
-    ret_val = result_hash;
+    ret_val.assign(hash_cache_array_[label.cache_index()],
+                   hash_cache_array_[label.cache_index()] + 32);
+    return ret_val;
   }
+
+  // Join all the child hashes / HMACs together, and hash the result.
+  std::vector<uint8_t> input_buffer;
+  for (uint64_t i = 0; i < fan_out_; i++) {
+    Label child_label = label.Extend(i);
+    std::vector<uint8_t> child_hash = CalculateHash(child_label);
+    input_buffer.insert(input_buffer.end(), child_hash.begin(),
+                        child_hash.end());
+  }
+  brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
+  ret_val.assign(result_hash.begin(), result_hash.end());
 
   // Update the hash cache with the new value.
   memcpy(hash_cache_array_[label.cache_index()], ret_val.data(), 32);

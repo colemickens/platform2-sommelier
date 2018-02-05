@@ -1,0 +1,16 @@
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto2";
+
+package cryptohome;
+
+message HashTreeLeafData {
+  // Contains the MAC calculated on the leaf credential_metadata.
+  optional bytes mac = 1;
+  // Contains an encrypted version of credential metadata. Includes
+  // various attributes like number of attempts, delay schedule,
+  // low and high entropy secrets, timestamp, etc.
+  optional bytes credential_metadata = 2;
+}

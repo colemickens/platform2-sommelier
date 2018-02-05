@@ -16,6 +16,13 @@
 
 namespace cryptohome {
 
+// Return values used by various functions of PersistentLookupTable.
+enum PLTError {
+  PLT_SUCCESS = 0,
+  PLT_KEY_NOT_FOUND,
+  PLT_STORAGE_ERROR,
+};
+
 // This class is used to look up and store values, given uint64_t keys.
 // We use a directory to store the values.
 //
@@ -67,22 +74,27 @@ class PersistentLookupTable {
   bool InitOnBoot();
 
   // Retrieves a value, which will be placed in |value|, given a |key|.
-  // This function returns |true| if we could successfully retrieve the key
-  // value, and |false| otherwise.
+  // This function returns:
+  // - PLT_SUCCESS if we could successfully retrieve the key value,
+  // - PLT_KEY_NOT_FOUND if |key| doesn't exist.
+  // - PLT_STORAGE_ERROR for errors reading the PLT.
   //
   // The |value| vector is supplied by the caller, and is filled only when the
-  // return type is |true|.
+  // return type is PLT_SUCCESS.
   //
   // Also note that during RemoveKey(), an empty value is written to
   // the key directory to ensure that the key deletion is persisted.
   // GetValue() inspects the read |value| to make sure that it isn't the empty
-  // version, and it returns |false| if so.
-  bool GetValue(const uint64_t key, std::vector<uint8_t>* value);
+  // version, and it returns PLT_KEY_NOT_FOUND if so.
+  PLTError GetValue(const uint64_t key, std::vector<uint8_t>* value);
 
-  // Stores a new value at a given key location. Returns |true| on success,
-  // returns |false| on failure. It is expected that this function will persist
-  // the updated value to disk.
-  bool StoreValue(const uint64_t key, const std::vector<uint8_t>& new_val);
+  // Stores a new value at a given key location.
+  // This function returns:
+  // - PLT_SUCCESS on success,
+  // - PLT_STORAGE_ERROR on failure.
+  //
+  // It is expected that this function will persist the updated value to disk.
+  PLTError StoreValue(const uint64_t key, const std::vector<uint8_t>& new_val);
 
   // Removes a key and its corresponding value from the look-up table.
   // All versions of the key will need to be removed from the table and
@@ -93,9 +105,11 @@ class PersistentLookupTable {
   // We then invoke the directory deletion. This way, even if there was a
   // failure between creating a new file version and calling the directory
   // delete, we still have a way of ascertaining that the key has been removed.
-  // Returns |true| if we are able to delete the key successfully, |false| if we
-  // encountered an issue deleting the key.
-  bool RemoveKey(const uint64_t key);
+  //
+  // This function returns:
+  // - PLT_SUCCESS if we are able to delete the key successfully,
+  // - PLT_STORAGE_ERROR if we encountered an issue deleting the key.
+  PLTError RemoveKey(const uint64_t key);
 
   // Returns |true| if an entry exists for |key|, and |false| otherwise.
   bool KeyExists(const uint64_t key);

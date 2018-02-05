@@ -53,6 +53,7 @@
       'sources': [
         '<(proto_in_dir)/attestation.proto',
         '<(proto_in_dir)/boot_lockbox_key.proto',
+        '<(proto_in_dir)/hash_tree_leaf_data.proto',
         '<(proto_in_dir)/install_attributes.proto',
         '<(proto_in_dir)/tpm_status.proto',
         '<(proto_in_dir)/vault_keyset.proto',

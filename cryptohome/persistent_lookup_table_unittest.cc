@@ -47,21 +47,21 @@ TEST(PersistentLookupTableTest, CreateDirStoreValues) {
 
   // Verify basic Store and Get.
   std::vector<uint8_t> result;
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_1));
-  EXPECT_EQ(true, lookup_table.GetValue(kKey1, &result));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_1));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table.GetValue(kKey1, &result));
   EXPECT_EQ(kValue1_1, result);
 
   // Verify non-existent key returns correct values.
   result.clear();
   EXPECT_FALSE(lookup_table.KeyExists(kKey2));
-  EXPECT_EQ(false, lookup_table.GetValue(kKey2, &result));
+  EXPECT_EQ(PLT_KEY_NOT_FOUND, lookup_table.GetValue(kKey2, &result));
 
-  ASSERT_TRUE(lookup_table.StoreValue(kKey2, kValue2_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_1));
 
   // Verify overwrite of earlier key.
   result.clear();
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_2));
-  EXPECT_EQ(true, lookup_table.GetValue(kKey1, &result));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_2));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table.GetValue(kKey1, &result));
   EXPECT_EQ(kValue1_2, result);
 }
 
@@ -76,10 +76,10 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   lookup_table->InitOnBoot();
 
   // Add some entries.
-  ASSERT_TRUE(lookup_table->StoreValue(kKey1, kValue1_1));
-  ASSERT_TRUE(lookup_table->StoreValue(kKey1, kValue1_2));
-  ASSERT_TRUE(lookup_table->StoreValue(kKey2, kValue2_1));
-  ASSERT_TRUE(lookup_table->StoreValue(kKey3, kValue3_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey1, kValue1_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey1, kValue1_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey2, kValue2_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey3, kValue3_1));
 
   // Destroy old object, now instantiate a new table object and restore old
   // table.
@@ -89,10 +89,10 @@ TEST(PersistentLookupTableTest, RestoreTable) {
       std::make_unique<PersistentLookupTable>(platform.get(), temp_dir.path());
   lookup_table->InitOnBoot();
 
-  ASSERT_TRUE(lookup_table->StoreValue(kKey1, kValue1_3));
-  ASSERT_TRUE(lookup_table->StoreValue(kKey2, kValue2_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey1, kValue1_3));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey2, kValue2_2));
   // Deleting a key (we check later whether the delete worked).
-  ASSERT_TRUE(lookup_table->RemoveKey(kKey3));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table->RemoveKey(kKey3));
 
   // Destroy it one last time, then reload it.
   lookup_table.reset();
@@ -103,16 +103,16 @@ TEST(PersistentLookupTableTest, RestoreTable) {
 
   // Check that the values are as expected.
   std::vector<uint8_t> result;
-  EXPECT_EQ(true, lookup_table->GetValue(kKey1, &result));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table->GetValue(kKey1, &result));
   EXPECT_EQ(kValue1_3, result);
   result.clear();
-  EXPECT_EQ(true, lookup_table->GetValue(kKey1, &result));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table->GetValue(kKey1, &result));
   EXPECT_NE(kValue1_1, result);
   result.clear();
-  EXPECT_EQ(true, lookup_table->GetValue(kKey2, &result));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table->GetValue(kKey2, &result));
   EXPECT_NE(kValue2_1, result);
   result.clear();
-  EXPECT_EQ(true, lookup_table->GetValue(kKey2, &result));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table->GetValue(kKey2, &result));
   EXPECT_EQ(kValue2_2, result);
   EXPECT_FALSE(lookup_table->KeyExists(kKey3));
   result.clear();
@@ -127,19 +127,19 @@ TEST(PersistentLookupTableTest, DeleteKeys) {
   PersistentLookupTable lookup_table(platform.get(), temp_dir.path());
   lookup_table.InitOnBoot();
 
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_1));
-  ASSERT_TRUE(lookup_table.StoreValue(kKey2, kValue2_1));
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_2));
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_3));
-  ASSERT_TRUE(lookup_table.StoreValue(kKey2, kValue2_2));
-  ASSERT_TRUE(lookup_table.StoreValue(kKey2, kValue2_3));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_3));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_3));
 
-  ASSERT_TRUE(lookup_table.RemoveKey(kKey1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.RemoveKey(kKey1));
   EXPECT_FALSE(lookup_table.KeyExists(kKey1));
 
   std::vector<uint8_t> result;
-  ASSERT_TRUE(lookup_table.StoreValue(kKey1, kValue1_4));
-  EXPECT_EQ(true, lookup_table.GetValue(kKey1, &result));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_4));
+  EXPECT_EQ(PLT_SUCCESS, lookup_table.GetValue(kKey1, &result));
   EXPECT_EQ(kValue1_4, result);
 }
 

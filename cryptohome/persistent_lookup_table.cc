@@ -27,34 +27,34 @@ PersistentLookupTable::PersistentLookupTable(Platform* platform,
   CHECK(platform_);
 }
 
-bool PersistentLookupTable::GetValue(const uint64_t key,
-                                     std::vector<uint8_t>* value) {
+PLTError PersistentLookupTable::GetValue(const uint64_t key,
+                                         std::vector<uint8_t>* value) {
   uint32_t latest_version = FindLatestVersion(key);
 
   if (latest_version == 0) {
     VLOG(1) << "No entry exists for this key: " << key;
-    return false;
+    return PLT_KEY_NOT_FOUND;
   }
 
   base::FilePath key_dir = table_dir_.Append(std::to_string(key));
   base::FilePath filepath = CreateFilePathForKey(key_dir, latest_version);
   if (!platform_->ReadFile(filepath, value)) {
     LOG(ERROR) << "Trouble reading file: " << filepath.value();
-    return false;
+    return PLT_STORAGE_ERROR;
   }
 
   // If the key directory has been marked as deleted, we should
   // return a |false|.
   if (value->size() == 0) {
     value->clear();
-    return false;
+    return PLT_KEY_NOT_FOUND;
   }
 
-  return true;
+  return PLT_SUCCESS;
 }
 
-bool PersistentLookupTable::StoreValue(const uint64_t key,
-                                       const std::vector<uint8_t>& new_val) {
+PLTError PersistentLookupTable::StoreValue(
+    const uint64_t key, const std::vector<uint8_t>& new_val) {
   uint32_t latest_version = FindLatestVersion(key);
   base::FilePath key_dir = table_dir_.Append(std::to_string(key));
 
@@ -62,7 +62,7 @@ bool PersistentLookupTable::StoreValue(const uint64_t key,
   if (latest_version == 0) {
     if (!platform_->CreateDirectory(key_dir)) {
       PLOG(ERROR) << "Failed to create key dir: " << key_dir.value();
-      return false;
+      return PLT_STORAGE_ERROR;
     }
   }
 
@@ -73,13 +73,13 @@ bool PersistentLookupTable::StoreValue(const uint64_t key,
 
   if (!platform_->WriteFileAtomic(new_file, new_val, 0644)) {
     LOG(ERROR) << "Failed to create disk entry for file: " << new_file.value();
-    return false;
+    return PLT_STORAGE_ERROR;
   }
 
-  return true;
+  return PLT_SUCCESS;
 }
 
-bool PersistentLookupTable::RemoveKey(const uint64_t key) {
+PLTError PersistentLookupTable::RemoveKey(const uint64_t key) {
   uint32_t latest_version = FindLatestVersion(key);
 
   if (latest_version != 0) {
@@ -94,13 +94,13 @@ bool PersistentLookupTable::RemoveKey(const uint64_t key) {
                  << new_file.value();
       // If we couldn't write the "bad" file, something is amiss and we
       // should surface an error.
-      return false;
+      return PLT_STORAGE_ERROR;
     }
   }
 
   // Delete the entire directory anyway.
   DeleteOldKeyVersions(key, 0);
-  return true;
+  return PLT_SUCCESS;
 }
 
 bool PersistentLookupTable::KeyExists(const uint64_t key) {

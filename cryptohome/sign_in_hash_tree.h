@@ -167,6 +167,8 @@ class SignInHashTree {
 
   // Compute all the inner hashes of the hash tree, and store these
   // in the hashcache file once we are done.
+  // This function first updates the |hash_cache_| with all the leaf
+  // HMACs, and then calculates all inner hashes.
   void GenerateAndStoreHashCache();
 
   // Store the credential data for label |label| in the Hash Tree.
@@ -204,6 +206,7 @@ class SignInHashTree {
   // Note that the hash returned may be incorrect if the hashcache file is stale
   // or erroneous, and a failure will necessitate the regeneration of the
   // HashCacheFile.
+  // Returns true on success, false otherwise.
   bool GetLabelData(const Label& label,
                     std::vector<uint8_t>* hmac,
                     std::vector<uint8_t>* cred_metadata);
@@ -222,15 +225,12 @@ class SignInHashTree {
 
  private:
   // Recursive function which is used to calculate the hashes for the hash tree,
-  // starting node |label|. If the |label| represents a leaf node, this function
-  // should return the corresponding 32-byte HMAC stored in the
-  // PersistentLookupTable.
+  // starting node |label|. The resultant hash is returned.
+  // This function assumes that the leaf HMAC values have already been updated
+  // in the |hash_cache_|.
   //
   // In addition to calculating the hash for |label|, this function will
   // also update the |hash_cache_| with the new value.
-  //
-  // Once calculated, the labels hashes will be stored in |cachemap| so it
-  // can be written to a file by the caller.
   std::vector<uint8_t> CalculateHash(const Label& label);
 
   // Helper function to determine whether a Label corresponds to a leaf

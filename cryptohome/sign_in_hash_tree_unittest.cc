@@ -138,12 +138,6 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  std::vector<uint8_t> get_value_return;
-  get_value_return.insert(get_value_return.end(), kSampleHash1.begin(),
-                          kSampleHash1.end());
-  get_value_return.insert(get_value_return.end(), kSampleCredData1.begin(),
-                          kSampleCredData1.end());
-
   auto tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.path());
   tree->GenerateAndStoreHashCache();
 
