@@ -5,8 +5,6 @@
 #ifndef SMBPROVIDER_ITERATOR_DIRECTORY_ITERATOR_H_
 #define SMBPROVIDER_ITERATOR_DIRECTORY_ITERATOR_H_
 
-#include "smbprovider/iterator/file_system_iterator_interface.h"
-
 #include <string>
 #include <vector>
 
@@ -27,13 +25,21 @@ namespace smbprovider {
 //      result = it.Next();
 //    }
 //    return result;
-class DirectoryIterator : public FileSystemIteratorInterface {
+class DirectoryIterator {
  public:
-  // FileSystemIteratorInterface overrides.
-  int32_t Init() override WARN_UNUSED_RESULT;
-  int32_t Next() override WARN_UNUSED_RESULT;
-  const DirectoryEntry& Get() override;
-  bool IsDone() override WARN_UNUSED_RESULT;
+  // Initializes the iterator, setting the first value of current. Returns 0 on
+  // success, error on failure. Must be called before any other operation.
+  int32_t Init() WARN_UNUSED_RESULT;
+
+  // Advances current to the next entry. Returns 0 on success,
+  // error on failure.
+  int32_t Next() WARN_UNUSED_RESULT;
+
+  // Returns the current DirectoryEntry.
+  const DirectoryEntry& Get();
+
+  // Returns true if there is nothing left to iterate over.
+  bool IsDone() WARN_UNUSED_RESULT;
 
   DirectoryIterator(const std::string& dir_path,
                     SambaInterface* samba_interface,
@@ -43,7 +49,7 @@ class DirectoryIterator : public FileSystemIteratorInterface {
 
   DirectoryIterator(DirectoryIterator&& other);
 
-  ~DirectoryIterator() override;
+  ~DirectoryIterator();
 
  private:
   // Fetches the next chunk of DirEntries into entries_ and resets

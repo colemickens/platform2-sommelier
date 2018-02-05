@@ -37,7 +37,6 @@
         'constants.h',
         'iterator/directory_iterator.cc',
         'iterator/directory_iterator.h',
-        'iterator/file_system_iterator_interface.h',
         'mount_manager.cc',
         'mount_manager.h',
         'proto.cc',
