@@ -74,7 +74,8 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetPropSingleWrongModel(self):
     call_args = '{} -c {} --model=dne get / wallpaper'.format(
         CLI_FILE, self.dtb_file).split()
-    output = subprocess.check_output(call_args)
+    # Ensure that the expected error output does not appear.
+    output = subprocess.check_output(call_args, stderr=subprocess.PIPE)
     self.assertEqual(output, '')
 
   def testGetPropSingleWrongPath(self):
