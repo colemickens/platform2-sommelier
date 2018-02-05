@@ -232,6 +232,19 @@ class TRUNKS_EXPORT TpmUtility {
                          AuthorizationDelegate* delegate,
                          TPM_HANDLE* key_handle) = 0;
 
+  // This method loads the public part of an external RSA key into the TPM. Key
+  // is of type |key_type|. Algorithm scheme and hashing algorithm are passed
+  // via |scheme| and |hash_alg|. |modulus| is interpreted as raw bytes in
+  // big-endian order. |public_exponent| specifies the exponent of the key. The
+  // loaded key's handle is returned using |key_handle|.
+  virtual TPM_RC LoadRSAPublicKey(AsymmetricKeyUsage key_type,
+                                  TPM_ALG_ID scheme,
+                                  TPM_ALG_ID hash_alg,
+                                  const std::string& modulus,
+                                  uint32_t public_exponent,
+                                  AuthorizationDelegate* delegate,
+                                  TPM_HANDLE* key_handle) = 0;
+
   // This function sets |name| to the name of the object referenced by
   // |handle|. This function only works on Transient and Permanent objects.
   virtual TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) = 0;

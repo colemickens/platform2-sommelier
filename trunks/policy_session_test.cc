@@ -200,6 +200,15 @@ TEST_F(PolicySessionTest, PolicyCommandCodeFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, session.PolicyCommandCode(TPM_CC_FIRST));
 }
 
+TEST_F(PolicySessionTest, PolicySigned) {
+  PolicySessionImpl session(factory_);
+  EXPECT_CALL(mock_tpm_, PolicySignedSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            session.PolicySigned(1, "", "", "", "", 0, TPMT_SIGNATURE(),
+                                 GetHmacDelegate(&session)));
+}
+
 TEST_F(PolicySessionTest, PolicyAuthValueSuccess) {
   PolicySessionImpl session(factory_);
   EXPECT_CALL(mock_tpm_, PolicyAuthValueSync(_, _, _))

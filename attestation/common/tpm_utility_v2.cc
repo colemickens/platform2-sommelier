@@ -117,6 +117,10 @@ class MultipleAuthorizations : public AuthorizationDelegate {
     return true;
   }
 
+  bool GetTpmNonce(std::string* nonce) override {
+    return false;
+  }
+
  private:
   std::string ExtractSingleAuthorizationResponse(std::string* all_responses) {
     std::string response;

@@ -92,4 +92,8 @@ bool PasswordAuthorizationDelegate::DecryptResponseParameter(
   return true;
 }
 
+bool PasswordAuthorizationDelegate::GetTpmNonce(std::string* nonce) {
+  return false;
+}
+
 }  // namespace trunks

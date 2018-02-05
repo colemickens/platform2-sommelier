@@ -506,7 +506,7 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
     in_scheme.scheme = TPM_ALG_OAEP;
     in_scheme.details.oaep.hash_alg = hash_alg;
   } else {
-    LOG(ERROR) << __func__ << ": Invalid Signing scheme used.";
+    LOG(ERROR) << __func__ << ": Invalid encryption scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
 
@@ -566,7 +566,7 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     }
     in_scheme.details.oaep.hash_alg = hash_alg;
   } else {
-    LOG(ERROR) << __func__ << ": Invalid Signing scheme used.";
+    LOG(ERROR) << __func__ << ": Invalid decryption scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
@@ -635,7 +635,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     in_scheme.scheme = TPM_ALG_RSASSA;
     in_scheme.details.rsassa.hash_alg = hash_alg;
   } else {
-    LOG(ERROR) << __func__ << ": Invalid Signing scheme used.";
+    LOG(ERROR) << __func__ << ": Invalid signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
@@ -1047,6 +1047,83 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
                                   in_public, key_handle, &key_name, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error loading key: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::LoadRSAPublicKey(AsymmetricKeyUsage key_type,
+                                        TPM_ALG_ID scheme,
+                                        TPM_ALG_ID hash_alg,
+                                        const std::string& modulus,
+                                        uint32_t public_exponent,
+                                        AuthorizationDelegate* delegate,
+                                        TPM_HANDLE* key_handle) {
+  TPM_RC result;
+  if (delegate == nullptr) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << __func__
+               << ": This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+  switch (key_type) {
+    case AsymmetricKeyUsage::kDecryptKey:
+      public_area.object_attributes |= kDecrypt;
+      if (scheme == TPM_ALG_NULL || scheme == TPM_ALG_OAEP) {
+        public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_OAEP;
+        public_area.parameters.rsa_detail.scheme.details.oaep.hash_alg =
+            hash_alg;
+      } else if (scheme == TPM_ALG_RSAES) {
+        public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_RSAES;
+      } else {
+        LOG(ERROR) << __func__ << ": Invalid encryption scheme used.";
+        return SAPI_RC_BAD_PARAMETER;
+      }
+      break;
+    case AsymmetricKeyUsage::kSignKey:
+      public_area.object_attributes |= kSign;
+      if (scheme == TPM_ALG_NULL || scheme == TPM_ALG_RSASSA) {
+        public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_RSASSA;
+        public_area.parameters.rsa_detail.scheme.details.rsassa.hash_alg =
+            hash_alg;
+      } else if (scheme == TPM_ALG_RSAPSS) {
+        public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_RSAPSS;
+        public_area.parameters.rsa_detail.scheme.details.rsapss.hash_alg =
+            hash_alg;
+      } else {
+        LOG(ERROR) << __func__ << ": Invalid signing scheme used.";
+        return SAPI_RC_BAD_PARAMETER;
+      }
+      break;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+      public_area.object_attributes |= (kSign | kDecrypt);
+      // Note: The specs require the scheme to be TPM_ALG_NULL when the key is
+      // both signing and decrypting.
+      if (scheme != TPM_ALG_NULL) {
+        LOG(ERROR) << __func__ << ": Scheme has to be null.";
+        return SAPI_RC_BAD_PARAMETER;
+      }
+      if (hash_alg != TPM_ALG_NULL) {
+        LOG(ERROR) << __func__ << ": Hashing algorithm has to be null.";
+        return SAPI_RC_BAD_PARAMETER;
+      }
+      break;
+  }
+  public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
+  public_area.parameters.rsa_detail.exponent = public_exponent;
+  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+  const TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
+  TPM2B_SENSITIVE private_data;
+  private_data.size = 0;
+  const TPMI_RH_HIERARCHY hierarchy = TPM_RH_NULL;
+  TPM2B_NAME name;
+  result = factory_.GetTpm()->LoadExternalSync(
+      private_data, public_data, hierarchy, key_handle, &name, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Error loading external key: " << GetErrorString(result);
     return result;
   }
   return TPM_RC_SUCCESS;

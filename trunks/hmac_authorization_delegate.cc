@@ -75,7 +75,7 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
       auth.session_attributes |= kEncryptSession;
     }
   }
-  // We reset the |nonce_generated| flag in preperation of the next command.
+  // We reset the |nonce_generated| flag in preparation of the next command.
   nonce_generated_ = false;
   std::string attributes_bytes;
   CHECK_EQ(Serialize_TPMA_SESSION(auth.session_attributes, &attributes_bytes),
@@ -115,8 +115,13 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
   TPMS_AUTH_RESPONSE auth_response;
   std::string mutable_auth_string(authorization);
   TPM_RC parse_error;
-  parse_error =
-      Parse_TPMS_AUTH_RESPONSE(&mutable_auth_string, &auth_response, nullptr);
+  std::string auth_bytes;
+  parse_error = Parse_TPMS_AUTH_RESPONSE(&mutable_auth_string, &auth_response,
+                                         &auth_bytes);
+  if (authorization.size() != auth_bytes.size()) {
+    LOG(ERROR) << "Authorization string was of wrong length.";
+    return false;
+  }
   if (parse_error != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Could not parse authorization response.";
     return false;
@@ -208,6 +213,13 @@ bool HmacAuthorizationDelegate::DecryptResponseParameter(
     return false;
   }
   AesOperation(parameter, tpm_nonce_, caller_nonce_, AES_DECRYPT);
+  return true;
+}
+
+bool HmacAuthorizationDelegate::GetTpmNonce(std::string* nonce) {
+  if (!tpm_nonce_.size)
+    return false;
+  nonce->assign(tpm_nonce_.buffer, tpm_nonce_.buffer + tpm_nonce_.size);
   return true;
 }
 
@@ -311,7 +323,7 @@ void HmacAuthorizationDelegate::RegenerateCallerNonce() {
   // RAND_bytes takes a signed number, but since nonce_size is guaranteed to be
   // less than 32 bytes and greater than 16 we dont have to worry about it.
   CHECK_EQ(RAND_bytes(caller_nonce_.buffer, caller_nonce_.size), 1)
-      << "Error regnerating a cryptographically random nonce.";
+      << "Error regenerating a cryptographically random nonce.";
 }
 
 }  // namespace trunks

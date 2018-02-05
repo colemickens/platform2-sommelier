@@ -46,6 +46,7 @@ class TRUNKS_EXPORT PasswordAuthorizationDelegate
                                   const std::string& authorization) override;
   bool EncryptCommandParameter(std::string* parameter) override;
   bool DecryptResponseParameter(std::string* parameter) override;
+  bool GetTpmNonce(std::string* nonce) override;
 
  protected:
   FRIEND_TEST(PasswordAuthorizationDelegateTest, NullInitialization);

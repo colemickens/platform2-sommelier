@@ -180,8 +180,33 @@ TPM_RC PolicySessionImpl::PolicySecret(TPMI_DH_ENTITY auth_entity,
       &policy_ticket,
       delegate);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error performing PolicySecret: "
-               << GetErrorString(result);
+    LOG(ERROR) << "Error performing PolicySecret: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC PolicySessionImpl::PolicySigned(TPMI_DH_ENTITY auth_entity,
+                                       const std::string& auth_entity_name,
+                                       const std::string& nonce,
+                                       const std::string& cp_hash,
+                                       const std::string& policy_ref,
+                                       int32_t expiration,
+                                       const trunks::TPMT_SIGNATURE& signature,
+                                       AuthorizationDelegate* delegate) {
+  TPM2B_TIMEOUT timeout;
+  TPMT_TK_AUTH policy_ticket;
+  TPM_HANDLE policy_session_handle = session_manager_->GetSessionHandle();
+  std::string policy_session_name;
+  trunks::Serialize_TPM_HANDLE(policy_session_handle, &policy_session_name);
+
+  TPM_RC result = factory_.GetTpm()->PolicySignedSync(
+      auth_entity, auth_entity_name, policy_session_handle, policy_session_name,
+      Make_TPM2B_DIGEST(nonce), Make_TPM2B_DIGEST(cp_hash),
+      Make_TPM2B_DIGEST(policy_ref), expiration, signature, &timeout,
+      &policy_ticket, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error performing PolicySigned: " << GetErrorString(result);
     return result;
   }
   return TPM_RC_SUCCESS;

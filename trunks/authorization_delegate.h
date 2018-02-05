@@ -56,6 +56,10 @@ class AuthorizationDelegate {
   // Decrypts |parameter| if encryption is enabled. Returns true on success.
   virtual bool DecryptResponseParameter(std::string* parameter) = 0;
 
+  // Returns the current TPM-generated nonce that is associated with the
+  // authorization session. Returns true on success.
+  virtual bool GetTpmNonce(std::string* nonce) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AuthorizationDelegate);
 };

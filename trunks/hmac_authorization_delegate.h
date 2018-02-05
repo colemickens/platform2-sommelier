@@ -72,6 +72,7 @@ class TRUNKS_EXPORT HmacAuthorizationDelegate : public AuthorizationDelegate {
                                   const std::string& authorization) override;
   bool EncryptCommandParameter(std::string* parameter) override;
   bool DecryptResponseParameter(std::string* parameter) override;
+  bool GetTpmNonce(std::string* nonce) override;
 
   // This function is called with the return data of |StartAuthSession|. It
   // will initialize the session to start providing auth information. It can

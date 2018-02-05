@@ -31,6 +31,7 @@ TEST(HmacAuthorizationDelegateTest, UninitializedSessionTest) {
   EXPECT_FALSE(delegate.CheckResponseAuthorization(p_hash, dummy));
   EXPECT_FALSE(delegate.EncryptCommandParameter(&dummy));
   EXPECT_FALSE(delegate.DecryptResponseParameter(&dummy));
+  EXPECT_FALSE(delegate.GetTpmNonce(&dummy));
 }
 
 TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
@@ -42,6 +43,9 @@ TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
   EXPECT_TRUE(delegate.InitSession(dummy_handle, nonce, nonce, std::string(),
                                    std::string(), false));
   EXPECT_EQ(0u, delegate.session_key_.size());
+  std::string tpm_nonce;
+  EXPECT_TRUE(delegate.GetTpmNonce(&tpm_nonce));
+  EXPECT_EQ(std::string(kAesKeySize, '\0'), tpm_nonce);
 
   std::string dummy_auth = std::string("authorization");
   std::string dummy_salt = std::string("salt");
@@ -56,6 +60,14 @@ TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
       "\x47\x38\xef\xb3\x4a\x82\x29\x94",
       kHashDigestSize);
   EXPECT_EQ(0, expected_key.compare(delegate.session_key_));
+  EXPECT_TRUE(delegate.GetTpmNonce(&tpm_nonce));
+  EXPECT_EQ(std::string(kAesKeySize, '\0'), tpm_nonce);
+
+  memset(nonce.buffer, 1, nonce.size);
+  EXPECT_TRUE(delegate.InitSession(dummy_handle, nonce, nonce, dummy_salt,
+                                   dummy_auth, false));
+  EXPECT_TRUE(delegate.GetTpmNonce(&tpm_nonce));
+  EXPECT_EQ(std::string(kAesKeySize, '\1'), tpm_nonce);
 }
 
 TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
@@ -69,6 +81,7 @@ TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
+  memset(nonce.buffer, 0, nonce.size);
   std::string salt("salt");
   ASSERT_TRUE(delegate.InitSession(dummy_handle, nonce, nonce, salt,
                                    std::string(), false));
@@ -196,6 +209,24 @@ TEST_F(HmacAuthorizationDelegateFixture, ResponseAuthTest) {
             Serialize_TPMS_AUTH_RESPONSE(auth_response, &authorization));
   EXPECT_TRUE(
       delegate_.CheckResponseAuthorization(response_hash, authorization));
+  std::string tpm_nonce;
+  EXPECT_TRUE(delegate_.GetTpmNonce(&tpm_nonce));
+  EXPECT_EQ(std::string(kAesKeySize, '\0'), tpm_nonce);
+
+  memset(auth_response.nonce.buffer, 1, kAesKeySize);
+  auth_response.hmac.size = kHashDigestSize;
+  uint8_t hmac_buffer_2[kHashDigestSize] = {
+      0x89, 0xD0, 0x51, 0xAC, 0x25, 0x7F, 0x6D, 0x12, 0x59, 0x08, 0xAD,
+      0x55, 0xDA, 0xB3, 0x9E, 0x2D, 0x34, 0xB1, 0xB5, 0x47, 0xB6, 0x45,
+      0x17, 0x2F, 0x88, 0x0B, 0x60, 0xF9, 0x41, 0x73, 0x6F, 0xD1};
+  memcpy(auth_response.hmac.buffer, hmac_buffer_2, kHashDigestSize);
+  authorization.clear();
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            Serialize_TPMS_AUTH_RESPONSE(auth_response, &authorization));
+  EXPECT_TRUE(
+      delegate_.CheckResponseAuthorization(response_hash, authorization));
+  EXPECT_TRUE(delegate_.GetTpmNonce(&tpm_nonce));
+  EXPECT_EQ(std::string(kAesKeySize, '\1'), tpm_nonce);
 }
 
 TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {

@@ -45,6 +45,15 @@ class MockPolicySession : public PolicySession {
                                     const std::string&,
                                     const std::string&, const std::string&,
                                     int32_t, AuthorizationDelegate*));
+  MOCK_METHOD8(PolicySigned,
+               TPM_RC(TPMI_DH_ENTITY,
+                      const std::string&,
+                      const std::string&,
+                      const std::string&,
+                      const std::string&,
+                      int32_t,
+                      const trunks::TPMT_SIGNATURE&,
+                      AuthorizationDelegate*));
   MOCK_METHOD0(PolicyAuthValue, TPM_RC());
   MOCK_METHOD0(PolicyRestart, TPM_RC());
   MOCK_METHOD1(SetEntityAuthorizationValue, void(const std::string&));

@@ -27,8 +27,8 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
-#include "trunks/trunks_export.h"
 #include "trunks/scoped_key_handle.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -113,6 +113,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC LoadKey(const std::string& key_blob,
                  AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override;
+  TPM_RC LoadRSAPublicKey(AsymmetricKeyUsage key_type,
+                          TPM_ALG_ID scheme,
+                          TPM_ALG_ID hash_alg,
+                          const std::string& modulus,
+                          uint32_t public_exponent,
+                          AuthorizationDelegate* delegate,
+                          TPM_HANDLE* key_handle) override;
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle, TPMT_PUBLIC* public_data) override;
   TPM_RC SealData(const std::string& data_to_seal,

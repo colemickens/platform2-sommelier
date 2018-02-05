@@ -1515,6 +1515,152 @@ TEST_F(TpmUtilityTest, LoadKeyParserFail) {
       utility_.LoadKey(key_blob, &mock_authorization_delegate_, &key_handle));
 }
 
+TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
+  const TPM_HANDLE kKeyHandle = TPM_RH_FIRST;
+  const std::string kModulus(128, '\1');
+  const int kModulusSizeBits = 1024;
+  const uint32_t kPublicExponent = 3;
+
+  TPM2B_SENSITIVE in_private_arg;
+  memset(&in_private_arg, 0, sizeof(TPM2B_SENSITIVE));
+  TPM2B_PUBLIC in_public_arg;
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  TPMI_RH_HIERARCHY hierarchy_arg = 0;
+  TPM_HANDLE loaded_handle = 0;
+
+  // Test a signing RSASSA SHA-256 key.
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<0>(&in_private_arg), SaveArg<1>(&in_public_arg),
+                      SaveArg<2>(&hierarchy_arg), SetArgPointee<3>(kKeyHandle),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ALG_RSASSA,
+                TPM_ALG_SHA256, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(0, in_private_arg.size);
+  EXPECT_EQ(kSign | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_RSASSA,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+  EXPECT_EQ(TPM_ALG_SHA256, in_public_arg.public_area.parameters.rsa_detail
+                                .scheme.details.rsassa.hash_alg);
+  EXPECT_EQ(kModulusSizeBits,
+            in_public_arg.public_area.parameters.rsa_detail.key_bits);
+  EXPECT_EQ(kPublicExponent,
+            in_public_arg.public_area.parameters.rsa_detail.exponent);
+  EXPECT_EQ(kModulus, StringFrom_TPM2B_PUBLIC_KEY_RSA(
+                          in_public_arg.public_area.unique.rsa));
+  EXPECT_EQ(TPM_RH_NULL, hierarchy_arg);
+  EXPECT_EQ(kKeyHandle, loaded_handle);
+
+  // Test a signing SHA-256 key with the default (RSASSA) scheme.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ALG_NULL,
+                TPM_ALG_SHA256, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kSign | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_RSASSA,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+  EXPECT_EQ(TPM_ALG_SHA256, in_public_arg.public_area.parameters.rsa_detail
+                                .scheme.details.rsassa.hash_alg);
+
+  // Test a signing RSAPSS SHA-512 key.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ALG_RSAPSS,
+                TPM_ALG_SHA512, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kSign | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_RSAPSS,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+  EXPECT_EQ(TPM_ALG_SHA512, in_public_arg.public_area.parameters.rsa_detail
+                                .scheme.details.rsapss.hash_alg);
+
+  // Test a decrypting OAEP SHA-256 key.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kDecryptKey, TPM_ALG_OAEP,
+                TPM_ALG_SHA256, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kDecrypt | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_OAEP,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+  EXPECT_EQ(TPM_ALG_SHA256, in_public_arg.public_area.parameters.rsa_detail
+                                .scheme.details.oaep.hash_alg);
+
+  // Test a decrypting SHA-256 key with the default (OAEP) scheme.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kDecryptKey, TPM_ALG_NULL,
+                TPM_ALG_SHA256, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kDecrypt | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_OAEP,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+  EXPECT_EQ(TPM_ALG_SHA256, in_public_arg.public_area.parameters.rsa_detail
+                                .scheme.details.oaep.hash_alg);
+
+  // Test a decrypting RSAES key.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kDecryptKey, TPM_ALG_RSAES,
+                TPM_ALG_NULL, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kDecrypt | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_RSAES,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+
+  // Test a key that is both for decrypting and signing.
+  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  EXPECT_CALL(mock_tpm_,
+              LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.LoadRSAPublicKey(
+                TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+                TPM_ALG_NULL, TPM_ALG_NULL, kModulus, kPublicExponent,
+                &mock_authorization_delegate_, &loaded_handle));
+  testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
+  EXPECT_EQ(kDecrypt | kSign | kFixedTPM | kFixedParent,
+            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(TPM_ALG_NULL,
+            in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
+}
+
 TEST_F(TpmUtilityTest, SealedDataSuccess) {
   std::string data_to_seal("seal_data");
   std::string sealed_data;

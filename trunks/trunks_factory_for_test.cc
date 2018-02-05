@@ -279,6 +279,17 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->LoadKey(key_blob, delegate, key_handle);
   }
 
+  TPM_RC LoadRSAPublicKey(AsymmetricKeyUsage key_type,
+                          TPM_ALG_ID scheme,
+                          TPM_ALG_ID hash_alg,
+                          const std::string& modulus,
+                          uint32_t public_exponent,
+                          AuthorizationDelegate* delegate,
+                          TPM_HANDLE* key_handle) override {
+    return target_->LoadRSAPublicKey(key_type, scheme, hash_alg, modulus,
+                                     public_exponent, delegate, key_handle);
+  }
+
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override {
     return target_->GetKeyName(handle, name);
   }
@@ -443,6 +454,10 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
     return target_->DecryptResponseParameter(parameter);
   }
 
+  bool GetTpmNonce(std::string* nonce) override {
+    return target_->GetTpmNonce(nonce);
+  }
+
  private:
   AuthorizationDelegate* target_;
 };
@@ -552,6 +567,18 @@ class PolicySessionForwarder : public PolicySession {
     return target_->PolicySecret(auth_entity, auth_entity_name,
                                  nonce, cp_hash, policy_ref,
                                  expiration, delegate);
+  }
+
+  TPM_RC PolicySigned(TPMI_DH_ENTITY auth_entity,
+                      const std::string& auth_entity_name,
+                      const std::string& nonce,
+                      const std::string& cp_hash,
+                      const std::string& policy_ref,
+                      int32_t expiration,
+                      const trunks::TPMT_SIGNATURE& signature,
+                      AuthorizationDelegate* delegate) override {
+    return target_->PolicySigned(auth_entity, auth_entity_name, nonce, cp_hash,
+                                 policy_ref, expiration, signature, delegate);
   }
 
   TPM_RC PolicyAuthValue() override { return target_->PolicyAuthValue(); }

@@ -37,6 +37,7 @@ class MockAuthorizationDelegate : public AuthorizationDelegate {
                bool(const std::string&, const std::string&));
   MOCK_METHOD1(EncryptCommandParameter, bool(std::string*));
   MOCK_METHOD1(DecryptResponseParameter, bool(std::string*));
+  MOCK_METHOD1(GetTpmNonce, bool(std::string*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockAuthorizationDelegate);

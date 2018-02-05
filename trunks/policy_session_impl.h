@@ -66,13 +66,21 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
                       const std::string& policy_ref,
                       int32_t expiration,
                       AuthorizationDelegate* delegate) override;
+  TPM_RC PolicySigned(TPMI_DH_ENTITY auth_entity,
+                      const std::string& auth_entity_name,
+                      const std::string& nonce,
+                      const std::string& cp_hash,
+                      const std::string& policy_ref,
+                      int32_t expiration,
+                      const trunks::TPMT_SIGNATURE& signature,
+                      AuthorizationDelegate* delegate) override;
   TPM_RC PolicyAuthValue() override;
   TPM_RC PolicyRestart() override;
   void SetEntityAuthorizationValue(const std::string& value) override;
 
  private:
   // This factory is only set in the constructor and is used to instantiate
-  // The TPM class to forward commands to the TPM chip.
+  // the TPM class to forward commands to the TPM chip.
   const TrunksFactory& factory_;
   // This field determines if this session is of type TPM_SE_TRIAL or
   // TPM_SE_POLICY.
