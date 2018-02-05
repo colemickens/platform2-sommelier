@@ -238,9 +238,6 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
         awbMode = ANDROID_CONTROL_AWB_MODE_OFF;
         intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
         break;
-    case ANDROID_CONTROL_CAPTURE_INTENT_START:
-        intent = ANDROID_CONTROL_CAPTURE_INTENT_CUSTOM;
-        break;
     default:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_CUSTOM;
         break;
@@ -753,14 +750,8 @@ void PSLConfParser::startElement(void *userData, const char *name, const char **
                 ipuParse->handleMediaCtlElements(name, atts);
             break;
         default:
-            if(ipuParse->isCommonSection(ipuParse->mCurrentDataField)) {
-                ipuParse->handleCommonSection(ipuParse->mCurrentDataField,
-                                                ipuParse->mSensorIndex,
-                                                name, atts);
-            } else {
-                LOGE("@%s, line:%d, go to default handling",
-                        __FUNCTION__, __LINE__);
-            }
+            LOGE("@%s, line:%d, go to default handling",
+                    __FUNCTION__, __LINE__);
             break;
     }
 }

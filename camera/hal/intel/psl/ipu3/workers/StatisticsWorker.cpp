@@ -183,11 +183,7 @@ status_t StatisticsWorker::run()
         }
     }
 
-    ia_err ia_status = intel_skycam_statistics_convert(out.ia_css_4a_statistics, rgbsGrid.get(), afGrid.get());
-    if (ia_status != 0) {
-        LOGE("skycam_statistics_convert failed, %d", status);
-        return UNKNOWN_ERROR;
-    }
+    intel_skycam_statistics_convert(out.ia_css_4a_statistics, rgbsGrid.get(), afGrid.get());
 
     if (LogHelper::isDebugTypeEnable(CAMERA_DEBUG_LOG_AIQ)) {
         if (rgbsGrid.get() != nullptr
