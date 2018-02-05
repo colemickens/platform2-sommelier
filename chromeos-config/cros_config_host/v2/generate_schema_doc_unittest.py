@@ -42,8 +42,9 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(
             output_lines,
             readme_schema_lines,
-            'Schema does not match README. \n'
-            'Please run: python generate_schema_doc.py -o ../../README.md')
+            'Schema does not match README.\n'
+            'Please run: python -m cros_config_host.v2.generate_schema_doc '
+            '-o README.md')
 
     os.remove(output)
 
