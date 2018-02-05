@@ -12,15 +12,15 @@ for CLI access to this library.
 from __future__ import print_function
 
 import json
-import os
 
-from .cros_config_schema import TransformConfig, GetNamedTuple
-from ..libcros_config_host import TouchFile
+from .cros_config_schema import TransformConfig
+from ..libcros_config_host import CrosConfigImpl
 
 LIB_FIRMWARE = '/lib/firmware'
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 
-class CrosConfigJson(object):
+
+class CrosConfigJson(CrosConfigImpl):
   """The ChromeOS Configuration API for the host.
 
   CrosConfig is the top level API for accessing ChromeOS Configs from the host.
@@ -30,94 +30,102 @@ class CrosConfigJson(object):
     models: All models in the CrosConfig tree, in the form of a dictionary:
             <model name: string, model: CrosConfig.Model>
   """
-  def __init__(self, infile=None):
-    if not infile:
-      if 'SYSROOT' not in os.environ:
-        raise ValueError('No master configuration is available outside the '
-                         'ebuild environemnt. You must specify one')
-      fname = os.path.join(os.environ['SYSROOT'], UNIBOARD_JSON_INSTALL_PATH)
-      with open(fname) as infile:
-        self._json = json.loads(TransformConfig(infile.read()))
-    else:
-      self._json = json.loads(TransformConfig(infile.read()))
+  def __init__(self, infile):
+    super(CrosConfigJson, self).__init__(infile)
+    self._json = json.loads(
+        TransformConfig(self.infile.read(), drop_family=False))
+    self.root = CrosConfigJson.MakeNode(self, None, '/', self._json)
+    self.family = self.root.subnodes['chromeos'].subnodes.get('family')
 
-    self.models = {}
-    for model in self._json['chromeos']['models']:
-      self.models[model['name']] = CrosConfigJson.Model(model)
+  @staticmethod
+  def MakeNode(cros_config, parent, name, json_node):
+    """Make a new Node in the tree
 
-  def GetModelList(self):
-    """Return a list of models
-
-    Returns:
-      List of model names, each a string
-    """
-    return sorted(self.models.keys())
-
-  def GetFirmwareUris(self):
-    """Returns a list of (string) firmware URIs.
-
-    Generates and returns a list of firmeware URIs for all models. These URIs
-    can be used to pull down remote firmware packages.
-
-    Returns:
-      A list of (string) full firmware URIs, or an empty list on failure.
-    """
-    uris = set()
-    for model in self.models.values():
-      uris.update(set(model.GetFirmwareUris()))
-    return sorted(list(uris))
-
-  def GetTouchFirmwareFiles(self):
-    """Get a list of unique touch firmware files for all models
-
-    Returns:
-      List of TouchFile objects representing all the touch firmware referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for fname in model.GetTouchFirmwareFiles():
-        file_set.add(fname)
-
-    return sorted(file_set, key=lambda fname: fname.firmware)
-
-  def GetAudioFiles(self):
-    """Get a list of unique audio files for all models
-
-    Returns:
-      List of BaseFile objects representing all the audio files referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetAudioFiles():
-        file_set.add(files)
-
-    return sorted(file_set, key=lambda files: files.source)
-
-  class Model(object):
-    """Represents a ChromeOS Configuration Model.
+    This create a new Node or Model object in the tree and recursively adds all
+    subnodes to it.
 
     Args:
-      model: Dictionary of the model specific JSON configuration
+      cros_config: CrosConfig object
+      parent: Parent Node object
+      name: Name of this JSON node
+      json_node: JSON node object containing the current node
     """
-    def __init__(self, model):
-      self._model = GetNamedTuple(model)
-      self._model_dict = model
-      self.name = self._model.name
+    node = CrosConfigJson.Node(cros_config, parent, name, json_node)
+    if parent and parent.name == 'models':
+      cros_config.models[node.name] = node
+    node.default = node.FollowPhandle('default')
 
-    def GetTouchFirmwareFiles(self):
-      """Get a list of unique touch firmware files
+    node.ScanSubnodes()
+    return node
+
+  class Node(CrosConfigImpl.Node):
+    """YAML implementation of a node"""
+    def __init__(self, cros_config, parent, name, json_node):
+      super(CrosConfigJson.Node, self).__init__(cros_config)
+      self.parent = parent
+      self.name = name
+      self._json_node = json_node
+      # Subnodes are set up in Model.ScanSubnodes()
+      self.ScanForProperties(json_node)
+
+    def ScanForProperties(self, json_node):
+      if isinstance(json_node, list):
+        for json_subnode in json_node:
+          name = json_subnode['name']
+          self.subnodes[name] = CrosConfigJson.MakeNode(
+              self.cros_config, self, name, json_subnode)
+      else:
+        for name, json_subnode in json_node.iteritems():
+          if isinstance(json_subnode, dict):
+            if self.IsPhandleName(name):
+              self.ScanForProperties(json_subnode)
+            else:
+              self.subnodes[name] = CrosConfigJson.MakeNode(
+                  self.cros_config, self, name, json_subnode)
+          elif isinstance(json_subnode, list):
+            self.subnodes[name] = CrosConfigJson.MakeNode(
+                self.cros_config, self, name, json_subnode)
+          else:
+            self.properties[name] = CrosConfigJson.Property(name, json_subnode)
+
+    def FollowPhandle(self, prop_name):
+      """Follow a property's phandle
+
+      Args:
+        prop_name: Property name to check
 
       Returns:
-        List of TouchFile objects representing the touch firmware referenced
-        by this model
+        Node that the property's phandle points to, or None if none
       """
-      files = []
-      if 'touch' in self._model_dict:
-        touch = self._model_dict['touch']
-        for key in touch:
-          if 'firmware-bin' in touch[key]:
-            files.append(TouchFile(
-                touch[key]['firmware-bin'], touch[key]['firmware-symlink']))
-      return files
+      node = self.subnodes.get(prop_name)
+      return node
+
+    def GetPath(self):
+      """Get the full path to a node.
+
+      Returns:
+        path to node as a string
+      """
+      parent = self.parent.GetPath() if self.parent else ''
+      return '%s%s%s' % (parent, '/' if parent and self.parent.parent else '',
+                         self.name)
+
+    def IsPhandleName(self, _):
+      # JSON never uses phandles
+      return False
+
+  class Property(CrosConfigImpl.Property):
+    """FDT implementation of a property
+
+    Properties:
+      name: The name of the property.
+      value: The value of the property.
+      type: The FDT type of the property.
+    """
+    def __init__(self, name, json_prop):
+      super(CrosConfigJson.Property, self).__init__()
+      self._json_prop = json_prop
+      self.name = name
+      self.value = json_prop
+      # TODO(athilenius): Transform these int types to something more useful
+      self.type = str

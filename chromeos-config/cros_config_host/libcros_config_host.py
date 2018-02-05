@@ -1049,7 +1049,6 @@ def CrosConfig(fname=None, config_format=None):
   if config_format == FORMAT_FDT:
     return libcros_config_host_fdt.CrosConfigFdt(infile)
   elif config_format == FORMAT_YAML:
-    # TODO(sjg@chromium.org): Move this to use CrosConfigImpl
     return v2.libcros_config_host_json.CrosConfigJson(infile)
   else:
     raise ValueError("Invalid config format '%s' requested" % config_format)

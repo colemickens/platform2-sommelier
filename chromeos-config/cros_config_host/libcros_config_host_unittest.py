@@ -578,10 +578,8 @@ class CrosConfigHostTestFdt(MakeTests(DTS_FILE)):
   """Tests for master configuration in device tree format"""
 
 
-# TODO(sjg@chromium.org): Enable these when the yaml class works fully.
-#class CrosConfigHostTestYaml(MakeTests(YAML_FILE)):
-  #"""Tests for master configuration in yaml format"""
-  #pass
+class CrosConfigHostTestYaml(MakeTests(YAML_FILE)):
+  """Tests for master configuration in yaml format"""
 
 
 if __name__ == '__main__':
