@@ -813,13 +813,13 @@ chromeos {
 ### model
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| audio | [audio](#audio) |  | True |  |
-| brand-code | string | ```^[A-Z]{4}$``` | True | Brand code of the model (also called RLZ code). |
+| audio | [audio](#audio) |  | False |  |
+| brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |
-| identity | [identity](#identity) |  | True |  |
+| identity | [identity](#identity) |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
-| powerd-prefs | string |  | True | Powerd config that should be used. |
-| test-alias | string |  | True | Test alias (model) label that will be applied in Autotest and reported for test results. |
+| powerd-prefs | string |  | False | Powerd config that should be used. |
+| test-alias | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | touch | [touch](#touch) |  | False |  |
 
 ### audio
@@ -830,7 +830,7 @@ chromeos {
 ### main
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| card | string |  | True | Name of the card. |
+| card | string |  | False | Name of the card. |
 | cras-config-dir | string | ```^[_a-z0-9]*$``` | True | Subdirectory for model-specific configuration. |
 | disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
 | topology-bin | string |  | False | Optional topology firmware filename. |
@@ -839,13 +839,14 @@ chromeos {
 ### firmware
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| bcs-overlay | string |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
+| bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | bcs-uris | array - string |  | False | Fully qualified paths to all of the BCS files for download |
 | build-targets | [build-targets](#build-targets) |  | False |  |
-| ec-image | string |  | True | Name of the file located in BCS under the respective bcs-overlay. |
+| ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
-| main-image | string |  | True | Name of the file located in BCS under the respective bcs-overlay. |
+| main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+| pd-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 
 ### build-targets
 | Attribute | Type   | RegEx     | Required | Description |
@@ -866,7 +867,7 @@ chromeos {
 ### touch
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| present | string |  | True | Whether touch is present or needs to be probed for. |
+| present | string |  | False | Whether touch is present or needs to be probed for. |
 | probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
 | stylus | [stylus](#stylus) |  | False |  |
 | touchpad | [touchpad](#touchpad) |  | False |  |
@@ -878,8 +879,8 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | False | Name of the firmware symlink file. |
 | overlay | string |  | False | Name of overlay to download from |
 | package | string |  | False | Package subdirectory to download from |
 | tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
@@ -888,8 +889,8 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | False | Name of the firmware symlink file. |
 | overlay | string |  | False | Name of overlay to download from |
 | package | string |  | False | Package subdirectory to download from |
 | tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
@@ -898,8 +899,8 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | False | Name of the firmware symlink file. |
 | overlay | string |  | False | Name of overlay to download from |
 | package | string |  | False | Package subdirectory to download from |
 | tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
@@ -908,8 +909,8 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | False | Name of the firmware symlink file. |
 | overlay | string |  | False | Name of overlay to download from |
 | package | string |  | False | Package subdirectory to download from |
 | tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
@@ -918,8 +919,8 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | True | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | True | Name of the firmware symlink file. |
+| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
+| firmware-symlink | string |  | False | Name of the firmware symlink file. |
 | overlay | string |  | False | Name of overlay to download from |
 | package | string |  | False | Package subdirectory to download from |
 | tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |

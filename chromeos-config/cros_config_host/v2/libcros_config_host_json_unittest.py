@@ -28,7 +28,8 @@ class CrosConfigHostJsonTest(unittest.TestCase):
 
   def testListModels(self):
     models = self.config.GetModelList()
-    self.assertListEqual(['basking', 'electro'], models)
+    self.assertListEqual(['blacktip', 'broken', 'caroline', 'pyro', 'reef',
+                          'whitetip', 'whitetip1', 'whitetip2'], models)
 
   # Disable this test since it doesn't work with the new schema. This test will
   # be dropped anyway when we rework the CrosConfig logic to be shared by the

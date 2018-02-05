@@ -33,10 +33,7 @@ typeDefs:
       firmware-symlink:
         description: Name of the firmware symlink file.
         type: string
-    additionalProperties: false
-    required:
-    - firmware-bin
-    - firmware-symlink
+    additionalProperties: true
 type: object
 properties:
   chromeos:
@@ -70,9 +67,8 @@ properties:
                     topology-bin:
                       description: Optional topology firmware filename.
                       type: string
-                  additionalProperties: false
+                  additionalProperties: true
                   required:
-                  - card
                   - cras-config-dir
               additionalProperties: false
               required:
@@ -103,6 +99,7 @@ properties:
                     libpayload: *firmware_build_target
                   additionalProperties: false
                 ec-image: *bcs_file_name
+                pd-image: *bcs_file_name
                 key-id:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
@@ -110,11 +107,7 @@ properties:
                   pattern: "^[A-Z|_|0-9]*$"
                 main-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
-              additionalProperties: false
-              required:
-              - bcs-overlay
-              - ec-image
-              - main-image
+              additionalProperties: true
             identity:
               type: object
               properties:
@@ -150,8 +143,9 @@ properties:
                   description: Whether touch is present or needs to be probed for.
                   type: string
                   enum:
-                  - yes
-                  - no
+                  # Put these in quotes to avoid them meaning True / False
+                  - "yes"
+                  - "no"
                   - probe
                 probe-regex:
                   description: If probe is set, the regex used to look for touch.
@@ -162,17 +156,10 @@ properties:
                 touchscreen@0: *touch_firmware
                 touchscreen@1: *touch_firmware
               additionalProperties: false
-              required:
-              - present
-          additionalProperties: false
+          additionalProperties: true
           required:
-          - audio
-          - brand-code
           - firmware
-          - identity
           - name
-          - powerd-prefs
-          - test-alias
     additionalProperties: false
     required:
     - models

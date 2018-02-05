@@ -4,100 +4,333 @@
       {
         "audio": {
           "main": {
-            "card": "bxtda7219max", 
-            "cras-config-dir": "basking", 
-            "ucm-suffix": "basking"
+            "audio-type": {
+              "alsa-conf": "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf", 
+              "card": "bxtda7219max", 
+              "dsp-ini": "cras-config/{cras-config-dir}/dsp.ini", 
+              "hifi-conf": "ucm-config/{card}.{ucm-suffix}/HiFi.conf", 
+              "topology-bin": "topology/5a98-reef-{topology-name}-8-tplg.bin", 
+              "volume": "cras-config/{cras-config-dir}/{card}"
+            }, 
+            "cras-config-dir": "pyro", 
+            "topology-name": "pyro", 
+            "ucm-suffix": "pyro"
           }
         }, 
-        "brand-code": "ASUN", 
         "firmware": {
-          "bcs-overlay": "overlay-reef-private", 
+          "bcs-overlay": "overlay-pyro-private", 
           "build-targets": {
-            "coreboot": "reef", 
-            "cr50": "cr50", 
-            "depthcharge": "reef", 
-            "ec": "reef", 
-            "libpayload": "reef"
+            "coreboot": "pyro", 
+            "depthcharge": "pyro", 
+            "ec": "pyro", 
+            "libpayload": "pyro"
           }, 
-          "ec-image": "Reef_EC.9042.87.1.tbz2", 
-          "key-id": "OEM2", 
-          "main-image": "Reef.9042.87.1.tbz2", 
-          "main-rw-image": "Reef.9042.110.0.tbz2"
+          "ec-image": "bcs://Pyro_EC.9042.87.1.tbz2", 
+          "main-image": "bcs://Pyro.9042.87.1.tbz2", 
+          "main-rw-image": "bcs://Pyro.9042.110.0.tbz2", 
+          "pd-image": "bcs://Pyro_PD.9042.87.1.tbz2"
         }, 
-        "identity": {
-          "customization-id": "BASKING", 
-          "sku-id": 0, 
-          "smbios-name-match": "Reef"
+        "name": "pyro", 
+        "power": {
+          "power-supply-full-factor": "0.20", 
+          "power-type": {
+            "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT", 
+            "power-supply-full-factor": "0.12", 
+            "suspend-to-idle": "1"
+          }
         }, 
-        "name": "basking", 
-        "powerd-prefs": "reef", 
-        "test-alias": "reef", 
+        "thermal": {
+          "dptf-dv": "pyro/dptf.dv"
+        }, 
         "touch": {
           "present": "probe", 
           "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
           "stylus": {
-            "firmware-bin": "wacom/wacom_4209.hex", 
-            "firmware-symlink": "wacom_firmware_BASKING.hex"
+            "touch-type": {
+              "firmware-bin": "wacom/{version}.hex", 
+              "firmware-symlink": "wacom_firmware_{MODEL}.bin", 
+              "vendor": "wacom"
+            }, 
+            "version": "4209"
           }, 
-          "touchpad": {
-            "firmware-bin": "elan/97.0_6.0.bin", 
-            "firmware-symlink": "elan_i2c_97.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/3062_5602.bin", 
-            "firmware-symlink": "elants_i2c_3062.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "elan/306e_5611.bin", 
-            "firmware-symlink": "elants_i2c_306e.bin"
+          "touchscreen": {
+            "pid": "0a97", 
+            "touch-type": {
+              "bcs-type": {
+                "ebuild-version": "1.0-r9", 
+                "overlay": "overlay-reef-private", 
+                "package": "chromeos-touch-firmware-reef", 
+                "tarball": "chromeos-base/{package}/{package}-{ebuild-version}.tbz2"
+              }, 
+              "firmware-bin": "{vendor}/{pid}_{version}.bin", 
+              "firmware-symlink": "{vendor}ts_i2c_{pid}.bin", 
+              "vendor": "elan"
+            }, 
+            "version": "1012"
           }
-        }
+        }, 
+        "wallpaper": "default"
       }, 
       {
         "audio": {
           "main": {
-            "card": "bxtda7219max", 
-            "cras-config-dir": "electro", 
-            "ucm-suffix": "electro"
+            "cras-config-dir": "caroline"
           }
         }, 
-        "brand-code": "ACBB", 
+        "firmware": {
+          "shares": {
+            "bcs-overlay": "overlay-reef-private", 
+            "build-targets": {
+              "coreboot": "caroline", 
+              "depthcharge": "caroline", 
+              "ec": "caroline", 
+              "libpayload": "caroline"
+            }, 
+            "ec-image": "bcs://Caroline_EC.2017.21.1.tbz2", 
+            "main-image": "bcs://Caroline.2017.21.1.tbz2", 
+            "main-rw-image": "bcs://Caroline.2017.41.0.tbz2", 
+            "pd-image": "bcs://Caroline_PD.2017.21.1.tbz2"
+          }
+        }, 
+        "name": "caroline", 
+        "wallpaper": "caroline"
+      }, 
+      {
+        "arc": {
+          "hw-features": "reef/arc++/hardware_features"
+        }, 
         "firmware": {
           "bcs-overlay": "overlay-reef-private", 
           "build-targets": {
-            "coreboot": "reef", 
-            "cr50": "cr50", 
-            "depthcharge": "reef", 
-            "ec": "reef", 
-            "libpayload": "reef"
+            "coreboot": "pyro", 
+            "depthcharge": "pyro", 
+            "ec": "pyro", 
+            "libpayload": "pyro"
           }, 
-          "ec-image": "Reef_EC.9042.87.1.tbz2", 
-          "key-id": "PARMA", 
-          "main-image": "Reef.9042.87.1.tbz2", 
-          "main-rw-image": "Reef.9042.110.0.tbz2"
+          "ec-image": "bcs://Reef_EC.9042.87.1.tbz2", 
+          "main-image": "bcs://Reef.9042.87.1.tbz2", 
+          "main-rw-image": "bcs://Reef.9042.110.0.tbz2"
         }, 
-        "identity": {
-          "customization-id": "ELECTRO", 
-          "sku-id": 8, 
-          "smbios-name-match": "Reef"
+        "name": "reef", 
+        "power": {
+          "power-type": {
+            "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT", 
+            "power-supply-full-factor": "0.12", 
+            "suspend-to-idle": "1"
+          }, 
+          "set-wifi-transmit-power-for-tablet-mode": 1
         }, 
-        "name": "electro", 
-        "powerd-prefs": "reef", 
-        "test-alias": "reef", 
+        "submodels": {
+          "notouch": {
+            "audio": {
+              "main": {
+                "audio-type": {
+                  "alsa-conf": "ucm-config/2mic/{card}.conf", 
+                  "card": "bxtda7219max", 
+                  "cras-config-dir": "2mic", 
+                  "dsp-ini": "cras-config/{cras-config-dir}/dsp.ini", 
+                  "hifi-conf": "ucm-config/2mic/Wibble", 
+                  "topology-name": "2mic", 
+                  "ucm-suffix": "2mic", 
+                  "volume": "cras-config/{cras-config-dir}/{card}"
+                }
+              }
+            }, 
+            "touch": {
+              "present": "no"
+            }
+          }, 
+          "touch": {
+            "audio": {
+              "main": {
+                "audio-type": {
+                  "alsa-conf": "ucm-config/1mic/{card}.conf", 
+                  "card": "bxtda7219max", 
+                  "dsp-ini": "cras-config/{cras-config-dir}/dsp.ini", 
+                  "hifi-conf": "ucm-config/1mic/HiFi.conf", 
+                  "topology-bin": "topology/5a98-reef-{topology-name}-8-tplg.bin", 
+                  "volume": "cras-config/{cras-config-dir}/{card}"
+                }, 
+                "cras-config-dir": "1mic", 
+                "topology-name": "1mic", 
+                "ucm-suffix": "1mic"
+              }
+            }, 
+            "touch": {
+              "present": "yes"
+            }
+          }
+        }, 
+        "thermal": {
+          "dptf-dv": "reef/dptf.dv"
+        }, 
         "touch": {
-          "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
           "stylus": {
-            "firmware-bin": "wacom/wacom_1636.hex", 
-            "firmware-symlink": "wacom_firmware_ELECTRO.hex"
+            "touch-type": {
+              "firmware-bin": "wacom/{version}.hex", 
+              "firmware-symlink": "wacom_firmware_{MODEL}.bin", 
+              "vendor": "wacom"
+            }, 
+            "version": "4209"
           }, 
           "touchpad": {
-            "firmware-bin": "elan/154.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_154.0.bin"
+            "pid": "97.0", 
+            "touch-type": {
+              "bcs-type": {
+                "ebuild-version": "1.0-r9", 
+                "overlay": "overlay-reef-private", 
+                "package": "chromeos-touch-firmware-reef", 
+                "tarball": "chromeos-base/{package}/{package}-{ebuild-version}.tbz2"
+              }, 
+              "firmware-bin": "{vendor}/{pid}_{version}.bin", 
+              "firmware-symlink": "{vendor}_i2c_{pid}.bin", 
+              "vendor": "elan"
+            }, 
+            "version": "6.0"
           }, 
-          "touchscreen": {
-            "firmware-bin": "elan/1cd2_5602.bin", 
-            "firmware-symlink": "elants_i2c_1cd2.bin"
+          "touchscreen@0": {
+            "pid": "3062", 
+            "touch-type": {
+              "bcs-type": {
+                "ebuild-version": "1.0-r9", 
+                "overlay": "overlay-reef-private", 
+                "package": "chromeos-touch-firmware-reef", 
+                "tarball": "chromeos-base/{package}/{package}-{ebuild-version}.tbz2"
+              }, 
+              "firmware-bin": "{vendor}/{pid}_{version}.bin", 
+              "firmware-symlink": "{vendor}ts_i2c_{pid}.bin", 
+              "vendor": "elan"
+            }, 
+            "version": "5602"
+          }, 
+          "touchscreen@1": {
+            "pid": "306e", 
+            "touch-type": {
+              "bcs-type": {
+                "ebuild-version": "1.0-r9", 
+                "overlay": "overlay-reef-private", 
+                "package": "chromeos-touch-firmware-reef", 
+                "tarball": "chromeos-base/{package}/{package}-{ebuild-version}.tbz2"
+              }, 
+              "firmware-bin": "{vendor}/{pid}_{version}.bin", 
+              "firmware-symlink": "{vendor}ts_i2c_{pid}.bin", 
+              "vendor": "elan"
+            }, 
+            "version": "5611"
+          }
+        }, 
+        "wallpaper": "epic"
+      }, 
+      {
+        "firmware": {
+          "bcs-overlay": "overlay-reef-private", 
+          "main-image": "bcs://Reef.9042.87.1.tbz2", 
+          "no-firmware": true
+        }, 
+        "name": "broken"
+      }, 
+      {
+        "audio": {
+          "main": {
+            "audio-type": {
+              "alsa-conf": "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf", 
+              "card": "bxtda7219max", 
+              "dsp-ini": "cras-config/{cras-config-dir}/dsp.ini", 
+              "hifi-conf": "ucm-config/{card}.{ucm-suffix}/HiFi.conf", 
+              "topology-bin": "topology/5a98-reef-{topology-name}-8-tplg.bin", 
+              "volume": "cras-config/{cras-config-dir}/{card}"
+            }, 
+            "cras-config-dir": "reefcras", 
+            "topology-name": "reeftop", 
+            "ucm-suffix": "reefucm"
+          }
+        }, 
+        "firmware": {
+          "shares": {
+            "bcs-overlay": "overlay-reef-private", 
+            "build-targets": {
+              "coreboot": "caroline", 
+              "depthcharge": "caroline", 
+              "ec": "caroline", 
+              "libpayload": "caroline"
+            }, 
+            "ec-image": "bcs://Caroline_EC.2017.21.1.tbz2", 
+            "main-image": "bcs://Caroline.2017.21.1.tbz2", 
+            "main-rw-image": "bcs://Caroline.2017.41.0.tbz2", 
+            "pd-image": "bcs://Caroline_PD.2017.21.1.tbz2"
+          }, 
+          "sig-id-in-customization-id": true
+        }, 
+        "name": "whitetip", 
+        "powerd-prefs": "whitetip", 
+        "touch": {
+          "present": "yes", 
+          "stylus": {
+            "touch-type": {
+              "firmware-bin": "wacom/{version}.hex", 
+              "firmware-symlink": "wacom_firmware_{MODEL}.bin", 
+              "vendor": "wacom"
+            }, 
+            "version": "4209"
+          }
+        }
+      }, 
+      {
+        "brand-code": "SHAR", 
+        "firmware": {
+          "key-id": "WHITETIP1", 
+          "no-firmware": true
+        }, 
+        "name": "whitetip1", 
+        "wallpaper": "shark"
+      }, 
+      {
+        "brand-code": "SHAQ", 
+        "firmware": {
+          "key-id": "WHITETIP2"
+        }, 
+        "name": "whitetip2", 
+        "wallpaper": "more_shark"
+      }, 
+      {
+        "firmware": {
+          "shares": {
+            "bcs-overlay": "overlay-reef-private", 
+            "build-targets": {
+              "coreboot": "caroline", 
+              "depthcharge": "caroline", 
+              "ec": "caroline", 
+              "libpayload": "caroline"
+            }, 
+            "ec-image": "bcs://Caroline_EC.2017.21.1.tbz2", 
+            "main-image": "bcs://Caroline.2017.21.1.tbz2", 
+            "main-rw-image": "bcs://Caroline.2017.41.0.tbz2", 
+            "pd-image": "bcs://Caroline_PD.2017.21.1.tbz2"
+          }
+        }, 
+        "name": "blacktip", 
+        "submodels": {
+          "notouch": {
+            "touch": {
+              "present": "no"
+            }
+          }, 
+          "touch": {
+            "touch": {
+              "present": "yes"
+            }
+          }
+        }, 
+        "whitelabels": {
+          "blacktip1": {
+            "brand-code": "HBBN", 
+            "key-id": "BLACKTIP1", 
+            "wallpaper": "dark"
+          }, 
+          "blacktip2": {
+            "brand-code": "HBBO", 
+            "key-id": "BLACKTIP2", 
+            "wallpaper": "darker"
           }
         }
       }
