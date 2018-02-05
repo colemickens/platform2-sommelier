@@ -36,7 +36,6 @@ const char* GetValueTypeName(const base::Value* value) {
 constexpr char kKeyUserDevice[] = "Software\\Policies\\Google\\ChromeOS";
 constexpr char kKeyExtensions[] =
     "Software\\Policies\\Google\\Chrome\\3rdparty\\Extensions";
-constexpr char kKeyWindows[] = "Software\\Policies\\Microsoft\\Windows\\System";
 constexpr char kKeyRecommended[] = "Recommended";
 constexpr char kKeyMandatoryExtension[] = "Policy";
 

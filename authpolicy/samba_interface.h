@@ -23,8 +23,8 @@
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/tgt_manager.h"
-#include "authpolicy/windows_policy_manager.h"
 #include "bindings/authpolicy_containers.pb.h"
+#include "bindings/chrome_device_policy.pb.h"
 
 // Helper methods for Samba Active Directory authentication, machine (device)
 // joining and policy fetching. Note: "Device" and "machine" can be used
@@ -152,11 +152,6 @@ class SambaInterface {
     return anonymizer_.get();
   }
 
-  // Returns the Windows policy manager.
-  WindowsPolicyManager& GetWindowsPolicyManagerForTesting() {
-    return windows_policy_manager_;
-  }
-
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
 
@@ -167,6 +162,14 @@ class SambaInterface {
   // used to load device policy from a different location and without key check.
   void SetDevicePolicyImplForTesting(
       std::unique_ptr<policy::DevicePolicyImpl> policy_impl);
+
+  // Sets the actual device policy. Only a few policies are taken into account,
+  // see UpdateDevicePolicyDependencies().
+  void SetUserPolicyModeForTesting(
+      enterprise_management::DeviceUserPolicyLoopbackProcessingModeProto::Mode
+          mode) {
+    user_policy_mode_ = mode;
+  }
 
   // Resets internal state (useful for doing multiple domain joins).
   void ResetForTesting() { Reset(); }
@@ -378,11 +381,17 @@ class SambaInterface {
   TgtManager device_tgt_manager_;
 
   // Encryption types to use for kinit and Samba commands. Don't set directly,
-  // always set through SetKerberosEncryptionTypes().
+  // always set through SetKerberosEncryptionTypes(). Updated by
+  // UpdateDevicePolicyDependencies.
   KerberosEncryptionTypes encryption_types_ = ENC_TYPES_STRONG;
 
-  // Manager for interesting Windows policy.
-  WindowsPolicyManager windows_policy_manager_;
+  // Loopback processing mode (how/if user policy from machine GPOs is used).
+  // Updated by UpdateDevicePolicyDependencies.
+  enterprise_management::DeviceUserPolicyLoopbackProcessingModeProto::Mode
+      user_policy_mode_;
+
+  // Whether device policy has been fetched or loaded from disk on startup.
+  bool has_device_policy_ = false;
 
   // For testing only. Used/consumed during Initialize().
   std::unique_ptr<policy::DevicePolicyImpl> device_policy_impl_for_testing;

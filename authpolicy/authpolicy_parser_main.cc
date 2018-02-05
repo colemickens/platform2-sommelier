@@ -419,13 +419,6 @@ int ParsePreg(const std::string& gpo_file_paths_blob,
         return EXIT_CODE_PARSE_INPUT_FAILED;
       }
 
-      // Also extract interesting Windows policy from the files.
-      if (!policy::ParsePRegFilesIntoWindowsPolicy(
-              gpo_file_paths, data.mutable_windows_policy(),
-              flags.log_policy_values())) {
-        return EXIT_CODE_PARSE_INPUT_FAILED;
-      }
-
       // Serialize policy proto to string.
       if (!policy.SerializeToString(data.mutable_user_or_device_policy()))
         return EXIT_CODE_WRITE_OUTPUT_FAILED;

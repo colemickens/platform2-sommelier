@@ -512,6 +512,13 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_unaffiliated_arc_allowed()->set_unaffiliated_arc_allowed(
         value);
   });
+
+  EncodeInteger(
+      key::kDeviceUserPolicyLoopbackProcessingMode, [policy](int value) {
+        policy->mutable_device_user_policy_loopback_processing_mode()->set_mode(
+            static_cast<em::DeviceUserPolicyLoopbackProcessingModeProto::Mode>(
+                value));
+      });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

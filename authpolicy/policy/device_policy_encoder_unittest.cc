@@ -362,6 +362,15 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool,
             policy.unaffiliated_arc_allowed().unaffiliated_arc_allowed());
 
+  // The encoder of this policy converts ints to
+  // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.
+  EncodeInteger(
+      &policy, key::kDeviceUserPolicyLoopbackProcessingMode,
+      em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_MERGE);
+  EXPECT_EQ(
+      em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_MERGE,
+      policy.device_user_policy_loopback_processing_mode().mode());
+
   //
   // Check whether all device policies have been handled.
   //

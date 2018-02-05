@@ -25,8 +25,6 @@
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
-#include "bindings/authpolicy_containers.pb.h"
-#include "bindings/device_management_backend.pb.h"
 
 namespace em = enterprise_management;
 
@@ -330,7 +328,7 @@ const char* GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
 
 // Gets Kerberos encryption types from the corresponding device policy. Returns
 // ENC_TYPES_STRONG if the policy is not set or invalid.
-KerberosEncryptionTypes GetEncryptionTypesFromDevicePolicy(
+KerberosEncryptionTypes GetEncryptionTypes(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_kerberos_encryption_types() ||
       !device_policy.device_kerberos_encryption_types().has_types()) {
@@ -350,6 +348,16 @@ KerberosEncryptionTypes GetEncryptionTypesFromDevicePolicy(
   }
 
   CHECK(false);
+}
+
+em::DeviceUserPolicyLoopbackProcessingModeProto::Mode GetUserPolicyMode(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  if (!device_policy.has_device_user_policy_loopback_processing_mode() ||
+      !device_policy.device_user_policy_loopback_processing_mode().has_mode()) {
+    return em::DeviceUserPolicyLoopbackProcessingModeProto::
+        USER_POLICY_MODE_DEFAULT;
+  }
+  return device_policy.device_user_policy_loopback_processing_mode().mode();
 }
 
 }  // namespace
@@ -380,9 +388,7 @@ SambaInterface::SambaInterface(
                           &jail_helper_,
                           anonymizer_.get(),
                           Path::DEVICE_KRB5_CONF,
-                          Path::DEVICE_CREDENTIAL_CACHE),
-      windows_policy_manager_(
-          base::FilePath(paths_->Get(Path::WINDOWS_POLICY))) {
+                          Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
   user_tgt_manager_.SetKerberosFilesChangedCallback(
@@ -426,9 +432,6 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
                     "policy fetch.";
     }
   }
-
-  // Try to read Windows policy if present.
-  windows_policy_manager_.LoadFromDisk();
 
   return ERROR_NONE;
 }
@@ -704,16 +707,13 @@ ErrorType SambaInterface::FetchUserGpos(
   DCHECK(!user_account_.user_name.empty());
   DCHECK(!user_account_.realm.empty());
 
-  // We need WindowsPolicy::UserPolicyMode to properly fetch user policy, thus
-  // WindowsPolicy has to be present. WindowsPolicy is fetched along with
-  // FetchDeviceGpos().
-  const protos::WindowsPolicy* win_policy = windows_policy_manager_.policy();
-  if (!win_policy) {
+  // We need user_policy_mode_ to properly fetch user policy, which is read from
+  // device policy.
+  if (!has_device_policy_) {
     LOG(ERROR)
-        << "No Windows policy available. Please call FetchDeviceGpos() first.";
-    return ERROR_NO_WINDOWS_POLICY;
+        << "Unknown user policy mode. Please call FetchDeviceGpos() first.";
+    return ERROR_NO_DEVICE_POLICY;
   }
-  protos::WindowsPolicy::UserPolicyMode mode = win_policy->user_policy_mode();
 
   // Download GPOs for the given user, taking the loopback processing |mode|
   // into account:
@@ -723,7 +723,8 @@ ErrorType SambaInterface::FetchUserGpos(
   //   USER_POLICY_MODE_REPLACE: Only apply user policy from device GPOs.
   ErrorType error;
   std::vector<base::FilePath> gpo_file_paths;
-  if (mode != protos::WindowsPolicy::USER_POLICY_MODE_REPLACE) {
+  if (user_policy_mode_ != em::DeviceUserPolicyLoopbackProcessingModeProto::
+                               USER_POLICY_MODE_REPLACE) {
     // Update smb.conf, IPs, server names etc for the user account.
     error = UpdateAccountData(&user_account_);
     if (error != ERROR_NONE)
@@ -734,7 +735,8 @@ ErrorType SambaInterface::FetchUserGpos(
     if (error != ERROR_NONE)
       return error;
   }
-  if (mode != protos::WindowsPolicy::USER_POLICY_MODE_DEFAULT) {
+  if (user_policy_mode_ != em::DeviceUserPolicyLoopbackProcessingModeProto::
+                               USER_POLICY_MODE_DEFAULT) {
     // Update smb.conf, IPs, server names etc for the device account.
     error = UpdateAccountData(&device_account_);
     if (error != ERROR_NONE)
@@ -803,13 +805,6 @@ ErrorType SambaInterface::FetchDeviceGpos(
     return error;
 
   error = ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Store Windows policy.
-  CHECK(gpo_policy_data->has_windows_policy());
-  error = windows_policy_manager_.UpdateAndSaveToDisk(
-      base::WrapUnique(gpo_policy_data->release_windows_policy()));
   if (error != ERROR_NONE)
     return error;
 
@@ -1560,11 +1555,15 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
 
 void SambaInterface::UpdateDevicePolicyDependencies(
     const em::ChromeDeviceSettingsProto& device_policy) {
+  has_device_policy_ = true;
+
   // Get Kerberos encryption types policy. Note that we fall back to strong
   // encryption if the policy is not set.
-  KerberosEncryptionTypes enc_types =
-      GetEncryptionTypesFromDevicePolicy(device_policy);
+  KerberosEncryptionTypes enc_types = GetEncryptionTypes(device_policy);
   SetKerberosEncryptionTypes(enc_types);
+
+  // Get loopback processing mode.
+  user_policy_mode_ = GetUserPolicyMode(device_policy);
 }
 
 void SambaInterface::SetUser(const std::string& account_id) {

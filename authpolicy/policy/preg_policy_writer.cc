@@ -73,12 +73,6 @@ void PRegPolicyWriter::SetKeysForExtensionPolicy(
   SetRecommendedKey(base_key + kKeyRecommended);
 }
 
-void PRegPolicyWriter::SetKeysForWindowsPolicy() {
-  // There's no distinction between recommended or mandatory policy here.
-  SetMandatoryKey(policy::kKeyWindows);
-  SetRecommendedKey(policy::kKeyWindows);
-}
-
 void PRegPolicyWriter::AppendBoolean(const char* policy_name,
                                      bool value,
                                      PolicyLevel level) {
@@ -197,10 +191,6 @@ PRegUserDevicePolicyWriter::PRegUserDevicePolicyWriter() {
 PRegExtensionPolicyWriter::PRegExtensionPolicyWriter(
     const std::string& extension_id) {
   SetKeysForExtensionPolicy(extension_id);
-}
-
-PRegWindowsPolicyWriter::PRegWindowsPolicyWriter() {
-  SetKeysForWindowsPolicy();
 }
 
 }  // namespace policy
