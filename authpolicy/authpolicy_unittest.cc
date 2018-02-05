@@ -235,45 +235,8 @@ class TestMetrics : public AuthPolicyMetrics {
     chromeos_metrics::TimerReporter::set_metrics_lib(&test_metrics_);
   }
 
-  // Prints out a list of untested metrics activity. This makes sure that no
-  // metrics are reported that are not expected by the tests.
   ~TestMetrics() override {
     chromeos_metrics::TimerReporter::set_metrics_lib(nullptr);
-
-    std::map<MetricType, const char*> metrics_str;
-    metrics_str[METRIC_KINIT_FAILED_TRY_COUNT] =
-        "METRIC_KINIT_FAILED_TRY_COUNT";
-    metrics_str[METRIC_SMBCLIENT_FAILED_TRY_COUNT] =
-        "METRIC_SMBCLIENT_FAILED_TRY_COUNT";
-    metrics_str[METRIC_DOWNLOAD_GPO_COUNT] = "METRIC_DOWNLOAD_GPO_COUNT";
-    CHECK_EQ(METRIC_COUNT, metrics_str.size());
-    static_assert(METRIC_COUNT == 3, "Add new values!");
-
-    std::map<DBusCallType, const char*> dbus_str;
-    dbus_str[DBUS_CALL_AUTHENTICATE_USER] = "DBUS_CALL_AUTHENTICATE_USER";
-    dbus_str[DBUS_CALL_GET_USER_STATUS] = "DBUS_CALL_GET_USER_STATUS";
-    dbus_str[DBUS_CALL_GET_USER_KERBEROS_FILES] =
-        "DBUS_CALL_GET_USER_KERBEROS_FILES";
-    dbus_str[DBUS_CALL_JOIN_AD_DOMAIN] = "DBUS_CALL_JOIN_AD_DOMAIN";
-    dbus_str[DBUS_CALL_REFRESH_USER_POLICY] = "DBUS_CALL_REFRESH_USER_POLICY";
-    dbus_str[DBUS_CALL_REFRESH_DEVICE_POLICY] =
-        "DBUS_CALL_REFRESH_DEVICE_POLICY";
-    CHECK_EQ(DBUS_CALL_COUNT, dbus_str.size());
-    static_assert(DBUS_CALL_COUNT == 6, "Add new values!");
-
-    std::string log_str;
-    for (const auto& kv : metrics_report_count_) {
-      log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, metrics_->GetNumMetricReports(%s));", kv.second,
-          metrics_str[kv.first]);
-    }
-    for (const auto& kv : dbus_report_count_) {
-      log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, metrics_->GetNumDBusReports(%s));", kv.second,
-          dbus_str[kv.first]);
-    }
-    EXPECT_TRUE(log_str.empty()) << "Unexpected metrics activity. "
-                                 << "If this looks right, add " << log_str;
   }
 
   void Report(MetricType metric_type, int sample) override {
@@ -940,9 +903,6 @@ TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   CheckSmbEncTypes(paths_->Get(Path::USER_SMB_CONF), kEncTypesStrong);
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
-
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // If The encryption types reset to strong after device policy fetch.
@@ -973,8 +933,6 @@ TEST_F(AuthPolicyTest, LoadsDevicePolicyOnStartup) {
   // Now an auth operation should use the loaded encryption types.
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesAll);
-
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Both Samba commands (smb) and kinit (krb5) use the encryption types from the
@@ -1012,11 +970,6 @@ TEST_F(AuthPolicyTest, UsesEncTypesFromDevicePolicy) {
   // User and device krb5.conf has aes_* + rc4_hmac enc types.
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesAll);
   CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesAll);
-
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(3,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // By default, the user's and device's krb5.conf files only have strong crypto.
@@ -1026,8 +979,6 @@ TEST_F(AuthPolicyTest, TgtsUseStrongEncTypesByDefault) {
   CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesStrong);
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful user authentication.
@@ -1044,7 +995,6 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_info));
   EXPECT_EQ(kAccountId, account_info.account_id());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Program should die if trying to auth with different account ids.
@@ -1053,7 +1003,6 @@ TEST_F(AuthPolicyTest, AuthFailsDifferentAccountIds) {
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
   EXPECT_DEATH(Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
                kMultiUserNotSupported);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // User authentication fails with bad (non-existent) account id.
@@ -1061,7 +1010,6 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kUserPrincipal, kBadAccountId, MakePasswordFd()));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Successful user authentication.
@@ -1077,7 +1025,6 @@ TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   EXPECT_EQ(kCommonName, account_info.common_name());
   EXPECT_EQ(kPwdLastSet, account_info.pwd_last_set());
   EXPECT_EQ(kUserAccountControl, account_info.user_account_control());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for badly formatted user principal name.
@@ -1092,7 +1039,6 @@ TEST_F(AuthPolicyTest, AuthFailsBadUpn) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kNonExistingUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for wrong password.
@@ -1100,7 +1046,6 @@ TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_PASSWORD,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWrongPassword)));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for expired password.
@@ -1108,7 +1053,6 @@ TEST_F(AuthPolicyTest, AuthFailsExpiredPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails for rejected password.
@@ -1116,7 +1060,6 @@ TEST_F(AuthPolicyTest, AuthFailsRejectedPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_PASSWORD_REJECTED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kRejectedPassword)));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication succeeds if the "password will expire" warning is shown.
@@ -1124,7 +1067,6 @@ TEST_F(AuthPolicyTest, AuthSucceedsPasswordWillExpire) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWillExpirePassword)));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails if there's a network issue.
@@ -1132,7 +1074,6 @@ TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NETWORK_PROBLEM,
             Auth(kNetworkErrorUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication retries without KDC if it fails the first time.
@@ -1145,6 +1086,7 @@ TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
 // Can't get user status before domain join.
 TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
   EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kUserPrincipal, kAccountId));
+  EXPECT_EQ(0, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Program should die if trying to get user status with different account ids
@@ -1154,7 +1096,6 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
   EXPECT_DEATH(GetUserStatus(kUserPrincipal, kAltAccountId),
                kMultiUserNotSupported);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus succeeds without auth, reporting TGT_NOT_FOUND and lacking
@@ -1175,7 +1116,6 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus succeeds with join and auth.
@@ -1218,7 +1158,6 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsLastAuthError) {
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED, status.last_auth_error());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus reports to expire the password.
@@ -1231,7 +1170,6 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsExpiredPasswords) {
             GetUserStatus(kUserPrincipal, kExpiredPasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_EXPIRED,
             status.password_status());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus does not report expired passwords if UF_DONT_EXPIRE_PASSWD is
@@ -1245,7 +1183,6 @@ TEST_F(AuthPolicyTest, GetUserStatusDontReportNeverExpirePasswords) {
                                       kNeverExpirePasswordAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
             status.password_status());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus reports password changes.
@@ -1258,7 +1195,6 @@ TEST_F(AuthPolicyTest, GetUserStatusReportChangedPasswords) {
             GetUserStatus(kUserPrincipal, kPasswordChangedAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
             status.password_status());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus reports valid password if the LDAP attributes pwdLastSet or
@@ -1274,7 +1210,6 @@ TEST_F(AuthPolicyTest, GetUserStatusReportValidPasswordsWithoutPwdFields) {
   EXPECT_FALSE(status.account_info().has_pwd_last_set());
   EXPECT_FALSE(status.account_info().has_user_account_control());
   EXPECT_FALSE(authpolicy_->IsUserTgtAutoRenewalEnabledForTesting());
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserKerberosFiles succeeds with empty files if not joined.
@@ -1315,7 +1250,6 @@ TEST_F(AuthPolicyTest, GetUserKerberosFilesSucceeds) {
   EXPECT_TRUE(files.has_krb5conf());
   EXPECT_EQ(kValidKrb5CCData, files.krb5cc());
   EXPECT_NE(std::string::npos, files.krb5conf().find("allow_weak_crypto"));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Changes of krb5.conf should trigger the UserKerberosFilesChanged signal. This
@@ -1352,7 +1286,6 @@ TEST_F(AuthPolicyTest, RenewTriggersFilesChangedSignal) {
   EXPECT_EQ(1, user_kerberos_files_changed_count_);
   EXPECT_EQ(ERROR_NONE, samba().RenewUserTgtForTesting());
   EXPECT_EQ(2, user_kerberos_files_changed_count_);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Join fails if there's a network issue.
@@ -1453,10 +1386,8 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   };
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(2,
             metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful user policy fetch that also contains extension policy.
@@ -1475,10 +1406,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithDataAndExtensions) {
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_EQ(2, extension_policy_validated_count_);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Verify that PolicyLevel is encoded properly.
@@ -1501,10 +1428,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   };
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Verifies that a POLICY_LEVEL_MANDATORY policy is not overwritten by a
@@ -1533,10 +1456,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   };
   JoinAndFetchDevicePolicy(kTwoGposMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Verify that GPO containing policies with the wrong data type are not set.
@@ -1563,10 +1482,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   };
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // GPOs with version 0 should be ignored.
@@ -1591,10 +1506,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // GPOs with an ignore flag set should be ignored. Sounds reasonable, hmm?
@@ -1619,10 +1530,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(3, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // User policy fetch fails if there's no device policy (since the way user
@@ -1630,7 +1537,6 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
 TEST_F(AuthPolicyTest, UserPolicyFetchFailsNoDevicePolicy) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NO_DEVICE_POLICY);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // User policy fetch works properly with loopback processing.
@@ -1753,6 +1659,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsBadMachineName) {
             Join(kNonExistingMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateDevicePolicy(ERROR_BAD_MACHINE_NAME);
   EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(0, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Policy fetch should ignore GPO files that are missing on the server. This
@@ -1760,10 +1667,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsBadMachineName) {
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsMissingFile) {
   validate_user_policy_ = &CheckUserPolicyEmpty;
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Policy fetch fails if a file fails to download (unless it's missing, see
@@ -1772,10 +1675,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsDownloadError) {
   EXPECT_EQ(ERROR_NONE, Join(kGpoDownloadErrorMachineName, kUserPrincipal,
                              MakePasswordFd()));
   FetchAndValidateDevicePolicy(ERROR_SMBCLIENT_FAILED);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful device policy fetch with a few kinit retries because the machine
@@ -1786,10 +1685,8 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
                              MakePasswordFd()));
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(kNumPropagationRetries,
             metrics_->GetLastMetricSample(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful device policy fetch with actual data.
@@ -1800,10 +1697,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Authpolicy caches device policy when device is not locked.
@@ -1816,10 +1709,6 @@ TEST_F(AuthPolicyTest, CachesDevicePolicyWhenDeviceIsNotLocked) {
   EXPECT_TRUE(base::DeleteFile(stub_gpo1_path_, /* recursive */ false));
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Successful device policy fetch that also contains extension policy.
@@ -1840,10 +1729,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithDataAndExtensions) {
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(2, extension_policy_validated_count_);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Completely empty GPO list fails. GPO lists should always contain at least
@@ -1852,7 +1737,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsEmptyGpoList) {
   EXPECT_EQ(ERROR_NONE,
             Join(kEmptyGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateDevicePolicy(ERROR_PARSE_FAILED);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // A GPO later in the list overrides prior GPOs.
@@ -1889,10 +1773,6 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
             Join(kTwoGposMachineName, kUserPrincipal, MakePasswordFd()));
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1,
-            metrics_->GetNumMetricReports(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 // Make sure cleaning state works.
@@ -1904,7 +1784,6 @@ TEST_F(AuthPolicyTest, CleanStateDir) {
   EXPECT_FALSE(base::IsDirectoryEmpty(state_path));
   EXPECT_TRUE(AuthPolicy::CleanState(paths_.get()));
   EXPECT_TRUE(base::IsDirectoryEmpty(state_path));
-  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // By default, nothing should call the (expensive) anonymizer since no sensitive
@@ -1920,8 +1799,6 @@ TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 
   EXPECT_FALSE(samba().GetAnonymizerForTesting()->process_called_for_testing());
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 }  // namespace authpolicy
