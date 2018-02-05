@@ -33,7 +33,7 @@ chromeos:
       audio:
         main:
           card: 'bxtda7219max'
-          cras-config-subdir: 'basking'
+          cras-config-dir: 'basking'
           ucm-suffix: 'basking'
       brand-code: 'ASUN'
       firmware:
@@ -84,9 +84,7 @@ class TransformConfigTests(unittest.TestCase):
     self.assertEqual(
         'basking',
         model.name)
-    self.assertEqual(
-        '/etc/cras/basking',
-        model.audio.main.cras_config_dir)
+    self.assertEqual('basking', model.audio.main.cras_config_dir)
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
@@ -128,7 +126,7 @@ chromeos:
       audio:
         main:
           card: 'bxtda7219max'
-          cras-config-subdir: 'astronaut'
+          cras-config-dir: 'astronaut'
       firmware:
         <<: *reef-9042-fw
         key-id: 'OEM2'
@@ -136,7 +134,7 @@ chromeos:
       audio:
         main:
           card: 'bxtda7219max'
-          cras-config-subdir: 'astronaut'
+          cras-config-dir: 'astronaut'
       firmware:
         <<: *reef-9042-fw
         key-id: 'OEM2'

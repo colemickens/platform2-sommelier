@@ -831,18 +831,10 @@ chromeos {
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | card | string |  | True | Name of the card. |
-| cras-config-dir | string | ```^(/[^/ ]*)+/?$``` | True | Full path to cras config: /etc/cras/{cras-config-subdir} (Auto-generated) |
-| cras-config-subdir | string |  | False | Optional subdir for model specific configuration. |
+| cras-config-dir | string | ```^[_a-z0-9]*$``` | True | Subdirectory for model-specific configuration. |
 | disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
-| files | array - [files](#files) |  | True | All of the audio files configured. |
 | topology-bin | string |  | False | Optional topology firmware filename. |
 | ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
-
-### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| source | string |  | False | File source in the build structure. |
-| target | string |  | False | Where the file will be installed on the image |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Description |

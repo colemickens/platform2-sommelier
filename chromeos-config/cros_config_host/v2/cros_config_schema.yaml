@@ -57,28 +57,12 @@ properties:
                       description: Name of the card.
                       type: string
                     cras-config-dir:
-                      description: 'Full path to cras config: /etc/cras/{cras-config-subdir}
-                        (Auto-generated)'
+                      description: Subdirectory for model-specific configuration.
                       type: string
-                      pattern: "^(/[^/ ]*)+/?$"
-                    cras-config-subdir:
-                      description: Optional subdir for model specific configuration.
-                      type: string
+                      pattern: "^[_a-z0-9]*$"
                     disable-profile:
                       description: Optional --disable_profile parameter for CRAS deamon.
                       type: string
-                    files:
-                      description: All of the audio files configured.
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          source:
-                            description: File source in the build structure.
-                            type: string
-                          target:
-                            description: Where the file will be installed on the image
-                            type: string
                     ucm-suffix:
                       description: Optional UCM suffix used to determine model specific
                         config.
@@ -90,7 +74,6 @@ properties:
                   required:
                   - card
                   - cras-config-dir
-                  - files
               additionalProperties: false
               required:
               - main

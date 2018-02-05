@@ -15,7 +15,7 @@ import json
 import os
 
 from .cros_config_schema import TransformConfig, GetNamedTuple
-from ..libcros_config_host import BaseFile, TouchFile
+from ..libcros_config_host import TouchFile
 
 LIB_FIRMWARE = '/lib/firmware'
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
@@ -106,17 +106,6 @@ class CrosConfigJson(object):
       self._model_dict = model
       self.name = self._model.name
 
-    def GetFirmwareUris(self):
-      """Returns a list of (string) firmware URIs.
-
-      Generates and returns a list of firmware URIs for this model. These URIs
-      can be used to pull down remote firmware packages.
-
-      Returns:
-        A list of (string) full firmware URIs, or an empty list on failure.
-      """
-      return self._model.firmware.bcs_uris
-
     def GetTouchFirmwareFiles(self):
       """Get a list of unique touch firmware files
 
@@ -131,15 +120,4 @@ class CrosConfigJson(object):
           if 'firmware-bin' in touch[key]:
             files.append(TouchFile(
                 touch[key]['firmware-bin'], touch[key]['firmware-symlink']))
-      return files
-
-    def GetAudioFiles(self):
-      """Get a list of audio files
-
-      Returns:
-        List of audio files for the given model.
-      """
-      files = []
-      for fname in self._model.audio.main.files:
-        files.append(BaseFile(fname.source, fname.dest))
       return files

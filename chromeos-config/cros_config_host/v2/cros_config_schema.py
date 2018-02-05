@@ -22,7 +22,7 @@ MODELS = 'models'
 BUILD_ONLY_ELEMENTS = [
     '/firmware',
     '/audio/main/card',
-    '/audio/main/cras-config-subdir',
+    '/audio/main/cras-config-dir',
     '/audio/main/files'
 ]
 CRAS_CONFIG_DIR = '/etc/cras'
@@ -104,66 +104,7 @@ def TransformConfig(config):
   # config in the source yaml.
   json_config = {CHROMEOS: {MODELS: json_config[CHROMEOS][MODELS]}}
 
-  # For now, this reaches parity with the --abspath option on cros_config,
-  # except it does it at build time.
-  # We may standardize this, but for now doing it in the transform works.
-  cras_config_dir_name = 'cras-config-dir'
-  cras_config_subdir_name = 'cras-config-subdir'
-  for model in json_config[CHROMEOS][MODELS]:
-    audio = model['audio']['main']
-    main_dir = audio.get(cras_config_dir_name, CRAS_CONFIG_DIR)
-    sub_dir = audio.get(cras_config_subdir_name, None)
-    if sub_dir:
-      main_dir = '%s/%s' % (main_dir, sub_dir)
-    audio[cras_config_dir_name] = main_dir
-    audio['files'] = _GetAudioFiles(model)
-    model['firmware']['bcs-uris'] = _GetFirmwareUris(model)
-
   return json.dumps(json_config, sort_keys=True, indent=2)
-
-def _GetAudioFiles(model_dict):
-  """Get all of the audio files to the specific model
-
-  Args:
-    model_dict: All attributes of the model
-
-  Returns:
-    List of files with {source, dest} tuples
-  """
-  files = []
-  model = GetNamedTuple(model_dict)
-  def _AddAudioFile(source, dest, fname):
-    files.append(
-        {'source': os.path.join(source, fname),
-         'dest': os.path.join(dest, fname)})
-  card = model.audio.main.card
-  subdir = model.audio.main.cras_config_subdir
-  subdir_path = '%s/' % subdir if subdir else ''
-
-  cras_source = 'cras-config'
-  cras_dest = CRAS_CONFIG_DIR
-
-  _AddAudioFile(cras_source, cras_dest, '%s%s' % (subdir_path, card))
-  _AddAudioFile(cras_source, cras_dest, '%s%s' % (subdir_path, 'dsp.ini'))
-
-  ucm_source = 'ucm-config'
-  ucm_dest = '/ucm/share/alsa/ucm'
-  ucm_suffix = getattr(model.audio.main, 'ucm-suffix', None)
-  ucm_suffix_path = '.%s' % ucm_suffix if ucm_suffix else ''
-
-  ucm_card_path = '%s%s' % (card, ucm_suffix_path)
-  _AddAudioFile(
-      ucm_source, ucm_dest, os.path.join(ucm_card_path, 'HiFi.conf'))
-  _AddAudioFile(
-      ucm_source,
-      ucm_dest,
-      os.path.join(ucm_card_path, '%s.conf' % ucm_card_path))
-
-  if getattr(model.audio.main, 'firmware_bin', None):
-    _AddAudioFile(
-        'topology', '/lib/firmware', model.audio.main.firmware_bin)
-
-  return files
 
 def _GetFirmwareUris(model_dict):
   """Returns a list of (string) firmware URIs.

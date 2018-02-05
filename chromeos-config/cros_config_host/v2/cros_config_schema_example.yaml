@@ -25,7 +25,7 @@ chromeos:
       audio:
         main:
           card: 'bxtda7219max'
-          cras-config-subdir: 'basking'
+          cras-config-dir: 'basking'
           ucm-suffix: 'basking'
       brand-code: 'ASUN'
       firmware:
@@ -57,7 +57,7 @@ chromeos:
       audio:
         main:
           card: 'bxtda7219max'
-          cras-config-subdir: 'electro'
+          cras-config-dir: 'electro'
           ucm-suffix: 'electro'
       brand-code: 'ACBB'
       firmware:

@@ -5,37 +5,13 @@
         "audio": {
           "main": {
             "card": "bxtda7219max", 
-            "cras-config-dir": "/etc/cras/basking", 
-            "cras-config-subdir": "basking", 
-            "files": [
-              {
-                "dest": "/etc/cras/basking/bxtda7219max", 
-                "source": "cras-config/basking/bxtda7219max"
-              }, 
-              {
-                "dest": "/etc/cras/basking/dsp.ini", 
-                "source": "cras-config/basking/dsp.ini"
-              }, 
-              {
-                "dest": "/ucm/share/alsa/ucm/bxtda7219max/HiFi.conf", 
-                "source": "ucm-config/bxtda7219max/HiFi.conf"
-              }, 
-              {
-                "dest": "/ucm/share/alsa/ucm/bxtda7219max/bxtda7219max.conf", 
-                "source": "ucm-config/bxtda7219max/bxtda7219max.conf"
-              }
-            ], 
+            "cras-config-dir": "basking", 
             "ucm-suffix": "basking"
           }
         }, 
         "brand-code": "ASUN", 
         "firmware": {
           "bcs-overlay": "overlay-reef-private", 
-          "bcs-uris": [
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef.9042.87.1.tbz2", 
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef_EC.9042.87.1.tbz2", 
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef.9042.110.0.tbz2"
-          ], 
           "build-targets": {
             "coreboot": "reef", 
             "cr50": "cr50", 
@@ -81,37 +57,13 @@
         "audio": {
           "main": {
             "card": "bxtda7219max", 
-            "cras-config-dir": "/etc/cras/electro", 
-            "cras-config-subdir": "electro", 
-            "files": [
-              {
-                "dest": "/etc/cras/electro/bxtda7219max", 
-                "source": "cras-config/electro/bxtda7219max"
-              }, 
-              {
-                "dest": "/etc/cras/electro/dsp.ini", 
-                "source": "cras-config/electro/dsp.ini"
-              }, 
-              {
-                "dest": "/ucm/share/alsa/ucm/bxtda7219max/HiFi.conf", 
-                "source": "ucm-config/bxtda7219max/HiFi.conf"
-              }, 
-              {
-                "dest": "/ucm/share/alsa/ucm/bxtda7219max/bxtda7219max.conf", 
-                "source": "ucm-config/bxtda7219max/bxtda7219max.conf"
-              }
-            ], 
+            "cras-config-dir": "electro", 
             "ucm-suffix": "electro"
           }
         }, 
         "brand-code": "ACBB", 
         "firmware": {
           "bcs-overlay": "overlay-reef-private", 
-          "bcs-uris": [
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef.9042.87.1.tbz2", 
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef_EC.9042.87.1.tbz2", 
-            "gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/chromeos-base/chromeos-firmware-reef/Reef.9042.110.0.tbz2"
-          ], 
           "build-targets": {
             "coreboot": "reef", 
             "cr50": "cr50", 
