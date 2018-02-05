@@ -158,8 +158,17 @@ TEST_F(AndroidOciWrapperTest, CleanUpOnExit) {
   EXPECT_FALSE(clean_exit_);
 }
 
-TEST_F(AndroidOciWrapperTest, GracefulShutdownOnRequest) {
+TEST_F(AndroidOciWrapperTest, ForcefulStatelessShutdownOnRequest) {
   StartContainerAsParent();
+
+  ExpectKill(true /* forceful */, 0 /* exit_code */);
+
+  impl_->RequestJobExit("");
+}
+
+TEST_F(AndroidOciWrapperTest, GracefulStatefulShutdownOnRequest) {
+  StartContainerAsParent();
+  impl_->SetStatefulMode(StatefulMode::STATEFUL);
 
   ExpectKill(false /* forceful */, 0 /* exit_code */);
 
@@ -168,6 +177,7 @@ TEST_F(AndroidOciWrapperTest, GracefulShutdownOnRequest) {
 
 TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
   StartContainerAsParent();
+  impl_->SetStatefulMode(StatefulMode::STATEFUL);
 
   ExpectKill(false /* forceful */, -1 /* exit_code */);
   ExpectKill(true /* forceful */, 0 /* exit_code */);
@@ -197,7 +207,7 @@ TEST_F(AndroidOciWrapperTest, KillJobOnEnsure) {
 TEST_F(AndroidOciWrapperTest, CleanExitAfterRequest) {
   StartContainerAsParent();
 
-  ExpectKill(false /* forceful */, 0 /* exit_code */);
+  ExpectKill(true /* forceful */, 0 /* exit_code */);
 
   impl_->RequestJobExit("");
 

@@ -39,7 +39,7 @@ class FakeContainerManager : public ContainerManagerInterface {
   // True if the container is running.
   bool running_ = false;
 
-  StatefulMode stateful_mode_ = StatefulMode::STATEFUL;
+  StatefulMode stateful_mode_ = StatefulMode::STATELESS;
 
   const pid_t pid_;
   ExitCallback exit_callback_;

@@ -36,7 +36,7 @@ AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
       system_utils_(system_utils),
       containers_directory_(containers_directory),
       clean_exit_(false),
-      stateful_mode_(StatefulMode::STATEFUL) {
+      stateful_mode_(StatefulMode::STATELESS) {
   DCHECK(system_utils_);
   DCHECK(!containers_directory_.empty());
 }
@@ -51,6 +51,7 @@ void AndroidOciWrapper::HandleExit(const siginfo_t& status) {
   if (!container_pid_)
     return;
 
+  stateful_mode_ = StatefulMode::STATELESS;
   CleanUpContainer();
 }
 

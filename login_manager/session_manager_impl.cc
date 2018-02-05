@@ -1160,6 +1160,137 @@ bool SessionManagerImpl::StartArcInstance(
 #endif  // !USE_CHEETS
 }
 
+bool SessionManagerImpl::StartArcMiniContainer(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_request,
+    std::string* out_container_instance_id) {
+#if USE_CHEETS
+  StartArcMiniContainerRequest request;
+  if (!request.ParseFromArray(in_request.data(), in_request.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                         "StartArcMiniContainerRequest parsing failed.");
+    return false;
+  }
+  std::vector<std::string> keyvals = {
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+      base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
+                         request.native_bridge_experiment())};
+
+  std::string container_instance_id =
+      StartArcContainer(kStartArcInstanceForLoginScreenImpulse, keyvals, error);
+  if (container_instance_id.empty()) {
+    DCHECK(*error);
+    return false;
+  }
+  *out_container_instance_id = std::move(container_instance_id);
+  return true;
+#else
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
+#endif  // !USE_CHEETS
+}
+
+bool SessionManagerImpl::UpgradeArcContainer(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_request,
+    dbus::FileDescriptor* out_fd) {
+#if USE_CHEETS
+  pid_t pid = 0;
+  if (!android_container_->GetContainerPID(&pid)) {
+    constexpr char kMessage[] = "Failed to find mini-container for upgrade.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kArcContainerNotFound, kMessage);
+    return false;
+  }
+  LOG(INFO) << "Container is running with PID " << pid;
+  // Stop the existing instance if it fails to continue to boot an existing
+  // container. Using Unretained() is okay because the closure will be called
+  // before this function returns.
+  base::ScopedClosureRunner scoped_runner(base::Bind(
+      &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
+  UpgradeArcContainerRequest request;
+  if (!request.ParseFromArray(in_request.data(), in_request.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                         "UpgradeArcContainerRequest parsing failed.");
+    return false;
+  }
+  dbus::FileDescriptor server_socket;
+  if (!CreateArcServerSocket(&server_socket, error)) {
+    DCHECK(*error);
+    return false;
+  }
+  server_socket.CheckValidity();
+
+  // |arc_start_time_| is initialized when the container is upgraded (rather
+  // than when the mini-container starts) since we are interested in measuring
+  // time from when the user logs in until the system is ready to be interacted
+  // with.
+  arc_start_time_ = base::TimeTicks::Now();
+
+  // To upgrade the ARC mini-container, a certain amount of disk space is
+  // needed under /home. We first check it.
+  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
+      kArcCriticalDiskFreeBytes) {
+    constexpr char kMessage[] = "Low free disk under /home";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kLowFreeDisk, kMessage);
+    return false;
+  }
+
+  std::string account_id;
+  if (!NormalizeAccountId(request.account_id(), &account_id, error)) {
+    DCHECK(*error);
+    return false;
+  }
+  if (user_sessions_.count(account_id) == 0) {
+    // This path can be taken if a forged D-Bus message for starting a full
+    // (stateful) container is sent to session_manager before the actual
+    // user's session has started. Do not remove the |account_id| check to
+    // prevent such a container from starting on login screen.
+    constexpr char kMessage[] = "Provided user ID does not have a session.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    return false;
+  }
+
+  android_container_->SetStatefulMode(StatefulMode::STATEFUL);
+  std::vector<std::string> keyvals = {
+      "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
+      "ANDROID_DATA_OLD_DIR=" + GetAndroidDataOldDirForUser(account_id).value(),
+      "CHROMEOS_USER=" + account_id,
+      base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
+                         request.skip_boot_completed_broadcast()),
+      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
+                         request.scan_vendor_priv_app()),
+      base::StringPrintf("CONTAINER_PID=%d", pid)};
+
+  if (!init_controller_->TriggerImpulse(
+          kContinueArcBootImpulse, keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    constexpr char kMessage[] = "Emitting continue-arc-boot impulse failed.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kEmitFailed, kMessage);
+    return false;
+  }
+
+  init_controller_->TriggerImpulse(
+      kStartArcNetworkImpulse,
+      {base::StringPrintf("CONTAINER_NAME=%s", kArcContainerName),
+       base::StringPrintf("CONTAINER_PID=%d", pid)},
+      InitDaemonController::TriggerMode::ASYNC);
+
+  login_metrics_->StartTrackingArcUseTime();
+
+  ignore_result(scoped_runner.Release());
+  *out_fd = std::move(server_socket);
+  return true;
+#else
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
+#endif  // !USE_CHEETS
+}
+
 bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
 #if USE_CHEETS
   pid_t pid;

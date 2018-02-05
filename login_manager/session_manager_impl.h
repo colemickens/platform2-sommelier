@@ -297,6 +297,12 @@ class SessionManagerImpl
                         const std::vector<uint8_t>& in_request,
                         std::string* out_container_instance_id,
                         dbus::FileDescriptor* out_fd) override;
+  bool StartArcMiniContainer(brillo::ErrorPtr* error,
+                             const std::vector<uint8_t>& in_request,
+                             std::string* out_container_instance_id) override;
+  bool UpgradeArcContainer(brillo::ErrorPtr* error,
+                           const std::vector<uint8_t>& in_request,
+                           dbus::FileDescriptor* out_fd) override;
   bool StopArcInstance(brillo::ErrorPtr* error) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
                             uint32_t in_restriction_state) override;
