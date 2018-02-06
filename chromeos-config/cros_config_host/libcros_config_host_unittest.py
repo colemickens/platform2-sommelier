@@ -473,8 +473,7 @@ class CrosConfigHostTest(unittest.TestCase):
         ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
          'whitetip1', 'whitetip2'], config.GetModelList())
 
-  # TODO(crbug.com/808583)
-  def disabled_testFirmware(self):
+  def testFirmware(self):
     """Test access to firmware information"""
     config = CrosConfig(self.filepath)
     self.assertEqual('updater4.sh', config.GetFirmwareScript())
@@ -491,10 +490,12 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
         ('blacktip', caroline._replace(model='blacktip',
                                        sig_id='sig-id-in-customization-id')),
-        ('blacktip1', caroline._replace(model='blacktip1', key_id='BLACKTIP1',
-                                        have_image=False, sig_id='blacktip1')),
-        ('blacktip2', caroline._replace(model='blacktip2', key_id='BLACKTIP2',
-                                        have_image=False, sig_id='blacktip2')),
+        ('blacktip-blacktip1', caroline._replace(
+            model='blacktip-blacktip1', key_id='BLACKTIP1', have_image=False,
+            sig_id='blacktip-blacktip1')),
+        ('blacktip-blacktip2', caroline._replace(
+            model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
+            sig_id='blacktip-blacktip2')),
         ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
         ('pyro', FirmwareInfo(
             model='pyro', shared_model=None, key_id='', have_image=True,
