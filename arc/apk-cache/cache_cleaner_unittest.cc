@@ -123,7 +123,7 @@ class CacheCleanerTest : public testing::Test {
  public:
   CacheCleanerTest() { EXPECT_TRUE(temp_dir_.CreateUniqueTempDir()); }
   ~CacheCleanerTest() { EXPECT_TRUE(temp_dir_.Delete()); }
-  const base::FilePath& temp_path() const { return temp_dir_.path(); }
+  const base::FilePath& temp_path() const { return temp_dir_.GetPath(); }
 
  private:
   base::ScopedTempDir temp_dir_;
@@ -317,7 +317,7 @@ TEST_F(CacheCleanerTest, Symlink) {
 
   // Create symlink to a file in the cache root.
   const base::FilePath symlink_file_target_path =
-      temp_dir_1.path().Append("symlink-target-file");
+      temp_dir_1.GetPath().Append("symlink-target-file");
   ASSERT_TRUE(CreateFile(symlink_file_target_path));
   ASSERT_TRUE(CreateSymbolicLink(symlink_file_target_path,
                                  temp_path().Append("symlink-file")));
@@ -325,8 +325,8 @@ TEST_F(CacheCleanerTest, Symlink) {
   // Create symlink to the valid package directory in the cache root.
   // We don't follow symlinks and they must be removed from the cache root.
   const base::FilePath symlink_dir_target_path =
-      temp_dir_1.path().Append(kPackage0);
-  ASSERT_TRUE(CreateValidPackage(temp_dir_1.path(), kPackage0));
+      temp_dir_1.GetPath().Append(kPackage0);
+  ASSERT_TRUE(CreateValidPackage(temp_dir_1.GetPath(), kPackage0));
   ASSERT_TRUE(CreateSymbolicLink(symlink_dir_target_path,
                                  temp_path().Append(kPackage0)));
 
