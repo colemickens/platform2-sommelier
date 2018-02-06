@@ -585,7 +585,8 @@ void ArcSetup::ExpandPropertyFile(const base::FilePath& input,
   std::string expanded;
   EXIT_IF(!base::ReadFileToString(input, &content));
   EXIT_IF(!ExpandPropertyContents(content, config, &expanded));
-  EXIT_IF(!WriteToFile(output, 0644, expanded));
+  EXIT_IF(!WriteToFile(output, 0600, expanded));
+  EXIT_IF(!Chown(kRootUid, kRootGid, output));
 }
 
 void ArcSetup::MaybeStartUreadaheadInTracingMode() {
@@ -1457,14 +1458,16 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
   // The list of container directories that need to be re-labeled. Note that
   // we don't use "var/run" because some of entries in the directory are on
   // a read-only filesystem.
-  constexpr std::array<const char*, 8> kDirectories{"dev",
-                                                    "oem",
-                                                    "var/run/arc/apkcache",
-                                                    "var/run/arc/bugreport",
-                                                    "var/run/arc/dalvik-cache",
-                                                    "var/run/camera",
-                                                    "var/run/chrome",
-                                                    "var/run/cras"};
+  constexpr std::array<const char*, 10> kDirectories{"dev",
+                                                     "oem",
+                                                     "default.prop",
+                                                     "system/build.prop",
+                                                     "var/run/arc/apkcache",
+                                                     "var/run/arc/bugreport",
+                                                     "var/run/arc/dalvik-cache",
+                                                     "var/run/camera",
+                                                     "var/run/chrome",
+                                                     "var/run/cras"};
 
   // Transform |kDirectories| because the mount points are visible only in
   // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
