@@ -25,6 +25,7 @@ namespace smbprovider {
 class DirectoryEntryListProto;
 class DirectoryIterator;
 class MountManager;
+class PostDepthFirstIterator;
 class SambaInterface;
 
 // Implementation of smbprovider's DBus interface. Mostly routes stuff between
@@ -143,8 +144,27 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                            const std::vector<uint8_t>& buffer,
                            int32_t* error_code);
 
+  // Calls delete on the contents of |dir_path| via postorder traversal.
+  // RecursiveDelete exits and returns error if an entry cannot be deleted
+  // or there was a Samba error iterating over entries.
+  int32_t RecursiveDelete(const std::string& dir_path);
+
+  // Calls delete on a DirectoryEntry. Returns the result from either DeleteFile
+  // or DeleteDirectory.
+  int32_t DeleteDirectoryEntry(const DirectoryEntry& entry);
+
+  // Calls Unlink.
+  int32_t DeleteFile(const std::string& file_path);
+
+  // Calls RemoveDirectory.
+  int32_t DeleteDirectory(const std::string& dir_path);
+
   // Helper method to construct a DirectoryIterator for a given |full_path|.
   DirectoryIterator GetDirectoryIterator(const std::string& full_path);
+
+  // Helper method to construct a PostDepthFirstIterator for a given
+  // |full_path|.
+  PostDepthFirstIterator GetPostOrderIterator(const std::string& full_path);
 
   // Opens a file located at |full_path| with permissions based on the protobuf.
   // |file_id| is the file handle for the opened file, and error will be set on

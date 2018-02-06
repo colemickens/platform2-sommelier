@@ -771,7 +771,7 @@ TEST_F(SmbProviderTest, CloseFileFailsOnNonExistantFileHandler) {
 
 // DeleteEntry succeeds when called without recursive on an empty directory.
 TEST_F(SmbProviderTest, DeleteEntrySucceedsOnEmptyDirectory) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
 
   ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
@@ -781,7 +781,7 @@ TEST_F(SmbProviderTest, DeleteEntrySucceedsOnEmptyDirectory) {
 
 // DeleteEntry succeeds when called on a file.
 TEST_F(SmbProviderTest, DeleteEntrySucceedsOnFile) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
   fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
@@ -793,7 +793,7 @@ TEST_F(SmbProviderTest, DeleteEntrySucceedsOnFile) {
 
 // DeleteEntry fails when called without recursive on a non-empty directory.
 TEST_F(SmbProviderTest, DeleteEntryFailsWithoutRecursiveOnNonEmptyDirectory) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
   fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
@@ -805,7 +805,7 @@ TEST_F(SmbProviderTest, DeleteEntryFailsWithoutRecursiveOnNonEmptyDirectory) {
 
 // DeleteEntry fails when called on non-existent file or directory.
 TEST_F(SmbProviderTest, DeleteEntryFailsOnNonExistentEntries) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
 
   ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
       mount_id, GetDefaultDirectoryPath(), false /* recursive */);
@@ -818,7 +818,7 @@ TEST_F(SmbProviderTest, DeleteEntryFailsOnNonExistentEntries) {
 
 // DeleteEntry deletes the correct file.
 TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectFile) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
   const std::string file_path1 = "/path/dog.jpg";
   const std::string file_path2 = "/path/cat.jpg";
 
@@ -836,7 +836,7 @@ TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectFile) {
 
 // DeleteEntry deletes the correct directory.
 TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectDirectory) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
   const std::string dir_path1 = "/path/dogs";
   const std::string dir_path2 = "/path/cats";
 
@@ -854,7 +854,7 @@ TEST_F(SmbProviderTest, DeleteEntryDeletesCorrectDirectory) {
 
 // DeleteEntry should fail on a non-file, non-directory.
 TEST_F(SmbProviderTest, DeleteEntryFailsOnNonFileNonDirectory) {
-  int32_t mount_id = PrepareMount();
+  const int32_t mount_id = PrepareMount();
   const std::string printer_path = "/path/canon.cn";
 
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
@@ -863,6 +863,130 @@ TEST_F(SmbProviderTest, DeleteEntryFailsOnNonFileNonDirectory) {
   ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
       mount_id, printer_path, false /* recursive */);
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->DeleteEntry(delete_entry_blob));
+}
+
+// DeleteEntry succeeds on an empty directory when called with the recusive
+// flag.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnEmptyDirecotryWithRecursive) {
+  const int32_t mount_id = PrepareMount();
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetAddedFullDirectoryPath()));
+}
+
+// DeleteEntry succeeds on a file when called with the recurisve flag.
+TEST_F(SmbProviderTest, DeleteEntrySuceedsOnFileWithRecursive) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultFilePath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetAddedFullFilePath()));
+}
+
+// DeleteEntry succeeds on a directory of files.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnADirOfFiles) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/1.jpg"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/3.png"));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/1.jpg")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/2.txt")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/3.png")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path")));
+}
+
+// DeleteEntry succeeds on multiple levels of nested directories.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnNestedEmptyDirectories) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs/lab"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/cats"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/cats/blue"));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs/lab")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/cats/blue")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/cats")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path")));
+}
+
+// DeleteEntry succeeds on a dir with a file and a non-empty dir.
+TEST_F(SmbProviderTest, DeleteEntrySucceedsOnADirWithAfileAndNonEmptyDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/dogs/1.jpg"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs/1.jpg")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/2.txt")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path")));
+}
+
+// DeleteEntry immediately fails as soon as an entry cannot be deleted.
+TEST_F(SmbProviderTest, DeleteEntryFailsWhenAFileCannotBeDeleted) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/dogs/1.jpg"));
+  fake_samba_->AddLockedFile(GetDefaultFullPath("/path/2.txt"));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_ACCESS_DENIED, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_FALSE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs/1.jpg")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path/2.txt")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path")));
+}
+
+// DeleteEntry immediately fails as soon as a Directory cannot be opened.
+TEST_F(SmbProviderTest, DeleteEntryFailsWhenADirectoryCannotBeOpened) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_ACCESS_DENIED, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path/2.txt")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path")));
 }
 
 // ReadFile fails when passed in invalid proto.

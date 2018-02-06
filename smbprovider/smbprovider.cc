@@ -13,6 +13,7 @@
 
 #include "smbprovider/constants.h"
 #include "smbprovider/iterator/directory_iterator.h"
+#include "smbprovider/iterator/post_depth_first_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -164,10 +165,6 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
     return error_code;
   }
 
-  if (options.recursive()) {
-    NOTIMPLEMENTED();
-  }
-
   bool is_directory;
   int32_t get_type_result;
   if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
@@ -177,9 +174,13 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
 
   int32_t result;
   if (is_directory) {
-    result = samba_interface_->RemoveDirectory(full_path.c_str());
+    if (options.recursive()) {
+      result = RecursiveDelete(full_path);
+    } else {
+      result = DeleteDirectory(full_path);
+    }
   } else {
-    result = samba_interface_->Unlink(full_path.c_str());
+    result = DeleteFile(full_path);
   }
 
   if (result != 0) {
@@ -424,9 +425,50 @@ bool SmbProvider::WriteFileFromBuffer(const WriteFileOptionsProto& options,
   return true;
 }
 
+int32_t SmbProvider::RecursiveDelete(const std::string& dir_path) {
+  PostDepthFirstIterator it = GetPostOrderIterator(dir_path);
+  int32_t it_result = it.Init();
+  while (it_result == 0) {
+    if (it.IsDone()) {
+      return 0;
+    }
+
+    int32_t del_result = DeleteDirectoryEntry(it.Get());
+    if (del_result != 0) {
+      return del_result;
+    }
+
+    it_result = it.Next();
+  }
+
+  // while-loop is only exited from if there's an iterator error.
+  DCHECK_NE(0, it_result);
+  return it_result;
+}
+
+int32_t SmbProvider::DeleteDirectoryEntry(const DirectoryEntry& entry) {
+  if (entry.is_directory) {
+    return DeleteDirectory(entry.full_path);
+  }
+  return DeleteFile(entry.full_path);
+}
+
+int32_t SmbProvider::DeleteFile(const std::string& file_path) {
+  return samba_interface_->Unlink(file_path.c_str());
+}
+
+int32_t SmbProvider::DeleteDirectory(const std::string& dir_path) {
+  return samba_interface_->RemoveDirectory(dir_path.c_str());
+}
+
 DirectoryIterator SmbProvider::GetDirectoryIterator(
     const std::string& full_path) {
   return DirectoryIterator(full_path, samba_interface_.get());
+}
+
+PostDepthFirstIterator SmbProvider::GetPostOrderIterator(
+    const std::string& full_path) {
+  return PostDepthFirstIterator(full_path, samba_interface_.get());
 }
 
 template <typename Proto>
