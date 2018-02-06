@@ -63,7 +63,7 @@ FirmwareInfo = namedtuple(
      'main_rw_image_uri', 'ec_image_uri', 'pd_image_uri',
      'extra', 'create_bios_rw_image', 'tools', 'sig_id'])
 
-UNIBOARD_DTB_INSTALL_PATH = 'usr/share/chromeos-config/config.dtb'
+UNIBOARD_DTB_INSTALL_DIR = 'usr/share/chromeos-config'
 
 # We support two configuration file format
 (FORMAT_FDT, FORMAT_YAML) = range(2)
@@ -1014,16 +1014,18 @@ def CrosConfig(fname=None, config_format=None):
   This is in a separate function to allow us to (in the future) support YAML,
   which will have a different means of creating the impl class.
   """
-  if not fname:
-    if 'SYSROOT' not in os.environ:
-      raise ValueError('No master configuration is available outside the '
-                       'ebuild environemnt. You must specify one')
-    fname = os.path.join(os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_PATH)
   if not config_format:
     if fname and ('.yaml' in fname or '.json' in fname):
       config_format = FORMAT_YAML
     else:
       config_format = FORMAT_FDT
+  if not fname:
+    if 'SYSROOT' not in os.environ:
+      raise ValueError('No master configuration is available outside the '
+                       'ebuild environemnt. You must specify one')
+    fname = os.path.join(
+        os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_DIR,
+        'config.' + ('dtb' if config_format == FORMAT_FDT else 'yaml'))
   # Allow files for backward compatibility with the old API.
   # TODO(sjg@chromum.org): Remove this when the firmware updater is updated.
   if isinstance(fname, file):
