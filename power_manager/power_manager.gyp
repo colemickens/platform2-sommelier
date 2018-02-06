@@ -78,6 +78,8 @@
         'powerd/system/rolling_average.cc',
         'powerd/system/tagged_device.cc',
         'powerd/system/udev.cc',
+        'powerd/system/udev_util.cc',
+        'powerd/system/wakeup_device.cc',
       ],
     },
     {
@@ -113,6 +115,7 @@
         'powerd/system/lockfile_checker_stub.cc',
         'powerd/system/power_supply_stub.cc',
         'powerd/system/udev_stub.cc',
+        'powerd/system/wakeup_device_stub.cc',
       ],
     },
     {
@@ -352,6 +355,7 @@
             'powerd/system/power_supply_unittest.cc',
             'powerd/system/rolling_average_unittest.cc',
             'powerd/system/tagged_device_unittest.cc',
+            'powerd/system/wakeup_device_unittest.cc',
           ],
         },
         {

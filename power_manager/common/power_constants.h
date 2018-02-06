@@ -226,6 +226,10 @@ extern const char kKeyboardBacklightUdevSubsystem[];
 // sysfs directory containing information about connected power sources.
 extern const char kPowerStatusPath[];
 
+// sysfs path to the wakeup control file relative to the device sysfs
+// directory (power/wakeup).
+extern const char kPowerWakeup[];
+
 // Program used to run code as root.
 extern const char kSetuidHelperPath[];
 

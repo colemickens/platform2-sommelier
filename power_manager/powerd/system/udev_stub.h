@@ -38,6 +38,9 @@ class UdevStub : public UdevInterface {
   void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
+  // Removes a |sysattr| to test the scenarios where the file is deleted.
+  void RemoveSysattr(const std::string& syspath, const std::string& sysattr);
+
   // UdevInterface implementation:
   void AddSubsystemObserver(const std::string& subsystem,
                             UdevSubsystemObserver* observer) override;

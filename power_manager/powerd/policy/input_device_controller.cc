@@ -7,12 +7,14 @@
 #include <base/logging.h>
 #include <vector>
 
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ec_wakeup_helper.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/udev_util.h"
 
 namespace power_manager {
 namespace policy {
@@ -103,10 +105,8 @@ const char InputDeviceController::kTagWakeupOnlyWhenUsable[] =
     "wakeup_only_when_usable";
 const char InputDeviceController::kTagWakeupDisabled[] = "wakeup_disabled";
 
-const char InputDeviceController::kPowerWakeup[] = "power/wakeup";
-const char InputDeviceController::kEnabled[] = "enabled";
-const char InputDeviceController::kDisabled[] = "disabled";
-const char InputDeviceController::kUSBDevice[] = "usb_device";
+const char InputDeviceController::kWakeupEnabled[] = "enabled";
+const char InputDeviceController::kWakeupDisabled[] = "disabled";
 
 const char InputDeviceController::kInhibited[] = "inhibited";
 
@@ -193,17 +193,9 @@ void InputDeviceController::OnTaggedDeviceRemoved(
 
 void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
                                             bool enabled) {
-  // For USB devices, the input device does not have a power/wakeup property
-  // itself, but the corresponding USB device does. If the matching device does
-  // not have a power/wakeup property, we thus fall back to the first ancestor
-  // that has one. Conflicts should not arise, since real-world USB input
-  // devices typically only expose one input interface anyway. However,
-  // crawling up sysfs should only reach the first "usb_device" node, because
-  // higher-level nodes include USB hubs, and enabling wakeups on those isn't
-  // a good idea.
   std::string parent_syspath;
-  if (!udev_->FindParentWithSysattr(device.syspath(), kPowerWakeup, kUSBDevice,
-                                    &parent_syspath)) {
+  if (!system::udev_util::FindWakeCapableParent(device.syspath(), udev_,
+                                                &parent_syspath)) {
     LOG(WARNING) << "No " << kPowerWakeup << " sysattr available for "
                  << device.syspath();
     return;
@@ -211,7 +203,7 @@ void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
             << device.syspath() << " through " << parent_syspath;
   udev_->SetSysattr(parent_syspath, kPowerWakeup,
-                    enabled ? kEnabled : kDisabled);
+                    enabled ? kWakeupEnabled : kWakeupDisabled);
 }
 
 void InputDeviceController::ConfigureInhibit(

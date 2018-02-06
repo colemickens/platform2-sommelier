@@ -94,6 +94,7 @@ const char kBusServiceName[] = "org.freedesktop.DBus";
 const char kBusServicePath[] = "/org/freedesktop/DBus";
 const char kBusInterface[] = "org.freedesktop.DBus";
 const char kBusNameOwnerChangedSignal[] = "NameOwnerChanged";
+const char kPowerWakeup[] = "power/wakeup";
 const double kEpsilon = 0.001;
 const int64_t kFastBacklightTransitionMs = 200;
 const int64_t kSlowBacklightTransitionMs = 2000;

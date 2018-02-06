@@ -39,9 +39,8 @@ const char* const kTagWakeupOnlyWhenUsable =
     InputDeviceController::kTagWakeupOnlyWhenUsable;
 const char* const kTagWakeupDisabled =
     InputDeviceController::kTagWakeupDisabled;
-const char* const kPowerWakeup = InputDeviceController::kPowerWakeup;
-const char* const kEnabled = InputDeviceController::kEnabled;
-const char* const kDisabled = InputDeviceController::kDisabled;
+const char* const kEnabled = InputDeviceController::kWakeupEnabled;
+const char* const kDisabled = InputDeviceController::kWakeupDisabled;
 const char* const kInhibited = InputDeviceController::kInhibited;
 const char* const kTPAD = InputDeviceController::kTPAD;
 const char* const kTSCR = InputDeviceController::kTSCR;

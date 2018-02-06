@@ -44,6 +44,11 @@ void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
     observer.OnTaggedDeviceRemoved(device);
 }
 
+void UdevStub::RemoveSysattr(const std::string& syspath,
+                             const std::string& sysattr) {
+  map_.erase(make_pair(syspath, sysattr));
+}
+
 void UdevStub::AddSubsystemObserver(const std::string& subsystem,
                                     UdevSubsystemObserver* observer) {
   DCHECK(observer);

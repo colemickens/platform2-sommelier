@@ -44,10 +44,8 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   static const char kTagWakeupDisabled[];
 
   // Sysfs power/wakeup constants.
-  static const char kPowerWakeup[];
-  static const char kEnabled[];
-  static const char kDisabled[];
-  static const char kUSBDevice[];
+  static const char kWakeupEnabled[];
+  static const char kWakeupDisabled[];
 
   static const char kInhibited[];
 
