@@ -199,7 +199,7 @@ def GetParser(description):
                            'stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
-  parser.add_argument('-y', '--yaml',
+  parser.add_argument('-y', '--yaml', action='store_true',
                       help='Use YAML format instead of DTB.')
   subparsers = parser.add_subparsers(dest='subcommand')
   # Parser: list-models
