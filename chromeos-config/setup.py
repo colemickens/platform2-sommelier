@@ -14,7 +14,7 @@ setup(
     author='Simon Glass',
     author_email='sjg@chromium.org',
     url='README.md',
-    packages=['cros_config_host', 'libcros_config_host', 'cros_config_host.v2'],
+    packages=['cros_config_host', 'cros_config_host.v2'],
     package_data={'cros_config_host.v2': ['cros_config_schema.yaml']},
     entry_points={
         'console_scripts': [
