@@ -22,37 +22,37 @@ namespace {
 TEST(ArcReadAhead, TestEmulateArcUreadahead) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  ASSERT_TRUE(MkdirRecursively(temp_directory.path().Append("subdir")));
+  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("subdir")));
 
   // These files should be read-ahead. Note that both framework-res.apk files
   // must be read.
-  EXPECT_TRUE(WriteToFile(temp_directory.path().Append("framework-res.apk"),
+  EXPECT_TRUE(WriteToFile(temp_directory.GetPath().Append("framework-res.apk"),
                           0755, std::string(0x1, 'x')));
   EXPECT_TRUE(WriteToFile(
-      temp_directory.path().Append("subdir").Append("framework-res.apk"), 0755,
-      std::string(0x1 << 1, 'x')));
+      temp_directory.GetPath().Append("subdir").Append("framework-res.apk"),
+      0755, std::string(0x1 << 1, 'x')));
   EXPECT_TRUE(
-      WriteToFile(temp_directory.path().Append("PrebuiltGmsCoreRelease.apk"),
+      WriteToFile(temp_directory.GetPath().Append("PrebuiltGmsCoreRelease.apk"),
                   0755, std::string(0x1 << 2, 'x')));
+  EXPECT_TRUE(WriteToFile(
+      temp_directory.GetPath().Append("lib_read_ahead_unittest_1.so"), 0755,
+      std::string(0x1 << 3, 'x')));
   EXPECT_TRUE(
-      WriteToFile(temp_directory.path().Append("lib_read_ahead_unittest_1.so"),
-                  0755, std::string(0x1 << 3, 'x')));
-  EXPECT_TRUE(
-      WriteToFile(temp_directory.path().Append("read_ahead_unittest_1.ttf"),
+      WriteToFile(temp_directory.GetPath().Append("read_ahead_unittest_1.ttf"),
                   0755, std::string(0x1 << 4, 'x')));
 
   // All files below should be ignored.
   EXPECT_TRUE(
-      WriteToFile(temp_directory.path().Append("read_ahead_unittest_2.ttf_"),
+      WriteToFile(temp_directory.GetPath().Append("read_ahead_unittest_2.ttf_"),
                   0755, std::string(0x1 << 5, 'x')));
   EXPECT_TRUE(
-      WriteToFile(temp_directory.path().Append("read_ahead_unittest_3.ttc"),
+      WriteToFile(temp_directory.GetPath().Append("read_ahead_unittest_3.ttc"),
                   0755, std::string(0x1 << 6, 'x')));
   // This is a .ttf file, but is empty.
   EXPECT_TRUE(CreateOrTruncate(
-      temp_directory.path().Append("read_ahead_unittest_4.ttf"), 0755));
+      temp_directory.GetPath().Append("read_ahead_unittest_4.ttf"), 0755));
 
-  auto result = EmulateArcUreadahead(temp_directory.path(),
+  auto result = EmulateArcUreadahead(temp_directory.GetPath(),
                                      base::TimeDelta::FromSeconds(5));
   EXPECT_EQ(5, result.first);
   EXPECT_EQ(31 /* == 0b11111 */, result.second);

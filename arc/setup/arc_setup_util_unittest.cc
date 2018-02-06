@@ -77,32 +77,36 @@ TEST(ArcSetupUtil, TestCreateOrTruncate) {
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
 
   // Create a new empty file.
-  EXPECT_TRUE(CreateOrTruncate(temp_directory.path().Append("file"), 0777));
+  EXPECT_TRUE(CreateOrTruncate(temp_directory.GetPath().Append("file"), 0777));
   // Confirm that the mode of the file is 0777.
   int mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("file"), &mode));
+      temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0777, mode);
   // Confirm that the size of the file is 0.
   int64_t size = -1;
-  EXPECT_TRUE(base::GetFileSize(temp_directory.path().Append("file"), &size));
+  EXPECT_TRUE(
+      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
   EXPECT_EQ(0, size);
 
   // Make the file non-empty.
-  EXPECT_TRUE(WriteToFile(temp_directory.path().Append("file"), 0777, "abc"));
-  EXPECT_TRUE(base::GetFileSize(temp_directory.path().Append("file"), &size));
+  EXPECT_TRUE(
+      WriteToFile(temp_directory.GetPath().Append("file"), 0777, "abc"));
+  EXPECT_TRUE(
+      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
   EXPECT_EQ(3, size);
 
   // Call the API again with a different mode.
-  EXPECT_TRUE(CreateOrTruncate(temp_directory.path().Append("file"), 0700));
+  EXPECT_TRUE(CreateOrTruncate(temp_directory.GetPath().Append("file"), 0700));
   // Confirm that the mode of the file is now 0700.
   mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("file"), &mode));
+      temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0700, mode);
   // Confirm that the size of the file is still 0.
   size = -1;
-  EXPECT_TRUE(base::GetFileSize(temp_directory.path().Append("file"), &size));
+  EXPECT_TRUE(
+      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
   EXPECT_EQ(0, size);
 }
 
@@ -120,7 +124,7 @@ TEST(ArcSetupUtil, TestWaitForPaths) {
 
   // Confirm that the function can handle one path.
   base::TimeDelta elapsed;
-  EXPECT_TRUE(WaitForPaths({temp_dir.path()}, timeout, &elapsed));
+  EXPECT_TRUE(WaitForPaths({temp_dir.GetPath()}, timeout, &elapsed));
   EXPECT_GT(elapsed, base::TimeDelta());
   // Strictly speaking, WaitForPaths does not guarantee this, but in practice,
   // this check passes.
@@ -128,32 +132,32 @@ TEST(ArcSetupUtil, TestWaitForPaths) {
   elapsed = base::TimeDelta();
 
   // Does the same with a nonexistent file.
-  EXPECT_FALSE(
-      WaitForPaths({temp_dir.path().Append("nonexistent")}, timeout, &elapsed));
+  EXPECT_FALSE(WaitForPaths({temp_dir.GetPath().Append("nonexistent")}, timeout,
+                            &elapsed));
   EXPECT_GT(elapsed, timeout);
   elapsed = base::TimeDelta();
 
   // Confirm that the function can handle two paths.
-  EXPECT_TRUE(
-      WaitForPaths({temp_dir.path(), temp_dir2.path()}, timeout, &elapsed));
+  EXPECT_TRUE(WaitForPaths({temp_dir.GetPath(), temp_dir2.GetPath()}, timeout,
+                           &elapsed));
   EXPECT_GT(elapsed, base::TimeDelta());
   EXPECT_LE(elapsed, timeout);  // same
   elapsed = base::TimeDelta();
 
-  EXPECT_FALSE(
-      WaitForPaths({temp_dir.path().Append("nonexistent"), temp_dir2.path()},
-                   timeout, &elapsed));
+  EXPECT_FALSE(WaitForPaths(
+      {temp_dir.GetPath().Append("nonexistent"), temp_dir2.GetPath()}, timeout,
+      &elapsed));
   EXPECT_GT(elapsed, timeout);
   elapsed = base::TimeDelta();
 
-  EXPECT_FALSE(
-      WaitForPaths({temp_dir.path(), temp_dir2.path().Append("nonexistent")},
-                   timeout, &elapsed));
+  EXPECT_FALSE(WaitForPaths(
+      {temp_dir.GetPath(), temp_dir2.GetPath().Append("nonexistent")}, timeout,
+      &elapsed));
   EXPECT_GT(elapsed, timeout);
   elapsed = base::TimeDelta();
 
-  EXPECT_FALSE(WaitForPaths({temp_dir.path().Append("nonexistent"),
-                             temp_dir2.path().Append("nonexistent")},
+  EXPECT_FALSE(WaitForPaths({temp_dir.GetPath().Append("nonexistent"),
+                             temp_dir2.GetPath().Append("nonexistent")},
                             timeout, &elapsed));
   EXPECT_GT(elapsed, timeout);
 }
@@ -163,27 +167,31 @@ TEST(ArcSetupUtil, TestWriteToFile) {
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
 
   // Create a non-empty file.
-  EXPECT_TRUE(WriteToFile(temp_directory.path().Append("file"), 0700, "abcde"));
+  EXPECT_TRUE(
+      WriteToFile(temp_directory.GetPath().Append("file"), 0700, "abcde"));
   // Confirm that the mode of the file is now 0700.
   int mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("file"), &mode));
+      temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0700, mode);
   // Confirm that the size of the file is still 0.
   int64_t size = -1;
-  EXPECT_TRUE(base::GetFileSize(temp_directory.path().Append("file"), &size));
+  EXPECT_TRUE(
+      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
   EXPECT_EQ(5, size);
 
   // Call the API again with a different mode and content.
-  EXPECT_TRUE(WriteToFile(temp_directory.path().Append("file"), 0777, "xyz"));
+  EXPECT_TRUE(
+      WriteToFile(temp_directory.GetPath().Append("file"), 0777, "xyz"));
   // Confirm that the mode of the file is now 0700.
   mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("file"), &mode));
+      temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0777, mode);
   // Confirm that the size of the file is still 0.
   size = -1;
-  EXPECT_TRUE(base::GetFileSize(temp_directory.path().Append("file"), &size));
+  EXPECT_TRUE(
+      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
   EXPECT_EQ(3, size);
 }
 
@@ -193,8 +201,8 @@ TEST(ArcSetupUtil, TestWriteToFileWithSymlink) {
   base::ScopedTempDir temp_directory2;
   ASSERT_TRUE(temp_directory2.CreateUniqueTempDir());
 
-  const base::FilePath symlink = temp_directory.path().Append("symlink");
-  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.path(), symlink));
+  const base::FilePath symlink = temp_directory.GetPath().Append("symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.GetPath(), symlink));
 
   // WriteToFile should fail when the path points to a symlink.
   EXPECT_FALSE(WriteToFile(symlink, 0777, "abc"));
@@ -208,7 +216,7 @@ TEST(ArcSetupUtil, TestWriteToFileWithSymlink) {
 TEST(ArcSetupUtil, TestWriteToFileWithFifo) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  const base::FilePath fifo = temp_directory.path().Append("fifo");
+  const base::FilePath fifo = temp_directory.GetPath().Append("fifo");
   ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
 
   // WriteToFile should fail when the path points to a fifo.
@@ -218,7 +226,7 @@ TEST(ArcSetupUtil, TestWriteToFileWithFifo) {
 TEST(ArcSetupUtil, TestGetPropertyFromFile) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  base::FilePath prop_file = temp_directory.path().Append("test.prop");
+  base::FilePath prop_file = temp_directory.GetPath().Append("test.prop");
 
   // Create a new prop file and read it.
   ASSERT_TRUE(WriteToFile(prop_file, 0700, "key=val"));
@@ -252,7 +260,8 @@ TEST(ArcSetupUtil, TestGetPropertyFromFile) {
 TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  base::FilePath packages_file = temp_directory.path().Append("packages.xml");
+  base::FilePath packages_file =
+      temp_directory.GetPath().Append("packages.xml");
 
   // Create a new file and read it.
   ASSERT_TRUE(WriteToFile(
@@ -344,7 +353,7 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
 TEST(ArcSetupUtil, TestFindLine) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  base::FilePath file = temp_directory.path().Append("test.file");
+  base::FilePath file = temp_directory.GetPath().Append("test.file");
 
   // Create a new prop file and read it.
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_find"));
@@ -388,45 +397,46 @@ TEST(ArcSetupUtil, TestMkdirRecursively) {
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
 
   // Set |temp_directory| to 0707.
-  EXPECT_TRUE(base::SetPosixFilePermissions(temp_directory.path(), 0707));
+  EXPECT_TRUE(base::SetPosixFilePermissions(temp_directory.GetPath(), 0707));
 
-  EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a/b/c")));
+  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c")));
   // Confirm the 3 directories are there.
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.path().Append("a")));
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.path().Append("a/b")));
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.path().Append("a/b/c")));
+  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a")));
+  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a/b")));
+  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a/b/c")));
 
   // Confirm that the newly created directories have 0755 mode.
   int mode = 0;
-  EXPECT_TRUE(
-      base::GetPosixFilePermissions(temp_directory.path().Append("a"), &mode));
-  EXPECT_EQ(0755, mode);
-  mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.path().Append("a/b"),
-                                            &mode));
+  EXPECT_TRUE(base::GetPosixFilePermissions(
+      temp_directory.GetPath().Append("a"), &mode));
   EXPECT_EQ(0755, mode);
   mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("a/b/c"), &mode));
+      temp_directory.GetPath().Append("a/b"), &mode));
+  EXPECT_EQ(0755, mode);
+  mode = 0;
+  EXPECT_TRUE(base::GetPosixFilePermissions(
+      temp_directory.GetPath().Append("a/b/c"), &mode));
   EXPECT_EQ(0755, mode);
 
   // Confirm that the existing directory |temp_directory| still has 0707 mode.
   mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.path(), &mode));
+  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.GetPath(), &mode));
   EXPECT_EQ(0707, mode);
 
   // Call the API again which should still succeed.
-  EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a/b/c")));
-  EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a/b/c/d")));
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.path().Append("a/b/c/d")));
+  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c")));
+  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c/d")));
+  EXPECT_TRUE(
+      base::DirectoryExists(temp_directory.GetPath().Append("a/b/c/d")));
   mode = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("a/b/c/d"), &mode));
+      temp_directory.GetPath().Append("a/b/c/d"), &mode));
   EXPECT_EQ(0755, mode);
 
   // Call the API again which should still succeed.
-  EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a/b")));
-  EXPECT_TRUE(MkdirRecursively(temp_directory.path().Append("a")));
+  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b")));
+  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a")));
 
   // Try to create an existing directory ("/") should still succeed.
   EXPECT_TRUE(MkdirRecursively(base::FilePath("/")));
@@ -442,47 +452,48 @@ TEST(ArcSetupUtil, TestInstallDirectory) {
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
 
   // Set |temp_directory| to 0707.
-  EXPECT_TRUE(base::SetPosixFilePermissions(temp_directory.path(), 0707));
+  EXPECT_TRUE(base::SetPosixFilePermissions(temp_directory.GetPath(), 0707));
 
   // Create a new directory.
   EXPECT_TRUE(InstallDirectory(0777, getuid(), getgid(),
-                               temp_directory.path().Append("sub1/sub2")));
+                               temp_directory.GetPath().Append("sub1/sub2")));
   // Confirm that the mode for sub2 is 0777.
   int mode_sub2 = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("sub1/sub2"), &mode_sub2));
+      temp_directory.GetPath().Append("sub1/sub2"), &mode_sub2));
   EXPECT_EQ(0777, mode_sub2);
   // Confirm that the mode for sub1 is NOT 0777 but the secure default, 0755.
   int mode_sub1 = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("sub1"), &mode_sub1));
+      temp_directory.GetPath().Append("sub1"), &mode_sub1));
   EXPECT_EQ(0755, mode_sub1);
 
   // Confirm that the existing directory |temp_directory| still has 0707 mode.
   int mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.path(), &mode));
+  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.GetPath(), &mode));
   EXPECT_EQ(0707, mode);
 
   // Call InstallDirectory again with the same path but a different mode, 01700.
   EXPECT_TRUE(InstallDirectory(0700 | S_ISVTX, getuid(), getgid(),
-                               temp_directory.path().Append("sub1/sub2")));
+                               temp_directory.GetPath().Append("sub1/sub2")));
   // Confirm that the mode for sub2 is now 01700.
   struct stat st;
   EXPECT_EQ(
-      0, stat(temp_directory.path().Append("sub1/sub2").value().c_str(), &st));
+      0,
+      stat(temp_directory.GetPath().Append("sub1/sub2").value().c_str(), &st));
   EXPECT_EQ(0700 | S_ISVTX, st.st_mode & ~S_IFMT);
   mode_sub2 = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("sub1/sub2"), &mode_sub2));
+      temp_directory.GetPath().Append("sub1/sub2"), &mode_sub2));
   EXPECT_EQ(0700, mode_sub2);  // base's function masks the mode with 0777.
   // Confirm that the mode for sub1 is still 0755.
   mode_sub1 = 0;
   EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.path().Append("sub1"), &mode_sub1));
+      temp_directory.GetPath().Append("sub1"), &mode_sub1));
   EXPECT_EQ(0755, mode_sub1);
   // Confirm that the existing directory |temp_directory| still has 0707 mode.
   mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.path(), &mode));
+  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.GetPath(), &mode));
   EXPECT_EQ(0707, mode);
 }
 
@@ -492,8 +503,8 @@ TEST(ArcSetupUtil, TestInstallDirectoryWithSymlink) {
   base::ScopedTempDir temp_directory2;
   ASSERT_TRUE(temp_directory2.CreateUniqueTempDir());
 
-  const base::FilePath symlink = temp_directory.path().Append("symlink");
-  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.path(), symlink));
+  const base::FilePath symlink = temp_directory.GetPath().Append("symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_directory2.GetPath(), symlink));
 
   // InstallDirectory should fail when the path points to a symlink.
   EXPECT_FALSE(InstallDirectory(0777, getuid(), getgid(), symlink));
@@ -507,7 +518,7 @@ TEST(ArcSetupUtil, TestInstallDirectoryWithSymlink) {
 TEST(ArcSetupUtil, TestInstallDirectoryWithFifo) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  const base::FilePath fifo = temp_directory.path().Append("fifo");
+  const base::FilePath fifo = temp_directory.GetPath().Append("fifo");
   ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
 
   // InstallDirectory should fail when the path points to a fifo.
@@ -517,25 +528,25 @@ TEST(ArcSetupUtil, TestInstallDirectoryWithFifo) {
 TEST(ArcSetupUtil, TestDeleteFilesInDir) {
   base::ScopedTempDir directory;
   ASSERT_TRUE(directory.CreateUniqueTempDir());
-  ASSERT_TRUE(MkdirRecursively(directory.path().Append("arm")));
-  ASSERT_TRUE(MkdirRecursively(directory.path().Append("arm64")));
+  ASSERT_TRUE(MkdirRecursively(directory.GetPath().Append("arm")));
+  ASSERT_TRUE(MkdirRecursively(directory.GetPath().Append("arm64")));
   ASSERT_TRUE(CreateOrTruncate(
-      directory.path().Append("arm/system@framework@boot.art"), 0755));
+      directory.GetPath().Append("arm/system@framework@boot.art"), 0755));
   ASSERT_TRUE(CreateOrTruncate(
-      directory.path().Append("arm64/system@framework@boot.art"), 0755));
+      directory.GetPath().Append("arm64/system@framework@boot.art"), 0755));
   EXPECT_TRUE(base::PathExists(
-      directory.path().Append("arm/system@framework@boot.art")));
+      directory.GetPath().Append("arm/system@framework@boot.art")));
   EXPECT_TRUE(base::PathExists(
-      directory.path().Append("arm/system@framework@boot.art")));
+      directory.GetPath().Append("arm/system@framework@boot.art")));
 
-  EXPECT_TRUE(arc::DeleteFilesInDir(directory.path()));
+  EXPECT_TRUE(arc::DeleteFilesInDir(directory.GetPath()));
 
-  EXPECT_TRUE(base::PathExists(directory.path().Append("arm")));
-  EXPECT_TRUE(base::PathExists(directory.path().Append("arm64")));
+  EXPECT_TRUE(base::PathExists(directory.GetPath().Append("arm")));
+  EXPECT_TRUE(base::PathExists(directory.GetPath().Append("arm64")));
   EXPECT_FALSE(base::PathExists(
-      directory.path().Append("arm/system@framework@boot.art")));
+      directory.GetPath().Append("arm/system@framework@boot.art")));
   EXPECT_FALSE(base::PathExists(
-      directory.path().Append("arm/system@framework@boot.art")));
+      directory.GetPath().Append("arm/system@framework@boot.art")));
 }
 
 TEST(ArcSetupUtil, TestLaunchAndWait) {
@@ -606,40 +617,42 @@ TEST(ArcSetupUtil, TestMoveDataAppOatDirectory) {
   ASSERT_TRUE(temp_target_directory.CreateUniqueTempDir());
 
   // Create cache files.
-  ASSERT_TRUE(MkdirRecursively(temp_directory.path().Append("com.a/oat/arm")));
   ASSERT_TRUE(
-      MkdirRecursively(temp_directory.path().Append("com.a/oat/arm64")));
+      MkdirRecursively(temp_directory.GetPath().Append("com.a/oat/arm")));
+  ASSERT_TRUE(
+      MkdirRecursively(temp_directory.GetPath().Append("com.a/oat/arm64")));
   ASSERT_TRUE(CreateOrTruncate(
-      temp_directory.path().Append("com.a/oat/arm/a.dex"), 0755));
+      temp_directory.GetPath().Append("com.a/oat/arm/a.dex"), 0755));
   ASSERT_TRUE(CreateOrTruncate(
-      temp_directory.path().Append("com.a/oat/arm64/a.dex"), 0755));
-  ASSERT_TRUE(MkdirRecursively(temp_directory.path().Append("com.a/apk")));
+      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex"), 0755));
+  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("com.a/apk")));
 
   EXPECT_TRUE(
-      base::PathExists(temp_directory.path().Append("com.a/oat/arm/a.dex")));
-  EXPECT_TRUE(
-      base::PathExists(temp_directory.path().Append("com.a/oat/arm64/a.dex")));
-  EXPECT_TRUE(base::PathExists(temp_directory.path().Append("com.a/apk")));
+      base::PathExists(temp_directory.GetPath().Append("com.a/oat/arm/a.dex")));
+  EXPECT_TRUE(base::PathExists(
+      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex")));
+  EXPECT_TRUE(base::PathExists(temp_directory.GetPath().Append("com.a/apk")));
 
-  MoveDataAppOatDirectory(temp_directory.path(), temp_target_directory.path());
+  MoveDataAppOatDirectory(temp_directory.GetPath(),
+                          temp_target_directory.GetPath());
 
   EXPECT_FALSE(
-      base::PathExists(temp_directory.path().Append("com.a/oat/arm/a.dex")));
-  EXPECT_FALSE(
-      base::PathExists(temp_directory.path().Append("com.a/oat/arm64/a.dex")));
-  EXPECT_FALSE(base::PathExists(temp_directory.path().Append("com.a/oat")));
-  EXPECT_TRUE(base::PathExists(temp_directory.path().Append("com.a/apk")));
+      base::PathExists(temp_directory.GetPath().Append("com.a/oat/arm/a.dex")));
+  EXPECT_FALSE(base::PathExists(
+      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex")));
+  EXPECT_FALSE(base::PathExists(temp_directory.GetPath().Append("com.a/oat")));
+  EXPECT_TRUE(base::PathExists(temp_directory.GetPath().Append("com.a/apk")));
 
   EXPECT_TRUE(base::PathExists(
-      temp_target_directory.path().Append("oat-com.a/arm/a.dex")));
+      temp_target_directory.GetPath().Append("oat-com.a/arm/a.dex")));
   EXPECT_TRUE(base::PathExists(
-      temp_target_directory.path().Append("oat-com.a/arm64/a.dex")));
+      temp_target_directory.GetPath().Append("oat-com.a/arm64/a.dex")));
 }
 
 TEST(ArcSetupUtil, TestGetChromeOsChannelFromFile) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  base::FilePath prop_file = temp_directory.path().Append("test.prop");
+  base::FilePath prop_file = temp_directory.GetPath().Append("test.prop");
 
   ASSERT_TRUE(
       WriteToFile(prop_file, 0700, "CHROMEOS_RELEASE_TRACK=beta-channel"));
@@ -684,7 +697,7 @@ TEST(ArcSetupUtil, TestGetChromeOsChannelFromFile) {
 TEST(ArcSetupUtil, TestParseContainerState) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  base::FilePath json_file = temp_directory.path().Append("state.json");
+  base::FilePath json_file = temp_directory.GetPath().Append("state.json");
 
   const base::FilePath kRootfsPath(
       "/opt/google/containers/android/rootfs/root");
@@ -702,13 +715,14 @@ TEST(ArcSetupUtil, TestParseContainerState) {
     }
   )json";
 
-  ASSERT_TRUE(
-      WriteToFile(json_file, 0700,
-                  base::StringPrintf(kJsonTemplate,
-                                     temp_directory.path().value().c_str())));
-  ASSERT_TRUE(MkdirRecursively(temp_directory.path().Append("mountpoints")));
+  ASSERT_TRUE(WriteToFile(
+      json_file, 0700,
+      base::StringPrintf(kJsonTemplate,
+                         temp_directory.GetPath().value().c_str())));
+  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("mountpoints")));
   ASSERT_TRUE(base::CreateSymbolicLink(
-      kRootfsPath, temp_directory.path().Append("mountpoints/container-root")));
+      kRootfsPath,
+      temp_directory.GetPath().Append("mountpoints/container-root")));
 
   pid_t container_pid;
   base::FilePath rootfs;
