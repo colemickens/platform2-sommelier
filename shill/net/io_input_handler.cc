@@ -28,6 +28,7 @@ IOInputHandler::IOInputHandler(int fd,
                                const InputCallback& input_callback,
                                const ErrorCallback& error_callback)
     : fd_(fd),
+      fd_watcher_(FROM_HERE),
       input_callback_(input_callback),
       error_callback_(error_callback) {}
 

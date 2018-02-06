@@ -26,6 +26,7 @@ IOReadyHandler::IOReadyHandler(int fd,
                                ReadyMode mode,
                                const ReadyCallback& ready_callback)
     : fd_(fd),
+      fd_watcher_(FROM_HERE),
       ready_mode_(mode),
       ready_callback_(ready_callback) {}
 
