@@ -453,8 +453,17 @@ class CrosConfigImpl(object):
       # It's confusing that arc-properties-type shows up as a "shares" property
       # here, but it has the same semantics as the other auto-follow properties
       # and validation makes sure it can't appear in places where it shouldn't.
+      #
+      # TODO(sjg@chromium.org):
+      # Note that the 'or i in self.subnodes' part is for yaml, where we use a
+      # json file within libcros_config_host and this does not support links
+      # between nodes (instead every use of a node blows it out fully at that
+      # point in the tree). For now this is modelled as a subnode with the
+      # name of the phandle, but at some point this will move to merging the
+      # target node's properties with this node, so this whole function will
+      # become unnecessary.
       share_prop = [i for i in ['arc-properties-type', 'shares', 'whitelabel']
-                    if i in self.properties]
+                    if i in self.properties or i in self.subnodes]
       if share_prop:
         return self.FollowPhandle(share_prop[0])
       return None
