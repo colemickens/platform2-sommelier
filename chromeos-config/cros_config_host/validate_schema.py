@@ -122,6 +122,7 @@ class PropFloat(PropDesc):
     try:
       float_val = float(prop.value)
       if self.float_range is not None:
+        # pylint: disable=unpacking-non-sequence
         min_val, max_val = self.float_range
         if float_val < min_val or float_val > max_val:
           val.Fail(prop.node.path, "'%s' value '%s' is out of range [%g..%g]" %

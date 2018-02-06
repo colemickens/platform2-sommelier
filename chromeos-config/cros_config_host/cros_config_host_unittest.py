@@ -57,7 +57,6 @@ class CrosConfigHostTest(unittest.TestCase):
     call_args = '{} -c {} list-models'.format(CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLinesWithoutSpaces(output)
-    all_lines = len(output.splitlines())
 
   def testListModelsInvalid(self):
     call_args = '{} -c invalid.dtb list-models'.format(CLI_FILE).split()

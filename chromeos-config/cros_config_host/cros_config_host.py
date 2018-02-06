@@ -32,7 +32,7 @@ def GetProperty(model, path, prop):
   """Prints a property from the config tree for all models in the list models.
 
   Args:
-    models: List of CrosConfig.Model for which to print the given property.
+    model: List of CrosConfig.Model for which to print the given property.
     path: The path (relative to a model) for the node containing the property.
     prop: The property to get (by name).
   """
