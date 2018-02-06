@@ -176,6 +176,13 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   template <typename Proto>
   bool Seek(const Proto& options, int32_t* error_code);
 
+  // Helper method to create a directory at |full_path|. |options|
+  // determines if the creation will be recursive. Returns true on success and
+  // sets |error_code| on failure.
+  bool CreateDirectory(const CreateDirectoryOptionsProto& options,
+                       const std::string& full_path,
+                       int32_t* error_code);
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;

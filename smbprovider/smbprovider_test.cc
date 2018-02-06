@@ -1546,4 +1546,87 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesToCorrectFile) {
   CloseFileHelper(mount_id, file_id2);
 }
 
+TEST_F(SmbProviderTest, CreateDirectoryFailsWithEmptyProto) {
+  ProtoBlob empty_blob;
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->CreateDirectory(empty_blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryFailsWithInvalidMount) {
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      999, GetDefaultDirectoryPath(), false /* recursive */);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryFailsWithAlreadyExistingDirectory) {
+  const int32_t mount_id = PrepareMount();
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), false /* recursive */);
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryFailsWithAlreadyExistingFile) {
+  const int32_t mount_id = PrepareSingleFileMount();
+
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, GetDefaultFilePath(), false /* recursive */);
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryFailsWithNoParentWhenNotRecursive) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, "/test/path/invalid/path", false /* recursive */);
+
+  // This fails since |recursive| is set to false, otherwise it would also
+  // create the parent directories.
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectorySucceeds) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), false /* recursive */);
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryCantAddTheSameDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), false /* recursive */);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateDirectory(blob)));
+
+  // Should fail attempting to add the same directory..
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateDirectory(blob)));
+}
+
+TEST_F(SmbProviderTest, CreateDirectoryCanAddSubDirectory) {
+  const int32_t mount_id = PrepareMount();
+  const std::string sub_dir = "/path/test";
+
+  // Should fail adding the sub directory without the parent directory since
+  // |recursive| is set to false.
+  ProtoBlob sub_dir_blob = CreateCreateDirectoryOptionsBlob(
+      mount_id, sub_dir, false /* recursive */);
+  EXPECT_EQ(ERROR_NOT_FOUND,
+            CastError(smbprovider_->CreateDirectory(sub_dir_blob)));
+
+  // Add the parent directory.
+  ProtoBlob blob = CreateCreateDirectoryOptionsBlob(mount_id, "/path",
+                                                    false /* recursive */);
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateDirectory(blob)));
+
+  // Should now succeed adding the sub directory.
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CreateDirectory(sub_dir_blob)));
+}
+
 }  // namespace smbprovider

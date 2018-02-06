@@ -268,8 +268,16 @@ int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
 }
 
 int32_t SmbProvider::CreateDirectory(const ProtoBlob& options_blob) {
-  NOTIMPLEMENTED();
-  return 0;
+  int32_t error_code;
+  CreateDirectoryOptionsProto options;
+  std::string full_path;
+
+  // TODO(allenvic): Implement recursive creation.
+  const bool result =
+      ParseOptionsAndPath(options_blob, &options, &full_path, &error_code) &&
+      CreateDirectory(options, full_path, &error_code);
+
+  return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
 // TODO(zentaro): When the proto's with missing mount_id are landed, this can
@@ -469,6 +477,22 @@ bool SmbProvider::TruncateAndCloseFile(const Proto& options,
 
   // Return if the truncate was successful.
   return truncate_result == 0;
+}
+
+bool SmbProvider::CreateDirectory(const CreateDirectoryOptionsProto& options,
+                                  const std::string& full_path,
+                                  int32_t* error_code) {
+  if (options.recursive()) {
+    NOTIMPLEMENTED();
+    return false;
+  }
+
+  const int32_t result = samba_interface_->CreateDirectory(full_path);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+  return true;
 }
 
 }  // namespace smbprovider
