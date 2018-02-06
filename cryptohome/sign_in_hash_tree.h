@@ -251,6 +251,7 @@ class SignInHashTree {
 
   // This is used to actually store and retrieve data from the backing disk
   // storage.
+  std::unique_ptr<Platform> p_;
   PersistentLookupTable plt_;
 };
 

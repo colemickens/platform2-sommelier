@@ -25,7 +25,8 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
     : leaf_length_(leaf_length),
       fan_out_(1 << bits_per_level),
       bits_per_level_(bits_per_level),
-      plt_(new Platform(), basedir) {
+      p_(new Platform()),
+      plt_(p_.get(), basedir) {
   // leaf_length_ should be divisible by bits_per_level_.
   CHECK(!(leaf_length_ % bits_per_level_));
 
