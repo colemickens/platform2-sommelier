@@ -41,6 +41,7 @@ namespace trunks {
 TEST(GeneratorTest, SerializeParseStruct) {
   TPM2B_CREATION_DATA data;
   memset(&data, 0, sizeof(TPM2B_CREATION_DATA));
+  data.size = sizeof(TPMS_CREATION_DATA);
   data.creation_data.pcr_select.count = 1;
   data.creation_data.pcr_select.pcr_selections[0].hash = TPM_ALG_SHA256;
   data.creation_data.pcr_select.pcr_selections[0].sizeof_select = 1;
@@ -63,7 +64,29 @@ TEST(GeneratorTest, SerializeParseStruct) {
   ASSERT_EQ(TPM_RC_SUCCESS, rc);
   EXPECT_EQ(0u, buffer.size());
   EXPECT_EQ(buffer_before, buffer_parsed);
-  EXPECT_EQ(buffer_before.size() - 2, data2.size);
+  EXPECT_EQ(data.size, data2.size);
+  EXPECT_EQ(0, memcmp(&data.creation_data, &data2.creation_data,
+                      sizeof(TPMS_CREATION_DATA)));
+}
+
+// This tests serializing and parsing TPM2B_ structures with zero |size|, in
+// which case the enclosed structure isn't marshalled.
+TEST(GeneratorTest, SerializeParseEmptyStruct) {
+  TPM2B_CREATION_DATA data;
+  memset(&data, 0, sizeof(TPM2B_CREATION_DATA));
+  std::string buffer;
+  TPM_RC rc = Serialize_TPM2B_CREATION_DATA(data, &buffer);
+  ASSERT_EQ(TPM_RC_SUCCESS, rc);
+  EXPECT_EQ(2u, buffer.size());
+  TPM2B_CREATION_DATA data2;
+  memset(&data2, 0, sizeof(TPM2B_CREATION_DATA));
+  std::string buffer_before = buffer;
+  std::string buffer_parsed;
+  rc = Parse_TPM2B_CREATION_DATA(&buffer, &data2, &buffer_parsed);
+  ASSERT_EQ(TPM_RC_SUCCESS, rc);
+  EXPECT_EQ(0u, buffer.size());
+  EXPECT_EQ(buffer_before, buffer_parsed);
+  EXPECT_EQ(data.size, data2.size);
   EXPECT_EQ(0, memcmp(&data.creation_data, &data2.creation_data,
                       sizeof(TPMS_CREATION_DATA)));
 }
@@ -216,12 +239,12 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
       .WillOnce(Return(true));
 
   TPM2B_SENSITIVE_CREATE in_sensitive;
-  in_sensitive.size = 5;
+  in_sensitive.size = sizeof(TPMS_SENSITIVE_CREATE);
   in_sensitive.sensitive.user_auth.size = 1;
   in_sensitive.sensitive.user_auth.buffer[0] = 'a';
   in_sensitive.sensitive.data.size = 0;
   TPM2B_PUBLIC in_public;
-  in_public.size = 18;
+  in_public.size = sizeof(TPMT_PUBLIC);
   in_public.public_area.type = TPM_ALG_SYMCIPHER;
   in_public.public_area.name_alg = TPM_ALG_SHA256;
   in_public.public_area.object_attributes = 0;
@@ -249,8 +272,8 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
       &creation_ticket, &key_name, &authorization);
   ASSERT_EQ(rc, TPM_RC_SUCCESS);
   EXPECT_EQ(key_handle, 0x80000001);
-  EXPECT_EQ(out_public.size, 18);
-  EXPECT_EQ(creation_data.size, 15);
+  EXPECT_EQ(out_public.size, sizeof(TPMT_PUBLIC));
+  EXPECT_EQ(creation_data.size, sizeof(TPMS_CREATION_DATA));
   EXPECT_EQ(creation_hash.size, 1);
   EXPECT_EQ(creation_hash.buffer[0], 'b');
   EXPECT_EQ(creation_ticket.tag, 0x8002);

@@ -5114,9 +5114,14 @@ TPM_RC Serialize_TPM2B_SENSITIVE_CREATE(const TPM2B_SENSITIVE_CREATE& value,
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMS_SENSITIVE_CREATE(value.sensitive, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMS_SENSITIVE_CREATE)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMS_SENSITIVE_CREATE(value.sensitive, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -5133,14 +5138,20 @@ TPM_RC Parse_TPM2B_SENSITIVE_CREATE(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMS_SENSITIVE_CREATE(buffer, &value->sensitive, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMS_SENSITIVE_CREATE);
+    result =
+        Parse_TPMS_SENSITIVE_CREATE(buffer, &value->sensitive, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }
@@ -6214,9 +6225,14 @@ TPM_RC Serialize_TPM2B_ECC_POINT(const TPM2B_ECC_POINT& value,
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMS_ECC_POINT(value.point, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMS_ECC_POINT)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMS_ECC_POINT(value.point, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -6233,14 +6249,19 @@ TPM_RC Parse_TPM2B_ECC_POINT(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMS_ECC_POINT(buffer, &value->point, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMS_ECC_POINT);
+    result = Parse_TPMS_ECC_POINT(buffer, &value->point, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }
@@ -7182,9 +7203,14 @@ TPM_RC Serialize_TPM2B_PUBLIC(const TPM2B_PUBLIC& value, std::string* buffer) {
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMT_PUBLIC(value.public_area, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMT_PUBLIC)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMT_PUBLIC(value.public_area, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -7201,14 +7227,19 @@ TPM_RC Parse_TPM2B_PUBLIC(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMT_PUBLIC(buffer, &value->public_area, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMT_PUBLIC);
+    result = Parse_TPMT_PUBLIC(buffer, &value->public_area, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }
@@ -7417,9 +7448,14 @@ TPM_RC Serialize_TPM2B_SENSITIVE(const TPM2B_SENSITIVE& value,
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMT_SENSITIVE(value.sensitive_area, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMT_SENSITIVE)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMT_SENSITIVE(value.sensitive_area, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -7436,14 +7472,19 @@ TPM_RC Parse_TPM2B_SENSITIVE(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMT_SENSITIVE(buffer, &value->sensitive_area, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMT_SENSITIVE);
+    result = Parse_TPMT_SENSITIVE(buffer, &value->sensitive_area, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }
@@ -7722,9 +7763,14 @@ TPM_RC Serialize_TPM2B_NV_PUBLIC(const TPM2B_NV_PUBLIC& value,
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMS_NV_PUBLIC(value.nv_public, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMS_NV_PUBLIC)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMS_NV_PUBLIC(value.nv_public, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -7741,14 +7787,19 @@ TPM_RC Parse_TPM2B_NV_PUBLIC(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMS_NV_PUBLIC(buffer, &value->nv_public, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMS_NV_PUBLIC);
+    result = Parse_TPMS_NV_PUBLIC(buffer, &value->nv_public, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }
@@ -8060,9 +8111,14 @@ TPM_RC Serialize_TPM2B_CREATION_DATA(const TPM2B_CREATION_DATA& value,
   VLOG(3) << __func__;
 
   std::string field_bytes;
-  result = Serialize_TPMS_CREATION_DATA(value.creation_data, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(TPMS_CREATION_DATA)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_TPMS_CREATION_DATA(value.creation_data, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -8079,14 +8135,20 @@ TPM_RC Parse_TPM2B_CREATION_DATA(std::string* buffer,
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
-  result = Parse_UINT16(buffer, &value->size, value_bytes);
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
   if (result) {
     return result;
   }
-
-  result = Parse_TPMS_CREATION_DATA(buffer, &value->creation_data, value_bytes);
-  if (result) {
-    return result;
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(TPMS_CREATION_DATA);
+    result =
+        Parse_TPMS_CREATION_DATA(buffer, &value->creation_data, value_bytes);
+    if (result) {
+      return result;
+    }
   }
   return result;
 }

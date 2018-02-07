@@ -457,9 +457,14 @@ TPM_RC Serialize_%(type)s(
 """
   _SERIALIZE_COMPLEX_TPM2B = """
   std::string field_bytes;
-  result = Serialize_%(type)s(value.%(name)s, &field_bytes);
-  if (result) {
-    return result;
+  if (value.size) {
+    if (value.size != sizeof(%(type)s)) {
+      return TPM_RC_SIZE;
+    }
+    result = Serialize_%(type)s(value.%(name)s, &field_bytes);
+    if (result) {
+      return result;
+    }
   }
   std::string size_bytes;
   result = Serialize_UINT16(field_bytes.size(), &size_bytes);
@@ -507,6 +512,22 @@ TPM_RC Parse_%(type)s(
       value_bytes);
   if (result) {
     return result;
+  }
+"""
+  _PARSE_COMPLEX_TPM2B = """
+  UINT16 parsed_size = 0;
+  result = Parse_UINT16(buffer, &parsed_size, value_bytes);
+  if (result) {
+    return result;
+  }
+  if (!parsed_size) {
+    value->size = 0;
+  } else {
+    value->size = sizeof(%(type)s);
+    result = Parse_%(type)s(buffer, &value->%(name)s, value_bytes);
+    if (result) {
+      return result;
+    }
   }
 """
   _SERIALIZE_FUNCTION_END = '  return result;\n}\n'
@@ -736,8 +757,11 @@ std::string StringFrom_%(type)s(
       self._OutputUnionSerialize(out_file)
       serialized_types.add(self.name)
       return
+    # Write the serialize function.
     out_file.write(self._SERIALIZE_FUNCTION_START % {'type': self.name})
     if self.IsComplexTPM2B():
+      assert len(self.fields) == 2
+      assert self.fields[0][1] == 'size'
       field_type = self.fields[1][0]
       field_name = self.fields[1][1]
       out_file.write(self._SERIALIZE_COMPLEX_TPM2B % {'type': field_type,
@@ -753,15 +777,24 @@ std::string StringFrom_%(type)s(
           out_file.write(self._SERIALIZE_FIELD % {'type': field[0],
                                                   'name': field[1]})
     out_file.write(self._SERIALIZE_FUNCTION_END)
+    # Write the parse function.
     out_file.write(self._PARSE_FUNCTION_START % {'type': self.name})
-    for field in self.fields:
-      if self._ARRAY_FIELD_RE.search(field[1]):
-        self._OutputArrayField(out_file, field, self._PARSE_FIELD_ARRAY)
-      elif self._UNION_TYPE_RE.search(field[0]):
-        self._OutputUnionField(out_file, field, self._PARSE_FIELD_WITH_SELECTOR)
-      else:
-        out_file.write(self._PARSE_FIELD % {'type': field[0],
-                                            'name': field[1]})
+    if self.IsComplexTPM2B():
+      assert len(self.fields) == 2
+      assert self.fields[0][1] == 'size'
+      field_type = self.fields[1][0]
+      field_name = self.fields[1][1]
+      out_file.write(self._PARSE_COMPLEX_TPM2B % {'type': field_type,
+                                                  'name': field_name})
+    else:
+      for field in self.fields:
+        if self._ARRAY_FIELD_RE.search(field[1]):
+          self._OutputArrayField(out_file, field, self._PARSE_FIELD_ARRAY)
+        elif self._UNION_TYPE_RE.search(field[0]):
+          self._OutputUnionField(out_file, field, self._PARSE_FIELD_WITH_SELECTOR)
+        else:
+          out_file.write(self._PARSE_FIELD % {'type': field[0],
+                                              'name': field[1]})
     out_file.write(self._SERIALIZE_FUNCTION_END)
     # If this is a TPM2B structure throw in a few convenience functions.
     if self.IsSimpleTPM2B():
