@@ -122,7 +122,11 @@ BRILLO_EXPORT const FirstResponsePdu* FirmwareUpdater_GetFirstResponsePdu(
 }
 BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
     FirmwareUpdater* updater, SectionName section_name) {
-  return updater->GetSectionVersion(section_name).c_str();
+  // To avoid the string being freed from memory after exiting the function, we
+  // store as a static variable here.  However, the return string should be
+  // copied before calling the function again (Python ctypes does this).
+  static std::string version = updater->GetSectionVersion(section_name);
+  return version.c_str();
 }
 
 BRILLO_EXPORT PairManager* PairManager_New() {
