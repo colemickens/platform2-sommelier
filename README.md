@@ -67,6 +67,7 @@ copies.
 | [metrics](./metrics/) | Client side user metrics collection |
 | [midis](./midis/) | [MIDI](https://en.wikipedia.org/wiki/MIDI) service |
 | [mist](./mist/) | Modem USB Interface Switching Tool |
+| [ml](./ml/) | Machine learning service |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
 | [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
