@@ -35,7 +35,7 @@ using brillo::ProcessImpl;
 namespace {
 
 const FilePath kContainersDir("/run/containers");
-const FilePath::StringType kArcDirPattern("android_*");
+const FilePath::StringType kArcDirPattern("android*");
 const FilePath kContainerPid("container.pid");
 
 const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
