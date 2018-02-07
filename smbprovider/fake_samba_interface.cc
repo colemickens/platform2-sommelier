@@ -98,6 +98,10 @@ int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
     return ENOENT;
   }
 
+  if (entry->locked) {
+    return EACCES;
+  }
+
   stat->st_size = entry->size;
   stat->st_mode = entry->smbc_type == SMBC_FILE ? kFileMode : kDirMode;
   stat->st_mtime = entry->date;
@@ -110,8 +114,13 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
   DCHECK(file_id);
   *file_id = -1;
 
-  if (!GetFile(file_path)) {
+  FakeFile* file = GetFile(file_path);
+  if (!file) {
     return ENOENT;
+  }
+
+  if (file->locked) {
+    return EACCES;
   }
 
   DCHECK(IsValidOpenFileFlags(flags));
@@ -186,8 +195,13 @@ int32_t FakeSambaInterface::Seek(int32_t file_id, int64_t offset) {
 }
 
 int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
-  if (!GetFile(file_path)) {
+  FakeFile* file = GetFile(file_path);
+  if (!file) {
     return ENOENT;
+  }
+
+  if (file->locked) {
+    return EACCES;
   }
 
   FakeDirectory* directory = GetDirectory(GetDirPath(file_path));
@@ -197,9 +211,10 @@ int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
 }
 
 int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
-  FakeDirectory* directory = GetDirectory(RemoveURLScheme(dir_path));
+  int32_t error;
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(dir_path), &error);
   if (!directory) {
-    return ENOENT;
+    return error;
   }
   if (!directory->entries.empty()) {
     return ENOTEMPTY;
@@ -335,19 +350,30 @@ void FakeSambaInterface::FakeFile::WriteData(size_t offset,
 FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,
                                          uint32_t smbc_type,
                                          size_t size,
-                                         uint64_t date)
+                                         uint64_t date,
+                                         bool locked)
     : name(GetFileName(full_path)),
       smbc_type(smbc_type),
       size(size),
-      date(date) {}
+      date(date),
+      locked(locked) {}
 
 void FakeSambaInterface::AddDirectory(const std::string& path) {
+  AddDirectory(path, false /* locked */);
+}
+
+void FakeSambaInterface::AddDirectory(const std::string& path, bool locked) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
-  directory->entries.emplace_back(std::make_unique<FakeDirectory>(path));
+  directory->entries.emplace_back(
+      std::make_unique<FakeDirectory>(path, locked));
+}
+
+void FakeSambaInterface::AddLockedDirectory(const std::string& path) {
+  AddDirectory(path, true);
 }
 
 void FakeSambaInterface::AddFile(const std::string& path) {
@@ -357,15 +383,24 @@ void FakeSambaInterface::AddFile(const std::string& path) {
 void FakeSambaInterface::AddFile(const std::string& path, size_t size) {
   AddFile(path, size, 0 /* date */);
 }
+
 void FakeSambaInterface::AddFile(const std::string& path,
                                  size_t size,
                                  uint64_t date) {
+  AddFile(path, size, date, false /* locked */);
+}
+
+void FakeSambaInterface::AddFile(const std::string& path,
+                                 size_t size,
+                                 uint64_t date,
+                                 bool locked) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
-  directory->entries.emplace_back(std::make_unique<FakeFile>(path, size, date));
+  directory->entries.emplace_back(
+      std::make_unique<FakeFile>(path, size, date, locked));
 }
 
 void FakeSambaInterface::AddFile(const std::string& path,
@@ -380,14 +415,18 @@ void FakeSambaInterface::AddFile(const std::string& path,
       std::make_unique<FakeFile>(path, date, std::move(file_data)));
 }
 
+void FakeSambaInterface::AddLockedFile(const std::string& path) {
+  AddFile(path, 0 /* size */, 0 /* date */, true /* locked */);
+}
+
 void FakeSambaInterface::AddEntry(const std::string& path, uint32_t smbc_type) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
-  directory->entries.emplace_back(
-      std::make_unique<FakeEntry>(path, smbc_type, 0 /* size */, 0 /* date */));
+  directory->entries.emplace_back(std::make_unique<FakeEntry>(
+      path, smbc_type, 0 /* size */, 0 /* date */, false /* locked */));
 }
 
 FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
@@ -413,6 +452,10 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
     }
     if (entry->smbc_type != SMBC_DIR) {
       *error = ENOTDIR;
+      return nullptr;
+    }
+    if (entry->locked) {
+      *error = EACCES;
       return nullptr;
     }
     current = static_cast<FakeDirectory*>(entry);

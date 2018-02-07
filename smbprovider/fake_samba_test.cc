@@ -305,4 +305,44 @@ TEST_F(FakeSambaTest, CreateDirectorySucceedsOnValidPath) {
   EXPECT_EQ(0, fake_samba_.CreateDirectory(GetDefaultDirectoryPath()));
 }
 
+TEST_F(FakeSambaTest, UnlinkFailsOnLockedFile) {
+  fake_samba_.AddLockedFile(GetDefaultFilePath());
+
+  EXPECT_EQ(EACCES, fake_samba_.Unlink(GetDefaultFilePath()));
+}
+
+TEST_F(FakeSambaTest, RemoveDirectoryFailsOnLockedDirectory) {
+  fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
+
+  EXPECT_EQ(EACCES, fake_samba_.RemoveDirectory(GetDefaultDirectoryPath()));
+}
+
+TEST_F(FakeSambaTest, OpenDirectoryFailsOnLockedDirectory) {
+  fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
+
+  int32_t dir_id;
+  EXPECT_EQ(EACCES,
+            fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_EQ(-1, dir_id);
+}
+
+TEST_F(FakeSambaTest, GetEntryStatusFailsOnLockedEntries) {
+  fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
+  fake_samba_.AddLockedFile(GetDefaultFilePath());
+
+  struct stat stat_info;
+  EXPECT_EQ(EACCES,
+            fake_samba_.GetEntryStatus(GetDefaultDirectoryPath(), &stat_info));
+  EXPECT_EQ(EACCES,
+            fake_samba_.GetEntryStatus(GetDefaultFilePath(), &stat_info));
+}
+
+TEST_F(FakeSambaTest, OpenFileFailsOnLockedFile) {
+  fake_samba_.AddLockedFile(GetDefaultFilePath());
+
+  int32_t file_id;
+  EXPECT_EQ(EACCES,
+            fake_samba_.OpenFile(GetDefaultFilePath(), O_RDWR, &file_id));
+}
+
 }  // namespace smbprovider

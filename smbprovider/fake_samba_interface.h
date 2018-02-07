@@ -67,14 +67,27 @@ class FakeSambaInterface : public SambaInterface {
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
+  void AddDirectory(const std::string& path, bool locked);
+
+  // Adds a directory with |locked| set to true. All parents must exist.
+  // Operations on a locked directory will fail.
+  void AddLockedDirectory(const std::string& path);
 
   // Adds a file at the specified path. All parents must exist.
   void AddFile(const std::string& path);
   void AddFile(const std::string& path, size_t size);
   void AddFile(const std::string& path, size_t size, uint64_t date);
   void AddFile(const std::string& path,
+               size_t size,
+               uint64_t date,
+               bool locked);
+  void AddFile(const std::string& path,
                uint64_t date,
                std::vector<uint8_t> file_data);
+
+  // Adds a file at the specified path with |locked| set to true. All parents
+  // must exist. Operations on a locked file will fail.
+  void AddLockedFile(const std::string& path);
 
   void AddEntry(const std::string& path, uint32_t smbc_type);
 
@@ -117,6 +130,14 @@ class FakeSambaInterface : public SambaInterface {
     uint32_t smbc_type;
     size_t size;
     uint64_t date;
+    // Indicates whether the entry should be inacessable by the user.
+    bool locked = false;
+
+    FakeEntry(const std::string& full_path,
+              uint32_t smbc_type,
+              size_t size,
+              uint64_t date,
+              bool locked);
 
     FakeEntry(const std::string& full_path,
               uint32_t smbc_type,
@@ -131,10 +152,11 @@ class FakeSambaInterface : public SambaInterface {
     DISALLOW_COPY_AND_ASSIGN(FakeEntry);
   };
 
-  // This is used in |directory_map_| and is used as a fake file system.
   struct FakeDirectory : FakeEntry {
+    FakeDirectory(const std::string& full_path, bool locked)
+        : FakeEntry(full_path, SMBC_DIR, 0 /* size */, 0 /* date */, locked) {}
     explicit FakeDirectory(const std::string& full_path)
-        : FakeEntry(full_path, SMBC_DIR, 0 /* size */, 0 /* date */) {}
+        : FakeDirectory(full_path, false /* locked */) {}
 
     // Returns a pointer to the entry in the directory with |name|.
     FakeEntry* FindEntry(const std::string& name);
@@ -154,15 +176,24 @@ class FakeSambaInterface : public SambaInterface {
   };
 
   struct FakeFile : FakeEntry {
-    FakeFile(const std::string& full_path, size_t size, uint64_t date)
-        : FakeEntry(full_path, SMBC_FILE, size, date), has_data(false) {}
+    FakeFile(const std::string& full_path,
+             size_t size,
+             uint64_t date,
+             bool locked)
+        : FakeEntry(full_path, SMBC_FILE, size, date, locked),
+          has_data(false) {}
 
     FakeFile(const std::string& full_path,
              uint64_t date,
              std::vector<uint8_t> file_data)
-        : FakeEntry(full_path, SMBC_FILE, file_data.size(), date),
+        : FakeEntry(
+              full_path, SMBC_FILE, file_data.size(), date, false /* locked */),
           has_data(true),
           data(std::move(file_data)) {}
+
+    // Writes |buffer_size| bytes from |buffer| into the file starting from
+    // |offset|.
+    void WriteData(size_t offset, const uint8_t* buffer, size_t buffer_size);
 
     // This is used to track if the file currently has data. This may be false
     // during initialization, but can be switched to true if data is added
@@ -173,10 +204,6 @@ class FakeSambaInterface : public SambaInterface {
     // This only contains data if has_data is true.
     // Contains the data for the file.
     std::vector<uint8_t> data;
-
-    // Writes |buffer_size| bytes from |buffer| into the file starting from
-    // |offset|.
-    void WriteData(size_t offset, const uint8_t* buffer, size_t buffer_size);
 
     DISALLOW_COPY_AND_ASSIGN(FakeFile);
   };
