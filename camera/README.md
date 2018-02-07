@@ -127,7 +127,7 @@ required for a new camera HAL:
 
   - Camera HAL virtual ebuild example: [**Intel Kabylake camera HAL virtual package**]
 
-[**Intel Kabylake camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/media-libs/arc-camera3-hal-intel-ipu3/
+[**Intel Kabylake camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/chipset-kbl/media-libs/arc-camera3-hal-intel-ipu3/
 [**USB camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/media-libs/arc-camera3-hal-usb/
 [**Intel Kabylake camera HAL virtual package**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/virtual/arc-camera3-hal/
 
