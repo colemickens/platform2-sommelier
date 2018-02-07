@@ -133,11 +133,11 @@ unique_ptr<brillo::Any> DecodeCoercedValue(
 unique_ptr<string> MakeStringFromValue(const base::Value& value) {
   const auto value_type = value.GetType();
 
-  if (value_type == base::Value::TYPE_STRING) {
+  if (value_type == base::Value::Type::STRING) {
     auto unwrapped_string = std::make_unique<string>();
     value.GetAsString(unwrapped_string.get());
     return unwrapped_string;
-  } else if (value_type == base::Value::TYPE_DICTIONARY) {
+  } else if (value_type == base::Value::Type::DICTIONARY) {
     const base::DictionaryValue* dictionary_value;
     value.GetAsDictionary(&dictionary_value);
     unique_ptr<brillo::Any> decoded_value(
@@ -167,12 +167,12 @@ unique_ptr<vector<string>> ConvertListValueToStringVector(
     const base::Value* list_item;
     list_value.Get(i, &list_item);
     const auto item_type = list_item->GetType();
-    if (item_type != base::Value::TYPE_STRING &&
-        item_type != base::Value::TYPE_DICTIONARY) {
+    if (item_type != base::Value::Type::STRING &&
+        item_type != base::Value::Type::DICTIONARY) {
       LOG(ERROR) << "Element " << i << " has type " << item_type << ", "
                  << "instead of expected types "
-                 << base::Value::TYPE_STRING << "  or "
-                 << base::Value::TYPE_DICTIONARY << ".";
+                 << base::Value::Type::STRING << "  or "
+                 << base::Value::Type::DICTIONARY << ".";
       return nullptr;
     }
   }
@@ -200,35 +200,35 @@ ConvertDictionaryValueToVariantDictionary(
     const string& key = it.key();
     const base::Value& value = it.value();
     switch (value.GetType()) {
-      case base::Value::TYPE_NULL:
+      case base::Value::Type::NONE:
         LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_NULL.";
         return nullptr;
-      case base::Value::TYPE_BOOLEAN: {
+      case base::Value::Type::BOOLEAN: {
         bool native_bool;
         value.GetAsBoolean(&native_bool);
         (*variant_dictionary)[key] = native_bool;
         break;
       }
-      case base::Value::TYPE_INTEGER: {
+      case base::Value::Type::INTEGER: {
         int native_int;
         value.GetAsInteger(&native_int);
         (*variant_dictionary)[key] = native_int;
         break;
       }
-      case base::Value::TYPE_DOUBLE:
+      case base::Value::Type::DOUBLE:
         LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_DOUBLE.";
         return nullptr;
-      case base::Value::TYPE_STRING: {
+      case base::Value::Type::STRING: {
         string native_string;
         value.GetAsString(&native_string);
         (*variant_dictionary)[key] = native_string;
         break;
       }
-      case base::Value::TYPE_BINARY:
+      case base::Value::Type::BINARY:
         /* The JSON parser should never create Values of this type. */
         LOG(ERROR) << "Key |" << key << "| has unexpected TYPE_BINARY.";
         return nullptr;
-      case base::Value::TYPE_DICTIONARY: {
+      case base::Value::Type::DICTIONARY: {
         const base::DictionaryValue* dictionary_value;
         value.GetAsDictionary(&dictionary_value);
         if (!IsCoercedValue(*dictionary_value)) {
@@ -244,7 +244,7 @@ ConvertDictionaryValueToVariantDictionary(
         (*variant_dictionary)[key] = *decoded_coerced_value;
         break;
       }
-      case base::Value::TYPE_LIST: {  // Only string lists, for now.
+      case base::Value::Type::LIST: {  // Only string lists, for now.
         const base::ListValue* list_value;
         value.GetAsList(&list_value);
 
