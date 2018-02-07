@@ -1300,17 +1300,31 @@ void ArcSetup::MountSharedAndroidDirectories() {
       arc_paths_->android_data_directory.Append("cache");
   const base::FilePath data_directory =
       arc_paths_->android_data_directory.Append("data");
+  const base::FilePath data_cache_directory = data_directory.Append("cache");
+
   const base::FilePath shared_cache_directory =
       arc_paths_->shared_mount_directory.Append("cache");
   const base::FilePath shared_data_directory =
       arc_paths_->shared_mount_directory.Append("data");
 
-  if (!base::PathExists(shared_cache_directory))
-    EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                              shared_cache_directory));
-  if (!base::PathExists(shared_data_directory))
+  if (!base::PathExists(shared_data_directory)) {
     EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                               shared_data_directory));
+  }
+  if (kUseMasterContainer) {
+    // TODO(yusukes): Double-check if we really want to migrate N's /cache as
+    // /data/cache in P. If we don't, we can remove all the code for master
+    // as well as the MS_REC flag in this function.
+    if (!base::PathExists(data_cache_directory)) {
+      EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                                data_cache_directory));
+    }
+  } else {
+    if (!base::PathExists(shared_cache_directory)) {
+      EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                                shared_cache_directory));
+    }
+  }
 
   // First, make the original data directory a mount point and also make it
   // executable. This has to be done *before* passing the directory into
@@ -1320,9 +1334,17 @@ void ArcSetup::MountSharedAndroidDirectories() {
   EXIT_IF(
       !arc_mounter_->Remount(data_directory, MS_NOSUID | MS_NODEV, "seclabel"));
 
-  // Then, bind-mount these directories to the shared mount point.
-  EXIT_IF(!arc_mounter_->BindMount(cache_directory, shared_cache_directory));
-  EXIT_IF(!arc_mounter_->BindMount(data_directory, shared_data_directory));
+  // Then, bind-mount /cache to the shared mount point. On master, pass
+  // |cache_directory| as part of |data_directory| instead.
+  if (kUseMasterContainer)
+    EXIT_IF(!arc_mounter_->BindMount(cache_directory, data_cache_directory));
+  else
+    EXIT_IF(!arc_mounter_->BindMount(cache_directory, shared_cache_directory));
+
+  // Finally, bind-mount /data to the shared mount point. Note that MS_REC is
+  // not needed for non-master builds, but it doesn't hurt either.
+  EXIT_IF(!arc_mounter_->Mount(data_directory.value(), shared_data_directory,
+                               nullptr, MS_BIND | MS_REC, nullptr));
 }
 
 void ArcSetup::UnmountSharedAndroidDirectories() {
