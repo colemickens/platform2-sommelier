@@ -36,13 +36,13 @@ version includes some manual fixes to make processing easier.
 ### `generator/extract_structures.sh`
 
 Extracts structured information about types, constants, structures, and unions
-from `spec/raw_structures_fixed.txt`.  The output of this script is intended to
-be parsed by `generator.py`.
+from `generator/raw_structures_fixed.txt`.  The output of this script is
+intended to be parsed by `generator.py`.
 
 ### `generator/extract_commands.sh`
 
 Extracts structured information about commands from
-`spec/raw_commands_fixed.txt`.  The output of this script is intended to be
+`generator/raw_commands_fixed.txt`.  The output of this script is intended to be
 parsed by `generator.py`.
 
 ### `generator/generator.py`

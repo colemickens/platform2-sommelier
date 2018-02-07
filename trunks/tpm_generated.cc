@@ -1759,8 +1759,7 @@ TPM_RC Parse_TPMI_SM4_KEY_BITS(std::string* buffer,
 }
 
 TPM_RC Serialize_TPMI_ALG_KEYEDHASH_SCHEME(
-    const TPMI_ALG_KEYEDHASH_SCHEME& value,
-    std::string* buffer) {
+    const TPMI_ALG_KEYEDHASH_SCHEME& value, std::string* buffer) {
   VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
@@ -2183,8 +2182,7 @@ TPM_RC Parse_TPM_HC(std::string* buffer,
 }
 
 TPM_RC Serialize_TPMS_ALGORITHM_DESCRIPTION(
-    const TPMS_ALGORITHM_DESCRIPTION& value,
-    std::string* buffer) {
+    const TPMS_ALGORITHM_DESCRIPTION& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
@@ -5550,8 +5548,7 @@ TPM_RC Parse_TPMS_SCHEME_MGF1(std::string* buffer,
 }
 
 TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_56a(
-    const TPMS_SCHEME_KDF1_SP800_56a& value,
-    std::string* buffer) {
+    const TPMS_SCHEME_KDF1_SP800_56a& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
@@ -5601,8 +5598,7 @@ TPM_RC Parse_TPMS_SCHEME_KDF2(std::string* buffer,
 }
 
 TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_108(
-    const TPMS_SCHEME_KDF1_SP800_108& value,
-    std::string* buffer) {
+    const TPMS_SCHEME_KDF1_SP800_108& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
@@ -6293,8 +6289,7 @@ TPM_RC Parse_TPMT_ECC_SCHEME(std::string* buffer,
 }
 
 TPM_RC Serialize_TPMS_ALGORITHM_DETAIL_ECC(
-    const TPMS_ALGORITHM_DETAIL_ECC& value,
-    std::string* buffer) {
+    const TPMS_ALGORITHM_DETAIL_ECC& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
@@ -7226,8 +7221,7 @@ TPM2B_PUBLIC Make_TPM2B_PUBLIC(const TPMT_PUBLIC& inner) {
 }
 
 TPM_RC Serialize_TPM2B_PRIVATE_VENDOR_SPECIFIC(
-    const TPM2B_PRIVATE_VENDOR_SPECIFIC& value,
-    std::string* buffer) {
+    const TPM2B_PRIVATE_VENDOR_SPECIFIC& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
@@ -8170,8 +8164,9 @@ TPM_RC Tpm::SerializeCommand_Startup(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -8361,8 +8356,9 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -8552,8 +8548,9 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -8743,8 +8740,9 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -8823,8 +8821,7 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
 }
 
 void IncrementalSelfTestErrorCallback(
-    const Tpm::IncrementalSelfTestResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::IncrementalSelfTestResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPML_ALG());
 }
@@ -8938,8 +8935,9 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -9220,8 +9218,9 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -9320,8 +9319,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
 }
 
 void StartAuthSessionErrorCallback(
-    const Tpm::StartAuthSessionResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::StartAuthSessionResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPMI_SH_AUTH_SESSION(), TPM2B_NONCE());
 }
@@ -9465,8 +9463,9 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -9704,8 +9703,9 @@ TPM_RC Tpm::SerializeCommand_Create(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -9993,8 +9993,9 @@ TPM_RC Tpm::SerializeCommand_Load(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -10248,8 +10249,9 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -10475,8 +10477,9 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -10744,8 +10747,9 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -10837,8 +10841,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
 }
 
 void ActivateCredentialErrorCallback(
-    const Tpm::ActivateCredentialResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::ActivateCredentialResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPM2B_DIGEST());
 }
@@ -11000,8 +11003,9 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -11232,8 +11236,9 @@ TPM_RC Tpm::SerializeCommand_Unseal(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -11475,8 +11480,9 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -11568,8 +11574,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
 }
 
 void ObjectChangeAuthErrorCallback(
-    const Tpm::ObjectChangeAuthResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::ObjectChangeAuthResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPM2B_PRIVATE());
 }
@@ -11739,8 +11744,9 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -12032,8 +12038,9 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -12322,8 +12329,9 @@ TPM_RC Tpm::SerializeCommand_Import(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -12585,8 +12593,9 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -12844,8 +12853,9 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -13068,8 +13078,9 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -13310,8 +13321,9 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -13527,8 +13539,9 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -13773,8 +13786,9 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -14044,8 +14058,9 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -14304,8 +14319,9 @@ TPM_RC Tpm::SerializeCommand_Hash(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -14556,8 +14572,9 @@ TPM_RC Tpm::SerializeCommand_HMAC(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -14774,8 +14791,9 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -14995,8 +15013,9 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -15213,8 +15232,9 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -15437,8 +15457,9 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -15517,8 +15538,7 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
 }
 
 void HashSequenceStartErrorCallback(
-    const Tpm::HashSequenceStartResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::HashSequenceStartResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPMI_DH_OBJECT());
 }
@@ -15661,8 +15681,9 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -15886,8 +15907,9 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -15985,8 +16007,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
 }
 
 void SequenceCompleteErrorCallback(
-    const Tpm::SequenceCompleteResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::SequenceCompleteResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPM2B_DIGEST(), TPMT_TK_HASHCHECK());
 }
@@ -16147,8 +16168,9 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -16227,8 +16249,7 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
 }
 
 void EventSequenceCompleteErrorCallback(
-    const Tpm::EventSequenceCompleteResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::EventSequenceCompleteResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPML_DIGEST_VALUES());
 }
@@ -16398,8 +16419,9 @@ TPM_RC Tpm::SerializeCommand_Certify(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -16687,8 +16709,9 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -16964,8 +16987,9 @@ TPM_RC Tpm::SerializeCommand_Quote(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -17243,8 +17267,9 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -17342,8 +17367,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
 }
 
 void GetSessionAuditDigestErrorCallback(
-    const Tpm::GetSessionAuditDigestResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::GetSessionAuditDigestResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPM2B_ATTEST(), TPMT_SIGNATURE());
 }
@@ -17523,8 +17547,9 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -17622,8 +17647,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
 }
 
 void GetCommandAuditDigestErrorCallback(
-    const Tpm::GetCommandAuditDigestResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::GetCommandAuditDigestResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPM2B_ATTEST(), TPMT_SIGNATURE());
 }
@@ -17799,8 +17823,9 @@ TPM_RC Tpm::SerializeCommand_GetTime(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -18072,8 +18097,9 @@ TPM_RC Tpm::SerializeCommand_Commit(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -18327,8 +18353,9 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -18573,8 +18600,9 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -18819,8 +18847,9 @@ TPM_RC Tpm::SerializeCommand_Sign(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -19056,8 +19085,9 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -19274,8 +19304,9 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -19487,8 +19518,9 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -19693,8 +19725,9 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -19922,8 +19955,9 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -20193,8 +20227,9 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -20267,8 +20302,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
 }
 
 void PCR_SetAuthPolicyErrorCallback(
-    const Tpm::PCR_SetAuthPolicyResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::PCR_SetAuthPolicyResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -20418,8 +20452,9 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -20492,8 +20527,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
 }
 
 void PCR_SetAuthValueErrorCallback(
-    const Tpm::PCR_SetAuthValueResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::PCR_SetAuthValueResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -20618,8 +20652,9 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -20875,8 +20910,9 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -21172,8 +21208,9 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -21466,8 +21503,9 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -21681,8 +21719,9 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -21905,8 +21944,9 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -22114,8 +22154,9 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -22368,8 +22409,9 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -22615,8 +22657,9 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -22689,8 +22732,7 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
 }
 
 void PolicyCounterTimerErrorCallback(
-    const Tpm::PolicyCounterTimerResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::PolicyCounterTimerResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -22830,8 +22872,9 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -22904,8 +22947,7 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
 }
 
 void PolicyCommandCodeErrorCallback(
-    const Tpm::PolicyCommandCodeResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::PolicyCommandCodeResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -23032,8 +23074,9 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -23106,8 +23149,7 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
 }
 
 void PolicyPhysicalPresenceErrorCallback(
-    const Tpm::PolicyPhysicalPresenceResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::PolicyPhysicalPresenceResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -23248,8 +23290,9 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -23463,8 +23506,9 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -23697,8 +23741,9 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -23948,8 +23993,9 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -24154,8 +24200,9 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -24350,8 +24397,9 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -24545,8 +24593,9 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -24772,8 +24821,9 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -25016,8 +25066,9 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -25306,8 +25357,9 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -25380,8 +25432,7 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
 }
 
 void HierarchyControlErrorCallback(
-    const Tpm::HierarchyControlResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::HierarchyControlResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -25536,8 +25587,9 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -25610,8 +25662,7 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
 }
 
 void SetPrimaryPolicyErrorCallback(
-    const Tpm::SetPrimaryPolicyResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::SetPrimaryPolicyResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -25740,8 +25791,9 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -25934,8 +25986,9 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -26128,8 +26181,9 @@ TPM_RC Tpm::SerializeCommand_Clear(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -26330,8 +26384,9 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -26543,8 +26598,9 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -26617,8 +26673,7 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
 }
 
 void HierarchyChangeAuthErrorCallback(
-    const Tpm::HierarchyChangeAuthResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::HierarchyChangeAuthResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -26745,8 +26800,9 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -26973,8 +27029,9 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -27200,8 +27257,9 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -27407,8 +27465,9 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -27644,8 +27703,9 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -27718,8 +27778,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
 }
 
 void FieldUpgradeStartErrorCallback(
-    const Tpm::FieldUpgradeStartResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::FieldUpgradeStartResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -27859,8 +27918,9 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -27945,8 +28005,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
 }
 
 void FieldUpgradeDataErrorCallback(
-    const Tpm::FieldUpgradeDataResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::FieldUpgradeDataResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code, TPMT_HA(), TPMT_HA());
 }
@@ -28071,8 +28130,9 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -28285,8 +28345,9 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -28487,8 +28548,9 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -28688,8 +28750,9 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -28900,8 +28963,9 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -29092,8 +29156,9 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -29298,8 +29363,9 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -29503,8 +29569,9 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -29718,8 +29785,9 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -29932,8 +30000,9 @@ TPM_RC Tpm::SerializeCommand_TestParms(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -30150,8 +30219,9 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -30361,8 +30431,9 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -30435,8 +30506,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
 }
 
 void NV_UndefineSpaceErrorCallback(
-    const Tpm::NV_UndefineSpaceResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::NV_UndefineSpaceResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -30575,8 +30645,9 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -30780,8 +30851,9 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -31041,8 +31113,9 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -31255,8 +31328,9 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -31482,8 +31556,9 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -31703,8 +31778,9 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -31915,8 +31991,9 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -32115,8 +32192,9 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -32189,8 +32267,7 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
 }
 
 void NV_GlobalWriteLockErrorCallback(
-    const Tpm::NV_GlobalWriteLockResponse& callback,
-    TPM_RC response_code) {
+    const Tpm::NV_GlobalWriteLockResponse& callback, TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code);
 }
@@ -32341,8 +32418,9 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -32577,8 +32655,9 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -32794,8 +32873,9 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 
@@ -33055,8 +33135,9 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: "
+          << base::HexEncode(serialized_command->data(),
+                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 

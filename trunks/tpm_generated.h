@@ -1784,25 +1784,22 @@ TRUNKS_EXPORT TPM_RC Parse_TPM_ALGORITHM_ID(std::string* buffer,
                                             TPM_ALGORITHM_ID* value,
                                             std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM_MODIFIER_INDICATOR(const TPM_MODIFIER_INDICATOR& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM_MODIFIER_INDICATOR(
+    const TPM_MODIFIER_INDICATOR& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM_MODIFIER_INDICATOR(std::string* buffer,
                                                   TPM_MODIFIER_INDICATOR* value,
                                                   std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM_AUTHORIZATION_SIZE(const TPM_AUTHORIZATION_SIZE& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM_AUTHORIZATION_SIZE(
+    const TPM_AUTHORIZATION_SIZE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM_AUTHORIZATION_SIZE(std::string* buffer,
                                                   TPM_AUTHORIZATION_SIZE* value,
                                                   std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM_PARAMETER_SIZE(const TPM_PARAMETER_SIZE& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM_PARAMETER_SIZE(
+    const TPM_PARAMETER_SIZE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM_PARAMETER_SIZE(std::string* buffer,
                                               TPM_PARAMETER_SIZE* value,
@@ -1857,17 +1854,15 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_HMAC(std::string* buffer,
                                             TPMS_SCHEME_HMAC* value,
                                             std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_RSASSA(const TPMS_SCHEME_RSASSA& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_RSASSA(
+    const TPMS_SCHEME_RSASSA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_RSASSA(std::string* buffer,
                                               TPMS_SCHEME_RSASSA* value,
                                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_RSAPSS(const TPMS_SCHEME_RSAPSS& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_RSAPSS(
+    const TPMS_SCHEME_RSAPSS& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_RSAPSS(std::string* buffer,
                                               TPMS_SCHEME_RSAPSS* value,
@@ -1887,9 +1882,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_SM2(std::string* buffer,
                                            TPMS_SCHEME_SM2* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_ECSCHNORR(const TPMS_SCHEME_ECSCHNORR& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_ECSCHNORR(
+    const TPMS_SCHEME_ECSCHNORR& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_ECSCHNORR(std::string* buffer,
                                                  TPMS_SCHEME_ECSCHNORR* value,
@@ -1909,9 +1903,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_DH_OBJECT(std::string* buffer,
                                           TPMI_DH_OBJECT* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_DH_PERSISTENT(const TPMI_DH_PERSISTENT& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_DH_PERSISTENT(
+    const TPMI_DH_PERSISTENT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_DH_PERSISTENT(std::string* buffer,
                                               TPMI_DH_PERSISTENT* value,
@@ -1931,9 +1924,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_DH_PCR(std::string* buffer,
                                        TPMI_DH_PCR* value,
                                        std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_SH_AUTH_SESSION(const TPMI_SH_AUTH_SESSION& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_SH_AUTH_SESSION(
+    const TPMI_SH_AUTH_SESSION& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_SH_AUTH_SESSION(std::string* buffer,
                                                 TPMI_SH_AUTH_SESSION* value,
@@ -1974,9 +1966,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_RH_ENABLES(std::string* buffer,
                                            TPMI_RH_ENABLES* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_RH_HIERARCHY_AUTH(const TPMI_RH_HIERARCHY_AUTH& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_RH_HIERARCHY_AUTH(
+    const TPMI_RH_HIERARCHY_AUTH& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_RH_HIERARCHY_AUTH(std::string* buffer,
                                                   TPMI_RH_HIERARCHY_AUTH* value,
@@ -1996,9 +1987,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_RH_OWNER(std::string* buffer,
                                          TPMI_RH_OWNER* value,
                                          std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_RH_ENDORSEMENT(const TPMI_RH_ENDORSEMENT& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_RH_ENDORSEMENT(
+    const TPMI_RH_ENDORSEMENT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_RH_ENDORSEMENT(std::string* buffer,
                                                TPMI_RH_ENDORSEMENT* value,
@@ -2060,9 +2050,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_SYM(std::string* buffer,
                                         TPMI_ALG_SYM* value,
                                         std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_SYM_OBJECT(const TPMI_ALG_SYM_OBJECT& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_SYM_OBJECT(
+    const TPMI_ALG_SYM_OBJECT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_SYM_OBJECT(std::string* buffer,
                                                TPMI_ALG_SYM_OBJECT* value,
@@ -2082,25 +2071,22 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_KDF(std::string* buffer,
                                         TPMI_ALG_KDF* value,
                                         std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_SIG_SCHEME(const TPMI_ALG_SIG_SCHEME& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_SIG_SCHEME(
+    const TPMI_ALG_SIG_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_SIG_SCHEME(std::string* buffer,
                                                TPMI_ALG_SIG_SCHEME* value,
                                                std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ECC_KEY_EXCHANGE(const TPMI_ECC_KEY_EXCHANGE& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ECC_KEY_EXCHANGE(
+    const TPMI_ECC_KEY_EXCHANGE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ECC_KEY_EXCHANGE(std::string* buffer,
                                                  TPMI_ECC_KEY_EXCHANGE* value,
                                                  std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ST_COMMAND_TAG(const TPMI_ST_COMMAND_TAG& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ST_COMMAND_TAG(
+    const TPMI_ST_COMMAND_TAG& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ST_COMMAND_TAG(std::string* buffer,
                                                TPMI_ST_COMMAND_TAG* value,
@@ -2127,34 +2113,30 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_SM4_KEY_BITS(std::string* buffer,
                                              TPMI_SM4_KEY_BITS* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_KEYEDHASH_SCHEME(const TPMI_ALG_KEYEDHASH_SCHEME& value,
-                                    std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_KEYEDHASH_SCHEME(
+    const TPMI_ALG_KEYEDHASH_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMI_ALG_KEYEDHASH_SCHEME(std::string* buffer,
                                 TPMI_ALG_KEYEDHASH_SCHEME* value,
                                 std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_ASYM_SCHEME(const TPMI_ALG_ASYM_SCHEME& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_ASYM_SCHEME(
+    const TPMI_ALG_ASYM_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_ASYM_SCHEME(std::string* buffer,
                                                 TPMI_ALG_ASYM_SCHEME* value,
                                                 std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_RSA_SCHEME(const TPMI_ALG_RSA_SCHEME& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_RSA_SCHEME(
+    const TPMI_ALG_RSA_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_RSA_SCHEME(std::string* buffer,
                                                TPMI_ALG_RSA_SCHEME* value,
                                                std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_RSA_DECRYPT(const TPMI_ALG_RSA_DECRYPT& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_RSA_DECRYPT(
+    const TPMI_ALG_RSA_DECRYPT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_RSA_DECRYPT(std::string* buffer,
                                                 TPMI_ALG_RSA_DECRYPT* value,
@@ -2167,9 +2149,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMI_RSA_KEY_BITS(std::string* buffer,
                                              TPMI_RSA_KEY_BITS* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMI_ALG_ECC_SCHEME(const TPMI_ALG_ECC_SCHEME& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMI_ALG_ECC_SCHEME(
+    const TPMI_ALG_ECC_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMI_ALG_ECC_SCHEME(std::string* buffer,
                                                TPMI_ALG_ECC_SCHEME* value,
@@ -2224,9 +2205,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMA_PERMANENT(std::string* buffer,
                                           TPMA_PERMANENT* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMA_STARTUP_CLEAR(const TPMA_STARTUP_CLEAR& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMA_STARTUP_CLEAR(
+    const TPMA_STARTUP_CLEAR& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMA_STARTUP_CLEAR(std::string* buffer,
                                               TPMA_STARTUP_CLEAR* value,
@@ -2375,9 +2355,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPM_HC(std::string* buffer,
                                   TPM_HC* value,
                                   std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_ALGORITHM_DESCRIPTION(const TPMS_ALGORITHM_DESCRIPTION& value,
-                                     std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_ALGORITHM_DESCRIPTION(
+    const TPMS_ALGORITHM_DESCRIPTION& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_ALGORITHM_DESCRIPTION(std::string* buffer,
@@ -2432,9 +2411,8 @@ TRUNKS_EXPORT TPM2B_MAX_BUFFER Make_TPM2B_MAX_BUFFER(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_MAX_BUFFER(
     const TPM2B_MAX_BUFFER& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_MAX_NV_BUFFER(const TPM2B_MAX_NV_BUFFER& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_MAX_NV_BUFFER(
+    const TPM2B_MAX_NV_BUFFER& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_MAX_NV_BUFFER(std::string* buffer,
                                                TPM2B_MAX_NV_BUFFER* value,
@@ -2482,9 +2460,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_PCR_SELECT(std::string* buffer,
                                            TPMS_PCR_SELECT* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_PCR_SELECTION(const TPMS_PCR_SELECTION& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_PCR_SELECTION(
+    const TPMS_PCR_SELECTION& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_PCR_SELECTION(std::string* buffer,
                                               TPMS_PCR_SELECTION* value,
@@ -2525,17 +2502,15 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_ALG_PROPERTY(std::string* buffer,
                                              TPMS_ALG_PROPERTY* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_TAGGED_PROPERTY(const TPMS_TAGGED_PROPERTY& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_TAGGED_PROPERTY(
+    const TPMS_TAGGED_PROPERTY& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_TAGGED_PROPERTY(std::string* buffer,
                                                 TPMS_TAGGED_PROPERTY* value,
                                                 std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_TAGGED_PCR_SELECT(const TPMS_TAGGED_PCR_SELECT& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_TAGGED_PCR_SELECT(
+    const TPMS_TAGGED_PCR_SELECT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_TAGGED_PCR_SELECT(std::string* buffer,
                                                   TPMS_TAGGED_PCR_SELECT* value,
@@ -2576,17 +2551,15 @@ TRUNKS_EXPORT TPM_RC Parse_TPML_DIGEST(std::string* buffer,
                                        TPML_DIGEST* value,
                                        std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPML_DIGEST_VALUES(const TPML_DIGEST_VALUES& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPML_DIGEST_VALUES(
+    const TPML_DIGEST_VALUES& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPML_DIGEST_VALUES(std::string* buffer,
                                               TPML_DIGEST_VALUES* value,
                                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_DIGEST_VALUES(const TPM2B_DIGEST_VALUES& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_DIGEST_VALUES(
+    const TPM2B_DIGEST_VALUES& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_DIGEST_VALUES(std::string* buffer,
                                                TPM2B_DIGEST_VALUES* value,
@@ -2597,9 +2570,8 @@ Make_TPM2B_DIGEST_VALUES(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_DIGEST_VALUES(
     const TPM2B_DIGEST_VALUES& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPML_PCR_SELECTION(const TPML_PCR_SELECTION& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPML_PCR_SELECTION(
+    const TPML_PCR_SELECTION& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPML_PCR_SELECTION(std::string* buffer,
                                               TPML_PCR_SELECTION* value,
@@ -2612,18 +2584,16 @@ TRUNKS_EXPORT TPM_RC Parse_TPML_ALG_PROPERTY(std::string* buffer,
                                              TPML_ALG_PROPERTY* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPML_TAGGED_TPM_PROPERTY(const TPML_TAGGED_TPM_PROPERTY& value,
-                                   std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPML_TAGGED_TPM_PROPERTY(
+    const TPML_TAGGED_TPM_PROPERTY& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPML_TAGGED_TPM_PROPERTY(std::string* buffer,
                                TPML_TAGGED_TPM_PROPERTY* value,
                                std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPML_TAGGED_PCR_PROPERTY(const TPML_TAGGED_PCR_PROPERTY& value,
-                                   std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPML_TAGGED_PCR_PROPERTY(
+    const TPML_TAGGED_PCR_PROPERTY& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPML_TAGGED_PCR_PROPERTY(std::string* buffer,
@@ -2637,9 +2607,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPML_ECC_CURVE(std::string* buffer,
                                           TPML_ECC_CURVE* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_CAPABILITY_DATA(const TPMS_CAPABILITY_DATA& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_CAPABILITY_DATA(
+    const TPMS_CAPABILITY_DATA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_CAPABILITY_DATA(std::string* buffer,
                                                 TPMS_CAPABILITY_DATA* value,
@@ -2659,9 +2628,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_TIME_INFO(std::string* buffer,
                                           TPMS_TIME_INFO* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_TIME_ATTEST_INFO(const TPMS_TIME_ATTEST_INFO& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_TIME_ATTEST_INFO(
+    const TPMS_TIME_ATTEST_INFO& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_TIME_ATTEST_INFO(std::string* buffer,
                                                  TPMS_TIME_ATTEST_INFO* value,
@@ -2681,35 +2649,31 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_QUOTE_INFO(std::string* buffer,
                                            TPMS_QUOTE_INFO* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_COMMAND_AUDIT_INFO(const TPMS_COMMAND_AUDIT_INFO& value,
-                                  std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_COMMAND_AUDIT_INFO(
+    const TPMS_COMMAND_AUDIT_INFO& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_COMMAND_AUDIT_INFO(std::string* buffer,
                               TPMS_COMMAND_AUDIT_INFO* value,
                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SESSION_AUDIT_INFO(const TPMS_SESSION_AUDIT_INFO& value,
-                                  std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SESSION_AUDIT_INFO(
+    const TPMS_SESSION_AUDIT_INFO& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_SESSION_AUDIT_INFO(std::string* buffer,
                               TPMS_SESSION_AUDIT_INFO* value,
                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_CREATION_INFO(const TPMS_CREATION_INFO& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_CREATION_INFO(
+    const TPMS_CREATION_INFO& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_CREATION_INFO(std::string* buffer,
                                               TPMS_CREATION_INFO* value,
                                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_NV_CERTIFY_INFO(const TPMS_NV_CERTIFY_INFO& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_NV_CERTIFY_INFO(
+    const TPMS_NV_CERTIFY_INFO& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_NV_CERTIFY_INFO(std::string* buffer,
                                                 TPMS_NV_CERTIFY_INFO* value,
@@ -2739,9 +2703,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_AUTH_COMMAND(std::string* buffer,
                                              TPMS_AUTH_COMMAND* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_AUTH_RESPONSE(const TPMS_AUTH_RESPONSE& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_AUTH_RESPONSE(
+    const TPMS_AUTH_RESPONSE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_AUTH_RESPONSE(std::string* buffer,
                                               TPMS_AUTH_RESPONSE* value,
@@ -2754,9 +2717,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMT_SYM_DEF(std::string* buffer,
                                         TPMT_SYM_DEF* value,
                                         std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMT_SYM_DEF_OBJECT(const TPMT_SYM_DEF_OBJECT& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMT_SYM_DEF_OBJECT(
+    const TPMT_SYM_DEF_OBJECT& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMT_SYM_DEF_OBJECT(std::string* buffer,
                                                TPMT_SYM_DEF_OBJECT* value,
@@ -2772,17 +2734,15 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_SYM_KEY(std::string* buffer,
 TRUNKS_EXPORT TPM2B_SYM_KEY Make_TPM2B_SYM_KEY(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_SYM_KEY(const TPM2B_SYM_KEY& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SYMCIPHER_PARMS(const TPMS_SYMCIPHER_PARMS& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SYMCIPHER_PARMS(
+    const TPMS_SYMCIPHER_PARMS& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SYMCIPHER_PARMS(std::string* buffer,
                                                 TPMS_SYMCIPHER_PARMS* value,
                                                 std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_SENSITIVE_DATA(const TPM2B_SENSITIVE_DATA& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_SENSITIVE_DATA(
+    const TPM2B_SENSITIVE_DATA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_SENSITIVE_DATA(std::string* buffer,
                                                 TPM2B_SENSITIVE_DATA* value,
@@ -2793,17 +2753,15 @@ Make_TPM2B_SENSITIVE_DATA(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_SENSITIVE_DATA(
     const TPM2B_SENSITIVE_DATA& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SENSITIVE_CREATE(const TPMS_SENSITIVE_CREATE& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SENSITIVE_CREATE(
+    const TPMS_SENSITIVE_CREATE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SENSITIVE_CREATE(std::string* buffer,
                                                  TPMS_SENSITIVE_CREATE* value,
                                                  std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_SENSITIVE_CREATE(const TPM2B_SENSITIVE_CREATE& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_SENSITIVE_CREATE(
+    const TPM2B_SENSITIVE_CREATE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_SENSITIVE_CREATE(std::string* buffer,
                                                   TPM2B_SENSITIVE_CREATE* value,
@@ -2812,9 +2770,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_SENSITIVE_CREATE(std::string* buffer,
 TRUNKS_EXPORT TPM2B_SENSITIVE_CREATE
 Make_TPM2B_SENSITIVE_CREATE(const TPMS_SENSITIVE_CREATE& inner);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_SIGHASH(const TPMS_SCHEME_SIGHASH& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_SIGHASH(
+    const TPMS_SCHEME_SIGHASH& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_SIGHASH(std::string* buffer,
                                                TPMS_SCHEME_SIGHASH* value,
@@ -2827,9 +2784,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_XOR(std::string* buffer,
                                            TPMS_SCHEME_XOR* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMT_KEYEDHASH_SCHEME(const TPMT_KEYEDHASH_SCHEME& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMT_KEYEDHASH_SCHEME(
+    const TPMT_KEYEDHASH_SCHEME& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMT_KEYEDHASH_SCHEME(std::string* buffer,
                                                  TPMT_KEYEDHASH_SCHEME* value,
@@ -2870,9 +2826,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_MGF1(std::string* buffer,
                                             TPMS_SCHEME_MGF1* value,
                                             std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_KDF1_SP800_56a(const TPMS_SCHEME_KDF1_SP800_56a& value,
-                                     std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_56a(
+    const TPMS_SCHEME_KDF1_SP800_56a& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_SCHEME_KDF1_SP800_56a(std::string* buffer,
@@ -2886,9 +2841,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_SCHEME_KDF2(std::string* buffer,
                                             TPMS_SCHEME_KDF2* value,
                                             std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SCHEME_KDF1_SP800_108(const TPMS_SCHEME_KDF1_SP800_108& value,
-                                     std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_108(
+    const TPMS_SCHEME_KDF1_SP800_108& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_SCHEME_KDF1_SP800_108(std::string* buffer,
@@ -2923,9 +2877,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMT_RSA_DECRYPT(std::string* buffer,
                                             TPMT_RSA_DECRYPT* value,
                                             std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_PUBLIC_KEY_RSA(const TPM2B_PUBLIC_KEY_RSA& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_PUBLIC_KEY_RSA(
+    const TPM2B_PUBLIC_KEY_RSA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_PUBLIC_KEY_RSA(std::string* buffer,
                                                 TPM2B_PUBLIC_KEY_RSA* value,
@@ -2936,9 +2889,8 @@ Make_TPM2B_PUBLIC_KEY_RSA(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_PUBLIC_KEY_RSA(
     const TPM2B_PUBLIC_KEY_RSA& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_PRIVATE_KEY_RSA(const TPM2B_PRIVATE_KEY_RSA& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_PRIVATE_KEY_RSA(
+    const TPM2B_PRIVATE_KEY_RSA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_PRIVATE_KEY_RSA(std::string* buffer,
                                                  TPM2B_PRIVATE_KEY_RSA* value,
@@ -2949,9 +2901,8 @@ Make_TPM2B_PRIVATE_KEY_RSA(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_PRIVATE_KEY_RSA(
     const TPM2B_PRIVATE_KEY_RSA& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_ECC_PARAMETER(const TPM2B_ECC_PARAMETER& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_ECC_PARAMETER(
+    const TPM2B_ECC_PARAMETER& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_ECC_PARAMETER(std::string* buffer,
                                                TPM2B_ECC_PARAMETER* value,
@@ -2985,34 +2936,30 @@ TRUNKS_EXPORT TPM_RC Parse_TPMT_ECC_SCHEME(std::string* buffer,
                                            TPMT_ECC_SCHEME* value,
                                            std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_ALGORITHM_DETAIL_ECC(const TPMS_ALGORITHM_DETAIL_ECC& value,
-                                    std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_ALGORITHM_DETAIL_ECC(
+    const TPMS_ALGORITHM_DETAIL_ECC& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMS_ALGORITHM_DETAIL_ECC(std::string* buffer,
                                 TPMS_ALGORITHM_DETAIL_ECC* value,
                                 std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SIGNATURE_RSASSA(const TPMS_SIGNATURE_RSASSA& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SIGNATURE_RSASSA(
+    const TPMS_SIGNATURE_RSASSA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SIGNATURE_RSASSA(std::string* buffer,
                                                  TPMS_SIGNATURE_RSASSA* value,
                                                  std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SIGNATURE_RSAPSS(const TPMS_SIGNATURE_RSAPSS& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SIGNATURE_RSAPSS(
+    const TPMS_SIGNATURE_RSAPSS& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SIGNATURE_RSAPSS(std::string* buffer,
                                                  TPMS_SIGNATURE_RSAPSS* value,
                                                  std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_SIGNATURE_ECDSA(const TPMS_SIGNATURE_ECDSA& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_SIGNATURE_ECDSA(
+    const TPMS_SIGNATURE_ECDSA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_SIGNATURE_ECDSA(std::string* buffer,
                                                 TPMS_SIGNATURE_ECDSA* value,
@@ -3025,9 +2972,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMT_SIGNATURE(std::string* buffer,
                                           TPMT_SIGNATURE* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_ENCRYPTED_SECRET(const TPM2B_ENCRYPTED_SECRET& value,
-                                 std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_ENCRYPTED_SECRET(
+    const TPM2B_ENCRYPTED_SECRET& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_ENCRYPTED_SECRET(std::string* buffer,
                                                   TPM2B_ENCRYPTED_SECRET* value,
@@ -3038,9 +2984,8 @@ Make_TPM2B_ENCRYPTED_SECRET(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_ENCRYPTED_SECRET(
     const TPM2B_ENCRYPTED_SECRET& tpm2b);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_KEYEDHASH_PARMS(const TPMS_KEYEDHASH_PARMS& value,
-                               std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_KEYEDHASH_PARMS(
+    const TPMS_KEYEDHASH_PARMS& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_KEYEDHASH_PARMS(std::string* buffer,
                                                 TPMS_KEYEDHASH_PARMS* value,
@@ -3091,8 +3036,7 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_PUBLIC(std::string* buffer,
 TRUNKS_EXPORT TPM2B_PUBLIC Make_TPM2B_PUBLIC(const TPMT_PUBLIC& inner);
 
 TRUNKS_EXPORT TPM_RC Serialize_TPM2B_PRIVATE_VENDOR_SPECIFIC(
-    const TPM2B_PRIVATE_VENDOR_SPECIFIC& value,
-    std::string* buffer);
+    const TPM2B_PRIVATE_VENDOR_SPECIFIC& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPM2B_PRIVATE_VENDOR_SPECIFIC(std::string* buffer,
@@ -3171,9 +3115,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_NV_PUBLIC(std::string* buffer,
 
 TRUNKS_EXPORT TPM2B_NV_PUBLIC Make_TPM2B_NV_PUBLIC(const TPMS_NV_PUBLIC& inner);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_CONTEXT_SENSITIVE(const TPM2B_CONTEXT_SENSITIVE& value,
-                                  std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_CONTEXT_SENSITIVE(
+    const TPM2B_CONTEXT_SENSITIVE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPM2B_CONTEXT_SENSITIVE(std::string* buffer,
@@ -3192,9 +3135,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_CONTEXT_DATA(std::string* buffer,
                                              TPMS_CONTEXT_DATA* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_CONTEXT_DATA(const TPM2B_CONTEXT_DATA& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_CONTEXT_DATA(
+    const TPM2B_CONTEXT_DATA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_CONTEXT_DATA(std::string* buffer,
                                               TPM2B_CONTEXT_DATA* value,
@@ -3212,17 +3154,15 @@ TRUNKS_EXPORT TPM_RC Parse_TPMS_CONTEXT(std::string* buffer,
                                         TPMS_CONTEXT* value,
                                         std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMS_CREATION_DATA(const TPMS_CREATION_DATA& value,
-                             std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMS_CREATION_DATA(
+    const TPMS_CREATION_DATA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMS_CREATION_DATA(std::string* buffer,
                                               TPMS_CREATION_DATA* value,
                                               std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPM2B_CREATION_DATA(const TPM2B_CREATION_DATA& value,
-                              std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPM2B_CREATION_DATA(
+    const TPM2B_CREATION_DATA& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPM2B_CREATION_DATA(std::string* buffer,
                                                TPM2B_CREATION_DATA* value,
@@ -3273,9 +3213,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMU_SYM_MODE(std::string* buffer,
                                          TPMU_SYM_MODE* value,
                                          std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMU_SCHEME_KEYEDHASH(const TPMU_SCHEME_KEYEDHASH& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMU_SCHEME_KEYEDHASH(
+    const TPMU_SCHEME_KEYEDHASH& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMU_SCHEME_KEYEDHASH(std::string* buffer,
                                                  TPMU_SCHEME_KEYEDHASH* value,
@@ -3309,9 +3248,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMU_SIGNATURE(std::string* buffer,
                                           TPMU_SIGNATURE* value,
                                           std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMU_ENCRYPTED_SECRET(const TPMU_ENCRYPTED_SECRET& value,
-                                std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMU_ENCRYPTED_SECRET(
+    const TPMU_ENCRYPTED_SECRET& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC Parse_TPMU_ENCRYPTED_SECRET(std::string* buffer,
                                                  TPMU_ENCRYPTED_SECRET* value,
@@ -3331,9 +3269,8 @@ TRUNKS_EXPORT TPM_RC Parse_TPMU_PUBLIC_PARMS(std::string* buffer,
                                              TPMU_PUBLIC_PARMS* value,
                                              std::string* value_bytes);
 
-TRUNKS_EXPORT TPM_RC
-Serialize_TPMU_SENSITIVE_COMPOSITE(const TPMU_SENSITIVE_COMPOSITE& value,
-                                   std::string* buffer);
+TRUNKS_EXPORT TPM_RC Serialize_TPMU_SENSITIVE_COMPOSITE(
+    const TPMU_SENSITIVE_COMPOSITE& value, std::string* buffer);
 
 TRUNKS_EXPORT TPM_RC
 Parse_TPMU_SENSITIVE_COMPOSITE(std::string* buffer,
