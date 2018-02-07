@@ -189,10 +189,13 @@ int main(int argc, char** argv) {
            sizeof(addr.sun_path) - 1,
            "%s/wayland-0",
            getenv("XDG_RUNTIME_DIR"));
-  size_t len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  socklen_t len = strlen(addr.sun_path) + sizeof(addr.sun_family);
 
   unlink(addr.sun_path);
-  int server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+  // The socket must be world-writable to be accessible by a container with
+  // user namespaces.
+  umask(0);
+  int server_socket = socket(AF_UNIX, SOCK_STREAM, SOCK_CLOEXEC);
   if (server_socket < 0) {
     syslog(LOG_USER | LOG_ERR, "failed to create listening socket: %m");
     return 1;
@@ -274,7 +277,7 @@ int main(int argc, char** argv) {
     if (ret == 0) { /* child */
       openlog(log_ident, LOG_PERROR | LOG_PID, LOG_USER);
       close(server_socket);
-      int wl_fd = open("/dev/wl0", O_RDWR);
+      int wl_fd = open("/dev/wl0", O_RDWR | O_CLOEXEC);
       if (wl_fd < 0) {
         syslog(LOG_USER | LOG_ERR, "failed to open wl0: %m");
         return 1;
