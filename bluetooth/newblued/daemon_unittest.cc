@@ -36,14 +36,13 @@ const int kSuspendId = 333;
 
 class DaemonTest : public ::testing::Test {
  public:
-  DaemonTest() {}
-  ~DaemonTest() override {}
+  DaemonTest() = default;
 
   void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
-    daemon_.reset(new Daemon(bus_));
+    daemon_ = std::make_unique<Daemon>(bus_);
 
     SetupMockBus();
   }
@@ -316,12 +315,13 @@ TEST_F(DaemonTest, PowerManagerAvailableSuccess) {
   TriggerPowerManagerAvailable(true);
 
   // Bluez PauseDiscovery should be called after SuspendImminent signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kPauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kPauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
   // HandleSuspendReadiness should be called after PauseDiscovery finishes.
-  expected_suspend_readiness_.reset(new power_manager::SuspendReadinessInfo);
+  expected_suspend_readiness_ =
+      std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId);
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
@@ -331,8 +331,8 @@ TEST_F(DaemonTest, PowerManagerAvailableSuccess) {
   EmitSuspendImminentSignal(kSuspendId);
 
   // Bluez UnpauseDiscovery should be called after SuspendDone signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kUnpauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kUnpauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
 
@@ -348,12 +348,13 @@ TEST_F(DaemonTest, PowerManagerNameOwnerChanged) {
   TriggerPowerManagerNameOwnerChanged("", ":1.234");
 
   // Bluez PauseDiscovery should be called after SuspendImminent signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kPauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kPauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
   // HandleSuspendReadiness should be called after PauseDiscovery finishes.
-  expected_suspend_readiness_.reset(new power_manager::SuspendReadinessInfo);
+  expected_suspend_readiness_ =
+      std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId);
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
@@ -363,8 +364,8 @@ TEST_F(DaemonTest, PowerManagerNameOwnerChanged) {
   EmitSuspendImminentSignal(kSuspendId);
 
   // Bluez UnpauseDiscovery should be called after SuspendDone signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kUnpauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kUnpauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
 
@@ -402,8 +403,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarly) {
   simulates_bluez_long_return_ = true;
 
   // Bluez PauseDiscovery should be called after SuspendImminent signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kPauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kPauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
   // HandleSuspendReadiness shouldn't be called yet, since bluez is still in
@@ -423,8 +424,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarly) {
   // Even after bluez returns, HandleSuspendReadiness shouldn't be called, but
   // bluez UnpauseDiscovery should be called to undo the suspend preparation.
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _)).Times(0);
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kUnpauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kUnpauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
 
@@ -447,8 +448,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   simulates_bluez_long_return_ = true;
 
   // Bluez PauseDiscovery should be called after SuspendImminent signal.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kPauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kPauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
   // HandleSuspendReadiness shouldn't be called yet, since bluez is still in
@@ -468,8 +469,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // Even after bluez returns, HandleSuspendReadiness shouldn't be called, but
   // bluez UnpauseDiscovery should be called to undo the suspend preparation.
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _)).Times(0);
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kUnpauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kUnpauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
 
@@ -484,8 +485,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   EmitSuspendImminentSignal(kSuspendId + 1);
 
   // Bluez PauseDiscovery should be called after UnpauseDiscovery finishes.
-  expected_bluez_method_call_.reset(
-      new std::string(bluetooth_adapter::kPauseDiscovery));
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kPauseDiscovery);
   EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &DaemonTest::StubBluezCallMethod));
 
@@ -493,7 +494,8 @@ TEST_F(DaemonTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   CallBluezCallback();
 
   // HandleSuspendReadiness should be called after PauseDiscovery finishes.
-  expected_suspend_readiness_.reset(new power_manager::SuspendReadinessInfo);
+  expected_suspend_readiness_ =
+      std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId + 1);
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
