@@ -324,14 +324,15 @@ fi
 # Gather log if needed.
 dev_gather_logs
 
-# /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock
-# are sym links to /run and /run/lock respectively for backwards compatibility.
+# /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
+# bind-mounted to /run and /run/lock respectively for backwards compatibility.
 # We recreate these all the time in case they were corrupted to point somewhere
 # else than what we want.
 rm -rf /var/run /var/lock || \
     cleanup_mounts "failed to delete /var/run and /var/lock"
-ln -s /run /var/run
-ln -s /run/lock /var/lock
+mkdir -m 0755 /var/run /var/lock
+mount -o bind /run /var/run
+mount -o bind /run/lock /var/lock
 
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
