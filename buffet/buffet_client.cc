@@ -67,25 +67,25 @@ brillo::Any GetJsonList(const base::ListValue& list);  // Prototype.
 brillo::Any JsonToAny(const base::Value& json) {
   brillo::Any prop_value;
   switch (json.GetType()) {
-    case base::Value::TYPE_NULL:
+    case base::Value::Type::NONE:
       prop_value = nullptr;
       break;
-    case base::Value::TYPE_BOOLEAN:
+    case base::Value::Type::BOOLEAN:
       prop_value = GetJsonValue<bool>(json, &base::Value::GetAsBoolean);
       break;
-    case base::Value::TYPE_INTEGER:
+    case base::Value::Type::INTEGER:
       prop_value = GetJsonValue<int>(json, &base::Value::GetAsInteger);
       break;
-    case base::Value::TYPE_DOUBLE:
+    case base::Value::Type::DOUBLE:
       prop_value = GetJsonValue<double>(json, &base::Value::GetAsDouble);
       break;
-    case base::Value::TYPE_STRING:
+    case base::Value::Type::STRING:
       prop_value = GetJsonValue<std::string>(json, &base::Value::GetAsString);
       break;
-    case base::Value::TYPE_BINARY:
+    case base::Value::Type::BINARY:
       LOG(FATAL) << "Binary values should not happen";
       break;
-    case base::Value::TYPE_DICTIONARY: {
+    case base::Value::Type::DICTIONARY: {
       const base::DictionaryValue* dict = nullptr;  // Still owned by |json|.
       CHECK(json.GetAsDictionary(&dict));
       brillo::VariantDictionary var_dict;
@@ -97,24 +97,24 @@ brillo::Any JsonToAny(const base::Value& json) {
       prop_value = var_dict;
       break;
     }
-    case base::Value::TYPE_LIST: {
+    case base::Value::Type::LIST: {
       const base::ListValue* list = nullptr;  // Still owned by |json|.
       CHECK(json.GetAsList(&list));
       CHECK(!list->empty()) << "Unable to deduce the type of list elements.";
       switch ((*list->begin())->GetType()) {
-        case base::Value::TYPE_BOOLEAN:
+        case base::Value::Type::BOOLEAN:
           prop_value = GetJsonList<bool>(*list);
           break;
-        case base::Value::TYPE_INTEGER:
+        case base::Value::Type::INTEGER:
           prop_value = GetJsonList<int>(*list);
           break;
-        case base::Value::TYPE_DOUBLE:
+        case base::Value::Type::DOUBLE:
           prop_value = GetJsonList<double>(*list);
           break;
-        case base::Value::TYPE_STRING:
+        case base::Value::Type::STRING:
           prop_value = GetJsonList<std::string>(*list);
           break;
-        case base::Value::TYPE_DICTIONARY:
+        case base::Value::Type::DICTIONARY:
           prop_value = GetJsonList<brillo::VariantDictionary>(*list);
           break;
         default:

@@ -22,13 +22,14 @@ namespace {
 // once the latest code is merged.
 const char* const kTypeNames[] = {"null",   "boolean", "integer",    "double",
                                   "string", "binary",  "dictionary", "list"};
-static_assert(arraysize(kTypeNames) == base::Value::TYPE_LIST + 1,
+static_assert(arraysize(kTypeNames) ==
+                  static_cast<size_t>(base::Value::Type::LIST) + 1,
               "kTypeNames Has Wrong Size");
 
 const char* GetValueTypeName(const base::Value* value) {
-  DCHECK_GE(value->GetType(), 0);
+  DCHECK_GE(static_cast<int>(value->GetType()), 0);
   DCHECK_LT(static_cast<size_t>(value->GetType()), arraysize(kTypeNames));
-  return kTypeNames[value->GetType()];
+  return kTypeNames[static_cast<size_t>(value->GetType())];
 }
 
 }  // namespace

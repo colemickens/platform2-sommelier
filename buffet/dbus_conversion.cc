@@ -63,25 +63,25 @@ brillo::Any ListListToAny(const base::ListValue& list) {
 brillo::Any ValueToAny(const base::Value& json) {
   brillo::Any prop_value;
   switch (json.GetType()) {
-    case base::Value::TYPE_BOOLEAN:
+    case base::Value::Type::BOOLEAN:
       prop_value = ValueToAny<bool>(json, &base::Value::GetAsBoolean);
       break;
-    case base::Value::TYPE_INTEGER:
+    case base::Value::Type::INTEGER:
       prop_value = ValueToAny<int>(json, &base::Value::GetAsInteger);
       break;
-    case base::Value::TYPE_DOUBLE:
+    case base::Value::Type::DOUBLE:
       prop_value = ValueToAny<double>(json, &base::Value::GetAsDouble);
       break;
-    case base::Value::TYPE_STRING:
+    case base::Value::Type::STRING:
       prop_value = ValueToAny<std::string>(json, &base::Value::GetAsString);
       break;
-    case base::Value::TYPE_DICTIONARY: {
+    case base::Value::Type::DICTIONARY: {
       const base::DictionaryValue* dict = nullptr;
       CHECK(json.GetAsDictionary(&dict));
       prop_value = DictionaryToDBusVariantDictionary(*dict);
       break;
     }
-    case base::Value::TYPE_LIST: {
+    case base::Value::Type::LIST: {
       const base::ListValue* list = nullptr;
       CHECK(json.GetAsList(&list));
       if (list->empty()) {
@@ -95,22 +95,22 @@ brillo::Any ValueToAny(const base::Value& json) {
         CHECK_EQ(v->GetType(), type) << "Unsupported different type elements";
 
       switch (type) {
-        case base::Value::TYPE_BOOLEAN:
+        case base::Value::Type::BOOLEAN:
           prop_value = ListToAny<bool>(*list, &base::Value::GetAsBoolean);
           break;
-        case base::Value::TYPE_INTEGER:
+        case base::Value::Type::INTEGER:
           prop_value = ListToAny<int>(*list, &base::Value::GetAsInteger);
           break;
-        case base::Value::TYPE_DOUBLE:
+        case base::Value::Type::DOUBLE:
           prop_value = ListToAny<double>(*list, &base::Value::GetAsDouble);
           break;
-        case base::Value::TYPE_STRING:
+        case base::Value::Type::STRING:
           prop_value = ListToAny<std::string>(*list, &base::Value::GetAsString);
           break;
-        case base::Value::TYPE_DICTIONARY:
+        case base::Value::Type::DICTIONARY:
           prop_value = DictListToAny(*list);
           break;
-        case base::Value::TYPE_LIST:
+        case base::Value::Type::LIST:
           // We can't support Any{vector<vector<>>} as the type is only known
           // in runtime when we need to instantiate templates in compile time.
           // We can use Any{vector<Any>} instead.

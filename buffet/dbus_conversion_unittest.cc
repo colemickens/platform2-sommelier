@@ -42,14 +42,14 @@ std::unique_ptr<base::Value> CreateRandomValue(int children,
                                                base::Value::Type type);
 
 const base::Value::Type kRandomTypes[] = {
-    base::Value::TYPE_BOOLEAN,    base::Value::TYPE_INTEGER,
-    base::Value::TYPE_DOUBLE,     base::Value::TYPE_STRING,
-    base::Value::TYPE_DICTIONARY, base::Value::TYPE_LIST,
+    base::Value::Type::BOOLEAN,    base::Value::Type::INTEGER,
+    base::Value::Type::DOUBLE,     base::Value::Type::STRING,
+    base::Value::Type::DICTIONARY, base::Value::Type::LIST,
 };
 
 const base::Value::Type kRandomTypesWithChildren[] = {
-    base::Value::TYPE_DICTIONARY,
-    base::Value::TYPE_LIST,
+    base::Value::Type::DICTIONARY,
+    base::Value::Type::LIST,
 };
 
 base::Value::Type CreateRandomValueType(bool with_children) {
@@ -77,10 +77,10 @@ std::unique_ptr<base::ListValue> CreateRandomList(int children) {
 
   base::Value::Type type = CreateRandomValueType(children > 0);
   while (children > 0) {
-    size_t max_children =
-        (type != base::Value::TYPE_DICTIONARY && type != base::Value::TYPE_LIST)
-            ? 1
-            : children;
+    size_t max_children = (type != base::Value::Type::DICTIONARY &&
+                           type != base::Value::Type::LIST)
+                              ? 1
+                              : children;
     size_t sub_children = base::RandInt(1, max_children);
     children -= sub_children;
     result->Append(CreateRandomValue(sub_children, type));
@@ -93,20 +93,20 @@ std::unique_ptr<base::Value> CreateRandomValue(int children,
                                                base::Value::Type type) {
   CHECK_GE(children, 1);
   switch (type) {
-    case base::Value::TYPE_INTEGER:
+    case base::Value::Type::INTEGER:
       return std::unique_ptr<base::Value>{new base::FundamentalValue{
           base::RandInt(std::numeric_limits<int>::min(),
                         std::numeric_limits<int>::max())}};
-    case base::Value::TYPE_DOUBLE:
+    case base::Value::Type::DOUBLE:
       return std::unique_ptr<base::Value>{
           new base::FundamentalValue{base::RandDouble()}};
-    case base::Value::TYPE_STRING:
+    case base::Value::Type::STRING:
       return std::unique_ptr<base::Value>{
           new base::StringValue{base::GenerateGUID()}};
-    case base::Value::TYPE_DICTIONARY:
+    case base::Value::Type::DICTIONARY:
       CHECK_GE(children, 1);
       return CreateRandomDictionary(children - 1);
-    case base::Value::TYPE_LIST:
+    case base::Value::Type::LIST:
       CHECK_GE(children, 1);
       return CreateRandomList(children - 1);
     default:

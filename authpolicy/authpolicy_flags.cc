@@ -57,7 +57,7 @@ class BoolFlag {
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
     std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::TYPE_BOOLEAN, "boolean");
+        GetValueOfType(dict, name_, base::Value::Type::BOOLEAN, "boolean");
     if (value) {
       bool bool_value = false;
       CHECK(value->GetAsBoolean(&bool_value));
@@ -88,7 +88,7 @@ class StringFlag {
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
     std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::TYPE_STRING, "string");
+        GetValueOfType(dict, name_, base::Value::Type::STRING, "string");
     if (value) {
       std::string string_value;
       CHECK(value->GetAsString(&string_value));
