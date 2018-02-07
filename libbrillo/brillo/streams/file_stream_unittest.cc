@@ -703,7 +703,7 @@ TEST_F(FileStreamTest, CreateTemporary) {
 TEST_F(FileStreamTest, OpenRead) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
   base::RandBytes(buffer.data(), buffer.size());
   int file_size = buffer.size();  // Stupid base::WriteFile taking "int" size.
@@ -731,7 +731,7 @@ TEST_F(FileStreamTest, OpenRead) {
 TEST_F(FileStreamTest, OpenWrite) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
   base::RandBytes(buffer.data(), buffer.size());
 
@@ -760,7 +760,7 @@ TEST_F(FileStreamTest, OpenWrite) {
 TEST_F(FileStreamTest, Open_OpenExisting) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
   int data_size = data.size();  // I hate ints for data size...
   ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
@@ -782,7 +782,7 @@ TEST_F(FileStreamTest, Open_OpenExisting) {
 TEST_F(FileStreamTest, Open_OpenExisting_Fail) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
 
   ErrorPtr error;
   StreamPtr stream = FileStream::Open(path,
@@ -797,7 +797,7 @@ TEST_F(FileStreamTest, Open_OpenExisting_Fail) {
 TEST_F(FileStreamTest, Open_CreateAlways_New) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
 
   StreamPtr stream = FileStream::Open(path,
                                       Stream::AccessMode::READ_WRITE,
@@ -816,7 +816,7 @@ TEST_F(FileStreamTest, Open_CreateAlways_New) {
 TEST_F(FileStreamTest, Open_CreateAlways_Existing) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
   int data_size = data.size();  // I hate ints for data size...
   ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
@@ -838,7 +838,7 @@ TEST_F(FileStreamTest, Open_CreateAlways_Existing) {
 TEST_F(FileStreamTest, Open_CreateNewOnly_New) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
 
   StreamPtr stream = FileStream::Open(path,
                                       Stream::AccessMode::READ_WRITE,
@@ -857,7 +857,7 @@ TEST_F(FileStreamTest, Open_CreateNewOnly_New) {
 TEST_F(FileStreamTest, Open_CreateNewOnly_Existing) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
   int data_size = data.size();  // I hate ints for data size...
   ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
@@ -875,7 +875,7 @@ TEST_F(FileStreamTest, Open_CreateNewOnly_Existing) {
 TEST_F(FileStreamTest, Open_TruncateExisting_New) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
 
   ErrorPtr error;
   StreamPtr stream = FileStream::Open(
@@ -891,7 +891,7 @@ TEST_F(FileStreamTest, Open_TruncateExisting_New) {
 TEST_F(FileStreamTest, Open_TruncateExisting_Existing) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.path().Append(base::FilePath{"test.dat"});
+  base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
   int data_size = data.size();  // I hate ints for data size...
   ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
