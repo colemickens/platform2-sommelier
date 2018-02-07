@@ -40,7 +40,8 @@ class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
       : curl_interface_(curl_interface),
         curl_multi_handle_(curl_multi_handle),
         transport_(transport),
-        socket_fd_(socket_fd) {}
+        socket_fd_(socket_fd),
+        file_descriptor_watcher_(FROM_HERE) {}
 
   // Returns the pointer for the socket-specific file descriptor watcher.
   base::MessageLoopForIO::FileDescriptorWatcher* GetWatcher() {
