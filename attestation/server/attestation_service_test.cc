@@ -325,6 +325,17 @@ class AttestationServiceTest : public testing::Test {
     return service_->ComputeEnterpriseEnrollmentId();
   }
 
+  std::string GetEnrollmentId() {
+    GetEnrollmentIdRequest request;
+    auto result = std::make_shared<GetEnrollmentIdReply>();
+    service_->GetEnrollmentIdTask(request, result);
+    if (result->status() != STATUS_SUCCESS) {
+      return "";
+    }
+
+    return result->enrollment_id();
+  }
+
   std::shared_ptr<brillo::http::fake::Transport> fake_http_transport_;
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
   NiceMock<MockDatabase> mock_database_;
@@ -2009,6 +2020,36 @@ TEST_F(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
   CryptoUtilityImpl crypto_utility(&mock_tpm_utility_);
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = ComputeEnterpriseEnrollmentId();
+  EXPECT_EQ(
+      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      base::ToLowerASCII(
+          base::HexEncode(enrollment_id.data(), enrollment_id.size())));
+}
+
+TEST_F(AttestationServiceTest, GetEnrollmentId) {
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("pub_ek")),
+                      Return(true)));
+  brillo::SecureBlob abe_data(0xCA, 32);
+  service_->set_abe_data(&abe_data);
+  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_);
+  service_->set_crypto_utility(&crypto_utility);
+  std::string enrollment_id = GetEnrollmentId();
+  EXPECT_EQ(
+      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      base::ToLowerASCII(
+          base::HexEncode(enrollment_id.data(), enrollment_id.size())));
+
+  // Cache the enrollment_id in the AIK.
+  AttestationDatabase database_pb;
+  EXPECT_CALL(mock_database_, GetProtobuf()).WillOnce(ReturnRef(database_pb));
+  auto aik = database_pb.mutable_identity_key();
+  aik->set_enrollment_id(enrollment_id);
+
+  // Change abe_data, and yet EID should remains the same.
+  brillo::SecureBlob abe_data_new(0x89, 32);
+  service_->set_abe_data(&abe_data_new);
+  enrollment_id = GetEnrollmentId();
   EXPECT_EQ(
       "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
       base::ToLowerASCII(

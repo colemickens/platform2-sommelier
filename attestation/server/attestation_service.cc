@@ -1385,9 +1385,10 @@ bool AttestationService::ActivateAttestationKeyInternal(
     }
   }
   if (save_certificate) {
-    database_->GetMutableProtobuf()
-        ->mutable_identity_key()
-        ->set_identity_credential(certificate_local);
+    auto identity_key = database_->GetMutableProtobuf()
+        ->mutable_identity_key();
+    identity_key->set_identity_credential(certificate_local);
+    identity_key->set_enrollment_id(ComputeEnterpriseEnrollmentId());
     if (!database_->SaveChanges()) {
       LOG(ERROR) << __func__ << ": Failed to persist database changes.";
       return false;
@@ -2224,6 +2225,14 @@ void AttestationService::GetEnrollmentId(
 void AttestationService::GetEnrollmentIdTask(
     const GetEnrollmentIdRequest& request,
     const std::shared_ptr<GetEnrollmentIdReply>& result) {
+  auto database_pb = database_->GetProtobuf();
+  if (database_pb.has_identity_key() &&
+      database_pb.identity_key().has_enrollment_id()) {
+    result->set_enrollment_id(
+        std::string(database_pb.identity_key().enrollment_id()));
+    return;
+  }
+
   const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
   if (enrollment_id.empty())
     result->set_status(STATUS_NOT_AVAILABLE);
