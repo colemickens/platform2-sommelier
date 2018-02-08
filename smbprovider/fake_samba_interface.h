@@ -123,6 +123,13 @@ class FakeSambaInterface : public SambaInterface {
   // Helper method to set the errno Truncate() should return.
   void SetTruncateError(int32_t error);
 
+  // Helper method to manually set the current_entry for the OpenInfo
+  // corresponding to |dir_id|.
+  void SetCurrentEntry(int32_t dir_id, size_t index);
+
+  // Helper method to get the path for the OpenInfo corresponding to |dir_id|.
+  std::string GetCurrentEntry(int32_t dir_id);
+
  private:
   // Replacement struct for smbc_dirent within FakeSambaInterface.
   struct FakeEntry {
@@ -163,8 +170,9 @@ class FakeSambaInterface : public SambaInterface {
 
     // Removes the entry in entries with |name| from the directory.
     // This function must only be called on files and empty directories.
-    // Returns true if the entry was found and deleted. Otherwise returns false.
-    bool RemoveEntry(const std::string& name);
+    // Returns index of the entry if it was found and deleted. Otherwise returns
+    // -1.
+    int32_t RemoveEntry(const std::string& name);
 
     // Checks whether the provided FakeEntry is a file or an empty directory.
     bool IsFileOrEmptyDirectory(FakeEntry* entry) const;
@@ -241,6 +249,9 @@ class FakeSambaInterface : public SambaInterface {
           readable(other.readable),
           writeable(other.writeable) {}
 
+    // Returns true if |dir_path| is the same as full_path.
+    bool IsForDir(const std::string& dir_path);
+
     DISALLOW_COPY_AND_ASSIGN(OpenInfo);
   };
 
@@ -286,6 +297,15 @@ class FakeSambaInterface : public SambaInterface {
 
   // Checks whether the directory has more entries.
   bool HasMoreEntries(uint32_t dir_fd) const;
+
+  // Goes through |open_fds| and rewinds |current_index| if |deleted_index| is
+  // already equal to entries.size() for the directory.
+  void RewindOpenInfoIndicesIfNeccessary(const std::string& dir_path,
+                                         size_t deleted_index);
+
+  // Removes |full_path| from the file system and calls
+  // RewindOpenInfoIndicesIfNeccessary.
+  void RemoveEntryAndResetIndicies(const std::string& full_path);
 
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;

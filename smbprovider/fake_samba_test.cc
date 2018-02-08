@@ -345,4 +345,36 @@ TEST_F(FakeSambaTest, OpenFileFailsOnLockedFile) {
             fake_samba_.OpenFile(GetDefaultFilePath(), O_RDWR, &file_id));
 }
 
+// Deleting an entry before the current entry does not move the current entry.
+TEST_F(FakeSambaTest, DeleteBeforeCurrent) {
+  fake_samba_.AddDirectory("smb://wdshare/test/path");
+  fake_samba_.AddFile("smb://wdshare/test/path/dog.jpg");
+  fake_samba_.AddFile("smb://wdshare/test/path/cat.txt");
+  fake_samba_.AddFile("smb://wdshare/test/path/mouse.txt");
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory("smb://wdshare/test/path", &dir_id));
+  fake_samba_.SetCurrentEntry(dir_id, 1);
+  EXPECT_EQ("cat.txt", fake_samba_.GetCurrentEntry(dir_id));
+
+  EXPECT_EQ(0, fake_samba_.Unlink("smb://wdshare/test/path/dog.jpg"));
+  EXPECT_EQ("cat.txt", fake_samba_.GetCurrentEntry(dir_id));
+}
+
+// Deleting an entry after the current entry does not move the current entry.
+TEST_F(FakeSambaTest, DeleteAfterCurrent) {
+  fake_samba_.AddDirectory("smb://wdshare/test/path");
+  fake_samba_.AddFile("smb://wdshare/test/path/dog.jpg");
+  fake_samba_.AddFile("smb://wdshare/test/path/cat.txt");
+  fake_samba_.AddFile("smb://wdshare/test/path/mouse.txt");
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory("smb://wdshare/test/path", &dir_id));
+  fake_samba_.SetCurrentEntry(dir_id, 1);
+  EXPECT_EQ("cat.txt", fake_samba_.GetCurrentEntry(dir_id));
+
+  EXPECT_EQ(0, fake_samba_.Unlink("smb://wdshare/test/path/mouse.txt"));
+  EXPECT_EQ("cat.txt", fake_samba_.GetCurrentEntry(dir_id));
+}
+
 }  // namespace smbprovider

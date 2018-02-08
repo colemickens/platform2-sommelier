@@ -204,9 +204,7 @@ int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
     return EACCES;
   }
 
-  FakeDirectory* directory = GetDirectory(GetDirPath(file_path));
-  bool result = directory->RemoveEntry(GetFileName(file_path));
-  DCHECK(result);
+  RemoveEntryAndResetIndicies(file_path);
   return 0;
 }
 
@@ -220,10 +218,7 @@ int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
     return ENOTEMPTY;
   }
 
-  FakeDirectory* parent = GetDirectory(GetDirPath(dir_path));
-
-  bool result = parent->RemoveEntry(GetFileName(dir_path));
-  DCHECK(result);
+  RemoveEntryAndResetIndicies(dir_path);
   return 0;
 }
 
@@ -318,15 +313,16 @@ bool FakeSambaInterface::FakeDirectory::IsFileOrEmptyDirectory(
   return directory->entries.empty();
 }
 
-bool FakeSambaInterface::FakeDirectory::RemoveEntry(const std::string& name) {
-  for (auto it = entries.begin(); it != entries.end(); ++it) {
-    if ((*it)->name == name) {
-      DCHECK(IsFileOrEmptyDirectory(it->get()));
-      entries.erase(it);
-      return true;
+int32_t FakeSambaInterface::FakeDirectory::RemoveEntry(
+    const std::string& name) {
+  for (size_t i = 0; i < entries.size(); ++i) {
+    if (entries[i]->name == name) {
+      DCHECK(IsFileOrEmptyDirectory(entries[i].get()));
+      entries.erase(entries.begin() + i);
+      return i;
     }
   }
-  return false;
+  return -1;
 }
 
 void FakeSambaInterface::FakeFile::WriteData(size_t offset,
@@ -571,6 +567,32 @@ void FakeSambaInterface::SetTruncateError(int32_t error) {
   truncate_error_ = error;
 }
 
+void FakeSambaInterface::SetCurrentEntry(int32_t dir_id, size_t index) {
+  DCHECK(IsFDOpen(dir_id));
+  OpenInfo& info = FindOpenFD(dir_id)->second;
+
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(info.full_path));
+  DCHECK(directory);
+
+  DCHECK_LE(index, directory->entries.size());
+  info.current_index = index;
+}
+
+std::string FakeSambaInterface::GetCurrentEntry(int32_t dir_id) {
+  DCHECK(IsFDOpen(dir_id));
+  OpenInfo& info = FindOpenFD(dir_id)->second;
+  const size_t index = info.current_index;
+
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(info.full_path));
+  DCHECK(directory);
+
+  if (index == directory->entries.size()) {
+    return "";
+  }
+
+  return directory->entries[index]->name;
+}
+
 bool FakeSambaInterface::IsFileDataEqual(
     const std::string& path, const std::vector<uint8_t>& expected) const {
   FakeFile* file = GetFile(path);
@@ -583,6 +605,32 @@ bool FakeSambaInterface::IsFileDataEqual(
   }
 
   return expected == file->data;
+}
+
+void FakeSambaInterface::RewindOpenInfoIndicesIfNeccessary(
+    const std::string& dir_path, size_t deleted_index) {
+  for (auto& it : open_fds) {
+    OpenInfo& info = it.second;
+    if (info.IsForDir(dir_path)) {
+      if (deleted_index < info.current_index) {
+        // By removing an entry from the directory that has already been read,
+        // current_index will have been inadvertantly advanced.
+        --info.current_index;
+      }
+    }
+  }
+}
+
+bool FakeSambaInterface::OpenInfo::IsForDir(const std::string& dir_path) {
+  return RemoveURLScheme(full_path) == dir_path;
+}
+
+void FakeSambaInterface::RemoveEntryAndResetIndicies(
+    const std::string& full_path) {
+  FakeDirectory* parent = GetDirectory(GetDirPath(full_path));
+  const int32_t deleted_index = parent->RemoveEntry(GetFileName(full_path));
+  DCHECK_GE(deleted_index, 0);
+  RewindOpenInfoIndicesIfNeccessary(GetDirPath(full_path), deleted_index);
 }
 
 }  // namespace smbprovider
