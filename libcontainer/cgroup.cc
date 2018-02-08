@@ -52,6 +52,16 @@ base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
     LOG(ERROR) << path.value() << " is not a regular file";
     return base::ScopedFD();
   }
+  // Remove O_NONBLOCK before returning |fd|.
+  flags = fcntl(fd.get(), F_GETFL);
+  if (flags == -1) {
+    PLOG(ERROR) << "Failed to get flags for " << path.value();
+    return base::ScopedFD();
+  }
+  if (fcntl(fd.get(), F_SETFL, flags & ~O_NONBLOCK) < 0) {
+    PLOG(ERROR) << "Failed to remove O_NONBLOCK for " << path.value();
+    return base::ScopedFD();
+  }
   return fd;
 }
 
