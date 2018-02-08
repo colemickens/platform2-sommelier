@@ -683,11 +683,17 @@ bool Attestation::GetEnterpriseEnrollmentId(
     *enterprise_enrollment_id = enterprise_enrollment_id_;
     return true;
   }
+  if (database_pb_.has_identity_key() &&
+      database_pb_.identity_key().has_enrollment_id()) {
+    enterprise_enrollment_id_ =
+        SecureBlob(database_pb_.identity_key().enrollment_id());
+    *enterprise_enrollment_id = enterprise_enrollment_id_;
+    return true;
+  }
   if (ComputeEnterpriseEnrollmentId(enterprise_enrollment_id) &&
       !enterprise_enrollment_id->empty()) {
     // Cache the computed value
     enterprise_enrollment_id_ = *enterprise_enrollment_id;
-    // TODO(igorcov): Store the value in a certificate. http://crbug.com/798707
     return true;
   }
   return false;
@@ -759,8 +765,10 @@ bool Attestation::Enroll(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Failed to activate identity.";
     return false;
   }
+  ComputeEnterpriseEnrollmentId(&enterprise_enrollment_id_);
   IdentityKey* key_pb = database_pb_.mutable_identity_key();
   key_pb->set_identity_credential(aik_credential.to_string());
+  key_pb->set_enrollment_id(enterprise_enrollment_id_.to_string());
   if (!PersistDatabaseChanges()) {
     LOG(ERROR) << __func__ << ": Failed to persist database changes.";
     return false;

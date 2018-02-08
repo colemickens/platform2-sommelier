@@ -35,6 +35,8 @@ message IdentityKey {
   optional bytes identity_key_blob = 2;
   // A credential issued by the attestation server.
   optional bytes identity_credential = 3;
+  // The computed enrollment ID, present only for enrolled devices.
+  optional bytes enrollment_id = 4;
 }
 
 // Holds information required to verify the binding of an AIK to an EK. This

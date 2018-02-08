@@ -453,6 +453,29 @@ TEST_P(AttestationWithAbeDataTest, Enroll) {
   EXPECT_TRUE(attestation_.IsEnrolled());
 }
 
+TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentId) {
+  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+      &install_attributes_, brillo::SecureBlob("abe_data"),
+      false /* retain_endorsement_data */);
+  brillo::SecureBlob ekm("ekm");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(ekm), Return(true)));
+  attestation_.PrepareForEnrollment();
+  SecureBlob enroll_blob;
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               &enroll_blob));
+  attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob());
+  // Change abe_data.
+  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+      &install_attributes_, brillo::SecureBlob("new_abe_data"),
+      false /* retain_endorsement_data */);
+  // GetEnterpriseEnrollmentId should return a cached eid.
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(attestation_.GetEnterpriseEnrollmentId(&blob));
+  EXPECT_EQ("b700ce97051051a65b8b2f6449717e7748e9c337c71d89e7a37c6c00ccda24ed",
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
 TEST_F(AttestationTest, ComputeEnterpriseEnrollmentId) {
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
       &install_attributes_, brillo::SecureBlob("abe_data"),
