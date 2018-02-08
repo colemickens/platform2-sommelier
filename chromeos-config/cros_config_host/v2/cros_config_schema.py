@@ -85,7 +85,7 @@ def ParseArgs(argv):
       help='Filter build specific elements from the output JSON')
   return parser.parse_args(argv)
 
-def TransformConfig(config):
+def TransformConfig(config, drop_family=True):
   """Transforms the source config (YAML) to the target system format (JSON)
 
   Applies consistent transforms to covert a source YAML configuration into
@@ -93,6 +93,8 @@ def TransformConfig(config):
 
   Args:
     config: Config that will be transformed.
+    drop_family: True to drop the 'family' node from the output, leaving only
+        the 'models' node. This is the normal case.
 
   Returns:
     Resulting JSON output from the transform.
@@ -102,7 +104,8 @@ def TransformConfig(config):
   json_config = json.loads(json_from_yaml)
   # Drop everything except for models since they were just used as shared
   # config in the source yaml.
-  json_config = {CHROMEOS: {MODELS: json_config[CHROMEOS][MODELS]}}
+  if drop_family:
+    json_config = {CHROMEOS: {MODELS: json_config[CHROMEOS][MODELS]}}
 
   return json.dumps(json_config, sort_keys=True, indent=2)
 
