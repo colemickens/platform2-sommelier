@@ -10,8 +10,12 @@
 
 #include "arc/setup/arc_setup_util.h"
 
+#include <fcntl.h>
 #include <ifaddrs.h>
 #include <inttypes.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <base/bind.h>
 #include <base/environment.h>
@@ -35,6 +39,10 @@ bool FindLineCallback(const std::string& line, std::string* out_prop) {
     return false;
   *out_prop = "FOUND";
   return true;
+}
+
+bool IsNonBlockingFD(int fd) {
+  return fcntl(fd, F_GETFL) & O_NONBLOCK;
 }
 
 }  // namespace
@@ -804,6 +812,23 @@ TEST(ArcSetupUtil, TestPropertyTruncationFingerprintDev) {
       "ro.bootimage.build.fingerprint=google/toolongdevicena/"
       "toolongdevicena_cheets/R65-10299.0.9999/4538390:user/dev-keys",
       truncated);
+}
+
+// Tests if the O_NONBLOCK removal feature is working well. Other part of the
+// function is tested in TestInstallDirectory*.
+TEST(ArcSetupUtil, TestOpenSafely) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath file = temp_directory.GetPath().Append("file");
+  ASSERT_TRUE(CreateOrTruncate(file, 0700));
+
+  base::ScopedFD fd(OpenSafelyForTesting(file, O_RDONLY, 0));
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
+
+  fd = OpenSafelyForTesting(file, O_RDONLY | O_NONBLOCK, 0);
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_TRUE(IsNonBlockingFD(fd.get()));
 }
 
 }  // namespace arc

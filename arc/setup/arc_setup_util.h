@@ -256,6 +256,11 @@ bool FindLineForTesting(
     const base::Callback<bool(const std::string&, std::string*)>& callback,
     std::string* out_string);
 
+// See OpenSafely() in arc_setup_util.cc.
+base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,
+                                    int flags,
+                                    mode_t mode);
+
 // Reads |lsb_release_file_path| and returns the Chrome OS channel, or
 // "unknown" in case of failures.
 std::string GetChromeOsChannelFromFile(

@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <fstream>
@@ -275,6 +276,19 @@ base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
     LOG(ERROR) << "Symbolic link detected in " << path.value()
                << ". Resolved path=" << resolved.value();
     return base::ScopedFD();
+  }
+
+  // Remove the O_NONBLOCK flag unless the orignal |flags| have it.
+  if ((flags & O_NONBLOCK) == 0) {
+    flags = fcntl(fd.get(), F_GETFL);
+    if (flags == -1) {
+      PLOG(ERROR) << "Failed to get fd flags for " << path.value();
+      return base::ScopedFD();
+    }
+    if (fcntl(fd.get(), F_SETFL, flags & ~O_NONBLOCK)) {
+      PLOG(ERROR) << "Failed to set fd flags for " << path.value();
+      return base::ScopedFD();
+    }
   }
 
   return fd;
@@ -799,6 +813,12 @@ bool FindLineForTesting(
     const base::Callback<bool(const std::string&, std::string*)>& callback,
     std::string* out_string) {
   return FindLine(file_path, callback, out_string);
+}
+
+base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,
+                                    int flags,
+                                    mode_t mode) {
+  return OpenSafely(path, flags, mode);
 }
 
 std::string GetChromeOsChannelFromFile(
