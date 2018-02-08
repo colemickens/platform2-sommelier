@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
   // The socket must be world-writable to be accessible by a container with
   // user namespaces.
   umask(0);
-  int server_socket = socket(AF_UNIX, SOCK_STREAM, SOCK_CLOEXEC);
+  int server_socket = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
   if (server_socket < 0) {
     syslog(LOG_USER | LOG_ERR, "failed to create listening socket: %m");
     return 1;
