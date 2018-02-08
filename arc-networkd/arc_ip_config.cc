@@ -199,17 +199,17 @@ int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv,
   bool ran = m->RunSyncAndDestroy(jail, args, &status);
 
   if (!ran) {
-    LOG(ERROR) << "Could not execute " << args.front();
+    LOG(ERROR) << "Could not execute '" << base::JoinString(argv, " ") << "'";
   } else if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
     if (WIFEXITED(status)) {
-      LOG(WARNING) << "Subprocess " << args.front() << " exited with code "
-                   << WEXITSTATUS(status);
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with code " << WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
-      LOG(WARNING) << "Subprocess " << args.front() << " exited with signal "
-                   << WTERMSIG(status);
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with signal " << WTERMSIG(status);
     } else {
-      LOG(WARNING) << "Subprocess " << args.front()
-                   << " exited with unknown status " << status;
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with unknown status " << status;
     }
   }
 
