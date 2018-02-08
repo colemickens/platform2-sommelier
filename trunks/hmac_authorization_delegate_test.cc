@@ -132,6 +132,7 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS,
             Parse_TPMS_AUTH_COMMAND(&authorization, &auth_command, nullptr));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
   EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer, original_nonce.buffer,
@@ -152,6 +153,7 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS,
             Parse_TPMS_AUTH_COMMAND(&authorization, &auth_command, nullptr));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
   EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer, original_nonce.buffer,
@@ -169,6 +171,7 @@ TEST_F(HmacAuthorizationDelegateFixture, CommandAuthTest) {
   std::string auth_bytes;
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(auth_command.session_handle, session_handle_);
   EXPECT_EQ(auth_command.nonce.size, session_nonce_.size);
   EXPECT_EQ(kContinueSession, auth_command.session_attributes);
@@ -207,6 +210,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
   std::string auth_bytes;
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession, auth_command.session_attributes);
 
   // Encryption disabled and possible for command.
@@ -214,6 +218,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession, auth_command.session_attributes);
 
   // Encryption enabled and not possible for command.
@@ -227,6 +232,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession, auth_command.session_attributes);
 
   // Encryption enabled and possible only for command input.
@@ -234,6 +240,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession | kDecryptSession,
             auth_command.session_attributes);
 
@@ -242,6 +249,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession | kEncryptSession,
             auth_command.session_attributes);
 
@@ -250,6 +258,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(
                                 &authorization, &auth_command, &auth_bytes));
+  EXPECT_TRUE(authorization.empty());
   EXPECT_EQ(kContinueSession | kEncryptSession | kDecryptSession,
             auth_command.session_attributes);
 }

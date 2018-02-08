@@ -192,6 +192,7 @@ class ResourceManagerTest : public testing::Test {
     TPM_HANDLE virtual_handle;
     CHECK_EQ(TPM_RC_SUCCESS,
              Parse_TPM_HANDLE(&handle_blob, &virtual_handle, NULL));
+    CHECK(handle_blob.empty());
     return virtual_handle;
   }
 

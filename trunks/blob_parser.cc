@@ -65,6 +65,10 @@ bool BlobParser::ParseKeyBlob(const std::string& key_blob,
     LOG(ERROR) << "Error parsing private info: " << GetErrorString(result);
     return false;
   }
+  if (!mutable_key_blob.empty()) {
+    LOG(ERROR) << "Extra data at the end of the key blob.";
+    return false;
+  }
   return true;
 }
 
@@ -119,6 +123,10 @@ bool BlobParser::ParseCreationBlob(const std::string& creation_blob,
       Parse_TPMT_TK_CREATION(&mutable_creation_blob, creation_ticket, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error parsing creation_ticket: " << GetErrorString(result);
+    return false;
+  }
+  if (!mutable_creation_blob.empty()) {
+    LOG(ERROR) << "Extra data at the end of the creation blob.";
     return false;
   }
   return true;

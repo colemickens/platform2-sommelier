@@ -722,6 +722,10 @@ void ResourceManager::ProcessExternalContextSave(
     LOG(WARNING) << "Invalid context save response: " << GetErrorString(result);
     return;
   }
+  if (!mutable_parameter.empty()) {
+    LOG(WARNING) << "Invalid length of context save response string.";
+    return;
+  }
   auto iter = session_handles_.find(saved_handle);
   if (iter != session_handles_.end()) {
     iter->second.is_loaded = false;

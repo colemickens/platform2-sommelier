@@ -121,6 +121,10 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
     LOG(ERROR) << "Could not parse authorization response.";
     return false;
   }
+  if (!mutable_auth_string.empty()) {
+    LOG(ERROR) << "Authorization string was of wrong length.";
+    return false;
+  }
   if (auth_response.hmac.size != kHashDigestSize) {
     LOG(ERROR) << "TPM auth hmac was incorrect size.";
     return false;

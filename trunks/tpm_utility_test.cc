@@ -1252,6 +1252,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
   TPM2B_SENSITIVE sensitive_data;
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_SENSITIVE(&unencrypted_private,
                                                   &sensitive_data, nullptr));
+  EXPECT_TRUE(unencrypted_private.empty());
   EXPECT_EQ(sensitive_data.sensitive_area.auth_value.size, password.size());
   EXPECT_EQ(0, memcmp(sensitive_data.sensitive_area.auth_value.buffer,
                       password.data(), password.size()));
