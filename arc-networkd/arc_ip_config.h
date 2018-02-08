@@ -56,7 +56,7 @@ class ArcIpConfig {
                              int prefix_len);
 
  protected:
-  int ReadTableId(const std::string& table_name);
+  int GetTableIdForInterface(const std::string& ifname);
   int StartProcessInMinijail(const std::vector<std::string>& argv,
                              bool log_failures);
 

@@ -24,17 +24,17 @@
 #include <iostream>
 #include <random>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/process.h>
 
 namespace {
 
-const char kRoutingTableNames[] =
-    "/opt/google/containers/android/rootfs/android-data"
-    "/data/misc/net/rt_tables";
 const int kInvalidTableId = -1;
 
 // These match what is used in iptables.cc in firewalld.
@@ -61,36 +61,25 @@ ArcIpConfig::~ArcIpConfig() {
   Clear();
 }
 
-int ArcIpConfig::ReadTableId(const std::string& table_name) {
-  base::ScopedFILE f(fopen(kRoutingTableNames, "r"));
-  if (!f.get()) {
-    LOG(ERROR) << "Could not open " << kRoutingTableNames;
+int ArcIpConfig::GetTableIdForInterface(const std::string& ifname) {
+  base::FilePath ifindex_path(base::StringPrintf(
+      "/proc/%d/root/sys/class/net/%s/ifindex", con_netns_, ifname.c_str()));
+  std::string contents;
+  if (!base::ReadFileToString(ifindex_path, &contents)) {
+    PLOG(ERROR) << "Could not read " << ifindex_path.value();
     return kInvalidTableId;
   }
-
-  while (1) {
-    char buf[64];
-
-    if (fgets(buf, sizeof(buf), f.get()) == NULL)
-      return kInvalidTableId;
-
-    char* saveptr;
-    if (!strtok_r(buf, " ", &saveptr))
-      continue;
-
-    int table_id = atoi(buf);
-
-    char* p = strtok_r(NULL, " ", &saveptr);
-    if (!p)
-      continue;
-
-    char* newline = strchr(p, '\n');
-    if (newline)
-      *newline = 0;
-
-    if (table_name == p)
-      return table_id;
+  base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
+  int table_id = kInvalidTableId;
+  if (!base::StringToInt(contents, &table_id)) {
+    LOG(ERROR) << "Could not parse ifindex from " << ifindex_path.value()
+               << ": " << contents;
+    return kInvalidTableId;
   }
+  // Android adds a constant to the interface index to derive the table id.
+  // This is defined in system/netd/server/RouteController.h
+  constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
+  return table_id + kRouteControllerRouteTableOffsetFromIndex;
 }
 
 bool ArcIpConfig::Init() {
@@ -242,10 +231,9 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
   // seconds.  If the routing table name has not yet been populated,
   // something really bad probably happened on the Android side.
   if (routing_table_id_ == kInvalidTableId) {
-    routing_table_id_ = ReadTableId(con_ifname_);
+    routing_table_id_ = GetTableIdForInterface(con_ifname_);
     if (routing_table_id_ == kInvalidTableId) {
-      LOG(FATAL) << "Could not look up routing table ID in "
-                 << kRoutingTableNames;
+      LOG(FATAL) << "Could not look up routing table ID for " << con_ifname_;
     }
   }
 
