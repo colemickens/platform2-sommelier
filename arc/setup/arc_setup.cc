@@ -240,6 +240,20 @@ void UnregisterBinFmtMiscEntry(const base::FilePath& entry_path) {
       entry.Write(0, kBinfmtMiscUnregister, sizeof(kBinfmtMiscUnregister) - 1));
 }
 
+// Prepends |path_to_prepend| to each element in [first, last), and returns the
+// result as a vector.
+template <typename It>
+std::vector<base::FilePath> PrependPath(It first,
+                                        It last,
+                                        const base::FilePath& path_to_prepend) {
+  std::vector<base::FilePath> result;
+  std::transform(first, last, std::back_inserter(result),
+                 [&path_to_prepend](const char* path) {
+                   return path_to_prepend.Append(path);
+                 });
+  return result;
+}
+
 }  // namespace
 
 struct ArcPaths {
@@ -1477,34 +1491,36 @@ void ArcSetup::UnmountOnOnetimeStop() {
 }
 
 void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
-  // The list of container directories that need to be re-labeled. Note that
-  // we don't use "var/run" because some of entries in the directory are on
-  // a read-only filesystem.
-  constexpr std::array<const char*, 10> kDirectories{"dev",
-                                                     "oem",
-                                                     "default.prop",
-                                                     "system/build.prop",
-                                                     "var/run/arc/apkcache",
-                                                     "var/run/arc/bugreport",
-                                                     "var/run/arc/dalvik-cache",
-                                                     "var/run/camera",
-                                                     "var/run/chrome",
-                                                     "var/run/cras"};
+  {
+    // The list of container directories that need to be recursively re-labeled.
+    // Note that "var/run" (the parent directory) is not in the list  because
+    // some of entries in the directory are on a read-only filesystem.
+    // Note: The array is for directories. Do no add files to the array. Add
+    // them to |kPaths| below instead.
+    constexpr std::array<const char*, 8> kDirectories{
+        "dev",
+        "oem",
+        "var/run/arc/apkcache",
+        "var/run/arc/bugreport",
+        "var/run/arc/dalvik-cache",
+        "var/run/camera",
+        "var/run/chrome",
+        "var/run/cras"};
 
-  // Transform |kDirectories| because the mount points are visible only in
-  // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
-  // the |rootfs| prefix.
-  std::vector<base::FilePath> host_paths;
-  std::transform(kDirectories.begin(), kDirectories.end(),
-                 std::back_inserter(host_paths),
-                 [&rootfs](const char* container_path) {
-                   return rootfs.Append(container_path);
-                 });
+    // Transform |kDirectories| because the mount points are visible only in
+    // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
+    // the |rootfs| prefix.
+    EXIT_IF(!RestoreconRecursively(
+        PrependPath(kDirectories.cbegin(), kDirectories.cend(), rootfs)));
+  }
 
-  EXIT_IF(!RestoreconRecursively(host_paths));
-
-  // Restore context of the arc/ directory itself non-recursively.
-  EXIT_IF(!Restorecon({rootfs.Append("var/run/arc")}));
+  {
+    // Do the same as above for files and directories but in a non-recursive
+    // way.
+    constexpr std::array<const char*, 4> kPaths{
+        "default.prop", "sys/kernel/debug", "system/build.prop", "var/run/arc"};
+    EXIT_IF(!Restorecon(PrependPath(kPaths.cbegin(), kPaths.cend(), rootfs)));
+  }
 }
 
 void ArcSetup::CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs) {
