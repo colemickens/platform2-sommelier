@@ -16,9 +16,11 @@ import unittest
 
 from . import fdt_util
 from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
+from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
 
 
 DTS_FILE = '../libcros_config/test.dts'
+YAML_FILE = 'v2/cros_config_schema_example.yaml'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
           'whitetip2', 'blacktip']
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
@@ -44,6 +46,9 @@ BROKEN_FIRMWARE_FILES = ['Reef.9042.87.1.tbz2']
 LIB_FIRMWARE = '/lib/firmware/'
 TOUCH_FIRMWARE = '/opt/google/touch/firmware/'
 
+config_format = None
+
+
 # Use this to suppress stdout/stderr output:
 # with capture_sys_output() as (stdout, stderr)
 #   ...do something...
@@ -62,8 +67,15 @@ def MakeTests(pathname):
   class CrosConfigHostTest(unittest.TestCase):
     """The unit test suite for the libcros_config_host.py library"""
     def setUp(self):
+      global config_format
       path = os.path.join(os.path.dirname(__file__), pathname)
-      (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
+      if '.dts' in path:
+        (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
+        config_format = FORMAT_FDT
+      else:
+        self.filepath = path
+        self.temp_file = None
+        config_format = FORMAT_YAML
 
     def tearDown(self):
       if self.temp_file is not None:
@@ -201,17 +213,19 @@ def MakeTests(pathname):
                     LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
           TouchFile('files/wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
-                    LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
-          TouchFile('files/wacom/4209.hex',
-                    TOUCH_FIRMWARE + 'wacom/4209.hex',
                     LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
           TouchFile('files/wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
-                    LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-          TouchFile('files/wacom/4209.hex',
-                    TOUCH_FIRMWARE + 'wacom/4209.hex',
-                    LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
-      self.assertEqual(expected, set(touch_files))
+                    LIB_FIRMWARE + 'wacom_firmware_REEF.bin')])
+      if config_format == FORMAT_FDT:
+        expected |= set([
+            TouchFile('files/wacom/4209.hex',
+                      TOUCH_FIRMWARE + 'wacom/4209.hex',
+                      LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
+            TouchFile('files/wacom/4209.hex',
+                      TOUCH_FIRMWARE + 'wacom/4209.hex',
+                      LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
+      self.assertEqual(set(touch_files), expected)
 
     def testGetTouchFirmwareFilesTar(self):
       """Test unpacking from a tarfile or reading from ${FILESDIR}"""
@@ -255,6 +269,9 @@ def MakeTests(pathname):
            'firmware-symlink': '{vendor}ts_i2c_{pid}.bin'})
 
     def testGetMergedPropertiesDefault(self):
+      """Test that the 'default' property is used when collecting properties"""
+      if config_format != FORMAT_FDT:
+        return
       config = CrosConfig(self.filepath)
       caroline = config.models['caroline']
       audio = caroline.PathNode('/audio/main')
@@ -291,10 +308,6 @@ def MakeTests(pathname):
           BaseFile('cras-config/2mic/bxtda7219max',
                    '/etc/cras/2mic/bxtda7219max'),
           BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
-          BaseFile('cras-config/caroline/bxtda7219max',
-                   '/etc/cras/caroline/bxtda7219max'),
-          BaseFile('cras-config/caroline/dsp.ini',
-                   '/etc/cras/caroline/dsp.ini'),
           BaseFile('cras-config/pyro/bxtda7219max',
                    '/etc/cras/pyro/bxtda7219max'),
           BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
@@ -331,7 +344,13 @@ def MakeTests(pathname):
                    '.conf',
                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
                    '.reefucm.conf')]
-      self.assertEqual(expected, audio_files)
+      if config_format == FORMAT_FDT:
+        expected += (BaseFile('cras-config/caroline/bxtda7219max',
+                              '/etc/cras/caroline/bxtda7219max'),
+                     BaseFile('cras-config/caroline/dsp.ini',
+                              '/etc/cras/caroline/dsp.ini'))
+
+      self.assertEqual(audio_files, sorted(expected))
 
     def testBadAudioFiles(self):
       path = os.path.join(os.path.dirname(__file__),
@@ -352,6 +371,8 @@ def MakeTests(pathname):
            BaseFile('reef/dptf.dv', '/etc/dptf/reef/dptf.dv')])
 
     def testWhitelabel(self):
+      if config_format != FORMAT_FDT:
+        return
       # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
       # Note that we have no tests for the alternative whitelabel schema. In
       # that case the key-id and brand-code are 1:many with the model and we
@@ -425,6 +446,8 @@ def MakeTests(pathname):
 
     def testDefault(self):
       """Test the 'default' property"""
+      if config_format != FORMAT_FDT:
+        return
       config = CrosConfig(self.filepath)
       caroline = config.models['caroline']
 
@@ -469,8 +492,9 @@ def MakeTests(pathname):
 
       os.environ['SYSROOT'] = 'fred'
       with self.assertRaises(IOError) as e:
-        CrosConfig()
-      self.assertIn('fred/usr/share/chromeos-config/config.dtb',
+        CrosConfig(config_format=config_format)
+      ext = 'dtb' if config_format == FORMAT_FDT else 'yaml'
+      self.assertIn('fred/usr/share/chromeos-config/config.%s' % ext,
                     str(e.exception))
 
     def testModelList(self):
@@ -485,9 +509,12 @@ def MakeTests(pathname):
       config = CrosConfig(self.filepath)
       self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
+      # YAML does not support naming of the target node so far as I can see.
+      shared_model = 'caroline' if config_format == FORMAT_FDT else 'shares'
+
       # Use this to avoid repeating common fields
       caroline = FirmwareInfo(
-          model='', shared_model='caroline', key_id='', have_image=True,
+          model='', shared_model=shared_model, key_id='', have_image=True,
           bios_build_target='caroline', ec_build_target='caroline',
           main_image_uri='bcs://Caroline.2017.21.1.tbz2',
           main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
@@ -521,10 +548,17 @@ def MakeTests(pathname):
               extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
           ('whitetip', caroline._replace(model='whitetip',
                                          sig_id='sig-id-in-customization-id')),
-          ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
-                                          have_image=False, sig_id='whitetip2'))
           ])
-      self.assertEqual(config.GetFirmwareInfo(), expected)
+      result = config.GetFirmwareInfo()
+      # With FDT we support models which are whitelabels of another model.
+      # Filter whitetip2 out for other formats.
+      if config_format == FORMAT_FDT:
+        expected['whitetip2'] = caroline._replace(
+            model='whitetip2', key_id='WHITETIP2', have_image=False,
+            sig_id='whitetip2')
+      else:
+        del result['whitetip2']
+      self.assertEqual(result, expected)
 
     def testGetBspUris(self):
       """Test access to the BSP URIs"""
@@ -540,7 +574,12 @@ def MakeTests(pathname):
 
 class CrosConfigHostTestFdt(MakeTests(DTS_FILE)):
   """Tests for master configuration in device tree format"""
-  pass
+
+
+# TODO(sjg@chromium.org): Enable these when the yaml class works fully.
+#class CrosConfigHostTestYaml(MakeTests(YAML_FILE)):
+  #"""Tests for master configuration in yaml format"""
+  #pass
 
 
 if __name__ == '__main__':
