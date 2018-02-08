@@ -58,476 +58,490 @@ def capture_sys_output():
     sys.stdout, sys.stderr = old_out, old_err
 
 
-class CrosConfigHostTest(unittest.TestCase):
-  """The unit test suite for the libcros_config_host.py library"""
-  def setUp(self):
-    path = os.path.join(os.path.dirname(__file__), DTS_FILE)
-    (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
+def MakeTests(pathname):
+  class CrosConfigHostTest(unittest.TestCase):
+    """The unit test suite for the libcros_config_host.py library"""
+    def setUp(self):
+      path = os.path.join(os.path.dirname(__file__), pathname)
+      (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
 
-  def tearDown(self):
-    if self.temp_file is not None:
-      os.remove(self.temp_file.name)
+    def tearDown(self):
+      if self.temp_file is not None:
+        os.remove(self.temp_file.name)
 
-  def testGoodDtbFile(self):
-    self.assertIsNotNone(CrosConfig(self.filepath))
+    def testGoodDtbFile(self):
+      self.assertIsNotNone(CrosConfig(self.filepath))
 
-  def testModels(self):
-    config = CrosConfig(self.filepath)
-    self.assertSequenceEqual([n for n, _ in config.models.iteritems()], MODELS)
+    def testModels(self):
+      config = CrosConfig(self.filepath)
+      self.assertSequenceEqual([n for n, _ in config.models.iteritems()],
+                               MODELS)
 
-  def testNodeSubnames(self):
-    config = CrosConfig(self.filepath)
-    for name, model in config.models.iteritems():
-      self.assertEqual(name, model.name)
+    def testNodeSubnames(self):
+      config = CrosConfig(self.filepath)
+      for name, model in config.models.iteritems():
+        self.assertEqual(name, model.name)
 
-  def testProperties(self):
-    config = CrosConfig(self.filepath)
-    pyro = config.models['pyro']
-    self.assertEqual(pyro.properties['wallpaper'].value, 'default')
-    self.assertEqual(pyro.Property('wallpaper').value, 'default')
-    self.assertIsNone(pyro.Property('missing'))
+    def testProperties(self):
+      config = CrosConfig(self.filepath)
+      pyro = config.models['pyro']
+      self.assertEqual(pyro.properties['wallpaper'].value, 'default')
+      self.assertEqual(pyro.Property('wallpaper').value, 'default')
+      self.assertIsNone(pyro.Property('missing'))
 
-  def testPathNode(self):
-    config = CrosConfig(self.filepath)
-    self.assertIsNotNone(config.models['pyro'].PathNode('/firmware'))
+    def testPathNode(self):
+      config = CrosConfig(self.filepath)
+      self.assertIsNotNone(config.models['pyro'].PathNode('/firmware'))
 
-  def testBadPathNode(self):
-    config = CrosConfig(self.filepath)
-    self.assertIsNone(config.models['pyro'].PathNode('/dne'))
+    def testBadPathNode(self):
+      config = CrosConfig(self.filepath)
+      self.assertIsNone(config.models['pyro'].PathNode('/dne'))
 
-  def testPathProperty(self):
-    config = CrosConfig(self.filepath)
-    pyro = config.models['pyro']
-    ec_image = pyro.PathProperty('/firmware', 'ec-image')
-    self.assertEqual(ec_image.value, 'bcs://Pyro_EC.9042.87.1.tbz2')
+    def testPathProperty(self):
+      config = CrosConfig(self.filepath)
+      pyro = config.models['pyro']
+      ec_image = pyro.PathProperty('/firmware', 'ec-image')
+      self.assertEqual(ec_image.value, 'bcs://Pyro_EC.9042.87.1.tbz2')
 
-  def testBadPathProperty(self):
-    config = CrosConfig(self.filepath)
-    pyro = config.models['pyro']
-    self.assertIsNone(pyro.PathProperty('/firmware', 'dne'))
-    self.assertIsNone(pyro.PathProperty('/dne', 'ec-image'))
+    def testBadPathProperty(self):
+      config = CrosConfig(self.filepath)
+      pyro = config.models['pyro']
+      self.assertIsNone(pyro.PathProperty('/firmware', 'dne'))
+      self.assertIsNone(pyro.PathProperty('/dne', 'ec-image'))
 
-  def testSinglePhandleFollowProperty(self):
-    config = CrosConfig(self.filepath)
-    caroline = config.models['caroline']
-    bcs_overlay = caroline.PathProperty('/firmware', 'bcs-overlay')
-    self.assertEqual(bcs_overlay.value, 'overlay-reef-private')
+    def testSinglePhandleFollowProperty(self):
+      config = CrosConfig(self.filepath)
+      caroline = config.models['caroline']
+      bcs_overlay = caroline.PathProperty('/firmware', 'bcs-overlay')
+      self.assertEqual(bcs_overlay.value, 'overlay-reef-private')
 
-  def testSinglePhandleFollowNode(self):
-    config = CrosConfig(self.filepath)
-    caroline = config.models['caroline']
-    target = caroline.PathProperty('/firmware/build-targets', 'coreboot')
-    self.assertEqual(target.value, 'caroline')
+    def testSinglePhandleFollowNode(self):
+      config = CrosConfig(self.filepath)
+      caroline = config.models['caroline']
+      target = caroline.PathProperty('/firmware/build-targets', 'coreboot')
+      self.assertEqual(target.value, 'caroline')
 
-  def testGetFirmwareUris(self):
-    config = CrosConfig(self.filepath)
-    firmware_uris = config.models['pyro'].GetFirmwareUris()
-    self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
-                                             fname in PYRO_FIRMWARE_FILES])
+    def testGetFirmwareUris(self):
+      config = CrosConfig(self.filepath)
+      firmware_uris = config.models['pyro'].GetFirmwareUris()
+      self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
+                                               fname in PYRO_FIRMWARE_FILES])
 
-  def testGetSharedFirmwareUris(self):
-    config = CrosConfig(self.filepath)
-    firmware_uris = config.GetFirmwareUris()
-    expected = sorted(
-        [CAROLINE_BUCKET + fname for fname in CAROLINE_FIRMWARE_FILES] +
-        [PYRO_BUCKET + fname for fname in PYRO_FIRMWARE_FILES] +
-        [REEF_BUCKET + fname for fname in REEF_FIRMWARE_FILES]
-        )
-    self.assertSequenceEqual(firmware_uris, expected)
+    def testGetSharedFirmwareUris(self):
+      config = CrosConfig(self.filepath)
+      firmware_uris = config.GetFirmwareUris()
+      expected = sorted(
+          [CAROLINE_BUCKET + fname for fname in CAROLINE_FIRMWARE_FILES] +
+          [PYRO_BUCKET + fname for fname in PYRO_FIRMWARE_FILES] +
+          [REEF_BUCKET + fname for fname in REEF_FIRMWARE_FILES]
+          )
+      self.assertSequenceEqual(firmware_uris, expected)
 
-  def testGetTouchFirmwareFiles(self):
-    def _GetFile(source, symlink):
-      """Helper to return a suitable TouchFile"""
-      return TouchFile(source, TOUCH_FIRMWARE + source, LIB_FIRMWARE + symlink)
+    def testGetTouchFirmwareFiles(self):
+      def _GetFile(source, symlink):
+        """Helper to return a suitable TouchFile"""
+        return TouchFile(source, TOUCH_FIRMWARE + source,
+                         LIB_FIRMWARE + symlink)
 
-    os.environ['DISTDIR'] = 'distdir'
-    os.environ['FILESDIR'] = 'files'
-    config = CrosConfig(self.filepath)
-    touch_files = config.models['pyro'].GetTouchFirmwareFiles()
-    self.assertEqual(
-        touch_files,
-        {'stylus': TouchFile('files/wacom/4209.hex',
-                             TOUCH_FIRMWARE + 'wacom/4209.hex',
-                             LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-         'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                  TOUCH_FIRMWARE + '0a97_1012.bin',
-                                  TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                                  LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
-    touch_files = config.models['reef'].GetTouchFirmwareFiles()
+      os.environ['DISTDIR'] = 'distdir'
+      os.environ['FILESDIR'] = 'files'
+      config = CrosConfig(self.filepath)
+      touch_files = config.models['pyro'].GetTouchFirmwareFiles()
+      self.assertEqual(
+          touch_files,
+          {'stylus': TouchFile('files/wacom/4209.hex',
+                               TOUCH_FIRMWARE + 'wacom/4209.hex',
+                               LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+           'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                                    TOUCH_FIRMWARE + '0a97_1012.bin',
+                                    TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                                    LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
+      touch_files = config.models['reef'].GetTouchFirmwareFiles()
 
-    # This checks that duplicate processing works correct, since both models
-    # have the same wacom firmware
-    self.assertEqual(
-        touch_files,
-        {'stylus': TouchFile('files/wacom/4209.hex',
-                             TOUCH_FIRMWARE + 'wacom/4209.hex',
-                             LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-         'touchpad': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                               TOUCH_FIRMWARE + '97.0_6.0.bin',
-                               TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
-                               LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-         'touchscreen@0': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                    TOUCH_FIRMWARE + '3062_5602.bin',
-                                    TOUCH_FIRMWARE + 'elan/3062_5602.bin',
-                                    LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-         'touchscreen@1': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                    TOUCH_FIRMWARE + '306e_5611.bin',
-                                    TOUCH_FIRMWARE + 'elan/306e_5611.bin',
-                                    LIB_FIRMWARE + 'elants_i2c_306e.bin')})
-    touch_files = config.GetTouchFirmwareFiles()
-    self.assertEqual(
-        set(touch_files),
-        set([TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                       TOUCH_FIRMWARE + '0a97_1012.bin',
-                       TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                       LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
-             TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                       TOUCH_FIRMWARE + '3062_5602.bin',
-                       TOUCH_FIRMWARE + 'elan/3062_5602.bin',
-                       LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-             TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                       TOUCH_FIRMWARE + '306e_5611.bin',
-                       TOUCH_FIRMWARE + 'elan/306e_5611.bin',
-                       LIB_FIRMWARE + 'elants_i2c_306e.bin'),
-             TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                       TOUCH_FIRMWARE + '97.0_6.0.bin',
-                       TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
-                       LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-             TouchFile('files/wacom/4209.hex',
-                       TOUCH_FIRMWARE + 'wacom/4209.hex',
-                       LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-             TouchFile('files/wacom/4209.hex',
-                       TOUCH_FIRMWARE + 'wacom/4209.hex',
-                       LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
-             TouchFile('files/wacom/4209.hex',
-                       TOUCH_FIRMWARE + 'wacom/4209.hex',
-                       LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
-             TouchFile('files/wacom/4209.hex',
-                       TOUCH_FIRMWARE + 'wacom/4209.hex',
-                       LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-             TouchFile('files/wacom/4209.hex',
-                       TOUCH_FIRMWARE + 'wacom/4209.hex',
-                       LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')]))
+      # This checks that duplicate processing works correct, since both models
+      # have the same wacom firmware
+      self.assertEqual(
+          touch_files,
+          {'stylus': TouchFile('files/wacom/4209.hex',
+                               TOUCH_FIRMWARE + 'wacom/4209.hex',
+                               LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
+           'touchpad': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                                 TOUCH_FIRMWARE + '97.0_6.0.bin',
+                                 TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
+                                 LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
+           'touchscreen@0': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                                      TOUCH_FIRMWARE + '3062_5602.bin',
+                                      TOUCH_FIRMWARE + 'elan/3062_5602.bin',
+                                      LIB_FIRMWARE + 'elants_i2c_3062.bin'),
+           'touchscreen@1': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                                      TOUCH_FIRMWARE + '306e_5611.bin',
+                                      TOUCH_FIRMWARE + 'elan/306e_5611.bin',
+                                      LIB_FIRMWARE + 'elants_i2c_306e.bin')})
+      touch_files = config.GetTouchFirmwareFiles()
+      self.assertEqual(
+          set(touch_files),
+          set([TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                         TOUCH_FIRMWARE + '0a97_1012.bin',
+                         TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                         LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
+               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                         TOUCH_FIRMWARE + '3062_5602.bin',
+                         TOUCH_FIRMWARE + 'elan/3062_5602.bin',
+                         LIB_FIRMWARE + 'elants_i2c_3062.bin'),
+               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                         TOUCH_FIRMWARE + '306e_5611.bin',
+                         TOUCH_FIRMWARE + 'elan/306e_5611.bin',
+                         LIB_FIRMWARE + 'elants_i2c_306e.bin'),
+               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                         TOUCH_FIRMWARE + '97.0_6.0.bin',
+                         TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
+                         LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
+               TouchFile('files/wacom/4209.hex',
+                         TOUCH_FIRMWARE + 'wacom/4209.hex',
+                         LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+               TouchFile('files/wacom/4209.hex',
+                         TOUCH_FIRMWARE + 'wacom/4209.hex',
+                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
+               TouchFile('files/wacom/4209.hex',
+                         TOUCH_FIRMWARE + 'wacom/4209.hex',
+                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
+               TouchFile('files/wacom/4209.hex',
+                         TOUCH_FIRMWARE + 'wacom/4209.hex',
+                         LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
+               TouchFile('files/wacom/4209.hex',
+                         TOUCH_FIRMWARE + 'wacom/4209.hex',
+                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')]))
 
-  def testGetTouchFirmwareFilesTar(self):
-    """Test unpacking from a tarfile or reading from ${FILESDIR}"""
-    os.environ['FILESDIR'] = 'test'
-    config = CrosConfig(self.filepath)
-    touch_files = config.models['pyro'].GetTouchFirmwareFiles()
-    self.assertEqual(
-        touch_files,
-        {'stylus': TouchFile('test/wacom/4209.hex',
-                             TOUCH_FIRMWARE + 'wacom/4209.hex',
-                             LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-         'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                  TOUCH_FIRMWARE + '0a97_1012.bin',
-                                  TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                                  LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
-    touch_files = config.models['reef'].GetTouchFirmwareFiles()
+    def testGetTouchFirmwareFilesTar(self):
+      """Test unpacking from a tarfile or reading from ${FILESDIR}"""
+      os.environ['FILESDIR'] = 'test'
+      config = CrosConfig(self.filepath)
+      touch_files = config.models['pyro'].GetTouchFirmwareFiles()
+      self.assertEqual(
+          touch_files,
+          {'stylus': TouchFile('test/wacom/4209.hex',
+                               TOUCH_FIRMWARE + 'wacom/4209.hex',
+                               LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+           'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                                    TOUCH_FIRMWARE + '0a97_1012.bin',
+                                    TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                                    LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
+      touch_files = config.models['reef'].GetTouchFirmwareFiles()
 
-  def testGetMergedPropertiesPyro(self):
-    config = CrosConfig(self.filepath)
-    pyro = config.models['pyro']
-    stylus = pyro.PathNode('touch/stylus')
-    props = pyro.GetMergedProperties(stylus, 'touch-type')
-    self.assertSequenceEqual(
-        props,
-        OrderedDict([('version', '4209'),
-                     ('vendor', 'wacom'),
-                     ('firmware-bin', 'wacom/{version}.hex'),
-                     ('firmware-symlink', 'wacom_firmware_{MODEL}.bin')]))
+    def testGetMergedPropertiesPyro(self):
+      config = CrosConfig(self.filepath)
+      pyro = config.models['pyro']
+      stylus = pyro.PathNode('touch/stylus')
+      props = pyro.GetMergedProperties(stylus, 'touch-type')
+      self.assertSequenceEqual(
+          props,
+          OrderedDict([('version', '4209'),
+                       ('vendor', 'wacom'),
+                       ('firmware-bin', 'wacom/{version}.hex'),
+                       ('firmware-symlink', 'wacom_firmware_{MODEL}.bin')]))
 
-  def testGetMergedPropertiesReef(self):
-    config = CrosConfig(self.filepath)
-    reef = config.models['reef']
-    touchscreen = reef.PathNode('touch/touchscreen@1')
-    props = reef.GetMergedProperties(touchscreen, 'touch-type')
-    self.assertEqual(
-        props,
-        OrderedDict([('pid', '306e'),
-                     ('version', '5611'),
-                     ('vendor', 'elan'),
-                     ('firmware-bin', '{vendor}/{pid}_{version}.bin'),
-                     ('firmware-symlink', '{vendor}ts_i2c_{pid}.bin')]))
+    def testGetMergedPropertiesReef(self):
+      config = CrosConfig(self.filepath)
+      reef = config.models['reef']
+      touchscreen = reef.PathNode('touch/touchscreen@1')
+      props = reef.GetMergedProperties(touchscreen, 'touch-type')
+      self.assertEqual(
+          props,
+          OrderedDict([('pid', '306e'),
+                       ('version', '5611'),
+                       ('vendor', 'elan'),
+                       ('firmware-bin', '{vendor}/{pid}_{version}.bin'),
+                       ('firmware-symlink', '{vendor}ts_i2c_{pid}.bin')]))
 
-  def testGetMergedPropertiesDefault(self):
-    config = CrosConfig(self.filepath)
-    caroline = config.models['caroline']
-    audio = caroline.PathNode('/audio/main')
-    props = caroline.GetMergedProperties(audio, 'audio-type')
-    self.assertSequenceEqual(
-        props,
-        OrderedDict([('cras-config-dir', 'caroline'),
-                     ('ucm-suffix', 'pyro'),
-                     ('topology-name', 'pyro'),
-                     ('card', 'bxtda7219max'),
-                     ('volume', 'cras-config/{cras-config-dir}/{card}'),
-                     ('dsp-ini', 'cras-config/{cras-config-dir}/dsp.ini'),
-                     ('hifi-conf',
-                      'ucm-config/{card}.{ucm-suffix}/HiFi.conf'),
-                     ('alsa-conf',
-                      'ucm-config/{card}.{ucm-suffix}/{card}.' +
-                      '{ucm-suffix}.conf'),
-                     ('topology-bin',
-                      'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
+    def testGetMergedPropertiesDefault(self):
+      config = CrosConfig(self.filepath)
+      caroline = config.models['caroline']
+      audio = caroline.PathNode('/audio/main')
+      props = caroline.GetMergedProperties(audio, 'audio-type')
+      self.assertSequenceEqual(
+          props,
+          OrderedDict([('cras-config-dir', 'caroline'),
+                       ('ucm-suffix', 'pyro'),
+                       ('topology-name', 'pyro'),
+                       ('card', 'bxtda7219max'),
+                       ('volume', 'cras-config/{cras-config-dir}/{card}'),
+                       ('dsp-ini', 'cras-config/{cras-config-dir}/dsp.ini'),
+                       ('hifi-conf',
+                        'ucm-config/{card}.{ucm-suffix}/HiFi.conf'),
+                       ('alsa-conf',
+                        'ucm-config/{card}.{ucm-suffix}/{card}.' +
+                        '{ucm-suffix}.conf'),
+                       ('topology-bin',
+                        'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
 
-  def testGetArcFiles(self):
-    config = CrosConfig(self.filepath)
-    arc_files = config.GetArcFiles()
-    self.assertEqual(
-        arc_files,
-        [BaseFile('reef/arc++/hardware_features',
-                  '/usr/share/chromeos-config/sbin/reef/arc++/'
-                  'hardware_features')])
+    def testGetArcFiles(self):
+      config = CrosConfig(self.filepath)
+      arc_files = config.GetArcFiles()
+      self.assertEqual(
+          arc_files,
+          [BaseFile('reef/arc++/hardware_features',
+                    '/usr/share/chromeos-config/sbin/reef/arc++/'
+                    'hardware_features')])
 
-  def testGetAudioFiles(self):
-    config = CrosConfig(self.filepath)
-    audio_files = config.GetAudioFiles()
-    self.assertEqual(
-        audio_files,
-        [BaseFile('cras-config/1mic/bxtda7219max',
-                  '/etc/cras/1mic/bxtda7219max'),
-         BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
-         BaseFile('cras-config/2mic/bxtda7219max',
-                  '/etc/cras/2mic/bxtda7219max'),
-         BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
-         BaseFile('cras-config/caroline/bxtda7219max',
-                  '/etc/cras/caroline/bxtda7219max'),
-         BaseFile('cras-config/caroline/dsp.ini', '/etc/cras/caroline/dsp.ini'),
-         BaseFile('cras-config/pyro/bxtda7219max',
-                  '/etc/cras/pyro/bxtda7219max'),
-         BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-         BaseFile('cras-config/reefcras/bxtda7219max',
-                  '/etc/cras/reefcras/bxtda7219max'),
-         BaseFile('cras-config/reefcras/dsp.ini', '/etc/cras/reefcras/dsp.ini'),
+    def testGetAudioFiles(self):
+      config = CrosConfig(self.filepath)
+      audio_files = config.GetAudioFiles()
+      self.assertEqual(
+          audio_files,
+          [BaseFile('cras-config/1mic/bxtda7219max',
+                    '/etc/cras/1mic/bxtda7219max'),
+           BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
+           BaseFile('cras-config/2mic/bxtda7219max',
+                    '/etc/cras/2mic/bxtda7219max'),
+           BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
+           BaseFile('cras-config/caroline/bxtda7219max',
+                    '/etc/cras/caroline/bxtda7219max'),
+           BaseFile('cras-config/caroline/dsp.ini',
+                    '/etc/cras/caroline/dsp.ini'),
+           BaseFile('cras-config/pyro/bxtda7219max',
+                    '/etc/cras/pyro/bxtda7219max'),
+           BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
+           BaseFile('cras-config/reefcras/bxtda7219max',
+                    '/etc/cras/reefcras/bxtda7219max'),
+           BaseFile('cras-config/reefcras/dsp.ini',
+                    '/etc/cras/reefcras/dsp.ini'),
 
-         BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
-                  LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
-         BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
-                  LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
-         BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
-                  LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
+           BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
+                    LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
+           BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
+                    LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
+           BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
+                    LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
 
-         BaseFile('ucm-config/1mic/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
-         BaseFile('ucm-config/1mic/bxtda7219max.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
-                  '.conf'),
-         BaseFile('ucm-config/2mic/Wibble',
-                  '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
-         BaseFile('ucm-config/2mic/bxtda7219max.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
-                  '.conf'),
-         BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
-         BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
-                  '.conf'),
-         BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
-         BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
-                  '.conf',
-                  '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
-                  '.reefucm.conf')])
+           BaseFile('ucm-config/1mic/HiFi.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
+           BaseFile('ucm-config/1mic/bxtda7219max.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
+                    '.conf'),
+           BaseFile('ucm-config/2mic/Wibble',
+                    '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
+           BaseFile('ucm-config/2mic/bxtda7219max.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
+                    '.conf'),
+           BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
+           BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
+                    '.conf'),
+           BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
+           BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
+                    '.conf',
+                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
+                    '.reefucm.conf')])
 
-  def testBadAudioFiles(self):
-    path = os.path.join(os.path.dirname(__file__),
-                        '../libcros_config/test_bad_audio.dts')
-    (filepath, temp_file) = fdt_util.EnsureCompiled(path)
-    config = CrosConfig(filepath)
-    os.remove(temp_file.name)
-    with self.assertRaisesRegexp(
-        ValueError, "pyro/audio/main': Should have a cras-config-dir"):
-      config.GetAudioFiles()
+    def testBadAudioFiles(self):
+      path = os.path.join(os.path.dirname(__file__),
+                          '../libcros_config/test_bad_audio.dts')
+      (filepath, temp_file) = fdt_util.EnsureCompiled(path)
+      config = CrosConfig(filepath)
+      os.remove(temp_file.name)
+      with self.assertRaisesRegexp(
+          ValueError, "pyro/audio/main': Should have a cras-config-dir"):
+        config.GetAudioFiles()
 
-  def testGetThermalFiles(self):
-    config = CrosConfig(self.filepath)
-    thermal_files = config.GetThermalFiles()
-    self.assertEqual(
-        thermal_files,
-        [BaseFile('pyro/dptf.dv', '/etc/dptf/pyro/dptf.dv'),
-         BaseFile('reef/dptf.dv', '/etc/dptf/reef/dptf.dv')])
+    def testGetThermalFiles(self):
+      config = CrosConfig(self.filepath)
+      thermal_files = config.GetThermalFiles()
+      self.assertEqual(
+          thermal_files,
+          [BaseFile('pyro/dptf.dv', '/etc/dptf/pyro/dptf.dv'),
+           BaseFile('reef/dptf.dv', '/etc/dptf/reef/dptf.dv')])
 
-  def testWhitelabel(self):
-    # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
-    # Note that we have no tests for the alternative whitelabel schema. In that
-    # case the key-id and brand-code are 1:many with the model and we need a
-    # separate identifier to determine which to use. For now, there are no
-    # users in the build system, so we can ignore it.
-    config = CrosConfig(self.filepath)
-    whitetip1 = config.models['whitetip1']
+    def testWhitelabel(self):
+      # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
+      # Note that we have no tests for the alternative whitelabel schema. In
+      # that case the key-id and brand-code are 1:many with the model and we
+      # need a separate identifier to determine which to use. For now, there are
+      # no users in the build system, so we can ignore it.
+      config = CrosConfig(self.filepath)
+      whitetip1 = config.models['whitetip1']
 
-    # These are defined by whitetip1 itself
-    self.assertEqual(whitetip1.properties['wallpaper'].value, 'shark')
-    self.assertEqual(
-        whitetip1.PathProperty('/firmware', 'key-id').value, 'WHITETIP1')
+      # These are defined by whitetip1 itself
+      self.assertEqual(whitetip1.properties['wallpaper'].value, 'shark')
+      self.assertEqual(
+          whitetip1.PathProperty('/firmware', 'key-id').value, 'WHITETIP1')
 
-    # This is in a subnode defined by whitetip
-    self.assertEqual(whitetip1.PathProperty('/touch', 'present').value, 'yes')
+      # This is in a subnode defined by whitetip
+      self.assertEqual(whitetip1.PathProperty('/touch', 'present').value, 'yes')
 
-    # This is in the main node, but defined by whitetip
-    self.assertEqual(whitetip1.PathProperty('/', 'powerd-prefs').value,
-                     'whitetip')
+      # This is in the main node, but defined by whitetip
+      self.assertEqual(whitetip1.PathProperty('/', 'powerd-prefs').value,
+                       'whitetip')
 
-    # This is defined by whitetip's shared firmware
-    target = whitetip1.PathProperty('/firmware/build-targets', 'coreboot')
-    self.assertEqual(target.value, 'caroline')
+      # This is defined by whitetip's shared firmware
+      target = whitetip1.PathProperty('/firmware/build-targets', 'coreboot')
+      self.assertEqual(target.value, 'caroline')
 
-  def testGetFirmwareBuildTargets(self):
-    config = CrosConfig(self.filepath)
-    self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
-                             ['pyro', 'caroline'])
+    def testGetFirmwareBuildTargets(self):
+      config = CrosConfig(self.filepath)
+      self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
+                               ['pyro', 'caroline'])
 
-  def testFileTree(self):
-    """Test that we can obtain a file tree"""
-    os.environ['DISTDIR'] = 'distdir'
-    os.environ['FILESDIR'] = 'files'
-    config = CrosConfig(self.filepath)
-    node = config.GetFileTree()
-    self.assertEqual(node.name, '')
-    self.assertEqual(sorted(node.children.keys()), ['etc', 'lib', 'opt', 'usr'])
-    etc = node.children['etc']
-    self.assertEqual(etc.name, 'etc')
-    cras = etc.children['cras']
-    self.assertEqual(cras.name, 'cras')
-    basking = cras.children['pyro']
-    self.assertEqual(sorted(basking.children.keys()),
-                     ['bxtda7219max', 'dsp.ini'])
+    def testFileTree(self):
+      """Test that we can obtain a file tree"""
+      os.environ['DISTDIR'] = 'distdir'
+      os.environ['FILESDIR'] = 'files'
+      config = CrosConfig(self.filepath)
+      node = config.GetFileTree()
+      self.assertEqual(node.name, '')
+      self.assertEqual(sorted(node.children.keys()),
+                       ['etc', 'lib', 'opt', 'usr'])
+      etc = node.children['etc']
+      self.assertEqual(etc.name, 'etc')
+      cras = etc.children['cras']
+      self.assertEqual(cras.name, 'cras')
+      basking = cras.children['pyro']
+      self.assertEqual(sorted(basking.children.keys()),
+                       ['bxtda7219max', 'dsp.ini'])
 
-  def testShowTree(self):
-    """Test that we can show a file tree"""
-    config = CrosConfig(self.filepath)
-    tree = config.GetFileTree()
-    with capture_sys_output() as (stdout, stderr):
-      config.ShowTree('/', tree)
-    self.assertEqual(stderr.getvalue(), '')
-    lines = [line.strip() for line in stdout.getvalue().splitlines()]
-    self.assertEqual(lines[0].split(), ['Size', 'Path'])
-    self.assertEqual(lines[1], '/')
-    self.assertEqual(lines[2], 'etc/')
-    self.assertEqual(lines[3].split(), ['missing', 'cras/'])
+    def testShowTree(self):
+      """Test that we can show a file tree"""
+      config = CrosConfig(self.filepath)
+      tree = config.GetFileTree()
+      with capture_sys_output() as (stdout, stderr):
+        config.ShowTree('/', tree)
+      self.assertEqual(stderr.getvalue(), '')
+      lines = [line.strip() for line in stdout.getvalue().splitlines()]
+      self.assertEqual(lines[0].split(), ['Size', 'Path'])
+      self.assertEqual(lines[1], '/')
+      self.assertEqual(lines[2], 'etc/')
+      self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
 
-  def testWriteTargetDirectories(self):
-    """Test that we can write out a list of file paths"""
-    config = CrosConfig(self.filepath)
-    target_dirs = config.GetTargetDirectories()
-    self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
-    self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
-    self.assertEqual(target_dirs['alsa-conf'], '/usr/share/alsa/ucm')
-    self.assertEqual(target_dirs['volume'], '/etc/cras')
-    self.assertEqual(target_dirs['dsp-ini'], '/etc/cras')
-    self.assertEqual(target_dirs['cras-config-dir'], '/etc/cras')
+    def testWriteTargetDirectories(self):
+      """Test that we can write out a list of file paths"""
+      config = CrosConfig(self.filepath)
+      target_dirs = config.GetTargetDirectories()
+      self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
+      self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
+      self.assertEqual(target_dirs['alsa-conf'], '/usr/share/alsa/ucm')
+      self.assertEqual(target_dirs['volume'], '/etc/cras')
+      self.assertEqual(target_dirs['dsp-ini'], '/etc/cras')
+      self.assertEqual(target_dirs['cras-config-dir'], '/etc/cras')
 
-  def testDefault(self):
-    """Test the 'default' property"""
-    config = CrosConfig(self.filepath)
-    caroline = config.models['caroline']
+    def testDefault(self):
+      """Test the 'default' property"""
+      config = CrosConfig(self.filepath)
+      caroline = config.models['caroline']
 
-    # These are defined by caroline itself
-    self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
-    self.assertEqual(
-        caroline.PathProperty('/audio/main', 'cras-config-dir').value,
-        'caroline')
+      # These are defined by caroline itself
+      self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
+      self.assertEqual(
+          caroline.PathProperty('/audio/main', 'cras-config-dir').value,
+          'caroline')
 
-    # This relies on a default property
-    self.assertEqual(
-        caroline.PathProperty('/audio/main', 'ucm-suffix').value, 'pyro')
+      # This relies on a default property
+      self.assertEqual(
+          caroline.PathProperty('/audio/main', 'ucm-suffix').value, 'pyro')
 
-  def testSubmodel(self):
-    """Test that we can read properties from the submodel"""
-    config = CrosConfig(self.filepath)
-    reef = config.models['reef']
-    self.assertEqual(
-        reef.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
-        '1mic')
-    self.assertEqual(
-        reef.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
-    self.assertEqual(
-        reef.SubmodelPathProperty('notouch', '/touch', 'present').value, 'no')
+    def testSubmodel(self):
+      """Test that we can read properties from the submodel"""
+      config = CrosConfig(self.filepath)
+      reef = config.models['reef']
+      self.assertEqual(
+          reef.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
+          '1mic')
+      self.assertEqual(
+          reef.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
+      self.assertEqual(
+          reef.SubmodelPathProperty('notouch', '/touch', 'present').value, 'no')
 
-  def testGetProperty(self):
-    """Test that we can read properties from non-model nodes"""
-    config = CrosConfig(self.filepath)
-    # pylint: disable=protected-access
-    self.assertEqual(config._GetProperty('/chromeos/family/firmware',
-                                         'script').value, 'updater4.sh')
-    firmware = config.GetFamilyNode('/firmware')
-    self.assertEqual(firmware.name, 'firmware')
-    self.assertEqual(firmware.Property('script').value, 'updater4.sh')
-    self.assertEqual(
-        config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
+    def testGetProperty(self):
+      """Test that we can read properties from non-model nodes"""
+      config = CrosConfig(self.filepath)
+      # pylint: disable=protected-access
+      self.assertEqual(config._GetProperty('/chromeos/family/firmware',
+                                           'script').value, 'updater4.sh')
+      firmware = config.GetFamilyNode('/firmware')
+      self.assertEqual(firmware.name, 'firmware')
+      self.assertEqual(firmware.Property('script').value, 'updater4.sh')
+      self.assertEqual(
+          config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
 
-  def testDefaultConfig(self):
-    with self.assertRaisesRegexp(ValueError,
-                                 'No master configuration is available'):
-      CrosConfig()
+    def testDefaultConfig(self):
+      with self.assertRaisesRegexp(ValueError,
+                                   'No master configuration is available'):
+        CrosConfig()
 
-    os.environ['SYSROOT'] = 'fred'
-    with self.assertRaises(IOError) as e:
-      CrosConfig()
-    self.assertIn('fred/usr/share/chromeos-config/config.dtb', str(e.exception))
+      os.environ['SYSROOT'] = 'fred'
+      with self.assertRaises(IOError) as e:
+        CrosConfig()
+      self.assertIn('fred/usr/share/chromeos-config/config.dtb',
+                    str(e.exception))
 
-  def testModelList(self):
-    """Test that we can obtain a model list"""
-    config = CrosConfig(self.filepath)
-    self.assertEqual(
-        ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
-         'whitetip1', 'whitetip2'], config.GetModelList())
+    def testModelList(self):
+      """Test that we can obtain a model list"""
+      config = CrosConfig(self.filepath)
+      self.assertEqual(
+          ['blacktip', 'broken', 'caroline', 'pyro', 'reef', 'whitetip',
+           'whitetip1', 'whitetip2'], config.GetModelList())
 
-  def testFirmware(self):
-    """Test access to firmware information"""
-    config = CrosConfig(self.filepath)
-    self.assertEqual('updater4.sh', config.GetFirmwareScript())
+    def testFirmware(self):
+      """Test access to firmware information"""
+      config = CrosConfig(self.filepath)
+      self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
-    # Use this to avoid repeating common fields
-    caroline = FirmwareInfo(
-        model='', shared_model='caroline', key_id='', have_image=True,
-        bios_build_target='caroline', ec_build_target='caroline',
-        main_image_uri='bcs://Caroline.2017.21.1.tbz2',
-        main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
-        ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
-        pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
-        extra=[], create_bios_rw_image=False, tools=[], sig_id='')
-    self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
-        ('blacktip', caroline._replace(model='blacktip',
-                                       sig_id='sig-id-in-customization-id')),
-        ('blacktip-blacktip1', caroline._replace(
-            model='blacktip-blacktip1', key_id='BLACKTIP1', have_image=False,
-            sig_id='blacktip-blacktip1')),
-        ('blacktip-blacktip2', caroline._replace(
-            model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
-            sig_id='blacktip-blacktip2')),
-        ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
-        ('pyro', FirmwareInfo(
-            model='pyro', shared_model=None, key_id='', have_image=True,
-            bios_build_target='pyro', ec_build_target='pyro',
-            main_image_uri='bcs://Pyro.9042.87.1.tbz2',
-            main_rw_image_uri='bcs://Pyro.9042.110.0.tbz2',
-            ec_image_uri='bcs://Pyro_EC.9042.87.1.tbz2',
-            pd_image_uri='bcs://Pyro_PD.9042.87.1.tbz2',
-            extra=[], create_bios_rw_image=False, tools=[], sig_id='pyro')),
-        ('reef', FirmwareInfo(
-            model='reef', shared_model=None, key_id='', have_image=True,
-            bios_build_target='pyro', ec_build_target='pyro',
-            main_image_uri='bcs://Reef.9042.87.1.tbz2',
-            main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
-            ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
-            extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
-        ('whitetip', caroline._replace(model='whitetip',
-                                       sig_id='sig-id-in-customization-id')),
-        ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
-                                        have_image=False, sig_id='whitetip2'))
-        ]))
+      # Use this to avoid repeating common fields
+      caroline = FirmwareInfo(
+          model='', shared_model='caroline', key_id='', have_image=True,
+          bios_build_target='caroline', ec_build_target='caroline',
+          main_image_uri='bcs://Caroline.2017.21.1.tbz2',
+          main_rw_image_uri='bcs://Caroline.2017.41.0.tbz2',
+          ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
+          pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
+          extra=[], create_bios_rw_image=False, tools=[], sig_id='')
+      self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
+          ('blacktip', caroline._replace(model='blacktip',
+                                         sig_id='sig-id-in-customization-id')),
+          ('blacktip-blacktip1', caroline._replace(
+              model='blacktip-blacktip1', key_id='BLACKTIP1', have_image=False,
+              sig_id='blacktip-blacktip1')),
+          ('blacktip-blacktip2', caroline._replace(
+              model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
+              sig_id='blacktip-blacktip2')),
+          ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
+          ('pyro', FirmwareInfo(
+              model='pyro', shared_model=None, key_id='', have_image=True,
+              bios_build_target='pyro', ec_build_target='pyro',
+              main_image_uri='bcs://Pyro.9042.87.1.tbz2',
+              main_rw_image_uri='bcs://Pyro.9042.110.0.tbz2',
+              ec_image_uri='bcs://Pyro_EC.9042.87.1.tbz2',
+              pd_image_uri='bcs://Pyro_PD.9042.87.1.tbz2',
+              extra=[], create_bios_rw_image=False, tools=[], sig_id='pyro')),
+          ('reef', FirmwareInfo(
+              model='reef', shared_model=None, key_id='', have_image=True,
+              bios_build_target='pyro', ec_build_target='pyro',
+              main_image_uri='bcs://Reef.9042.87.1.tbz2',
+              main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
+              ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
+              extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
+          ('whitetip', caroline._replace(model='whitetip',
+                                         sig_id='sig-id-in-customization-id')),
+          ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
+                                          have_image=False, sig_id='whitetip2'))
+          ]))
 
-  def testGetBspUris(self):
-    """Test access to the BSP URIs"""
-    config = CrosConfig(self.filepath)
-    uris = config.GetBspUris()
-    self.assertSequenceEqual(uris, [
-        'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
-        'chromeos-base/chromeos-touch-firmware-reef/'
-        'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
+    def testGetBspUris(self):
+      """Test access to the BSP URIs"""
+      config = CrosConfig(self.filepath)
+      uris = config.GetBspUris()
+      self.assertSequenceEqual(uris, [
+          'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
+          'chromeos-base/chromeos-touch-firmware-reef/'
+          'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
+
+  return CrosConfigHostTest
+
+
+class CrosConfigHostTestFdt(MakeTests(DTS_FILE)):
+  """Tests for master configuration in device tree format"""
+  pass
 
 
 if __name__ == '__main__':
