@@ -124,8 +124,9 @@ def MakeTests(pathname):
     def testGetFirmwareUris(self):
       config = CrosConfig(self.filepath)
       firmware_uris = config.models['pyro'].GetFirmwareUris()
-      self.assertSequenceEqual(firmware_uris, [PYRO_BUCKET + fname for
-                                               fname in PYRO_FIRMWARE_FILES])
+      self.assertSequenceEqual(
+          firmware_uris,
+          sorted([PYRO_BUCKET + fname for fname in PYRO_FIRMWARE_FILES]))
 
     def testGetSharedFirmwareUris(self):
       config = CrosConfig(self.filepath)
@@ -235,10 +236,10 @@ def MakeTests(pathname):
       props = pyro.GetMergedProperties(stylus, 'touch-type')
       self.assertSequenceEqual(
           props,
-          OrderedDict([('version', '4209'),
-                       ('vendor', 'wacom'),
-                       ('firmware-bin', 'wacom/{version}.hex'),
-                       ('firmware-symlink', 'wacom_firmware_{MODEL}.bin')]))
+          {'version': '4209',
+           'vendor': 'wacom',
+           'firmware-bin': 'wacom/{version}.hex',
+           'firmware-symlink': 'wacom_firmware_{MODEL}.bin'})
 
     def testGetMergedPropertiesReef(self):
       config = CrosConfig(self.filepath)
@@ -247,11 +248,11 @@ def MakeTests(pathname):
       props = reef.GetMergedProperties(touchscreen, 'touch-type')
       self.assertEqual(
           props,
-          OrderedDict([('pid', '306e'),
-                       ('version', '5611'),
-                       ('vendor', 'elan'),
-                       ('firmware-bin', '{vendor}/{pid}_{version}.bin'),
-                       ('firmware-symlink', '{vendor}ts_i2c_{pid}.bin')]))
+          {'pid': '306e',
+           'version': '5611',
+           'vendor': 'elan',
+           'firmware-bin': '{vendor}/{pid}_{version}.bin',
+           'firmware-symlink': '{vendor}ts_i2c_{pid}.bin'})
 
     def testGetMergedPropertiesDefault(self):
       config = CrosConfig(self.filepath)
@@ -260,19 +261,16 @@ def MakeTests(pathname):
       props = caroline.GetMergedProperties(audio, 'audio-type')
       self.assertSequenceEqual(
           props,
-          OrderedDict([('cras-config-dir', 'caroline'),
-                       ('ucm-suffix', 'pyro'),
-                       ('topology-name', 'pyro'),
-                       ('card', 'bxtda7219max'),
-                       ('volume', 'cras-config/{cras-config-dir}/{card}'),
-                       ('dsp-ini', 'cras-config/{cras-config-dir}/dsp.ini'),
-                       ('hifi-conf',
-                        'ucm-config/{card}.{ucm-suffix}/HiFi.conf'),
-                       ('alsa-conf',
-                        'ucm-config/{card}.{ucm-suffix}/{card}.' +
-                        '{ucm-suffix}.conf'),
-                       ('topology-bin',
-                        'topology/5a98-reef-{topology-name}-8-tplg.bin')]))
+          {'cras-config-dir': 'caroline',
+           'ucm-suffix': 'pyro',
+           'topology-name': 'pyro',
+           'card': 'bxtda7219max',
+           'volume': 'cras-config/{cras-config-dir}/{card}',
+           'dsp-ini': 'cras-config/{cras-config-dir}/dsp.ini',
+           'hifi-conf': 'ucm-config/{card}.{ucm-suffix}/HiFi.conf',
+           'alsa-conf': 'ucm-config/{card}.{ucm-suffix}/{card}.' +
+                        '{ucm-suffix}.conf',
+           'topology-bin': 'topology/5a98-reef-{topology-name}-8-tplg.bin'})
 
     def testGetArcFiles(self):
       config = CrosConfig(self.filepath)

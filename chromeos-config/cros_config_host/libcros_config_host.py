@@ -643,7 +643,7 @@ class CrosConfigImpl(object):
         if default_node:
           self.MergeProperties(props, default_node, phandle_prop)
           self.MergeProperties(props, default_node.FollowPhandle(phandle_prop))
-      return props
+      return OrderedDict(sorted(props.iteritems()))
 
     def ScanSubnodes(self):
       """Collect a list of submodels"""
@@ -693,9 +693,10 @@ class CrosConfigImpl(object):
       file_names = [p[6:] for p in valid_images]
       uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
                     'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
-      return [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname,
+      uris = [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname,
                                 ebuild_name=ebuild_name)
               for fname in file_names]
+      return sorted(uris)
 
     def SetupModelProps(self, props):
       props['model'] = self.name
