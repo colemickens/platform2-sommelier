@@ -111,7 +111,7 @@ class PathComponent(object):
       status = os.stat(fname).st_size
     else:
       status = 'missing'
-    print('%-10s%s%s%s' % (status, '   ' * indent, self.name,
+    print('%-10s%s%s%s' % (status, '   ' * indent, str(self.name),
                            self.children and '/' or ''))
     for child in sorted(self.children.keys()):
       self.children[child].ShowTree(base_path, path, indent + 1)
