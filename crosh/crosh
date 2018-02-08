@@ -370,19 +370,6 @@ cmd_set_time() (
   esac
 )
 
-session_manager() {
-  # Default timeout 30 seconds.
-  local timeout="--reply-timeout=30000"
-  case $1 in
-  --reply-timeout=*) timeout=$1; shift;;
-  esac
-  local method="$1"; shift
-  dbus-send ${timeout} --system --print-reply --fixed \
-      --dest=org.chromium.SessionManager \
-      /org/chromium/SessionManager \
-      "org.chromium.SessionManagerInterface.${method}" "$@"
-}
-
 # Check if a particular Chrome feature is enabled.
 # Use the DBus method name as the parameter.
 is_chrome_feature_enabled() {
@@ -396,12 +383,27 @@ is_chrome_feature_enabled() {
   [ ${status} -eq 0 -a ${reply##* } == "true" ]
 }
 
-# Set the vars to pass the unittests ...
-USAGE_vmc=''
-HELP_vmc=''
-EXEC_vmc='/usr/bin/vm_launcher'
-# ... then unset them to hide the command from "help" output.
-unset USAGE_vmc HELP_vmc
+
+imageloader() {
+  # Default timeout 30 seconds.
+  local timeout="--reply-timeout=30000"
+  case $1 in
+  --reply-timeout=*) timeout=$1; shift;;
+  esac
+  local method="$1"; shift
+
+  dbus-send ${timeout} --system --type=method_call \
+    --fixed --print-reply --dest=org.chromium.ComponentUpdaterService \
+    /org/chromium/ComponentUpdaterService \
+    "org.chromium.ComponentUpdaterService.${method}" "$@" \
+    2>&1 >/dev/null
+}
+
+USAGE_vmc='[ start <name> | stop <name> ]'
+HELP_vmc='
+  Start or stop a VM.
+'
+EXEC_vmc='/usr/bin/concierge_client'
 cmd_vmc() (
   if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
     echo "This command is not available."
@@ -410,37 +412,73 @@ cmd_vmc() (
   local cmd="$1"; shift
   case "${cmd}" in
   start)
-    local usage="Usage: vmc ${cmd} <container path> <container name> [writable]"
-    if [ $# -ne 2 ] && [ $# -ne 3 ]; then
-      help "${usage}"
+    if [ $# -ne 1 ]; then
+      help "Missing name"
       return 1
     fi
-    local container="$1"; shift
+
     local name="$1"; shift
-    local writable="false"
-    if [ $# -eq 1 ]; then
-      if [ "$1" = "writable" ]; then
-        writable="true"
-      else
-        help "${usage}"
-        return 1
-      fi
+
+    # Mount the termina component, waiting up to 2 minutes to download it.  If
+    # this fails we won't be able to start the concierge service below.
+    imageloader --reply-timeout=120000 LoadComponent string:cros-termina
+
+    # Start the concierge service.
+    local reply
+    reply="$(debugd StartVmConcierge)"
+    if [ $? -ne 0 -o "${reply}" != "true" ]; then
+      echo "Unable to start concierge service"
+      return 1
     fi
-    # TODO(dgreid) - crbug.com/770766 - Fill user id field.
-    session_manager "StartContainer" "string:${container}" "string:${name}" \
-        "string:" "boolean:${writable}"
+
+    # Actually start the VM.  TODO: Replace the id below with a variable.
+    concierge_client --start_termina_vm --name="${name}" \
+                     --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to start VM"
+      return 1
+    fi
+
+    # Give the user a shell in the VM.
+    vsh --vm_name="${name}" -- LXD_DIR=/mnt/stateful/lxd \
+      LXD_CONF=/mnt/stateful/lxd_conf
     ;;
   stop)
     if [ $# -ne 1 ]; then
-      help "Usage: vmc ${cmd} <container name>"
+      help "Missing name"
       return 1
     fi
     local name="$1"; shift
-    session_manager "StopContainer" "string:${name}"
+    concierge_client --stop --name="${name}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to stop vm"
+      return 1
+    fi
     ;;
   *)
     echo "Unknown VM command: ${cmd}"
   esac
+)
+
+USAGE_vsh='<name>'
+HELP_vsh='
+  Connect to a shell inside the VM <name>.
+'
+EXEC_vsh='/usr/bin/vsh'
+cmd_vsh() (
+  if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
+    echo "This command is not available."
+    return 1
+  fi
+  if [ $# -ne 1 ]; then
+    help "Missing name"
+    return 1
+  fi
+
+  local name="$1"; shift
+
+  vsh --vm_name="${name}" -- LXD_DIR=/mnt/stateful/lxd \
+    LXD_CONF=/mnt/stateful/lxd_conf
 )
 
 # Set the vars to pass the unittests ...
