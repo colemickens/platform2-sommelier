@@ -519,6 +519,17 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
             static_cast<em::DeviceUserPolicyLoopbackProcessingModeProto::Mode>(
                 value));
       });
+
+  EncodeString(key::kDeviceLoginScreenIsolateOrigins,
+               [policy](const std::string& value) {
+                 policy->mutable_device_login_screen_isolate_origins()
+                     ->set_isolate_origins(value);
+               });
+
+  EncodeBoolean(key::kDeviceLoginScreenSitePerProcess, [policy](bool value) {
+    policy->mutable_device_login_screen_site_per_process()
+        ->set_site_per_process(value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

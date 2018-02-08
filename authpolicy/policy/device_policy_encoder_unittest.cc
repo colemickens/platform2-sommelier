@@ -371,6 +371,14 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_MERGE,
       policy.device_user_policy_loopback_processing_mode().mode());
 
+  EncodeString(&policy, key::kDeviceLoginScreenIsolateOrigins, kString);
+  EXPECT_EQ(kString,
+            policy.device_login_screen_isolate_origins().isolate_origins());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenSitePerProcess, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_login_screen_site_per_process().site_per_process());
+
   //
   // Check whether all device policies have been handled.
   //
