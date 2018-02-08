@@ -72,6 +72,19 @@ TEST_F(DirectoryIteratorTest, InitSucceedsAndSetsDoneOnEmptyDirectory) {
   EXPECT_TRUE(it.IsDone());
 }
 
+TEST_F(DirectoryIteratorTest, InitSucceedsAndSetsDoneOnSelfAndParentEntries) {
+  CreateDefaultMountRoot();
+
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_.AddDirectory(GetDefaultFullPath("/path/."));
+  fake_samba_.AddDirectory(GetDefaultFullPath("/path/.."));
+
+  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_);
+
+  EXPECT_EQ(0, it.Init());
+  EXPECT_TRUE(it.IsDone());
+}
+
 // DirectoryIterator initializes correctly on a directory with one entry.
 TEST_F(DirectoryIteratorTest, InitSucceedsOnNonEmptyDirectory) {
   CreateDefaultMountRoot();

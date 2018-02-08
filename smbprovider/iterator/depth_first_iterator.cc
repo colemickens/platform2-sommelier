@@ -78,7 +78,6 @@ int32_t DepthFirstIterator::PushDir(const DirectoryEntry& entry) {
   if (result != 0) {
     return result;
   }
-
   return OnPush(entry);
 }
 

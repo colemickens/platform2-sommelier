@@ -110,13 +110,14 @@ int32_t DirectoryIterator::FillBuffer() {
     return fetch_error;
   }
 
-  if (bytes_read == 0) {
-    // Succeeded but nothing left to read.
+  ConvertBufferToVector(bytes_read);
+
+  if (entries_.empty()) {
+    // Succeeded but nothing valid left to read.
     is_done_ = true;
     return kNoMoreEntriesError;
   }
 
-  ConvertBufferToVector(bytes_read);
   return 0;
 }
 
