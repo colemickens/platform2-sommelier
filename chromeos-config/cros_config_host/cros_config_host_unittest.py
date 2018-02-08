@@ -96,6 +96,8 @@ class CrosConfigHostTest(unittest.TestCase):
     self.CheckManyLines(output)
 
   def testGetTouchFirmwareFiles(self):
+    os.environ['DISTDIR'] = 'dist'
+    os.environ['FILESDIR'] = 'files'
     call_args = '{} -c {} get-touch-firmware-files'.format(
         CLI_FILE, self.dtb_file).split()
     output = subprocess.check_output(call_args)

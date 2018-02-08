@@ -140,6 +140,8 @@ class CrosConfigHostTest(unittest.TestCase):
       """Helper to return a suitable TouchFile"""
       return TouchFile(source, TOUCH_FIRMWARE + source, LIB_FIRMWARE + symlink)
 
+    os.environ['DISTDIR'] = 'distdir'
+    os.environ['FILESDIR'] = 'files'
     config = CrosConfig(self.filepath)
     touch_files = config.models['pyro'].GetTouchFirmwareFiles()
     self.assertEqual(
