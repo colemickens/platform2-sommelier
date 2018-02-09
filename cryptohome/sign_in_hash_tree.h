@@ -237,6 +237,11 @@ class SignInHashTree {
   // node of the hash tree.
   bool IsLeafLabel(const Label& l) { return l.length() == leaf_length_; }
 
+  // Update the hash cache associated with the path for |label|.
+  // This function is typically called after an update is made to the
+  // underlying PLT.
+  void UpdateHashCacheLabelPath(const Label& label);
+
   // Length of the leaf node label.
   uint32_t leaf_length_;
   // Fan out of the hash tree, i.e number of children of each inner node.

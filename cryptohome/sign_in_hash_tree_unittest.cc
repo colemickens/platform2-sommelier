@@ -45,6 +45,16 @@ const std::vector<uint8_t> kRootHash6_4_1 = {
      0x79, 0x66, 0xA5, 0xC4, 0x74, 0xD1, 0x81, 0x44, 0x08, 0xB4, 0x78,
      0xA7, 0x92, 0x1E, 0x07, 0x89, 0xBB, 0x9A, 0x8D, 0xBC, 0x02}};
 
+const std::vector<uint8_t> kRootHash14_4_1 = {
+    {0x91, 0x3C, 0xA7, 0x20, 0x82, 0x23, 0xB8, 0xC8, 0x92, 0xA6, 0x1E,
+     0x83, 0xD9, 0x68, 0x07, 0x28, 0xE3, 0xE1, 0xD6, 0xBB, 0x10, 0x63,
+     0xF2, 0xDD, 0xCE, 0x92, 0x25, 0x71, 0x80, 0x3D, 0xA9, 0xEE}};
+
+const std::vector<uint8_t> kRootHash14_4_2 = {
+    {0x59, 0x72, 0x23, 0x5E, 0xF3, 0x89, 0x4B, 0xE6, 0x6B, 0x59, 0x97,
+     0x22, 0xCC, 0x95, 0xC8, 0xEC, 0xB8, 0x74, 0x0E, 0x97, 0x3C, 0x77,
+     0x60, 0x41, 0xB4, 0x50, 0x4F, 0xE8, 0xCA, 0x4E, 0x71, 0x05}};
+
 const std::vector<uint8_t> kSampleCredData1 = {{0xA, 0xB, 0xC, 0xD}};
 
 std::vector<std::string> ConvertLabelsIntoStrings(
@@ -168,6 +178,40 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
                                  &cred_data));
   EXPECT_EQ(kRootHash6_4_1, returned_hash);
+}
+
+// Test another hash tree, and check that when you insert / remove a label,
+// the |hash_cache_| gets updated without having to call
+// GenerateAndStoreHsahCache on the entire tree.
+TEST(SignInHashTreeUnitTest, UpdateHashCacheOnInsertRemove) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Create initial table and HashCache.
+  auto tree = std::make_unique<SignInHashTree>(14, 2, temp_dir.path());
+  tree->GenerateAndStoreHashCache();
+
+  std::vector<uint8_t> returned_hash, cred_data;
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
+                                 &cred_data));
+  ASSERT_EQ(kRootHash14_4_1, returned_hash);
+
+  // Insert a label.
+  ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 14, 2), kSampleHash1,
+                               kSampleCredData1));
+  returned_hash.clear();
+  cred_data.clear();
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
+                                 &cred_data));
+  EXPECT_EQ(kRootHash14_4_2, returned_hash);
+
+  // Remove the label; the root hash should be what it was earlier.
+  ASSERT_TRUE(tree->RemoveLabel(SignInHashTree::Label(21, 14, 2)));
+  returned_hash.clear();
+  cred_data.clear();
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
+                                 &cred_data));
+  EXPECT_EQ(kRootHash14_4_1, returned_hash);
 }
 
 }  // namespace cryptohome

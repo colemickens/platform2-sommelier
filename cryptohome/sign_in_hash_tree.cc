@@ -120,7 +120,7 @@ bool SignInHashTree::StoreLabel(const Label& label,
   }
 
   memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
-  // TODO(pmalani): Probably have to update all the parent hashes here.
+  UpdateHashCacheLabelPath(label);
   return true;
 }
 
@@ -138,7 +138,7 @@ bool SignInHashTree::RemoveLabel(const Label& label) {
 
   std::vector<uint8_t> hmac(32, 0);
   memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
-  // TODO(pmalani): Probably have to update all the parent hashes here.
+  UpdateHashCacheLabelPath(label);
   return true;
 }
 
@@ -214,6 +214,23 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   // Update the hash cache with the new value.
   memcpy(hash_cache_array_[label.cache_index()], ret_val.data(), 32);
   return ret_val;
+}
+
+void SignInHashTree::UpdateHashCacheLabelPath(const Label& label) {
+  Label cur_label = label;
+  while (!cur_label.is_root()) {
+    Label parent = cur_label.GetParent();
+    std::vector<uint8_t> input_buffer;
+    for (uint64_t i = 0; i < fan_out_; i++) {
+      Label child_label = parent.Extend(i);
+      input_buffer.insert(input_buffer.end(),
+                          hash_cache_array_[child_label.cache_index()],
+                          hash_cache_array_[child_label.cache_index()] + 32);
+    }
+    brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
+    memcpy(hash_cache_array_[parent.cache_index()], result_hash.data(), 32);
+    cur_label = parent;
+  }
 }
 
 }  // namespace cryptohome
