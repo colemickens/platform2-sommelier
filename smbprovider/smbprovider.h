@@ -183,6 +183,16 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                        const std::string& full_path,
                        int32_t* error_code);
 
+  // Generates a vector of |parent_paths| from a directory path in |options|.
+  // The path must be prefixed with "/". |parent_paths| will include the mount
+  // root and will exclude the path in |options|. Passing in "/1/2/3" will
+  // generate ["smb://{mount}/1", "smb://{mount}/1/2"]. If the path has no
+  // parents aside from "/", no paths will be generated. Returns true on success
+  // and sets |error_code| on failure.
+  bool GenerateParentPaths(const CreateDirectoryOptionsProto& options,
+                           int32_t* error_code,
+                           std::vector<std::string>* parent_paths);
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;

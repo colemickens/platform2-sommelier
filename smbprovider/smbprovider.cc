@@ -4,6 +4,7 @@
 
 #include "smbprovider/smbprovider.h"
 
+#include <algorithm>
 #include <map>
 #include <utility>
 
@@ -492,6 +493,36 @@ bool SmbProvider::CreateDirectory(const CreateDirectoryOptionsProto& options,
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
   }
+  return true;
+}
+
+bool SmbProvider::GenerateParentPaths(
+    const CreateDirectoryOptionsProto& options,
+    int32_t* error_code,
+    std::vector<std::string>* parent_paths) {
+  DCHECK(error_code);
+  DCHECK(parent_paths);
+  base::FilePath current_path(options.directory_path());
+  DCHECK(current_path.IsAbsolute());
+
+  // Skip the leaf path and start with the lowest parent.
+  current_path = current_path.DirName();
+
+  while (current_path.value() != "/") {
+    std::string full_path;
+    if (!GetFullPath(GetMethodName(options), options.mount_id(),
+                     current_path.StripTrailingSeparators().value(),
+                     &full_path)) {
+      *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+      return false;
+    }
+
+    current_path = current_path.DirName();
+    parent_paths->push_back(std::move(full_path));
+  }
+
+  // Reverse the vector so the top parent will be first.
+  std::reverse(parent_paths->begin(), parent_paths->end());
   return true;
 }
 
