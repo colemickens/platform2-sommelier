@@ -16,14 +16,20 @@ from . import fdt_util
 
 CLI_FILE = 'python -m cros_config_host.cros_config_host'
 DTS_FILE = '../libcros_config/test.dts'
+YAML_FILE = 'v2/cros_config_schema_example.json'
 
 
 def MakeTests(pathname):
   class CrosConfigHostTest(unittest.TestCase):
     """The unit test suite for the CrosConfigHost CLI tool."""
     def setUp(self):
-      path = os.path.join(os.path.dirname(__file__), pathname)
-      (self.conf_file, self.temp_file) = fdt_util.EnsureCompiled(path)
+      self.pathname = pathname
+      path = os.path.join(os.path.dirname(__file__), self.pathname)
+      if '.dts' in path:
+        (self.conf_file, self.temp_file) = fdt_util.EnsureCompiled(path)
+      else:
+        self.conf_file = path
+        self.temp_file = None
 
     def tearDown(self):
       if self.temp_file is not None:
@@ -48,15 +54,16 @@ def MakeTests(pathname):
       # Expect the last thing in the output to be a newline
       self.assertEqual(output[-1:], os.linesep)
 
-
     def testReadStdin(self):
-      call_args = '{} -c - list-models < {}'.format(CLI_FILE, self.conf_file)
+      yaml = '-y' if 'json' in self.conf_file else ''
+      call_args = '{} {} -c - list-models < {}'.format(CLI_FILE, yaml,
+                                                       self.conf_file)
       output = subprocess.check_output(call_args, shell=True)
       self.CheckManyLinesWithoutSpaces(output)
 
     def testListModels(self):
-      call_args = ('{} -c {} list-models'.format(CLI_FILE, self.conf_file).
-           split())
+      call_args = '{} -c {} list-models'.format(
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.CheckManyLinesWithoutSpaces(output)
 
@@ -136,6 +143,10 @@ def MakeTests(pathname):
 
 class CrosConfigHostTestFdt(MakeTests(DTS_FILE)):
   """Tests for master configuration in device-tree format"""
+
+
+#class CrosConfigHostTestYaml(MakeTests(YAML_FILE)):
+  #"""Tests for master configuration in yaml format"""
 
 
 if __name__ == '__main__':
