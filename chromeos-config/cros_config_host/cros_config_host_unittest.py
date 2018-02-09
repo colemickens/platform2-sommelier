@@ -23,7 +23,7 @@ def MakeTests(pathname):
     """The unit test suite for the CrosConfigHost CLI tool."""
     def setUp(self):
       path = os.path.join(os.path.dirname(__file__), pathname)
-      (self.dtb_file, self.temp_file) = fdt_util.EnsureCompiled(path)
+      (self.conf_file, self.temp_file) = fdt_util.EnsureCompiled(path)
 
     def tearDown(self):
       if self.temp_file is not None:
@@ -50,12 +50,13 @@ def MakeTests(pathname):
 
 
     def testReadStdin(self):
-      call_args = '{} -c - list-models < {}'.format(CLI_FILE, self.dtb_file)
+      call_args = '{} -c - list-models < {}'.format(CLI_FILE, self.conf_file)
       output = subprocess.check_output(call_args, shell=True)
       self.CheckManyLinesWithoutSpaces(output)
 
     def testListModels(self):
-      call_args = '{} -c {} list-models'.format(CLI_FILE, self.dtb_file).split()
+      call_args = ('{} -c {} list-models'.format(CLI_FILE, self.conf_file).
+           split())
       output = subprocess.check_output(call_args)
       self.CheckManyLinesWithoutSpaces(output)
 
@@ -67,32 +68,32 @@ def MakeTests(pathname):
 
     def testGetPropSingle(self):
       call_args = '{} -c {} --model=pyro get / wallpaper'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.assertEqual(output, 'default' + os.linesep)
 
     def testGetPropSingleWrongModel(self):
       call_args = '{} -c {} --model=dne get / wallpaper'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       # Ensure that the expected error output does not appear.
       output = subprocess.check_output(call_args, stderr=subprocess.PIPE)
       self.assertEqual(output, '')
 
     def testGetPropSingleWrongPath(self):
       call_args = '{} -c {} --model=pyro get /dne wallpaper'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.assertEqual(output, os.linesep)
 
     def testGetPropSingleWrongProp(self):
       call_args = '{} -c {} --model=pyro get / dne'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.assertEqual(output, os.linesep)
 
     def testGetFirmwareUris(self):
       call_args = '{} -c {} --model=pyro get-firmware-uris'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.CheckManyLines(output)
 
@@ -100,19 +101,19 @@ def MakeTests(pathname):
       os.environ['DISTDIR'] = 'dist'
       os.environ['FILESDIR'] = 'files'
       call_args = '{} -c {} get-touch-firmware-files'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.CheckManyLines(output, 10)
 
     def testGetAudioFiles(self):
       call_args = '{} -c {} get-audio-files'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.CheckManyLines(output, 10)
 
     def testGetFirmwareBuildTargets(self):
       call_args = '{} -c {} get-firmware-build-targets coreboot'.format(
-          CLI_FILE, self.dtb_file).split()
+          CLI_FILE, self.conf_file).split()
       output = subprocess.check_output(call_args)
       self.CheckManyLines(output, 1)
 
