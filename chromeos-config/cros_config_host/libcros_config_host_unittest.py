@@ -179,39 +179,39 @@ def MakeTests(pathname):
                                       TOUCH_FIRMWARE + 'elan/306e_5611.bin',
                                       LIB_FIRMWARE + 'elants_i2c_306e.bin')})
       touch_files = config.GetTouchFirmwareFiles()
-      self.assertEqual(
-          set(touch_files),
-          set([TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                         TOUCH_FIRMWARE + '0a97_1012.bin',
-                         TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                         LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
-               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                         TOUCH_FIRMWARE + '3062_5602.bin',
-                         TOUCH_FIRMWARE + 'elan/3062_5602.bin',
-                         LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                         TOUCH_FIRMWARE + '306e_5611.bin',
-                         TOUCH_FIRMWARE + 'elan/306e_5611.bin',
-                         LIB_FIRMWARE + 'elants_i2c_306e.bin'),
-               TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                         TOUCH_FIRMWARE + '97.0_6.0.bin',
-                         TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
-                         LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-               TouchFile('files/wacom/4209.hex',
-                         TOUCH_FIRMWARE + 'wacom/4209.hex',
-                         LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-               TouchFile('files/wacom/4209.hex',
-                         TOUCH_FIRMWARE + 'wacom/4209.hex',
-                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
-               TouchFile('files/wacom/4209.hex',
-                         TOUCH_FIRMWARE + 'wacom/4209.hex',
-                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
-               TouchFile('files/wacom/4209.hex',
-                         TOUCH_FIRMWARE + 'wacom/4209.hex',
-                         LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-               TouchFile('files/wacom/4209.hex',
-                         TOUCH_FIRMWARE + 'wacom/4209.hex',
-                         LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')]))
+      expected = set([
+          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                    TOUCH_FIRMWARE + '0a97_1012.bin',
+                    TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                    LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
+          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                    TOUCH_FIRMWARE + '3062_5602.bin',
+                    TOUCH_FIRMWARE + 'elan/3062_5602.bin',
+                    LIB_FIRMWARE + 'elants_i2c_3062.bin'),
+          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                    TOUCH_FIRMWARE + '306e_5611.bin',
+                    TOUCH_FIRMWARE + 'elan/306e_5611.bin',
+                    LIB_FIRMWARE + 'elants_i2c_306e.bin'),
+          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                    TOUCH_FIRMWARE + '97.0_6.0.bin',
+                    TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
+                    LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
+          TouchFile('files/wacom/4209.hex',
+                    TOUCH_FIRMWARE + 'wacom/4209.hex',
+                    LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+          TouchFile('files/wacom/4209.hex',
+                    TOUCH_FIRMWARE + 'wacom/4209.hex',
+                    LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
+          TouchFile('files/wacom/4209.hex',
+                    TOUCH_FIRMWARE + 'wacom/4209.hex',
+                    LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
+          TouchFile('files/wacom/4209.hex',
+                    TOUCH_FIRMWARE + 'wacom/4209.hex',
+                    LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
+          TouchFile('files/wacom/4209.hex',
+                    TOUCH_FIRMWARE + 'wacom/4209.hex',
+                    LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
+      self.assertEqual(expected, set(touch_files))
 
     def testGetTouchFirmwareFilesTar(self):
       """Test unpacking from a tarfile or reading from ${FILESDIR}"""
@@ -284,54 +284,54 @@ def MakeTests(pathname):
     def testGetAudioFiles(self):
       config = CrosConfig(self.filepath)
       audio_files = config.GetAudioFiles()
-      self.assertEqual(
-          audio_files,
-          [BaseFile('cras-config/1mic/bxtda7219max',
-                    '/etc/cras/1mic/bxtda7219max'),
-           BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
-           BaseFile('cras-config/2mic/bxtda7219max',
-                    '/etc/cras/2mic/bxtda7219max'),
-           BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
-           BaseFile('cras-config/caroline/bxtda7219max',
-                    '/etc/cras/caroline/bxtda7219max'),
-           BaseFile('cras-config/caroline/dsp.ini',
-                    '/etc/cras/caroline/dsp.ini'),
-           BaseFile('cras-config/pyro/bxtda7219max',
-                    '/etc/cras/pyro/bxtda7219max'),
-           BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-           BaseFile('cras-config/reefcras/bxtda7219max',
-                    '/etc/cras/reefcras/bxtda7219max'),
-           BaseFile('cras-config/reefcras/dsp.ini',
-                    '/etc/cras/reefcras/dsp.ini'),
+      expected = [
+          BaseFile('cras-config/1mic/bxtda7219max',
+                   '/etc/cras/1mic/bxtda7219max'),
+          BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
+          BaseFile('cras-config/2mic/bxtda7219max',
+                   '/etc/cras/2mic/bxtda7219max'),
+          BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
+          BaseFile('cras-config/caroline/bxtda7219max',
+                   '/etc/cras/caroline/bxtda7219max'),
+          BaseFile('cras-config/caroline/dsp.ini',
+                   '/etc/cras/caroline/dsp.ini'),
+          BaseFile('cras-config/pyro/bxtda7219max',
+                   '/etc/cras/pyro/bxtda7219max'),
+          BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
+          BaseFile('cras-config/reefcras/bxtda7219max',
+                   '/etc/cras/reefcras/bxtda7219max'),
+          BaseFile('cras-config/reefcras/dsp.ini',
+                   '/etc/cras/reefcras/dsp.ini'),
 
-           BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
-                    LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
-           BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
-                    LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
-           BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
-                    LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
+          BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
+                   LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
+          BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
+                   LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
+          BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
+                   LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
 
-           BaseFile('ucm-config/1mic/HiFi.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
-           BaseFile('ucm-config/1mic/bxtda7219max.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
-                    '.conf'),
-           BaseFile('ucm-config/2mic/Wibble',
-                    '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
-           BaseFile('ucm-config/2mic/bxtda7219max.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
-                    '.conf'),
-           BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
-           BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
-                    '.conf'),
-           BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
-           BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
-                    '.conf',
-                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
-                    '.reefucm.conf')])
+          BaseFile('ucm-config/1mic/HiFi.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
+          BaseFile('ucm-config/1mic/bxtda7219max.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
+                   '.conf'),
+          BaseFile('ucm-config/2mic/Wibble',
+                   '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
+          BaseFile('ucm-config/2mic/bxtda7219max.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
+                   '.conf'),
+          BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
+          BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
+                   '.conf'),
+          BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
+          BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
+                   '.conf',
+                   '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
+                   '.reefucm.conf')]
+      self.assertEqual(expected, audio_files)
 
     def testBadAudioFiles(self):
       path = os.path.join(os.path.dirname(__file__),
@@ -494,7 +494,7 @@ def MakeTests(pathname):
           ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
           pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
           extra=[], create_bios_rw_image=False, tools=[], sig_id='')
-      self.assertEqual(config.GetFirmwareInfo(), OrderedDict([
+      expected = OrderedDict([
           ('blacktip', caroline._replace(model='blacktip',
                                          sig_id='sig-id-in-customization-id')),
           ('blacktip-blacktip1', caroline._replace(
@@ -523,7 +523,8 @@ def MakeTests(pathname):
                                          sig_id='sig-id-in-customization-id')),
           ('whitetip2', caroline._replace(model='whitetip2', key_id='WHITETIP2',
                                           have_image=False, sig_id='whitetip2'))
-          ]))
+          ])
+      self.assertEqual(config.GetFirmwareInfo(), expected)
 
     def testGetBspUris(self):
       """Test access to the BSP URIs"""
