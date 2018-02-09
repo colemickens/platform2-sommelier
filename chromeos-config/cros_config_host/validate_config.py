@@ -432,6 +432,31 @@ class CrosConfigValidator(object):
     self.AddElementTargetDirectories(target_dirs, self._schema)
     return target_dirs
 
+  @classmethod
+  def AddElementPhandleProps(cls, phandle_props, parent):
+    if isinstance(parent, PropPhandle):
+      phandle_props.add(parent.name)
+    elif isinstance(parent, NodeDesc):
+      for element in parent.elements:
+        cls.AddElementPhandleProps(phandle_props, element)
+
+  def GetPhandleProps(self):
+    """Gets a set of properties which are used as phandles
+
+    Some properties are used as phandles to link to shared config. This returns
+    a set of such properties. Note that 'default' is a special case here
+    because it is not a simple phandle link. It locates notes and properties
+    anywhere in the linked model. So we need to exclude it from this list so
+    that the 'default' handling works correctly.
+
+    Returns:
+      set of property names, each a string
+    """
+    phandle_props = set()
+    self.AddElementPhandleProps(phandle_props, self._schema)
+    phandle_props.discard('default')
+    return phandle_props
+
 
 # Known directories for installation
 CRAS_CONFIG_DIR = '/etc/cras'

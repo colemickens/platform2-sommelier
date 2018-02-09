@@ -160,6 +160,8 @@ class CrosConfigImpl(object):
   Properties:
     models: All models in the CrosConfigImpl tree, in the form of a dictionary:
             <model name: string, model: CrosConfigImpl.Node>
+    phandle_props: Set of properties which can be phandles (i.e. point to
+        another part of the config)
     root: Root node (CrosConigImpl.Node object)
     validator: Validator for the config (CrosConfigValidator object)
   """
@@ -167,6 +169,7 @@ class CrosConfigImpl(object):
     self.infile = infile
     self.models = OrderedDict()
     self.validator = validate_config.GetValidator()
+    self.phandle_props = self.validator.GetPhandleProps()
 
   def _GetProperty(self, absolute_path, property_name):
     """Internal function to read a property from anywhere in the tree
@@ -450,10 +453,6 @@ class CrosConfigImpl(object):
       Returns:
         Node that the share points to, or None if none
       """
-      # It's confusing that arc-properties-type shows up as a "shares" property
-      # here, but it has the same semantics as the other auto-follow properties
-      # and validation makes sure it can't appear in places where it shouldn't.
-      #
       # TODO(sjg@chromium.org):
       # Note that the 'or i in self.subnodes' part is for yaml, where we use a
       # json file within libcros_config_host and this does not support links
@@ -462,7 +461,7 @@ class CrosConfigImpl(object):
       # name of the phandle, but at some point this will move to merging the
       # target node's properties with this node, so this whole function will
       # become unnecessary.
-      share_prop = [i for i in ['arc-properties-type', 'shares', 'whitelabel']
+      share_prop = [i for i in self.cros_config.phandle_props
                     if i in self.properties or i in self.subnodes]
       if share_prop:
         return self.FollowPhandle(share_prop[0])
