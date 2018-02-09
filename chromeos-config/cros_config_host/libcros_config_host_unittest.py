@@ -486,6 +486,8 @@ def MakeTests(pathname):
           config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
 
     def testDefaultConfig(self):
+      if 'SYSROOT' in os.environ:
+        del os.environ['SYSROOT']
       with self.assertRaisesRegexp(ValueError,
                                    'No master configuration is available'):
         CrosConfig()
