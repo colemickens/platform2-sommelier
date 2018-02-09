@@ -14,8 +14,8 @@
 #include <mojo/edk/embedder/process_delegate.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
-#include "arc/future.h"
 #include "common/camera_algorithm_ops_impl.h"
+#include "cros-camera/future.h"
 
 namespace arc {
 

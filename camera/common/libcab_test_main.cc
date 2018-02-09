@@ -18,9 +18,9 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "arc/camera_algorithm_bridge.h"
-#include "arc/common.h"
 #include "common/libcab_test_internal.h"
+#include "cros-camera/camera_algorithm_bridge.h"
+#include "cros-camera/common.h"
 
 namespace libcab_test {
 

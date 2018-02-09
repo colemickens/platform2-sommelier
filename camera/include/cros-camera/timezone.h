@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_TIMEZONE_H_
-#define INCLUDE_ARC_TIMEZONE_H_
+#ifndef INCLUDE_CROS_CAMERA_TIMEZONE_H_
+#define INCLUDE_CROS_CAMERA_TIMEZONE_H_
 
 #include <string>
 
@@ -30,4 +30,4 @@ PowerLineFrequency GetPowerLineFrequencyForLocation();
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_TIMEZONE_H_
+#endif  // INCLUDE_CROS_CAMERA_TIMEZONE_H_

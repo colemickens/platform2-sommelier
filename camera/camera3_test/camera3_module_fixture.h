@@ -9,9 +9,9 @@
 
 #include <vector>
 
-#include <arc/camera_thread.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
+#include <cros-camera/camera_thread.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 
@@ -112,11 +112,11 @@ class Camera3Module {
 
   const camera_module_t* cam_module_;
 
-  // This thread is needed because of the ARC++ HAL assumption that all the
-  // camera_module functions should be called on the same Chromium thread.
-  // It is expected to start this thread before gtest initialization in main()
-  // because test case instantiation needs it running to get the camera ID
-  // list.
+  // This thread is needed because of the Chrome OS camera HAL adapter
+  // assumption that all the camera_module functions should be called on the
+  // same Chromium thread. It is expected to start this thread before gtest
+  // initialization in main() because test case instantiation needs it running
+  // to get the camera ID list.
   arc::CameraThread* hal_thread_;
 
   // Use a separate thread from |hal_thread_| to close camera device to

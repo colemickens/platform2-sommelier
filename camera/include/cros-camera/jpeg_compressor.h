@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_JPEG_COMPRESSOR_H_
-#define INCLUDE_ARC_JPEG_COMPRESSOR_H_
+#ifndef INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
+#define INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
 
 // We must include cstdio before jpeglib.h. It is a requirement of libjpeg.
 #include <cstdio>
@@ -105,4 +105,4 @@ class JpegCompressor {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_JPEG_COMPRESSOR_H_
+#endif  // INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_

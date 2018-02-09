@@ -17,12 +17,12 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
-#include "arc/common.h"
-#include "arc/future.h"
-#include "hal_adapter/arc_camera3_mojo_utils.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
+#include "hal_adapter/cros_camera_mojo_utils.h"
 
 namespace arc {
 

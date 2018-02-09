@@ -2,7 +2,7 @@ include_dir=@INCLUDE_DIR@
 lib_dir=@LIB_DIR@
 
 Name: libcamera_jpeg
-Description: Jpeg compressor util for ARC++ camera HAL
+Description: Jpeg compressor util for Chrome OS camera HAL
 Version: 0
 Requires.private: libchrome-@LIBCHROME_VERS@
 Cflags: -I${include_dir}

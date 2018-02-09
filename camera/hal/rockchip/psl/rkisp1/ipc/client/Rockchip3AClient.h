@@ -20,7 +20,7 @@
 #include "ipc/IPCCommon.h"
 #include <utils/Errors.h>
 #include <mutex>
-#include "arc/camera_algorithm_bridge.h"
+#include "cros-camera/camera_algorithm_bridge.h"
 #include "base/bind.h"
 #include "LogHelper.h"
 #include <pthread.h>

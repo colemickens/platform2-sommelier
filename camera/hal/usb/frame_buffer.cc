@@ -9,7 +9,7 @@
 
 #include <utility>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/image_processor.h"
 
 namespace arc {

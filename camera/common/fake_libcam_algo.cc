@@ -12,9 +12,9 @@
 #include <base/logging.h>
 #include <base/threading/thread.h>
 
-#include "arc/camera_algorithm.h"
-#include "arc/future.h"
 #include "common/libcab_test_internal.h"
+#include "cros-camera/camera_algorithm.h"
+#include "cros-camera/future.h"
 
 namespace libcab_test {
 

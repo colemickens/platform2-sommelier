@@ -16,7 +16,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "hal_adapter/camera_hal_adapter.h"
-#include "hal_adapter/mojo/arc_camera3_service.mojom.h"
+#include "hal_adapter/mojo/cros_camera_service.mojom.h"
 
 namespace arc {
 

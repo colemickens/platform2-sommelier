@@ -15,11 +15,11 @@
 #include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/process_delegate.h>
 
-#include "arc/camera_algorithm.h"
-#include "arc/camera_algorithm_bridge.h"
-#include "arc/future.h"
 #include "common/camera_algorithm_callback_ops_impl.h"
 #include "common/camera_algorithm_ops_impl.h"
+#include "cros-camera/camera_algorithm.h"
+#include "cros-camera/camera_algorithm_bridge.h"
+#include "cros-camera/future.h"
 
 namespace arc {
 

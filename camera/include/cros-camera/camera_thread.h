@@ -4,16 +4,16 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_THREAD_H_
-#define INCLUDE_ARC_CAMERA_THREAD_H_
+#ifndef INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
+#define INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
 
 #include <string>
 #include <unordered_map>
 
 #include <base/threading/thread.h>
 
-#include "arc/common.h"
-#include "arc/future.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future.h"
 
 namespace arc {
 
@@ -141,4 +141,4 @@ class CameraThread {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_THREAD_H_
+#endif  // INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
-#define HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
+#ifndef HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
+#define HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
 
 #include <map>
 #include <memory>
@@ -20,8 +20,8 @@
 #include <base/synchronization/lock.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "arc/common.h"
-#include "arc/future.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/mojo/camera3.mojom.h"
 
@@ -34,9 +34,9 @@ mojo::ScopedHandle WrapPlatformHandle(int handle);
 int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 
 // SerializeStreamBuffer is used in CameraDeviceAdapter::ProcessCaptureResult to
-// pass a result buffer handle to ARC++.  For the input / output buffers, we do
-// not need to serialize the whole native handle but instead we can simply
-// return their corresponding handle IDs.  When ARC++ receives the result it
+// pass a result buffer handle through Mojo.  For the input / output buffers, we
+// do not need to serialize the whole native handle but instead we can simply
+// return their corresponding handle IDs.  When the receiver gets the result it
 // will restore using the handle ID the original buffer handles which were
 // passed down when the frameworks called process_capture_request.
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
@@ -231,4 +231,4 @@ class MojoBinding : public T {
 
 }  // namespace internal
 
-#endif  // HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
+#endif  // HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_

@@ -11,7 +11,7 @@
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
 #include "hal/usb/camera_hal_device_ops.h"

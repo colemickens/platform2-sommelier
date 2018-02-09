@@ -25,8 +25,8 @@
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
-#include "arc/common.h"
 #include "common/camera_algorithm_internal.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

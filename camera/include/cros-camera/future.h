@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_FUTURE_H_
-#define INCLUDE_ARC_FUTURE_H_
+#ifndef INCLUDE_CROS_CAMERA_FUTURE_H_
+#define INCLUDE_CROS_CAMERA_FUTURE_H_
 
 #include <set>
 #include <utility>
@@ -14,8 +14,8 @@
 #include <base/bind_helpers.h>
 #include <base/memory/ref_counted.h>
 
-#include "arc/common.h"
-#include "arc/future_internal.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future_internal.h"
 
 namespace internal {
 
@@ -149,4 +149,4 @@ base::Callback<void()> GetFutureCallback(
 
 }  // namespace internal
 
-#endif  // INCLUDE_ARC_FUTURE_H_
+#endif  // INCLUDE_CROS_CAMERA_FUTURE_H_

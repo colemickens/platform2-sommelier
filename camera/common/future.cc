@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "arc/future.h"
+#include "cros-camera/future.h"
 
 #include <base/time/time.h>
 

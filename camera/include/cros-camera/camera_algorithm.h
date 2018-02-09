@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_H_
+#ifndef INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_H_
+#define INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_H_
 
 #include <stdint.h>
 
@@ -88,4 +88,4 @@ typedef struct {
 } camera_algorithm_ops_t;
 }
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_H_
+#endif  // INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_H_

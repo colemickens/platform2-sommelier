@@ -5,7 +5,7 @@
 
 #include "hal/usb/camera_hal_device_ops.h"
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/camera_client.h"
 
 namespace arc {

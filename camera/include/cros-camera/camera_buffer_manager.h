@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_
-#define INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_
+#ifndef INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
+#define INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 
 #include <stdint.h>
 #include <system/window.h>
@@ -27,7 +27,7 @@ namespace arc {
 class GbmDevice;
 
 // The enum definition here should match |Camera3DeviceOps::BufferType| in
-// hal_adapter/arc_camera3.mojom.
+// hal_adapter/mojo/camera3.mojom.
 enum BufferType {
   GRALLOC = 0,
   SHM = 1,
@@ -40,7 +40,7 @@ enum BufferType {
 //
 // Example usage:
 //
-//  #include <arc/camera_buffer_manager.h>
+//  #include <cros-camera/camera_buffer_manager.h>
 //  CameraBufferManager* manager = CameraBufferManager::GetInstance();
 //  if (!manager) {
 //    /* Error handling */
@@ -245,4 +245,4 @@ class EXPORTED CameraBufferManager {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_BUFFER_MANAGER_H_
+#endif  // INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_

@@ -13,8 +13,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 
-#include "arc/common.h"
-#include "arc/timezone.h"
+#include "cros-camera/common.h"
+#include "cros-camera/timezone.h"
 
 namespace arc {
 

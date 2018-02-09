@@ -9,8 +9,8 @@
 
 #include <algorithm>
 
-#include <arc/camera_buffer_manager.h>
 #include <base/files/file_util.h>
+#include <cros-camera/camera_buffer_manager.h>
 
 namespace camera3_test {
 

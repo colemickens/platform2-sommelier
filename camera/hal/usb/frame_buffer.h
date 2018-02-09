@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-#include <arc/camera_buffer_manager.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
+#include <cros-camera/camera_buffer_manager.h>
 
 namespace arc {
 

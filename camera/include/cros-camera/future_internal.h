@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_FUTURE_INTERNAL_H_
-#define INCLUDE_ARC_FUTURE_INTERNAL_H_
+#ifndef INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
+#define INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
 
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
@@ -53,4 +53,4 @@ class FutureLock {
 
 }  // namespace internal
 
-#endif  // INCLUDE_ARC_FUTURE_INTERNAL_H_
+#endif  // INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_

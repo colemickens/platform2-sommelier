@@ -5,7 +5,7 @@
 include common.mk
 include pc_utils.mk
 
-### Rules to generate the hal_adapter/arc_camera3_service binary.
+### Rules to generate the hal_adapter/cros_camera_service binary.
 
 hal_adapter_PC_DEPS := \
 	libbrillo-$(BASE_VER) libcamera_metadata libchrome-$(BASE_VER) libdrm \
@@ -13,16 +13,16 @@ hal_adapter_PC_DEPS := \
 hal_adapter_CPPFLAGS := $(call get_pc_cflags,$(hal_adapter_PC_DEPS))
 hal_adapter_LDLIBS := $(call get_pc_libs,$(hal_adapter_PC_DEPS)) -ldl
 
-CXX_BINARY(hal_adapter/arc_camera3_service): CPPFLAGS += $(hal_adapter_CPPFLAGS)
-CXX_BINARY(hal_adapter/arc_camera3_service): LDLIBS += $(hal_adapter_LDLIBS)
-CXX_BINARY(hal_adapter/arc_camera3_service): \
+CXX_BINARY(hal_adapter/cros_camera_service): CPPFLAGS += $(hal_adapter_CPPFLAGS)
+CXX_BINARY(hal_adapter/cros_camera_service): LDLIBS += $(hal_adapter_LDLIBS)
+CXX_BINARY(hal_adapter/cros_camera_service): \
 	$(COMMON_OBJECTS) \
 	$(hal_adapter_CXX_OBJECTS) \
 	$(hal_adapter_mojo_CXX_OBJECTS) \
 	common/utils/camera_hal_enumerator.o
 
-hal_adapter/arc_camera3_service: CXX_BINARY(hal_adapter/arc_camera3_service)
+hal_adapter/cros_camera_service: CXX_BINARY(hal_adapter/cros_camera_service)
 
-clean: CLEAN(hal_adapter/arc_camera3_service)
+clean: CLEAN(hal_adapter/cros_camera_service)
 
-.PHONY: hal_adapter/arc_camera3_service
+.PHONY: hal_adapter/cros_camera_service

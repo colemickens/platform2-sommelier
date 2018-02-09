@@ -25,8 +25,9 @@ divided into two part:
 
 Currently we have two major camera clients on Chrome OS: _Chrome browser_ and
 _Android container_.  All the clients connect to the camera HAL adapter through
-the [**Camera Device Mojo IPC interface**](/hal_adapter/mojo/arc_camera3.mojom)
-to access camera functions. The Mojo IPC interface is very similar to the
+the [**Camera Module Mojo IPC interface**](/hal_adapter/mojo/camera_common.mojom)
+and the [**Camera Device Mojo IPC interface**](hal_adapter/mojo/camera3.mojom)
+to access camera functions.  The Mojo IPC interface is very similar to the
 Android camera HAL v3 APIs.
 
 ### Camera 3A Library Sandboxing
@@ -60,27 +61,27 @@ and dependencies required by them:
   /android/header_files/include/hardware/libhardware/include/hardware/camera_common.h).
   This is very similar to a regular Android camera HAL. _(Required)_
 - `libcam_algo.so` that provides the [**camera algorithm interface**](
-  include/arc/camera_algorithm.h) for the isolated camera 3A library.
+  include/cros-camera/camera_algorithm.h) for the isolated camera 3A library.
   _(Required if the camera HAL requires 3A library to work)_.
 
 We provide the following packages that are required to build the camera HAL:
 
-- `media-libs/arc-camera3-android-headers`
+- `media-libs/cros-camera-android-headers`
 
   A package that installs all the necessary Android headers files required by
   the camera HAL.
 
-- `media-libs/arc-camera3-libcbm`
+- `media-libs/cros-camera-libcbm`
 
   A replacement for Android gralloc. The library provides [APIs](
-  include/arc/camera_buffer_mapper.h) to import and map buffer handles received
-  in capture requests.
+  include/cros-camera/camera_buffer_mapper.h) to import and map buffer handles
+  received in capture requests.
 
-- `media-libs/arc-camera3-libcamera_client`
+- `media-libs/cros-camera-libcamera_client`
 
   A port of the Android `libcamera_client`.
 
-- `media-libs/arc-camera3-libcamera_metadata`
+- `media-libs/cros-camera-libcamera_metadata`
 
   A port of the Android `libcamera_metadata`.
 
@@ -91,15 +92,15 @@ We provide the following packages that are required to build the camera HAL:
 In addition to the required packages, we also have some useful packages that can
 handle some general functions for the camera HAL:
 
-- `media-libs/arc-camera3-libcamera_exif`
+- `media-libs/cros-camera-libcamera_exif`
 
   Provides utility functions to fill in the EXIF headers of a JPEG image.
 
-- `media-libs/arc-camera3-libcamera_jpeg`
+- `media-libs/cros-camera-libcamera_jpeg`
 
   Provides utility functions to encode JPEG image.
 
-- `media-libs/arc-camera3-libcamera_timezone`
+- `media-libs/cros-camera-libcamera_timezone`
 
   Provides utility functions to get the local timezone.
 
@@ -120,19 +121,19 @@ required for a new camera HAL:
 - A ebuild file for the newly added camera HAL.  The ebuild file is used to
   build the camera HAL and install the `camera_hal.so` and `libcam_algo.so`
   shared libraries into the board sysroot.  To integrate the camera HAL into the
-  OS image, a `virtual/arc-camera3-hal` ebuild that includes the newly added
+  OS image, a `virtual/cros-camera-hal` ebuild that includes the newly added
   camera HAL as `RDEPEND` is required in the baseboard or board overlay.
 
   - Camera HAL ebuild examples: [**Intel Kabylake camera HAL**], [**USB camera HAL**]
 
   - Camera HAL virtual ebuild example: [**Intel Kabylake camera HAL virtual package**]
 
-[**Intel Kabylake camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/chipset-kbl/media-libs/arc-camera3-hal-intel-ipu3/
-[**USB camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/media-libs/arc-camera3-hal-usb/
-[**Intel Kabylake camera HAL virtual package**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/virtual/arc-camera3-hal/
+[**Intel Kabylake camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/chipset-kbl/media-libs/cros-camera-hal-intel-ipu3/
+[**USB camera HAL**]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/media-libs/cros-camera-hal-usb/
+[**Intel Kabylake camera HAL virtual package**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/virtual/cros-camera-hal/
 
 - For board-specific camera HAL config files, we have the
-  `virtual/arc-camera3-hal-configs` ebuild.  One can add a new ebuild to install
+  `virtual/cros-camera-hal-configs` ebuild.  One can add a new ebuild to install
   the board-specific camera HAL config files, and list the new ebuild as
   `RDEPEND` of the virtual ebuild.
 
@@ -140,5 +141,5 @@ required for a new camera HAL:
 
   - Camera HAL config virtual ebuild example: [**Intel Kabylake camera HAL configs virtual package**]
 
-[**Intel Kabylake camera HAL configs**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/media-libs/arc-camera3-hal-configs-poppy/
-[**Intel Kabylake camera HAL configs virtual package**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/virtual/arc-camera3-hal-configs/
+[**Intel Kabylake camera HAL configs**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/media-libs/cros-camera-hal-configs-poppy/
+[**Intel Kabylake camera HAL configs virtual package**]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master/baseboard-poppy/virtual/cros-camera-hal-configs/

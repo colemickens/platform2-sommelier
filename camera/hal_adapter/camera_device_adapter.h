@@ -17,9 +17,9 @@
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "arc/camera_buffer_manager.h"
-#include "hal_adapter/arc_camera3_mojo_utils.h"
+#include "cros-camera/camera_buffer_manager.h"
 #include "hal_adapter/common_types.h"
+#include "hal_adapter/cros_camera_mojo_utils.h"
 #include "hal_adapter/mojo/camera3.mojom.h"
 
 namespace arc {
@@ -137,10 +137,11 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // A mutex to guard |streams_|.
   base::Lock streams_lock_;
 
-  // A mapping from the locally created buffer handle to the Android HAL handle
-  // ID.  We need to return the correct handle ID in ProcessCaptureResult so ARC
-  // can restore the buffer handle in the capture result before passing up to
-  // the frameworks.
+  // A mapping from the locally created buffer handle to the handle ID of the
+  // imported buffer.  We need to return the correct handle ID in
+  // ProcessCaptureResult so the camera client, which allocated the imported
+  // buffer, can restore the buffer handle in the capture result before passing
+  // up to the upper layer.
   std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>
       buffer_handles_;
 

@@ -21,8 +21,8 @@
 #include "ItemPool.h"
 #include <hardware/camera3.h>
 
-#include <arc/camera_thread.h>
 #include <base/synchronization/waitable_event.h>
+#include <cros-camera/camera_thread.h>
 
 NAMESPACE_DECLARATION {
 

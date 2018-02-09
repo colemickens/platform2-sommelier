@@ -30,7 +30,7 @@
 
 #include <base/bind.h>
 #include <base/threading/thread.h>
-#include "arc/camera_algorithm.h"
+#include "cros-camera/camera_algorithm.h"
 
 #include <unordered_map>
 

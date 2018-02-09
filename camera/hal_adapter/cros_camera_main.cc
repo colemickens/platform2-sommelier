@@ -15,7 +15,7 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
 #include "hal_adapter/camera_hal_server_impl.h"
 
@@ -46,8 +46,8 @@ int main(int argc, char* argv[]) {
   // Start the CameraHalServerImpl on the child process.  The process
   // will exit on error.
   if (!pid) {
-    // Child process: Starts ARC camera3 service provider which will host the
-    // camera HAL adapter.
+    // Child process: Starts Chrome OS camera service provider which will host
+    // the camera HAL adapter.
 
     // Create the daemon instance first to properly set up MessageLoop and
     // AtExitManager.

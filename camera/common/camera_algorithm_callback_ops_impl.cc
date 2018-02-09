@@ -8,7 +8,7 @@
 
 #include "common/camera_algorithm_callback_ops_impl.h"
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

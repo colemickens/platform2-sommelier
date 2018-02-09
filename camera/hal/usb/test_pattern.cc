@@ -10,7 +10,7 @@
 
 #include <libyuv.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/test_pattern.h"
 
 namespace arc {

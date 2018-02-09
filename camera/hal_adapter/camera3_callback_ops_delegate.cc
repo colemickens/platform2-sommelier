@@ -11,8 +11,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
-#include "arc/common.h"
-#include "arc/future.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"
 
 namespace arc {

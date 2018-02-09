@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "arc/timezone.h"
+#include "cros-camera/timezone.h"
 
 namespace arc {
 

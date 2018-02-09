@@ -2,7 +2,7 @@ include_dir=@INCLUDE_DIR@
 lib_dir=@LIB_DIR@
 
 Name: libcamera_common
-Description: Common util for ARC++ camera HAL
+Description: Common util for Chrome OS camera HAL
 Version: 0
 Requires.private: libchrome-@LIBCHROME_VERS@
 Cflags: -I${include_dir}

@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "arc/timezone.h"
+#include "cros-camera/timezone.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -17,7 +17,7 @@
 #include <base/strings/string16.h>
 #include <base/strings/utf_string_conversions.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

@@ -32,15 +32,15 @@
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
 
-#include "arc/common.h"
 #include "common/utils/camera_hal_enumerator.h"
+#include "cros-camera/common.h"
 #include "hal_adapter/ipc_util.h"
 
 namespace arc {
 
 namespace {
 
-const base::FilePath kArcCamera3SocketPath("/run/camera/camera3.sock");
+const base::FilePath kCrosCameraSocketPath("/run/camera/camera3.sock");
 
 }  // namespace
 
@@ -66,14 +66,14 @@ bool CameraHalServerImpl::Start() {
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
 
-  if (!watcher_.Watch(kArcCamera3SocketPath, false,
+  if (!watcher_.Watch(kCrosCameraSocketPath, false,
                       base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
                                  base::Unretained(this)))) {
     LOGF(ERROR) << "Failed to watch socket path";
     return false;
   }
-  if (base::PathExists(kArcCamera3SocketPath)) {
-    CameraHalServerImpl::OnSocketFileStatusChange(kArcCamera3SocketPath, false);
+  if (base::PathExists(kCrosCameraSocketPath)) {
+    CameraHalServerImpl::OnSocketFileStatusChange(kCrosCameraSocketPath, false);
   }
   return true;
 }
@@ -209,9 +209,9 @@ void CameraHalServerImpl::RegisterCameraHal() {
 void CameraHalServerImpl::OnServiceMojoChannelError() {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  // The ArcCamear3Service Mojo parent is probably dead. We need to restart
+  // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
   // another process in order to connect to the new Mojo parent.
-  LOGF(INFO) << "Mojo connection to ArcCamera3Service is broken";
+  LOGF(INFO) << "Mojo connection to CameraHalDispatcher is broken";
   main_task_runner_->PostTask(FROM_HERE,
                               base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                                          base::Unretained(this), ECONNRESET));

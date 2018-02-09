@@ -165,7 +165,7 @@ enum ExtensionGroups {
   * use it. The 3a also could work if there is no aiqd data.
   *
   * The aiqd data will be read from file system to PlatformData
-  * when the camera HAL is loaded by arc_camera3_service.
+  * when the camera HAL is loaded by cros_camera_service.
   * When the camera is starting, the aiqd data will be passed to 3a libs.
   * When the camera is stopping, the aiqd data will be saved to PlatformData.
   * When the Chrome OS is shutting down, the aiqd data will be save into

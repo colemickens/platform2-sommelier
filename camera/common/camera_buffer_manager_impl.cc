@@ -15,9 +15,9 @@
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
 
-#include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "common/camera_buffer_manager_internal.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

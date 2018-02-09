@@ -11,7 +11,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

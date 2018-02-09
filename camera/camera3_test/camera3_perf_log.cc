@@ -13,7 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace camera3_test {
 

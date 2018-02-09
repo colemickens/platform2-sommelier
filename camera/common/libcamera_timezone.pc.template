@@ -2,7 +2,7 @@ include_dir=@INCLUDE_DIR@
 lib_dir=@LIB_DIR@
 
 Name: libcamera_timezone
-Description: Time zone util for ARC++ camera HAL
+Description: Time zone util for Chrome OS camera HAL
 Version: 0
 Requires.private: libchrome-@LIBCHROME_VERS@
 Cflags: -I${include_dir}

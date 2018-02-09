@@ -5,7 +5,7 @@
 include common.mk
 include pc_utils.mk
 
-PC_DEPS := arc-camera3-android-headers
+PC_DEPS := cros-camera-android-headers
 PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
 
 CPPFLAGS += -D_GNU_SOURCE -I$(abspath $(SRC)) -I$(abspath $(SRC)/include) \

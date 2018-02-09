@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/arc_camera3_mojo_utils.h"
+#include "hal_adapter/cros_camera_mojo_utils.h"
 
 #include <vector>
 

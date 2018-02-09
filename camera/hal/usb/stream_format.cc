@@ -10,7 +10,7 @@
 #include <linux/videodev2.h>
 #include <system/graphics.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

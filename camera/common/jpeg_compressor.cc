@@ -4,14 +4,14 @@
  * found in the LICENSE file.
  */
 
-#include "arc/jpeg_compressor.h"
+#include "cros-camera/jpeg_compressor.h"
 
 #include <memory>
 
 #include <errno.h>
 #include <libyuv.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

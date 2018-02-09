@@ -7,7 +7,7 @@
 #ifndef COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
 #define COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
 
-#include "arc/camera_buffer_manager.h"
+#include "cros-camera/camera_buffer_manager.h"
 
 #include <memory>
 #include <unordered_map>

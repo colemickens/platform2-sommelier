@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "arc/exif_utils.h"
+#include "cros-camera/exif_utils.h"
 
 #include <cstdlib>
 #include <ctime>
@@ -13,7 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace std {
 

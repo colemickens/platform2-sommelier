@@ -9,7 +9,7 @@
 
 #include <system/window.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 const uint32_t kCameraBufferMagic = 0xD1DAD1DA;
 const uint64_t kInvalidBufferId = 0xFFFFFFFFFFFFFFFF;

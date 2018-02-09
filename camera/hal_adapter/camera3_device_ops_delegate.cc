@@ -8,7 +8,7 @@
 
 #include <utility>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal_adapter/camera_device_adapter.h"
 
 namespace arc {

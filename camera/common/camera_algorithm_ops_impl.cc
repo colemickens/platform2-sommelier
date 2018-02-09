@@ -14,8 +14,8 @@
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
-#include "arc/common.h"
-#include "arc/future.h"
+#include "cros-camera/common.h"
+#include "cros-camera/future.h"
 
 namespace arc {
 

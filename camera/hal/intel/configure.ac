@@ -56,7 +56,7 @@ PKG_CHECK_MODULES([EXPAT],[expat],[],
     EXPAT_LIBS="-lexpat"])
 
 PKG_CHECK_MODULES([LIBCHROME], [libchrome-$BASEVER])
-PKG_CHECK_MODULES([ARC_CAMERA3_ANDROID_HEADERS], [arc-camera3-android-headers])
+PKG_CHECK_MODULES([CROS_CAMERA_ANDROID_HEADERS], [cros-camera-android-headers])
 PKG_CHECK_MODULES([LIBCAMERA_METADATA], [libcamera_metadata])
 PKG_CHECK_MODULES([LIBCAMERA_CLIENT], [libcamera_client])
 PKG_CHECK_MODULES([LIBCBM], [libcbm])

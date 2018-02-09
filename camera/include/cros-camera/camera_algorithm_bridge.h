@@ -4,14 +4,14 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_H_
+#ifndef INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_BRIDGE_H_
+#define INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_BRIDGE_H_
 
 #include <cinttypes>
 #include <memory>
 #include <vector>
 
-#include "arc/camera_algorithm.h"
+#include "cros-camera/camera_algorithm.h"
 
 namespace arc {
 
@@ -21,7 +21,7 @@ namespace arc {
 //
 // Example usage:
 //
-//  #include <arc/camera_algorithm_bridge.h>
+//  #include <cros-camera/camera_algorithm_bridge.h>
 //  auto algo = CameraAlgorithmBridge::CreateInstance();
 //  algo->Initialize(this);
 //  std::vector<int32_t> handles[2];
@@ -104,4 +104,4 @@ class CameraAlgorithmBridge {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_H_
+#endif  // INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_BRIDGE_H_

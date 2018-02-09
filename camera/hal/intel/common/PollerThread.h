@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include <arc/camera_thread.h>
+#include <cros-camera/camera_thread.h>
 
 #include "v4l2device.h"
 

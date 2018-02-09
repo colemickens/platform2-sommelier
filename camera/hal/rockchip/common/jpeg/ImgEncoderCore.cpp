@@ -26,7 +26,7 @@
 #include "Exif.h"
 
 #include "ColorConverter.h"
-#include <arc/jpeg_compressor.h>
+#include <cros-camera/jpeg_compressor.h>
 
 NAMESPACE_DECLARATION {
 ImgEncoderCore::ImgEncoderCore() :

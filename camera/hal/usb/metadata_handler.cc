@@ -9,7 +9,7 @@
 #include <limits>
 #include <vector>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/stream_format.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))

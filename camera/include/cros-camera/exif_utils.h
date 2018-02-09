@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_EXIF_UTILS_H_
-#define INCLUDE_ARC_EXIF_UTILS_H_
+#ifndef INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
+#define INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
 
 #include <cstddef>
 #include <memory>
@@ -294,4 +294,4 @@ class EXPORTED ExifUtils {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_EXIF_UTILS_H_
+#endif  // INCLUDE_CROS_CAMERA_EXIF_UTILS_H_

@@ -9,11 +9,11 @@
 #include <libyuv.h>
 #include <time.h>
 
-#include <arc/exif_utils.h>
-#include <arc/jpeg_compressor.h>
+#include <cros-camera/exif_utils.h>
+#include <cros-camera/jpeg_compressor.h>
 #include <hardware/camera3.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {

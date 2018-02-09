@@ -15,8 +15,8 @@
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
-#include "arc/camera_algorithm.h"
-#include "arc/common.h"
+#include "cros-camera/camera_algorithm.h"
+#include "cros-camera/common.h"
 
 namespace arc {
 

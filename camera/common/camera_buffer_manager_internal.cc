@@ -8,7 +8,7 @@
 
 #include <xf86drm.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace {
 

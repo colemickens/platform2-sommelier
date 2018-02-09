@@ -18,7 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/camera_characteristics.h"
 
 namespace arc {

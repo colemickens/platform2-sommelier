@@ -1,6 +1,6 @@
 include_dir=@INCLUDE_DIR@
 
-Name: arc-camera3-android-headers
+Name: cros-camera-android-headers
 Description: Android header files required for building camera HAL v3
 Version: 0
 Cflags: -I${include_dir}/hardware/libhardware/include \

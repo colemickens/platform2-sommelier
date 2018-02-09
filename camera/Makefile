@@ -5,7 +5,7 @@
 include common.mk
 include pc_utils.mk
 
-PC_DEPS := arc-camera3-android-headers
+PC_DEPS := cros-camera-android-headers
 PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS) -D_GNU_SOURCE -I$(abspath $(SRC)) \
@@ -17,11 +17,11 @@ camera_hal_usb: hal/usb/camera_hal
 
 .PHONY: camera_hal_usb
 
-camera3_test: camera3_test/arc_camera3_test
+camera3_test: camera3_test/cros_camera_test
 
 .PHONY: camera3_test
 
-camera3_fuzzer: camera3_test/arc_camera3_fuzzer
+camera3_fuzzer: camera3_test/cros_camera_fuzzer
 
 .PHONY: camera3_fuzzer
 
@@ -35,7 +35,7 @@ cros-camera-tool: tools/cros-camera-tool
 
 hal_adapter:
 	$(MAKE) hal_adapter/mojo/mojo_templates
-	$(MAKE) hal_adapter/arc_camera3_service
+	$(MAKE) hal_adapter/cros_camera_service
 
 .PHONY: hal_adapter
 

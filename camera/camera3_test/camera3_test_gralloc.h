@@ -8,8 +8,8 @@
 #include <memory>
 #include <unordered_map>
 
-#include <arc/camera_buffer_manager.h>
 #include <base/synchronization/lock.h>
+#include <cros-camera/camera_buffer_manager.h>
 #include <gbm.h>
 #include <xf86drm.h>
 

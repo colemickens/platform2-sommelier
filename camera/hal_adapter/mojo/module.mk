@@ -10,7 +10,7 @@ GEN_MOJO_TEMPLATES_DIR := $(OUT)/hal_adapter/templates
 MOJOM_BINDINGS_GENERATOR := \
 	$(SYSROOT)/usr/src/libmojo-$(BASE_VER)/mojo/mojom_bindings_generator.py
 MOJOM_FILES := \
-	hal_adapter/mojo/arc_camera3_service.mojom \
+	hal_adapter/mojo/cros_camera_service.mojom \
 	hal_adapter/mojo/camera3.mojom \
 	hal_adapter/mojo/camera_common.mojom \
 	hal_adapter/mojo/camera_metadata.mojom \

@@ -33,7 +33,7 @@
 #include "MediaCtlHelper.h"
 #include "NodeTypes.h"
 
-#include <arc/camera_thread.h>
+#include <cros-camera/camera_thread.h>
 
 /**
  * Forward declarations to avoid includes

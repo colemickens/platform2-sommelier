@@ -4,14 +4,14 @@
  * found in the LICENSE file.
  */
 
-#include "arc/future.h"
+#include "cros-camera/future.h"
 
 #include <base/at_exit.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 
 namespace internal {
 

@@ -11,7 +11,7 @@
 #include <common/mojo/camera_algorithm.mojom.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "arc/camera_algorithm.h"
+#include "cros-camera/camera_algorithm.h"
 
 namespace arc {
 

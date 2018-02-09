@@ -45,19 +45,19 @@ CXX_LIBRARY(common/libcbm.so): LDLIBS += $(libcbm_LDLIBS)
 clean: CLEAN(common/libcbm.so)
 common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
-arc_camera_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
-arc_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(arc_camera_algo_PC_DEPS))
-arc_camera_algo_LDLIBS := $(call get_pc_libs,$(arc_camera_algo_PC_DEPS)) -ldl
-arc_camera_algo_OBJS = \
+cros_camera_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+cros_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(cros_camera_algo_PC_DEPS))
+cros_camera_algo_LDLIBS := $(call get_pc_libs,$(cros_camera_algo_PC_DEPS)) -ldl
+cros_camera_algo_OBJS = \
 	common/camera_algorithm_adapter.o \
 	common/camera_algorithm_main.o \
 	common/camera_algorithm_ops_impl.o \
 	common/future.o \
 	common/mojo/camera_algorithm.mojom.o \
 	hal_adapter/ipc_util.o
-CXX_BINARY(common/arc_camera_algo): $(arc_camera_algo_OBJS)
-CXX_BINARY(common/arc_camera_algo): CPPFLAGS += $(arc_camera_algo_CPPFLAGS)
-CXX_BINARY(common/arc_camera_algo): LDLIBS += $(arc_camera_algo_LDLIBS)
+CXX_BINARY(common/cros_camera_algo): $(cros_camera_algo_OBJS)
+CXX_BINARY(common/cros_camera_algo): CPPFLAGS += $(cros_camera_algo_CPPFLAGS)
+CXX_BINARY(common/cros_camera_algo): LDLIBS += $(cros_camera_algo_LDLIBS)
 libcab_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_CPPFLAGS := $(call get_pc_cflags,$(libcab_PC_DEPS))
 libcab_LDLIBS := $(call get_pc_libs,$(libcab_PC_DEPS))
@@ -69,9 +69,9 @@ libcab_OBJS = \
 CXX_STATIC_LIBRARY(common/libcab.pic.a): $(libcab_OBJS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): CPPFLAGS += $(libcab_CPPFLAGS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): LDLIBS += $(libcab_LDLIBS)
-clean: CLEAN(common/arc_camera_algo) CLEAN(common/libcab.pic.a)
+clean: CLEAN(common/cros_camera_algo) CLEAN(common/libcab.pic.a)
 common/libcab: \
-	CXX_BINARY(common/arc_camera_algo) \
+	CXX_BINARY(common/cros_camera_algo) \
 	CXX_STATIC_LIBRARY(common/libcab.pic.a)
 
 fake_libcam_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)

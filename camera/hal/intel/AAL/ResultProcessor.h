@@ -28,7 +28,7 @@
 
 #include "IErrorCallback.h"
 
-#include <arc/camera_thread.h>
+#include <cros-camera/camera_thread.h>
 
 NAMESPACE_DECLARATION {
 

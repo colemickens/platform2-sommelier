@@ -28,7 +28,7 @@
 #include "LensHw.h"
 #include <linux/intel-ipu3.h>
 
-#include <arc/camera_thread.h>
+#include <cros-camera/camera_thread.h>
 
 #ifndef __CAPTURE_UNIT_H__
 #define __CAPTURE_UNIT_H__

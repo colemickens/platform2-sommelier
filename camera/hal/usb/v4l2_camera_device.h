@@ -15,7 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 
-#include "arc/timezone.h"
+#include "cros-camera/timezone.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {

@@ -16,9 +16,9 @@
 #include <base/logging.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
-#include "arc/common.h"
 #include "common/camera_algorithm_adapter.h"
 #include "common/camera_algorithm_internal.h"
+#include "cros-camera/common.h"
 #include "hal_adapter/ipc_util.h"
 
 int main(int argc, char** argv) {

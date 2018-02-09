@@ -123,7 +123,7 @@ libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namesp
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=}
 libcamerahal_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ android::camera2
 
-libcamerahal_la_CPPFLAGS += $(ARC_CAMERA3_ANDROID_HEADERS_CFLAGS) \
+libcamerahal_la_CPPFLAGS += $(CROS_CAMERA_ANDROID_HEADERS_CFLAGS) \
                             $(LIBCAMERA_CLIENT_CFLAGS) \
                             $(LIBCAMERA_METADATA_CFLAGS) \
                             $(LIBCBM_CFLAGS) \

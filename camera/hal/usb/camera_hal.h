@@ -15,7 +15,7 @@
 #include <base/threading/thread_checker.h>
 #include <hardware/camera_common.h>
 
-#include "arc/future.h"
+#include "cros-camera/future.h"
 #include "hal/usb/camera_client.h"
 #include "hal/usb/common_types.h"
 

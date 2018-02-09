@@ -7,7 +7,7 @@
 
 #include <errno.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {

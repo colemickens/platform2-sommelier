@@ -8,7 +8,7 @@
 #include <base/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-#include "arc/common.h"
+#include "cros-camera/common.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"

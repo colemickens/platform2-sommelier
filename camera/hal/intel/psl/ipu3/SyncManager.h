@@ -32,7 +32,7 @@
 #include "CaptureUnitSettings.h"
 #include "SensorHwOp.h"
 
-#include <arc/camera_thread.h>
+#include <cros-camera/camera_thread.h>
 
 namespace android {
 namespace camera2 {

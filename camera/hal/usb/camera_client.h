@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <arc/camera_buffer_manager.h>
+#include <cros-camera/camera_buffer_manager.h>
 #include <base/bind.h>
 #include <base/macros.h>
 #include <base/synchronization/lock.h>
@@ -21,7 +21,7 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "arc/future.h"
+#include "cros-camera/future.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
