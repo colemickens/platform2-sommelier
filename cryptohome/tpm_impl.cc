@@ -3029,4 +3029,9 @@ LECredentialBackend* TpmImpl::GetLECredentialBackend() {
   return nullptr;
 }
 
+SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
+  // TODO(emaxx): Implement.
+  return nullptr;
+}
+
 }  // namespace cryptohome

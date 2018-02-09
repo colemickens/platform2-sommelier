@@ -142,6 +142,7 @@ class TpmImpl : public Tpm {
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool SetUserType(Tpm::UserType type) override;
   LECredentialBackend* GetLECredentialBackend() override;
+  SignatureSealingBackend* GetSignatureSealingBackend() override;
 
  private:
   // Connects to the TPM and return its context at |context_handle|.

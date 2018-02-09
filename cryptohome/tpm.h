@@ -12,6 +12,8 @@
 #ifndef CRYPTOHOME_TPM_H_
 #define CRYPTOHOME_TPM_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/synchronization/lock.h>
@@ -31,13 +33,14 @@ namespace cryptohome {
 using TpmKeyHandle = uint32_t;
 
 class LECredentialBackend;
+class SignatureSealingBackend;
 class Tpm;
 
 const TpmKeyHandle kInvalidKeyHandle = 0;
 const int kNotBoundToPCR = -1;
 
 // This class provides a wrapper around TpmKeyHandle, and manages freeing of
-// TPM reseources associated with TPM keys. It does not take ownership of the
+// TPM resources associated with TPM keys. It does not take ownership of the
 // Tpm pointer provided.
 class ScopedKeyHandle {
  public:
@@ -661,6 +664,11 @@ class Tpm {
   // If the Tpm implementation does not support LE credential handling,
   // this function will return a nullptr.
   virtual LECredentialBackend* GetLECredentialBackend() = 0;
+
+  // Get a pointer to the SignatureSealingBackend object, which is used for
+  // performing signature-sealing operations. Returns nullptr if the
+  // implementation does not support signature-sealing operations.
+  virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
 
  private:
   static Tpm* singleton_;

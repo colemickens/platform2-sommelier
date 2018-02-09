@@ -51,9 +51,7 @@ void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
   RAND_bytes(buf, length);
 }
 
-bool CryptoLib::CreateRsaKey(size_t key_bits,
-                             SecureBlob* n,
-                          SecureBlob* p) {
+bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   crypto::ScopedRSA rsa(RSA_generate_key(key_bits,
                                          kWellKnownExponent,
                                          NULL,

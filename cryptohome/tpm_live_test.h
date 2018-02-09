@@ -34,9 +34,15 @@ class TpmLiveTest {
   bool DecryptionKeyTest();
 
   // The below tests need |owner_password| to be provided to run.
+
   // This test verifies that the Nvram subsystem of the TPM is working
   // correctly.
   bool NvramTest();
+
+  // This test checks the signature-sealed secret creation and its unsealing. A
+  // random RSA key is used.
+  bool SignatureSealedSecretTest();
+
   Tpm* tpm_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmLiveTest);

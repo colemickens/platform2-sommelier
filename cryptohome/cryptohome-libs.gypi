@@ -55,6 +55,7 @@
         '<(proto_in_dir)/fake_le_credential_metadata.proto',
         '<(proto_in_dir)/hash_tree_leaf_data.proto',
         '<(proto_in_dir)/install_attributes.proto',
+        '<(proto_in_dir)/signature_sealed_data.proto',
         '<(proto_in_dir)/tpm_status.proto',
         '<(proto_in_dir)/vault_keyset.proto',
         'key.proto',
@@ -157,6 +158,7 @@
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
+            'signature_sealing_backend_tpm2_impl.cc',
             'tpm2_impl.cc',
             'tpm2_metrics.cc',
           ],

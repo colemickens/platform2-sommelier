@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/macros.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <tpm_manager/client/tpm_nvram_dbus_proxy.h>
@@ -17,13 +18,21 @@
 #include <tpm_manager/common/tpm_nvram_interface.h>
 #include <tpm_manager/common/tpm_ownership_interface.h>
 #include <trunks/hmac_session.h>
+#include <trunks/tpm_generated.h>
 #include <trunks/tpm_state.h>
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/le_credential_backend.h"
+#include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 #include "cryptohome/tpm.h"
+
+namespace trunks {
+
+class AuthorizationDelegate;
+
+}  // namespace trunks
 
 namespace cryptohome {
 
@@ -34,6 +43,16 @@ const uint32_t kLockboxPCR = 15;
 
 class Tpm2Impl : public Tpm {
  public:
+  // This object may be used across multiple threads but the Trunks D-Bus proxy
+  // can only be used on a single thread. This structure holds all Trunks client
+  // objects for a particular thread.
+  struct TrunksClientContext {
+    trunks::TrunksFactory* factory;
+    std::unique_ptr<trunks::TrunksFactoryImpl> factory_impl;
+    std::unique_ptr<trunks::TpmState> tpm_state;
+    std::unique_ptr<trunks::TpmUtility> tpm_utility;
+  };
+
   class LECredentialBackendImpl : public LECredentialBackend {
    public:
     bool Reset() override;
@@ -201,22 +220,24 @@ class Tpm2Impl : public Tpm {
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool SetUserType(Tpm::UserType type) override;
   LECredentialBackend* GetLECredentialBackend() override;
-
- private:
-  // This object may be used across multiple threads but the Trunks D-Bus proxy
-  // can only be used on a single thread. This structure holds all Trunks client
-  // objects for a particular thread.
-  struct TrunksClientContext {
-    trunks::TrunksFactory* factory;
-    std::unique_ptr<trunks::TrunksFactoryImpl> factory_impl;
-    std::unique_ptr<trunks::TpmState> tpm_state;
-    std::unique_ptr<trunks::TpmUtility> tpm_utility;
-  };
+  SignatureSealingBackend* GetSignatureSealingBackend() override;
 
   // Gets the trunks objects for the current thread, initializing new ones if
   // necessary. Returns true on success.
   bool GetTrunksContext(TrunksClientContext** trunks);
 
+  // Loads the key from its DER-encoded Subject Public Key Info. Key is of type
+  // |key_type|. Algorithm scheme and hashing algorithm are passed via |scheme|
+  // and |hash_alg|. Currently, only the RSA keys are supported.
+  // The loaded key handle is returned via |key_handle|.
+  bool LoadPublicKeyFromSpki(const brillo::SecureBlob& public_key_spki_der,
+                             trunks::TpmUtility::AsymmetricKeyUsage key_type,
+                             trunks::TPM_ALG_ID scheme,
+                             trunks::TPM_ALG_ID hash_alg,
+                             trunks::AuthorizationDelegate* session_delegate,
+                             ScopedKeyHandle* key_handle);
+
+ private:
   // This method given a Tpm generated public area, returns the DER encoded
   // public key.
   bool PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
@@ -270,6 +291,7 @@ class Tpm2Impl : public Tpm {
   tpm_manager::TpmNvramInterface* tpm_nvram_ = nullptr;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
   LECredentialBackendImpl le_credential_backend_;
+  SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2Impl);
 };

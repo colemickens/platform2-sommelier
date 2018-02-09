@@ -11,9 +11,13 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 #include <tpm_manager/common/tpm_manager_constants.h>
 #include <trunks/authorization_delegate.h>
 #include <trunks/blob_parser.h>
@@ -21,7 +25,6 @@
 #include <trunks/policy_session.h>
 #include <trunks/tpm_alerts.h>
 #include <trunks/tpm_constants.h>
-#include <trunks/tpm_generated.h>
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
@@ -34,6 +37,8 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
 
+namespace cryptohome {
+
 namespace {
 
 // The upper bits that identify the layer that produced the response.
@@ -43,9 +48,6 @@ constexpr TPM_RC kResponseLayerMask = 0xFFFFF000;
 // Cr50 vendor command error codes.
 constexpr TPM_RC kVendorRC = 0x500;
 constexpr TPM_RC kCr50ErrorNoSuchCommand = kVendorRC + 0x7F;
-
-using cryptohome::Tpm;
-using cryptohome::TpmPersistentState;
 
 Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
   // For hardware TPM errors and TPM-equivalent response codes produced by
@@ -112,8 +114,6 @@ void SetOwnerDependency(TpmPersistentState::TpmOwnerDependency dependency,
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 // Keep it with sync to UMA enum list
 // https://chromium.googlesource.com/chromium/src/+/master/tools/metrics/histograms/enums.xml
@@ -304,8 +304,12 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
       trunks->tpm_utility->GenerateRandom(length,
                                           nullptr,  // No authorization.
                                           &random_data);
-  if ((result != TPM_RC_SUCCESS) || (random_data.size() != length)) {
+  if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting random data: " << GetErrorString(result);
+    return false;
+  }
+  if (random_data.size() != length) {
+    LOG(ERROR) << "Error getting random data: received data of wrong length";
     return false;
   }
   data->assign(random_data.begin(), random_data.end());
@@ -729,10 +733,9 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
     return false;
   }
   std::string tpm_signature;
-  result = trunks->tpm_utility->Sign(handle.value(), trunks::TPM_ALG_RSASSA,
-                                     trunks::TPM_ALG_SHA256, input.to_string(),
-                                     true /* generate_hash */,
-                                     delegate, &tpm_signature);
+  result = trunks->tpm_utility->Sign(
+      handle.value(), trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
+      input.to_string(), true /* generate_hash */, delegate, &tpm_signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error signing: " << GetErrorString(result);
     return false;
@@ -1126,8 +1129,7 @@ bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
 }
 
 bool Tpm2Impl::ResetDictionaryAttackMitigation(
-    const SecureBlob& delegate_blob,
-    const SecureBlob& delegate_secret) {
+    const SecureBlob& delegate_blob, const SecureBlob& delegate_secret) {
   if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
     return false;
   }
@@ -1172,6 +1174,55 @@ bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
     trunks_contexts_[thread_id] = std::move(new_context);
   }
   *trunks = trunks_contexts_[thread_id].get();
+  return true;
+}
+
+bool Tpm2Impl::LoadPublicKeyFromSpki(
+    const SecureBlob& public_key_spki_der,
+    trunks::TpmUtility::AsymmetricKeyUsage key_type,
+    trunks::TPM_ALG_ID scheme,
+    trunks::TPM_ALG_ID hash_alg,
+    trunks::AuthorizationDelegate* session_delegate,
+    ScopedKeyHandle* key_handle) {
+  // Parse the SPKI.
+  const unsigned char* asn1_ptr = public_key_spki_der.data();
+  const crypto::ScopedEVP_PKEY pkey(
+      d2i_PUBKEY(nullptr, &asn1_ptr, public_key_spki_der.size()));
+  if (!pkey) {
+    LOG(ERROR) << "Error parsing Subject Public Key Info DER";
+    return false;
+  }
+  const crypto::ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  if (!rsa) {
+    LOG(ERROR) << "Error: non-RSA key was supplied";
+    return false;
+  }
+  SecureBlob key_modulus(BN_num_bytes(rsa->n));
+  if (BN_bn2bin(rsa->n, key_modulus.data()) != key_modulus.size()) {
+    LOG(ERROR) << "Error extracting public key modulus";
+    return false;
+  }
+  constexpr BN_ULONG kInvalidBnWord = ~static_cast<BN_ULONG>(0);
+  const BN_ULONG exponent_word = BN_get_word(rsa->e);
+  if (exponent_word == kInvalidBnWord ||
+      !base::IsValueInRangeForNumericType<uint32_t>(exponent_word)) {
+    LOG(ERROR) << "Error extracting public key exponent";
+    return false;
+  }
+  const uint32_t key_exponent = static_cast<uint32_t>(exponent_word);
+  // Load the key into the TPM.
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks))
+    return false;
+  trunks::TPM_HANDLE key_handle_raw = 0;
+  TPM_RC tpm_result = trunks->tpm_utility->LoadRSAPublicKey(
+      key_type, scheme, hash_alg, key_modulus.to_string(), key_exponent,
+      session_delegate, &key_handle_raw);
+  if (tpm_result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading public key: " << GetErrorString(tpm_result);
+    return false;
+  }
+  key_handle->reset(this, key_handle_raw);
   return true;
 }
 
@@ -1376,6 +1427,10 @@ bool Tpm2Impl::SetUserType(Tpm::UserType type) {
 
 LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
   return &le_credential_backend_;
+}
+
+SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {
+  return &signature_sealing_backend_;
 }
 
 bool Tpm2Impl::LECredentialBackendImpl::Reset() {

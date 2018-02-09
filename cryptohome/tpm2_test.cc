@@ -6,8 +6,18 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <iterator>
+#include <map>
+#include <set>
+
+#include <base/memory/ptr_util.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #include <tpm_manager/common/mock_tpm_nvram_interface.h>
 #include <tpm_manager/common/mock_tpm_ownership_interface.h>
 #include <tpm_manager/common/tpm_manager_constants.h>
@@ -33,8 +43,10 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
+using testing::Values;
 using testing::WithArg;
 using tpm_manager::NVRAM_RESULT_IPC_ERROR;
+using trunks::TPM_ALG_ID;
 using trunks::TPM_RC;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
@@ -1170,5 +1182,251 @@ TEST_F(Tpm2Test, ClearStoredPasswordFailure) {
       .Times(0);
   EXPECT_FALSE(tpm_->ClearStoredPassword());
 }
+
+namespace {
+
+struct Tpm2RsaSignatureSecretSealingTestParam {
+  Tpm2RsaSignatureSecretSealingTestParam(
+      const std::vector<SignatureSealingBackend::Algorithm>&
+          supported_algorithms,
+      SignatureSealingBackend::Algorithm chosen_algorithm,
+      TPM_ALG_ID chosen_scheme,
+      TPM_ALG_ID chosen_hash_alg)
+      : supported_algorithms(supported_algorithms),
+        chosen_algorithm(chosen_algorithm),
+        chosen_scheme(chosen_scheme),
+        chosen_hash_alg(chosen_hash_alg) {}
+
+  std::vector<SignatureSealingBackend::Algorithm> supported_algorithms;
+  SignatureSealingBackend::Algorithm chosen_algorithm;
+  TPM_ALG_ID chosen_scheme;
+  TPM_ALG_ID chosen_hash_alg;
+};
+
+class Tpm2RsaSignatureSecretSealingTest
+    : public Tpm2Test,
+      public testing::WithParamInterface<
+          Tpm2RsaSignatureSecretSealingTestParam> {
+ protected:
+  const int kKeySizeBits = 2048;
+  const int kKeyPublicExponent = 65537;
+  const std::vector<int> kPcrIndexes{0, 5};
+  const std::string kSecretValue = std::string(32, '\1');
+  const trunks::TPM_HANDLE kKeyHandle = trunks::TPM_RH_FIRST;
+  const std::string kKeyName = std::string("fake key");
+  const std::string kSealedSecretValue = std::string("sealed secret");
+
+  Tpm2RsaSignatureSecretSealingTest() {
+    const RSA* const rsa =
+        RSA_generate_key(kKeySizeBits, kKeyPublicExponent, nullptr, nullptr);
+    const crypto::ScopedEVP_PKEY pkey(EVP_PKEY_new());
+    CHECK(EVP_PKEY_assign_RSA(pkey.get(), rsa));
+    // Obtain the DER-encoded SubjectPublicKeyInfo.
+    const int key_spki_der_length = i2d_PUBKEY(pkey.get(), nullptr);
+    CHECK_GE(key_spki_der_length, 0);
+    key_spki_der_.resize(key_spki_der_length);
+    unsigned char* key_spki_der_buffer =
+        reinterpret_cast<unsigned char*>(&key_spki_der_[0]);
+    CHECK_EQ(key_spki_der_.length(),
+             i2d_PUBKEY(pkey.get(), &key_spki_der_buffer));
+    // Obtain the key modulus.
+    key_modulus_.resize(BN_num_bytes(rsa->n));
+    CHECK_EQ(
+        key_modulus_.length(),
+        BN_bn2bin(rsa->n, reinterpret_cast<unsigned char*>(&key_modulus_[0])));
+  }
+
+  const std::vector<SignatureSealingBackend::Algorithm>& supported_algorithms()
+      const {
+    return GetParam().supported_algorithms;
+  }
+  SignatureSealingBackend::Algorithm chosen_algorithm() const {
+    return GetParam().chosen_algorithm;
+  }
+  TPM_ALG_ID chosen_scheme() const { return GetParam().chosen_scheme; }
+  TPM_ALG_ID chosen_hash_alg() const { return GetParam().chosen_hash_alg; }
+
+  SignatureSealingBackend* signature_sealing_backend() {
+    SignatureSealingBackend* result = tpm_->GetSignatureSealingBackend();
+    CHECK(result);
+    return result;
+  }
+
+  std::string key_spki_der_;
+  std::string key_modulus_;
+};
+
+}  // namespace
+
+TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
+  const std::string kTrialPolicyDigest("fake trial digest");
+  std::map<int, SecureBlob> pcr_values;
+  for (int pcr_index : kPcrIndexes)
+    pcr_values[pcr_index] = SecureBlob("fake PCR");
+
+  // Set up mock expectations for the secret creation.
+  EXPECT_CALL(mock_tpm_utility_,
+              LoadRSAPublicKey(trunks::TpmUtility::kSignKey, chosen_scheme(),
+                               chosen_hash_alg(), key_modulus_,
+                               kKeyPublicExponent, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
+  for (const auto& pcr_index_and_value : pcr_values) {
+    EXPECT_CALL(mock_trial_session_,
+                PolicyPCR(pcr_index_and_value.first,
+                          pcr_index_and_value.second.to_string()))
+        .WillOnce(Return(TPM_RC_SUCCESS));
+  }
+  trunks::TPMT_SIGNATURE tpmt_signature;
+  memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
+  EXPECT_CALL(
+      mock_trial_session_,
+      PolicySigned(kKeyHandle, kKeyName, std::string() /* nonce */,
+                   std::string() /* cp_hash */, std::string() /* policy_ref */,
+                   0 /* expiration */, _, _))
+      .WillOnce(DoAll(SaveArg<6>(&tpmt_signature), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(kTrialPolicyDigest), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GenerateRandom(kSecretValue.size(), _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kSecretValue), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_,
+              SealData(kSecretValue, kTrialPolicyDigest, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kSealedSecretValue), Return(TPM_RC_SUCCESS)));
+
+  // Trigger the secret creation.
+  SignatureSealedData sealed_data;
+  EXPECT_TRUE(signature_sealing_backend()->CreateSealedSecret(
+      SecureBlob(key_spki_der_), supported_algorithms(), pcr_values,
+      SecureBlob() /* delegate_blob */, SecureBlob() /* delegate_secret */,
+      &sealed_data));
+  ASSERT_TRUE(sealed_data.has_tpm2_policy_signed_data());
+  const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
+      sealed_data.tpm2_policy_signed_data();
+  EXPECT_EQ(key_spki_der_, sealed_data_contents.public_key_spki_der());
+  EXPECT_EQ(kSealedSecretValue, sealed_data_contents.srk_wrapped_secret());
+  EXPECT_EQ(chosen_scheme(), sealed_data_contents.scheme());
+  EXPECT_EQ(chosen_hash_alg(), sealed_data_contents.hash_alg());
+
+  // Validate values passed to mocks.
+  ASSERT_EQ(chosen_scheme(), tpmt_signature.sig_alg);
+  EXPECT_EQ(chosen_hash_alg(), tpmt_signature.signature.rsassa.hash);
+  EXPECT_EQ(0, tpmt_signature.signature.rsassa.sig.size);
+}
+
+TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
+  const std::string kTpmNonce(SHA1_DIGEST_SIZE, '\1');
+  const std::string kChallengeValue(kTpmNonce +
+                                    (std::string(4, '\0') /* expiration */));
+  const std::string kSignatureValue("fake signature");
+  const std::string kPolicyDigest("fake digest");
+
+  SignatureSealedData sealed_data;
+  SignatureSealedData_Tpm2PolicySignedData* const sealed_data_contents =
+      sealed_data.mutable_tpm2_policy_signed_data();
+  sealed_data_contents->set_public_key_spki_der(key_spki_der_);
+  sealed_data_contents->set_srk_wrapped_secret(kSealedSecretValue);
+  sealed_data_contents->set_scheme(chosen_scheme());
+  sealed_data_contents->set_hash_alg(chosen_hash_alg());
+
+  // Set up mock expectations for the challenge generation.
+  EXPECT_CALL(mock_policy_session_, GetDelegate())
+      .WillRepeatedly(Return(&mock_authorization_delegate_));
+  EXPECT_CALL(mock_authorization_delegate_, GetTpmNonce(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kTpmNonce), Return(true)));
+
+  // Trigger the challenge generation.
+  std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session(
+      signature_sealing_backend()->CreateUnsealingSession(
+          sealed_data, SecureBlob(key_spki_der_), supported_algorithms(),
+          std::set<int>(std::begin(kPcrIndexes), std::end(kPcrIndexes)),
+          SecureBlob() /* delegate_blob */,
+          SecureBlob() /* delegate_secret */));
+  ASSERT_TRUE(unsealing_session);
+  EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
+  EXPECT_EQ(kChallengeValue,
+            unsealing_session->GetChallengeValue().to_string());
+
+  // Set up mock expectations for the unsealing.
+  EXPECT_CALL(mock_tpm_utility_,
+              LoadRSAPublicKey(trunks::TpmUtility::kSignKey, chosen_scheme(),
+                               chosen_hash_alg(), key_modulus_,
+                               kKeyPublicExponent, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
+  for (int pcr_index : kPcrIndexes) {
+    EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, "" /* pcr_value */))
+        .WillOnce(Return(TPM_RC_SUCCESS));
+  }
+  trunks::TPMT_SIGNATURE tpmt_signature;
+  memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
+  EXPECT_CALL(
+      mock_policy_session_,
+      PolicySigned(kKeyHandle, kKeyName, kTpmNonce, std::string() /* cp_hash */,
+                   std::string() /* policy_ref */, 0 /* expiration */, _, _))
+      .WillOnce(DoAll(SaveArg<6>(&tpmt_signature), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kPolicyDigest), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_,
+              UnsealData(kSealedSecretValue, &mock_authorization_delegate_, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kSecretValue), Return(TPM_RC_SUCCESS)));
+
+  // Trigger the unsealing.
+  SecureBlob unsealed_secret_value;
+  EXPECT_TRUE(unsealing_session->Unseal(SecureBlob(kSignatureValue),
+                                        &unsealed_secret_value));
+  EXPECT_EQ(kSecretValue, unsealed_secret_value.to_string());
+
+  // Validate values passed to mocks.
+  ASSERT_EQ(chosen_scheme(), tpmt_signature.sig_alg);
+  EXPECT_EQ(chosen_hash_alg(), tpmt_signature.signature.rsassa.hash);
+  EXPECT_EQ(kSignatureValue,
+            std::string(tpmt_signature.signature.rsassa.sig.buffer,
+                        tpmt_signature.signature.rsassa.sig.buffer +
+                            tpmt_signature.signature.rsassa.sig.size));
+}
+
+INSTANTIATE_TEST_CASE_P(
+    SingleAlgorithm,
+    Tpm2RsaSignatureSecretSealingTest,
+    Values(Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha1},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha1,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA1),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha256},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha256,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA256),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha384},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha384,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA384),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha512},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha512,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA512)));
+INSTANTIATE_TEST_CASE_P(
+    MultipleAlgorithms,
+    Tpm2RsaSignatureSecretSealingTest,
+    Values(Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha384,
+                SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha256,
+                SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha512},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha384,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA384),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha1,
+                SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha256},
+               SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha256,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA256)));
 
 }  // namespace cryptohome
