@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/startup_listener_impl.h"
 
+#include <inttypes.h>
 #include <string.h>
 
 namespace vm_tools {
@@ -13,7 +14,7 @@ grpc::Status StartupListenerImpl::VmReady(grpc::ServerContext* ctx,
                                           const vm_tools::EmptyMessage* request,
                                           vm_tools::EmptyMessage* response) {
   uint64_t cid = 0;
-  if (sscanf(ctx->peer().c_str(), "vsock:%lu", &cid) != 1) {
+  if (sscanf(ctx->peer().c_str(), "vsock:%" PRIu64, &cid) != 1) {
     LOG(WARNING) << "Failed to parse peer address " << ctx->peer();
   }
 
