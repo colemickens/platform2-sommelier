@@ -14,6 +14,7 @@
 #include <base/macros.h>
 
 #include "camera3_test/camera3_test_data_forwarder.h"
+#include "common/utils/camera_hal_enumerator.h"
 
 namespace camera3_test {
 
@@ -963,10 +964,34 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
+
   if (camera_hal_path.empty()) {
-    LOGF(ERROR) << "camera_hal_path unspecified, please add "
-                << "`--camera_hal_path=` into command line argument.";
-    return false;
+    std::vector<base::FilePath> camera_hal_paths = arc::GetCameraHalPaths();
+
+    if (camera_hal_paths.size() == 1) {
+      // TODO(shik): Ignore usb.so if there is no built-in USB camera, so we
+      // have a better heuristic guess.
+
+      camera_hal_path = camera_hal_paths[0];
+
+      LOG(INFO) << "camera_hal_path unspecified, using "
+                << camera_hal_path.value() << " as default. "
+                << "You can override this behavior by the command line "
+                << "argument `--camera_hal_path=`";
+    } else {
+      LOGF(ERROR) << "camera_hal_path unspecified. "
+                  << "Since we cannot determine the suitable one, please add "
+                  << "`--camera_hal_path=` into command line argument.";
+
+      if (!camera_hal_paths.empty()) {
+        LOGF(ERROR) << "List of possible paths:";
+        for (const auto& path : camera_hal_paths) {
+          LOGF(ERROR) << path.value();
+        }
+      }
+
+      return false;
+    }
   }
 
   // Open camera HAL and get module

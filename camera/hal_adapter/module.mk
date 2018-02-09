@@ -18,7 +18,8 @@ CXX_BINARY(hal_adapter/arc_camera3_service): LDLIBS += $(hal_adapter_LDLIBS)
 CXX_BINARY(hal_adapter/arc_camera3_service): \
 	$(COMMON_OBJECTS) \
 	$(hal_adapter_CXX_OBJECTS) \
-	$(hal_adapter_mojo_CXX_OBJECTS)
+	$(hal_adapter_mojo_CXX_OBJECTS) \
+	common/utils/camera_hal_enumerator.o
 
 hal_adapter/arc_camera3_service: CXX_BINARY(hal_adapter/arc_camera3_service)
 
