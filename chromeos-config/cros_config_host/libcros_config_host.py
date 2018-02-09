@@ -1024,7 +1024,7 @@ def CrosConfig(fname=None, config_format=None):
   This is in a separate function to allow us to (in the future) support YAML,
   which will have a different means of creating the impl class.
   """
-  if not config_format:
+  if config_format is None:
     if fname and ('.yaml' in fname or '.json' in fname):
       config_format = FORMAT_YAML
     else:
