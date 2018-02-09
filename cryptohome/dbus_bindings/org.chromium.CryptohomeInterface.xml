@@ -535,6 +535,15 @@
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
+    <!-- Passes the response data for the previously received challenge request.
+         account_id: AccountIdentifier
+         challenge_response: KeyChallengeResponse
+    -->
+    <method name="RespondKeyChallenge">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="challenge_response" direction="in" />
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.
@@ -546,6 +555,11 @@
                for home directories.
            DircryptoMigrationProgress: Periodically emitted when the migration
                of a home directory is in progress, to notify the updates to UI.
+           KeyChallenge: Emitted when cryptohome requests a challenge in order
+               to authenticate the user using a key that has the
+               KEY_TYPE_CHALLENGE_RESPONSE type.
+               account_id: AccountIdentifier
+               request: KeyChallengeRequest
     -->
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
@@ -569,6 +583,10 @@
       <arg type="i" name="status" />
       <arg type="t" name="current_bytes" />
       <arg type="t" name="total_bytes" />
+    </signal>
+    <signal name="KeyChallenge">
+      <arg type="ay" name="account_id" />
+      <arg type="ay" name="request" />
     </signal>
   </interface>
 </node>

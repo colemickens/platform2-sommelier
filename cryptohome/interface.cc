@@ -791,6 +791,13 @@ gboolean cryptohome_get_supported_key_policies(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetSupportedKeyPolicies, request);
 }
 
+gboolean cryptohome_respond_key_challenge(Cryptohome* self,
+                                          GArray* account_id,
+                                          GArray* response,
+                                          DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(RespondKeyChallenge, account_id, response);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

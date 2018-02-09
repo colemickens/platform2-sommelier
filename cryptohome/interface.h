@@ -460,6 +460,12 @@ gboolean cryptohome_tpm_attestation_get_enrollment_id(
 gboolean cryptohome_get_supported_key_policies(Cryptohome* self,
                                                GArray* request,
                                                DBusGMethodInvocation* resp);
+
+gboolean cryptohome_respond_key_challenge(Cryptohome* self,
+                                          GArray* account_id,
+                                          GArray* response,
+                                          DBusGMethodInvocation* error);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_
