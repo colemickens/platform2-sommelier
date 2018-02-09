@@ -132,9 +132,9 @@ chromeos:
     - name: caroline
       # default: *pyro
       wallpaper: "caroline"
-      audio:
-        main:
-          cras-config-dir: "caroline"
+      #audio:
+        #main:
+          #cras-config-dir: "caroline"
       firmware:
         shares: *shared
     - name: reef

@@ -72,11 +72,6 @@
         "wallpaper": "default"
       }, 
       {
-        "audio": {
-          "main": {
-            "cras-config-dir": "caroline"
-          }
-        }, 
         "firmware": {
           "shares": {
             "bcs-overlay": "overlay-reef-private", 
