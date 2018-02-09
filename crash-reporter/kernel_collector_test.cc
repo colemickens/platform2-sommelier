@@ -35,8 +35,7 @@ bool IsMetrics() {
 
 class KernelCollectorTest : public ::testing::Test {
  protected:
-  void WriteStringToFile(const FilePath &file_path,
-                         const char *data) {
+  void WriteStringToFile(const FilePath& file_path, const char* data) {
     ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
   }
 
@@ -47,13 +46,13 @@ class KernelCollectorTest : public ::testing::Test {
   void WatchdogOKHelper(const FilePath&);
   void WatchdogOnlyLastBootHelper(const FilePath&);
 
-  const FilePath &console_ramoops_file() const { return test_console_ramoops_; }
-  const FilePath &console_ramoops_file_old() const {
+  const FilePath& console_ramoops_file() const { return test_console_ramoops_; }
+  const FilePath& console_ramoops_file_old() const {
     return test_console_ramoops_old_;
   }
-  const FilePath &eventlog_file() const { return test_eventlog_; }
-  const FilePath &kcrash_file() const { return test_kcrash_; }
-  const FilePath &test_crash_directory() const { return test_crash_directory_; }
+  const FilePath& eventlog_file() const { return test_eventlog_; }
+  const FilePath& kcrash_file() const { return test_kcrash_; }
+  const FilePath& test_crash_directory() const { return test_crash_directory_; }
 
   KernelCollectorMock collector_;
 
@@ -106,7 +105,7 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   dump.clear();
 
   WriteStringToFile(kcrash_file(),
-      "CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]");
+                    "CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]");
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
   ASSERT_EQ("CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]", dump);
@@ -125,8 +124,7 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
 TEST_F(KernelCollectorTest, EnableMissingKernel) {
   ASSERT_FALSE(collector_.Enable());
   ASSERT_FALSE(collector_.is_enabled());
-  ASSERT_TRUE(FindLog(
-      "Kernel does not support crash dumping"));
+  ASSERT_TRUE(FindLog("Kernel does not support crash dumping"));
   ASSERT_EQ(s_crashes, 0);
 }
 
@@ -163,9 +161,9 @@ void KernelCollectorTest::SetUpSuccessfulCollect() {
 void KernelCollectorTest::SetUpSuccessfulWatchdog(const FilePath& path) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   WriteStringToFile(eventlog_file(),
-    "112 | 2016-03-24 15:09:39 | System boot | 0\n"
-    "113 | 2016-03-24 15:11:20 | System boot | 0\n"
-    "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n");
+                    "112 | 2016-03-24 15:09:39 | System boot | 0\n"
+                    "113 | 2016-03-24 15:11:20 | System boot | 0\n"
+                    "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n");
   WriteStringToFile(path, "\n[ 0.0000] I can haz boot!");
 }
 
@@ -261,19 +259,15 @@ void KernelCollectorTest::ComputeKernelStackSignatureCommon() {
 
   const char kMissingEverything[] =
       "<4>[ 6066.829029]  [<790340af>] ? __do_softirq+0xa6/0x143\n";
-  EXPECT_FALSE(
-      collector_.ComputeKernelStackSignature(kMissingEverything,
-                                             &signature,
-                                             false));
+  EXPECT_FALSE(collector_.ComputeKernelStackSignature(kMissingEverything,
+                                                      &signature, false));
 
   // Long message.
   const char kTruncatedMessage[] =
       "<0>[   87.485611] Kernel panic - not syncing: 01234567890123456789"
-          "01234567890123456789X\n";
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kTruncatedMessage,
-                                             &signature,
-                                             false));
+      "01234567890123456789X\n";
+  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kTruncatedMessage,
+                                                     &signature, false));
   EXPECT_EQ("kernel-0123456789012345678901234567890123456789-00000000",
             signature);
 }
@@ -282,47 +276,47 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureARM) {
   const char kBugToPanic[] =
       "<5>[  123.412524] Modules linked in:\n"
       "<5>[  123.412534] CPU: 0    Tainted: G        W    "
-          "(2.6.37-01030-g51cee64 #153)\n"
+      "(2.6.37-01030-g51cee64 #153)\n"
       "<5>[  123.412552] PC is at write_breakme+0xd0/0x1b4\n"
       "<5>[  123.412560] LR is at write_breakme+0xc8/0x1b4\n"
       "<5>[  123.412569] pc : [<c0058220>]    lr : [<c005821c>]    "
-          "psr: 60000013\n"
+      "psr: 60000013\n"
       "<5>[  123.412574] sp : f4e0ded8  ip : c04d104c  fp : 000e45e0\n"
       "<5>[  123.412581] r10: 400ff000  r9 : f4e0c000  r8 : 00000004\n"
       "<5>[  123.412589] r7 : f4e0df80  r6 : f4820c80  r5 : 00000004  "
-          "r4 : f4e0dee8\n"
+      "r4 : f4e0dee8\n"
       "<5>[  123.412598] r3 : 00000000  r2 : f4e0decc  r1 : c05f88a9  "
-          "r0 : 00000039\n"
+      "r0 : 00000039\n"
       "<5>[  123.412608] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA "
-          "ARM  Segment user\n"
+      "ARM  Segment user\n"
       "<5>[  123.412617] Control: 10c53c7d  Table: 34dcc04a  DAC: 00000015\n"
       "<0>[  123.412626] Process bash (pid: 1014, stack limit = 0xf4e0c2f8)\n"
       "<0>[  123.412634] Stack: (0xf4e0ded8 to 0xf4e0e000)\n"
       "<0>[  123.412641] dec0:                                              "
-          "         f4e0dee8 c0183678\n"
+      "         f4e0dee8 c0183678\n"
       "<0>[  123.412654] dee0: 00000000 00000000 00677562 0000081f c06a6a78 "
-          "400ff000 f4e0dfb0 00000000\n"
+      "400ff000 f4e0dfb0 00000000\n"
       "<0>[  123.412666] df00: bec7ab44 000b1719 bec7ab0c c004f498 bec7a314 "
-          "c024acc8 00000001 c018359c\n"
+      "c024acc8 00000001 c018359c\n"
       "<0>[  123.412679] df20: f4e0df34 c04d10fc f5803c80 271beb39 000e45e0 "
-          "f5803c80 c018359c c017bfe0\n"
+      "f5803c80 c018359c c017bfe0\n"
       "<0>[  123.412691] df40: 00000004 f4820c80 400ff000 f4e0df80 00000004 "
-          "f4e0c000 00000000 c01383e4\n"
+      "f4e0c000 00000000 c01383e4\n"
       "<0>[  123.412703] df60: f4820c80 400ff000 f4820c80 400ff000 00000000 "
-          "00000000 00000004 c0138578\n"
+      "00000000 00000004 c0138578\n"
       "<0>[  123.412715] df80: 00000000 00000000 00000004 00000000 00000004 "
-          "402f95d0 00000004 00000004\n"
+      "402f95d0 00000004 00000004\n"
       "<0>[  123.412727] dfa0: c0054984 c00547c0 00000004 402f95d0 00000001 "
-          "400ff000 00000004 00000000\n"
+      "400ff000 00000004 00000000\n"
       "<0>[  123.412739] dfc0: 00000004 402f95d0 00000004 00000004 400ff000 "
-          "000c194c bec7ab58 000e45e0\n"
+      "000c194c bec7ab58 000e45e0\n"
       "<0>[  123.412751] dfe0: 00000000 bec7aad8 40232520 40284e9c 60000010 "
-          "00000001 00000000 00000000\n"
+      "00000001 00000000 00000000\n"
       "<5>[   39.496577] Backtrace:\n"
       "<5>[  123.412782] [<c0058220>] (__bug+0x20/0x2c) from [<c0183678>] "
-          "(write_breakme+0xdc/0x1bc)\n"
+      "(write_breakme+0xdc/0x1bc)\n"
       "<5>[  123.412798] [<c0183678>] (write_breakme+0xdc/0x1bc) from "
-          "[<c017bfe0>] (proc_reg_write+0x88/0x9c)\n";
+      "[<c017bfe0>] (proc_reg_write+0x88/0x9c)\n";
   std::string signature;
 
   collector_.set_arch(KernelCollector::kArchArm);
@@ -356,20 +350,20 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureMIPS) {
       "<5>[ 3378.572000] Cause : 10800024\n"
       "<5>[ 3378.576000] PrId  : 0001a120 (MIPS interAptiv (multi))\n"
       "<5>[ 3378.580000] Modules linked in: uinput cfg80211 nf_conntrack_ipv6 "
-          "nf_defrag_ipv6 ip6table_filter ip6_tables pcnet32 mii fuse "
-          "ppp_async ppp_generic slhc tun\n"
+      "nf_defrag_ipv6 ip6table_filter ip6_tables pcnet32 mii fuse "
+      "ppp_async ppp_generic slhc tun\n"
       "<5>[ 3378.600000] Process dash (pid: 185, threadinfo=8ec4a000, "
-          "task=8fed5220, tls=77632490)\n"
+      "task=8fed5220, tls=77632490)\n"
       "<5>[ 3378.608000] Stack : 00000006 ffffff9c 00000000 00000000 00000000 "
-          "00000000 8083454a 00000022\n"
+      "00000000 8083454a 00000022\n"
       "<5>          7765baa1 00001fee 80710000 8ef54000 8ec4bf08 00000002 "
-          "7765b6d4 00000004\n"
+      "7765b6d4 00000004\n"
       "<5>          7fffffff 00000002 7775438d 805e5158 7fffffff 00000002 "
-          "00000000 7785b507\n"
+      "00000000 7785b507\n"
       "<5>          806a96bc 00000004 8ef54000 8ec4bf08 00000002 804018b8 "
-          "80710000 806a98bc\n"
+      "80710000 806a98bc\n"
       "<5>          00000002 00000020 00000004 8d515600 77756450 00000004 "
-          "8ec4bf08 802377e4\n"
+      "8ec4bf08 802377e4\n"
       "<5>          ...\n"
       "<5>[ 3378.652000] Call Trace:\n"
       "<5>[ 3378.656000] [<804010f0>] lkdtm_do_action+0x68/0x3f8\n"
@@ -380,7 +374,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureMIPS) {
       "<5>[ 3378.680000] \n"
       "<5>[ 3378.684000] \n"
       "<5>Code: 3c04806b  0c1793aa  248494f0 <000c000d> 3c04806b  248494fc  "
-          "0c04cc7f  2405017a  08100514 \n"
+      "0c04cc7f  2405017a  08100514 \n"
       "<5>[ 3378.696000] ---[ end trace 75067432f24bbc93 ]---\n";
   std::string signature;
 
@@ -397,11 +391,11 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[ 6066.829029]  [<79039d16>] ? run_timer_softirq+0x165/0x1e6\n"
       "<4>[ 6066.829029]  [<790340af>] ignore_old_stack+0xa6/0x143\n"
       "<0>[ 6066.829029] EIP: [<b82d7c15>] ieee80211_stop_tx_ba_session+"
-          "0xa3/0xb5 [mac80211] SS:ESP 0068:7951febc\n"
+      "0xa3/0xb5 [mac80211] SS:ESP 0068:7951febc\n"
       "<0>[ 6066.829029] CR2: 00000000323038a7\n"
       "<4>[ 6066.845422] ---[ end trace 12b058bb46c43500 ]---\n"
       "<0>[ 6066.845747] Kernel panic - not syncing: Fatal exception "
-          "in interrupt\n"
+      "in interrupt\n"
       "<0>[ 6066.846902] Call Trace:\n"
       "<4>[ 6066.846902]  [<7937a07b>] ? printk+0x14/0x19\n"
       "<4>[ 6066.949779]  [<79379fc1>] panic+0x3e/0xe4\n"
@@ -431,7 +425,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "00 85 c0 75 04 <0f> 0b eb fe ba 58 47 49 79 89 d8 e8 dd ee 09 00 85 "
       "c0 75 0a 68\n"
       "<0>[  180.492137] EIP: [<790e22a4>] write_breakme+0x80/0x108 SS:ESP "
-          "0068:aa3e9efc\n"
+      "0068:aa3e9efc\n"
       "<4>[  180.501800] ---[ end trace 2a6b72965e1b1523 ]---\n"
       "<0>[  180.502026] Kernel panic - not syncing: Fatal exception\n"
       "<4>[  180.502026] Call Trace:\n"
@@ -450,7 +444,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[  174.492137]  [<790970c6>] ignored_function+0x67f/0x96d\n"
       "<4>[  175.492137]  [<790970c6>] ignored_function2+0x67f/0x96d\n"
       "<0>[  174.492137] EIP: [<790e22a4>] write_breakme+0x80/0x108 SS:ESP "
-          "0068:aa3e9efc\n"
+      "0068:aa3e9efc\n"
       "<4>[  180.501800] ---[ end trace 2a6b72965e1b1523 ]---\n"
       "<4>[  180.502026] Call Trace:\n"
       "<0>[  180.502026] Kernel panic - not syncing: Fatal exception\n"
@@ -464,15 +458,13 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
   const char kExamplePanicOnly[] =
       "<0>[   87.485611] Kernel panic - not syncing: Testing panic\n"
       "<4>[   87.485630] Pid: 2825, comm: bash Tainted: G         "
-          "C 2.6.32.23+drm33.10 #1\n"
+      "C 2.6.32.23+drm33.10 #1\n"
       "<4>[   87.485639] Call Trace:\n"
       "<4>[   87.485660]  [<8133f71d>] ? printk+0x14/0x17\n"
       "<4>[   87.485674]  [<8133f663>] panic+0x3e/0xe4\n"
       "<4>[   87.485689]  [<810d062e>] write_breakme+0xaa/0x124\n";
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kExamplePanicOnly,
-                                             &signature,
-                                             false));
+  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kExamplePanicOnly,
+                                                     &signature, false));
   EXPECT_EQ("kernel-Testing panic-E0FC3552", signature);
 
   // Panic from hung task.
@@ -507,10 +499,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<5>[  720.460862]  [<81043a8c>] ? __init_kthread_worker+0x2d/0x2d\n"
       "<5>[  720.461106]  [<8137eb9e>] kernel_thread_helper+0x6/0x10\n";
 
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kHungTaskBreakMe,
-                                             &signature,
-                                             false));
+  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kHungTaskBreakMe,
+                                                     &signature, false));
 
   EXPECT_EQ("kernel-(HANG)-hung_task: blocked tasks-600B37EA", signature);
 
@@ -622,10 +612,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<5>[56279.703709]  [<810af556>] ? sys_write+0x40/0x65\n"
       "<5>[56279.703716]  [<81002d57>] ? sysenter_do_call+0x12/0x26\n";
 
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kUncertainStackTrace,
-                                             &signature,
-                                             false));
+  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kUncertainStackTrace,
+                                                     &signature, false));
   // The first trace contains only uncertain entries and its hash is 00000000,
   // so, if we used that, the signature would be kernel-add_timer-00000000.
   // Instead we use the second-to-last trace for the hash.

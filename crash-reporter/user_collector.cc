@@ -55,7 +55,7 @@ const char kMashServiceName[] = "--mash-service-name";
 
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
-bool IsChromeExecName(const std::string &exec);
+bool IsChromeExecName(const std::string& exec);
 
 }  // namespace
 
@@ -64,30 +64,26 @@ UserCollector::UserCollector()
       core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       filter_path_(kFilterPath),
-      core2md_failure_(false) {
-}
+      core2md_failure_(false) {}
 
 void UserCollector::Initialize(
     UserCollector::CountCrashFunction count_crash_function,
-    const std::string &our_path,
+    const std::string& our_path,
     UserCollector::IsFeedbackAllowedFunction is_feedback_allowed_function,
     bool generate_diagnostics,
     bool core2md_failure,
     bool directory_failure,
-    const std::string &filter_in,
+    const std::string& filter_in,
     FilterOutFunction filter_out) {
-  UserCollectorBase::Initialize(count_crash_function,
-                                is_feedback_allowed_function,
-                                generate_diagnostics,
-                                directory_failure,
-                                filter_in);
+  UserCollectorBase::Initialize(
+      count_crash_function, is_feedback_allowed_function, generate_diagnostics,
+      directory_failure, filter_in);
   our_path_ = our_path;
   core2md_failure_ = core2md_failure;
   filter_out_ = std::move(filter_out);
 }
 
-UserCollector::~UserCollector() {
-}
+UserCollector::~UserCollector() {}
 
 // Return the string that should be used for the kernel's core_pattern file.
 // Note that if you change the format of the enabled pattern, you'll probably
@@ -140,20 +136,14 @@ bool UserCollector::SetUpInternal(bool enabled) {
   return true;
 }
 
-bool UserCollector::CopyOffProcFiles(pid_t pid,
-                                     const FilePath &container_dir) {
+bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
   FilePath process_path = GetProcessPath(pid);
   if (!base::PathExists(process_path)) {
     LOG(ERROR) << "Path " << process_path.value() << " does not exist";
     return false;
   }
-  static const char* const kProcFiles[] = {
-    "auxv",
-    "cmdline",
-    "environ",
-    "maps",
-    "status"
-  };
+  static const char* const kProcFiles[] = {"auxv", "cmdline", "environ", "maps",
+                                           "status"};
   for (std::string proc_file : kProcFiles) {
     if (!base::CopyFile(process_path.Append(proc_file),
                         container_dir.Append(proc_file))) {
@@ -164,7 +154,7 @@ bool UserCollector::CopyOffProcFiles(pid_t pid,
   return true;
 }
 
-bool UserCollector::ValidateProcFiles(const FilePath &container_dir) const {
+bool UserCollector::ValidateProcFiles(const FilePath& container_dir) const {
   // Check if the maps file is empty, which could be due to the crashed
   // process being reaped by the kernel before finishing a core dump.
   int64_t file_size = 0;
@@ -180,7 +170,7 @@ bool UserCollector::ValidateProcFiles(const FilePath &container_dir) const {
 }
 
 UserCollector::ErrorType UserCollector::ValidateCoreFile(
-    const FilePath &core_path) const {
+    const FilePath& core_path) const {
   int fd = HANDLE_EINTR(open(core_path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "Could not open core file " << core_path.value();
@@ -214,7 +204,7 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   return kErrorNone;
 }
 
-bool UserCollector::CopyStdinToCoreFile(const FilePath &core_path) {
+bool UserCollector::CopyStdinToCoreFile(const FilePath& core_path) {
   // Copy off all stdin to a core file.
   FilePath stdin_path("/dev/fd/0");
   if (base::CopyFile(stdin_path, core_path)) {
@@ -227,10 +217,10 @@ bool UserCollector::CopyStdinToCoreFile(const FilePath &core_path) {
   return false;
 }
 
-bool UserCollector::RunCoreToMinidump(const FilePath &core_path,
-                                      const FilePath &procfs_directory,
-                                      const FilePath &minidump_path,
-                                      const FilePath &temp_directory) {
+bool UserCollector::RunCoreToMinidump(const FilePath& core_path,
+                                      const FilePath& procfs_directory,
+                                      const FilePath& minidump_path,
+                                      const FilePath& temp_directory) {
   FilePath output_path = temp_directory.Append("output");
   brillo::ProcessImpl core2md;
   core2md.RedirectOutput(output_path.value());
@@ -266,8 +256,8 @@ bool UserCollector::RunCoreToMinidump(const FilePath &core_path,
 bool UserCollector::RunFilter(pid_t pid) {
   int mode;
   int exec_mode = base::FILE_PERMISSION_EXECUTE_BY_USER |
-      base::FILE_PERMISSION_EXECUTE_BY_GROUP |
-      base::FILE_PERMISSION_EXECUTE_BY_OTHERS;
+                  base::FILE_PERMISSION_EXECUTE_BY_GROUP |
+                  base::FILE_PERMISSION_EXECUTE_BY_OTHERS;
   if (!base::GetPosixFilePermissions(base::FilePath(filter_path_), &mode) ||
       (mode & exec_mode) != exec_mode) {
     // Filter does not exist or is not executable.
@@ -297,8 +287,8 @@ bool UserCollector::ShouldDump(pid_t pid,
                                bool has_owner_consent,
                                bool is_developer,
                                bool handle_chrome_crashes,
-                               const std::string &exec,
-                               std::string *reason) {
+                               const std::string& exec,
+                               std::string* reason) {
   reason->clear();
 
   if (filter_out_(pid)) {
@@ -311,8 +301,9 @@ bool UserCollector::ShouldDump(pid_t pid,
   // user-space crashes.
   if (!handle_chrome_crashes && IsChromeExecName(exec)) {
     if (!IsChromeMashProcess(pid)) {
-      *reason = "ignoring call by kernel - chrome crash; "
-                "waiting for chrome to call us directly";
+      *reason =
+          "ignoring call by kernel - chrome crash; "
+          "waiting for chrome to call us directly";
       return false;
     }
     // For mustash, chrome --mash and its non-browser mojo services are
@@ -330,21 +321,17 @@ bool UserCollector::ShouldDump(pid_t pid,
 
 bool UserCollector::ShouldDump(pid_t pid,
                                uid_t,
-                               const std::string &exec,
-                               std::string *reason) {
-  return ShouldDump(pid,
-                    is_feedback_allowed_function_(),
-                    IsDeveloperImage(),
-                    ShouldHandleChromeCrashes(),
-                    exec,
-                    reason);
+                               const std::string& exec,
+                               std::string* reason) {
+  return ShouldDump(pid, is_feedback_allowed_function_(), IsDeveloperImage(),
+                    ShouldHandleChromeCrashes(), exec, reason);
 }
 
 UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
     pid_t pid,
-    const FilePath &container_dir,
-    const FilePath &core_path,
-    const FilePath &minidump_path) {
+    const FilePath& container_dir,
+    const FilePath& core_path,
+    const FilePath& minidump_path) {
   // If proc files are unusable, we continue to read the core file from stdin,
   // but only skip the core-to-minidump conversion, so that we may still use
   // the core file for debugging.
@@ -376,7 +363,7 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
   return kErrorNone;
 }
 
-void UserCollector::AddExtraMetadata(const std::string &exec, pid_t pid) {
+void UserCollector::AddExtraMetadata(const std::string& exec, pid_t pid) {
   if (!IsChromeExecName(exec) || !IsChromeMashProcess(pid))
     return;
 
@@ -389,64 +376,62 @@ void UserCollector::AddExtraMetadata(const std::string &exec, pid_t pid) {
 
 namespace {
 
-bool IsChromeExecName(const std::string &exec) {
+bool IsChromeExecName(const std::string& exec) {
   static const char* const kChromeNames[] = {
-    "chrome",
-    // These are additional thread names seen in http://crash/
-    "MediaPipeline",
-    // These come from the use of base::PlatformThread::SetName() directly
-    "CrBrowserMain", "CrRendererMain", "CrUtilityMain", "CrPPAPIMain",
-    "CrPPAPIBrokerMain", "CrPluginMain", "CrWorkerMain", "CrGpuMain",
-    "BrokerEvent", "CrVideoRenderer", "CrShutdownDetector",
-    "UsbEventHandler", "CrNaClMain", "CrServiceMain",
-    // These thread names come from the use of base::Thread
-    "Gamepad polling thread", "Chrome_InProcGpuThread",
-    "Chrome_DragDropThread", "Renderer::FILE", "VC manager",
-    "VideoCaptureModuleImpl", "JavaBridge", "VideoCaptureManagerThread",
-    "Geolocation", "Geolocation_wifi_provider",
-    "Device orientation polling thread", "Chrome_InProcRendererThread",
-    "NetworkChangeNotifier", "Watchdog", "inotify_reader",
-    "cf_iexplore_background_thread", "BrowserWatchdog",
-    "Chrome_HistoryThread", "Chrome_SyncThread", "Chrome_ShellDialogThread",
-    "Printing_Worker", "Chrome_SafeBrowsingThread", "SimpleDBThread",
-    "D-Bus thread", "AudioThread", "NullAudioThread", "V4L2Thread",
-    "ChromotingClientDecodeThread", "Profiling_Flush",
-    "worker_thread_ticker", "AudioMixerAlsa", "AudioMixerCras",
-    "FakeAudioRecordingThread", "CaptureThread",
-    "Chrome_WebSocketproxyThread", "ProcessWatcherThread",
-    "Chrome_CameraThread", "import_thread", "NaCl_IOThread",
-    "Chrome_CloudPrintJobPrintThread", "Chrome_CloudPrintProxyCoreThread",
-    "DaemonControllerFileIO", "ChromotingMainThread",
-    "ChromotingEncodeThread", "ChromotingDesktopThread",
-    "ChromotingIOThread", "ChromotingFileIOThread",
-    "Chrome_libJingle_WorkerThread", "Chrome_ChildIOThread",
-    "GLHelperThread", "RemotingHostPlugin",
-    // "PAC thread #%d",  // not easy to check because of "%d"
-    "Chrome_DBThread", "Chrome_WebKitThread", "Chrome_FileThread",
-    "Chrome_FileUserBlockingThread", "Chrome_ProcessLauncherThread",
-    "Chrome_CacheThread", "Chrome_IOThread", "Cache Thread", "File Thread",
-    "ServiceProcess_IO", "ServiceProcess_File",
-    "extension_crash_uploader", "gpu-process_crash_uploader",
-    "plugin_crash_uploader", "renderer_crash_uploader",
-    // These come from the use of webkit_glue::WebThreadImpl
-    "Compositor", "Browser Compositor",
-    // "WorkerPool/%d",  // not easy to check because of "%d"
-    // These come from the use of base::Watchdog
-    "Startup watchdog thread Watchdog", "Shutdown watchdog thread Watchdog",
-    // These come from the use of AudioDeviceThread::Start
-    "AudioDevice", "AudioInputDevice", "AudioOutputDevice",
-    // These come from the use of MessageLoopFactory::GetMessageLoop
-    "GpuVideoDecoder", "RtcVideoDecoderThread", "PipelineThread",
-    "AudioDecoderThread", "VideoDecoderThread",
-    // These come from the use of MessageLoopFactory::GetMessageLoopProxy
-    "CaptureVideoDecoderThread", "CaptureVideoDecoder",
-    // These come from the use of base::SimpleThread
-    "LocalInputMonitor/%d",  // "%d" gets lopped off for kernel-supplied
-    // These come from the use of base::DelegateSimpleThread
-    "ipc_channel_nacl reader thread/%d", "plugin_audio_input_thread/%d",
-    "plugin_audio_thread/%d",
-    // These come from the use of base::SequencedWorkerPool
-    "BrowserBlockingWorker%d/%d",  // "%d" gets lopped off for kernel-supplied
+      "chrome",
+      // These are additional thread names seen in http://crash/
+      "MediaPipeline",
+      // These come from the use of base::PlatformThread::SetName() directly
+      "CrBrowserMain", "CrRendererMain", "CrUtilityMain", "CrPPAPIMain",
+      "CrPPAPIBrokerMain", "CrPluginMain", "CrWorkerMain", "CrGpuMain",
+      "BrokerEvent", "CrVideoRenderer", "CrShutdownDetector", "UsbEventHandler",
+      "CrNaClMain", "CrServiceMain",
+      // These thread names come from the use of base::Thread
+      "Gamepad polling thread", "Chrome_InProcGpuThread",
+      "Chrome_DragDropThread", "Renderer::FILE", "VC manager",
+      "VideoCaptureModuleImpl", "JavaBridge", "VideoCaptureManagerThread",
+      "Geolocation", "Geolocation_wifi_provider",
+      "Device orientation polling thread", "Chrome_InProcRendererThread",
+      "NetworkChangeNotifier", "Watchdog", "inotify_reader",
+      "cf_iexplore_background_thread", "BrowserWatchdog",
+      "Chrome_HistoryThread", "Chrome_SyncThread", "Chrome_ShellDialogThread",
+      "Printing_Worker", "Chrome_SafeBrowsingThread", "SimpleDBThread",
+      "D-Bus thread", "AudioThread", "NullAudioThread", "V4L2Thread",
+      "ChromotingClientDecodeThread", "Profiling_Flush", "worker_thread_ticker",
+      "AudioMixerAlsa", "AudioMixerCras", "FakeAudioRecordingThread",
+      "CaptureThread", "Chrome_WebSocketproxyThread", "ProcessWatcherThread",
+      "Chrome_CameraThread", "import_thread", "NaCl_IOThread",
+      "Chrome_CloudPrintJobPrintThread", "Chrome_CloudPrintProxyCoreThread",
+      "DaemonControllerFileIO", "ChromotingMainThread",
+      "ChromotingEncodeThread", "ChromotingDesktopThread", "ChromotingIOThread",
+      "ChromotingFileIOThread", "Chrome_libJingle_WorkerThread",
+      "Chrome_ChildIOThread", "GLHelperThread", "RemotingHostPlugin",
+      // "PAC thread #%d",  // not easy to check because of "%d"
+      "Chrome_DBThread", "Chrome_WebKitThread", "Chrome_FileThread",
+      "Chrome_FileUserBlockingThread", "Chrome_ProcessLauncherThread",
+      "Chrome_CacheThread", "Chrome_IOThread", "Cache Thread", "File Thread",
+      "ServiceProcess_IO", "ServiceProcess_File", "extension_crash_uploader",
+      "gpu-process_crash_uploader", "plugin_crash_uploader",
+      "renderer_crash_uploader",
+      // These come from the use of webkit_glue::WebThreadImpl
+      "Compositor", "Browser Compositor",
+      // "WorkerPool/%d",  // not easy to check because of "%d"
+      // These come from the use of base::Watchdog
+      "Startup watchdog thread Watchdog", "Shutdown watchdog thread Watchdog",
+      // These come from the use of AudioDeviceThread::Start
+      "AudioDevice", "AudioInputDevice", "AudioOutputDevice",
+      // These come from the use of MessageLoopFactory::GetMessageLoop
+      "GpuVideoDecoder", "RtcVideoDecoderThread", "PipelineThread",
+      "AudioDecoderThread", "VideoDecoderThread",
+      // These come from the use of MessageLoopFactory::GetMessageLoopProxy
+      "CaptureVideoDecoderThread", "CaptureVideoDecoder",
+      // These come from the use of base::SimpleThread
+      "LocalInputMonitor/%d",  // "%d" gets lopped off for kernel-supplied
+      // These come from the use of base::DelegateSimpleThread
+      "ipc_channel_nacl reader thread/%d", "plugin_audio_input_thread/%d",
+      "plugin_audio_thread/%d",
+      // These come from the use of base::SequencedWorkerPool
+      "BrowserBlockingWorker%d/%d",  // "%d" gets lopped off for kernel-supplied
   };
   static std::unordered_set<std::string> chrome_names;
 

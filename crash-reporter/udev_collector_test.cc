@@ -52,8 +52,7 @@ int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
   base::FileEnumerator enumerator(path, false, base::FileEnumerator::FILES,
                                   file_pattern);
   int num_files = 0;
-  for (FilePath file_path = enumerator.Next();
-       !file_path.value().empty();
+  for (FilePath file_path = enumerator.Next(); !file_path.value().empty();
        file_path = enumerator.Next()) {
     num_files++;
   }
@@ -71,36 +70,30 @@ class UdevCollectorTest : public ::testing::Test {
  protected:
   base::ScopedTempDir temp_dir_generator_;
 
-  void HandleCrash(const std::string &udev_event) {
+  void HandleCrash(const std::string& udev_event) {
     collector_.HandleCrash(udev_event);
   }
 
   void GenerateDevCoredump(const std::string& device_name) {
     // Generate coredump data file.
-    ASSERT_TRUE(CreateDirectory(
-        FilePath(base::StringPrintf("%s/%s",
-                                    collector_.dev_coredump_directory_.c_str(),
-                                    device_name.c_str()))));
-    FilePath data_path =
-        FilePath(base::StringPrintf("%s/%s/data",
-                                    collector_.dev_coredump_directory_.c_str(),
-                                    device_name.c_str()));
+    ASSERT_TRUE(CreateDirectory(FilePath(
+        base::StringPrintf("%s/%s", collector_.dev_coredump_directory_.c_str(),
+                           device_name.c_str()))));
+    FilePath data_path = FilePath(base::StringPrintf(
+        "%s/%s/data", collector_.dev_coredump_directory_.c_str(),
+        device_name.c_str()));
     ASSERT_EQ(strlen(kDevCoredumpDataContents),
-              base::WriteFile(data_path,
-                              kDevCoredumpDataContents,
+              base::WriteFile(data_path, kDevCoredumpDataContents,
                               strlen(kDevCoredumpDataContents)));
     // Generate uevent file for failing device.
-    ASSERT_TRUE(CreateDirectory(
-        FilePath(base::StringPrintf("%s/%s/failing_device",
-                                    collector_.dev_coredump_directory_.c_str(),
-                                    device_name.c_str()))));
-    FilePath uevent_path =
-        FilePath(base::StringPrintf("%s/%s/failing_device/uevent",
-                                    collector_.dev_coredump_directory_.c_str(),
-                                    device_name.c_str()));
+    ASSERT_TRUE(CreateDirectory(FilePath(base::StringPrintf(
+        "%s/%s/failing_device", collector_.dev_coredump_directory_.c_str(),
+        device_name.c_str()))));
+    FilePath uevent_path = FilePath(base::StringPrintf(
+        "%s/%s/failing_device/uevent",
+        collector_.dev_coredump_directory_.c_str(), device_name.c_str()));
     ASSERT_EQ(strlen(kFailingDeviceUeventContents),
-              base::WriteFile(uevent_path,
-                              kFailingDeviceUeventContents,
+              base::WriteFile(uevent_path, kFailingDeviceUeventContents,
                               strlen(kFailingDeviceUeventContents)));
   }
 
@@ -125,8 +118,7 @@ class UdevCollectorTest : public ::testing::Test {
 
     // Write to a dummy log config file.
     ASSERT_EQ(strlen(kLogConfigFileContents),
-              base::WriteFile(log_config_path,
-                              kLogConfigFileContents,
+              base::WriteFile(log_config_path, kLogConfigFileContents,
                               strlen(kLogConfigFileContents)));
 
     brillo::ClearLog();

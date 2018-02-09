@@ -54,7 +54,7 @@ bool IsFeedbackAllowed() {
   return s_metrics_lib.AreMetricsEnabled();
 }
 
-bool TouchFile(const FilePath &file_path) {
+bool TouchFile(const FilePath& file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
 }
 
@@ -90,8 +90,7 @@ void CountUncleanShutdown() {
 void CountUserCrash() {
   SendCrashMetrics(kCrashKindUser, "user");
   std::string command = StringPrintf(
-      "/usr/bin/dbus-send --type=signal --system / \"%s\" &",
-      kUserCrashSignal);
+      "/usr/bin/dbus-send --type=signal --system / \"%s\" &", kUserCrashSignal);
   // Announce through D-Bus whenever a user crash happens. This is
   // used by the metrics daemon to log active use time between
   // crashes.
@@ -118,8 +117,7 @@ void CountChromeCrash() {
   CountUserCrash();
 }
 
-int Initialize(UserCollector *user_collector,
-               UdevCollector *udev_collector) {
+int Initialize(UserCollector* user_collector, UdevCollector* udev_collector) {
   // Set up all the common crash state directories first.  If we can't guarantee
   // these basic paths, just give up & don't turn on anything else.
   if (!CrashCollector::InitializeSystemCrashDirectories())
@@ -135,9 +133,9 @@ int Initialize(UserCollector *user_collector,
   return ret;
 }
 
-int BootCollect(KernelCollector *kernel_collector,
-                ECCollector *ec_collector,
-                UncleanShutdownCollector *unclean_shutdown_collector) {
+int BootCollect(KernelCollector* kernel_collector,
+                ECCollector* ec_collector,
+                UncleanShutdownCollector* unclean_shutdown_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
 
@@ -174,15 +172,16 @@ int BootCollect(KernelCollector *kernel_collector,
   return 0;
 }
 
-int HandleUserCrash(UserCollector *user_collector,
-                    const std::string& user, const bool crash_test) {
+int HandleUserCrash(UserCollector* user_collector,
+                    const std::string& user,
+                    const bool crash_test) {
   // Handle a specific user space crash.
   CHECK(!user.empty()) << "--user= must be set";
 
   // Make it possible to test what happens when we crash while
   // handling a crash.
   if (crash_test) {
-    *(volatile char *)0 = 0;
+    *(volatile char*)0 = 0;
     return 0;
   }
 
@@ -197,8 +196,7 @@ int HandleUserCrash(UserCollector *user_collector,
 }
 
 #if USE_CHEETS
-int HandleArcCrash(ArcCollector *arc_collector,
-                   const std::string& user) {
+int HandleArcCrash(ArcCollector* arc_collector, const std::string& user) {
   brillo::LogToString(true);
   bool handled = arc_collector->HandleCrash(user, nullptr);
   brillo::LogToString(false);
@@ -207,14 +205,14 @@ int HandleArcCrash(ArcCollector *arc_collector,
   return 0;
 }
 
-int HandleArcJavaCrash(ArcCollector *arc_collector,
+int HandleArcJavaCrash(ArcCollector* arc_collector,
                        const std::string& crash_type,
                        const std::string& device,
                        const std::string& board,
                        const std::string& cpu_abi) {
   brillo::LogToString(true);
-  bool handled = arc_collector->HandleJavaCrash(
-      crash_type, device, board, cpu_abi);
+  bool handled =
+      arc_collector->HandleJavaCrash(crash_type, device, board, cpu_abi);
   brillo::LogToString(false);
   if (!handled)
     return 1;
@@ -222,7 +220,7 @@ int HandleArcJavaCrash(ArcCollector *arc_collector,
 }
 #endif
 
-int HandleChromeCrash(ChromeCollector *chrome_collector,
+int HandleChromeCrash(ChromeCollector* chrome_collector,
                       const std::string& chrome_dump_file,
                       const std::string& pid,
                       const std::string& uid,
@@ -233,15 +231,15 @@ int HandleChromeCrash(ChromeCollector *chrome_collector,
   CHECK(!exe.empty()) << "--exe= must be set";
 
   brillo::LogToString(true);
-  bool handled = chrome_collector->HandleCrash(FilePath(chrome_dump_file),
-                                               pid, uid, exe);
+  bool handled =
+      chrome_collector->HandleCrash(FilePath(chrome_dump_file), pid, uid, exe);
   brillo::LogToString(false);
   if (!handled)
     return 1;
   return 0;
 }
 
-int HandleUdevCrash(UdevCollector *udev_collector,
+int HandleUdevCrash(UdevCollector* udev_collector,
                     const std::string& udev_event) {
   // Handle a crash indicated by a udev event.
   CHECK(!udev_event.empty()) << "--udev= must be set";
@@ -255,7 +253,7 @@ int HandleUdevCrash(UdevCollector *udev_collector,
   return 0;
 }
 
-int HandleKernelWarning(KernelWarningCollector *kernel_warning_collector,
+int HandleKernelWarning(KernelWarningCollector* kernel_warning_collector,
                         KernelWarningCollector::WarningType type) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
@@ -266,7 +264,7 @@ int HandleKernelWarning(KernelWarningCollector *kernel_warning_collector,
   return 0;
 }
 
-int HandleServiceFailure(ServiceFailureCollector *service_failure_collector) {
+int HandleServiceFailure(ServiceFailureCollector* service_failure_collector) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
   bool handled = service_failure_collector->Collect();
@@ -277,7 +275,7 @@ int HandleServiceFailure(ServiceFailureCollector *service_failure_collector) {
 }
 
 // Interactive/diagnostics mode for generating kernel crash signatures.
-int GenerateKernelSignature(KernelCollector *kernel_collector,
+int GenerateKernelSignature(KernelCollector* kernel_collector,
                             const std::string& kernel_signature_file) {
   std::string kcrash_contents;
   std::string signature;
@@ -286,10 +284,8 @@ int GenerateKernelSignature(KernelCollector *kernel_collector,
     fprintf(stderr, "Could not read file.\n");
     return 1;
   }
-  if (!kernel_collector->ComputeKernelStackSignature(
-          kcrash_contents,
-          &signature,
-          true)) {
+  if (!kernel_collector->ComputeKernelStackSignature(kcrash_contents,
+                                                     &signature, true)) {
     fprintf(stderr, "Signature could not be generated.\n");
     return 1;
   }
@@ -327,7 +323,7 @@ void EnterSandbox(bool write_proc) {
   if (getuid() != 0)
     return;
 
-  struct minijail *j = minijail_new();
+  struct minijail* j = minijail_new();
   minijail_namespace_ipc(j);
   minijail_namespace_uts(j);
   minijail_namespace_net(j);
@@ -350,7 +346,7 @@ void EnterSandbox(bool write_proc) {
 
 }  // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
   DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
@@ -361,9 +357,9 @@ int main(int argc, char *argv[]) {
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
   DEFINE_bool(kernel_wifi_warning, false,
-      "Report collected kernel wifi warning");
+              "Report collected kernel wifi warning");
   DEFINE_bool(kernel_suspend_warning, false,
-      "Report collected kernel suspend warning");
+              "Report collected kernel suspend warning");
   DEFINE_bool(service_failure, false, "Report collected service failure");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
@@ -371,11 +367,10 @@ int main(int argc, char *argv[]) {
   DEFINE_string(exe, "", "Executable name of crashing process");
   DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
-  DEFINE_string(filter_in, "",
-                "Ignore all crashes but this for testing");
+  DEFINE_string(filter_in, "", "Ignore all crashes but this for testing");
 #if USE_CHEETS
   DEFINE_string(arc_java_crash, "",
-      "Read Java crash log of the given type from standard input");
+                "Read Java crash log of the given type from standard input");
   DEFINE_string(arc_device, "", "Metadata for --arc_java_crash");
   DEFINE_string(arc_board, "", "Metadata for --arc_java_crash");
   DEFINE_string(arc_cpu_abi, "", "Metadata for --arc_java_crash");
@@ -399,24 +394,18 @@ int main(int argc, char *argv[]) {
   UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
 #if USE_CHEETS
   ArcCollector arc_collector;
-  arc_collector.Initialize(CountUserCrash,
-                           IsFeedbackAllowed,
+  arc_collector.Initialize(CountUserCrash, IsFeedbackAllowed,
                            true,  // generate_diagnostics
-                           FLAGS_directory_failure,
-                           FLAGS_filter_in);
+                           FLAGS_directory_failure, FLAGS_filter_in);
   // Filter out ARC processes.
   if (ArcCollector::IsArcRunning())
     filter_out = std::bind(&ArcCollector::IsArcProcess, &arc_collector,
                            std::placeholders::_1);
 #endif
-  user_collector.Initialize(CountUserCrash,
-                            my_path.value(),
-                            IsFeedbackAllowed,
+  user_collector.Initialize(CountUserCrash, my_path.value(), IsFeedbackAllowed,
                             true,  // generate_diagnostics
-                            FLAGS_core2md_failure,
-                            FLAGS_directory_failure,
-                            FLAGS_filter_in,
-                            std::move(filter_out));
+                            FLAGS_core2md_failure, FLAGS_directory_failure,
+                            FLAGS_filter_in, std::move(filter_out));
   UncleanShutdownCollector unclean_shutdown_collector;
   unclean_shutdown_collector.Initialize(CountUncleanShutdown,
                                         IsFeedbackAllowed);
@@ -478,21 +467,19 @@ int main(int argc, char *argv[]) {
   }
 
   if (!FLAGS_chrome.empty()) {
-    return HandleChromeCrash(&chrome_collector,
-                             FLAGS_chrome,
-                             FLAGS_pid,
-                             FLAGS_uid,
-                             FLAGS_exe);
+    return HandleChromeCrash(&chrome_collector, FLAGS_chrome, FLAGS_pid,
+                             FLAGS_uid, FLAGS_exe);
   }
 
 #if USE_CHEETS
   if (!FLAGS_arc_java_crash.empty())
     return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash,
-        FLAGS_arc_device, FLAGS_arc_board, FLAGS_arc_cpu_abi);
+                              FLAGS_arc_device, FLAGS_arc_board,
+                              FLAGS_arc_cpu_abi);
 #endif
 
-  int exit_code = HandleUserCrash(&user_collector,
-                                  FLAGS_user, FLAGS_crash_test);
+  int exit_code =
+      HandleUserCrash(&user_collector, FLAGS_user, FLAGS_crash_test);
 #if USE_CHEETS
   if (ArcCollector::IsArcRunning())
     exit_code |= HandleArcCrash(&arc_collector, FLAGS_user);

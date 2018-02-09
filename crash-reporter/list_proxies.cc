@@ -39,7 +39,7 @@ bool ShowBrowserProxies(const std::string& url) {
 
 }  // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "Crash helper: proxy lister");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 

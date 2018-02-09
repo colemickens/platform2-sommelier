@@ -17,7 +17,7 @@ class CrashCollectorMock : public CrashCollector {
  public:
   MOCK_METHOD0(SetUpDBus, void());
   MOCK_METHOD1(GetActiveUserSessions,
-               bool(std::map<std::string, std::string> *sessions));
+               bool(std::map<std::string, std::string>* sessions));
 };
 
 #endif  // CRASH_REPORTER_CRASH_COLLECTOR_TEST_H_

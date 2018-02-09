@@ -34,20 +34,18 @@ const char kDircrypt[] = "dircrypt";
 
 }  // namespace
 
-const char *UserCollectorBase::kUserId = "Uid:\t";
-const char *UserCollectorBase::kGroupId = "Gid:\t";
+const char* UserCollectorBase::kUserId = "Uid:\t";
+const char* UserCollectorBase::kGroupId = "Gid:\t";
 
-UserCollectorBase::UserCollectorBase(const char *tag,
-                                     bool force_user_crash_dir)
-    : CrashCollector(force_user_crash_dir), tag_(tag) {
-}
+UserCollectorBase::UserCollectorBase(const char* tag, bool force_user_crash_dir)
+    : CrashCollector(force_user_crash_dir), tag_(tag) {}
 
 void UserCollectorBase::Initialize(
     CountCrashFunction count_crash_function,
     IsFeedbackAllowedFunction is_feedback_allowed_function,
     bool generate_diagnostics,
     bool directory_failure,
-    const std::string &filter_in) {
+    const std::string& filter_in) {
   CrashCollector::Initialize(count_crash_function,
                              is_feedback_allowed_function);
   initialized_ = true;
@@ -56,8 +54,8 @@ void UserCollectorBase::Initialize(
   filter_in_ = filter_in;
 }
 
-bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
-                                    const char *force_exec) {
+bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
+                                    const char* force_exec) {
   CHECK(initialized_);
   pid_t pid = 0;
   int signal = 0;
@@ -66,7 +64,7 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
 
   if (!ParseCrashAttributes(crash_attributes, &pid, &signal, &supplied_ruid,
                             &kernel_supplied_name)) {
-    LOG(ERROR) << "Invalid parameter: --user=" <<  crash_attributes;
+    LOG(ERROR) << "Invalid parameter: --user=" << crash_attributes;
     return false;
   }
 
@@ -82,9 +80,7 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
 
   // Allow us to test the crash reporting mechanism successfully even if
   // other parts of the system crash.
-  if (!filter_in_.empty() &&
-      (filter_in_ == "none" ||
-       filter_in_ != exec)) {
+  if (!filter_in_.empty() && (filter_in_ == "none" || filter_in_ != exec)) {
     // We use a different format message to make it more obvious in tests
     // which crashes are test generated and which are real.
     LOG(WARNING) << "Ignoring crash from " << exec << "[" << pid << "] while "
@@ -95,9 +91,9 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
   std::string reason;
   bool dump = ShouldDump(pid, supplied_ruid, exec, &reason);
 
-  const auto message = StringPrintf(
-      "Received crash notification for %s[%d] sig %d, user %u",
-      exec.c_str(), pid, signal, supplied_ruid);
+  const auto message =
+      StringPrintf("Received crash notification for %s[%d] sig %d, user %u",
+                   exec.c_str(), pid, signal, supplied_ruid);
 
   LogCrash(message, reason);
 
@@ -122,23 +118,26 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
 }
 
 bool UserCollectorBase::ParseCrashAttributes(
-    const std::string &crash_attributes,
-    pid_t *pid, int *signal, uid_t *uid, std::string *kernel_supplied_name) {
+    const std::string& crash_attributes,
+    pid_t* pid,
+    int* signal,
+    uid_t* uid,
+    std::string* kernel_supplied_name) {
   pcrecpp::RE re("(\\d+):(\\d+):(\\d+):(.*)");
   if (re.FullMatch(crash_attributes, pid, signal, uid, kernel_supplied_name))
     return true;
 
-  LOG(INFO) << "Falling back to parsing crash attributes '"
-            << crash_attributes << "' without UID";
+  LOG(INFO) << "Falling back to parsing crash attributes '" << crash_attributes
+            << "' without UID";
   pcrecpp::RE re_without_uid("(\\d+):(\\d+):(.*)");
   *uid = kUnknownUid;
   return re_without_uid.FullMatch(crash_attributes, pid, signal,
-      kernel_supplied_name);
+                                  kernel_supplied_name);
 }
 
 bool UserCollectorBase::ShouldDump(bool has_owner_consent,
                                    bool is_developer,
-                                   std::string *reason) const {
+                                   std::string* reason) const {
   // For developer builds, we always want to keep the crash reports unless
   // we're testing the crash facilities themselves.  This overrides
   // feedback.  Crash sending still obeys consent.
@@ -156,14 +155,15 @@ bool UserCollectorBase::ShouldDump(bool has_owner_consent,
   return true;
 }
 
-void UserCollectorBase::LogCrash(const std::string &message,
-                                 const std::string &reason) const {
+void UserCollectorBase::LogCrash(const std::string& message,
+                                 const std::string& reason) const {
   LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(
-    const std::vector<std::string> &lines,
-    const char *prefix, std::string *line) {
+    const std::vector<std::string>& lines,
+    const char* prefix,
+    std::string* line) {
   for (const auto& current_line : lines) {
     if (current_line.find(prefix) == 0) {
       *line = current_line;
@@ -174,8 +174,10 @@ bool UserCollectorBase::GetFirstLineWithPrefix(
 }
 
 bool UserCollectorBase::GetIdFromStatus(
-    const char *prefix, IdKind kind,
-    const std::vector<std::string> &status_lines, int *id) {
+    const char* prefix,
+    IdKind kind,
+    const std::vector<std::string>& status_lines,
+    int* id) {
   // From fs/proc/array.c:task_state(), this file contains:
   // \nUid:\t<uid>\t<euid>\t<suid>\t<fsuid>\n
   std::string id_line;
@@ -183,14 +185,13 @@ bool UserCollectorBase::GetIdFromStatus(
     return false;
   }
   std::string id_substring = id_line.substr(strlen(prefix), std::string::npos);
-  std::vector<std::string> ids =
-      base::SplitString(id_substring, "\t", base::KEEP_WHITESPACE,
-      base::SPLIT_WANT_ALL);
+  std::vector<std::string> ids = base::SplitString(
+      id_substring, "\t", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (ids.size() != kIdMax || kind < 0 || kind >= kIdMax) {
     return false;
   }
-  const char *number = ids[kind].c_str();
-  char *end_number = nullptr;
+  const char* number = ids[kind].c_str();
+  char* end_number = nullptr;
   *id = strtol(number, &end_number, 10);
   if (*end_number != '\0') {
     return false;
@@ -199,7 +200,7 @@ bool UserCollectorBase::GetIdFromStatus(
 }
 
 bool UserCollectorBase::GetStateFromStatus(
-    const std::vector<std::string> &status_lines, std::string *state) {
+    const std::vector<std::string>& status_lines, std::string* state) {
   std::string state_line;
   if (!GetFirstLineWithPrefix(status_lines, kStatePrefix, &state_line)) {
     return false;
@@ -209,7 +210,7 @@ bool UserCollectorBase::GetStateFromStatus(
 }
 
 bool UserCollectorBase::ClobberContainerDirectory(
-    const base::FilePath &container_dir) {
+    const base::FilePath& container_dir) {
   // Delete a pre-existing directory from crash reporter that may have
   // been left around for diagnostics from a failed conversion attempt.
   // If we don't, existing files can cause forking to fail.
@@ -231,11 +232,13 @@ const FilePath UserCollectorBase::GetCrashProcessingDir() {
 }
 
 UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
-    pid_t pid, const std::string &exec, uid_t supplied_ruid,
-    bool *out_of_capacity) {
+    pid_t pid,
+    const std::string& exec,
+    uid_t supplied_ruid,
+    bool* out_of_capacity) {
   FilePath crash_path;
   if (!GetCreatedCrashDirectory(pid, supplied_ruid, &crash_path,
-      out_of_capacity)) {
+                                out_of_capacity)) {
     LOG(ERROR) << "Unable to find/create process-specific crash path";
     return kErrorSystemIssue;
   }
@@ -275,9 +278,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   // Here we commit to sending this file.  We must not return false
   // after this point or we will generate a log report as well as a
   // crash report.
-  WriteCrashMetaData(meta_path,
-                     exec,
-                     minidump_path.value());
+  WriteCrashMetaData(meta_path, exec, minidump_path.value());
 
   if (!IsDeveloperImage()) {
     base::DeleteFile(core_path, false);
@@ -310,9 +311,10 @@ std::string UserCollectorBase::GetErrorTypeSignature(
   }
 }
 
-bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
-                                                 FilePath *crash_file_path,
-                                                 bool *out_of_capacity) {
+bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
+                                                 uid_t supplied_ruid,
+                                                 FilePath* crash_file_path,
+                                                 bool* out_of_capacity) {
   FilePath process_path = GetProcessPath(pid);
   std::string status;
   if (directory_failure_) {
@@ -322,9 +324,8 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
 
   uid_t uid;
   if (base::ReadFileToString(process_path.Append("status"), &status)) {
-    std::vector<std::string> status_lines =
-        base::SplitString(status, "\n", base::KEEP_WHITESPACE,
-                          base::SPLIT_WANT_ALL);
+    std::vector<std::string> status_lines = base::SplitString(
+        status, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
     std::string process_state;
     if (!GetStateFromStatus(status_lines, &process_state)) {
@@ -347,8 +348,8 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
     uid = supplied_ruid;
   } else {
     LOG(ERROR) << "Could not read status file and kernel did not supply UID";
-    LOG(INFO) << "Path " << process_path.value() << " DirectoryExists: "
-              << base::DirectoryExists(process_path);
+    LOG(INFO) << "Path " << process_path.value()
+              << " DirectoryExists: " << base::DirectoryExists(process_path);
     return false;
   }
 
@@ -361,7 +362,7 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
 
 void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
                                                   ErrorType error_type,
-                                                  const std::string &exec) {
+                                                  const std::string& exec) {
   FilePath crash_path;
   LOG(INFO) << "Writing conversion problems as separate crash report.";
   if (!GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr)) {
@@ -412,9 +413,7 @@ std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {
   }
 
   // Split the string by null bytes.
-  return base::SplitString(cmdline,
-                           std::string(1, '\0'),
-                           base::KEEP_WHITESPACE,
+  return base::SplitString(cmdline, std::string(1, '\0'), base::KEEP_WHITESPACE,
                            base::SPLIT_WANT_ALL);
 }
 

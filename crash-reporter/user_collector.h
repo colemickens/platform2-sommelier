@@ -17,7 +17,7 @@
 // User crash collector.
 class UserCollector : public UserCollectorBase {
  public:
-  typedef std::function<bool (pid_t)> FilterOutFunction;
+  typedef std::function<bool(pid_t)> FilterOutFunction;
 
   UserCollector();
 
@@ -28,12 +28,12 @@ class UserCollector : public UserCollectorBase {
   // |generate_diagnostics| is used to indicate whether or not to try
   // to generate a minidump from crashes.
   void Initialize(CountCrashFunction count_crash,
-                  const std::string &our_path,
+                  const std::string& our_path,
                   IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,
                   bool core2md_failure,
                   bool directory_failure,
-                  const std::string &filter_in,
+                  const std::string& filter_in,
                   FilterOutFunction filter_out);
 
   ~UserCollector() override;
@@ -45,16 +45,16 @@ class UserCollector : public UserCollectorBase {
   bool Disable() { return SetUpInternal(false); }
 
   // Set (override the default) core file pattern.
-  void set_core_pattern_file(const std::string &pattern) {
+  void set_core_pattern_file(const std::string& pattern) {
     core_pattern_file_ = pattern;
   }
 
   // Set (override the default) core pipe limit file.
-  void set_core_pipe_limit_file(const std::string &path) {
+  void set_core_pipe_limit_file(const std::string& path) {
     core_pipe_limit_file_ = path;
   }
 
-  void set_filter_path(const std::string &filter_path) {
+  void set_filter_path(const std::string& filter_path) {
     filter_path_ = filter_path;
   }
 
@@ -81,26 +81,26 @@ class UserCollector : public UserCollectorBase {
   std::string GetPattern(bool enabled) const;
   bool SetUpInternal(bool enabled);
 
-  bool CopyOffProcFiles(pid_t pid, const base::FilePath &container_dir);
+  bool CopyOffProcFiles(pid_t pid, const base::FilePath& container_dir);
 
   // Validates the proc files at |container_dir| and returns true if they
   // are usable for the core-to-minidump conversion later. For instance, if
   // a process is reaped by the kernel before the copying of its proc files
   // takes place, some proc files like /proc/<pid>/maps may contain nothing
   // and thus become unusable.
-  bool ValidateProcFiles(const base::FilePath &container_dir) const;
+  bool ValidateProcFiles(const base::FilePath& container_dir) const;
 
   // Validates the core file at |core_path| and returns kErrorNone if
   // the file contains the ELF magic bytes and an ELF class that matches the
   // platform (i.e. 32-bit ELF on a 32-bit platform or 64-bit ELF on a 64-bit
   // platform), which is due to the limitation in core2md. It returns an error
   // type otherwise.
-  ErrorType ValidateCoreFile(const base::FilePath &core_path) const;
-  bool CopyStdinToCoreFile(const base::FilePath &core_path);
-  bool RunCoreToMinidump(const base::FilePath &core_path,
-                         const base::FilePath &procfs_directory,
-                         const base::FilePath &minidump_path,
-                         const base::FilePath &temp_directory);
+  ErrorType ValidateCoreFile(const base::FilePath& core_path) const;
+  bool CopyStdinToCoreFile(const base::FilePath& core_path);
+  bool RunCoreToMinidump(const base::FilePath& core_path,
+                         const base::FilePath& procfs_directory,
+                         const base::FilePath& minidump_path,
+                         const base::FilePath& temp_directory);
 
   bool RunFilter(pid_t pid);
 
@@ -113,19 +113,19 @@ class UserCollector : public UserCollectorBase {
                   bool has_owner_consent,
                   bool is_developer,
                   bool handle_chrome_crashes,
-                  const std::string &exec,
-                  std::string *reason);
+                  const std::string& exec,
+                  std::string* reason);
 
   // UserCollectorBase overrides.
   bool ShouldDump(pid_t pid,
                   uid_t uid,
-                  const std::string &exec,
-                  std::string *reason) override;
+                  const std::string& exec,
+                  std::string* reason) override;
   ErrorType ConvertCoreToMinidump(pid_t pid,
-                                  const base::FilePath &container_dir,
-                                  const base::FilePath &core_path,
-                                  const base::FilePath &minidump_path) override;
-  void AddExtraMetadata(const std::string &exec, pid_t pid) override;
+                                  const base::FilePath& container_dir,
+                                  const base::FilePath& core_path,
+                                  const base::FilePath& minidump_path) override;
+  void AddExtraMetadata(const std::string& exec, pid_t pid) override;
 
   std::string core_pattern_file_;
   std::string core_pipe_limit_file_;

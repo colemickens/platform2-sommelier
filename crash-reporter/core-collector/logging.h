@@ -14,14 +14,13 @@
 #define LOG_ERROR ErrorMessage()
 #define PLOG_ERROR ErrorMessage(strerror(errno))
 
-extern const char *g_exec_name;
+extern const char* g_exec_name;
 
 class ErrorMessage {
  public:
-  ErrorMessage(): ErrorMessage(std::string()) {}
+  ErrorMessage() : ErrorMessage(std::string()) {}
 
-  explicit ErrorMessage(const std::string &os_error)
-      : os_error_(os_error) {
+  explicit ErrorMessage(const std::string& os_error) : os_error_(os_error) {
     std::cerr << g_exec_name << ": ";
   }
 
@@ -37,8 +36,8 @@ class ErrorMessage {
 };
 
 template <typename Type>
-inline const ErrorMessage &operator <<(const ErrorMessage &message,
-                                       const Type &value) {
+inline const ErrorMessage& operator<<(const ErrorMessage& message,
+                                      const Type& value) {
   std::cerr << value;
   return message;
 }

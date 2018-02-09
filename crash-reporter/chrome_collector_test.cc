@@ -32,8 +32,7 @@ const char kCrashFormatWithFile[] =
     "some_file\"; filename=\"foo.txt\":15:12345\n789\n12345"
     "value3:2:ok";
 
-void CountCrash() {
-}
+void CountCrash() {}
 
 bool s_allow_crash = false;
 
@@ -50,8 +49,7 @@ class ChromeCollectorMock : public ChromeCollector {
 
 class ChromeCollectorTest : public ::testing::Test {
  protected:
-  void ExpectFileEquals(const char *golden,
-                        const FilePath &file_path) {
+  void ExpectFileEquals(const char* golden, const FilePath& file_path) {
     std::string contents;
     EXPECT_TRUE(base::ReadFileToString(file_path, &contents));
     EXPECT_EQ(golden, contents);
@@ -70,9 +68,8 @@ class ChromeCollectorTest : public ::testing::Test {
 
 TEST_F(ChromeCollectorTest, GoodValues) {
   FilePath dir(".");
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGood,
-                                       dir, dir.Append("minidump.dmp"),
-                                       "base"));
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGood, dir,
+                                       dir.Append("minidump.dmp"), "base"));
 
   // Check to see if the values made it in properly.
   std::string meta = collector_.extra_metadata_;
@@ -82,9 +79,8 @@ TEST_F(ChromeCollectorTest, GoodValues) {
 
 TEST_F(ChromeCollectorTest, Newlines) {
   FilePath dir(".");
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatEmbeddedNewline,
-                                       dir, dir.Append("minidump.dmp"),
-                                       "base"));
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatEmbeddedNewline, dir,
+                                       dir.Append("minidump.dmp"), "base"));
 
   // Check to see if the values were escaped.
   std::string meta = collector_.extra_metadata_;
@@ -105,9 +101,8 @@ TEST_F(ChromeCollectorTest, File) {
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithFile,
-                                       dir, dir.Append("minidump.dmp"),
-                                       "base"));
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithFile, dir,
+                                       dir.Append("minidump.dmp"), "base"));
 
   // Check to see if the values are still correct and that the file was
   // written with the right data.

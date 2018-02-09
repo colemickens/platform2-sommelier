@@ -4,9 +4,9 @@
 
 #include "crash-reporter/kernel_collector.h"
 
+#include <sys/stat.h>
 #include <algorithm>
 #include <map>
-#include <sys/stat.h>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -61,11 +61,11 @@ const char kTimestampRegex[] = "^<.*>\\[\\s*(\\d+\\.\\d+)\\]";
 //    SS:ESP 0068:e9dd3efc"
 //
 const char* const kPCRegex[] = {
-  0,
-  " PC is at ([^\\+ ]+).*",
-  " epc\\s+:\\s+\\S+\\s+([^\\+ ]+).*",  // MIPS has an exception program counter
-  " EIP: \\[<.*>\\] ([^\\+ ]+).*",  // X86 uses EIP for the program counter
-  " RIP  \\[<.*>\\] ([^\\+ ]+).*",  // X86_64 uses RIP for the program counter
+    0, " PC is at ([^\\+ ]+).*",
+    " epc\\s+:\\s+\\S+\\s+([^\\+ ]+).*",  // MIPS has an exception program
+                                          // counter
+    " EIP: \\[<.*>\\] ([^\\+ ]+).*",  // X86 uses EIP for the program counter
+    " RIP  \\[<.*>\\] ([^\\+ ]+).*",  // X86_64 uses RIP for the program counter
 };
 
 static_assert(arraysize(kPCRegex) == KernelCollector::kArchCount,
@@ -81,23 +81,21 @@ KernelCollector::KernelCollector()
       dump_path_(kDumpPath),
       records_(0),
       // We expect crash dumps in the format of architecture we are built for.
-      arch_(GetCompilerArch()) {
-}
+      arch_(GetCompilerArch()) {}
 
-KernelCollector::~KernelCollector() {
-}
+KernelCollector::~KernelCollector() {}
 
-void KernelCollector::OverrideEventLogPath(const FilePath &file_path) {
+void KernelCollector::OverrideEventLogPath(const FilePath& file_path) {
   eventlog_path_ = file_path;
 }
 
-void KernelCollector::OverridePreservedDumpPath(const FilePath &file_path) {
+void KernelCollector::OverridePreservedDumpPath(const FilePath& file_path) {
   dump_path_ = file_path;
 }
 
-bool KernelCollector::ReadRecordToString(std::string *contents,
+bool KernelCollector::ReadRecordToString(std::string* contents,
                                          size_t current_record,
-                                         bool *record_found) {
+                                         bool* record_found) {
   // A record is a ramoops dump. It has an associated size of "record_size".
   std::string record;
   std::string captured;
@@ -140,13 +138,14 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
   return true;
 }
 
-FilePath KernelCollector::GetDumpRecordPath(
-    const char* type, const char* driver, size_t record) {
+FilePath KernelCollector::GetDumpRecordPath(const char* type,
+                                            const char* driver,
+                                            size_t record) {
   return dump_path_.Append(StringPrintf(kDumpNameFormat, type, driver, record));
 }
 
-FilePath KernelCollector::GetDumpRecordOldPath(
-    const char* type, const char* driver) {
+FilePath KernelCollector::GetDumpRecordOldPath(const char* type,
+                                               const char* driver) {
   return dump_path_.Append(StringPrintf(kDumpNameFormatOld, type, driver));
 }
 
@@ -155,8 +154,8 @@ bool KernelCollector::LoadParameters() {
   size_t count;
 
   for (count = 0; count < kMaxDumpRecords; ++count) {
-    FilePath record_path = GetDumpRecordPath(kDumpRecordDmesgName,
-                                             kDumpDriverRamoopsName, count);
+    FilePath record_path =
+        GetDumpRecordPath(kDumpRecordDmesgName, kDumpDriverRamoopsName, count);
 
     if (!base::PathExists(record_path))
       break;
@@ -166,7 +165,7 @@ bool KernelCollector::LoadParameters() {
   return (records_ > 0);
 }
 
-bool KernelCollector::LoadPreservedDump(std::string *contents) {
+bool KernelCollector::LoadPreservedDump(std::string* contents) {
   // Load dumps from the preserved memory and save them in contents.
   // Since the system is set to restart on oops we won't actually ever have
   // multiple records (only 0 or 1), but check in case we don't restart on
@@ -218,19 +217,19 @@ bool KernelCollector::LastRebootWasWatchdog() {
   return piece.find(kEventNameWatchdog, last_boot) != StringPiece::npos;
 }
 
-bool KernelCollector::LoadConsoleRamoops(std::string *contents) {
+bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
   FilePath record_path;
 
   // We assume there is only one record.  Bad idea?
-  record_path = GetDumpRecordPath(kDumpRecordConsoleName,
-                                  kDumpDriverRamoopsName, 0);
+  record_path =
+      GetDumpRecordPath(kDumpRecordConsoleName, kDumpDriverRamoopsName, 0);
 
   // Deal with the filename change starting with linux-3.19+.
   if (!base::PathExists(record_path)) {
     // If the file doesn't exist, we might be running on an older system which
     // uses the older file name format (<linux-3.19).
-    record_path = GetDumpRecordOldPath(kDumpRecordConsoleName,
-                                       kDumpDriverRamoopsName);
+    record_path =
+        GetDumpRecordOldPath(kDumpRecordConsoleName, kDumpDriverRamoopsName);
     if (!base::PathExists(record_path)) {
       LOG(WARNING) << "No console-ramoops file found after watchdog reset!";
       return false;
@@ -290,15 +289,14 @@ bool KernelCollector::Enable() {
   return true;
 }
 
-void KernelCollector::ProcessStackTrace(
-    pcrecpp::StringPiece kernel_dump,
-    bool print_diagnostics,
-    unsigned *hash,
-    float *last_stack_timestamp,
-    bool *is_watchdog_crash) {
+void KernelCollector::ProcessStackTrace(pcrecpp::StringPiece kernel_dump,
+                                        bool print_diagnostics,
+                                        unsigned* hash,
+                                        float* last_stack_timestamp,
+                                        bool* is_watchdog_crash) {
   pcrecpp::RE line_re("(.+)", pcrecpp::MULTILINE());
   pcrecpp::RE stack_trace_start_re(std::string(kTimestampRegex) +
-        " (Call Trace|Backtrace):$");
+                                   " (Call Trace|Backtrace):$");
 
   // Match lines such as the following and grab out "function_name".
   // The ? may or may not be present.
@@ -313,10 +311,11 @@ void KernelCollector::ProcessStackTrace(
   // For X86:
   // <4>[ 6066.849504]  [<7937bcee>] ? function_name+0x66/0x6c
   //
-  pcrecpp::RE stack_entry_re(std::string(kTimestampRegex) +
-    "\\s+\\[<[[:xdigit:]]+>\\]"      // Matches "  [<7937bcee>]"
-    "([\\s\\?(]+)"                   // Matches " ? (" (ARM) or " ? " (X86)
-    "([^\\+ )]+)");                  // Matches until delimiter reached
+  pcrecpp::RE stack_entry_re(
+      std::string(kTimestampRegex) +
+      "\\s+\\[<[[:xdigit:]]+>\\]"  // Matches "  [<7937bcee>]"
+      "([\\s\\?(]+)"               // Matches " ? (" (ARM) or " ? " (X86)
+      "([^\\+ )]+)");              // Matches until delimiter reached
   std::string line;
   std::string hashable;
   std::string previous_hashable;
@@ -338,24 +337,19 @@ void KernelCollector::ProcessStackTrace(
       previous_hashable = hashable;
       hashable.clear();
       is_watchdog = false;
-    } else if (stack_entry_re.PartialMatch(line,
-                                           last_stack_timestamp,
-                                           &certainty,
-                                           &function_name)) {
+    } else if (stack_entry_re.PartialMatch(line, last_stack_timestamp,
+                                           &certainty, &function_name)) {
       bool is_certain = certainty.find('?') == std::string::npos;
       if (print_diagnostics) {
-        printf("@%f: stack entry for %s (%s)\n",
-               *last_stack_timestamp,
-               function_name.c_str(),
-               is_certain ? "certain" : "uncertain");
+        printf("@%f: stack entry for %s (%s)\n", *last_stack_timestamp,
+               function_name.c_str(), is_certain ? "certain" : "uncertain");
       }
       // Do not include any uncertain (prefixed by '?') frames in our hash.
       if (!is_certain)
         continue;
       if (!hashable.empty())
         hashable.append("|");
-      if (function_name == "watchdog_timer_fn" ||
-          function_name == "watchdog") {
+      if (function_name == "watchdog_timer_fn" || function_name == "watchdog") {
         is_watchdog = true;
       }
       hashable.append(function_name);
@@ -378,8 +372,8 @@ void KernelCollector::ProcessStackTrace(
   *is_watchdog_crash = is_watchdog;
 
   if (print_diagnostics) {
-    printf("Hash based on stack trace: \"%s\" at %f.\n",
-           hashable.c_str(), *last_stack_timestamp);
+    printf("Hash based on stack trace: \"%s\" at %f.\n", hashable.c_str(),
+           *last_stack_timestamp);
   }
 }
 
@@ -398,11 +392,10 @@ KernelCollector::ArchKind KernelCollector::GetCompilerArch() {
 #endif
 }
 
-bool KernelCollector::FindCrashingFunction(
-  pcrecpp::StringPiece kernel_dump,
-  bool print_diagnostics,
-  float stack_trace_timestamp,
-  std::string *crashing_function) {
+bool KernelCollector::FindCrashingFunction(pcrecpp::StringPiece kernel_dump,
+                                           bool print_diagnostics,
+                                           float stack_trace_timestamp,
+                                           std::string* crashing_function) {
   float timestamp = 0;
 
   // Use the correct regex for this architecture.
@@ -411,8 +404,7 @@ bool KernelCollector::FindCrashingFunction(
 
   while (eip_re.FindAndConsume(&kernel_dump, &timestamp, crashing_function)) {
     if (print_diagnostics) {
-      printf("@%f: found crashing function %s\n",
-             timestamp,
+      printf("@%f: found crashing function %s\n", timestamp,
              crashing_function->c_str());
     }
   }
@@ -423,8 +415,8 @@ bool KernelCollector::FindCrashingFunction(
     return false;
   }
   if (stack_trace_timestamp != 0 &&
-      abs(static_cast<int>(stack_trace_timestamp - timestamp))
-        > kSignatureTimestampWindow) {
+      abs(static_cast<int>(stack_trace_timestamp - timestamp)) >
+          kSignatureTimestampWindow) {
     if (print_diagnostics) {
       printf("Found crashing function but not within window.\n");
     }
@@ -438,20 +430,17 @@ bool KernelCollector::FindCrashingFunction(
 
 bool KernelCollector::FindPanicMessage(pcrecpp::StringPiece kernel_dump,
                                        bool print_diagnostics,
-                                       std::string *panic_message) {
+                                       std::string* panic_message) {
   // Match lines such as the following and grab out "Fatal exception"
   // <0>[  342.841135] Kernel panic - not syncing: Fatal exception
-  pcrecpp::RE kernel_panic_re(std::string(kTimestampRegex) +
-                              " Kernel panic[^\\:]*\\:\\s*(.*)",
-                              pcrecpp::MULTILINE());
+  pcrecpp::RE kernel_panic_re(
+      std::string(kTimestampRegex) + " Kernel panic[^\\:]*\\:\\s*(.*)",
+      pcrecpp::MULTILINE());
   float timestamp = 0;
-  while (kernel_panic_re.FindAndConsume(&kernel_dump,
-                                        &timestamp,
-                                        panic_message)) {
+  while (
+      kernel_panic_re.FindAndConsume(&kernel_dump, &timestamp, panic_message)) {
     if (print_diagnostics) {
-      printf("@%f: panic message %s\n",
-             timestamp,
-             panic_message->c_str());
+      printf("@%f: panic message %s\n", timestamp, panic_message->c_str());
     }
   }
   if (timestamp == 0) {
@@ -464,24 +453,19 @@ bool KernelCollector::FindPanicMessage(pcrecpp::StringPiece kernel_dump,
 }
 
 bool KernelCollector::ComputeKernelStackSignature(
-    const std::string &kernel_dump,
-    std::string *kernel_signature,
+    const std::string& kernel_dump,
+    std::string* kernel_signature,
     bool print_diagnostics) {
   unsigned stack_hash = 0;
   float last_stack_timestamp = 0;
   std::string human_string;
   bool is_watchdog_crash;
 
-  ProcessStackTrace(kernel_dump,
-                    print_diagnostics,
-                    &stack_hash,
-                    &last_stack_timestamp,
-                    &is_watchdog_crash);
+  ProcessStackTrace(kernel_dump, print_diagnostics, &stack_hash,
+                    &last_stack_timestamp, &is_watchdog_crash);
 
-  if (!FindCrashingFunction(kernel_dump,
-                            print_diagnostics,
-                            last_stack_timestamp,
-                            &human_string)) {
+  if (!FindCrashingFunction(kernel_dump, print_diagnostics,
+                            last_stack_timestamp, &human_string)) {
     if (!FindPanicMessage(kernel_dump, print_diagnostics, &human_string)) {
       if (print_diagnostics) {
         printf("Found no human readable string, using empty string.\n");
@@ -498,25 +482,22 @@ bool KernelCollector::ComputeKernelStackSignature(
   }
 
   human_string = human_string.substr(0, kMaxHumanStringLength);
-  *kernel_signature = StringPrintf("%s-%s%s-%08X",
-                                   kKernelExecName,
+  *kernel_signature = StringPrintf("%s-%s%s-%08X", kKernelExecName,
                                    (is_watchdog_crash ? "(HANG)-" : ""),
-                                   human_string.c_str(),
-                                   stack_hash);
+                                   human_string.c_str(), stack_hash);
   return true;
 }
 
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
-void KernelCollector::WatchdogSignature(const std::string &console_ramoops,
-                                        std::string *signature) {
+void KernelCollector::WatchdogSignature(const std::string& console_ramoops,
+                                        std::string* signature) {
   StringPiece line(console_ramoops);
   line = line.substr(line.rfind("] ") + 2);
   size_t end = std::min(line.find("\n"), kMaxHumanStringLength) - 1;
-  *signature = StringPrintf("%s-(WATCHDOG)-%s-%08X",
-                            kKernelExecName,
-                            line.substr(0, end).as_string().c_str(),
-                            HashString(line));
+  *signature =
+      StringPrintf("%s-(WATCHDOG)-%s-%08X", kKernelExecName,
+                   line.substr(0, end).as_string().c_str(), HashString(line));
 }
 
 bool KernelCollector::Collect() {
@@ -557,8 +538,7 @@ bool KernelCollector::Collect() {
   if (feedback) {
     count_crash_function_();
 
-    if (!GetCreatedCrashDirectoryByEuid(kRootUid,
-                                        &root_crash_directory,
+    if (!GetCreatedCrashDirectoryByEuid(kRootUid, &root_crash_directory,
                                         nullptr)) {
       return true;
     }
@@ -571,8 +551,7 @@ bool KernelCollector::Collect() {
     // We must use WriteNewFile instead of base::WriteFile as we
     // do not want to write with root access to a symlink that an attacker
     // might have created.
-    if (WriteNewFile(kernel_crash_path,
-                     kernel_dump.data(),
+    if (WriteNewFile(kernel_crash_path, kernel_dump.data(),
                      kernel_dump.length()) !=
         static_cast<int>(kernel_dump.length())) {
       LOG(INFO) << "Failed to write kernel dump to "
@@ -581,11 +560,9 @@ bool KernelCollector::Collect() {
     }
 
     AddCrashMetaData(kKernelSignatureKey, signature);
-    WriteCrashMetaData(
-        root_crash_directory.Append(
-            StringPrintf("%s.meta", dump_basename.c_str())),
-        kKernelExecName,
-        kernel_crash_path.value());
+    WriteCrashMetaData(root_crash_directory.Append(
+                           StringPrintf("%s.meta", dump_basename.c_str())),
+                       kKernelExecName, kernel_crash_path.value());
 
     LOG(INFO) << "Stored kcrash to " << kernel_crash_path.value();
   }

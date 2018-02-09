@@ -31,21 +31,21 @@ const char kHelpSwitch[] = "--help";
 const char kPrefixSwitch[] = "--prefix";
 const char kProcSwitch[] = "--proc";
 
-void PrintUsage(const Flags &flags);
-bool ParseFlags(int argc, char *argv[], Flags *flags);
+void PrintUsage(const Flags& flags);
+bool ParseFlags(int argc, char* argv[], Flags* flags);
 
 }  // namespace
 
-const char *g_exec_name;
+const char* g_exec_name;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   g_exec_name = argv[0];
 
   Flags flags = {
-    { kCoreSwitch, { "Stripped core dump", "core" } },
-    { kDumpSwitch, { "Output minidump", "dump" } },
-    { kPrefixSwitch, { "Root directory to which .so paths are relative", "" } },
-    { kProcSwitch, { "Temporary directory for generated proc files", "/tmp" } }
+      {kCoreSwitch, {"Stripped core dump", "core"}},
+      {kDumpSwitch, {"Output minidump", "dump"}},
+      {kPrefixSwitch, {"Root directory to which .so paths are relative", ""}},
+      {kProcSwitch, {"Temporary directory for generated proc files", "/tmp"}},
   };
 
   if (argc == 2 && std::string(argv[1]) == kHelpSwitch) {
@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
     return EX_USAGE;
   }
 
-  const char * const core = flags.find(kCoreSwitch)->second.value.c_str(),
-             * const proc = flags.find(kProcSwitch)->second.value.c_str();
+  const char *const core = flags.find(kCoreSwitch)->second.value.c_str(),
+                    *const proc = flags.find(kProcSwitch)->second.value.c_str();
 
   CoredumpWriter writer(STDIN_FILENO, core, proc);
   const int error = writer.WriteCoredump();
@@ -73,8 +73,9 @@ int main(int argc, char *argv[]) {
     return error;
   }
 
-  const char * const dump = flags.find(kDumpSwitch)->second.value.c_str(),
-             * const prefix = flags.find(kPrefixSwitch)->second.value.c_str();
+  const char *const dump = flags.find(kDumpSwitch)->second.value.c_str(),
+                    *const prefix =
+                        flags.find(kPrefixSwitch)->second.value.c_str();
 
   google_breakpad::MappingList mappings;
   google_breakpad::AppMemoryList memory_list;
@@ -89,18 +90,18 @@ int main(int argc, char *argv[]) {
 
 namespace {
 
-void PrintUsage(const Flags &flags) {
+void PrintUsage(const Flags& flags) {
   std::cout << "Generate minidump from core dump piped to standard input.\n"
             << std::endl;
 
-  for (const auto &flag : flags)
+  for (const auto& flag : flags)
     std::cout << std::setw(12) << flag.first << "  " << flag.second.description
               << " (default: \"" << flag.second.value << "\")" << std::endl;
 }
 
-bool ParseFlags(int argc, char *argv[], Flags *flags) {
+bool ParseFlags(int argc, char* argv[], Flags* flags) {
   for (int i = 1; i < argc; ++i) {
-    const char * const flag = argv[i];
+    const char* const flag = argv[i];
     const auto it = flags->find(flag);
 
     if (it == flags->end()) {

@@ -27,20 +27,20 @@ class CrashCollector {
 
   virtual ~CrashCollector();
 
-  void set_lsb_release_for_test(const base::FilePath &lsb_release) {
+  void set_lsb_release_for_test(const base::FilePath& lsb_release) {
     lsb_release_ = lsb_release;
   }
 
   // For testing, set the directory always returned by
   // GetCreatedCrashDirectoryByEuid.
-  void set_crash_directory_for_test(const base::FilePath &forced_directory) {
+  void set_crash_directory_for_test(const base::FilePath& forced_directory) {
     forced_crash_directory_ = forced_directory;
   }
 
   // For testing, set the directory where cached files are stored instead of
   // kCrashReporterStatePath.
-  void set_reporter_state_directory_for_test(const base::FilePath
-                                             &forced_directory) {
+  void set_reporter_state_directory_for_test(
+      const base::FilePath& forced_directory) {
     crash_reporter_state_path_ = forced_directory;
   }
 
@@ -89,7 +89,7 @@ class CrashCollector {
   FRIEND_TEST(ForkExecAndPipeTest, StderrCaptured);
 
   // Default value if version cannot be determined.
-  static const char * const kUnknownVersion;
+  static const char* const kUnknownVersion;
 
   // Set maximum enqueued crashes in a crash directory.
   static const int kMaxCrashDirectorySize;
@@ -103,28 +103,26 @@ class CrashCollector {
   // Writes |data| of |size| to |filename|, which must be a new file.
   // If the file already exists or writing fails, return a negative value.
   // Otherwise returns the number of bytes written.
-  int WriteNewFile(const base::FilePath &filename, const char *data, int size);
+  int WriteNewFile(const base::FilePath& filename, const char* data, int size);
 
   // Return a filename that has only [a-z0-1_] characters by mapping
   // all others into '_'.
-  std::string Sanitize(const std::string &name);
+  std::string Sanitize(const std::string& name);
 
   // Strip any data that the user might not want sent up to the crash server.
   // |contents| is modified in-place.
-  void StripSensitiveData(std::string *contents);
+  void StripSensitiveData(std::string* contents);
 
   virtual bool GetActiveUserSessions(
-      std::map<std::string, std::string> *sessions);
+      std::map<std::string, std::string>* sessions);
   base::FilePath GetUserCrashPath();
   base::FilePath GetCrashDirectoryInfo(uid_t process_euid,
-                                 uid_t default_user_id,
-                                 gid_t default_user_group,
-                                 mode_t *mode,
-                                 uid_t *directory_owner,
-                                 gid_t *directory_group);
-  bool GetUserInfoFromName(const std::string &name,
-                           uid_t *uid,
-                           gid_t *gid);
+                                       uid_t default_user_id,
+                                       gid_t default_user_group,
+                                       mode_t* mode,
+                                       uid_t* directory_owner,
+                                       gid_t* directory_group);
+  bool GetUserInfoFromName(const std::string& name, uid_t* uid, gid_t* gid);
 
   // Determines the crash directory for given euid, and creates the
   // directory if necessary with appropriate permissions.  If
@@ -133,65 +131,63 @@ class CrashCollector {
   // true whether or not directory needed to be created, false on any
   // failure.  If the crash directory is at capacity, returns false.
   bool GetCreatedCrashDirectoryByEuid(uid_t euid,
-                                      base::FilePath *crash_file_path,
-                                      bool *out_of_capacity);
+                                      base::FilePath* crash_file_path,
+                                      bool* out_of_capacity);
 
   // Format crash name based on components.
-  std::string FormatDumpBasename(const std::string &exec_name,
+  std::string FormatDumpBasename(const std::string& exec_name,
                                  time_t timestamp,
                                  pid_t pid);
 
   // Create a file path to a file in |crash_directory| with the given
   // |basename| and |extension|.
-  base::FilePath GetCrashPath(const base::FilePath &crash_directory,
-                              const std::string &basename,
-                              const std::string &extension);
+  base::FilePath GetCrashPath(const base::FilePath& crash_directory,
+                              const std::string& basename,
+                              const std::string& extension);
 
   // Returns the path /proc/<pid>.
   static base::FilePath GetProcessPath(pid_t pid);
 
-  bool GetSymlinkTarget(const base::FilePath &symlink,
-                        base::FilePath *target);
-  virtual bool GetExecutableBaseNameFromPid(pid_t pid,
-                                            std::string *base_name);
+  bool GetSymlinkTarget(const base::FilePath& symlink, base::FilePath* target);
+  virtual bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name);
 
   // Check given crash directory still has remaining capacity for another
   // crash.
-  bool CheckHasCapacity(const base::FilePath &crash_directory);
+  bool CheckHasCapacity(const base::FilePath& crash_directory);
 
   // Write a log applicable to |exec_name| to |output_file| based on the
   // log configuration file at |config_path|.
-  bool GetLogContents(const base::FilePath &config_path,
-                      const std::string &exec_name,
-                      const base::FilePath &output_file);
+  bool GetLogContents(const base::FilePath& config_path,
+                      const std::string& exec_name,
+                      const base::FilePath& output_file);
 
   // Add non-standard meta data to the crash metadata file.  Call
   // before calling WriteCrashMetaData.  Key must not contain "=" or
   // "\n" characters.  Value must not contain "\n" characters.
-  void AddCrashMetaData(const std::string &key, const std::string &value);
+  void AddCrashMetaData(const std::string& key, const std::string& value);
 
   // Add a file to be uploaded to the crash reporter server. The file must
   // persist until the crash report is sent; ideally it should live in the same
   // place as the .meta file, so it can be cleaned up automatically.
-  void AddCrashMetaUploadFile(const std::string &key, const std::string &path);
+  void AddCrashMetaUploadFile(const std::string& key, const std::string& path);
 
   // Add non-standard meta data to the crash metadata file.
   // Data added though this call will be uploaded to the crash reporter server,
   // appearing as a form field. Virtual for testing.
-  virtual void AddCrashMetaUploadData(const std::string &key,
-                                      const std::string &value);
+  virtual void AddCrashMetaUploadData(const std::string& key,
+                                      const std::string& value);
 
   // Like AddCrashMetaUploadData, but loads the value from the file at |path|.
   // The file is not uploaded as an attachment, unlike AddCrashMetaUploadFile.
-  void AddCrashMetaUploadText(const std::string &key, const std::string &path);
+  void AddCrashMetaUploadText(const std::string& key, const std::string& path);
 
   // Returns the version written to the metadata file.
   virtual std::string GetVersion() const;
 
   // Write a file of metadata about crash.
-  void WriteCrashMetaData(const base::FilePath &meta_path,
-                          const std::string &exec_name,
-                          const std::string &payload_path);
+  void WriteCrashMetaData(const base::FilePath& meta_path,
+                          const std::string& exec_name,
+                          const std::string& payload_path);
 
   // Returns true if the a crash test is currently running.
   bool IsCrashTestInProgress();

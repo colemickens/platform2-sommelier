@@ -72,11 +72,11 @@ const char kBuildKey[] = "Build";
 const char kProcessKey[] = "Process";
 const char kSubjectKey[] = "Subject";
 
-const std::pair<const char *, const char *> kHeaderToFieldMapping[] = {
-  { "Crash-Tag", "crash_tag" },
-  { "NDK-Execution", "ndk_execution" },
-  { "Package", "package" },
-  { "Target-SDK", "target_sdk" }
+const std::pair<const char*, const char*> kHeaderToFieldMapping[] = {
+    {"Crash-Tag", "crash_tag"},
+    {"NDK-Execution", "ndk_execution"},
+    {"Package", "package"},
+    {"Target-SDK", "target_sdk"},
 };
 
 // Keys for build properties.
@@ -87,49 +87,46 @@ const char kFingerprintProperty[] = "ro.build.fingerprint";
 
 const size_t kBufferSize = 4096;
 
-inline bool IsAppProcess(const std::string &name) {
+inline bool IsAppProcess(const std::string& name) {
   return name == "app_process32" || name == "app_process64";
 }
 
-inline bool IsSilentReport(const std::string &type) {
+inline bool IsSilentReport(const std::string& type) {
   return type == "system_app_wtf" || type == "system_server_wtf";
 }
 
-inline TimeTicks ToSeconds(const TimeTicks &time) {
+inline TimeTicks ToSeconds(const TimeTicks& time) {
   return TimeTicks::FromInternalValue(
-      TimeDelta::FromSeconds(TimeDelta::FromInternalValue(
-          time.ToInternalValue()).InSeconds()).ToInternalValue());
+      TimeDelta::FromSeconds(
+          TimeDelta::FromInternalValue(time.ToInternalValue()).InSeconds())
+          .ToInternalValue());
 }
 
-bool ReadCrashLogFromStdin(std::stringstream *stream);
+bool ReadCrashLogFromStdin(std::stringstream* stream);
 
-bool HasExceptionInfo(const std::string &type);
-const char *GetSubjectTag(const std::string &type);
+bool HasExceptionInfo(const std::string& type);
+const char* GetSubjectTag(const std::string& type);
 
-bool GetChromeVersion(std::string *version);
+bool GetChromeVersion(std::string* version);
 
-bool GetArcRoot(FilePath *root);
-bool GetArcProperties(std::string *version,
-                      std::string *device,
-                      std::string *board,
-                      std::string *cpu_abi);
+bool GetArcRoot(FilePath* root);
+bool GetArcProperties(std::string* version,
+                      std::string* device,
+                      std::string* board,
+                      std::string* cpu_abi);
 
 // Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
 // if the process failed to start.
-int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output);
+int RunAndCaptureOutput(ProcessImpl* process, int fd, std::string* output);
 
 std::string FormatDuration(uint64_t seconds);
 
 }  // namespace
 
-ArcCollector::ArcCollector()
-    : ArcCollector(ContextPtr(new ArcContext(this))) {
-}
+ArcCollector::ArcCollector() : ArcCollector(ContextPtr(new ArcContext(this))) {}
 
 ArcCollector::ArcCollector(ContextPtr context)
-    : UserCollectorBase("ARC", true),
-      context_(std::move(context)) {
-}
+    : UserCollectorBase("ARC", true), context_(std::move(context)) {}
 
 bool ArcCollector::IsArcProcess(pid_t pid) const {
   pid_t arc_pid;
@@ -150,10 +147,10 @@ bool ArcCollector::IsArcProcess(pid_t pid) const {
   return ns == arc_ns;
 }
 
-bool ArcCollector::HandleJavaCrash(const std::string &crash_type,
-                                   const std::string &device,
-                                   const std::string &board,
-                                   const std::string &cpu_abi) {
+bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
+                                   const std::string& device,
+                                   const std::string& board,
+                                   const std::string& cpu_abi) {
   std::string reason;
   const bool should_dump = UserCollectorBase::ShouldDump(
       is_feedback_allowed_function_(), IsDeveloperImage(), &reason);
@@ -187,8 +184,8 @@ bool ArcCollector::HandleJavaCrash(const std::string &crash_type,
   count_crash_function_();
 
   bool out_of_capacity = false;
-  if (!CreateReportForJavaCrash(crash_type, device, board, cpu_abi,
-                                map, exception_info, stream.str(),
+  if (!CreateReportForJavaCrash(crash_type, device, board, cpu_abi, map,
+                                exception_info, stream.str(),
                                 &out_of_capacity)) {
     if (!out_of_capacity)
       EnqueueCollectionErrorLog(0, kErrorSystemIssue, exec);
@@ -205,12 +202,11 @@ bool ArcCollector::IsArcRunning() {
 }
 
 // static
-bool ArcCollector::GetArcPid(pid_t *arc_pid) {
+bool ArcCollector::GetArcPid(pid_t* arc_pid) {
   base::FileEnumerator containers(
       kContainersDir, false, base::FileEnumerator::DIRECTORIES, kArcDirPattern);
 
-  for (FilePath container = containers.Next();
-       !container.empty();
+  for (FilePath container = containers.Next(); !container.empty();
        container = containers.Next()) {
     std::string contents;
     if (!ReadFileToString(container.Append(kContainerPid), &contents) ||
@@ -235,7 +231,7 @@ bool ArcCollector::GetArcPid(pid_t *arc_pid) {
 
 // static
 std::string ArcCollector::GetVersionFromFingerprint(
-    const std::string &fingerprint) {
+    const std::string& fingerprint) {
   // fingerprint has the following format:
   //   $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/
   //     ..$(BUILD_ID)/$(BF_BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/
@@ -263,12 +259,12 @@ std::string ArcCollector::GetVersionFromFingerprint(
   return fingerprint.substr(begin, end - begin);
 }
 
-bool ArcCollector::ArcContext::GetArcPid(pid_t *pid) const {
+bool ArcCollector::ArcContext::GetArcPid(pid_t* pid) const {
   return ArcCollector::GetArcPid(pid);
 }
 
 bool ArcCollector::ArcContext::GetPidNamespace(pid_t pid,
-                                               std::string *ns) const {
+                                               std::string* ns) const {
   const FilePath path = GetProcessPath(pid).Append("ns").Append("pid");
 
   // The /proc/[pid]/ns/pid file is a special symlink that resolves to a string
@@ -282,12 +278,12 @@ bool ArcCollector::ArcContext::GetPidNamespace(pid_t pid,
 }
 
 bool ArcCollector::ArcContext::GetExeBaseName(pid_t pid,
-                                              std::string *exe) const {
+                                              std::string* exe) const {
   return collector_->CrashCollector::GetExecutableBaseNameFromPid(pid, exe);
 }
 
 bool ArcCollector::ArcContext::GetCommand(pid_t pid,
-                                          std::string *command) const {
+                                          std::string* command) const {
   std::vector<std::string> args = collector_->GetCommandLine(pid);
   if (args.size() == 0)
     return false;
@@ -297,7 +293,7 @@ bool ArcCollector::ArcContext::GetCommand(pid_t pid,
 }
 
 bool ArcCollector::ArcContext::ReadAuxvForProcess(pid_t pid,
-                                                  std::string *contents) const {
+                                                  std::string* contents) const {
   // The architecture with the largest auxv size is powerpc with 400 bytes.
   // Round it up to the next power of two.
   constexpr size_t kMaxAuxvSize = 512;
@@ -311,7 +307,7 @@ std::string ArcCollector::GetVersion() const {
 }
 
 bool ArcCollector::GetExecutableBaseNameFromPid(pid_t pid,
-                                                std::string *base_name) {
+                                                std::string* base_name) {
   if (!context_->GetExeBaseName(pid, base_name))
     return false;
 
@@ -326,8 +322,8 @@ bool ArcCollector::GetExecutableBaseNameFromPid(pid_t pid,
 
 bool ArcCollector::ShouldDump(pid_t pid,
                               uid_t uid,
-                              const std::string &exec,
-                              std::string *reason) {
+                              const std::string& exec,
+                              std::string* reason) {
   if (!IsArcProcess(pid)) {
     *reason = "ignoring - crash origin is not ARC";
     return false;
@@ -338,22 +334,22 @@ bool ArcCollector::ShouldDump(pid_t pid,
     return false;
   }
 
-  return UserCollectorBase::ShouldDump(
-      is_feedback_allowed_function_(), IsDeveloperImage(), reason);
+  return UserCollectorBase::ShouldDump(is_feedback_allowed_function_(),
+                                       IsDeveloperImage(), reason);
 }
 
 UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     pid_t pid,
-    const base::FilePath &container_dir,
-    const base::FilePath &core_path,
-    const base::FilePath &minidump_path) {
+    const base::FilePath& container_dir,
+    const base::FilePath& core_path,
+    const base::FilePath& minidump_path) {
   FilePath root;
   if (!GetArcRoot(&root)) {
     LOG(ERROR) << "Failed to get ARC root";
     return kErrorSystemIssue;
   }
 
-  const char * collector_path = kCoreCollectorPath;
+  const char* collector_path = kCoreCollectorPath;
   // TODO(crbug.com/735075): Remove this __WORDSIZE hack by building+installing
   // ARM versions of core_collector{,32}, too.
 #if __WORDSIZE == 64
@@ -403,13 +399,13 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     case EX_SOFTWARE:
       return kErrorCore2MinidumpConversion;
     default:
-      return base::PathExists(core_path) ? kErrorSystemIssue :
-                                           kErrorReadCoreData;
+      return base::PathExists(core_path) ? kErrorSystemIssue
+                                         : kErrorReadCoreData;
   }
 }
 
-void ArcCollector::AddArcMetaData(const std::string &process,
-                                  const std::string &crash_type,
+void ArcCollector::AddArcMetaData(const std::string& process,
+                                  const std::string& crash_type,
                                   bool add_arc_properties) {
   AddCrashMetaUploadData(kProductField, kArcProduct);
   AddCrashMetaUploadData(kProcessField, process);
@@ -432,8 +428,9 @@ void ArcCollector::AddArcMetaData(const std::string &process,
   brillo::ErrorPtr error;
   SetUpDBus();
   if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
-    const uint64_t delta = static_cast<uint64_t>((TimeTicks::Now() -
-        TimeTicks::FromInternalValue(start_time)).InSeconds());
+    const uint64_t delta = static_cast<uint64_t>(
+        (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
+            .InSeconds());
     AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
   } else {
     LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
@@ -444,17 +441,17 @@ void ArcCollector::AddArcMetaData(const std::string &process,
 }
 
 // static
-std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap &map,
-                                            const char *key) {
+std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap& map,
+                                            const char* key) {
   const auto it = map.find(key);
   return it == map.end() ? "unknown" : it->second;
 }
 
 // static
-bool ArcCollector::ParseCrashLog(const std::string &type,
-                                 std::stringstream *stream,
-                                 CrashLogHeaderMap *map,
-                                 std::string *exception_info) {
+bool ArcCollector::ParseCrashLog(const std::string& type,
+                                 std::stringstream* stream,
+                                 CrashLogHeaderMap* map,
+                                 std::string* exception_info) {
   std::string line;
 
   // The last header is followed by an empty line.
@@ -489,14 +486,14 @@ bool ArcCollector::ParseCrashLog(const std::string &type,
   return true;
 }
 
-bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
-                                            const std::string &device,
-                                            const std::string &board,
-                                            const std::string &cpu_abi,
-                                            const CrashLogHeaderMap &map,
-                                            const std::string &exception_info,
-                                            const std::string &log,
-                                            bool *out_of_capacity) {
+bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
+                                            const std::string& device,
+                                            const std::string& board,
+                                            const std::string& cpu_abi,
+                                            const CrashLogHeaderMap& map,
+                                            const std::string& exception_info,
+                                            const std::string& log,
+                                            bool* out_of_capacity) {
   FilePath crash_dir;
   if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, out_of_capacity)) {
     LOG(ERROR) << "Failed to create or find crash directory";
@@ -540,7 +537,7 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   }
 
   if (exception_info.empty()) {
-    if (const char * const tag = GetSubjectTag(crash_type)) {
+    if (const char* const tag = GetSubjectTag(crash_type)) {
       std::ostringstream out;
       out << '[' << tag << ']';
       const auto it = map.find(kSubjectKey);
@@ -570,7 +567,7 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
 }
 
 UserCollectorBase::ErrorType ArcCollector::Is64BitProcess(
-    int pid, bool *is_64_bit) const {
+    int pid, bool* is_64_bit) const {
   std::string auxv_contents;
   if (!context_->ReadAuxvForProcess(pid, &auxv_contents)) {
     PLOG(ERROR) << "Could not read /proc/" << pid << "/auxv";
@@ -606,8 +603,8 @@ UserCollectorBase::ErrorType ArcCollector::Is64BitProcess(
   }
   *is_64_bit = false;
 
-  const Auxv32BitEntry *auxv_32_bit_entries =
-      reinterpret_cast<const Auxv32BitEntry *>(auxv_contents.data());
+  const Auxv32BitEntry* auxv_32_bit_entries =
+      reinterpret_cast<const Auxv32BitEntry*>(auxv_contents.data());
   const size_t auxv_32_bit_entries_length =
       auxv_contents.size() / sizeof(Auxv32BitEntry);
 
@@ -623,7 +620,7 @@ UserCollectorBase::ErrorType ArcCollector::Is64BitProcess(
 
 namespace {
 
-bool ReadCrashLogFromStdin(std::stringstream *stream) {
+bool ReadCrashLogFromStdin(std::stringstream* stream) {
   File src(STDIN_FILENO);
   char buffer[kBufferSize];
 
@@ -639,29 +636,24 @@ bool ReadCrashLogFromStdin(std::stringstream *stream) {
   }
 }
 
-bool HasExceptionInfo(const std::string &type) {
+bool HasExceptionInfo(const std::string& type) {
   static const std::unordered_set<std::string> kTypes = {
-    "data_app_crash",
-    "system_app_crash",
-    "system_app_wtf",
-    "system_server_crash",
-    "system_server_wtf"
-  };
+      "data_app_crash", "system_app_crash", "system_app_wtf",
+      "system_server_crash", "system_server_wtf"};
   return kTypes.count(type);
 }
 
-const char *GetSubjectTag(const std::string &type) {
-  static const std::unordered_map<std::string, const char *> kTags = {
-    { "data_app_native_crash", "native app crash" },
-    { "system_app_anr", "ANR" },
-    { "system_server_watchdog", "system server watchdog" }
-  };
+const char* GetSubjectTag(const std::string& type) {
+  static const std::unordered_map<std::string, const char*> kTags = {
+      {"data_app_native_crash", "native app crash"},
+      {"system_app_anr", "ANR"},
+      {"system_server_watchdog", "system server watchdog"}};
 
   const auto it = kTags.find(type);
   return it == kTags.cend() ? nullptr : it->second;
 }
 
-bool GetChromeVersion(std::string *version) {
+bool GetChromeVersion(std::string* version) {
   ProcessImpl chrome;
   chrome.AddArg(kChromePath);
   chrome.AddArg("--product-version");
@@ -676,12 +668,11 @@ bool GetChromeVersion(std::string *version) {
   return true;
 }
 
-bool GetArcRoot(FilePath *root) {
+bool GetArcRoot(FilePath* root) {
   base::FileEnumerator containers(
       kContainersDir, false, base::FileEnumerator::DIRECTORIES, kArcDirPattern);
 
-  for (FilePath container = containers.Next();
-       !container.empty();
+  for (FilePath container = containers.Next(); !container.empty();
        container = containers.Next()) {
     const FilePath path = container.Append("root");
     if (base::PathExists(path)) {
@@ -693,14 +684,13 @@ bool GetArcRoot(FilePath *root) {
   return false;
 }
 
-bool GetArcProperties(std::string *fingerprint,
-                      std::string *device,
-                      std::string *board,
-                      std::string *cpu_abi) {
+bool GetArcProperties(std::string* fingerprint,
+                      std::string* device,
+                      std::string* board,
+                      std::string* cpu_abi) {
   FilePath root;
   brillo::KeyValueStore store;
-  if (GetArcRoot(&root) &&
-      store.Load(root.Append(kArcBuildProp)) &&
+  if (GetArcRoot(&root) && store.Load(root.Append(kArcBuildProp)) &&
       store.GetString(kFingerprintProperty, fingerprint) &&
       store.GetString(kDeviceProperty, device) &&
       store.GetString(kBoardProperty, board) &&
@@ -711,7 +701,7 @@ bool GetArcProperties(std::string *fingerprint,
   return false;
 }
 
-int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output) {
+int RunAndCaptureOutput(ProcessImpl* process, int fd, std::string* output) {
   process->RedirectUsingPipe(fd, false);
   if (process->Start()) {
     const int out = process->GetPipe(fd);

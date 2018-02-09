@@ -95,10 +95,10 @@ class ArcCollectorTest : public Test {
    public:
     void SetArcPid(pid_t pid) { arc_pid_ = pid; }
     void AddProcess(pid_t pid,
-                    const char *ns,
-                    const char *exe,
-                    const char *cmd,
-                    const char *auxv) {
+                    const char* ns,
+                    const char* exe,
+                    const char* cmd,
+                    const char* auxv) {
       DCHECK_EQ(processes_.count(pid), 0u);
       DCHECK(ns);
       DCHECK(exe);
@@ -111,33 +111,33 @@ class ArcCollectorTest : public Test {
 
    private:
     struct Process {
-      const char *ns;
-      const char *exe;
-      const char *cmd;
-      const char *auxv;
+      const char* ns;
+      const char* exe;
+      const char* cmd;
+      const char* auxv;
     };
 
-    bool GetArcPid(pid_t *pid) const override {
+    bool GetArcPid(pid_t* pid) const override {
       if (arc_pid_ == 0)
         return false;
       *pid = arc_pid_;
       return true;
     }
-    bool GetPidNamespace(pid_t pid, std::string *ns) const override {
+    bool GetPidNamespace(pid_t pid, std::string* ns) const override {
       const auto it = processes_.find(pid);
       if (it == processes_.end())
         return false;
       ns->assign(it->second.ns);
       return true;
     }
-    bool GetExeBaseName(pid_t pid, std::string *exe) const override {
+    bool GetExeBaseName(pid_t pid, std::string* exe) const override {
       const auto it = processes_.find(pid);
       if (it == processes_.end())
         return false;
       exe->assign(it->second.exe);
       return true;
     }
-    bool GetCommand(pid_t pid, std::string *command) const override {
+    bool GetCommand(pid_t pid, std::string* command) const override {
       const auto it = processes_.find(pid);
       if (it == processes_.end())
         return false;
@@ -147,11 +147,11 @@ class ArcCollectorTest : public Test {
       command->assign(cmd);
       return true;
     }
-    bool ReadAuxvForProcess(pid_t pid, std::string *contents) const override {
+    bool ReadAuxvForProcess(pid_t pid, std::string* contents) const override {
       const auto it = processes_.find(pid);
       if (it == processes_.end())
         return false;
-      const auto *auxv = it->second.auxv;
+      const auto* auxv = it->second.auxv;
       if (!auxv)
         return false;
       std::istringstream ss(auxv);
@@ -168,7 +168,7 @@ class ArcCollectorTest : public Test {
     std::unordered_map<pid_t, Process> processes_;
   };
 
-  MockContext *context_;  // Owned by collector.
+  MockContext* context_;  // Owned by collector.
 
  private:
   void SetUp() override {
@@ -207,10 +207,10 @@ TEST_F(ArcCollectorTest, IsArcProcess) {
   EXPECT_TRUE(FindLog("Failed to get PID namespace of process"));
   ClearLog();
 
-  context_->AddProcess(
-      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
-  context_->AddProcess(
-      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
+                       k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+                       k32BitAuxv);
 
   EXPECT_TRUE(collector_->IsArcProcess(123));
   EXPECT_TRUE(GetLog().empty());
@@ -222,8 +222,8 @@ TEST_F(ArcCollectorTest, IsArcProcess) {
 TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(
-      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
+                       k32BitAuxv);
 
   std::string exe;
   EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(50, &exe));
@@ -233,8 +233,8 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
 TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(
-      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+                       k32BitAuxv);
   context_->AddProcess(456, "arc", "app_process32", nullptr, k32BitAuxv);
   context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
 
@@ -253,11 +253,11 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
 
 TEST_F(ArcCollectorTest, ShouldDump) {
   context_->SetArcPid(100);
-  context_->AddProcess(
-      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
+                       k32BitAuxv);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(
-      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+                       k32BitAuxv);
   context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
 
   std::string reason;
@@ -278,14 +278,14 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   std::string exception_info;
 
   // Crash log should not be empty.
-  EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "system_app_crash", &stream, &map, &exception_info));
+  EXPECT_FALSE(ArcCollector::ParseCrashLog("system_app_crash", &stream, &map,
+                                           &exception_info));
 
   // Header key should be followed by a colon.
   stream.clear();
   stream.str("Key");
-  EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "system_app_crash", &stream, &map, &exception_info));
+  EXPECT_FALSE(ArcCollector::ParseCrashLog("system_app_crash", &stream, &map,
+                                           &exception_info));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
@@ -293,8 +293,8 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   // Header value should not be empty.
   stream.clear();
   stream.str("Key:   ");
-  EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "system_app_crash", &stream, &map, &exception_info));
+  EXPECT_FALSE(ArcCollector::ParseCrashLog("system_app_crash", &stream, &map,
+                                           &exception_info));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
@@ -302,8 +302,8 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   // Parse a crash log with exception info.
   stream.clear();
   stream.str(kCrashLog + 1);  // Skip EOL.
-  EXPECT_TRUE(ArcCollector::ParseCrashLog(
-      "system_app_crash", &stream, &map, &exception_info));
+  EXPECT_TRUE(ArcCollector::ParseCrashLog("system_app_crash", &stream, &map,
+                                          &exception_info));
 
   EXPECT_TRUE(GetLog().empty());
 
@@ -317,14 +317,14 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   stream.seekg(0);
   map.clear();
   exception_info.clear();
-  EXPECT_TRUE(ArcCollector::ParseCrashLog(
-      "system_app_anr", &stream, &map, &exception_info));
+  EXPECT_TRUE(ArcCollector::ParseCrashLog("system_app_anr", &stream, &map,
+                                          &exception_info));
 
   EXPECT_TRUE(GetLog().empty());
 
   EXPECT_EQ("0xcafebabe", ArcCollector::GetCrashLogHeader(map, "Flags"));
   EXPECT_EQ("com.arc.app v1 (1.0)",
-      ArcCollector::GetCrashLogHeader(map, "Package"));
+            ArcCollector::GetCrashLogHeader(map, "Package"));
   EXPECT_TRUE(exception_info.empty());
 }
 
@@ -362,74 +362,97 @@ TEST_F(ArcContextTest, GetExeBaseName) {
 }
 
 TEST_F(ArcContextTest, GetAndroidVersion) {
-  const std::pair<const char *, const char *> tests[] = {
-    // version / fingerprint
-    {"7.1.1", "google/caroline/caroline_cheets:7.1.1/R65-10317.0.9999/" \
-        "4548207:user/release-keys"},
-    {"7.1.1", "google/banon/banon_cheets:7.1.1/R62-9901.77.0/" \
-        "4446936:user/release-keys"},
-    {"6.0.1", "google/cyan/cyan_cheets:6.0.1/R60-9592.85.0/" \
-        "4284198:user/release-keys"},
-    {"6.0.1", "google/minnie/minnie_cheets:6.0.1/R60-9592.96.0/" \
-        "4328948:user/release-keys"},
-    {"7.1.1", "google/cyan/cyan_cheets:7.1.1/R61-9765.85.0/" \
-        "4391409:user/release-keys"},
-    {"7.1.1", "google/banon/banon_cheets:7.1.1/R62-9901.66.0/" \
-        "4421464:user/release-keys"},
-    {"7.1.1", "google/edgar/edgar_cheets:7.1.1/R62-9901.77.0/" \
-        "4446936:user/release-keys"},
-    {"7.1.1", "google/celes/celes_cheets:7.1.1/R63-10032.75.0/" \
-        "4505339:user/release-keys"},
-    {"7.1.1", "google/edgar/edgar_cheets:7.1.1/R64-10134.0.0/" \
-        "4453597:user/release-keys"},
-    {"7.1.1", "google/fizz/fizz_cheets:7.1.1/R64-10176.13.1/" \
-        "4496886:user/release-keys"},
-    {"7.1.1", "google/kevin/kevin_cheets:7.1.1/R64-10176.22.0/" \
-        "4510202:user/release-keys"},
-    {"7.1.1", "google/celes/celes_cheets:7.1.1/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
+  const std::pair<const char*, const char*> tests[] = {
+      // version / fingerprint
+      {"7.1.1",
+       "google/caroline/caroline_cheets:7.1.1/R65-10317.0.9999/"
+       "4548207:user/release-keys"},
+      {"7.1.1",
+       "google/banon/banon_cheets:7.1.1/R62-9901.77.0/"
+       "4446936:user/release-keys"},
+      {"6.0.1",
+       "google/cyan/cyan_cheets:6.0.1/R60-9592.85.0/"
+       "4284198:user/release-keys"},
+      {"6.0.1",
+       "google/minnie/minnie_cheets:6.0.1/R60-9592.96.0/"
+       "4328948:user/release-keys"},
+      {"7.1.1",
+       "google/cyan/cyan_cheets:7.1.1/R61-9765.85.0/"
+       "4391409:user/release-keys"},
+      {"7.1.1",
+       "google/banon/banon_cheets:7.1.1/R62-9901.66.0/"
+       "4421464:user/release-keys"},
+      {"7.1.1",
+       "google/edgar/edgar_cheets:7.1.1/R62-9901.77.0/"
+       "4446936:user/release-keys"},
+      {"7.1.1",
+       "google/celes/celes_cheets:7.1.1/R63-10032.75.0/"
+       "4505339:user/release-keys"},
+      {"7.1.1",
+       "google/edgar/edgar_cheets:7.1.1/R64-10134.0.0/"
+       "4453597:user/release-keys"},
+      {"7.1.1",
+       "google/fizz/fizz_cheets:7.1.1/R64-10176.13.1/"
+       "4496886:user/release-keys"},
+      {"7.1.1",
+       "google/kevin/kevin_cheets:7.1.1/R64-10176.22.0/"
+       "4510202:user/release-keys"},
+      {"7.1.1",
+       "google/celes/celes_cheets:7.1.1/R65-10278.0.0/"
+       "4524556:user/release-keys"},
 
-    // fake ones
-    {"70.10.10.10", "google/celes/celes_cheets:70.10.10.10/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7.1.1.1", "google/celes/celes_cheets:7.1.1.1/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7.1.1", "google/celes/celes_cheets:7.1.1/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7.1", "google/celes/celes_cheets:7.1/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7", "google/celes/celes_cheets:7/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
+      // fake ones
+      {"70.10.10.10",
+       "google/celes/celes_cheets:70.10.10.10/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7.1.1.1",
+       "google/celes/celes_cheets:7.1.1.1/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7.1.1",
+       "google/celes/celes_cheets:7.1.1/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7.1",
+       "google/celes/celes_cheets:7.1/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7",
+       "google/celes/celes_cheets:7/R65-10278.0.0/"
+       "4524556:user/release-keys"},
 
-    // future-proofing tests
-    {"test.1", "google/celes/celes_cheets:test.1/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7.1.1a", "google/celes/celes_cheets:7.1.1a/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"7a", "google/celes/celes_cheets:7a/R65-10278.0.0/" \
-        "4524556:user/release-keys"},
-    {"9", ":9/R"},
+      // future-proofing tests
+      {"test.1",
+       "google/celes/celes_cheets:test.1/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7.1.1a",
+       "google/celes/celes_cheets:7.1.1a/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"7a",
+       "google/celes/celes_cheets:7a/R65-10278.0.0/"
+       "4524556:user/release-keys"},
+      {"9", ":9/R"},
 
-    // failed ones
-    {CrashCollector::kUnknownVersion, "google/celes/celes_cheets:1.1/" \
-        "65-10278.0.0/4524556:user/release-keys"},
-    {CrashCollector::kUnknownVersion, "google/celes/celes_cheets:1.1/" \
-        "65-10278.0.0/4524556:user/7.1.1"},
-    {CrashCollector::kUnknownVersion, "google/celes/celes_cheets:/" \
-        "R65-10278.0.0/4524556:user/7.1.1"},
-    {CrashCollector::kUnknownVersion, "google/celes/celes_cheets:/" \
-        "65-10278.0.0/4524556:user/7.1.1"},
-    {CrashCollector::kUnknownVersion, ":/"},
-    {CrashCollector::kUnknownVersion, ":/R"},
-    {CrashCollector::kUnknownVersion, "/R:"},
-    {CrashCollector::kUnknownVersion, ""},
-    {CrashCollector::kUnknownVersion, ":"},
-    {CrashCollector::kUnknownVersion, "/R"},
+      // failed ones
+      {CrashCollector::kUnknownVersion,
+       "google/celes/celes_cheets:1.1/"
+       "65-10278.0.0/4524556:user/release-keys"},
+      {CrashCollector::kUnknownVersion,
+       "google/celes/celes_cheets:1.1/"
+       "65-10278.0.0/4524556:user/7.1.1"},
+      {CrashCollector::kUnknownVersion,
+       "google/celes/celes_cheets:/"
+       "R65-10278.0.0/4524556:user/7.1.1"},
+      {CrashCollector::kUnknownVersion,
+       "google/celes/celes_cheets:/"
+       "65-10278.0.0/4524556:user/7.1.1"},
+      {CrashCollector::kUnknownVersion, ":/"},
+      {CrashCollector::kUnknownVersion, ":/R"},
+      {CrashCollector::kUnknownVersion, "/R:"},
+      {CrashCollector::kUnknownVersion, ""},
+      {CrashCollector::kUnknownVersion, ":"},
+      {CrashCollector::kUnknownVersion, "/R"},
   };
 
-  for (const auto &item : tests) {
-    EXPECT_EQ(item.first,
-              ArcCollector::GetVersionFromFingerprint(item.second));
+  for (const auto& item : tests) {
+    EXPECT_EQ(item.first, ArcCollector::GetVersionFromFingerprint(item.second));
   }
 }
 

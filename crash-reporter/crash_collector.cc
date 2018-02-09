@@ -8,10 +8,10 @@
 #include <fcntl.h>  // For file creation modes.
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
-#include <pwd.h>  // For struct passwd.
-#include <sys/types.h>  // for mode_t.
-#include <sys/wait.h>  // For waitpid.
-#include <unistd.h>  // For execv and fork.
+#include <pwd.h>           // For struct passwd.
+#include <sys/types.h>     // for mode_t.
+#include <sys/wait.h>      // For waitpid.
+#include <unistd.h>        // For execv and fork.
 
 #include <set>
 #include <vector>
@@ -83,7 +83,7 @@ const char kGzipPath[] = "/bin/gzip";
 
 }  // namespace
 
-const char * const CrashCollector::kUnknownVersion = "unknown";
+const char* const CrashCollector::kUnknownVersion = "unknown";
 
 // Maximum crash reports per crash spool directory.  Note that this is
 // a separate maximum from the maximum rate at which we upload these
@@ -104,9 +104,11 @@ namespace {
 
 // Create a directory using the specified mode/user/group, and make sure it
 // is actually a directory with the specified permissions.
-bool CreateDirectoryWithSettings(const FilePath& dir, mode_t mode, uid_t owner,
+bool CreateDirectoryWithSettings(const FilePath& dir,
+                                 mode_t mode,
+                                 uid_t owner,
                                  gid_t group) {
-  const char *dir_c_str = dir.value().c_str();
+  const char* dir_c_str = dir.value().c_str();
 
   // If it's not a directory, nuke it.
   if (!base::DirectoryExists(dir)) {
@@ -152,9 +154,7 @@ bool CreateDirectoryWithSettings(const FilePath& dir, mode_t mode, uid_t owner,
 
 }  // namespace
 
-CrashCollector::CrashCollector()
-    : CrashCollector(false) {
-}
+CrashCollector::CrashCollector() : CrashCollector(false) {}
 
 CrashCollector::CrashCollector(bool force_user_crash_dir)
     : lsb_release_(kLsbRelease),
@@ -162,8 +162,7 @@ CrashCollector::CrashCollector(bool force_user_crash_dir)
       crash_reporter_state_path_(kCrashReporterStatePath),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
-      force_user_crash_dir_(force_user_crash_dir) {
-}
+      force_user_crash_dir_(force_user_crash_dir) {}
 
 CrashCollector::~CrashCollector() {
   if (bus_)
@@ -194,8 +193,8 @@ void CrashCollector::SetUpDBus() {
       new org::chromium::SessionManagerInterfaceProxy(bus_));
 }
 
-int CrashCollector::WriteNewFile(const FilePath &filename,
-                                 const char *data,
+int CrashCollector::WriteNewFile(const FilePath& filename,
+                                 const char* data,
                                  int size) {
   int fd = HANDLE_EINTR(open(filename.value().c_str(),
                              O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666));
@@ -209,7 +208,7 @@ int CrashCollector::WriteNewFile(const FilePath &filename,
   return rv;
 }
 
-std::string CrashCollector::Sanitize(const std::string &name) {
+std::string CrashCollector::Sanitize(const std::string& name) {
   // Make sure the sanitized name does not include any periods.
   // The logic in crash_sender relies on this.
   std::string result = name;
@@ -220,7 +219,7 @@ std::string CrashCollector::Sanitize(const std::string &name) {
   return result;
 }
 
-void CrashCollector::StripSensitiveData(std::string *contents) {
+void CrashCollector::StripSensitiveData(std::string* contents) {
   // At the moment, the only sensitive data we strip is MAC addresses.
 
   // Get rid of things that look like MAC addresses, since they could possibly
@@ -240,24 +239,22 @@ void CrashCollector::StripSensitiveData(std::string *contents) {
 
   // This RE will find the next MAC address and can return us the data preceding
   // the MAC and the MAC itself.
-  pcrecpp::RE mac_re("(.*?)("
-                     "[0-9a-fA-F][0-9a-fA-F]:"
-                     "[0-9a-fA-F][0-9a-fA-F]:"
-                     "[0-9a-fA-F][0-9a-fA-F]:"
-                     "[0-9a-fA-F][0-9a-fA-F]:"
-                     "[0-9a-fA-F][0-9a-fA-F]:"
-                     "[0-9a-fA-F][0-9a-fA-F])",
-                     pcrecpp::RE_Options()
-                       .set_multiline(true)
-                       .set_dotall(true));
+  pcrecpp::RE mac_re(
+      "(.*?)("
+      "[0-9a-fA-F][0-9a-fA-F]:"
+      "[0-9a-fA-F][0-9a-fA-F]:"
+      "[0-9a-fA-F][0-9a-fA-F]:"
+      "[0-9a-fA-F][0-9a-fA-F]:"
+      "[0-9a-fA-F][0-9a-fA-F]:"
+      "[0-9a-fA-F][0-9a-fA-F])",
+      pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
 
   // This RE will identify when the 'pre_mac_str' shows that the MAC address
   // was really an ACPI cmd.  The full string looks like this:
   //   ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES) filtered out
-  pcrecpp::RE acpi_re("ACPI cmd ef/$",
-                      pcrecpp::RE_Options()
-                        .set_multiline(true)
-                        .set_dotall(true));
+  pcrecpp::RE acpi_re(
+      "ACPI cmd ef/$",
+      pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
 
   // Keep consuming, building up a result string as we go.
   while (mac_re.Consume(&input, &pre_mac_str, &mac_str)) {
@@ -272,11 +269,10 @@ void CrashCollector::StripSensitiveData(std::string *contents) {
         int mac_id = mac_map.size();
 
         // Handle up to 2^32 unique MAC address; overkill, but doesn't hurt.
-        replacement_mac = StringPrintf("00:00:%02x:%02x:%02x:%02x",
-                                       (mac_id & 0xff000000) >> 24,
-                                       (mac_id & 0x00ff0000) >> 16,
-                                       (mac_id & 0x0000ff00) >> 8,
-                                       (mac_id & 0x000000ff));
+        replacement_mac = StringPrintf(
+            "00:00:%02x:%02x:%02x:%02x", (mac_id & 0xff000000) >> 24,
+            (mac_id & 0x00ff0000) >> 16, (mac_id & 0x0000ff00) >> 8,
+            (mac_id & 0x000000ff));
         mac_map[mac_str] = replacement_mac;
       }
 
@@ -292,41 +288,35 @@ void CrashCollector::StripSensitiveData(std::string *contents) {
   *contents = result.str();
 }
 
-std::string CrashCollector::FormatDumpBasename(const std::string &exec_name,
+std::string CrashCollector::FormatDumpBasename(const std::string& exec_name,
                                                time_t timestamp,
                                                pid_t pid) {
   struct tm tm;
   localtime_r(&timestamp, &tm);
   std::string sanitized_exec_name = Sanitize(exec_name);
   return StringPrintf("%s.%04d%02d%02d.%02d%02d%02d.%d",
-                      sanitized_exec_name.c_str(),
-                      tm.tm_year + 1900,
-                      tm.tm_mon + 1,
-                      tm.tm_mday,
-                      tm.tm_hour,
-                      tm.tm_min,
-                      tm.tm_sec,
-                      pid);
+                      sanitized_exec_name.c_str(), tm.tm_year + 1900,
+                      tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
+                      tm.tm_sec, pid);
 }
 
-FilePath CrashCollector::GetCrashPath(const FilePath &crash_directory,
-                                      const std::string &basename,
-                                      const std::string &extension) {
-  return crash_directory.Append(StringPrintf("%s.%s",
-                                             basename.c_str(),
-                                             extension.c_str()));
+FilePath CrashCollector::GetCrashPath(const FilePath& crash_directory,
+                                      const std::string& basename,
+                                      const std::string& extension) {
+  return crash_directory.Append(
+      StringPrintf("%s.%s", basename.c_str(), extension.c_str()));
 }
 
 bool CrashCollector::GetActiveUserSessions(
-    std::map<std::string, std::string> *sessions) {
+    std::map<std::string, std::string>* sessions) {
   brillo::ErrorPtr error;
   SetUpDBus();
   session_manager_proxy_->RetrieveActiveSessions(sessions, &error);
 
   if (error) {
     LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << session_manager_proxy_->GetObjectPath().value() << "':"
-               << error->GetMessage();
+               << "'" << session_manager_proxy_->GetObjectPath().value()
+               << "':" << error->GetMessage();
     return false;
   }
 
@@ -345,18 +335,18 @@ FilePath CrashCollector::GetUserCrashPath() {
   }
 
   user_path = brillo::cryptohome::home::GetHashedUserPath(
-      active_sessions.begin()->second).Append("crash");
+                  active_sessions.begin()->second)
+                  .Append("crash");
 
   return user_path;
 }
 
-FilePath CrashCollector::GetCrashDirectoryInfo(
-    uid_t process_euid,
-    uid_t default_user_id,
-    gid_t default_user_group,
-    mode_t *mode,
-    uid_t *directory_owner,
-    gid_t *directory_group) {
+FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
+                                               uid_t default_user_id,
+                                               gid_t default_user_group,
+                                               mode_t* mode,
+                                               uid_t* directory_owner,
+                                               gid_t* directory_group) {
   // TODO(mkrebs): This can go away once Chrome crashes are handled
   // normally (see crosbug.com/5872).
   // Check if the user crash directory should be used.  If we are
@@ -377,15 +367,16 @@ FilePath CrashCollector::GetCrashDirectoryInfo(
   }
 }
 
-bool CrashCollector::GetUserInfoFromName(const std::string &name,
-                                         uid_t *uid,
-                                         gid_t *gid) {
+bool CrashCollector::GetUserInfoFromName(const std::string& name,
+                                         uid_t* uid,
+                                         gid_t* gid) {
   char storage[256];
   struct passwd passwd_storage;
-  struct passwd *passwd_result = nullptr;
+  struct passwd* passwd_result = nullptr;
 
   if (getpwnam_r(name.c_str(), &passwd_storage, storage, sizeof(storage),
-                 &passwd_result) != 0 || passwd_result == nullptr) {
+                 &passwd_result) != 0 ||
+      passwd_result == nullptr) {
     LOG(ERROR) << "Cannot find user named " << name;
     return false;
   }
@@ -396,12 +387,13 @@ bool CrashCollector::GetUserInfoFromName(const std::string &name,
 }
 
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
-                                                    FilePath *crash_directory,
-                                                    bool *out_of_capacity) {
+                                                    FilePath* crash_directory,
+                                                    bool* out_of_capacity) {
   uid_t default_user_id;
   gid_t default_user_group;
 
-  if (out_of_capacity) *out_of_capacity = false;
+  if (out_of_capacity)
+    *out_of_capacity = false;
 
   // For testing.
   if (!forced_crash_directory_.empty()) {
@@ -409,8 +401,7 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
     return true;
   }
 
-  if (!GetUserInfoFromName(kDefaultUserName,
-                           &default_user_id,
+  if (!GetUserInfoFromName(kDefaultUserName, &default_user_id,
                            &default_user_group)) {
     LOG(ERROR) << "Could not find default user info";
     return false;
@@ -418,13 +409,9 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  *crash_directory =
-      GetCrashDirectoryInfo(euid,
-                            default_user_id,
-                            default_user_group,
-                            &directory_mode,
-                            &directory_owner,
-                            &directory_group);
+  *crash_directory = GetCrashDirectoryInfo(euid, default_user_id,
+                                           default_user_group, &directory_mode,
+                                           &directory_owner, &directory_group);
 
   if (!CreateDirectoryWithSettings(*crash_directory, directory_mode,
                                    directory_owner, directory_group)) {
@@ -432,7 +419,8 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   }
 
   if (!CheckHasCapacity(*crash_directory)) {
-    if (out_of_capacity) *out_of_capacity = true;
+    if (out_of_capacity)
+      *out_of_capacity = true;
     return false;
   }
 
@@ -444,8 +432,8 @@ FilePath CrashCollector::GetProcessPath(pid_t pid) {
   return FilePath(StringPrintf("/proc/%d", pid));
 }
 
-bool CrashCollector::GetSymlinkTarget(const FilePath &symlink,
-                                      FilePath *target) {
+bool CrashCollector::GetSymlinkTarget(const FilePath& symlink,
+                                      FilePath* target) {
   ssize_t max_size = 64;
   std::vector<char> buffer;
 
@@ -475,14 +463,13 @@ bool CrashCollector::GetSymlinkTarget(const FilePath &symlink,
 }
 
 bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
-                                                  std::string *base_name) {
+                                                  std::string* base_name) {
   FilePath target;
   FilePath process_path = GetProcessPath(pid);
   FilePath exe_path = process_path.Append("exe");
   if (!GetSymlinkTarget(exe_path, &target)) {
     LOG(INFO) << "GetSymlinkTarget failed - Path " << process_path.value()
-              << " DirectoryExists: "
-              << base::DirectoryExists(process_path);
+              << " DirectoryExists: " << base::DirectoryExists(process_path);
     // Try to further diagnose exe readlink failure cause.
     struct stat buf;
     int stat_result = stat(exe_path.value().c_str(), &buf);
@@ -491,8 +478,8 @@ bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
       LOG(INFO) << "stat " << exe_path.value() << " failed: " << stat_result
                 << " " << saved_errno;
     } else {
-      LOG(INFO) << "stat " << exe_path.value() << " succeeded: st_mode="
-                << buf.st_mode;
+      LOG(INFO) << "stat " << exe_path.value()
+                << " succeeded: st_mode=" << buf.st_mode;
     }
     return false;
   }
@@ -502,7 +489,7 @@ bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
 
 // Return true if the given crash directory has not already reached
 // maximum capacity.
-bool CrashCollector::CheckHasCapacity(const FilePath &crash_directory) {
+bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
   DIR* dir = opendir(crash_directory.value().c_str());
   if (!dir) {
     return false;
@@ -512,8 +499,7 @@ bool CrashCollector::CheckHasCapacity(const FilePath &crash_directory) {
   bool full = false;
   std::set<std::string> basenames;
   while (readdir_r(dir, &ent_buf, &ent) == 0 && ent) {
-    if ((strcmp(ent->d_name, ".") == 0) ||
-        (strcmp(ent->d_name, "..") == 0))
+    if ((strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0))
       continue;
 
     std::string filename(ent->d_name);
@@ -541,9 +527,9 @@ bool CrashCollector::CheckHasCapacity(const FilePath &crash_directory) {
   return !full;
 }
 
-bool CrashCollector::GetLogContents(const FilePath &config_path,
-                                    const std::string &exec_name,
-                                    const FilePath &output_file) {
+bool CrashCollector::GetLogContents(const FilePath& config_path,
+                                    const std::string& exec_name,
+                                    const FilePath& output_file) {
   brillo::KeyValueStore store;
   if (!store.Load(config_path)) {
     LOG(WARNING) << "Unable to read log configuration file "
@@ -588,9 +574,8 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   // If the registered command failed, we include any (partial) output it might
   // have produced to improve crash reports.  But make a note of the failure.
   if (result != 0) {
-    const std::string warning =
-        StringPrintf("\nLog command \"%s\" exited with %i\n", command.c_str(),
-                     result);
+    const std::string warning = StringPrintf(
+        "\nLog command \"%s\" exited with %i\n", command.c_str(), result);
     log_contents.append(warning);
     LOG(WARNING) << warning;
   }
@@ -602,9 +587,7 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(output_file,
-                   log_contents.data(),
-                   log_contents.size()) !=
+  if (WriteNewFile(output_file, log_contents.data(), log_contents.size()) !=
       static_cast<int>(log_contents.length())) {
     LOG(WARNING) << "Error writing sanitized log to "
                  << output_file.value().c_str();
@@ -614,25 +597,25 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   return true;
 }
 
-void CrashCollector::AddCrashMetaData(const std::string &key,
-                                      const std::string &value) {
+void CrashCollector::AddCrashMetaData(const std::string& key,
+                                      const std::string& value) {
   extra_metadata_.append(StringPrintf("%s=%s\n", key.c_str(), value.c_str()));
 }
 
-void CrashCollector::AddCrashMetaUploadFile(const std::string &key,
-                                            const std::string &path) {
+void CrashCollector::AddCrashMetaUploadFile(const std::string& key,
+                                            const std::string& path) {
   if (!path.empty())
     AddCrashMetaData(kUploadFilePrefix + key, path);
 }
 
-void CrashCollector::AddCrashMetaUploadData(const std::string &key,
-                                            const std::string &value) {
+void CrashCollector::AddCrashMetaUploadData(const std::string& key,
+                                            const std::string& value) {
   if (!value.empty())
     AddCrashMetaData(kUploadVarPrefix + key, value);
 }
 
-void CrashCollector::AddCrashMetaUploadText(const std::string &key,
-                                            const std::string &path) {
+void CrashCollector::AddCrashMetaUploadText(const std::string& key,
+                                            const std::string& path) {
   if (!path.empty())
     AddCrashMetaData(kUploadTextPrefix + key, path);
 }
@@ -667,22 +650,21 @@ std::string CrashCollector::GetVersion() const {
   return version;
 }
 
-void CrashCollector::WriteCrashMetaData(const FilePath &meta_path,
-                                        const std::string &exec_name,
-                                        const std::string &payload_path) {
+void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
+                                        const std::string& exec_name,
+                                        const std::string& payload_path) {
   int64_t payload_size = -1;
   base::GetFileSize(FilePath(payload_path), &payload_size);
   const std::string version = GetVersion();
-  std::string meta_data = StringPrintf("%sexec_name=%s\n"
-                                       "ver=%s\n"
-                                       "payload=%s\n"
-                                       "payload_size=%" PRId64 "\n"
-                                       "done=1\n",
-                                       extra_metadata_.c_str(),
-                                       exec_name.c_str(),
-                                       version.c_str(),
-                                       payload_path.c_str(),
-                                       payload_size);
+  std::string meta_data = StringPrintf(
+      "%sexec_name=%s\n"
+      "ver=%s\n"
+      "payload=%s\n"
+      "payload_size=%" PRId64
+      "\n"
+      "done=1\n",
+      extra_metadata_.c_str(), exec_name.c_str(), version.c_str(),
+      payload_path.c_str(), payload_size);
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
@@ -747,18 +729,18 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
 }
 
 bool CrashCollector::InitializeSystemCrashDirectories() {
-  if (!CreateDirectoryWithSettings(
-      FilePath(kSystemCrashPath), kSystemCrashPathMode, kRootUid, kRootGroup))
+  if (!CreateDirectoryWithSettings(FilePath(kSystemCrashPath),
+                                   kSystemCrashPathMode, kRootUid, kRootGroup))
     return false;
 
-  if (!CreateDirectoryWithSettings(
-      FilePath(kSystemRunStatePath), kSystemRunStatePathMode, kRootUid,
-      kRootGroup))
+  if (!CreateDirectoryWithSettings(FilePath(kSystemRunStatePath),
+                                   kSystemRunStatePathMode, kRootUid,
+                                   kRootGroup))
     return false;
 
-  if (!CreateDirectoryWithSettings(
-      FilePath(kCrashReporterStatePath), kCrashReporterStatePathMode, kRootUid,
-      kRootGroup))
+  if (!CreateDirectoryWithSettings(FilePath(kCrashReporterStatePath),
+                                   kCrashReporterStatePathMode, kRootUid,
+                                   kRootGroup))
     return false;
 
   return true;

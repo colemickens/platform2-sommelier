@@ -29,7 +29,7 @@ bool IsMetrics() {
   return s_metrics;
 }
 
-void CountCrash() { }
+void CountCrash() {}
 
 }  // namespace
 
@@ -57,8 +57,7 @@ class ServiceFailureCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void WriteStringToFile(const FilePath &file_path,
-                         const char *data) {
+  void WriteStringToFile(const FilePath& file_path, const char* data) {
     ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
   }
 
@@ -70,8 +69,8 @@ class ServiceFailureCollectorTest : public ::testing::Test {
 
 TEST_F(ServiceFailureCollectorTest, CollectOK) {
   // Collector produces a crash report.
-  WriteStringToFile(test_path_,
-      "crash-crash main process (2563) terminated with status 2\n");
+  WriteStringToFile(
+      test_path_, "crash-crash main process (2563) terminated with status 2\n");
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
 }
@@ -92,8 +91,8 @@ TEST_F(ServiceFailureCollectorTest, EmptyFailureReport) {
 TEST_F(ServiceFailureCollectorTest, FeedbackNotAllowed) {
   // Feedback not allowed.
   s_metrics = false;
-  WriteStringToFile(test_path_,
-      "crash-crash main process (2563) terminated with status 2\n");
+  WriteStringToFile(
+      test_path_, "crash-crash main process (2563) terminated with status 2\n");
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }

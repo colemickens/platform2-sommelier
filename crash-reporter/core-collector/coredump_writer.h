@@ -25,9 +25,7 @@ class CoredumpWriter {
 
   // Core dump is read from |fd|, and written to |coredump_path|. Files needed
   // for minidump conversion are stored in |container_dir|.
-  CoredumpWriter(int fd,
-                 const char *coredump_path,
-                 const char *container_dir);
+  CoredumpWriter(int fd, const char* coredump_path, const char* container_dir);
 
   // Returns sysexits.h exit code.
   int WriteCoredump();
@@ -45,30 +43,30 @@ class CoredumpWriter {
   class Reader;
 
   // Reads ELF header, all program headers, and PT_NOTE segment.
-  int ReadUntilNote(Reader *reader,
-                    Ehdr *elf_header,
-                    std::vector<Phdr> *program_headers,
-                    std::vector<char> *note_buf);
+  int ReadUntilNote(Reader* reader,
+                    Ehdr* elf_header,
+                    std::vector<Phdr>* program_headers,
+                    std::vector<char>* note_buf);
 
   // Extracts address ranges occupied by mapped files from PT_NOTE segment.
-  bool GetFileMappings(const std::vector<char> &note_buf,
-                       FileMappings *file_mappings);
+  bool GetFileMappings(const std::vector<char>& note_buf,
+                       FileMappings* file_mappings);
 
   // Strips unnecessary segments by setting their size to zero.
-  static void StripSegments(const std::vector<Phdr> &program_headers,
-                            const FileMappings &file_mappings,
-                            std::vector<Phdr> *stripped_program_headers);
+  static void StripSegments(const std::vector<Phdr>& program_headers,
+                            const FileMappings& file_mappings,
+                            std::vector<Phdr>* stripped_program_headers);
 
   // Writes file in |container_dir_| in the format of /proc/[pid]/auxv.
-  int WriteAuxv(const std::vector<char> &note_buf);
+  int WriteAuxv(const std::vector<char>& note_buf);
 
   // Writes file in |container_dir_| in the format of /proc/[pid]/maps.
-  int WriteMaps(const std::vector<Phdr> &program_headers,
-                const FileMappings &file_mappings);
+  int WriteMaps(const std::vector<Phdr>& program_headers,
+                const FileMappings& file_mappings);
 
   const int fd_;  // Source stream.
-  const char * const coredump_path_;
-  const char * const container_dir_;
+  const char* const coredump_path_;
+  const char* const container_dir_;
 
   DISALLOW_COPY_AND_ASSIGN(CoredumpWriter);
 };
@@ -77,7 +75,7 @@ namespace std {
 
 template <>
 struct hash<CoredumpWriter::FileRange> {
-  std::size_t operator ()(const CoredumpWriter::FileRange &range) const {
+  std::size_t operator()(const CoredumpWriter::FileRange& range) const {
     // Hashing either address is sufficient, since collisions due to duplicate
     // addresses are impossible.
     return std::hash<ElfW(Addr)>()(range.first);

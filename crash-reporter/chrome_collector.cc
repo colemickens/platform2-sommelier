@@ -39,8 +39,10 @@ const int kDefaultMaxUploadBytes = 1024 * 1024;
 // Extract a string delimited by the given character, from the given offset
 // into a source string. Returns false if the string is zero-sized or no
 // delimiter was found.
-bool GetDelimitedString(const std::string &str, char ch, size_t offset,
-                        std::string *substr) {
+bool GetDelimitedString(const std::string& str,
+                        char ch,
+                        size_t offset,
+                        std::string* substr) {
   size_t at = str.find_first_of(ch, offset);
   if (at == std::string::npos || at == offset)
     return false;
@@ -50,8 +52,8 @@ bool GetDelimitedString(const std::string &str, char ch, size_t offset,
 
 // Gets the GPU's error state from debugd and writes it to |error_state_path|.
 // Returns true on success.
-bool GetDriErrorState(const FilePath &error_state_path,
-                      org::chromium::debugdProxy *proxy) {
+bool GetDriErrorState(const FilePath& error_state_path,
+                      org::chromium::debugdProxy* proxy) {
   brillo::ErrorPtr error;
   std::string error_state_str;
 
@@ -59,8 +61,8 @@ bool GetDriErrorState(const FilePath &error_state_path,
 
   if (error) {
     LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << proxy->GetObjectPath().value() << "':"
-               << error->GetMessage();
+               << "'" << proxy->GetObjectPath().value()
+               << "':" << error->GetMessage();
     return false;
   }
 
@@ -77,20 +79,19 @@ bool GetDriErrorState(const FilePath &error_state_path,
   std::string decoded_error_state;
 
   if (!brillo::data_encoding::Base64Decode(
-      error_state_str.c_str() + kBase64HeaderLength,
-      &decoded_error_state)) {
+          error_state_str.c_str() + kBase64HeaderLength,
+          &decoded_error_state)) {
     LOG(ERROR) << "Could not decode i915_error_state";
     return false;
   }
 
-  int written = base::WriteFile(error_state_path,
-                                decoded_error_state.c_str(),
+  int written = base::WriteFile(error_state_path, decoded_error_state.c_str(),
                                 decoded_error_state.length());
   if (written < 0 ||
       static_cast<size_t>(written) != decoded_error_state.length()) {
     LOG(ERROR) << "Could not write file " << error_state_path.value()
-               << " Written: " << written << " Len: "
-               << decoded_error_state.length();
+               << " Written: " << written
+               << " Len: " << decoded_error_state.length();
     base::DeleteFile(error_state_path, false);
     return false;
   }
@@ -100,15 +101,14 @@ bool GetDriErrorState(const FilePath &error_state_path,
 
 }  // namespace
 
-
 ChromeCollector::ChromeCollector() : output_file_ptr_(stdout) {}
 
 ChromeCollector::~ChromeCollector() {}
 
-bool ChromeCollector::HandleCrash(const FilePath &file_path,
-                                  const std::string &pid_string,
-                                  const std::string &uid_string,
-                                  const std::string &exe_name) {
+bool ChromeCollector::HandleCrash(const FilePath& file_path,
+                                  const std::string& pid_string,
+                                  const std::string& uid_string,
+                                  const std::string& exe_name) {
   if (!is_feedback_allowed_function_())
     return true;
 
@@ -142,7 +142,6 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
     LOG(ERROR) << "Failed to parse Chrome's crash log";
     return false;
   }
-
 
   int64_t report_size = 0;
   base::GetFileSize(minidump_path, &report_size);
@@ -200,10 +199,10 @@ void ChromeCollector::SetUpDBus() {
   debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
 }
 
-bool ChromeCollector::ParseCrashLog(const std::string &data,
-                                    const FilePath &dir,
-                                    const FilePath &minidump,
-                                    const std::string &basename) {
+bool ChromeCollector::ParseCrashLog(const std::string& data,
+                                    const FilePath& dir,
+                                    const FilePath& minidump,
+                                    const std::string& basename) {
   size_t at = 0;
   while (at < data.size()) {
     // Look for a : followed by a decimal number, followed by another :
@@ -230,7 +229,7 @@ bool ChromeCollector::ParseCrashLog(const std::string &data,
     // Data would run past the end, did we get a truncated file?
     if (at + size > data.size()) {
       LOG(ERROR) << "Overrun, expected " << size << " bytes of data, got "
-        << (data.size() - at);
+                 << (data.size() - at);
       break;
     }
 
@@ -276,19 +275,19 @@ bool ChromeCollector::ParseCrashLog(const std::string &data,
 
           case '\n':
             value_str += "\\n";
-           break;
+            break;
 
           case '\t':
             value_str += "\\t";
-           break;
+            break;
 
           case '\0':
             value_str += "\\0";
-           break;
+            break;
 
           default:
-           value_str.push_back(data[i]);
-           break;
+            value_str.push_back(data[i]);
+            break;
         }
       }
       AddCrashMetaUploadData(name, value_str);
@@ -301,9 +300,9 @@ bool ChromeCollector::ParseCrashLog(const std::string &data,
 }
 
 std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
-    const FilePath &dir,
-    const std::string &basename,
-    const std::string &exe_name) {
+    const FilePath& dir,
+    const std::string& basename,
+    const std::string& exe_name) {
   std::map<std::string, base::FilePath> logs;
 
   // Run the command specified by the config file to gather logs.

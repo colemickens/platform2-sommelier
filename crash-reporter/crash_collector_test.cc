@@ -32,7 +32,7 @@ bool IsMetrics() {
   return false;
 }
 
-bool GetActiveUserSessionsImpl(std::map<std::string, std::string> *sessions) {
+bool GetActiveUserSessionsImpl(std::map<std::string, std::string>* sessions) {
   char kUser[] = "chicken@butt.com";
   char kHash[] = "hashcakes";
   sessions->insert(std::pair<std::string, std::string>(kUser, kHash));
@@ -52,9 +52,7 @@ class CrashCollectorTest : public ::testing::Test {
     brillo::ClearLog();
   }
 
-  void TearDown() {
-    base::DeleteFile(test_dir_, true);
-  }
+  void TearDown() { base::DeleteFile(test_dir_, true); }
 
   bool CheckHasCapacity();
 
@@ -72,12 +70,8 @@ TEST_F(CrashCollectorTest, WriteNewFile) {
   FilePath test_file = test_dir_.Append("test_new");
   const char kBuffer[] = "buffer";
   EXPECT_EQ(strlen(kBuffer),
-            collector_.WriteNewFile(test_file,
-                                    kBuffer,
-                                    strlen(kBuffer)));
-  EXPECT_LT(collector_.WriteNewFile(test_file,
-                                    kBuffer,
-                                    strlen(kBuffer)), 0);
+            collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)));
+  EXPECT_LT(collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)), 0);
 }
 
 TEST_F(CrashCollectorTest, Sanitize) {
@@ -102,10 +96,8 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBasic) {
 
   // Make sure that we handle the case where there's nothing before/after the
   // MAC address.
-  const std::string kJustAMacOrig =
-      "11:22:33:44:55:66";
-  const std::string kJustAMacStripped =
-      "00:00:00:00:00:01";
+  const std::string kJustAMacOrig = "11:22:33:44:55:66";
+  const std::string kJustAMacStripped = "00:00:00:00:00:01";
   std::string just_a_mac(kJustAMacOrig);
   collector_.StripSensitiveData(&just_a_mac);
   EXPECT_EQ(kJustAMacStripped, just_a_mac);
@@ -115,16 +107,14 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBasic) {
   // I'm not sure that the code does ideal on these two test cases (they don't
   // look like two MAC addresses to me), but since we don't see them I think
   // it's OK to behave as shown here.
-  const std::string kCrammedMacs1Orig =
-      "11:22:33:44:55:66:11:22:33:44:55:66";
+  const std::string kCrammedMacs1Orig = "11:22:33:44:55:66:11:22:33:44:55:66";
   const std::string kCrammedMacs1Stripped =
       "00:00:00:00:00:01:00:00:00:00:00:01";
   std::string crammed_macs_1(kCrammedMacs1Orig);
   collector_.StripSensitiveData(&crammed_macs_1);
   EXPECT_EQ(kCrammedMacs1Stripped, crammed_macs_1);
 
-  const std::string kCrammedMacs2Orig =
-      "11:22:33:44:55:6611:22:33:44:55:66";
+  const std::string kCrammedMacs2Orig = "11:22:33:44:55:6611:22:33:44:55:66";
   const std::string kCrammedMacs2Stripped =
       "00:00:00:00:00:0100:00:00:00:00:01";
   std::string crammed_macs_2(kCrammedMacs2Orig);
@@ -132,18 +122,14 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBasic) {
   EXPECT_EQ(kCrammedMacs2Stripped, crammed_macs_2);
 
   // Test case-sensitiveness (we shouldn't be case-senstive).
-  const std::string kCapsMacOrig =
-      "AA:BB:CC:DD:EE:FF";
-  const std::string kCapsMacStripped =
-      "00:00:00:00:00:01";
+  const std::string kCapsMacOrig = "AA:BB:CC:DD:EE:FF";
+  const std::string kCapsMacStripped = "00:00:00:00:00:01";
   std::string caps_mac(kCapsMacOrig);
   collector_.StripSensitiveData(&caps_mac);
   EXPECT_EQ(kCapsMacStripped, caps_mac);
 
-  const std::string kLowerMacOrig =
-      "aa:bb:cc:dd:ee:ff";
-  const std::string kLowerMacStripped =
-      "00:00:00:00:00:01";
+  const std::string kLowerMacOrig = "aa:bb:cc:dd:ee:ff";
+  const std::string kLowerMacStripped = "00:00:00:00:00:01";
   std::string lower_mac(kLowerMacOrig);
   collector_.StripSensitiveData(&lower_mac);
   EXPECT_EQ(kLowerMacStripped, lower_mac);
@@ -161,10 +147,10 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBulk) {
   std::string lotsa_macs_stripped;
   int i;
   for (i = 0; i < 258; i++) {
-    lotsa_macs_orig += StringPrintf(" 11:11:11:11:%02X:%02x",
-                                  (i & 0xff00) >> 8, i & 0x00ff);
-    lotsa_macs_stripped += StringPrintf(" 00:00:00:00:%02X:%02x",
-                                     ((i+1) & 0xff00) >> 8, (i+1) & 0x00ff);
+    lotsa_macs_orig +=
+        StringPrintf(" 11:11:11:11:%02X:%02x", (i & 0xff00) >> 8, i & 0x00ff);
+    lotsa_macs_stripped += StringPrintf(
+        " 00:00:00:00:%02X:%02x", ((i + 1) & 0xff00) >> 8, (i + 1) & 0x00ff);
   }
   std::string lotsa_macs(lotsa_macs_orig);
   collector_.StripSensitiveData(&lotsa_macs);
@@ -176,31 +162,31 @@ TEST_F(CrashCollectorTest, StripSensitiveDataSample) {
   // included two MAC addresses (though replaced them with some bogusness).
   const std::string kCrashWithMacsOrig =
       "<6>[111567.195339] ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES)"
-        " filtered out\n"
+      " filtered out\n"
       "<7>[108539.540144] wlan0: authenticate with 11:22:33:44:55:66 (try 1)\n"
       "<7>[108539.554973] wlan0: associate with 11:22:33:44:55:66 (try 1)\n"
       "<6>[110136.587583] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-        " QCUSBNet Ethernet Device, 99:88:77:66:55:44\n"
+      " QCUSBNet Ethernet Device, 99:88:77:66:55:44\n"
       "<7>[110964.314648] wlan0: deauthenticated from 11:22:33:44:55:66"
-        " (Reason: 6)\n"
+      " (Reason: 6)\n"
       "<7>[110964.325057] phy0: Removed STA 11:22:33:44:55:66\n"
       "<7>[110964.325115] phy0: Destroyed STA 11:22:33:44:55:66\n"
       "<6>[110969.219172] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-        " QCUSBNet Ethernet Device, 99:88:77:66:55:44\n"
+      " QCUSBNet Ethernet Device, 99:88:77:66:55:44\n"
       "<7>[111566.131728] PM: Entering mem sleep\n";
   const std::string kCrashWithMacsStripped =
       "<6>[111567.195339] ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES)"
-        " filtered out\n"
+      " filtered out\n"
       "<7>[108539.540144] wlan0: authenticate with 00:00:00:00:00:01 (try 1)\n"
       "<7>[108539.554973] wlan0: associate with 00:00:00:00:00:01 (try 1)\n"
       "<6>[110136.587583] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-        " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
+      " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
       "<7>[110964.314648] wlan0: deauthenticated from 00:00:00:00:00:01"
-        " (Reason: 6)\n"
+      " (Reason: 6)\n"
       "<7>[110964.325057] phy0: Removed STA 00:00:00:00:00:01\n"
       "<7>[110964.325115] phy0: Destroyed STA 00:00:00:00:00:01\n"
       "<6>[110969.219172] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-        " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
+      " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
       "<7>[111566.131728] PM: Entering mem sleep\n";
   std::string crash_with_macs(kCrashWithMacsOrig);
   collector_.StripSensitiveData(&crash_with_macs);
@@ -221,22 +207,16 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   uid_t directory_owner;
   gid_t directory_group;
 
-  path = collector_.GetCrashDirectoryInfo(kRootUid,
-                                          kChronosUid,
-                                          kChronosGid,
-                                          &directory_mode,
-                                          &directory_owner,
+  path = collector_.GetCrashDirectoryInfo(kRootUid, kChronosUid, kChronosGid,
+                                          &directory_mode, &directory_owner,
                                           &directory_group);
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kRootGid, directory_group);
 
-  path = collector_.GetCrashDirectoryInfo(kNtpUid,
-                                          kChronosUid,
-                                          kChronosGid,
-                                          &directory_mode,
-                                          &directory_owner,
+  path = collector_.GetCrashDirectoryInfo(kNtpUid, kChronosUid, kChronosGid,
+                                          &directory_mode, &directory_owner,
                                           &directory_group);
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
@@ -248,11 +228,8 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
 
   EXPECT_EQ(collector_.IsUserSpecificDirectoryEnabled(), true);
 
-  path = collector_.GetCrashDirectoryInfo(kChronosUid,
-                                          kChronosUid,
-                                          kChronosGid,
-                                          &directory_mode,
-                                          &directory_owner,
+  path = collector_.GetCrashDirectoryInfo(kChronosUid, kChronosUid, kChronosGid,
+                                          &directory_mode, &directory_owner,
                                           &directory_group);
   EXPECT_EQ("/home/user/hashcakes/crash", path.value());
   EXPECT_EQ(kExpectedUserMode, directory_mode);
@@ -269,22 +246,22 @@ TEST_F(CrashCollectorTest, FormatDumpBasename) {
   tm.tm_mon = 4;
   tm.tm_year = 110;
   tm.tm_isdst = -1;
-  std::string basename =
-      collector_.FormatDumpBasename("foo", mktime(&tm), 100);
+  std::string basename = collector_.FormatDumpBasename("foo", mktime(&tm), 100);
   ASSERT_EQ("foo.20100523.135015.100", basename);
 }
 
 TEST_F(CrashCollectorTest, GetCrashPath) {
   EXPECT_EQ("/var/spool/crash/myprog.20100101.1200.1234.core",
-            collector_.GetCrashPath(FilePath("/var/spool/crash"),
-                                    "myprog.20100101.1200.1234",
-                                    "core").value());
+            collector_
+                .GetCrashPath(FilePath("/var/spool/crash"),
+                              "myprog.20100101.1200.1234", "core")
+                .value());
   EXPECT_EQ("/home/chronos/user/crash/chrome.20100101.1200.1234.dmp",
-            collector_.GetCrashPath(FilePath("/home/chronos/user/crash"),
-                                    "chrome.20100101.1200.1234",
-                                    "dmp").value());
+            collector_
+                .GetCrashPath(FilePath("/home/chronos/user/crash"),
+                              "chrome.20100101.1200.1234", "dmp")
+                .value());
 }
-
 
 bool CrashCollectorTest::CheckHasCapacity() {
   static const char kFullMessage[] = "Crash directory test already full";
@@ -369,13 +346,10 @@ TEST_F(CrashCollectorTest, MetaData) {
   payload_file = test_dir_.Append("payload2-file");
   ASSERT_TRUE(base::WriteFile(payload_file, kPayload, strlen(kPayload)));
   FilePath meta_symlink_path = test_dir_.Append("symlink.meta");
-  ASSERT_EQ(0,
-            symlink(kMetaFileBasename,
-                    meta_symlink_path.value().c_str()));
+  ASSERT_EQ(0, symlink(kMetaFileBasename, meta_symlink_path.value().c_str()));
   ASSERT_TRUE(base::PathExists(meta_symlink_path));
   brillo::ClearLog();
-  collector_.WriteCrashMetaData(meta_symlink_path,
-                                "kernel",
+  collector_.WriteCrashMetaData(meta_symlink_path, "kernel",
                                 payload_file.value());
   // Target metadata contents should have stayed the same.
   contents.clear();
@@ -401,14 +375,10 @@ TEST_F(CrashCollectorTest, GetLogContents) {
   ASSERT_TRUE(
       base::WriteFile(config_file, kConfigContents, strlen(kConfigContents)));
   base::DeleteFile(FilePath(output_file), false);
-  EXPECT_FALSE(collector_.GetLogContents(config_file,
-                                         "barfoo",
-                                         output_file));
+  EXPECT_FALSE(collector_.GetLogContents(config_file, "barfoo", output_file));
   EXPECT_FALSE(base::PathExists(output_file));
   base::DeleteFile(FilePath(output_file), false);
-  EXPECT_TRUE(collector_.GetLogContents(config_file,
-                                        "foobar",
-                                        output_file));
+  EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
   std::string contents;
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
@@ -418,15 +388,12 @@ TEST_F(CrashCollectorTest, GetLogContents) {
 TEST_F(CrashCollectorTest, TruncatedLog) {
   FilePath config_file = test_dir_.Append("crash_config");
   FilePath output_file = test_dir_.Append("crash_log");
-  const char kConfigContents[] =
-      "foobar=echo These are log contents.";
+  const char kConfigContents[] = "foobar=echo These are log contents.";
   ASSERT_TRUE(
       base::WriteFile(config_file, kConfigContents, strlen(kConfigContents)));
   base::DeleteFile(FilePath(output_file), false);
   collector_.max_log_size_ = 10;
-  EXPECT_TRUE(collector_.GetLogContents(config_file,
-                                        "foobar",
-                                        output_file));
+  EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
   std::string contents;
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));

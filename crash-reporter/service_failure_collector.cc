@@ -18,13 +18,11 @@ using base::FilePath;
 using base::StringPrintf;
 
 ServiceFailureCollector::ServiceFailureCollector()
-    : failure_report_path_(kFailureReportPath) {
-}
+    : failure_report_path_(kFailureReportPath) {}
 
-ServiceFailureCollector::~ServiceFailureCollector() {
-}
+ServiceFailureCollector::~ServiceFailureCollector() {}
 
-bool ServiceFailureCollector::LoadServiceFailure(std::string *signature) {
+bool ServiceFailureCollector::LoadServiceFailure(std::string* signature) {
   FilePath failure_report_path(failure_report_path_);
   if (!base::ReadFileToString(failure_report_path, signature)) {
     LOG(ERROR) << "Could not open " << failure_report_path_;
@@ -63,8 +61,7 @@ bool ServiceFailureCollector::Collect() {
   }
 
   FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory,
-                                      nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
     return true;
   }
 

@@ -17,7 +17,7 @@ class UncleanShutdownCollector : public CrashCollector {
   UncleanShutdownCollector();
   ~UncleanShutdownCollector() override;
 
-  void set_os_release_for_test(const base::FilePath &os_release) {
+  void set_os_release_for_test(const base::FilePath& os_release) {
     os_release_path_ = os_release;
   }
 
@@ -46,7 +46,7 @@ class UncleanShutdownCollector : public CrashCollector {
   // trace files.
   bool DeadBatteryCausedUncleanShutdown();
 
-  const char *unclean_shutdown_file_;
+  const char* unclean_shutdown_file_;
   base::FilePath powerd_trace_path_;
   base::FilePath powerd_suspended_file_;
   base::FilePath os_release_path_;

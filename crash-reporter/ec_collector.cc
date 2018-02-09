@@ -22,7 +22,7 @@ const char kECExecName[] = "embedded-controller";
 
 }  // namespace
 
-ECCollector::ECCollector(): debugfs_path_(kECDebugFSPath) {}
+ECCollector::ECCollector() : debugfs_path_(kECDebugFSPath) {}
 
 ECCollector::~ECCollector() {}
 
@@ -68,9 +68,7 @@ bool ECCollector::Collect() {
   if (feedback) {
     count_crash_function_();
 
-    if (!GetCreatedCrashDirectoryByEuid(0,
-                                        &root_crash_directory,
-                                        nullptr)) {
+    if (!GetCreatedCrashDirectoryByEuid(0, &root_crash_directory, nullptr)) {
       return true;
     }
 
@@ -93,11 +91,9 @@ bool ECCollector::Collect() {
 
     /* TODO(drinkcat): Figure out a way to add EC version to metadata. */
     AddCrashMetaData("sig", signature);
-    WriteCrashMetaData(
-        root_crash_directory.Append(
-            StringPrintf("%s.meta", dump_basename.c_str())),
-        kECExecName,
-        ec_crash_path.value());
+    WriteCrashMetaData(root_crash_directory.Append(
+                           StringPrintf("%s.meta", dump_basename.c_str())),
+                       kECExecName, ec_crash_path.value());
 
     LOG(INFO) << "Stored EC crash to " << ec_crash_path.value();
   }

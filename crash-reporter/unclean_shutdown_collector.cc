@@ -27,11 +27,9 @@ UncleanShutdownCollector::UncleanShutdownCollector()
     : unclean_shutdown_file_(kUncleanShutdownFile),
       powerd_trace_path_(kPowerdTracePath),
       powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)),
-      os_release_path_(kOsRelease) {
-}
+      os_release_path_(kOsRelease) {}
 
-UncleanShutdownCollector::~UncleanShutdownCollector() {
-}
+UncleanShutdownCollector::~UncleanShutdownCollector() {}
 
 bool UncleanShutdownCollector::Enable() {
   FilePath file_path(unclean_shutdown_file_);
@@ -79,8 +77,7 @@ bool UncleanShutdownCollector::Disable() {
 
 bool UncleanShutdownCollector::SaveVersionData() {
   FilePath crash_directory(crash_reporter_state_path_);
-  FilePath saved_lsb_release =
-      crash_directory.Append(lsb_release_.BaseName());
+  FilePath saved_lsb_release = crash_directory.Append(lsb_release_.BaseName());
   if (!base::CopyFile(lsb_release_, saved_lsb_release)) {
     PLOG(ERROR) << "Failed to copy " << lsb_release_.value() << " to "
                 << saved_lsb_release.value();

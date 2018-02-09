@@ -33,8 +33,8 @@ class KernelCollector : public CrashCollector {
 
   ~KernelCollector() override;
 
-  void OverrideEventLogPath(const base::FilePath &file_path);
-  void OverridePreservedDumpPath(const base::FilePath &file_path);
+  void OverrideEventLogPath(const base::FilePath& file_path);
+  void OverridePreservedDumpPath(const base::FilePath& file_path);
 
   // Enable collection.
   bool Enable();
@@ -47,8 +47,8 @@ class KernelCollector : public CrashCollector {
   bool Collect();
 
   // Compute a stack signature string from a kernel dump.
-  bool ComputeKernelStackSignature(const std::string &kernel_dump,
-                                   std::string *kernel_signature,
+  bool ComputeKernelStackSignature(const std::string& kernel_dump,
+                                   std::string* kernel_signature,
                                    bool print_diagnostics);
 
   // Set the architecture of the crash dumps we are looking at.
@@ -62,12 +62,13 @@ class KernelCollector : public CrashCollector {
 
   virtual bool DumpDirMounted();
 
-  bool LoadPreservedDump(std::string *contents);
+  bool LoadPreservedDump(std::string* contents);
 
   bool LastRebootWasWatchdog();
-  bool LoadConsoleRamoops(std::string *contents);
+  bool LoadConsoleRamoops(std::string* contents);
 
-  base::FilePath GetDumpRecordPath(const char* type, const char* driver,
+  base::FilePath GetDumpRecordPath(const char* type,
+                                   const char* driver,
                                    size_t record);
   base::FilePath GetDumpRecordOldPath(const char* type, const char* driver);
 
@@ -81,30 +82,30 @@ class KernelCollector : public CrashCollector {
   //  * true if no error occured.
   // Not finding a valid record is not an error state and is signaled by the
   // record_found output parameter.
-  bool ReadRecordToString(std::string *contents,
+  bool ReadRecordToString(std::string* contents,
                           size_t current_record,
-                          bool *record_found);
+                          bool* record_found);
 
   void ProcessStackTrace(pcrecpp::StringPiece kernel_dump,
                          bool print_diagnostics,
-                         unsigned *hash,
-                         float *last_stack_timestamp,
-                         bool *is_watchdog_crash);
+                         unsigned* hash,
+                         float* last_stack_timestamp,
+                         bool* is_watchdog_crash);
   bool FindCrashingFunction(pcrecpp::StringPiece kernel_dump,
                             bool print_diagnostics,
                             float stack_trace_timestamp,
-                            std::string *crashing_function);
+                            std::string* crashing_function);
   bool FindPanicMessage(pcrecpp::StringPiece kernel_dump,
                         bool print_diagnostics,
-                        std::string *panic_message);
+                        std::string* panic_message);
 
   // Returns the architecture kind for which we are built.
   static ArchKind GetCompilerArch();
 
   // Watchdog reboots leave no stack trace. Generate a poor man's signature out
   // of the last log line instead (minus the timestamp ended by ']').
-  static void WatchdogSignature(const std::string &console_ramoops,
-                                std::string *signature);
+  static void WatchdogSignature(const std::string& console_ramoops,
+                                std::string* signature);
 
   bool is_enabled_;
   base::FilePath eventlog_path_;

@@ -28,10 +28,10 @@ class ChromeCollector : public CrashCollector {
   static const char kSuccessMagic[];
 
   // Handle a specific chrome crash.  Returns true on success.
-  bool HandleCrash(const base::FilePath &file_path,
-                   const std::string &pid_string,
-                   const std::string &uid_string,
-                   const std::string &exe_name);
+  bool HandleCrash(const base::FilePath& file_path,
+                   const std::string& pid_string,
+                   const std::string& uid_string,
+                   const std::string& exe_name);
 
  protected:
   void SetUpDBus() override;
@@ -50,19 +50,20 @@ class ChromeCollector : public CrashCollector {
   // at least one character
   // For file values, name actually contains both a description and a filename,
   // in a fixed format of: <description>"; filename="<filename>"
-  bool ParseCrashLog(const std::string &data, const base::FilePath &dir,
-                     const base::FilePath &minidump,
-                     const std::string &basename);
+  bool ParseCrashLog(const std::string& data,
+                     const base::FilePath& dir,
+                     const base::FilePath& minidump,
+                     const std::string& basename);
 
   // Writes additional logs for |exe_name| to files based on |basename| within
   // |dir|. Crash report metadata key names and the corresponding file paths are
   // returned.
   std::map<std::string, base::FilePath> GetAdditionalLogs(
-      const base::FilePath &dir,
-      const std::string &basename,
-      const std::string &exe_name);
+      const base::FilePath& dir,
+      const std::string& basename,
+      const std::string& exe_name);
 
-  FILE *output_file_ptr_;
+  FILE* output_file_ptr_;
 
   // D-Bus proxy for debugd interface.  Unset in unit tests.
   std::unique_ptr<org::chromium::debugdProxy> debugd_proxy_;

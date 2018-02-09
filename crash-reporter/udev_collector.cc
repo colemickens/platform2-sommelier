@@ -37,7 +37,7 @@ UdevCollector::UdevCollector()
 
 UdevCollector::~UdevCollector() {}
 
-bool UdevCollector::HandleCrash(const std::string &udev_event) {
+bool UdevCollector::HandleCrash(const std::string& udev_event) {
   if (IsDeveloperImage()) {
     LOG(INFO) << "developer image - collect udev crash info.";
   } else if (is_feedback_allowed_function_()) {
@@ -73,8 +73,7 @@ bool UdevCollector::HandleCrash(const std::string &udev_event) {
     return ProcessDevCoredump(crash_directory, instance_number);
   }
 
-  return ProcessUdevCrashLogs(crash_directory,
-                              udev_event_map["ACTION"],
+  return ProcessUdevCrashLogs(crash_directory, udev_event_map["ACTION"],
                               udev_event_map["KERNEL"],
                               udev_event_map["SUBSYSTEM"]);
 }
@@ -95,12 +94,11 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
   // Hence, "" is used as a wildcard name string.
   // TODO(sque, crosbug.com/32238): Implement wildcard checking.
   std::string basename = action + "-" + kernel + "-" + subsystem;
-  std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
-                              basename;
+  std::string udev_log_name =
+      std::string(kCollectUdevSignature) + '-' + basename;
 
   // Create the destination path.
-  std::string log_file_name =
-      FormatDumpBasename(basename, time(nullptr), 0);
+  std::string log_file_name = FormatDumpBasename(basename, time(nullptr), 0);
   FilePath crash_path = GetCrashPath(crash_directory, log_file_name, "log");
 
   // Handle the crash.
@@ -131,10 +129,8 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
 
 bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
                                        int instance_number) {
-  FilePath coredump_path =
-      FilePath(base::StringPrintf("%s/devcd%d/data",
-                                  dev_coredump_directory_.c_str(),
-                                  instance_number));
+  FilePath coredump_path = FilePath(base::StringPrintf(
+      "%s/devcd%d/data", dev_coredump_directory_.c_str(), instance_number));
   if (!base::PathExists(coredump_path)) {
     LOG(ERROR) << "Device coredump file " << coredump_path.value()
                << " does not exist";
@@ -166,9 +162,8 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
   std::string coredump_prefix =
       base::StringPrintf(kDevCoredumpFilePrefixFormat, driver_name.c_str());
 
-  std::string dump_basename = FormatDumpBasename(coredump_prefix,
-                                                 time(nullptr),
-                                                 instance_number);
+  std::string dump_basename =
+      FormatDumpBasename(coredump_prefix, time(nullptr), instance_number);
   FilePath core_path = GetCrashPath(crash_directory, dump_basename, "devcore");
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
@@ -182,7 +177,7 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
 
   // Collect additional logs if one is specified in the config file.
   std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
-      kUdevSubsystemDevCoredump + '-' + driver_name;
+                              kUdevSubsystemDevCoredump + '-' + driver_name;
   bool result = GetLogContents(log_config_path_, udev_log_name, log_path);
   if (result) {
     AddCrashMetaUploadFile("logs", log_path.value());
@@ -203,10 +198,9 @@ bool UdevCollector::ClearDevCoredump(const FilePath& coredump_path) {
 }
 
 std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
-  FilePath failing_uevent_path =
-      FilePath(base::StringPrintf("%s/devcd%d/failing_device/uevent",
-                                  dev_coredump_directory_.c_str(),
-                                  instance_number));
+  FilePath failing_uevent_path = FilePath(
+      base::StringPrintf("%s/devcd%d/failing_device/uevent",
+                         dev_coredump_directory_.c_str(), instance_number));
   if (!base::PathExists(failing_uevent_path)) {
     LOG(ERROR) << "Failing uevent path " << failing_uevent_path.value()
                << " does not exist";

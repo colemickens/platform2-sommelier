@@ -44,7 +44,7 @@ using FdFunctionPtr = ssize_t (*)(int, DataPtr, size_t);
 // destination, respectively.
 template <typename DataPtr, typename BytePtr, FdFunctionPtr<DataPtr> op>
 struct FdOperation {
-  bool operator ()(int fd, DataPtr data, size_t count) {
+  bool operator()(int fd, DataPtr data, size_t count) {
     BytePtr ptr = reinterpret_cast<BytePtr>(data);
     while (count > 0) {
       const ssize_t n = TEMP_FAILURE_RETRY(op(fd, ptr, count));
@@ -61,17 +61,18 @@ struct FdOperation {
   }
 };
 
-FdOperation<void *, uint8_t *, &read> ReadAllBlocking;
-FdOperation<const void *, const uint8_t *, &write> WriteAllBlocking;
+FdOperation<void*, uint8_t*, &read> ReadAllBlocking;
+FdOperation<const void*, const uint8_t*, &write> WriteAllBlocking;
 
 inline bool Seek(int fd, off_t offset) {
   return lseek(fd, offset, SEEK_SET) == offset;
 }
 
-inline int64_t GetFreeDiskSpace(const char *path) {
+inline int64_t GetFreeDiskSpace(const char* path) {
   struct statvfs stats;
-  return TEMP_FAILURE_RETRY(statvfs(path, &stats)) != 0 ? -1 :
-      static_cast<int64_t>(stats.f_bavail) * stats.f_frsize;
+  return TEMP_FAILURE_RETRY(statvfs(path, &stats)) != 0
+             ? -1
+             : static_cast<int64_t>(stats.f_bavail) * stats.f_frsize;
 }
 
 }  // namespace
@@ -80,7 +81,7 @@ class CoredumpWriter::Reader {
  public:
   explicit Reader(int fd) : fd_(fd) {}
 
-  bool Read(void *buf, size_t count) {
+  bool Read(void* buf, size_t count) {
     if (!ReadAllBlocking(fd_, buf, count))
       return false;
     bytes_read_ += count;
@@ -91,8 +92,8 @@ class CoredumpWriter::Reader {
     static const size_t kBufSize = 32 * 1024;
     char buf[kBufSize];
     while (count > 0) {
-      const ssize_t n = TEMP_FAILURE_RETRY(
-          read(fd_, buf, std::min(kBufSize, count)));
+      const ssize_t n =
+          TEMP_FAILURE_RETRY(read(fd_, buf, std::min(kBufSize, count)));
       if (n < 0)
         return false;
       if (n == 0) {
@@ -121,12 +122,9 @@ class CoredumpWriter::Reader {
 };
 
 CoredumpWriter::CoredumpWriter(int fd,
-                               const char *coredump_path,
-                               const char *container_dir)
-    : fd_(fd),
-      coredump_path_(coredump_path),
-      container_dir_(container_dir) {
-}
+                               const char* coredump_path,
+                               const char* container_dir)
+    : fd_(fd), coredump_path_(coredump_path), container_dir_(container_dir) {}
 
 int CoredumpWriter::WriteCoredump() {
   const ScopedFd dest(TEMP_FAILURE_RETRY(
@@ -175,11 +173,12 @@ int CoredumpWriter::WriteCoredump() {
     PLOG_ERROR << "Failed to get free disk space";
     return EX_OSERR;
   }
-  const auto coredump_size_limit = std::min(kMaxAbsCoredumpSize,
-      static_cast<size_t>(free_disk_space * kMaxRelCoredumpSize));
+  const auto coredump_size_limit =
+      std::min(kMaxAbsCoredumpSize,
+               static_cast<size_t>(free_disk_space * kMaxRelCoredumpSize));
 
   // Calculate the output file size.
-  const auto &last = stripped_program_headers.back();
+  const auto& last = stripped_program_headers.back();
   const auto expected_coredump_size = last.p_offset + last.p_filesz;
   if (expected_coredump_size > coredump_size_limit) {
     LOG_ERROR << "Exceeded maximum core dump size by "
@@ -207,7 +206,7 @@ int CoredumpWriter::WriteCoredump() {
 
   // Write program headers.
   for (size_t i = 0; i < stripped_program_headers.size(); ++i) {
-    const Phdr &program_header = stripped_program_headers[i];
+    const Phdr& program_header = stripped_program_headers[i];
     const auto offset = sizeof(elf_header) + i * elf_header.e_phentsize;
     if (!Seek(dest, offset) ||
         !WriteAllBlocking(dest, &program_header, sizeof(program_header))) {
@@ -225,10 +224,10 @@ int CoredumpWriter::WriteCoredump() {
 
   // Write segments that were not stripped.
   for (size_t i = 1; i < stripped_program_headers.size(); ++i) {
-    const Phdr &program_header = stripped_program_headers[i];
+    const Phdr& program_header = stripped_program_headers[i];
     if (program_header.p_filesz == 0)
       continue;
-    const Phdr &program_header_original = program_headers[i];
+    const Phdr& program_header_original = program_headers[i];
     if (!reader.Seek(program_header_original.p_offset)) {
       PLOG_ERROR << "Failed to seek segment";
       return EX_IOERR;
@@ -243,10 +242,10 @@ int CoredumpWriter::WriteCoredump() {
   return EX_OK;
 }
 
-int CoredumpWriter::ReadUntilNote(Reader *reader,
-                                  Ehdr *elf_header,
-                                  std::vector<Phdr> *program_headers,
-                                  std::vector<char> *note_buf) {
+int CoredumpWriter::ReadUntilNote(Reader* reader,
+                                  Ehdr* elf_header,
+                                  std::vector<Phdr>* program_headers,
+                                  std::vector<char>* note_buf) {
   // Read ELF header.
   if (!reader->Read(elf_header, sizeof(*elf_header))) {
     PLOG_ERROR << "Failed to read ELF header";
@@ -254,8 +253,7 @@ int CoredumpWriter::ReadUntilNote(Reader *reader,
   }
   if (memcmp(elf_header->e_ident, ELFMAG, SELFMAG) != 0 ||
       elf_header->e_ident[EI_CLASS] != ElfCoreDump::kClass ||
-      elf_header->e_version != EV_CURRENT ||
-      elf_header->e_type != ET_CORE ||
+      elf_header->e_version != EV_CURRENT || elf_header->e_type != ET_CORE ||
       elf_header->e_ehsize != sizeof(Ehdr) ||
       elf_header->e_phentsize != sizeof(Phdr)) {
     LOG_ERROR << "Invalid ELF header";
@@ -277,7 +275,7 @@ int CoredumpWriter::ReadUntilNote(Reader *reader,
     LOG_ERROR << "Failed to locate PT_NOTE segment";
     return EX_OSFILE;
   }
-  const Phdr &note_program_header = (*program_headers)[0];
+  const Phdr& note_program_header = (*program_headers)[0];
 
   // Read PT_NOTE segment.
   note_buf->resize(note_program_header.p_filesz);
@@ -290,10 +288,10 @@ int CoredumpWriter::ReadUntilNote(Reader *reader,
   return EX_OK;
 }
 
-bool CoredumpWriter::GetFileMappings(const std::vector<char> &note_buf,
-                                     FileMappings *file_mappings) {
+bool CoredumpWriter::GetFileMappings(const std::vector<char>& note_buf,
+                                     FileMappings* file_mappings) {
   // Locate NT_FILE note.
-  ElfCoreDump::Note note({ note_buf.data(), note_buf.size() });
+  ElfCoreDump::Note note({note_buf.data(), note_buf.size()});
   while (note.IsValid() && note.GetType() != NT_FILE)
     note = note.GetNextNote();
 
@@ -318,24 +316,23 @@ bool CoredumpWriter::GetFileMappings(const std::vector<char> &note_buf,
     // The |files| array has |count| elements. The file paths are stored after
     // the array, as |count| null-terminated strings.
   };
-  const FileNote *file_note =
-      reinterpret_cast<const FileNote *>(note_desc.data());
+  const FileNote* file_note =
+      reinterpret_cast<const FileNote*>(note_desc.data());
   const size_t num_files = file_note->count;
-  const char *path =
-      reinterpret_cast<const char *>(&file_note->files[num_files]);
+  const char* path =
+      reinterpret_cast<const char*>(&file_note->files[num_files]);
 
   // Populate file mappings.
   for (size_t i = 0; i < num_files; ++i) {
     const auto file = &file_note->files[i];
-    const auto it = file_mappings->insert({
-        FileRange(file->start, file->end),
-        { file->offset * file_note->page_size, path }
-    });
+    const auto it =
+        file_mappings->insert({FileRange(file->start, file->end),
+                               {file->offset * file_note->page_size, path}});
     // Skip past NUL to next path.
     path += it.first->second.path.length() + 1;
   }
   // The last path should end the note.
-  if (path != reinterpret_cast<const char *>(file_note) + note_desc.length()) {
+  if (path != reinterpret_cast<const char*>(file_note) + note_desc.length()) {
     LOG_ERROR << "Invalid NT_FILE note";
     return false;
   }
@@ -343,16 +340,16 @@ bool CoredumpWriter::GetFileMappings(const std::vector<char> &note_buf,
 }
 
 void CoredumpWriter::StripSegments(
-    const std::vector<Phdr> &program_headers,
-    const FileMappings &file_mappings,
-    std::vector<Phdr> *stripped_program_headers) {
+    const std::vector<Phdr>& program_headers,
+    const FileMappings& file_mappings,
+    std::vector<Phdr>* stripped_program_headers) {
   stripped_program_headers->resize(program_headers.size());
 
   // The first segment has type PT_NOTE. Use the original data unchanged.
   (*stripped_program_headers)[0] = program_headers[0];
 
   for (size_t i = 1; i < program_headers.size(); ++i) {
-    Phdr &out = (*stripped_program_headers)[i];
+    Phdr& out = (*stripped_program_headers)[i];
     out = program_headers[i];
 
     // If the type is PT_LOAD and the range is found in the set, the segment is
@@ -363,7 +360,7 @@ void CoredumpWriter::StripSegments(
       out.p_filesz = 0;
 
     // Calculate offset.
-    const Phdr &prev_program_header = (*stripped_program_headers)[i - 1];
+    const Phdr& prev_program_header = (*stripped_program_headers)[i - 1];
     out.p_offset = prev_program_header.p_offset + prev_program_header.p_filesz;
     // Offset alignment.
     if (out.p_align != 0 && out.p_offset % out.p_align != 0)
@@ -371,9 +368,9 @@ void CoredumpWriter::StripSegments(
   }
 }
 
-int CoredumpWriter::WriteAuxv(const std::vector<char> &note_buf) {
+int CoredumpWriter::WriteAuxv(const std::vector<char>& note_buf) {
   // Locate NT_AUXV note.
-  ElfCoreDump::Note note({ note_buf.data(), note_buf.size() });
+  ElfCoreDump::Note note({note_buf.data(), note_buf.size()});
   while (note.IsValid() && note.GetType() != NT_AUXV)
     note = note.GetNextNote();
 
@@ -396,8 +393,8 @@ int CoredumpWriter::WriteAuxv(const std::vector<char> &note_buf) {
   return WriteAllBlocking(auxv, desc.data(), desc.length()) ? EX_OK : EX_IOERR;
 }
 
-int CoredumpWriter::WriteMaps(const std::vector<Phdr> &program_headers,
-                              const FileMappings &file_mappings) {
+int CoredumpWriter::WriteMaps(const std::vector<Phdr>& program_headers,
+                              const FileMappings& file_mappings) {
   const auto path = container_dir_ + std::string("/maps");
   const ScopedFd maps(TEMP_FAILURE_RETRY(
       open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)));
@@ -407,7 +404,7 @@ int CoredumpWriter::WriteMaps(const std::vector<Phdr> &program_headers,
     return EX_CANTCREAT;
   }
 
-  for (const auto &program_header : program_headers) {
+  for (const auto& program_header : program_headers) {
     if (program_header.p_type != PT_LOAD)
       continue;
     const FileRange range(program_header.p_vaddr,
@@ -426,16 +423,14 @@ int CoredumpWriter::WriteMaps(const std::vector<Phdr> &program_headers,
         "-"
         "%08" PRIxPTR
         " %c%c%c%c"
-        " %08" PRIx64
-        " %02x:%02x %lu %s\n",
-        range.first, range.second,
-        program_header.p_flags & PF_R ? 'r' : '-',
+        " %08" PRIx64 " %02x:%02x %lu %s\n",
+        range.first, range.second, program_header.p_flags & PF_R ? 'r' : '-',
         program_header.p_flags & PF_W ? 'w' : '-',
         program_header.p_flags & PF_X ? 'x' : '-',
         'p',  // Fake value: we can't know if the mapping is shared or private.
         static_cast<uint64_t>(offset),
-        0,  // Fake device (major) value.
-        0,  // Fake device (minor) value.
+        0,    // Fake device (major) value.
+        0,    // Fake device (minor) value.
         0ul,  // Fake inode value.
         path);
     if (len < 0 || len >= kBufSize || !WriteAllBlocking(maps, buf, len))

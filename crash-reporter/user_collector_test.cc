@@ -47,7 +47,7 @@ class UserCollectorMock : public UserCollector {
   MOCK_METHOD0(SetUpDBus, void());
   MOCK_CONST_METHOD1(GetCommandLine, std::vector<std::string>(pid_t pid));
   MOCK_METHOD2(AddCrashMetaUploadData,
-               void(const std::string &key, const std::string &value));
+               void(const std::string& key, const std::string& value));
 };
 
 class UserCollectorTest : public ::testing::Test {
@@ -56,20 +56,14 @@ class UserCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    const std::vector<std::string> default_command_line =
-        {"test_command", "--test-arg"};
+    const std::vector<std::string> default_command_line = {"test_command",
+                                                           "--test-arg"};
     EXPECT_CALL(collector_, GetCommandLine(testing::_))
         .WillRepeatedly(testing::Return(default_command_line));
 
     const pid_t pid = getpid();
-    collector_.Initialize(CountCrash,
-                          kFilePath,
-                          IsMetrics,
-                          false,
-                          false,
-                          false,
-                          "",
-                          [pid](pid_t p) { return p == pid + 1; });
+    collector_.Initialize(CountCrash, kFilePath, IsMetrics, false, false, false,
+                          "", [pid](pid_t p) { return p == pid + 1; });
     base::DeleteFile(FilePath("test"), true);
     mkdir("test", 0777);
     // Setup paths for output files.
@@ -81,14 +75,13 @@ class UserCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void ExpectFileEquals(const char *golden,
-                        const FilePath &file_path) {
+  void ExpectFileEquals(const char* golden, const FilePath& file_path) {
     std::string contents;
     EXPECT_TRUE(base::ReadFileToString(file_path, &contents));
     EXPECT_EQ(golden, contents);
   }
 
-  std::vector<std::string> SplitLines(const std::string &lines) const {
+  std::vector<std::string> SplitLines(const std::string& lines) const {
     return base::SplitString(lines, "\n", base::KEEP_WHITESPACE,
                              base::SPLIT_WANT_ALL);
   }
@@ -145,60 +138,60 @@ TEST_F(UserCollectorTest, ParseCrashAttributes) {
   int signal;
   uid_t uid;
   std::string exec_name;
-  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:1000:foobar",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:1000:foobar", &pid,
+                                              &signal, &uid, &exec_name));
   EXPECT_EQ(123456, pid);
   EXPECT_EQ(11, signal);
   EXPECT_EQ(1000, uid);
   EXPECT_EQ("foobar", exec_name);
-  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:barfoo",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:barfoo", &pid, &signal,
+                                              &uid, &exec_name));
   EXPECT_EQ(4321, pid);
   EXPECT_EQ(6, signal);
   EXPECT_EQ(-1, uid);
   EXPECT_EQ("barfoo", exec_name);
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:11",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:11", &pid, &signal, &uid,
+                                               &exec_name));
 
-  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:exec:extra",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:exec:extra", &pid,
+                                              &signal, &uid, &exec_name));
   EXPECT_EQ("exec:extra", exec_name);
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("12345p:11:foobar",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes("12345p:11:foobar", &pid,
+                                               &signal, &uid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:1 :foobar",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:1 :foobar", &pid,
+                                               &signal, &uid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456::foobar",
-      &pid, &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456::foobar", &pid, &signal,
+                                               &uid, &exec_name));
 }
 
 TEST_F(UserCollectorTest, ShouldDumpFiltering) {
   std::string reason;
-  EXPECT_FALSE(collector_.ShouldDump(pid_ + 1, true, false, false,
-                                     "chrome-wm", &reason));
+  EXPECT_FALSE(collector_.ShouldDump(pid_ + 1, true, false, false, "chrome-wm",
+                                     &reason));
   EXPECT_EQ("ignoring - PID filtered out", reason);
 }
 
 TEST_F(UserCollectorTest, ShouldDumpDeveloperImageOverridesConsent) {
   std::string reason;
-  EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, false,
-                                    "chrome-wm", &reason));
+  EXPECT_TRUE(
+      collector_.ShouldDump(pid_, false, true, false, "chrome-wm", &reason));
   EXPECT_EQ("developer build - not testing - always dumping", reason);
 
   // When running a crash test, behave as normal.
-  EXPECT_FALSE(collector_.ShouldDump(pid_, false, false, false,
-                                     "chrome-wm", &reason));
+  EXPECT_FALSE(
+      collector_.ShouldDump(pid_, false, false, false, "chrome-wm", &reason));
   EXPECT_EQ("ignoring - no consent", reason);
 }
 
 TEST_F(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage) {
   std::string reason;
   // When running a crash test, behave as normal.
-  EXPECT_FALSE(collector_.ShouldDump(pid_, false, false, false,
-                                     "chrome", &reason));
+  EXPECT_FALSE(
+      collector_.ShouldDump(pid_, false, false, false, "chrome", &reason));
   EXPECT_EQ(kChromeIgnoreMsg, reason);
   EXPECT_FALSE(collector_.ShouldDump(pid_, false, false, false,
                                      "supplied_Compositor", &reason));
@@ -221,68 +214,58 @@ TEST_F(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage) {
 
   // When running a developer image, test that chrome crashes are handled
   // when the "handle_chrome_crashes" flag is set.
-  EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
-                                    "chrome", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_TRUE(
+      collector_.ShouldDump(pid_, false, true, true, "chrome", &reason));
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "supplied_Compositor", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "supplied_PipelineThread", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "Chrome_ChildIOThread", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "supplied_Chrome_ChildIOT", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "supplied_ChromotingClien", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
   EXPECT_TRUE(collector_.ShouldDump(pid_, false, true, true,
                                     "supplied_LocalInputMonit", &reason));
-  EXPECT_EQ("developer build - not testing - always dumping",
-            reason);
+  EXPECT_EQ("developer build - not testing - always dumping", reason);
 }
 
 TEST_F(UserCollectorTest, ShouldDumpUserConsentProductionImage) {
   std::string reason;
-  EXPECT_FALSE(collector_.ShouldDump(pid_, false, false, false,
-                                     "chrome-wm", &reason));
+  EXPECT_FALSE(
+      collector_.ShouldDump(pid_, false, false, false, "chrome-wm", &reason));
   EXPECT_EQ("ignoring - no consent", reason);
 
-  EXPECT_TRUE(collector_.ShouldDump(pid_, true, false, false,
-                                    "chrome-wm", &reason));
+  EXPECT_TRUE(
+      collector_.ShouldDump(pid_, true, false, false, "chrome-wm", &reason));
   EXPECT_EQ("handling", reason);
 }
 
 TEST_F(UserCollectorTest, HandleCrashWithoutConsent) {
   s_metrics = false;
   collector_.HandleCrash("20:10:ignored", "foobar");
-  EXPECT_TRUE(FindLog(
-      "Received crash notification for foobar[20] sig 10"));
+  EXPECT_TRUE(FindLog("Received crash notification for foobar[20] sig 10"));
   ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   s_metrics = true;
   collector_.HandleCrash("5:2:ignored", "chromeos-wm");
-  EXPECT_TRUE(FindLog(
-      "Received crash notification for chromeos-wm[5] sig 2"));
+  EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 2"));
   ASSERT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   s_metrics = true;
   collector_.HandleCrash("5:2:ignored", "chrome");
-  EXPECT_TRUE(FindLog(
-      "Received crash notification for chrome[5] sig 2"));
+  EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
 }
@@ -290,8 +273,8 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
 TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   s_metrics = true;
   collector_.HandleCrash("0:2:chrome", nullptr);
-  EXPECT_TRUE(FindLog(
-      "Received crash notification for supplied_chrome[0] sig 2"));
+  EXPECT_TRUE(
+      FindLog("Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
 }
@@ -299,8 +282,8 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
 // Verifies chrome --mash crashes are handled by crash_reporter, not chrome.
 TEST_F(UserCollectorTest, HandleChromeMashCrashWithConsent) {
   s_metrics = true;
-  const std::vector<std::string> chrome_mash_command_line =
-      {"/opt/google/chrome", "--foo", "--mash-service-name=ash", "--bar"};
+  const std::vector<std::string> chrome_mash_command_line = {
+      "/opt/google/chrome", "--foo", "--mash-service-name=ash", "--bar"};
   EXPECT_CALL(collector_, GetCommandLine(testing::_))
       .WillRepeatedly(testing::Return(chrome_mash_command_line));
 
@@ -321,10 +304,9 @@ TEST_F(UserCollectorTest, GetProcessPath) {
 
 TEST_F(UserCollectorTest, GetSymlinkTarget) {
   FilePath result;
-  ASSERT_FALSE(collector_.GetSymlinkTarget(FilePath("/does_not_exist"),
-                                           &result));
-  ASSERT_TRUE(FindLog(
-      "Readlink failed on /does_not_exist with 2"));
+  ASSERT_FALSE(
+      collector_.GetSymlinkTarget(FilePath("/does_not_exist"), &result));
+  ASSERT_TRUE(FindLog("Readlink failed on /does_not_exist with 2"));
   std::string long_link;
   for (int i = 0; i < 50; ++i)
     long_link += "0123456789";
@@ -345,10 +327,9 @@ TEST_F(UserCollectorTest, GetSymlinkTarget) {
 TEST_F(UserCollectorTest, GetExecutableBaseNameFromPid) {
   std::string base_name;
   EXPECT_FALSE(collector_.GetExecutableBaseNameFromPid(0, &base_name));
-  EXPECT_TRUE(FindLog(
-      "Readlink failed on /proc/0/exe with 2"));
-  EXPECT_TRUE(FindLog(
-      "GetSymlinkTarget failed - Path /proc/0 DirectoryExists: 0"));
+  EXPECT_TRUE(FindLog("Readlink failed on /proc/0/exe with 2"));
+  EXPECT_TRUE(
+      FindLog("GetSymlinkTarget failed - Path /proc/0 DirectoryExists: 0"));
   EXPECT_TRUE(FindLog("stat /proc/0/exe failed: -1 2"));
 
   brillo::ClearLog();
@@ -394,83 +375,67 @@ TEST_F(UserCollectorTest, GetIdFromStatus) {
   int id = 1;
   EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kUserId,
                                           UserCollector::kIdEffective,
-                                          SplitLines("nothing here"),
-                                          &id));
+                                          SplitLines("nothing here"), &id));
   EXPECT_EQ(id, 1);
 
   // Not enough parameters.
-  EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kUserId,
-                                          UserCollector::kIdReal,
-                                          SplitLines("line 1\nUid:\t1\n"),
-                                          &id));
+  EXPECT_FALSE(
+      collector_.GetIdFromStatus(UserCollector::kUserId, UserCollector::kIdReal,
+                                 SplitLines("line 1\nUid:\t1\n"), &id));
 
   const std::vector<std::string> valid_contents =
       SplitLines("\nUid:\t1\t2\t3\t4\nGid:\t5\t6\t7\t8\n");
-  EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kUserId,
-                                         UserCollector::kIdReal,
-                                         valid_contents,
-                                         &id));
+  EXPECT_TRUE(collector_.GetIdFromStatus(
+      UserCollector::kUserId, UserCollector::kIdReal, valid_contents, &id));
   EXPECT_EQ(1, id);
 
   EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kUserId,
                                          UserCollector::kIdEffective,
-                                         valid_contents,
-                                         &id));
+                                         valid_contents, &id));
   EXPECT_EQ(2, id);
 
   EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kUserId,
                                          UserCollector::kIdFileSystem,
-                                         valid_contents,
-                                         &id));
+                                         valid_contents, &id));
   EXPECT_EQ(4, id);
 
   EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kGroupId,
                                          UserCollector::kIdEffective,
-                                         valid_contents,
-                                         &id));
+                                         valid_contents, &id));
   EXPECT_EQ(6, id);
 
-  EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kGroupId,
-                                         UserCollector::kIdSet,
-                                         valid_contents,
-                                         &id));
+  EXPECT_TRUE(collector_.GetIdFromStatus(
+      UserCollector::kGroupId, UserCollector::kIdSet, valid_contents, &id));
   EXPECT_EQ(7, id);
 
-  EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kGroupId,
-                                          UserCollector::IdKind(5),
-                                          valid_contents,
-                                          &id));
-  EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kGroupId,
-                                          UserCollector::IdKind(-1),
-                                          valid_contents,
-                                          &id));
+  EXPECT_FALSE(collector_.GetIdFromStatus(
+      UserCollector::kGroupId, UserCollector::IdKind(5), valid_contents, &id));
+  EXPECT_FALSE(collector_.GetIdFromStatus(
+      UserCollector::kGroupId, UserCollector::IdKind(-1), valid_contents, &id));
 
   // Fail if junk after number
-  EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kUserId,
-                                          UserCollector::kIdReal,
-                                          SplitLines("Uid:\t1f\t2\t3\t4\n"),
-                                          &id));
-  EXPECT_TRUE(collector_.GetIdFromStatus(UserCollector::kUserId,
-                                         UserCollector::kIdReal,
-                                         SplitLines("Uid:\t1\t2\t3\t4\n"),
-                                         &id));
+  EXPECT_FALSE(
+      collector_.GetIdFromStatus(UserCollector::kUserId, UserCollector::kIdReal,
+                                 SplitLines("Uid:\t1f\t2\t3\t4\n"), &id));
+  EXPECT_TRUE(
+      collector_.GetIdFromStatus(UserCollector::kUserId, UserCollector::kIdReal,
+                                 SplitLines("Uid:\t1\t2\t3\t4\n"), &id));
   EXPECT_EQ(1, id);
 
   // Fail if more than 4 numbers.
-  EXPECT_FALSE(collector_.GetIdFromStatus(UserCollector::kUserId,
-                                          UserCollector::kIdReal,
-                                          SplitLines("Uid:\t1\t2\t3\t4\t5\n"),
-                                          &id));
+  EXPECT_FALSE(
+      collector_.GetIdFromStatus(UserCollector::kUserId, UserCollector::kIdReal,
+                                 SplitLines("Uid:\t1\t2\t3\t4\t5\n"), &id));
 }
 
 TEST_F(UserCollectorTest, GetStateFromStatus) {
   std::string state;
-  EXPECT_FALSE(collector_.GetStateFromStatus(SplitLines("nothing here"),
-                                             &state));
+  EXPECT_FALSE(
+      collector_.GetStateFromStatus(SplitLines("nothing here"), &state));
   EXPECT_EQ("", state);
 
-  EXPECT_TRUE(collector_.GetStateFromStatus(SplitLines("State:\tR (running)"),
-                                            &state));
+  EXPECT_TRUE(
+      collector_.GetStateFromStatus(SplitLines("State:\tR (running)"), &state));
   EXPECT_EQ("R (running)", state);
 
   EXPECT_TRUE(collector_.GetStateFromStatus(
@@ -507,19 +472,13 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
   ASSERT_TRUE(collector_.CopyOffProcFiles(pid_, container_path));
   EXPECT_FALSE(FindLog("Could not copy"));
   static const struct {
-    const char *name;
+    const char* name;
     bool exists;
   } kExpectations[] = {
-    { "auxv", true },
-    { "cmdline", true },
-    { "environ", true },
-    { "maps", true },
-    { "mem", false },
-    { "mounts", false },
-    { "sched", false },
-    { "status", true }
+      {"auxv", true}, {"cmdline", true}, {"environ", true}, {"maps", true},
+      {"mem", false}, {"mounts", false}, {"sched", false},  {"status", true},
   };
-  for (const auto &expectation : kExpectations) {
+  for (const auto& expectation : kExpectations) {
     EXPECT_EQ(expectation.exists,
               base::PathExists(container_path.Append(expectation.name)));
   }
@@ -570,8 +529,7 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
 
   // Core file has the expected header
   ASSERT_TRUE(base::WriteFile(core_file, e_ident, sizeof(e_ident)));
-  EXPECT_EQ(UserCollector::kErrorNone,
-            collector_.ValidateCoreFile(core_file));
+  EXPECT_EQ(UserCollector::kErrorNone, collector_.ValidateCoreFile(core_file));
 
 #if __WORDSIZE == 64
   // 32-bit core file on 64-bit platform

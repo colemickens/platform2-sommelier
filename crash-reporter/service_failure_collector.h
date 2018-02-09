@@ -30,7 +30,7 @@ class ServiceFailureCollector : public CrashCollector {
   FRIEND_TEST(ServiceFailureCollectorTest, CollectOK);
 
   // Service failure dump consists only of the signature.
-  bool LoadServiceFailure(std::string *signature);
+  bool LoadServiceFailure(std::string* signature);
 
   DISALLOW_COPY_AND_ASSIGN(ServiceFailureCollector);
 };

@@ -23,14 +23,12 @@ using base::FilePath;
 using base::StringPrintf;
 
 KernelWarningCollector::KernelWarningCollector()
-    : warning_report_path_(kKernelWarningPath) {
-}
+    : warning_report_path_(kKernelWarningPath) {}
 
-KernelWarningCollector::~KernelWarningCollector() {
-}
+KernelWarningCollector::~KernelWarningCollector() {}
 
-bool KernelWarningCollector::LoadKernelWarning(std::string *content,
-                                               std::string *signature) {
+bool KernelWarningCollector::LoadKernelWarning(std::string* content,
+                                               std::string* signature) {
   FilePath kernel_warning_path(warning_report_path_.c_str());
   if (!base::ReadFileToString(kernel_warning_path, content)) {
     LOG(ERROR) << "Could not open " << kernel_warning_path.value();
@@ -75,7 +73,7 @@ bool KernelWarningCollector::Collect(WarningType type) {
     return true;
   }
 
-  const char *exec_name;
+  const char* exec_name;
   if (type == kWifi)
     exec_name = kWifiWarningExecName;
   else if (type == kSuspend)
@@ -86,16 +84,15 @@ bool KernelWarningCollector::Collect(WarningType type) {
   std::string dump_basename =
       FormatDumpBasename(exec_name, time(nullptr), kKernelPid);
   FilePath log_path = GetCrashPath(root_crash_directory, dump_basename, "log");
-  FilePath meta_path = GetCrashPath(root_crash_directory, dump_basename,
-                                    "meta");
+  FilePath meta_path =
+      GetCrashPath(root_crash_directory, dump_basename, "meta");
   FilePath kernel_crash_path = root_crash_directory.Append(
       StringPrintf("%s.kcrash", dump_basename.c_str()));
 
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(kernel_crash_path,
-                   kernel_warning.data(),
+  if (WriteNewFile(kernel_crash_path, kernel_warning.data(),
                    kernel_warning.length()) !=
       static_cast<int>(kernel_warning.length())) {
     LOG(INFO) << "Failed to write kernel warning to "

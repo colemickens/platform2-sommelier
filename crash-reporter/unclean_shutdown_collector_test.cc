@@ -48,8 +48,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash,
-                          IsMetrics);
+    collector_.Initialize(CountCrash, IsMetrics);
     rmdir(kTestDirectory);
     test_unclean_ = FilePath(kTestUnclean);
     collector_.unclean_shutdown_file_ = kTestUnclean;
@@ -65,8 +64,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void WriteStringToFile(const FilePath &file_path,
-                         const char *data) {
+  void WriteStringToFile(const FilePath& file_path, const char* data) {
     ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
   }
 
@@ -135,9 +133,8 @@ TEST_F(UncleanShutdownCollectorTest, DisableWhenNotEnabled) {
 TEST_F(UncleanShutdownCollectorTest, CantDisable) {
   mkdir(kTestDirectory, 0700);
   if (mkdir(kTestUnclean, 0700)) {
-    ASSERT_EQ(EEXIST, errno)
-        << "Error while creating directory '" << kTestUnclean
-        << "': " << strerror(errno);
+    ASSERT_EQ(EEXIST, errno) << "Error while creating directory '"
+                             << kTestUnclean << "': " << strerror(errno);
   }
   ASSERT_EQ(0, base::WriteFile(test_unclean_.Append("foo"), "", 0))
       << "Error while creating empty file '"
