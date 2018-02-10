@@ -862,20 +862,28 @@ int OciDestroy(const std::string& container_id) {
   const base::FilePath container_config_file =
       container_dir.Append(kConfigJsonFilename);
 
+  if (!base::PathExists(container_dir)) {
+    LOG(INFO) << "Container " << container_id << " has already been destroyed";
+    return 0;
+  }
+
   pid_t container_pid;
-  if (!GetContainerPID(container_id, &container_pid))
-    return -1;
+  if (!GetContainerPID(container_id, &container_pid)) {
+    LOG(INFO) << "Container " << container_id << " is not running. "
+              << "Cleaning up the container directory.";
+  } else {
+    if (kill(container_pid, 0) == 0) {
+      LOG(ERROR) << "Container " << container_id << " is still running.";
+      return -1;
+    } else if (errno != ESRCH) {
+      PLOG(ERROR) << "The state of container " << container_id
+                  << " is unknown.";
+      return -1;
+    }
+  }
 
   OciConfigPtr oci_config(new OciConfig());
   if (!OciConfigFromFile(container_config_file, oci_config)) {
-    return -1;
-  }
-
-  if (kill(container_pid, 0) == 0) {
-    LOG(ERROR) << "Container " << container_id << " is still running.";
-    return -1;
-  } else if (errno != ESRCH) {
-    PLOG(ERROR) << "The state of container " << container_id << " is unknown.";
     return -1;
   }
 
@@ -916,6 +924,8 @@ void print_help(const char* argv0) {
       "  kill    sends the specified signal to the container's init.\n"
       "          the post-stop hooks will not be run at this time.\n"
       "  destroy runs the post-stop hooks and releases all resources.\n"
+      "          If the container is not running, it just releases all\n"
+      "          resources.\n"
       "\n"
       "Global options:\n"
       "  -h, --help                     Print this message and exit.\n"
