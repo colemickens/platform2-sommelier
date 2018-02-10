@@ -133,6 +133,20 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
     // so we can use run_oci's PID as the PGID to kill all processes in the
     // container because we created a session in run_oci process.
     KillProcessGroup(pid);
+
+    // Since we've killed run_oci asynchronously, run_oci might have died
+    // without cleaning up the container directory. Run run_oci again to make
+    // sure the directory is gone.
+    std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
+                                     kContainerId};
+    int exit_code = -1;
+    if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
+      PLOG(ERROR) << "Failed to run run_oci";
+    } else if (exit_code) {
+      LOG(ERROR) << "run_oci failed to clean up resources for \""
+                 << kContainerId << "\"";
+    }
+
     return false;
   }
 
