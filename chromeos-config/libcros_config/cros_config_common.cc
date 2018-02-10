@@ -54,32 +54,4 @@ bool CrosConfig::InitCheck() const {
   return true;
 }
 
-bool CrosConfig::DecodeIdentifiers(const std::string &output,
-                                   std::string* name_out, int* sku_id_out,
-                                   std::string* whitelabel_tag_out) {
-  *sku_id_out = -1;
-  std::istringstream ss(output);
-  std::string line;
-  base::StringPairs pairs;
-  if (!base::SplitStringIntoKeyValuePairs(output, '=', '\n', &pairs)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot decode mosys output " << output;
-    return false;
-  }
-  for (const auto &pair : pairs) {
-    if (pair.second.length() < 2) {
-      CROS_CONFIG_LOG(ERROR) << "Cannot decode mosys value " << pair.second;
-      return false;
-    }
-    std::string value = pair.second.substr(1, pair.second.length() - 2);
-    if (pair.first == "name") {
-      *name_out = value;
-    } else if (pair.first == "sku") {
-      *sku_id_out = std::stoi(value);
-    } else if (pair.first == "customization") {
-      *whitelabel_tag_out = value;
-    }
-  }
-  return true;
-}
-
 }  // namespace brillo

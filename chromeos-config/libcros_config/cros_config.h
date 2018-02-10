@@ -271,16 +271,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool WriteFakeTables(base::File* smbios_file, const std::string& name,
                        int sku_id);
 
-  // Decode the device identifiers to resolve the model / submodel
-  // The decodes the output from 'mosys platform id' into the two fields
-  // @output: Output string from mosys
-  // @name_out: Returns the platform name (which may be an empty string)
-  // @sku_id_out: Returns the SKU ID (which may be -1 if there is none)
-  // @customization_id_out: Returns the customization id (may be empty string)
-  // @return true on success, false on failure
-  bool DecodeIdentifiers(const std::string &output, std::string* name_out,
-                         int* sku_id_out, std::string* customization_id_out);
-
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
   int model_offset_ = -1;        // Device tree offset of the model's node
