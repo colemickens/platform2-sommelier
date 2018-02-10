@@ -274,10 +274,11 @@ int32_t SmbProvider::CreateDirectory(const ProtoBlob& options_blob) {
   CreateDirectoryOptionsProto options;
   std::string full_path;
 
-  // TODO(allenvic): Implement recursive creation.
   const bool result =
       ParseOptionsAndPath(options_blob, &options, &full_path, &error_code) &&
-      CreateDirectory(options, full_path, &error_code);
+      CreateParentsIfNecessary(options, &error_code) &&
+      CreateSingleDirectory(options, full_path, false /* ignore_existing */,
+                            &error_code);
 
   return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
@@ -522,22 +523,6 @@ bool SmbProvider::TruncateAndCloseFile(const Proto& options,
   return truncate_result == 0;
 }
 
-bool SmbProvider::CreateDirectory(const CreateDirectoryOptionsProto& options,
-                                  const std::string& full_path,
-                                  int32_t* error_code) {
-  if (options.recursive()) {
-    NOTIMPLEMENTED();
-    return false;
-  }
-
-  const int32_t result = samba_interface_->CreateDirectory(full_path);
-  if (result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(result), error_code);
-    return false;
-  }
-  return true;
-}
-
 bool SmbProvider::GenerateParentPaths(
     const CreateDirectoryOptionsProto& options,
     int32_t* error_code,
@@ -565,6 +550,51 @@ bool SmbProvider::GenerateParentPaths(
 
   // Reverse the vector so the top parent will be first.
   std::reverse(parent_paths->begin(), parent_paths->end());
+  return true;
+}
+
+bool SmbProvider::CreateNestedDirectories(
+    const CreateDirectoryOptionsProto& options,
+    const std::vector<std::string>& paths,
+    int32_t* error_code) {
+  DCHECK(error_code);
+
+  for (auto const& path : paths) {
+    if (!CreateSingleDirectory(options, path, true /* ignore_existing */,
+                               error_code)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool SmbProvider::CreateParentsIfNecessary(
+    const CreateDirectoryOptionsProto& options, int32_t* error_code) {
+  DCHECK(error_code);
+
+  if (!options.recursive()) {
+    // Return true in this case since no parents need to be created.
+    return true;
+  }
+
+  std::vector<std::string> paths;
+  return GenerateParentPaths(options, error_code, &paths) &&
+         CreateNestedDirectories(options, paths, error_code);
+}
+
+bool SmbProvider::CreateSingleDirectory(
+    const CreateDirectoryOptionsProto& options,
+    const std::string& full_path,
+    bool ignore_existing,
+    int32_t* error_code) {
+  DCHECK(error_code);
+
+  const int32_t result = samba_interface_->CreateDirectory(full_path);
+  if (ShouldReportCreateDirError(result, ignore_existing)) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+
   return true;
 }
 

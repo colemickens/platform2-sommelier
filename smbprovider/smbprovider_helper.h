@@ -136,6 +136,11 @@ std::string GetFileName(const std::string& full_path);
 // |full_path| must be an SMB Url.
 std::string GetDirPath(const std::string& full_path);
 
+// Helper method to determine if the result from CreateDirectory should be
+// processed as an error. |result| is the result of the call to CreateDirectory.
+// If |ignore_existing| is true, EEXIST errors are ignored.
+bool ShouldReportCreateDirError(int32_t result, bool ignore_existing);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_SMBPROVIDER_HELPER_H_

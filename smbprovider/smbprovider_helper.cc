@@ -222,4 +222,11 @@ std::string GetDirPath(const std::string& full_path) {
   return base::FilePath(path).DirName().value();
 }
 
+bool ShouldReportCreateDirError(int32_t result, bool ignore_existing) {
+  if (result == 0) {
+    return false;
+  }
+  return !(result == EEXIST && ignore_existing);
+}
+
 }  // namespace smbprovider

@@ -371,4 +371,15 @@ TEST_F(SmbProviderHelperTest, GetDirPathReturnsParent) {
   EXPECT_EQ("/testShare/dogs", GetDirPath(full_path));
 }
 
+TEST_F(SmbProviderHelperTest, ShouldReportCreateDirError) {
+  EXPECT_FALSE(
+      ShouldReportCreateDirError(0 /* result */, false /* ignore_existing */));
+  EXPECT_FALSE(
+      ShouldReportCreateDirError(0 /* result */, true /* ignore_existing */));
+  EXPECT_FALSE(ShouldReportCreateDirError(EEXIST, true /* ignore_existing */));
+  EXPECT_TRUE(ShouldReportCreateDirError(EEXIST, false /* ignore_existing */));
+  EXPECT_TRUE(ShouldReportCreateDirError(EPERM, false /* ignore_existing */));
+  EXPECT_TRUE(ShouldReportCreateDirError(EPERM, true /* ignore_existing */));
+}
+
 }  // namespace smbprovider

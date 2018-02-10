@@ -196,12 +196,28 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   template <typename Proto>
   bool Seek(const Proto& options, int32_t* error_code);
 
-  // Helper method to create a directory at |full_path|. |options|
-  // determines if the creation will be recursive. Returns true on success and
-  // sets |error_code| on failure.
-  bool CreateDirectory(const CreateDirectoryOptionsProto& options,
-                       const std::string& full_path,
-                       int32_t* error_code);
+  // Creates the parent directories based on |options| if necessary. This call
+  // will return true if no directories need to be created. Returns true on
+  // success and sets |error_code| on failure.
+  bool CreateParentsIfNecessary(const CreateDirectoryOptionsProto& options,
+                                int32_t* error_code);
+
+  // Helper method to create nested directories in |paths|. |paths| must be a
+  // successive hierarchy of directories starting from the top-most parent. This
+  // will succeed even if all the directories in |paths| already exists.
+  // |options| is used for logging purposes. Returns true on success and sets
+  // |error_code| on failure.
+  bool CreateNestedDirectories(const CreateDirectoryOptionsProto& options,
+                               const std::vector<std::string>& paths,
+                               int32_t* error_code);
+
+  // Helper method to create a single directory at |full_path|. |options| is
+  // used for logging purposes. If |ignore_existing| is true, this will ignore
+  // EEXIST errors. Returns true on success and sets |error_code| on failure.
+  bool CreateSingleDirectory(const CreateDirectoryOptionsProto& options,
+                             const std::string& full_path,
+                             bool ignore_existing,
+                             int32_t* error_code);
 
   // Generates a vector of |parent_paths| from a directory path in |options|.
   // The path must be prefixed with "/". |parent_paths| will include the mount
