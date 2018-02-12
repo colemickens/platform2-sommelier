@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/strings/utf_string_conversion_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,6 +18,19 @@ const char kOctetStr[] =
     "\\F6\\CB\\A9\\10\\09\\3A\\4C\\44\\A5\\F6\\95\\DD\\0B\\94\\E3\\AE";
 
 const char kInvalidGuid[] = "10a9cbf6-3a09-444c-a5f6";
+
+// Filled by the unit tests.
+const std::vector<uint16_t>* g_rand_buffer = nullptr;
+
+// Fills data with values from g_rand_buffer, padded periodically.
+void TestingRandBytes(void* data, size_t data_size) {
+  ASSERT_NE(nullptr, g_rand_buffer);
+  ASSERT_GT(g_rand_buffer->size(), 0);
+  uint16_t* data16 = static_cast<uint16_t*>(data);
+  size_t data_size16 = data_size / sizeof(uint16_t);
+  for (size_t n = 0; n < data_size16; ++n)
+    data16[n] = g_rand_buffer->at(n % g_rand_buffer->size());
+}
 
 }  // namespace
 
@@ -315,6 +329,74 @@ TEST_F(SambaHelperTest, BuildDistinguishedName) {
 
   ou_vector.clear();
   EXPECT_EQ("", BuildDistinguishedName(ou_vector, domain));
+}
+
+// Tests basic properties of random machine passwords.
+TEST_F(SambaHelperTest, GenerateRandomMachinePassword) {
+  const std::string password = GenerateRandomMachinePassword();
+
+  // 256 code points with at most 3 bytes per code point since each code point
+  // is <= 0xFFFF.
+  EXPECT_GE(kMachinePasswordCodePoints * 3, password.size());
+
+  // Verify that code points are in a valid range.
+  int32_t password_size = static_cast<int32_t>(password.size());
+  uint32_t code_point = UINT32_MAX;
+  size_t num_code_points = 0;
+  for (int32_t char_index = 0; char_index < password_size; ++char_index) {
+    EXPECT_TRUE(base::ReadUnicodeCharacter(password.data(), password_size,
+                                           &char_index, &code_point));
+    // In the basic multilingual plane (BMP).
+    EXPECT_LE(code_point, 0xFFFF);
+
+    // Not an invalid code point.
+    EXPECT_TRUE(base::IsValidCodepoint(code_point));
+
+    // Not a NULL character.
+    EXPECT_NE(0, code_point);
+
+    ++num_code_points;
+  }
+  EXPECT_EQ(kMachinePasswordCodePoints, num_code_points);
+}
+
+// Since GenerateRandomMachinePassword is random and might be flaky, let's add
+// some deterministic tests as well.
+TEST_F(SambaHelperTest, GenerateRandomMachinePasswordExcludeSurrogates) {
+  // Code points between 0xD800 and 0xDFFF are invalid.
+  const std::vector<uint16_t> data = {'H',    'E',    'L',    0xD799, 0xD800,
+                                      0xD801, 0xDBFE, 0xDBFF, 0xDC00, 0xDC01,
+                                      0xDFFE, 0xDFFF, 0xE000, 'L',    'O'};
+  g_rand_buffer = &data;
+  SetRandomNumberGeneratorForTesting(&TestingRandBytes);
+
+  // Only 0xD799 and 0xE000 should be converted to UTF8, the ones in between
+  // should be ignored.
+  const std::string password = GenerateRandomMachinePassword();
+  std::string expected_start = "HEL";
+  base::WriteUnicodeCharacter(0xD799, &expected_start);
+  base::WriteUnicodeCharacter(0xE000, &expected_start);
+  expected_start += "LO";
+  EXPECT_EQ(expected_start, password.substr(0, expected_start.size()));
+
+  SetRandomNumberGeneratorForTesting(nullptr);
+  g_rand_buffer = nullptr;
+}
+
+TEST_F(SambaHelperTest, GenerateRandomMachinePasswordExcludeNull) {
+  // HELLO\0
+  const std::vector<uint16_t> data = {'H', 'E', 'L', 'L', 'O', 0};
+  g_rand_buffer = &data;
+  SetRandomNumberGeneratorForTesting(&TestingRandBytes);
+
+  // The \0 should be ignored and data is padded periodically.
+  const std::string password = GenerateRandomMachinePassword();
+  constexpr char expected_start[] = "HELLOHELLOHELLO";
+  EXPECT_EQ(std::string(password.data()), password);
+  EXPECT_EQ(expected_start, password.substr(0, strlen(expected_start)));
+
+  SetRandomNumberGeneratorForTesting(nullptr);
+  g_rand_buffer = nullptr;
 }
 
 }  // namespace authpolicy

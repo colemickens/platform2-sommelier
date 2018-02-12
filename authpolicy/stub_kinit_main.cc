@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/utf_string_conversions.h>
 
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/samba_helper.h"
@@ -94,6 +95,13 @@ bool HasStubAccountPropagated() {
   const char zero = 0;
   CHECK_EQ(1U, fwrite(&zero, 1, 1, test_file.get()));
   return false;
+}
+
+// Checks that |password| is UTF-8 encoded and 256 characters long.
+void CheckMachinePassword(const std::string& password) {
+  std::wstring wide_password;
+  CHECK(base::UTF8ToWide(password.c_str(), password.size(), &wide_password));
+  CHECK_EQ(kMachinePasswordCodePoints, wide_password.size());
 }
 
 // Writes a stub Kerberos credentials cache to the file path given by the
@@ -220,10 +228,19 @@ int HandleCommandLine(const std::string& command_line) {
 
   // Handle machine principles.
   if (HasMachinePrincipal(command_line)) {
-    // Machine authentication requires a keytab, not a password.
-    CHECK(password.empty());
-    std::string keytab_path = GetKeytabFilePath();
-    CHECK(!keytab_path.empty());
+    // Stub account propagation error.
+    if (TestMachinePrincipal(command_line, kExpectKeytabMachineName)) {
+      // Make sure the caller adds the debug level.
+      CHECK(Contains(command_line, kUseKeytabParam));
+      CHECK(password.empty());
+      std::string keytab_path = GetKeytabFilePath();
+      CHECK(!keytab_path.empty());
+      WriteKrb5CC(kValidKrb5CCData);
+      return kExitCodeOk;
+    }
+
+    // The ones below should be using a password.
+    CheckMachinePassword(password);
 
     // Stub account propagation error.
     if (TestMachinePrincipal(command_line, kPropagationRetryMachineName) &&

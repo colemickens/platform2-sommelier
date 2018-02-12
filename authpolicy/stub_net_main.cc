@@ -22,7 +22,6 @@
 namespace authpolicy {
 namespace {
 
-const char kStubKeytab[] = "Stub keytab file";
 const char kSmbConfDevice[] = "smb_device.conf";
 const char kSmbConfUser[] = "smb_user.conf";
 
@@ -279,16 +278,6 @@ std::string PrintGpo(const char* guid,
       version_machine, version_machine, guid, guid, kGpFlagsStr[gpflags]);
 }
 
-// Writes a fake keytab file.
-void WriteKeytabFile() {
-  std::string keytab_path = GetKeytabFilePath();
-  CHECK(!keytab_path.empty());
-  // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
-  base::ScopedFILE kt_file(fopen(keytab_path.c_str(), "w"));
-  CHECK(kt_file);
-  CHECK_EQ(1U, fwrite(kStubKeytab, strlen(kStubKeytab), 1, kt_file.get()));
-}
-
 // Reads the smb.conf file at |smb_conf_path| and extracts the netbios name.
 std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   // We need the device smb.conf here, the user smb.conf doesn't contain the
@@ -378,7 +367,6 @@ int HandleJoin(const std::string& command_line,
     return kExitCodeError;
   }
   const std::string kUserFlag(std::string(kUserParam) + " ");
-  const std::string kCreatecomputer = "createcomputer=";
 
   // Read machine name from smb.conf.
   const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
@@ -425,10 +413,10 @@ int HandleJoin(const std::string& command_line,
 
   // Check whether createcomputer argument matches the expected one.
   if (Contains(command_line, kUserFlag + kExpectOuUserPrincipal)) {
-    CHECK(Contains(command_line, kCreatecomputer + kExpectedOuCreatecomputer))
+    CHECK(Contains(command_line, std::string(kCreatecomputerParam) +
+                                     kExpectedOuCreatecomputer))
         << "Bad createcomputer arg in command line " << command_line
         << ". Expected: " << kExpectedOuCreatecomputer;
-    WriteKeytabFile();
     return kExitCodeOk;
   }
 
@@ -445,10 +433,9 @@ int HandleJoin(const std::string& command_line,
       return kExitCodeError;
     }
     // Stub valid password.
-    if (password == kPassword) {
-      WriteKeytabFile();
+    if (password == kPassword)
       return kExitCodeOk;
-    }
+
     NOTREACHED() << "UNHANDLED PASSWORD " << password;
     return kExitCodeError;
   }

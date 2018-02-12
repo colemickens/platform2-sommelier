@@ -39,9 +39,9 @@ enum class Path {
   USER_CREDENTIAL_CACHE,
   DEVICE_CREDENTIAL_CACHE,
 
-  // Keytab files.
-  MACHINE_KT_STATE,  // Persistent machine keytab.
-  MACHINE_KT_TEMP,   // Temp machine keytab.
+  // Machine credentials (authpolicy uses EITHER password OR keytab)
+  MACHINE_PASS,    // Password (used on newer installations)
+  MACHINE_KEYTAB,  // Keytab (used on older (used on older installations)
 
   // Samba/Kerberos/parser executables.
   KINIT,

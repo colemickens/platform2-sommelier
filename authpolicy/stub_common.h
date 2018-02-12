@@ -122,6 +122,8 @@ extern const char kDisableUserFlagMachineName[];
 // Triggers downloading GPO1 for the user and GPO2 for the device. Used to test
 // loopback processing for user policy.
 extern const char kLoopbackGpoMachineName[];
+// Triggers kinit to expect a keytab instead of a password.
+extern const char kExpectKeytabMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];

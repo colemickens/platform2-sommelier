@@ -46,8 +46,8 @@ int GetPipeSize() {
   return pipe_size;
 }
 
-std::string* s_info_log = nullptr;
-std::string* s_error_log = nullptr;
+std::string* g_info_log = nullptr;
+std::string* g_error_log = nullptr;
 logging::LogMessageHandlerFunction prev_log_message_handler = nullptr;
 
 // Custom log message handler that appends INFO and ERROR logs to a string and
@@ -59,10 +59,10 @@ bool HandleLogMessage(int severity,
                       const std::string& message) {
   switch (severity) {
     case logging::LOG_INFO:
-      *s_info_log += message;
+      *g_info_log += message;
       break;
     case logging::LOG_ERROR:
-      *s_error_log += message;
+      *g_error_log += message;
       break;
     default:
       break;
@@ -79,18 +79,18 @@ class ProcessExecutorTest : public ::testing::Test {
  public:
   ProcessExecutorTest() {
     // Prevent that old data sneaks into this test.
-    s_info_log = new std::string();
-    s_error_log = new std::string();
+    g_info_log = new std::string();
+    g_error_log = new std::string();
     prev_log_message_handler = logging::GetLogMessageHandler();
     logging::SetLogMessageHandler(&HandleLogMessage);
   }
 
   ~ProcessExecutorTest() override {
     logging::SetLogMessageHandler(prev_log_message_handler);
-    delete s_info_log;
-    delete s_error_log;
-    s_info_log = nullptr;
-    s_error_log = nullptr;
+    delete g_info_log;
+    delete g_error_log;
+    g_info_log = nullptr;
+    g_error_log = nullptr;
   }
 
  private:
@@ -194,6 +194,16 @@ TEST_F(ProcessExecutorTest, ReadLargeStringFromStdout) {
   EXPECT_EQ(cmd.GetExitCode(), 0);
   EXPECT_EQ(cmd.GetStdout(), large_string);
   EXPECT_EQ(cmd.GetStderr(), large_string);
+}
+
+// PushArg works.
+TEST_F(ProcessExecutorTest, PushArg) {
+  ProcessExecutor cmd({kCmdEcho});
+  cmd.PushArg("test");
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_EQ(cmd.GetStdout(), "test\n");
+  EXPECT_TRUE(cmd.GetStderr().empty());
 }
 
 // Getting exit codes.
@@ -303,14 +313,14 @@ TEST_F(ProcessExecutorTest, WritesLogsToStdout) {
   ProcessExecutor cmd({kCmdEcho, "TestLog"});
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_TRUE(s_info_log->empty());
+  EXPECT_TRUE(g_info_log->empty());
 
   cmd.LogOutput(true);
   Anonymizer anonymizer;
   cmd.SetAnonymizer(&anonymizer);
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_NE(std::string::npos, s_info_log->find("/bin/echo stdout: TestLog"));
+  EXPECT_NE(std::string::npos, g_info_log->find("/bin/echo stdout: TestLog"));
 }
 
 // Logs are sanitized.
@@ -322,8 +332,8 @@ TEST_F(ProcessExecutorTest, LogsAreSanitized) {
   cmd.SetAnonymizer(&anonymizer);
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_EQ(std::string::npos, s_info_log->find("SENSITIVE"));
-  EXPECT_NE(std::string::npos, s_info_log->find("ANONYMIZED"));
+  EXPECT_EQ(std::string::npos, g_info_log->find("SENSITIVE"));
+  EXPECT_NE(std::string::npos, g_info_log->find("ANONYMIZED"));
 }
 
 // Logging output without anonymizer fails.

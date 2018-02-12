@@ -25,6 +25,9 @@ class ProcessExecutor {
   // Gets the arguments passed into the constructor.
   const std::vector<std::string>& GetArgs() const { return args_; }
 
+  // Adds a single argument to the end of the argument list.
+  void PushArg(std::string arg) { args_.push_back(std::move(arg)); }
+
   // Set a file descriptor that gets piped into stdin during execution.
   // The file descriptor must stay valid until |Execute| is called.
   void SetInputFile(int fd);

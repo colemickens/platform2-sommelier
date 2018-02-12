@@ -256,37 +256,11 @@ TgtManager::~TgtManager() {
 
 ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
                                              int password_fd,
+                                             bool propagation_retry,
                                              const std::string& realm,
                                              const std::string& kdc_ip) {
-  realm_ = realm;
-  kdc_ip_ = kdc_ip;
-  is_machine_principal_ = IsMachine(principal);
-
-  // Duplicate password pipe in case we'll need to retry kinit.
-  base::ScopedFD password_dup(DuplicatePipe(password_fd));
-  if (!password_dup.is_valid())
-    return ERROR_LOCAL_IO;
-
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal, "-l",
-                             kRequestedTgtValidityLifetime, "-r",
-                             kRequestedTgtRenewalLifetime});
-  kinit_cmd.SetInputFile(password_fd);
-  ErrorType error = RunKinit(&kinit_cmd, false /* propagation_retry */);
-  if (error == ERROR_CONTACTING_KDC_FAILED) {
-    LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
-    kdc_ip_.clear();
-    kinit_cmd.SetInputFile(password_dup.get());
-    error = RunKinit(&kinit_cmd, false /* propagation_retry */);
-  }
-
-  // If it worked, re-trigger the TGT renewal task.
-  if (error == ERROR_NONE && tgt_autorenewal_enabled_)
-    UpdateTgtAutoRenewal();
-
-  // Trigger signal if files changed.
-  MaybeTriggerKerberosFilesChanged();
-
-  return error;
+  return AcquireTgt(principal, password_fd, Path::INVALID, propagation_retry,
+                    realm, kdc_ip);
 }
 
 ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
@@ -294,20 +268,37 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
                                            bool propagation_retry,
                                            const std::string& realm,
                                            const std::string& kdc_ip) {
+  return AcquireTgt(principal, -1 /* password_fd */, keytab_path,
+                    propagation_retry, realm, kdc_ip);
+}
+
+ErrorType TgtManager::AcquireTgt(const std::string& principal,
+                                 int password_fd,
+                                 Path keytab_path,
+                                 bool propagation_retry,
+                                 const std::string& realm,
+                                 const std::string& kdc_ip) {
+  // Either password or keytab.
+  DCHECK((password_fd != -1) ^ (keytab_path != Path::INVALID));
+
   realm_ = realm;
   kdc_ip_ = kdc_ip;
   is_machine_principal_ = IsMachine(principal);
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal, "-k", "-l",
-                             kRequestedTgtValidityLifetime, "-r",
-                             kRequestedTgtRenewalLifetime});
-  kinit_cmd.SetEnv(kKrb5KTEnvKey, kFilePrefix + paths_->Get(keytab_path));
-  ErrorType error = RunKinit(&kinit_cmd, propagation_retry);
+  ProcessExecutor kinit_cmd(
+      {paths_->Get(Path::KINIT), principal, kValidityLifetimeParam,
+       kRequestedTgtValidityLifetime, kRenewalLifetimeParam,
+       kRequestedTgtRenewalLifetime});
+  if (keytab_path != Path::INVALID) {
+    kinit_cmd.PushArg(kUseKeytabParam);
+    kinit_cmd.SetEnv(kKrb5KTEnvKey, kFilePrefix + paths_->Get(keytab_path));
+  }
+  ErrorType error = RunKinit(&kinit_cmd, password_fd, propagation_retry);
   if (error == ERROR_CONTACTING_KDC_FAILED) {
     LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
     kdc_ip_.clear();
-    error = RunKinit(&kinit_cmd, propagation_retry);
+    error = RunKinit(&kinit_cmd, password_fd, propagation_retry);
   }
 
   // If it worked, re-trigger the TGT renewal task.
@@ -362,8 +353,8 @@ void TgtManager::EnableTgtAutoRenewal(bool enabled) {
 
 ErrorType TgtManager::RenewTgt() {
   // kinit -R renews the TGT.
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), "-R"});
-  ErrorType error = RunKinit(&kinit_cmd, false);
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), kRenewParam});
+  ErrorType error = RunKinit(&kinit_cmd, -1, false);
 
   // No matter if it worked or not, reschedule auto-renewal. We might be offline
   // and want to try again later.
@@ -385,7 +376,8 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
 
   // Call klist -s to find out whether the TGT is still valid.
   {
-    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST), "-s", "-c",
+    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST), kSetExitStatusParam,
+                               kCredentialCacheParam,
                                paths_->Get(credential_cache_path_)});
     if (!jail_helper_->SetupJailAndRun(&klist_cmd, Path::KLIST_SECCOMP,
                                        TIMER_KLIST)) {
@@ -396,8 +388,8 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
   // Now that we know the TGT is valid, call klist again (without -s) and parse
   // the output to get the TGT lifetime.
   {
-    ProcessExecutor klist_cmd(
-        {paths_->Get(Path::KLIST), "-c", paths_->Get(credential_cache_path_)});
+    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST), kCredentialCacheParam,
+                               paths_->Get(credential_cache_path_)});
     if (!jail_helper_->SetupJailAndRun(&klist_cmd, Path::KLIST_SECCOMP,
                                        TIMER_KLIST)) {
       return GetKListError(klist_cmd);
@@ -423,6 +415,7 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
 }
 
 ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
+                               int password_fd,
                                bool propagation_retry) const {
   // Write configuration.
   ErrorType error = WriteKrb5Conf();
@@ -437,19 +430,35 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   const int max_tries = (propagation_retry ? kKinitMaxTries : 1);
   int tries, failed_tries = 0;
   for (tries = 1; tries <= max_tries; ++tries) {
+    // Sleep between subsequent tries (probably a propagation issue).
     if (tries > 1 && kinit_retry_sleep_enabled_) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
     }
     SetupKinitTrace(kinit_cmd);
+
+    // Set password as input. Duplicate it in any case since we don't know
+    // whether we'll have to rerun.
+    base::ScopedFD password_dup;
+    if (password_fd != -1) {
+      password_dup = DuplicatePipe(password_fd);
+      if (!password_dup.is_valid()) {
+        error = ERROR_LOCAL_IO;
+        break;
+      }
+      kinit_cmd->SetInputFile(password_dup.get());
+    }
+
     if (jail_helper_->SetupJailAndRun(kinit_cmd, Path::KINIT_SECCOMP,
                                       TIMER_KINIT)) {
       error = ERROR_NONE;
       break;
     }
+
     failed_tries++;
     OutputKinitTrace();
     error = GetKinitError(*kinit_cmd, is_machine_principal_);
+
     // If kinit fails because credentials are not propagated yet, these are
     // the error types you get.
     if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_MACHINE_NAME &&

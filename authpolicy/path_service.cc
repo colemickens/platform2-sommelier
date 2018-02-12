@@ -34,7 +34,8 @@ const char kDeviceKrb5Conf[] = "/krb5_device.conf";
 const char kUserCredentialCache[] = "/krb5cc_user";
 const char kDeviceCredentialCache[] = "/krb5cc_device";
 
-// Machine keytab.
+// Machine credentials.
+const char kMachinePass[] = "/machine_pass";
 const char kMachineKeyTab[] = "/krb5_machine.keytab";
 
 // Executables.
@@ -98,8 +99,8 @@ void PathService::Initialize() {
   Insert(Path::USER_CREDENTIAL_CACHE, samba_dir + kUserCredentialCache);
   Insert(Path::DEVICE_CREDENTIAL_CACHE, samba_dir + kDeviceCredentialCache);
 
-  Insert(Path::MACHINE_KT_STATE, state_dir + kMachineKeyTab);
-  Insert(Path::MACHINE_KT_TEMP, samba_dir + kMachineKeyTab);
+  Insert(Path::MACHINE_PASS, state_dir + kMachinePass);
+  Insert(Path::MACHINE_KEYTAB, state_dir + kMachineKeyTab);
 
   Insert(Path::KINIT, kKInitPath);
   Insert(Path::KLIST, kKListPath);

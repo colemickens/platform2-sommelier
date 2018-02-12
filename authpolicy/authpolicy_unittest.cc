@@ -1669,6 +1669,25 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsMissingFile) {
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
 }
 
+// Successful device policy fetch with keytab file. This tests backwards
+// compatibility with old clients that used a keytab file instead of a password.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithKeytab) {
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  EXPECT_EQ(ERROR_NONE,
+            Join(kExpectKeytabMachineName, kUserPrincipal, MakePasswordFd()));
+
+  // Replace the machine password by a keytab file. Authpolicy should use that
+  // instead.
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  const base::FilePath keytab_path(paths_->Get(Path::MACHINE_KEYTAB));
+  EXPECT_TRUE(base::Move(password_path, keytab_path));
+
+  MarkDeviceAsLocked();
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
 // Policy fetch fails if a file fails to download (unless it's missing, see
 // DevicePolicyFetchSucceedsMissingFile).
 TEST_F(AuthPolicyTest, DevicePolicyFetchFailsDownloadError) {

@@ -122,9 +122,8 @@ class SambaInterface {
 
   // Downloads device and extension policy from the Active Directory server and
   // stores it in |gpo_policy_data|. The device must be joined to the Active
-  // Directory domain already (see |JoinMachine|). During join, a machine
-  // password is stored in a keytab file, which is used for authentication for
-  // policy fetch.
+  // Directory domain already (see JoinMachine()) as policy fetch requires
+  // authentication with the machine account generated during domain join.
   ErrorType FetchDeviceGpos(protos::GpoPolicyData* gpo_policy_data);
 
   // Sets the default log level, see AuthPolicyFlags::DefaultLevel for details.
@@ -232,15 +231,23 @@ class SambaInterface {
   // the account's kdc_ip, dc_name and workgroup.
   ErrorType UpdateAccountData(AccountData* account);
 
+  // Acquire a Kerberos ticket-granting-ticket for the user account.
+  // |normalized_upn| is the normalized user principal name (e.g.
+  // user@EXAMPLE.COM) and |password_fd| is a file descriptor containing the
+  // user's password.
+  ErrorType AcquireUserTgt(const std::string& normalized_upn, int password_fd);
+
+  // Acquire a Kerberos ticket-granting-ticket for the device account.
+  ErrorType AcquireDeviceTgt();
+
+  // Writes the machine password to disk.
+  ErrorType WriteMachinePassword(const std::string& machine_pass) const;
+
   // Writes the file with configuration information.
   ErrorType WriteConfiguration() const;
 
   // Reads the file with configuration information.
   ErrorType ReadConfiguration();
-
-  // Copies the machine keytab file to the state directory. The copy is owned by
-  // authpolicyd, so that authpolicyd_exec cannot modify it anymore.
-  ErrorType SecureMachineKeyTab() const;
 
   // Gets user account info. If |account_id| is not empty, searches by
   // objectGUID = |account_id| only. Otherwise, searches by sAMAccountName =

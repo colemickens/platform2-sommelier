@@ -12,6 +12,9 @@ namespace authpolicy {
 
 class Anonymizer;
 
+// Number of code points in randomly generated machine passwords.
+constexpr size_t kMachinePasswordCodePoints = 32;
+
 // Group policy flags.
 const int kGpFlagAllEnabled = 0x00;
 const int kGpFlagUserDisabled = 0x01;
@@ -22,12 +25,24 @@ const int kGpFlagInvalid = 0x04;
 
 extern const char* const kGpFlagsStr[];
 
-// Params for samba executables.
+// Params for net and smbclient.
 extern const char kKerberosParam[];
 extern const char kConfigParam[];
 extern const char kDebugParam[];
 extern const char kCommandParam[];
 extern const char kUserParam[];
+extern const char kMachinepassParam[];
+extern const char kCreatecomputerParam[];
+
+// Params for kinit.
+extern const char kUseKeytabParam[];
+extern const char kValidityLifetimeParam[];
+extern const char kRenewalLifetimeParam[];
+extern const char kRenewParam[];
+
+// Params for klist.
+extern const char kSetExitStatusParam[];
+extern const char kCredentialCacheParam[];
 
 // Kerberos encryption types strings for the Kerberos configuration.
 extern const char kEncTypesAll[];
@@ -101,6 +116,18 @@ void LogLongString(const char* color,
 std::string BuildDistinguishedName(
     const std::vector<std::string>& organizational_units,
     const std::string& domain);
+
+// Generates a random password that can be used for Active Directory machine
+// accounts. It is UTF-8 encoded with |kMachinePasswordCodePoints| code points.
+// Since Kerberos code cannot handle higher code points, all code points are
+// below or equal to 0xFFFF. Excludes invalid code points. Also excludes 0x0000,
+// so that the string can be safely converted to and from const char*. The
+// runtime is not deterministic, but the average runtime is
+// O(kMachinePasswordCodePoints).
+std::string GenerateRandomMachinePassword();
+
+using RandomBytesGenerator = void(void* bytes, size_t length);
+void SetRandomNumberGeneratorForTesting(RandomBytesGenerator* rand_bytes);
 
 }  // namespace authpolicy
 

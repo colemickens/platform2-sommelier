@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/utf_string_conversion_utils.h>
+#include <crypto/random.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/log_colors.h"
@@ -36,6 +38,10 @@ const int octet_pos_map[16][2] = {  // Maps GUID position to octet position.
 
 const size_t kGuidSize = 36;   // 16 bytes, xx each byte, plus 4 '-'.
 const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
+
+// How many random code points are generated at a time during random password
+// generation. Password lentgh + some more for skipped code points.
+const size_t kRandCodePointsCount = 48;
 
 constexpr char kAttributeValueEscapedCharacters[] = ",+\"\\<>;\r\n=/";
 
@@ -80,10 +86,23 @@ constexpr char kConfigParam[] = "--configfile";
 constexpr char kDebugParam[] = "--debuglevel";
 constexpr char kCommandParam[] = "--command";
 constexpr char kUserParam[] = "-U";
+constexpr char kMachinepassParam[] = "machinepass=";
+constexpr char kCreatecomputerParam[] = "createcomputer=";
+
+constexpr char kUseKeytabParam[] = "-k";
+constexpr char kValidityLifetimeParam[] = "-l";
+constexpr char kRenewalLifetimeParam[] = "-r";
+constexpr char kRenewParam[] = "-R";
+
+constexpr char kSetExitStatusParam[] = "-s";
+constexpr char kCredentialCacheParam[] = "-c";
 
 constexpr char kEncTypesAll[] = "all";
 constexpr char kEncTypesStrong[] = "strong";
 constexpr char kEncTypesLegacy[] = "legacy";
+
+// Random number generator, used for testing purposes.
+RandomBytesGenerator* g_rand_bytes = nullptr;
 
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* user_name,
@@ -238,6 +257,41 @@ std::string BuildDistinguishedName(
   }
 
   return distinguished_name;
+}
+
+std::string GenerateRandomMachinePassword() {
+  // Each code point uses at most 3 bytes (and 3 is actually most likely), so
+  // this is a good upper bound.
+  std::string random_password;
+  random_password.reserve(kMachinePasswordCodePoints * 3);
+
+  // Since invalid code points and zero should be ignored, we cannot simply fill
+  // a wchar_t string with random bytes and convert to UTF-8. Instead, throw
+  // away bad code points (don't just map to valid code points (e.g. 0->1) as
+  // this would create a bias).
+  size_t code_point_count = 0;
+  uint16_t rand_code_points[kRandCodePointsCount];
+  for (;;) {
+    // g_rand_bytes is only set for testing.
+    if (g_rand_bytes)
+      g_rand_bytes(rand_code_points, sizeof(rand_code_points));
+    else
+      crypto::RandBytes(rand_code_points, sizeof(rand_code_points));
+
+    for (uint16_t code_point : rand_code_points) {
+      // Discard bad code points.
+      if (code_point == 0 || !base::IsValidCodepoint(code_point))
+        continue;
+
+      base::WriteUnicodeCharacter(code_point, &random_password);
+      if (++code_point_count >= kMachinePasswordCodePoints)
+        return random_password;
+    }
+  }
+}
+
+void SetRandomNumberGeneratorForTesting(RandomBytesGenerator* rand_bytes) {
+  g_rand_bytes = rand_bytes;
 }
 
 }  // namespace authpolicy

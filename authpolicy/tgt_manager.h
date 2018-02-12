@@ -49,24 +49,15 @@ class TgtManager {
   }
 
   // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
-  // and password file descriptor |password_fd|. |realm| is the Active Directory
-  // realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is the key distribution center IP.
-  // If the KDC cannot be contacted, the method retries once without prescribing
-  // the KDC IP in the Kerberos configuration.
+  // and a password file descriptor |password_fd|. See AcquiteTgt() for details.
   ErrorType AcquireTgtWithPassword(const std::string& principal,
                                    int password_fd,
+                                   bool propagation_retry,
                                    const std::string& realm,
                                    const std::string& kdc_ip);
 
   // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
-  // and keytab file |keytab_path|. If the account has just been created, it
-  // might not have propagated through Active Directory yet. In this case, set
-  // |propagation_retry| to true. The method will then retry a few times if an
-  // error occurs that indicates a propagation issue. |realm| is the Active
-  // Directory realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is the key distribution
-  // center IP. If the KDC cannot be contacted, the method tries again (in
-  // addition to potential propagation retries) without prescribing the KDC IP
-  // in the Kerberos configuration.
+  // and keytab file |keytab_path|. See AcquiteTgt() for details.
   ErrorType AcquireTgtWithKeytab(const std::string& principal,
                                  Path keytab_path,
                                  bool propagation_retry,
@@ -108,11 +99,31 @@ class TgtManager {
   bool IsTgtAutoRenewalEnabledForTesting() { return tgt_autorenewal_enabled_; }
 
  private:
-  // Writes the Kerberos configuration and runs |kinit_cmd|. If
+  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM).
+  // If |password_fd| is not -1, uses the password in that file descriptor for
+  // authentication. If |keytab_path| is not Path::INVALID, uses the keytab for
+  // authentication. Should always pass one or the other. If the account has
+  // just been created, it might not have propagated through Active Directory
+  // yet. In this case, set |propagation_retry| to true. The method will then
+  // retry a few times if an error occurs that indicates a propagation issue.
+  // |realm| is the Active Directory realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is
+  // the key distribution center IP. If the KDC cannot be contacted, the method
+  // retries once without prescribing the KDC IP in the Kerberos configuration.
+  ErrorType AcquireTgt(const std::string& principal,
+                       int password_fd,
+                       Path keytab_path,
+                       bool propagation_retry,
+                       const std::string& realm,
+                       const std::string& kdc_ip);
+
+  // Writes the Kerberos configuration and runs |kinit_cmd|. If |password_fd| is
+  // not -1, the file descriptor is duplicated and set as input pipe. If
   // |propagation_retry| is true, tries up to |kKinitMaxRetries| times as long
   // as kinit returns an error indicating that the account hasn't propagated
   // through Active Directory yet.
-  ErrorType RunKinit(ProcessExecutor* kinit_cmd, bool propagation_retry) const;
+  ErrorType RunKinit(ProcessExecutor* kinit_cmd,
+                     int password_fd,
+                     bool propagation_retry) const;
 
   // Writes the krb5 configuration file.
   ErrorType WriteKrb5Conf() const;

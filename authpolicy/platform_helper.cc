@@ -4,7 +4,6 @@
 
 #include "authpolicy/platform_helper.h"
 
-#include <cstdint>
 #include <fcntl.h>
 #include <linux/capability.h>
 #include <poll.h>
@@ -12,10 +11,12 @@
 #include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sysexits.h>
+#include <cstdint>
 
 #include <algorithm>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
 namespace authpolicy {
@@ -117,6 +118,36 @@ bool ReadPipeToString(int fd, std::string* out) {
   // Size limit hit. Do one more read to check if the file size is exactly
   // kMaxReadSize bytes.
   return HANDLE_EINTR(read(fd, buffer, 1)) == 0;
+}
+
+base::ScopedFD ReadFileToPipe(const base::FilePath& path) {
+  base::ScopedFD pipe;
+  int pipe_fd[2];
+  if (!base::CreateLocalNonBlockingPipe(pipe_fd)) {
+    LOG(ERROR) << "Failed to create pipe";
+    return pipe;
+  }
+  base::ScopedFD pipe_read_end(pipe_fd[0]);
+  base::ScopedFD pipe_write_end(pipe_fd[1]);
+
+  bool done = false;
+  base::ScopedFD file_fd(open(path.value().c_str(), O_RDONLY | O_NONBLOCK));
+  if (file_fd.get() == -1) {
+    PLOG(ERROR) << "Failed to open file '" << path.value() << "'";
+    return pipe;
+  }
+  // Splice twice. The first splice reads the whole file, but doesn't set
+  // |done|. The second splice sets |done| to true.
+  if (!SplicePipe(pipe_write_end.get(), file_fd.get(), &done) ||
+      !SplicePipe(pipe_write_end.get(), file_fd.get(), &done)) {
+    return pipe;
+  }
+  if (!done) {
+    LOG(ERROR) << "Failed to splice the whole pipe in one go";
+    return pipe;
+  }
+  pipe.swap(pipe_read_end);
+  return pipe;
 }
 
 bool PerformPipeIo(int stdin_fd,

@@ -10,6 +10,10 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
+namespace base {
+class FilePath;
+}
+
 namespace authpolicy {
 
 // Reads the whole contents of the file descriptor |fd| into the string |out|.
@@ -17,6 +21,12 @@ namespace authpolicy {
 // Returns true iff the whole pipe was successfully read and the pipe was
 // smaller than some limit (see code).
 bool ReadPipeToString(int fd, std::string* out);
+
+// Reads the file at |path| into a pipe and returns the corresponding file
+// descriptor. The descriptor is invalid in case reading the file failed or it
+// could not be copied in one go (e.g. file too big). Only works for files
+// smaller than PIPE_BUF.
+base::ScopedFD ReadFileToPipe(const base::FilePath& path);
 
 // Performs concurrent IO for three different pipes:
 // - Reads data from |stdout_fd| into |stdout|.

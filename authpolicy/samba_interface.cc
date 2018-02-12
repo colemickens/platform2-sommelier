@@ -42,7 +42,6 @@ const char kSmbConfData[] =
     "\tcache directory = %s\n"
     "\tstate directory = %s\n"
     "\tprivate directory = %s\n"
-    "\tkerberos method = secrets and keytab\n"
     "\tkerberos encryption types = %s\n"
     "\tclient signing = mandatory\n"
     "\tclient min protocol = SMB2\n"
@@ -121,6 +120,7 @@ const char kKeyObjectNameNotFound[] =
 
 // Replacement strings for anonymization.
 const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
+const char kMachinePassPlaceholder[] = "<MACHINE_PASS>";
 const char kLogonNamePlaceholder[] = "<USER_LOGON_NAME>";
 const char kGivenNamePlaceholder[] = "<USER_GIVEN_NAME>";
 const char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
@@ -485,15 +485,8 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   }
   SetUserRealm(user_realm);
 
-  // Update smb.conf, IPs, server names etc. for the user account.
-  ErrorType error = UpdateAccountData(&user_account_);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Call kinit to get the Kerberos ticket-granting-ticket.
-  DCHECK(!user_account_.kdc_ip.empty());
-  error = user_tgt_manager_.AcquireTgtWithPassword(
-      normalized_upn, password_fd, user_account_.realm, user_account_.kdc_ip);
+  // Acquire Kerberos ticket-granting-ticket for the user account.
+  ErrorType error = AcquireUserTgt(normalized_upn, password_fd);
   if (error != ERROR_NONE)
     return error;
 
@@ -656,27 +649,28 @@ ErrorType SambaInterface::JoinMachine(
     return error;
   }
 
+  // Generate random machine password.
+  const std::string machine_pass = GenerateRandomMachinePassword();
+  anonymizer_->SetReplacement(machine_pass, kMachinePassPlaceholder);
+
   // Call net ads join to join the machine to the Active Directory domain.
-  std::vector<std::string> args({paths_->Get(Path::NET), "ads", "join",
-                                 kUserParam, normalized_upn, kConfigParam,
-                                 paths_->Get(Path::DEVICE_SMB_CONF),
-                                 kDebugParam, flags_.net_log_level()});
+  ProcessExecutor net_cmd(
+      {paths_->Get(Path::NET), "ads", "join", kUserParam, normalized_upn,
+       kConfigParam, paths_->Get(Path::DEVICE_SMB_CONF), kDebugParam,
+       flags_.net_log_level(), kMachinepassParam + machine_pass});
   if (!machine_ou.empty()) {
-    args.push_back("createcomputer=" +
-                   BuildDistinguishedName(machine_ou, join_realm));
+    net_cmd.PushArg(kCreatecomputerParam +
+                    BuildDistinguishedName(machine_ou, join_realm));
   }
-  ProcessExecutor net_cmd(args);
   net_cmd.SetInputFile(password_fd);
-  net_cmd.SetEnv(kKrb5KTEnvKey,  // Machine keytab file path.
-                 kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
   if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
                                     TIMER_NET_ADS_JOIN)) {
     Reset();
     return GetNetError(net_cmd, "join");
   }
 
-  // Prevent that authpolicyd-exec can make changes to the keytab file.
-  error = SecureMachineKeyTab();
+  // Store the machine password.
+  error = WriteMachinePassword(machine_pass);
   if (error != ERROR_NONE) {
     Reset();
     return error;
@@ -737,16 +731,8 @@ ErrorType SambaInterface::FetchUserGpos(
   }
   if (user_policy_mode_ != em::DeviceUserPolicyLoopbackProcessingModeProto::
                                USER_POLICY_MODE_DEFAULT) {
-    // Update smb.conf, IPs, server names etc for the device account.
-    error = UpdateAccountData(&device_account_);
-    if (error != ERROR_NONE)
-      return error;
-
-    // Refresh TGT just in case.
-    DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
-    error = device_tgt_manager_.AcquireTgtWithKeytab(
-        device_account_.GetPrincipal(), Path::MACHINE_KT_STATE,
-        retry_machine_kinit_, device_account_.realm, device_account_.kdc_ip);
+    // Acquire Kerberos ticket-granting-ticket for the device account.
+    error = AcquireDeviceTgt();
     if (error != ERROR_NONE)
       return error;
 
@@ -774,20 +760,8 @@ ErrorType SambaInterface::FetchDeviceGpos(
   if (!IsDeviceJoined())
     return ERROR_NOT_JOINED;
 
-  // Update smb.conf, IPs, server names etc for the device account.
-  ErrorType error = UpdateAccountData(&device_account_);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Call kinit to get the Kerberos ticket-granting-ticket. retry_machine_kinit_
-  // is true for the first device policy fetch after joining Active Directory,
-  // which can be very slow because machine credentials need to propagate
-  // through the AD deployment.
-  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
-  error = device_tgt_manager_.AcquireTgtWithKeytab(
-      device_account_.GetPrincipal(), Path::MACHINE_KT_STATE,
-      retry_machine_kinit_, device_account_.realm, device_account_.kdc_ip);
-  retry_machine_kinit_ = false;
+  // Acquire Kerberos ticket-granting-ticket for the device account.
+  ErrorType error = AcquireDeviceTgt();
   if (error != ERROR_NONE)
     return error;
 
@@ -1070,6 +1044,78 @@ ErrorType SambaInterface::UpdateAccountData(AccountData* account) {
   return ERROR_NONE;
 }
 
+ErrorType SambaInterface::AcquireUserTgt(const std::string& normalized_upn,
+                                         int password_fd) {
+  // Update smb.conf, IPs, server names etc. for the user account.
+  ErrorType error = UpdateAccountData(&user_account_);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Call kinit to get the Kerberos ticket-granting-ticket.
+  DCHECK(!user_account_.kdc_ip.empty());
+  return user_tgt_manager_.AcquireTgtWithPassword(
+      normalized_upn, password_fd, false /* propagation_retry */,
+      user_account_.realm, user_account_.kdc_ip);
+}
+
+ErrorType SambaInterface::AcquireDeviceTgt() {
+  // Update smb.conf, IPs, server names etc for the device account.
+  ErrorType error = UpdateAccountData(&device_account_);
+  if (error != ERROR_NONE)
+    return error;
+
+  // |retry_machine_kinit_| is true for the first device policy fetch after
+  // joining Active Directory, which can be very slow because machine
+  // credentials need to propagate through the AD deployment.
+  bool retry_kinit = retry_machine_kinit_;
+  retry_machine_kinit_ = false;
+
+  // Acquire the Kerberos ticket-granting-ticket.
+  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  if (!base::PathExists(password_path)) {
+    // This is expected to happen on devices that had been domain joined before
+    // authpolicyd managed the machine password. They stored the machine keytab
+    // instead of the password, so use that for authentication.
+    return device_tgt_manager_.AcquireTgtWithKeytab(
+        device_account_.GetPrincipal(), Path::MACHINE_KEYTAB, retry_kinit,
+        device_account_.realm, device_account_.kdc_ip);
+  }
+
+  // Authenticate using password. Note: There is no keytab file here.
+  base::ScopedFD password_fd = ReadFileToPipe(password_path);
+  if (password_fd.get() == -1) {
+    LOG(ERROR) << "Failed to open machine password file "
+               << password_path.value();
+    return ERROR_LOCAL_IO;
+  }
+  return device_tgt_manager_.AcquireTgtWithPassword(
+      device_account_.GetPrincipal(), password_fd.get(), retry_kinit,
+      device_account_.realm, device_account_.kdc_ip);
+}
+
+ErrorType SambaInterface::WriteMachinePassword(
+    const std::string& machine_pass) const {
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  const int machine_pass_size = static_cast<int>(machine_pass.size());
+  if (base::WriteFile(password_path, machine_pass.data(), machine_pass_size) !=
+      machine_pass_size) {
+    LOG(ERROR) << "Failed to write machine password file '"
+               << password_path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+
+  // This file is only authpolicyd's business.
+  int mode =
+      base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
+  ErrorType error = SetFilePermissions(password_path, mode);
+  if (error != ERROR_NONE)
+    return error;
+
+  LOG(INFO) << "Wrote machine password file '" << password_path.value() << "'";
+  return ERROR_NONE;
+}
+
 ErrorType SambaInterface::WriteConfiguration() const {
   DCHECK(!device_account_.realm.empty());
   DCHECK(!device_account_.netbios_name.empty());
@@ -1140,57 +1186,6 @@ ErrorType SambaInterface::ReadConfiguration() {
   AnonymizeRealm(device_account_.realm, kDeviceRealmPlaceholder);
   anonymizer_->SetReplacementAllCases(device_account_.netbios_name,
                                       kMachineNamePlaceholder);
-  return ERROR_NONE;
-}
-
-ErrorType SambaInterface::SecureMachineKeyTab() const {
-  // At this point, tmp_kt_fp is rw for authpolicyd-exec only, so we, i.e.
-  // user authpolicyd, cannot read it. Thus, change file permissions as
-  // authpolicyd-exec user, so that the authpolicyd group can read it.
-  const base::FilePath temp_kt_fp(paths_->Get(Path::MACHINE_KT_TEMP));
-  const base::FilePath state_kt_fp(paths_->Get(Path::MACHINE_KT_STATE));
-  ErrorType error;
-
-  // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
-  // as authpolicyd (and own the copy).
-  {
-    ScopedSwitchToSavedUid switch_scope;
-    error = SetFilePermissions(temp_kt_fp, kFileMode_rwr);
-    if (error != ERROR_NONE)
-      return error;
-  }
-
-  // Create empty file in destination directory. Note that it is created with
-  // rw_r__r__ permissions.
-  if (base::WriteFile(state_kt_fp, nullptr, 0) != 0) {
-    LOG(ERROR) << "Failed to create file '" << state_kt_fp.value() << "'";
-    return ERROR_LOCAL_IO;
-  }
-
-  // Revoke 'read by others' permission. We could also just copy temp_kt_fp to
-  // state_kt_fp (see below) and revoke the read permission afterwards, but then
-  // state_kt_fp would be readable by anyone for a split second, causing a
-  // potential security risk.
-  error = SetFilePermissions(state_kt_fp, kFileMode_rwr);
-  if (error != ERROR_NONE)
-    return error;
-
-  // Now we may copy the file. The copy is owned by authpolicyd:authpolicyd.
-  if (!base::CopyFile(temp_kt_fp, state_kt_fp)) {
-    PLOG(ERROR) << "Failed to copy file '" << temp_kt_fp.value() << "' to '"
-                << state_kt_fp.value() << "'";
-    return ERROR_LOCAL_IO;
-  }
-
-  // Clean up temp file (must be done as authpolicyd-exec).
-  {
-    ScopedSwitchToSavedUid switch_scope;
-    if (!base::DeleteFile(temp_kt_fp, false)) {
-      LOG(ERROR) << "Failed to delete file '" << temp_kt_fp.value() << "'";
-      return ERROR_LOCAL_IO;
-    }
-  }
-
   return ERROR_NONE;
 }
 
