@@ -30,6 +30,7 @@ namespace cryptohome {
 
 using TpmKeyHandle = uint32_t;
 
+class LECredentialBackend;
 class Tpm;
 
 const TpmKeyHandle kInvalidKeyHandle = 0;
@@ -638,6 +639,14 @@ class Tpm {
   // have no notion of restricting the CCD password and don't need a signal to
   // lock things down at login.
   virtual bool SetUserType(Tpm::UserType type) = 0;
+
+  // Get a pointer to the LECredentialBackend object, which is used to call the
+  // relevant TPM commands necessary to implement Low Entropy (LE) credential
+  // protection.
+  //
+  // If the Tpm implementation does not support LE credential handling,
+  // this function will return a nullptr.
+  virtual LECredentialBackend* GetLECredentialBackend() = 0;
 
  private:
   static Tpm* singleton_;

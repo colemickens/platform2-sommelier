@@ -1235,4 +1235,48 @@ bool Tpm2Impl::SetUserType(Tpm::UserType type) {
   return true;
 }
 
+LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
+  return &le_credential_backend_;
+}
+
+bool Tpm2Impl::LECredentialBackendImpl::Reset() {
+  NOTIMPLEMENTED();
+  return false;
+}
+
+bool Tpm2Impl::LECredentialBackendImpl::InsertCredential(
+    const uint64_t label,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const brillo::SecureBlob& le_secret,
+    const brillo::SecureBlob& he_secret,
+    const brillo::SecureBlob& reset_secret,
+    const std::map<uint32_t, uint32_t>& delay_schedule,
+    std::vector<uint8_t>* cred_metadata,
+    std::vector<uint8_t>* mac) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
+bool Tpm2Impl::LECredentialBackendImpl::CheckCredential(
+    const uint64_t label,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const std::vector<uint8_t>& orig_cred_metadata,
+    const brillo::SecureBlob& le_secret,
+    std::vector<uint8_t>* new_cred_metadata,
+    std::vector<uint8_t>* new_mac,
+    brillo::SecureBlob* he_secret,
+    LECredBackendError* err) {
+  NOTIMPLEMENTED();
+  *err = LE_TPM_ERROR_TPM_OP_FAILED;
+  return false;
+}
+
+bool Tpm2Impl::LECredentialBackendImpl::RemoveCredential(
+    const uint64_t label,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const std::vector<uint8_t>& mac) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
 }  // namespace cryptohome

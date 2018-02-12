@@ -3016,4 +3016,9 @@ bool TpmImpl::SetUserType(Tpm::UserType type) {
   return true;
 }
 
+LECredentialBackend* TpmImpl::GetLECredentialBackend() {
+  // Not implemented in TPM 1.2.
+  return nullptr;
+}
+
 }  // namespace cryptohome

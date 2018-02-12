@@ -136,6 +136,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(GetVersionInfo, bool(TpmVersionInfo*));
   MOCK_METHOD1(GetIFXFieldUpgradeInfo, bool(IFXFieldUpgradeInfo*));
   MOCK_METHOD1(SetUserType, bool(Tpm::UserType));
+  MOCK_METHOD0(GetLECredentialBackend, LECredentialBackend*());
 
  private:
   TpmRetryAction Xor(TpmKeyHandle _key,

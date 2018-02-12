@@ -166,6 +166,7 @@ class StubTpm : public Tpm {
     return false;
   }
   bool SetUserType(Tpm::UserType type) override { return true; }
+  LECredentialBackend* GetLECredentialBackend() override { return nullptr; }
 };
 
 }  // namespace cryptohome
