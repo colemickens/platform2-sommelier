@@ -41,6 +41,7 @@ bool IsValidOptions(const CreateFileOptionsProto& options);
 bool IsValidOptions(const TruncateOptionsProto& options);
 bool IsValidOptions(const WriteFileOptionsProto& options);
 bool IsValidOptions(const CreateDirectoryOptionsProto& options);
+bool IsValidOptions(const MoveEntryOptionsProto& options);
 
 // Helper method to get the entry path from a proto.
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options);
@@ -50,6 +51,9 @@ std::string GetEntryPath(const DeleteEntryOptionsProto& options);
 std::string GetEntryPath(const CreateFileOptionsProto& options);
 std::string GetEntryPath(const TruncateOptionsProto& options);
 std::string GetEntryPath(const CreateDirectoryOptionsProto& options);
+
+std::string GetSourcePath(const MoveEntryOptionsProto& options);
+std::string GetDestinationPath(const MoveEntryOptionsProto& options);
 
 // Helper method to get the corresponding method name for each proto.
 const char* GetMethodName(const MountOptionsProto& unused);
@@ -64,6 +68,7 @@ const char* GetMethodName(const CreateFileOptionsProto& unused);
 const char* GetMethodName(const TruncateOptionsProto& unused);
 const char* GetMethodName(const WriteFileOptionsProto& unused);
 const char* GetMethodName(const CreateDirectoryOptionsProto& unused);
+const char* GetMethodName(const MoveEntryOptionsProto& unused);
 
 // Struct mapping to DirectoryEntryProto.
 struct DirectoryEntry {

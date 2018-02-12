@@ -103,6 +103,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
       CreateCreateDirectoryOptionsProto(
           3 /* mount_id */, "smb://testShare/dir1", true /* recursive */);
   EXPECT_TRUE(IsValidOptions(create_dir_proto));
+
+  MoveEntryOptionsProto move_entry_proto = CreateMoveEntryOptionsProto(
+      3 /* mount_id */, "smb://testShare/src", "smb://testShare/dst");
+  EXPECT_TRUE(IsValidOptions(move_entry_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -142,6 +146,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   CreateDirectoryOptionsProto create_dir_proto_blank;
   EXPECT_FALSE(IsValidOptions(create_dir_proto_blank));
+
+  MoveEntryOptionsProto move_entry_proto_blank;
+  EXPECT_FALSE(IsValidOptions(move_entry_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -213,6 +220,19 @@ TEST_F(SmbProviderProtoTest, GetEntryPath) {
   EXPECT_EQ(expected_file_path, GetEntryPath(create_file_proto));
 }
 
+// GetSourcePath and GetDestinationPath get the correct parts of a MoveEntry
+// proto.
+TEST_F(SmbProviderProtoTest, GetSourcePathAndGetDestinationPath) {
+  const std::string expected_source_path = "smb://testShare/src";
+  const std::string expected_dest_path = "smb://testShare/dest";
+
+  MoveEntryOptionsProto move_entry_proto = CreateMoveEntryOptionsProto(
+      3 /* mount_id */, expected_source_path, expected_dest_path);
+
+  EXPECT_EQ(expected_source_path, GetSourcePath(move_entry_proto));
+  EXPECT_EQ(expected_dest_path, GetDestinationPath(move_entry_proto));
+}
+
 // GetMethodName returns the correct name for each proto.
 TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kMountMethod, MountOptionsProto());
@@ -225,6 +245,7 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kReadFileMethod, ReadFileOptionsProto());
   CheckMethodName(kCreateFileMethod, CreateFileOptionsProto());
   CheckMethodName(kWriteFileMethod, WriteFileOptionsProto());
+  CheckMethodName(kMoveEntryMethod, MoveEntryOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.
