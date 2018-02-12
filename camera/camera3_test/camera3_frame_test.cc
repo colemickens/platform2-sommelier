@@ -483,8 +483,7 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   virtual void ProcessCaptureResult(const camera3_capture_result* result);
 
   // Callback functions from HAL device
-  // Do nothing.
-  virtual void Notify(const camera3_notify_msg* msg) {}
+  virtual void Notify(const camera3_notify_msg* msg);
 
   // Number of received capture results with all output buffers returned
   int32_t num_capture_results_;
@@ -502,6 +501,10 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   // Store number of partial metadatas returned in capture results with frame
   // number as the key
   std::unordered_map<uint32_t, int32_t> num_capture_result_partial_metadata_;
+
+  // Store the frames numbers that had been notified with
+  // CAMERA3_MSG_ERROR_REQUEST.
+  std::unordered_set<uint32_t> notified_error_requests_;
 };
 
 const int32_t Camera3FlushRequestsTest::kNumberOfConfiguredStreams = 1;
@@ -520,6 +523,9 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
   VLOGF_ENTER();
   ASSERT_NE(nullptr, result) << "Capture result is null";
 
+  EXPECT_EQ(result->result != nullptr, result->partial_result != 0)
+      << "Inconsistent partial metadata";
+
   if (result->result) {
     num_capture_result_partial_metadata_[result->frame_number]++;
   }
@@ -528,11 +534,25 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
       result->num_output_buffers;
 
   if (num_capture_result_buffers_[result->frame_number] ==
-      kNumberOfConfiguredStreams &&
-      num_capture_result_partial_metadata_[result->frame_number] ==
-      cam_device_.GetStaticInfo()->GetPartialResultCount()) {
+          kNumberOfConfiguredStreams &&
+      (notified_error_requests_.find(result->frame_number) !=
+           notified_error_requests_.end() ||
+       num_capture_result_partial_metadata_[result->frame_number] ==
+           cam_device_.GetStaticInfo()->GetPartialResultCount())) {
     num_capture_results_++;
     sem_post(&flush_result_sem_);
+  }
+}
+
+void Camera3FlushRequestsTest::Notify(const camera3_notify_msg* msg) {
+  // TODO(shik): support the partial failure cases
+
+  VLOGF_ENTER();
+  if (msg->type == CAMERA3_MSG_ERROR) {
+    const camera3_error_msg_t& error = msg->message.error;
+    if (error.error_code == CAMERA3_MSG_ERROR_REQUEST) {
+      notified_error_requests_.insert(error.frame_number);
+    }
   }
 }
 
