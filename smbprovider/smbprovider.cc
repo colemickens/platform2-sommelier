@@ -283,6 +283,11 @@ int32_t SmbProvider::CreateDirectory(const ProtoBlob& options_blob) {
   return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
+int32_t SmbProvider::MoveEntry(const ProtoBlob& options_blob) {
+  NOTIMPLEMENTED();
+  return 0;
+}
+
 // TODO(zentaro): When the proto's with missing mount_id are landed, this can
 // take a generic *Options proto and derive the operation name and entry path
 // itself.

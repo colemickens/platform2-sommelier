@@ -78,6 +78,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t CreateDirectory(const ProtoBlob& options_blob) override;
 
+  int32_t MoveEntry(const ProtoBlob& options_blob) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
