@@ -147,14 +147,12 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void ExpectNeedsFinalization() {
-    key_->Persist();
     EXPECT_FALSE(key_->did_finalize());
     EXPECT_TRUE(base::PathExists(key_->needs_finalization_path()));
     EXPECT_FALSE(base::PathExists(key_->key_path()));
   }
 
   void ExpectFinalized(bool did_finalize_expectation) {
-    key_->Persist();
     EXPECT_EQ(did_finalize_expectation, key_->did_finalize());
     EXPECT_FALSE(base::PathExists(key_->needs_finalization_path()));
     EXPECT_TRUE(base::PathExists(key_->key_path()));

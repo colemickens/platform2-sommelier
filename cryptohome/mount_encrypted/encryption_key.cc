@@ -196,40 +196,6 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
   return RESULT_SUCCESS;
 }
 
-void EncryptionKey::Finalized() {
-  // Make a best effort attempt to wipe the obfuscated key file from disk. This
-  // is unreliable on many levels, in particular ext4 doesn't support secure
-  // delete so the data may end up sticking around in the journal. Furthermore,
-  // SSDs may remap flash blocks on write, so the data may physically remain in
-  // the old block. See comment in Store() for more context.
-  if (base::PathExists(needs_finalization_path_)) {
-    shred(needs_finalization_path_.value().c_str());
-    base::DeleteFile(needs_finalization_path_, false /* recursive */);
-  }
-}
-
-bool EncryptionKey::DoFinalize() {
-  LOG(INFO) << "Writing keyfile " << key_path_;
-  if (!WriteKeyFile(key_path_, encryption_key_, system_key_)) {
-    LOG(ERROR) << "Failed to write " << key_path_ << " -- aborting.";
-    return false;
-  }
-
-  Finalized();
-  did_finalize_ = true;
-  return true;
-}
-
-void EncryptionKey::NeedsFinalization() {
-  LOG(INFO) << "Writing finalization intent " << needs_finalization_path_;
-  if (!WriteKeyFile(needs_finalization_path_, encryption_key_,
-                    GetUselessKey())) {
-    LOG(ERROR) << "Failed to write " << needs_finalization_path_
-               << " -- aborting.";
-    return;
-  }
-}
-
 result_code EncryptionKey::LoadChromeOSSystemKey() {
   SetTpmSystemKey();
   return RESULT_SUCCESS;
@@ -247,76 +213,95 @@ result_code EncryptionKey::SetExternalSystemKey(
 }
 
 result_code EncryptionKey::LoadEncryptionKey() {
-  if (system_key_.empty()) {
-    LOG(INFO) << "No usable system key found.";
-    base::DeleteFile(key_path_, false /* recursive */);
-  } else {
-    if (!ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
-      encryption_key_.clear();
+  if (!system_key_.empty()) {
+    if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
+      // If we found a stored encryption key, we've already finished a complete
+      // login and Cryptohome Finalize so migration is finished.
+      migration_allowed_ = false;
+      return RESULT_SUCCESS;
+    } else {
+      LOG(INFO) << "Failed to load encryption key from disk.";
     }
+  } else {
+    LOG(INFO) << "No usable system key found.";
   }
 
-  if (!encryption_key_.empty()) {
-    // If we found a stored encryption key, we've already finished a complete
-    // login and Cryptohome Finalize so migration is finished.
-    migration_allowed_ = false;
-    valid_keyfile_ = true;
+  // Delete any stale encryption key files from disk. This is important because
+  // presence of the key file determines whether finalization requests from
+  // cryptohome do need to write a key file.
+  base::DeleteFile(key_path_, false /* recursive */);
+  encryption_key_.clear();
+
+  // Check if there's a to-be-finalized key on disk.
+  if (!ReadKeyFile(needs_finalization_path_, &encryption_key_,
+                   GetUselessKey())) {
+    // This is a brand new system with no keys, so generate a fresh one.
+    LOG(INFO) << "Generating new encryption key.";
+    encryption_key_.resize(DIGEST_LENGTH);
+    cryptohome::CryptoLib::GetSecureRandom(encryption_key_.data(),
+                                           encryption_key_.size());
+    is_fresh_ = true;
   } else {
-    if (!ReadKeyFile(needs_finalization_path_, &encryption_key_,
-                     GetUselessKey())) {
-      // This is a brand new system with no keys.
-      LOG(INFO) << "Generating new encryption key.";
-      encryption_key_.resize(DIGEST_LENGTH);
-      cryptohome::CryptoLib::GetSecureRandom(encryption_key_.data(),
-                                             encryption_key_.size());
-      is_fresh_ = true;
-    } else {
-      LOG(ERROR) << "Finalization unfinished! Encryption key still on disk!";
-    }
+    LOG(ERROR) << "Finalization unfinished! Encryption key still on disk!";
   }
+
+  // At this point, we have an encryption key but it has not been finalized yet
+  // (i.e. encrypted under the system key and stored on disk in the key file).
+  //
+  // However, when we are creating the encrypted mount for the first time, the
+  // TPM might not be in a state where we have a system key. In this case we
+  // fall back to writing the obfuscated encryption key to disk (*sigh*).
+  //
+  // NB: We'd ideally never write an insufficiently protected key to disk. This
+  // is already the case for TPM 2.0 devices as they can create system keys as
+  // needed, and we can improve the situation for TPM 1.2 devices as well by (1)
+  // using an NVRAM space that doesn't get lost on TPM clear and (2) allowing
+  // mount-encrypted to take ownership and create the NVRAM space if necessary.
+  if (system_key_.empty()) {
+    if (is_fresh_) {
+      LOG(INFO) << "Writing finalization intent " << needs_finalization_path_;
+      if (!WriteKeyFile(needs_finalization_path_, encryption_key_,
+                        GetUselessKey())) {
+        LOG(ERROR) << "Failed to write " << needs_finalization_path_;
+      }
+    }
+    return RESULT_SUCCESS;
+  }
+
+  // We have a system key, so finalize now.
+  Finalize();
 
   return RESULT_SUCCESS;
 }
 
-void EncryptionKey::SetEncryptionKey(const brillo::SecureBlob& encryption_key) {
+void EncryptionKey::PersistEncryptionKey(
+    const brillo::SecureBlob& encryption_key) {
   encryption_key_ = encryption_key;
+  base::DeleteFile(key_path_, false /* recursive */);
+  Finalize();
 }
 
-void EncryptionKey::Persist() {
-  // When we are creating the encrypted mount for the first time, either
-  // finalize immediately, or write the encryption key to disk (*sigh*) to
-  // handle the seemingly endless broken or wedged TPM states.
-  //
-  // The proper way to fix this issue would be to never write an insufficiently
-  // protected key to disk. This is already the case for TPM 2.0 devices, and we
-  // can improve the situation for TPM 1.2 devices as well by (1) using an NVRAM
-  // space that doesn't get lost on TPM clear and (2) allowing mount-encrypted
-  // to take ownership and create the NVRAM space if necessary.
-  if (is_fresh_) {
-    base::DeleteFile(key_path_, false /* recurse */);
+void EncryptionKey::Finalize() {
+  CHECK(!system_key_.empty());
+  CHECK(!encryption_key_.empty());
 
-    // Devices that already have the NVRAM area populated and are being rebuilt
-    // don't need to wait for Cryptohome because the NVRAM area isn't going to
-    // change.
-    //
-    // Devices that do not have the NVRAM area populated may potentially never
-    // have the NVRAM area populated, which means we have to write the
-    // encryption key to disk until we finalize.
-    if (system_key_.empty()) {
-      NeedsFinalization();
-    } else {
-      DoFinalize();
-    }
-  } else {
-    // If we're not rebuilding and we have a sane system key, then we must
-    // either need finalization (if we failed to finalize in Cryptohome), or we
-    // have already finalized, but maybe failed to clean up.
-    if (!system_key_.empty()) {
-      if (valid_keyfile_) {
-        Finalized();
-      } else {
-        DoFinalize();
-      }
-    }
+  LOG(INFO) << "Writing keyfile " << key_path_;
+  if (!WriteKeyFile(key_path_, encryption_key_, system_key_)) {
+    LOG(ERROR) << "Failed to write " << key_path_;
+    return;
+  }
+
+  // Finalization is complete at this point.
+  did_finalize_ = true;
+
+  // Make a best effort attempt to wipe the obfuscated key file from disk. This
+  // is unreliable on many levels, in particular ext4 doesn't support secure
+  // delete so the data may end up sticking around in the journal. Furthermore,
+  // SSDs may remap flash blocks on write, so the data may physically remain in
+  // the old block. See comment above regarding options to get rid of the
+  // finalization intent file in the long run.
+  if (base::PathExists(needs_finalization_path_)) {
+    shred(needs_finalization_path_.value().c_str());
+    base::DeleteFile(needs_finalization_path_, false /* recursive */);
   }
 }

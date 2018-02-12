@@ -48,12 +48,9 @@ class EncryptionKey {
   // Load the encryption key from disk using the previously loaded system key.
   result_code LoadEncryptionKey();
 
-  // Set encryption key to the passed-in value.
-  void SetEncryptionKey(const brillo::SecureBlob& encryption_key);
-
-  // Persist the key to disk and/or clean up. This involves making sure the
-  // encryption key is written to disk so it can be recovered after reboot.
-  void Persist();
+  // Set encryption key to the passed-in value and persist it to disk. Requires
+  // a usable system key to be present.
+  void PersistEncryptionKey(const brillo::SecureBlob& encryption_key);
 
   const brillo::SecureBlob& encryption_key() const { return encryption_key_; }
   bool is_fresh() const { return is_fresh_; }
@@ -66,25 +63,13 @@ class EncryptionKey {
   }
 
  private:
-  // Clean up disk state once the encryption key is properly wrapped by the
-  // system key and persisted to disk.
-  void Finalized();
-
-  // Wrap the encryption key using the system key and write the result to disk.
-  // Call Finalized() to clean up.
-  bool DoFinalize();
-
-  // Write the encryption key wrapped under an insecure, well-known wrapping key
-  // to disk. This is needed for cases where the TPM cannot hold a secure system
-  // key yet (e.g. due to the TPM NVRAM space being absent on TPM 1.2).
-  void NeedsFinalization();
+  // Encrypts the |encryption_key_| under |system_key_| and writes the result to
+  // disk to the |key_path_| file.
+  void Finalize();
 
   // Paths.
   base::FilePath key_path_;
   base::FilePath needs_finalization_path_;
-
-  // Whether we found a valid wrapped key file on disk on Load().
-  bool valid_keyfile_ = false;
 
   // Whether the key is generated freshly, which happens if the system key is
   // missing or the key file on disk didn't exist, failed to decrypt, etc.

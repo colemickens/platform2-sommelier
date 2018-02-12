@@ -32,6 +32,7 @@
 
 #include <string>
 
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "cryptohome/mount_encrypted.h"
@@ -286,11 +287,15 @@ static result_code finalize_from_cmdline(char* key) {
   char* encryption_key;
   result_code rc;
 
-  /* For TPM2 mount-encrypted itself generates the system-key, and
-   * finalizes the encryption key at boot time. So, finalization from
-   * command line is ignored.
-   */
-  if (is_tpm2() && has_chromefw())
+  // If there already is an encrypted system key on disk, there is nothing to
+  // do. This also covers cases where the system key is not derived from the
+  // lockbox space contents (e.g. TPM 2.0 devices, TPM 1.2 devices with
+  // encrypted stateful space, factory keys, etc.), for which it is not
+  // appropriate to replace the system key. For cases where finalization is
+  // unfinished, we clear any stale system keys from disk to make sure we pass
+  // the check here.
+  EncryptionKey key_manager((base::FilePath(rootdir)));
+  if (base::PathExists(key_manager.key_path()))
     return RESULT_SUCCESS;
 
   /* Early sanity-check to see if the encrypted device exists,
@@ -302,7 +307,6 @@ static result_code finalize_from_cmdline(char* key) {
   }
 
   // Load the system key.
-  EncryptionKey key_manager((base::FilePath(rootdir)));
   if (key) {
     if (strlen(key) != 2 * DIGEST_LENGTH) {
       ERROR("Invalid key length.");
@@ -338,10 +342,9 @@ static result_code finalize_from_cmdline(char* key) {
     ERROR("Failed to decode encryption key.");
     return RESULT_FAIL_FATAL;
   }
-  key_manager.SetEncryptionKey(encryption_key_blob);
 
   // Persist the encryption key to disk.
-  key_manager.Persist();
+  key_manager.PersistEncryptionKey(encryption_key_blob);
 
   return RESULT_SUCCESS;
 }
@@ -934,7 +937,6 @@ int main(int argc, char* argv[]) {
   rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh(),
                        key.is_migration_allowed());
   if (rc == RESULT_SUCCESS) {
-    key.Persist();
     if (key.did_finalize()) {
       remove_pending();
     }
