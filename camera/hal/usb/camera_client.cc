@@ -433,7 +433,6 @@ void CameraClient::RequestHandler::HandleRequest(
   memset(&capture_result, 0, sizeof(camera3_capture_result_t));
 
   capture_result.frame_number = request->GetFrameNumber();
-  capture_result.partial_result = 1;
 
   std::vector<camera3_stream_buffer_t>* output_stream_buffers =
       request->GetStreamBuffers();
@@ -480,6 +479,8 @@ void CameraClient::RequestHandler::HandleRequest(
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";
   }
+
+  capture_result.partial_result = 1;
   capture_result.result = metadata->release();
 
   // After process_capture_result, HAL cannot access the output buffer in
