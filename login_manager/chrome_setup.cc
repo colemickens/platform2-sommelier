@@ -252,10 +252,10 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   builder->AddEnvVar("CHROMEOS_SESSION_LOG_DIR",
                      user_dir.Append("log").value());
 
-  // On devices with ARC++ camera HAL v3 Chrome needs to host the unix domain
+  // On devices with Chrome OS camera HAL, Chrome needs to host the unix domain
   // named socket /run/camera/camera3.sock to provide the camera HAL Mojo
   // service to the system.
-  if (base::PathExists(base::FilePath("/usr/bin/arc_camera3_service"))) {
+  if (base::PathExists(base::FilePath("/usr/bin/cros_camera_service"))) {
     // The socket is created and listened on by Chrome, and receives connections
     // from the camera HAL v3 process and cameraserver process in Android
     // container which run as group arc-camera.  In addition, the camera HAL v3
