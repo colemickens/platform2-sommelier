@@ -22,15 +22,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 
-// TODO(wad) This is a placeholder DBus service which allows
-//           chrome-login (and anything else running as chronos)
-//           to request to mount, unmount, or check if a mapper
-//           device is mounted. This is very temporary but should
-//           serve as a baseline for moving all the shell scripts
-//           into C++.
-//           We will need a "CheckKey" interface as well to simplify
-//           offline authentication checks.
-
 namespace env {
 static const char* kAttestationBasedEnrollmentDataFile = "ABE_DATA_FILE";
 }
