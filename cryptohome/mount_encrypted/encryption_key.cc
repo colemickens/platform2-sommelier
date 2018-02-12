@@ -138,7 +138,8 @@ brillo::SecureBlob GetKeyFromKernelCmdline() {
 
 }  // namespace
 
-EncryptionKey::EncryptionKey(const base::FilePath& rootdir) {
+EncryptionKey::EncryptionKey(Tpm* tpm, const base::FilePath& rootdir)
+    : tpm_(tpm) {
   base::FilePath stateful_mount = rootdir.AppendASCII(paths::kStatefulMount);
   key_path_ = stateful_mount.AppendASCII(paths::kEncryptedKey);
   needs_finalization_path_ =
@@ -158,7 +159,7 @@ result_code EncryptionKey::SetTpmSystemKey() {
 
   brillo::SecureBlob key(DIGEST_LENGTH);
   int migrate = 0;
-  result_code rc = get_nvram_key(key.data(), &migrate);
+  result_code rc = get_nvram_key(tpm_, key.data(), &migrate);
   migration_allowed_ = migrate;
 
   if (rc == RESULT_SUCCESS) {

@@ -7,90 +7,92 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <base/logging.h>
+
 #include <vboot/tlcl.h>
 
 #include <openssl/rand.h>
 
 #include "cryptohome/mount_encrypted.h"
 
-int has_tpm = 0;
-uint8_t nvram_data[LOCKBOX_SIZE_MAX];
-uint32_t nvram_size = 0;
+Tpm::Tpm() {
+#if USE_TPM2
+  is_tpm2_ = true;
+#endif
 
-static int tpm_init_called = 0;
-
-void tpm_init() {
-  uint32_t result;
-
-  if (tpm_init_called)
-    return;
-
-  DEBUG("Opening TPM");
+  VLOG(1) << "Opening TPM";
 
   setenv("TPM_NO_EXIT", "1", 1);
-  result = TlclLibInit();
+  available_ = (TlclLibInit() == TPM_SUCCESS);
 
-  tpm_init_called = 1;
-  has_tpm = (result == TPM_SUCCESS);
-  INFO("TPM %s", has_tpm ? "ready" : "not available");
+  LOG(INFO) << "TPM " << (available_ ? "ready" : "not available");
 }
 
-/* Returns TPM result status code, and on TPM_SUCCESS, stores ownership
- * flag to "owned".
- */
-uint32_t tpm_owned(uint8_t* owned) {
-  uint32_t result;
-
-  tpm_init();
-  DEBUG("Reading TPM Ownership Flag");
-  if (!has_tpm)
-    result = TPM_E_NO_DEVICE;
-  else
-    result = TlclGetOwnership(owned);
-
-  DEBUG("TPM Ownership Flag returned: %s", result ? "FAIL" : "ok");
-
-  return result;
+Tpm::~Tpm() {
+  if (available_) {
+    TlclLibClose();
+  }
 }
 
-void tpm_close(void) {
-  if (!has_tpm || !tpm_init_called)
-    return;
-  TlclLibClose();
-  tpm_init_called = 0;
-}
-
-result_code get_random_bytes_tpm(unsigned char* buffer, int wanted) {
-  uint32_t remaining = wanted;
-
-  tpm_init();
-  /* Read random bytes from TPM, which can return short reads. */
-  while (remaining) {
-    uint32_t result, size;
-
-    result = TlclGetRandom(buffer + (wanted - remaining), remaining, &size);
-    if (result != TPM_SUCCESS || size > remaining) {
-      ERROR("TPM GetRandom failed: error 0x%02x.", result);
-      return RESULT_FAIL_FATAL;
-    }
-    remaining -= size;
+result_code Tpm::IsOwned(bool* owned) {
+  if (ownership_checked_) {
+    *owned = owned_;
+    return RESULT_SUCCESS;
   }
 
+  VLOG(1) << "Reading TPM Ownership Flag";
+  if (!available_) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint8_t tmp_owned = 0;
+  uint32_t result = TlclGetOwnership(&tmp_owned);
+  VLOG(1) << "TPM Ownership Flag returned: " << (result ? "FAIL" : "ok");
+  if (result != TPM_SUCCESS) {
+    LOG(INFO) << "Could not determine TPM ownership: error " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  ownership_checked_ = true;
+  owned_ = tmp_owned;
+  *owned = owned_;
   return RESULT_SUCCESS;
 }
 
-result_code get_random_bytes(unsigned char* buffer, int wanted) {
-  if (has_tpm && get_random_bytes_tpm(buffer, wanted) == RESULT_SUCCESS)
-    return RESULT_SUCCESS;
+result_code Tpm::GetRandomBytes(uint8_t* buffer, int wanted) {
+  if (available()) {
+    // Read random bytes from TPM, which can return short reads.
+    int remaining = wanted;
+    while (remaining) {
+      uint32_t result, size;
+      result = TlclGetRandom(buffer + (wanted - remaining), remaining, &size);
+      if (result != TPM_SUCCESS) {
+        LOG(ERROR) << "TPM GetRandom failed: error " << result;
+        return RESULT_FAIL_FATAL;
+      }
+      CHECK_LE(size, remaining);
+      remaining -= size;
+    }
 
-  if (RAND_bytes(buffer, wanted))
-    return RESULT_SUCCESS;
-  SSL_ERROR("RAND_bytes");
+    if (remaining == 0) {
+      return RESULT_SUCCESS;
+    }
+  }
 
+  // Fall back to system random source.
+  if (RAND_bytes(buffer, wanted)) {
+    return RESULT_SUCCESS;
+  }
+
+  LOG(ERROR) << "Failed to obtain randomness.";
   return RESULT_FAIL_FATAL;
 }
 
-static uint32_t _read_nvram(uint8_t* buffer,
+uint8_t nvram_data[LOCKBOX_SIZE_MAX];
+uint32_t nvram_size = 0;
+
+static uint32_t _read_nvram(Tpm* tpm,
+                            uint8_t* buffer,
                             size_t len,
                             uint32_t index,
                             uint32_t size) {
@@ -101,9 +103,8 @@ static uint32_t _read_nvram(uint8_t* buffer,
     return 0;
   }
 
-  tpm_init();
   DEBUG("Reading NVRAM area 0x%x (size %u)", index, size);
-  if (!has_tpm)
+  if (!tpm->available())
     result = TPM_E_NO_DEVICE;
   else
     result = TlclRead(index, buffer, size);
@@ -116,8 +117,7 @@ static uint32_t _read_nvram(uint8_t* buffer,
  * Cache Lockbox NVRAM area in nvram_data, set nvram_size to the actual size.
  * Set *migrate to 0 for Version 2 Lockbox area, and 1 otherwise.
  */
-result_code read_lockbox_nvram_area(int* migrate) {
-  uint8_t owned = 0;
+result_code read_lockbox_nvram_area(Tpm* tpm, int* migrate) {
   uint8_t bytes_anded, bytes_ored;
   uint32_t result, i;
 
@@ -125,10 +125,10 @@ result_code read_lockbox_nvram_area(int* migrate) {
   *migrate = 1;
 
   /* Ignore unowned TPM's NVRAM area. */
-  result = tpm_owned(&owned);
-  if (result != TPM_SUCCESS) {
-    INFO("Could not read TPM Permanent Flags: error 0x%02x.", result);
-    return RESULT_FAIL_FATAL;
+  bool owned = false;
+  result_code rc = tpm->IsOwned(&owned);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
   }
   if (!owned) {
     INFO("TPM not Owned, ignoring Lockbox NVRAM area.");
@@ -143,10 +143,10 @@ result_code read_lockbox_nvram_area(int* migrate) {
    * which is the minimum possible time (instead of 40ms + time to
    * query NVRAM size).
    */
-  result = _read_nvram(nvram_data, sizeof(nvram_data), kLockboxIndex,
+  result = _read_nvram(tpm, nvram_data, sizeof(nvram_data), kLockboxIndex,
                        kLockboxSizeV2);
   if (result != TPM_SUCCESS) {
-    result = _read_nvram(nvram_data, sizeof(nvram_data), kLockboxIndex,
+    result = _read_nvram(tpm, nvram_data, sizeof(nvram_data), kLockboxIndex,
                          kLockboxSizeV1);
     if (result != TPM_SUCCESS) {
       /* No NVRAM area at all. */

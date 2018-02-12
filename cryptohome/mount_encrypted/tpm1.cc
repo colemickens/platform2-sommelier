@@ -45,13 +45,13 @@ static const uint32_t kLockboxSaltOffset = 0x5;
  *  - *digest untouched.
  *  - *migrate always 1
  */
-result_code get_nvram_key(uint8_t* digest, int* migrate) {
+result_code get_nvram_key(Tpm* tpm, uint8_t* digest, int* migrate) {
   uint8_t* rand_bytes;
   uint32_t rand_size;
   result_code rc;
 
   /* Read lockbox nvram data and "export" it for use after the helper. */
-  rc = read_lockbox_nvram_area(migrate);
+  rc = read_lockbox_nvram_area(tpm, migrate);
   if (rc != RESULT_SUCCESS)
     return rc;
 

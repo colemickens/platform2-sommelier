@@ -9,7 +9,37 @@
 
 #include <stdint.h>
 
+#include <memory>
+
+#include <base/macros.h>
+
+#include <brillo/secure_blob.h>
+
 #include "cryptohome/mount_encrypted.h"
+
+// Encapsulates high-level TPM state and the motions needed to open and close
+// the TPM library.
+class Tpm {
+ public:
+  Tpm();
+  ~Tpm();
+
+  bool available() const { return available_; }
+  bool is_tpm2() const { return is_tpm2_; }
+
+  result_code IsOwned(bool* owned);
+
+  result_code GetRandomBytes(uint8_t* buffer, int wanted);
+
+ private:
+  bool available_ = false;
+  bool is_tpm2_ = false;
+
+  bool ownership_checked_ = false;
+  bool owned_ = false;
+
+  DISALLOW_COPY_AND_ASSIGN(Tpm);
+};
 
 #define LOCKBOX_SIZE_MAX 0x45
 
@@ -22,7 +52,6 @@ static const uint32_t kLockboxIndex = 0x800004;
 static const uint32_t kLockboxIndex = 0x20000004;
 #endif
 
-extern int has_tpm;
 extern uint8_t nvram_data[LOCKBOX_SIZE_MAX];
 extern uint32_t nvram_size;
 
@@ -33,22 +62,8 @@ extern uint32_t nvram_size;
 // encrypted stateful for years, the chance that a device that was set up with a
 // Chrome OS version that didn't support stateful encryption will be switching
 // directly to this version of the code is negligibly small.
-result_code get_nvram_key(uint8_t* digest, int* migrate);
+result_code get_nvram_key(Tpm* tpm, uint8_t* digest, int* migrate);
 
-inline int is_tpm2(void) {
-#if USE_TPM2
-  return 1;
-#else
-  return 0;
-#endif
-}
-
-void tpm_init();
-uint32_t tpm_owned(uint8_t* owned);
-void tpm_close(void);
-
-result_code get_random_bytes(unsigned char* buffer, int wanted);
-
-result_code read_lockbox_nvram_area(int* migrate);
+result_code read_lockbox_nvram_area(Tpm* tpm, int* migrate);
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_

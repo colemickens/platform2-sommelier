@@ -124,7 +124,8 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
-    key_ = std::make_unique<EncryptionKey>(tmpdir_.GetPath());
+    tpm_ = std::make_unique<Tpm>();
+    key_ = std::make_unique<EncryptionKey>(tpm_.get(), tmpdir_.GetPath());
   }
 
   void SetOwned() {
@@ -188,6 +189,7 @@ class EncryptionKeyTest : public testing::Test {
   base::ScopedTempDir tmpdir_;
   TlclStub tlcl_;
 
+  std::unique_ptr<Tpm> tpm_;
   std::unique_ptr<EncryptionKey> key_;
 };
 

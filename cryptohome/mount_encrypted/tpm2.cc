@@ -64,7 +64,7 @@ static int check_tpm_result(uint32_t result, const char* operation) {
  *  - *digest untouched.
  *  - *migrate is 0
  */
-result_code get_nvram_key(uint8_t* digest, int* migrate) {
+result_code get_nvram_key(Tpm* tpm, uint8_t* digest, int* migrate) {
   uint32_t result;
   uint32_t perm;
   struct nvram_area_tpm2 area;
@@ -72,13 +72,12 @@ result_code get_nvram_key(uint8_t* digest, int* migrate) {
   /* "Export" lockbox nvram data for use after the helper.
    * Don't ever allow migration, we have no legacy TPM2 systems.
    */
-  read_lockbox_nvram_area(migrate);
+  read_lockbox_nvram_area(tpm, migrate);
   *migrate = 0;
 
   INFO("Getting key from TPM2 NVRAM index 0x%x", kNvramAreaTpm2Index);
 
-  tpm_init();
-  if (!has_tpm)
+  if (!tpm->available())
     return RESULT_FAIL_FATAL;
 
   result = TlclGetPermissions(kNvramAreaTpm2Index, &perm);
@@ -110,7 +109,7 @@ result_code get_nvram_key(uint8_t* digest, int* migrate) {
     }
     INFO("NVRAM area is new or not valid -- generating new key");
 
-    if (get_random_bytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
+    if (tpm->GetRandomBytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
       ERROR(
           "No entropy source found -- "
           "using uninitialized stack");

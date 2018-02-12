@@ -30,6 +30,7 @@
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
@@ -294,7 +295,8 @@ static result_code finalize_from_cmdline(char* key) {
   // appropriate to replace the system key. For cases where finalization is
   // unfinished, we clear any stale system keys from disk to make sure we pass
   // the check here.
-  EncryptionKey key_manager((base::FilePath(rootdir)));
+  Tpm tpm;
+  EncryptionKey key_manager(&tpm, base::FilePath(rootdir));
   if (base::PathExists(key_manager.key_path()))
     return RESULT_SUCCESS;
 
@@ -373,7 +375,7 @@ static void spawn_resizer(const char* device,
   }
 
   /* Child */
-  tpm_close();
+  TlclLibClose();
   INFO_INIT("Resizer spawned.");
 
   if (daemon(0, 1)) {
@@ -730,22 +732,23 @@ static result_code check_mount_states(void) {
 
 static result_code report_info(void) {
   uint8_t system_key[DIGEST_LENGTH];
-  uint8_t owned = 0;
   struct bind_mount* mnt;
   int migrate = -1;
 
-  tpm_init();
-  printf("TPM: %s\n", has_tpm ? "yes" : "no");
-  if (has_tpm) {
-    printf("TPM Owned: %s\n",
-           tpm_owned(&owned) != TPM_SUCCESS ? "fail" : (owned ? "yes" : "no"));
+  Tpm tpm;
+  printf("TPM: %s\n", tpm.available() ? "yes" : "no");
+  if (tpm.available()) {
+    bool owned = false;
+    printf("TPM Owned: %s\n", tpm.IsOwned(&owned) == RESULT_SUCCESS
+                                  ? (owned ? "yes" : "no")
+                                  : "fail");
   }
   printf("ChromeOS: %s\n", has_chromefw() ? "yes" : "no");
   printf("CR48: %s\n", is_cr48() ? "yes" : "no");
-  printf("TPM2: %s\n", is_tpm2() ? "yes" : "no");
+  printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
     result_code rc;
-    rc = get_nvram_key(system_key, &migrate);
+    rc = get_nvram_key(&tpm, system_key, &migrate);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
     } else {
@@ -915,7 +918,8 @@ int main(int argc, char* argv[]) {
   if (rc != RESULT_SUCCESS)
     return rc;
 
-  EncryptionKey key((base::FilePath(rootdir)));
+  Tpm tpm;
+  EncryptionKey key(&tpm, base::FilePath(rootdir));
   if (use_factory_system_key) {
     rc = key.SetFactorySystemKey();
   } else if (has_chromefw()) {
