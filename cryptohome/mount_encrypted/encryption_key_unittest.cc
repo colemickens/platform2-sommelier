@@ -33,9 +33,6 @@ const size_t kWrappedKeySize = 48;
 
 #if USE_TPM2
 
-static const uint32_t kEncStatefulIndex = 0x800005;
-static const uint32_t kEncStatefulSize = 40;
-
 const uint32_t kEncStatefulAttributesTpm2 =
     TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD | TPMA_NV_WRITEDEFINE |
     TPMA_NV_READ_STCLEAR | TPMA_NV_WRITTEN;

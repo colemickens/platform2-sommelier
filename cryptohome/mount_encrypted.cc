@@ -731,9 +731,7 @@ static result_code check_mount_states(void) {
 }
 
 static result_code report_info(void) {
-  uint8_t system_key[DIGEST_LENGTH];
   struct bind_mount* mnt;
-  int migrate = -1;
 
   Tpm tpm;
   printf("TPM: %s\n", tpm.available() ? "yes" : "no");
@@ -747,8 +745,9 @@ static result_code report_info(void) {
   printf("CR48: %s\n", is_cr48() ? "yes" : "no");
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
-    result_code rc;
-    rc = get_nvram_key(&tpm, system_key, &migrate);
+    brillo::SecureBlob system_key;
+    bool migrate = false;
+    result_code rc = LoadSystemKey(&tpm, &system_key, &migrate);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
     } else {
@@ -868,19 +867,15 @@ fail:
 }
 
 /* Exports NVRAM contents to tmpfs for use by install attributes */
-void nvram_export(uint8_t* data, uint32_t size) {
+void nvram_export(const brillo::SecureBlob& contents) {
   int fd;
   DEBUG("Export NVRAM contents");
-  if (!size || !data) {
-    DEBUG("No data to export");
-    return;
-  }
   fd = open(kNvramExport, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
   if (fd < 0) {
     perror("open(nvram_export)");
     return;
   }
-  if (write(fd, data, size) != size) {
+  if (write(fd, contents.data(), contents.size()) != contents.size()) {
     /* Don't leave broken files around */
     unlink(kNvramExport);
   }
@@ -944,7 +939,13 @@ int main(int argc, char* argv[]) {
     if (key.did_finalize()) {
       remove_pending();
     }
-    nvram_export(nvram_data, nvram_size);
+
+    bool owned = false;
+    NvramSpace* lockbox_space = tpm.GetLockboxSpace();
+    if (tpm.IsOwned(&owned) == RESULT_SUCCESS && owned &&
+        lockbox_space->is_valid()) {
+      nvram_export(lockbox_space->contents());
+    }
   }
 
   INFO_DONE("Done.");

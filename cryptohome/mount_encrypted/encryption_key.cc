@@ -157,13 +157,8 @@ result_code EncryptionKey::SetTpmSystemKey() {
   // By default, do not allow migration.
   migration_allowed_ = false;
 
-  brillo::SecureBlob key(DIGEST_LENGTH);
-  int migrate = 0;
-  result_code rc = get_nvram_key(tpm_, key.data(), &migrate);
-  migration_allowed_ = migrate;
-
+  result_code rc = ::LoadSystemKey(tpm_, &system_key_, &migration_allowed_);
   if (rc == RESULT_SUCCESS) {
-    system_key_ = std::move(key);
     LOG(INFO) << "Using NVRAM as system key; already populated"
               << (migration_allowed_ ? " (legacy)" : "");
   } else {

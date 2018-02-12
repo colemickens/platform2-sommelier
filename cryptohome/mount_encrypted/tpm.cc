@@ -8,12 +8,146 @@
 #include <stdint.h>
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 
 #include <vboot/tlcl.h>
 
 #include <openssl/rand.h>
 
 #include "cryptohome/mount_encrypted.h"
+
+NvramSpace::NvramSpace(Tpm* tpm, uint32_t index)
+  : tpm_(tpm), index_(index) {}
+
+result_code NvramSpace::GetAttributes(uint32_t* attributes) {
+  if (attributes_ != 0) {
+    *attributes = attributes_;
+    return RESULT_SUCCESS;
+  }
+
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t result = TlclGetPermissions(index_, &attributes_);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to read NVRAM space attributes for index" << index_
+               << ": " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  *attributes = attributes_;
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::Read(uint32_t size) {
+  status_ = Status::kUnknown;
+  attributes_ = 0;
+  contents_.clear();
+
+  VLOG(1) << "Reading NVRAM area " << index_ << " (size " << size << ")";
+
+  if (!tpm_->available()) {
+    status_ = Status::kAbsent;
+    return RESULT_FAIL_FATAL;
+  }
+
+  brillo::SecureBlob buffer(size);
+  uint32_t result = TlclRead(index_, buffer.data(), buffer.size());
+
+  VLOG(1) << "NVRAM read returned: " << (result == TPM_SUCCESS ? "ok" : "FAIL");
+
+  if (result != TPM_SUCCESS) {
+    status_ = result == TPM_E_BADINDEX ? Status::kAbsent : Status::kTpmError;
+    return RESULT_FAIL_FATAL;
+  }
+
+  // Ignore defined but unwritten NVRAM area.
+  uint8_t bytes_ored = 0x0;
+  uint8_t bytes_anded = 0xff;
+  for (uint8_t byte : buffer) {
+    bytes_ored |= byte;
+    bytes_anded &= byte;
+  }
+  if (bytes_ored == 0x0 || bytes_anded == 0xff) {
+    status_ = Status::kAbsent;
+    LOG(INFO) << "NVRAM area has been defined but not written.";
+    return RESULT_FAIL_FATAL;
+  }
+
+  contents_.swap(buffer);
+  status_ = Status::kValid;
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::Write(const brillo::SecureBlob& contents) {
+  VLOG(1) << "Writing NVRAM area " << index_ << " (size " << contents.size()
+          << ")";
+
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  brillo::SecureBlob buffer(contents.size());
+  uint32_t result = TlclWrite(index_, contents.data(), contents.size());
+
+  VLOG(1) << "NVRAM write returned: "
+          << (result == TPM_SUCCESS ? "ok" : "FAIL");
+
+  if (result != TPM_SUCCESS) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  contents_ = contents;
+  status_ = Status::kValid;
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::ReadLock() {
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t result = TlclReadLock(index_);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to set read lock on NVRAM space " << index_;
+    return RESULT_FAIL_FATAL;
+  }
+
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::WriteLock() {
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t result = TlclWriteLock(index_);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to set write lock on NVRAM space " << index_;
+    return RESULT_FAIL_FATAL;
+  }
+
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::Define(uint32_t attributes, uint32_t size) {
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t result = TlclDefineSpace(index_, attributes, size);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to define NVRAM space " << index_ << ": " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  status_ = Status::kAbsent;
+  contents_.clear();
+  attributes_ = attributes;
+
+  return RESULT_SUCCESS;
+}
 
 Tpm::Tpm() {
 #if USE_TPM2
@@ -88,94 +222,48 @@ result_code Tpm::GetRandomBytes(uint8_t* buffer, int wanted) {
   return RESULT_FAIL_FATAL;
 }
 
-uint8_t nvram_data[LOCKBOX_SIZE_MAX];
-uint32_t nvram_size = 0;
-
-static uint32_t _read_nvram(Tpm* tpm,
-                            uint8_t* buffer,
-                            size_t len,
-                            uint32_t index,
-                            uint32_t size) {
-  uint32_t result;
-
-  if (size > len) {
-    ERROR("NVRAM size (0x%x > 0x%zx) is too big", size, len);
-    return 0;
+NvramSpace* Tpm::GetLockboxSpace() {
+  if (lockbox_space_) {
+    return lockbox_space_.get();
   }
 
-  DEBUG("Reading NVRAM area 0x%x (size %u)", index, size);
-  if (!tpm->available())
-    result = TPM_E_NO_DEVICE;
-  else
-    result = TlclRead(index, buffer, size);
-  DEBUG("NVRAM read returned: %s", result == TPM_SUCCESS ? "ok" : "FAIL");
+  lockbox_space_.reset(new NvramSpace(this, kLockboxIndex));
 
-  return result;
+  // Reading the NVRAM takes 40ms. Instead of querying the NVRAM area for its
+  // size (which takes time), just read the expected size. If it fails, then
+  // fall back to the older size. This means cleared devices take 80ms (2 failed
+  // reads), legacy devices take 80ms (1 failed read, 1 good read), and
+  // populated devices take 40ms, which is the minimum possible time (instead of
+  // 40ms + time to query NVRAM size).
+  if (lockbox_space_->Read(kLockboxSizeV2) == RESULT_SUCCESS) {
+    LOG(INFO) << "Version 2 Lockbox NVRAM area found.";
+  } else if (lockbox_space_->Read(kLockboxSizeV1) == RESULT_SUCCESS) {
+    LOG(INFO) << "Version 1 Lockbox NVRAM area found.";
+  } else {
+    LOG(INFO) << "No Lockbox NVRAM area defined.";
+  }
+
+  if (lockbox_space_->is_valid()) {
+    VLOG(1) << "lockbox nvram "
+            << base::HexEncode(lockbox_space_->contents().data(),
+                               lockbox_space_->contents().size());
+  }
+
+  return lockbox_space_.get();
 }
 
-/*
- * Cache Lockbox NVRAM area in nvram_data, set nvram_size to the actual size.
- * Set *migrate to 0 for Version 2 Lockbox area, and 1 otherwise.
- */
-result_code read_lockbox_nvram_area(Tpm* tpm, int* migrate) {
-  uint8_t bytes_anded, bytes_ored;
-  uint32_t result, i;
-
-  /* Default to allowing migration (disallow when owned with NVRAMv2). */
-  *migrate = 1;
-
-  /* Ignore unowned TPM's NVRAM area. */
-  bool owned = false;
-  result_code rc = tpm->IsOwned(&owned);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
-  }
-  if (!owned) {
-    INFO("TPM not Owned, ignoring Lockbox NVRAM area.");
-    return RESULT_FAIL_FATAL;
+NvramSpace* Tpm::GetEncStatefulSpace() {
+  if (encstateful_space_) {
+    return encstateful_space_.get();
   }
 
-  /* Reading the NVRAM takes 40ms. Instead of querying the NVRAM area
-   * for its size (which takes time), just read the expected size. If
-   * it fails, then fall back to the older size. This means cleared
-   * devices take 80ms (2 failed reads), legacy devices take 80ms
-   * (1 failed read, 1 good read), and populated devices take 40ms,
-   * which is the minimum possible time (instead of 40ms + time to
-   * query NVRAM size).
-   */
-  result = _read_nvram(tpm, nvram_data, sizeof(nvram_data), kLockboxIndex,
-                       kLockboxSizeV2);
-  if (result != TPM_SUCCESS) {
-    result = _read_nvram(tpm, nvram_data, sizeof(nvram_data), kLockboxIndex,
-                         kLockboxSizeV1);
-    if (result != TPM_SUCCESS) {
-      /* No NVRAM area at all. */
-      INFO("No Lockbox NVRAM area defined: error 0x%02x", result);
-      return RESULT_FAIL_FATAL;
-    }
-    /* Legacy NVRAM area. */
-    nvram_size = kLockboxSizeV1;
-    INFO("Version 1 Lockbox NVRAM area found.");
+  encstateful_space_.reset(new NvramSpace(this, kEncStatefulIndex));
+
+  if (encstateful_space_->Read(kEncStatefulSize) == RESULT_SUCCESS) {
+    LOG(INFO) << "Found encstateful NVRAM area.";
   } else {
-    *migrate = 0;
-    nvram_size = kLockboxSizeV2;
-    INFO("Version 2 Lockbox NVRAM area found.");
+    LOG(INFO) << "No encstateful NVRAM area defined.";
   }
 
-  debug_dump_hex("lockbox nvram", value, nvram_size);
-
-  /* Ignore defined but unwritten NVRAM area. */
-  bytes_ored = 0x0;
-  bytes_anded = 0xff;
-  for (i = 0; i < nvram_size; ++i) {
-    bytes_ored |= nvram_data[i];
-    bytes_anded &= nvram_data[i];
-  }
-  if (bytes_ored == 0x0 || bytes_anded == 0xff) {
-    INFO("NVRAM area has been defined but not written.");
-    nvram_size = 0;
-    return RESULT_FAIL_FATAL;
-  }
-
-  return RESULT_SUCCESS;
+  return encstateful_space_.get();
 }
