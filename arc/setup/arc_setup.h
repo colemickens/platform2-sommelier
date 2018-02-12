@@ -83,10 +83,13 @@ class ArcSetup {
   // Waits for directories in /run the container depends on to be created.
   void WaitForArcDirectories();
 
-  // Remounts /vendor
+  // Remounts /vendor.
   void RemountVendorDirectory();
 
-  // Sets up binfmt_misc handler to run arm binaries on x86
+  // Identifies type of binary translation.
+  ArcBinaryTranslationType IdentifyBinaryTranslationType();
+
+  // Sets up binfmt_misc handler to run arm binaries on x86.
   void SetUpBinFmtMisc(ArcBinaryTranslationType bin_type);
 
   // Sets up a dummy android-data directory on tmpfs.
@@ -147,7 +150,6 @@ class ArcSetup {
                                 bool is_dev_mode,
                                 bool is_inside_vm,
                                 bool is_debuggable,
-                                ArcBinaryTranslationType bin_type,
                                 ArcBootType boot_type);
 
   // Create fake procfs entries expected by android.
@@ -261,6 +263,12 @@ class ArcSetup {
 
   // Unmounts image files that have been mounted in MountOnOnetimeSetup.
   void UnmountOnOnetimeStop();
+
+  // Various bind-mounts inside the container's mount namespace on pre-chroot
+  // stage.
+  void BindMountInContainerNamespaceOnPreChroot(
+      const base::FilePath& rootfs,
+      const ArcBinaryTranslationType binary_translation_type);
 
   // Restores SELinux contexts of files inside the container's mount namespace.
   void RestoreContextOnPreChroot(const base::FilePath& rootfs);

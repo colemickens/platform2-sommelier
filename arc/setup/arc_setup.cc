@@ -149,20 +149,6 @@ constexpr char kSwitchReadAhead[] = "read-ahead";
 // The maximum time arc::EmulateArcUreadahead() can spend.
 constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
 
-bool IsHoudiniAvailable(const base::FilePath& vendor_path) {
-  if (!kUseHoudini)
-    return false;
-  // Note, that libhoudini.so in /system/lib is a symlink, which can be
-  // dangling. Thus check its presence in /vendor right away.
-  return base::PathExists(vendor_path.Append("lib/libhoudini.so"));
-}
-
-bool IsNdkTranslationAvailable(const base::FilePath& system_path) {
-  if (!kUseNdkTranslation)
-    return false;
-  return base::PathExists(system_path.Append("lib/libndk_translation.so"));
-}
-
 enum class Mode {
   SETUP = 0,
   SETUP_FOR_LOGIN_SCREEN,
@@ -398,6 +384,30 @@ void ArcSetup::RemountVendorDirectory() {
       writable_flag | noexec_flag | MS_NOSUID | MS_NODEV, "seclabel"));
 }
 
+ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
+  const bool is_houdini_available = kUseHoudini;
+  bool is_ndk_translation_available = kUseNdkTranslation;
+
+  if (!base::PathExists(arc_paths_->android_rootfs_directory.Append(
+          "system/lib/libndk_translation.so"))) {
+    // Allow developers to use custom android build
+    // without ndk-translation in it.
+    is_ndk_translation_available = false;
+  }
+
+  if (!is_houdini_available && !is_ndk_translation_available)
+    return ArcBinaryTranslationType::NONE;
+
+  const bool prefer_ndk_translation =
+      (!is_houdini_available ||
+       GetBooleanEnvOrDie(arc_paths_->env.get(), "NATIVE_BRIDGE_EXPERIMENT"));
+
+  if (is_ndk_translation_available && prefer_ndk_translation)
+    return ArcBinaryTranslationType::NDK_TRANSLATION;
+
+  return ArcBinaryTranslationType::HOUDINI;
+}
+
 void ArcSetup::SetUpBinFmtMisc(ArcBinaryTranslationType bin_type) {
   const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
   if (system_arch != "x86_64")
@@ -412,22 +422,6 @@ void ArcSetup::SetUpBinFmtMisc(ArcBinaryTranslationType bin_type) {
     }
     case ArcBinaryTranslationType::HOUDINI: {
       root_directory = arc_paths_->vendor_rootfs_directory;
-
-      const base::FilePath system_lib_arm_directory =
-          arc_paths_->android_rootfs_directory.Append(
-              arc_paths_->system_lib_arm_directory_relative);
-      // |system_lib_arm_directory| either is empty or contains
-      // ndk-translation's libraries. Since houdini is selected bind-mount its
-      // libraries instead. Though, temporarily don't do this if system/lib/arm
-      // is a symlink, to be compatible with older android images, where symlink
-      // already points to houdini's libraries.
-      // TODO(levarum): Remove symlink check after newer android images
-      // propagate everywhere.
-      if (!base::IsLink(system_lib_arm_directory)) {
-        EXIT_IF(!arc_mounter_->BindMount(
-            arc_paths_->vendor_rootfs_directory.Append("lib/arm"),
-            system_lib_arm_directory));
-      }
       break;
     }
     case ArcBinaryTranslationType::NDK_TRANSLATION: {
@@ -834,7 +828,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
                                         bool is_dev_mode,
                                         bool is_inside_vm,
                                         bool is_debuggable,
-                                        ArcBinaryTranslationType bin_type,
                                         ArcBootType boot_type) {
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
@@ -881,7 +874,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
         GetBooleanEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"));
   }
   std::string native_bridge;
-  switch (bin_type) {
+  switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
       native_bridge = "0";
       break;
@@ -1529,6 +1522,18 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
+void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
+    const base::FilePath& rootfs,
+    const ArcBinaryTranslationType binary_translation_type) {
+  if (binary_translation_type == ArcBinaryTranslationType::HOUDINI) {
+    // system_lib_arm either is empty or contains ndk-translation's libraries.
+    // Since houdini is selected bind-mount its libraries instead.
+    EXIT_IF(!arc_mounter_->BindMount(
+        rootfs.Append("vendor/lib/arm"),
+        rootfs.Append(arc_paths_->system_lib_arm_directory_relative)));
+  }
+}
+
 void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
   {
     // The list of container directories that need to be recursively re-labeled.
@@ -1578,19 +1583,6 @@ void ArcSetup::OnSetup(bool for_login_screen) {
       GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_INSIDE_VM");
   const bool is_debuggable =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "ANDROID_DEBUGGABLE");
-  const bool is_houdini_available =
-      IsHoudiniAvailable(arc_paths_->vendor_rootfs_directory);
-  const bool is_ndk_translation_available = IsNdkTranslationAvailable(
-      arc_paths_->android_rootfs_directory.Append("system"));
-  const bool prefer_ndk_translation =
-      is_houdini_available && is_ndk_translation_available &&
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "NATIVE_BRIDGE_EXPERIMENT");
-
-  ArcBinaryTranslationType bin_type = ArcBinaryTranslationType::HOUDINI;
-  if (!is_houdini_available && !is_ndk_translation_available)
-    bin_type = ArcBinaryTranslationType::NONE;
-  else if (!is_houdini_available || prefer_ndk_translation)
-    bin_type = ArcBinaryTranslationType::NDK_TRANSLATION;
 
   // ArcBootType is unknown until the user's /data is mounted.
   const ArcBootType boot_type =
@@ -1609,7 +1601,6 @@ void ArcSetup::OnSetup(bool for_login_screen) {
   }
 
   RemountVendorDirectory();
-  SetUpBinFmtMisc(bin_type);
 
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
@@ -1648,7 +1639,7 @@ void ArcSetup::OnSetup(bool for_login_screen) {
   SetUpSharedTmpfsForExternalStorage();
   SetUpFilesystemForObbMounter();
   CreateAndroidCmdlineFile(for_login_screen, is_dev_mode, is_inside_vm,
-                           is_debuggable, bin_type, boot_type);
+                           is_debuggable, boot_type);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointForRemovableMedia();
@@ -1729,6 +1720,12 @@ void ArcSetup::OnOnetimeStop() {
 }
 
 void ArcSetup::OnPreChroot() {
+  // binfmt_misc setup has to be done before entering container
+  // namespace below (namely before CreateScopedMountNamespaceForPid).
+  ArcBinaryTranslationType binary_translation_type =
+      IdentifyBinaryTranslationType();
+  SetUpBinFmtMisc(binary_translation_type);
+
   int container_pid;
   base::FilePath rootfs;
 
@@ -1742,6 +1739,7 @@ void ArcSetup::OnPreChroot() {
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 
+  BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);
 }
