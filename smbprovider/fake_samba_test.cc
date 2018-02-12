@@ -377,4 +377,149 @@ TEST_F(FakeSambaTest, DeleteAfterCurrent) {
   EXPECT_EQ("cat.txt", fake_samba_.GetCurrentEntry(dir_id));
 }
 
+TEST_F(FakeSambaTest, MoveEntryFailsWhenSrcIsNotDirAndTargetIsDir) {
+  const std::string file_path = "smb://wdshare/test/dog.jpg";
+  const std::string dir_path = "smb://wdshare/test/cats";
+
+  fake_samba_.AddFile(file_path);
+  fake_samba_.AddDirectory(dir_path);
+
+  EXPECT_EQ(EISDIR, fake_samba_.MoveEntry(file_path, dir_path));
+}
+
+TEST_F(FakeSambaTest, MoveEntryFailsWhenSrcIsDirAndTargetIsNonEmptyDir) {
+  const std::string src_dir_path = "smb://wdshare/test/cats";
+  const std::string dst_dir_path = "smb://wdshare/test/dogs";
+
+  fake_samba_.AddDirectory(src_dir_path);
+  fake_samba_.AddDirectory(dst_dir_path);
+  fake_samba_.AddFile(dst_dir_path + "/dog1.jpg");
+
+  EXPECT_EQ(EEXIST, fake_samba_.MoveEntry(src_dir_path, dst_dir_path));
+}
+
+TEST_F(FakeSambaTest, MoveEntryFailsWhenSrcIsFileAndDstIsExistingFile) {
+  const std::string src_path = "smb://wdshare/test/dog.jpg";
+  const std::string dst_path = "smb://wdshare/test/cat.txt";
+
+  fake_samba_.AddFile(src_path);
+  fake_samba_.AddFile(dst_path);
+
+  EXPECT_EQ(EEXIST, fake_samba_.MoveEntry(src_path, dst_path));
+}
+
+// MoveEntry should fail when attempting to make a directory a subdirectory of
+// itself.
+TEST_F(FakeSambaTest, MoveEntryFailsWhenDstIsSubDirectoryOfSrc) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+
+  EXPECT_EQ(EINVAL, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                          "smb://wdshare/test/dogs/cats"));
+}
+
+TEST_F(FakeSambaTest, MoveEntryFailsWhenSrcIsDirAndDstExistsAndIsFile) {
+  const std::string file_path = "smb://wdshare/test/dog.jpg";
+  const std::string dir_path = "smb://wdshare/test/cats";
+
+  fake_samba_.AddFile(file_path);
+  fake_samba_.AddDirectory(dir_path);
+
+  EXPECT_EQ(ENOTDIR, fake_samba_.MoveEntry(dir_path, file_path));
+}
+
+TEST_F(FakeSambaTest, MoveEntryFailsWhenDstParentIsLocked) {
+  fake_samba_.AddFile("smb://wdshare/test/dog.jpg");
+  fake_samba_.AddLockedDirectory("smb://wdshare/test/locked");
+
+  EXPECT_EQ(EACCES, fake_samba_.MoveEntry("smb://wdshare/test/dog.jpg",
+                                          "smb://wdshare/test/locked/dog.jpg"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyRenamesDirectory) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                     "smb://wdshare/test/cats"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyRenamesDirectoryWithAppendedPath) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                     "smb://wdshare/test/dogs123"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/dogs123"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesEmptyDirectoryIntoDirectory) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+  fake_samba_.AddDirectory("smb://wdshare/test/cats");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                     "smb://wdshare/test/cats/dogs"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats/dogs"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesNonEmptryDirectory) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+  fake_samba_.AddFile("smb://wdshare/test/dogs/1.jpg");
+  fake_samba_.AddDirectory("smb://wdshare/test/cats");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                     "smb://wdshare/test/cats/dogs"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs"));
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs/1.jpg"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats/dogs"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats/dogs/1.jpg"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesFileIntoDirectory) {
+  fake_samba_.AddFile("smb://wdshare/test/1.jpg");
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/1.jpg",
+                                     "smb://wdshare/test/dogs/1.jpg"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/1.jpg"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/dogs/1.jpg"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyRenamesFile) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+  fake_samba_.AddFile("smb://wdshare/test/dogs/1.txt");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs/1.txt",
+                                     "smb://wdshare/test/dogs/2.jpg"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs/1.txt"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/dogs/2.jpg"));
+}
+
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyRenamesFileIntoDirectory) {
+  fake_samba_.AddDirectory("smb://wdshare/test/dogs");
+  fake_samba_.AddDirectory("smb://wdshare/test/cats");
+  fake_samba_.AddFile("smb://wdshare/test/dogs/1.txt");
+
+  EXPECT_EQ(0, fake_samba_.MoveEntry("smb://wdshare/test/dogs/1.txt",
+                                     "smb://wdshare/test/cats/2.jpg"));
+
+  EXPECT_FALSE(fake_samba_.EntryExists("smb://wdshare/test/dogs/1.txt"));
+  EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats/2.jpg"));
+}
+
+TEST_F(FakeSambaTest, MoveEntryFailsToMoveLockedDirectory) {
+  fake_samba_.AddLockedDirectory("smb://wdshare/test/dogs");
+  fake_samba_.AddDirectory("smb://wdshare/test/cats");
+
+  EXPECT_EQ(EACCES, fake_samba_.MoveEntry("smb://wdshare/test/dogs",
+                                          "smb://wdshare/test/cats/dogs"));
+}
+
 }  // namespace smbprovider

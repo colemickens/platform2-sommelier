@@ -64,6 +64,9 @@ class FakeSambaInterface : public SambaInterface {
 
   int32_t CreateDirectory(const std::string& directory_path) override;
 
+  int32_t MoveEntry(const std::string& source_path,
+                    const std::string& target_path) override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
@@ -156,14 +159,26 @@ class FakeSambaInterface : public SambaInterface {
     // Returns true for SMBC_FILE and SMBC_DIR. False for all others.
     bool IsValidEntryType() const;
 
+    // Returns true for SMBC_FILE.
+    bool IsFile() const;
+
+    // Returns true for SMBC_DIR.
+    bool IsDir() const;
+
     DISALLOW_COPY_AND_ASSIGN(FakeEntry);
   };
 
   struct FakeDirectory : FakeEntry {
+    using Entries = std::vector<std::unique_ptr<FakeEntry>>;
+    using EntriesIterator = Entries::iterator;
+
     FakeDirectory(const std::string& full_path, bool locked)
         : FakeEntry(full_path, SMBC_DIR, 0 /* size */, 0 /* date */, locked) {}
     explicit FakeDirectory(const std::string& full_path)
         : FakeDirectory(full_path, false /* locked */) {}
+
+    // Returns entries.empty().
+    bool IsEmpty() const;
 
     // Returns a pointer to the entry in the directory with |name|.
     FakeEntry* FindEntry(const std::string& name);
@@ -177,8 +192,10 @@ class FakeSambaInterface : public SambaInterface {
     // Checks whether the provided FakeEntry is a file or an empty directory.
     bool IsFileOrEmptyDirectory(FakeEntry* entry) const;
 
+    EntriesIterator GetEntryIt(const std::string& name);
+
     // Contains pointers to entries that can be found in this directory.
-    std::vector<std::unique_ptr<FakeEntry>> entries;
+    Entries entries;
 
     DISALLOW_COPY_AND_ASSIGN(FakeDirectory);
   };
@@ -306,6 +323,26 @@ class FakeSambaInterface : public SambaInterface {
   // Removes |full_path| from the file system and calls
   // RewindOpenInfoIndicesIfNeccessary.
   void RemoveEntryAndResetIndicies(const std::string& full_path);
+
+  // Checks whether a MoveEntry operation should be performed from a |src_entry|
+  // to an already existing |target_entry|. Returns 0 if both |src_entry| and
+  // |target_entry| are empty directories, corresponding errno otherwise.
+  int32_t CheckEntriesValidForMove(FakeEntry* src_entry,
+                                   FakeEntry* target_entry) const;
+
+  // Moves the directory entry at |source_path| to |target_path|.
+  // Returns an error if either of the parent directories is locked or if
+  // |source_path| is a directory and is locked.
+  int32_t MoveEntryFromSourceToTarget(const std::string& source_path,
+                                      const std::string& target_path);
+
+  // Helper method that gets the parent directories for |source_path| and
+  // |target_path|. Returns 0 on success and error on failure.
+  int32_t GetSourceAndTargetParentDirectories(
+      const std::string& source_path,
+      const std::string& target_path,
+      FakeDirectory** source_parent,
+      FakeDirectory** target_parent) const;
 
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;

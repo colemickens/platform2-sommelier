@@ -62,6 +62,9 @@ class SambaInterfaceImpl : public SambaInterface {
 
   int32_t CreateDirectory(const std::string& directory_path) override;
 
+  int32_t MoveEntry(const std::string& source_path,
+                    const std::string& target_path) override;
+
  private:
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;

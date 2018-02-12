@@ -130,6 +130,12 @@ int32_t SambaInterfaceImpl::CreateDirectory(const std::string& directory_path) {
   return result < 0 ? errno : 0;
 }
 
+int32_t SambaInterfaceImpl::MoveEntry(const std::string& source_path,
+                                      const std::string& target_path) {
+  int32_t result = smbc_rename(source_path.c_str(), target_path.c_str());
+  return result < 0 ? errno : 0;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }

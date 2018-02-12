@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <base/macros.h>
+#include <base/files/file_path.h>
 #include <brillo/any.h>
 
 #include "smbprovider/smbprovider.h"
@@ -23,6 +24,15 @@ constexpr mode_t kDirMode = 16877;   // Dir entry
 // Returns if |flag| is set in |flags|.
 bool IsFlagSet(int32_t flags, int32_t flag) {
   return (flags & flag) == flag;
+}
+
+// Returns true if |target| is inside of |source|.
+bool IsTargetInsideSource(const std::string& target,
+                          const std::string& source) {
+  base::FilePath target_path(target);
+  base::FilePath source_path(source);
+
+  return source_path.IsParent(target_path);
 }
 
 }  // namespace
@@ -292,6 +302,114 @@ int32_t FakeSambaInterface::CreateDirectory(const std::string& directory_path) {
   return 0;
 }
 
+int32_t FakeSambaInterface::MoveEntry(const std::string& source_path,
+                                      const std::string& target_path) {
+  if (IsTargetInsideSource(target_path, source_path)) {
+    // MoveEntry fails if |target_path| is a child of source_path.
+    return EINVAL;
+  }
+
+  if (!EntryExists(source_path)) {
+    // MoveEntry fails if |source_path| does not exist.
+    return ENOENT;
+  }
+
+  FakeEntry* src_entry = GetEntry(source_path);
+  if (EntryExists(target_path)) {
+    // If |target_path| exits, check that we can continue with the move.
+    FakeEntry* target_entry = GetEntry(target_path);
+    int32_t result = CheckEntriesValidForMove(src_entry, target_entry);
+    if (result != 0) {
+      return result;
+    }
+  }
+
+  if (src_entry->IsDir() && src_entry->locked) {
+    // MoveEntry fails to move a locked directory.
+    return EACCES;
+  }
+
+  return MoveEntryFromSourceToTarget(source_path, target_path);
+}
+
+int32_t FakeSambaInterface::CheckEntriesValidForMove(
+    FakeEntry* src_entry, FakeEntry* target_entry) const {
+  DCHECK(src_entry);
+  DCHECK(target_entry);
+
+  if (target_entry->IsFile()) {
+    if (src_entry->IsDir()) {
+      return ENOTDIR;
+    }
+    return EEXIST;
+  } else {
+    if (src_entry->IsFile()) {
+      return EISDIR;
+    }
+    DCHECK(target_entry->IsDir());
+    FakeDirectory* target_dir = static_cast<FakeDirectory*>(target_entry);
+    if (!target_dir->IsEmpty()) {
+      return EEXIST;
+    }
+    return 0;
+  }
+}
+
+int32_t FakeSambaInterface::MoveEntryFromSourceToTarget(
+    const std::string& source_path, const std::string& target_path) {
+  FakeDirectory* source_dir;
+  FakeDirectory* target_dir;
+  int32_t result = GetSourceAndTargetParentDirectories(
+      source_path, target_path, &source_dir, &target_dir);
+  if (result != 0) {
+    return result;
+  }
+
+  FakeSambaInterface::FakeDirectory::EntriesIterator source_it =
+      source_dir->GetEntryIt(GetFileName(source_path));
+  (*source_it)->name = GetFileName(target_path);
+
+  if (source_dir != target_dir) {
+    // Must perform move in addition to rename.
+    target_dir->entries.push_back(std::move(*source_it));
+    source_dir->entries.erase(source_it);
+  }
+
+  return 0;
+}
+
+int32_t FakeSambaInterface::GetSourceAndTargetParentDirectories(
+    const std::string& source_path,
+    const std::string& target_path,
+    FakeDirectory** source_parent,
+    FakeDirectory** target_parent) const {
+  DCHECK(source_parent);
+  DCHECK(target_parent);
+
+  int32_t error;
+  *source_parent = GetDirectory(GetDirPath(source_path), &error);
+  if (!(*source_parent)) {
+    return error;
+  }
+
+  *target_parent = GetDirectory(GetDirPath(target_path), &error);
+  if (!(*target_parent)) {
+    return error;
+  }
+
+  // FakeSambaInterface does not support moving open entries/parents.
+  DCHECK(!IsOpen(GetDirPath(source_path)));
+  DCHECK(!IsOpen(GetDirPath(target_path)));
+  DCHECK(!IsOpen(source_path));
+  DCHECK(!IsOpen(target_path));
+
+  return 0;
+}
+
+bool FakeSambaInterface::FakeDirectory::IsEmpty() const {
+  return entries.empty();
+}
+
 FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
     const std::string& name) {
   for (auto&& entry : entries) {
@@ -311,6 +429,20 @@ bool FakeSambaInterface::FakeDirectory::IsFileOrEmptyDirectory(
 
   FakeDirectory* directory = static_cast<FakeDirectory*>(entry);
   return directory->entries.empty();
+}
+
+FakeSambaInterface::FakeDirectory::EntriesIterator
+FakeSambaInterface::FakeDirectory::GetEntryIt(const std::string& name) {
+  for (auto it = entries.begin(); it != entries.end(); ++it) {
+    if ((*it)->name == name) {
+      return it;
+    }
+  }
+
+  // This function is only called after verifying that an entry exists, so it
+  // should always return from inside the for-loop above.
+  NOTREACHED();
+  return entries.end();
 }
 
 int32_t FakeSambaInterface::FakeDirectory::RemoveEntry(
@@ -542,7 +674,15 @@ FakeSambaInterface::OpenEntriesConstIterator FakeSambaInterface::FindOpenFD(
 }
 
 bool FakeSambaInterface::FakeEntry::IsValidEntryType() const {
-  return smbc_type == SMBC_DIR || smbc_type == SMBC_FILE;
+  return IsFile() || IsDir();
+}
+
+bool FakeSambaInterface::FakeEntry::IsFile() const {
+  return smbc_type == SMBC_FILE;
+}
+
+bool FakeSambaInterface::FakeEntry::IsDir() const {
+  return smbc_type == SMBC_DIR;
 }
 
 bool FakeSambaInterface::HasReadSet(int32_t fd) const {

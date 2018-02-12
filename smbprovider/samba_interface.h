@@ -120,6 +120,13 @@ class SambaInterface {
   virtual int32_t CreateDirectory(const std::string& directory_path)
       WARN_UNUSED_RESULT = 0;
 
+  // Moves the entry at |souce_path| to |target_path|. If there is already an
+  // entry at |target_path|, this will return an error. The parent directory of
+  // the destination must exist. Returns 0 on success and errno on failure.
+  virtual int32_t MoveEntry(const std::string& source_path,
+                            const std::string& target_path)
+      WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(sizeof(int32_t) == sizeof(int),
                 "Ensure that int32_t is same as int, due to casting of int to "
