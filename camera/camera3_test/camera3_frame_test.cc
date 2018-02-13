@@ -521,7 +521,7 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
   ASSERT_NE(nullptr, result) << "Capture result is null";
 
   if (result->result) {
-    num_capture_result_partial_metadata_[result->frame_number] ++;
+    num_capture_result_partial_metadata_[result->frame_number]++;
   }
 
   num_capture_result_buffers_[result->frame_number] +=

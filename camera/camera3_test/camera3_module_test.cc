@@ -530,7 +530,7 @@ static bool AreAllCapabilitiesSupported(
       if ((entry.data.i32[i] >=
            ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE) &&
           (entry.data.i32[i] <=
-           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO)) {
+           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO)) {  // NOLINT(whitespace/line_length)
         supported_capabilities.insert(entry.data.i32[i]);
       }
     }
@@ -598,7 +598,7 @@ static void ExpectKeyAvailable(camera_metadata_t* characteristics,
             case ANDROID_REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT:
               ss << "DEPTH_OUTPUT";
               break;
-            case ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO:
+            case ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO:  // NOLINT(whitespace/line_length)
               ss << "HIGHT_SPEED_VIDEO";
               break;
             default:
