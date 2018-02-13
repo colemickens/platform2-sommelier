@@ -122,7 +122,8 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
     tpm_ = std::make_unique<Tpm>();
-    key_ = std::make_unique<EncryptionKey>(tpm_.get(), tmpdir_.GetPath());
+    loader_ = SystemKeyLoader::Create(tpm_.get());
+    key_ = std::make_unique<EncryptionKey>(loader_.get(), tmpdir_.GetPath());
   }
 
   void SetOwned() {
@@ -187,6 +188,7 @@ class EncryptionKeyTest : public testing::Test {
   TlclStub tlcl_;
 
   std::unique_ptr<Tpm> tpm_;
+  std::unique_ptr<SystemKeyLoader> loader_;
   std::unique_ptr<EncryptionKey> key_;
 };
 
@@ -247,7 +249,8 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceNotYetWritten) {
 
   ExpectFreshKey();
   EXPECT_FALSE(key_->is_migration_allowed());
-  ExpectNeedsFinalization();
+  ExpectFinalized(true);
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
 TEST_F(EncryptionKeyTest, TpmExistingSpaceBadContents) {

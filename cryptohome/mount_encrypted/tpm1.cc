@@ -7,7 +7,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "cryptohome/cryptolib.h"
@@ -18,6 +21,29 @@ namespace {
 const uint32_t kLockboxSaltOffset = 0x5;
 
 }  // namespace
+
+// System key loader implementation for TPM1 systems. This supports two
+// different sources of obtaining system key material: A dedicated NVRAM space
+// (called the "encstateful NVRAM space" below) and the "salt" in the lockbox
+// space. We prefer the former if it is available.
+class Tpm1SystemKeyLoader : public SystemKeyLoader {
+ public:
+  explicit Tpm1SystemKeyLoader(Tpm* tpm) : tpm_(tpm) {}
+
+  result_code Load(brillo::SecureBlob* key, bool* migrate) override;
+  brillo::SecureBlob Generate() override;
+  result_code Persist() override;
+  void Lock() override;
+
+ private:
+  Tpm* tpm_ = nullptr;
+
+  // Provisional space contents that get initialized by Generate() and written
+  // to the NVRAM space by Persist();
+  std::unique_ptr<brillo::SecureBlob> provisional_contents_;
+
+  DISALLOW_COPY_AND_ASSIGN(Tpm1SystemKeyLoader);
+};
 
 // TPM cases:
 //  - does not exist at all (disabled in test firmware or non-chrome device).
@@ -47,14 +73,13 @@ const uint32_t kLockboxSaltOffset = 0x5;
 // In case of failure: (NVRAM missing or error)
 //  - *digest untouched.
 //  - *migrate always true
-result_code LoadSystemKey(Tpm* tpm,
-                          brillo::SecureBlob* system_key,
-                          bool* migrate) {
+result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key,
+                                      bool* migrate) {
   *migrate = true;
 
   // Ignore unowned TPM's NVRAM area.
   bool owned = false;
-  result_code rc = tpm->IsOwned(&owned);
+  result_code rc = tpm_->IsOwned(&owned);
   if (rc != RESULT_SUCCESS) {
     return rc;
   }
@@ -64,7 +89,7 @@ result_code LoadSystemKey(Tpm* tpm,
   }
 
   brillo::SecureBlob key_material;
-  NvramSpace* lockbox_space = tpm->GetLockboxSpace();
+  NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
   const brillo::SecureBlob& lockbox_contents = lockbox_space->contents();
   if (!lockbox_space->is_valid()) {
     return RESULT_FAIL_FATAL;
@@ -87,4 +112,21 @@ result_code LoadSystemKey(Tpm* tpm,
           << base::HexEncode(system_key->data(), system_key->size());
 
   return RESULT_SUCCESS;
+}
+
+brillo::SecureBlob Tpm1SystemKeyLoader::Generate() {
+  // The lockbox NVRAM space is created and managed by cryptohomed, so we can't
+  // generate a new key here. Signal this by returning an empty blob.
+  return brillo::SecureBlob();
+}
+
+result_code Tpm1SystemKeyLoader::Persist() {
+  NOTREACHED() << "System key generation not supported for TPM 1.2 devices.";
+  return RESULT_FAIL_FATAL;
+}
+
+void Tpm1SystemKeyLoader::Lock() {}
+
+std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(Tpm* tpm) {
+  return std::make_unique<Tpm1SystemKeyLoader>(tpm);
 }

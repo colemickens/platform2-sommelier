@@ -16,7 +16,7 @@
 
 #include "cryptohome/mount_encrypted.h"
 
-class Tpm;
+class SystemKeyLoader;
 
 // EncryptionKey takes care of the lifecycle of the encryption key protecting
 // the encrypted stateful file system. This includes generation of the key,
@@ -24,7 +24,7 @@ class Tpm;
 // storing and loading the key to/from disk.
 class EncryptionKey {
  public:
-  EncryptionKey(Tpm* tpm, const base::FilePath& rootdir);
+  EncryptionKey(SystemKeyLoader* loader, const base::FilePath& rootdir);
 
   // Loads the system key from TPM NVRAM.
   result_code SetTpmSystemKey();
@@ -69,7 +69,7 @@ class EncryptionKey {
   // disk to the |key_path_| file.
   void Finalize();
 
-  Tpm* tpm_ = nullptr;
+  SystemKeyLoader* loader_ = nullptr;
 
   // Paths.
   base::FilePath key_path_;

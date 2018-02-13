@@ -296,7 +296,8 @@ static result_code finalize_from_cmdline(char* key) {
   // unfinished, we clear any stale system keys from disk to make sure we pass
   // the check here.
   Tpm tpm;
-  EncryptionKey key_manager(&tpm, base::FilePath(rootdir));
+  auto loader = SystemKeyLoader::Create(&tpm);
+  EncryptionKey key_manager(loader.get(), base::FilePath(rootdir));
   if (base::PathExists(key_manager.key_path()))
     return RESULT_SUCCESS;
 
@@ -730,7 +731,7 @@ static result_code check_mount_states(void) {
   return RESULT_SUCCESS;
 }
 
-static result_code report_info(void) {
+static result_code report_info() {
   struct bind_mount* mnt;
 
   Tpm tpm;
@@ -747,7 +748,8 @@ static result_code report_info(void) {
   if (has_chromefw()) {
     brillo::SecureBlob system_key;
     bool migrate = false;
-    result_code rc = LoadSystemKey(&tpm, &system_key, &migrate);
+    auto loader = SystemKeyLoader::Create(&tpm);
+    result_code rc = loader->Load(&system_key, &migrate);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
     } else {
@@ -914,7 +916,8 @@ int main(int argc, char* argv[]) {
     return rc;
 
   Tpm tpm;
-  EncryptionKey key(&tpm, base::FilePath(rootdir));
+  auto loader = SystemKeyLoader::Create(&tpm);
+  EncryptionKey key(loader.get(), base::FilePath(rootdir));
   if (use_factory_system_key) {
     rc = key.SetFactorySystemKey();
   } else if (has_chromefw()) {

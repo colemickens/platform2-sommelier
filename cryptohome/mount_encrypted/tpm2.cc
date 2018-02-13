@@ -8,12 +8,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <memory>
+
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 
 #include <vboot/tlcl.h>
-
-#include <openssl/rand.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
@@ -26,13 +27,52 @@ const uint32_t kNvramAreaTpm2Magic = 0x54504D32;
 const uint32_t kNvramAreaTpm2VersionMask = 0x000000FF;
 const uint32_t kNvramAreaTpm2CurrentVersion = 1;
 
+const uint32_t kAttributes = TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD |
+                             TPMA_NV_WRITEDEFINE | TPMA_NV_READ_STCLEAR;
+
 struct nvram_area_tpm2 {
   uint32_t magic;
   uint32_t ver_flags;
   uint8_t key_material[DIGEST_LENGTH];
 };
 
+bool IsSpacePresent(NvramSpace* space) {
+  uint32_t attributes = 0;
+  return space->GetAttributes(&attributes) == RESULT_SUCCESS;
+}
+
+// Derive the system key from the key material in |area|.
+brillo::SecureBlob DeriveSystemKey(const struct nvram_area_tpm2* area) {
+  brillo::SecureBlob system_key =
+      cryptohome::CryptoLib::Sha256(brillo::SecureBlob(
+          area->key_material, area->key_material + sizeof(area->key_material)));
+
+  VLOG(1) << "system key "
+          << base::HexEncode(system_key.data(), system_key.size());
+
+  return system_key;
+}
+
 }  // namespace
+
+class Tpm2SystemKeyLoader : public SystemKeyLoader {
+ public:
+  explicit Tpm2SystemKeyLoader(Tpm* tpm) : tpm_(tpm) {}
+
+  result_code Load(brillo::SecureBlob* key, bool* migrate) override;
+  brillo::SecureBlob Generate() override;
+  result_code Persist() override;
+  void Lock() override;
+
+ private:
+  Tpm* tpm_ = nullptr;
+
+  // Provisional space contents that get initialized by Generate() and written
+  // to the NVRAM space by Persist();
+  std::unique_ptr<brillo::SecureBlob> provisional_contents_;
+
+  DISALLOW_COPY_AND_ASSIGN(Tpm2SystemKeyLoader);
+};
 
 // For TPM2, NVRAM area is separate from Lockbox.
 // No legacy systems, so migration is never allowed.
@@ -61,70 +101,86 @@ struct nvram_area_tpm2 {
 // In case of failure: (NVRAM missing or error)
 //  - *digest untouched.
 //  - *migrate is false
-result_code LoadSystemKey(Tpm* tpm,
-                          brillo::SecureBlob* system_key,
-                          bool* migrate) {
-  *migrate = false;
-
+result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key,
+                                      bool* migrate) {
   LOG(INFO) << "Getting key from TPM2 NVRAM index " << kNvramAreaTpm2Index;
 
-  if (!tpm->available()) {
+  if (!tpm_->available()) {
     return RESULT_FAIL_FATAL;
   }
 
-  const struct nvram_area_tpm2* area = nullptr;
-  uint32_t attributes = 0;
-  NvramSpace* encstateful_space = tpm->GetEncStatefulSpace();
-  if (encstateful_space->is_valid() &&
-      encstateful_space->GetAttributes(&attributes) == RESULT_SUCCESS &&
-      encstateful_space->contents().size() >= sizeof(struct nvram_area_tpm2)) {
-    area = reinterpret_cast<const struct nvram_area_tpm2*>(
-        encstateful_space->contents().data());
-  } else {
-    LOG(INFO) << "NVRAM area doesn't exist or can't check attributes";
-    attributes = TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD | TPMA_NV_WRITEDEFINE |
-           TPMA_NV_READ_STCLEAR;
+  NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
+  if (!IsSpacePresent(encstateful_space) || !encstateful_space->is_valid() ||
+      encstateful_space->contents().size() < sizeof(struct nvram_area_tpm2)) {
+    LOG(INFO) << "NVRAM area doesn't exist or is invalid";
+    return RESULT_FAIL_FATAL;
+  }
+
+  const struct nvram_area_tpm2* area =
+      reinterpret_cast<const struct nvram_area_tpm2*>(
+          encstateful_space->contents().data());
+  if (area->magic != kNvramAreaTpm2Magic ||
+      (area->ver_flags & kNvramAreaTpm2VersionMask) !=
+          kNvramAreaTpm2CurrentVersion) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  *system_key = DeriveSystemKey(area);
+  return RESULT_SUCCESS;
+  }
+
+brillo::SecureBlob Tpm2SystemKeyLoader::Generate() {
+  provisional_contents_ =
+      std::make_unique<brillo::SecureBlob>(sizeof(nvram_area_tpm2));
+  struct nvram_area_tpm2* area =
+      reinterpret_cast<struct nvram_area_tpm2*>(provisional_contents_->data());
+  area->magic = kNvramAreaTpm2Magic;
+  area->ver_flags = kNvramAreaTpm2CurrentVersion;
+  cryptohome::CryptoLib::GetSecureRandom(area->key_material,
+                                         sizeof(area->key_material));
+
+  VLOG(1) << "key nvram "
+          << base::HexEncode(provisional_contents_->data(),
+                             provisional_contents_->size());
+
+  return DeriveSystemKey(area);
+}
+
+result_code Tpm2SystemKeyLoader::Persist() {
+  CHECK(provisional_contents_);
+
+  NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
+  if (!IsSpacePresent(encstateful_space)) {
     result_code rc =
-        encstateful_space->Define(attributes, sizeof(struct nvram_area_tpm2));
-    if (rc != TPM_SUCCESS) {
+        encstateful_space->Define(kAttributes, sizeof(struct nvram_area_tpm2));
+    if (rc != RESULT_SUCCESS) {
       LOG(ERROR) << "Failed to define NVRAM space.";
       return rc;
     }
   }
 
-  if (!area || area->magic != kNvramAreaTpm2Magic ||
-      (area->ver_flags & kNvramAreaTpm2VersionMask) !=
-          kNvramAreaTpm2CurrentVersion) {
-    if (attributes & TPMA_NV_WRITELOCKED) {
-      LOG(ERROR) << "NVRAM area is not valid and write-locked";
-      return RESULT_FAIL_FATAL;
-    }
-
-    LOG(INFO) << "NVRAM area is new or not valid -- generating new key";
-
-    brillo::SecureBlob new_contents(sizeof(struct nvram_area_tpm2));
-    struct nvram_area_tpm2* new_area =
-        reinterpret_cast<struct nvram_area_tpm2*>(new_contents.data());
-    new_area->magic = kNvramAreaTpm2Magic;
-    new_area->ver_flags = kNvramAreaTpm2CurrentVersion;
-    cryptohome::CryptoLib::GetSecureRandom(new_area->key_material,
-                                           sizeof(new_area->key_material));
-
-    VLOG(1) << "key nvram "
-            << base::HexEncode(new_contents.data(), new_contents.size());
-
-    result_code rc = encstateful_space->Write(new_contents);
-    if (rc != RESULT_SUCCESS) {
-      LOG(ERROR) << "Failed to write NVRAM area";
-      return rc;
-    }
-
-    area = new_area;
+  result_code rc = encstateful_space->Write(*provisional_contents_);
+  if (rc != RESULT_SUCCESS) {
+    uint32_t attributes = 0;
+    encstateful_space->GetAttributes(&attributes);
+    LOG(ERROR) << "Failed to write NVRAM area. Attributes: " << attributes;
+    return rc;
   }
 
+  return RESULT_SUCCESS;
+}
+
+void Tpm2SystemKeyLoader::Lock() {
   // Lock the area as needed. Write-lock may be already set.
   // Read-lock is never set at this point, since we were able to read.
   // Not being able to lock is not fatal, though exposes the key.
+  uint32_t attributes = 0;
+  NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
+  if (encstateful_space->GetAttributes(&attributes) != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to read attributes";
+    return;
+  }
+
   if (!(attributes & TPMA_NV_WRITELOCKED) &&
       encstateful_space->WriteLock() != RESULT_SUCCESS) {
     LOG(ERROR) << "Failed to write-lock NVRAM area.";
@@ -132,13 +188,8 @@ result_code LoadSystemKey(Tpm* tpm,
   if (encstateful_space->ReadLock() != RESULT_SUCCESS) {
     LOG(ERROR) << "Failed to read-lock NVRAM area.";
   }
+}
 
-  // Derive the system key from the key material.
-  *system_key = cryptohome::CryptoLib::Sha256(brillo::SecureBlob(
-      area->key_material, area->key_material + sizeof(area->key_material)));
-
-  VLOG(1) << "system key "
-          << base::HexEncode(system_key->data(), system_key->size());
-
-  return RESULT_SUCCESS;
+std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(Tpm* tpm) {
+  return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }

@@ -138,8 +138,9 @@ brillo::SecureBlob GetKeyFromKernelCmdline() {
 
 }  // namespace
 
-EncryptionKey::EncryptionKey(Tpm* tpm, const base::FilePath& rootdir)
-    : tpm_(tpm) {
+EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
+                             const base::FilePath& rootdir)
+    : loader_(loader) {
   base::FilePath stateful_mount = rootdir.AppendASCII(paths::kStatefulMount);
   key_path_ = stateful_mount.AppendASCII(paths::kEncryptedKey);
   needs_finalization_path_ =
@@ -157,7 +158,7 @@ result_code EncryptionKey::SetTpmSystemKey() {
   // By default, do not allow migration.
   migration_allowed_ = false;
 
-  result_code rc = ::LoadSystemKey(tpm_, &system_key_, &migration_allowed_);
+  result_code rc = loader_->Load(&system_key_, &migration_allowed_);
   if (rc == RESULT_SUCCESS) {
     LOG(INFO) << "Using NVRAM as system key; already populated"
               << (migration_allowed_ ? " (legacy)" : "");
@@ -194,6 +195,23 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
 
 result_code EncryptionKey::LoadChromeOSSystemKey() {
   SetTpmSystemKey();
+
+  // Attempt to generate a fresh system key if we haven't found one.
+  if (system_key_.empty()) {
+    LOG(INFO) << "Attempting to generate fresh NVRAM system key.";
+
+    // TODO(mnissler): Gather data on how costly it is to take TPM 1.2 ownership
+    // in practice and decide whether we can just take ownership to create the
+    // NVRAM space if it isn't valid by calling SetupTpm here.
+    system_key_ = loader_->Generate();
+    if (!system_key_.empty() && loader_->Persist() != RESULT_SUCCESS) {
+      system_key_.clear();
+    }
+  }
+
+  // Lock the system key to to prevent subsequent manipulation.
+  loader_->Lock();
+
   return RESULT_SUCCESS;
 }
 
@@ -215,9 +233,8 @@ result_code EncryptionKey::LoadEncryptionKey() {
       // login and Cryptohome Finalize so migration is finished.
       migration_allowed_ = false;
       return RESULT_SUCCESS;
-    } else {
-      LOG(INFO) << "Failed to load encryption key from disk.";
     }
+    LOG(INFO) << "Failed to load encryption key from disk.";
   } else {
     LOG(INFO) << "No usable system key found.";
   }
@@ -300,4 +317,7 @@ void EncryptionKey::Finalize() {
     shred(needs_finalization_path_.value().c_str());
     base::DeleteFile(needs_finalization_path_, false /* recursive */);
   }
+
+  // Lock the system key to prevent subsequent manipulation.
+  loader_->Lock();
 }

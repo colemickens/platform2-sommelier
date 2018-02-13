@@ -112,15 +112,50 @@ class Tpm {
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };
 
-// Load the encryption key from TPM NVRAM. Returns true if successful and fills
-// in key, false if the key is not available or there is an error.
+// The interface used by the key handling logic to access the system key. The
+// system key is used to wrap the actual data encryption key.
 //
-// TODO(mnissler): Remove the migration feature - Chrome OS has supported
-// encrypted stateful for years, the chance that a device that was set up with a
-// Chrome OS version that didn't support stateful encryption will be switching
-// directly to this version of the code is negligibly small.
-result_code LoadSystemKey(Tpm* tpm,
-                          brillo::SecureBlob* system_key,
-                          bool* migrate);
+// System keys must have these properties:
+//  1. The system key can only be accessed in the current boot mode, i.e.
+//     switching to developer mode blocks access or destroys the system key.
+//  2. A fresh system key must be generated after clearing the TPM. This can be
+//     achieved either by arranging a TPM clear to drop the key or by detecting
+//     a TPM clear an generating a fresh key.
+//  3. The key should ideally not be accessible for reading after early boot.
+//  4. Because mounting the encrypted stateful file system is on the critical
+//     boot path, loading the system key must be reasonably fast.
+//  5. Fresh keys can be generated with reasonable cost. Costly operations such
+//     as taking TPM ownership after each TPM clear to set up fresh NVRAM spaces
+//     do not fly performance-wise. The file system encryption key logic has a
+//     fallback path to dump its key without protection by a system key until
+//     the latter becomes available, but that's a risk that should ideally be
+//     avoided.
+class SystemKeyLoader {
+ public:
+  virtual ~SystemKeyLoader() = default;
+
+  // Create a system key loader suitable for the system.
+  static std::unique_ptr<SystemKeyLoader> Create(Tpm* tpm);
+
+  // Load the encryption key from TPM NVRAM. Returns true if successful and
+  // fills in key, false if the key is not available or there is an error.
+  //
+  // TODO(mnissler): Remove the migration feature - Chrome OS has supported
+  // encrypted stateful for years, the chance that a device that was set up with
+  // a Chrome OS version that didn't support stateful encryption will be
+  // switching directly to this version of the code is negligibly small.
+  virtual result_code Load(brillo::SecureBlob* key, bool* migrate) = 0;
+
+  // Generate a fresh system key but, do not store it in NVRAM yet.
+  virtual brillo::SecureBlob Generate() = 0;
+
+  // Persist a previously generated system key in NVRAM. This may not be
+  // possible in case the TPM is not in a state where the NVRAM spaces can be
+  // manipulated.
+  virtual result_code Persist() = 0;
+
+  // Lock the system key to prevent further manipulation.
+  virtual void Lock() = 0;
+};
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_
