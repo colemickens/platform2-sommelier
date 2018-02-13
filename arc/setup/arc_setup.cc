@@ -1557,8 +1557,9 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
   {
     // Do the same as above for files and directories but in a non-recursive
     // way.
-    constexpr std::array<const char*, 4> kPaths{
-        "default.prop", "sys/kernel/debug", "system/build.prop", "var/run/arc"};
+    constexpr std::array<const char*, 5> kPaths{
+        "default.prop", "sys/kernel/debug", "system/build.prop", "var/run/arc",
+        "var/run/inputbridge"};
     EXIT_IF(!Restorecon(PrependPath(kPaths.cbegin(), kPaths.cend(), rootfs)));
   }
 }
