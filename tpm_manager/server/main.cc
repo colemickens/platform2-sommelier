@@ -25,11 +25,7 @@
 #endif
 
 #include "tpm_manager/common/tpm_manager_constants.h"
-#if defined(USE_BINDER_IPC)
-#include "tpm_manager/server/binder_service.h"
-#else
 #include "tpm_manager/server/dbus_service.h"
-#endif
 #include "tpm_manager/server/tpm_manager_service.h"
 
 namespace {
@@ -53,13 +49,8 @@ int main(int argc, char* argv[]) {
   tpm_manager::TpmManagerService tpm_manager_service(
       cl->HasSwitch(kWaitForOwnershipTriggerSwitch),
       perform_preinit);
-#if defined(USE_BINDER_IPC)
-  tpm_manager::BinderService ipc_service(&tpm_manager_service,
-                                         &tpm_manager_service);
-#else
   tpm_manager::DBusService ipc_service(&tpm_manager_service,
                                        &tpm_manager_service);
-#endif
   CHECK(tpm_manager_service.Initialize()) << "Failed to initialize service.";
   LOG(INFO) << "Starting TPM Manager...";
   return ipc_service.Run();

@@ -26,20 +26,12 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/bind_lambda.h>
-#if defined(USE_BINDER_IPC)
-#include <brillo/binder_watcher.h>
-#endif
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
 
-#if defined(USE_BINDER_IPC)
-#include "tpm_manager/client/tpm_nvram_binder_proxy.h"
-#include "tpm_manager/client/tpm_ownership_binder_proxy.h"
-#else
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
-#endif
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 #include "tpm_manager/common/tpm_manager.pb.h"
 #include "trunks/tpm_generated.h"
@@ -169,21 +161,10 @@ class ClientLoop : public ClientLoopBase {
       LOG(ERROR) << "Error initializing tpm_manager_client.";
       return exit_code;
     }
-#if defined(USE_BINDER_IPC)
-    if (!binder_watcher_.Init()) {
-      LOG(ERROR) << "Error initializing binder watcher.";
-      return EX_UNAVAILABLE;
-    }
-    std::unique_ptr<TpmNvramBinderProxy> nvram_proxy =
-        std::make_unique<TpmNvramBinderProxy>();
-    std::unique_ptr<TpmOwnershipBinderProxy> ownership_proxy =
-        std::make_unique<TpmOwnershipBinderProxy>();
-#else
     std::unique_ptr<TpmNvramDBusProxy> nvram_proxy =
         std::make_unique<TpmNvramDBusProxy>();
     std::unique_ptr<TpmOwnershipDBusProxy> ownership_proxy =
         std::make_unique<TpmOwnershipDBusProxy>();
-#endif
     if (!nvram_proxy->Initialize()) {
       LOG(ERROR) << "Error initializing nvram proxy.";
       return EX_UNAVAILABLE;
@@ -508,10 +489,6 @@ class ClientLoop : public ClientLoopBase {
   // IPC proxy interfaces.
   std::unique_ptr<tpm_manager::TpmNvramInterface> tpm_nvram_;
   std::unique_ptr<tpm_manager::TpmOwnershipInterface> tpm_ownership_;
-
-#if defined(USE_BINDER_IPC)
-  brillo::BinderWatcher binder_watcher_;
-#endif
 
   // Declared last so that weak pointers will be destroyed first.
   base::WeakPtrFactory<ClientLoop> weak_factory_{this};
