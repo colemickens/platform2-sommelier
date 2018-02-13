@@ -29,11 +29,7 @@
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state_impl.h"
 #include "trunks/tpm_utility_impl.h"
-#if defined(USE_BINDER_IPC)
-#include "trunks/trunks_binder_proxy.h"
-#else
 #include "trunks/trunks_dbus_proxy.h"
-#endif
 
 namespace {
 
@@ -139,11 +135,7 @@ class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
 };
 
 TrunksFactoryImpl::TrunksFactoryImpl() {
-#if defined(USE_BINDER_IPC)
-  default_transceiver_.reset(new TrunksBinderProxy());
-#else
   default_transceiver_.reset(new TrunksDBusProxy());
-#endif
   transceiver_.reset(new PostProcessingTransceiver(default_transceiver_.get()));
 }
 

@@ -26,17 +26,11 @@
 #include <brillo/userdb_utils.h>
 
 #include "trunks/background_command_transceiver.h"
-#if !defined(USE_BINDER_IPC)
 #include "trunks/power_manager.h"
-#endif
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/tpm_simulator_handle.h"
-#if defined(USE_BINDER_IPC)
-#include "trunks/trunks_binder_service.h"
-#else
 #include "trunks/trunks_dbus_service.h"
-#endif
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_ftdi_spi.h"
 
@@ -90,13 +84,9 @@ int main(int argc, char** argv) {
   }
   brillo::InitLog(flags);
 
-// Create a service instance before anything else so objects like
-// AtExitManager exist.
-#if defined(USE_BINDER_IPC)
-  trunks::TrunksBinderService service;
-#else
+  // Create a service instance before anything else so objects like
+  // AtExitManager exist.
   trunks::TrunksDBusService service;
-#endif
 
   // Chain together command transceivers:
   //   [IPC] --> BackgroundCommandTransceiver
@@ -133,10 +123,8 @@ int main(int argc, char** argv) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &resource_manager, background_thread.task_runner());
   service.set_transceiver(&background_transceiver);
-#if !defined(USE_BINDER_IPC)
   trunks::PowerManager power_manager(&resource_manager);
   service.set_power_manager(&power_manager);
-#endif
   LOG(INFO) << "Trunks service started.";
   int exit_code = service.Run();
   // Need to stop the background thread before destroying ResourceManager
