@@ -19,7 +19,7 @@
 #include "common/camera_algorithm_adapter.h"
 #include "common/camera_algorithm_internal.h"
 #include "cros-camera/common.h"
-#include "hal_adapter/ipc_util.h"
+#include "cros-camera/ipc_util.h"
 
 int main(int argc, char** argv) {
   static base::AtExitManager exit_manager;
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   base::FilePath socket_path(socket_name);
   // Creat unix socket to receive the adapter token and connection handle
   int fd = -1;
-  if (!cros::internal::CreateServerUnixDomainSocket(socket_path, &fd)) {
+  if (!cros::CreateServerUnixDomainSocket(socket_path, &fd)) {
     LOGF(ERROR) << "CreateSreverUnixDomainSocket failed";
     return EXIT_FAILURE;
   }

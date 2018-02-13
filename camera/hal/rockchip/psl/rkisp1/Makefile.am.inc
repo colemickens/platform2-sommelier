@@ -65,6 +65,8 @@ PSLSRC += \
     psl/rkisp1/ipc/IPCAiq.cpp
 
 libcamerahal_la_LDFLAGS += -lcab.pic
+libcamerahal_la_LDFLAGS += -lcamera_ipc.pic
+libcamerahal_la_LDFLAGS += -lcamera_common.pic
 libcamerahal_la_LDFLAGS += -lrt
 libcamerahal_la_LDFLAGS += -ldl
 libcamerahal_la_LDFLAGS += -lbase-$(BASE_VER)

@@ -4,19 +4,19 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_IPC_UTIL_H_
-#define HAL_ADAPTER_IPC_UTIL_H_
+#ifndef INCLUDE_CROS_CAMERA_IPC_UTIL_H_
+#define INCLUDE_CROS_CAMERA_IPC_UTIL_H_
 
 #include <string>
 
 #include <base/files/scoped_file.h>
+#include <mojo/edk/embedder/embedder.h>
 
 namespace base {
 class FilePath;
 }  // namespace base
 
 namespace cros {
-namespace internal {
 
 bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
                                   int* server_listen_fd);
@@ -25,7 +25,13 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
 
 base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path);
 
-}  // namespace internal
+MojoResult CreateMojoChannelByUnixDomainSocket(
+    const base::FilePath& socket_path,
+    mojo::ScopedMessagePipeHandle* child_pipe);
+
+mojo::ScopedHandle WrapPlatformHandle(int handle);
+int UnwrapPlatformHandle(mojo::ScopedHandle handle);
+
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_IPC_UTIL_H_
+#endif  // INCLUDE_CROS_CAMERA_IPC_UTIL_H_

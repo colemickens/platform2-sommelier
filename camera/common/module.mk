@@ -45,27 +45,25 @@ CXX_LIBRARY(common/libcbm.so): LDLIBS += $(libcbm_LDLIBS)
 clean: CLEAN(common/libcbm.so)
 common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
-cros_camera_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+cros_camera_algo_PC_DEPS := \
+	libcamera_common libcamera_ipc libchrome-$(BASE_VER) \
+	libmojo-$(BASE_VER)
 cros_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(cros_camera_algo_PC_DEPS))
 cros_camera_algo_LDLIBS := $(call get_pc_libs,$(cros_camera_algo_PC_DEPS)) -ldl
 cros_camera_algo_OBJS = \
 	common/camera_algorithm_adapter.o \
 	common/camera_algorithm_main.o \
-	common/camera_algorithm_ops_impl.o \
-	common/future.o \
-	common/mojo/camera_algorithm.mojom.o \
-	hal_adapter/ipc_util.o
+	common/camera_algorithm_ops_impl.o
 CXX_BINARY(common/cros_camera_algo): $(cros_camera_algo_OBJS)
 CXX_BINARY(common/cros_camera_algo): CPPFLAGS += $(cros_camera_algo_CPPFLAGS)
 CXX_BINARY(common/cros_camera_algo): LDLIBS += $(cros_camera_algo_LDLIBS)
-libcab_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+libcab_PC_DEPS := \
+	libcamera_common libcamera_ipc libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_CPPFLAGS := $(call get_pc_cflags,$(libcab_PC_DEPS))
 libcab_LDLIBS := $(call get_pc_libs,$(libcab_PC_DEPS))
 libcab_OBJS = \
 	common/camera_algorithm_bridge_impl.o \
-	common/camera_algorithm_callback_ops_impl.o \
-	common/future.o \
-	common/mojo/camera_algorithm.mojom.o
+	common/camera_algorithm_callback_ops_impl.o
 CXX_STATIC_LIBRARY(common/libcab.pic.a): $(libcab_OBJS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): CPPFLAGS += $(libcab_CPPFLAGS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): LDLIBS += $(libcab_LDLIBS)
@@ -81,7 +79,9 @@ fake_libcam_algo_OBJS = common/fake_libcam_algo.o
 CXX_LIBRARY(common/libcam_algo.so): $(fake_libcam_algo_OBJS)
 CXX_LIBRARY(common/libcam_algo.so): CPPFLAGS += $(fake_libcam_algo_CPPFLAGS)
 CXX_LIBRARY(common/libcam_algo.so): LDLIBS += $(fake_libcam_algo_LDLIBS)
-libcab_test_PC_DEPS := libcab libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+libcab_test_PC_DEPS := \
+	libcab libcamera_common libcamera_ipc libchrome-$(BASE_VER) \
+	libmojo-$(BASE_VER)
 libcab_test_CPPFLAGS := $(call get_pc_cflags,$(libcab_test_PC_DEPS))
 libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -Wl,-Bstatic \
 	-lgtest -Wl,-Bdynamic -lrt -pthread
@@ -142,7 +142,22 @@ CXX_STATIC_LIBRARY(common/libcamera_common.pic.a): $(libcamera_common_OBJS)
 clean: CLEAN(common/libcamera_common.pic.a)
 common/libcamera_common: CXX_STATIC_LIBRARY(common/libcamera_common.pic.a)
 
-# To link against object files under common/, add $(COMMON_OBJECTS) to the
-# dependency list of your target.
-COMMON_OBJECTS := \
-	common/future.o
+# Get all mojom files from the 2nd directory.
+mojo_sub_CXX_OBJECTS := \
+	$(patsubst %,%.o, $(wildcard mojo/*/*.mojom))
+libcamera_ipc_OBJS = \
+	$(mojo_CXX_OBJECTS) \
+	$(mojo_sub_CXX_OBJECTS) \
+	common/ipc_util.o
+libcamera_ipc_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER) \
+	libcamera_metadata
+libcamera_ipc_CPPFLAGS := \
+	$(call get_pc_cflags,$(libcamera_ipc_PC_DEPS))
+libcamera_ipc_LDLIBS := $(call get_pc_libs,$(libcamera_ipc_PC_DEPS))
+CXX_STATIC_LIBRARY(common/libcamera_ipc.pic.a): \
+	CPPFLAGS += $(libcamera_ipc_CPPFLAGS)
+CXX_STATIC_LIBRARY(common/libcamera_ipc.pic.a): \
+	LDLIBS += $(libcamera_ipc_LDLIBS)
+CXX_STATIC_LIBRARY(common/libcamera_ipc.pic.a): $(libcamera_ipc_OBJS)
+clean: CLEAN(common/libcamera_ipc.pic.a)
+common/libcamera_ipc: CXX_STATIC_LIBRARY(common/libcamera_ipc.pic.a)

@@ -12,32 +12,11 @@
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/edk/system/handle_signals_state.h>
 
+#include "cros-camera/ipc_util.h"
+
 namespace cros {
+
 namespace internal {
-
-mojo::ScopedHandle WrapPlatformHandle(int handle) {
-  MojoHandle wrapped_handle;
-  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(handle)),
-      &wrapped_handle);
-  if (wrap_result != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to wrap platform handle: " << wrap_result;
-    return mojo::ScopedHandle(mojo::Handle());
-  }
-  return mojo::ScopedHandle(mojo::Handle(wrapped_handle));
-}
-
-// Transfers ownership of the handle.
-int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
-  mojo::edk::ScopedPlatformHandle scoped_platform_handle;
-  MojoResult mojo_result = mojo::edk::PassWrappedPlatformHandle(
-      handle.release().value(), &scoped_platform_handle);
-  if (mojo_result != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
-    return -EINVAL;
-  }
-  return scoped_platform_handle.release().handle;
-}
 
 cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
@@ -80,7 +59,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   ret->status = static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
 
   if (buffer->acquire_fence != -1) {
-    ret->acquire_fence = WrapPlatformHandle(buffer->acquire_fence);
+    ret->acquire_fence = cros::WrapPlatformHandle(buffer->acquire_fence);
     if (!ret->acquire_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap acquire_fence";
       ret.reset();
@@ -89,7 +68,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
 
   if (buffer->release_fence != -1) {
-    ret->release_fence = WrapPlatformHandle(buffer->release_fence);
+    ret->release_fence = cros::WrapPlatformHandle(buffer->release_fence);
     if (!ret->release_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap release_fence";
       ret.reset();
@@ -125,7 +104,7 @@ int DeserializeStreamBuffer(
 
   if (ptr->acquire_fence.is_valid()) {
     out_buffer->acquire_fence =
-        UnwrapPlatformHandle(std::move(ptr->acquire_fence));
+        cros::UnwrapPlatformHandle(std::move(ptr->acquire_fence));
     if (out_buffer->acquire_fence == -EINVAL) {
       LOGF(ERROR) << "Failed to get acquire_fence";
       return -EINVAL;
@@ -136,7 +115,7 @@ int DeserializeStreamBuffer(
 
   if (ptr->release_fence.is_valid()) {
     out_buffer->release_fence =
-        UnwrapPlatformHandle(std::move(ptr->release_fence));
+        cros::UnwrapPlatformHandle(std::move(ptr->release_fence));
     if (out_buffer->release_fence == -EINVAL) {
       LOGF(ERROR) << "Failed to get release_fence";
       close(out_buffer->acquire_fence);

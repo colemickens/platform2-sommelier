@@ -23,16 +23,12 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/common_types.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
+#include "mojo/camera3.mojom.h"
 
 namespace cros {
 namespace internal {
 
 // Serialize / deserialize helper functions.
-
-mojo::ScopedHandle WrapPlatformHandle(int handle);
-
-int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 
 // SerializeStreamBuffer is used in CameraDeviceAdapter::ProcessCaptureResult to
 // pass a result buffer handle through Mojo.  For the input / output buffers, we

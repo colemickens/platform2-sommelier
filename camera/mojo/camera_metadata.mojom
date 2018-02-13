@@ -4,7 +4,7 @@
 
 module cros.mojom;
 
-import "hal_adapter/mojo/camera_metadata_tags.mojom";
+import "mojo/camera_metadata_tags.mojom";
 
 enum EntryType {
   TYPE_BYTE = 0,

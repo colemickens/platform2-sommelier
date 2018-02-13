@@ -19,6 +19,7 @@
 
 #include "common/camera_buffer_handle.h"
 #include "cros-camera/common.h"
+#include "cros-camera/ipc_util.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
@@ -220,7 +221,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   VLOGF_ENTER();
-  base::ScopedFD dump_fd(internal::UnwrapPlatformHandle(std::move(fd)));
+  base::ScopedFD dump_fd(UnwrapPlatformHandle(std::move(fd)));
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
 
@@ -288,7 +289,7 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i] = internal::UnwrapPlatformHandle(std::move(fds[i]));
+    buffer_handle->fds[i] = UnwrapPlatformHandle(std::move(fds[i]));
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }

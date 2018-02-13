@@ -20,7 +20,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
+#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

@@ -25,8 +25,8 @@ divided into two part:
 
 Currently we have two major camera clients on Chrome OS: _Chrome browser_ and
 _Android container_.  All the clients connect to the camera HAL adapter through
-the [**Camera Module Mojo IPC interface**](/hal_adapter/mojo/camera_common.mojom)
-and the [**Camera Device Mojo IPC interface**](hal_adapter/mojo/camera3.mojom)
+the [**Camera Module Mojo IPC interface**](/mojo/camera_common.mojom)
+and the [**Camera Device Mojo IPC interface**](/mojo/camera3.mojom)
 to access camera functions.  The Mojo IPC interface is very similar to the
 Android camera HAL v3 APIs.
 
@@ -38,7 +38,7 @@ provides the algorithms to control the camera subsystem for capturing high
 quality images.  We isolate the camera 3A library in a separated sandboxed
 process for security consideration. The camera HAL accesses the camera 3A
 library through the [**Camera Algorithm Mojo IPC interface**](
-/common/mojo/camera_algorithm.mojom).
+/mojo/algorithm/camera_algorithm.mojom).
 
 ### Encoding / Decoding JPEG images
 

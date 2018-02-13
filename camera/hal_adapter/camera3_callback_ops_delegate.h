@@ -10,7 +10,7 @@
 #include <hardware/camera3.h>
 
 #include "hal_adapter/cros_camera_mojo_utils.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
+#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

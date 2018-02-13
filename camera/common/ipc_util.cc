@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/ipc_util.h"
+#include "cros-camera/ipc_util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -12,11 +12,11 @@
 #include <sys/un.h>
 
 #include <base/files/file_util.h>
+#include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
 #include "cros-camera/common.h"
 
 namespace cros {
-namespace internal {
 
 namespace {
 
@@ -164,5 +164,75 @@ base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
   return fd;
 }
 
-}  // namespace internal
+MojoResult CreateMojoChannelByUnixDomainSocket(
+    const base::FilePath& socket_path,
+    mojo::ScopedMessagePipeHandle* child_pipe) {
+  base::ScopedFD client_socket_fd = CreateClientUnixDomainSocket(socket_path);
+  if (!client_socket_fd.is_valid()) {
+    LOGF(WARNING) << "Failed to connect to " << socket_path.value();
+    return MOJO_RESULT_INTERNAL;
+  }
+  mojo::edk::ScopedPlatformHandle socketHandle(
+      mojo::edk::PlatformHandle(client_socket_fd.release()));
+
+  // Set socket to blocking
+  int flags = HANDLE_EINTR(fcntl(socketHandle.get().handle, F_GETFL));
+  if (flags == -1) {
+    PLOGF(ERROR) << "fcntl(F_GETFL) failed:";
+    return MOJO_RESULT_INTERNAL;
+  }
+  if (HANDLE_EINTR(fcntl(socketHandle.get().handle, F_SETFL,
+                         flags & ~O_NONBLOCK)) == -1) {
+    PLOGF(ERROR) << "fcntl(F_SETFL) failed:";
+    return MOJO_RESULT_INTERNAL;
+  }
+
+  const int kTokenSize = 32;
+  char token[kTokenSize] = {};
+  std::deque<mojo::edk::PlatformHandle> platformHandles;
+  mojo::edk::PlatformChannelRecvmsg(socketHandle.get(), token, sizeof(token),
+                                    &platformHandles, true);
+  if (platformHandles.size() != 1) {
+    LOGF(ERROR) << "Unexpected number of handles received, expected 1: "
+                << platformHandles.size();
+    return MOJO_RESULT_INTERNAL;
+  }
+  mojo::edk::ScopedPlatformHandle parent_pipe(platformHandles.back());
+  platformHandles.pop_back();
+  if (!parent_pipe.is_valid()) {
+    LOGF(ERROR) << "Invalid parent pipe";
+    return MOJO_RESULT_INTERNAL;
+  }
+  mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
+
+  *child_pipe =
+      mojo::edk::CreateChildMessagePipe(std::string(token, kTokenSize));
+
+  return MOJO_RESULT_OK;
+}
+
+mojo::ScopedHandle WrapPlatformHandle(int handle) {
+  MojoHandle wrapped_handle;
+  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
+      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(handle)),
+      &wrapped_handle);
+  if (wrap_result != MOJO_RESULT_OK) {
+    LOGF(ERROR) << "Failed to wrap platform handle: " << wrap_result;
+    return mojo::ScopedHandle(mojo::Handle());
+  }
+  return mojo::ScopedHandle(mojo::Handle(wrapped_handle));
+}
+
+// Transfers ownership of the handle.
+int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
+  mojo::edk::ScopedPlatformHandle scoped_platform_handle;
+  MojoResult mojo_result = mojo::edk::PassWrappedPlatformHandle(
+      handle.release().value(), &scoped_platform_handle);
+  if (mojo_result != MOJO_RESULT_OK) {
+    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
+    return -EINVAL;
+  }
+  return scoped_platform_handle.release().handle;
+}
+
 }  // namespace cros

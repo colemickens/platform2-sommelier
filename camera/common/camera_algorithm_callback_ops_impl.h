@@ -8,10 +8,10 @@
 #define COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 
 #include <base/single_thread_task_runner.h>
-#include <common/mojo/camera_algorithm.mojom.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "cros-camera/camera_algorithm.h"
+#include "mojo/algorithm/camera_algorithm.mojom.h"
 
 namespace cros {
 

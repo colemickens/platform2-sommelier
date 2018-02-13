@@ -11,7 +11,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "cros-camera/camera_algorithm.h"
-#include "mojo/camera_algorithm.mojom.h"
+#include "mojo/algorithm/camera_algorithm.mojom.h"
 
 namespace cros {
 

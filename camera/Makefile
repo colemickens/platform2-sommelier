@@ -33,15 +33,11 @@ cros-camera-tool: tools/cros-camera-tool
 
 .PHONY: cros-camera-tool
 
-hal_adapter:
-	$(MAKE) hal_adapter/mojo/mojo_templates
-	$(MAKE) hal_adapter/cros_camera_service
+hal_adapter: hal_adapter/cros_camera_service
 
 .PHONY: hal_adapter
 
-libcab:
-	$(MAKE) common/mojo/mojo_templates
-	$(MAKE) common/libcab
+libcab: common/libcab
 
 .PHONY: libcab
 
@@ -56,6 +52,12 @@ libcamera_common: common/libcamera_common
 libcamera_exif: common/libcamera_exif
 
 .PHONY: libcamera_exif
+
+libcamera_ipc:
+	$(MAKE) mojo/mojo_templates
+	$(MAKE) common/libcamera_ipc
+
+.PHONY: libcamera_ipc
 
 libcamera_jpeg: common/libcamera_jpeg
 

@@ -6,17 +6,18 @@ include common.mk
 
 ### Rules to generate the mojom header and source files.
 
-GEN_MOJO_TEMPLATES_DIR := $(OUT)/hal_adapter/templates
+GEN_MOJO_TEMPLATES_DIR := $(OUT)/mojo/templates
 MOJOM_BINDINGS_GENERATOR := \
 	$(SYSROOT)/usr/src/libmojo-$(BASE_VER)/mojo/mojom_bindings_generator.py
 MOJOM_FILES := \
-	hal_adapter/mojo/cros_camera_service.mojom \
-	hal_adapter/mojo/camera3.mojom \
-	hal_adapter/mojo/camera_common.mojom \
-	hal_adapter/mojo/camera_metadata.mojom \
-	hal_adapter/mojo/camera_metadata_tags.mojom
+	mojo/cros_camera_service.mojom \
+	mojo/camera3.mojom \
+	mojo/camera_common.mojom \
+	mojo/camera_metadata.mojom \
+	mojo/camera_metadata_tags.mojom \
+	mojo/algorithm/camera_algorithm.mojom
 
-hal_adapter/mojo/mojo_templates:
+mojo/mojo_templates:
 	$(QUIET)echo generate_mojo_templates: $(GEN_MOJO_TEMPLATES_DIR)
 	$(QUIET)rm -rf $(GEN_MOJO_TEMPLATES_DIR)
 	$(QUIET)mkdir -p $(GEN_MOJO_TEMPLATES_DIR)
@@ -35,4 +36,4 @@ clean: CLEAN($(patsubst %,%.h,$(MOJOM_FILES)))
 clean: CLEAN($(patsubst %,%.cc,$(MOJOM_FILES)))
 clean: CLEAN($(patsubst %,%-internal.h,$(MOJOM_FILES)))
 
-.PHONY: hal_adapter/mojo/mojo_templates
+.PHONY: mojo/mojo_templates

@@ -34,15 +34,10 @@
 
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/common.h"
-#include "hal_adapter/ipc_util.h"
+#include "cros-camera/constants.h"
+#include "cros-camera/ipc_util.h"
 
 namespace cros {
-
-namespace {
-
-const base::FilePath kCrosCameraSocketPath("/run/camera/camera3.sock");
-
-}  // namespace
 
 CameraHalServerImpl::CameraHalServerImpl()
     : ipc_thread_("IPCThread"),
@@ -66,14 +61,15 @@ bool CameraHalServerImpl::Start() {
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
 
-  if (!watcher_.Watch(kCrosCameraSocketPath, false,
+  if (!watcher_.Watch(constants::kCrosCameraSocketPath, false,
                       base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
                                  base::Unretained(this)))) {
     LOGF(ERROR) << "Failed to watch socket path";
     return false;
   }
-  if (base::PathExists(kCrosCameraSocketPath)) {
-    CameraHalServerImpl::OnSocketFileStatusChange(kCrosCameraSocketPath, false);
+  if (base::PathExists(constants::kCrosCameraSocketPath)) {
+    CameraHalServerImpl::OnSocketFileStatusChange(
+        constants::kCrosCameraSocketPath, false);
   }
   return true;
 }
@@ -106,47 +102,14 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
   }
 
   VLOG(1) << "Got socket: " << socket_path.value() << " error: " << error;
-  base::ScopedFD client_socket_fd =
-      internal::CreateClientUnixDomainSocket(socket_path);
-  if (!client_socket_fd.is_valid()) {
-    LOGF(WARNING) << "Failed to connect to " << socket_path.value();
+  mojo::ScopedMessagePipeHandle child_pipe;
+  MojoResult result = CreateMojoChannelByUnixDomainSocket(
+      constants::kCrosCameraSocketPath, &child_pipe);
+  if (result != MOJO_RESULT_OK) {
+    LOGF(WARNING) << "Failed to create Mojo Channel to"
+                  << constants::kCrosCameraSocketPath.value();
     return;
   }
-  mojo::edk::ScopedPlatformHandle socketHandle(
-      mojo::edk::PlatformHandle(client_socket_fd.release()));
-
-  // Set socket to blocking
-  int flags = HANDLE_EINTR(fcntl(socketHandle.get().handle, F_GETFL));
-  if (flags == -1) {
-    PLOGF(ERROR) << "fcntl(F_GETFL) failed:";
-    return;
-  }
-  if (HANDLE_EINTR(fcntl(socketHandle.get().handle, F_SETFL,
-                         flags & ~O_NONBLOCK)) == -1) {
-    PLOGF(ERROR) << "fcntl(F_SETFL) failed:";
-    return;
-  }
-
-  const int kTokenSize = 32;
-  char token[kTokenSize] = {};
-  std::deque<mojo::edk::PlatformHandle> platformHandles;
-  mojo::edk::PlatformChannelRecvmsg(socketHandle.get(), token, sizeof(token),
-                                    &platformHandles, true);
-  if (platformHandles.size() != 1) {
-    LOGF(ERROR) << "Unexpected number of handles received, expected 1: "
-                << platformHandles.size();
-    return;
-  }
-  mojo::edk::ScopedPlatformHandle parent_pipe(platformHandles.back());
-  platformHandles.pop_back();
-  if (!parent_pipe.is_valid()) {
-    LOGF(ERROR) << "Invalid parent pipe";
-    return;
-  }
-  mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
-
-  mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe(std::string(token, kTokenSize));
 
   dispatcher_ = mojo::MakeProxy(
       mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),

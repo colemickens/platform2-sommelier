@@ -27,7 +27,7 @@ namespace cros {
 class GbmDevice;
 
 // The enum definition here should match |Camera3DeviceOps::BufferType| in
-// hal_adapter/mojo/camera3.mojom.
+// mojo/camera3.mojom.
 enum BufferType {
   GRALLOC = 0,
   SHM = 1,

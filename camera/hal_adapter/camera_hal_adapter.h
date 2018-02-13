@@ -19,8 +19,8 @@
 #include <base/threading/thread.h>
 
 #include "cros-camera/future.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
-#include "hal_adapter/mojo/camera_common.mojom.h"
+#include "mojo/camera3.mojom.h"
+#include "mojo/camera_common.mojom.h"
 
 namespace cros {
 

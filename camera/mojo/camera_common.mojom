@@ -6,8 +6,8 @@
 
 module cros.mojom;
 
-import "hal_adapter/mojo/camera3.mojom";
-import "hal_adapter/mojo/camera_metadata.mojom";
+import "mojo/camera3.mojom";
+import "mojo/camera_metadata.mojom";
 
 enum CameraFacing {
   CAMERA_FACING_BACK = 0,

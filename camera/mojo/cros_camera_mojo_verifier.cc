@@ -7,8 +7,8 @@
 #include <hardware/camera3.h>
 
 #include "cros-camera/camera_buffer_manager.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
-#include "hal_adapter/mojo/camera_common.mojom.h"
+#include "mojo/camera3.mojom.h"
+#include "mojo/camera_common.mojom.h"
 
 namespace cros {
 

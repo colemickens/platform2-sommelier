@@ -8,8 +8,8 @@
 #define HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_
 
 #include "hal_adapter/cros_camera_mojo_utils.h"
-#include "hal_adapter/mojo/camera3.mojom.h"
-#include "hal_adapter/mojo/camera_common.mojom.h"
+#include "mojo/camera3.mojom.h"
+#include "mojo/camera_common.mojom.h"
 
 namespace cros {
 
