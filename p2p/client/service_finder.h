@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_CLIENT_SERVICE_FINDER_H__
-#define P2P_CLIENT_SERVICE_FINDER_H__
+#ifndef P2P_CLIENT_SERVICE_FINDER_H_
+#define P2P_CLIENT_SERVICE_FINDER_H_
 
 #include <map>
 #include <set>
@@ -70,4 +70,4 @@ class ServiceFinder {
 
 }  // namespace p2p
 
-#endif  // P2P_CLIENT_SERVICE_FINDER_H__
+#endif  // P2P_CLIENT_SERVICE_FINDER_H_

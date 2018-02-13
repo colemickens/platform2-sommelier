@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_CLIENT_PEER_SELECTOR_H__
-#define P2P_CLIENT_PEER_SELECTOR_H__
+#ifndef P2P_CLIENT_PEER_SELECTOR_H_
+#define P2P_CLIENT_PEER_SELECTOR_H_
 
 #include "p2p/client/service_finder.h"
 
@@ -111,4 +111,4 @@ class PeerSelector {
 
 }  // namespace p2p
 
-#endif  // P2P_CLIENT_PEER_SELECTOR_H__
+#endif  // P2P_CLIENT_PEER_SELECTOR_H_

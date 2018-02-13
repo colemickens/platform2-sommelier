@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_COMMON_CONSTANTS_H__
-#define P2P_COMMON_CONSTANTS_H__
+#ifndef P2P_COMMON_CONSTANTS_H_
+#define P2P_COMMON_CONSTANTS_H_
 
 #include <stdint.h>
 
@@ -43,4 +43,4 @@ constexpr int64_t kBytesPerMB = 1000000;
 
 }  // namespace p2p
 
-#endif  // P2P_COMMON_CONSTANTS_H__
+#endif  // P2P_COMMON_CONSTANTS_H_

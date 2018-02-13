@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_COMMON_UTIL_H__
-#define P2P_COMMON_UTIL_H__
+#ifndef P2P_COMMON_UTIL_H_
+#define P2P_COMMON_UTIL_H_
 
 #include <base/files/file_path.h>
 
@@ -26,4 +26,4 @@ bool IsXAttrSupported(const base::FilePath& dir_path);
 
 }  // namespace p2p
 
-#endif  // P2P_COMMON_UTIL_H__
+#endif  // P2P_COMMON_UTIL_H_

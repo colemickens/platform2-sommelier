@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_COMMON_CLOCK_H__
-#define P2P_COMMON_CLOCK_H__
+#ifndef P2P_COMMON_CLOCK_H_
+#define P2P_COMMON_CLOCK_H_
 
 #include <base/macros.h>
 
@@ -29,4 +29,4 @@ class Clock : public ClockInterface {
 
 }  // namespace p2p
 
-#endif  // P2P_COMMON_CLOCK_H__
+#endif  // P2P_COMMON_CLOCK_H_

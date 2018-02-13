@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_SERVER_FILE_WATCHER_H__
-#define P2P_SERVER_FILE_WATCHER_H__
+#ifndef P2P_SERVER_FILE_WATCHER_H_
+#define P2P_SERVER_FILE_WATCHER_H_
 
 #include <string>
 #include <vector>
@@ -69,4 +69,4 @@ class FileWatcher {
 
 }  // namespace p2p
 
-#endif  // P2P_SERVER_FILE_WATCHER_H__
+#endif  // P2P_SERVER_FILE_WATCHER_H_

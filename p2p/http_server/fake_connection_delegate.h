@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H__
-#define P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H__
+#ifndef P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H_
+#define P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H_
 
 #include <string>
 
@@ -71,4 +71,4 @@ class FakeConnectionDelegate : public ConnectionDelegateInterface {
 
 }  // namespace p2p
 
-#endif  // P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H__
+#endif  // P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H__
-#define P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H__
+#ifndef P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H_
+#define P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H_
 
 #include "p2p/server/http_server.h"
 
@@ -92,4 +92,4 @@ class HttpServerExternalProcess : public HttpServer {
 
 }  // namespace p2p
 
-#endif  // P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H__
+#endif  // P2P_SERVER_HTTP_SERVER_EXTERNAL_PROCESS_H_

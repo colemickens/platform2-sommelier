@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_SERVER_MOCK_SERVICE_PUBLISHER_H__
-#define P2P_SERVER_MOCK_SERVICE_PUBLISHER_H__
+#ifndef P2P_SERVER_MOCK_SERVICE_PUBLISHER_H_
+#define P2P_SERVER_MOCK_SERVICE_PUBLISHER_H_
 
 #include "p2p/server/fake_service_publisher.h"
 
@@ -54,4 +54,4 @@ class MockServicePublisher : public ServicePublisher {
 
 }  // namespace p2p
 
-#endif  // P2P_SERVER_MOCK_SERVICE_PUBLISHER_H__
+#endif  // P2P_SERVER_MOCK_SERVICE_PUBLISHER_H_

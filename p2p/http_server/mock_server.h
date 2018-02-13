@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_HTTP_SERVER_MOCK_SERVER_H__
-#define P2P_HTTP_SERVER_MOCK_SERVER_H__
+#ifndef P2P_HTTP_SERVER_MOCK_SERVER_H_
+#define P2P_HTTP_SERVER_MOCK_SERVER_H_
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
@@ -37,4 +37,4 @@ class MockServer : public ServerInterface {
 
 }  // namespace p2p
 
-#endif  // P2P_HTTP_SERVER_MOCK_SERVER_H__
+#endif  // P2P_HTTP_SERVER_MOCK_SERVER_H_

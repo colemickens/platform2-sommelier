@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_COMMON_SERVER_MESSAGE_H__
-#define P2P_COMMON_SERVER_MESSAGE_H__
+#ifndef P2P_COMMON_SERVER_MESSAGE_H_
+#define P2P_COMMON_SERVER_MESSAGE_H_
 
 #include <string>
 
@@ -73,4 +73,4 @@ std::string ToString(P2PServerRequestResult request_result);
 
 }  // namespace p2p
 
-#endif  // P2P_COMMON_SERVER_MESSAGE_H__
+#endif  // P2P_COMMON_SERVER_MESSAGE_H_

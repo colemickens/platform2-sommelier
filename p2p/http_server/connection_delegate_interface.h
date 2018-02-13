@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H__
-#define P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H__
+#ifndef P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H_
+#define P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H_
 
 #include <string>
 
@@ -49,4 +49,4 @@ typedef ConnectionDelegateInterface* (ConnectionDelegateFactory)(
 
 }  // namespace p2p
 
-#endif  // P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H__
+#endif  // P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H_
