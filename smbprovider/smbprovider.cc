@@ -304,6 +304,29 @@ bool SmbProvider::GetFullPath(const char* operation_name,
 }
 
 template <typename Proto>
+bool SmbProvider::GetFullPaths(Proto* options,
+                               std::string* source_full_path,
+                               std::string* target_full_path) const {
+  DCHECK(options);
+  DCHECK(source_full_path);
+  DCHECK(target_full_path);
+
+  const int32_t mount_id = options->mount_id();
+  const std::string source_path = GetSourcePath(*options);
+  const std::string target_path = GetDestinationPath(*options);
+
+  const bool success =
+      mount_manager_->GetFullPath(mount_id, source_path, source_full_path) &&
+      mount_manager_->GetFullPath(mount_id, target_path, target_full_path);
+  if (!success) {
+    LOG(ERROR) << GetMethodName(*options) << " requested unknown mount_id "
+               << mount_id;
+  }
+
+  return success;
+}
+
+template <typename Proto>
 bool SmbProvider::ParseOptionsAndPath(const ProtoBlob& blob,
                                       Proto* options,
                                       std::string* full_path,
@@ -314,6 +337,29 @@ bool SmbProvider::ParseOptionsAndPath(const ProtoBlob& blob,
 
   if (!GetFullPath(GetMethodName(*options), options->mount_id(),
                    GetEntryPath(*options), full_path)) {
+    *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Proto>
+bool SmbProvider::ParseOptionsAndPaths(const ProtoBlob& blob,
+                                       Proto* options,
+                                       std::string* source_path,
+                                       std::string* target_path,
+                                       int32_t* error_code) {
+  DCHECK(options);
+  DCHECK(source_path);
+  DCHECK(target_path);
+  DCHECK(error_code);
+
+  if (!ParseOptionsProto(blob, options, error_code)) {
+    return false;
+  }
+
+  if (!GetFullPaths(options, source_path, target_path)) {
     *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return false;
   }

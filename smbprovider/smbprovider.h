@@ -94,6 +94,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                    const std::string& entry_path,
                    std::string* full_path) const;
 
+  template <typename Proto>
+  bool GetFullPaths(Proto* options,
+                    std::string* source_full_path,
+                    std::string* target_full_path) const;
+
   // Parses the raw contents of |blob| into |options| and validates that
   // the required fields are all correctly set.
   // |full_path| will contain the full path, including the mount root, based
@@ -105,6 +110,16 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                            Proto* options,
                            std::string* full_path,
                            int32_t* error_code);
+
+  // Variation of ParseOptionsAndPath. |source_path| and |target_path| will
+  // contain full paths, including the mount root, based on the mount id and
+  // paths supplied in |options|.
+  template <typename Proto>
+  bool ParseOptionsAndPaths(const ProtoBlob& blob,
+                            Proto* options,
+                            std::string* source_path,
+                            std::string* target_path,
+                            int32_t* error_code);
 
   // Tests whether |mount_root| is a valid path to be mounted by attemping
   // to open the directory.
