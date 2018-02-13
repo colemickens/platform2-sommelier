@@ -4,12 +4,6 @@
 
 #include "p2p/server/peer_update_manager.h"
 
-#include "p2p/common/testutil.h"
-
-#include "p2p/server/fake_file_watcher.h"
-#include "p2p/server/mock_http_server.h"
-#include "p2p/server/mock_service_publisher.h"
-
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -19,6 +13,11 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <metrics/metrics_library_mock.h>
+
+#include "p2p/common/testutil.h"
+#include "p2p/server/fake_file_watcher.h"
+#include "p2p/server/mock_http_server.h"
+#include "p2p/server/mock_service_publisher.h"
 
 using base::Bind;
 

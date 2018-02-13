@@ -2,27 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/common/constants.h"
-#include "p2p/common/util.h"
-#include "p2p/server/file_watcher.h"
-#include "p2p/server/peer_update_manager.h"
-#include "p2p/server/service_publisher.h"
-
-#include <stdio.h>
-
-#include <cassert>
-#include <cerrno>
-
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
 #include <avahi-common/error.h>
 #include <avahi-glib/glib-watch.h>
 #include <gio/gio.h>
+#include <stdio.h>
+
+#include <cassert>
+#include <cerrno>
 
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
+
+#include "p2p/common/constants.h"
+#include "p2p/common/util.h"
+#include "p2p/server/file_watcher.h"
+#include "p2p/server/peer_update_manager.h"
+#include "p2p/server/service_publisher.h"
 
 using std::string;
 

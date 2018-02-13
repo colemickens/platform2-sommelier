@@ -5,14 +5,14 @@
 #ifndef P2P_CLIENT_SERVICE_FINDER_H__
 #define P2P_CLIENT_SERVICE_FINDER_H__
 
-#include "p2p/client/peer.h"
-
-#include <vector>
-#include <set>
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
+
+#include "p2p/client/peer.h"
 
 namespace p2p {
 

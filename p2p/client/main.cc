@@ -2,12 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/client/peer_selector.h"
-#include "p2p/client/service_finder.h"
-#include "p2p/common/clock.h"
-#include "p2p/common/constants.h"
-#include "p2p/common/util.h"
-
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,6 +16,12 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <metrics/metrics_library.h>
+
+#include "p2p/client/peer_selector.h"
+#include "p2p/client/service_finder.h"
+#include "p2p/common/clock.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/util.h"
 
 using std::map;
 using std::string;

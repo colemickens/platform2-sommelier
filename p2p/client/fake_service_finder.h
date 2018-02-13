@@ -5,13 +5,13 @@
 #ifndef P2P_CLIENT_FAKE_SERVICE_FINDER_H__
 #define P2P_CLIENT_FAKE_SERVICE_FINDER_H__
 
-#include "p2p/client/service_finder.h"
-
 #include <stdint.h>
 
 #include <map>
 #include <string>
 #include <vector>
+
+#include "p2p/client/service_finder.h"
 
 namespace p2p {
 

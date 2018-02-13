@@ -4,9 +4,9 @@
 
 #include "p2p/client/fake_service_finder.h"
 
-#include <base/logging.h>
-
 #include <set>
+
+#include <base/logging.h>
 
 using std::map;
 using std::set;

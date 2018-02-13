@@ -6,11 +6,10 @@
 
 #include <attr/xattr.h>
 #include <fcntl.h>
+#include <glib-object.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <glib-object.h>
 
 #include <cctype>
 #include <cinttypes>

@@ -4,26 +4,20 @@
 
 #include "p2p/server/file_watcher.h"
 
-#include "p2p/common/testutil.h"
-
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <arpa/inet.h>
-
+#include <fcntl.h>
 #include <glib-object.h>
+#include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <iostream>
-#include <string>
 #include <cctype>
 #include <cinttypes>
-#include <vector>
+#include <iostream>
+#include <string>
 #include <tuple>
-
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -31,6 +25,10 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/simple_thread.h>
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include "p2p/common/testutil.h"
 
 using std::vector;
 

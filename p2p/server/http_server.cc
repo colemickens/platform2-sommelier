@@ -5,10 +5,6 @@
 #include "p2p/server/http_server.h"
 #include "p2p/server/http_server_external_process.h"
 
-#include "p2p/common/constants.h"
-#include "p2p/common/server_message.h"
-#include "p2p/common/struct_serializer.h"
-
 #include <glib.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -19,6 +15,10 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+
+#include "p2p/common/constants.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/struct_serializer.h"
 
 using std::string;
 using std::vector;

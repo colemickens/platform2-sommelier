@@ -5,10 +5,10 @@
 #ifndef P2P_HTTP_SERVER_MOCK_SERVER_H__
 #define P2P_HTTP_SERVER_MOCK_SERVER_H__
 
-#include "p2p/http_server/server_interface.h"
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
+
+#include "p2p/http_server/server_interface.h"
 
 namespace p2p {
 

@@ -4,8 +4,6 @@
 
 #include "p2p/common/struct_serializer.h"
 
-#include "p2p/common/testutil.h"
-
 #include <fcntl.h>
 #include <glib.h>
 #include <unistd.h>
@@ -14,6 +12,8 @@
 
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
+
+#include "p2p/common/testutil.h"
 
 using p2p::testutil::RunGMainLoopMaxIterations;
 using std::string;

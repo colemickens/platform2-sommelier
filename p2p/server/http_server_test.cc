@@ -4,21 +4,20 @@
 
 #include "p2p/server/http_server.h"
 
-#include "p2p/common/server_message.h"
-#include "p2p/common/testutil.h"
-#include "p2p/common/util.h"
-
 #include <glib-object.h>
 
 #include <vector>
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/simple_thread.h>
 #include <metrics/metrics_library_mock.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "p2p/common/server_message.h"
+#include "p2p/common/testutil.h"
+#include "p2p/common/util.h"
 
 using testing::StrictMock;
 using testing::_;

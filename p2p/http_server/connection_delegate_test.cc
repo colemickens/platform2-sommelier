@@ -4,12 +4,6 @@
 
 #include "p2p/http_server/connection_delegate.h"
 
-#include "p2p/common/constants.h"
-#include "p2p/common/fake_clock.h"
-#include "p2p/common/testutil.h"
-#include "p2p/common/util.h"
-#include "p2p/http_server/mock_server.h"
-
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -26,6 +20,12 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/simple_thread.h>
 #include <gtest/gtest.h>
+
+#include "p2p/common/constants.h"
+#include "p2p/common/fake_clock.h"
+#include "p2p/common/testutil.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/mock_server.h"
 
 using std::map;
 using std::string;

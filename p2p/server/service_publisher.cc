@@ -4,19 +4,19 @@
 
 #include "p2p/server/service_publisher.h"
 
-#include "p2p/common/util.h"
-
-#include <glib.h>
 #include <avahi-client/client.h>
-#include <avahi-glib/glib-watch.h>
-#include <avahi-common/error.h>
 #include <avahi-client/publish.h>
+#include <avahi-common/error.h>
+#include <avahi-glib/glib-watch.h>
+#include <glib.h>
 
 #include <map>
 
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/stringprintf.h>
+
+#include "p2p/common/util.h"
 
 using std::map;
 using std::string;

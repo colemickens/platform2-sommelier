@@ -5,11 +5,11 @@
 #ifndef P2P_SERVER_PEER_UPDATE_MANAGER_H__
 #define P2P_SERVER_PEER_UPDATE_MANAGER_H__
 
+#include <base/macros.h>
+
 #include "p2p/server/file_watcher.h"
 #include "p2p/server/http_server.h"
 #include "p2p/server/service_publisher.h"
-
-#include <base/macros.h>
 
 namespace p2p {
 

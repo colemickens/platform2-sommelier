@@ -4,8 +4,6 @@
 
 #include "p2p/client/service_finder.h"
 
-#include "p2p/common/util.h"
-
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
 #include <avahi-common/error.h>
@@ -19,6 +17,8 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
+
+#include "p2p/common/util.h"
 
 using std::map;
 using std::set;

@@ -5,10 +5,10 @@
 #ifndef P2P_SERVER_FAKE_SERVICE_PUBLISHER_H__
 #define P2P_SERVER_FAKE_SERVICE_PUBLISHER_H__
 
-#include "p2p/server/service_publisher.h"
-
 #include <map>
 #include <string>
+
+#include "p2p/server/service_publisher.h"
 
 namespace p2p {
 

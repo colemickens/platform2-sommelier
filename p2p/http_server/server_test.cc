@@ -4,14 +4,6 @@
 
 #include "p2p/http_server/server.h"
 
-#include "p2p/common/constants.h"
-#include "p2p/common/server_message.h"
-#include "p2p/common/struct_serializer.h"
-#include "p2p/common/testutil.h"
-#include "p2p/common/util.h"
-#include "p2p/http_server/connection_delegate.h"
-#include "p2p/http_server/fake_connection_delegate.h"
-
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -35,6 +27,14 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/threading/simple_thread.h>
 #include <gtest/gtest.h>
+
+#include "p2p/common/constants.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/struct_serializer.h"
+#include "p2p/common/testutil.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/connection_delegate.h"
+#include "p2p/http_server/fake_connection_delegate.h"
 
 using std::string;
 using std::tuple;

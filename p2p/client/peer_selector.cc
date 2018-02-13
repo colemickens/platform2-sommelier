@@ -4,10 +4,6 @@
 
 #include "p2p/client/peer_selector.h"
 
-#include "p2p/client/peer.h"
-#include "p2p/common/clock_interface.h"
-#include "p2p/common/constants.h"
-
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -16,6 +12,10 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
+
+#include "p2p/client/peer.h"
+#include "p2p/common/clock_interface.h"
+#include "p2p/common/constants.h"
 
 using std::map;
 using std::string;

@@ -6,7 +6,6 @@
 #define P2P_CLIENT_PEER_SELECTOR_H__
 
 #include "p2p/client/service_finder.h"
-#include "p2p/common/clock.h"
 
 #include <stdint.h>
 
@@ -14,6 +13,8 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
+
+#include "p2p/common/clock.h"
 
 namespace p2p {
 

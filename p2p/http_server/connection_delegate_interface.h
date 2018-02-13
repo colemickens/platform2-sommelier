@@ -5,11 +5,11 @@
 #ifndef P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H__
 #define P2P_HTTP_SERVER_CONNECTION_DELEGATE_INTERFACE_H__
 
-#include "p2p/common/server_message.h"
-
 #include <string>
 
 #include <base/threading/simple_thread.h>
+
+#include "p2p/common/server_message.h"
 
 namespace p2p {
 

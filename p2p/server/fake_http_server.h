@@ -5,13 +5,13 @@
 #ifndef P2P_SERVER_FAKE_HTTP_SERVER_H__
 #define P2P_SERVER_FAKE_HTTP_SERVER_H__
 
-#include "p2p/server/http_server.h"
-
 #include <string>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+
+#include "p2p/server/http_server.h"
 
 namespace p2p {
 

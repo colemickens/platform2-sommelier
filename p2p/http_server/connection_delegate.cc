@@ -4,11 +4,6 @@
 
 #include "p2p/http_server/connection_delegate.h"
 
-#include "p2p/common/constants.h"
-#include "p2p/common/server_message.h"
-#include "p2p/common/util.h"
-#include "p2p/http_server/server.h"
-
 #include <arpa/inet.h>
 #include <attr/xattr.h>
 #include <dirent.h>
@@ -33,6 +28,11 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+
+#include "p2p/common/constants.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/server.h"
 
 using std::map;
 using std::string;

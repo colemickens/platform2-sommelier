@@ -4,12 +4,11 @@
 
 #include "p2p/server/file_watcher.h"
 
+#include <gio/gio.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <gio/gio.h>
 
 #include <algorithm>
 

@@ -5,10 +5,6 @@
 #ifndef P2P_HTTP_SERVER_SERVER_H__
 #define P2P_HTTP_SERVER_SERVER_H__
 
-#include "p2p/common/server_message.h"
-#include "p2p/common/clock_interface.h"
-#include "p2p/http_server/server_interface.h"
-
 #include <glib.h>
 #include <stdint.h>
 
@@ -20,6 +16,9 @@
 #include <base/files/file_path.h>
 #include <base/threading/simple_thread.h>
 
+#include "p2p/common/clock_interface.h"
+#include "p2p/common/server_message.h"
+#include "p2p/http_server/server_interface.h"
 
 namespace p2p {
 

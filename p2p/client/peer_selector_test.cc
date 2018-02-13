@@ -5,16 +5,16 @@
 
 #include "p2p/client/peer_selector.h"
 
-#include "p2p/client/fake_service_finder.h"
-#include "p2p/common/fake_clock.h"
-#include "p2p/common/testutil.h"
-
 #include <string>
 
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+
+#include "p2p/client/fake_service_finder.h"
+#include "p2p/common/fake_clock.h"
+#include "p2p/common/testutil.h"
 
 using testing::_;
 

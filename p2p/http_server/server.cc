@@ -4,11 +4,6 @@
 
 #include "p2p/http_server/server.h"
 
-#include "p2p/common/clock.h"
-#include "p2p/common/server_message.h"
-#include "p2p/common/struct_serializer.h"
-#include "p2p/http_server/connection_delegate_interface.h"
-
 #include <arpa/inet.h>
 #include <attr/xattr.h>
 #include <dirent.h>
@@ -31,6 +26,11 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+
+#include "p2p/common/clock.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/struct_serializer.h"
+#include "p2p/http_server/connection_delegate_interface.h"
 
 using std::string;
 

@@ -5,10 +5,10 @@
 #ifndef P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H__
 #define P2P_HTTP_SERVER_FAKE_CONNECTION_DELEGATE_H__
 
+#include <string>
+
 #include "p2p/http_server/connection_delegate_interface.h"
 #include "p2p/http_server/server_interface.h"
-
-#include <string>
 
 namespace p2p {
 
