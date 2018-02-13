@@ -148,6 +148,7 @@ mojo_sub_CXX_OBJECTS := \
 libcamera_ipc_OBJS = \
 	$(mojo_CXX_OBJECTS) \
 	$(mojo_sub_CXX_OBJECTS) \
+	common/camera_mojo_channel_manager_impl.o \
 	common/ipc_util.o
 libcamera_ipc_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER) \
 	libcamera_metadata
