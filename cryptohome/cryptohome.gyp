@@ -426,11 +426,11 @@
           'cflags!': ['-fPIE'],
           'cflags': ['-fPIC'],
           'variables': {
-            'proto_in_dir': '.',
-            'proto_out_dir': 'include',
+            'proto_in_dir': './cert',
+            'proto_out_dir': 'include/cert',
           },
           'sources': [
-            'cert_provision.proto',
+            'cert/cert_provision.proto',
           ],
           'includes': [
             '../common-mk/protoc.gypi',
@@ -478,11 +478,11 @@
             },
           },
           'sources': [
-            'cert_provision.cc',
-            'cert_provision_cryptohome.cc',
-            'cert_provision_keystore.cc',
-            'cert_provision_pca.cc',
-            'cert_provision_util.cc',
+            'cert/cert_provision.cc',
+            'cert/cert_provision_cryptohome.cc',
+            'cert/cert_provision_keystore.cc',
+            'cert/cert_provision_pca.cc',
+            'cert/cert_provision_util.cc',
           ],
         },
         {
@@ -492,7 +492,7 @@
             'cert_provision',
           ],
           'sources': [
-            'cert_provision_client.cc',
+            'cert/cert_provision_client.cc',
           ],
           'variables': {
             'deps': [
@@ -598,8 +598,8 @@
                 'cert_provision-static',
               ],
               'sources': [
-                'cert_provision_keystore_unittest.cc',
-                'cert_provision_unittest.cc',
+                'cert/cert_provision_keystore_unittest.cc',
+                'cert/cert_provision_unittest.cc',
               ],
             }],
           ],

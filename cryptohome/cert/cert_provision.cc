@@ -7,13 +7,13 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "cryptohome/cert/cert_provision_cryptohome.h"
+#include "cryptohome/cert/cert_provision_keystore.h"
+#include "cryptohome/cert/cert_provision_pca.h"
+#include "cryptohome/cert/cert_provision_util.h"
 #include "cryptohome/cert_provision.h"
-#include "cryptohome/cert_provision_cryptohome.h"
-#include "cryptohome/cert_provision_keystore.h"
-#include "cryptohome/cert_provision_pca.h"
-#include "cryptohome/cert_provision_util.h"
 
-#include "cert_provision.pb.h"  // NOLINT(build/include)
+#include "cert/cert_provision.pb.h"  // NOLINT(build/include)
 
 namespace {
 

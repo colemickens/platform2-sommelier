@@ -7,7 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/cryptohome.dbusclient.h"
-#include "cryptohome/cert_provision_cryptohome.h"
+#include "cryptohome/cert/cert_provision_cryptohome.h"
 
 namespace {
 

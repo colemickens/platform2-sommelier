@@ -4,8 +4,8 @@
 //
 // PCA interface classes for cert_provision library.
 
-#ifndef CRYPTOHOME_CERT_PROVISION_PCA_H_
-#define CRYPTOHOME_CERT_PROVISION_PCA_H_
+#ifndef CRYPTOHOME_CERT_CERT_PROVISION_PCA_H_
+#define CRYPTOHOME_CERT_CERT_PROVISION_PCA_H_
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/cert_provision_util.h"
+#include "cryptohome/cert/cert_provision_util.h"
 
 namespace cert_provision {
 
@@ -57,4 +57,4 @@ class PCAProxyImpl : public PCAProxy {
 
 }  // namespace cert_provision
 
-#endif  // CRYPTOHOME_CERT_PROVISION_PCA_H_
+#endif  // CRYPTOHOME_CERT_CERT_PROVISION_PCA_H_

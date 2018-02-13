@@ -4,12 +4,12 @@
 //
 // Mock for CryptohomeProxy.
 
-#ifndef CRYPTOHOME_MOCK_CERT_PROVISION_CRYPTOHOME_H_
-#define CRYPTOHOME_MOCK_CERT_PROVISION_CRYPTOHOME_H_
+#ifndef CRYPTOHOME_CERT_MOCK_CERT_PROVISION_CRYPTOHOME_H_
+#define CRYPTOHOME_CERT_MOCK_CERT_PROVISION_CRYPTOHOME_H_
 
 #include <string>
 
-#include "cryptohome/cert_provision_cryptohome.h"
+#include "cryptohome/cert/cert_provision_cryptohome.h"
 
 namespace cert_provision {
 
@@ -35,4 +35,4 @@ class MockCryptohomeProxy : public CryptohomeProxy {
 
 }  // namespace cert_provision
 
-#endif  // CRYPTOHOME_MOCK_CERT_PROVISION_CRYPTOHOME_H_
+#endif  // CRYPTOHOME_CERT_MOCK_CERT_PROVISION_CRYPTOHOME_H_

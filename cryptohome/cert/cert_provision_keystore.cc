@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 
-#include "cryptohome/cert_provision_keystore.h"
+#include "cryptohome/cert/cert_provision_keystore.h"
 
 namespace {
 

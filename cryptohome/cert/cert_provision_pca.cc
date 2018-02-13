@@ -6,7 +6,7 @@
 
 #include <brillo/mime_utils.h>
 
-#include "cryptohome/cert_provision_pca.h"
+#include "cryptohome/cert/cert_provision_pca.h"
 
 namespace cert_provision {
 

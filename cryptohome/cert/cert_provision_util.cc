@@ -11,7 +11,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
-#include "cryptohome/cert_provision_util.h"
+#include "cryptohome/cert/cert_provision_util.h"
 
 namespace {
 

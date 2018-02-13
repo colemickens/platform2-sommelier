@@ -4,12 +4,12 @@
 //
 // Mock for KeyStore.
 
-#ifndef CRYPTOHOME_MOCK_CERT_PROVISION_KEYSTORE_H_
-#define CRYPTOHOME_MOCK_CERT_PROVISION_KEYSTORE_H_
+#ifndef CRYPTOHOME_CERT_MOCK_CERT_PROVISION_KEYSTORE_H_
+#define CRYPTOHOME_CERT_MOCK_CERT_PROVISION_KEYSTORE_H_
 
 #include <string>
 
-#include "cryptohome/cert_provision_keystore.h"
+#include "cryptohome/cert/cert_provision_keystore.h"
 
 namespace cert_provision {
 
@@ -34,4 +34,4 @@ class MockKeyStore : public KeyStore {
 
 }  // namespace cert_provision
 
-#endif  // CRYPTOHOME_MOCK_CERT_PROVISION_KEYSTORE_H_
+#endif  // CRYPTOHOME_CERT_MOCK_CERT_PROVISION_KEYSTORE_H_

@@ -4,8 +4,8 @@
 //
 // Utility classes for cert_provision library.
 
-#ifndef CRYPTOHOME_CERT_PROVISION_UTIL_H_
-#define CRYPTOHOME_CERT_PROVISION_UTIL_H_
+#ifndef CRYPTOHOME_CERT_CERT_PROVISION_UTIL_H_
+#define CRYPTOHOME_CERT_CERT_PROVISION_UTIL_H_
 
 #include <memory>
 #include <string>
@@ -93,4 +93,4 @@ std::string GetKeyID(const brillo::SecureBlob& public_key);
 
 }  // namespace cert_provision
 
-#endif  // CRYPTOHOME_CERT_PROVISION_UTIL_H_
+#endif  // CRYPTOHOME_CERT_CERT_PROVISION_UTIL_H_
