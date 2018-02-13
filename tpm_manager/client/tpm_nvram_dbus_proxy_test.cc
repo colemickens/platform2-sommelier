@@ -15,6 +15,7 @@
 //
 
 #include <string>
+#include <vector>
 
 #include <brillo/bind_lambda.h>
 #include <dbus/mock_object_proxy.h>
@@ -70,14 +71,14 @@ TEST_F(TpmNvramDBusProxyTest, DefineSpace) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const DefineSpaceReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, const DefineSpaceReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
   DefineSpaceRequest request;
   request.set_index(nvram_index);
   request.set_size(nvram_size);
-  proxy_.DefineSpace(request, base::Bind(callback));
+  proxy_.DefineSpace(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -104,13 +105,13 @@ TEST_F(TpmNvramDBusProxyTest, DestroySpaceRequest) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const DestroySpaceReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, const DestroySpaceReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
   DestroySpaceRequest request;
   request.set_index(nvram_index);
-  proxy_.DestroySpace(request, base::Bind(callback));
+  proxy_.DestroySpace(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 TEST_F(TpmNvramDBusProxyTest, WriteSpace) {
@@ -139,14 +140,14 @@ TEST_F(TpmNvramDBusProxyTest, WriteSpace) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const WriteSpaceReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, const WriteSpaceReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
   WriteSpaceRequest request;
   request.set_index(nvram_index);
   request.set_data(nvram_data);
-  proxy_.WriteSpace(request, base::Bind(callback));
+  proxy_.WriteSpace(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -175,15 +176,16 @@ TEST_F(TpmNvramDBusProxyTest, ReadSpace) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count, nvram_data](const ReadSpaceReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, const std::string& data,
+                     const ReadSpaceReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
     EXPECT_TRUE(reply.has_data());
-    EXPECT_EQ(nvram_data, reply.data());
+    EXPECT_EQ(data, reply.data());
   };
   ReadSpaceRequest request;
   request.set_index(nvram_index);
-  proxy_.ReadSpace(request, base::Bind(callback));
+  proxy_.ReadSpace(request, base::Bind(callback, &callback_count, nvram_data));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -244,17 +246,20 @@ TEST_F(TpmNvramDBusProxyTest, ListSpaces) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count,
-                   nvram_index_list](const ListSpacesReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, const std::vector<const uint32_t>& index_list,
+                     const ListSpacesReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
-    EXPECT_EQ(arraysize(nvram_index_list), reply.index_list_size());
+    EXPECT_EQ(index_list.size(), reply.index_list_size());
     for (size_t i = 0; i < 3; i++) {
-      EXPECT_EQ(nvram_index_list[i], reply.index_list(i));
+      EXPECT_EQ(index_list[i], reply.index_list(i));
     }
   };
   ListSpacesRequest request;
-  proxy_.ListSpaces(request, base::Bind(callback));
+  proxy_.ListSpaces(request, base::Bind(callback, &callback_count,
+                                        std::vector<const uint32_t>(
+                                            std::begin(nvram_index_list),
+                                            std::end(nvram_index_list))));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -283,16 +288,16 @@ TEST_F(TpmNvramDBusProxyTest, GetSpaceInfo) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count,
-                   nvram_size](const GetSpaceInfoReply& reply) {
-    callback_count++;
+  auto callback = [](int* count, size_t size, const GetSpaceInfoReply& reply) {
+    (*count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
     EXPECT_TRUE(reply.has_size());
-    EXPECT_EQ(nvram_size, reply.size());
+    EXPECT_EQ(size, reply.size());
   };
   GetSpaceInfoRequest request;
   request.set_index(nvram_index);
-  proxy_.GetSpaceInfo(request, base::Bind(callback));
+  proxy_.GetSpaceInfo(request,
+                      base::Bind(callback, &callback_count, nvram_size));
   EXPECT_EQ(1, callback_count);
 }
 

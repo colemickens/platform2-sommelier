@@ -88,14 +88,14 @@ template <typename ReplyProtobufType,
 void TpmNvramDBusProxy::CallMethod(const std::string& method_name,
                                    const RequestProtobufType& request,
                                    const CallbackType& callback) {
-  auto on_error = [callback](brillo::Error* error) {
+  auto on_error = [](CallbackType callback, brillo::Error* error) {
     ReplyProtobufType reply;
     reply.set_result(NVRAM_RESULT_IPC_ERROR);
     callback.Run(reply);
   };
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS, object_proxy_, tpm_manager::kTpmNvramInterface,
-      method_name, callback, base::Bind(on_error), request);
+      method_name, callback, base::Bind(on_error, callback), request);
 }
 
 }  // namespace tpm_manager

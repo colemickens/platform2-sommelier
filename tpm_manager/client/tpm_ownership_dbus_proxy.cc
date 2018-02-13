@@ -79,14 +79,14 @@ template <typename ReplyProtobufType,
 void TpmOwnershipDBusProxy::CallMethod(const std::string& method_name,
                                        const RequestProtobufType& request,
                                        const CallbackType& callback) {
-  auto on_error = [callback](brillo::Error* error) {
+  auto on_error = [](CallbackType callback, brillo::Error* error) {
     ReplyProtobufType reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS, object_proxy_, tpm_manager::kTpmOwnershipInterface,
-      method_name, callback, base::Bind(on_error), request);
+      method_name, callback, base::Bind(on_error, callback), request);
 }
 
 }  // namespace tpm_manager
