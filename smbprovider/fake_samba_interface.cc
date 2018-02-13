@@ -113,7 +113,7 @@ int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
   }
 
   stat->st_size = entry->size;
-  stat->st_mode = entry->smbc_type == SMBC_FILE ? kFileMode : kDirMode;
+  stat->st_mode = entry->IsFile() ? kFileMode : kDirMode;
   stat->st_mtime = entry->date;
   return 0;
 }
@@ -422,8 +422,8 @@ FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
 
 bool FakeSambaInterface::FakeDirectory::IsFileOrEmptyDirectory(
     FakeEntry* entry) const {
-  DCHECK(entry->smbc_type == SMBC_FILE || entry->smbc_type == SMBC_DIR);
-  if (entry->smbc_type == SMBC_FILE) {
+  DCHECK(entry->IsValidEntryType());
+  if (entry->IsFile()) {
     return true;
   }
 
@@ -578,7 +578,7 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
       *error = ENOENT;
       return nullptr;
     }
-    if (entry->smbc_type != SMBC_DIR) {
+    if (!entry->IsDir()) {
       *error = ENOTDIR;
       return nullptr;
     }
@@ -594,7 +594,7 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
 FakeSambaInterface::FakeFile* FakeSambaInterface::GetFile(
     const std::string& file_path) const {
   FakeEntry* entry = GetEntry(file_path);
-  if (!entry || entry->smbc_type != SMBC_FILE) {
+  if (!entry || !entry->IsFile()) {
     return nullptr;
   }
   return static_cast<FakeFile*>(entry);
