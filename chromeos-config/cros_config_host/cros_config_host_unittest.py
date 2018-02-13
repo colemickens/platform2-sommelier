@@ -138,6 +138,20 @@ def MakeTests(pathname):
       self.assertEqual(name, 'alsa-conf')
       self.assertEqual(value, '/usr/share/alsa/ucm')
 
+    def testWritePhandleProperties(self):
+      """Test that we can write out a list of phandle properties"""
+      call_args = '{} write-phandle-properties'.format(CLI_FILE).split()
+      output = subprocess.check_output(call_args)
+      lines = [line for line in output.splitlines()]
+      # Find the line of the form:
+      #   phandle-properties = ...;
+      phandle_props = [line for line in lines if 'phandle-properties' in line]
+      self.assertEqual(len(phandle_props), 1)
+      m = re.match(r'.* = "(.*)";', phandle_props[0])
+      self.assertTrue(m != None)
+      props = m.group(0).split('", "')
+      self.assertTrue(len(props) > 5)
+
   return CrosConfigHostTest
 
 

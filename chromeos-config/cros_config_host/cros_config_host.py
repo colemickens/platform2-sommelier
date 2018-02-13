@@ -184,6 +184,26 @@ def WriteTargetDirectories():
 };
 ''')
 
+def WritePhandleProperties():
+  """Writes out a file containing the directory target info"""
+  phandle_props = CrosConfigImpl.GetPhandleProperties()
+  quoted = ['"%s"' % prop for prop in sorted(phandle_props)]
+  print('''/*
+ * This is a generated file, DO NOT EDIT!'
+ *
+ * This provides a list of property names which are used as phandles in the
+ * schema.
+ */
+
+/ {
+\tchromeos {
+\t\tschema {
+\t\t\tphandle-properties = %s;
+\t\t};
+\t};
+};
+''' % (', '.join(quoted)))
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -257,7 +277,7 @@ def GetParser(description):
       'root',
       help='Part to the root directory for this board')
   # Parser: write-target-dirs
-  file_tree_parser = subparsers.add_parser(
+  subparsers.add_parser(
       'write-target-dirs',
       help='Writes out a list of target directories for each PropFile element')
   # Parser: get-bsp-uris
@@ -271,6 +291,10 @@ def GetParser(description):
   subparsers.add_parser(
       'get-bsp-tar-files',
       help='Writes out a list of tarfiles needed to obtain the BSP files.')
+  # Parser: write-phandle-properties
+  subparsers.add_parser(
+      'write-phandle-properties',
+      help='Writes out a list of properties which are used as phandles')
   return parser
 
 
@@ -288,6 +312,9 @@ def main(argv=None):
   opts = parser.parse_args(argv)
   if opts.subcommand == 'write-target-dirs':
     WriteTargetDirectories()
+    return
+  elif opts.subcommand == 'write-phandle-properties':
+    WritePhandleProperties()
     return
   config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
   # Get all models we are invoking on (if any).

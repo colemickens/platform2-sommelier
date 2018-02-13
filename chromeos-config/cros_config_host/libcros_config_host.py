@@ -364,6 +364,18 @@ class CrosConfigImpl(object):
     validator = validate_config.GetValidator()
     return validator.GetTargetDirectories()
 
+  @staticmethod
+  def GetPhandleProperties():
+    """Gets a dict of properties which contain phandles
+
+    Returns:
+      Dict:
+        key: Property name
+        value: Ansolute path for this property
+    """
+    validator = validate_config.GetValidator()
+    return validator.GetPhandleProps()
+
   def GetModelList(self):
     """Return a list of models
 

@@ -671,7 +671,8 @@ SCHEMA = NodeDesc('/', True, [
         NodeDesc('schema', False, [
             NodeDesc('target-dirs', False, [
                 PropAny(),
-            ])
+            ]),
+            PropStringList('phandle-properties'),
         ])
     ])
 ])
