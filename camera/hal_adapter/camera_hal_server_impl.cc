@@ -66,9 +66,12 @@ bool CameraHalServerImpl::Start() {
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
 
-  watcher_.Watch(kArcCamera3SocketPath, false,
-                 base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
-                            base::Unretained(this)));
+  if (!watcher_.Watch(kArcCamera3SocketPath, false,
+                      base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
+                                 base::Unretained(this)))) {
+    LOGF(ERROR) << "Failed to watch socket path";
+    return false;
+  }
   if (base::PathExists(kArcCamera3SocketPath)) {
     CameraHalServerImpl::OnSocketFileStatusChange(kArcCamera3SocketPath, false);
   }
