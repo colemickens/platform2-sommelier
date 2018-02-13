@@ -160,6 +160,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                            const std::vector<uint8_t>& buffer,
                            int32_t* error_code);
 
+  // Moves an entry at |source_path| to |target_path|. |options| is used for
+  // logging. Returns true on success. Sets |error| and returns false on
+  // failure.
+  bool MoveEntry(const MoveEntryOptionsProto& options,
+                 const std::string& source_path,
+                 const std::string& target_path,
+                 int32_t* error);
+
   // Calls delete on the contents of |dir_path| via postorder traversal.
   // RecursiveDelete exits and returns error if an entry cannot be deleted
   // or there was a Samba error iterating over entries.

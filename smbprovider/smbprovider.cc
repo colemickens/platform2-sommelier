@@ -284,8 +284,17 @@ int32_t SmbProvider::CreateDirectory(const ProtoBlob& options_blob) {
 }
 
 int32_t SmbProvider::MoveEntry(const ProtoBlob& options_blob) {
-  NOTIMPLEMENTED();
-  return 0;
+  int32_t error_code;
+  std::string source_path;
+  std::string target_path;
+  MoveEntryOptionsProto options;
+
+  const bool success =
+      ParseOptionsAndPaths(options_blob, &options, &source_path, &target_path,
+                           &error_code) &&
+      MoveEntry(options, source_path, target_path, &error_code);
+
+  return success ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
 template <typename Proto>
@@ -573,6 +582,19 @@ bool SmbProvider::TruncateAndCloseFile(const Proto& options,
 
   // Return if the truncate was successful.
   return truncate_result == 0;
+}
+
+bool SmbProvider::MoveEntry(const MoveEntryOptionsProto& options,
+                            const std::string& source_path,
+                            const std::string& target_path,
+                            int32_t* error) {
+  DCHECK(error);
+  int32_t result = samba_interface_->MoveEntry(source_path, target_path);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error);
+    return false;
+  }
+  return true;
 }
 
 bool SmbProvider::GenerateParentPaths(

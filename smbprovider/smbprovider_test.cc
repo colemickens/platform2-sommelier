@@ -1814,4 +1814,186 @@ TEST_F(SmbProviderTest, CreateDirectoryFailureOnCreatingSlash) {
   EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateDirectory(blob)));
 }
 
+TEST_F(SmbProviderTest, MoveEntryFailsOnInvalidSource) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob move_blob = CreateMoveEntryOptionsBlob(mount_id, "/dogs", "/cats");
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsToMoveADirectoryIntoItself) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("dogs"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/dogs", "/dogs/cats");
+
+  EXPECT_EQ(ERROR_INVALID_OPERATION,
+            CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsWhenTargetIsExistingFile) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/pic.jpg"));
+  fake_samba_->AddFile(GetDefaultFullPath("/exists.txt"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/pic.jpg", "/exists.txt");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsWhenSourceIsDirAndTargetIsNonEmptyDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/exists"));
+  fake_samba_->AddFile(GetDefaultFullPath("/exists/1.txt"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/other"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/other", "/exists");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsWhenSourceIsFileAndTargetIsExistingDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/source.jpg"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/exists"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/source.jpg", "/exists");
+
+  EXPECT_EQ(ERROR_NOT_A_FILE, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsRenameFile) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/oldname.txt"));
+
+  ProtoBlob move_blob = CreateMoveEntryOptionsBlob(
+      mount_id, "/path/oldname.txt", "/path/newname.txt");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/path/oldname.txt")));
+  EXPECT_TRUE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/path/newname.txt")));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsRenameDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/oldname"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/path/oldname", "/path/newname");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/path/oldname")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path/newname")));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsRenameAndMoveFile) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/oldname.txt"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/oldname.txt", "/path/newname.txt");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/oldname.txt")));
+  EXPECT_TRUE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/path/newname.txt")));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsRenameAndMoveDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/oldname"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/oldname", "/path/newname");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/oldname")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/path/newname")));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsMovingEmptyDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/target"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/dogs", "/target/dogs");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/target/dogs/")));
+}
+
+TEST_F(SmbProviderTest, MoveEntrySucceedsMoveNonEmptyDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/dogs/1.jpg"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs/labs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/target"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/dogs", "/target/dogs");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->MoveEntry(move_blob)));
+
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs/1.jpg")));
+  EXPECT_FALSE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs/labs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/target/dogs/")));
+  EXPECT_TRUE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/target/dogs/1.jpg")));
+  EXPECT_TRUE(
+      fake_samba_->EntryExists(GetDefaultFullPath("/target/dogs/labs")));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsToMoveALockedDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/lockedDir"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/other"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/lockedDir", "/other/lockedDir");
+
+  EXPECT_EQ(ERROR_ACCESS_DENIED, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
+TEST_F(SmbProviderTest, MoveEntryFailsToMoveIntoLockedDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/file.txt"));
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/lockedDir"));
+
+  ProtoBlob move_blob =
+      CreateMoveEntryOptionsBlob(mount_id, "/file.txt", "/lockedDir/file.txt");
+
+  EXPECT_EQ(ERROR_ACCESS_DENIED, CastError(smbprovider_->MoveEntry(move_blob)));
+}
+
 }  // namespace smbprovider
