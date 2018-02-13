@@ -36,6 +36,8 @@ class EventDeviceFactoryInterface;
 class InputObserver;
 struct UdevEvent;
 class UdevInterface;
+class WakeupDeviceFactoryInterface;
+class WakeupDeviceInterface;
 
 class InputWatcher : public InputWatcherInterface,
                      public UdevSubsystemObserver {
@@ -56,6 +58,9 @@ class InputWatcher : public InputWatcherInterface,
   // to keyboard events.
   static const char kPowerButtonToSkipForLegacy[];
 
+  // Hardware ID for ACPI lid device.
+  static const char kAcpiLidDevice[];
+
   InputWatcher();
   ~InputWatcher() override;
 
@@ -66,13 +71,19 @@ class InputWatcher : public InputWatcherInterface,
     sys_class_input_path_ = path;
   }
   // Leaves the InputWatcher in an unusable state, but useful for tests that
-  // want to use the same factory across multiple InputWatchers.
+  // want to use the same event_device_factory_ across multiple InputWatchers.
   EventDeviceFactoryInterface* release_event_device_factory_for_testing() {
     return event_device_factory_.release();
+  }
+  // Leaves the InputWatcher in an unusable state, but useful for tests that
+  // want to use the same wakeup_device_factory_ across multiple InputWatchers.
+  WakeupDeviceFactoryInterface* release_wakeup_device_factory_for_testing() {
+    return wakeup_device_factory_.release();
   }
 
   // Returns true on success.
   bool Init(std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
+            std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory,
             PrefsInterface* prefs,
             UdevInterface* udev);
 
@@ -82,6 +93,9 @@ class InputWatcher : public InputWatcherInterface,
   LidState QueryLidState() override;
   TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
+  void PrepareForSuspendRequest() override;
+  void HandleResume() override;
+  bool InputDeviceCausedLastWake() const override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -114,8 +128,17 @@ class InputWatcher : public InputWatcherInterface,
   void ProcessHoverEvent(const input_event& event);
 
   // Handles an input being added to or removed from the system.
-  void HandleAddedInput(const std::string& input_name, int input_num);
-  void HandleRemovedInput(int input_num);
+  void HandleAddedInput(const std::string& input_name,
+                        int input_num,
+                        const std::string& syspath);
+
+  void HandleRemovedInput(int input_num, const std::string& syspath);
+
+  // Monitors a device (with |sysfs_path|) to identify the potential wakeup
+  // reason. Monitors only if the given device (or any of the ancestors) are
+  // wake capable. Returns true if the device is being monitored.
+  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2
+  bool MonitorWakeupDevice(const base::FilePath& sysfs_path);
 
   // Calls NotifyObserversAboutEvent() for each event in |queued_events_| and
   // clears the vector.
@@ -124,11 +147,16 @@ class InputWatcher : public InputWatcherInterface,
   // Notifies observers about |event| if came from a lid switch or power button.
   void NotifyObserversAboutEvent(const input_event& event);
 
+  // Returns true if |device| should be monitored to identify user-driven wake
+  // events.
+  bool ShouldMonitorForWakeEvents(linked_ptr<EventDeviceInterface> device);
+
   base::FilePath dev_input_path_;
   base::FilePath sys_class_input_path_;
 
-  // Factory to access EventDevices.
+  // Factories for creating EventDevice and WakeupDevice objects.
   std::unique_ptr<EventDeviceFactoryInterface> event_device_factory_;
+  std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory_;
 
   // Event devices reporting power button events. Weak pointers to elements in
   // |event_devices_|.
@@ -187,14 +215,23 @@ class InputWatcher : public InputWatcherInterface,
   // about |queued_events_|.
   base::CancelableClosure send_queued_events_task_;
 
-  // Name of the power button interface to skip monitoring.
-  const char* power_button_to_skip_;
+  // Name of the power button interface to skip monitoring for input events.
+  std::string power_button_to_skip_;
+
+  // ACPI lid device name.
+  std::string acpi_lid_device_;
 
   UdevInterface* udev_;  // non-owned
 
   // Keyed by input event number.
   typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
   InputMap event_devices_;
+
+  // Keyed by the path of the device sysfs directory.
+  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2
+  using WakeupDeviceMap =
+      std::map<std::string, std::unique_ptr<WakeupDeviceInterface>>;
+  WakeupDeviceMap wakeup_devices_;
 
   base::ObserverList<InputObserver> observers_;
 

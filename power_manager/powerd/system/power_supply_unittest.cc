@@ -251,8 +251,8 @@ class PowerSupplyTest : public ::testing::Test {
 
   // Sends a udev event to |power_supply_|.
   void SendUdevEvent() {
-    udev_.NotifySubsystemObservers(
-        {PowerSupply::kUdevSubsystem, "", "AC", UdevEvent::Action::CHANGE});
+    udev_.NotifySubsystemObservers({{PowerSupply::kUdevSubsystem, "", "AC", ""},
+                                    UdevEvent::Action::CHANGE});
   }
 
   FakePrefs prefs_;

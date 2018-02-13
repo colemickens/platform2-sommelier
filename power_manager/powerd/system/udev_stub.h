@@ -41,6 +41,10 @@ class UdevStub : public UdevInterface {
   // Removes a |sysattr| to test the scenarios where the file is deleted.
   void RemoveSysattr(const std::string& syspath, const std::string& sysattr);
 
+  // Adds a device to be returned by GetSubsystemDevices.
+  void AddSubsystemDevice(const std::string& subsystem,
+                          const UdevDeviceInfo& udev_device);
+
   // UdevInterface implementation:
   void AddSubsystemObserver(const std::string& subsystem,
                             UdevSubsystemObserver* observer) override;
@@ -49,6 +53,8 @@ class UdevStub : public UdevInterface {
   void AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
   void RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
   std::vector<TaggedDevice> GetTaggedDevices() override;
+  bool GetSubsystemDevices(const std::string& subsystem,
+                           std::vector<UdevDeviceInfo>* devices_out) override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   std::string* value) override;
@@ -61,6 +67,11 @@ class UdevStub : public UdevInterface {
                              std::string* parent_syspath) override;
 
  private:
+  // List of subsystem devices returned when GetSubsystemDevices is called.
+  // keyed by subsystem name. Example: "input".
+  using UdevDeviceInfoMap = std::map<std::string, std::vector<UdevDeviceInfo>>;
+  UdevDeviceInfoMap subsystem_devices_;
+
   // Registered observers keyed by subsystem.
   std::map<std::string,
            std::unique_ptr<base::ObserverList<UdevSubsystemObserver>>>

@@ -46,9 +46,9 @@ void WifiController::HandleTabletModeChange(TabletMode mode) {
 }
 
 void WifiController::OnUdevEvent(const system::UdevEvent& event) {
-  DCHECK_EQ(event.subsystem, kUdevSubsystem);
+  DCHECK_EQ(event.device_info.subsystem, kUdevSubsystem);
   if (event.action == system::UdevEvent::Action::ADD &&
-      event.devtype == kUdevDevtype)
+      event.device_info.devtype == kUdevDevtype)
     UpdateTransmitPower();
 }
 

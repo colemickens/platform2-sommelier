@@ -22,7 +22,7 @@ bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
 }
 
 void UdevStub::NotifySubsystemObservers(const UdevEvent& event) {
-  auto it = subsystem_observers_.find(event.subsystem);
+  auto it = subsystem_observers_.find(event.device_info.subsystem);
   if (it != subsystem_observers_.end()) {
     for (UdevSubsystemObserver& observer : *it->second)
       observer.OnUdevEvent(event);
@@ -47,6 +47,11 @@ void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
 void UdevStub::RemoveSysattr(const std::string& syspath,
                              const std::string& sysattr) {
   map_.erase(make_pair(syspath, sysattr));
+}
+
+void UdevStub::AddSubsystemDevice(const std::string& subsystem,
+                                  const UdevDeviceInfo& udev_device) {
+  subsystem_devices_[subsystem].push_back(udev_device);
 }
 
 void UdevStub::AddSubsystemObserver(const std::string& subsystem,
@@ -85,6 +90,17 @@ std::vector<TaggedDevice> UdevStub::GetTaggedDevices() {
   for (const std::pair<std::string, TaggedDevice>& pair : tagged_devices_)
     devices.push_back(pair.second);
   return devices;
+}
+
+bool UdevStub::GetSubsystemDevices(const std::string& subsystem,
+                                   std::vector<UdevDeviceInfo>* devices_out) {
+  DCHECK(devices_out);
+  const auto it = subsystem_devices_.find(subsystem);
+  if (it != subsystem_devices_.end())
+    *devices_out = it->second;
+  else
+    devices_out->clear();
+  return true;
 }
 
 bool UdevStub::GetSysattr(const std::string& syspath,

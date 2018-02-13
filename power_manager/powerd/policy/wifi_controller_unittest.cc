@@ -64,9 +64,9 @@ class WifiControllerTest : public ::testing::Test {
 
   // Sends a udev event announcing that a wifi device has been added.
   void SendUdevEvent() {
-    udev_.NotifySubsystemObservers({WifiController::kUdevSubsystem,
-                                    WifiController::kUdevDevtype, "",
-                                    system::UdevEvent::Action::ADD});
+    udev_.NotifySubsystemObservers(
+        {{WifiController::kUdevSubsystem, WifiController::kUdevDevtype, "", ""},
+         system::UdevEvent::Action::ADD});
   }
 
   // Initial value for kSetWifiTransmitPowerForTabletModePref.
@@ -120,12 +120,13 @@ TEST_F(WifiControllerTest, SetTransmitPowerForDeviceAdded) {
   EXPECT_EQ(TabletMode::ON, delegate_.last_tablet_mode());
 
   // Non-add events, or additions of non-wifi devices, shouldn't do anything.
-  udev_.NotifySubsystemObservers({WifiController::kUdevSubsystem,
-                                  WifiController::kUdevDevtype, "",
-                                  system::UdevEvent::Action::CHANGE});
+  udev_.NotifySubsystemObservers(
+      {{WifiController::kUdevSubsystem, WifiController::kUdevDevtype, "", ""},
+       system::UdevEvent::Action::CHANGE});
   EXPECT_EQ(1, delegate_.num_set_calls());
-  udev_.NotifySubsystemObservers({WifiController::kUdevSubsystem, "eth", "",
-                                  system::UdevEvent::Action::ADD});
+  udev_.NotifySubsystemObservers(
+      {{WifiController::kUdevSubsystem, "eth", "", ""},
+       system::UdevEvent::Action::ADD});
   EXPECT_EQ(1, delegate_.num_set_calls());
 }
 

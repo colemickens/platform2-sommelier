@@ -36,6 +36,9 @@ class InputWatcherStub : public InputWatcherInterface {
   LidState QueryLidState() override;
   TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
+  void PrepareForSuspendRequest() override;
+  void HandleResume() override;
+  bool InputDeviceCausedLastWake() const override;
 
  private:
   // Current input state.

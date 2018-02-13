@@ -550,7 +550,7 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
 }
 
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
-  VLOG(1) << "Got udev event for " << event.sysname;
+  VLOG(1) << "Got udev event for " << event.device_info.sysname;
   // Bail out of the update if the available power sources didn't actually
   // change to avoid recording new samples and updating battery estimates in
   // response to spurious udev events (see http://crosbug.com/p/37403).

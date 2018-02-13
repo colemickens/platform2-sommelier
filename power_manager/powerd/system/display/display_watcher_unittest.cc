@@ -73,9 +73,9 @@ class DisplayWatcherTest : public testing::Test {
 
   // Notifies |watcher_| about a Udev event to trigger a rescan of displays.
   void NotifyAboutUdevEvent() {
-    udev_.NotifySubsystemObservers({DisplayWatcher::kDrmUdevSubsystem,
-                                    "devtype", "sysname",
-                                    UdevEvent::Action::CHANGE});
+    udev_.NotifySubsystemObservers(
+        {{DisplayWatcher::kDrmUdevSubsystem, "devtype", "sysname", ""},
+         UdevEvent::Action::CHANGE});
   }
 
   // Directory with symlinks to DRM devices.

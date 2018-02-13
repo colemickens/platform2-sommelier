@@ -22,8 +22,14 @@ bool WakeupDeviceStub::CausedLastWake() const {
 WakeupDeviceFactoryStub::WakeupDeviceFactoryStub() = default;
 WakeupDeviceFactoryStub::~WakeupDeviceFactoryStub() = default;
 
+bool WakeupDeviceFactoryStub::WasDeviceCreated(
+    const base::FilePath& sysfs_path) const {
+  return registered_wakeup_device_paths_.count(sysfs_path) != 0;
+}
+
 std::unique_ptr<WakeupDeviceInterface>
-WakeupDeviceFactoryStub::CreateWakeupDevice(const base::FilePath& path) {
+WakeupDeviceFactoryStub::CreateWakeupDevice(const base::FilePath& sysfs_path) {
+  registered_wakeup_device_paths_.insert(sysfs_path);
   return std::make_unique<WakeupDeviceStub>();
 }
 

@@ -8,6 +8,7 @@
 #include "power_manager/powerd/system/wakeup_device_interface.h"
 
 #include <memory>
+#include <set>
 
 namespace power_manager {
 namespace system {
@@ -40,11 +41,17 @@ class WakeupDeviceFactoryStub : public WakeupDeviceFactoryInterface {
   WakeupDeviceFactoryStub();
   ~WakeupDeviceFactoryStub() override;
 
+  // Checks whether |CreateWakeupDevice| was called for a given sysfs_path.
+  bool WasDeviceCreated(const base::FilePath& sysfs_path) const;
+
   // Implementation of WakeupDeviceFactoryInterface.
   std::unique_ptr<WakeupDeviceInterface> CreateWakeupDevice(
-      const base::FilePath& path) override;
+      const base::FilePath& sysfs_path) override;
 
  private:
+  // Set of sysfs paths for which |CreateWakeupDevice| was called.
+  std::set<base::FilePath> registered_wakeup_device_paths_;
+
   DISALLOW_COPY_AND_ASSIGN(WakeupDeviceFactoryStub);
 };
 

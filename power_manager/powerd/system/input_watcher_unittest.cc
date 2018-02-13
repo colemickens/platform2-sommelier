@@ -20,6 +20,7 @@
 #include "power_manager/powerd/system/event_device_stub.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/system/wakeup_device_stub.h"
 
 namespace power_manager {
 namespace system {
@@ -113,8 +114,10 @@ class TestObserver : public InputObserver, public ActionRecorder {
 class InputWatcherTest : public testing::Test {
  public:
   InputWatcherTest()
-      : scoped_device_factory_(new EventDeviceFactoryStub()),
-        device_factory_(scoped_device_factory_.get()),
+      : scoped_event_device_factory_(new EventDeviceFactoryStub()),
+        scoped_wakeup_device_factory_(new WakeupDeviceFactoryStub()),
+        event_device_factory_(scoped_event_device_factory_.get()),
+        wakeup_device_factory_(scoped_wakeup_device_factory_.get()),
         use_lid_pref_(1),
         legacy_power_button_pref_(0),
         detect_hover_pref_(0) {
@@ -131,7 +134,7 @@ class InputWatcherTest : public testing::Test {
 
  protected:
   // Initializes |input_watcher_|. Intended to be called by tests after
-  // initializing |device_factory_|. Safe to be called multiple times.
+  // initializing |event_device_factory_|. Safe to be called multiple times.
   void Init() {
     prefs_.SetInt64(kUseLidPref, use_lid_pref_);
     prefs_.SetInt64(kLegacyPowerButtonPref, legacy_power_button_pref_);
@@ -139,26 +142,37 @@ class InputWatcherTest : public testing::Test {
 
     // If Init() has already been called, reuse the existing factory.
     if (input_watcher_) {
-      ASSERT_EQ(device_factory_,
+      ASSERT_EQ(event_device_factory_,
                 input_watcher_->release_event_device_factory_for_testing());
-      scoped_device_factory_.reset(device_factory_);
+      scoped_event_device_factory_.reset(event_device_factory_);
+      ASSERT_EQ(wakeup_device_factory_,
+                input_watcher_->release_wakeup_device_factory_for_testing());
+      scoped_wakeup_device_factory_.reset(wakeup_device_factory_);
       observer_.reset();
     }
     input_watcher_.reset(new InputWatcher);
     input_watcher_->set_dev_input_path_for_testing(dev_input_path_);
     input_watcher_->set_sys_class_input_path_for_testing(sys_class_input_path_);
-    ASSERT_TRUE(input_watcher_->Init(std::move(scoped_device_factory_), &prefs_,
-                                     &udev_));
+    ASSERT_TRUE(input_watcher_->Init(std::move(scoped_event_device_factory_),
+                                     std::move(scoped_wakeup_device_factory_),
+                                     &prefs_, &udev_));
 
     observer_.reset(new TestObserver(input_watcher_.get()));
   }
 
   // Registers |device| named |name| within |dev_input_dir_|. To be recognized,
   // |name| should be of the form "event<num>".
-  void AddDevice(const std::string& name, linked_ptr<EventDeviceStub> device) {
+  void AddDevice(const std::string& name,
+                 linked_ptr<EventDeviceStub> device,
+                 const std::string& syspath) {
     const base::FilePath path = dev_input_path_.Append(name);
     ASSERT_EQ(0, base::WriteFile(path, "", 0));
-    device_factory_->RegisterDevice(path, device);
+    UdevDeviceInfo input_device_info;
+    input_device_info.sysname = name;
+    input_device_info.syspath = syspath;
+    udev_.AddSubsystemDevice(InputWatcher::kInputUdevSubsystem,
+                             input_device_info);
+    event_device_factory_->RegisterDevice(path, device);
   }
 
   FakePrefs prefs_;
@@ -171,10 +185,15 @@ class InputWatcherTest : public testing::Test {
   base::FilePath sys_class_input_path_;
 
   // Passed to |input_watcher_| in Init(); use |device_factory_| instead.
-  std::unique_ptr<EventDeviceFactoryStub> scoped_device_factory_;
+  std::unique_ptr<EventDeviceFactoryStub> scoped_event_device_factory_;
+
+  // Passed to |input_watcher_| in Init(); use |wakeup_device_factory_| instead.
+  std::unique_ptr<WakeupDeviceFactoryStub> scoped_wakeup_device_factory_;
 
   UdevStub udev_;
-  EventDeviceFactoryStub* device_factory_;  // Owned by |input_watcher_|.
+  EventDeviceFactoryStub* event_device_factory_;  // Owned by |input_watcher_|.
+  WakeupDeviceFactoryStub*
+      wakeup_device_factory_;  // Owned by |input_watcher_|.
   std::unique_ptr<InputWatcher> input_watcher_;
   std::unique_ptr<TestObserver> observer_;
 
@@ -232,14 +251,20 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
 TEST_F(InputWatcherTest, PowerButton) {
   // Create an ACPI power button device that should be skipped.
   linked_ptr<EventDeviceStub> skipped_power_button(new EventDeviceStub);
+  const base::FilePath kLegacyPowerButtonSysfsFile(
+      "/sys/devices/LNXSYSTM:00/LNXPWRBN:00");
+  const base::FilePath kNormalPowerButtonSysfsFile(
+      "/sys/devices/LNXSYSTM:00/LNXSYSBUS:00/PNP0C0C:00");
+
   skipped_power_button->set_phys_path(
       std::string(InputWatcher::kPowerButtonToSkip) + "0");
   skipped_power_button->set_is_power_button(true);
-  AddDevice("event0", skipped_power_button);
+  AddDevice("event0", skipped_power_button,
+            kLegacyPowerButtonSysfsFile.value());
 
   linked_ptr<EventDeviceStub> power_button(new EventDeviceStub);
   power_button->set_is_power_button(true);
-  AddDevice("event1", power_button);
+  AddDevice("event1", power_button, kNormalPowerButtonSysfsFile.value());
   Init();
 
   power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
@@ -263,6 +288,14 @@ TEST_F(InputWatcherTest, PowerButton) {
   skipped_power_button->NotifyAboutEvents();
   EXPECT_EQ(kNoActions, observer_->GetActions());
 
+  // Check ACPI power button is monitored for wake events.
+  EXPECT_TRUE(
+      wakeup_device_factory_->WasDeviceCreated(kLegacyPowerButtonSysfsFile));
+
+  // Check normal power button is monitored for wake events.
+  EXPECT_TRUE(
+      wakeup_device_factory_->WasDeviceCreated(kNormalPowerButtonSysfsFile));
+
   // Now set the legacy power button pref and test again.
   legacy_power_button_pref_ = 1;
   skipped_power_button->set_phys_path(
@@ -280,13 +313,19 @@ TEST_F(InputWatcherTest, PowerButton) {
 
 TEST_F(InputWatcherTest, LidSwitch) {
   linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
+  const base::FilePath kAcpiLidSysfsFile("/sys/devices/LNXSYSTM:00/PNP0C0D:00");
   lid_switch->set_is_lid_switch(true);
   lid_switch->set_initial_lid_state(LidState::CLOSED);
-  AddDevice("event0", lid_switch);
+  lid_switch->set_phys_path(std::string(InputWatcher::kAcpiLidDevice) + "0");
+  AddDevice("event0", lid_switch, kAcpiLidSysfsFile.value());
 
   // Before any events have been received, check that the initially-read state
   // is returned.
   Init();
+
+  // Check ACPI lid switch is not monitored for wake events.
+  EXPECT_FALSE(wakeup_device_factory_->WasDeviceCreated(kAcpiLidSysfsFile));
+
   EXPECT_EQ(LidState::CLOSED, input_watcher_->QueryLidState());
 
   // Add an event and requery. The updated state should be returned but the
@@ -329,14 +368,21 @@ TEST_F(InputWatcherTest, LidSwitch) {
 
 TEST_F(InputWatcherTest, TabletModeSwitch) {
   linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
+  const base::FilePath kTabletModeSysfsFile(
+      "/sys/devices/LNXSYSTM:00/GOOG0007:00");
   tablet_mode_switch->set_is_tablet_mode_switch(true);
   tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
-  AddDevice("event0", tablet_mode_switch);
+  tablet_mode_switch->set_phys_path("GOOG0007:00");
+
+  AddDevice("event0", tablet_mode_switch, kTabletModeSysfsFile.value());
 
   // Before any events have been received, check that the initially-read mode is
   // returned.
   Init();
   EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
+
+  // Check tablet mode switch is monitored for wake events.
+  EXPECT_TRUE(wakeup_device_factory_->WasDeviceCreated(kTabletModeSysfsFile));
 
   // Add an event, run the message loop, and check that the observer was
   // notified and that GetTabletMode() returns the updated mode.
@@ -356,19 +402,33 @@ TEST_F(InputWatcherTest, TabletModeSwitch) {
 
 TEST_F(InputWatcherTest, HoverMultitouch) {
   linked_ptr<EventDeviceStub> touchpad(new EventDeviceStub);
+  const base::FilePath kTouchpadSysfsFile(
+      "/sys/devices/pci0000:00/0000:00:15.0/i2c_designware.0/i2c-6/"
+      "i2c-ELAN0001:00");
   touchpad->set_debug_name("touchpad");
   touchpad->set_hover_supported(true);
   touchpad->set_has_left_button(true);
-  AddDevice("event0", touchpad);
+  touchpad->set_phys_path("i2c-ELAN0001:00");
+  AddDevice("event0", touchpad, kTouchpadSysfsFile.value());
 
   linked_ptr<EventDeviceStub> touchscreen(new EventDeviceStub);
+  const base::FilePath kTouchscreenSysfsFile(
+      "/sys/devices/pci0000:00/0000:00:15.0/i2c_designware.0/i2c-6/"
+      "i2c-ELAN0001:01");
   touchscreen->set_debug_name("touchscreen");
   touchscreen->set_hover_supported(true);
   touchscreen->set_has_left_button(false);
-  AddDevice("event1", touchscreen);
+  touchscreen->set_phys_path("i2c-ELAN0001:01");
+  AddDevice("event1", touchscreen, kTouchscreenSysfsFile.value());
 
   detect_hover_pref_ = 1;
   Init();
+
+  // Check touch pad is monitored for wake events.
+  EXPECT_TRUE(wakeup_device_factory_->WasDeviceCreated(kTouchpadSysfsFile));
+
+  // Check touch screen is monitored for wake events.
+  EXPECT_TRUE(wakeup_device_factory_->WasDeviceCreated(kTouchscreenSysfsFile));
 
   // Indicate that a finger is being tracked. No events should be generated yet.
   touchpad->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
@@ -433,13 +493,13 @@ TEST_F(InputWatcherTest, HoverSingletouch) {
   touchpad->set_debug_name("touchpad");
   touchpad->set_hover_supported(true);
   touchpad->set_has_left_button(true);
-  AddDevice("event0", touchpad);
+  AddDevice("event0", touchpad, "");
 
   linked_ptr<EventDeviceStub> touchscreen(new EventDeviceStub);
   touchscreen->set_debug_name("touchscreen");
   touchscreen->set_hover_supported(true);
   touchscreen->set_has_left_button(false);
-  AddDevice("event1", touchscreen);
+  AddDevice("event1", touchscreen, "");
 
   detect_hover_pref_ = 1;
   Init();
@@ -499,8 +559,10 @@ TEST_F(InputWatcherTest, IgnoreDevices) {
   // expected device naming scheme. InputWatcher shouldn't request eents from
   // it.
   linked_ptr<EventDeviceStub> other_device(new EventDeviceStub);
+  const base::FilePath kOtherDeviceSysfsFile(
+      "/sys/devices/pci0000:00/0000:00:15.0/OtherDevice");
   other_device->set_is_power_button(true);
-  AddDevice("foo1", other_device);
+  AddDevice("foo1", other_device, kOtherDeviceSysfsFile.value());
 
   // Create a touchpad that doesn't support hover and check that it's also
   // ignored.
@@ -508,9 +570,13 @@ TEST_F(InputWatcherTest, IgnoreDevices) {
   linked_ptr<EventDeviceStub> touchpad(new EventDeviceStub);
   touchpad->set_has_left_button(true);
   touchpad->set_hover_supported(false);
-  AddDevice("event0", touchpad);
+  AddDevice("event0", touchpad, "");
 
   Init();
+
+  // Check the device is not monitored for wake events.
+  EXPECT_FALSE(wakeup_device_factory_->WasDeviceCreated(kOtherDeviceSysfsFile));
+
   EXPECT_TRUE(other_device->new_events_cb().is_null());
   EXPECT_TRUE(touchpad->new_events_cb().is_null());
 }
@@ -520,24 +586,24 @@ TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
   touchpad->set_debug_name("touchpad");
   touchpad->set_hover_supported(true);
   touchpad->set_has_left_button(true);
-  AddDevice("event0", touchpad);
+  AddDevice("event0", touchpad, "");
 
   linked_ptr<EventDeviceStub> power_button(new EventDeviceStub);
   power_button->set_debug_name("power_button");
   power_button->set_is_power_button(true);
-  AddDevice("event1", power_button);
+  AddDevice("event1", power_button, "");
 
   linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
   lid_switch->set_debug_name("lid_switch");
   lid_switch->set_is_lid_switch(true);
   lid_switch->set_initial_lid_state(LidState::OPEN);
-  AddDevice("event2", lid_switch);
+  AddDevice("event2", lid_switch, "");
 
   linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
   tablet_mode_switch->set_debug_name("tablet_mode_switch");
   tablet_mode_switch->set_is_tablet_mode_switch(true);
   tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
-  AddDevice("event3", tablet_mode_switch);
+  AddDevice("event3", tablet_mode_switch, "");
 
   detect_hover_pref_ = 1;
   Init();
@@ -584,7 +650,7 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->set_initial_lid_state(LidState::OPEN);
   device->set_is_tablet_mode_switch(true);
   device->set_initial_tablet_mode(TabletMode::OFF);
-  AddDevice("event0", device);
+  AddDevice("event0", device, "");
   detect_hover_pref_ = 1;
   Init();
 
@@ -608,16 +674,18 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   const char kDeviceName[] = "event0";
   linked_ptr<EventDeviceStub> keyboard(new EventDeviceStub);
   keyboard->set_is_power_button(true);
-  AddDevice(kDeviceName, keyboard);
-  udev_.NotifySubsystemObservers({InputWatcher::kInputUdevSubsystem, "",
-                                  kDeviceName, UdevEvent::Action::ADD});
+  AddDevice(kDeviceName, keyboard, "");
+  udev_.NotifySubsystemObservers(
+      {{InputWatcher::kInputUdevSubsystem, "", kDeviceName, ""},
+       UdevEvent::Action::ADD});
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
-  udev_.NotifySubsystemObservers({InputWatcher::kInputUdevSubsystem, "",
-                                  kDeviceName, UdevEvent::Action::REMOVE});
+  udev_.NotifySubsystemObservers(
+      {{InputWatcher::kInputUdevSubsystem, "", kDeviceName, ""},
+       UdevEvent::Action::REMOVE});
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();
@@ -637,16 +705,6 @@ TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
   EXPECT_EQ(LidState::NOT_PRESENT, input_watcher_->QueryLidState());
   EXPECT_EQ(TabletMode::UNSUPPORTED, input_watcher_->GetTabletMode());
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
-}
-
-TEST_F(InputWatcherTest, DevInputDirectoryMustBeReadable) {
-  // Init() should report failure if /dev/input exists but isn't readable.
-  ASSERT_TRUE(base::SetPosixFilePermissions(dev_input_path_, 0000));
-  InputWatcher input_watcher;
-  input_watcher.set_dev_input_path_for_testing(dev_input_path_);
-  input_watcher.set_sys_class_input_path_for_testing(sys_class_input_path_);
-  EXPECT_FALSE(
-      input_watcher.Init(std::move(scoped_device_factory_), &prefs_, &udev_));
 }
 
 }  // namespace system

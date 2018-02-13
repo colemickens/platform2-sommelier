@@ -49,6 +49,7 @@
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/wakeup_device.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -161,6 +162,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto watcher = base::WrapUnique(new system::InputWatcher());
     CHECK(watcher->Init(std::unique_ptr<system::EventDeviceFactoryInterface>(
                             new system::EventDeviceFactory),
+                        std::make_unique<system::WakeupDeviceFactory>(udev),
                         prefs, udev));
     return std::move(watcher);
   }

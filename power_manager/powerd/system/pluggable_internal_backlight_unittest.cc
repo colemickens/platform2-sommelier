@@ -108,7 +108,7 @@ TEST_F(PluggableInternalBacklightTest, ChangeDevice) {
   constexpr int64_t kMaxBrightness = 255;
   base::FilePath dir = CreateBacklightDir(kDevice, kBrightness, kMaxBrightness);
   udev_.NotifySubsystemObservers(
-      {kSubsystem, "", kDevice, UdevEvent::Action::ADD});
+      {{kSubsystem, "", kDevice, ""}, UdevEvent::Action::ADD});
   EXPECT_TRUE(backlight_.DeviceExists());
   EXPECT_EQ(kBrightness, backlight_.GetCurrentBrightnessLevel());
   EXPECT_EQ(kMaxBrightness, backlight_.GetMaxBrightnessLevel());
@@ -117,7 +117,7 @@ TEST_F(PluggableInternalBacklightTest, ChangeDevice) {
   // Remove the device.
   ASSERT_TRUE(base::DeleteFile(dir, true));
   udev_.NotifySubsystemObservers(
-      {kSubsystem, "", kDevice, UdevEvent::Action::REMOVE});
+      {{kSubsystem, "", kDevice, ""}, UdevEvent::Action::REMOVE});
   EXPECT_FALSE(backlight_.DeviceExists());
   EXPECT_EQ(2, observer.num_changes());
 
@@ -127,7 +127,7 @@ TEST_F(PluggableInternalBacklightTest, ChangeDevice) {
   constexpr int64_t kMaxBrightness2 = 100;
   CreateBacklightDir(kDevice2, kBrightness2, kMaxBrightness2);
   udev_.NotifySubsystemObservers(
-      {kSubsystem, "", kDevice2, UdevEvent::Action::ADD});
+      {{kSubsystem, "", kDevice2, ""}, UdevEvent::Action::ADD});
   EXPECT_TRUE(backlight_.DeviceExists());
   EXPECT_EQ(kBrightness2, backlight_.GetCurrentBrightnessLevel());
   EXPECT_EQ(kMaxBrightness2, backlight_.GetMaxBrightnessLevel());
@@ -142,7 +142,7 @@ TEST_F(PluggableInternalBacklightTest, InvalidDevice) {
   constexpr char kDevice[] = "bogus_device";
   CreateBacklightDir(kDevice, 127, 255);
   udev_.NotifySubsystemObservers(
-      {kSubsystem, "", kDevice, UdevEvent::Action::ADD});
+      {{kSubsystem, "", kDevice, ""}, UdevEvent::Action::ADD});
   EXPECT_FALSE(backlight_.DeviceExists());
   EXPECT_EQ(0, observer.num_changes());
 }

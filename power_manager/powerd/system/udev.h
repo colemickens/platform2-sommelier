@@ -25,6 +25,13 @@ class TaggedDevice;
 class UdevSubsystemObserver;
 class UdevTaggedDeviceObserver;
 
+struct UdevDeviceInfo {
+  std::string subsystem;
+  std::string devtype;
+  std::string sysname;
+  std::string syspath;
+};
+
 // UdevEvent describes a udev event.
 struct UdevEvent {
   enum class Action {
@@ -35,10 +42,7 @@ struct UdevEvent {
     OFFLINE,
     UNKNOWN,
   };
-
-  std::string subsystem;
-  std::string devtype;
-  std::string sysname;
+  UdevDeviceInfo device_info;
   Action action;
 };
 
@@ -63,6 +67,11 @@ class UdevInterface {
 
   // Retrieves a list of all known tagged devices.
   virtual std::vector<TaggedDevice> GetTaggedDevices() = 0;
+
+  // Retrieves the list of existing devices that belong to the given subsystem.
+  virtual bool GetSubsystemDevices(
+      const std::string& subsystem,
+      std::vector<UdevDeviceInfo>* devices_out) = 0;
 
   // Reads the sysfs attribute |sysattr| from the device specified by |syspath|.
   // Returns true on success. |syspath| is the syspath of a device as returned
@@ -106,6 +115,8 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   void AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
   void RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
   std::vector<TaggedDevice> GetTaggedDevices() override;
+  bool GetSubsystemDevices(const std::string& subsystem,
+                           std::vector<UdevDeviceInfo>* devices_out) override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   std::string* value) override;

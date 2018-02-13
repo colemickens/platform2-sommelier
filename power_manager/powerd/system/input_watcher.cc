@@ -26,6 +26,8 @@
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/udev_util.h"
+#include "power_manager/powerd/system/wakeup_device_interface.h"
 
 namespace power_manager {
 namespace system {
@@ -100,6 +102,7 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
 const char InputWatcher::kInputUdevSubsystem[] = "input";
 const char InputWatcher::kPowerButtonToSkip[] = "LNXPWRBN";
 const char InputWatcher::kPowerButtonToSkipForLegacy[] = "isa";
+const char InputWatcher::kAcpiLidDevice[] = "PNP0C0D";
 
 InputWatcher::InputWatcher()
     : dev_input_path_(kDevInputPath),
@@ -117,6 +120,7 @@ InputWatcher::InputWatcher()
       single_touch_hover_valid_(false),
       single_touch_hover_distance_nonzero_(false),
       power_button_to_skip_(kPowerButtonToSkip),
+      acpi_lid_device_(kAcpiLidDevice),
       udev_(nullptr),
       weak_ptr_factory_(this) {}
 
@@ -127,9 +131,11 @@ InputWatcher::~InputWatcher() {
 
 bool InputWatcher::Init(
     std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
+    std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory,
     PrefsInterface* prefs,
     UdevInterface* udev) {
   event_device_factory_ = std::move(event_device_factory);
+  wakeup_device_factory_ = std::move(wakeup_device_factory);
   udev_ = udev;
 
   prefs->GetBool(kUseLidPref, &use_lid_);
@@ -145,20 +151,17 @@ bool InputWatcher::Init(
 
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
-  if (base::DirectoryExists(dev_input_path_)) {
-    if (access(dev_input_path_.value().c_str(), R_OK | X_OK) != 0) {
-      LOG(ERROR) << dev_input_path_.value() << " isn't readable";
-      return false;
-    }
-    base::FileEnumerator enumerator(dev_input_path_, false,
-                                    base::FileEnumerator::FILES);
-    for (base::FilePath path = enumerator.Next(); !path.empty();
-         path = enumerator.Next()) {
-      const std::string name = path.BaseName().value();
+  std::vector<UdevDeviceInfo> input_device_list;
+  if (udev_->GetSubsystemDevices(kInputUdevSubsystem, &input_device_list)) {
+    for (auto const& input_device : input_device_list) {
       int num = -1;
-      if (GetInputNumber(name, &num))
-        HandleAddedInput(name, num);
+      if (GetInputNumber(input_device.sysname, &num)) {
+        HandleAddedInput(input_device.sysname, num, input_device.syspath);
+      }
     }
+  } else {
+    LOG(ERROR) << "Enumeration of existing input devices failed. User "
+                  "interaction might not be recognized properly";
   }
 
   return true;
@@ -246,14 +249,35 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
   return false;
 }
 
+void InputWatcher::PrepareForSuspendRequest() {
+  for (const auto& wakeup_pair : wakeup_devices_) {
+    wakeup_pair.second->PrepareForSuspend();
+  }
+}
+
+void InputWatcher::HandleResume() {
+  for (const auto& wakeup_pair : wakeup_devices_) {
+    wakeup_pair.second->HandleResume();
+  }
+}
+
+bool InputWatcher::InputDeviceCausedLastWake() const {
+  for (const auto& wakeup_pair : wakeup_devices_) {
+    if (wakeup_pair.second->CausedLastWake())
+      return true;
+  }
+  return false;
+}
+
 void InputWatcher::OnUdevEvent(const UdevEvent& event) {
-  DCHECK_EQ(event.subsystem, kInputUdevSubsystem);
+  DCHECK_EQ(event.device_info.subsystem, kInputUdevSubsystem);
   int input_num = -1;
-  if (GetInputNumber(event.sysname, &input_num)) {
+  if (GetInputNumber(event.device_info.sysname, &input_num)) {
     if (event.action == UdevEvent::Action::ADD)
-      HandleAddedInput(event.sysname, input_num);
+      HandleAddedInput(event.device_info.sysname, input_num,
+                       event.device_info.syspath);
     else if (event.action == UdevEvent::Action::REMOVE)
-      HandleRemovedInput(input_num);
+      HandleRemovedInput(input_num, event.device_info.syspath);
   }
 }
 
@@ -381,7 +405,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
 }
 
 void InputWatcher::HandleAddedInput(const std::string& input_name,
-                                    int input_num) {
+                                    int input_num,
+                                    const std::string& syspath) {
   if (event_devices_.count(input_num) > 0) {
     LOG(WARNING) << "Input " << input_num << " already registered";
     return;
@@ -394,15 +419,13 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     return;
   }
 
+  bool should_watch = false;
+
   const std::string phys = device->GetPhysPath();
   if (base::StartsWith(phys, power_button_to_skip_,
                        base::CompareCase::SENSITIVE)) {
     VLOG(1) << "Skipping event device with phys path: " << phys;
-    return;
-  }
-
-  bool should_watch = false;
-  if (device->IsPowerButton()) {
+  } else if (device->IsPowerButton()) {
     LOG(INFO) << "Watching power button: " << device->GetDebugName();
     should_watch = true;
     power_button_devices_.insert(device.get());
@@ -453,28 +476,86 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
                                       weak_ptr_factory_.GetWeakPtr(),
                                       base::Unretained(device.get())));
     event_devices_.insert(std::make_pair(input_num, device));
+  } else {
+    VLOG(1) << "Event device with phys path " << device->GetDebugName()
+            << " is not monitored for input events";
+  }
+
+  // If we do not know the sysfs path of the input device, we cannot monitor the
+  // wakeup counts.
+  if (syspath.empty()) {
+    return;
+  }
+
+  // Any input device should also be a valid wake source (if wake enabled).
+  if (ShouldMonitorForWakeEvents(device) &&
+      MonitorWakeupDevice(base::FilePath(syspath))) {
+    LOG(INFO) << "Monitoring input device " << input_name << " with sysfs path"
+              << syspath << " to identify the wake source";
   }
 }
 
-void InputWatcher::HandleRemovedInput(int input_num) {
+void InputWatcher::HandleRemovedInput(int input_num,
+                                      const std::string& syspath) {
   InputMap::iterator it = event_devices_.find(input_num);
-  if (it == event_devices_.end())
-    return;
-  LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
-  power_button_devices_.erase(it->second.get());
-  if (lid_device_ == it->second.get())
-    lid_device_ = nullptr;
-  if (tablet_mode_device_ == it->second.get())
-    tablet_mode_device_ = nullptr;
-  if (hover_device_ == it->second.get())
-    hover_device_ = nullptr;
-  event_devices_.erase(it);
+  if (it != event_devices_.end()) {
+    LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
+    power_button_devices_.erase(it->second.get());
+    if (lid_device_ == it->second.get())
+      lid_device_ = nullptr;
+    if (tablet_mode_device_ == it->second.get())
+      tablet_mode_device_ = nullptr;
+    if (hover_device_ == it->second.get())
+      hover_device_ = nullptr;
+    event_devices_.erase(it);
+  }
+
+  if (wakeup_devices_.erase(syspath))
+    LOG(INFO) << "Stopping monitoring of " << syspath << " for wake events";
+}
+
+bool InputWatcher::MonitorWakeupDevice(const base::FilePath& sysfs_path) {
+  std::string parent_syspath;
+
+  if (!udev_util::FindWakeCapableParent(sysfs_path.value(), udev_,
+                                        &parent_syspath)) {
+    VLOG(1) << "No parent with " << kPowerWakeup
+            << " sysattr found for input device " << sysfs_path.value()
+            << ". Not considered as a wake source";
+    return false;
+  }
+
+  if (wakeup_devices_.count(parent_syspath))
+    return true;
+
+  VLOG(1) << "Creating wakeup device for " << parent_syspath;
+  std::unique_ptr<WakeupDeviceInterface> wakeup_device =
+      wakeup_device_factory_->CreateWakeupDevice(
+          base::FilePath(parent_syspath));
+  if (!wakeup_device) {
+    LOG(ERROR) << "Creating wakeup device for " << parent_syspath << " failed";
+    return false;
+  }
+  wakeup_devices_.insert(
+      std::make_pair(parent_syspath, std::move(wakeup_device)));
+  return true;
 }
 
 void InputWatcher::SendQueuedEvents() {
   for (auto event_pair : queued_events_)
     ProcessEvent(event_pair.first, event_pair.second);
   queued_events_.clear();
+}
+
+bool InputWatcher::ShouldMonitorForWakeEvents(
+    linked_ptr<EventDeviceInterface> device) {
+  // ACPI lid device claims itself as a wake source if the lid is open on
+  // resume (b/69118395).
+  if (base::StartsWith(device->GetPhysPath(), acpi_lid_device_,
+                       base::CompareCase::SENSITIVE))
+    return false;
+
+  return true;
 }
 
 }  // namespace system
