@@ -85,15 +85,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
  private:
-  // Looks up the |mount_id| and appends |entry_path| to the root share path
-  // and sets |full_path| to the result. |full_path| will be unmodified on
-  // failure.
-  // |operation_name| is used for logging purposes only.
-  bool GetFullPath(const char* operation_name,
-                   int32_t mount_id,
-                   const std::string& entry_path,
-                   std::string* full_path) const;
+  // Uses |options| to create the full path based on the mount id and entry path
+  // supplied in |options|. |full_path| will be unmodified on failure.
+  template <typename Proto>
+  bool GetFullPath(Proto* options, std::string* full_path) const;
 
+  // Uses |options| to create the source and target paths based on the mount id,
+  // source path and target path supplied in |options|. |source_full_path| and
+  // |target_full_path| will be unmodified on failure.
   template <typename Proto>
   bool GetFullPaths(Proto* options,
                     std::string* source_full_path,

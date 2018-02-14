@@ -288,19 +288,21 @@ int32_t SmbProvider::MoveEntry(const ProtoBlob& options_blob) {
   return 0;
 }
 
-// TODO(zentaro): When the proto's with missing mount_id are landed, this can
-// take a generic *Options proto and derive the operation name and entry path
-// itself.
-bool SmbProvider::GetFullPath(const char* operation_name,
-                              int32_t mount_id,
-                              const std::string& entry_path,
-                              std::string* full_path) const {
-  if (!mount_manager_->GetFullPath(mount_id, entry_path, full_path)) {
-    LOG(ERROR) << operation_name << " requested unknown mount_id " << mount_id;
-    return false;
+template <typename Proto>
+bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
+  DCHECK(options);
+  DCHECK(full_path);
+
+  const int32_t mount_id = options->mount_id();
+  const std::string entry_path = GetEntryPath(*options);
+
+  bool success = mount_manager_->GetFullPath(mount_id, entry_path, full_path);
+  if (!success) {
+    LOG(ERROR) << GetMethodName(*options) << " requested unknown mount_id "
+               << mount_id;
   }
 
-  return true;
+  return success;
 }
 
 template <typename Proto>
@@ -335,8 +337,7 @@ bool SmbProvider::ParseOptionsAndPath(const ProtoBlob& blob,
     return false;
   }
 
-  if (!GetFullPath(GetMethodName(*options), options->mount_id(),
-                   GetEntryPath(*options), full_path)) {
+  if (!GetFullPath(options, full_path)) {
     *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
     return false;
   }
@@ -588,9 +589,9 @@ bool SmbProvider::GenerateParentPaths(
 
   while (current_path.value() != "/") {
     std::string full_path;
-    if (!GetFullPath(GetMethodName(options), options.mount_id(),
-                     current_path.StripTrailingSeparators().value(),
-                     &full_path)) {
+    if (!mount_manager_->GetFullPath(
+            options.mount_id(), current_path.StripTrailingSeparators().value(),
+            &full_path)) {
       *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
       return false;
     }
