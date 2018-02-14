@@ -15,6 +15,7 @@
 
 #include "cros-camera/common.h"
 
+namespace cros {
 namespace internal {
 
 namespace {
@@ -164,3 +165,4 @@ base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
 }
 
 }  // namespace internal
+}  // namespace cros

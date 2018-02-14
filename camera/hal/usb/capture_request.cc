@@ -5,7 +5,7 @@
 
 #include "hal/usb/capture_request.h"
 
-namespace arc {
+namespace cros {
 
 const int kBufferFenceReady = -1;
 
@@ -34,4 +34,4 @@ CaptureRequest::CaptureRequest(const camera3_capture_request& request,
 
 CaptureRequest::~CaptureRequest() {}
 
-}  // namespace arc
+}  // namespace cros

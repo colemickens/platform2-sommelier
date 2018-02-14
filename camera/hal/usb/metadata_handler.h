@@ -14,7 +14,7 @@
 
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 struct CameraMetadataDeleter {
   inline void operator()(camera_metadata_t* metadata) const {
@@ -87,6 +87,6 @@ class MetadataHandler {
   bool af_trigger_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_METADATA_HANDLER_H_

@@ -11,7 +11,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 
-namespace arc {
+namespace cros {
 
 std::vector<base::FilePath> GetCameraHalPaths() {
   const base::FilePath kCameraHalDirs[] = {
@@ -30,4 +30,4 @@ std::vector<base::FilePath> GetCameraHalPaths() {
   return camera_hal_paths;
 }
 
-}  // namespace arc
+}  // namespace cros

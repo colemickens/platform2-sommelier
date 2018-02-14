@@ -16,7 +16,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/timezone.h"
 
-namespace arc {
+namespace cros {
 
 // /etc/camera/camera_characteristics.conf contains camera information which
 // driver cannot provide.
@@ -411,4 +411,4 @@ void CameraCharacteristics::AddExternalCameras(
   }
 }
 
-}  // namespace arc
+}  // namespace cros

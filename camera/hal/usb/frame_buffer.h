@@ -17,7 +17,7 @@
 #include <camera/camera_metadata.h>
 #include <cros-camera/camera_buffer_manager.h>
 
-namespace arc {
+namespace cros {
 
 class FrameBuffer {
  public:
@@ -145,6 +145,6 @@ class GrallocFrameBuffer : public FrameBuffer {
   base::Lock lock_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_FRAME_BUFFER_H_

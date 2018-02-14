@@ -13,7 +13,7 @@
 
 #include "cros-camera/common.h"
 
-namespace internal {
+namespace cros {
 
 class FutureTest : public ::testing::Test {
  public:
@@ -49,8 +49,9 @@ TEST_F(FutureTest, WaitTest) {
   // The future is signalled after being waited on.
   auto future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostDelayedTask(
-      FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                            internal::GetFutureCallback(future)),
+      FROM_HERE,
+      base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
+                 cros::GetFutureCallback(future)),
       base::TimeDelta::FromMilliseconds(2000));
   ASSERT_TRUE(future->Wait());
 
@@ -76,7 +77,7 @@ TEST_F(FutureTest, TimeoutTest) {
   // Now we signal the future and the final wait should return true.
   thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                            internal::GetFutureCallback(future)));
+                            cros::GetFutureCallback(future)));
   ASSERT_TRUE(future->Wait());
 }
 
@@ -94,7 +95,7 @@ TEST_F(FutureTest, CancelTest) {
   future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                            internal::GetFutureCallback(future)));
+                            cros::GetFutureCallback(future)));
   ASSERT_FALSE(future->Wait());
 }
 
@@ -119,13 +120,14 @@ TEST_F(FutureTest, FutureRefcountTest) {
   auto future = Future<void>::Create(&relay_);
   relay_.CancelAllFutures();
   thread_.task_runner()->PostDelayedTask(
-      FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                            internal::GetFutureCallback(future)),
+      FROM_HERE,
+      base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
+                 cros::GetFutureCallback(future)),
       base::TimeDelta::FromMilliseconds(2000));
   ASSERT_FALSE(future->Wait());
 }
 
-}  // namespace internal
+}  // namespace cros
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;

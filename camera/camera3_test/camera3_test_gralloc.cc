@@ -16,7 +16,7 @@ namespace camera3_test {
 
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   if (handle) {
-    auto* cbm = arc::CameraBufferManager::GetInstance();
+    auto* cbm = cros::CameraBufferManager::GetInstance();
     if (cbm) {
       cbm->Free(*handle);
     }
@@ -40,7 +40,7 @@ Camera3TestGralloc* Camera3TestGralloc::GetInstance() {
 }
 
 Camera3TestGralloc::Camera3TestGralloc()
-    : buffer_manager_(arc::CameraBufferManager::GetInstance()) {}
+    : buffer_manager_(cros::CameraBufferManager::GetInstance()) {}
 
 bool Camera3TestGralloc::Initialize() {
   if (!buffer_manager_) {
@@ -59,7 +59,7 @@ BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
   }
   BufferHandleUniquePtr handle(new buffer_handle_t);
   uint32_t stride;
-  if (buffer_manager_->Allocate(width, height, format, usage, arc::GRALLOC,
+  if (buffer_manager_->Allocate(width, height, format, usage, cros::GRALLOC,
                                 handle.get(), &stride)) {
     return BufferHandleUniquePtr(nullptr);
   }
@@ -99,7 +99,7 @@ int Camera3TestGralloc::GetFormat(buffer_handle_t buffer) {
 
 // static
 uint32_t Camera3TestGralloc::GetV4L2PixelFormat(buffer_handle_t buffer) {
-  return arc::CameraBufferManager::GetInstance()->GetV4L2PixelFormat(buffer);
+  return cros::CameraBufferManager::GetInstance()->GetV4L2PixelFormat(buffer);
 }
 
 }  // namespace camera3_test

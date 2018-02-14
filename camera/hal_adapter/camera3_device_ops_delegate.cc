@@ -11,7 +11,7 @@
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_device_adapter.h"
 
-namespace arc {
+namespace cros {
 
 Camera3DeviceOpsDelegate::Camera3DeviceOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
@@ -93,4 +93,4 @@ void Camera3DeviceOpsDelegate::Close(const CloseCallback& callback) {
   callback.Run(camera_device_adapter_->Close());
 }
 
-}  // namespace arc
+}  // namespace cros

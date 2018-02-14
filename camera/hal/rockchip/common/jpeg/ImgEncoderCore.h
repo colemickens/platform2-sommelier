@@ -123,7 +123,7 @@ private:  /* Members */
 
     std::mutex mEncodeLock; /* protect JPEG encoding progress */
 
-    // arc::JpegCompressor needs YU12 format
+    // cros::JpegCompressor needs YU12 format
     // and the ISP doesn't output YU12 directly.
     // so a temporary intermediate buffer is needed.
     std::unique_ptr<char[]> mInternalYU12;

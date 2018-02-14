@@ -24,7 +24,7 @@ struct default_delete<ExifEntry> {
 
 }  // namespace std
 
-namespace arc {
+namespace cros {
 
 const base::FilePath kCameraPropertyPath("/var/cache/camera/camera.prop");
 
@@ -708,4 +708,4 @@ void ExifUtils::DestroyApp1() {
   app1_length_ = 0;
 }
 
-}  // namespace arc
+}  // namespace cros

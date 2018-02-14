@@ -11,10 +11,10 @@
 
 #include <base/files/file_path.h>
 
-namespace arc {
+namespace cros {
 
 std::vector<base::FilePath> GetCameraHalPaths();
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_

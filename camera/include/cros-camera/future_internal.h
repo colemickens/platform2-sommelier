@@ -10,11 +10,11 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 
-namespace internal {
+namespace cros {
 
 class CancellationRelay;
 
-namespace future_internal {
+namespace internal {
 
 class FutureLock {
  public:
@@ -49,8 +49,8 @@ class FutureLock {
   DISALLOW_COPY_AND_ASSIGN(FutureLock);
 };
 
-}  // namespace future_internal
-
 }  // namespace internal
+
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_

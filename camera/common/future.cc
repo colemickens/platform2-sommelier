@@ -8,9 +8,9 @@
 
 #include <base/time/time.h>
 
-namespace internal {
+namespace cros {
 
-namespace future_internal {
+namespace internal {
 
 FutureLock::FutureLock(CancellationRelay* relay)
     : cond_(&lock_), cancelled_(false), signalled_(false), relay_(relay) {
@@ -71,7 +71,7 @@ void FutureLock::Cancel() {
   cond_.Signal();
 }
 
-}  // namespace future_internal
+}  // namespace internal
 
 base::Callback<void()> GetFutureCallback(
     const scoped_refptr<Future<void>>& future) {
@@ -84,7 +84,7 @@ CancellationRelay::~CancellationRelay() {
   CancelAllFutures();
 }
 
-bool CancellationRelay::AddObserver(future_internal::FutureLock* future_lock) {
+bool CancellationRelay::AddObserver(internal::FutureLock* future_lock) {
   VLOGF_ENTER();
   base::AutoLock l(lock_);
   if (cancelled_) {
@@ -94,8 +94,7 @@ bool CancellationRelay::AddObserver(future_internal::FutureLock* future_lock) {
   return true;
 }
 
-void CancellationRelay::RemoveObserver(
-    future_internal::FutureLock* future_lock) {
+void CancellationRelay::RemoveObserver(internal::FutureLock* future_lock) {
   VLOGF_ENTER();
   base::AutoLock l(lock_);
   auto it = observers_.find(future_lock);
@@ -114,4 +113,4 @@ void CancellationRelay::CancelAllFutures() {
   observers_.clear();
 }
 
-}  // namespace internal
+}  // namespace cros

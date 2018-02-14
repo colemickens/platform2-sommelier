@@ -10,7 +10,7 @@
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "hal_adapter/mojo/camera_common.mojom.h"
 
-namespace arc {
+namespace cros {
 
 class CameraModuleCallbacksDelegate
     : public internal::MojoChannel<mojom::CameraModuleCallbacks> {
@@ -32,6 +32,6 @@ class CameraModuleCallbacksDelegate
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_

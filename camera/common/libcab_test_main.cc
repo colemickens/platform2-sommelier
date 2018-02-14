@@ -34,7 +34,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
   CameraAlgorithmBridgeFixture() {
     CameraAlgorithmBridgeFixture::return_callback =
         CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
-    bridge_ = arc::CameraAlgorithmBridge::CreateInstance();
+    bridge_ = cros::CameraAlgorithmBridge::CreateInstance();
     if (!bridge_ || bridge_->Initialize(this) != 0) {
       ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
       return;
@@ -67,7 +67,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
     sem_post(&return_sem_);
   }
 
-  std::unique_ptr<arc::CameraAlgorithmBridge> bridge_;
+  std::unique_ptr<cros::CameraAlgorithmBridge> bridge_;
 
   base::Lock request_set_lock_;
 

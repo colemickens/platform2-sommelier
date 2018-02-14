@@ -10,7 +10,7 @@
 
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 CameraAlgorithmCallbackOpsImpl::CameraAlgorithmCallbackOpsImpl(
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
@@ -35,4 +35,4 @@ CameraAlgorithmCallbackOpsImpl::CreateInterfacePtr() {
   return binding_.CreateInterfacePtrAndBind();
 }
 
-}  // namespace arc
+}  // namespace cros

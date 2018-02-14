@@ -247,7 +247,7 @@ private:
     /**
      * Thread control members
      */
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
     /*
      * Stream config provider
      */

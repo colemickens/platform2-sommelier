@@ -12,7 +12,7 @@
 
 #include "cros-camera/timezone.h"
 
-namespace arc {
+namespace cros {
 
 struct DeviceInfo {
   // ex: /dev/video0
@@ -74,6 +74,6 @@ struct Size {
   uint32_t height;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_COMMON_TYPES_H_

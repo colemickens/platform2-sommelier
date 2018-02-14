@@ -12,7 +12,7 @@
 
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 // Find a resolution from a supported list.
 const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
@@ -30,6 +30,6 @@ SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
 bool IsFormatSupported(const SupportedFormats& supported_formats,
                        const camera3_stream_t& stream);
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_STREAM_FORMAT_H_

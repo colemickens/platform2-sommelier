@@ -15,7 +15,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 
-namespace arc {
+namespace cros {
 
 class CameraThread {
  public:
@@ -54,7 +54,7 @@ class CameraThread {
       return -EIO;
     }
 
-    auto future = internal::Future<T>::Create(nullptr);
+    auto future = cros::Future<T>::Create(nullptr);
     base::Closure closure = base::Bind(
         &CameraThread::ProcessSyncTaskOnThread<T>,
         base::Unretained(this), task, future);
@@ -98,7 +98,7 @@ class CameraThread {
       return -EIO;
     }
 
-    auto future = internal::Future<void>::Create(nullptr);
+    auto future = cros::Future<void>::Create(nullptr);
     base::Closure closure = base::Bind(
         &CameraThread::ProcessClosureSyncTaskOnThread,
         base::Unretained(this), task, future);
@@ -114,7 +114,7 @@ class CameraThread {
  private:
   template <typename T>
   void ProcessSyncTaskOnThread(const base::Callback<T()>& task,
-                               scoped_refptr<internal::Future<T>> future) {
+                               scoped_refptr<cros::Future<T>> future) {
     VLOGF_ENTER();
     auto result = task.Run();
     future->Set(result);
@@ -127,8 +127,7 @@ class CameraThread {
   }
 
   void ProcessClosureSyncTaskOnThread(
-      const base::Closure& task,
-      scoped_refptr<internal::Future<void>> future) {
+      const base::Closure& task, scoped_refptr<cros::Future<void>> future) {
     VLOGF_ENTER();
     task.Run();
     future->Set();
@@ -139,6 +138,6 @@ class CameraThread {
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraThread);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_

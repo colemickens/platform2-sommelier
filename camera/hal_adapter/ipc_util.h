@@ -15,6 +15,7 @@ namespace base {
 class FilePath;
 }  // namespace base
 
+namespace cros {
 namespace internal {
 
 bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
@@ -25,5 +26,6 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
 base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path);
 
 }  // namespace internal
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_IPC_UTIL_H_

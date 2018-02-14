@@ -13,7 +13,7 @@
 #include "cros-camera/camera_algorithm.h"
 #include "mojo/camera_algorithm.mojom.h"
 
-namespace arc {
+namespace cros {
 
 // This is the implementation of CameraAlgorithmOps mojo interface. It is used
 // by the sandboxed camera algorithm library process.
@@ -80,6 +80,6 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmOpsImpl);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_

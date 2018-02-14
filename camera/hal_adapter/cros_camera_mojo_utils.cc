@@ -12,6 +12,7 @@
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/edk/system/handle_signals_state.h>
 
+namespace cros {
 namespace internal {
 
 mojo::ScopedHandle WrapPlatformHandle(int handle) {
@@ -38,13 +39,13 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
   return scoped_platform_handle.release().handle;
 }
 
-arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
+cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles) {
-  arc::mojom::Camera3StreamBufferPtr ret =
-      arc::mojom::Camera3StreamBuffer::New();
+  cros::mojom::Camera3StreamBufferPtr ret =
+      cros::mojom::Camera3StreamBuffer::New();
 
   if (!buffer) {
     ret.reset();
@@ -76,7 +77,7 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
   ret->buffer_id = handle->buffer_id;
 
-  ret->status = static_cast<arc::mojom::Camera3BufferStatus>(buffer->status);
+  ret->status = static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
 
   if (buffer->acquire_fence != -1) {
     ret->acquire_fence = WrapPlatformHandle(buffer->acquire_fence);
@@ -100,7 +101,7 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
 }
 
 int DeserializeStreamBuffer(
-    const arc::mojom::Camera3StreamBufferPtr& ptr,
+    const cros::mojom::Camera3StreamBufferPtr& ptr,
     const UniqueStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles,
@@ -156,9 +157,9 @@ const size_t CameraMetadataTypeSize[NUM_TYPES] =
      [TYPE_DOUBLE] = sizeof(double),
      [TYPE_RATIONAL] = sizeof(camera_metadata_rational_t)};
 
-arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
+cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata) {
-  arc::mojom::CameraMetadataPtr result = arc::mojom::CameraMetadata::New();
+  cros::mojom::CameraMetadataPtr result = cros::mojom::CameraMetadata::New();
   if (metadata) {
     result->size = get_camera_metadata_size(metadata);
     result->entry_count = get_camera_metadata_entry_count(metadata);
@@ -175,11 +176,11 @@ arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
         return result;
       }
 
-      arc::mojom::CameraMetadataEntryPtr dst =
-          arc::mojom::CameraMetadataEntry::New();
+      cros::mojom::CameraMetadataEntryPtr dst =
+          cros::mojom::CameraMetadataEntry::New();
       dst->index = src.index;
-      dst->tag = static_cast<arc::mojom::CameraMetadataTag>(src.tag);
-      dst->type = static_cast<arc::mojom::EntryType>(src.type);
+      dst->tag = static_cast<cros::mojom::CameraMetadataTag>(src.tag);
+      dst->type = static_cast<cros::mojom::EntryType>(src.type);
       dst->count = src.count;
       size_t src_data_size = src.count * CameraMetadataTypeSize[src.type];
       std::vector<uint8_t> dst_data(src_data_size);
@@ -192,9 +193,9 @@ arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
   return result;
 }
 
-internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
-    const arc::mojom::CameraMetadataPtr& metadata) {
-  internal::CameraMetadataUniquePtr result;
+CameraMetadataUniquePtr DeserializeCameraMetadata(
+    const cros::mojom::CameraMetadataPtr& metadata) {
+  CameraMetadataUniquePtr result;
   if (!metadata->entries.is_null()) {
     camera_metadata_t* allocated_data = allocate_camera_metadata(
         metadata->entry_capacity, metadata->data_capacity);
@@ -220,3 +221,4 @@ internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
   return result;
 }
 }  // namespace internal
+}  // namespace cros

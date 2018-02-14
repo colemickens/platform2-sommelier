@@ -24,7 +24,7 @@
 #include <system/camera_metadata_tags.h>
 #include "hal_adapter/mojo/camera_metadata_tags.mojom.h"
 
-namespace arc {
+namespace cros {
 
 namespace mojom {
 
@@ -1136,4 +1136,4 @@ static_assert(static_cast<ssize_t>(AndroidDepthDepthIsExclusive::ANDROID_DEPTH_D
 
 }  // end of namespace mojom
 
-}  // end of namespace arc
+}  // end of namespace cros

@@ -16,7 +16,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 /*
  * Formats have different names in different header files. Here is the mapping
@@ -557,4 +557,4 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   return true;
 }
 
-}  // namespace arc
+}  // namespace cros

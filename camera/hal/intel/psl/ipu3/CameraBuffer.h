@@ -135,7 +135,7 @@ private:
     bool            mRegistered;     /*!< Use to track the buffer register status */
 
     BufferType mType;
-    arc::CameraBufferManager* mGbmBufferManager;
+    cros::CameraBufferManager* mGbmBufferManager;
     buffer_handle_t mHandle;
     buffer_handle_t* mHandlePtr;
     CameraStream *mOwner;             /*!< Stream this buffer belongs to */

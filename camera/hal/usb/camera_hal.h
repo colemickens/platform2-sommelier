@@ -19,7 +19,7 @@
 #include "hal/usb/camera_client.h"
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 // This class is not thread-safe. All functions in camera_module_t are called by
 // one mojo thread which is in hal adapter. The hal adapter makes sure these
@@ -46,7 +46,7 @@ class CameraHal {
   void CloseDeviceOnOpsThread(int id);
 
  private:
-  void CloseDevice(int id, scoped_refptr<internal::Future<void>> future);
+  void CloseDevice(int id, scoped_refptr<cros::Future<void>> future);
 
   // Cache device information because querying the information is very slow.
   DeviceInfos device_infos_;
@@ -71,7 +71,7 @@ class CameraHal {
 // Callback for camera_device.common.close().
 int camera_device_close(struct hw_device_t* hw_device);
 
-}  // namespace arc
+}  // namespace cros
 
 extern camera_module_t HAL_MODULE_INFO_SYM;
 

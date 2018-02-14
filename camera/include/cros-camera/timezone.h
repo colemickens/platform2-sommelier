@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace arc {
+namespace cros {
 
 enum class PowerLineFrequency {
   FREQ_DEFAULT = 0,
@@ -28,6 +28,6 @@ std::string CountryCodeForCurrentTimezone();
 // anti-banding.
 PowerLineFrequency GetPowerLineFrequencyForLocation();
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_TIMEZONE_H_

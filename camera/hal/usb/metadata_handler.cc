@@ -21,7 +21,7 @@
     }                                                \
   } while (0)
 
-namespace arc {
+namespace cros {
 
 MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
     : af_trigger_(false) {
@@ -758,4 +758,4 @@ int MetadataHandler::FillDefaultManualSettings(
   return -EINVAL;
 }
 
-}  // namespace arc
+}  // namespace cros

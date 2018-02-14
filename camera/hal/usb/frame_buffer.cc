@@ -12,7 +12,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/image_processor.h"
 
-namespace arc {
+namespace cros {
 
 FrameBuffer::FrameBuffer()
     : data_size_(0),
@@ -283,4 +283,4 @@ int GrallocFrameBuffer::Unmap() {
   return 0;
 }
 
-}  // namespace arc
+}  // namespace cros

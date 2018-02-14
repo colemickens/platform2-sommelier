@@ -10,13 +10,13 @@
 #include "hal_adapter/mojo/camera3.mojom.h"
 #include "hal_adapter/mojo/camera_common.mojom.h"
 
-namespace arc {
+namespace cros {
 
 namespace {
 
-#define CHECK_MOJOM_DEFINITION(name, enum_class)                        \
-  static_assert(name == static_cast<int>(arc::mojom::enum_class::name), \
-                "Definition of " #name                                  \
+#define CHECK_MOJOM_DEFINITION(name, enum_class)                         \
+  static_assert(name == static_cast<int>(cros::mojom::enum_class::name), \
+                "Definition of " #name                                   \
                 " is inconsistent between mojom and Android framework");
 
 #define CHECK_BUFFER_TYPE_DEFINITION(type) \
@@ -120,4 +120,4 @@ CHECK_TORCH_MODE_STATUS_DEFINITION(TORCH_MODE_STATUS_AVAILABLE_ON);
 
 }  // namespace
 
-}  // namespace arc
+}  // namespace cros

@@ -13,7 +13,7 @@
 #include "hal/usb/common_types.h"
 #include "hal/usb/frame_buffer.h"
 
-namespace arc {
+namespace cros {
 
 // Generates YU12 test pattern.
 // This class is not thread-safe. Please call the functions on the same thread.
@@ -45,6 +45,6 @@ class TestPattern {
   DISALLOW_COPY_AND_ASSIGN(TestPattern);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_TEST_PATTERN_H_

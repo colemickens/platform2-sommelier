@@ -13,7 +13,7 @@
 
 #include "cros-camera/camera_algorithm.h"
 
-namespace arc {
+namespace cros {
 
 // The class is for a camera HAL to access camera algorithm library.
 //
@@ -102,6 +102,6 @@ class CameraAlgorithmBridge {
   void operator=(const CameraAlgorithmBridge&) = delete;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_CAMERA_ALGORITHM_BRIDGE_H_

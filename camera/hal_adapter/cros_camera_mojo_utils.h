@@ -25,6 +25,7 @@
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/mojo/camera3.mojom.h"
 
+namespace cros {
 namespace internal {
 
 // Serialize / deserialize helper functions.
@@ -39,24 +40,24 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 // return their corresponding handle IDs.  When the receiver gets the result it
 // will restore using the handle ID the original buffer handles which were
 // passed down when the frameworks called process_capture_request.
-arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
+cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles);
 
 int DeserializeStreamBuffer(
-    const arc::mojom::Camera3StreamBufferPtr& ptr,
+    const cros::mojom::Camera3StreamBufferPtr& ptr,
     const UniqueStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles,
     camera3_stream_buffer_t* buffer);
 
-arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
+cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata);
 
-internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
-    const arc::mojom::CameraMetadataPtr& metadata);
+CameraMetadataUniquePtr DeserializeCameraMetadata(
+    const cros::mojom::CameraMetadataPtr& metadata);
 // Template classes for Mojo IPC delegates
 
 // A wrapper around a mojo::InterfacePtr<T>.  This template class represents a
@@ -84,14 +85,14 @@ class MojoChannel : public base::SupportsWeakPtr<MojoChannel<T>> {
     // We need to wait for ResetInterfacePtrOnThread to finish before return
     // otherwise it would cause race condition in destruction of
     // |interface_ptr_| and may CHECK.
-    auto future = internal::Future<void>::Create(nullptr);
+    auto future = cros::Future<void>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      ResetInterfacePtrOnThread(internal::GetFutureCallback(future));
+      ResetInterfacePtrOnThread(cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(
-          FROM_HERE, base::Bind(&MojoChannel<T>::ResetInterfacePtrOnThread,
-                                base::AsWeakPtr(this),
-                                internal::GetFutureCallback(future)));
+          FROM_HERE,
+          base::Bind(&MojoChannel<T>::ResetInterfacePtrOnThread,
+                     base::AsWeakPtr(this), cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
@@ -151,14 +152,14 @@ class MojoBinding : public T {
     // We need to wait for CloseBindingOnThread to finish before return
     // otherwise it would cause race condition in destruction of |binding_| and
     // may CHECK.
-    auto future = internal::Future<void>::Create(nullptr);
+    auto future = cros::Future<void>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      CloseBindingOnThread(internal::GetFutureCallback(future));
+      CloseBindingOnThread(cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(FROM_HERE,
                              base::Bind(&MojoBinding<T>::CloseBindingOnThread,
                                         weak_ptr_factory_.GetWeakPtr(),
-                                        internal::GetFutureCallback(future)));
+                                        cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
@@ -166,16 +167,16 @@ class MojoBinding : public T {
   mojo::InterfacePtr<T> CreateInterfacePtr(
       const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
-    auto future = internal::Future<mojo::InterfacePtr<T>>::Create(nullptr);
+    auto future = cros::Future<mojo::InterfacePtr<T>>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
       CreateInterfacePtrOnThread(connection_error_handler,
-                                 internal::GetFutureCallback(future));
+                                 cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(
           FROM_HERE,
           base::Bind(&MojoBinding<T>::CreateInterfacePtrOnThread,
                      weak_ptr_factory_.GetWeakPtr(), connection_error_handler,
-                     internal::GetFutureCallback(future)));
+                     cros::GetFutureCallback(future)));
     }
     return future->Get();
   }
@@ -230,5 +231,6 @@ class MojoBinding : public T {
 };
 
 }  // namespace internal
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_

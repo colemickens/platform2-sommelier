@@ -298,7 +298,7 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
 {
     LOG2("@%s", __FUNCTION__);
 
-    arc::JpegCompressor jpegCompressor;
+    cros::JpegCompressor jpegCompressor;
 
     int width = srcBuf->width();
     int height = srcBuf->height();

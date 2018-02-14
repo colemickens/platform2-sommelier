@@ -104,7 +104,7 @@ private:
     /**
      * Thread control members
      */
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
 
     StreamConfig mActiveStreams;
     std::vector<std::shared_ptr<ITaskEventListener>> mListeningTasks;   // Tasks that listen for events from another task.

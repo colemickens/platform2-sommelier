@@ -54,7 +54,7 @@ Rockchip3AClient::Rockchip3AClient():
     mNotifyCallback = base::Bind(&Rockchip3AClient::notifyHandler, base::Unretained(this));
     Rockchip3AClient::notify = notifyCallback;
 
-    mBridge = arc::CameraAlgorithmBridge::CreateInstance();
+    mBridge = cros::CameraAlgorithmBridge::CreateInstance();
     CheckError(!mBridge, VOID_VALUE, "@%s, mBridge is nullptr", __FUNCTION__);
     CheckError((mBridge->Initialize(this) != 0), VOID_VALUE, "@%s, call mBridge->Initialize fail", __FUNCTION__);
 

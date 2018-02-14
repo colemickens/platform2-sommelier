@@ -17,7 +17,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future_internal.h"
 
-namespace internal {
+namespace cros {
 
 class CancellationRelay {
  public:
@@ -28,10 +28,10 @@ class CancellationRelay {
   ~CancellationRelay();
 
   /* Registers a FutureLock to listen to cancel signal. */
-  bool AddObserver(future_internal::FutureLock* future_lock);
+  bool AddObserver(internal::FutureLock* future_lock);
 
   /* Removes a FutureLock from the observer set. */
-  void RemoveObserver(future_internal::FutureLock* future_lock);
+  void RemoveObserver(internal::FutureLock* future_lock);
 
   /* Cancells all the futures currently in the observer set. */
   void CancelAllFutures();
@@ -41,7 +41,7 @@ class CancellationRelay {
   base::Lock lock_;
 
   /* Stores all the FutureLock observers. */
-  std::set<future_internal::FutureLock*> observers_;
+  std::set<internal::FutureLock*> observers_;
 
   /* Used to indicate that a cancelled signal is already set. */
   bool cancelled_;
@@ -93,7 +93,7 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
 
   ~Future() = default;
 
-  future_internal::FutureLock lock_;
+  internal::FutureLock lock_;
 
   T value_;
 
@@ -128,7 +128,7 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
 
   ~Future() = default;
 
-  future_internal::FutureLock lock_;
+  internal::FutureLock lock_;
 
   DISALLOW_COPY_AND_ASSIGN(Future);
 };
@@ -147,6 +147,6 @@ base::Callback<void(T)> GetFutureCallback(
 base::Callback<void()> GetFutureCallback(
     const scoped_refptr<Future<void>>& future);
 
-}  // namespace internal
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_FUTURE_H_

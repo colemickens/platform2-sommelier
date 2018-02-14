@@ -11,7 +11,7 @@
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
-namespace arc {
+namespace cros {
 
 CameraModuleDelegate::CameraModuleDelegate(
     CameraHalAdapter* camera_hal_adapter,
@@ -70,4 +70,4 @@ void CameraModuleDelegate::Init(const InitCallback& callback) {
   callback.Run(camera_hal_adapter_->Init());
 }
 
-}  // namespace arc
+}  // namespace cros

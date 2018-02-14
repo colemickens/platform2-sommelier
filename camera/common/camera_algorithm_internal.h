@@ -7,10 +7,10 @@
 #ifndef COMMON_CAMERA_ALGORITHM_INTERNAL_H_
 #define COMMON_CAMERA_ALGORITHM_INTERNAL_H_
 
-namespace arc {
+namespace cros {
 
 const char kArcCameraAlgoSocketPath[] = "/run/camera/camera-algo.sock";
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_ALGORITHM_INTERNAL_H_

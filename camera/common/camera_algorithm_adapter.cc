@@ -18,7 +18,7 @@
 #include "cros-camera/camera_algorithm.h"
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 CameraAlgorithmAdapter::CameraAlgorithmAdapter()
     : algo_impl_(CameraAlgorithmOpsImpl::GetInstance()),
@@ -29,8 +29,8 @@ void CameraAlgorithmAdapter::Run(
     std::string mojo_token,
     mojo::edk::ScopedPlatformHandle channel_handle) {
   VLOGF_ENTER();
-  auto future = internal::Future<void>::Create(&relay_);
-  ipc_lost_cb_ = internal::GetFutureCallback(future);
+  auto future = cros::Future<void>::Create(&relay_);
+  ipc_lost_cb_ = cros::GetFutureCallback(future);
   ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
   ipc_thread_.task_runner()->PostTask(
@@ -91,4 +91,4 @@ void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   VLOGF_EXIT();
 }
 
-}  // namespace arc
+}  // namespace cros

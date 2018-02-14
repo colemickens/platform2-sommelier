@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     // AtExitManager.
     brillo::Daemon daemon;
 
-    arc::CameraHalServerImpl service_provider;
+    cros::CameraHalServerImpl service_provider;
     if (!service_provider.Start()) {
       LOGF(ERROR) << "Failed to start camera HAL v3 adapter";
       return ECANCELED;

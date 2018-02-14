@@ -17,7 +17,7 @@
 #include "common/camera_algorithm_ops_impl.h"
 #include "cros-camera/future.h"
 
-namespace arc {
+namespace cros {
 
 // This class loads and adapts the functions of camera algorithm. It runs in
 // the sandboxed camera algorithm process.
@@ -52,11 +52,11 @@ class CameraAlgorithmAdapter : public mojo::edk::ProcessDelegate {
   base::Callback<void(void)> ipc_lost_cb_;
 
   // Store observers for future locks
-  internal::CancellationRelay relay_;
+  cros::CancellationRelay relay_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmAdapter);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_ALGORITHM_ADAPTER_H_

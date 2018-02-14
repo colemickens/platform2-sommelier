@@ -14,6 +14,7 @@
 
 #include "common/camera_buffer_handle.h"
 
+namespace cros {
 namespace internal {
 
 // Common data types for hal_adapter internal use.
@@ -30,5 +31,6 @@ typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
 typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
 
 }  // namespace internal
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_COMMON_TYPES_H_

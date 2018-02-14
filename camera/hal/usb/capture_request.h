@@ -11,7 +11,7 @@
 #include <hardware/camera3.h>
 #include "camera/camera_metadata.h"
 
-namespace arc {
+namespace cros {
 
 class CaptureRequest {
  public:
@@ -41,6 +41,6 @@ class CaptureRequest {
   std::vector<buffer_handle_t> buffer_handles_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_CAPTURE_REQUEST_H_

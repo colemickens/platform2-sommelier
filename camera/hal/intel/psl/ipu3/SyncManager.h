@@ -140,7 +140,7 @@ private:
         int32_t gainDelay;
     };
 
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
     bool mStarted;
 
     /**

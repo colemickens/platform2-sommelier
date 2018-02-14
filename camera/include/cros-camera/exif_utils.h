@@ -19,7 +19,7 @@ extern "C" {
 
 #define EXPORTED __attribute__((__visibility__("default")))
 
-namespace arc {
+namespace cros {
 
 // ExifUtils can generate APP1 segment with tags which caller set. ExifUtils can
 // also add a thumbnail in the APP1 segment if thumbnail size is specified.
@@ -292,6 +292,6 @@ class EXPORTED ExifUtils {
   unsigned int app1_length_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_EXIF_UTILS_H_

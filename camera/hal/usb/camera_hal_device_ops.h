@@ -8,13 +8,13 @@
 
 #include <hardware/camera3.h>
 
-namespace arc {
+namespace cros {
 
 // Camera device operations handle shared by all devices. The operation of one
 // device are called on the same mojo thread. The operations of two different
 // devices are called on two different mojo threads.
 extern camera3_device_ops_t g_camera_device_ops;
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_CAMERA_HAL_DEVICE_OPS_H_

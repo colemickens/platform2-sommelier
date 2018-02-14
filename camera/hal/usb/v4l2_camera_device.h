@@ -18,7 +18,7 @@
 #include "cros-camera/timezone.h"
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 // The class is thread-safe.
 class V4L2CameraDevice {
@@ -128,6 +128,6 @@ class V4L2CameraDevice {
   DISALLOW_COPY_AND_ASSIGN(V4L2CameraDevice);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_V4L2_CAMERA_DEVICE_H_

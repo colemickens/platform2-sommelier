@@ -223,7 +223,7 @@ int close(int fd) {
   return _close(fd);
 }
 
-struct gbm_device* ::arc::internal::CreateGbmDevice() {
+struct gbm_device* ::cros::internal::CreateGbmDevice() {
   return _create_gbm_device();
 }
 
@@ -299,7 +299,7 @@ off_t lseek(int fd, off_t offset, int whence) {
   return _lseek(fd, offset, whence);
 }
 
-namespace arc {
+namespace cros {
 
 namespace tests {
 
@@ -829,7 +829,7 @@ TEST_F(CameraBufferManagerImplTest, DeregisterTest) {
 
 }  // namespace tests
 
-}  // namespace arc
+}  // namespace cros
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;

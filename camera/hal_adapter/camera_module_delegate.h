@@ -11,7 +11,7 @@
 #include "hal_adapter/mojo/camera3.mojom.h"
 #include "hal_adapter/mojo/camera_common.mojom.h"
 
-namespace arc {
+namespace cros {
 
 class CameraHalAdapter;
 
@@ -47,6 +47,6 @@ class CameraModuleDelegate final
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleDelegate);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_

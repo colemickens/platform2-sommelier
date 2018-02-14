@@ -101,7 +101,7 @@ private:
     std::vector<std::shared_ptr<V4L2DeviceBase>> mInactiveDevices;
 
     std::string mName;
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
     IPollEventListener* mListener; // one listener per PollerThread, PollerThread doesn't has ownership
     int mFlushFd[2];    // Flush file descriptor
     pid_t mPid;

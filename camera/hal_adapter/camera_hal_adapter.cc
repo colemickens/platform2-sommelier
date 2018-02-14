@@ -24,7 +24,7 @@
 #include "hal_adapter/camera_module_delegate.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
 
-namespace arc {
+namespace cros {
 
 namespace {
 
@@ -70,11 +70,11 @@ bool CameraHalAdapter::Start() {
     return false;
   }
 
-  auto future = internal::Future<bool>::Create(nullptr);
+  auto future = cros::Future<bool>::Create(nullptr);
   camera_module_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraHalAdapter::StartOnThread, base::Unretained(this),
-                 internal::GetFutureCallback(future)));
+                 cros::GetFutureCallback(future)));
   return future->Get();
 }
 
@@ -394,4 +394,4 @@ void CameraHalAdapter::ResetCallbacksDelegateOnThread(uint32_t callbacks_id) {
   }
 }
 
-}  // namespace arc
+}  // namespace cros

@@ -65,7 +65,7 @@ private:
 private:
     IErrorCallback* mErrCb;
 
-    std::unique_ptr<arc::CameraAlgorithmBridge> mBridge;
+    std::unique_ptr<cros::CameraAlgorithmBridge> mBridge;
 
     pthread_mutex_t mCbLock;
     pthread_cond_t mCbCond;

@@ -30,7 +30,7 @@
 #include "hal/usb/test_pattern.h"
 #include "hal/usb/v4l2_camera_device.h"
 
-namespace arc {
+namespace cros {
 
 // CameraClient class is not thread-safe. There are three threads in this
 // class.
@@ -94,14 +94,13 @@ class CameraClient {
   void StreamOff();
 
   // Callback function for RequestHandler::StreamOn.
-  void StreamOnCallback(scoped_refptr<internal::Future<int>> future,
+  void StreamOnCallback(scoped_refptr<cros::Future<int>> future,
                         int* out_num_buffers,
                         int num_buffers,
                         int result);
 
   // Callback function for RequestHandler::StreamOff.
-  void StreamOffCallback(scoped_refptr<internal::Future<int>> future,
-                         int result);
+  void StreamOffCallback(scoped_refptr<cros::Future<int>> future, int result);
 
   // Camera device id.
   const int id_;
@@ -263,6 +262,6 @@ class CameraClient {
   DISALLOW_COPY_AND_ASSIGN(CameraClient);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_CAMERA_CLIENT_H_

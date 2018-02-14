@@ -9,7 +9,7 @@
 
 #include <gbm.h>
 
-namespace arc {
+namespace cros {
 
 namespace internal {
 
@@ -17,6 +17,6 @@ struct gbm_device* CreateGbmDevice();
 
 }  // namespace internal
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_BUFFER_MANAGER_INTERNAL_H_

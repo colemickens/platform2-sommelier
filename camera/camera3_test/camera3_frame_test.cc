@@ -184,7 +184,8 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
       LOG(ERROR) << "Failed to lock input buffer";
       return ImageUniquePtr(nullptr);
     }
-    uint32_t v4l2_format = arc::CameraBufferManager::GetV4L2PixelFormat(handle);
+    uint32_t v4l2_format =
+        cros::CameraBufferManager::GetV4L2PixelFormat(handle);
     switch (v4l2_format) {
       case V4L2_PIX_FMT_NV12:
       case V4L2_PIX_FMT_NV12M:

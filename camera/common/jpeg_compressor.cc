@@ -13,7 +13,7 @@
 
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 // The destination manager that can access members in JpegCompressor.
 struct destination_mgr {
@@ -264,4 +264,4 @@ bool JpegCompressor::Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv) {
   return true;
 }
 
-}  // namespace arc
+}  // namespace cros

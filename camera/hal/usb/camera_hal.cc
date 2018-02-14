@@ -14,7 +14,7 @@
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 
-namespace arc {
+namespace cros {
 
 CameraHal::CameraHal() : task_runner_(nullptr) {
   std::unique_ptr<V4L2CameraDevice> device(new V4L2CameraDevice());
@@ -109,15 +109,14 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 
 void CameraHal::CloseDeviceOnOpsThread(int id) {
   DCHECK(task_runner_);
-  auto future = internal::Future<void>::Create(nullptr);
+  auto future = cros::Future<void>::Create(nullptr);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&CameraHal::CloseDevice, base::Unretained(this), id,
                             base::RetainedRef(future)));
   future->Wait();
 }
 
-void CameraHal::CloseDevice(int id,
-                            scoped_refptr<internal::Future<void>> future) {
+void CameraHal::CloseDevice(int id, scoped_refptr<cros::Future<void>> future) {
   VLOGFID(1, id);
   DCHECK(thread_checker_.CalledOnValidThread());
 
@@ -177,10 +176,10 @@ int camera_device_close(struct hw_device_t* hw_device) {
   return ret;
 }
 
-}  // namespace arc
+}  // namespace cros
 
-static hw_module_methods_t gCameraModuleMethods = {.open =
-                                                       arc::camera_device_open};
+static hw_module_methods_t gCameraModuleMethods = {
+    .open = cros::camera_device_open};
 
 camera_module_t HAL_MODULE_INFO_SYM
     __attribute__((__visibility__("default"))) = {
@@ -193,9 +192,9 @@ camera_module_t HAL_MODULE_INFO_SYM
                    .methods = &gCameraModuleMethods,
                    .dso = NULL,
                    .reserved = {0}},
-        .get_number_of_cameras = arc::get_number_of_cameras,
-        .get_camera_info = arc::get_camera_info,
-        .set_callbacks = arc::set_callbacks,
+        .get_number_of_cameras = cros::get_number_of_cameras,
+        .get_camera_info = cros::get_camera_info,
+        .set_callbacks = cros::set_callbacks,
         .get_vendor_tag_ops = NULL,
         .open_legacy = NULL,
         .set_torch_mode = NULL,

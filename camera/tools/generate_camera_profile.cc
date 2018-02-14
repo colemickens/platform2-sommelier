@@ -23,13 +23,13 @@ constexpr char kDestinationDir[] =
 constexpr char kMediaProfileFileName[] = "media_profiles.xml";
 constexpr char kMediaProfileDir[] = "/etc/camera";
 
-arc::DeviceInfos GetCameraDeviceInfos() {
-  arc::V4L2CameraDevice device;
+cros::DeviceInfos GetCameraDeviceInfos() {
+  cros::V4L2CameraDevice device;
   return device.GetCameraDeviceInfos();
 }
 
-arc::Camcorder GetDefaultCamcorder() {
-  arc::Camcorder profile;
+cros::Camcorder GetDefaultCamcorder() {
+  cros::Camcorder profile;
   profile.file_format = "mp4";
   profile.duration = 60;
   profile.video_codec = "h264";
@@ -45,7 +45,7 @@ arc::Camcorder GetDefaultCamcorder() {
 }
 
 std::string GetCamcorderString(int id) {
-  arc::Camcorder camcorder = GetDefaultCamcorder();
+  cros::Camcorder camcorder = GetDefaultCamcorder();
   std::string quality;
   if (camcorder.video_height >= 2160) {
     quality = "2160p";
@@ -89,7 +89,7 @@ std::string GetCamcorderString(int id) {
   return str;
 }
 
-bool GenerateCameraProfile(const arc::DeviceInfos& device_info) {
+bool GenerateCameraProfile(const cros::DeviceInfos& device_info) {
   const base::FilePath profile =
       base::FilePath(kMediaProfileDir).Append(kMediaProfileFileName);
   std::string content;
@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(log_flags);
 
   LOG(INFO) << "Starting to generate media profiles";
-  arc::DeviceInfos device_infos = GetCameraDeviceInfos();
+  cros::DeviceInfos device_infos = GetCameraDeviceInfos();
 
   if (!GenerateCameraProfile(device_infos)) {
     LOG(ERROR) << "Generate media profile error";

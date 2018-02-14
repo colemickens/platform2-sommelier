@@ -12,7 +12,7 @@
 
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 static std::vector<int> kSupportedHalFormats{
     HAL_PIXEL_FORMAT_BLOB, HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -89,4 +89,4 @@ bool IsFormatSupported(const SupportedFormats& supported_formats,
   return false;
 }
 
-}  // namespace arc
+}  // namespace cros

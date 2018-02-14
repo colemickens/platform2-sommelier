@@ -17,7 +17,7 @@
 #include "hal/usb/camera_hal_device_ops.h"
 #include "hal/usb/stream_format.h"
 
-namespace arc {
+namespace cros {
 
 const int kBufferFenceReady = -1;
 
@@ -35,7 +35,7 @@ CameraClient::CameraClient(int id,
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
   camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_3;
-  camera3_device_.common.close = arc::camera_device_close;
+  camera3_device_.common.close = cros::camera_device_close;
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   camera3_device_.ops = &g_camera_device_ops;
   camera3_device_.priv = this;
@@ -262,8 +262,8 @@ int CameraClient::Flush(const camera3_device_t* dev) {
     return 0;
   }
 
-  auto future = internal::Future<int>::Create(nullptr);
-  request_handler_->HandleFlush(internal::GetFutureCallback(future));
+  auto future = cros::Future<int>::Create(nullptr);
+  request_handler_->HandleFlush(cros::GetFutureCallback(future));
   future->Get();
   return 0;
 }
@@ -334,7 +334,7 @@ int CameraClient::StreamOn(Size stream_on_resolution,
                            request_task_runner_, metadata_handler_.get()));
   }
 
-  auto future = internal::Future<int>::Create(nullptr);
+  auto future = cros::Future<int>::Create(nullptr);
   base::Callback<void(int, int)> streamon_callback =
       base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
                  base::RetainedRef(future), num_buffers);
@@ -349,7 +349,7 @@ int CameraClient::StreamOn(Size stream_on_resolution,
 void CameraClient::StreamOff() {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
   if (request_handler_.get()) {
-    auto future = internal::Future<int>::Create(nullptr);
+    auto future = cros::Future<int>::Create(nullptr);
     base::Callback<void(int)> streamoff_callback =
         base::Bind(&CameraClient::StreamOffCallback, base::Unretained(this),
                    base::RetainedRef(future));
@@ -366,7 +366,7 @@ void CameraClient::StreamOff() {
   }
 }
 
-void CameraClient::StreamOnCallback(scoped_refptr<internal::Future<int>> future,
+void CameraClient::StreamOnCallback(scoped_refptr<cros::Future<int>> future,
                                     int* out_num_buffers,
                                     int num_buffers,
                                     int result) {
@@ -376,9 +376,8 @@ void CameraClient::StreamOnCallback(scoped_refptr<internal::Future<int>> future,
   future->Set(result);
 }
 
-void CameraClient::StreamOffCallback(
-    scoped_refptr<internal::Future<int>> future,
-    int result) {
+void CameraClient::StreamOffCallback(scoped_refptr<cros::Future<int>> future,
+                                     int result) {
   future->Set(result);
 }
 
@@ -819,4 +818,4 @@ void CameraClient::RequestHandler::FlushDone(
   }
 }
 
-}  // namespace arc
+}  // namespace cros

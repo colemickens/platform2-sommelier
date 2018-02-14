@@ -112,7 +112,7 @@ private:  /* members */
     std::vector<CameraStream*> mLocalStreams; /* Local storage of streaming informations */
     unsigned int mStreamSeqNo;
 
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
 
     base::WaitableEvent mWaitRequest; /* Guide blocking capture request */
 };

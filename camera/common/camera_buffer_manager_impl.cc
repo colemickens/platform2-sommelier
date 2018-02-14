@@ -19,7 +19,7 @@
 #include "common/camera_buffer_manager_internal.h"
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 namespace {
 
@@ -706,4 +706,4 @@ int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
   return 0;
 }
 
-}  // namespace arc
+}  // namespace cros

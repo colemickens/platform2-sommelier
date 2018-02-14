@@ -17,7 +17,7 @@ const int32_t kMinNodeNumber = 128;
 
 }  // namespace
 
-namespace arc {
+namespace cros {
 
 namespace internal {
 
@@ -57,4 +57,4 @@ struct gbm_device* CreateGbmDevice() {
 
 }  // namespace internal
 
-}  // namespace arc
+}  // namespace cros

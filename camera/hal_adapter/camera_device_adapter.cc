@@ -22,7 +22,7 @@
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
-namespace arc {
+namespace cros {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
                                          base::Callback<void()> close_callback)
@@ -508,4 +508,4 @@ void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
   callback_ops_delegate_.reset();
 }
 
-}  // namespace arc
+}  // namespace cros

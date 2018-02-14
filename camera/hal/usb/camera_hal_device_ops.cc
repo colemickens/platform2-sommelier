@@ -8,7 +8,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/camera_client.h"
 
-namespace arc {
+namespace cros {
 
 // Get handle to camera from device priv data
 static CameraClient* camdev_to_camera(const camera3_device_t* dev) {
@@ -75,16 +75,16 @@ static int flush(const camera3_device_t* dev) {
 }
 
 camera3_device_ops_t g_camera_device_ops = {
-    .initialize = arc::initialize,
-    .configure_streams = arc::configure_streams,
+    .initialize = cros::initialize,
+    .configure_streams = cros::configure_streams,
     .register_stream_buffers = NULL,
     .construct_default_request_settings =
-        arc::construct_default_request_settings,
-    .process_capture_request = arc::process_capture_request,
+        cros::construct_default_request_settings,
+    .process_capture_request = cros::process_capture_request,
     .get_metadata_vendor_tag_ops = NULL,
-    .dump = arc::dump,
-    .flush = arc::flush,
+    .dump = cros::dump,
+    .flush = cros::flush,
     .reserved = {0},
 };
 
-}  // namespace arc
+}  // namespace cros

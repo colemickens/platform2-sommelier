@@ -28,7 +28,7 @@
 #include "common/camera_algorithm_internal.h"
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 // static
 std::unique_ptr<CameraAlgorithmBridge> CameraAlgorithmBridge::CreateInstance() {
@@ -80,11 +80,11 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
       ret = -ETIMEDOUT;
       break;
     }
-    auto future = internal::Future<int32_t>::Create(&relay_);
+    auto future = cros::Future<int32_t>::Create(&relay_);
     ipc_thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::InitializeOnIpcThread,
                               base::Unretained(this), callback_ops,
-                              internal::GetFutureCallback(future)));
+                              cros::GetFutureCallback(future)));
     if (future->Wait(std::min(kInitializationWaitConnectionMs,
                               kInitializationRetryTimeoutMs - elapsed_ms))) {
       ret = future->Get();
@@ -100,12 +100,12 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
 
 int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
   VLOGF_ENTER();
-  auto future = internal::Future<int32_t>::Create(&relay_);
+  auto future = cros::Future<int32_t>::Create(&relay_);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread,
                  base::Unretained(this), buffer_fd,
-                 internal::GetFutureCallback(future)));
+                 cros::GetFutureCallback(future)));
   future->Wait();
   VLOGF_EXIT();
   return future->Get();
@@ -279,4 +279,4 @@ void CameraAlgorithmBridgeImpl::DeregisterBuffersOnIpcThread(
   interface_ptr_->DeregisterBuffers(std::move(buffer_handles));
 }
 
-}  // namespace arc
+}  // namespace cros

@@ -36,7 +36,7 @@
 #include "cros-camera/common.h"
 #include "hal_adapter/ipc_util.h"
 
-namespace arc {
+namespace cros {
 
 namespace {
 
@@ -223,4 +223,4 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   exit(exit_status);
 }
 
-}  // namespace arc
+}  // namespace cros

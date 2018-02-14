@@ -198,7 +198,7 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
 status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
 {
     mType = BUF_TYPE_HANDLE;
-    mGbmBufferManager = arc::CameraBufferManager::GetInstance();
+    mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = *aBuffer->buffer;
     mHandlePtr = aBuffer->buffer;
     mWidth = aBuffer->stream->width;
@@ -240,7 +240,7 @@ status_t CameraBuffer::init(const camera3_stream_t* stream,
                             int cameraId)
 {
     mType = BUF_TYPE_HANDLE;
-    mGbmBufferManager = arc::CameraBufferManager::GetInstance();
+    mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = handle;
     mWidth = stream->width;
     mHeight = stream->height;
@@ -612,13 +612,13 @@ allocateHandleBuffer(int w,
                      int cameraId)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    arc::CameraBufferManager* bufManager = arc::CameraBufferManager::GetInstance();
+    cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
     buffer_handle_t handle;
     uint32_t stride = 0;
 
     LOG1("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
           __FUNCTION__, w, h, gfxFmt, usage);
-    int ret = bufManager->Allocate(w, h, gfxFmt, usage, arc::GRALLOC, &handle, &stride);
+    int ret = bufManager->Allocate(w, h, gfxFmt, usage, cros::GRALLOC, &handle, &stride);
     if (ret != 0) {
         LOGE("Allocate handle failed! %d", ret);
         return nullptr;

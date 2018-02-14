@@ -12,7 +12,7 @@
 
 #include "hal/usb/image_processor.h"
 
-namespace arc {
+namespace cros {
 
 // CachedFrame contains a source FrameBuffer and a cached, converted
 // FrameBuffer. The incoming frames would be converted to YU12, the default
@@ -73,6 +73,6 @@ class CachedFrame {
   std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_CACHED_FRAME_H_

@@ -13,7 +13,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/test_pattern.h"
 
-namespace arc {
+namespace cros {
 
 TestPattern::TestPattern(Size resolution)
     : resolution_(resolution),
@@ -167,4 +167,4 @@ bool TestPattern::ConvertToYU12() {
   return ret == 0;
 }
 
-}  // namespace arc
+}  // namespace cros

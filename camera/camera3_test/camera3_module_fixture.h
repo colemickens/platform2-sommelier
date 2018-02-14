@@ -117,11 +117,11 @@ class Camera3Module {
   // same Chromium thread. It is expected to start this thread before gtest
   // initialization in main() because test case instantiation needs it running
   // to get the camera ID list.
-  arc::CameraThread* hal_thread_;
+  cros::CameraThread* hal_thread_;
 
   // Use a separate thread from |hal_thread_| to close camera device to
   // simulate hal_adapter behavior.
-  arc::CameraThread dev_thread_;
+  cros::CameraThread dev_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Module);
 };

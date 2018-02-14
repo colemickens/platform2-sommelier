@@ -13,7 +13,7 @@
 
 #include "hal/usb/frame_buffer.h"
 
-namespace arc {
+namespace cros {
 
 namespace tests {
 
@@ -39,7 +39,7 @@ TEST_F(ImageProcessorTest, GetConvertedSize) {
 
 }  // namespace tests
 
-}  // namespace arc
+}  // namespace cros
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;

@@ -207,7 +207,7 @@ private: /* members */
     /**
      * Thread control members
      */
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
 
     std::unique_ptr<PollerThread> mPollerThread;
     std::vector<int> mCaptureQueue;

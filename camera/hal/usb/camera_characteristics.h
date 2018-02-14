@@ -14,7 +14,7 @@
 
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 // CameraCharacteristics reads the file /etc/camera/camera_characteristics.conf.
 // There are several assumptions of the config file:
@@ -71,6 +71,6 @@ class CameraCharacteristics {
   DISALLOW_COPY_AND_ASSIGN(CameraCharacteristics);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_CAMERA_CHARACTERISTICS_H_

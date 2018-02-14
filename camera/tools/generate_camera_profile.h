@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace arc {
+namespace cros {
 
 struct Camcorder {
   std::string file_format;
@@ -26,6 +26,6 @@ struct Camcorder {
   int32_t audio_channels;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // TOOLS_GENERATE_CAMERA_PROFILE_H_

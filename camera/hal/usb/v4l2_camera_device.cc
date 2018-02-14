@@ -21,7 +21,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/camera_characteristics.h"
 
-namespace arc {
+namespace cros {
 
 // USB VID and PID are both 4 bytes long.
 static const size_t kVidPidSize = 4;
@@ -718,4 +718,4 @@ int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
   return 0;
 }
 
-}  // namespace arc
+}  // namespace cros

@@ -15,7 +15,7 @@
 #include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"
 
-namespace arc {
+namespace cros {
 
 Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
@@ -53,4 +53,4 @@ void Camera3CallbackOpsDelegate::NotifyOnThread(
   interface_ptr_->Notify(std::move(msg));
 }
 
-}  // end of namespace arc
+}  // end of namespace cros

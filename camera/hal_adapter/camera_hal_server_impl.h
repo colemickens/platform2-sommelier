@@ -18,7 +18,7 @@
 #include "hal_adapter/camera_hal_adapter.h"
 #include "hal_adapter/mojo/cros_camera_service.mojom.h"
 
-namespace arc {
+namespace cros {
 
 // CameraHalServerImpl is the implementation of the CameraHalServer Mojo
 // interface.  It hosts the camera HAL v3 adapter and registers itself to the
@@ -89,6 +89,6 @@ class CameraHalServerImpl final : public mojom::CameraHalServer,
   DISALLOW_COPY_AND_ASSIGN(CameraHalServerImpl);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_

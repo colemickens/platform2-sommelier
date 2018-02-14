@@ -17,7 +17,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 
-namespace arc {
+namespace cros {
 
 CameraAlgorithmOpsImpl* CameraAlgorithmOpsImpl::singleton_ = nullptr;
 
@@ -160,4 +160,4 @@ void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t status,
   VLOGF_EXIT();
 }
 
-}  // namespace arc
+}  // namespace cros

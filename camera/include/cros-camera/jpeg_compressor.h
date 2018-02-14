@@ -17,7 +17,7 @@ extern "C" {
 #include <jpeglib.h>
 }
 
-namespace arc {
+namespace cros {
 
 // Encapsulates a converter from YU12 to JPEG format. This class is not
 // thread-safe.
@@ -103,6 +103,6 @@ class JpegCompressor {
   bool is_encode_success_;
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_

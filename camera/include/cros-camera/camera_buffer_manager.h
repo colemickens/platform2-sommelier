@@ -22,7 +22,7 @@ const uint32_t GRALLOC_USAGE_FORCE_I420 = 0x10000000U;
 
 #define EXPORTED __attribute__((__visibility__("default")))
 
-namespace arc {
+namespace cros {
 
 class GbmDevice;
 
@@ -243,6 +243,6 @@ class EXPORTED CameraBufferManager {
   static size_t GetPlaneSize(buffer_handle_t buffer, size_t plane);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_

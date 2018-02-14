@@ -19,7 +19,7 @@
 
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 namespace {
 
@@ -651,4 +651,4 @@ PowerLineFrequency GetPowerLineFrequencyForLocation() {
   return PowerLineFrequency::FREQ_60HZ;
 }
 
-}  // namespace arc
+}  // namespace cros

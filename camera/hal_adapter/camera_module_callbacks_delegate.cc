@@ -13,7 +13,7 @@
 
 #include "cros-camera/common.h"
 
-namespace arc {
+namespace cros {
 
 CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
@@ -55,4 +55,4 @@ void CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread(
       camera_id, static_cast<mojom::TorchModeStatus>(new_status));
 }
 
-}  // namespace arc
+}  // namespace cros

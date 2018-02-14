@@ -26,7 +26,7 @@ struct native_handle;
 typedef const native_handle* buffer_handle_t;
 struct android_ycbcr;
 
-namespace arc {
+namespace cros {
 
 namespace tests {
 
@@ -203,6 +203,6 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
   DISALLOW_COPY_AND_ASSIGN(CameraBufferManagerImpl);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_

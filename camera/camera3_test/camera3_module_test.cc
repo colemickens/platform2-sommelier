@@ -20,7 +20,7 @@
 namespace camera3_test {
 
 static camera_module_t* g_cam_module = NULL;
-static arc::CameraThread g_module_thread("Camera3 Test Module Thread");
+static cros::CameraThread g_module_thread("Camera3 Test Module Thread");
 
 int32_t ResolutionInfo::Width() const {
   return width_;
@@ -984,7 +984,7 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
       cmd_line->GetSwitchValuePath("camera_hal_path");
 
   if (camera_hal_path.empty()) {
-    std::vector<base::FilePath> camera_hal_paths = arc::GetCameraHalPaths();
+    std::vector<base::FilePath> camera_hal_paths = cros::GetCameraHalPaths();
 
     if (camera_hal_paths.size() == 1) {
       // TODO(shik): Ignore usb.so if there is no built-in USB camera, so we

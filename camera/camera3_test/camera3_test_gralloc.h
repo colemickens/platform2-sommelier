@@ -115,7 +115,7 @@ class Camera3TestGralloc {
   // Lock to protect the singleton creation
   static base::Lock lock_;
 
-  arc::CameraBufferManager* buffer_manager_;
+  cros::CameraBufferManager* buffer_manager_;
 };
 
 }  // namespace camera3_test

@@ -13,7 +13,7 @@
 
 #include "cros-camera/camera_algorithm.h"
 
-namespace arc {
+namespace cros {
 
 // This is the implementation of CameraAlgorithmCallbackOps mojo interface. It
 // is used by the camera HAL process.
@@ -49,6 +49,6 @@ class CameraAlgorithmCallbackOpsImpl
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmCallbackOpsImpl);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_

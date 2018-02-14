@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-module arc.mojom;
+module cros.mojom;
 
 // This is mojo interface that wraps camera_algorithm_ops_t functions
 

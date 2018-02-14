@@ -32,11 +32,11 @@ int main(int argc, char** argv) {
 
   // Socket file is in the root directory after minijail chroot
   std::string socket_name("/");
-  socket_name.append(basename(arc::kArcCameraAlgoSocketPath));
+  socket_name.append(basename(cros::kArcCameraAlgoSocketPath));
   base::FilePath socket_path(socket_name);
   // Creat unix socket to receive the adapter token and connection handle
   int fd = -1;
-  if (!::internal::CreateServerUnixDomainSocket(socket_path, &fd)) {
+  if (!cros::internal::CreateServerUnixDomainSocket(socket_path, &fd)) {
     LOGF(ERROR) << "CreateSreverUnixDomainSocket failed";
     return EXIT_FAILURE;
   }
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
   VLOGF(1) << "Message from client " << std::string(recv_buf);
   int pid = fork();
   if (pid == 0) {
-    arc::CameraAlgorithmAdapter adapter;
+    cros::CameraAlgorithmAdapter adapter;
     adapter.Run(std::string(recv_buf),
                 mojo::edk::ScopedPlatformHandle(platform_handles.front()));
     exit(0);

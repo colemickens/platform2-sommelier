@@ -17,7 +17,7 @@
 
 #include "hal/usb/frame_buffer.h"
 
-namespace arc {
+namespace cros {
 
 // V4L2_PIX_FMT_YVU420(YV12) in ImageProcessor has alignment requirement.
 // The stride of Y, U, and V planes should a multiple of 16 pixels.
@@ -51,6 +51,6 @@ struct ImageProcessor {
                            int rotate_degree);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // HAL_USB_IMAGE_PROCESSOR_H_

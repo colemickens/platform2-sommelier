@@ -161,7 +161,7 @@ private:  /* methods */
 
 private:  /* members */
     RequestThread *mRequestThread;
-    arc::CameraThread mCameraThread;
+    cros::CameraThread mCameraThread;
 
     const camera3_callback_ops_t *mCallbackOps;
     ItemPool<RequestState_t> mReqStatePool;

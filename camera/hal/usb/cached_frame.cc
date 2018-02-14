@@ -10,7 +10,7 @@
 #include "cros-camera/common.h"
 #include "hal/usb/common_types.h"
 
-namespace arc {
+namespace cros {
 
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
@@ -158,4 +158,4 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   return ret;
 }
 
-}  // namespace arc
+}  // namespace cros

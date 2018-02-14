@@ -21,7 +21,7 @@
 #include "cros-camera/camera_algorithm_bridge.h"
 #include "cros-camera/future.h"
 
-namespace arc {
+namespace cros {
 
 // This is the implementation of CameraAlgorithmBridge interface. It is used
 // by the camera HAL process.
@@ -83,11 +83,11 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
   base::Thread ipc_thread_;
 
   // Store observers for future locks
-  internal::CancellationRelay relay_;
+  cros::CancellationRelay relay_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmBridgeImpl);
 };
 
-}  // namespace arc
+}  // namespace cros
 
 #endif  // COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
