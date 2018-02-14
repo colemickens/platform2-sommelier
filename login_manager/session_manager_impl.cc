@@ -1253,6 +1253,30 @@ bool SessionManagerImpl::UpgradeArcContainer(
                          request.scan_vendor_priv_app()),
       base::StringPrintf("CONTAINER_PID=%d", pid)};
 
+#if USE_ANDROID_MASTER_CONTAINER
+  // This feature is only available in NYC branch.
+  keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
+  keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
+#else
+  switch (request.packages_cache_mode()) {
+    case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
+      break;
+    default:
+      NOTREACHED() << "Wrong packages cache mode: "
+                   << request.packages_cache_mode() << ".";
+  }
+#endif
+
   if (!init_controller_->TriggerImpulse(
           kContinueArcBootImpulse, keyvals,
           InitDaemonController::TriggerMode::SYNC)) {
@@ -1791,6 +1815,7 @@ bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
   return true;
 }
 
+// TODO(cmtm): This one is deprecated, remove it b/65548422.
 bool SessionManagerImpl::StartArcInstanceInternal(
     brillo::ErrorPtr* error,
     const StartArcInstanceRequest& in_request,
