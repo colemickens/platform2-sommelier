@@ -8,6 +8,7 @@
 #include <pcrecpp.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -56,9 +57,84 @@ class KernelCollector : public CrashCollector {
   ArchKind arch() const { return arch_; }
 
  private:
+  // This class represents single EFI crash.
+  class EfiCrash {
+   public:
+    explicit EfiCrash(uint64_t id, const KernelCollector& collector)
+        : id_(id),
+          timestamp_(GetTimestamp(id)),
+          max_part_(GetPart(id)),
+          crash_count_(GetCrashCount(id)),
+          collector_(collector) {}
+
+    bool Load(std::string* contents) const;
+    bool GetType(std::string* crash_type) const;
+    void Remove() const;
+    // Returns efi crash id.
+    uint64_t GetId() const { return id_; }
+
+    // Updates part from crash id iff it's greater.
+    void UpdateMaxPart(uint64_t id) {
+      uint32_t part = GetPart(id);
+      if (part > max_part_) {
+        max_part_ = part;
+      }
+    }
+
+    constexpr uint64_t GetIdForPart(uint32_t part) const {
+      return GenerateId(timestamp_, part, crash_count_);
+    }
+
+    // Helper functions for parsing and generating efi crash id.
+
+    // Get efi crash id for given part.
+    static constexpr uint64_t GetIdForPart(uint64_t id, uint32_t part) {
+      return GenerateId(GetTimestamp(id), part, GetCrashCount(id));
+    }
+    // Get crash count from efi crash id.
+    static constexpr uint32_t GetCrashCount(uint64_t id) {
+      return id % kMaxDumpRecord;
+    }
+
+    // Get part number from efi crash id.
+    static constexpr uint32_t GetPart(uint64_t id) {
+      return (id / kMaxDumpRecord) % kMaxPart;
+    }
+
+    // Get timestamp from efi crash id.
+    static constexpr uint64_t GetTimestamp(uint64_t id) {
+      return (id / (kMaxDumpRecord * kMaxPart));
+    }
+
+    // Generates efi crash id from timestamp, part, crash count.
+    // EFI File name is of format dmesg-efi-<crash_id>. Since one kernel crash
+    // is split into multiple parts, <crash_id> is derived by
+    // crash_id = (timestamp * 100 + part) * 1000 + crash_count.
+    // See efi-pstore driver (https://goo.gl/1YBeCD) for more information.
+    // e.g. File "dmesg-efi-150989600314002" represents part 14 of crash 2.
+    static constexpr uint64_t GenerateId(uint64_t timestamp,
+                                         uint32_t part,
+                                         uint32_t crash_count) {
+      return (timestamp * kMaxPart + part) * kMaxDumpRecord + crash_count;
+    }
+
+   private:
+    static constexpr size_t kMaxDumpRecord = 1000;
+    static constexpr size_t kMaxPart = 100;
+    uint64_t id_;
+    uint64_t timestamp_;
+    uint32_t max_part_;
+    uint32_t crash_count_;
+    const KernelCollector& collector_;
+    base::FilePath GetFilePath(uint32_t part) const;
+  };
+
   friend class KernelCollectorTest;
   FRIEND_TEST(KernelCollectorTest, LoadPreservedDump);
   FRIEND_TEST(KernelCollectorTest, CollectOK);
+  FRIEND_TEST(KernelCollectorTest, ParseEfiCrashId);
+  FRIEND_TEST(KernelCollectorTest, GetEfiCrashType);
+  FRIEND_TEST(KernelCollectorTest, LoadEfiCrash);
 
   virtual bool DumpDirMounted();
 
@@ -104,8 +180,20 @@ class KernelCollector : public CrashCollector {
 
   // Watchdog reboots leave no stack trace. Generate a poor man's signature out
   // of the last log line instead (minus the timestamp ended by ']').
-  static void WatchdogSignature(const std::string& console_ramoops,
-                                std::string* signature);
+  static std::string WatchdogSignature(const std::string& console_ramoops);
+
+  std::string GenerateSignature(const std::string& kernel_dump,
+                                bool is_watchdog);
+  bool HandleCrash(const std::string& kernel_dump,
+                   const std::string& signature);
+
+  // Collects ramoops crash.
+  bool CollectRamoopsCrash();
+
+  // Collects efi crash.
+  bool CollectEfiCrash();
+
+  std::vector<EfiCrash> FindEfiCrashes() const;
 
   bool is_enabled_;
   base::FilePath eventlog_path_;

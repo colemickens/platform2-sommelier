@@ -5,7 +5,7 @@
 #include "crash-reporter/kernel_collector_test.h"
 
 #include <unistd.h>
-
+#include <cinttypes>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
@@ -20,6 +20,7 @@ using brillo::GetLog;
 
 namespace {
 
+const int kMaxEfiParts = 100;
 int s_crashes = 0;
 bool s_metrics = false;
 
@@ -52,6 +53,9 @@ class KernelCollectorTest : public ::testing::Test {
   }
   const FilePath& eventlog_file() const { return test_eventlog_; }
   const FilePath& kcrash_file() const { return test_kcrash_; }
+  const FilePath& efikcrash_file(int part) const {
+    return test_efikcrash_[part];
+  }
   const FilePath& test_crash_directory() const { return test_crash_directory_; }
 
   KernelCollectorMock collector_;
@@ -73,6 +77,11 @@ class KernelCollectorTest : public ::testing::Test {
     ASSERT_FALSE(base::PathExists(test_console_ramoops_));
     test_console_ramoops_old_ = test_kcrash_.Append("console-ramoops");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_old_));
+    for (int i = 0; i < kMaxEfiParts; i++) {
+      test_efikcrash_[i] = test_kcrash_.Append(StringPrintf(
+          "dmesg-efi-%" PRIu64, (9876543210 * 100 + i) * 1000 + 1));
+      ASSERT_FALSE(base::PathExists(test_efikcrash_[i]));
+    }
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_kcrash_));
 
@@ -90,9 +99,63 @@ class KernelCollectorTest : public ::testing::Test {
   FilePath test_console_ramoops_old_;
   FilePath test_eventlog_;
   FilePath test_kcrash_;
+  FilePath test_efikcrash_[kMaxEfiParts];
   FilePath test_crash_directory_;
   base::ScopedTempDir scoped_temp_dir_;
 };
+
+TEST_F(KernelCollectorTest, ParseEfiCrashId) {
+  uint64_t test_efi_crash_id = 150989600314002;
+  EXPECT_EQ(1509896003,
+            KernelCollector::EfiCrash::GetTimestamp(test_efi_crash_id));
+  EXPECT_EQ(14, KernelCollector::EfiCrash::GetPart(test_efi_crash_id));
+  EXPECT_EQ(2, KernelCollector::EfiCrash::GetCrashCount(test_efi_crash_id));
+  EXPECT_EQ(test_efi_crash_id,
+            KernelCollector::EfiCrash::GenerateId(1509896003, 14, 2));
+}
+
+TEST_F(KernelCollectorTest, GetEfiCrashType) {
+  ASSERT_FALSE(base::PathExists(efikcrash_file(1)));
+  std::string type;
+  uint64_t test_efi_crash_id;
+  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+         &test_efi_crash_id);
+  // Write header.
+  WriteStringToFile(efikcrash_file(1), "Panic#1 Part#20");
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  ASSERT_TRUE(efi_crash.GetType(&type));
+  EXPECT_EQ("Panic", type);
+}
+
+TEST_F(KernelCollectorTest, LoadEfiCrash) {
+  int efi_part_count = kMaxEfiParts - 1;
+  std::string efi_part[kMaxEfiParts];
+  std::string expected_dump;
+  std::string dump;
+  uint64_t test_efi_crash_id;
+  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+         &test_efi_crash_id);
+
+  for (int i = 1; i <= efi_part_count; i++) {
+    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
+    for (int j = 0; j < i; j++) {
+      efi_part[i].append(StringPrintf("random blob %d\n", j));
+    }
+    WriteStringToFile(efikcrash_file(i), efi_part[i].c_str());
+  }
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
+  ASSERT_TRUE(efi_crash.Load(&dump));
+
+  // Stitch parts in reverse order.
+  for (int i = efi_part_count; i > 0; i--) {
+    // Strip first line since it contains header.
+    expected_dump.append(efi_part[i], efi_part[i].find('\n') + 1,
+                         std::string::npos);
+  }
+  EXPECT_EQ(expected_dump, dump);
+}
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
   // Make sure the normal build architecture is detected
