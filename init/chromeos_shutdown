@@ -63,34 +63,48 @@ bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 # into a state that renders a subsequent sync ineffective.)
 sync
 
+# Log all the unmount logic to a temp file and move it over to stateful if any
+# of the steps failed.
+(
+set -x
+
+# Unmount /var/run and /var/lock, which were bind mounted to /run and /run/lock
+# respectively to enable backwards compatibility for accessing /run (tmpfs for
+# runtime data) through /var.
+umount -n /var/run /var/lock
+
 if [ -e /dev/mapper/encstateful ]; then
   # Give mount-encrypted umount 10 times to retry, otherwise
   # it will fail with 'device is busy' because lazy umount does not finish
   # clearing all reference points yet. Check crosbug.com/p/21345.
+  rc=0
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    mount-encrypted umount > /tmp/umount-encrypted.log 2>&1
+    mount-encrypted umount
     rc=$?
     if [ $rc -eq 0 ]; then
       break
     fi
     sleep 0.1
   done
-  if [ $rc -ne 0 ] ; then
-    mv /tmp/umount-encrypted.log /mnt/stateful_partition/
-  fi
   umount -n /usr/local /home /mnt/stateful_partition
-  rc=$?
+  # Merge the exit status with the earlier mount-encrypted call.
+  exit $(( rc | $? ))
 else
   umount -n /var /usr/local /home /mnt/stateful_partition
-  rc=$?
+  exit $?
 fi
-if [ $rc -ne 0 ] ; then
+) >/tmp/umount-encrypted.log 2>&1
+
+if [ $? -ne 0 ] ; then
+  mv /tmp/umount-encrypted.log /mnt/stateful_partition/
   (
     set -x
     mount
     dmsetup info
     lsof -n
   ) > /mnt/stateful_partition/shutdown_stateful_umount_failure 2>&1
+else
+  rm -f /tmp/umount-encrypted.log
 fi
 
 # Just in case something didn't unmount properly above.
