@@ -285,6 +285,12 @@ bool ExpandPropertyContents(const std::string& content,
 // handling the special case of build fingerprint.
 std::string TruncateAndroidProperty(const std::string& line);
 
+// Opens the |path| in a safe way (see OpenSafelyInternal() for more details)
+// and checks if the returned FD is a FIFO. Returns an invalid FD if it's not.
+base::ScopedFD OpenFifoSafely(const base::FilePath& path,
+                              int flags,
+                              mode_t mode);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

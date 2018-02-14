@@ -831,4 +831,21 @@ TEST(ArcSetupUtil, TestOpenSafely) {
   EXPECT_TRUE(IsNonBlockingFD(fd.get()));
 }
 
+TEST(ArcSetupUtil, TestOpenFifoSafely) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath fifo = temp_directory.GetPath().Append("fifo");
+  ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
+  const base::FilePath file = temp_directory.GetPath().Append("file");
+  ASSERT_TRUE(CreateOrTruncate(file, 0700));
+
+  base::ScopedFD fd(OpenFifoSafely(fifo, O_RDONLY, 0));
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
+
+  // Opening a file should fail.
+  fd = OpenFifoSafely(file, O_RDONLY, 0);
+  EXPECT_FALSE(fd.is_valid());
+}
+
 }  // namespace arc

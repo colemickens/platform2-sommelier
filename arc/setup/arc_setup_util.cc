@@ -232,7 +232,9 @@ bool SetPermissions(base::PlatformFile fd, mode_t mode) {
 // ignored unless |flags| has either O_CREAT or O_TMPFILE.
 // TODO(yusukes): Consider moving this to libbrillo. Add HANDLE_EINTR and
 // O_CLOEXEC when doing that.
-base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
+base::ScopedFD OpenSafelyInternal(const base::FilePath& path,
+                                  int flags,
+                                  mode_t mode) {
   if (!path.IsAbsolute()) {
     LOG(INFO) << "Relative paths are not supported: " << path.value();
     return base::ScopedFD();
@@ -246,20 +248,6 @@ base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
     // writing because of the O_NONBLOCK flag added above.
     if (errno == ELOOP || errno == ENXIO)
       PLOG(WARNING) << "Failed to open " << path.value() << " safely.";
-    return base::ScopedFD();
-  }
-
-  // Ensure the opened file is a regular file or directory.
-  struct stat st;
-  if (fstat(fd.get(), &st) < 0) {
-    PLOG(ERROR) << "Failed to fstat " << path.value();
-    return base::ScopedFD();
-  }
-
-  if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode)) {
-    // This detects a FIFO opened for reading, for example.
-    LOG(ERROR) << path.value()
-               << " is not a regular file/directory: " << st.st_mode;
     return base::ScopedFD();
   }
 
@@ -289,6 +277,30 @@ base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
       PLOG(ERROR) << "Failed to set fd flags for " << path.value();
       return base::ScopedFD();
     }
+  }
+
+  return fd;
+}
+
+// Calls OpenSafelyInternal() and checks if the returned FD is for a regular
+// file or directory. Returns an invalid FD if it's not.
+base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
+  base::ScopedFD fd(OpenSafelyInternal(path, flags, mode));
+  if (!fd.is_valid())
+    return base::ScopedFD();
+
+  // Ensure the opened file is a regular file or directory.
+  struct stat st;
+  if (fstat(fd.get(), &st) < 0) {
+    PLOG(ERROR) << "Failed to fstat " << path.value();
+    return base::ScopedFD();
+  }
+
+  if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode)) {
+    // This detects a FIFO opened for reading, for example.
+    LOG(ERROR) << path.value()
+               << " is not a regular file/directory: " << st.st_mode;
+    return base::ScopedFD();
   }
 
   return fd;
@@ -990,6 +1002,28 @@ std::string TruncateAndroidProperty(const std::string& line) {
   }
 
   return key + "=" + val;
+}
+
+base::ScopedFD OpenFifoSafely(const base::FilePath& path,
+                              int flags,
+                              mode_t mode) {
+  base::ScopedFD fd(OpenSafelyInternal(path, flags, mode));
+  if (!fd.is_valid())
+    return base::ScopedFD();
+
+  // Ensure the opened file is a regular file or directory.
+  struct stat st;
+  if (fstat(fd.get(), &st) < 0) {
+    PLOG(ERROR) << "Failed to fstat " << path.value();
+    return base::ScopedFD();
+  }
+
+  if (!S_ISFIFO(st.st_mode)) {
+    LOG(ERROR) << path.value() << " is not a FIFO: " << st.st_mode;
+    return base::ScopedFD();
+  }
+
+  return fd;
 }
 
 }  // namespace arc
