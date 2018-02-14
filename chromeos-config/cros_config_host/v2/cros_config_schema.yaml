@@ -118,13 +118,16 @@ properties:
                 sku-id:
                   description: SKU/Board strapping pins configured during board manufacturing.
                   type: integer
+                platform-name:
+                  description: Indicates the platform name for this platform.
+                    This is reported by 'mosys platform name'. It is
+                    typically the family name with the first letter capitalized.
+                  type: string
                 smbios-name-match:
                   description: Firmware name built into the firmware and reflected back
                     out in the SMBIOS tables.
                   type: string
               additionalProperties: false
-              required:
-              - sku-id
             name:
               type: string
               pattern: "^[_a-zA-Z0-9]{3,}"
