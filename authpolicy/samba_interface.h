@@ -232,12 +232,12 @@ class SambaInterface {
   ErrorType UpdateAccountData(AccountData* account);
 
   // Acquire a Kerberos ticket-granting-ticket for the user account.
-  // |normalized_upn| is the normalized user principal name (e.g.
-  // user@EXAMPLE.COM) and |password_fd| is a file descriptor containing the
-  // user's password.
-  ErrorType AcquireUserTgt(const std::string& normalized_upn, int password_fd);
+  // |password_fd| is a file descriptor containing the user's password.
+  ErrorType AcquireUserTgt(int password_fd);
 
-  // Acquire a Kerberos ticket-granting-ticket for the device account.
+  // Acquire a Kerberos ticket-granting-ticket for the device account. Uses the
+  // machine password file for authentication (or the keytab for backwards
+  // compatibility).
   ErrorType AcquireDeviceTgt();
 
   // Writes the machine password to disk.
@@ -322,6 +322,10 @@ class SambaInterface {
   // Similar to SetUser, but sets user_account_.realm.
   void SetUserRealm(const std::string& user_realm);
 
+  // Sets machine name and realm on the device account and the tgt manager.
+  void InitDeviceAccount(const std::string& netbios_name,
+                         const std::string& realm);
+
   // Sets encryption types used by Kerberos tickets.
   void SetKerberosEncryptionTypes(KerberosEncryptionTypes encryption_types);
 
@@ -402,9 +406,6 @@ class SambaInterface {
 
   // For testing only. Used/consumed during Initialize().
   std::unique_ptr<policy::DevicePolicyImpl> device_policy_impl_for_testing;
-
-  // Whether kinit calls may return false negatives and must be retried.
-  bool retry_machine_kinit_ = false;
 
   // Whether to sleep when retrying smbclient (disable for testing).
   bool smbclient_retry_sleep_enabled_ = true;

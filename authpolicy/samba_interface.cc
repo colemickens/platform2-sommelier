@@ -484,9 +484,10 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     return ERROR_PARSE_UPN_FAILED;
   }
   SetUserRealm(user_realm);
+  user_tgt_manager_.SetPrincipal(normalized_upn);
 
   // Acquire Kerberos ticket-granting-ticket for the user account.
-  ErrorType error = AcquireUserTgt(normalized_upn, password_fd);
+  ErrorType error = AcquireUserTgt(password_fd);
   if (error != ERROR_NONE)
     return error;
 
@@ -566,7 +567,7 @@ ErrorType SambaInterface::GetUserStatus(
   if (error != ERROR_NONE)
     return error;
 
-  // Get account info for the user. Note that this might fail
+  // Get account info for the user.
   ActiveDirectoryAccountInfo account_info;
   error =
       GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
@@ -633,10 +634,7 @@ ErrorType SambaInterface::JoinMachine(
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
-
-  device_account_.netbios_name = base::ToUpperASCII(machine_name);
-  device_account_.user_name = device_account_.netbios_name + "$";
-  device_account_.realm = join_realm;
+  InitDeviceAccount(base::ToUpperASCII(machine_name), join_realm);
 
   // Note: Encryption types stay valid through the initial device policy fetch,
   // which, if it succeeds, resets or updates the value.
@@ -683,8 +681,11 @@ ErrorType SambaInterface::JoinMachine(
     return error;
   }
 
+  // Since we just created the account, set propagation retry to give the
+  // password time to propagate through Active Directory.
+  device_tgt_manager_.SetPropagationRetry(true);
+
   // Only if everything worked out, keep the config.
-  retry_machine_kinit_ = true;
   *joined_domain = join_realm;
   return ERROR_NONE;
 }
@@ -1044,18 +1045,15 @@ ErrorType SambaInterface::UpdateAccountData(AccountData* account) {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::AcquireUserTgt(const std::string& normalized_upn,
-                                         int password_fd) {
+ErrorType SambaInterface::AcquireUserTgt(int password_fd) {
   // Update smb.conf, IPs, server names etc. for the user account.
   ErrorType error = UpdateAccountData(&user_account_);
   if (error != ERROR_NONE)
     return error;
+  user_tgt_manager_.SetKdcIp(user_account_.kdc_ip);
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  DCHECK(!user_account_.kdc_ip.empty());
-  return user_tgt_manager_.AcquireTgtWithPassword(
-      normalized_upn, password_fd, false /* propagation_retry */,
-      user_account_.realm, user_account_.kdc_ip);
+  return user_tgt_manager_.AcquireTgtWithPassword(password_fd);
 }
 
 ErrorType SambaInterface::AcquireDeviceTgt() {
@@ -1063,23 +1061,15 @@ ErrorType SambaInterface::AcquireDeviceTgt() {
   ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
-
-  // |retry_machine_kinit_| is true for the first device policy fetch after
-  // joining Active Directory, which can be very slow because machine
-  // credentials need to propagate through the AD deployment.
-  bool retry_kinit = retry_machine_kinit_;
-  retry_machine_kinit_ = false;
+  device_tgt_manager_.SetKdcIp(device_account_.kdc_ip);
 
   // Acquire the Kerberos ticket-granting-ticket.
-  DCHECK(!device_account_.realm.empty() && !device_account_.kdc_ip.empty());
   const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
   if (!base::PathExists(password_path)) {
     // This is expected to happen on devices that had been domain joined before
     // authpolicyd managed the machine password. They stored the machine keytab
     // instead of the password, so use that for authentication.
-    return device_tgt_manager_.AcquireTgtWithKeytab(
-        device_account_.GetPrincipal(), Path::MACHINE_KEYTAB, retry_kinit,
-        device_account_.realm, device_account_.kdc_ip);
+    return device_tgt_manager_.AcquireTgtWithKeytab(Path::MACHINE_KEYTAB);
   }
 
   // Authenticate using password. Note: There is no keytab file here.
@@ -1089,9 +1079,7 @@ ErrorType SambaInterface::AcquireDeviceTgt() {
                << password_path.value();
     return ERROR_LOCAL_IO;
   }
-  return device_tgt_manager_.AcquireTgtWithPassword(
-      device_account_.GetPrincipal(), password_fd.get(), retry_kinit,
-      device_account_.realm, device_account_.kdc_ip);
+  return device_tgt_manager_.AcquireTgtWithPassword(password_fd.get());
 }
 
 ErrorType SambaInterface::WriteMachinePassword(
@@ -1177,9 +1165,7 @@ ErrorType SambaInterface::ReadConfiguration() {
     return ERROR_LOCAL_IO;
   }
 
-  device_account_.netbios_name = config->machine_name();
-  device_account_.user_name = device_account_.netbios_name + "$";
-  device_account_.realm = config->realm();
+  InitDeviceAccount(config->machine_name(), config->realm());
 
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
 
@@ -1577,7 +1563,17 @@ void SambaInterface::SetUserRealm(const std::string& user_realm) {
   CHECK(user_account_.realm.empty() || user_account_.realm == user_realm)
       << "Multi-user not supported";
   user_account_.realm = user_realm;
+  user_tgt_manager_.SetRealm(user_account_.realm);
   AnonymizeRealm(user_realm, kUserRealmPlaceholder);
+}
+
+void SambaInterface::InitDeviceAccount(const std::string& netbios_name,
+                                       const std::string& realm) {
+  device_account_.netbios_name = netbios_name;
+  device_account_.user_name = device_account_.netbios_name + "$";
+  device_account_.realm = realm;
+  device_tgt_manager_.SetRealm(device_account_.realm);
+  device_tgt_manager_.SetPrincipal(device_account_.GetPrincipal());
 }
 
 void SambaInterface::SetKerberosEncryptionTypes(
@@ -1613,7 +1609,8 @@ void SambaInterface::Reset() {
   user_logged_in_ = false;
   user_account_ = AccountData(Path::USER_SMB_CONF);
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
-  retry_machine_kinit_ = false;
+  user_tgt_manager_.Reset();
+  device_tgt_manager_.Reset();
   SetKerberosEncryptionTypes(ENC_TYPES_STRONG);
 }
 

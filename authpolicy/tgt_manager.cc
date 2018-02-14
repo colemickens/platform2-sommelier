@@ -46,6 +46,9 @@ static_assert(kTgtRenewValidityLifetimeFraction < 1.0f, "");
 // Size limit for GetKerberosFiles (1 MB).
 const size_t kKrb5FileSizeLimit = 1024 * 1024;
 
+// Invalid/unset file descriptor.
+constexpr int kInvalidFd = -1;
+
 // Encryption types for Kerberos configuration
 constexpr char kEncTypesAES[] =
     "aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96";
@@ -254,52 +257,54 @@ TgtManager::~TgtManager() {
   tgt_renewal_callback_.Cancel();
 }
 
-ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
-                                             int password_fd,
-                                             bool propagation_retry,
-                                             const std::string& realm,
-                                             const std::string& kdc_ip) {
-  return AcquireTgt(principal, password_fd, Path::INVALID, propagation_retry,
-                    realm, kdc_ip);
-}
-
-ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
-                                           Path keytab_path,
-                                           bool propagation_retry,
-                                           const std::string& realm,
-                                           const std::string& kdc_ip) {
-  return AcquireTgt(principal, -1 /* password_fd */, keytab_path,
-                    propagation_retry, realm, kdc_ip);
-}
-
-ErrorType TgtManager::AcquireTgt(const std::string& principal,
-                                 int password_fd,
-                                 Path keytab_path,
-                                 bool propagation_retry,
-                                 const std::string& realm,
-                                 const std::string& kdc_ip) {
-  // Either password or keytab.
-  DCHECK((password_fd != -1) ^ (keytab_path != Path::INVALID));
-
-  realm_ = realm;
-  kdc_ip_ = kdc_ip;
+void TgtManager::SetPrincipal(const std::string& principal) {
+  principal_ = principal;
   is_machine_principal_ = IsMachine(principal);
+}
+
+void TgtManager::Reset() {
+  principal_.clear();
+  is_machine_principal_ = false;
+  realm_.clear();
+  kdc_ip_.clear();
+  kinit_retry_ = false;
+  encryption_types_ = ENC_TYPES_STRONG;
+}
+
+ErrorType TgtManager::AcquireTgtWithPassword(int password_fd) {
+  return AcquireTgt(password_fd, Path::INVALID);
+}
+
+ErrorType TgtManager::AcquireTgtWithKeytab(Path keytab_path) {
+  return AcquireTgt(kInvalidFd, keytab_path);
+}
+
+ErrorType TgtManager::AcquireTgt(int password_fd, Path keytab_path) {
+  // Either password or keytab.
+  DCHECK((password_fd != kInvalidFd) ^ (keytab_path != Path::INVALID));
+
+  // Make sure we have the info we need.
+  DCHECK(!principal_.empty());
+  DCHECK(!realm_.empty());
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
   ProcessExecutor kinit_cmd(
-      {paths_->Get(Path::KINIT), principal, kValidityLifetimeParam,
+      {paths_->Get(Path::KINIT), principal_, kValidityLifetimeParam,
        kRequestedTgtValidityLifetime, kRenewalLifetimeParam,
        kRequestedTgtRenewalLifetime});
   if (keytab_path != Path::INVALID) {
     kinit_cmd.PushArg(kUseKeytabParam);
     kinit_cmd.SetEnv(kKrb5KTEnvKey, kFilePrefix + paths_->Get(keytab_path));
   }
-  ErrorType error = RunKinit(&kinit_cmd, password_fd, propagation_retry);
+  ErrorType error = RunKinit(&kinit_cmd, password_fd);
   if (error == ERROR_CONTACTING_KDC_FAILED) {
     LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
     kdc_ip_.clear();
-    error = RunKinit(&kinit_cmd, password_fd, propagation_retry);
+    error = RunKinit(&kinit_cmd, password_fd);
   }
+
+  // Don't retry again.
+  kinit_retry_ = false;
 
   // If it worked, re-trigger the TGT renewal task.
   if (error == ERROR_NONE && tgt_autorenewal_enabled_)
@@ -354,7 +359,7 @@ void TgtManager::EnableTgtAutoRenewal(bool enabled) {
 ErrorType TgtManager::RenewTgt() {
   // kinit -R renews the TGT.
   ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), kRenewParam});
-  ErrorType error = RunKinit(&kinit_cmd, -1, false);
+  ErrorType error = RunKinit(&kinit_cmd, -1);
 
   // No matter if it worked or not, reschedule auto-renewal. We might be offline
   // and want to try again later.
@@ -415,8 +420,7 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
 }
 
 ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
-                               int password_fd,
-                               bool propagation_retry) const {
+                               int password_fd) const {
   // Write configuration.
   ErrorType error = WriteKrb5Conf();
   if (error != ERROR_NONE)
@@ -427,7 +431,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   kinit_cmd->SetEnv(kKrb5ConfEnvKey, kFilePrefix + paths_->Get(config_path_));
 
   error = ERROR_NONE;
-  const int max_tries = (propagation_retry ? kKinitMaxTries : 1);
+  const int max_tries = (kinit_retry_ ? kKinitMaxTries : 1);
   int tries, failed_tries = 0;
   for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep between subsequent tries (probably a propagation issue).
@@ -480,9 +484,10 @@ ErrorType TgtManager::WriteKrb5Conf() const {
   std::string data =
       base::StringPrintf(kKrb5ConfData, enc_types.c_str(), enc_types.c_str(),
                          enc_types.c_str(), realm_.c_str());
-  if (!kdc_ip_.empty())
+  if (!kdc_ip_.empty()) {
     data += base::StringPrintf(kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(),
                                kdc_ip_.c_str());
+  }
   const base::FilePath krbconf_path(paths_->Get(config_path_));
 
   // Only set kerberos_files_dirty_ if the config data has actually changed.

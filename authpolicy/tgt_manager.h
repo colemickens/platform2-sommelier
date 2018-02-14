@@ -43,26 +43,37 @@ class TgtManager {
              Path credential_cache_path);
   ~TgtManager();
 
-  // Set the encryption types to use for kinit.
+  // Sets the principal (user@REALM or machine$@REALM).
+  void SetPrincipal(const std::string& principal);
+
+  // Sets the Active Directory realm (e.g. ENG.EXAMPLE.COM).
+  void SetRealm(const std::string& realm) { realm_ = realm; }
+
+  // Sets the key distribution center IP.
+  void SetKdcIp(const std::string& kdc_ip) { kdc_ip_ = kdc_ip; }
+
+  // If an account has just been created, it might not have propagated through
+  // Active Directory yet, so attempts to acquire a TGT might fail. Enabling
+  // propagation retry causes kinit to be retried a few times if an error occurs
+  // that indicates a propagation issue. Disables itself after kinit has run.
+  void SetPropagationRetry(bool enabled) { kinit_retry_ = enabled; }
+
+  // Sets the encryption types to use for kinit.
   void SetKerberosEncryptionTypes(KerberosEncryptionTypes encryption_types) {
     encryption_types_ = encryption_types;
   }
 
-  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
-  // and a password file descriptor |password_fd|. See AcquiteTgt() for details.
-  ErrorType AcquireTgtWithPassword(const std::string& principal,
-                                   int password_fd,
-                                   bool propagation_retry,
-                                   const std::string& realm,
-                                   const std::string& kdc_ip);
+  // Resets the principal, the realm, the KDC IP, propagation retry and
+  // encryption types.
+  void Reset();
 
-  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
-  // and keytab file |keytab_path|. See AcquiteTgt() for details.
-  ErrorType AcquireTgtWithKeytab(const std::string& principal,
-                                 Path keytab_path,
-                                 bool propagation_retry,
-                                 const std::string& realm,
-                                 const std::string& kdc_ip);
+  // Acquires a TGT using the password given in the file descriptor
+  // |password_fd|. See AcquiteTgt() for details.
+  ErrorType AcquireTgtWithPassword(int password_fd);
+
+  // Acquires a TGT using the keytab file at |keytab_path|. See AcquiteTgt() for
+  // details.
+  ErrorType AcquireTgtWithKeytab(Path keytab_path);
 
   // Returns the Kerberos credentials cache and the configuration file. Returns
   // ERROR_NONE if the credentials cache is missing and ERROR_LOCAL_IO if any of
@@ -99,31 +110,15 @@ class TgtManager {
   bool IsTgtAutoRenewalEnabledForTesting() { return tgt_autorenewal_enabled_; }
 
  private:
-  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM).
-  // If |password_fd| is not -1, uses the password in that file descriptor for
-  // authentication. If |keytab_path| is not Path::INVALID, uses the keytab for
-  // authentication. Should always pass one or the other. If the account has
-  // just been created, it might not have propagated through Active Directory
-  // yet. In this case, set |propagation_retry| to true. The method will then
-  // retry a few times if an error occurs that indicates a propagation issue.
-  // |realm| is the Active Directory realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is
-  // the key distribution center IP. If the KDC cannot be contacted, the method
-  // retries once without prescribing the KDC IP in the Kerberos configuration.
-  ErrorType AcquireTgt(const std::string& principal,
-                       int password_fd,
-                       Path keytab_path,
-                       bool propagation_retry,
-                       const std::string& realm,
-                       const std::string& kdc_ip);
+  // Acquires a TGT for the current principal. If |password_fd| is not -1, uses
+  // the password in that file descriptor for authentication. If |keytab_path|
+  // is not Path::INVALID, uses the keytab for authentication. Should always
+  // pass one or the other. Must set principal, KDC IP and realm beforehand.
+  ErrorType AcquireTgt(int password_fd, Path keytab_path);
 
   // Writes the Kerberos configuration and runs |kinit_cmd|. If |password_fd| is
-  // not -1, the file descriptor is duplicated and set as input pipe. If
-  // |propagation_retry| is true, tries up to |kKinitMaxRetries| times as long
-  // as kinit returns an error indicating that the account hasn't propagated
-  // through Active Directory yet.
-  ErrorType RunKinit(ProcessExecutor* kinit_cmd,
-                     int password_fd,
-                     bool propagation_retry) const;
+  // not -1, the file descriptor is duplicated and set as input pipe.
+  ErrorType RunKinit(ProcessExecutor* kinit_cmd, int password_fd) const;
 
   // Writes the krb5 configuration file.
   ErrorType WriteKrb5Conf() const;
@@ -156,12 +151,16 @@ class TgtManager {
   const Path credential_cache_path_ = Path::INVALID;
   base::Closure kerberos_files_changed_;
 
-  // Realm and key distribution center (KDC) IP address written to the Kerberos
-  // configuration file. |kdc_ip_| is optional, if empty, it is not written.
-  // |kdc_ip_| may be cleared programmatically if fetching a TGT with prescribed
-  // KDC IP fails with an error code that indicates that the KDC could not be
-  // reached. In that case, the code retries and lets Samba query the KDC IP.
+  // Principal for which TGTs are acquired (user@REALM or machine$@REALM).
+  std::string principal_;
+
+  // Realm written to the Kerberos config.
   std::string realm_;
+
+  // Key distribution center (KDC) IP address written to the Kerberos config. If
+  // fetching a TGT with prescribed KDC IP fails with an error code that
+  // indicates that the KDC could not be reached, |kdc_ip_| gets wiped and kinit
+  // is retried, which lets Samba query the KDC IP.
   std::string kdc_ip_;
 
   // Whether the TGT was acquired for a user or machine principal. Determines
@@ -171,6 +170,10 @@ class TgtManager {
   // Callback for automatic TGT renewal.
   base::CancelableClosure tgt_renewal_callback_;
   bool tgt_autorenewal_enabled_ = false;
+
+  // Whether to retry kinit in case an error indicates that the credentials
+  // haven't propagated yet.
+  bool kinit_retry_ = false;
 
   // Whether to sleep when retrying kinit (disable for testing).
   bool kinit_retry_sleep_enabled_ = true;
