@@ -103,6 +103,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case ENOTDIR:
       error = ERROR_NOT_A_DIRECTORY;
       break;
+    case EISDIR:
+      error = ERROR_NOT_A_FILE;
+      break;
     case ENOTEMPTY:
       error = ERROR_NOT_EMPTY;
       break;

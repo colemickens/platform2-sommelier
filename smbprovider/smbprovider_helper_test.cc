@@ -170,6 +170,8 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
 
   EXPECT_EQ(ERROR_NOT_A_DIRECTORY, GetErrorFromErrno(ENOTDIR));
 
+  EXPECT_EQ(ERROR_NOT_A_FILE, GetErrorFromErrno(EISDIR));
+
   EXPECT_EQ(ERROR_NOT_EMPTY, GetErrorFromErrno(ENOTEMPTY));
 
   EXPECT_EQ(ERROR_EXISTS, GetErrorFromErrno(EEXIST));
