@@ -54,16 +54,16 @@ class DaemonTest : public ::testing::Test {
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
     bluez_proxy_ = new CompleteMockObjectProxy(
         bus_.get(), bluetooth_adapter::kBluetoothAdapterServiceName,
-        dbus::ObjectPath(Daemon::kBluetoothAdapterObjectPath));
+        dbus::ObjectPath(SuspendManager::kBluetoothAdapterObjectPath));
     EXPECT_CALL(*bus_,
                 GetObjectProxy(
                     power_manager::kPowerManagerServiceName,
                     dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
         .WillOnce(Return(power_manager_proxy_.get()));
     EXPECT_CALL(
-        *bus_,
-        GetObjectProxy(bluetooth_adapter::kBluetoothAdapterServiceName,
-                       dbus::ObjectPath(Daemon::kBluetoothAdapterObjectPath)))
+        *bus_, GetObjectProxy(bluetooth_adapter::kBluetoothAdapterServiceName,
+                              dbus::ObjectPath(
+                                  SuspendManager::kBluetoothAdapterObjectPath)))
         .WillOnce(Return(bluez_proxy_.get()));
 
     // Saves the daemon's callbacks of various power manager events so we can
