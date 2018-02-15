@@ -19,6 +19,7 @@
       'type': 'static_library',
       'sources': [
         'dispatcher/daemon.cc',
+        'dispatcher/object_manager_interface_multiplexer.cc',
         'dispatcher/service_watcher.cc',
         'dispatcher/suspend_manager.cc',
       ],
@@ -47,6 +48,7 @@
             ],
           },
           'sources': [
+            'dispatcher/object_manager_interface_multiplexer_unittest.cc',
             'dispatcher/suspend_manager_unittest.cc',
           ],
         },

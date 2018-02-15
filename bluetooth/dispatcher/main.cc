@@ -29,6 +29,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  VLOG(1) << "D-Bus connection name = " << bus->GetConnectionName();
+
   bluetooth::Daemon daemon(bus);
   daemon.Init();
 
