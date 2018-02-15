@@ -26,7 +26,6 @@ copies.
 | Project | Description |
 |---------|-------------|
 | [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
-| [arc-networkd](./arc-networkd/) | Tools for managing ARC network settings |
 | [attestation](./attestation/) | Daemon and client for managing remote attestation |
 | [authpolicy](./authpolicy/) | Daemon for integrating with Microsoft Active Directory (AD) domains |
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |

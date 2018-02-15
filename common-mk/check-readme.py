@@ -104,7 +104,6 @@ def CheckSubdirs():
   # Legacy projects that don't have a README.md file.
   # Someone should write some docs :D.
   WHITELIST = (
-      'arc-networkd',
       'attestation',
       'avtest_label_detect',
       'bootstat',
