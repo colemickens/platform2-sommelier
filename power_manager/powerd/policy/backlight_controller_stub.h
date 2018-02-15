@@ -12,6 +12,7 @@
 
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
@@ -71,7 +72,7 @@ class BacklightControllerStub : public policy::BacklightController {
 
   // Notify |observers_| that the brightness has changed to |percent| due
   // to |cause|. Also updates |percent_|.
-  void NotifyObservers(double percent, BrightnessChangeCause cause);
+  void NotifyObservers(double percent, BacklightBrightnessChange_Cause cause);
 
   // policy::BacklightController implementation:
   void AddObserver(policy::BacklightControllerObserver* observer) override;

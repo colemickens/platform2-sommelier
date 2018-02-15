@@ -14,6 +14,7 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/ec_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -258,20 +259,19 @@ TEST_F(InputDeviceControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
   // Start in presentation mode at full brightness.
   input_device_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   backlight_controller_.NotifyObservers(
-      100.0,
-      policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
+      100.0, BacklightBrightnessChange_Cause_USER_REQUEST);
 
   // EC wakeups should be inhibited in tablet mode while backlight is on.
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // Automated display off should not trigger a mode change.
   backlight_controller_.NotifyObservers(
-      0.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
+      0.0, BacklightBrightnessChange_Cause_USER_INACTIVITY);
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // ...but manual should.
   backlight_controller_.NotifyObservers(
-      0.0, policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
+      0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // Leaving presentation mode should disallow it.
@@ -281,8 +281,8 @@ TEST_F(InputDeviceControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
   EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // As should raising the brightness, even if automatic.
-  backlight_controller_.NotifyObservers(
-      10.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
+  backlight_controller_.NotifyObservers(10.0,
+                                        BacklightBrightnessChange_Cause_OTHER);
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 }
 
@@ -317,7 +317,7 @@ TEST_F(InputDeviceControllerTest, HandleTabletMode) {
   input_device_controller_.SetLidState(LidState::OPEN);
   input_device_controller_.SetTabletMode(TabletMode::ON);
   input_device_controller_.OnBrightnessChange(
-      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED,
+      0.0, BacklightBrightnessChange_Cause_USER_REQUEST,
       &backlight_controller_);
   EXPECT_EQ("0", GetSysattr(kKeyboardSyspath, kInhibited));
   EXPECT_EQ(kEnabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));

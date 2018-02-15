@@ -23,16 +23,6 @@ class BacklightControllerObserver;
 // Interface implemented by classes that control the backlight.
 class BacklightController {
  public:
-  // Possible causes of changes to the backlight brightness level.
-  enum class BrightnessChangeCause {
-    // The brightness was changed automatically (in response to e.g. an idle
-    // transition or AC getting plugged or unplugged).
-    AUTOMATED,
-
-    // The user requested that the brightness be changed.
-    USER_INITIATED,
-  };
-
   // Different ways to transition between brightness levels.
   enum class Transition {
     INSTANT,

@@ -159,11 +159,23 @@
     </method>
 
     <!-- Signals -->
-    <signal name="BrightnessChanged">
-      <arg name="brightness_percent" type="i" />
-      <arg name="user_initiated" type="b" />
+    <signal name="ScreenBrightnessChanged">
+      <tp:docstring>
+        |serialized_proto| is a serialized
+        power_manager::BacklightBrightnessChange protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
     </signal>
     <signal name="KeyboardBrightnessChanged">
+      <tp:docstring>
+        |serialized_proto| is a serialized
+        power_manager::BacklightBrightnessChange protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
+    </signal>
+    <!-- TODO(derat): Remove this once Chrome is no longer consuming it:
+         https://crbug.com/811138 -->
+    <signal name="BrightnessChanged">
       <arg name="brightness_percent" type="i" />
       <arg name="user_initiated" type="b" />
     </signal>

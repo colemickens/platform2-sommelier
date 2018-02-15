@@ -29,8 +29,8 @@ void BacklightControllerStub::ResetStats() {
   num_user_brightness_decreases_ = 0;
 }
 
-void BacklightControllerStub::NotifyObservers(double percent,
-                                              BrightnessChangeCause cause) {
+void BacklightControllerStub::NotifyObservers(
+    double percent, BacklightBrightnessChange_Cause cause) {
   percent_ = percent;
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent_, cause, this);

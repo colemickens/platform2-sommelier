@@ -18,6 +18,7 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -469,20 +470,20 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   light_sensor_.NotifyObservers();
 
   display_backlight_controller_.NotifyObservers(
-      10.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
+      10.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(50, backlight_.current_level());
 
   // When the display backlight's brightness goes to zero while the
   // keyboard backlight is using an ambient-light-derived brightness, the
   // keyboard backlight should be turned off automatically.
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
+      0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
   display_backlight_controller_.NotifyObservers(
-      20.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
+      20.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(50, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -492,7 +493,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
+      0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(100, backlight_.current_level());
 }
 
@@ -649,7 +650,7 @@ TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
   // Notify the keyboard controller that the display has been turned off (as
   // happens when shutting down).
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
+      0.0, BacklightBrightnessChange_Cause_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());

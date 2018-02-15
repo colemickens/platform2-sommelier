@@ -15,6 +15,7 @@
 
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 
@@ -76,10 +77,10 @@ class ExternalBacklightController : public BacklightController,
  private:
   // Turns displays on or off via |monitor_reconfigure_| as needed for
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
-  void UpdateScreenPowerState();
+  void UpdateScreenPowerState(BacklightBrightnessChange_Cause cause);
 
   // Sends notifications to |observers_| about the current brightness level.
-  void NotifyObservers();
+  void NotifyObservers(BacklightBrightnessChange_Cause cause);
 
   // Updates |external_displays_| for |displays|.
   void UpdateDisplays(const std::vector<system::DisplayInfo>& displays);

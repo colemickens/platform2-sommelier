@@ -12,6 +12,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 class PrefsInterface;
@@ -85,7 +86,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
 
   // Overridden from policy::BacklightControllerObserver:
   void OnBrightnessChange(double brightness_percent,
-                          BacklightController::BrightnessChangeCause cause,
+                          BacklightBrightnessChange_Cause cause,
                           BacklightController* source) override;
 
  private:

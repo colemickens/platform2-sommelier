@@ -17,7 +17,7 @@ void BacklightControllerObserverStub::Clear() {
 
 void BacklightControllerObserverStub::OnBrightnessChange(
     double brightness_percent,
-    BacklightController::BrightnessChangeCause cause,
+    BacklightBrightnessChange_Cause cause,
     BacklightController* source) {
   ChangeTuple change;
   change.percent = brightness_percent;

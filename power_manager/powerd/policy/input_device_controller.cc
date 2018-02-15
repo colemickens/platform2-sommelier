@@ -170,12 +170,12 @@ void InputDeviceController::SetDisplayMode(DisplayMode display_mode) {
 
 void InputDeviceController::OnBrightnessChange(
     double brightness_percent,
-    BacklightController::BrightnessChangeCause cause,
+    BacklightBrightnessChange_Cause cause,
     BacklightController* source) {
   // Ignore if the brightness is turned *off* automatically (before suspend),
   // but do care if it's automatically turned *on* (unplugging ext. display).
   if (brightness_percent == 0.0 &&
-      cause != BacklightController::BrightnessChangeCause::USER_INITIATED) {
+      cause != BacklightBrightnessChange_Cause_USER_REQUEST) {
     return;
   }
   backlight_enabled_ = brightness_percent != 0.0;

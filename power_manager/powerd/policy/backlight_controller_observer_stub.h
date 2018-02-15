@@ -22,7 +22,7 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
  public:
   struct ChangeTuple {
     double percent;
-    BacklightController::BrightnessChangeCause cause;
+    BacklightBrightnessChange_Cause cause;
     BacklightController* source;
   };
 
@@ -36,7 +36,7 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
 
   // BacklightControllerObserver implementation:
   void OnBrightnessChange(double brightness_percent,
-                          BacklightController::BrightnessChangeCause cause,
+                          BacklightBrightnessChange_Cause cause,
                           BacklightController* source) override;
 
  private:

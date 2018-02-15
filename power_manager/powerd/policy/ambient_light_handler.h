@@ -13,6 +13,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 
@@ -28,8 +29,14 @@ class AmbientLightHandler : public system::AmbientLightObserver {
  public:
   enum class BrightnessChangeCause {
     AMBIENT_LIGHT = 0,
-    POWER_SOURCE,
+    EXTERNAL_POWER_CONNECTED,
+    EXTERNAL_POWER_DISCONNECTED,
   };
+
+  // Helper that converts an AmbientLightHandler::BrightnessChangeCause to the
+  // corresponding Cause value for BacklightBrightnessChange protobufs.
+  static BacklightBrightnessChange_Cause ToProtobufCause(
+      BrightnessChangeCause als_cause);
 
   // Interface for classes that perform actions on behalf of
   // AmbientLightHandler.

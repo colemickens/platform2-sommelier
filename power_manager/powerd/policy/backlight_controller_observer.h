@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_OBSERVER_H_
 
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -15,10 +16,9 @@ class BacklightControllerObserver {
  public:
   // Invoked when the brightness level is changed.  |brightness_percent| is the
   // current brightness in the range [0.0, 100.0].
-  virtual void OnBrightnessChange(
-      double brightness_percent,
-      BacklightController::BrightnessChangeCause cause,
-      BacklightController* source) {}
+  virtual void OnBrightnessChange(double brightness_percent,
+                                  BacklightBrightnessChange_Cause cause,
+                                  BacklightController* source) {}
 
  protected:
   virtual ~BacklightControllerObserver() {}

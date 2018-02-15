@@ -40,6 +40,7 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
@@ -304,12 +305,29 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         &signal);
   }
 
-  // Checks that the D-Bus signal at index |0| has name |signal| and describes a
-  // brightness change to |brightness_percent|.
+  // Checks that the D-Bus signal at |index| has name |signal_name| and
+  // describes a brightness change to |brightness_percent| for |cause|.
   void CheckBrightnessChangedSignal(size_t index,
                                     const std::string& signal_name,
                                     double brightness_percent,
-                                    bool user_initiated) {
+                                    BacklightBrightnessChange_Cause cause) {
+    std::unique_ptr<dbus::Signal> signal;
+    ASSERT_TRUE(
+        dbus_wrapper_->GetSentSignal(index, signal_name, nullptr, &signal));
+
+    BacklightBrightnessChange proto;
+    ASSERT_TRUE(
+        dbus::MessageReader(signal.get()).PopArrayOfBytesAsProto(&proto));
+    EXPECT_DOUBLE_EQ(brightness_percent, proto.percent());
+    EXPECT_EQ(cause, proto.cause());
+  }
+
+  // Checks that the old non-protobuf D-Bus signal at |index| has name
+  // |signal_name| and describes a brightness change to |brightness_percent|.
+  void CheckOldBrightnessChangedSignal(size_t index,
+                                       const std::string& signal_name,
+                                       double brightness_percent,
+                                       bool user_initiated) {
     std::unique_ptr<dbus::Signal> signal;
     ASSERT_TRUE(
         dbus_wrapper_->GetSentSignal(index, signal_name, nullptr, &signal));
@@ -675,23 +693,34 @@ TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
 
+  // Both the new ScreenBrightnessChanged and old BrightnessChanged signal
+  // should be emitted.
   dbus_wrapper_->ClearSentSignals();
   internal_backlight_controller_->NotifyObservers(
-      50.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
-  internal_backlight_controller_->NotifyObservers(
-      25.0, policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
+      50.0, BacklightBrightnessChange_Cause_OTHER);
   EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
-  CheckBrightnessChangedSignal(0, kBrightnessChangedSignal, 50.0, false);
-  CheckBrightnessChangedSignal(1, kBrightnessChangedSignal, 25.0, true);
+  CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 50.0,
+                               BacklightBrightnessChange_Cause_OTHER);
+  CheckOldBrightnessChangedSignal(1, kBrightnessChangedSignal, 50.0, false);
+
+  dbus_wrapper_->ClearSentSignals();
+  internal_backlight_controller_->NotifyObservers(
+      25.0, BacklightBrightnessChange_Cause_USER_REQUEST);
+  EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
+  CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 25.0,
+                               BacklightBrightnessChange_Cause_USER_REQUEST);
+  CheckOldBrightnessChangedSignal(1, kBrightnessChangedSignal, 25.0, true);
 
   dbus_wrapper_->ClearSentSignals();
   keyboard_backlight_controller_->NotifyObservers(
-      8.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
+      8.0, BacklightBrightnessChange_Cause_OTHER);
   keyboard_backlight_controller_->NotifyObservers(
-      4.0, policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
+      4.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
-  CheckBrightnessChangedSignal(0, kKeyboardBrightnessChangedSignal, 8.0, false);
-  CheckBrightnessChangedSignal(1, kKeyboardBrightnessChangedSignal, 4.0, true);
+  CheckBrightnessChangedSignal(0, kKeyboardBrightnessChangedSignal, 8.0,
+                               BacklightBrightnessChange_Cause_OTHER);
+  CheckBrightnessChangedSignal(1, kKeyboardBrightnessChangedSignal, 4.0,
+                               BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
 TEST_F(DaemonTest, EmitDBusSignalForPowerStatusUpdate) {

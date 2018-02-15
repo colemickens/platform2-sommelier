@@ -10,6 +10,7 @@
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -65,7 +66,7 @@ TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(0.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_INACTIVITY,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 
@@ -83,7 +84,7 @@ TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(100.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_ACTIVITY,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 }
@@ -108,7 +109,7 @@ TEST_F(ExternalBacklightControllerTest, SetPowerOnDisplayServiceStart) {
   ASSERT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(100.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_OTHER,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 
@@ -128,7 +129,7 @@ TEST_F(ExternalBacklightControllerTest, SetPowerOnDisplayServiceStart) {
   EXPECT_TRUE(display_power_setter_.dimmed());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(0.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_OTHER,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 }

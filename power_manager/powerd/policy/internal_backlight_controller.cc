@@ -232,10 +232,11 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
 
   VLOG(1) << "Power source changed to " << PowerSourceToString(source);
 
+  const bool on_ac = source == PowerSource::AC;
+
   // Ensure that the screen isn't dimmed in response to a transition to AC
   // or brightened in response to a transition to battery.
   if (got_power_source_) {
-    const bool on_ac = source == PowerSource::AC;
     const bool battery_exceeds_ac =
         battery_explicit_brightness_percent_ > ac_explicit_brightness_percent_;
     if (on_ac && battery_exceeds_ac)
@@ -246,7 +247,9 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
 
   power_source_ = source;
   got_power_source_ = true;
-  UpdateState();
+  UpdateState(
+      on_ac ? BacklightBrightnessChange_Cause_EXTERNAL_POWER_CONNECTED
+            : BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED);
   if (ambient_light_handler_)
     ambient_light_handler_->HandlePowerSourceChange(source);
 }
@@ -259,11 +262,11 @@ void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
 
   // If there's no external display now, make sure that the panel is on.
   if (display_mode_ == DisplayMode::NORMAL)
-    EnsureUserBrightnessIsNonzero();
+    EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void InternalBacklightController::HandleSessionStateChange(SessionState state) {
-  EnsureUserBrightnessIsNonzero();
+  EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause_OTHER);
   if (state == SessionState::STARTED) {
     als_adjustment_count_ = 0;
     user_adjustment_count_ = 0;
@@ -271,7 +274,7 @@ void InternalBacklightController::HandleSessionStateChange(SessionState state) {
 }
 
 void InternalBacklightController::HandlePowerButtonPress() {
-  EnsureUserBrightnessIsNonzero();
+  EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void InternalBacklightController::HandleUserActivity(UserActivityType type) {
@@ -284,7 +287,8 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
       type != USER_ACTIVITY_VOLUME_UP_KEY_PRESS &&
       type != USER_ACTIVITY_VOLUME_DOWN_KEY_PRESS &&
       type != USER_ACTIVITY_VOLUME_MUTE_KEY_PRESS)
-    EnsureUserBrightnessIsNonzero();
+    EnsureUserBrightnessIsNonzero(
+        BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void InternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
@@ -316,7 +320,7 @@ void InternalBacklightController::HandlePolicyChange(
   if (got_policy_brightness) {
     SetExplicitBrightnessPercent(ac_brightness, battery_brightness,
                                  Transition::FAST,
-                                 BrightnessChangeCause::AUTOMATED);
+                                 BacklightBrightnessChange_Cause_OTHER);
   }
   force_nonzero_brightness_for_user_activity_ =
       policy.has_force_nonzero_brightness_for_user_activity()
@@ -335,7 +339,8 @@ void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
 
   VLOG(1) << (dimmed ? "Dimming" : "No longer dimming") << " for inactivity";
   dimmed_for_inactivity_ = dimmed;
-  UpdateState();
+  UpdateState(dimmed ? BacklightBrightnessChange_Cause_USER_INACTIVITY
+                     : BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void InternalBacklightController::SetOffForInactivity(bool off) {
@@ -345,7 +350,8 @@ void InternalBacklightController::SetOffForInactivity(bool off) {
   VLOG(1) << (off ? "Turning backlight off" : "No longer keeping backlight off")
           << " for inactivity";
   off_for_inactivity_ = off;
-  UpdateState();
+  UpdateState(off ? BacklightBrightnessChange_Cause_USER_INACTIVITY
+                  : BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void InternalBacklightController::SetSuspended(bool suspended) {
@@ -354,7 +360,7 @@ void InternalBacklightController::SetSuspended(bool suspended) {
 
   VLOG(1) << (suspended ? "Suspending" : "Unsuspending") << " backlight";
   suspended_ = suspended;
-  UpdateState();
+  UpdateState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void InternalBacklightController::SetShuttingDown(bool shutting_down) {
@@ -366,7 +372,7 @@ void InternalBacklightController::SetShuttingDown(bool shutting_down) {
   else
     LOG(WARNING) << "Exiting shutting-down state";
   shutting_down_ = shutting_down;
-  UpdateState();
+  UpdateState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void InternalBacklightController::SetDocked(bool docked) {
@@ -375,7 +381,7 @@ void InternalBacklightController::SetDocked(bool docked) {
 
   VLOG(1) << (docked ? "Entering" : "Leaving") << " docked mode";
   docked_ = docked;
-  UpdateState();
+  UpdateState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void InternalBacklightController::SetForcedOff(bool forced_off) {
@@ -384,7 +390,9 @@ void InternalBacklightController::SetForcedOff(bool forced_off) {
 
   VLOG(1) << (forced_off ? "Forcing" : "Not forcing") << " backlight off";
   forced_off_ = forced_off;
-  UpdateState();
+  UpdateState(forced_off
+                  ? BacklightBrightnessChange_Cause_FORCED_OFF
+                  : BacklightBrightnessChange_Cause_NO_LONGER_FORCED_OFF);
 }
 
 bool InternalBacklightController::GetForcedOff() {
@@ -406,8 +414,9 @@ bool InternalBacklightController::SetUserBrightnessPercent(
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  return SetExplicitBrightnessPercent(percent, percent, transition,
-                                      BrightnessChangeCause::USER_INITIATED);
+  return SetExplicitBrightnessPercent(
+      percent, percent, transition,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
@@ -488,15 +497,17 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
     if (!already_set_initial_state_) {
       // UpdateState() defers doing anything until the first ambient light
       // reading has been received, so it may need to be called at this point.
-      UpdateState();
+      UpdateState(BacklightBrightnessChange_Cause_OTHER);
     } else {
+      // This method also handles changes that were triggered by external power
+      // being connected or disconnected.
+      const bool ambient_light_changed =
+          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT;
       Transition transition =
-          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT
-              ? Transition::SLOW
-              : Transition::FAST;
-      if (UpdateUndimmedBrightness(transition,
-                                   BrightnessChangeCause::AUTOMATED) &&
-          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT) {
+          ambient_light_changed ? Transition::SLOW : Transition::FAST;
+      if (UpdateUndimmedBrightness(
+              transition, AmbientLightHandler::ToProtobufCause(cause)) &&
+          ambient_light_changed) {
         als_adjustment_count_++;
       }
     }
@@ -522,7 +533,8 @@ double InternalBacklightController::GetUndimmedBrightnessPercent() const {
   return percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
 }
 
-void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
+void InternalBacklightController::EnsureUserBrightnessIsNonzero(
+    BacklightBrightnessChange_Cause cause) {
   // Avoid turning the backlight back on if an external display is
   // connected since doing so may result in the desktop being resized. Also
   // don't turn it on if a policy has forced the brightness to zero.
@@ -531,8 +543,7 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
       !using_policy_brightness_ && !use_ambient_light_) {
     SetExplicitBrightnessPercent(kMinVisiblePercent, kMinVisiblePercent,
-                                 Transition::FAST,
-                                 BrightnessChangeCause::AUTOMATED);
+                                 Transition::FAST, cause);
   }
 }
 
@@ -540,7 +551,7 @@ bool InternalBacklightController::SetExplicitBrightnessPercent(
     double ac_percent,
     double battery_percent,
     Transition transition,
-    BrightnessChangeCause cause) {
+    BacklightBrightnessChange_Cause cause) {
   use_ambient_light_ = false;
   ac_explicit_brightness_percent_ =
       ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
@@ -550,7 +561,8 @@ bool InternalBacklightController::SetExplicitBrightnessPercent(
   return UpdateUndimmedBrightness(transition, cause);
 }
 
-void InternalBacklightController::UpdateState() {
+void InternalBacklightController::UpdateState(
+    BacklightBrightnessChange_Cause cause) {
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
       clock_->GetCurrentTime() - init_time_ >=
@@ -621,14 +633,13 @@ void InternalBacklightController::UpdateState() {
   // resulting in this request being dropped and the brightness being set to its
   // previous value instead. See chrome-os-partner:31186 and :35662 for more
   // details.
-  ApplyBrightnessPercent(brightness_percent, brightness_transition,
-                         BrightnessChangeCause::AUTOMATED);
+  ApplyBrightnessPercent(brightness_percent, brightness_transition, cause);
 
   already_set_initial_state_ = true;
 }
 
 bool InternalBacklightController::UpdateUndimmedBrightness(
-    Transition transition, BrightnessChangeCause cause) {
+    Transition transition, BacklightBrightnessChange_Cause cause) {
   const double percent = GetUndimmedBrightnessPercent();
 
   // Don't apply the change if we're in a state that overrides the new level.
@@ -653,7 +664,9 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
 }
 
 bool InternalBacklightController::ApplyBrightnessPercent(
-    double percent, Transition transition, BrightnessChangeCause cause) {
+    double percent,
+    Transition transition,
+    BacklightBrightnessChange_Cause cause) {
   int64_t level = PercentToLevel(percent);
   if (level == current_level_ && !backlight_->TransitionInProgress())
     return false;

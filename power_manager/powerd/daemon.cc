@@ -472,30 +472,41 @@ void Daemon::AdjustKeyboardBrightness(int direction) {
 }
 
 void Daemon::SendBrightnessChangedSignal(
+    const std::string& signal_name,
     double brightness_percent,
-    policy::BacklightController::BrightnessChangeCause cause,
-    const std::string& signal_name) {
+    BacklightBrightnessChange_Cause cause) {
   dbus::Signal signal(kPowerManagerInterface, signal_name);
-  dbus::MessageWriter writer(&signal);
-  writer.AppendInt32(round(brightness_percent));
-  writer.AppendBool(
-      cause ==
-      policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
+  BacklightBrightnessChange proto;
+  proto.set_percent(brightness_percent);
+  proto.set_cause(cause);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   dbus_wrapper_->EmitSignal(&signal);
 }
 
-void Daemon::OnBrightnessChange(
+void Daemon::SendOldBrightnessChangedSignal(
+    const std::string& signal_name,
     double brightness_percent,
-    policy::BacklightController::BrightnessChangeCause cause,
-    policy::BacklightController* source) {
+    BacklightBrightnessChange_Cause cause) {
+  dbus::Signal signal(kPowerManagerInterface, signal_name);
+  dbus::MessageWriter writer(&signal);
+  writer.AppendInt32(round(brightness_percent));
+  writer.AppendBool(cause == BacklightBrightnessChange_Cause_USER_REQUEST);
+  dbus_wrapper_->EmitSignal(&signal);
+}
+
+void Daemon::OnBrightnessChange(double brightness_percent,
+                                BacklightBrightnessChange_Cause cause,
+                                policy::BacklightController* source) {
   if (source == display_backlight_controller_.get() &&
       display_backlight_controller_) {
-    SendBrightnessChangedSignal(brightness_percent, cause,
-                                kBrightnessChangedSignal);
+    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal,
+                                brightness_percent, cause);
+    SendOldBrightnessChangedSignal(kBrightnessChangedSignal, brightness_percent,
+                                   cause);
   } else if (source == keyboard_backlight_controller_.get() &&
              keyboard_backlight_controller_) {
-    SendBrightnessChangedSignal(brightness_percent, cause,
-                                kKeyboardBrightnessChangedSignal);
+    SendBrightnessChangedSignal(kKeyboardBrightnessChangedSignal,
+                                brightness_percent, cause);
   } else {
     NOTREACHED() << "Received a brightness change callback from an unknown "
                  << "backlight controller";
@@ -1241,10 +1252,11 @@ std::unique_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
   double percent = 0.0;
   if (!changed &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    SendBrightnessChangedSignal(
-        percent,
-        policy::BacklightController::BrightnessChangeCause::USER_INITIATED,
-        kBrightnessChangedSignal);
+    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+    SendOldBrightnessChangedSignal(
+        kBrightnessChangedSignal, percent,
+        BacklightBrightnessChange_Cause_USER_REQUEST);
   }
   return std::unique_ptr<dbus::Response>();
 }
@@ -1258,10 +1270,11 @@ std::unique_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
   double percent = 0.0;
   if (!changed &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    SendBrightnessChangedSignal(
-        percent,
-        policy::BacklightController::BrightnessChangeCause::USER_INITIATED,
-        kBrightnessChangedSignal);
+    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+    SendOldBrightnessChangedSignal(
+        kBrightnessChangedSignal, percent,
+        BacklightBrightnessChange_Cause_USER_REQUEST);
   }
   return std::unique_ptr<dbus::Response>();
 }

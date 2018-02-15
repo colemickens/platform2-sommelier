@@ -18,6 +18,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
@@ -207,7 +208,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -217,7 +218,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -227,7 +228,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -239,7 +240,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -249,7 +250,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_INACTIVITY,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -773,8 +774,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
-            observer.changes()[0].cause);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_OTHER, observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Passing a battery policy while on AC shouldn't do anything.
@@ -790,7 +790,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
-  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
+  EXPECT_EQ(BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 

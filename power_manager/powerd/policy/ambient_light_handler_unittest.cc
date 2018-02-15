@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -143,8 +144,9 @@ TEST_F(AmbientLightHandlerTest, PowerSources) {
             delegate_.cause());
   handler_.HandlePowerSourceChange(PowerSource::AC);
   EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::POWER_SOURCE,
-            delegate_.cause());
+  EXPECT_EQ(
+      AmbientLightHandler::BrightnessChangeCause::EXTERNAL_POWER_CONNECTED,
+      delegate_.cause());
 
   UpdateSensor(100);
   UpdateSensor(100);
@@ -153,8 +155,9 @@ TEST_F(AmbientLightHandlerTest, PowerSources) {
             delegate_.cause());
   handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_DOUBLE_EQ(90.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::POWER_SOURCE,
-            delegate_.cause());
+  EXPECT_EQ(
+      AmbientLightHandler::BrightnessChangeCause::EXTERNAL_POWER_DISCONNECTED,
+      delegate_.cause());
 }
 
 TEST_F(AmbientLightHandlerTest, DeferInitialChange) {

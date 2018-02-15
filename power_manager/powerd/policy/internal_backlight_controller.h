@@ -17,6 +17,7 @@
 
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 
@@ -125,7 +126,7 @@ class InternalBacklightController : public BacklightController,
   // it's currently set to zero. Note that the brightness is left unchanged if
   // an external display is connected to avoid resizing the desktop, or if the
   // brightness was set to zero via a policy.
-  void EnsureUserBrightnessIsNonzero();
+  void EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause cause);
 
   // Method that disables ambient light adjustments, updates the
   // |*_explicit_brightness_percent_| members, and updates the backlight's
@@ -134,25 +135,25 @@ class InternalBacklightController : public BacklightController,
   bool SetExplicitBrightnessPercent(double ac_percent,
                                     double battery_percent,
                                     Transition transition,
-                                    BrightnessChangeCause cause);
+                                    BacklightBrightnessChange_Cause cause);
 
   // Updates the current brightness after assessing the current state
   // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
   // called whenever the state changes.
-  void UpdateState();
+  void UpdateState(BacklightBrightnessChange_Cause cause);
 
   // If the display is currently in the undimmed state, calls
   // ApplyBrightnessPercent() to update the backlight brightness.  Returns
   // true if the brightness was changed.
   bool UpdateUndimmedBrightness(Transition transition,
-                                BrightnessChangeCause cause);
+                                BacklightBrightnessChange_Cause cause);
 
   // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
   // brightness changed, notifies |observers_| that the change was due to
   // |cause| and returns true.
   bool ApplyBrightnessPercent(double percent,
                               Transition transition,
-                              BrightnessChangeCause cause);
+                              BacklightBrightnessChange_Cause cause);
 
   // Updates displays to |state| after |delay| if |state| doesn't match
   // |display_power_state_|.  If another change has already been scheduled,

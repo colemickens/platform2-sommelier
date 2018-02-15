@@ -83,7 +83,7 @@ void ExternalBacklightController::HandleDisplayServiceStart() {
                                              ? chromeos::DISPLAY_POWER_ALL_OFF
                                              : chromeos::DISPLAY_POWER_ALL_ON,
                                          base::TimeDelta());
-  NotifyObservers();
+  NotifyObservers(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -97,21 +97,22 @@ void ExternalBacklightController::SetOffForInactivity(bool off) {
   if (off == off_for_inactivity_)
     return;
   off_for_inactivity_ = off;
-  UpdateScreenPowerState();
+  UpdateScreenPowerState(off ? BacklightBrightnessChange_Cause_USER_INACTIVITY
+                             : BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void ExternalBacklightController::SetSuspended(bool suspended) {
   if (suspended == suspended_)
     return;
   suspended_ = suspended;
-  UpdateScreenPowerState();
+  UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
   if (shutting_down == shutting_down_)
     return;
   shutting_down_ = shutting_down;
-  UpdateScreenPowerState();
+  UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
@@ -142,7 +143,9 @@ void ExternalBacklightController::SetForcedOff(bool forced_off) {
     return;
 
   forced_off_ = forced_off;
-  UpdateScreenPowerState();
+  UpdateScreenPowerState(
+      forced_off ? BacklightBrightnessChange_Cause_FORCED_OFF
+                 : BacklightBrightnessChange_Cause_NO_LONGER_FORCED_OFF);
 }
 
 bool ExternalBacklightController::GetForcedOff() {
@@ -174,7 +177,8 @@ void ExternalBacklightController::OnDisplaysChanged(
   UpdateDisplays(displays);
 }
 
-void ExternalBacklightController::UpdateScreenPowerState() {
+void ExternalBacklightController::UpdateScreenPowerState(
+    BacklightBrightnessChange_Cause cause) {
   bool should_turn_off =
       off_for_inactivity_ || suspended_ || shutting_down_ || forced_off_;
   if (should_turn_off != currently_off_) {
@@ -183,15 +187,14 @@ void ExternalBacklightController::UpdateScreenPowerState() {
                                                ? chromeos::DISPLAY_POWER_ALL_OFF
                                                : chromeos::DISPLAY_POWER_ALL_ON,
                                            base::TimeDelta());
-    NotifyObservers();
+    NotifyObservers(cause);
   }
 }
 
-void ExternalBacklightController::NotifyObservers() {
-  for (BacklightControllerObserver& observer : observers_) {
-    observer.OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
-                                BrightnessChangeCause::AUTOMATED, this);
-  }
+void ExternalBacklightController::NotifyObservers(
+    BacklightBrightnessChange_Cause cause) {
+  for (BacklightControllerObserver& observer : observers_)
+    observer.OnBrightnessChange(currently_off_ ? 0.0 : 100.0, cause, this);
 }
 
 void ExternalBacklightController::UpdateDisplays(

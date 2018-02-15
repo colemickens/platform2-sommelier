@@ -23,6 +23,21 @@ const int kHysteresisThreshold = 2;
 
 }  // namespace
 
+// static
+BacklightBrightnessChange_Cause AmbientLightHandler::ToProtobufCause(
+    BrightnessChangeCause als_cause) {
+  switch (als_cause) {
+    case BrightnessChangeCause::AMBIENT_LIGHT:
+      return BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED;
+    case BrightnessChangeCause::EXTERNAL_POWER_CONNECTED:
+      return BacklightBrightnessChange_Cause_EXTERNAL_POWER_CONNECTED;
+    case BrightnessChangeCause::EXTERNAL_POWER_DISCONNECTED:
+      return BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED;
+  }
+  NOTREACHED() << "Invalid cause " << static_cast<int>(als_cause);
+  return BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED;
+}
+
 AmbientLightHandler::AmbientLightHandler(
     system::AmbientLightSensorInterface* sensor, Delegate* delegate)
     : sensor_(sensor),
@@ -118,7 +133,9 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
     LOG(INFO) << "Going from " << old_percent << "% to " << new_percent
               << "% for power source change (" << name_ << ")";
     delegate_->SetBrightnessPercentForAmbientLight(
-        new_percent, BrightnessChangeCause::POWER_SOURCE);
+        new_percent, source == PowerSource::AC
+                         ? BrightnessChangeCause::EXTERNAL_POWER_CONNECTED
+                         : BrightnessChangeCause::EXTERNAL_POWER_DISCONNECTED);
   }
 }
 

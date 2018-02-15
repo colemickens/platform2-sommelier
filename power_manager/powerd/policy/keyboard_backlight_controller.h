@@ -109,7 +109,7 @@ class KeyboardBacklightController : public BacklightController,
 
   // BacklightControllerObserver implementation:
   void OnBrightnessChange(double brightness_percent,
-                          BacklightController::BrightnessChangeCause cause,
+                          BacklightBrightnessChange_Cause cause,
                           BacklightController* source) override;
 
   // system::BacklightObserver implementation:
@@ -135,13 +135,14 @@ class KeyboardBacklightController : public BacklightController,
   // whenever the state changes. |transition| and |cause| are passed to
   // ApplyBrightnessPercent(). Returns true if the brightness was changed and
   // false otherwise.
-  bool UpdateState(Transition transition, BrightnessChangeCause cause);
+  bool UpdateState(Transition transition,
+                   BacklightBrightnessChange_Cause cause);
 
   // Sets the backlight's brightness to |percent| over |transition|.
   // Returns true and notifies observers if the brightness was changed.
   bool ApplyBrightnessPercent(double percent,
                               Transition transition,
-                              BrightnessChangeCause cause);
+                              BacklightBrightnessChange_Cause cause);
 
   mutable std::unique_ptr<Clock> clock_;
 

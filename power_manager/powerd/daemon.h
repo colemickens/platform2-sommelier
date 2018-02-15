@@ -99,10 +99,9 @@ class Daemon : public policy::BacklightControllerObserver,
   bool TriggerRetryShutdownTimerForTesting();
 
   // Overridden from policy::BacklightControllerObserver:
-  void OnBrightnessChange(
-      double brightness_percent,
-      policy::BacklightController::BrightnessChangeCause cause,
-      policy::BacklightController* source) override;
+  void OnBrightnessChange(double brightness_percent,
+                          BacklightBrightnessChange_Cause cause,
+                          policy::BacklightController* source) override;
 
   // Overridden from policy::InputEventHandler::Delegate:
   void HandleLidClosed() override;
@@ -177,12 +176,20 @@ class Daemon : public policy::BacklightControllerObserver,
   // initialized.
   void AdjustKeyboardBrightness(int direction);
 
-  // Emits a D-Bus signal named |signal_name| announcing that backlight
-  // brightness was changed to |brightness_percent| due to |cause|.
-  void SendBrightnessChangedSignal(
-      double brightness_percent,
-      policy::BacklightController::BrightnessChangeCause cause,
-      const std::string& signal_name);
+  // Emits a D-Bus signal named |signal_name| containing a
+  // BacklightBrightnessChange protobuf announcing that backlight brightness was
+  // changed to |brightness_percent| due to |cause|.
+  void SendBrightnessChangedSignal(const std::string& signal_name,
+                                   double brightness_percent,
+                                   BacklightBrightnessChange_Cause cause);
+
+  // Emits a D-Bus signal named |signal_name| containing containing int32
+  // brightness and bool "user-initiated" args.
+  // TODO(derat): Delete this once Chrome is no longer consuming
+  // BrightnessChanged signals: https://crbug.com/811138
+  void SendOldBrightnessChangedSignal(const std::string& signal_name,
+                                      double brightness_percent,
+                                      BacklightBrightnessChange_Cause cause);
 
   // Connects to the D-Bus system bus and exports methods.
   void InitDBus();
