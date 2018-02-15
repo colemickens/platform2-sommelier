@@ -83,6 +83,11 @@ class ImpersonationObjectManagerInterface
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
+  // Forwards any message to the impersonated service.
+  void HandleForwardMessage(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   // Registers our custom GetAll/Get/Set method handlers.
   void SetupPropertyMethodHandlers(
       brillo::dbus_utils::DBusInterface* prop_interface,

@@ -23,6 +23,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Mock;
 using ::testing::Return;
+using ::testing::SaveArg;
 
 namespace bluetooth {
 
@@ -38,6 +39,13 @@ constexpr char kTestServiceName[] = "org.example.Default";
 constexpr char kStringPropertyName[] = "SomeString";
 constexpr char kIntPropertyName[] = "SomeInt";
 constexpr char kBoolPropertyName[] = "SomeBool";
+
+constexpr char kTestMethodCallString[] = "The Method Call";
+constexpr char kTestResponseString[] = "The Response";
+
+constexpr char kTestSender[] = ":1.1";
+
+constexpr int kTestSerial = 10;
 
 }  // namespace
 
@@ -91,6 +99,31 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
             bus_, std::move(exported_object_manager));
     object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath1));
+  }
+
+  void StubHandlePropertiesSet(
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ObjectProxy::ResponseCallback callback,
+      dbus::ObjectProxy::ErrorCallback error_callback) {
+    // This stub doesn't handle method calls other than Properties.Set
+    if (method_call->GetInterface() != dbus::kPropertiesInterface ||
+        method_call->GetMember() != dbus::kPropertiesSet)
+      return;
+
+    dbus::MessageReader reader(method_call);
+    std::string method_call_string;
+    reader.PopString(&method_call_string);
+    // This stub only accepts the right payload.
+    if (method_call_string != kTestMethodCallString)
+      return;
+
+    method_call->SetSerial(kTestSerial);
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+    writer.AppendString(kTestResponseString);
+    callback.Run(response.get());
   }
 
  protected:
@@ -360,6 +393,88 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   // Makes sure that the Unregister actually happens on ObjectRemoved above and
   // not due to its automatic deletion when this test case finishes.
   Mock::VerifyAndClearExpectations(exported_object.get());
+}
+
+TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
+  dbus::ObjectPath object_path1(kTestObjectPath1);
+
+  scoped_refptr<dbus::MockExportedObject> exported_object1 =
+      new dbus::MockExportedObject(bus_.get(), object_path1);
+  EXPECT_CALL(*bus_, GetExportedObject(object_path1))
+      .WillOnce(Return(exported_object1.get()));
+
+  auto impersonation_om_interface =
+      std::make_unique<ImpersonationObjectManagerInterface>(
+          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+
+  dbus::ExportedObject::MethodCallCallback set_method_handler;
+
+  // D-Bus properties methods should be exported.
+  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
+                                              dbus::kPropertiesGet, _, _))
+      .Times(1);
+  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
+                                              dbus::kPropertiesSet, _, _))
+      .WillOnce(SaveArg<2>(&set_method_handler));
+  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
+                                              dbus::kPropertiesGetAll, _, _))
+      .Times(1);
+  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
+                                              dbus::kPropertiesChanged, _, _))
+      .Times(1);
+  // CreateProperties called for another object.
+  std::unique_ptr<dbus::PropertySet> dbus_property_set1(
+      impersonation_om_interface->CreateProperties(
+          kTestServiceName, object_proxy_.get(), object_path1,
+          kTestInterfaceName1));
+  PropertySet* property_set1 =
+      static_cast<PropertySet*>(dbus_property_set1.get());
+
+  // The properties should all be registered.
+  ASSERT_TRUE(property_set1->GetProperty(kStringPropertyName) != nullptr);
+  ASSERT_TRUE(property_set1->GetProperty(kIntPropertyName) != nullptr);
+  ASSERT_TRUE(property_set1->GetProperty(kBoolPropertyName) != nullptr);
+
+  // Tests that Properties.Set handler should forward the message to the source
+  // service and forward the response back to the caller.
+  scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
+      new dbus::MockObjectProxy(bus_.get(), kTestServiceName, object_path1);
+  EXPECT_CALL(*object_manager_, GetObjectProxy(object_path1))
+      .WillOnce(Return(object_proxy1.get()));
+  dbus::MethodCall method_call(dbus::kPropertiesInterface,
+                               dbus::kPropertiesSet);
+  method_call.SetPath(object_path1);
+  method_call.SetSender(kTestSender);
+  method_call.SetSerial(kTestSerial);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kTestMethodCallString);
+  EXPECT_CALL(*object_proxy1, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &ImpersonationObjectManagerInterfaceTest::StubHandlePropertiesSet));
+  std::unique_ptr<dbus::Response> saved_response;
+  set_method_handler.Run(&method_call,
+                         base::Bind(
+                             [](std::unique_ptr<dbus::Response>* saved_response,
+                                std::unique_ptr<dbus::Response> response) {
+                               *saved_response = std::move(response);
+                             },
+                             &saved_response));
+  EXPECT_TRUE(saved_response.get() != nullptr);
+  std::string saved_response_string;
+  dbus::MessageReader reader(saved_response.get());
+  reader.PopString(&saved_response_string);
+  // Checks that the response is the forwarded response of
+  // StubHandlePropertiesSet.
+  EXPECT_EQ(kTestSender, saved_response->GetDestination());
+  EXPECT_EQ(kTestSerial, saved_response->GetReplySerial());
+  EXPECT_EQ(kTestResponseString, saved_response_string);
+
+  // ObjectRemoved events
+  EXPECT_CALL(*exported_object1, Unregister()).Times(1);
+  impersonation_om_interface->ObjectRemoved(kTestServiceName, object_path1,
+                                            kTestInterfaceName1);
 }
 
 }  // namespace bluetooth
