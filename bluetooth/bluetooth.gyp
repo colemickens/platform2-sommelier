@@ -20,6 +20,7 @@
       'sources': [
         'dispatcher/daemon.cc',
         'dispatcher/object_manager_interface_multiplexer.cc',
+        'dispatcher/property.cc',
         'dispatcher/service_watcher.cc',
         'dispatcher/suspend_manager.cc',
       ],
@@ -49,6 +50,7 @@
           },
           'sources': [
             'dispatcher/object_manager_interface_multiplexer_unittest.cc',
+            'dispatcher/property_unittest.cc',
             'dispatcher/suspend_manager_unittest.cc',
           ],
         },
