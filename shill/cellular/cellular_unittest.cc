@@ -963,6 +963,46 @@ TEST_P(CellularTest, FriendlyServiceName) {
       .WillRepeatedly(ReturnRef(kServingOperatorName));
   device_->CreateService();
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (7) Serving operator known, home provider known, and roaming state is set
+  //     => Name is the form of "home provider | serving operator".
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(kHomeProviderName));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(kServingOperatorName));
+  device_->CreateService();
+  device_->service_->roaming_state_ = kRoamingStateRoaming;
+  device_->OnOperatorChanged();
+  EXPECT_EQ(kHomeProviderName + " | " + kServingOperatorName,
+            device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (8) Like (7) but home provider and serving operator have the same name
+  //     => Only one name is shown.
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(kHomeProviderName));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(kHomeProviderName));
+  device_->CreateService();
+  device_->service_->roaming_state_ = kRoamingStateRoaming;
+  device_->OnOperatorChanged();
+  EXPECT_EQ(kHomeProviderName, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
 }
 
 TEST_P(CellularTest, HomeProviderServingOperator) {

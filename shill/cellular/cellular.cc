@@ -1635,7 +1635,8 @@ void Cellular::UpdateServingOperator(
     // rules (TS 31.102 and annex A of 122.101).
     if (service()->roaming_state() == kRoamingStateRoaming &&
         home_provider_info &&
-        !home_provider_info->operator_name().empty()) {
+        !home_provider_info->operator_name().empty() &&
+        home_provider_info->operator_name() != operator_info->operator_name()) {
       service_name += home_provider_info->operator_name() + " | ";
     }
     service_name += operator_info->operator_name();
