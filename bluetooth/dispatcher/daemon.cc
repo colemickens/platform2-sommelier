@@ -9,7 +9,8 @@
 namespace bluetooth {
 
 Daemon::Daemon(scoped_refptr<dbus::Bus> bus)
-    : suspend_manager_(std::make_unique<SuspendManager>(bus)) {}
+    : suspend_manager_(std::make_unique<SuspendManager>(bus)),
+      dispatcher_(std::make_unique<Dispatcher>(bus)) {}
 
 Daemon::~Daemon() = default;
 
@@ -17,6 +18,7 @@ void Daemon::Init() {
   LOG(INFO) << "Bluetooth daemon started";
 
   suspend_manager_->Init();
+  dispatcher_->Init();
 }
 
 }  // namespace bluetooth

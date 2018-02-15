@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "bluetooth/dispatcher/dispatcher.h"
 #include "bluetooth/dispatcher/suspend_manager.h"
 
 namespace bluetooth {
@@ -21,8 +22,12 @@ class Daemon {
   void Init();
 
  private:
-  // The suspend/resume handler.
+  // The suspend/resume handler for pausing/unpausing discovery during system
+  // suspend.
   std::unique_ptr<SuspendManager> suspend_manager_;
+
+  // Exposes BlueZ-compatible D-Bus API and handles the client requests.
+  std::unique_ptr<Dispatcher> dispatcher_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

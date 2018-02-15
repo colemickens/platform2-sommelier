@@ -18,7 +18,9 @@
       'target_name': 'libdispatcher',
       'type': 'static_library',
       'sources': [
+        'dispatcher/bluez_interface_handler.cc',
         'dispatcher/daemon.cc',
+        'dispatcher/dispatcher.cc',
         'dispatcher/exported_object_manager_wrapper.cc',
         'dispatcher/impersonation_object_manager_interface.cc',
         'dispatcher/object_manager_interface_multiplexer.cc',
@@ -51,6 +53,7 @@
             ],
           },
           'sources': [
+            'dispatcher/dispatcher_unittest.cc',
             'dispatcher/exported_object_manager_wrapper_unittest.cc',
             'dispatcher/impersonation_object_manager_interface_unittest.cc',
             'dispatcher/object_manager_interface_multiplexer_unittest.cc',
