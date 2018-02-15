@@ -61,3 +61,8 @@ fi
 if [ -e "/sys/power/pm_print_times" ]; then
   echo 1 > /sys/power/pm_print_times
 fi
+
+if [ -e "/sys/power/pm_debug_messages" ]; then
+  echo 1 > /sys/power/pm_debug_messages
+fi
+
