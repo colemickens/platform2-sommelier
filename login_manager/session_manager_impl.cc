@@ -912,6 +912,15 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
     *error = CreateError(dbus_error::kSessionExists, kMessage);
     return false;
   }
+
+  // Powerwash is not allowed for enterprise devices.
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
+    constexpr char kMessage[] = "Powerwash not available on enterprise devices";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kNotAvailable, kMessage);
+    return false;
+  }
+
   InitiateDeviceWipe("session_manager_dbus_request");
   return true;
 }
