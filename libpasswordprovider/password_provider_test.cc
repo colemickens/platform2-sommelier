@@ -40,7 +40,7 @@ TEST_F(PasswordProviderTest, SaveAndGetPassword) {
   }
 
   const std::string kPasswordStr("thepassword");
-  auto password = password_provider::test::CreatePassword(kPasswordStr);
+  auto password = test::CreatePassword(kPasswordStr);
 
   EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   std::unique_ptr<Password> retrieved_password =
@@ -59,7 +59,7 @@ TEST_F(PasswordProviderTest, DiscardAndGetPassword) {
   }
 
   const std::string kPasswordStr("thepassword");
-  auto password = password_provider::test::CreatePassword(kPasswordStr);
+  auto password = test::CreatePassword(kPasswordStr);
 
   EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   EXPECT_TRUE(password_provider_.DiscardPassword());
@@ -82,7 +82,7 @@ TEST_F(PasswordProviderTest, GetLongPassword) {
   auto long_password = std::make_unique<char[]>(max_size);
   memset(long_password.get(), 'a', max_size);
   std::string password_str(long_password.get(), max_size);
-  auto password = password_provider::test::CreatePassword(password_str);
+  auto password = test::CreatePassword(password_str);
 
   EXPECT_TRUE(password_provider_.SavePassword(*password.get()));
   std::unique_ptr<Password> retrieved_password =

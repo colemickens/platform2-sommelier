@@ -13,6 +13,13 @@
 
 namespace password_provider {
 
+// Forward declarations
+class Password;
+
+namespace test {
+std::unique_ptr<Password> CreatePassword(const char* data, size_t len);
+}  // namespace test
+
 // Wrapper around a simple char* string. This class is used to handle allocating
 // the memory so that it won't be available in a crash dump and won't be paged
 // out to disk. Assumption is that this will be used to hold a user-typed
@@ -44,14 +51,6 @@ class LIBPASSWORDPROVIDER_EXPORT Password {
   // against page swapping and dumping in core dumps.
   bool Init();
 
-  // Mutable access to the raw memory. Error if the memory has not been
-  // initialized. If a string is being copied to the memory, then it must be
-  // null-terminated.
-  //
-  // TODO(maybelle): Move this to be private when shill tests have been updated
-  // to use PasswordTestUtils.
-  char* GetMutableRaw();
-
   // Access to the raw memory. Error if the memory has not been initialized.
   // This buffer is null-terminated.
   const char* GetRaw() const;
@@ -61,6 +60,16 @@ class LIBPASSWORDPROVIDER_EXPORT Password {
   void SetSize(size_t size);
 
  private:
+  friend class FakePasswordProvider;
+  friend class PasswordProvider;
+  friend std::unique_ptr<Password> test::CreatePassword(const char* data,
+                                                        size_t len);
+
+  // Mutable access to the raw memory. Error if the memory has not been
+  // initialized. If a string is being copied to the memory, then it must be
+  // null-terminated.
+  char* GetMutableRaw();
+
   char* password_ = nullptr;
   size_t buffer_alloc_size_ = 0;
   size_t max_size_ = 0;
