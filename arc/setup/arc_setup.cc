@@ -1069,9 +1069,6 @@ void ArcSetup::SetUpNetwork() {
   const base::FilePath eth_dir = misc_dir.Append("ethernet");
   const base::FilePath ipconfig_dest = eth_dir.Append("ipconfig.txt");
 
-  if (base::PathExists(ipconfig_dest))
-    return;
-
   std::string ip_addr =
       GetEnvOrDie(arc_paths_->env.get(), "ARC_CONTAINER_IPV4_ADDRESS");
   std::string gateway =
