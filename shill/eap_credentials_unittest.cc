@@ -19,11 +19,11 @@
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
+#include <libpasswordprovider/password_provider_test_utils.h>
 
-// TODO(maybelle): move this after creating a libpasswordprovider test lib.
-#include <libpasswordprovider/fake_password_provider.h>
 #include "shill/key_value_store.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_event_dispatcher.h"
@@ -124,14 +124,10 @@ class EapCredentialsTest : public testing::Test {
     eap_.password_provider_ =
         std::make_unique<password_provider::FakePasswordProvider>();
 
-    password_provider::Password password;
-    ASSERT_TRUE(password.Init());
-    // TODO(maybelle): Update this once Password::CreateFrom has been submitted
-    // in platform2.
-    memcpy(password.GetMutableRaw(), password_str.c_str(), password_str.size());
-    password.SetSize(password_str.size());
+    auto password = password_provider::test::CreatePassword(password_str);
+    ASSERT_TRUE(password);
 
-    eap_.password_provider_->SavePassword(password);
+    eap_.password_provider_->SavePassword(*password.get());
   }
 
   EapCredentials eap_;
