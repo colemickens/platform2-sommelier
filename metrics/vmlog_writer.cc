@@ -31,7 +31,7 @@ constexpr char kVmlogHeader[] =
 
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
-constexpr int kMaxVmlogFileSize = 1024 * 1024;
+constexpr int kMaxVmlogFileSize = 256 * 1024;
 
 }  // namespace
 
