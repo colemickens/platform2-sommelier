@@ -13,9 +13,9 @@
 #include <brillo/syslog_logging.h>
 
 #include "imageloader/helper_process_proxy.h"
+#include "imageloader/helper_process_receiver.h"
 #include "imageloader/imageloader.h"
 #include "imageloader/imageloader_impl.h"
-#include "imageloader/mount_helper.h"
 
 namespace {
 
@@ -94,8 +94,8 @@ int main(int argc, char** argv) {
   if (FLAGS_mount_helper_fd >= 0) {
     CHECK_GT(FLAGS_mount_helper_fd, -1);
     base::ScopedFD fd(FLAGS_mount_helper_fd);
-    imageloader::MountHelper mount_helper(std::move(fd));
-    return mount_helper.Run();
+    imageloader::HelperProcessReceiver root_process(std::move(fd));
+    return root_process.Run();
   }
 
   imageloader::Keys keys;

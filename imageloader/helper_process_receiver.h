@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGELOADER_MOUNT_HELPER_H_
-#define IMAGELOADER_MOUNT_HELPER_H_
+#ifndef IMAGELOADER_HELPER_PROCESS_RECEIVER_H_
+#define IMAGELOADER_HELPER_PROCESS_RECEIVER_H_
 
 #include <base/files/scoped_file.h>
 #include <base/message_loop/message_loop.h>
@@ -20,10 +20,10 @@ namespace imageloader {
 
 // Main loop for the Mount helper process.
 // This object is used in the subprocess.
-class MountHelper : public brillo::Daemon,
-                    public base::MessageLoopForIO::Watcher {
+class HelperProcessReceiver : public brillo::Daemon,
+                              public base::MessageLoopForIO::Watcher {
  public:
-  explicit MountHelper(base::ScopedFD control_fd);
+  explicit HelperProcessReceiver(base::ScopedFD control_fd);
 
  protected:
   // Overrides Daemon init callback.
@@ -43,9 +43,9 @@ class MountHelper : public brillo::Daemon,
   int pending_fd_;
   VerityMounter mounter_;
 
-  DISALLOW_COPY_AND_ASSIGN(MountHelper);
+  DISALLOW_COPY_AND_ASSIGN(HelperProcessReceiver);
 };
 
 }  // namespace imageloader
 
-#endif  // IMAGELOADER_MOUNT_HELPER_H_
+#endif  // IMAGELOADER_HELPER_PROCESS_RECEIVER_H_

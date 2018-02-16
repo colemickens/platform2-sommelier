@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader/mount_helper.h"
+#include "imageloader/helper_process_receiver.h"
 
 #include <string>
 #include <utility>
@@ -30,16 +30,17 @@ constexpr char kSeccompFilterPath[] =
     "/opt/google/imageloader/imageloader-helper-seccomp.policy";
 }  // namespace
 
-MountHelper::MountHelper(base::ScopedFD control_fd)
+HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
     : control_fd_(std::move(control_fd)),
       control_watcher_(),
       pending_fd_(-1),
       mounter_() {}
 
-int MountHelper::OnInit() {
+int HelperProcessReceiver::OnInit() {
   // Prevent the main process from sending us any signals.
   // errno can be EPERM if the process is already the group leader.
-  if (setsid() < 0 && errno != EPERM) PLOG(FATAL) << "setsid failed";
+  if (setsid() < 0 && errno != EPERM)
+    PLOG(FATAL) << "setsid failed";
 
   // Run with minimal privileges.
   ScopedMinijail jail(minijail_new());
@@ -57,7 +58,7 @@ int MountHelper::OnInit() {
   return Daemon::OnInit();
 }
 
-void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
+void HelperProcessReceiver::OnFileCanReadWithoutBlocking(int fd) {
   CHECK_EQ(fd, control_fd_.get());
   char buffer[4096 * 4];
   memset(buffer, '\0', sizeof(buffer));
@@ -76,10 +77,12 @@ void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
   msg.msg_controllen = sizeof(c_buffer);
 
   ssize_t bytes = recvmsg(fd, &msg, 0);
-  if (bytes < 0) PLOG(FATAL) << "recvmsg failed";
+  if (bytes < 0)
+    PLOG(FATAL) << "recvmsg failed";
   // Per recvmsg(2), the return value will be 0 when the peer has performed an
   // orderly shutdown.
-  if (bytes == 0) _exit(0);
+  if (bytes == 0)
+    _exit(0);
 
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
 
@@ -95,8 +98,8 @@ void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
   SendResponse(response);
 }
 
-CommandResponse MountHelper::HandleCommand(const ImageCommand& image_command,
-                                           struct cmsghdr* cmsg) {
+CommandResponse HelperProcessReceiver::HandleCommand(
+    const ImageCommand& image_command, struct cmsghdr* cmsg) {
   CommandResponse response;
   if (image_command.has_mount_command()) {
     MountCommand command = image_command.mount_command();
@@ -122,8 +125,7 @@ CommandResponse MountHelper::HandleCommand(const ImageCommand& image_command,
     }
 
     bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
-                                 base::FilePath(command.mount_path()),
-                                 fs_type,
+                                 base::FilePath(command.mount_path()), fs_type,
                                  command.table());
     if (!status)
       LOG(ERROR) << "mount failed";
@@ -133,8 +135,8 @@ CommandResponse MountHelper::HandleCommand(const ImageCommand& image_command,
     UnmountAllCommand command = image_command.unmount_all_command();
     std::vector<base::FilePath> paths;
     const base::FilePath root_dir(command.unmount_rootpath());
-    response.set_success(mounter_.CleanupAll(command.dry_run(),
-                                             root_dir, &paths));
+    response.set_success(
+        mounter_.CleanupAll(command.dry_run(), root_dir, &paths));
     for (const auto& path : paths) {
       const std::string path_(path.value());
       response.add_paths(path_);
@@ -149,7 +151,7 @@ CommandResponse MountHelper::HandleCommand(const ImageCommand& image_command,
   return response;
 }
 
-void MountHelper::SendResponse(const CommandResponse& response) {
+void HelperProcessReceiver::SendResponse(const CommandResponse& response) {
   std::string response_str;
   if (!response.SerializeToString(&response_str))
     LOG(FATAL) << "failed to serialize protobuf";
