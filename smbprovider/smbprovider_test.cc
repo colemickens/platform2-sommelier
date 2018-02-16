@@ -2029,4 +2029,84 @@ TEST_F(SmbProviderTest, MoveEntryFailsToMoveIntoLockedDirectory) {
   EXPECT_EQ(ERROR_ACCESS_DENIED, CastError(smbprovider_->MoveEntry(move_blob)));
 }
 
+TEST_F(SmbProviderTest, CopyEntryFailsOnInvalidSource) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("newdir"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/file.txt", "/newdir/file.txt");
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CopyEntry(copy_blob)));
+}
+
+TEST_F(SmbProviderTest, CopyEntryFailsOnFileWhenDestinationExists) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/file.txt"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dir1"));
+  fake_samba_->AddFile(GetDefaultFullPath("/dir1/file.txt"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/file.txt", "/dir1/file.txt");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CopyEntry(copy_blob)));
+}
+
+TEST_F(SmbProviderTest, CopyEntryFailsOnDirectoryWhenDestinationExists) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/cats"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/cats/dogs"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dogs", "/cats/dogs");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CopyEntry(copy_blob)));
+}
+
+TEST_F(SmbProviderTest, CopyEntryFailsWhenDestinationIsInALockedDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/dog.jpg"));
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/cats"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dog.jpg", "/cats/dog.jpg");
+
+  EXPECT_EQ(ERROR_ACCESS_DENIED, CastError(smbprovider_->CopyEntry(copy_blob)));
+}
+
+TEST_F(SmbProviderTest, CopyEntrySucceedsOnFile) {
+  const std::vector<uint8_t> file_data = {10, 11, 12, 13, 14, 15};
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/dog1.jpg"), kFileDate, file_data);
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dog1.jpg", "/dogs/dog1.jpg");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CopyEntry(copy_blob)));
+
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dog1.jpg")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs/dog1.jpg")));
+}
+
+TEST_F(SmbProviderTest, CopyEntrySucceedsOnDirectory) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/animals"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dogs", "/animals/dogs");
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->CopyEntry(copy_blob)));
+
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/animals/dogs")));
+}
+
 }  // namespace smbprovider

@@ -267,6 +267,37 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                   int32_t* file_id,
                   int32_t* error);
 
+  // Copies the entry at |source_path| to |target_path|. Returns true on
+  // success. Returns false and sets |error_code| on failure.
+  bool CopyEntry(const CopyEntryOptionsProto& options,
+                 const std::string& source_path,
+                 const std::string& target_path,
+                 int32_t* error_code);
+
+  // Copies the file at |source_path| to a created file at |target_path|.
+  // Returns true on success. Returns false and sets |error_code| on failure.
+  bool CopyFile(const CopyEntryOptionsProto& options,
+                const std::string& source_path,
+                const std::string& target_path,
+                int32_t* error_code);
+
+  // Copies the data at open file |source_fd| to open file |target_fd|. Returns
+  // true on success. Returns false and sets |error_code| on failure.
+  bool CopyData(const CopyEntryOptionsProto& options,
+                int32_t source_fd,
+                int32_t target_fd,
+                int32_t* error_code);
+
+  // Helper method that fills |buffer| by reading the file with handle
+  // |file_id|. Returns true and sets |bytes_read| on success. Returns false and
+  // sets |error_code| on failure. |options| is used for logging.
+  template <typename Proto>
+  bool ReadToBuffer(const Proto& options,
+                    int32_t file_id,
+                    std::vector<uint8_t>* buffer,
+                    size_t* bytes_read,
+                    int32_t* error_code);
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;

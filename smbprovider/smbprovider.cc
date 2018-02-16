@@ -297,8 +297,17 @@ int32_t SmbProvider::MoveEntry(const ProtoBlob& options_blob) {
 }
 
 int32_t SmbProvider::CopyEntry(const ProtoBlob& options_blob) {
-  NOTIMPLEMENTED();
-  return 0;
+  int32_t error_code;
+  std::string source_path;
+  std::string target_path;
+  CopyEntryOptionsProto options;
+
+  const bool success =
+      ParseOptionsAndPaths(options_blob, &options, &source_path, &target_path,
+                           &error_code) &&
+      CopyEntry(options, source_path, target_path, &error_code);
+
+  return success ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
 template <typename Proto>
@@ -449,17 +458,11 @@ bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptionsProto& options,
 
   buffer->resize(options.length());
   size_t bytes_read;
-  int32_t result = samba_interface_->ReadFile(options.file_id(), buffer->data(),
-                                              buffer->size(), &bytes_read);
-  if (result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+
+  if (!ReadToBuffer(options, options.file_id(), buffer, &bytes_read,
+                    error_code)) {
     return false;
   }
-
-  DCHECK_GE(bytes_read, 0);
-  DCHECK_LE(bytes_read, buffer->size());
-  // Make sure buffer is only as big as bytes_read.
-  buffer->resize(bytes_read);
   return true;
 }
 
@@ -691,6 +694,92 @@ bool SmbProvider::CreateFile(const Proto& options,
     LogAndSetError(options, GetErrorFromErrno(result), error);
     return false;
   }
+  return true;
+}
+
+bool SmbProvider::CopyEntry(const CopyEntryOptionsProto& options,
+                            const std::string& source_path,
+                            const std::string& target_path,
+                            int32_t* error_code) {
+  DCHECK(error_code);
+  bool is_directory;
+  int32_t get_type_result;
+  if (!GetEntryType(source_path, &get_type_result, &is_directory)) {
+    LogAndSetError(options, GetErrorFromErrno(get_type_result), error_code);
+    return false;
+  }
+
+  if (is_directory) {
+    return CreateSingleDirectory(options, target_path,
+                                 false /* ignore_existing */, error_code);
+  }
+
+  return CopyFile(options, source_path, target_path, error_code);
+}
+
+bool SmbProvider::CopyFile(const CopyEntryOptionsProto& options,
+                           const std::string& source_path,
+                           const std::string& target_path,
+                           int32_t* error_code) {
+  DCHECK(error_code);
+
+  int32_t target_file_id;
+  int32_t source_file_id;
+  bool success =
+      CreateFile(options, target_path, &target_file_id, error_code) &&
+      OpenFile(options, source_path, error_code, &source_file_id) &&
+      CopyData(options, source_file_id, target_file_id, error_code) &&
+      CloseFile(options, source_file_id, error_code) &&
+      CloseFile(options, target_file_id, error_code);
+
+  return success;
+}
+
+bool SmbProvider::CopyData(const CopyEntryOptionsProto& options,
+                           int32_t source_fd,
+                           int32_t target_fd,
+                           int32_t* error_code) {
+  DCHECK(error_code);
+
+  std::vector<uint8_t> buffer;
+  buffer.resize(kBufferSize);
+
+  size_t bytes_read;
+  while (ReadToBuffer(options, source_fd, &buffer, &bytes_read, error_code)) {
+    if (bytes_read == 0) {
+      // reached end of file successfully.
+      return true;
+    }
+
+    if (!WriteFileFromBuffer(options, target_fd, buffer, error_code)) {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+template <typename Proto>
+bool SmbProvider::ReadToBuffer(const Proto& options,
+                               int32_t file_id,
+                               std::vector<uint8_t>* buffer,
+                               size_t* bytes_read,
+                               int32_t* error_code) {
+  DCHECK(buffer);
+  DCHECK(bytes_read);
+  DCHECK(error_code);
+
+  int32_t result = samba_interface_->ReadFile(file_id, buffer->data(),
+                                              buffer->size(), bytes_read);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
+  }
+
+  DCHECK_GE(*bytes_read, 0);
+  DCHECK_LE(*bytes_read, buffer->size());
+  // Make sure buffer is only as big as bytes_read.
+  buffer->resize(*bytes_read);
   return true;
 }
 
