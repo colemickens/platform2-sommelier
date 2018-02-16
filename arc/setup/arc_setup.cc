@@ -114,9 +114,6 @@ constexpr char kSysfsTracing[] = "/sys/kernel/debug/tracing";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
 constexpr char kUsbDevicesDirectory[] = "/dev/bus/usb";
-constexpr char kVendorImage[] = "/opt/google/containers/android/vendor.raw.img";
-constexpr char kVendorRootfsDirectory[] =
-    "/opt/google/containers/android/rootfs/root/vendor";
 
 // Names for possible binfmt_misc entries.
 constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
@@ -278,7 +275,6 @@ struct ArcPaths {
   const base::FilePath system_lib_arm_directory_relative{
       kSystemLibArmDirectoryRelative};
   const base::FilePath usb_devices_directory{kUsbDevicesDirectory};
-  const base::FilePath vendor_rootfs_directory{kVendorRootfsDirectory};
 
   const base::FilePath restorecon_whitelist_sync{kRestoreconWhitelistSync};
   // session_manager must start arc-setup job with ANDROID_DATA_DIR parameter
@@ -372,18 +368,6 @@ void ArcSetup::WaitForRtLimitsJob() {
             << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
 }
 
-void ArcSetup::RemountVendorDirectory() {
-  const bool is_writable =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "WRITABLE_MOUNT");
-  const unsigned long writable_flag =  // NOLINT(runtime/int)
-      is_writable ? 0 : MS_RDONLY;
-  const unsigned long noexec_flag =  // NOLINT(runtime/int)
-      kUseMasterContainer ? MS_NOEXEC : 0;
-  EXIT_IF(!arc_mounter_->Remount(
-      arc_paths_->vendor_rootfs_directory,
-      writable_flag | noexec_flag | MS_NOSUID | MS_NODEV, "seclabel"));
-}
-
 ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
   const bool is_houdini_available = kUseHoudini;
   bool is_ndk_translation_available = kUseNdkTranslation;
@@ -421,7 +405,7 @@ void ArcSetup::SetUpBinFmtMisc(ArcBinaryTranslationType bin_type) {
       return;
     }
     case ArcBinaryTranslationType::HOUDINI: {
-      root_directory = arc_paths_->vendor_rootfs_directory;
+      root_directory = arc_paths_->android_rootfs_directory.Append("vendor");
       break;
     }
     case ArcBinaryTranslationType::NDK_TRANSLATION: {
@@ -1497,9 +1481,6 @@ void ArcSetup::MountOnOnetimeSetup() {
 
   unsigned long kBaseFlags =  // NOLINT(runtime/int)
       writable_flag | MS_NOEXEC | MS_NOSUID;
-  EXIT_IF(!arc_mounter_->LoopMount(kVendorImage,
-                                   arc_paths_->vendor_rootfs_directory,
-                                   kBaseFlags | MS_NODEV));
 
   // Though we can technically mount these in mount namespace with minijail,
   // we do not bother to handle loopback mounts by ourselves but just mount it
@@ -1518,7 +1499,6 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->obb_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->sdcard_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->media_rootfs_directory));
-  IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->vendor_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
@@ -1599,8 +1579,6 @@ void ArcSetup::OnSetup(bool for_login_screen) {
     DeleteExecutableFilesInData(should_delete_data_dalvik_cache_directory,
                                 should_delete_data_app_executables);
   }
-
-  RemountVendorDirectory();
 
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
