@@ -202,6 +202,11 @@ int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused) {
   return O_WRONLY;
 }
 
+int32_t GetOpenFilePermissions(const CopyEntryOptionsProto& unused) {
+  // OpenFile is Read-Only for CopyEntry since we only need to read the source.
+  return O_RDONLY;
+}
+
 PathParts SplitPath(const std::string& full_path) {
   DCHECK(!full_path.empty());
   base::FilePath path(full_path);

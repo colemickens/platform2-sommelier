@@ -122,6 +122,7 @@ bool ReadFromFD(const WriteFileOptionsProto& options,
 // Gets the correct permissions flag for |options|.
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
 int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);
+int32_t GetOpenFilePermissions(const CopyEntryOptionsProto& unused);
 
 // Returns the components of a filepath as a vector<std::string>.
 PathParts SplitPath(const std::string& full_path);

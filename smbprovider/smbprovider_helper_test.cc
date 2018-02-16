@@ -384,4 +384,21 @@ TEST_F(SmbProviderHelperTest, ShouldReportCreateDirError) {
   EXPECT_TRUE(ShouldReportCreateDirError(EPERM, true /* ignore_existing */));
 }
 
+// GetOpenFilePermissions correctly returns permissions.
+TEST_F(SmbProviderHelperTest, GetOpenFilePermissions) {
+  OpenFileOptionsProto open_file_proto_read = CreateOpenFileOptionsProto(
+      3 /* mount_id */, "smb://testShare/dir1/pic.png", false /* writeable */);
+  EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(open_file_proto_read));
+
+  OpenFileOptionsProto open_file_proto_read_write = CreateOpenFileOptionsProto(
+      3 /* mount_id */, "smb://testShare/dir1/pic.png", true /* writeable */);
+  EXPECT_EQ(O_RDWR, GetOpenFilePermissions(open_file_proto_read_write));
+
+  TruncateOptionsProto truncate_proto_blank;
+  EXPECT_EQ(O_WRONLY, GetOpenFilePermissions(truncate_proto_blank));
+
+  CopyEntryOptionsProto copy_entry_proto_blank;
+  EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(copy_entry_proto_blank));
+}
+
 }  // namespace smbprovider
