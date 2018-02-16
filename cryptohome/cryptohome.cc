@@ -142,6 +142,7 @@ namespace switches {
                                    "migrate_to_dircrypto",
                                    "needs_dircrypto_migration",
                                    "get_enrollment_id",
+                                   "get_supported_key_policies",
                                    NULL};
   enum ActionEnum {
     ACTION_MOUNT,
@@ -203,6 +204,7 @@ namespace switches {
     ACTION_MIGRATE_TO_DIRCRYPTO,
     ACTION_NEEDS_DIRCRYPTO_MIGRATION,
     ACTION_GET_ENROLLMENT_ID,
+    ACTION_GET_SUPPORTED_KEY_POLICIES,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -230,6 +232,8 @@ namespace switches {
   static const char kHiddenMount[] = "hidden_mount";
   static const char kMinimalMigration[] = "minimal_migration";
   static const char kPublicMount[] = "public_mount";
+  static const char kKeyPolicySwitch[] = "key_policy";
+  static const char kKeyPolicyLECredential[] = "le";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -1199,6 +1203,16 @@ int main(int argc, char **argv) {
       privs->set_update(false);
       privs->set_add(false);
       privs->set_remove(false);
+    }
+
+    if (cl->HasSwitch(switches::kKeyPolicySwitch)) {
+      if (cl->GetSwitchValueASCII(switches::kKeyPolicySwitch) ==
+          switches::kKeyPolicyLECredential) {
+        data->mutable_policy()->set_low_entropy_credential(true);
+      } else {
+        printf("Unknown key policy.\n");
+        return 1;
+      }
     }
 
     // TODO(wad) Add a privileges cl interface
@@ -2583,6 +2597,24 @@ int main(int argc, char **argv) {
     std::string eid_str = base::ToLowerASCII(
         base::HexEncode(enrollment_id->data, enrollment_id->len));
     printf("%s\n", eid_str.c_str());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
+      action.c_str())) {
+    cryptohome::GetSupportedKeyPoliciesRequest request;
+    cryptohome::BaseReply reply;
+
+    if (!MakeProtoDBusCall(
+        cryptohome::kCryptohomeGetSupportedKeyPolicies,
+        DBUS_METHOD(get_supported_key_policies),
+        DBUS_METHOD(get_supported_key_policies_async),
+        cl, &proxy, request, &reply)) {
+      return 1;
+    }
+    if (!reply.HasExtension(cryptohome::GetSupportedKeyPoliciesReply::reply)) {
+      printf("GetSupportedKeyPoliciesReply missing.\n");
+      return 1;
+    }
+    printf("GetSupportedKeyPolicies success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

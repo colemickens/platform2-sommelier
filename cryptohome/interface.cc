@@ -799,6 +799,12 @@ gboolean cryptohome_tpm_attestation_get_enrollment_id(
                          OUT_success);
 }
 
+gboolean cryptohome_get_supported_key_policies(Cryptohome* self,
+                                               GArray* request,
+                                               DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetSupportedKeyPolicies, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

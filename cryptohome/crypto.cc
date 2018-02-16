@@ -600,6 +600,20 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   return true;
 }
 
+bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
+                                 const SecureBlob& vault_key,
+                                 CryptoError* error,
+                                 VaultKeyset* keyset) const {
+  if (!use_tpm_ || !tpm_)
+    return false;
+
+  // TODO(crbug.com/794010): use LECredentialHandler when ready.
+  LOG(ERROR) << "Low entropy credentials are not supported.";
+  if (error)
+    *error = CE_OTHER_CRYPTO;
+  return false;
+}
+
 bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
                                 const SecureBlob& vault_key,
                                 unsigned int* crypt_flags, CryptoError* error,
@@ -608,9 +622,12 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     *crypt_flags = serialized.flags();
   if (error)
     *error = CE_NONE;
-  // Check if the vault keyset was Scrypt-wrapped
-  // (start with Scrypt to avoid reaching to TPM if both flags are set)
   unsigned int flags = serialized.flags();
+  if (flags & SerializedVaultKeyset::LE_CREDENTIAL) {
+    return DecryptLECredential(serialized, vault_key, error, vault_keyset);
+  }
+  // For non-LE credentials: Check if the vault keyset was Scrypt-wrapped
+  // (start with Scrypt to avoid reaching to TPM if both flags are set)
   if (flags & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     bool should_try_tpm = false;
     if (flags & SerializedVaultKeyset::TPM_WRAPPED) {
@@ -736,6 +753,10 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
                            const SecureBlob& key,
                            SerializedVaultKeyset* serialized) const {
   SecureBlob blob;
+  if (vault_keyset.IsLECredential()) {
+    LOG(ERROR) << "Low entropy credentials cannot be scrypt-wrapped.";
+    return false;
+  }
   if (!vault_keyset.ToKeysBlob(&blob)) {
     LOG(ERROR) << "Failure serializing keyset to buffer";
     return false;
@@ -789,16 +810,37 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
   return true;
 }
 
+bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
+                                 const SecureBlob& key,
+                                 const SecureBlob& salt,
+                                 SerializedVaultKeyset* serialized) const {
+  if (!use_tpm_ || !tpm_)
+    return false;
+
+  // TODO(crbug.com/794010): use LECredentialHandler when ready.
+  // serialized->set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  LOG(ERROR) << "Low entropy credentials are not supported.";
+  return false;
+}
+
 bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                 const SecureBlob& vault_key,
                                 const SecureBlob& vault_key_salt,
                                 SerializedVaultKeyset* serialized) const {
-  if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt, serialized)) {
-    if (use_tpm_ && tpm_ && tpm_->IsOwned()) {
-      ReportCryptohomeError(kEncryptWithTpmFailed);
-    }
-    if (!EncryptScrypt(vault_keyset, vault_key, serialized)) {
+  if (vault_keyset.IsLECredential()) {
+    if (!EncryptLECredential(vault_keyset, vault_key, vault_key_salt,
+                             serialized)) {
+      // TODO(crbug.com/794010): add ReportCryptohomeError
       return false;
+    }
+  } else {
+    if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt, serialized)) {
+      if (use_tpm_ && tpm_ && tpm_->IsOwned()) {
+        ReportCryptohomeError(kEncryptWithTpmFailed);
+      }
+      if (!EncryptScrypt(vault_keyset, vault_key, serialized)) {
+        return false;
+      }
     }
   }
 

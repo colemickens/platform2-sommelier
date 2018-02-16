@@ -72,7 +72,7 @@ class VaultKeyset {
   }
   virtual void set_chaps_key(const brillo::SecureBlob& chaps_key);
   virtual void clear_chaps_key();
-
+  virtual bool IsLECredential() const;
 
  private:
   brillo::SecureBlob fek_;

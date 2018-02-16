@@ -3267,4 +3267,38 @@ gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
   return TRUE;
 }
 
+gboolean Service::GetSupportedKeyPolicies(const GArray* request,
+                                          DBusGMethodInvocation* context) {
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoGetSupportedKeyPolicies, base::Unretained(this),
+                 std::string(request->data, request->data + request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+
+void Service::DoGetSupportedKeyPolicies(const std::string& request,
+                                        DBusGMethodInvocation* context) {
+  GetSupportedKeyPoliciesRequest request_pb;
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetSupportedKeyPoliciesRequest");
+    return;
+  }
+
+  BaseReply reply;
+  GetSupportedKeyPoliciesReply* extension =
+      reply.MutableExtension(GetSupportedKeyPoliciesReply::reply);
+
+  if (use_tpm_ && tpm_) {
+    // TODO(crbug.com/794010): use LECredentialBackend to check if
+    // LE credentials are supported.
+    extension->set_low_entropy_credentials(false);
+  } else {
+    extension->set_low_entropy_credentials(false);
+  }
+
+  SendReply(context, reply);
+}
+
 }  // namespace cryptohome

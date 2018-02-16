@@ -377,6 +377,11 @@ class Service : public brillo::dbus::AbstractDbusService,
                                            gboolean* OUT_needs_migration,
                                            GError** error);
 
+  virtual gboolean GetSupportedKeyPolicies(const GArray* request,
+                                           DBusGMethodInvocation* context);
+  virtual void DoGetSupportedKeyPolicies(const std::string& request,
+                                         DBusGMethodInvocation* context);
+
   // Attestation functionality is implemented in descendant classes
 
   // Attestation-related hooks.

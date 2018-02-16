@@ -245,4 +245,8 @@ bool VaultKeyset::Save(const FilePath& filename) {
   return ok;
 }
 
+bool VaultKeyset::IsLECredential() const {
+  return serialized_.key_data().policy().low_entropy_credential();
+}
+
 }  // namespace cryptohome

@@ -540,6 +540,11 @@
       <arg type="ay" name="account_id" direction="in" />
       <arg type="b" name="needs_dircrypto_migration" direction="out" />
     </method>
+    <method name="GetSupportedKeyPolicies">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.

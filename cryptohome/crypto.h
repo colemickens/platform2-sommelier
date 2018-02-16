@@ -223,6 +223,11 @@ class Crypto {
                      const brillo::SecureBlob& key,
                      SerializedVaultKeyset* serialized) const;
 
+  bool EncryptLECredential(const VaultKeyset& vault_keyset,
+                           const brillo::SecureBlob& key,
+                           const brillo::SecureBlob& salt,
+                           SerializedVaultKeyset* serialized) const;
+
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
                   const brillo::SecureBlob& key,
                   CryptoError* error,
@@ -232,6 +237,11 @@ class Crypto {
                      const brillo::SecureBlob& key,
                      CryptoError* error,
                      VaultKeyset* keyset) const;
+
+  bool DecryptLECredential(const SerializedVaultKeyset& serialized,
+                           const brillo::SecureBlob& key,
+                           CryptoError* error,
+                           VaultKeyset* vault_keyset) const;
 
   bool IsTPMPubkeyHash(const std::string& hash, CryptoError* error) const;
 
