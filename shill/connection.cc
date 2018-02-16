@@ -509,6 +509,23 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
       << ", peer " << peer->ToString()
       << ", gateway " << gateway->ToString()
       << ", trusted_ip " << trusted_ip.ToString();
+
+  if (per_device_routing_ && peer->IsValid()) {
+    // If per-device routing tables are used for a PPP connection:
+    // 1) Never set a peer (point-to-point) address, because the kernel
+    //    will create an implicit routing rule in RT_TABLE_MAIN rather
+    //    than our preferred routing table.  If the peer IP is set to the
+    //    public IP of a VPN gateway (see below) this creates a routing loop.
+    //    If not, it still creates an undesired route.
+    // 2) Don't bother setting a gateway address either, because it doesn't
+    //    have an effect on a point-to-point link.  So `ip route show table 1`
+    //    will just say something like:
+    //        default dev ppp0 metric 10
+    peer->SetAddressToDefault();
+    gateway->SetAddressToDefault();
+    return true;
+  }
+
   if (!gateway->IsValid()) {
     LOG(WARNING) << "No gateway address was provided for this connection.";
     return false;
