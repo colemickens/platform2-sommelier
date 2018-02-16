@@ -45,6 +45,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
+using testing::ElementsAre;
 using testing::Expectation;
 using testing::Mock;
 using testing::Return;
@@ -1006,14 +1007,76 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
                                 policy_proto_);
 
-  std::vector<std::string> flags = service_->GetStartUpFlags();
-  EXPECT_EQ(6, flags.size());
-  EXPECT_EQ("--policy-switches-begin", flags[0]);
-  EXPECT_EQ("--a", flags[1]);
-  EXPECT_EQ("--bb", flags[2]);
-  EXPECT_EQ("-c", flags[3]);
-  EXPECT_EQ("--d", flags[4]);
-  EXPECT_EQ("--policy-switches-end", flags[5]);
+  EXPECT_THAT(service_->GetStartUpFlags(),
+              ElementsAre("--policy-switches-begin", "--a", "--bb", "-c", "--d",
+                          "--policy-switches-end"));
+}
+
+TEST_F(DevicePolicyServiceTest, StartUpFlagsSitePerProcess) {
+  MockNssUtil nss;
+  InitService(&nss, true);
+
+  em::ChromeDeviceSettingsProto settings;
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  // No start-up flags
+  EXPECT_EQ(0, service_->GetStartUpFlags().size());
+
+  // Only --site-per-process
+  settings.mutable_device_login_screen_site_per_process()->set_site_per_process(
+      true);
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  EXPECT_THAT(service_->GetStartUpFlags(),
+              ElementsAre("--policy-switches-begin", "--site-per-process",
+                          "--policy-switches-end"));
+
+  // --site-per-process and policy-set arbitrary flags
+  settings.mutable_start_up_flags()->add_flags("--a");
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  EXPECT_THAT(service_->GetStartUpFlags(),
+              ElementsAre("--policy-switches-begin", "--a",
+                          "--site-per-process", "--policy-switches-end"));
+}
+
+TEST_F(DevicePolicyServiceTest, StartUpFlagsIsolateOrigins) {
+  MockNssUtil nss;
+  InitService(&nss, true);
+
+  em::ChromeDeviceSettingsProto settings;
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+
+  // No start-up flags
+  EXPECT_EQ(0, service_->GetStartUpFlags().size());
+
+  // Only --isolate-origins
+  settings.mutable_device_login_screen_isolate_origins()->set_isolate_origins(
+      "https://example.com,https://example2.com");
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  EXPECT_THAT(
+      service_->GetStartUpFlags(),
+      ElementsAre("--policy-switches-begin",
+                  "--isolate-origins=https://example.com,https://example2.com",
+                  "--policy-switches-end"));
+
+  // --isolate-origins and policy-set arbitrary flags
+  settings.mutable_start_up_flags()->add_flags("--a");
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
+                                policy_proto_);
+  EXPECT_THAT(
+      service_->GetStartUpFlags(),
+      ElementsAre("--policy-switches-begin", "--a",
+                  "--isolate-origins=https://example.com,https://example2.com",
+                  "--policy-switches-end"));
 }
 
 TEST_F(DevicePolicyServiceTest, PersistPolicyMultipleNamespaces) {

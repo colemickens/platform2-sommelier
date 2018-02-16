@@ -307,8 +307,6 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
   if (policy.has_start_up_flags()) {
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     const RepeatedPtrField<std::string>& flags = flags_proto.flags();
-    policy_args.push_back(
-        std::string("--").append(chromeos::switches::kPolicySwitchesBegin));
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
          it != flags.end(); ++it) {
       std::string flag(*it);
@@ -325,6 +323,30 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
         flag = std::string("--").append(flag);
       policy_args.push_back(flag);
     }
+  }
+
+  // Respect DeviceLoginScreenSitePerProcess policy for the sign-in screen.
+  if (policy.has_device_login_screen_site_per_process()) {
+    const em::DeviceLoginScreenSitePerProcessProto& proto =
+        policy.device_login_screen_site_per_process();
+    if (proto.has_site_per_process())
+      policy_args.push_back("--site-per-process");
+  }
+
+  // Respect DeviceLoginScreenIsolateOrigins for the sign-in screen.
+  if (policy.has_device_login_screen_isolate_origins()) {
+    const em::DeviceLoginScreenIsolateOriginsProto& proto =
+        policy.device_login_screen_isolate_origins();
+    if (proto.has_isolate_origins())
+      policy_args.push_back("--isolate-origins=" + proto.isolate_origins());
+  }
+
+  // Add sentinel values to mark which flags were filled from policy and should
+  // not apply to user sessions.
+  if (!policy_args.empty()) {
+    policy_args.insert(
+        policy_args.begin(),
+        std::string("--").append(chromeos::switches::kPolicySwitchesBegin));
     policy_args.push_back(
         std::string("--").append(chromeos::switches::kPolicySwitchesEnd));
   }
