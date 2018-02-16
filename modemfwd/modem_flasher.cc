@@ -14,8 +14,10 @@
 namespace modemfwd {
 
 ModemFlasher::ModemFlasher(
-    std::unique_ptr<FirmwareDirectory> firmware_directory)
-    : firmware_directory_(std::move(firmware_directory)) {}
+    std::unique_ptr<FirmwareDirectory> firmware_directory,
+    std::unique_ptr<Journal> journal)
+    : firmware_directory_(std::move(firmware_directory)),
+      journal_(std::move(journal)) {}
 
 void ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
@@ -37,6 +39,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
       // We found different firmware! Flash the modem, and since it will
       // reboot afterwards, we can wait to get called again to check the
       // carrier firmware.
+      journal_->MarkStartOfFlashingMainFirmware(device_id);
       if (modem->FlashMainFirmware(file_info.firmware_path)) {
         main_fw_checked_.insert(equipment_id);
         DLOG(INFO) << "Flashed " << file_info.firmware_path.value()
@@ -44,6 +47,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
       } else {
         blacklist_.insert(equipment_id);
       }
+      journal_->MarkEndOfFlashingMainFirmware(device_id);
       return;
     }
   }
@@ -91,6 +95,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
 
   if (!has_carrier_fw || carrier_fw_id != current_carrier ||
       carrier_fw_version != file_info.version) {
+    journal_->MarkStartOfFlashingCarrierFirmware(device_id, current_carrier);
     if (modem->FlashCarrierFirmware(file_info.firmware_path)) {
       last_carrier_fw_flashed_.insert(
           std::make_pair(equipment_id, file_info.firmware_path));
@@ -99,6 +104,7 @@ void ModemFlasher::TryFlash(Modem* modem) {
     } else {
       blacklist_.insert(equipment_id);
     }
+    journal_->MarkEndOfFlashingCarrierFirmware(device_id, current_carrier);
   }
 }
 

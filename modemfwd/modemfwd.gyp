@@ -27,6 +27,7 @@
       'sources': [
         '<(proto_in_dir)/firmware_manifest.proto',
         '<(proto_in_dir)/helper_manifest.proto',
+        '<(proto_in_dir)/journal_entry.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -38,12 +39,13 @@
       ],
       'sources': [
         'firmware_directory.cc',
+        'journal.cc',
         'modem.cc',
         'modem_flasher.cc',
         'modem_helper.cc',
         'modem_helper_directory.cc',
         'modem_tracker.cc',
-        'proto_file_reader.cc',
+        'proto_file_io.cc',
       ],
     },
     {
@@ -78,6 +80,7 @@
           'sources': [
             'firmware_directory_stub.cc',
             'firmware_directory_unittest.cc',
+            'journal_unittest.cc',
             'modem_flasher_unittest.cc',
           ],
         },

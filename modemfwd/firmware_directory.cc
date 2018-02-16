@@ -11,7 +11,7 @@
 #include <base/macros.h>
 
 #include "modemfwd/proto_bindings/firmware_manifest.pb.h"
-#include "modemfwd/proto_file_reader.h"
+#include "modemfwd/proto_file_io.h"
 
 namespace {
 

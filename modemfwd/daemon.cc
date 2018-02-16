@@ -22,12 +22,15 @@
 
 namespace modemfwd {
 
-Daemon::Daemon(const std::string& helper_directory)
-    : Daemon(helper_directory, "") {}
+Daemon::Daemon(const std::string& journal_file,
+               const std::string& helper_directory)
+    : Daemon(journal_file, helper_directory, "") {}
 
-Daemon::Daemon(const std::string& helper_directory,
+Daemon::Daemon(const std::string& journal_file,
+               const std::string& helper_directory,
                const std::string& firmware_directory)
-    : helper_dir_path_(helper_directory),
+    : journal_file_path_(journal_file),
+      helper_dir_path_(helper_directory),
       firmware_dir_path_(firmware_directory),
       weak_ptr_factory_(this) {}
 
@@ -70,8 +73,15 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  modem_flasher_ =
-      std::make_unique<modemfwd::ModemFlasher>(std::move(firmware_directory));
+  auto journal = OpenJournal(journal_file_path_, firmware_directory.get(),
+                             helper_directory_.get());
+  if (!journal) {
+    LOG(ERROR) << "Could not open journal file";
+    return EX_UNAVAILABLE;
+  }
+
+  modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
+      std::move(firmware_directory), std::move(journal));
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,

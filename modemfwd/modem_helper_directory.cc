@@ -13,7 +13,7 @@
 
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/helper_manifest.pb.h"
-#include "modemfwd/proto_file_reader.h"
+#include "modemfwd/proto_file_io.h"
 
 namespace {
 

@@ -13,6 +13,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "modemfwd/component.h"
+#include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_tracker.h"
@@ -23,10 +24,11 @@ class Daemon : public brillo::DBusDaemon {
  public:
   // Constructor for Daemon which loads the cellular component to get
   // firmware.
-  explicit Daemon(const std::string& helper_directory);
+  Daemon(const std::string& journal_file, const std::string& helper_directory);
   // Constructor for Daemon which loads from already set-up
   // directories.
-  Daemon(const std::string& helper_directory,
+  Daemon(const std::string& journal_file,
+         const std::string& helper_directory,
          const std::string& firmware_directory);
   ~Daemon() override = default;
 
@@ -43,11 +45,13 @@ class Daemon : public brillo::DBusDaemon {
 
   std::unique_ptr<Component> component_;
 
+  base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
   base::FilePath firmware_dir_path_;
 
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
 
+  std::unique_ptr<Journal> journal_;
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "modemfwd/proto_file_reader.h"
+#include "modemfwd/proto_file_io.h"
 
 #include <utility>
 
@@ -24,8 +24,17 @@ bool ReadProtobuf(const base::FilePath& proto_file,
     return false;
   }
 
-  google::protobuf::io::FileInputStream input_stream(file.GetPlatformFile());
+  return ReadProtobuf(file.GetPlatformFile(), out_proto);
+}
+
+bool ReadProtobuf(int fd, google::protobuf::Message* out_proto) {
+  google::protobuf::io::FileInputStream input_stream(fd);
   return google::protobuf::TextFormat::Parse(&input_stream, out_proto);
+}
+
+bool WriteProtobuf(const google::protobuf::Message& proto, int fd) {
+  google::protobuf::io::FileOutputStream output_stream(fd);
+  return google::protobuf::TextFormat::Print(proto, &output_stream);
 }
 
 }  // namespace modemfwd

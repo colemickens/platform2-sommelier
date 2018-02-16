@@ -13,6 +13,7 @@
 #include <base/macros.h>
 
 #include "modemfwd/firmware_directory.h"
+#include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 
 namespace modemfwd {
@@ -21,12 +22,14 @@ namespace modemfwd {
 // or not it should flash new firmware onto the modem.
 class ModemFlasher {
  public:
-  explicit ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory);
+  ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory,
+               std::unique_ptr<Journal> journal);
 
   void TryFlash(Modem* modem);
 
  private:
   std::unique_ptr<FirmwareDirectory> firmware_directory_;
+  std::unique_ptr<Journal> journal_;
 
   // Unlike carrier firmware, we should only ever successfully flash the main
   // firmware at most once per boot. In the past vendors have failed to

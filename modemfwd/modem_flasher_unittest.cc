@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "modemfwd/firmware_directory_stub.h"
+#include "modemfwd/mock_journal.h"
 #include "modemfwd/mock_modem.h"
 
 using ::testing::_;
@@ -55,8 +56,11 @@ class ModemFlasherTest : public ::testing::Test {
     auto firmware_directory = std::make_unique<FirmwareDirectoryStub>();
     firmware_directory_ = firmware_directory.get();
 
-    modem_flasher_ =
-        std::make_unique<ModemFlasher>(std::move(firmware_directory));
+    auto journal = std::make_unique<MockJournal>();
+    journal_ = journal.get();
+
+    modem_flasher_ = std::make_unique<ModemFlasher>(
+        std::move(firmware_directory), std::move(journal));
   }
 
  protected:
@@ -101,6 +105,7 @@ class ModemFlasherTest : public ::testing::Test {
     ON_CALL(*modem, GetCarrierFirmwareVersion()).WillByDefault(Return(version));
   }
 
+  MockJournal* journal_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
 
  private:
@@ -457,6 +462,97 @@ TEST_F(ModemFlasherTest, HotSwapWithGenericFirmware) {
   EXPECT_CALL(*modem.get(), FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem.get(), FlashCarrierFirmware(original_firmware))
       .WillOnce(Return(true));
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, WritesToJournal) {
+  base::FilePath new_firmware(kMainFirmware2Path);
+  AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  EXPECT_CALL(*modem.get(), GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), GetMainFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), FlashMainFirmware(new_firmware))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*modem.get(), FlashCarrierFirmware(_)).Times(0);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
+      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
+      .Times(0);
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
+  base::FilePath new_firmware(kMainFirmware2Path);
+  AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  EXPECT_CALL(*modem.get(), GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), GetMainFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), FlashMainFirmware(new_firmware))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*modem.get(), FlashCarrierFirmware(_)).Times(0);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
+      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
+      .Times(0);
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
+  base::FilePath original_firmware(kCarrier1Firmware1Path);
+  base::FilePath other_firmware(kCarrier2Firmware1Path);
+  AddCarrierFirmwareFile(kDeviceId1, kCarrier1, original_firmware,
+                         kCarrier1Firmware1Version);
+  AddCarrierFirmwareFile(kDeviceId1, kCarrier2, other_firmware,
+                         kCarrier2Firmware1Version);
+
+  auto modem = GetDefaultModem();
+  EXPECT_CALL(*modem.get(), GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), GetCarrierId())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(kCarrier2));
+  SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
+  EXPECT_CALL(*modem.get(), FlashMainFirmware(_)).Times(0);
+  EXPECT_CALL(*modem.get(), FlashCarrierFirmware(other_firmware))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_,
+              MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
+      .Times(1);
+  EXPECT_CALL(*journal_,
+              MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
+      .Times(1);
+  modem_flasher_->TryFlash(modem.get());
+
+  // After the modem reboots, the helper hopefully reports the new carrier.
+  SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
+  EXPECT_CALL(*modem.get(), FlashMainFirmware(_)).Times(0);
+  EXPECT_CALL(*modem.get(), FlashCarrierFirmware(_)).Times(0);
+  modem_flasher_->TryFlash(modem.get());
+
+  // Suppose we swap the SIM back to the first one. Then we should try to
+  // flash the first firmware again.
+  modem = GetDefaultModem();
+  EXPECT_CALL(*modem.get(), GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem.get(), GetCarrierId()).Times(AtLeast(1));
+  SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
+  EXPECT_CALL(*modem.get(), FlashMainFirmware(_)).Times(0);
+  EXPECT_CALL(*modem.get(), FlashCarrierFirmware(original_firmware))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_,
+              MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
+      .Times(1);
+  EXPECT_CALL(*journal_,
+              MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
+      .Times(1);
   modem_flasher_->TryFlash(modem.get());
 }
 
