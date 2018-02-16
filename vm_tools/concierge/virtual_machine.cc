@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <linux/capability.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <utility>
@@ -48,6 +49,9 @@ constexpr int64_t kShutdownTimeoutSeconds = 6;
 
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 2;
+
+// How long to wait before timing out on child process exits.
+constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(2);
 
 // Offset in a subnet of the gateway/host.
 constexpr size_t kHostAddressOffset = 0;
@@ -97,6 +101,41 @@ bool SetPgid() {
   }
 
   return true;
+}
+
+// Waits for the |pid| to exit.  Returns true if |pid| successfully exited and
+// false if it did not exit in time.
+bool WaitForChild(pid_t child, base::TimeDelta timeout) {
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+
+  const base::Time deadline = base::Time::Now() + timeout;
+  while (true) {
+    pid_t ret = waitpid(child, nullptr, WNOHANG);
+    if (ret == child || (ret < 0 && errno == ECHILD)) {
+      // Either the child exited or it doesn't exist anymore.
+      return true;
+    }
+
+    // ret == 0 means that the child is still alive
+    if (ret < 0) {
+      PLOG(ERROR) << "Failed to wait for child process";
+      return false;
+    }
+
+    base::Time now = base::Time::Now();
+    if (deadline <= now) {
+      // Timed out.
+      return false;
+    }
+
+    const struct timespec ts = (deadline - now).ToTimeSpec();
+    if (sigtimedwait(&set, nullptr, &ts) < 0 && errno == EAGAIN) {
+      // Timed out.
+      return false;
+    }
+  }
 }
 
 }  // namespace
@@ -223,8 +262,6 @@ bool VirtualMachine::Shutdown() {
     return true;
   }
 
-  LOG(INFO) << "Shutting down VM " << vsock_cid_;
-
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
@@ -233,8 +270,14 @@ bool VirtualMachine::Shutdown() {
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub_->Shutdown(&ctx, empty, &empty);
 
-  if (status.ok()) {
-    process_.Wait();
+  // brillo::ProcessImpl doesn't provide a timed wait function and while the
+  // Shutdown RPC may have been successful we can't really trust crosvm to
+  // actually exit.  This may result in an untimed wait() blocking indefinitely.
+  // Instead, do a timed wait here and only return success if the process
+  // _actually_ exited as reported by the kernel, which is really the only
+  // thing we can trust here.
+  if (status.ok() && WaitForChild(process_.pid(), kChildExitTimeout)) {
+    process_.Release();
     return true;
   }
 
@@ -247,25 +290,26 @@ bool VirtualMachine::Shutdown() {
   crosvm.AddArg(kCrosvmBin);
   crosvm.AddArg("stop");
   crosvm.AddArg(runtime_dir_.path().Append(kCrosvmSocket).value());
+  crosvm.Run();
 
-  int code = crosvm.Run();
-  if (code == 0) {
-    process_.Wait();
+  // We can't actually trust the exit codes that crosvm gives us so just see if
+  // it exited.
+  if (WaitForChild(process_.pid(), kChildExitTimeout)) {
+    process_.Release();
     return true;
   }
 
-  LOG(WARNING) << "Failed to stop VM " << vsock_cid_ << " via crosvm socket "
-               << "(status code " << code << ")";
+  LOG(WARNING) << "Failed to stop VM " << vsock_cid_ << " via crosvm socket";
 
   // Kill the process with SIGTERM.
-  if (process_.Kill(SIGTERM, kShutdownTimeoutSeconds)) {
+  if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
     return true;
   }
 
   LOG(WARNING) << "Failed to kill VM " << vsock_cid_ << " with SIGTERM";
 
   // Kill it with fire.
-  if (process_.Kill(SIGKILL, kShutdownTimeoutSeconds)) {
+  if (process_.Kill(SIGKILL, kChildExitTimeout.InSeconds())) {
     return true;
   }
 
