@@ -220,9 +220,7 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
   int32_t file_id;
   // CreateFile() gives us back an open file descriptor to the newly created
   // file.
-  int32_t create_result = samba_interface_->CreateFile(full_path, &file_id);
-  if (create_result != 0) {
-    LogAndSetError(options, GetErrorFromErrno(create_result), &error_code);
+  if (!CreateFile(options, full_path, &file_id, &error_code)) {
     return error_code;
   }
 
@@ -261,10 +259,11 @@ int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
   WriteFileOptionsProto options;
   std::vector<uint8_t> buffer;
 
-  const bool result = ParseOptionsProto(options_blob, &options, &error_code) &&
-                      ReadFromFD(options, temp_fd, &error_code, &buffer) &&
-                      Seek(options, &error_code) &&
-                      WriteFileFromBuffer(options, buffer, &error_code);
+  const bool result =
+      ParseOptionsProto(options_blob, &options, &error_code) &&
+      ReadFromFD(options, temp_fd, &error_code, &buffer) &&
+      Seek(options, &error_code) &&
+      WriteFileFromBuffer(options, options.file_id(), buffer, &error_code);
 
   return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
@@ -478,13 +477,15 @@ bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
   return true;
 }
 
-bool SmbProvider::WriteFileFromBuffer(const WriteFileOptionsProto& options,
+template <typename Proto>
+bool SmbProvider::WriteFileFromBuffer(const Proto& options,
+                                      int32_t file_id,
                                       const std::vector<uint8_t>& buffer,
                                       int32_t* error_code) {
   DCHECK(error_code);
 
-  int32_t result = samba_interface_->WriteFile(options.file_id(), buffer.data(),
-                                               buffer.size());
+  int32_t result =
+      samba_interface_->WriteFile(file_id, buffer.data(), buffer.size());
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -661,11 +662,11 @@ bool SmbProvider::CreateParentsIfNecessary(
          CreateNestedDirectories(options, paths, error_code);
 }
 
-bool SmbProvider::CreateSingleDirectory(
-    const CreateDirectoryOptionsProto& options,
-    const std::string& full_path,
-    bool ignore_existing,
-    int32_t* error_code) {
+template <typename Proto>
+bool SmbProvider::CreateSingleDirectory(const Proto& options,
+                                        const std::string& full_path,
+                                        bool ignore_existing,
+                                        int32_t* error_code) {
   DCHECK(error_code);
 
   const int32_t result = samba_interface_->CreateDirectory(full_path);
@@ -674,6 +675,22 @@ bool SmbProvider::CreateSingleDirectory(
     return false;
   }
 
+  return true;
+}
+
+template <typename Proto>
+bool SmbProvider::CreateFile(const Proto& options,
+                             const std::string& full_path,
+                             int32_t* file_id,
+                             int32_t* error) {
+  DCHECK(file_id);
+  DCHECK(error);
+
+  int32_t result = samba_interface_->CreateFile(full_path, file_id);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error);
+    return false;
+  }
   return true;
 }
 

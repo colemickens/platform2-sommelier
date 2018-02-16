@@ -156,9 +156,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);
 
-  // Helper method to write data from a |buffer| into a file specified in
-  // |options|. Returns true on success, and sets |error_code| on failure.
-  bool WriteFileFromBuffer(const WriteFileOptionsProto& options,
+  // Helper method to write data from a |buffer| into a file specified by
+  // |file_id|. |options| is used for logging. Returns true on success, and sets
+  // |error_code| on failure.
+  template <typename Proto>
+  bool WriteFileFromBuffer(const Proto& options,
+                           int32_t file_id,
                            const std::vector<uint8_t>& buffer,
                            int32_t* error_code);
 
@@ -194,9 +197,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   // Opens a file located at |full_path| with permissions based on the protobuf.
   // |file_id| is the file handle for the opened file, and error will be set on
-  // failure. |options| is used for logging purposes. GetOpenFilePermissions
-  // must be overloaded to new protobufs using this method. Returns true on
-  // success.
+  // failure. |options| is used for permissions and logging.
+  // GetOpenFilePermissions must be overloaded to new protobufs using this
+  // method. Returns true on success.
   template <typename Proto>
   bool OpenFile(const Proto& options,
                 const std::string& full_path,
@@ -240,7 +243,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Helper method to create a single directory at |full_path|. |options| is
   // used for logging purposes. If |ignore_existing| is true, this will ignore
   // EEXIST errors. Returns true on success and sets |error_code| on failure.
-  bool CreateSingleDirectory(const CreateDirectoryOptionsProto& options,
+  template <typename Proto>
+  bool CreateSingleDirectory(const Proto& options,
                              const std::string& full_path,
                              bool ignore_existing,
                              int32_t* error_code);
@@ -254,6 +258,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   bool GenerateParentPaths(const CreateDirectoryOptionsProto& options,
                            int32_t* error_code,
                            std::vector<std::string>* parent_paths);
+
+  // Creates a file at |full_path|. Sets |file_id| to fd of newly created file.
+  // Returns false and sets |error| on failure. |options| is used for
+  template <typename Proto>
+  bool CreateFile(const Proto& options,
+                  const std::string& full_path,
+                  int32_t* file_id,
+                  int32_t* error);
 
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
