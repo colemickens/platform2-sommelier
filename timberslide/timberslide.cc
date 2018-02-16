@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <poll.h>
+#include <sysexits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -33,9 +34,9 @@ const int kMaxCurrentLogSize = 10 * 1024 * 1024;
 class TimberSlide : public brillo::Daemon,
                     public base::MessageLoopForIO::Watcher {
  public:
-  TimberSlide(const base::FilePath& device_log,
+  TimberSlide(base::File device_file,
               const base::FilePath& log_dir):
-      device_log_(device_log),
+      device_file_(std::move(device_file)),
       total_size_(0) {
     current_log_ = log_dir.Append(kCurrentLogFile);
     previous_log_ = log_dir.Append(kPreviousLogFile);
@@ -44,25 +45,16 @@ class TimberSlide : public brillo::Daemon,
  private:
   int OnInit() override {
     LOG(INFO) << "Starting timberslide daemon";
-    if (!base::PathExists(device_log_)) {
-      LOG(FATAL) << "EC log does not exist!";
-      return 1;
-    }
+    int ret = brillo::Daemon::OnInit();
+    if (ret != EX_OK)
+      return ret;
 
     RotateLogs(previous_log_, current_log_);
-
-    device_file_ = base::File(device_log_,
-                              base::File::FLAG_OPEN | base::File::FLAG_READ);
-
-    if (!device_file_.IsValid()) {
-      LOG(FATAL) << "Open error : " << device_file_.error_details();
-      return 1;
-    }
 
     CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
               device_file_.GetPlatformFile(), true,
               base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this));
-    return 0;
+    return EX_OK;
   }
 
   void OnFileCanWriteWithoutBlocking(int fd) override {
@@ -81,13 +73,12 @@ class TimberSlide : public brillo::Daemon,
       return;
 
     if (ret < 0) {
-      LOG(FATAL) << "Read error: " << base::File::ErrorToString(
-                                        base::File::OSErrorToFileError(errno));
+      PLOG(FATAL) << "Read error";
       return;
     }
 
     if (!base::AppendToFile(current_log_, buffer, ret)) {
-      LOG(FATAL) << "Could not append log file!";
+      PLOG(FATAL) << "Could not append log file";
       return;
     }
 
@@ -108,7 +99,6 @@ class TimberSlide : public brillo::Daemon,
     base::WriteFile(current_log, "", 0);
   }
 
-  base::FilePath device_log_;
   base::File device_file_;
   base::FilePath current_log_;
   base::FilePath previous_log_;
@@ -126,8 +116,15 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv,
       "timberslide concatenates EC logs for use in debugging.");
 
-  TimberSlide ts((base::FilePath(FLAGS_device_log)),
-                 (base::FilePath(FLAGS_log_directory)));
+  base::File device_file(base::FilePath(FLAGS_device_log),
+                         base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!device_file.IsValid()) {
+    LOG(ERROR) << "Error opening " << FLAGS_device_log << ": "
+               << base::File::ErrorToString(device_file.error_details());
+    return EX_UNAVAILABLE;
+  }
+
+  TimberSlide ts(std::move(device_file), (base::FilePath(FLAGS_log_directory)));
 
   return ts.Run();
 }
