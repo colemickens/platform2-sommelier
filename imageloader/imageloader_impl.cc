@@ -44,7 +44,8 @@ base::FilePath GetMountPoint(const base::FilePath& mount_base_path,
 
 bool AssertComponentDirPerms(const base::FilePath& path) {
   int mode;
-  if (!GetPosixFilePermissions(path, &mode)) return false;
+  if (!GetPosixFilePermissions(path, &mode))
+    return false;
   return mode == kComponentDirPerms;
 }
 
@@ -52,7 +53,7 @@ bool AssertComponentDirPerms(const base::FilePath& path) {
 
 bool ImageLoaderImpl::LoadComponent(const std::string& name,
                                     const std::string& mount_point_str,
-                                    HelperProcess* process) {
+                                    HelperProcessProxy* proxy) {
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return false;
@@ -66,22 +67,23 @@ bool ImageLoaderImpl::LoadComponent(const std::string& name,
   }
 
   base::FilePath mount_point(mount_point_str);
-  return component->Mount(process, mount_point);
+  return component->Mount(proxy, mount_point);
 }
 
 std::string ImageLoaderImpl::LoadComponent(const std::string& name,
-                                           HelperProcess* process) {
+                                           HelperProcessProxy* proxy) {
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return kBadResult;
   }
 
-  return LoadComponentAtPath(name, component_path, process);
+  return LoadComponentAtPath(name, component_path, proxy);
 }
 
 std::string ImageLoaderImpl::LoadComponentAtPath(
-    const std::string& name, const base::FilePath& component_path,
-    HelperProcess* process) {
+    const std::string& name,
+    const base::FilePath& component_path,
+    HelperProcessProxy* proxy) {
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
   if (!component) {
@@ -91,8 +93,8 @@ std::string ImageLoaderImpl::LoadComponentAtPath(
 
   base::FilePath mount_point(
       GetMountPoint(config_.mount_path, name, component->manifest().version));
-  return component->Mount(process, mount_point) ? mount_point.value()
-                                                : kBadResult;
+  return component->Mount(proxy, mount_point) ? mount_point.value()
+                                              : kBadResult;
 }
 
 bool ImageLoaderImpl::RemoveComponent(const std::string& name) {
@@ -108,19 +110,19 @@ bool ImageLoaderImpl::RemoveComponent(const std::string& name) {
 bool ImageLoaderImpl::CleanupAll(bool dry_run,
                                  const base::FilePath& parent_dir,
                                  std::vector<std::string>* paths,
-                                 HelperProcess* process) {
-  return process->SendUnmountAllCommand(dry_run, parent_dir.value(), paths);
+                                 HelperProcessProxy* proxy) {
+  return proxy->SendUnmountAllCommand(dry_run, parent_dir.value(), paths);
 }
 
 bool ImageLoaderImpl::Cleanup(const base::FilePath& path,
-                              HelperProcess* process) {
-  return process->SendUnmountCommand(path.value());
+                              HelperProcessProxy* proxy) {
+  return proxy->SendUnmountCommand(path.value());
 }
 
 bool ImageLoaderImpl::RemoveComponentAtPath(
-  const std::string& name,
-  const base::FilePath& component_root,
-  const base::FilePath& component_path) {
+    const std::string& name,
+    const base::FilePath& component_root,
+    const base::FilePath& component_path) {
   // Check if component is removable.
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
@@ -142,12 +144,14 @@ bool ImageLoaderImpl::RemoveComponentAtPath(
 }
 
 bool ImageLoaderImpl::RegisterComponent(
-    const std::string& name, const std::string& version,
+    const std::string& name,
+    const std::string& version,
     const std::string& component_folder_abs_path) {
   base::FilePath components_dir(config_.storage_dir);
 
   // If the directory is writable by others, do not trust the components.
-  if (!AssertComponentDirPerms(components_dir)) return false;
+  if (!AssertComponentDirPerms(components_dir))
+    return false;
 
   std::string old_version_hint;
   base::FilePath version_hint_path(GetLatestVersionFilePath(name));
@@ -182,10 +186,10 @@ bool ImageLoaderImpl::RegisterComponent(
     }
   }
 
-  std::unique_ptr<Component> component =
-      Component::Create(base::FilePath(component_folder_abs_path),
-                        config_.keys);
-  if (!component) return false;
+  std::unique_ptr<Component> component = Component::Create(
+      base::FilePath(component_folder_abs_path), config_.keys);
+  if (!component)
+    return false;
 
   // Check that the reported version matches the component manifest version.
   if (component->manifest().version != version) {
@@ -236,14 +240,14 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
 
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
-  if (!component) return kBadResult;
+  if (!component)
+    return kBadResult;
 
   return component->manifest().version;
 }
 
 bool ImageLoaderImpl::GetComponentMetadata(
-     const std::string& name,
-     std::map<std::string, std::string>* out_metadata) {
+    const std::string& name, std::map<std::string, std::string>* out_metadata) {
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return false;

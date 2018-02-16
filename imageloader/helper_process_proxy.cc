@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 
 #include <poll.h>
 #include <signal.h>
@@ -19,7 +19,9 @@
 
 namespace imageloader {
 
-void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
+void HelperProcessProxy::Start(int argc,
+                               char* argv[],
+                               const std::string& fd_arg) {
   int control[2];
 
   if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0)
@@ -46,7 +48,7 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
   pid_ = p.Pid();
 }
 
-std::unique_ptr<CommandResponse> HelperProcess::SendCommand(
+std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
     const ImageCommand& image_command, struct msghdr* msg) {
   // Serialize message object into string.
   std::string msg_str;
@@ -54,24 +56,26 @@ std::unique_ptr<CommandResponse> HelperProcess::SendCommand(
     LOG(FATAL) << "error serializing protobuf";
 
   // iov takes a non-const pointer.
-  char buffer[msg_str.size() + 1];
-  memcpy(buffer, msg_str.c_str(), sizeof(buffer));
+  std::vector<char> buffer(msg_str.size() + 1);
+  memcpy(&buffer[0], msg_str.c_str(), buffer.size());
 
   struct iovec iov[1];
-  iov[0].iov_base = buffer;
-  iov[0].iov_len = sizeof(buffer);
+  iov[0].iov_base = buffer.data();
+  iov[0].iov_len = buffer.size();
 
   msg->msg_iov = iov;
   msg->msg_iovlen = sizeof(iov) / sizeof(iov[0]);
 
-  if (sendmsg(control_fd_.get(), msg, 0) < 0) PLOG(FATAL) << "sendmsg failed";
+  if (sendmsg(control_fd_.get(), msg, 0) < 0)
+    PLOG(FATAL) << "sendmsg failed";
 
   return WaitForResponse();
 }
 
-bool HelperProcess::SendMountCommand(int fd, const std::string& path,
-                                     FileSystem fs_type,
-                                     const std::string& table) {
+bool HelperProcessProxy::SendMountCommand(int fd,
+                                          const std::string& path,
+                                          FileSystem fs_type,
+                                          const std::string& table) {
   struct msghdr msg = {0};
   char fds[CMSG_SPACE(sizeof(fd))];
   memset(fds, '\0', sizeof(fds));
@@ -110,9 +114,10 @@ bool HelperProcess::SendMountCommand(int fd, const std::string& path,
   return SendCommand(image_command, &msg)->success();
 }
 
-bool HelperProcess::SendUnmountAllCommand(bool dry_run,
-                                          const std::string& rootpath,
-                                          std::vector<std::string>* paths) {
+bool HelperProcessProxy::SendUnmountAllCommand(
+    bool dry_run,
+    const std::string& rootpath,
+    std::vector<std::string>* paths) {
   struct msghdr msg = {0};
 
   // 1. Construct message object.
@@ -133,7 +138,7 @@ bool HelperProcess::SendUnmountAllCommand(bool dry_run,
   return response->success();
 }
 
-bool HelperProcess::SendUnmountCommand(const std::string& path) {
+bool HelperProcessProxy::SendUnmountCommand(const std::string& path) {
   struct msghdr msg = {0};
 
   // 1. Construct message object.
@@ -144,12 +149,12 @@ bool HelperProcess::SendUnmountCommand(const std::string& path) {
   return SendCommand(image_command, &msg)->success();
 }
 
-std::unique_ptr<CommandResponse> HelperProcess::WaitForResponse() {
+std::unique_ptr<CommandResponse> HelperProcessProxy::WaitForResponse() {
   struct pollfd pfd;
   pfd.fd = control_fd_.get();
   pfd.events = POLLIN;
 
-  int rc = poll(&pfd, 1, /*timeout=*/ 2000);
+  int rc = poll(&pfd, 1, 2000 /* timeout (ms) */);
   PCHECK(rc >= 0 || errno == EINTR);
 
   std::unique_ptr<CommandResponse> response =

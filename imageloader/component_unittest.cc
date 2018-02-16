@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "imageloader/imageloader_impl.h"
-#include "imageloader/mock_helper_process.h"
+#include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
 
 namespace imageloader {
@@ -154,7 +154,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentExt4) {
   // Note: this fails to test the actual mounting process since it is just a
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -184,7 +184,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentSquashfs) {
   // Note: this fails to test the actual mounting process since it is just a
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))

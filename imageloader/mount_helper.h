@@ -26,7 +26,7 @@ class MountHelper : public brillo::Daemon,
   explicit MountHelper(base::ScopedFD control_fd);
 
  protected:
-  // OVerrides Daemon init callback.
+  // Overrides Daemon init callback.
   int OnInit() override;
 
   // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.

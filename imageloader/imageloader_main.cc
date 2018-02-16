@@ -12,7 +12,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader.h"
 #include "imageloader/imageloader_impl.h"
 #include "imageloader/mount_helper.h"
@@ -110,8 +110,9 @@ int main(int argc, char** argv) {
 
   imageloader::ImageLoaderConfig config(keys, kComponentsPath,
                                         FLAGS_loaded_mounts_base.c_str());
-  auto helper_process = std::make_unique<imageloader::HelperProcess>();
-  helper_process->Start(argc, argv, "--mount_helper_fd");
+  auto helper_process_proxy =
+      std::make_unique<imageloader::HelperProcessProxy>();
+  helper_process_proxy->Start(argc, argv, "--mount_helper_fd");
 
   // Load and mount the specified component and exit.
   if (FLAGS_mount) {
@@ -136,7 +137,7 @@ int main(int argc, char** argv) {
       return 0;
 
     if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
-                              helper_process.get())) {
+                              helper_process_proxy.get())) {
       LOG(ERROR) << "Failed to verify and mount component: "
                  << FLAGS_mount_component << " at " << FLAGS_mount_point;
       return 1;
@@ -152,8 +153,8 @@ int main(int argc, char** argv) {
     imageloader::ImageLoaderImpl loader(std::move(config));
     std::vector<std::string> paths;
     const base::FilePath parent_dir(FLAGS_loaded_mounts_base);
-    bool success = loader.CleanupAll(FLAGS_dry_run,
-                                     parent_dir, &paths, helper_process.get());
+    bool success = loader.CleanupAll(FLAGS_dry_run, parent_dir, &paths,
+                                     helper_process_proxy.get());
     if (FLAGS_dry_run) {
       for (const auto& path : paths) {
         std::cout << path << "\n";
@@ -178,7 +179,7 @@ int main(int argc, char** argv) {
 
     imageloader::ImageLoaderImpl loader(std::move(config));
     const base::FilePath path(FLAGS_mount_point);
-    bool success = loader.Cleanup(path, helper_process.get());
+    bool success = loader.Cleanup(path, helper_process_proxy.get());
     if (!success) {
       LOG(ERROR) << "--unmount failed!";
       return 1;
@@ -187,7 +188,8 @@ int main(int argc, char** argv) {
   }
 
   // Run as a daemon and wait for dbus requests.
-  imageloader::ImageLoader daemon(std::move(config), std::move(helper_process));
+  imageloader::ImageLoader daemon(std::move(config),
+                                  std::move(helper_process_proxy));
   daemon.Run();
 
   return 0;

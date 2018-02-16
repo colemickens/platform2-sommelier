@@ -26,7 +26,7 @@
 #include <crypto/sha2.h>
 #include <crypto/signature_verifier.h>
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 
 namespace imageloader {
 
@@ -73,8 +73,7 @@ bool GetSignaturePath(const base::FilePath& component_dir,
   DCHECK(signature_path);
   DCHECK(key_number);
 
-  base::FileEnumerator files(component_dir,
-                             false,
+  base::FileEnumerator files(component_dir, false,
                              base::FileEnumerator::FileType::FILES,
                              kManifestSignatureNamePattern);
   for (base::FilePath path = files.Next(); !path.empty(); path = files.Next()) {
@@ -112,20 +111,19 @@ base::FilePath GetTablePath(const base::FilePath& component_dir) {
 
 base::FilePath GetImagePath(const base::FilePath& component_dir,
                             FileSystem fs_type) {
-  if (fs_type == FileSystem::kExt4)
+  if (fs_type == FileSystem::kExt4) {
     return component_dir.Append(kImageFileNameExt4);
-  else if (fs_type == FileSystem::kSquashFS)
+  } else if (fs_type == FileSystem::kSquashFS) {
     return component_dir.Append(kImageFileNameSquashFS);
-  else {
+  } else {
     NOTREACHED();
     return base::FilePath();
   }
 }
 
 bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
-  base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(),
-                                      O_CREAT | O_WRONLY | O_EXCL,
-                                      kComponentFilePerms)));
+  base::ScopedFD fd(HANDLE_EINTR(open(
+      path.value().c_str(), O_CREAT | O_WRONLY | O_EXCL, kComponentFilePerms)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Error creating file for " << path.value();
     return false;
@@ -192,8 +190,7 @@ Component::Component(const base::FilePath& component_dir, int key_number)
     : component_dir_(component_dir), key_number_(key_number) {}
 
 std::unique_ptr<Component> Component::Create(
-        const base::FilePath& component_dir,
-        const Keys& public_keys) {
+    const base::FilePath& component_dir, const Keys& public_keys) {
   base::FilePath signature_path;
   size_t key_number;
   if (!GetSignaturePath(component_dir, &signature_path, &key_number)) {
@@ -216,7 +213,8 @@ const Component::Manifest& Component::manifest() {
   return manifest_;
 }
 
-bool Component::Mount(HelperProcess* mounter, const base::FilePath& dest_dir) {
+bool Component::Mount(HelperProcessProxy* mounter,
+                      const base::FilePath& dest_dir) {
   // Read the table in and verify the hash.
   std::string table;
   if (!GetAndVerifyTable(GetTablePath(component_dir_), manifest_.table_sha256,
@@ -335,8 +333,8 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
     return false;
   }
   if (!base::ReadFileToStringWithMaxSize(
-          GetSignaturePathForKey(component_dir_, key_number_),
-          &manifest_sig_, kMaximumFilesize)) {
+          GetSignaturePathForKey(component_dir_, key_number_), &manifest_sig_,
+          kMaximumFilesize)) {
     LOG(ERROR) << "Could not read signature file.";
     return false;
   }
@@ -365,7 +363,7 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
 bool Component::CopyTo(const base::FilePath& dest_dir) {
   if (!WriteFileToDisk(GetManifestPath(dest_dir), manifest_raw_) ||
       !WriteFileToDisk(GetSignaturePathForKey(dest_dir, key_number_),
-          manifest_sig_)) {
+                       manifest_sig_)) {
     LOG(ERROR) << "Could not write manifest and signature to disk.";
     return false;
   }
@@ -439,7 +437,8 @@ bool Component::ReadHashAndCopyFile(base::File* file,
         std::min(remaining, base::checked_cast<int>(sizeof(buf)));
 
     rv = file->ReadAtCurrentPos(buf, bytes_to_read);
-    if (rv <= 0) break;
+    if (rv <= 0)
+      break;
 
     bytes_read += rv;
     sha256->Update(buf, rv);

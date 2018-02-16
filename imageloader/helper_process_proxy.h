@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGELOADER_HELPER_PROCESS_H_
-#define IMAGELOADER_HELPER_PROCESS_H_
+#ifndef IMAGELOADER_HELPER_PROCESS_PROXY_H_
+#define IMAGELOADER_HELPER_PROCESS_PROXY_H_
 
 #include <sys/types.h>
 
@@ -28,10 +28,10 @@ class CommandResponse;
 
 // Tracks a helper subprocess. Handles forking, cleaning up on termination, and
 // IPC.
-class HelperProcess {
+class HelperProcessProxy {
  public:
-  HelperProcess() = default;
-  virtual ~HelperProcess() = default;
+  HelperProcessProxy() = default;
+  virtual ~HelperProcessProxy() = default;
 
   // Re-execs imageloader with a new argument: "|fd_arg|=N", where N is the side
   // of |control_fd|. This tells the subprocess to start up a different
@@ -71,9 +71,9 @@ class HelperProcess {
   virtual std::unique_ptr<CommandResponse> SendCommand(
       const ImageCommand& msg_proto, struct msghdr* msg);
 
-  DISALLOW_COPY_AND_ASSIGN(HelperProcess);
+  DISALLOW_COPY_AND_ASSIGN(HelperProcessProxy);
 };
 
 }  // namespace imageloader
 
-#endif  // IMAGELOADER_HELPER_PROCESS_H_
+#endif  // IMAGELOADER_HELPER_PROCESS_PROXY_H_

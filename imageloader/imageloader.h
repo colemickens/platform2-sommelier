@@ -18,7 +18,7 @@
 #include <brillo/process_reaper.h>
 
 #include "imageloader/dbus_adaptors/org.chromium.ImageLoaderInterface.h"
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
@@ -35,7 +35,8 @@ class ImageLoader : public brillo::DBusServiceDaemon,
 
   static const char kLoadedMountsBase[];
 
-  ImageLoader(ImageLoaderConfig config, std::unique_ptr<HelperProcess> helper);
+  ImageLoader(ImageLoaderConfig config,
+              std::unique_ptr<HelperProcessProxy> proxy);
   ~ImageLoader();
 
   // Implementations of the public methods interface.
@@ -98,7 +99,7 @@ class ImageLoader : public brillo::DBusServiceDaemon,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   ImageLoaderImpl impl_;
-  std::unique_ptr<HelperProcess> helper_process_;
+  std::unique_ptr<HelperProcessProxy> helper_process_proxy_;
   brillo::ProcessReaper process_reaper_;
   base::CancelableClosure shutdown_callback_;
   org::chromium::ImageLoaderInterfaceAdaptor dbus_adaptor_{this};

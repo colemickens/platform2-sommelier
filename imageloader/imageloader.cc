@@ -28,10 +28,10 @@ const int ImageLoader::kShutdownTimeoutMilliseconds = 20000;
 const char ImageLoader::kLoadedMountsBase[] = "/run/imageloader";
 
 ImageLoader::ImageLoader(ImageLoaderConfig config,
-                         std::unique_ptr<HelperProcess> process)
+                         std::unique_ptr<HelperProcessProxy> proxy)
     : DBusServiceDaemon(kImageLoaderServiceName),
       impl_(std::move(config)),
-      helper_process_(std::move(process)) {}
+      helper_process_proxy_(std::move(proxy)) {}
 
 ImageLoader::~ImageLoader() {}
 
@@ -60,9 +60,9 @@ int ImageLoader::OnInit() {
 
   process_reaper_.Register(this);
   process_reaper_.WatchForChild(
-      FROM_HERE, helper_process_->pid(),
+      FROM_HERE, helper_process_proxy_->pid(),
       base::Bind(&ImageLoader::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 helper_process_->pid()));
+                 helper_process_proxy_->pid()));
 
   PostponeShutdown();
 
@@ -114,7 +114,7 @@ bool ImageLoader::GetComponentVersion(brillo::ErrorPtr* err,
 
 bool ImageLoader::LoadComponent(brillo::ErrorPtr* err, const std::string& name,
                                 std::string* out_mount_point) {
-  *out_mount_point = impl_.LoadComponent(name, helper_process_.get());
+  *out_mount_point = impl_.LoadComponent(name, helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }
@@ -124,7 +124,7 @@ bool ImageLoader::LoadComponentAtPath(brillo::ErrorPtr* err,
                                       const std::string& absolute_path,
                                       std::string* out_mount_point) {
   *out_mount_point = impl_.LoadComponentAtPath(
-      name, base::FilePath(absolute_path), helper_process_.get());
+      name, base::FilePath(absolute_path), helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }
@@ -153,7 +153,7 @@ bool ImageLoader::UnmountComponent(
   base::FilePath component_mount_root =
       base::FilePath(imageloader::ImageLoader::kLoadedMountsBase).Append(name);
   *out_success = impl_.CleanupAll(
-      false, component_mount_root, nullptr, helper_process_.get());
+      false, component_mount_root, nullptr, helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }

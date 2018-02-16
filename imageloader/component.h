@@ -26,7 +26,7 @@
 #include <base/macros.h>
 #include <crypto/secure_hash.h>
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
@@ -64,7 +64,7 @@ class Component {
   bool CopyTo(const base::FilePath& dest_dir);
 
   // Mounts the component into |mount_point|. |mount_point| must already exist.
-  bool Mount(HelperProcess* mounter, const base::FilePath& mount_point);
+  bool Mount(HelperProcessProxy* proxy, const base::FilePath& mount_point);
 
   // Return a reference to the parsed manifest object, which is stored in
   // memory.

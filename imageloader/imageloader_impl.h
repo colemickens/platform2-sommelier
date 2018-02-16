@@ -13,7 +13,7 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 
 namespace imageloader {
 
@@ -50,10 +50,10 @@ class ImageLoaderImpl {
   bool CleanupAll(bool dry_run,
                   const base::FilePath& parent_dir,
                   std::vector<std::string>* paths,
-                  HelperProcess* process);
+                  HelperProcessProxy* proxy);
 
   // Cleanup a mount point at |path|.
-  bool Cleanup(const base::FilePath& path, HelperProcess* process);
+  bool Cleanup(const base::FilePath& path, HelperProcessProxy* proxy);
 
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name);
@@ -64,16 +64,16 @@ class ImageLoaderImpl {
 
   // Load the specified component. This returns the mount point or an empty
   // string on failure.
-  std::string LoadComponent(const std::string& name, HelperProcess* process);
+  std::string LoadComponent(const std::string& name, HelperProcessProxy* proxy);
 
   // Load the specified component at a set mount point.
   bool LoadComponent(const std::string& name, const std::string& mount_point,
-                     HelperProcess* process);
+                     HelperProcessProxy* proxy);
 
   // Load the specified component from the given path.
   std::string LoadComponentAtPath(const std::string& name,
                                   const base::FilePath& absolute_path,
-                                  HelperProcess* process);
+                                  HelperProcessProxy* proxy);
 
   // The directory hierarchy for a component consists of the storage_root (i.e.
   // `/var/lib/imageloader`), the component_root

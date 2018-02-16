@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "imageloader/component.h"
-#include "imageloader/mock_helper_process.h"
+#include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
 #include "imageloader/verity_mounter.h"
 
@@ -117,7 +117,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
                                       std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(2);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -152,7 +152,7 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -177,7 +177,7 @@ TEST_F(ImageLoaderTest, CleanupAll) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
       .Times(1);
   ON_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
@@ -200,7 +200,7 @@ TEST_F(ImageLoaderTest, Cleanup) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendUnmountCommand(_)).Times(1);
   ON_CALL(*helper_mock, SendUnmountCommand(_))
       .WillByDefault(testing::Return(true));
@@ -221,7 +221,7 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
@@ -300,7 +300,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   keys.push_back(
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
-  auto helper_mock = std::make_unique<MockHelperProcess>();
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(0);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))

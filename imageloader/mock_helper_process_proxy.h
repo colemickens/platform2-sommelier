@@ -2,24 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGELOADER_MOCK_HELPER_PROCESS_H_
-#define IMAGELOADER_MOCK_HELPER_PROCESS_H_
+#ifndef IMAGELOADER_MOCK_HELPER_PROCESS_PROXY_H_
+#define IMAGELOADER_MOCK_HELPER_PROCESS_PROXY_H_
 
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
 
-#include "imageloader/helper_process.h"
+#include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader_impl.h"
 
 namespace imageloader {
 
 // Mock helper process used for unit testing.
-class MockHelperProcess : public HelperProcess {
+class MockHelperProcessProxy : public HelperProcessProxy {
  public:
-  MockHelperProcess() {}
-  ~MockHelperProcess() {}
+  MockHelperProcessProxy() {}
+  ~MockHelperProcessProxy() {}
 
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
@@ -33,9 +33,9 @@ class MockHelperProcess : public HelperProcess {
   MOCK_METHOD1(SendUnmountCommand, bool(const std::string&));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockHelperProcess);
+  DISALLOW_COPY_AND_ASSIGN(MockHelperProcessProxy);
 };
 
 }  // namespace imageloader
 
-#endif  // IMAGELOADER_MOCK_HELPER_PROCESS_H_
+#endif  // IMAGELOADER_MOCK_HELPER_PROCESS_PROXY_H_
