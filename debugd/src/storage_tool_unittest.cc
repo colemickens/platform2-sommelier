@@ -295,7 +295,7 @@ TEST(StorageToolTest, TestIsSupportedOther) {
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
-  const char *vendData = "OTHER";
+  constexpr char vendData[] = "OTHER";
   base::WriteFile(vendFile, vendData,
                   sizeof(vendData));
 
@@ -314,7 +314,7 @@ TEST(StorageToolTest, TestIsSupportedATA) {
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
-  const char *vendData = "ATA";
+  constexpr char vendData[] = "ATA";
   base::WriteFile(vendFile, vendData,
                   sizeof(vendData));
 
