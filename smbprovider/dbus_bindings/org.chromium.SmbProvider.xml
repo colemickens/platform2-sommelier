@@ -245,11 +245,28 @@
 
     <method name="MoveEntry">
       <tp:docstring>
-        Moves an entry at specified source path to specified destination path.
+        Moves an entry at the specified source path to the specified destination path.
       </tp:docstring>
       <arg name="options_blob" type="ay" direction="in">
         <tp:docstring>
           Serialized MoveEntryOptionsProto protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">\
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="CopyEntry">
+      <tp:docstring>
+        Copies an entry at the specified source path to the specified destination path.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized CopyEntryOptionsProto protobuf.
         </tp:docstring>
       </arg>
       <arg name="error_code" type="i" direction="out">\
