@@ -107,6 +107,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   MoveEntryOptionsProto move_entry_proto = CreateMoveEntryOptionsProto(
       3 /* mount_id */, "smb://testShare/src", "smb://testShare/dst");
   EXPECT_TRUE(IsValidOptions(move_entry_proto));
+
+  CopyEntryOptionsProto copy_entry_proto = CreateCopyEntryOptionsProto(
+      3 /* mount_id */, "smb://testShare/src", "smb://testShare/dst");
+  EXPECT_TRUE(IsValidOptions(copy_entry_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -149,6 +153,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   MoveEntryOptionsProto move_entry_proto_blank;
   EXPECT_FALSE(IsValidOptions(move_entry_proto_blank));
+
+  CopyEntryOptionsProto copy_entry_proto_blank;
+  EXPECT_FALSE(IsValidOptions(copy_entry_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -231,6 +238,12 @@ TEST_F(SmbProviderProtoTest, GetSourcePathAndGetDestinationPath) {
 
   EXPECT_EQ(expected_source_path, GetSourcePath(move_entry_proto));
   EXPECT_EQ(expected_dest_path, GetDestinationPath(move_entry_proto));
+
+  CopyEntryOptionsProto copy_entry_proto = CreateCopyEntryOptionsProto(
+      3 /* mount_id */, expected_source_path, expected_dest_path);
+
+  EXPECT_EQ(expected_source_path, GetSourcePath(copy_entry_proto));
+  EXPECT_EQ(expected_dest_path, GetDestinationPath(copy_entry_proto));
 }
 
 // GetMethodName returns the correct name for each proto.
@@ -246,6 +259,7 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kCreateFileMethod, CreateFileOptionsProto());
   CheckMethodName(kWriteFileMethod, WriteFileOptionsProto());
   CheckMethodName(kMoveEntryMethod, MoveEntryOptionsProto());
+  CheckMethodName(kCopyEntryMethod, CopyEntryOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.

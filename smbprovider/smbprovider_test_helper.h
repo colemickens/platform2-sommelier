@@ -57,6 +57,11 @@ MoveEntryOptionsProto CreateMoveEntryOptionsProto(
     const std::string& source_path,
     const std::string& target_path);
 
+CopyEntryOptionsProto CreateCopyEntryOptionsProto(
+    int32_t mount_id,
+    const std::string& source_path,
+    const std::string& target_path);
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
@@ -99,6 +104,10 @@ ProtoBlob CreateCreateDirectoryOptionsBlob(int32_t mount_id,
                                            bool recursive);
 
 ProtoBlob CreateMoveEntryOptionsBlob(int32_t mount_id,
+                                     const std::string& source_path,
+                                     const std::string& target_path);
+
+ProtoBlob CreateCopyEntryOptionsBlob(int32_t mount_id,
                                      const std::string& source_path,
                                      const std::string& target_path);
 
