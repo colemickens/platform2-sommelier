@@ -12,13 +12,19 @@
 
 namespace cryptohome {
 
+// Constants used to define the hash tree. Currently we place them here,
+// since they are used between LECredentialManager and LECredentialBackend.
+const uint32_t kLengthLabels = 4;
+const uint32_t kNumChildren = 2;
+const uint32_t kBitsPerLevel = 1;
+
 // List of error values returned from TPM for the Low Entropy Credential
 // check routine.
 enum LECredBackendError {
   // Credential check was successful.
   LE_TPM_SUCCESS = 0,
   // Check failed due to incorrect Low Entropy credential provided.
-  LE_TPM_ERROR_INVALID_PIN,
+  LE_TPM_ERROR_INVALID_LE_SECRET,
   // Check failed since the credential has been locked out due to too many
   // attempts per the delay schedule.
   LE_TPM_ERROR_TOO_MANY_ATTEMPTS,
@@ -84,8 +90,8 @@ class LECredentialBackend {
   // Returns true on success, false on failure.
   // On success, |err| is set to LE_TPM_SUCCESS.
   // On failure, |err| is set with the appropriate error code:
-  // - LE_TPM_ERROR_INVALID_PIN for incorrect authentication attempt.
-  // - LE_TPM_ERROR_TOO_MANY_ATTEMPTS for locked out pin.
+  // - LE_TPM_ERROR_INVALID_LE_SECRET for incorrect authentication attempt.
+  // - LE_TPM_ERROR_TOO_MANY_ATTEMPTS for locked out credential.
   // - LE_TPM_ERROR_HASH_TREE for error in hash tree sync.
   // - LE_TPM_ERROR_TPM_OP_FAILED for Tpm operation error.
   //

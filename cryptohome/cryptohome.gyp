@@ -186,6 +186,7 @@
         'dircrypto_data_migrator/migration_helper.cc',
         'homedirs.cc',
         'interface.cc',
+        'le_credential_manager.cc',
         'lockbox-cache-tpm.cc',
         'lockbox-cache.cc',
         'migration_type.h',
