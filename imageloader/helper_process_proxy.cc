@@ -50,18 +50,14 @@ void HelperProcessProxy::Start(int argc,
 
 std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
     const ImageCommand& image_command, struct msghdr* msg) {
-  // Serialize message object into string.
-  std::string msg_str;
-  if (!image_command.SerializeToString(&msg_str))
+
+  std::vector<char> msg_buf(image_command.ByteSizeLong());
+  if (!image_command.SerializeToArray(msg_buf.data(), msg_buf.size()))
     LOG(FATAL) << "error serializing protobuf";
 
-  // iov takes a non-const pointer.
-  std::vector<char> buffer(msg_str.size() + 1);
-  memcpy(&buffer[0], msg_str.c_str(), buffer.size());
-
   struct iovec iov[1];
-  iov[0].iov_base = buffer.data();
-  iov[0].iov_len = buffer.size();
+  iov[0].iov_base = msg_buf.data();
+  iov[0].iov_len = image_command.ByteSizeLong();
 
   msg->msg_iov = iov;
   msg->msg_iovlen = sizeof(iov) / sizeof(iov[0]);

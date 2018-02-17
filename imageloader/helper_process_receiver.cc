@@ -60,14 +60,13 @@ int HelperProcessReceiver::OnInit() {
 
 void HelperProcessReceiver::OnFileCanReadWithoutBlocking(int fd) {
   CHECK_EQ(fd, control_fd_.get());
-  char buffer[4096 * 4];
-  memset(buffer, '\0', sizeof(buffer));
+  std::vector<char> buffer(4096 * 4);
 
   struct msghdr msg = {0};
   struct iovec iov[1];
 
-  iov[0].iov_base = buffer;
-  iov[0].iov_len = sizeof(buffer);
+  iov[0].iov_base = buffer.data();
+  iov[0].iov_len = buffer.size();
 
   msg.msg_iov = iov;
   msg.msg_iovlen = sizeof(iov) / sizeof(iov[0]);
@@ -87,9 +86,7 @@ void HelperProcessReceiver::OnFileCanReadWithoutBlocking(int fd) {
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
 
   ImageCommand command;
-  std::string msg_str;
-  msg_str.assign(buffer, bytes - 1);
-  if (!command.ParseFromString(msg_str))
+  if (!command.ParseFromArray(buffer.data(), bytes))
     LOG(FATAL) << "error parsing protobuf";
 
   // Handle the command to mount the image.
