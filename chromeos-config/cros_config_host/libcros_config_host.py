@@ -1047,12 +1047,7 @@ def CrosConfig(fname=None, config_format=None):
     fname = os.path.join(
         os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_DIR,
         'config.' + ('dtb' if config_format == FORMAT_FDT else 'yaml'))
-  # Allow files for backward compatibility with the old API.
-  # TODO(sjg@chromum.org): Remove this when the firmware updater is updated.
-  if isinstance(fname, file):
-    infile = fname
-    infile.seek(0)
-  elif fname == '-':
+  if fname == '-':
     infile = sys.stdin
   else:
     infile = open(fname)
