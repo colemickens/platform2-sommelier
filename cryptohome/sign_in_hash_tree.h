@@ -143,6 +143,9 @@ class SignInHashTree {
              bits_per_level_ != rhs.bits_per_level_;
     }
 
+    // If |bits_per_level_| is zero, the Label is considered invalid.
+    bool is_valid() const { return bits_per_level_ != 0; }
+
    private:
     uint64_t value_ = 0;
     uint8_t length_ = 0;
