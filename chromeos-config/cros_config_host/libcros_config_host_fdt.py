@@ -97,14 +97,13 @@ class CrosConfigFdt(libcros_config_host.CrosConfigImpl):
     Properties:
       name: The name of the property.
       value: The value of the property.
-      type: The FDT type of the property.
+      type: The Python type of the property.
     """
     def __init__(self, fdt_prop):
       super(CrosConfigFdt.Property, self).__init__()
       self._fdt_prop = fdt_prop
       self.name = fdt_prop.name
       self.value = fdt_prop.value
-      # TODO(athilenius): Transform these int types to something more useful
       self.type = fdt_prop.type
 
     def GetPhandle(self):

@@ -120,12 +120,11 @@ class CrosConfigJson(CrosConfigImpl):
     Properties:
       name: The name of the property.
       value: The value of the property.
-      type: The FDT type of the property.
+      type: The Python type of the property.
     """
     def __init__(self, name, json_prop):
       super(CrosConfigJson.Property, self).__init__()
       self._json_prop = json_prop
       self.name = name
       self.value = json_prop
-      # TODO(athilenius): Transform these int types to something more useful
       self.type = str
