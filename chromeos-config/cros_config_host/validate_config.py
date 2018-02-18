@@ -119,31 +119,6 @@ class CrosConfigValidator(object):
     if self._raise_on_error:
       raise ValueError(self._errors[-1])
 
-  def _IsBuiltInProperty(self, node, prop_name):
-    """Checks if a property is a built-in device-tree construct
-
-    This checks for 'reg', '#address-cells' and '#size-cells' properties which
-    are valid when correctly used in a device-tree context.
-
-    TODO(sjg@chromium.org): Remove this function once users are converted to
-    not use this syntax.
-
-    Args:
-      node: fdt.Node where the property appears
-      prop_name: Name of the property
-
-    Returns:
-      True if this property is a built-in property and does not have to be
-      covered by the schema
-    """
-    if prop_name == 'reg' and '@' in node.name:
-      return True
-    if prop_name in ['#address-cells', '#size-cells']:
-      for subnode in node.subnodes.values():
-        if '@' in subnode.name:
-          return True
-    return False
-
   def ElementPresent(self, schema, parent_node):
     """Check whether a schema element should be present
 
@@ -213,7 +188,7 @@ class CrosConfigValidator(object):
             isinstance(element, PropAny)):
         return element, True
     if expected == PropDesc:
-      if name == 'linux,phandle' or self._IsBuiltInProperty(node, name):
+      if name == 'linux,phandle':
         return None, False
     return None, True
 
@@ -260,7 +235,7 @@ class CrosConfigValidator(object):
       if not element or not isinstance(element, PropDesc):
         if prop_name == 'phandle':
           self.Fail(node.path, 'phandle target not valid for this node')
-        elif not self._IsBuiltInProperty(node, prop_name):
+        else:
           self.Fail(node.path, "Unexpected property '%s', valid list is (%s)" %
                     (prop_name, ', '.join(schema_props)))
         continue
