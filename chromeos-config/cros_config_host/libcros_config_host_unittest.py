@@ -368,7 +368,8 @@ def MakeTests(pathname):
       self.assertEqual(
           thermal_files,
           [BaseFile('pyro/dptf.dv', '/etc/dptf/pyro/dptf.dv'),
-           BaseFile('reef/dptf.dv', '/etc/dptf/reef/dptf.dv')])
+           BaseFile('reef_notouch/dptf.dv', '/etc/dptf/reef_notouch/dptf.dv'),
+           BaseFile('reef_touch/dptf.dv', '/etc/dptf/reef_touch/dptf.dv')])
 
     def testWhitelabel(self):
       if config_format != FORMAT_FDT:

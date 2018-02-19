@@ -221,6 +221,9 @@
 						topology-name = "1mic";
 					};
 				};
+				thermal {
+					dptf-dv = "reef_touch/dptf.dv";
+				};
 			};
 			reef_notouch: notouch {
 				touch {
@@ -231,10 +234,10 @@
 						audio-type = <&audio_type_2mic>;
 					};
 				};
+				thermal {
+					dptf-dv = "reef_notouch/dptf.dv";
+				};
 			};
-		};
-		thermal {
-			dptf-dv = "reef/dptf.dv";
 		};
 		touch {
 			stylus {

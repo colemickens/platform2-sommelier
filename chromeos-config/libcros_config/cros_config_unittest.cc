@@ -141,6 +141,14 @@ TEST_F(CrosConfigTest, CheckAbsPath) {
   // GetString() should still return the raw value.
   ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
   ASSERT_EQ("pyro/dptf.dv", val);
+
+  InitConfig("Reef", 4);
+  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
+  ASSERT_EQ("/etc/dptf/reef_touch/dptf.dv", val);
+
+  InitConfig("Reef", 5);
+  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
+  ASSERT_EQ("/etc/dptf/reef_notouch/dptf.dv", val);
 }
 
 TEST_F(CrosConfigTest, CheckDefault) {

@@ -131,6 +131,9 @@
                 }
               }
             }, 
+            "thermal": {
+              "dptf-dv": "reef_notouch/dptf.dv"
+            }, 
             "touch": {
               "present": "no"
             }
@@ -151,13 +154,13 @@
                 "ucm-suffix": "1mic"
               }
             }, 
+            "thermal": {
+              "dptf-dv": "reef_touch/dptf.dv"
+            }, 
             "touch": {
               "present": "yes"
             }
           }
-        }, 
-        "thermal": {
-          "dptf-dv": "reef/dptf.dv"
         }, 
         "touch": {
           "stylus": {

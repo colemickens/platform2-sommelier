@@ -164,14 +164,16 @@ chromeos:
               cras-config-dir: "1mic"
               ucm-suffix: "1mic"
               topology-name: "1mic"
+          thermal:
+            dptf-dv: "reef_touch/dptf.dv"
         notouch: &reef_notouch
           touch:
             present: "no"
           audio:
             main:
               audio-type: *audio_type_2mic
-      thermal:
-        dptf-dv: "reef/dptf.dv"
+          thermal:
+            dptf-dv: "reef_notouch/dptf.dv"
       touch:
         stylus:
           touch-type: *wacom_stylus

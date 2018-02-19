@@ -921,11 +921,10 @@ class CrosConfigImpl(object):
       """
       files = {}
       prop = 'dptf-dv'
-      thermal = self.PathNode('/thermal')
-      target_dir = self.cros_config.validator.GetModelTargetDir('/thermal',
-                                                                prop)
-      if thermal:
-        files['base'] = BaseFile(
+      for name, thermal in self.AllPathNodes('/thermal').iteritems():
+        target_dir = self.cros_config.validator.GetModelTargetDir('/thermal',
+                                                                  prop)
+        files[name] = BaseFile(
             thermal.properties[prop].value,
             os.path.join(target_dir, thermal.properties[prop].value))
       return files
