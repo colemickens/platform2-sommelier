@@ -147,6 +147,16 @@ class CryptoLib {
   static std::string ComputeEncryptedDataHMAC(
       const EncryptedData& encrypted_data,
       const brillo::SecureBlob& hmac_key);
+
+  // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
+  //
+  // Parameters
+  //   key - The RSA public key.
+  //   input - The data to be encrypted.
+  //   output - The encrypted data.
+  static bool TpmCompatibleOAEPEncrypt(RSA* key,
+                                       const brillo::SecureBlob& input,
+                                       brillo::SecureBlob* output);
 };
 
 }  // namespace cryptohome

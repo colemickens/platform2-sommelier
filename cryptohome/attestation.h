@@ -712,16 +712,6 @@ class Attestation : public base::PlatformThread::Delegate,
                             const brillo::SecureBlob& input,
                             brillo::SecureBlob* output);
 
-  // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
-  //
-  // Parameters
-  //   key - The RSA public key.
-  //   input - The data to be encrypted.
-  //   output - The encrypted data.
-  bool TpmCompatibleOAEPEncrypt(RSA* key,
-                                const brillo::SecureBlob& input,
-                                brillo::SecureBlob* output);
-
   // Chooses a temporal index which will be used by the PCA to create a
   // certificate.  This decision factors in the currently signed-in |user| and
   // the |origin| of the certificate request.  The strategy is to find an index
