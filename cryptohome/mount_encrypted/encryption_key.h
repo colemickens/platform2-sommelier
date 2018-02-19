@@ -54,6 +54,11 @@ class EncryptionKey {
   bool is_migration_allowed() const { return migration_allowed_; }
   bool did_finalize() const { return did_finalize_; }
 
+  base::FilePath GetKeyPath() const { return base::FilePath(key_path); }
+  base::FilePath GetNeedsFinalizationPath() const {
+    return base::FilePath(needs_finalization_path);
+  }
+
  private:
   char* GenerateFreshEncryptionKey();
 

@@ -186,8 +186,13 @@
       ],
     },
     {
-      'target_name': 'mount-encrypted',
-      'type': 'executable',
+      'target_name': 'mount_encrypted_lib',
+      'type': 'static_library',
+      'sources': [
+        'mount_encrypted/encryption_key.cc',
+        'mount_encrypted/tpm.cc',
+        'mount_helpers.cc',
+      ],
       'variables': {
         'deps': [
           'glib-2.0',
@@ -197,12 +202,6 @@
           'vboot_host',
         ],
       },
-      'sources': [
-        'mount_encrypted.cc',
-        'mount_encrypted/encryption_key.cc',
-        'mount_encrypted/tpm.cc',
-        'mount_helpers.cc',
-      ],
       'conditions': [
         ['USE_tpm2 == 1', {
           'defines': [
@@ -218,6 +217,25 @@
             'mount_encrypted/tpm1.cc',
           ],
         }],
+      ],
+    },
+    {
+      'target_name': 'mount-encrypted',
+      'type': 'executable',
+      'dependencies': [
+        'mount_encrypted_lib',
+      ],
+      'variables': {
+        'deps': [
+          'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+          'openssl',
+          'vboot_host',
+        ],
+      },
+      'sources': [
+        'mount_encrypted.cc',
       ],
     },
     {
@@ -473,6 +491,40 @@
               'sources': [
                 'cert/cert_provision_keystore_unittest.cc',
                 'cert/cert_provision_unittest.cc',
+              ],
+            }],
+          ],
+        },
+        {
+          'target_name': 'mount_encrypted_unittests',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'libcrostpm',
+            'mount_encrypted_lib',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'link_settings': {
+            'libraries': [
+            ],
+          },
+          'variables': {
+            'deps': [
+              'glib-2.0',
+              'libbrillo-<(libbase_ver)',
+              'libbrillo-test-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'mount_encrypted/encryption_key_unittest.cc',
+            'mount_encrypted/tlcl_stub.cc',
+          ],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'defines': [
+                'TPM2_MODE=1',
               ],
             }],
           ],
