@@ -324,43 +324,47 @@ static result_code get_key_from_cmdline(uint8_t* digest) {
   return rc;
 }
 
+result_code EncryptionKey::SetFactorySystemKey() {
+  INFO("Using factory insecure system key.");
+  sha256(kStaticKeyFactory, digest);
+  debug_dump_hex("system key", digest, DIGEST_LENGTH);
+  has_system_key = true;
+  return RESULT_SUCCESS;
+}
+
 /* Find the system key used for decrypting the stored encryption key.
  * ChromeOS devices are required to use the NVRAM area, all the rest will
  * fallback through various places (kernel command line, BIOS UUID, and
  * finally a static value) for a system key.
  */
-result_code EncryptionKey::FindSystemKey(int mode, bool has_chromefw) {
+result_code EncryptionKey::SetTpmSystemKey() {
+  /* By default, do not allow migration. */
+  migration_allowed_ = 0;
+
+  /* Force ChromeOS devices into requiring the system key come from
+   * NVRAM.
+   */
+  result_code rc;
+  rc = get_nvram_key(digest, &migration_allowed_);
+
+  if (rc == RESULT_SUCCESS) {
+    INFO("Using NVRAM as system key; already populated%s.",
+         migration_allowed_ ? " (legacy)" : "");
+  } else {
+    INFO("Using NVRAM as system key; finalization needed.");
+  }
+  return rc;
+}
+
+result_code EncryptionKey::SetInsecureFallbackSystemKey() {
   gchar* key;
   gsize length;
 
   /* By default, do not allow migration. */
   migration_allowed_ = 0;
 
-  /* Factory mode uses a static system key. */
-  if (mode == kModeFactory) {
-    INFO("Using factory insecure system key.");
-    sha256(kStaticKeyFactory, digest);
-    debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    return RESULT_SUCCESS;
-  }
-
-  /* Force ChromeOS devices into requiring the system key come from
-   * NVRAM.
-   */
-  if (has_chromefw) {
-    result_code rc;
-    rc = get_nvram_key(digest, &migration_allowed_);
-
-    if (rc == RESULT_SUCCESS) {
-      INFO("Using NVRAM as system key; already populated%s.",
-           migration_allowed_ ? " (legacy)" : "");
-    } else {
-      INFO("Using NVRAM as system key; finalization needed.");
-    }
-    return rc;
-  }
-
   if (get_key_from_cmdline(digest) == RESULT_SUCCESS) {
+    has_system_key = true;
     INFO("Using kernel command line argument as system key.");
     return RESULT_SUCCESS;
   }
@@ -369,6 +373,7 @@ result_code EncryptionKey::FindSystemKey(int mode, bool has_chromefw) {
     sha256(key, digest);
     debug_dump_hex("system key", digest, DIGEST_LENGTH);
     g_free(key);
+    has_system_key = true;
     INFO("Using UUID as system key.");
     return RESULT_SUCCESS;
   }
@@ -376,6 +381,7 @@ result_code EncryptionKey::FindSystemKey(int mode, bool has_chromefw) {
   INFO("Using default insecure system key.");
   sha256(kStaticKeyDefault, digest);
   debug_dump_hex("system key", digest, DIGEST_LENGTH);
+  has_system_key = true;
   return RESULT_SUCCESS;
 }
 
@@ -424,7 +430,16 @@ void EncryptionKey::NeedsFinalization() {
   }
 }
 
-result_code EncryptionKey::SetSystemKey(const brillo::SecureBlob& system_key) {
+result_code EncryptionKey::LoadChromeOSSystemKey() {
+  /* Use the "system key" to decrypt the "encryption key" stored in
+   * the stateful partition.
+   */
+  has_system_key = SetTpmSystemKey() == RESULT_SUCCESS;
+  return RESULT_SUCCESS;
+}
+
+result_code EncryptionKey::SetExternalSystemKey(
+    const brillo::SecureBlob& system_key) {
   if (system_key.size() != DIGEST_LENGTH) {
     LOG(ERROR) << "Invalid key length.";
     return RESULT_FAIL_FATAL;
@@ -435,8 +450,7 @@ result_code EncryptionKey::SetSystemKey(const brillo::SecureBlob& system_key) {
   return RESULT_SUCCESS;
 }
 
-result_code EncryptionKey::LoadEncryptionKey(int mode, bool has_chromefw) {
-  has_system_key = FindSystemKey(mode, has_chromefw) == RESULT_SUCCESS;
+result_code EncryptionKey::LoadEncryptionKey() {
   if (has_system_key) {
     encryption_key = keyfile_read(key_path, digest);
   } else {

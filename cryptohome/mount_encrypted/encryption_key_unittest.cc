@@ -160,13 +160,15 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void ExpectFreshKey() {
-    key_->LoadEncryptionKey(kModeProduction, true);
+    key_->LoadChromeOSSystemKey();
+    key_->LoadEncryptionKey();
     EXPECT_TRUE(key_->get_encryption_key());
     EXPECT_TRUE(key_->is_fresh());
   }
 
   void ExpectExistingKey(const uint8_t* expected_key) {
-    key_->LoadEncryptionKey(kModeProduction, true);
+    key_->LoadChromeOSSystemKey();
+    key_->LoadEncryptionKey();
     EXPECT_TRUE(key_->get_encryption_key());
     if (expected_key) {
       std::vector<uint8_t> binary_encryption_key;

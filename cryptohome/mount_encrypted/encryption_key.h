@@ -18,11 +18,6 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
 
-enum Mode {
-  kModeProduction = 0,
-  kModeFactory = 1,
-};
-
 // EncryptionKey takes care of the lifecycle of the encryption key protecting
 // the encrypted stateful file system. This includes generation of the key,
 // wrapping it using a system key which is stored in TPM NVRAM, as well as
@@ -32,15 +27,29 @@ class EncryptionKey {
   explicit EncryptionKey(const char* rootdir);
   ~EncryptionKey();
 
-  // Determines the system key to use.
-  result_code FindSystemKey(int mode, bool has_chromefw);
+  // Loads the system key from TPM NVRAM.
+  result_code SetTpmSystemKey();
+
+  // Determines the system key to use in a production image on Chrome OS
+  // hardware. Attempts to load the system key from TPM NVRAM or generates a new
+  // system key. As a last resort, allows to continue without a system key to
+  // cover systems where the NVRAM space is yet to be created by cryptohomed.
+  result_code LoadChromeOSSystemKey();
+
+  // While ChromeOS devices can store the system key in the NVRAM area, all the
+  // rest will fallback through various places (kernel command line, BIOS UUID,
+  // and finally a static value) for a system key.
+  result_code SetInsecureFallbackSystemKey();
+
+  // Loads the insecure well-known factory system key. This is used on factory
+  // images instead of a proper key.
+  result_code SetFactorySystemKey();
 
   // Initialize with a passed-in system key.
-  result_code SetSystemKey(const brillo::SecureBlob& system_key);
+  result_code SetExternalSystemKey(const brillo::SecureBlob& system_key);
 
-  // Determines the system key to use and loads and decrypts the encryption key
-  // using the system key.
-  result_code LoadEncryptionKey(int mode, bool has_chromefw);
+  // Load the encryption key from disk using the previously loaded system key.
+  result_code LoadEncryptionKey();
 
   // Set encryption key to the passed-in value.
   void SetEncryptionKey(const brillo::SecureBlob& encryption_key);

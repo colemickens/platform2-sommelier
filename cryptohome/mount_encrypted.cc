@@ -312,16 +312,13 @@ static result_code finalize_from_cmdline(char* key) {
       return RESULT_FAIL_FATAL;
     }
 
-    rc = key_manager.SetSystemKey(
+    rc = key_manager.SetExternalSystemKey(
         brillo::SecureBlob(system_key, system_key + DIGEST_LENGTH));
     if (rc != RESULT_SUCCESS) {
       return rc;
     }
   } else {
-    /* Factory mode will never call finalize from the command
-     * line, so force Production mode here.
-     */
-    rc = key_manager.FindSystemKey(kModeProduction, has_chromefw());
+    rc = key_manager.SetTpmSystemKey();
     if (rc != RESULT_SUCCESS) {
       ERROR("Could not locate system key.");
       return rc;
@@ -883,7 +880,6 @@ void nvram_export(uint8_t* data, uint32_t size) {
 }
 
 int main(int argc, char* argv[]) {
-  int mode = kModeProduction;
   result_code rc;
 
   INFO_INIT("Starting.");
@@ -891,6 +887,7 @@ int main(int argc, char* argv[]) {
   if (rc != RESULT_SUCCESS)
     return rc;
 
+  bool use_factory_system_key = false;
   if (argc > 1) {
     if (!strcmp(argv[1], "umount")) {
       return shutdown();
@@ -899,12 +896,13 @@ int main(int argc, char* argv[]) {
     } else if (!strcmp(argv[1], "finalize")) {
       return finalize_from_cmdline(argc > 2 ? argv[2] : NULL);
     } else if (!strcmp(argv[1], "factory")) {
-      mode = kModeFactory;
+      use_factory_system_key = true;
     } else {
       fprintf(stderr, "Usage: %s [info|finalize|umount|factory]\n", argv[0]);
       return RESULT_FAIL_FATAL;
     }
   }
+
   /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
    * chromeos_startup do the stateful wipe.
    */
@@ -913,7 +911,18 @@ int main(int argc, char* argv[]) {
     return rc;
 
   EncryptionKey key(rootdir);
-  rc = key.LoadEncryptionKey(mode, has_chromefw());
+  if (use_factory_system_key) {
+    rc = key.SetFactorySystemKey();
+  } else if (has_chromefw()) {
+    rc = key.LoadChromeOSSystemKey();
+  } else {
+    rc = key.SetInsecureFallbackSystemKey();
+  }
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  rc = key.LoadEncryptionKey();
   if (rc != RESULT_SUCCESS) {
     return rc;
   }
