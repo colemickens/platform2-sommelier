@@ -82,6 +82,8 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetUpdateDisabled,
                      bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetTargetVersionPrefix, bool(std::string*));
+  MOCK_CONST_METHOD1(GetRollbackToTargetVersion, bool(int*));
+  MOCK_CONST_METHOD1(GetRollbackAllowedMilestones, bool(int*));
   MOCK_CONST_METHOD1(GetScatterFactorInSeconds,
                      bool(int64_t*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetAllowedConnectionTypesForUpdate,

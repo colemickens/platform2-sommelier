@@ -58,6 +58,10 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetUpdateDisabled(bool* update_disabled) const override;
   bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const override;
+  bool GetRollbackToTargetVersion(
+      int* rollback_to_target_version) const override;
+  bool GetRollbackAllowedMilestones(
+      int* rollback_allowed_milestones) const override;
   bool GetScatterFactorInSeconds(
       int64_t* scatter_factor_in_seconds) const override;
   bool GetAllowedConnectionTypesForUpdate(

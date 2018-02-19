@@ -285,6 +285,34 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
   return true;
 }
 
+bool DevicePolicyImpl::GetRollbackToTargetVersion(
+    int* rollback_to_target_version) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const em::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_rollback_to_target_version())
+    return false;
+
+  *rollback_to_target_version = proto.rollback_to_target_version();
+  return true;
+}
+
+bool DevicePolicyImpl::GetRollbackAllowedMilestones(
+    int* rollback_allowed_milestones) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const em::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_rollback_allowed_milestones())
+    return false;
+
+  *rollback_allowed_milestones = proto.rollback_allowed_milestones();
+  return true;
+}
+
 bool DevicePolicyImpl::GetScatterFactorInSeconds(
     int64_t* scatter_factor_in_seconds) const {
   if (!device_policy_.has_auto_update_settings())

@@ -110,6 +110,18 @@ class DevicePolicy {
   virtual bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const = 0;
 
+  // Writes the value of the rollback_to_target_version policy in
+  // |rollback_to_target_version|. |rollback_to_target_version| will be one of
+  // the values in AutoUpdateSettingsProto's RollbackToTargetVersion enum.
+  // Returns true on success.
+  virtual bool GetRollbackToTargetVersion(
+      int* rollback_to_target_version) const = 0;
+
+  // Writes the value of the rollback_allowed_milestones policy in
+  // |rollback_allowed_milestones|. Returns true on success.
+  virtual bool GetRollbackAllowedMilestones(
+      int* rollback_allowed_milestones) const = 0;
+
   // Writes the value of the scatter_factor_in_seconds policy in
   // |scatter_factor_in_seconds|. Returns true on success.
   virtual bool GetScatterFactorInSeconds(

@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
+#include "bindings/chrome_device_policy.pb.h"
 #include "install_attributes/mock_install_attributes_reader.h"
 #include "policy/device_policy_impl.h"
 
@@ -126,6 +127,14 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
 
   ASSERT_TRUE(policy.GetTargetVersionPrefix(&string_value));
   ASSERT_EQ("42.0.", string_value);
+  int_value = -1;
+  ASSERT_TRUE(policy.GetRollbackToTargetVersion(&int_value));
+  ASSERT_EQ(enterprise_management::AutoUpdateSettingsProto::
+                ROLLBACK_WITH_FULL_POWERWASH,
+            int_value);
+  int_value = -1;
+  ASSERT_TRUE(policy.GetRollbackAllowedMilestones(&int_value));
+  ASSERT_EQ(3, int_value);
 
   std::set<std::string> types;
   ASSERT_TRUE(policy.GetAllowedConnectionTypesForUpdate(&types));
@@ -210,6 +219,8 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetReleaseChannel(&string_value));
   ASSERT_FALSE(policy.GetUpdateDisabled(&bool_value));
   ASSERT_FALSE(policy.GetTargetVersionPrefix(&string_value));
+  ASSERT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
+  ASSERT_FALSE(policy.GetRollbackAllowedMilestones(&int_value));
   ASSERT_FALSE(policy.GetScatterFactorInSeconds(&int64_value));
   ASSERT_FALSE(policy.GetOpenNetworkConfiguration(&string_value));
   ASSERT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));
