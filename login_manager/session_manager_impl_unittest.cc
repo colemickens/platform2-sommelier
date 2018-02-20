@@ -288,6 +288,24 @@ dbus::FileDescriptor WriteSizeAndDataToPipe(const std::string& data) {
   return read_dbus_fd;
 }
 
+#if USE_CHEETS
+std::string ExpectedSkipPackagesCacheSetupFlagValue(bool enabled) {
+#if USE_ANDROID_MASTER_CONTAINER
+  return "SKIP_PACKAGES_CACHE_SETUP=1";
+#else
+  return base::StringPrintf("SKIP_PACKAGES_CACHE_SETUP=%d", enabled);
+#endif
+}
+
+std::string ExpectedCopyPackagesCacheFlagValue(bool enabled) {
+#if USE_ANDROID_MASTER_CONTAINER
+  return "COPY_PACKAGES_CACHE=0";
+#else
+  return base::StringPrintf("COPY_PACKAGES_CACHE=%d", enabled);
+#endif
+}
+#endif  // USE_CHEETS
+
 }  // namespace
 
 class SessionManagerImplTest : public ::testing::Test,
@@ -2097,19 +2115,19 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                      StartsWith("ANDROID_DATA_OLD_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      "ENABLE_VENDOR_PRIVILEGED=1",
-                      // The upgrade signal has a PID.
-                      "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      "SKIP_PACKAGES_CACHE_SETUP=0", "COPY_PACKAGES_CACHE=0"),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                              StartsWith("ANDROID_DATA_OLD_DIR="),
+                              std::string("CHROMEOS_USER=") + kSaneEmail,
+                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                              "ENABLE_VENDOR_PRIVILEGED=1",
+                              // The upgrade signal has a PID.
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
+                              ExpectedSkipPackagesCacheSetupFlagValue(false),
+                              ExpectedCopyPackagesCacheFlagValue(false)),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2207,10 +2225,9 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                       "ENABLE_VENDOR_PRIVILEGED=1",
                       // The upgrade signal has a PID.
                       "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      "SKIP_PACKAGES_CACHE_SETUP=" +
-                          std::to_string(skip_packages_cache_setup ? 1 : 0),
-                      "COPY_PACKAGES_CACHE=" +
-                          std::to_string(copy_cache_setup ? 1 : 0)),
+                      ExpectedSkipPackagesCacheSetupFlagValue(
+                          skip_packages_cache_setup),
+                      ExpectedCopyPackagesCacheFlagValue(copy_cache_setup)),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
@@ -2347,19 +2364,19 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                      StartsWith("ANDROID_DATA_OLD_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      "ENABLE_VENDOR_PRIVILEGED=0",
-                      // The upgrade signal has a PID.
-                      "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      "SKIP_PACKAGES_CACHE_SETUP=0", "COPY_PACKAGES_CACHE=0"),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                              StartsWith("ANDROID_DATA_OLD_DIR="),
+                              std::string("CHROMEOS_USER=") + kSaneEmail,
+                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                              "ENABLE_VENDOR_PRIVILEGED=0",
+                              // The upgrade signal has a PID.
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
+                              ExpectedSkipPackagesCacheSetupFlagValue(false),
+                              ExpectedCopyPackagesCacheFlagValue(false)),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2583,18 +2600,18 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
 
   SetUpArcMiniContainer();
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                      StartsWith("ANDROID_DATA_OLD_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      "ENABLE_VENDOR_PRIVILEGED=0",
-                      "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      "SKIP_PACKAGES_CACHE_SETUP=0", "COPY_PACKAGES_CACHE=0"),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                              StartsWith("ANDROID_DATA_OLD_DIR="),
+                              std::string("CHROMEOS_USER=") + kSaneEmail,
+                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                              "ENABLE_VENDOR_PRIVILEGED=0",
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
+                              ExpectedSkipPackagesCacheSetupFlagValue(false),
+                              ExpectedCopyPackagesCacheFlagValue(false)),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2633,18 +2650,18 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
 
   std::string container_instance_id = SetUpArcMiniContainer();
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                      StartsWith("ANDROID_DATA_OLD_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      "ENABLE_VENDOR_PRIVILEGED=0",
-                      "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      "SKIP_PACKAGES_CACHE_SETUP=0", "COPY_PACKAGES_CACHE=0"),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                              StartsWith("ANDROID_DATA_OLD_DIR="),
+                              std::string("CHROMEOS_USER=") + kSaneEmail,
+                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                              "ENABLE_VENDOR_PRIVILEGED=0",
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
+                              ExpectedSkipPackagesCacheSetupFlagValue(false),
+                              ExpectedCopyPackagesCacheFlagValue(false)),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
