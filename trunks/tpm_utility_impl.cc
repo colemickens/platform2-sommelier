@@ -2268,6 +2268,13 @@ TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+
+  UINT16 subcommand_code;
+  rc = Parse_UINT16(response_payload, &subcommand_code, nullptr);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+
   return response_code;
 }
 

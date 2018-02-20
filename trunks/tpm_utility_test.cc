@@ -2206,9 +2206,10 @@ TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Success) {
       12);
   std::string command_response(
       "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
-      "\x00\x00\x00\x0A"   // size=10
-      "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
-      10);
+      "\x00\x00\x00\x0C"   // size=12
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x14",          // subcommand=kCr50SubcmdInvalidateInactiveRW
+      12);
   SetCr50(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
@@ -2225,9 +2226,10 @@ TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
       12);
   std::string command_response(
       "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
-      "\x00\x00\x00\x0A"   // size=10
-      "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
-      10);
+      "\x00\x00\x00\x0C"   // size=10
+      "\x00\x00\x01\x01"   // code=TPM_RC_FAILURE
+      "\x00\x14",          // subcommand=kCr50SubcmdInvalidateInactiveRW
+      12);
   SetCr50(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
@@ -2382,9 +2384,10 @@ TEST_F(TpmUtilityTest, ManageCCDPwdCr50Success) {
       13);
   std::string command_response(
       "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
-      "\x00\x00\x00\x0A"   // size=10
-      "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
-      10);
+      "\x00\x00\x00\x0C"   // size=12
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x21",          // subcommand=kCr50SubcmdManageCCDPwd
+      12);
   SetCr50(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command_true))
       .WillOnce(Return(command_response));
@@ -2406,9 +2409,10 @@ TEST_F(TpmUtilityTest, ManageCCDPwdFailure) {
       13);
   std::string command_response(
       "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
-      "\x00\x00\x00\x0A"   // size=10
-      "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
-      10);
+      "\x00\x00\x00\x0C"   // size=12
+      "\x00\x00\x01\x01"   // code=TPM_RC_FAILURE
+      "\x00\x21",          // subcommand=kCr50SubcmdManageCCDPwd
+      12);
   SetCr50(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
