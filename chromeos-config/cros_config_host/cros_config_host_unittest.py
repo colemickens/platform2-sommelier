@@ -16,7 +16,7 @@ from . import fdt_util
 
 CLI_FILE = 'python -m cros_config_host.cros_config_host'
 DTS_FILE = '../libcros_config/test.dts'
-YAML_FILE = 'v2/cros_config_schema_example.json'
+YAML_FILE = '../libcros_config/test.json'
 
 
 def MakeTests(pathname):

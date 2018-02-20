@@ -20,7 +20,7 @@ from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
 
 
 DTS_FILE = '../libcros_config/test.dts'
-YAML_FILE = 'v2/cros_config_schema_example.yaml'
+YAML_FILE = '../libcros_config/test.yaml'
 MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
           'whitetip2', 'blacktip']
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
