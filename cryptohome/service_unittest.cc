@@ -210,17 +210,39 @@ TEST_F(ServiceTest, InvalidAbeDataTest) {
 }
 
 TEST_F(ServiceTest, CheckKeySuccessTest) {
-  char user[] = "chromeos-user";
-  char key[] = "274146c6e8886a843ddfea373e2dc71b";
-  SetupMount(user);
+  char kUser[] = "chromeos-user";
+  char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  SetupMount(kUser);
+
+  AccountIdentifier id;
+  id.set_account_id(kUser);
+  AuthorizationRequest auth;
+  auth.mutable_key()->set_secret(kKey);
+  CheckKeyRequest req;
+
+  // event_source_ will delete reply on cleanup.
+  std::string* base_reply_ptr = NULL;
+  MockDBusReply* reply = new MockDBusReply();
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+
   EXPECT_CALL(*mount_, AreSameUser(_))
       .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillOnce(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_))
       .WillOnce(Return(true));
-  gboolean out = FALSE;
-  GError *error = NULL;
-  EXPECT_TRUE(service_.CheckKey(user, key, &out, &error));
-  EXPECT_TRUE(out);
+  // Run will never be called because we aren't running the event loop.
+  service_.DoCheckKeyEx(&id, &auth, &req, NULL);
+
+  // Expect an empty reply as success.
+  BaseReply expected_reply;
+  std::string expected_reply_str;
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
 }
 
 TEST_F(ServiceTest, CheckKeyMountTest) {
@@ -345,6 +367,12 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
                             false /* force_ecryptfs */);
   TestUser* user = &test_helper_.users[0];
   user->InjectKeyset(&platform_);
+  // Inject the dirs because InitTestData uses its own platform
+  // mock for some reason...
+  user->InjectUserPaths(&platform_, 1000, 1000, 1001, 0, false);
+  EXPECT_CALL(platform_, DirectoryExists(user->base_path))
+      .WillRepeatedly(Return(true));
+
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(user->password,
                                         test_helper_.system_salt, &passkey);
@@ -367,30 +395,29 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   service_.set_crypto(&real_crypto);
   service_.Initialize();
 
-  gboolean out = FALSE;
-  GError *error = NULL;
-  gint async_id = -1;
-  EXPECT_TRUE(service_.AsyncCheckKey(
-      const_cast<gchar*>(static_cast<const gchar*>(user->username)),
-      const_cast<gchar*>(static_cast<const gchar*>(passkey_string.c_str())),
-      &async_id,
-      &error));
-  EXPECT_NE(-1, async_id);
-  for (size_t i = 0; i < 64; i++) {
-    bool found = false;
-    service_.DispatchEvents();
-    for (const auto& completed_task : event_sink_.completed_tasks_) {
-      if (completed_task.sequence_id() == async_id) {
-        out = completed_task.return_status();
-        found = true;
-      }
-    }
-    if (found) {
-      break;
-    }
-    PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
-  }
-  EXPECT_TRUE(out);
+  AccountIdentifier id;
+  id.set_account_id(user->username);
+  AuthorizationRequest auth;
+  auth.mutable_key()->set_secret(passkey_string.c_str());
+  CheckKeyRequest req;
+
+  // event_source_ will delete reply on cleanup.
+  std::string* base_reply_ptr = NULL;
+  MockDBusReply* reply = new MockDBusReply();
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+
+  // Run will never be called because we aren't running the event loop.
+  service_.DoCheckKeyEx(&id, &auth, &req, NULL);
+
+  // Expect an empty reply as success.
+  BaseReply expected_reply;
+  std::string expected_reply_str;
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
 }
 
 TEST_F(ServiceTest, GetPublicMountPassKey) {

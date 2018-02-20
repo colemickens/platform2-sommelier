@@ -911,66 +911,6 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
   }
 }
 
-gboolean Service::CheckKey(gchar *userid,
-                           gchar *key,
-                           gboolean *OUT_result,
-                           GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
-  mounts_lock_.Acquire();
-  for (const auto& mount_pair : mounts_) {
-    if (mount_pair.second->AreSameUser(credentials)) {
-      *OUT_result = mount_pair.second->AreValid(credentials);
-      mounts_lock_.Release();
-      return TRUE;
-    }
-  }
-  mounts_lock_.Release();
-
-  MountTaskResult result;
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  scoped_refptr<MountTaskTestCredentials> mount_task =
-      new MountTaskTestCredentials(NULL, NULL, homedirs_, credentials);
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
-  event.Wait();
-  *OUT_result = result.return_status();
-  return TRUE;
-}
-
-gboolean Service::AsyncCheckKey(gchar *userid,
-                                gchar *key,
-                                gint *OUT_async_id,
-                                GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
-  // Freed by the message loop
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  mounts_lock_.Acquire();
-  for (const auto& mount_pair : mounts_) {
-    // Fast path - because we can check credentials on a Mount very fast, we can
-    // afford to check them synchronously here and post the result
-    // asynchronously.
-    if (mount_pair.second->AreSameUser(credentials)) {
-      bool ok = mount_pair.second->AreValid(credentials);
-      *OUT_async_id = PostAsyncCallResult(bridge, MOUNT_ERROR_NONE, ok);
-      mounts_lock_.Release();
-      return TRUE;
-    }
-  }
-  mounts_lock_.Release();
-
-  // Slow path - ask the HomeDirs to check credentials.
-  scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(bridge, NULL, homedirs_, credentials);
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
-  return TRUE;
-}
-
 void Service::DoCheckKeyEx(AccountIdentifier* identifier,
                            AuthorizationRequest* authorization,
                            CheckKeyRequest* check_key_request,

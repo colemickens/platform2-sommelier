@@ -221,14 +221,6 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
-  virtual gboolean CheckKey(gchar *user,
-                            gchar *key,
-                            gboolean *OUT_result,
-                            GError **error);
-  virtual gboolean AsyncCheckKey(gchar *user,
-                                 gchar *key,
-                                 gint *OUT_async_id,
-                                 GError **error);
   virtual gboolean MigrateKey(gchar *user,
                               gchar *from_key,
                               gchar *to_key,

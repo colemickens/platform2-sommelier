@@ -88,7 +88,6 @@ namespace switches {
                                    "mount_guest",
                                    "unmount",
                                    "is_mounted",
-                                   "test_auth",
                                    "check_key_ex",
                                    "remove_key_ex",
                                    "get_key_data_ex",
@@ -150,7 +149,6 @@ namespace switches {
     ACTION_MOUNT_GUEST,
     ACTION_UNMOUNT,
     ACTION_MOUNTED,
-    ACTION_TEST_AUTH,
     ACTION_CHECK_KEY_EX,
     ACTION_REMOVE_KEY_EX,
     ACTION_GET_KEY_DATA_EX,
@@ -847,50 +845,6 @@ int main(int argc, char **argv) {
       return 1;
     }
     printf("Mount succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_TEST_AUTH],
-                     action.c_str())) {
-    std::string account_id, password;
-
-    if (!GetAccountId(cl, &account_id)) {
-      printf("No account_id specified.\n");
-      return 1;
-    }
-
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", account_id.c_str()),
-                &password);
-
-    gboolean done = false;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("CheckKey call failed: %s.\n", error->message);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_check_key(proxy.gproxy(),
-               account_id.c_str(),
-               password.c_str(),
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("CheckKey call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-      }
-    }
-    if (!done) {
-      printf("Authentication failed.\n");
-    } else {
-      printf("Authentication succeeded.\n");
-    }
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_KEY_EX],
                 action.c_str())) {
     cryptohome::AccountIdentifier id;

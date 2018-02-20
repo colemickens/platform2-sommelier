@@ -53,20 +53,6 @@ void cryptohome_init(Cryptohome* self) { }
   } \
   return self->service->_NAME(error);
 
-gboolean cryptohome_check_key(Cryptohome* self,
-                              gchar* userid,
-                              gchar* key,
-                              gboolean* OUT_result,
-                              GError** error) {
-  CRYPTOHOME_WRAP_METHOD(CheckKey, userid, key, OUT_result);
-}
-gboolean cryptohome_async_check_key(Cryptohome* self,
-                                    gchar* userid,
-                                    gchar* key,
-                                    gint* OUT_async_id,
-                                    GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncCheckKey, userid, key, OUT_async_id);
-}
 gboolean cryptohome_check_key_ex(Cryptohome* self,
                                  GArray* identifier,
                                  GArray* authorization,

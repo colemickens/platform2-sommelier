@@ -111,16 +111,6 @@ void MountTaskUnmount::Run() {
   MountTask::Notify();
 }
 
-void MountTaskTestCredentials::Run() {
-  bool status = false;
-  if (mount_)
-    status = mount_->AreValid(credentials_);
-  else if (homedirs_)
-    status = homedirs_->AreCredentialsValid(credentials_);
-  result()->set_return_status(status);
-  MountTask::Notify();
-}
-
 void MountTaskRemove::Run() {
   if (homedirs_) {
     bool status = homedirs_->Remove(credentials_.username());

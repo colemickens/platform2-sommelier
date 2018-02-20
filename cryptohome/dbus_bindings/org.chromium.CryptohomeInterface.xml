@@ -19,16 +19,6 @@
       <arg type="b" name="is_mounted" direction="out" />
       <arg type="b" name="is_ephemeral_mount" direction="out" />
     </method>
-    <method name="CheckKey">
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="b" name="success" direction="out" />
-    </method>
-    <method name="AsyncCheckKey">
-      <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="ListKeysEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in" />

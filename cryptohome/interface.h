@@ -33,16 +33,6 @@ struct CryptohomeClass {
 GType cryptohome_get_type();  // defined by G_DEFINE_TYPE
 
 // Interface function prototypes which wrap service.
-gboolean cryptohome_check_key(Cryptohome* self,
-                              gchar* userid,
-                              gchar* key,
-                              gboolean* OUT_result,
-                              GError** error);
-gboolean cryptohome_async_check_key(Cryptohome* self,
-                                    gchar* userid,
-                                    gchar* key,
-                                    gint* OUT_async_id,
-                                    GError** error);
 gboolean cryptohome_check_key_ex(Cryptohome* self,
                                  GArray* identifier,
                                  GArray* authorization,

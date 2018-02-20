@@ -5,7 +5,7 @@
 // MountTask - The basis for asynchronous API work items.  It inherits from
 // Task, which allows it to be called on an event thread.  Subclasses define the
 // specific asychronous request, such as MountTaskMount, MountTaskMountGuest,
-// MountTaskMigratePasskey, MountTaskUnmount, and MountTaskTestCredentials.
+// MountTaskMigratePasskey, and MountTaskUnmount.
 // Asynchronous tasks in cryptohome are serialized calls on a single worker
 // thread separate from the dbus main event loop.  The synchronous versions of
 // these APIs are also done on this worker thread, with the main thread waiting
@@ -381,24 +381,6 @@ class MountTaskUnmount : public MountTask {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskUnmount);
-};
-
-// Implements asychronous calls to Mount::TestCredentials()
-class MountTaskTestCredentials : public MountTask {
- public:
-  MountTaskTestCredentials(MountTaskObserver* observer,
-                           Mount* mount,
-                           HomeDirs* homedirs,
-                           const UsernamePasskey& credentials)
-      : MountTask(observer, mount, credentials), homedirs_(homedirs) {
-  }
-  virtual ~MountTaskTestCredentials() { }
-
-  virtual void Run();
-
- private:
-  HomeDirs* homedirs_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskTestCredentials);
 };
 
 // Implements asychronous calls to Mount::RemoveCryptohome()
