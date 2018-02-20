@@ -237,6 +237,13 @@ int32_t FakeSambaInterface::CreateFile(const std::string& file_path,
   if (EntryExists(file_path)) {
     return EEXIST;
   }
+
+  int32_t error;
+  FakeDirectory* parent = GetDirectory(GetDirPath(file_path), &error);
+  if (!parent) {
+    return error;
+  }
+
   AddFile(file_path);
   *file_id = AddOpenFile(file_path, false /* readable */, true /* writeable */);
   return 0;

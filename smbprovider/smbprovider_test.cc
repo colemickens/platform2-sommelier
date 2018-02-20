@@ -1162,6 +1162,39 @@ TEST_F(SmbProviderTest, CreateFileFailsWithInvalidMount) {
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CreateFile(create_blob)));
 }
 
+// CreateFile fails when the parent directory does not exist.
+TEST_F(SmbProviderTest, CreateFileFailsWhenParentDoesNotExist) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(mount_id, "/new/dog.jpg");
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->CreateFile(create_blob)));
+}
+
+// CreateFile fails when the parent directory is locked.
+TEST_F(SmbProviderTest, CreateFileFailsWhenParentDirIsLocked) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/cats"));
+
+  ProtoBlob create_blob =
+      CreateCreateFileOptionsBlob(mount_id, "/cats/dog.jpg");
+
+  EXPECT_EQ(ERROR_ACCESS_DENIED,
+            CastError(smbprovider_->CreateFile(create_blob)));
+}
+
+// CreateFile fails when the file already exits.
+TEST_F(SmbProviderTest, CreateFileFailsWhenFileExists) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/dog.jpg"));
+
+  ProtoBlob create_blob = CreateCreateFileOptionsBlob(mount_id, "/dog.jpg");
+
+  EXPECT_EQ(ERROR_EXISTS, CastError(smbprovider_->CreateFile(create_blob)));
+}
+
 // CreateFile succeeds when passed valid parameters and closes the file handle.
 TEST_F(SmbProviderTest, CreateFileSucceeds) {
   const int32_t mount_id = PrepareMount();
