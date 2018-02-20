@@ -68,6 +68,12 @@ UNIBOARD_DTB_INSTALL_DIR = 'usr/share/chromeos-config'
 # We support two configuration file format
 (FORMAT_FDT, FORMAT_YAML) = range(2)
 
+# We allow comparing two different config formats:
+# - Never compare (just use the config format provided)
+# - Compare if we can find a config file for the other format
+# - Require that both formats are present
+(COMPARE_NEVER, COMPARE_IF_PRESENT, COMPARE_ALWAYS) = range(3)
+
 class PathComponent(object):
   """A component in a directory/file tree
 
@@ -182,6 +188,17 @@ class CrosConfigImpl(object):
       Property object, or None if not found
     """
     return self.root.PathProperty(absolute_path, property_name)
+
+  def GetNode(self, absolute_path):
+    """Internal function to get a node from anywhere in the tree
+
+    Args:
+      absolute_path: within the root node (e.g. '/chromeos/family/firmware')
+
+    Returns:
+      Node object, or None if not found
+    """
+    return self.root.PathNode(absolute_path)
 
   def GetFamilyNode(self, relative_path):
     return self.family.PathNode(relative_path)
@@ -1028,11 +1045,198 @@ class CrosConfigImpl(object):
 import libcros_config_host_fdt
 import v2.libcros_config_host_json
 
-def CrosConfig(fname=None, config_format=None):
+class CrosConfigBoth(object):
+  """A class that compares the results of FDT and YAML formats
+
+  This handles checking that calling API methods on both FDT and YAML formats
+  return the same results. If not, or if one of the formats is not available,
+  an error can be raised, depending on the value of compare_results.
+  """
+  def __init__(self, fname, compare_results):
+    """Constructor for the class
+
+    Properties:
+      _method_name: Method to call when _DoMethod() is called. This is updated
+          whenever a new API function is requested.
+
+    Args:
+      fname: Filename of one of the formats (the filename of the other is
+          figured out by replacing the filename extension)
+      compare_results: Type of config-format comparison to use (COMPARE_...)
+    """
+    self._method_name = None
+    self._compare_results = compare_results
+    base, _ = os.path.splitext(fname)
+    fdt_file = base + '.dtb'
+    yaml_file = base + '.yaml'
+    self.fdt = None
+    self.yaml = None
+    if os.path.exists(fdt_file):
+      with open(fdt_file) as infile:
+        self.fdt = libcros_config_host_fdt.CrosConfigFdt(infile)
+    if os.path.exists(yaml_file):
+      with open(yaml_file) as infile:
+        self.yaml = v2.libcros_config_host_json.CrosConfigJson(infile)
+
+    # If we have to have both files, check that now.
+    if compare_results == COMPARE_ALWAYS:
+      both_files_present = self.fdt and self.yaml
+      if not both_files_present:
+        raise ValueError('Warning: Could not load both FDT and YAML files (' +
+                         "'%s' and '%s')" % (fdt_file, yaml_file))
+
+  def _DoMethod(self, *args):
+    """Called to perform an API call into the FDT and YAML implementations
+
+    This calls both FDT and YAML API functions and checks that they return the
+    same result. If not, an error is raised.
+
+    Args:
+      args: That arguments to pass to the API call
+
+    Returns:
+      Result of calling the API function
+
+    Raises:
+      ValueError if we don't get the same result from FDT and YAML
+    """
+    fdt_result, yaml_result = None, None
+    if self.fdt:
+      fdt_method = getattr(self.fdt, self._method_name)
+      fdt_result = fdt_method(*args)
+    if self.yaml:
+      yaml_method = getattr(self.yaml, self._method_name)
+      yaml_result = yaml_method(*args)
+    # We don't need to worry about one of the results being missing, since if
+    # we care about that it was checked above (see 'both_files_present'). We
+    # assume that the methods never return None.
+    if fdt_result is not None and yaml_result is not None:
+      # We never return Node or Property from any API function, since it is an
+      # internal data structure. So we don't need to check equality here. When
+      # we do actually return some data, it will be checked.
+      result_is_primitive = (
+          not isinstance(fdt_result, CrosConfigImpl.Node) and
+          not isinstance(fdt_result, CrosConfigImpl.Property))
+      if result_is_primitive and fdt_result != yaml_result:
+        raise ValueError("Method '%s' results differ: fdt='%s', yaml='%s'",
+                         self._method_name, fdt_result, yaml_result)
+    # It doesn't matter which we return, since they are equivalent.
+    return fdt_result or yaml_result
+
+  def __getattr__(self, name):
+    """Returns an object which can be called to execute an API function
+
+    Args:
+      name: Name of API function to call
+
+    Returns:
+      A method which can be called to execute an API function
+    """
+    # Handle node.models as a special case. This collects a dict of models to
+    # return.
+    if name == 'models':
+      return {model: NodeBoth(self, '/chromeos/models/' + model)
+              for model in self.fdt.models}
+    self._method_name = name
+    return self._DoMethod
+
+
+class NodeBoth(object):
+  """Models a Node object which has both FDT and yaml versions
+
+  This class internally creates both types of Node and checks that the values
+  match.
+  """
+  def __init__(self, cros_config, path):
+    self._path = path
+    self._cros_config = cros_config
+    self._method_name = None
+    self.fdt_node = self._cros_config.fdt.GetNode(self._path)
+    self.yaml_node = self._cros_config.yaml.GetNode(self._path)
+
+  def _DoMethod(self, *args):
+    """Called to perform an API call into the FDT and YAML implementations
+
+    This calls both FDT and YAML API functions (at the Node level) and checks
+    that they return the same result. If not, an error is raised.
+
+    Args:
+      args: That arguments to pass to the API call
+
+    Returns:
+      Result of calling the API function
+
+    Raises:
+      ValueError if we don't get the same result from FDT and YAML
+    """
+    fdt_method = getattr(self.fdt_node, self._method_name)
+    fdt_result = fdt_method(*args)
+
+    yaml_method = getattr(self.yaml_node, self._method_name)
+    yaml_result = yaml_method(*args)
+    # We don't need to worry about one of the results being missing, since if
+    # we care about that, it was checked above (see 'both_files_present'). We
+    # assume that the methods never return None.
+    # We don't need to compare unless we have two results
+    if fdt_result is not None and yaml_result is not None:
+      fdt_compare, yaml_compare = fdt_result, yaml_result
+      # For properties, we want to compare just the value, not the Property
+      # object.
+      if isinstance(fdt_compare, CrosConfigImpl.Property):
+        fdt_compare = fdt_result.value
+        yaml_compare = yaml_result.value
+      # If it's a Node, we need to return both types of Node (fdt, yaml)
+      if isinstance(fdt_result, CrosConfigImpl.Node):
+        return NodeBoth(self._cros_config, fdt_result.GetPath())
+      elif fdt_compare != yaml_compare:
+        raise ValueError("Method '%s' results differ: fdt='%s', yaml='%s'",
+                         self._method_name, fdt_compare, yaml_compare)
+    # Once we decide that the results are the same, we can return either one
+    return fdt_result or yaml_result
+
+  def __getattr__(self, name):
+    """Handles accessing a Node method or member
+
+    Args:
+      name: Name of API function to call
+
+    Returns:
+      Either
+        - A method which can be called to execute an API function
+        - For members, the value of that member (either a name or a dict of
+            properties and their values)
+    """
+    # Handle node.name (for yaml) and node.properties as a special case
+    if name == 'name':
+      return os.path.basename(self._path)
+    elif name == 'properties':
+      fdt_props = self.fdt_node.properties
+      yaml_props = self.yaml_node.properties
+      ignore_props = self._cros_config.fdt.phandle_props | set(
+          ['default', 'linux,phandle', 'phandle', 'name'])
+      fdt_prop_values = {name: fdt_props[name].value
+                         for name in fdt_props if name not in ignore_props}
+      yaml_prop_values = {name: yaml_props[name].value
+                          for name in yaml_props if name not in ignore_props}
+      if fdt_prop_values != yaml_prop_values:
+        raise ValueError("Properties for '%s' differ: fdt='%s', yaml='%s'",
+                         self._path, fdt_prop_values, yaml_prop_values)
+      return fdt_props
+    self._method_name = name
+    return self._DoMethod
+
+
+def CrosConfig(fname=None, config_format=None,
+               compare_results=COMPARE_IF_PRESENT):
   """Create a new CrosConfigImpl object
 
   This is in a separate function to allow us to (in the future) support YAML,
   which will have a different means of creating the impl class.
+
+  Args:
+    fname: Filename of config file
+    config_format: Configuration format to use (FORMAT_...)
+    compare_results: Type of config-format comparison to use (COMPARE_...)
   """
   if config_format is None:
     if fname and ('.yaml' in fname or '.json' in fname):
@@ -1047,7 +1251,11 @@ def CrosConfig(fname=None, config_format=None):
         os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_DIR,
         'config.' + ('dtb' if config_format == FORMAT_FDT else 'yaml'))
   if fname == '-':
+    if compare_results == COMPARE_ALWAYS:
+      raise ValueError('Cannot compare results from stdin')
     infile = sys.stdin
+  elif compare_results:
+    return CrosConfigBoth(fname, compare_results)
   else:
     infile = open(fname)
 

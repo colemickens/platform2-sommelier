@@ -217,6 +217,9 @@ def GetParser(description):
   parser.add_argument('-c', '--config',
                       help='Override the master config file path. Use - for '
                            'stdin.')
+  parser.add_argument('--nocompare-formats', action='store_false',
+                      help="Don't compare FDT result against YAML result when "
+                           'both files are present.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
   parser.add_argument('-y', '--yaml', action='store_true',
@@ -316,7 +319,9 @@ def main(argv=None):
   elif opts.subcommand == 'write-phandle-properties':
     WritePhandleProperties()
     return
-  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
+  # We cannot compare stdin since we don't have the other format.
+  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None,
+                      not opts.nocompare_formats and opts.config != '-')
   # Get all models we are invoking on (if any).
   model = None
   if opts.model:

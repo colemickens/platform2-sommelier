@@ -11,12 +11,14 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from io import BytesIO
 import os
+import shutil
 import sys
 import unittest
 
 from . import fdt_util
 from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
 from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
+from .libcros_config_host import COMPARE_ALWAYS, COMPARE_NEVER
 
 
 DTS_FILE = '../libcros_config/test.dts'
@@ -68,18 +70,28 @@ def MakeTests(pathname):
     """The unit test suite for the libcros_config_host.py library"""
     def setUp(self):
       global config_format
-      path = os.path.join(os.path.dirname(__file__), pathname)
-      if '.dts' in path:
-        (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
-        config_format = FORMAT_FDT
-      else:
-        self.filepath = path
-        self.temp_file = None
-        config_format = FORMAT_YAML
+      config_format, self.filepath, self.temp_file = self.GetConfig(pathname)
+      _, self.filepath_bad_compare, self.temp_file_bad_compare = self.GetConfig(
+          pathname.replace('test.', 'test_bad_compare.'))
 
     def tearDown(self):
       if self.temp_file is not None:
         os.remove(self.temp_file.name)
+
+    def GetConfig(self, pathname):
+      path = os.path.join(os.path.dirname(__file__), pathname)
+      dts_path = path.replace('.yaml', '.dts')
+      yaml_path = path.replace('.dts', '.yaml')
+      (dts_filepath, temp_file) = fdt_util.EnsureCompiled(dts_path)
+      yaml_dest = dts_filepath.replace('.dtb', '.yaml')
+      shutil.copy(yaml_path, yaml_dest)
+      if '.dts' in path:
+        conf_format = FORMAT_FDT
+        filepath = dts_filepath
+      else:
+        conf_format = FORMAT_YAML
+        filepath = yaml_dest
+      return conf_format, filepath, temp_file
 
     def testGoodDtbFile(self):
       self.assertIsNotNone(CrosConfig(self.filepath))
@@ -94,7 +106,7 @@ def MakeTests(pathname):
         self.assertEqual(name, model.name)
 
     def testProperties(self):
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       pyro = config.models['pyro']
       self.assertEqual(pyro.properties['wallpaper'].value, 'default')
       self.assertEqual(pyro.Property('wallpaper').value, 'default')
@@ -157,7 +169,7 @@ def MakeTests(pathname):
 
       os.environ['DISTDIR'] = 'distdir'
       os.environ['FILESDIR'] = 'files'
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       touch_files = config.models['pyro'].GetTouchFirmwareFiles()
       self.assertEqual(
           touch_files,
@@ -271,7 +283,7 @@ def MakeTests(pathname):
       """Test that the 'default' property is used when collecting properties"""
       if config_format != FORMAT_FDT:
         return
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       caroline = config.models['caroline']
       audio = caroline.PathNode('/audio/main')
       props = caroline.GetMergedProperties(audio, 'audio-type')
@@ -298,7 +310,7 @@ def MakeTests(pathname):
                     'hardware_features')])
 
     def testGetAudioFiles(self):
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       audio_files = config.GetAudioFiles()
       expected = [
           BaseFile('cras-config/1mic/bxtda7219max',
@@ -406,7 +418,7 @@ def MakeTests(pathname):
       """Test that we can obtain a file tree"""
       os.environ['DISTDIR'] = 'distdir'
       os.environ['FILESDIR'] = 'files'
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       node = config.GetFileTree()
       self.assertEqual(node.name, '')
       self.assertEqual(sorted(node.children.keys()),
@@ -421,7 +433,7 @@ def MakeTests(pathname):
 
     def testShowTree(self):
       """Test that we can show a file tree"""
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       tree = config.GetFileTree()
       with capture_sys_output() as (stdout, stderr):
         config.ShowTree('/', tree)
@@ -448,7 +460,7 @@ def MakeTests(pathname):
       """Test the 'default' property"""
       if config_format != FORMAT_FDT:
         return
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       caroline = config.models['caroline']
 
       # These are defined by caroline itself
@@ -494,7 +506,7 @@ def MakeTests(pathname):
 
       os.environ['SYSROOT'] = 'fred'
       with self.assertRaises(IOError) as e:
-        CrosConfig(config_format=config_format)
+        CrosConfig(config_format=config_format, compare_results=COMPARE_NEVER)
       ext = 'dtb' if config_format == FORMAT_FDT else 'yaml'
       self.assertIn('fred/usr/share/chromeos-config/config.%s' % ext,
                     str(e.exception))
@@ -508,7 +520,7 @@ def MakeTests(pathname):
 
     def testFirmware(self):
       """Test access to firmware information"""
-      config = CrosConfig(self.filepath)
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
       # YAML does not support naming of the target node so far as I can see.
@@ -570,6 +582,37 @@ def MakeTests(pathname):
           'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
           'chromeos-base/chromeos-touch-firmware-reef/'
           'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
+
+    def testCompareResults(self):
+      """Test that CrosConfig can compare config results for the two formats"""
+      config = CrosConfig(self.filepath)
+      caroline = config.models['caroline']
+      self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
+
+      config.models['pyro'].GetFirmwareUris()
+
+      pyro = config.models['pyro']
+      stylus = pyro.PathNode('touch/stylus')
+      pyro.GetMergedProperties(stylus, 'touch-type')
+
+    def testCompareResultsBad(self):
+      """Test that mismatches are detected"""
+      config = CrosConfig(self.filepath_bad_compare,
+                          compare_results=COMPARE_ALWAYS)
+      caroline = config.models['caroline']
+      with self.assertRaisesRegexp(ValueError, 'results differ.*not-caroline'):
+        self.assertEqual(caroline.PathProperty('/', 'wallpaper').value,
+                         'caroline')
+
+      with self.assertRaisesRegexp(ValueError,
+                                   'results differ.*notpyro-private'):
+        config.models['pyro'].GetFirmwareUris()
+
+      pyro = config.models['pyro']
+      stylus = pyro.PathNode('touch/stylus')
+      with self.assertRaisesRegexp(ValueError,
+                                   'Properties.*differ.*4209.*4210'):
+        pyro.GetMergedProperties(stylus, 'touch-type')
 
   return CrosConfigHostTest
 
