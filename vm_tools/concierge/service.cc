@@ -77,7 +77,10 @@ constexpr base::TimeDelta kLxdWaitreadyTimeout =
     base::TimeDelta::FromSeconds(10);
 
 // How long we should wait for a VM to start up.
-constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(5);
+// While this timeout might be high, it's meant to be a final failure point, not
+// the lower bound of how long it takes.  On a loaded system (like extracting
+// large compressed files), it could take 10 seconds to boot.
+constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(30);
 
 // crosvm directory name.
 constexpr char kCrosvmDir[] = "crosvm";
