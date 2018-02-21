@@ -271,16 +271,6 @@
 			]
 		},
 		{
-			"destination": "/dev/input",
-			"type": "tmpfs",
-			"source": "tmpfs",
-			"options": [
-				"mode=755",
-				"nosuid",
-				"noexec"
-			]
-		},
-		{
 			"destination": "/var/run/arc",
 			"type": "tmpfs",
 			"source": "tmpfs",

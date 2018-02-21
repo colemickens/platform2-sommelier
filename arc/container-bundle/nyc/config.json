@@ -123,17 +123,6 @@
 			]
 		},
 		{
-			"_comment": "TODO(yusukes): 0755 might just work",
-			"destination": "/dev/input",
-			"type": "tmpfs",
-			"source": "tmpfs",
-			"options": [
-				"mode=1777",
-				"nosuid",
-				"noexec"
-			]
-		},
-		{
 			"destination": "/var/run/arc",
 			"type": "tmpfs",
 			"source": "tmpfs",

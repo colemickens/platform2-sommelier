@@ -79,7 +79,8 @@ subtree.
 * `/dev/kmsg`: This is a bind-mount of the host's `/run/arc/android.kmsg.fifo`,
   which is just a FIFO file. Logs written to the fake device are read by a job
   called `arc-kmsg-logger` and stored in host's /var/log/android.kmsg.
-* `/dev/{socket,input}`: These are normal `tmpfs`.
+* `/dev/socket`: This is a normal `tmpfs`, used by Android's `init` to store
+  socket files.
 * `/data` and `/data/cache`: These two directories are bind-mounted from the
   Chrome OS user's cryptohome (from
   `/home/root/${HASH}/android-data/{data,cache}`), which is only available after
