@@ -2186,7 +2186,10 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
                              TPM_DELEGATE_DAA_Join |
                              TPM_DELEGATE_DAA_Sign |
                              TPM_DELEGATE_ResetLockValue |
-                             TPM_DELEGATE_OwnerReadInternalPub;
+                             TPM_DELEGATE_OwnerReadInternalPub |
+                             TPM_DELEGATE_CMK_ApproveMA |
+                             TPM_DELEGATE_CMK_CreateTicket |
+                             TPM_DELEGATE_AuthorizeMigrationKey;
   result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                 TSS_TSPATTRIB_POLDEL_PER1, permissions);
   if (TPM_ERROR(result)) {
