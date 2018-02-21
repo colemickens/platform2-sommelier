@@ -4,6 +4,8 @@
 
 #include "smbprovider/mount_manager.h"
 
+#include <base/strings/string_util.h>
+
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
@@ -40,6 +42,17 @@ bool MountManager::GetFullPath(int32_t mount_id,
 
   *full_path = AppendPath(mount_iter->second, entry_path);
   return true;
+}
+
+std::string MountManager::GetRelativePath(int32_t mount_id,
+                                          const std::string& full_path) const {
+  auto mount_iter = mounts_.find(mount_id);
+  DCHECK(mount_iter != mounts_.end());
+
+  DCHECK(StartsWith(full_path, mount_iter->second,
+                    base::CompareCase::INSENSITIVE_ASCII));
+
+  return full_path.substr(mount_iter->second.length());
 }
 
 }  // namespace smbprovider

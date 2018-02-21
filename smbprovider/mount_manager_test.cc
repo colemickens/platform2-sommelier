@@ -138,4 +138,26 @@ TEST_F(MountManagerTest, TestGetFullPathMultipleMounts) {
   EXPECT_EQ(expected_full_path_2, actual_full_path);
 }
 
+TEST_F(MountManagerTest, TestGetRelativePath) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = manager_.AddMount(root_path);
+
+  const std::string full_path = "smb://server/share1/animals/dog.jpg";
+  const std::string expected_relative_path = "/animals/dog.jpg";
+
+  EXPECT_EQ(expected_relative_path,
+            manager_.GetRelativePath(mount_id, full_path));
+}
+
+TEST_F(MountManagerTest, TestGetRelativePathOnRoot) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = manager_.AddMount(root_path);
+
+  const std::string full_path = "smb://server/share1/";
+  const std::string expected_relative_path = "/";
+
+  EXPECT_EQ(expected_relative_path,
+            manager_.GetRelativePath(mount_id, full_path));
+}
+
 }  // namespace smbprovider
