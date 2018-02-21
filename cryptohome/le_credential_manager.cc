@@ -14,22 +14,23 @@
 
 namespace {
 
-// Location where we store the Hash Tree data structures.
-const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
+const char kLEDirName[] = "low_entropy_creds";
 
 }  // namespace
 
 namespace cryptohome {
 
-LECredentialManager::LECredentialManager(LECredentialBackend* le_backend)
+LECredentialManager::LECredentialManager(LECredentialBackend* le_backend,
+                                         const base::FilePath& le_basedir)
     : is_locked_(false), le_tpm_backend_(le_backend) {
   CHECK(le_tpm_backend_);
 
   // Check if hash tree already exists.
-  bool new_hash_tree = !base::PathExists(base::FilePath(kSignInHashTreeDir));
+  base::FilePath le_dir = le_basedir.Append(kLEDirName);
+  bool new_hash_tree = !base::PathExists(le_dir);
 
-  hash_tree_ = std::make_unique<SignInHashTree>(
-      kLengthLabels, kBitsPerLevel, base::FilePath(kSignInHashTreeDir));
+  hash_tree_ =
+      std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, le_dir);
 
   // Reset the root hash in the TPM to its initial value.
   if (new_hash_tree) {

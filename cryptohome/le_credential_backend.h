@@ -14,9 +14,9 @@ namespace cryptohome {
 
 // Constants used to define the hash tree. Currently we place them here,
 // since they are used between LECredentialManager and LECredentialBackend.
-const uint32_t kLengthLabels = 4;
-const uint32_t kNumChildren = 2;
-const uint32_t kBitsPerLevel = 1;
+const uint32_t kLengthLabels = 14;
+const uint32_t kNumChildren = 4;
+const uint32_t kBitsPerLevel = 2;
 
 // List of error values returned from TPM for the Low Entropy Credential
 // check routine.

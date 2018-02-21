@@ -45,7 +45,8 @@ class LECredentialManager {
  public:
   typedef std::map<uint32_t, uint32_t> DelaySchedule;
 
-  explicit LECredentialManager(LECredentialBackend* le_backend);
+  explicit LECredentialManager(LECredentialBackend* le_backend,
+                               const base::FilePath& le_basedir);
 
   // Inserts an LE credential into the system.
   //
