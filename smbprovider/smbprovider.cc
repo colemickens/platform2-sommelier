@@ -783,4 +783,11 @@ bool SmbProvider::ReadToBuffer(const Proto& options,
   return true;
 }
 
+void SmbProvider::GetDeleteList(const ProtoBlob& options,
+                                int32_t* error_code,
+                                dbus::FileDescriptor* temp_fd,
+                                int32_t* bytes_written) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace smbprovider

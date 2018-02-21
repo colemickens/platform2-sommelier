@@ -277,5 +277,34 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="GetDeleteList">
+      <tp:docstring>
+          Gets a list of entries to delete. The list of entries will be in order
+          in which they should be deleted.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized GetDeleteListOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="temp_fd" type="h" direction="out">
+        <tp:docstring>
+          File descriptor of the temporary file that contains a serialized
+          DeleteList protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="bytes_written" type="i" direction="out">
+        <tp:docstring>
+          Number of bytes written to the temporary file.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
   </interface>
 </node>
