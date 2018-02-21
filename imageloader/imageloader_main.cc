@@ -6,12 +6,15 @@
 
 #include <iostream>
 #include <memory>
+#include <pwd.h>
+#include <sys/mount.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "imageloader/component.h"
 #include "imageloader/helper_process_proxy.h"
 #include "imageloader/helper_process_receiver.h"
 #include "imageloader/imageloader.h"
@@ -53,9 +56,62 @@ bool LoadKeyFromFile(const std::string& file, std::vector<uint8_t>* key_out) {
   return true;
 }
 
+bool Init(const std::string& loadedMountsBase) {
+  const char* path = loadedMountsBase.c_str();
+  if (!base::PathExists(base::FilePath(path))) {
+    // Create a folder for loadedMountsBase.
+    if (mkdir(path, imageloader::kComponentDirPerms) != 0) {
+      PLOG(ERROR) << "Mkdir failed: " << path;
+      return false;
+    }
+    // Mount a tmpfs at loadedMountsBase.
+    if (mount("imageloader", path, "tmpfs",
+              MS_NODEV | MS_NOSUID | MS_NOEXEC, "mode=0755") < 0) {
+      PLOG(ERROR) << "Mount tmpfs failed: " << path;
+      return false;
+    }
+    // Mark the mount point as shared.
+    if (mount(nullptr, path, nullptr, MS_SHARED, "") < 0) {
+      PLOG(ERROR) << "Mount shared failed: " << path;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CreateComponentsPath() {
+  // Check if kComponentsPath does not exist or it is not a folder.
+  if (!base::DirectoryExists(base::FilePath(kComponentsPath))) {
+    // Remove the file at kComponentsPath.
+    if (!base::DeleteFile(base::FilePath(kComponentsPath), true)) {
+      PLOG(ERROR) << "base::DeleteFile failed: " << kComponentsPath;
+      return false;
+    }
+    // Create a folder for kComponentsPath.
+    if (mkdir(kComponentsPath, imageloader::kComponentDirPerms) != 0) {
+      PLOG(ERROR) << "Mkdir failed: " << kComponentsPath;
+      return false;
+    }
+    // Set ownership user/groups as imageloaderd:imageloaderd
+    struct passwd* pwd;
+    pwd = getpwnam("imageloaderd");
+    if (pwd == NULL) {
+      PLOG(ERROR) << "Can not get uid/gid.";
+      return false;
+    }
+    if (chown(kComponentsPath, pwd->pw_uid, pwd->pw_gid) != 0) {
+      PLOG(ERROR) << "Can not set ownership for path: " << kComponentsPath;
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
+  DEFINE_bool(init, false,
+              "Executes one-time setup process for imageloader.");
   DEFINE_bool(dry_run, false,
               "Changes unmount_all to print the paths which would be "
               "affected.");
@@ -87,6 +143,16 @@ int main(int argc, char** argv) {
   if (FLAGS_mount + FLAGS_unmount + FLAGS_unmount_all > 1) {
     LOG(ERROR) << "Only one of --mount, --unmount, and --unmount_all can be "
                   "set at a time.";
+    return 1;
+  }
+
+  // Executes the one-time setup process.
+  if (FLAGS_init && !Init(FLAGS_loaded_mounts_base)) {
+    return 1;
+  }
+
+  // Create folder for component copies.
+  if (!CreateComponentsPath()) {
     return 1;
   }
 
