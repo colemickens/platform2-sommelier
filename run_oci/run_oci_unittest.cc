@@ -4,6 +4,8 @@
 
 #include "run_oci/container_config_parser.h"
 
+#include <sys/mount.h>
+
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -19,7 +21,8 @@ TEST(OciUtilsTest, TestGetMountpointsUnder) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  constexpr char kSelfProcMountsData[] = R"(
+  constexpr char kSelfProcMountsData[] =
+      R"(
 /dev/root / ext2 rw 0 0
 devtmpfs /dev devtmpfs rw 0 0
 none /proc proc rw,nosuid,nodev,noexec,relatime 0 0
@@ -29,7 +32,8 @@ tmp /tmp tmpfs rw,seclabel,nodev,relatime 0 0
 run /run tmpfs rw,seclabel,nosuid,nodev,noexec,relatime,mode=755 0 0
 /dev/loop1 /run/containers/android-master-33lymv/rootfs/root squashfs ro 0 0
 /dev/loop2 /run/containers/android-master-33lymv/vendor squashfs ro 0 0
-tmpfs /run/containers/android-master-33lymv/rootfs/root/dev tmpfs rw 0 0
+tmpfs /run/containers/android-master-33lymv/rootfs/root/dev )"
+      R"(tmpfs rw,seclabel,nosuid,relatime,mode=755,uid=655360,gid=655360 0 0
 debugfs /run/sync_export debugfs rw 0 0
   )";
   base::FilePath mounts = temp_dir.GetPath().Append("mounts");
@@ -37,17 +41,24 @@ debugfs /run/sync_export debugfs rw 0 0
       base::WriteFile(mounts, kSelfProcMountsData, sizeof(kSelfProcMountsData)),
       sizeof(kSelfProcMountsData));
 
-  std::vector<base::FilePath> mountpoints = run_oci::GetMountpointsUnder(
+  std::vector<run_oci::Mountpoint> mountpoints = run_oci::GetMountpointsUnder(
       base::FilePath("/run/containers/android-master-33lymv"), mounts);
 
   EXPECT_EQ(
       mountpoints,
-      (std::vector<base::FilePath>{
-          base::FilePath("/run/containers/android-master-33lymv/rootfs/root"),
-          base::FilePath("/run/containers/android-master-33lymv/vendor"),
-          base::FilePath(
-              "/run/containers/android-master-33lymv/rootfs/root/dev"),
-      }));
+      (std::vector<run_oci::Mountpoint>{
+          run_oci::Mountpoint{
+              base::FilePath(
+                  "/run/containers/android-master-33lymv/rootfs/root"),
+              MS_RDONLY, std::string()},
+          run_oci::Mountpoint{
+              base::FilePath("/run/containers/android-master-33lymv/vendor"),
+              MS_RDONLY, std::string()},
+          run_oci::Mountpoint{
+              base::FilePath(
+                  "/run/containers/android-master-33lymv/rootfs/root/dev"),
+              MS_NOSUID | MS_RELATIME,
+              "seclabel,mode=755,uid=655360,gid=655360"}}));
 }
 
 }  // namespace

@@ -13,6 +13,9 @@
       ],
       'enable_exceptions': 1,
     },
+    'libraries': [
+      '-lmount',
+    ],
   },
   'targets': [
     {

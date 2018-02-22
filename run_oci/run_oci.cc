@@ -117,50 +117,6 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
   return oss.str();
 }
 
-// Parses the options from the OCI mount in to either mount flags in |flags_out|
-// or a data string for mount(2) in |option_string_out|.
-std::string ParseMountOptions(const std::vector<std::string>& options,
-                              int* flags_out,
-                              int* loopback_out,
-                              std::string* verity_options) {
-  std::string option_string_out;
-  *flags_out = 0;
-  *loopback_out = 0;
-
-  for (const auto& option : options) {
-    if (option == "nodev") {
-      *flags_out |= MS_NODEV;
-    } else if (option == "noexec") {
-      *flags_out |= MS_NOEXEC;
-    } else if (option == "nosuid") {
-      *flags_out |= MS_NOSUID;
-    } else if (option == "bind") {
-      *flags_out |= MS_BIND;
-    } else if (option == "ro") {
-      *flags_out |= MS_RDONLY;
-    } else if (option == "private") {
-      *flags_out |= MS_PRIVATE;
-    } else if (option == "recursive") {
-      *flags_out |= MS_REC;
-    } else if (option == "slave") {
-      *flags_out |= MS_SLAVE;
-    } else if (option == "remount") {
-      *flags_out |= MS_REMOUNT;
-    } else if (option == "loop") {
-      *loopback_out = 1;
-    } else if (base::StartsWith(option, "dm=", base::CompareCase::SENSITIVE)) {
-      *verity_options = option.substr(3, std::string::npos);
-    } else {
-      // Unknown options get appended to the string passed to mount data.
-      if (!option_string_out.empty())
-        option_string_out += ",";
-      option_string_out += option;
-    }
-  }
-
-  return option_string_out;
-}
-
 // Sanitize |flags| that can be used for filesystem of a given |type|.
 int SanitizeFlags(const std::string& type, int flags) {
   int sanitized_flags = flags;
@@ -191,28 +147,101 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                      uid_t uid,
                      gid_t gid,
                      container_config* config_out) {
+  // Get all the mountpoints in the external mount namespace upfront. This will
+  // be used in case we need to perform any remounts, in order to preserve
+  // flags that won't be changing.
+  std::vector<run_oci::Mountpoint> mountpoints = run_oci::GetMountpointsUnder(
+      base::FilePath("/"), base::FilePath(kProcSelfMountsPath));
+
+  // Sort the list of mountpoints. For calculating remount flags, we are
+  // interested in the deepest mount a particular path is located.  Since this
+  // is a tree structure, traversing the list of mounts in inverse lexicographic
+  // order and stopping in the first mount that is a prefix of the path works.
+  std::sort(mountpoints.begin(), mountpoints.end(),
+            [](const run_oci::Mountpoint& a, const run_oci::Mountpoint& b) {
+              return b.path < a.path;
+            });
+
   for (const auto& mount : mounts) {
-    int flags, loopback;
+    int mount_flags, negated_mount_flags, bind_mount_flags,
+        mount_propagation_flags;
+    bool loopback;
     std::string verity_options;
-    std::string options =
-        ParseMountOptions(mount.options, &flags, &loopback, &verity_options);
-    flags = SanitizeFlags(mount.type, flags);
+    std::string options = ParseMountOptions(
+        mount.options, &mount_flags, &negated_mount_flags, &bind_mount_flags,
+        &mount_propagation_flags, &loopback, &verity_options);
 
     base::FilePath source = mount.source;
+    bool new_mount = true;
     if (mount.type == "bind") {
       // libminijail disallows relative bind-mounts.
       source = MakeAbsoluteFilePathRelativeTo(bundle_dir, mount.source);
+      new_mount = false;
     }
 
     // Loopback devices have to be mounted outside.
     bool mount_in_ns = !mount.performInIntermediateNamespace && !loopback;
 
-    container_config_add_mount(
-        config_out, "mount", source.value().c_str(),
-        mount.destination.value().c_str(), mount.type.c_str(),
-        options.empty() ? nullptr : options.c_str(),
-        verity_options.empty() ? nullptr : verity_options.c_str(), flags, uid,
-        gid, 0750, mount_in_ns, true /* create */, loopback);
+    if (new_mount) {
+      // This is a brand new mount. We pass in all the arguments that were
+      // provided in the config.
+      mount_flags = SanitizeFlags(mount.type, mount_flags);
+      container_config_add_mount(
+          config_out, "mount", source.value().c_str(),
+          mount.destination.value().c_str(), mount.type.c_str(),
+          options.empty() ? nullptr : options.c_str(),
+          verity_options.empty() ? nullptr : verity_options.c_str(),
+          mount_flags, uid, gid, 0750, mount_in_ns, true /* create */,
+          loopback);
+    } else if (bind_mount_flags) {
+      // Bind-mounts only get the MS_BIND and maybe MS_REC mount flags.
+      container_config_add_mount(
+          config_out, "mount", source.value().c_str(),
+          mount.destination.value().c_str(), mount.type.c_str(),
+          nullptr /* options */, nullptr /* verity_options */, bind_mount_flags,
+          uid, gid, 0750, mount_in_ns, true /* create */, false /* loopback */);
+    }
+    if (mount_propagation_flags) {
+      // Mount propagation flags need to be updated separately from the original
+      // mount. Only the destination is important.
+      container_config_add_mount(
+          config_out, "mount", "" /* source */,
+          mount.destination.value().c_str(), "" /* type */,
+          nullptr /* options */, nullptr /* verity_options */,
+          mount_propagation_flags, uid, gid, 0750, mount_in_ns,
+          false /* create */, false /* loopback */);
+    }
+    if (!new_mount && (mount_flags | negated_mount_flags)) {
+      // Bind-mounts cannot adjust the mount flags in the same call to mount(2),
+      // so in order to do so, an explicit remount is needed. In order to avoid
+      // clobbering unnecessary flags, we try to grab them from the closest
+      // original mount point.
+      int original_flags = 0;
+      for (const auto& mountpoint : mountpoints) {
+        if (!base::StartsWith(source.value(), mountpoint.path.value(),
+                              base::CompareCase::SENSITIVE)) {
+          continue;
+        }
+        original_flags = mountpoint.mountflags;
+        break;
+      }
+      int new_flags = (original_flags & ~negated_mount_flags) | mount_flags;
+      if (new_flags != original_flags) {
+        if ((mount_flags | negated_mount_flags) == MS_RDONLY) {
+          // The only thing that is changing is the read-only flag. The kernel
+          // allows just changing this flag if we pass both MS_REMOUNT and
+          // MS_BIND, even within user namespaces.
+          new_flags |= MS_REMOUNT | MS_BIND;
+        } else {
+          new_flags |= MS_REMOUNT;
+        }
+        container_config_add_mount(
+            config_out, "mount", "" /* source */,
+            mount.destination.value().c_str(), "" /* type */,
+            nullptr /* options */, nullptr /* verity_options */, new_flags, uid,
+            gid, 0750, mount_in_ns, false /* create */, false /* loopback */);
+      }
+    }
   }
 }
 
@@ -482,18 +511,19 @@ int SetupProcessState(void* payload) {
 }
 
 void CleanUpContainer(const base::FilePath& container_dir) {
-  std::vector<base::FilePath> mountpoints = run_oci::GetMountpointsUnder(
+  std::vector<run_oci::Mountpoint> mountpoints = run_oci::GetMountpointsUnder(
       container_dir, base::FilePath(kProcSelfMountsPath));
 
   // Sort the list of mountpoints. Since this is a tree structure, unmounting
   // recursively can be achieved by traversing this list in inverse
   // lexicographic order.
-  std::sort(
-      mountpoints.begin(), mountpoints.end(),
-      [](const base::FilePath& a, const base::FilePath& b) { return b < a; });
+  std::sort(mountpoints.begin(), mountpoints.end(),
+            [](const run_oci::Mountpoint& a, const run_oci::Mountpoint& b) {
+              return b.path < a.path;
+            });
   for (const auto& mountpoint : mountpoints) {
-    if (umount2(mountpoint.value().c_str(), MNT_DETACH))
-      PLOG(ERROR) << "Failed to unmount " << mountpoint.value();
+    if (umount2(mountpoint.path.value().c_str(), MNT_DETACH))
+      PLOG(ERROR) << "Failed to unmount " << mountpoint.path.value();
   }
 
   if (!base::DeleteFile(container_dir, true /*recursive*/)) {
