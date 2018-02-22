@@ -10,12 +10,12 @@
 
 #include "cryptohome/tpm.h"
 
-using brillo::SecureBlob;
-
 namespace cryptohome {
 
 class StubTpm : public Tpm {
  public:
+  using SecureBlob = brillo::SecureBlob;
+
   StubTpm() { }
   ~StubTpm() override { }
 

@@ -13,8 +13,6 @@
 #include <gmock/gmock.h>
 
 namespace cryptohome {
-using ::testing::_;
-using ::testing::Invoke;
 
 class MockUserSession : public UserSession {
  public:

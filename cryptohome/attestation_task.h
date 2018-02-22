@@ -52,14 +52,14 @@ class EnrollTask : public AttestationTask {
   EnrollTask(AttestationTaskObserver* observer,
              Attestation* attestation,
              Attestation::PCAType pca_type,
-             const SecureBlob& pca_response);
+             const brillo::SecureBlob& pca_response);
   virtual ~EnrollTask();
 
   virtual void Run();
 
  private:
   Attestation::PCAType pca_type_;
-  SecureBlob pca_response_;
+  brillo::SecureBlob pca_response_;
 
   DISALLOW_COPY_AND_ASSIGN(EnrollTask);
 };
@@ -91,7 +91,7 @@ class FinishCertRequestTask : public AttestationTask {
  public:
   FinishCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
-                        const SecureBlob& pca_response,
+                        const brillo::SecureBlob& pca_response,
                         bool is_user_specific,
                         const std::string& username,
                         const std::string& key_name);
@@ -100,7 +100,7 @@ class FinishCertRequestTask : public AttestationTask {
   virtual void Run();
 
  private:
-  SecureBlob pca_response_;
+  brillo::SecureBlob pca_response_;
   bool is_user_specific_;
   std::string username_;
   std::string key_name_;

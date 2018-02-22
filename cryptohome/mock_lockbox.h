@@ -12,9 +12,6 @@
 #include <gmock/gmock.h>
 
 namespace cryptohome {
-using ::testing::_;
-using ::testing::Invoke;
-using ::testing::Return;
 
 class MockLockbox : public Lockbox {
  public:

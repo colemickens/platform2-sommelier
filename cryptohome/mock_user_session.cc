@@ -4,9 +4,12 @@
 
 #include "cryptohome/mock_user_session.h"
 
+using testing::_;
+using testing::Invoke;
+
 namespace cryptohome {
 
-MockUserSession::MockUserSession() : user_session_() {
+MockUserSession::MockUserSession() {
   ON_CALL(*this, Init(_))
       .WillByDefault(Invoke(&user_session_, &UserSession::Init));
   ON_CALL(*this, SetUser(_))

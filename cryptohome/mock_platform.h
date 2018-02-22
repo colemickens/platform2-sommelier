@@ -21,18 +21,14 @@
 
 namespace cryptohome {
 
-using ::testing::_;
-using ::testing::NiceMock;
-using ::testing::Invoke;
-using ::testing::Return;
-
 class MockFileEnumerator : public FileEnumerator {
  public:
   MockFileEnumerator() {
     ON_CALL(*this, Next())
-      .WillByDefault(Invoke(this, &MockFileEnumerator::MockNext));
+        .WillByDefault(::testing::Invoke(this, &MockFileEnumerator::MockNext));
     ON_CALL(*this, GetInfo())
-      .WillByDefault(Invoke(this, &MockFileEnumerator::MockGetInfo));
+        .WillByDefault(
+            ::testing::Invoke(this, &MockFileEnumerator::MockGetInfo));
   }
   virtual ~MockFileEnumerator() {}
 
@@ -249,7 +245,7 @@ class MockPlatform : public Platform {
                                         bool recursive,
                                         int file_type) {
     MockFileEnumerator* e = mock_enumerator_.release();
-    mock_enumerator_.reset(new NiceMock<MockFileEnumerator>());
+    mock_enumerator_.reset(new ::testing::NiceMock<MockFileEnumerator>());
     mock_enumerator_->entries_.assign(e->entries_.begin(), e->entries_.end());
     return e;
   }

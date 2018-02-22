@@ -16,10 +16,6 @@
 
 namespace cryptohome {
 
-using ::testing::_;
-using ::testing::Invoke;
-using ::testing::Return;
-
 class MockService : public ServiceMonolithic {
  public:
   explicit MockService(const std::string& abe_data);

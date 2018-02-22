@@ -310,9 +310,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   // mount_thread_ executed handler for AsyncMount DBus calls.
   // All real work is done here, while the DBus thread merely generates
   // an async_id in |mount_task| and returns it to the caller.
-  virtual void  DoAsyncMount(const std::string& userid,
-                             SecureBlob *key,
-                             MountTaskMount* mount_task);
+  virtual void DoAsyncMount(const std::string& userid,
+                            brillo::SecureBlob* key,
+                            MountTaskMount* mount_task);
   virtual gboolean AsyncMount(
       const gchar *user,
       const gchar *key,
@@ -795,7 +795,7 @@ class Service : public brillo::dbus::AbstractDbusService,
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
 
-  std::unique_ptr<SecureBlob> GetAttestationBasedEnrollmentData();
+  std::unique_ptr<brillo::SecureBlob> GetAttestationBasedEnrollmentData();
 
   bool CreateSystemSaltIfNeeded();
   bool CreatePublicMountSaltIfNeeded();

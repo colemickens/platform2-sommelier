@@ -12,9 +12,6 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-using ::testing::_;
-using ::testing::Return;
-
 namespace cryptohome {
 
 class MockKeyStore : public KeyStore {

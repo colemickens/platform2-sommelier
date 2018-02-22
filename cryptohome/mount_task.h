@@ -40,8 +40,6 @@
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/username_passkey.h"
 
-using brillo::SecureBlob;
-
 namespace cryptohome {
 
 extern const char* kMountTaskResultEventType;
@@ -51,6 +49,8 @@ class InstallAttributes;
 
 class MountTaskResult : public CryptohomeEventBase {
  public:
+  using SecureBlob = brillo::SecureBlob;
+
   MountTaskResult()
       : sequence_id_(-1),
         return_status_(false),

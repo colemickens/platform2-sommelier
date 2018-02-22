@@ -18,6 +18,8 @@
 #include "cryptohome/mock_tpm.h"
 
 using base::FilePath;
+using testing::_;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::WithArgs;
 using testing::Return;

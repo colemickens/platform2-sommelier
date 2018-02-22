@@ -14,11 +14,6 @@
 #include <gmock/gmock.h>
 
 namespace cryptohome {
-using ::testing::Invoke;
-using ::testing::Return;
-using ::testing::_;
-
-class Crypto;
 
 class MockTpm : public Tpm {
  public:

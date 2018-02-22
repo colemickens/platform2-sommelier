@@ -22,8 +22,10 @@
 #include "install_attributes.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Invoke;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 

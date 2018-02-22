@@ -138,7 +138,8 @@ gboolean ServiceMonolithic::TpmAttestationCreateEnrollRequest(
     GError** error) {
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_pca_request =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob blob;
   if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
     g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
@@ -199,7 +200,8 @@ gboolean ServiceMonolithic::TpmAttestationCreateCertRequest(
     GError** error) {
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_pca_request =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob blob;
   if (attestation_->CreateCertRequest(GetPCAType(pca_type),
                                       GetProfile(certificate_profile),
@@ -243,7 +245,7 @@ gboolean ServiceMonolithic::TpmAttestationFinishCertRequest(
     GError** error) {
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_cert = g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob response_blob(pca_response->data,
                                      pca_response->data + pca_response->len);
   brillo::SecureBlob cert_blob;
@@ -308,7 +310,8 @@ gboolean ServiceMonolithic::TpmAttestationGetCertificate(
     GArray **OUT_certificate,
     gboolean* OUT_success,
     GError** error) {
-  *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_certificate =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob blob;
   *OUT_success = attestation_->GetCertificateChain(is_user_specific,
                                                    username,
@@ -326,7 +329,8 @@ gboolean ServiceMonolithic::TpmAttestationGetPublicKey(
     GArray **OUT_public_key,
     gboolean* OUT_success,
     GError** error) {
-  *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_public_key =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob blob;
   *OUT_success = attestation_->GetPublicKey(is_user_specific,
                                             username,
@@ -450,7 +454,8 @@ gboolean ServiceMonolithic::TpmAttestationGetKeyPayload(
     GError** error) {
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_payload =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob blob;
   *OUT_success = attestation_->GetKeyPayload(is_user_specific,
                                              username,
@@ -505,8 +510,8 @@ gboolean ServiceMonolithic::TpmAttestationResetIdentity(
     GError** error) {
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_reset_request = g_array_new(false, false,
-                                   sizeof(SecureBlob::value_type));
+  *OUT_reset_request =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob reset_request;
   *OUT_success = attestation_->GetIdentityResetRequest(
       std::string(reinterpret_cast<char*>(reset_token)),
@@ -526,8 +531,8 @@ void ServiceMonolithic::DoGetEndorsementInfo(const brillo::SecureBlob& request,
     return;
   }
   BaseReply reply;
-  SecureBlob public_key;
-  SecureBlob certificate;
+  brillo::SecureBlob public_key;
+  brillo::SecureBlob certificate;
   if (attestation_->GetCachedEndorsementData(&public_key, &certificate) ||
       (tpm_->GetEndorsementPublicKey(&public_key) &&
        tpm_->GetEndorsementCredential(&certificate))) {
@@ -545,11 +550,12 @@ void ServiceMonolithic::DoGetEndorsementInfo(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::GetEndorsementInfo(const GArray* request,
                                      DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&ServiceMonolithic::DoGetEndorsementInfo,
-                 base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &ServiceMonolithic::DoGetEndorsementInfo, base::Unretained(this),
+          brillo::SecureBlob(request->data, request->data + request->len),
+          base::Unretained(context)));
   return TRUE;
 }
 
@@ -640,11 +646,12 @@ void ServiceMonolithic::DoInitializeCastKey(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::InitializeCastKey(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&ServiceMonolithic::DoInitializeCastKey,
-                 base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &ServiceMonolithic::DoInitializeCastKey, base::Unretained(this),
+          brillo::SecureBlob(request->data, request->data + request->len),
+          base::Unretained(context)));
   return TRUE;
 }
 
@@ -652,9 +659,8 @@ gboolean ServiceMonolithic::TpmAttestationGetEnrollmentId(
     GArray** OUT_enrollment_id,
     gboolean* OUT_success,
     GError** error) {
-  *OUT_enrollment_id = g_array_new(false,
-                                   false,
-                                   sizeof(SecureBlob::value_type));
+  *OUT_enrollment_id =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob enrollment_id;
   *OUT_success =
       attestation_->GetEnterpriseEnrollmentId(&enrollment_id);

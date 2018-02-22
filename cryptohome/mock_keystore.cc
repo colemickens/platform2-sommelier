@@ -4,6 +4,9 @@
 
 #include "cryptohome/mock_keystore.h"
 
+using testing::_;
+using testing::Return;
+
 namespace cryptohome {
 
 MockKeyStore::MockKeyStore() {

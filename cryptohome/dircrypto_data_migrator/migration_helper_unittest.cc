@@ -35,6 +35,14 @@ extern "C" {
 
 using base::FilePath;
 using base::ScopedTempDir;
+using testing::_;
+using testing::DoDefault;
+using testing::Invoke;
+using testing::InvokeWithoutArgs;
+using testing::NiceMock;
+using testing::Return;
+using testing::SetErrnoAndReturn;
+using testing::Values;
 
 namespace cryptohome {
 namespace dircrypto_data_migrator {
@@ -50,79 +58,64 @@ constexpr char kAtimeXattrName[] = "user.atime";
 // methods they care about.
 void PassThroughPlatformMethods(MockPlatform* mock_platform,
                                 Platform* real_platform) {
-  ON_CALL(*mock_platform, TouchFileDurable(testing::_))
+  ON_CALL(*mock_platform, TouchFileDurable(_))
+      .WillByDefault(Invoke(real_platform, &Platform::TouchFileDurable));
+  ON_CALL(*mock_platform, DeleteFile(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::DeleteFile));
+  ON_CALL(*mock_platform, SyncDirectory(_))
+      .WillByDefault(Invoke(real_platform, &Platform::SyncDirectory));
+  ON_CALL(*mock_platform, DataSyncFile(_))
+      .WillByDefault(Invoke(real_platform, &Platform::DataSyncFile));
+  ON_CALL(*mock_platform, SyncFile(_))
+      .WillByDefault(Invoke(real_platform, &Platform::SyncFile));
+  ON_CALL(*mock_platform, GetFileEnumerator(_, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::GetFileEnumerator));
+  ON_CALL(*mock_platform, SetPermissions(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::SetPermissions));
+  ON_CALL(*mock_platform, GetPermissions(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::GetPermissions));
+  ON_CALL(*mock_platform, FileExists(_))
+      .WillByDefault(Invoke(real_platform, &Platform::FileExists));
+  ON_CALL(*mock_platform, CreateDirectory(_))
+      .WillByDefault(Invoke(real_platform, &Platform::CreateDirectory));
+  ON_CALL(*mock_platform, HasExtendedFileAttribute(_, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::TouchFileDurable));
-  ON_CALL(*mock_platform, DeleteFile(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::DeleteFile));
-  ON_CALL(*mock_platform, SyncDirectory(testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SyncDirectory));
-  ON_CALL(*mock_platform, DataSyncFile(testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::DataSyncFile));
-  ON_CALL(*mock_platform, SyncFile(testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SyncFile));
-  ON_CALL(*mock_platform, GetFileEnumerator(testing::_, testing::_, testing::_))
+          Invoke(real_platform, &Platform::HasExtendedFileAttribute));
+  ON_CALL(*mock_platform, ListExtendedFileAttributes(_, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::GetFileEnumerator));
-  ON_CALL(*mock_platform, SetPermissions(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SetPermissions));
-  ON_CALL(*mock_platform, GetPermissions(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::GetPermissions));
-  ON_CALL(*mock_platform, FileExists(testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::FileExists));
-  ON_CALL(*mock_platform, CreateDirectory(testing::_))
+          Invoke(real_platform, &Platform::ListExtendedFileAttributes));
+  ON_CALL(*mock_platform, SetExtendedFileAttribute(_, _, _, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::CreateDirectory));
-  ON_CALL(*mock_platform, HasExtendedFileAttribute(testing::_, testing::_))
+          Invoke(real_platform, &Platform::SetExtendedFileAttribute));
+  ON_CALL(*mock_platform, GetExtendedFileAttribute(_, _, _, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::HasExtendedFileAttribute));
-  ON_CALL(*mock_platform, ListExtendedFileAttributes(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform,
-                                     &Platform::ListExtendedFileAttributes));
-  ON_CALL(
-      *mock_platform,
-      SetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+          Invoke(real_platform, &Platform::GetExtendedFileAttribute));
+  ON_CALL(*mock_platform, GetExtendedFileAttributeAsString(_, _, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::SetExtendedFileAttribute));
-  ON_CALL(
-      *mock_platform,
-      GetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+          Invoke(real_platform, &Platform::GetExtendedFileAttributeAsString));
+  ON_CALL(*mock_platform, GetExtFileAttributes(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::GetExtFileAttributes));
+  ON_CALL(*mock_platform, SetExtFileAttributes(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::SetExtFileAttributes));
+  ON_CALL(*mock_platform, GetOwnership(_, _, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::GetOwnership));
+  ON_CALL(*mock_platform, SetOwnership(_, _, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::SetOwnership));
+  ON_CALL(*mock_platform, SetFileTimes(_, _, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::SetFileTimes));
+  ON_CALL(*mock_platform, Stat(_, _))
+      .WillByDefault(Invoke(real_platform, &Platform::Stat));
+  ON_CALL(*mock_platform, SendFile(_, _, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::SendFile));
+  ON_CALL(*mock_platform, AmountOfFreeDiskSpace(_))
+      .WillByDefault(Invoke(real_platform, &Platform::AmountOfFreeDiskSpace));
+  ON_CALL(*mock_platform, InitializeFile(_, _, _))
+      .WillByDefault(Invoke(real_platform, &Platform::InitializeFile));
+  ON_CALL(*mock_platform, LockFile(_))
+      .WillByDefault(Invoke(real_platform, &Platform::LockFile));
+  ON_CALL(*mock_platform, RemoveExtendedFileAttribute(_, _))
       .WillByDefault(
-          testing::Invoke(real_platform, &Platform::GetExtendedFileAttribute));
-  ON_CALL(*mock_platform,
-          GetExtendedFileAttributeAsString(testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(
-          real_platform, &Platform::GetExtendedFileAttributeAsString));
-  ON_CALL(*mock_platform, GetExtFileAttributes(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(real_platform, &Platform::GetExtFileAttributes));
-  ON_CALL(*mock_platform, SetExtFileAttributes(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(real_platform, &Platform::SetExtFileAttributes));
-  ON_CALL(*mock_platform,
-          GetOwnership(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::GetOwnership));
-  ON_CALL(*mock_platform,
-          SetOwnership(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SetOwnership));
-  ON_CALL(*mock_platform,
-          SetFileTimes(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SetFileTimes));
-  ON_CALL(*mock_platform, Stat(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::Stat));
-  ON_CALL(*mock_platform,
-          SendFile(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::SendFile));
-  ON_CALL(*mock_platform, AmountOfFreeDiskSpace(testing::_))
-      .WillByDefault(
-          testing::Invoke(real_platform, &Platform::AmountOfFreeDiskSpace));
-  ON_CALL(*mock_platform, InitializeFile(testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::InitializeFile));
-  ON_CALL(*mock_platform, LockFile(testing::_))
-      .WillByDefault(testing::Invoke(real_platform, &Platform::LockFile));
-  ON_CALL(*mock_platform, RemoveExtendedFileAttribute(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(real_platform,
-                                     &Platform::RemoveExtendedFileAttribute));
+          Invoke(real_platform, &Platform::RemoveExtendedFileAttribute));
 }
 
 }  // namespace
@@ -541,7 +534,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   // Ownership changes for regular files and symlinks can't be tested normally
   // due to how we get ownership information via file enumerator.  Instead we
   // directly test CopyAttributes with modified FileInfo arguments.
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -578,7 +571,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   stat.st_uid = file_uid;
   stat.st_gid = file_gid;
   EXPECT_CALL(mock_platform, SetOwnership(kToFile, file_uid, file_gid, false))
-      .WillOnce(testing::Return(true));
+      .WillOnce(Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
       kFile, FileEnumerator::FileInfo(kFromFile, stat)));
 
@@ -586,7 +579,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   stat.st_uid = link_uid;
   stat.st_gid = link_gid;
   EXPECT_CALL(mock_platform, SetOwnership(kToLink, link_uid, link_gid, false))
-      .WillOnce(testing::Return(true));
+      .WillOnce(Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
       kLink, FileEnumerator::FileInfo(kFromLink, stat)));
 
@@ -594,7 +587,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   stat.st_uid = dir_uid;
   stat.st_gid = dir_gid;
   EXPECT_CALL(mock_platform, SetOwnership(kToDir, dir_uid, dir_gid, false))
-      .WillOnce(testing::Return(true));
+      .WillOnce(Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
       kDir, FileEnumerator::FileInfo(kFromDir, stat)));
 }
@@ -830,21 +823,20 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
 }
 
 TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
                          status_files_dir_.GetPath(), kDefaultChunkSize,
                          MigrationType::FULL);
 
-  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
-      .WillOnce(testing::Return(0));
+  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(_)).WillOnce(Return(0));
   EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   constexpr int kMaxChunkSize = 128 << 20;  // 128MB
@@ -867,23 +859,19 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   from_file.SetLength(kFileSize);
   from_file.Close();
 
-  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
-      .WillOnce(testing::Return(kFreeSpace));
-  EXPECT_CALL(mock_platform,
-              SendFile(testing::_,
-                       testing::_,
-                       kExpectedChunkSize,
-                       kFileSize - kExpectedChunkSize))
-      .WillOnce(testing::Return(true));
-  EXPECT_CALL(mock_platform,
-              SendFile(testing::_, testing::_, 0, kExpectedChunkSize))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kFreeSpace));
+  EXPECT_CALL(mock_platform, SendFile(_, _, kExpectedChunkSize,
+                                      kFileSize - kExpectedChunkSize))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_platform, SendFile(_, _, 0, kExpectedChunkSize))
+      .WillOnce(Return(true));
   EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -901,12 +889,11 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
       to_dir_.GetPath().Append(kSkippedFileListFileName);
   ASSERT_TRUE(base::CreateDirectory(kFromSQLiteShm.DirName()));
   ASSERT_TRUE(real_platform.TouchFileDurable(kFromSQLiteShm));
-  EXPECT_CALL(mock_platform, InitializeFile(testing::_, testing::_, testing::_))
-      .WillRepeatedly(testing::DoDefault());
-  EXPECT_CALL(mock_platform,
-              InitializeFile(testing::_, kFromSQLiteShm, testing::_))
-      .WillOnce(testing::Invoke(
-          [](base::File* file, const FilePath& path, uint32_t mode) {
+  EXPECT_CALL(mock_platform, InitializeFile(_, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(mock_platform, InitializeFile(_, kFromSQLiteShm, _))
+      .WillOnce(
+          Invoke([](base::File* file, const FilePath& path, uint32_t mode) {
             *file = base::File(base::File::FILE_ERROR_IO);
           }));
 
@@ -922,7 +909,7 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
 }
 
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -942,15 +929,15 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
   }
   // All job threads will stop processing jobs because of errors. Also, set
   // errno to avoid confusing base::File::OSErrorToFileError(). crbug.com/731809
-  EXPECT_CALL(mock_platform, DeleteFile(_, _)).WillRepeatedly(
-      testing::SetErrnoAndReturn(EIO, false));
+  EXPECT_CALL(mock_platform, DeleteFile(_, _))
+      .WillRepeatedly(SetErrnoAndReturn(EIO, false));
   // Migrate() still returns the result without deadlocking. crbug.com/731575
   EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -973,16 +960,16 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
   NiceMock<MockFileEnumerator>* mock_v1 = new NiceMock<MockFileEnumerator>();
   mock_v1->entries_.push_back(info);
   mock_v1->entries_.push_back(info);
-  EXPECT_CALL(mock_platform, GetFileEnumerator(testing::_, testing::_,
-      testing::_)).WillRepeatedly(testing::DoDefault());
-  EXPECT_CALL(mock_platform, GetFileEnumerator(v1_path, false, testing::_))
+  EXPECT_CALL(mock_platform, GetFileEnumerator(_, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(mock_platform, GetFileEnumerator(v1_path, false, _))
       .WillOnce(Return(mock_v1));
 
   // Ensure that the inner path is never visited.
-  EXPECT_CALL(mock_platform, DeleteFile(testing::_, testing::_))
-      .WillRepeatedly(testing::DoDefault());
-  EXPECT_CALL(mock_platform, DeleteFile(
-      v1_path.AppendASCII("tmp/foobar/tmp.gdoc"), testing::_)).Times(0);
+  EXPECT_CALL(mock_platform, DeleteFile(_, _)).WillRepeatedly(DoDefault());
+  EXPECT_CALL(mock_platform,
+              DeleteFile(v1_path.AppendASCII("tmp/foobar/tmp.gdoc"), _))
+      .Times(0);
 
   // Test the migration.
   EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
@@ -990,7 +977,7 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
 }
 
 TEST_F(MigrationHelperTest, MinimalMigration) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -1071,7 +1058,7 @@ TEST_F(MigrationHelperTest, MinimalMigration) {
 }
 
 TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -1087,7 +1074,7 @@ TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
 }
 
 TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
-  testing::NiceMock<MockPlatform> mock_platform;
+  NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.GetPath(), to_dir_.GetPath(),
@@ -1108,7 +1095,7 @@ TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
       base::WaitableEvent::ResetPolicy::AUTOMATIC,
       base::WaitableEvent::InitialState::NOT_SIGNALED);
   EXPECT_CALL(mock_platform, SyncFile(to_dir_.GetPath().Append(kFileName)))
-      .WillOnce(testing::InvokeWithoutArgs(
+      .WillOnce(InvokeWithoutArgs(
           [&syncfile_is_called_event, &cancel_is_called_event]() {
             syncfile_is_called_event.Signal();
             cancel_is_called_event.Wait();
@@ -1165,16 +1152,15 @@ TEST_P(DataMigrationTest, CopyFileData) {
 
 INSTANTIATE_TEST_CASE_P(WithRandomData,
                         DataMigrationTest,
-                        ::testing::Values(kDefaultChunkSize / 2,
-                                          kDefaultChunkSize,
-                                          kDefaultChunkSize * 2,
-                                          kDefaultChunkSize * 2 +
-                                              kDefaultChunkSize / 2,
-                                          kDefaultChunkSize * 10,
-                                          kDefaultChunkSize * 100,
-                                          123456,
-                                          1,
-                                          2));
+                        Values(kDefaultChunkSize / 2,
+                               kDefaultChunkSize,
+                               kDefaultChunkSize * 2,
+                               kDefaultChunkSize * 2 + kDefaultChunkSize / 2,
+                               kDefaultChunkSize * 10,
+                               kDefaultChunkSize * 100,
+                               123456,
+                               1,
+                               2));
 
 // MigrationHelperJobListTest verifies that the job list size limit doesn't
 // cause dead lock, however small (or big) the limit is.
@@ -1227,8 +1213,9 @@ TEST_P(MigrationHelperJobListTest, ProcessJobs) {
   EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.GetPath()));
 }
 
-INSTANTIATE_TEST_CASE_P(JobListSize, MigrationHelperJobListTest,
-                        ::testing::Values(1, 10, 100, 1000));
+INSTANTIATE_TEST_CASE_P(JobListSize,
+                        MigrationHelperJobListTest,
+                        Values(1, 10, 100, 1000));
 
 }  // namespace dircrypto_data_migrator
 }  // namespace cryptohome

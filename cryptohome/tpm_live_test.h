@@ -12,8 +12,6 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-using brillo::SecureBlob;
-
 namespace cryptohome {
 
 class TpmLiveTest {
@@ -24,7 +22,7 @@ class TpmLiveTest {
   // This method runs all the live tests in this class, if the owner_password
   // is provided. If the owner_password is empty, this method runs
   // all the tests that do not require the owner password.
-  bool RunLiveTests(SecureBlob owner_password);
+  bool RunLiveTests(brillo::SecureBlob owner_password);
 
  private:
   // This test checks if PCRs and PCR bound keys work correctly.

@@ -389,7 +389,8 @@ gboolean ServiceDistributed::TpmAttestationCreateEnrollRequest(
                            base::Unretained(attestation_interface_), request);
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_pca_request =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!SendRequestAndWait(method, &reply)) {
     ReportSendFailure(error);
     return FALSE;
@@ -500,7 +501,8 @@ gboolean ServiceDistributed::TpmAttestationCreateCertRequest(
                            base::Unretained(attestation_interface_), request);
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_pca_request =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!SendRequestAndWait(method, &reply)) {
     ReportSendFailure(error);
     return FALSE;
@@ -566,7 +568,7 @@ gboolean ServiceDistributed::TpmAttestationFinishCertRequest(
                            base::Unretained(attestation_interface_), request);
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_cert = g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!SendRequestAndWait(method, &reply)) {
     ReportSendFailure(error);
     return FALSE;
@@ -665,7 +667,8 @@ gboolean ServiceDistributed::TpmAttestationGetCertificate(
   attestation::GetKeyInfoReply key_info;
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_certificate =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!GetKeyInfo(is_user_specific, username, key_name, &key_info)) {
     ReportSendFailure(error);
     return FALSE;
@@ -692,7 +695,8 @@ gboolean ServiceDistributed::TpmAttestationGetPublicKey(
   attestation::GetKeyInfoReply key_info;
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_public_key =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!GetKeyInfo(is_user_specific, username, key_name, &key_info)) {
     ReportSendFailure(error);
     return FALSE;
@@ -841,7 +845,8 @@ gboolean ServiceDistributed::TpmAttestationGetKeyPayload(
   attestation::GetKeyInfoReply key_info;
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  *OUT_payload =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!GetKeyInfo(is_user_specific, username, key_name, &key_info)) {
     ReportSendFailure(error);
     return FALSE;
@@ -942,7 +947,7 @@ gboolean ServiceDistributed::TpmAttestationResetIdentity(
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
   *OUT_reset_request =
-      g_array_new(false, false, sizeof(SecureBlob::value_type));
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!SendRequestAndWait(method, &reply)) {
     ReportSendFailure(error);
     return FALSE;
@@ -984,10 +989,10 @@ gboolean ServiceDistributed::GetEndorsementInfo(
     const GArray* request,
     DBusGMethodInvocation* context) {
   VLOG(1) << __func__;
-  auto method =
-      base::Bind(&ServiceDistributed::DoGetEndorsementInfo, GetWeakPtr(),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context));
+  auto method = base::Bind(
+      &ServiceDistributed::DoGetEndorsementInfo, GetWeakPtr(),
+      brillo::SecureBlob(request->data, request->data + request->len),
+      base::Unretained(context));
   if (!Post(method)) {
     return FALSE;
   }
@@ -1010,10 +1015,10 @@ void ServiceDistributed::DoInitializeCastKey(
 gboolean ServiceDistributed::InitializeCastKey(const GArray* request,
                                                DBusGMethodInvocation* context) {
   VLOG(1) << __func__;
-  auto method =
-      base::Bind(&ServiceDistributed::DoInitializeCastKey, GetWeakPtr(),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context));
+  auto method = base::Bind(
+      &ServiceDistributed::DoInitializeCastKey, GetWeakPtr(),
+      brillo::SecureBlob(request->data, request->data + request->len),
+      base::Unretained(context));
   if (!Post(method)) {
     return FALSE;
   }
@@ -1030,9 +1035,8 @@ gboolean ServiceDistributed::TpmAttestationGetEnrollmentId(
                            base::Unretained(attestation_interface_), request);
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
-  *OUT_enrollment_id = g_array_new(false,
-                                   false,
-                                   sizeof(SecureBlob::value_type));
+  *OUT_enrollment_id =
+      g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   if (!SendRequestAndWait(method, &reply)) {
     ReportSendFailure(error);
     return FALSE;
