@@ -81,7 +81,7 @@ bool TpmLiveTest::PCRKeyTest() {
     LOG(ERROR) << "Error verifying PCR bound key.";
     return false;
   }
-  if (!tpm_->ExtendPCR(index, SecureBlob("extend"))) {
+  if (!tpm_->ExtendPCR(index, SecureBlob("01234567890123456789"))) {
     LOG(ERROR) << "Error extending PCR.";
     return false;
   }

@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Test methods that run on a real TPM
+// Test methods that run on a real TPM.
+// Note: the TPM must be owned in order for all tests to work correctly.
 
 #ifndef CRYPTOHOME_TPM_LIVE_TEST_H_
 #define CRYPTOHOME_TPM_LIVE_TEST_H_
