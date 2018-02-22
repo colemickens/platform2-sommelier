@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/dark_resume.h"
+#include "power_manager/powerd/system/legacy_dark_resume.h"
 
 #include <memory>
 
@@ -41,7 +41,7 @@ class SystemAbstraction {
   // If we are in "dark resume" and |woken_by_timer| is set,
   // then we will pretend that this timer fired to wake us up
   // from the suspend.
-  virtual void Suspend(DarkResume* dark_resume,
+  virtual void Suspend(LegacyDarkResume* dark_resume,
                        DarkResumeInterface::Action* action,
                        base::TimeDelta* suspend_duration,
                        bool woken_by_timer) = 0;
@@ -65,7 +65,7 @@ class LegacySystem : public SystemAbstraction {
 
   // In the legacy case, we prepare the action synchronously,
   // so just call into |dark_resume|.
-  void Suspend(DarkResume* dark_resume,
+  void Suspend(LegacyDarkResume* dark_resume,
                DarkResumeInterface::Action* action,
                base::TimeDelta* suspend_duration,
                bool woken_by_timer) override {
@@ -110,13 +110,13 @@ class WakeupTypeSystem : public SystemAbstraction {
   // For 1, we ask the timer what the delay is before the work will run.
   // For 2, we fire the timer and then check what it set next_action_
   // to.
-  void Suspend(DarkResume* dark_resume,
+  void Suspend(LegacyDarkResume* dark_resume,
                DarkResumeInterface::Action* action,
                base::TimeDelta* suspend_duration,
                bool woken_by_timer) override {
     dark_resume->GetActionForSuspendAttempt(action, suspend_duration);
     // In this pathway, we should never set |suspend_duration|.
-    // Setting the wake alarm has already been done by DarkResume.
+    // Setting the wake alarm has already been done by LegacyDarkResume.
     EXPECT_EQ(0, suspend_duration->InSeconds());
     // Set up |action| and |suspend_duration| as if this was the
     // legacy pathway.
@@ -130,7 +130,7 @@ class WakeupTypeSystem : public SystemAbstraction {
 
  private:
   // THIS IS A WEAK POINTER.
-  // The timer will be owned by the DarkResume class.
+  // The timer will be owned by the LegacyDarkResume class.
   base::MockTimer* timer_;
 
   DISALLOW_COPY_AND_ASSIGN(WakeupTypeSystem);
@@ -146,9 +146,9 @@ const char WakeupTypeSystem::kDisabled[] = "unknown";
 }  // namespace
 
 template <typename SystemType>
-class DarkResumeTest : public ::testing::Test {
+class LegacyDarkResumeTest : public ::testing::Test {
  public:
-  DarkResumeTest() : dark_resume_(new DarkResume) {
+  LegacyDarkResumeTest() : dark_resume_(new LegacyDarkResume) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
     pm_test_path_ = temp_dir_.GetPath().Append("pm_test");
@@ -162,8 +162,8 @@ class DarkResumeTest : public ::testing::Test {
     WriteDarkResumeState(false);
     SetBattery(100.0, false);
 
-    // Override both the legacy and wakeup-type paths to ensure that DarkResume
-    // doesn't actually read from sysfs.
+    // Override both the legacy and wakeup-type paths to ensure that
+    // LegacyDarkResume doesn't actually read from sysfs.
     dark_resume_->set_legacy_state_path_for_testing(
         temp_dir_.GetPath().Append(LegacySystem::kStateFile));
     dark_resume_->set_wakeup_state_path_for_testing(
@@ -212,7 +212,7 @@ class DarkResumeTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   FakePrefs prefs_;
   PowerSupplyStub power_supply_;
-  std::unique_ptr<DarkResume> dark_resume_;
+  std::unique_ptr<LegacyDarkResume> dark_resume_;
 
   SystemType system_;
 
@@ -221,18 +221,18 @@ class DarkResumeTest : public ::testing::Test {
   base::FilePath power_state_path_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(DarkResumeTest);
+  DISALLOW_COPY_AND_ASSIGN(LegacyDarkResumeTest);
 };
 
 // We want to test both pathways.
 typedef ::testing::Types<LegacySystem, WakeupTypeSystem> Pathways;
-TYPED_TEST_CASE(DarkResumeTest, Pathways);
+TYPED_TEST_CASE(LegacyDarkResumeTest, Pathways);
 
 // Tests.
 // Note the heavy use of "this->" everywhere. Sadly, since we are subclassing
 // a class that was templated, this is necessary. If you leave it out, the
 // compiler will complain that it can't find the identifier.
-TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
+TYPED_TEST(LegacyDarkResumeTest, SuspendAndShutDown) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   this->Init();
 
@@ -271,7 +271,7 @@ TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
 
 // Test that a new shutdown threshold is calculated when suspending from outside
 // of dark resume.
-TYPED_TEST(DarkResumeTest, UserResumes) {
+TYPED_TEST(LegacyDarkResumeTest, UserResumes) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
                          "0.0 10\n"
                          "20.0 50\n"
@@ -337,7 +337,7 @@ TYPED_TEST(DarkResumeTest, UserResumes) {
 
 // Check that we don't shut down when on line power (regardless of the battery
 // level).
-TYPED_TEST(DarkResumeTest, LinePower) {
+TYPED_TEST(LegacyDarkResumeTest, LinePower) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   this->Init();
   DarkResumeInterface::Action action;
@@ -355,10 +355,12 @@ TYPED_TEST(DarkResumeTest, LinePower) {
   EXPECT_EQ(DarkResumeInterface::Action::SUSPEND, action);
 }
 
-TYPED_TEST(DarkResumeTest, EnableAndDisable) {
+TYPED_TEST(LegacyDarkResumeTest, EnableAndDisable) {
   const base::FilePath kDeviceDir = this->temp_dir_.GetPath().Append("foo");
-  const base::FilePath kPowerDir = kDeviceDir.Append(DarkResume::kPowerDir);
-  const base::FilePath kActivePath = kPowerDir.Append(DarkResume::kActiveFile);
+  const base::FilePath kPowerDir =
+      kDeviceDir.Append(LegacyDarkResume::kPowerDir);
+  const base::FilePath kActivePath =
+      kPowerDir.Append(LegacyDarkResume::kActiveFile);
   const base::FilePath kSourcePath = kPowerDir.Append(TypeParam::kSourceFile);
   ASSERT_TRUE(base::CreateDirectory(kPowerDir));
 
@@ -368,20 +370,20 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
 
   // Dark resume should be enabled when the object is initialized.
   this->Init();
-  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   // Dark resume should be disabled when the object is destroyed.
   this->dark_resume_.reset();
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(LegacyDarkResume::kDisabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
 
   // Set the "disable" pref and check that the files aren't set to the enabled
   // state after initializing a new object.
   this->prefs_.SetInt64(kDisableDarkResumePref, 1);
-  this->dark_resume_.reset(new DarkResume);
+  this->dark_resume_.reset(new LegacyDarkResume);
   this->Init();
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(LegacyDarkResume::kDisabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
@@ -394,9 +396,9 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
 
   // When the "disable" pref is set to 0, dark resume should be enabled.
   this->prefs_.SetInt64(kDisableDarkResumePref, 0);
-  this->dark_resume_.reset(new DarkResume);
+  this->dark_resume_.reset(new LegacyDarkResume);
   this->Init();
-  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
@@ -408,9 +410,9 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   // An empty suspend durations pref should result in dark resume being
   // enabled.
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, std::string());
-  this->dark_resume_.reset(new DarkResume);
+  this->dark_resume_.reset(new LegacyDarkResume);
   this->Init();
-  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
@@ -420,7 +422,7 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   EXPECT_EQ(0, suspend_duration.InSeconds());
 }
 
-TYPED_TEST(DarkResumeTest, PowerStatusRefreshFails) {
+TYPED_TEST(LegacyDarkResumeTest, PowerStatusRefreshFails) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   this->Init();
 
@@ -456,7 +458,7 @@ TYPED_TEST(DarkResumeTest, PowerStatusRefreshFails) {
 }
 
 // Check that we don't fail to schedule work after a full resume.
-TYPED_TEST(DarkResumeTest, FullResumeReschedule) {
+TYPED_TEST(LegacyDarkResumeTest, FullResumeReschedule) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
                          "0.0 10\n"
                          "50.0 20\n");
@@ -483,7 +485,7 @@ TYPED_TEST(DarkResumeTest, FullResumeReschedule) {
 }
 
 // Check that we don't reschedule work when we dark resume for another reason.
-TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
+TYPED_TEST(LegacyDarkResumeTest, InterruptedDarkResume) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
                          "0.0 10\n"
                          "50.0 20\n");
@@ -515,7 +517,7 @@ TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
 }
 
 // Check that we suspend normally after exiting dark resume after user activity.
-TYPED_TEST(DarkResumeTest, ExitDarkResume) {
+TYPED_TEST(LegacyDarkResumeTest, ExitDarkResume) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
                          "0.0 10\n"
                          "50.0 20\n");
@@ -541,13 +543,13 @@ TYPED_TEST(DarkResumeTest, ExitDarkResume) {
   EXPECT_EQ(10, suspend_duration.InSeconds());
 }
 
-TYPED_TEST(DarkResumeTest, CannotSafelyExit) {
+TYPED_TEST(LegacyDarkResumeTest, CannotSafelyExit) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   this->Init();
   EXPECT_FALSE(this->dark_resume_->CanSafelyExitDarkResume());
 }
 
-TYPED_TEST(DarkResumeTest, CanSafelyExit) {
+TYPED_TEST(LegacyDarkResumeTest, CanSafelyExit) {
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   ASSERT_EQ(0, base::WriteFile(this->pm_test_delay_path_, "", 0));
   this->Init();

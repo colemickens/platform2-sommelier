@@ -36,7 +36,6 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
-#include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
@@ -44,6 +43,7 @@
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
+#include "power_manager/powerd/system/legacy_dark_resume.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
@@ -197,7 +197,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       system::PowerSupplyInterface* power_supply,
       PrefsInterface* prefs) override {
-    auto dark_resume = base::WrapUnique(new system::DarkResume());
+    auto dark_resume = base::WrapUnique(new system::LegacyDarkResume());
     dark_resume->Init(power_supply, prefs);
     return std::move(dark_resume);
   }

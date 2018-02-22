@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/dark_resume.h"
+#include "power_manager/powerd/system/legacy_dark_resume.h"
 
 #include <stdint.h>
 
@@ -50,17 +50,17 @@ const char kPMTestDelayPath[] = "/sys/power/pm_test_delay";
 
 }  // namespace
 
-const char DarkResume::kPowerDir[] = "power";
-const char DarkResume::kActiveFile[] = "dark_resume_active";
-const char DarkResume::kSourceFile[] = "dark_resume_source";
-const char DarkResume::kEnabled[] = "enabled";
-const char DarkResume::kDisabled[] = "disabled";
+const char LegacyDarkResume::kPowerDir[] = "power";
+const char LegacyDarkResume::kActiveFile[] = "dark_resume_active";
+const char LegacyDarkResume::kSourceFile[] = "dark_resume_source";
+const char LegacyDarkResume::kEnabled[] = "enabled";
+const char LegacyDarkResume::kDisabled[] = "disabled";
 // For kernel 3.14 and later
-const char DarkResume::kWakeupTypeFile[] = "wakeup_type";
-const char DarkResume::kAutomatic[] = "automatic";
-const char DarkResume::kUnknown[] = "unknown";
+const char LegacyDarkResume::kWakeupTypeFile[] = "wakeup_type";
+const char LegacyDarkResume::kAutomatic[] = "automatic";
+const char LegacyDarkResume::kUnknown[] = "unknown";
 
-DarkResume::DarkResume()
+LegacyDarkResume::LegacyDarkResume()
     : in_dark_resume_(false),
       enabled_(false),
       using_wakeup_type_(false),
@@ -75,15 +75,15 @@ DarkResume::DarkResume()
       battery_shutdown_threshold_(0.0),
       next_action_(Action::SUSPEND) {}
 
-DarkResume::~DarkResume() {
+LegacyDarkResume::~LegacyDarkResume() {
   if (enabled_) {
     SetStates(dark_resume_sources_, using_wakeup_type_ ? kUnknown : kDisabled);
     SetStates(dark_resume_devices_, kDisabled);
   }
 }
 
-void DarkResume::Init(PowerSupplyInterface* power_supply,
-                      PrefsInterface* prefs) {
+void LegacyDarkResume::Init(PowerSupplyInterface* power_supply,
+                            PrefsInterface* prefs) {
   power_supply_ = power_supply;
   prefs_ = prefs;
 
@@ -121,20 +121,20 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   }
 }
 
-void DarkResume::PrepareForSuspendRequest() {
+void LegacyDarkResume::PrepareForSuspendRequest() {
   if (timer_ && enabled_ && !battery_check_suspend_durations_.empty())
     ScheduleBatteryCheck();
 }
 
-void DarkResume::UndoPrepareForSuspendRequest() {
+void LegacyDarkResume::UndoPrepareForSuspendRequest() {
   if (timer_)
     timer_->Stop();
 
   in_dark_resume_ = false;
 }
 
-void DarkResume::GetActionForSuspendAttempt(Action* action,
-                                            base::TimeDelta* suspend_duration) {
+void LegacyDarkResume::GetActionForSuspendAttempt(
+    Action* action, base::TimeDelta* suspend_duration) {
   DCHECK(action);
   DCHECK(suspend_duration);
 
@@ -155,18 +155,18 @@ void DarkResume::GetActionForSuspendAttempt(Action* action,
   *action = next_action_;
 }
 
-void DarkResume::ScheduleBatteryCheck() {
+void LegacyDarkResume::ScheduleBatteryCheck() {
   if (!power_supply_->RefreshImmediately())
     return;
 
   UpdateNextAction();
 
-  timer_->Start(
-      FROM_HERE, GetNextSuspendDuration(),
-      base::Bind(&DarkResume::ScheduleBatteryCheck, base::Unretained(this)));
+  timer_->Start(FROM_HERE, GetNextSuspendDuration(),
+                base::Bind(&LegacyDarkResume::ScheduleBatteryCheck,
+                           base::Unretained(this)));
 }
 
-base::TimeDelta DarkResume::GetNextSuspendDuration() {
+base::TimeDelta LegacyDarkResume::GetNextSuspendDuration() {
   if (battery_check_suspend_durations_.empty())
     return base::TimeDelta();
   const double battery = power_supply_->GetPowerStatus().battery_percentage;
@@ -177,7 +177,7 @@ base::TimeDelta DarkResume::GetNextSuspendDuration() {
   return suspend_it->second;
 }
 
-void DarkResume::UpdateNextAction() {
+void LegacyDarkResume::UpdateNextAction() {
   const PowerStatus status = power_supply_->GetPowerStatus();
   const double battery = status.battery_percentage;
   const bool line_power = status.line_power_on;
@@ -203,7 +203,7 @@ void DarkResume::UpdateNextAction() {
     next_action_ = Action::SHUT_DOWN;
 }
 
-void DarkResume::HandleSuccessfulResume() {
+void LegacyDarkResume::HandleSuccessfulResume() {
   if (!enabled_) {
     in_dark_resume_ = false;
     return;
@@ -225,19 +225,19 @@ void DarkResume::HandleSuccessfulResume() {
   }
 }
 
-bool DarkResume::InDarkResume() {
+bool LegacyDarkResume::InDarkResume() {
   return in_dark_resume_;
 }
 
-bool DarkResume::IsEnabled() {
+bool LegacyDarkResume::IsEnabled() {
   return enabled_;
 }
 
-bool DarkResume::CanSafelyExitDarkResume() {
+bool LegacyDarkResume::CanSafelyExitDarkResume() {
   return can_safely_exit_dark_resume_;
 }
 
-bool DarkResume::ExitDarkResume() {
+bool LegacyDarkResume::ExitDarkResume() {
   LOG(INFO) << "Transitioning from dark resume to fully resumed.";
 
   // Set up the pm_test down to devices level.
@@ -266,7 +266,7 @@ bool DarkResume::ExitDarkResume() {
   return true;
 }
 
-void DarkResume::ReadSuspendDurationsPref() {
+void LegacyDarkResume::ReadSuspendDurationsPref() {
   battery_check_suspend_durations_.clear();
 
   std::string data;
@@ -300,9 +300,9 @@ void DarkResume::ReadSuspendDurationsPref() {
   }
 }
 
-void DarkResume::GetFiles(std::vector<base::FilePath>* files,
-                          const std::string& pref_name,
-                          const std::string& base_file) {
+void LegacyDarkResume::GetFiles(std::vector<base::FilePath>* files,
+                                const std::string& pref_name,
+                                const std::string& base_file) {
   files->clear();
 
   std::string data;
@@ -319,8 +319,8 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
   }
 }
 
-void DarkResume::SetStates(const std::vector<base::FilePath>& files,
-                           const std::string& state) {
+void LegacyDarkResume::SetStates(const std::vector<base::FilePath>& files,
+                                 const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
        iter != files.end(); ++iter) {
     if (!util::WriteFileFully(*iter, state.c_str(), state.length())) {

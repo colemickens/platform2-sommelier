@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
-#define POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_LEGACY_DARK_RESUME_H_
+#define POWER_MANAGER_POWERD_SYSTEM_LEGACY_DARK_RESUME_H_
 
 #include <map>
 #include <memory>
@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/power_supply.h"
 
 namespace power_manager {
@@ -24,57 +25,9 @@ class PrefsInterface;
 
 namespace system {
 
-// Returns information related to "dark resume", a mode where the system briefly
-// resumes from suspend to check the battery level and possibly shut down
-// automatically.
-class DarkResumeInterface {
- public:
-  enum class Action {
-    // Suspend the system.
-    SUSPEND = 0,
-    // Shut the system down immediately.
-    SHUT_DOWN,
-  };
-
-  DarkResumeInterface() {}
-  virtual ~DarkResumeInterface() {}
-
-  // These methods bracket each suspend request. PrepareForSuspendRequest will
-  // schedule the dark resume callback if it is able to, and
-  // UndoPrepareForSuspendRequest will deschedule it if necessary.
-  virtual void PrepareForSuspendRequest() = 0;
-  virtual void UndoPrepareForSuspendRequest() = 0;
-
-  // Updates state in anticipation of the system suspending, returning the
-  // action that should be performed. If SUSPEND is returned, |suspend_duration|
-  // contains the duration for which the system should be suspended or an empty
-  // base::TimeDelta() if the caller should not try to set up a wake alarm. This
-  // may occur if the system should suspend indefinitely, or if DarkResume was
-  // successful in setting a wake alarm for some point in the future.
-  // This may be called more than once per suspend request.
-  virtual void GetActionForSuspendAttempt(
-      Action* action, base::TimeDelta* suspend_duration) = 0;
-
-  // Reads the system state to see if it's in a dark resume.
-  virtual void HandleSuccessfulResume() = 0;
-
-  // Returns true if the system is currently in dark resume.
-  virtual bool InDarkResume() = 0;
-
-  // Returns true if dark resume is enabled on the system.
-  virtual bool IsEnabled() = 0;
-
-  // Returns true if the system can properly transition from dark resume to
-  // fully resumed.
-  virtual bool CanSafelyExitDarkResume() = 0;
-
-  // Exits dark resume so that the system can transition to fully resumed.
-  // Returns true if the transititon was successful.
-  virtual bool ExitDarkResume() = 0;
-};
-
-// Real implementation of DarkResumeInterface that interacts with sysfs.
-class DarkResume : public DarkResumeInterface {
+// Legacy implementation of DarkResumeInterface. Only used on link to shutdown
+// from S3.
+class LegacyDarkResume : public DarkResumeInterface {
  public:
   // Within a device directory, kPowerDir contains kActiveFile, kSourceFile, and
   // kWakeupTypeFile.
@@ -93,8 +46,8 @@ class DarkResume : public DarkResumeInterface {
   static const char kAutomatic[];
   static const char kUnknown[];
 
-  DarkResume();
-  ~DarkResume() override;
+  LegacyDarkResume();
+  ~LegacyDarkResume() override;
 
   void set_legacy_state_path_for_testing(const base::FilePath& path) {
     legacy_state_path_ = path;
@@ -213,10 +166,10 @@ class DarkResume : public DarkResumeInterface {
   std::vector<base::FilePath> dark_resume_sources_;
   std::vector<base::FilePath> dark_resume_devices_;
 
-  DISALLOW_COPY_AND_ASSIGN(DarkResume);
+  DISALLOW_COPY_AND_ASSIGN(LegacyDarkResume);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_LEGACY_DARK_RESUME_H_

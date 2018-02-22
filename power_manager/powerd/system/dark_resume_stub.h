@@ -5,7 +5,11 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_STUB_H_
 
-#include "power_manager/powerd/system/dark_resume.h"
+#include <base/macros.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+
+#include "power_manager/powerd/system/dark_resume_interface.h"
 
 namespace power_manager {
 namespace system {
