@@ -46,6 +46,9 @@ class LegacyDarkResume : public DarkResumeInterface {
   static const char kAutomatic[];
   static const char kUnknown[];
 
+  // Returns true if |kDarkResumeSuspendDurationsPref| file is present.
+  static bool ShouldUse(PrefsInterface* prefs);
+
   LegacyDarkResume();
   ~LegacyDarkResume() override;
 
@@ -89,7 +92,8 @@ class LegacyDarkResume : public DarkResumeInterface {
  private:
   // Fills |suspend_durations_| based on kDarkResumeSuspendDurationsPref
   // (or leaves it empty if the pref is unset or empty).
-  void ReadSuspendDurationsPref();
+  // Returns true if kDarkResumeSuspendDurationsPref is present and meaningful.
+  bool ReadSuspendDurationsPref();
 
   // This enables functionality for dark resume in devices that are listed in
   // the prefs_file. The base_file is the name of the sysfs file we are writing

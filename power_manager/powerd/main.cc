@@ -36,6 +36,7 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
+#include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
@@ -196,9 +197,20 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       system::PowerSupplyInterface* power_supply,
-      PrefsInterface* prefs) override {
-    auto dark_resume = base::WrapUnique(new system::LegacyDarkResume());
-    dark_resume->Init(power_supply, prefs);
+      PrefsInterface* prefs,
+      system::InputWatcherInterface* input_watcher) override {
+    // TODO(b/38025089): Link is the only device with legacy dark resume
+    // enabled. Given that we have no plans to enable new dark resume logic on
+    // Link, only one of the logics will be enabled on any given board. Delete
+    // this code after Link falls out of auto_update cycle (April 2018).
+    if (system::LegacyDarkResume::ShouldUse(prefs)) {
+      auto legacy_dark_resume = std::make_unique<system::LegacyDarkResume>();
+      legacy_dark_resume->Init(power_supply, prefs);
+      return std::move(legacy_dark_resume);
+    }
+
+    auto dark_resume = std::make_unique<system::DarkResume>();
+    dark_resume->Init(prefs, input_watcher);
     return std::move(dark_resume);
   }
 

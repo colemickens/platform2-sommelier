@@ -366,9 +366,15 @@ TYPED_TEST(LegacyDarkResumeTest, EnableAndDisable) {
 
   this->prefs_.SetString(kDarkResumeDevicesPref, kDeviceDir.value());
   this->prefs_.SetString(kDarkResumeSourcesPref, kDeviceDir.value());
+
+  // Dark resume ShouldUse should return false when
+  // |kDarkResumeSuspendDurationsPref| is not present.
+  EXPECT_FALSE(LegacyDarkResume::ShouldUse(&this->prefs_));
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
 
-  // Dark resume should be enabled when the object is initialized.
+  // Dark resume should be enabled when the object is initialized if
+  // |kDarkResumeSuspendDurationsPref| is set.
+  EXPECT_TRUE(LegacyDarkResume::ShouldUse(&this->prefs_));
   this->Init();
   EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
@@ -378,9 +384,9 @@ TYPED_TEST(LegacyDarkResumeTest, EnableAndDisable) {
   EXPECT_EQ(LegacyDarkResume::kDisabled, this->ReadFile(kActivePath));
   EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
 
-  // Set the "disable" pref and check that the files aren't set to the enabled
-  // state after initializing a new object.
-  this->prefs_.SetInt64(kDisableDarkResumePref, 1);
+  // Set the |kDarkResumeSuspendDurationsPref| to ""  and check that the files
+  // aren't set to the enabled state after initializing a new object.
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "");
   this->dark_resume_.reset(new LegacyDarkResume);
   this->Init();
   EXPECT_EQ(LegacyDarkResume::kDisabled, this->ReadFile(kActivePath));
@@ -394,26 +400,13 @@ TYPED_TEST(LegacyDarkResumeTest, EnableAndDisable) {
   EXPECT_EQ(DarkResumeInterface::Action::SUSPEND, action);
   EXPECT_EQ(0, suspend_duration.InSeconds());
 
-  // When the "disable" pref is set to 0, dark resume should be enabled.
-  this->prefs_.SetInt64(kDisableDarkResumePref, 0);
-  this->dark_resume_.reset(new LegacyDarkResume);
-  this->Init();
-  EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
-
-  this->dark_resume_->PrepareForSuspendRequest();
-  this->Suspend(&action, &suspend_duration, false);
-  this->dark_resume_->UndoPrepareForSuspendRequest();
-  EXPECT_EQ(DarkResumeInterface::Action::SUSPEND, action);
-  EXPECT_EQ(10, suspend_duration.InSeconds());
-
-  // An empty suspend durations pref should result in dark resume being
-  // enabled.
+  // An empty suspend durations pref should result in legacy dark resume being
+  // disabled.
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, std::string());
   this->dark_resume_.reset(new LegacyDarkResume);
   this->Init();
-  EXPECT_EQ(LegacyDarkResume::kEnabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(LegacyDarkResume::kDisabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
   this->Suspend(&action, &suspend_duration, false);

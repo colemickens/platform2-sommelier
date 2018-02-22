@@ -118,7 +118,9 @@ class DaemonDelegate {
       system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
-      system::PowerSupplyInterface* power_supply, PrefsInterface* prefs) = 0;
+      system::PowerSupplyInterface* power_supply,
+      PrefsInterface* prefs,
+      system::InputWatcherInterface* input_watcher) = 0;
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) = 0;

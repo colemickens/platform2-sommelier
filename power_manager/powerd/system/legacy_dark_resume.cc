@@ -60,6 +60,12 @@ const char LegacyDarkResume::kWakeupTypeFile[] = "wakeup_type";
 const char LegacyDarkResume::kAutomatic[] = "automatic";
 const char LegacyDarkResume::kUnknown[] = "unknown";
 
+bool LegacyDarkResume::ShouldUse(PrefsInterface* prefs) {
+  std::string data;
+  return prefs->GetString(kDarkResumeSuspendDurationsPref, &data) &&
+         !data.empty();
+}
+
 LegacyDarkResume::LegacyDarkResume()
     : in_dark_resume_(false),
       enabled_(false),
@@ -91,10 +97,9 @@ void LegacyDarkResume::Init(PowerSupplyInterface* power_supply,
   if (timer->can_wake_from_suspend())
     timer_ = std::move(timer);
 
-  bool disable = false;
-  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable);
-  ReadSuspendDurationsPref();
-  LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
+  enabled_ = ReadSuspendDurationsPref();
+  VLOG(1) << " Legacy dark resume user space "
+          << (enabled_ ? "enabled" : "disabled");
 
   std::string source_file;
   std::string source_state;
@@ -266,19 +271,23 @@ bool LegacyDarkResume::ExitDarkResume() {
   return true;
 }
 
-void LegacyDarkResume::ReadSuspendDurationsPref() {
+bool LegacyDarkResume::ReadSuspendDurationsPref() {
   battery_check_suspend_durations_.clear();
 
   std::string data;
   if (!prefs_->GetString(kDarkResumeSuspendDurationsPref, &data))
-    return;
+    return false;
 
   base::StringPairs pairs;
   base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &data);
   if (!base::SplitStringIntoKeyValuePairs(data, ' ', '\n', &pairs)) {
     LOG(ERROR) << "Unable to parse " << kDarkResumeSuspendDurationsPref;
-    return;
+    return false;
   }
+
+  if (!pairs.size())
+    return false;
+
   for (size_t i = 0; i < pairs.size(); ++i) {
     double battery_level = 0.0;
     int suspend_duration = 0;
@@ -286,18 +295,19 @@ void LegacyDarkResume::ReadSuspendDurationsPref() {
         !base::StringToInt(pairs[i].second, &suspend_duration)) {
       LOG(ERROR) << "Unable to parse values on line " << i << " of "
                  << kDarkResumeSuspendDurationsPref;
-      return;
+      return false;
     }
 
     if (suspend_duration % base::TimeDelta::FromDays(1).InSeconds() == 0) {
       LOG(ERROR) << "Suspend duration in " << kDarkResumeSuspendDurationsPref
                  << " cannot be multiple of 86400";
-      return;
+      return false;
     }
 
     battery_check_suspend_durations_[battery_level] =
         base::TimeDelta::FromSeconds(suspend_duration);
   }
+  return true;
 }
 
 void LegacyDarkResume::GetFiles(std::vector<base::FilePath>* files,

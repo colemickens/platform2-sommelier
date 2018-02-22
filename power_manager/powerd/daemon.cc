@@ -394,7 +394,8 @@ void Daemon::Init() {
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
                            keyboard_backlight_controller_.get(), power_status);
 
-  dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get());
+  dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get(),
+                                             input_watcher_.get());
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
 
   input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),

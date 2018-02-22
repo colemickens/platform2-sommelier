@@ -61,6 +61,7 @@
         'powerd/system/ambient_light_sensor.cc',
         'powerd/system/async_file_reader.cc',
         'powerd/system/audio_client.cc',
+        'powerd/system/dark_resume.cc',
         'powerd/system/dbus_wrapper.cc',
         'powerd/system/display/display_info.cc',
         'powerd/system/display/display_power_setter.cc',
