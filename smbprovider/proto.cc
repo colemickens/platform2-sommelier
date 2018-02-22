@@ -76,6 +76,10 @@ bool IsValidOptions(const CopyEntryOptionsProto& options) {
          options.has_target_path();
 }
 
+bool IsValidOptions(const GetDeleteListOptionsProto& options) {
+  return options.has_mount_id() && options.has_entry_path();
+}
+
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
   return options.directory_path();
 }
@@ -102,6 +106,10 @@ std::string GetEntryPath(const TruncateOptionsProto& options) {
 
 std::string GetEntryPath(const CreateDirectoryOptionsProto& options) {
   return options.directory_path();
+}
+
+std::string GetEntryPath(const GetDeleteListOptionsProto& options) {
+  return options.entry_path();
 }
 
 std::string GetSourcePath(const MoveEntryOptionsProto& options) {
@@ -174,6 +182,10 @@ const char* GetMethodName(const MoveEntryOptionsProto& unused) {
 
 const char* GetMethodName(const CopyEntryOptionsProto& unused) {
   return kCopyEntryMethod;
+}
+
+const char* GetMethodName(const GetDeleteListOptionsProto& unused) {
+  return kGetDeleteListMethod;
 }
 
 void SerializeDirEntryVectorToProto(

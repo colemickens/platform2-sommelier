@@ -148,6 +148,14 @@ CopyEntryOptionsProto CreateCopyEntryOptionsProto(
   return options;
 }
 
+GetDeleteListOptionsProto CreateGetDeleteListOptionsProto(
+    int32_t mount_id, const std::string& entry_path) {
+  GetDeleteListOptionsProto options;
+  options.set_mount_id(mount_id);
+  options.set_entry_path(entry_path);
+  return options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(path));
 }
@@ -236,6 +244,12 @@ ProtoBlob CreateCopyEntryOptionsBlob(int32_t mount_id,
                                      const std::string& target_path) {
   return SerializeProtoToBlobAndCheck(
       CreateCopyEntryOptionsProto(mount_id, source_path, target_path));
+}
+
+ProtoBlob CreateGetDeleteListOptionsBlob(int32_t mount_id,
+                                         const std::string& entry_path) {
+  return SerializeProtoToBlobAndCheck(
+      CreateGetDeleteListOptionsProto(mount_id, entry_path));
 }
 
 }  // namespace smbprovider
