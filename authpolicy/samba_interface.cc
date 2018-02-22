@@ -117,6 +117,7 @@ const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
+const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
 
 // Replacement strings for anonymization.
 const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
@@ -217,6 +218,10 @@ ErrorType GetNetError(const ProcessExecutor& executor,
     }
     LOG(ERROR) << error_msg << "setting computer OU failed, unspecified error";
     return ERROR_SETTING_OU_FAILED;
+  }
+  if (Contains(net_out, kKeyEncTypeNotSupported)) {
+    LOG(ERROR) << error_msg << "KDC does not support encryption type";
+    return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
   }
   LOG(ERROR) << error_msg << "exit code " << executor.GetExitCode();
   return ERROR_NET_FAILED;

@@ -1344,6 +1344,13 @@ TEST_F(AuthPolicyTest, JoinFailsInsufficientQuota) {
       Join(kMachineName, kInsufficientQuotaUserPrincipal, MakePasswordFd()));
 }
 
+// Join fails with unsupported encryption type.
+TEST_F(AuthPolicyTest, JoinFailsEncTypeNotSupported) {
+  EXPECT_EQ(
+      ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE,
+      Join(kMachineName, kEncTypeNotSupportedUserPrincipal, MakePasswordFd()));
+}
+
 // A second domain join is blocked.
 TEST_F(AuthPolicyTest, JoinFailsAlreadyJoined) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));

@@ -30,6 +30,8 @@ const char kKdcRetryFailsUserPrincipal[] =
     "kdc_retry_fails_user@REALM.EXAMPLE.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.EXAMPLE.COM";
+const char kEncTypeNotSupportedUserPrincipal[] =
+    "enc_type_not_supported_user@REALM.EXAMPLE.COM";
 const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.EXAMPLE.COM";
 const char kPasswordChangedUserPrincipal[] =
     "password_changed@REALM.EXAMPLE.COM";

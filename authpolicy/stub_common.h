@@ -37,6 +37,8 @@ extern const char kKdcRetryUserPrincipal[];
 extern const char kKdcRetryFailsUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
+// Triggers 'KDC has no support for encryption type' error in net ads join.
+extern const char kEncTypeNotSupportedUserPrincipal[];
 // Triggers kinit to produce a TGT that klist interprets as expired.
 extern const char kExpiredTgtUserPrincipal[];
 // Triggers net ads search to return |kPasswordChangedAccountId| as objectGUID.

@@ -48,6 +48,9 @@ const char kInvalidMachineNameError[] =
     "rpc: Improperly formed account name";
 const char kInsufficientQuotaError[] =
     "Insufficient quota exists to complete the operation";
+const char kEncTypeNotSupportedError[] =
+    "Failed to join domain: failed to connect to AD: KDC has no support for "
+    "encryption type";
 
 // Size limit for machine name.
 const size_t kMaxMachineNameSize = 15;
@@ -408,6 +411,12 @@ int HandleJoin(const std::string& command_line,
   // Stub access denied error.
   if (Contains(command_line, kUserFlag + kAccessDeniedUserPrincipal)) {
     WriteOutput(kJoinAccessDeniedError, "");
+    return kExitCodeError;
+  }
+
+  // Stub encryption type not supported error.
+  if (Contains(command_line, kUserFlag + kEncTypeNotSupportedUserPrincipal)) {
+    WriteOutput(kEncTypeNotSupportedError, "");
     return kExitCodeError;
   }
 
