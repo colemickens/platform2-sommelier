@@ -436,16 +436,24 @@ void ArcSetup::SetUpAndroidData() {
       !InstallDirectory(0770, kSystemUid, kCacheGid,
                         arc_paths_->android_mutable_source.Append("cache")));
 
-  SetUpPackagesCache();
+  if (SetUpPackagesCache()) {
+    // Note, GMS and GServices caches are valid only in case packages cache is
+    // set which contains predefined value for shared Google user uid. That let
+    // to set valid resources owner.
+    SetUpGmsCoreCache();
+    SetUpGservicesCache();
+  }
 
   if (kUseMasterContainer)
     SetUpNetwork();
 }
 
-void ArcSetup::SetUpPackagesCache() {
+bool ArcSetup::SetUpPackagesCache() {
+  base::ElapsedTimer timer;
+
   if (GetBooleanEnvOrDie(arc_paths_->env.get(), "SKIP_PACKAGES_CACHE_SETUP")) {
     LOG(INFO) << "Packages cache setup is disabled.";
-    return;
+    return false;
   }
 
   // When /data/system/packages.xml does not exist, copy pre-generated
@@ -453,7 +461,7 @@ void ArcSetup::SetUpPackagesCache() {
   const base::FilePath packages_cache =
       arc_paths_->android_mutable_source.Append("data/system/packages.xml");
   if (base::PathExists(packages_cache))
-    return;
+    return false;
 
   const base::FilePath source_cache =
       arc_paths_->android_rootfs_directory.Append(
@@ -462,7 +470,7 @@ void ArcSetup::SetUpPackagesCache() {
   if (!base::PathExists(source_cache)) {
     LOG(INFO) << "Packages cache was not found "
               << "(this expected for manually-pushed images).";
-    return;
+    return false;
   }
 
   LOG(INFO) << "Installing packages cache to " << packages_cache.value() << ".";
@@ -472,6 +480,72 @@ void ArcSetup::SetUpPackagesCache() {
   EXIT_IF(!base::CopyFile(source_cache, packages_cache));
   EXIT_IF(!Chown(kSystemUid, kSystemGid, packages_cache));
   EXIT_IF(!base::SetPosixFilePermissions(packages_cache, 0660));
+
+  LOG(INFO) << "Packages cache setup completed in "
+            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
+  return true;
+}
+
+void ArcSetup::SetUpGmsCoreCache() {
+  base::ElapsedTimer timer;
+
+  const base::FilePath user_de =
+      arc_paths_->android_mutable_source.Append("data/user_de");
+  const base::FilePath user_de_0 = user_de.Append("0");
+  const base::FilePath user_de_0_gms =
+      user_de_0.Append("com.google.android.gms");
+
+  // When /data/user_de/0/com.google.android.gms does not exist, this indicates
+  // first run for GMS Core. Install set of pre-computed cache files if they
+  // exist.
+  if (base::PathExists(user_de_0_gms))
+    return;
+
+  const base::FilePath source_cache_dir =
+      arc_paths_->android_rootfs_directory.Append("system/etc/gms_core_cache");
+  if (!base::PathExists(source_cache_dir)) {
+    LOG(INFO) << "GMS Core cache was not found "
+              << "(this expected for manually-pushed images).";
+    return;
+  }
+
+  LOG(INFO) << "Installing GMS Core cache to " << user_de_0_gms.value() << ".";
+
+  EXIT_IF(!InstallDirectory(0711, kSystemUid, kSystemGid, user_de));
+  EXIT_IF(!InstallDirectory(0771, kSystemUid, kSystemGid, user_de_0));
+  EXIT_IF(!CopyWithAttributes(source_cache_dir, user_de_0_gms));
+
+  LOG(INFO) << "GMS Core cache setup competed in "
+            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
+}
+
+void ArcSetup::SetUpGservicesCache() {
+  base::ElapsedTimer timer;
+
+  // When /data/data/com.google.android.gsf does not exist, that indicates first
+  // run for GServices. In this copy prepared directory with cache files.
+  const base::FilePath data =
+      arc_paths_->android_mutable_source.Append("data/data");
+  const base::FilePath gsf_dir = data.Append("com.google.android.gsf");
+
+  if (base::PathExists(gsf_dir))
+    return;
+
+  const base::FilePath source_cache_dir =
+      arc_paths_->android_rootfs_directory.Append("system/etc/gservices_cache");
+  if (!base::PathExists(source_cache_dir)) {
+    LOG(INFO) << "GServices cache was not found "
+              << "(this expected for manually-pushed images).";
+    return;
+  }
+
+  LOG(INFO) << "Installing GServices cache to " << gsf_dir.value() << ".";
+
+  EXIT_IF(!InstallDirectory(0771, kSystemUid, kSystemGid, data));
+  EXIT_IF(!CopyWithAttributes(source_cache_dir, gsf_dir));
+
+  LOG(INFO) << "GServices cache setup competed in "
+            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
 }
 
 void ArcSetup::SetUpDalvikCacheInternal(

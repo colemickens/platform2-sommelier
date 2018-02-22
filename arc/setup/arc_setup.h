@@ -98,8 +98,13 @@ class ArcSetup {
   // Sets up android-data directory.
   void SetUpAndroidData();
 
-  // Sets up packages cache.
-  void SetUpPackagesCache();
+  // Sets up packages cache. Returns true if cache was set and false otherwise.
+  bool SetUpPackagesCache();
+
+  // Sets up GMS Core cache. Requires packages cache be set.
+  void SetUpGmsCoreCache();
+  // Sets GServices Core cache. Requires packages cache be set.
+  void SetUpGservicesCache();
 
   // Sets up shared APK cache directory.
   void SetUpSharedApkDirectory();

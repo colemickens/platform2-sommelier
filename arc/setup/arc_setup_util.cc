@@ -483,6 +483,18 @@ class ArcMounterImpl : public ArcMounter {
   }
 };
 
+bool AdvanceEnumeratorWithStat(base::FileEnumerator* traversal,
+                               base::FilePath* out_next_path,
+                               struct stat* out_next_stat) {
+  DCHECK(out_next_path);
+  DCHECK(out_next_stat);
+  *out_next_path = traversal->Next();
+  if (out_next_path->empty())
+    return false;
+  *out_next_stat = traversal->GetInfo().stat();
+  return true;
+}
+
 }  // namespace
 
 ScopedMount::ScopedMount(const base::FilePath& path, ArcMounter* mounter)
@@ -1024,6 +1036,138 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
   }
 
   return fd;
+}
+
+bool CopyWithAttributes(const base::FilePath& from_readonly_path,
+                        const base::FilePath& to_path) {
+  DCHECK(from_readonly_path.IsAbsolute());
+  DCHECK(to_path.IsAbsolute());
+
+  struct stat from_stat;
+  if (lstat(from_readonly_path.value().c_str(), &from_stat) < 0) {
+    PLOG(ERROR) << "Couldn't stat source " << from_readonly_path.value();
+    return false;
+  }
+
+  base::FileEnumerator traversal(from_readonly_path, true /* recursive */,
+                                 base::FileEnumerator::FILES |
+                                     base::FileEnumerator::SHOW_SYM_LINKS |
+                                     base::FileEnumerator::DIRECTORIES);
+  base::FilePath current = from_readonly_path;
+  do {
+    // current is the source path, including from_path, so append
+    // the suffix after from_path to to_path to create the target_path.
+    base::FilePath target_path(to_path);
+    if (from_readonly_path != current &&
+        !from_readonly_path.AppendRelativePath(current, &target_path)) {
+      LOG(ERROR) << "Failed to create output path segment for "
+                 << current.value() << " and " << target_path.value();
+      return false;
+    }
+
+    base::ScopedFD dirfd(OpenSafely(target_path.DirName(), O_RDONLY, 0));
+    if (!dirfd.is_valid()) {
+      LOG(ERROR) << "Failed to open " << target_path.DirName().value();
+      return false;
+    }
+
+    const std::string target_base_name = target_path.BaseName().value();
+    if (S_ISDIR(from_stat.st_mode)) {
+      if (mkdirat(dirfd.get(), target_base_name.c_str(), from_stat.st_mode) <
+          0) {
+        PLOG(ERROR) << "Failed to create " << target_path.value();
+        return false;
+      }
+      if (fchownat(dirfd.get(), target_base_name.c_str(), from_stat.st_uid,
+                   from_stat.st_gid, 0 /* flags */) < 0) {
+        PLOG(ERROR) << "Failed to set onwers " << target_path.value();
+        return false;
+      }
+    } else if (S_ISREG(from_stat.st_mode)) {
+      base::ScopedFD fd_read(open(current.value().c_str(), O_RDONLY));
+      if (!fd_read.is_valid()) {
+        PLOG(ERROR) << "Failed to open for reading " << current.value();
+        return false;
+      }
+      base::ScopedFD fd_write(OpenSafely(
+          target_path, O_WRONLY | O_CREAT | O_TRUNC, from_stat.st_mode));
+      if (!fd_write.is_valid()) {
+        LOG(ERROR) << "Failed to open for writing " << target_path.value();
+        return false;
+      }
+
+      char buffer[1024];
+      while (true) {
+        const ssize_t read_bytes = read(fd_read.get(), buffer, sizeof(buffer));
+        if (!read_bytes)
+          break;
+        if (read_bytes < 0) {
+          PLOG(ERROR) << "Failed to read " << current.value();
+          return false;
+        }
+        if (!base::WriteFileDescriptor(fd_write.get(), buffer, read_bytes)) {
+          PLOG(ERROR) << "Failed to write " << target_path.value();
+          return false;
+        }
+      }
+      if (fchown(fd_write.get(), from_stat.st_uid, from_stat.st_gid) < 0) {
+        PLOG(ERROR) << "Failed to set owners for " << target_path.value();
+        return false;
+      }
+      // fchmod is necessary because umask might not be zero.
+      if (fchmod(fd_write.get(), from_stat.st_mode) < 0) {
+        PLOG(ERROR) << "Failed to set permissions for " << target_path.value();
+        return false;
+      }
+    } else if (S_ISLNK(from_stat.st_mode)) {
+      base::FilePath target_link;
+      if (!base::ReadSymbolicLink(current, &target_link)) {
+        PLOG(ERROR) << "Failed to read symbolic link " << current.value();
+        return false;
+      }
+      if (symlinkat(target_link.value().c_str(), dirfd.get(),
+                    target_base_name.c_str()) < 0) {
+        PLOG(ERROR) << "Failed to create symbolic link " << target_path.value()
+                    << " -> " << target_link.value();
+        return false;
+      }
+      if (fchownat(dirfd.get(), target_base_name.c_str(), from_stat.st_uid,
+                   from_stat.st_gid, AT_SYMLINK_NOFOLLOW) < 0) {
+        PLOG(ERROR) << "Failed to set link owners for " << target_path.value();
+        return false;
+      }
+    } else {
+      if (from_readonly_path == current) {
+        LOG(ERROR) << "Unsupported root resource type " << current.value();
+        return false;
+      }
+      // Skip
+      LOG(WARNING) << "Skip coping " << current.value()
+                   << ". It has unsupported type.";
+    }
+  } while (AdvanceEnumeratorWithStat(&traversal, &current, &from_stat));
+
+  // Copy selinux attributes for top level element only if it exists.
+  char* security_context = nullptr;
+  if (lgetfilecon(from_readonly_path.value().c_str(), &security_context) < 0) {
+    if (errno != ENODATA) {
+      PLOG(ERROR) << "Failed to read security context "
+                  << from_readonly_path.value();
+      return false;
+    }
+
+    LOG(INFO) << "selinux attrbites are not set for "
+              << from_readonly_path.value();
+    return true;
+  }
+
+  base::ScopedFD fd(OpenSafely(to_path, O_RDONLY, 0));
+  if (fsetfilecon(fd.get(), security_context) < 0) {
+    PLOG(ERROR) << "Failed to set security_context " << to_path.value();
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace arc

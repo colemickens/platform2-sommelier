@@ -291,6 +291,17 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
                               int flags,
                               mode_t mode);
 
+// Performs deep resource copying. Resource means directory, regular file or
+// symbolic link. |from_readonly_path| must point to a read-only filesystem like
+// squashfs. In case |from_readonly_path| defines a directory then recursive
+// copy of resources is used. This also copies permissions and owners of the
+// resources. selinux attributes are copied only for top resource in case it is
+// regular file or directory. |from_readonly_path| and |to_path| must define an
+// absolute path. All underling unsupported resources are ignored. For the root
+// unsupported resources false is returned.
+bool CopyWithAttributes(const base::FilePath& from_readonly_path,
+                        const base::FilePath& to_path);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

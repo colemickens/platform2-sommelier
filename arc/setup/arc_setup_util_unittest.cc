@@ -19,6 +19,7 @@
 
 #include <base/bind.h>
 #include <base/environment.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -43,6 +44,31 @@ bool FindLineCallback(const std::string& line, std::string* out_prop) {
 
 bool IsNonBlockingFD(int fd) {
   return fcntl(fd, F_GETFL) & O_NONBLOCK;
+}
+
+void ValidateResourcesMatch(const base::FilePath& path1,
+                            const base::FilePath& path2) {
+  struct stat stat1;
+  struct stat stat2;
+  EXPECT_GE(lstat(path1.value().c_str(), &stat1), 0);
+  EXPECT_GE(lstat(path2.value().c_str(), &stat2), 0);
+  EXPECT_EQ(stat1.st_mode, stat2.st_mode);
+  EXPECT_EQ(stat1.st_uid, stat2.st_uid);
+  EXPECT_EQ(stat1.st_gid, stat2.st_gid);
+
+  if (S_ISREG(stat1.st_mode)) {
+    std::string data1;
+    std::string data2;
+    EXPECT_TRUE(base::ReadFileToString(path1, &data1));
+    EXPECT_TRUE(base::ReadFileToString(path2, &data2));
+    EXPECT_EQ(data1, data2);
+  } else if (S_ISLNK(stat1.st_mode)) {
+    base::FilePath link1;
+    base::FilePath link2;
+    EXPECT_TRUE(base::ReadSymbolicLink(path1, &link1));
+    EXPECT_TRUE(base::ReadSymbolicLink(path2, &link2));
+    EXPECT_EQ(link1, link2);
+  }
 }
 
 }  // namespace
@@ -846,6 +872,76 @@ TEST(ArcSetupUtil, TestOpenFifoSafely) {
   // Opening a file should fail.
   fd = OpenFifoSafely(file, O_RDONLY, 0);
   EXPECT_FALSE(fd.is_valid());
+}
+
+TEST(ArcSetupUtil, TestCopyWithAttributes) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+
+  // Note, actual owner change is not covered due permission restrictions for
+  // unit test. selinux context is also not possible to test due the
+  // permissions.
+  const uid_t kTestUid = getuid();
+  const gid_t kTestGid = getgid();
+
+  const base::FilePath root = temp_directory.GetPath();
+
+  // Create test directory structure.
+  const base::FilePath from_path = root.Append("from");
+  const base::FilePath from_sub_dir1 = from_path.Append("dir1");
+  const base::FilePath from_sub_dir2 = from_path.Append("dir2");
+  const base::FilePath from_test_file = from_sub_dir1.Append("test.txt");
+  const base::FilePath from_test_link = from_sub_dir2.Append("test.lnk");
+  const base::FilePath from_fifo = from_sub_dir1.Append("fifo");
+
+  EXPECT_TRUE(InstallDirectory(0751, kTestUid, kTestGid, from_path));
+  EXPECT_TRUE(InstallDirectory(0711, kTestUid, kTestGid, from_sub_dir1));
+  EXPECT_TRUE(InstallDirectory(0700, kTestUid, kTestGid, from_sub_dir2));
+  EXPECT_TRUE(WriteToFile(from_test_file, 0660, "testme"));
+  EXPECT_TRUE(base::CreateSymbolicLink(from_test_file, from_test_link));
+  EXPECT_EQ(0, mkfifo(from_fifo.value().c_str(), 0700));
+
+  // Copy directory.
+  const base::FilePath to_path = root.Append("to");
+  EXPECT_TRUE(CopyWithAttributes(from_path, to_path));
+
+  // Validate each resource to match.
+  int resource_count = 1;
+  ValidateResourcesMatch(from_path, to_path);
+  base::FileEnumerator traversal(from_path, true /* recursive */,
+                                 base::FileEnumerator::FILES |
+                                     base::FileEnumerator::SHOW_SYM_LINKS |
+                                     base::FileEnumerator::DIRECTORIES);
+  while (true) {
+    const base::FilePath test = traversal.Next();
+    if (test.empty())
+      break;
+    base::FilePath target_path(to_path);
+    EXPECT_TRUE(from_path.AppendRelativePath(test, &target_path));
+    if (test != from_fifo) {
+      ValidateResourcesMatch(test, target_path);
+      ++resource_count;
+    } else {
+      // Unsupported types.
+      EXPECT_FALSE(base::PathExists(target_path));
+    }
+  }
+  EXPECT_EQ(5, resource_count);
+
+  // Copy file.
+  const base::FilePath to_test_file = from_sub_dir2.Append("test2.txt");
+  EXPECT_TRUE(CopyWithAttributes(from_test_file, to_test_file));
+  ValidateResourcesMatch(from_test_file, to_test_file);
+  EXPECT_TRUE(CopyWithAttributes(from_test_file, to_test_file));
+  ValidateResourcesMatch(from_test_file, to_test_file);
+
+  // Copy link.
+  const base::FilePath to_test_link = from_sub_dir2.Append("test2.lnk");
+  EXPECT_TRUE(CopyWithAttributes(from_test_link, to_test_link));
+  ValidateResourcesMatch(from_test_file, to_test_file);
+
+  // Copy fifo
+  EXPECT_FALSE(CopyWithAttributes(from_fifo, from_sub_dir1.Append("fifo2")));
 }
 
 }  // namespace arc
