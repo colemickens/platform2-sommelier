@@ -7,8 +7,6 @@ images through DBUS IPC.
 
 * `imageloader`
 
-`imageloader` handles the mounting of disk images. `imageloader` should
-be executed via the `imageloader_wrapper` script, which ensures that
-imageloader's storage exists and is owned by `imageloaderd` user.
+`imageloader` handles the mounting of disk images.
 When `imageloader` is not running, DBus will automatically invoke it. After 20
 seconds of inactivity, the service exits.

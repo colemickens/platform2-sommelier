@@ -151,7 +151,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Create folder for component copies.
+  // Create folder for component copies. This ensures that
+  // imageloader's storage exists and is owned by `imageloaderd` user.
   if (!CreateComponentsPath()) {
     return 1;
   }
