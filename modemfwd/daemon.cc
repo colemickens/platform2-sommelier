@@ -39,7 +39,6 @@ int Daemon::OnInit() {
   DCHECK(!helper_dir_path_.empty());
 
   if (firmware_dir_path_.empty()) {
-    // Set up the component and get the sub-directories.
     component_ = Component::Load(bus_);
     if (!component_)
       return EX_UNAVAILABLE;

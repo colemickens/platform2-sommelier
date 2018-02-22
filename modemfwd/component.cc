@@ -49,6 +49,11 @@ std::unique_ptr<Component> Component::Load(scoped_refptr<dbus::Bus> bus) {
     return nullptr;
   }
 
+  if (loaded_path.empty()) {
+    LOG(ERROR) << "Component updater service returned with empty path";
+    return nullptr;
+  }
+
   return std::unique_ptr<Component>(
       new Component(bus, proxy, base::FilePath(loaded_path)));
 }
