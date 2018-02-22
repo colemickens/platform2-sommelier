@@ -167,29 +167,20 @@
 		}
 	},
 	"root": {
-		"path": "rootfs/root",
-		"readonly": false
+		"path": "rootfs/root"
 	},
 	"hostname": "android",
 	"mounts": [
 		{
+			"_comment": "TODO(yusukes): Swap dev for nodev and adjust auto-test",
 			"destination": "/",
 			"type": "bind",
-			"source": "",
+			"source": "rootfs/root",
 			"options": [
-				"slave",
-				"recursive"
-			],
-			"performInIntermediateNamespace": true
-		},
-		{
-			"_comment": "TODO(yusukes): Add nodev and adjust auto-test",
-			"destination": "/",
-			"type": "bind",
-			"source": "",
-			"options": [
-				"remount",
-				"ro"
+				"rslave",
+				"dev",
+				"suid",
+				"exec"
 			],
 			"performInIntermediateNamespace": true
 		},
@@ -208,8 +199,7 @@
 			"type": "bind",
 			"source": "/opt/google/containers/android/rootfs/android-data/data",
 			"options": [
-				"bind",
-				"recursive"
+				"rbind"
 			]
 		},
 		{
@@ -287,8 +277,7 @@
 			"type": "bind",
 			"source": "/run/arc/sdcard",
 			"options": [
-				"bind",
-				"recursive"
+				"rbind"
 			]
 		},
 		{
@@ -296,17 +285,8 @@
 			"type": "bind",
 			"source": "/run/arc/shared_mounts",
 			"options": [
-				"bind",
-				"recursive"
-			]
-		},
-		{
-			"destination": "/var/run/arc/shared_mounts",
-			"type": "",
-			"source": "",
-			"options": [
-				"recursive",
-				"slave"
+				"rbind",
+				"rslave"
 			]
 		},
 		{
@@ -462,8 +442,7 @@
 			"type": "bind",
 			"source": "/run/arc/obb",
 			"options": [
-				"bind",
-				"recursive"
+				"rbind"
 			]
 		},
 		{
@@ -471,8 +450,7 @@
 			"type": "bind",
 			"source": "/run/arc/media",
 			"options": [
-				"bind",
-				"recursive"
+				"rbind"
 			]
 		},
 		{

@@ -57,6 +57,12 @@ Mounts can also happen in several
 All mounts are performed in the `/opt/google/container/android/rootfs/root`
 subtree.
 
+The flags to the `mounts` section are the ones understood by
+[`mount(8)`](http://man7.org/linux/man-pages/man8/mount.8.html). Note that one
+mount entry might become more than one call to `mount(2)`, since some flags
+combinations are ignored by the kernel (e.g. changes to mount propagation flags
+ignore all other flags).
+
 ### List of mounts visible in the container mount namespace
 
 * `/`: This is mounted by `/etc/init/arc-system-mount.conf` in
