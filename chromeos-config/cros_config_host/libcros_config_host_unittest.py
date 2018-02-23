@@ -21,8 +21,8 @@ from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
 
 DTS_FILE = '../libcros_config/test.dts'
 YAML_FILE = '../libcros_config/test.yaml'
-MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
-          'whitetip2', 'blacktip']
+MODELS = sorted(['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
+                 'whitetip2', 'blacktip'])
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-pyro-private/'
                'overlay-pyro-private/chromeos-base/chromeos-firmware-pyro/')
 REEF_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
@@ -86,8 +86,7 @@ def MakeTests(pathname):
 
     def testModels(self):
       config = CrosConfig(self.filepath)
-      self.assertSequenceEqual([n for n, _ in config.models.iteritems()],
-                               MODELS)
+      self.assertSequenceEqual(config.GetModelList(), MODELS)
 
     def testNodeSubnames(self):
       config = CrosConfig(self.filepath)
