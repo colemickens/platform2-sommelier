@@ -431,7 +431,7 @@ cmd_vmc() (
       return 1
     fi
 
-    # Actually start the VM.  TODO: Replace the id below with a variable.
+    # Actually start the VM.
     concierge_client --start_termina_vm --name="${name}" \
                      --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
     if [ $? -ne 0 ]; then
