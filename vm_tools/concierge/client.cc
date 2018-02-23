@@ -409,6 +409,67 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int DestroyDiskImage(dbus::ObjectProxy* proxy,
+                     string cryptohome_id,
+                     string name,
+                     string storage_location) {
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "Cryptohome id cannot be empty";
+    return -1;
+  } else if (name.empty()) {
+    LOG(ERROR) << "Name cannot be empty";
+    return -1;
+  }
+
+  LOG(INFO) << "Destroying disk image";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kDestroyDiskImageMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::DestroyDiskImageRequest request;
+  request.set_cryptohome_id(std::move(cryptohome_id));
+  request.set_disk_path(std::move(name));
+
+  if (storage_location == kStorageCryptohomeRoot) {
+    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
+  } else if (storage_location == kStorageCryptohomeDownloads) {
+    request.set_storage_location(
+        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
+  } else {
+    LOG(ERROR) << "'" << storage_location
+               << "' is not a valid storage location";
+    return -1;
+  }
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode DestroyDiskImageRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::DestroyDiskImageResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (response.status() != vm_tools::concierge::DISK_STATUS_DESTROYED &&
+      response.status() != vm_tools::concierge::DISK_STATUS_DOES_NOT_EXIST) {
+    LOG(ERROR) << "Failed to destroy disk image: " << response.failure_reason();
+    return -1;
+  }
+
+  return 0;
+}
+
 int StartTerminaVm(dbus::ObjectProxy* proxy,
                    string name,
                    string cryptohome_id) {
@@ -499,6 +560,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(stop_all, false, "Stop all running VMs");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
   DEFINE_bool(create_disk, false, "Create a disk image");
+  DEFINE_bool(destroy_disk, false, "Destroy a disk image");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
 
@@ -544,10 +606,11 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
-      FLAGS_create_disk + FLAGS_start_termina_vm != 1) {
+      FLAGS_create_disk + FLAGS_start_termina_vm + FLAGS_destroy_disk != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
-               << "--create_disk, --start_termina_vm must be provided";
+               << "--create_disk, --destroy_disk, --start_termina_vm "
+               << "must be provided";
     return -1;
   }
 
@@ -565,6 +628,10 @@ int main(int argc, char** argv) {
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
                            std::move(FLAGS_image_type),
                            std::move(FLAGS_storage_location), nullptr);
+  } else if (FLAGS_destroy_disk) {
+    return DestroyDiskImage(proxy, std::move(FLAGS_cryptohome_id),
+                            std::move(FLAGS_name),
+                            std::move(FLAGS_storage_location));
   } else if (FLAGS_start_termina_vm) {
     return StartTerminaVm(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_cryptohome_id));

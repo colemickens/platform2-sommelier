@@ -246,6 +246,7 @@ bool Service::Init() {
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
+      {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -947,6 +948,93 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
   response.set_disk_path(disk_path.value());
   response.set_status(DISK_STATUS_CREATED);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received DestroyDiskImage request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  DestroyDiskImageRequest request;
+  DestroyDiskImageResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse DestroyDiskImageRequest from message";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Unable to parse DestroyDiskRequest");
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Base64 encode the given disk name to ensure it only has valid characters.
+  std::string disk_name;
+  base::Base64UrlEncode(request.disk_path(),
+                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                        &disk_name);
+
+  base::FilePath disk_path;
+  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
+    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
+                                    .Append(request.cryptohome_id())
+                                    .Append(kCrosvmDir);
+    if (!base::DirectoryExists(crosvm_dir)) {
+      LOG(ERROR) << "Failed to destroy image in directory under /home/root";
+      response.set_status(DISK_STATUS_DOES_NOT_EXIST);
+      response.set_failure_reason(
+          "Failed to destroy image in directory under /home/root");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+    disk_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
+  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
+    disk_path = base::FilePath(kCryptohomeUser)
+                    .Append(request.cryptohome_id())
+                    .Append(kDownloadsDir)
+                    .Append(disk_name + kQcowImageExtension);
+  } else {
+    LOG(ERROR) << "Unknown storage location type";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Unknown storage location type");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (disk_path.ReferencesParent()) {
+    LOG(ERROR) << "Disk path references parent";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Disk path references parent");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (!base::PathExists(disk_path)) {
+    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  if (!base::DeleteFile(disk_path, false)) {
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Disk removal failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+
+    return dbus_response;
+  }
+
+  response.set_status(DISK_STATUS_DESTROYED);
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;
