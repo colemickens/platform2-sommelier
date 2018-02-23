@@ -399,7 +399,7 @@ imageloader() {
     2>&1 >/dev/null
 }
 
-USAGE_vmc='[ start <name> | stop <name> ]'
+USAGE_vmc='[ start <name> | stop <name> | destroy <name> ]'
 HELP_vmc='
   Start or stop a VM.
 '
@@ -452,6 +452,19 @@ cmd_vmc() (
     concierge_client --stop --name="${name}" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Unable to stop vm"
+      return 1
+    fi
+    ;;
+  destroy)
+    if [ $# -ne 1 ]; then
+      help "Missing name"
+      return 1
+    fi
+    local name="$1"; shift
+    concierge_client --destroy_disk --name="${name}" \
+                     --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to delete vm"
       return 1
     fi
     ;;
