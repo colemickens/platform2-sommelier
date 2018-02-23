@@ -1661,7 +1661,7 @@ cmd_c() (
   debugd ContainerStarted
   HOME=/home/user /usr/bin/run_oci \
     --cgroup_parent=chronos_containers \
-    --bind_mount=/home/chronos/user/Downloads:/home/user \
+    --bind_mount="/home/user/${CROS_USER_ID_HASH}/Downloads:/home/user" \
     --bind_mount=/run/djfs:/dev \
     run -c "${mount_dir}" "${container}" -- "$@"
   cleanup
