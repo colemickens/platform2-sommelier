@@ -37,7 +37,6 @@ namespace {
 
 constexpr int kDefaultTimeoutMs = 30 * 1000;
 
-constexpr char kDefaultDiskName[] = "lxd_state.qcow2";
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
@@ -431,7 +430,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
     disk_size = kMinimumDiskSize;
 
   string disk_path;
-  if (CreateDiskImage(proxy, std::move(cryptohome_id), kDefaultDiskName,
+  if (CreateDiskImage(proxy, std::move(cryptohome_id), name,
                       disk_size, kImageTypeQcow2, kStorageCryptohomeRoot,
                       &disk_path) != 0) {
     return -1;

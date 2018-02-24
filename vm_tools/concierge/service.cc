@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/base64url.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
@@ -93,6 +94,9 @@ constexpr char kCryptohomeUser[] = "/home/user";
 
 // Downloads directory for a user.
 constexpr char kDownloadsDir[] = "Downloads";
+
+// File extenstion for qcow2 disk types
+constexpr char kQcowImageExtension[] = ".qcow2";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -841,6 +845,12 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
+  // Base64 encode the given disk name to ensure it only has valid characters.
+  std::string disk_name;
+  base::Base64UrlEncode(request.disk_path(),
+                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                        &disk_name);
+
   base::FilePath disk_path;
   if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
     base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
@@ -860,12 +870,12 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
       return dbus_response;
     }
-    disk_path = crosvm_dir.Append(request.disk_path());
+    disk_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
   } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
     disk_path = base::FilePath(kCryptohomeUser)
                     .Append(request.cryptohome_id())
                     .Append(kDownloadsDir)
-                    .Append(request.disk_path());
+                    .Append(disk_name + kQcowImageExtension);
   } else {
     LOG(ERROR) << "Unknown storage location type";
     response.set_status(DISK_STATUS_FAILED);
