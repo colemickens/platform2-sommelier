@@ -19,7 +19,6 @@ PSTORE_PATH="/sys/fs/pstore"
 RAMOOPS_LOG="${PSTORE_PATH}/console-ramoops"
 MAX_KEEP_LOG_LINES=1024
 RAMOOPS_DUMP_LINES=128
-BLOCK_DUMP_LINES=64
 
 mount_pstore() {
   # Copied from pstore.conf. clobber-state is always executed before
@@ -107,8 +106,7 @@ repair_log() {
 
   # try to dump first several blocks
   echo "-- File system $1 block data (gz+base64):" >>"$dest_path"
-  dd if="$1" bs=1M count=1 | gzip -c | base64 |
-    head -n $BLOCK_DUMP_LINES >>"$dest_path" 2>/dev/null
+  dd if="$1" bs=1M count=1 | gzip -c | base64 >>"$dest_path" 2>/dev/null
   echo "-- File system $1 block data dump complete." >>"$dest_path"
   # to read back the block data, extract to a file and do
   # cat block | base64 -d | gunzip -c -d > block.bin
