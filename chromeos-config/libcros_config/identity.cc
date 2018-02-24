@@ -6,6 +6,7 @@
 // Also provide a way to fake identity for testing.
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/identity.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/files/file_util.h>
@@ -52,9 +54,13 @@ struct SmbiosTable {
   std::vector<std::string> strings;
 };
 
-bool CrosConfig::WriteFakeTables(base::File* smbios_file,
-                                 const std::string& name,
-                                 int sku_id) {
+CrosConfigIdentity::CrosConfigIdentity() {}
+
+CrosConfigIdentity::~CrosConfigIdentity() {}
+
+bool CrosConfigIdentity::WriteFakeTables(base::File* smbios_file,
+                                         const std::string& name,
+                                         int sku_id) {
   // Write a header for a BIOS table
   // We don't put anything in this. It is just to test that we can skip tables
   // we don't want to parse.
@@ -119,10 +125,10 @@ bool CrosConfig::WriteFakeTables(base::File* smbios_file,
   return true;
 }
 
-bool CrosConfig::FakeIdentity(const std::string& name, int sku_id,
-                              const std::string& customization_id,
-                              base::FilePath* smbios_file_out,
-                              base::FilePath* vpd_file_out) {
+bool CrosConfigIdentity::FakeIdentity(const std::string& name, int sku_id,
+                                      const std::string& customization_id,
+                                      base::FilePath* smbios_file_out,
+                                      base::FilePath* vpd_file_out) {
   *vpd_file_out = base::FilePath("vpd");
   if (base::WriteFile(*vpd_file_out, customization_id.c_str(),
                       customization_id.length()) != customization_id.length()) {
@@ -146,7 +152,7 @@ bool CrosConfig::FakeIdentity(const std::string& name, int sku_id,
   return true;
 }
 
-unsigned int CrosConfig::StringTableLength(const char* ptr) {
+unsigned int CrosConfigIdentity::StringTableLength(const char* ptr) {
   // Use a special case for an empty string table.
   if (!*ptr)
     return 2;
@@ -159,10 +165,10 @@ unsigned int CrosConfig::StringTableLength(const char* ptr) {
   return total_len + 1;
 }
 
-bool CrosConfig::FindAndCopyTable(enum SmbiosTypes type,
-                                  const char* base_ptr,
-                                  unsigned int size,
-                                  SmbiosTable* table_out) {
+bool CrosConfigIdentity::FindAndCopyTable(enum SmbiosTypes type,
+                                          const char* base_ptr,
+                                          unsigned int size,
+                                          SmbiosTable* table_out) {
   // Look through the region for the table type we want.
   const SmbiosHeader* hdr = 0;
   const char* ptr;
@@ -194,8 +200,8 @@ bool CrosConfig::FindAndCopyTable(enum SmbiosTypes type,
   return true;
 }
 
-bool CrosConfig::GetSystemTable(const base::FilePath& smbios_file,
-                                SmbiosTable* table_out) {
+bool CrosConfigIdentity::GetSystemTable(const base::FilePath& smbios_file,
+                                        SmbiosTable* table_out) {
   int fd = open(smbios_file.MaybeAsASCII().c_str(), O_RDONLY);
   if (fd < 0) {
     CROS_CONFIG_LOG(ERROR) << "Could not open " << smbios_file.MaybeAsASCII()
@@ -226,8 +232,8 @@ bool CrosConfig::GetSystemTable(const base::FilePath& smbios_file,
   return ok;
 }
 
-std::string CrosConfig::GetSmbiosString(const SmbiosTable& table,
-                                        unsigned int string_id) {
+std::string CrosConfigIdentity::GetSmbiosString(const SmbiosTable& table,
+                                                unsigned int string_id) {
   // The first string is numbered 1, so we need to subtract one first.
   string_id--;
   if (string_id < table.strings.size()) {
@@ -237,10 +243,10 @@ std::string CrosConfig::GetSmbiosString(const SmbiosTable& table,
   return std::string();
 }
 
-bool CrosConfig::ReadIdentity(const base::FilePath& smbios_file,
-                              const base::FilePath& vpd_file,
-                              std::string* name_out, int* sku_id_out,
-                              std::string* customization_id_out) {
+bool CrosConfigIdentity::ReadIdentity(const base::FilePath& smbios_file,
+                                      const base::FilePath& vpd_file,
+                                      std::string* name_out, int* sku_id_out,
+                                      std::string* customization_id_out) {
   SmbiosTable table;
   if (!GetSystemTable(smbios_file, &table)) {
     CROS_CONFIG_LOG(ERROR) << "Could not get system table";

@@ -5,6 +5,7 @@
 // Library to provide access to the Chrome OS master configuration
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/identity.h"
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -38,7 +39,9 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              const std::string& name, int sku_id,
                              const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
-  if (!FakeIdentity(name, sku_id, customization_id, &smbios_file, &vpd_file)) {
+  CrosConfigIdentity identity;
+  if (!identity.FakeIdentity(name, sku_id, customization_id, &smbios_file,
+                             &vpd_file)) {
     CROS_CONFIG_LOG(ERROR) << "FakeIdentity() failed";
     return false;
   }

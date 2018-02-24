@@ -5,6 +5,7 @@
 // Library to provide access to the Chrome OS master configuration
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/identity.h"
 
 // TODO(sjg@chromium.org): See if this can be accepted upstream.
 extern "C" {
@@ -111,7 +112,7 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
       LookupPhandle(subnode, kFollowPhandles[i], &target_node);
       if (target_node >= 0) {
         ptr = static_cast<const char*>(
-          fdt_getprop(blob, target_node, prop.c_str(), &len));
+            fdt_getprop(blob, target_node, prop.c_str(), &len));
         if (ptr) {
           CROS_CONFIG_LOG(INFO)
               << "Followed " << kFollowPhandles[i] << " phandle";
@@ -281,9 +282,11 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                            << " is invalid: " << fdt_strerror(ret);
     return false;
   }
+  CrosConfigIdentity identity;
   std::string name, customization_id;
   int sku_id;
-  if (!ReadIdentity(mem_file, vpd_file, &name, &sku_id, &customization_id)) {
+  if (!identity.ReadIdentity(mem_file, vpd_file, &name, &sku_id,
+                             &customization_id)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot read identity";
     return false;
   }
