@@ -1,7 +1,4 @@
 {
-  'variables': {
-    'USE_json%': '0',
-  },
   'target_defaults': {
     'variables': {
       'deps': [
@@ -17,21 +14,9 @@
         'libcros_config/cros_config.cc',
         'libcros_config/cros_config_fdt.cc',
         'libcros_config/cros_config_impl.cc',
+        'libcros_config/cros_config_yaml.cc',
         'libcros_config/fake_cros_config.cc',
         'libcros_config/identity.cc',
-      ],
-      'conditions': [
-        ['USE_json == 1', {
-          'sources': [
-            'libcros_config/cros_config_json.cc',
-          ],
-          'defines': [
-            'USE_JSON',
-          ],
-          'sources!': [
-            'libcros_config/cros_config.cc',
-          ]},
-        ],
       ],
       'link_settings': {
         'libraries': [
@@ -66,13 +51,6 @@
           'dependencies': [
             'libcros_config',
           ],
-          'conditions': [
-            ['USE_json == 1', {
-              'defines': [
-                'USE_JSON',
-              ]},
-            ],
-          ],
           'sources': [
             'libcros_config/cros_config_unittest.cc',
           ],
@@ -83,13 +61,6 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'cros_config',
-          ],
-          'conditions': [
-            ['USE_json == 1', {
-              'defines': [
-                'USE_JSON',
-              ]},
-            ],
           ],
           'sources': [
             'cros_config_main_unittest.cc',

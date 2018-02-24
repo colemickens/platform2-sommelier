@@ -30,6 +30,10 @@
           "main-rw-image": "bcs://Pyro.9042.110.0.tbz2", 
           "pd-image": "bcs://Pyro_PD.9042.87.1.tbz2"
         }, 
+        "identity": {
+          "platform-name": "Pyro", 
+          "smbios-name-match": "Pyro"
+        }, 
         "name": "pyro", 
         "power": {
           "power-supply-full-factor": "0.20", 
@@ -87,6 +91,11 @@
             "pd-image": "bcs://Caroline_PD.2017.21.1.tbz2"
           }
         }, 
+        "identity": {
+          "platform-name": "Caroline", 
+          "sku-id": 20, 
+          "smbios-name-match": "Caroline"
+        }, 
         "name": "caroline", 
         "wallpaper": "caroline"
       }, 
@@ -105,6 +114,11 @@
           "ec-image": "bcs://Reef_EC.9042.87.1.tbz2", 
           "main-image": "bcs://Reef.9042.87.1.tbz2", 
           "main-rw-image": "bcs://Reef.9042.110.0.tbz2"
+        }, 
+        "identity": {
+          "platform-name": "Reef", 
+          "sku-id": 4, 
+          "smbios-name-match": "Reef"
         }, 
         "name": "reef", 
         "power": {
@@ -225,6 +239,11 @@
           "main-image": "bcs://Reef.9042.87.1.tbz2", 
           "no-firmware": true
         }, 
+        "identity": {
+          "platform-name": "Reef", 
+          "sku-id": 21, 
+          "smbios-name-match": "Reef"
+        }, 
         "name": "broken"
       }, 
       {
@@ -259,6 +278,11 @@
           }, 
           "sig-id-in-customization-id": true
         }, 
+        "identity": {
+          "platform-name": "Reef", 
+          "sku-id": 8, 
+          "smbios-name-match": "Reef"
+        }, 
         "name": "whitetip", 
         "powerd-prefs": "whitetip", 
         "touch": {
@@ -278,6 +302,11 @@
         "firmware": {
           "key-id": "WHITETIP1", 
           "no-firmware": true
+        }, 
+        "identity": {
+          "platform-name": "Reef", 
+          "sku-id": 9, 
+          "smbios-name-match": "Reef"
         }, 
         "name": "whitetip1", 
         "wallpaper": "shark"
@@ -305,6 +334,11 @@
             "main-rw-image": "bcs://Caroline.2017.41.0.tbz2", 
             "pd-image": "bcs://Caroline_PD.2017.21.1.tbz2"
           }
+        }, 
+        "identity": {
+          "platform-name": "Reef", 
+          "sku-id": 10, 
+          "smbios-name-match": "Reef"
         }, 
         "name": "blacktip", 
         "submodels": {

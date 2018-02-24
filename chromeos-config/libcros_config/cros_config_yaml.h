@@ -1,22 +1,23 @@
-// Copyright 2016 The Chromium OS Authors. All rights reserved.
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Library to provide access to the Chrome OS master configuration
+// YAML implementation of master configuration
 
-#ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_FDT_H_
-#define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_FDT_H_
+#ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_YAML_H_
+#define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_YAML_H_
 
 #include "chromeos-config/libcros_config/cros_config_impl.h"
 
+#include <memory>
 #include <string>
 
 namespace brillo {
 
-class CrosConfigFdt : public CrosConfigImpl {
+class CrosConfigYaml : public CrosConfigImpl {
  public:
-  CrosConfigFdt();
-  virtual ~CrosConfigFdt();
+  CrosConfigYaml();
+  virtual ~CrosConfigYaml();
 
   // CrosConfigImpl:
   bool InitModel() override;
@@ -90,9 +91,10 @@ class CrosConfigFdt : public CrosConfigImpl {
   // @return model node for this phandle, or negative on error
   int FollowPhandle(int phandle, int* target_out);
 
-  std::string blob_;  // Device tree binary blob
+  std::unique_ptr<const base::Value> json_config_ = nullptr;
+  const base::DictionaryValue* model_dict_ = nullptr;  // Model root
 };
 
 }  // namespace brillo
 
-#endif  // CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_FDT_H_
+#endif  // CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_YAML_H_

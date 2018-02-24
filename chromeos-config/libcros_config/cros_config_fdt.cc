@@ -84,7 +84,7 @@ bool CrosConfigFdt::LookupPhandle(ConfigNode node,
     return false;
   }
   if (len != sizeof(fdt32_t)) {
-    CROS_CONFIG_LOG(ERROR) << prop_name << " phandle for model " << model_
+    CROS_CONFIG_LOG(ERROR) << prop_name << " phandle for model " << model_name_
                            << " is of size " << len << " but should be "
                            << sizeof(fdt32_t);
     return false;
@@ -92,7 +92,7 @@ bool CrosConfigFdt::LookupPhandle(ConfigNode node,
   int phandle = fdt32_to_cpu(*ptr);
   int target_node = fdt_node_offset_by_phandle(blob, phandle);
   if (target_node < 0) {
-    CROS_CONFIG_LOG(ERROR) << prop_name << "lookup for model " << model_
+    CROS_CONFIG_LOG(ERROR) << prop_name << "lookup for model " << model_name_
                            << " failed: " << fdt_strerror(target_node);
     return false;
   }
@@ -305,12 +305,18 @@ bool CrosConfigFdt::SelectModelConfigByIDs(
   return true;
 }
 
-const char* CrosConfigFdt::GetProp(const ConfigNode& node,
-                                   std::string name,
-                                   int* len_out) {
+int CrosConfigFdt::GetProp(const ConfigNode& node,
+                           std::string name,
+                           std::string* value_out) {
   const void* blob = blob_.c_str();
-  return static_cast<const char*>(
-      fdt_getprop(blob, node.GetOffset(), name.c_str(), len_out));
+  int len;
+  const char* value = static_cast<const char*>(
+      fdt_getprop(blob, node.GetOffset(), name.c_str(), &len));
+  if (value) {
+    *value_out = value;
+    len--;
+  }
+  return len;
 }
 
 bool CrosConfigFdt::ReadConfigFile(const base::FilePath& filepath) {
@@ -343,8 +349,8 @@ bool CrosConfigFdt::ReadConfigFile(const base::FilePath& filepath) {
   int schema_offset = fdt_path_offset(blob, kSchemaPath);
   if (schema_offset >= 0) {
     int len;
-    const char* prop =
-        GetProp(ConfigNode(schema_offset), kPhandleProperties, &len);
+    const char* prop = static_cast<const char*>(
+        fdt_getprop(blob, schema_offset, kPhandleProperties, &len));
     if (prop) {
       const char* end = prop + len;
       for (const char* ptr = prop; ptr < end; ptr += strlen(ptr) + 1) {

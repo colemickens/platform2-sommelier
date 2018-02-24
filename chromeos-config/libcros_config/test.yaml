@@ -1,9 +1,9 @@
-# 
+#
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
-#  
+#
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-# 
+#
 
 
 chromeos:
@@ -69,7 +69,9 @@ chromeos:
         # family.
         #
         # Some yaml problem: found undefined alias 'reef_touch'
-        #simple-sku-map: [ 4, *reef_touch, 5, *reef_notouch, 8, *whitetip, 9, *whitetip1, 10, *blacktip, 11, *blacktip_touch, 12, *blacktip_notouch, 20, *caroline, 21, *broken ]
+        #simple-sku-map: [ 4, *reef_touch, 5, *reef_notouch, 8, *whitetip,
+        # 9, *whitetip1, 10, *blacktip, 11, *blacktip_touch,
+        # 12, *blacktip_notouch, 20, *caroline, 21, *broken ]
       sku-map@1:
         platform-name: "Pyro"
         smbios-name-match: "Pyro"
@@ -94,6 +96,9 @@ chromeos:
 
   models:
     - name: pyro
+      identity:
+        platform-name: "Pyro"
+        smbios-name-match: "Pyro"
       wallpaper: "default"
       # string-list: [ "default", "more" ]
       # bool-prop: true
@@ -130,6 +135,10 @@ chromeos:
           pid: "0a97"
           version: "1012"
     - name: caroline
+      identity:
+        platform-name: "Caroline"
+        smbios-name-match: "Caroline"
+        sku-id: 20
       # default: *pyro
       wallpaper: "caroline"
       #audio:
@@ -138,6 +147,10 @@ chromeos:
       firmware:
         shares: *shared
     - name: reef
+      identity:
+        platform-name: "Reef"
+        smbios-name-match: "Reef"
+        sku-id: 4
       wallpaper: "epic"
       arc:
         hw-features: "reef/arc++/hardware_features"
@@ -192,6 +205,10 @@ chromeos:
           version: "5611"
     - name: 'broken'
       # default: *caroline
+      identity:
+        platform-name: "Reef"
+        smbios-name-match: "Reef"
+        sku-id: 21
       firmware:
         bcs-overlay: "overlay-reef-private"
         main-image: "bcs://Reef.9042.87.1.tbz2"
@@ -199,6 +216,10 @@ chromeos:
 
     # Whitelabel model
     - name: 'whitetip'
+      identity:
+        platform-name: "Reef"
+        smbios-name-match: "Reef"
+        sku-id: 8
       powerd-prefs: "whitetip"
       firmware:
         sig-id-in-customization-id: true
@@ -217,6 +238,10 @@ chromeos:
 
     - name: 'whitetip1'
       # whitelabel: *whitetip
+      identity:
+        platform-name: "Reef"
+        smbios-name-match: "Reef"
+        sku-id: 9
       wallpaper: "shark"
       brand-code: "SHAR"
       firmware:
@@ -232,6 +257,10 @@ chromeos:
 
     # Whitelabel model
     - name: 'blacktip'
+      identity:
+        platform-name: "Reef"
+        smbios-name-match: "Reef"
+        sku-id: 10
       firmware:
         shares: *shared
       submodels:

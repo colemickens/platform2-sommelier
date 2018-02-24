@@ -27,17 +27,24 @@ class ConfigNode {
   // Constructor which uses a device-tree offset
   explicit ConfigNode(int offset);
 
+  // Constructor which uses a yaml dict
+  explicit ConfigNode(const base::DictionaryValue* dict);
+
   // @return true if this node reference is valid (points to an actual node)
   bool IsValid() const;
 
   // @return offset of the device-tree node, or -1 if not valid
   int GetOffset() const;
 
+  // @return yaml dict for a node, or 0 if not valid
+  const base::DictionaryValue* GetDict() const;
+
   // Test equality for two ConfigNode objectcs
   bool operator==(const ConfigNode& other) const;
 
  private:
   int node_offset_;  // Device-tree node offset
+  const base::DictionaryValue* dict_;   // Yaml dictionary for this node
   bool valid_;       // true if we have a valid node reference
 };
 
@@ -130,11 +137,11 @@ class CrosConfigImpl {
   // Read a property from a node
   // @node: Node to read from
   // @name: Property name to reset
-  // @len_out: Length of property read, if valid
-  // @return pointer to property value, or NULL if not found
-  virtual const char* GetProp(const ConfigNode& node,
-                              std::string name,
-                              int* len_out) = 0;
+  // @value_out: Returns value read from property, if no error
+  // @return length of property value, or -ve on error
+  virtual int GetProp(const ConfigNode& node,
+                      std::string name,
+                      std::string* value_out) = 0;
 
   // Look up a phandle in a node.
   // Looks up a phandle with the given property name in the given node.
@@ -158,7 +165,6 @@ class CrosConfigImpl {
       int find_sku_id,
       const std::string& find_customization_id) = 0;
 
-  std::string model_;           // Model name for this device
   ConfigNode model_node_;       // Model's node
   ConfigNode submodel_node_;    // Submodel's node
   std::string model_name_;      // Name of current model
@@ -176,11 +182,6 @@ class CrosConfigImpl {
   // Default modes to check when we cannot find the requested node or property
   std::vector<ConfigNode> default_nodes_;
   bool inited_ = false;  // true if the class is ready for use (Init*ed)
-
-  // JSON configuration
-  // TODO(sjg): Move this to its own class
-  std::unique_ptr<const base::Value> json_config_ = nullptr;
-  const base::DictionaryValue* model_dict_ = nullptr;  // Model root
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfigImpl);
 };

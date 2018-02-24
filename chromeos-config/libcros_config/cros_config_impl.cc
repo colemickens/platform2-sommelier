@@ -40,6 +40,11 @@ ConfigNode::ConfigNode(int offset) {
   node_offset_ = offset;
 }
 
+ConfigNode::ConfigNode(const base::DictionaryValue* dict) {
+  valid_ = true;
+  dict_ = dict;
+}
+
 bool ConfigNode::IsValid() const {
   return valid_;
 }
@@ -49,6 +54,13 @@ int ConfigNode::GetOffset() const {
     return -1;
   }
   return node_offset_;
+}
+
+const base::DictionaryValue* ConfigNode::GetDict() const {
+  if (!valid_) {
+    return 0;
+  }
+  return dict_;
 }
 
 bool ConfigNode::operator==(const ConfigNode& other) const {
@@ -108,21 +120,21 @@ bool CrosConfigImpl::GetString(ConfigNode base_node,
     return false;
   }
 
-  int len = 0;
-  const char* ptr = GetProp(subnode, prop, &len);
-  if (!ptr && wl_subnode.IsValid()) {
-    ptr = GetProp(wl_subnode, prop, &len);
+  std::string value;
+  int len = GetProp(subnode, prop, &value);
+  if (len < 0 && wl_subnode.IsValid()) {
+    len = GetProp(wl_subnode, prop, &value);
     CROS_CONFIG_LOG(INFO) << "The property " << prop
                           << " does not exist. Falling back to "
                           << "whitelabel property";
   }
-  if (!ptr) {
+  if (len < 0) {
     ConfigNode target_node;
     for (int i = 0; i < phandle_props_.size(); i++) {
       LookupPhandle(subnode, phandle_props_[i], &target_node);
       if (target_node.IsValid()) {
-        ptr = GetProp(target_node, prop, &len);
-        if (ptr) {
+        len = GetProp(target_node, prop, &value);
+        if (len < 0) {
           CROS_CONFIG_LOG(INFO)
               << "Followed " << phandle_props_[i] << " phandle";
           break;
@@ -131,7 +143,7 @@ bool CrosConfigImpl::GetString(ConfigNode base_node,
     }
   }
 
-  if (!ptr || len < 0) {
+  if (len < 0) {
     log_msgs_out->push_back("Cannot get path " + path + " property " + prop +
                             ": " + "full path " + GetFullPath(subnode) + ": " +
                             fdt_strerror(len));
@@ -141,13 +153,13 @@ bool CrosConfigImpl::GetString(ConfigNode base_node,
   // We must have a normally terminated string. This guards against a string
   // list being used, or perhaps a property that does not contain a valid
   // string at all.
-  if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
+  if (!len || value.size() != len) {
     log_msgs_out->push_back("String at path " + path + " property " + prop +
                             " is invalid");
     return false;
   }
 
-  val_out->assign(ptr);
+  val_out->assign(value);
 
   return true;
 }
