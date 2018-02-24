@@ -177,6 +177,47 @@ base::FilePath GetLatestVMPath() {
   return latest_path;
 }
 
+// Gets the path to a VM disk given the name, user id, and location.
+bool GetDiskPathFromName(const std::string& disk_path,
+                         const std::string& cryptohome_id,
+                         StorageLocation storage_location,
+                         bool create_parent_dir,
+                         base::FilePath* path_out) {
+  // Base64 encode the given disk name to ensure it only has valid characters.
+  std::string disk_name;
+  base::Base64UrlEncode(disk_path,
+                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                        &disk_name);
+
+  if (storage_location == STORAGE_CRYPTOHOME_ROOT) {
+    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
+                                    .Append(cryptohome_id)
+                                    .Append(kCrosvmDir);
+    base::File::Error dir_error;
+    if (!base::DirectoryExists(crosvm_dir)) {
+      if (!create_parent_dir) {
+        return false;
+      }
+
+      if (!base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
+        LOG(ERROR) << "Failed to create crosvm directory in /home/root";
+        return false;
+      }
+    }
+    *path_out = crosvm_dir.Append(disk_name + kQcowImageExtension);
+  } else if (storage_location == STORAGE_CRYPTOHOME_DOWNLOADS) {
+    *path_out = base::FilePath(kCryptohomeUser)
+                    .Append(cryptohome_id)
+                    .Append(kDownloadsDir)
+                    .Append(disk_name + kQcowImageExtension);
+  } else {
+    LOG(ERROR) << "Unknown storage location type";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -846,41 +887,13 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  // Base64 encode the given disk name to ensure it only has valid characters.
-  std::string disk_name;
-  base::Base64UrlEncode(request.disk_path(),
-                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
-                        &disk_name);
-
   base::FilePath disk_path;
-  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
-    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
-                                    .Append(request.cryptohome_id())
-                                    .Append(kCrosvmDir);
-    base::File::Error dir_error;
-    if (!base::DirectoryExists(crosvm_dir) &&
-        !base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
-      string error_description = base::File::ErrorToString(dir_error);
-      LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
-                 << error_description;
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason(
-          "Failed to create crosvm directory in /home/root: " +
-          error_description);
-      writer.AppendProtoAsArrayOfBytes(response);
-
-      return dbus_response;
-    }
-    disk_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
-  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
-    disk_path = base::FilePath(kCryptohomeUser)
-                    .Append(request.cryptohome_id())
-                    .Append(kDownloadsDir)
-                    .Append(disk_name + kQcowImageExtension);
-  } else {
-    LOG(ERROR) << "Unknown storage location type";
+  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                           request.storage_location(),
+                           true, /* create_parent_dir */
+                           &disk_path)) {
     response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Unknown storage location type");
+    response.set_failure_reason("Failed to create vm image");
     writer.AppendProtoAsArrayOfBytes(response);
 
     return dbus_response;
@@ -975,36 +988,13 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
-  // Base64 encode the given disk name to ensure it only has valid characters.
-  std::string disk_name;
-  base::Base64UrlEncode(request.disk_path(),
-                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
-                        &disk_name);
-
   base::FilePath disk_path;
-  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
-    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
-                                    .Append(request.cryptohome_id())
-                                    .Append(kCrosvmDir);
-    if (!base::DirectoryExists(crosvm_dir)) {
-      LOG(ERROR) << "Failed to destroy image in directory under /home/root";
-      response.set_status(DISK_STATUS_DOES_NOT_EXIST);
-      response.set_failure_reason(
-          "Failed to destroy image in directory under /home/root");
-      writer.AppendProtoAsArrayOfBytes(response);
-
-      return dbus_response;
-    }
-    disk_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
-  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
-    disk_path = base::FilePath(kCryptohomeUser)
-                    .Append(request.cryptohome_id())
-                    .Append(kDownloadsDir)
-                    .Append(disk_name + kQcowImageExtension);
-  } else {
-    LOG(ERROR) << "Unknown storage location type";
+  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                           request.storage_location(),
+                           false, /* create_parent_dir */
+                           &disk_path)) {
     response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Unknown storage location type");
+    response.set_failure_reason("Failed to delete vm image");
     writer.AppendProtoAsArrayOfBytes(response);
 
     return dbus_response;
