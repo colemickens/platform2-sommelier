@@ -48,8 +48,6 @@ BROKEN_FIRMWARE_FILES = ['Reef.9042.87.1.tbz2']
 LIB_FIRMWARE = '/lib/firmware/'
 TOUCH_FIRMWARE = '/opt/google/touch/firmware/'
 
-config_format = None
-
 
 # Use this to suppress stdout/stderr output:
 # with capture_sys_output() as (stdout, stderr)
@@ -69,8 +67,8 @@ def MakeTests(pathname):
   class CrosConfigHostTest(unittest.TestCase):
     """The unit test suite for the libcros_config_host.py library"""
     def setUp(self):
-      global config_format
-      config_format, self.filepath, self.temp_file = self.GetConfig(pathname)
+      self.config_format, self.filepath, self.temp_file = (
+          self.GetConfig(pathname))
       _, self.filepath_bad_compare, self.temp_file_bad_compare = self.GetConfig(
           pathname.replace('test.', 'test_bad_compare.'))
 
@@ -228,7 +226,7 @@ def MakeTests(pathname):
           TouchFile('files/wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
                     LIB_FIRMWARE + 'wacom_firmware_REEF.bin')])
-      if config_format == FORMAT_FDT:
+      if self.config_format == FORMAT_FDT:
         expected |= set([
             TouchFile('files/wacom/4209.hex',
                       TOUCH_FIRMWARE + 'wacom/4209.hex',
@@ -281,7 +279,7 @@ def MakeTests(pathname):
 
     def testGetMergedPropertiesDefault(self):
       """Test that the 'default' property is used when collecting properties"""
-      if config_format != FORMAT_FDT:
+      if self.config_format != FORMAT_FDT:
         return
       config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       caroline = config.models['caroline']
@@ -355,7 +353,7 @@ def MakeTests(pathname):
                    '.conf',
                    '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
                    '.reefucm.conf')]
-      if config_format == FORMAT_FDT:
+      if self.config_format == FORMAT_FDT:
         expected += (BaseFile('cras-config/caroline/bxtda7219max',
                               '/etc/cras/caroline/bxtda7219max'),
                      BaseFile('cras-config/caroline/dsp.ini',
@@ -383,7 +381,7 @@ def MakeTests(pathname):
            BaseFile('reef_touch/dptf.dv', '/etc/dptf/reef_touch/dptf.dv')])
 
     def testWhitelabel(self):
-      if config_format != FORMAT_FDT:
+      if self.config_format != FORMAT_FDT:
         return
       # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
       # Note that we have no tests for the alternative whitelabel schema. In
@@ -458,7 +456,7 @@ def MakeTests(pathname):
 
     def testDefault(self):
       """Test the 'default' property"""
-      if config_format != FORMAT_FDT:
+      if self.config_format != FORMAT_FDT:
         return
       config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
       caroline = config.models['caroline']
@@ -506,8 +504,9 @@ def MakeTests(pathname):
 
       os.environ['SYSROOT'] = 'fred'
       with self.assertRaises(IOError) as e:
-        CrosConfig(config_format=config_format, compare_results=COMPARE_NEVER)
-      ext = 'dtb' if config_format == FORMAT_FDT else 'yaml'
+        CrosConfig(config_format=self.config_format,
+                   compare_results=COMPARE_NEVER)
+      ext = 'dtb' if self.config_format == FORMAT_FDT else 'yaml'
       self.assertIn('fred/usr/share/chromeos-config/config.%s' % ext,
                     str(e.exception))
 
@@ -524,7 +523,8 @@ def MakeTests(pathname):
       self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
       # YAML does not support naming of the target node so far as I can see.
-      shared_model = 'caroline' if config_format == FORMAT_FDT else 'shares'
+      shared_model = ('caroline' if self.config_format == FORMAT_FDT
+                      else 'shares')
 
       # Use this to avoid repeating common fields
       caroline = FirmwareInfo(
@@ -566,7 +566,7 @@ def MakeTests(pathname):
       result = config.GetFirmwareInfo()
       # With FDT we support models which are whitelabels of another model.
       # Filter whitetip2 out for other formats.
-      if config_format == FORMAT_FDT:
+      if self.config_format == FORMAT_FDT:
         expected['whitetip2'] = caroline._replace(
             model='whitetip2', key_id='WHITETIP2', have_image=False,
             sig_id='whitetip2')
