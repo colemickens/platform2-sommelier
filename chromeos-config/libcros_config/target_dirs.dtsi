@@ -8,6 +8,10 @@
 / {
 	chromeos {
 		schema {
+			phandle-properties = "arc-properties-type",
+				"audio-type", "bcs-type", "power-type",
+				"shares", "single-sku", "touch-type",
+				"whitelabel";
 			target-dirs {
 				alsa-conf = "/usr/share/alsa/ucm";
 				cras-config-dir = "/etc/cras";

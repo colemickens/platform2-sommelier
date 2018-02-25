@@ -26,8 +26,8 @@ extern "C" {
 namespace {
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
-const char* kFollowPhandles[] = {"audio-type", "arc-properties-type",
-                                 "power-type"};
+const char kSchemaPath[] = "/chromeos/schema";
+const char kPhandleProperties[] = "phandle-properties";
 }  // namespace
 
 namespace brillo {
@@ -102,20 +102,16 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
                           << " does not exist. Falling back to "
                           << "whitelabel property";
   }
-  // We would prefer to do this lookup on the host where the full schema info
-  // is available. But at present this is not implemented. We want this for
-  // audio and power, so add a check there.
-  // Perhaps we can resolve this as part of crbug.com/761284
   if (!ptr) {
     int target_node;
-    for (int i = 0; i < arraysize(kFollowPhandles); i++) {
-      LookupPhandle(subnode, kFollowPhandles[i], &target_node);
+    for (int i = 0; i < phandle_props_.size(); i++) {
+      LookupPhandle(subnode, phandle_props_[i], &target_node);
       if (target_node >= 0) {
         ptr = static_cast<const char*>(
             fdt_getprop(blob, target_node, prop.c_str(), &len));
         if (ptr) {
           CROS_CONFIG_LOG(INFO)
-              << "Followed " << kFollowPhandles[i] << " phandle";
+              << "Followed " << phandle_props_[i] << " phandle";
           break;
         }
       }
@@ -303,6 +299,25 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     CROS_CONFIG_LOG(WARNING) << "Cannot find " << kTargetDirsPath
                              << " node: " << fdt_strerror(target_dirs_offset);
   }
+  int schema_offset = fdt_path_offset(blob, kSchemaPath);
+  if (schema_offset >= 0) {
+    int len;
+    const char* prop = static_cast<const char*>(
+        fdt_getprop(blob, schema_offset, kPhandleProperties, &len));
+    if (prop) {
+      const char* end = prop + len;
+      for (const char* ptr = prop; ptr < end; ptr += strlen(ptr) + 1) {
+        phandle_props_.push_back(ptr);
+      }
+    } else {
+      CROS_CONFIG_LOG(WARNING) << "Cannot find property " << kPhandleProperties
+                               << " node: " << fdt_strerror(len);
+    }
+  } else if (schema_offset < 0) {
+    CROS_CONFIG_LOG(WARNING) << "Cannot find " << kSchemaPath
+                             << " node: " << fdt_strerror(schema_offset);
+  }
+
   // See if there is a whitelabel config for this model.
   if (whitelabel_offset_ == -1) {
     LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
