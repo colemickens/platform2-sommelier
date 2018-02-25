@@ -9,6 +9,7 @@
 
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -187,7 +188,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // holds the device tree offset of that node. We check this first on any
   // property reads, since it overrides the model itself.
   int whitelabel_tag_offset_ = -1;
-  int target_dirs_offset_ = -1;  // Device tree offset of the target-dirs node
+  // List of target directories used to obtain absolute paths
+  std::map<std::string, std::string> target_dirs_;
   std::vector<std::string> phandle_props_;  // List of phandle properties
   std::vector<int> default_offsets_;  // Device tree offset of default modes
   bool inited_ = false;          // true if the class is ready for use (Init*ed)

@@ -201,28 +201,17 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
 
 bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
                             std::string* val_out) {
-  const void* blob = blob_.c_str();
   std::string val;
   if (!GetString(path, prop, &val)) {
     return false;
   }
 
-  if (target_dirs_offset_ == -1) {
+  if (target_dirs_.find(prop) == target_dirs_.end()) {
     CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
-                           << " property " << prop
-                           << " but no target-dirs are available";
+                           << " property " << prop << ": not found";
     return false;
   }
-  int len;
-  const char* ptr = static_cast<const char*>(
-      fdt_getprop(blob, target_dirs_offset_, prop.c_str(), &len));
-
-  if (!ptr) {
-    CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
-                           << " property " << prop << ": " << fdt_strerror(len);
-    return false;
-  }
-  *val_out = std::string(ptr) + "/" + val;
+  *val_out = target_dirs_[prop] + "/" + val;
 
   return true;
 }
@@ -294,7 +283,15 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
 
   int target_dirs_offset = fdt_path_offset(blob, kTargetDirsPath);
   if (target_dirs_offset >= 0) {
-    target_dirs_offset_ = target_dirs_offset;
+    for (int poffset = fdt_first_property_offset(blob, target_dirs_offset);
+         poffset >= 0;
+         poffset = fdt_next_property_offset(blob, poffset)) {
+      int len;
+      const struct fdt_property* prop = fdt_get_property_by_offset(blob,
+          poffset, &len);
+      const char* name = fdt_string(blob, fdt32_to_cpu(prop->nameoff));
+      target_dirs_[name] = prop->data;
+    }
   } else if (target_dirs_offset < 0) {
     CROS_CONFIG_LOG(WARNING) << "Cannot find " << kTargetDirsPath
                              << " node: " << fdt_strerror(target_dirs_offset);
