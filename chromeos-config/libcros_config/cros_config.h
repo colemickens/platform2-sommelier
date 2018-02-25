@@ -116,42 +116,40 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool InitCheck() const;
 
-  // Obtain the full path for the node at a given offset.
-  // @offset: offset of the node to check.
+  // Obtain the full path for the node at a given node.
+  // @node: Node to check.
   // @return path to node, or "unknown" if it 256 characters or more (due to
   // limited buffer space). This is much longer than any expected length so
   // should not happen.
-  std::string GetFullPath(const ConfigNode& offset);
+  std::string GetFullPath(const ConfigNode& node);
 
-  // Obtain offset of a given path, relative to the base node.
-  // @base_offset: base node.
+  // Obtain node of a given path, relative to the base node.
+  // @base_node: base node.
   // @path: Path to locate (relative to @base). Must start with "/".
-  // @return node offset of the node found, or negative value on error.
-  ConfigNode GetPathOffset(const ConfigNode& base_offset,
-                           const std::string& path);
+  // @return node found, or negative value on error.
+  ConfigNode GetPathNode(const ConfigNode& base_node, const std::string& path);
 
-  // Internal function to obtain a property value based on a node offset
-  // This looks up a property for a path, relative to a given base node offset.
-  // @base_offset: offset of base node for the search.
+  // Internal function to obtain a property value based on a node
+  // This looks up a property for a path, relative to a given base node.
+  // @base_node: base node for the search.
   // @path: Path to locate (relative to @base). Must start with "/".
   // @prop: Property name to look up
   // @val_out: returns the string value found, if any
   // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
-  bool GetString(const ConfigNode& base_offset, const std::string& path,
+  bool GetString(const ConfigNode& base_node, const std::string& path,
                  const std::string& prop, std::string* val_out,
                  std::vector<std::string>* log_msgs_out);
 
   // Look up a phandle in a node.
   // Looks up a phandle with the given property name in the given node.
-  // @node_offset: Offset of node to look in.
+  // @node: Node to look in.
   // @prop_name: Name of property to look up.
-  // @offset_out: Returns the offset of the node the phandle points to, if
-  // found.
+  // @node_out: Returns the node the phandle points to, if found.
   // @return true if found, false if not.
-  bool LookupPhandle(const ConfigNode& node_offset,
+  bool LookupPhandle(const ConfigNode& node,
                      const std::string& prop_name,
-                     ConfigNode *offset_out);
+                     ConfigNode* node_out);
 
   // Select the model / submodel to use
   // Looks up the given name and sku_id in the mapping table and sets the
@@ -202,21 +200,22 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
-  ConfigNode model_offset_;      // Model's node
-  ConfigNode submodel_offset_;   // Submodel's node
+  ConfigNode model_node_;        // Model's node
+  ConfigNode submodel_node_;     // Submodel's node
   std::string model_name_;       // Name of current model
   std::string submodel_name_;    // Name of current submodel
   std::string platform_name_;    // Platform name associated with the SKU map
-  ConfigNode whitelabel_offset_;  // Whitelabel model
+  ConfigNode whitelabel_node_;   // Whitelabel model
 
-  // We support a special-case 'whitelabel' node which is inside a model. This
-  // holds the device tree offset of that node. We check this first on any
-  // property reads, since it overrides the model itself.
-  ConfigNode whitelabel_tag_offset_;
+  // We support a special-case 'whitelabel' node which is inside a model. We
+  // check this first on any property reads, since it overrides the model
+  // itself.
+  ConfigNode whitelabel_tag_node_;
   // List of target directories used to obtain absolute paths
   std::map<std::string, std::string> target_dirs_;
   std::vector<std::string> phandle_props_;  // List of phandle properties
-  std::vector<ConfigNode> default_offsets_;  // Default modes
+  // Default modes to check when we cannot find the requested node or property
+  std::vector<ConfigNode> default_nodes_;
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
 
 

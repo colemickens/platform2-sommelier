@@ -173,13 +173,13 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
 
   //  We found the model node, so set up the data
   platform_name_ = platform_name;
-  model_offset_ = ConfigNode(model_offset);
+  model_node_ = ConfigNode(model_offset);
   model_name_ = fdt_get_name(blob, model_offset, NULL);
   if (target != model_offset) {
-    submodel_offset_ = ConfigNode(target);
+    submodel_node_ = ConfigNode(target);
     submodel_name_ = fdt_get_name(blob, target, NULL);
   } else {
-    submodel_offset_ = ConfigNode();
+    submodel_node_ = ConfigNode();
     submodel_name_ = "";
   }
 
@@ -191,8 +191,8 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
       int wl_model = fdt_subnode_offset(blob, models_node,
                                         find_whitelabel_name.c_str());
       if (wl_model >= 0) {
-        whitelabel_offset_ = model_offset_;
-        model_offset_ = ConfigNode(wl_model);
+        whitelabel_node_ = model_node_;
+        model_node_ = ConfigNode(wl_model);
       } else {
         CROS_CONFIG_LOG(ERROR)
             << "Cannot find whitelabel model " << find_whitelabel_name
@@ -205,7 +205,7 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
     int wl_tag = fdt_subnode_offset(blob, wl_tags_node,
                                     find_whitelabel_name.c_str());
     if (wl_tag >= 0) {
-      whitelabel_tag_offset_ = ConfigNode(wl_tag);
+      whitelabel_tag_node_ = ConfigNode(wl_tag);
     } else {
       CROS_CONFIG_LOG(ERROR)
           << "Cannot find whitelabel tag " << find_whitelabel_name << ": using "
