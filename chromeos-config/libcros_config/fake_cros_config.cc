@@ -12,12 +12,14 @@ FakeCrosConfig::FakeCrosConfig() {}
 
 FakeCrosConfig::~FakeCrosConfig() {}
 
-void FakeCrosConfig::SetString(const std::string& path, const std::string& prop,
+void FakeCrosConfig::SetString(const std::string& path,
+                               const std::string& prop,
                                const std::string& val) {
   values_[PathProp{path, prop}] = val;
 }
 
-bool FakeCrosConfig::GetString(const std::string& path, const std::string& prop,
+bool FakeCrosConfig::GetString(const std::string& path,
+                               const std::string& prop,
                                std::string* val) {
   auto it = values_.find(PathProp{path, prop});
   if (it == values_.end()) {
@@ -36,7 +38,8 @@ void FakeCrosConfig::SetTargetDir(const std::string& prop,
 }
 
 bool FakeCrosConfig::GetAbsPath(const std::string& path,
-                                const std::string& prop, std::string* val_out) {
+                                const std::string& prop,
+                                std::string* val_out) {
   std::string val;
   if (!GetString(path, prop, &val)) {
     return false;

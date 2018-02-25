@@ -18,14 +18,14 @@
 #define TEST_FILE "test_config.json"
 #endif
 
-
 class CrosConfigTest : public testing::Test {
  protected:
-  void InitConfig(const std::string name = "Pyro", int sku_id = -1,
-    std::string whitelabel_name = "") {
+  void InitConfig(const std::string name = "Pyro",
+                  int sku_id = -1,
+                  std::string whitelabel_name = "") {
     base::FilePath filepath(TEST_FILE);
-    ASSERT_TRUE(cros_config_.InitForTest(filepath, name, sku_id,
-                                         whitelabel_name));
+    ASSERT_TRUE(
+        cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name));
   }
   void CheckWhiteLabelAlternateSku(int sku_id);
 
@@ -119,8 +119,8 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
 
   // This is defined by whitetip's shared firmware. We don't have access to this
   // at run-time since we don't follow the 'shares' phandles.
-  ASSERT_FALSE(cros_config_.GetString("/firmware/build-targets", "coreboot",
-                                      &val));
+  ASSERT_FALSE(
+      cros_config_.GetString("/firmware/build-targets", "coreboot", &val));
 
   // We should get the same result using the base whitetip and a whitelabel tag.
   InitConfig("Reef", 8, "whitetip1");
@@ -194,11 +194,14 @@ TEST_F(CrosConfigTest, CheckSubmodel) {
   std::vector<std::string> log_msgs;
   ASSERT_FALSE(cros_config_.GetString("/touch", "presents", &val, &log_msgs));
   ASSERT_EQ(2, log_msgs.size());
-  ASSERT_EQ("Cannot get path /touch property presents: full path "
-            "/chromeos/models/reef/touch: FDT_ERR_NOTFOUND", log_msgs[0]);
-  ASSERT_EQ("Cannot get path /touch property presents: full path "
-            "/chromeos/models/reef/submodels/notouch/touch: FDT_ERR_NOTFOUND",
-            log_msgs[1]);
+  ASSERT_EQ(
+      "Cannot get path /touch property presents: full path "
+      "/chromeos/models/reef/touch: FDT_ERR_NOTFOUND",
+      log_msgs[0]);
+  ASSERT_EQ(
+      "Cannot get path /touch property presents: full path "
+      "/chromeos/models/reef/submodels/notouch/touch: FDT_ERR_NOTFOUND",
+      log_msgs[1]);
 }
 
 TEST_F(CrosConfigTest, CheckFollowPhandle) {
@@ -260,7 +263,7 @@ TEST_F(CrosConfigTest, CheckWhiteLabelAlternate) {
 }
 #endif /* !USE_JSON */
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)
     return EXIT_FAILURE;

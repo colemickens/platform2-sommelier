@@ -36,7 +36,8 @@ bool CrosConfig::InitForConfig(const base::FilePath& filepath) {
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
-                             const std::string& name, int sku_id,
+                             const std::string& name,
+                             int sku_id,
                              const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
   CrosConfigIdentity identity;

@@ -119,8 +119,8 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
     }
   }
   if (!subnode.IsValid()) {
-    log_msgs_out->push_back("The path " + GetFullPath(base_node) + path
-                           + " does not exist.");
+    log_msgs_out->push_back("The path " + GetFullPath(base_node) + path +
+                            " does not exist.");
     return false;
   }
 
@@ -128,8 +128,8 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
   const char* ptr = static_cast<const char*>(
       fdt_getprop(blob, subnode.GetOffset(), prop.c_str(), &len));
   if (!ptr && wl_subnode.IsValid()) {
-    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode.GetOffset(),
-                                               prop.c_str(), &len));
+    ptr = static_cast<const char*>(
+        fdt_getprop(blob, wl_subnode.GetOffset(), prop.c_str(), &len));
     CROS_CONFIG_LOG(INFO) << "The property " << prop
                           << " does not exist. Falling back to "
                           << "whitelabel property";
@@ -151,9 +151,9 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
   }
 
   if (!ptr || len < 0) {
-    log_msgs_out->push_back("Cannot get path " + path + " property " + prop
-        + ": " + "full path " + GetFullPath(subnode) + ": "
-        + fdt_strerror(len));
+    log_msgs_out->push_back("Cannot get path " + path + " property " + prop +
+                            ": " + "full path " + GetFullPath(subnode) + ": " +
+                            fdt_strerror(len));
     return false;
   }
 
@@ -161,8 +161,8 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
   // list being used, or perhaps a property that does not contain a valid
   // string at all.
   if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
-    log_msgs_out->push_back("String at path " + path + " property " + prop
-                           + " is invalid");
+    log_msgs_out->push_back("String at path " + path + " property " + prop +
+                            " is invalid");
     return false;
   }
 
@@ -171,7 +171,8 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
   return true;
 }
 
-bool CrosConfig::GetString(const std::string& path, const std::string& prop,
+bool CrosConfig::GetString(const std::string& path,
+                           const std::string& prop,
                            std::string* val_out,
                            std::vector<std::string>* log_msgs_out) {
   if (!InitCheck()) {
@@ -219,7 +220,8 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::GetString(const std::string& path, const std::string& prop,
+bool CrosConfig::GetString(const std::string& path,
+                           const std::string& prop,
                            std::string* val_out) {
   std::vector<std::string> log_msgs;
   if (!GetString(path, prop, val_out, &log_msgs)) {
@@ -231,7 +233,8 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
+bool CrosConfig::GetAbsPath(const std::string& path,
+                            const std::string& prop,
                             std::string* val_out) {
   std::string val;
   if (!GetString(path, prop, &val)) {
@@ -317,11 +320,10 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   int target_dirs_offset = fdt_path_offset(blob, kTargetDirsPath);
   if (target_dirs_offset >= 0) {
     for (int poffset = fdt_first_property_offset(blob, target_dirs_offset);
-         poffset >= 0;
-         poffset = fdt_next_property_offset(blob, poffset)) {
+         poffset >= 0; poffset = fdt_next_property_offset(blob, poffset)) {
       int len;
-      const struct fdt_property* prop = fdt_get_property_by_offset(blob,
-          poffset, &len);
+      const struct fdt_property* prop =
+          fdt_get_property_by_offset(blob, poffset, &len);
       const char* name = fdt_string(blob, fdt32_to_cpu(prop->nameoff));
       target_dirs_[name] = prop->data;
     }
@@ -355,10 +357,9 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   ConfigNode next_node;
   default_nodes_.clear();
   for (ConfigNode node = model_node_;
-       LookupPhandle(node, "default", &next_node);
-       node = next_node) {
-    if (std::find(default_nodes_.begin(), default_nodes_.end(),
-                  next_node) != default_nodes_.end()) {
+       LookupPhandle(node, "default", &next_node); node = next_node) {
+    if (std::find(default_nodes_.begin(), default_nodes_.end(), next_node) !=
+        default_nodes_.end()) {
       CROS_CONFIG_LOG(ERROR) << "Circular default at " << GetFullPath(node);
       return false;
     }
@@ -374,9 +375,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                                           NULL);
   } else if (whitelabel_tag_node_.IsValid()) {
     CROS_CONFIG_LOG(INFO) << "Whitelabel tag "
-                          << fdt_get_name(blob,
-                                          whitelabel_tag_node_.GetOffset(),
-                                          NULL);
+                          << fdt_get_name(
+                                 blob, whitelabel_tag_node_.GetOffset(), NULL);
   }
   inited_ = true;
 

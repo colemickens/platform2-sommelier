@@ -125,7 +125,8 @@ bool CrosConfigIdentity::WriteFakeTables(base::File* smbios_file,
   return true;
 }
 
-bool CrosConfigIdentity::FakeIdentity(const std::string& name, int sku_id,
+bool CrosConfigIdentity::FakeIdentity(const std::string& name,
+                                      int sku_id,
                                       const std::string& customization_id,
                                       base::FilePath* smbios_file_out,
                                       base::FilePath* vpd_file_out) {
@@ -245,7 +246,8 @@ std::string CrosConfigIdentity::GetSmbiosString(const SmbiosTable& table,
 
 bool CrosConfigIdentity::ReadIdentity(const base::FilePath& smbios_file,
                                       const base::FilePath& vpd_file,
-                                      std::string* name_out, int* sku_id_out,
+                                      std::string* name_out,
+                                      int* sku_id_out,
                                       std::string* customization_id_out) {
   SmbiosTable table;
   if (!GetSystemTable(smbios_file, &table)) {

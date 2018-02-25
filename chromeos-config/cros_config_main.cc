@@ -15,8 +15,7 @@
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(abspath, false, "Show the property value as an absolute path.");
-  DEFINE_string(test_database,
-                "",
+  DEFINE_string(test_database, "",
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
   DEFINE_int32(test_sku_id, -1, "Override SKU ID for testing.");
@@ -38,7 +37,8 @@ int main(int argc, char* argv[]) {
     }
   } else {
     if (!cros_config.InitForTest(base::FilePath(FLAGS_test_database),
-          FLAGS_test_name, FLAGS_test_sku_id, FLAGS_whitelabel_tag)) {
+                                 FLAGS_test_name, FLAGS_test_sku_id,
+                                 FLAGS_whitelabel_tag)) {
       return 1;
     }
   }

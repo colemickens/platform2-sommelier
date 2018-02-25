@@ -47,10 +47,9 @@ class ConfigNode {
   bool operator==(const ConfigNode& other) const;
 
  private:
-  int node_offset_;         // Device-tree node offset
-  bool valid_;              // true if we have a valid node reference
+  int node_offset_;  // Device-tree node offset
+  bool valid_;       // true if we have a valid node reference
 };
-
 
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
@@ -74,8 +73,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @customization_id: VPD customization ID from 'mosys platform customization'
   // @return true if OK, false on error.
-  bool InitForTest(const base::FilePath& filepath, const std::string& name,
-                   int sku_id, const std::string& customization_id);
+  bool InitForTest(const base::FilePath& filepath,
+                   const std::string& name,
+                   int sku_id,
+                   const std::string& customization_id);
 
   // Internal function to obtain a property value and return a list of log
   // messages on failure. Public for tests.
@@ -84,8 +85,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @val_out: returns the string value found, if any
   // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
-  bool GetString(const std::string& path, const std::string& prop,
-                 std::string* val_out, std::vector<std::string>* log_msgs_out);
+  bool GetString(const std::string& path,
+                 const std::string& prop,
+                 std::string* val_out,
+                 std::vector<std::string>* log_msgs_out);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
@@ -93,7 +96,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  std::string* val_out) override;
 
   // CrosConfigInterface:
-  bool GetAbsPath(const std::string& path, const std::string& prop,
+  bool GetAbsPath(const std::string& path,
+                  const std::string& prop,
                   std::string* val_out) override;
 
  private:
@@ -137,8 +141,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @val_out: returns the string value found, if any
   // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
-  bool GetString(const ConfigNode& base_node, const std::string& path,
-                 const std::string& prop, std::string* val_out,
+  bool GetString(const ConfigNode& base_node,
+                 const std::string& path,
+                 const std::string& prop,
+                 std::string* val_out,
                  std::vector<std::string>* log_msgs_out);
 
   // Look up a phandle in a node.
@@ -158,7 +164,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @find_sku_id: SKU ID to search for
   // @find_customization_id: Customization ID to search for
   // @return true on success, false on failure
-  bool SelectModelConfigByIDs(const std::string& find_name, int find_sku_id,
+  bool SelectModelConfigByIDs(const std::string& find_name,
+                              int find_sku_id,
                               const std::string& find_customization_id);
 
   // Check a single sku-map node for a match
@@ -173,7 +180,9 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @platform_name_out: Returns platform name for this SKU, if found
   // @return the phandle to a model or submodel node that was found (> 0), or 0
   // if not found, or negative on error
-  int FindIDsInMap(int node, const std::string& find_name, int find_sku_id,
+  int FindIDsInMap(int node,
+                   const std::string& find_name,
+                   int find_sku_id,
                    std::string* platform_name_out);
 
   // Check all sku-map nodes for a match
@@ -185,8 +194,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @platform_name_out: Returns platform name for this SKU, if found
   // @return the phandle to a model or submodel node that was found (> 0), or 0
   // if not found, or negative on error
-  int FindIDsInAllMaps(int mapping_node, const std::string& find_name,
-                       int find_sku_id, std::string* platform_name_out);
+  int FindIDsInAllMaps(int mapping_node,
+                       const std::string& find_name,
+                       int find_sku_id,
+                       std::string* platform_name_out);
 
   // Find the model node pointed to by a phandle
   // Note that a SKU map can point to either a model node or a submodel node.
@@ -198,14 +209,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return model node for this phandle, or negative on error
   int FollowPhandle(int phandle, int* target_out);
 
-  std::string blob_;             // Device tree binary blob
-  std::string model_;            // Model name for this device
-  ConfigNode model_node_;        // Model's node
-  ConfigNode submodel_node_;     // Submodel's node
-  std::string model_name_;       // Name of current model
-  std::string submodel_name_;    // Name of current submodel
-  std::string platform_name_;    // Platform name associated with the SKU map
-  ConfigNode whitelabel_node_;   // Whitelabel model
+  std::string blob_;            // Device tree binary blob
+  std::string model_;           // Model name for this device
+  ConfigNode model_node_;       // Model's node
+  ConfigNode submodel_node_;    // Submodel's node
+  std::string model_name_;      // Name of current model
+  std::string submodel_name_;   // Name of current submodel
+  std::string platform_name_;   // Platform name associated with the SKU map
+  ConfigNode whitelabel_node_;  // Whitelabel model
 
   // We support a special-case 'whitelabel' node which is inside a model. We
   // check this first on any property reads, since it overrides the model
@@ -216,8 +227,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   std::vector<std::string> phandle_props_;  // List of phandle properties
   // Default modes to check when we cannot find the requested node or property
   std::vector<ConfigNode> default_nodes_;
-  bool inited_ = false;          // true if the class is ready for use (Init*ed)
-
+  bool inited_ = false;  // true if the class is ready for use (Init*ed)
 
   // JSON configuration
   std::unique_ptr<const base::Value> json_config_ = nullptr;

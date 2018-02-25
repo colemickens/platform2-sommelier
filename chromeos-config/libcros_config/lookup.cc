@@ -16,23 +16,25 @@ extern "C" {
 
 namespace brillo {
 
-int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
-                             int find_sku_id, std::string* platform_name_out) {
+int CrosConfig::FindIDsInMap(int node,
+                             const std::string& find_name,
+                             int find_sku_id,
+                             std::string* platform_name_out) {
   const void* blob = blob_.c_str();
   VLOG(1) << "Trying " << fdt_get_name(blob, node, NULL);
-  const char *smbios_name = static_cast<const char *>(
+  const char* smbios_name = static_cast<const char*>(
       fdt_getprop(blob, node, "smbios-name-match", NULL));
   if (smbios_name &&
       (find_name.empty() || strcmp(smbios_name, find_name.c_str()))) {
-    CROS_CONFIG_LOG(INFO) << "SMBIOS name " << smbios_name
-                          << " does not match " << find_name;
+    CROS_CONFIG_LOG(INFO) << "SMBIOS name " << smbios_name << " does not match "
+                          << find_name;
     return 0;
   }
 
   // If we have a single SKU, deal with that first
   int len = 0;
-  const fdt32_t *data = (const fdt32_t *)fdt_getprop(blob, node, "single-sku",
-                                                     &len);
+  const fdt32_t* data =
+      (const fdt32_t*)fdt_getprop(blob, node, "single-sku", &len);
   int found_phandle = 0;
   if (data) {
     if (len != sizeof(fdt32_t)) {
@@ -45,7 +47,7 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
     // Locate the map and make sure it is a multiple of 2 cells (first is SKU
     // ID, second is phandle).
     const fdt32_t *data, *end, *ptr;
-    data = static_cast<const fdt32_t *>(
+    data = static_cast<const fdt32_t*>(
         fdt_getprop(blob, node, "simple-sku-map", &len));
     if (!data) {
       CROS_CONFIG_LOG(ERROR)
@@ -78,8 +80,8 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
     CROS_CONFIG_LOG(INFO) << "Simple SKU map match ";
   }
 
-  const char *pname = static_cast<const char *>(
-      fdt_getprop(blob, node, "platform-name", NULL));
+  const char* pname =
+      static_cast<const char*>(fdt_getprop(blob, node, "platform-name", NULL));
   if (pname)
     *platform_name_out = pname;
   else
@@ -89,15 +91,16 @@ int CrosConfig::FindIDsInMap(int node, const std::string& find_name,
   return found_phandle;
 }
 
-int CrosConfig::FindIDsInAllMaps(int mapping_node, const std::string& find_name,
+int CrosConfig::FindIDsInAllMaps(int mapping_node,
+                                 const std::string& find_name,
                                  int find_sku_id,
                                  std::string* platform_name_out) {
   const void* blob = blob_.c_str();
-  int subnode;;
+  int subnode;
 
   fdt_for_each_subnode(subnode, blob, mapping_node) {
-    int phandle = FindIDsInMap(subnode, find_name, find_sku_id,
-                               platform_name_out);
+    int phandle =
+        FindIDsInMap(subnode, find_name, find_sku_id, platform_name_out);
     if (phandle < 0) {
       return -1;
     } else if (phandle > 0) {
@@ -146,8 +149,10 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
   return model_node;
 }
 
-bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
-    int find_sku_id, const std::string& find_whitelabel_name) {
+bool CrosConfig::SelectModelConfigByIDs(
+    const std::string& find_name,
+    int find_sku_id,
+    const std::string& find_whitelabel_name) {
   const void* blob = blob_.c_str();
   CROS_CONFIG_LOG(INFO) << "Looking up name " << find_name << ", SKU ID "
                         << find_sku_id;
@@ -160,8 +165,8 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
   }
 
   std::string platform_name;
-  int phandle = FindIDsInAllMaps(mapping_node, find_name, find_sku_id,
-                                 &platform_name);
+  int phandle =
+      FindIDsInAllMaps(mapping_node, find_name, find_sku_id, &platform_name);
   if (phandle <= 0) {
     return false;
   }
@@ -188,8 +193,8 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
   if (firmware_node >= 0) {
     if (fdt_getprop(blob, firmware_node, "sig-id-in-customization-id", NULL)) {
       int models_node = fdt_path_offset(blob, "/chromeos/models");
-      int wl_model = fdt_subnode_offset(blob, models_node,
-                                        find_whitelabel_name.c_str());
+      int wl_model =
+          fdt_subnode_offset(blob, models_node, find_whitelabel_name.c_str());
       if (wl_model >= 0) {
         whitelabel_node_ = model_node_;
         model_node_ = ConfigNode(wl_model);
@@ -202,8 +207,8 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
   }
   int wl_tags_node = fdt_subnode_offset(blob, model_offset, "whitelabels");
   if (wl_tags_node >= 0) {
-    int wl_tag = fdt_subnode_offset(blob, wl_tags_node,
-                                    find_whitelabel_name.c_str());
+    int wl_tag =
+        fdt_subnode_offset(blob, wl_tags_node, find_whitelabel_name.c_str());
     if (wl_tag >= 0) {
       whitelabel_tag_node_ = ConfigNode(wl_tag);
     } else {

@@ -39,8 +39,10 @@ class CrosConfigIdentity {
   // @sku_id_out: SKU ID read from SMBIOS system table
   // @customization_id_out: Whitelabel name read from system table
   bool ReadIdentity(const base::FilePath& smbios_file,
-                    const base::FilePath& vpd_file, std::string* name_out,
-                    int* sku_id_out, std::string* customization_id_out);
+                    const base::FilePath& vpd_file,
+                    std::string* name_out,
+                    int* sku_id_out,
+                    std::string* customization_id_out);
 
   // Write out files containing fake identity information, used for testing.
   // The two files returned mirror the contents of the files that ReadIdentity()
@@ -52,7 +54,8 @@ class CrosConfigIdentity {
   // @vpd_file_out: Returns the '/sys/firmware/vpd/ro/customization_id'-style
   //     file that was written
   // @return true if OK, false on error
-  bool FakeIdentity(const std::string& name, int sku_id,
+  bool FakeIdentity(const std::string& name,
+                    int sku_id,
                     const std::string& customization_id,
                     base::FilePath* smbios_file_out,
                     base::FilePath* vpd_file_out);
@@ -90,8 +93,10 @@ class CrosConfigIdentity {
   // @size: Size of region in bytes
   // @table_out: Returns a copy of the table found
   // @return true if found, false if not
-  bool FindAndCopyTable(SmbiosTypes type, const char* base_ptr,
-                        unsigned int size, SmbiosTable* table_out);
+  bool FindAndCopyTable(SmbiosTypes type,
+                        const char* base_ptr,
+                        unsigned int size,
+                        SmbiosTable* table_out);
 
   // Calculates the length of an SMBIOS string table
   // The strings are stored one after another, each with a trailing nul, and
@@ -111,7 +116,8 @@ class CrosConfigIdentity {
   // @name: Platform name to write (e.g. 'Reef')
   // @sku_id: SKU ID number to write (e.g. 8)
   // @return true if OK, false on error
-  bool WriteFakeTables(base::File* smbios_file, const std::string& name,
+  bool WriteFakeTables(base::File* smbios_file,
+                       const std::string& name,
                        int sku_id);
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfigIdentity);

@@ -47,7 +47,8 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
   void SetTargetDir(const std::string& prop, const std::string& dirname);
 
   // CrosConfigInterface:
-  bool GetAbsPath(const std::string& path, const std::string& prop,
+  bool GetAbsPath(const std::string& path,
+                  const std::string& prop,
                   std::string* val_out) override;
 
  private:
