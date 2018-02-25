@@ -29,6 +29,29 @@ namespace brillo {
 
 struct SmbiosTable;
 
+// References a node in the configuration
+// This allows us to reference a node whether it is device tree or yaml.
+class ConfigNode {
+ public:
+  ConfigNode();
+  // Constructor which uses a device-tree offset
+  explicit ConfigNode(int offset);
+
+  // @return true if this node reference is valid (points to an actual node)
+  bool IsValid() const;
+
+  // @return offset of the device-tree node, or -1 if not valid
+  int GetOffset() const;
+
+  // Test equality for two ConfigNode objectcs
+  bool operator==(const ConfigNode& other) const;
+
+ private:
+  int node_offset_;         // Device-tree node offset
+  bool valid_;              // true if we have a valid node reference
+};
+
+
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
   CrosConfig();
@@ -98,13 +121,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return path to node, or "unknown" if it 256 characters or more (due to
   // limited buffer space). This is much longer than any expected length so
   // should not happen.
-  std::string GetFullPath(int offset);
+  std::string GetFullPath(const ConfigNode& offset);
 
   // Obtain offset of a given path, relative to the base node.
-  // @base_offset: offset of base node.
+  // @base_offset: base node.
   // @path: Path to locate (relative to @base). Must start with "/".
   // @return node offset of the node found, or negative value on error.
-  int GetPathOffset(int base_offset, const std::string& path);
+  ConfigNode GetPathOffset(const ConfigNode& base_offset,
+                           const std::string& path);
 
   // Internal function to obtain a property value based on a node offset
   // This looks up a property for a path, relative to a given base node offset.
@@ -114,7 +138,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @val_out: returns the string value found, if any
   // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
-  bool GetString(int base_offset, const std::string& path,
+  bool GetString(const ConfigNode& base_offset, const std::string& path,
                  const std::string& prop, std::string* val_out,
                  std::vector<std::string>* log_msgs_out);
 
@@ -125,8 +149,9 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @offset_out: Returns the offset of the node the phandle points to, if
   // found.
   // @return true if found, false if not.
-  bool LookupPhandle(int node_offset, const std::string& prop_name,
-                     int *offset_out);
+  bool LookupPhandle(const ConfigNode& node_offset,
+                     const std::string& prop_name,
+                     ConfigNode *offset_out);
 
   // Select the model / submodel to use
   // Looks up the given name and sku_id in the mapping table and sets the
@@ -177,21 +202,21 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   std::string blob_;             // Device tree binary blob
   std::string model_;            // Model name for this device
-  int model_offset_ = -1;        // Device tree offset of the model's node
-  int submodel_offset_ = -1;     // Device tree offset of the submodel's node
+  ConfigNode model_offset_;      // Model's node
+  ConfigNode submodel_offset_;   // Submodel's node
   std::string model_name_;       // Name of current model
   std::string submodel_name_;    // Name of current submodel
   std::string platform_name_;    // Platform name associated with the SKU map
-  int whitelabel_offset_ = -1;   // Device tree offset of the whitelabel model
+  ConfigNode whitelabel_offset_;  // Whitelabel model
 
   // We support a special-case 'whitelabel' node which is inside a model. This
   // holds the device tree offset of that node. We check this first on any
   // property reads, since it overrides the model itself.
-  int whitelabel_tag_offset_ = -1;
+  ConfigNode whitelabel_tag_offset_;
   // List of target directories used to obtain absolute paths
   std::map<std::string, std::string> target_dirs_;
   std::vector<std::string> phandle_props_;  // List of phandle properties
-  std::vector<int> default_offsets_;  // Device tree offset of default modes
+  std::vector<ConfigNode> default_offsets_;  // Default modes
   bool inited_ = false;          // true if the class is ready for use (Init*ed)
 
 

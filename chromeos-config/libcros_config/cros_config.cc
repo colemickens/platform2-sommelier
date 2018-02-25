@@ -32,6 +32,36 @@ const char kPhandleProperties[] = "phandle-properties";
 
 namespace brillo {
 
+ConfigNode::ConfigNode() {
+  valid_ = false;
+}
+
+ConfigNode::ConfigNode(int offset) {
+  valid_ = true;
+  node_offset_ = offset;
+}
+
+bool ConfigNode::IsValid() const {
+  return valid_;
+}
+
+int ConfigNode::GetOffset() const {
+  if (!valid_) {
+    return -1;
+  }
+  return node_offset_;
+}
+
+bool ConfigNode::operator==(const ConfigNode& other) const {
+  if (valid_ != other.valid_) {
+    return false;
+  }
+  if (node_offset_ != other.node_offset_) {
+    return false;
+  }
+  return true;
+}
+
 bool CrosConfigInterface::IsLoggingEnabled() {
   static const char* logging_var = getenv("CROS_CONFIG_DEBUG");
   static bool enabled = logging_var && *logging_var;
@@ -42,12 +72,12 @@ bool CrosConfig::InitModel() {
   return InitForConfig(base::FilePath(kConfigDtbPath));
 }
 
-std::string CrosConfig::GetFullPath(int offset) {
+std::string CrosConfig::GetFullPath(const ConfigNode& offset) {
   const void* blob = blob_.c_str();
   char buf[256];
   int err;
 
-  err = fdt_get_path(blob, offset, buf, sizeof(buf));
+  err = fdt_get_path(blob, offset.GetOffset(), buf, sizeof(buf));
   if (err) {
     CROS_CONFIG_LOG(WARNING) << "Cannot get full path: " << fdt_strerror(err);
     return "unknown";
@@ -56,37 +86,39 @@ std::string CrosConfig::GetFullPath(int offset) {
   return std::string(buf);
 }
 
-int CrosConfig::GetPathOffset(int base_offset, const std::string& path) {
+ConfigNode CrosConfig::GetPathOffset(const ConfigNode& base_offset,
+                                     const std::string& path) {
   const void* blob = blob_.c_str();
   auto parts = base::SplitString(path.substr(1), "/", base::KEEP_WHITESPACE,
                                  base::SPLIT_WANT_ALL);
-  int offset = base_offset;
+  int offset = base_offset.GetOffset();
   for (auto part : parts) {
     offset = fdt_subnode_offset(blob, offset, part.c_str());
     if (offset < 0) {
       break;
     }
   }
-  return offset;
+  return ConfigNode(offset);
 }
 
-bool CrosConfig::GetString(int base_offset, const std::string& path,
-                           const std::string& prop, std::string* val_out,
+bool CrosConfig::GetString(const ConfigNode& base_offset,
+                           const std::string& path, const std::string& prop,
+                           std::string* val_out,
                            std::vector<std::string>* log_msgs_out) {
   const void* blob = blob_.c_str();
 
-  int subnode = GetPathOffset(base_offset, path);
-  int wl_subnode = -1;
-  if (whitelabel_offset_ != -1) {
+  ConfigNode subnode = GetPathOffset(base_offset, path);
+  ConfigNode wl_subnode;
+  if (whitelabel_offset_.IsValid()) {
     wl_subnode = GetPathOffset(whitelabel_offset_, path);
-    if (subnode < 0 && wl_subnode >= 0) {
+    if (!subnode.IsValid() && wl_subnode.IsValid()) {
       CROS_CONFIG_LOG(INFO)
           << "The path " << GetFullPath(base_offset) << path
           << " does not exist. Falling back to whitelabel path";
       subnode = wl_subnode;
     }
   }
-  if (subnode < 0) {
+  if (!subnode.IsValid()) {
     log_msgs_out->push_back("The path " + GetFullPath(base_offset) + path
                            + " does not exist.");
     return false;
@@ -94,21 +126,21 @@ bool CrosConfig::GetString(int base_offset, const std::string& path,
 
   int len = 0;
   const char* ptr = static_cast<const char*>(
-      fdt_getprop(blob, subnode, prop.c_str(), &len));
-  if (!ptr && wl_subnode >= 0) {
-    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode, prop.c_str(),
-                                               &len));
+      fdt_getprop(blob, subnode.GetOffset(), prop.c_str(), &len));
+  if (!ptr && wl_subnode.IsValid()) {
+    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode.GetOffset(),
+                                               prop.c_str(), &len));
     CROS_CONFIG_LOG(INFO) << "The property " << prop
                           << " does not exist. Falling back to "
                           << "whitelabel property";
   }
   if (!ptr) {
-    int target_node;
+    ConfigNode target_node;
     for (int i = 0; i < phandle_props_.size(); i++) {
       LookupPhandle(subnode, phandle_props_[i], &target_node);
-      if (target_node >= 0) {
+      if (target_node.IsValid()) {
         ptr = static_cast<const char*>(
-            fdt_getprop(blob, target_node, prop.c_str(), &len));
+            fdt_getprop(blob, target_node.GetOffset(), prop.c_str(), &len));
         if (ptr) {
           CROS_CONFIG_LOG(INFO)
               << "Followed " << phandle_props_[i] << " phandle";
@@ -146,7 +178,7 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  if (model_offset_ < 0) {
+  if (!model_offset_.IsValid()) {
     log_msgs_out->push_back("Please specify the model to access.");
     return false;
   }
@@ -161,7 +193,7 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     return false;
   }
 
-  if (whitelabel_tag_offset_ != -1) {
+  if (whitelabel_tag_offset_.IsValid()) {
     if (path == "/" &&
         GetString(whitelabel_tag_offset_, "/", prop, val_out, log_msgs_out)) {
       return true;
@@ -174,11 +206,11 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
     }
   }
   if (!GetString(model_offset_, path, prop, val_out, log_msgs_out)) {
-    if (submodel_offset_ != -1 &&
+    if (submodel_offset_.IsValid() &&
         GetString(submodel_offset_, path, prop, val_out, log_msgs_out)) {
       return true;
     }
-    for (int offset : default_offsets_) {
+    for (ConfigNode offset : default_offsets_) {
       if (GetString(offset, path, prop, val_out, log_msgs_out))
         return true;
     }
@@ -216,17 +248,18 @@ bool CrosConfig::GetAbsPath(const std::string& path, const std::string& prop,
   return true;
 }
 
-bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
-                               int* offset_out) {
+bool CrosConfig::LookupPhandle(const ConfigNode& node_offset,
+                               const std::string& prop_name,
+                               ConfigNode* offset_out) {
   const void* blob = blob_.c_str();
   int len;
   const fdt32_t* ptr = static_cast<const fdt32_t*>(
-      fdt_getprop(blob, node_offset, prop_name.c_str(), &len));
+      fdt_getprop(blob, node_offset.GetOffset(), prop_name.c_str(), &len));
 
   // We probably don't need all these checks since validation will ensure that
   // the config is correct. But this is a critical tool and we want to avoid
   // crashes in any situation.
-  *offset_out = -1;
+  *offset_out = ConfigNode();
   if (!ptr) {
     return false;
   }
@@ -243,7 +276,7 @@ bool CrosConfig::LookupPhandle(int node_offset, const std::string& prop_name,
                            << " failed: " << fdt_strerror(offset);
     return false;
   }
-  *offset_out = offset;
+  *offset_out = ConfigNode(offset);
   return true;
 }
 
@@ -316,12 +349,12 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
 
   // See if there is a whitelabel config for this model.
-  if (whitelabel_offset_ == -1) {
+  if (!whitelabel_offset_.IsValid()) {
     LookupPhandle(model_offset_, "whitelabel", &whitelabel_offset_);
   }
-  int next_offset;
+  ConfigNode next_offset;
   default_offsets_.clear();
-  for (int offset = model_offset_;
+  for (ConfigNode offset = model_offset_;
        LookupPhandle(offset, "default", &next_offset);
        offset = next_offset) {
     if (std::find(default_offsets_.begin(), default_offsets_.end(),
@@ -335,12 +368,15 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   CROS_CONFIG_LOG(INFO) << "Using master configuration for model "
                         << model_name_ << ", submodel "
                         << (submodel_name_.empty() ? "(none)" : submodel_name_);
-  if (whitelabel_offset_ != -1) {
+  if (whitelabel_offset_.IsValid()) {
     CROS_CONFIG_LOG(INFO) << "Whitelabel of  "
-                          << fdt_get_name(blob, whitelabel_offset_, NULL);
-  } else if (whitelabel_tag_offset_ != -1) {
+                          << fdt_get_name(blob, whitelabel_offset_.GetOffset(),
+                                          NULL);
+  } else if (whitelabel_tag_offset_.IsValid()) {
     CROS_CONFIG_LOG(INFO) << "Whitelabel tag "
-                          << fdt_get_name(blob, whitelabel_tag_offset_, NULL);
+                          << fdt_get_name(blob,
+                                          whitelabel_tag_offset_.GetOffset(),
+                                          NULL);
   }
   inited_ = true;
 

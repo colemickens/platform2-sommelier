@@ -173,18 +173,18 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
 
   //  We found the model node, so set up the data
   platform_name_ = platform_name;
-  model_offset_ = model_offset;
-  model_name_ = fdt_get_name(blob, model_offset_, NULL);
-  if (target != model_offset_) {
-    submodel_offset_ = target;
-    submodel_name_ = fdt_get_name(blob, submodel_offset_, NULL);
+  model_offset_ = ConfigNode(model_offset);
+  model_name_ = fdt_get_name(blob, model_offset, NULL);
+  if (target != model_offset) {
+    submodel_offset_ = ConfigNode(target);
+    submodel_name_ = fdt_get_name(blob, target, NULL);
   } else {
-    submodel_offset_ = -1;
+    submodel_offset_ = ConfigNode();
     submodel_name_ = "";
   }
 
   // If this is a whitelabel model, use the tag.
-  int firmware_node = fdt_subnode_offset(blob, model_offset_, "firmware");
+  int firmware_node = fdt_subnode_offset(blob, model_offset, "firmware");
   if (firmware_node >= 0) {
     if (fdt_getprop(blob, firmware_node, "sig-id-in-customization-id", NULL)) {
       int models_node = fdt_path_offset(blob, "/chromeos/models");
@@ -192,7 +192,7 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
                                         find_whitelabel_name.c_str());
       if (wl_model >= 0) {
         whitelabel_offset_ = model_offset_;
-        model_offset_ = wl_model;
+        model_offset_ = ConfigNode(wl_model);
       } else {
         CROS_CONFIG_LOG(ERROR)
             << "Cannot find whitelabel model " << find_whitelabel_name
@@ -200,12 +200,12 @@ bool CrosConfig::SelectModelConfigByIDs(const std::string &find_name,
       }
     }
   }
-  int wl_tags_node = fdt_subnode_offset(blob, model_offset_, "whitelabels");
+  int wl_tags_node = fdt_subnode_offset(blob, model_offset, "whitelabels");
   if (wl_tags_node >= 0) {
     int wl_tag = fdt_subnode_offset(blob, wl_tags_node,
                                     find_whitelabel_name.c_str());
     if (wl_tag >= 0) {
-      whitelabel_tag_offset_ = wl_tag;
+      whitelabel_tag_offset_ = ConfigNode(wl_tag);
     } else {
       CROS_CONFIG_LOG(ERROR)
           << "Cannot find whitelabel tag " << find_whitelabel_name << ": using "
