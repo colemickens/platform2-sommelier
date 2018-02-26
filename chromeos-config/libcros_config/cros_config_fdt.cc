@@ -1,25 +1,109 @@
-// Copyright 2016 The Chromium OS Authors. All rights reserved.
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Look up model / submodel from information provided
+// Provide access to the Chrome OS master configuration from device tree
 
-#include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/cros_config_fdt.h"
 
+// TODO(sjg@chromium.org): See if this can be accepted upstream.
 extern "C" {
 #include <libfdt.h>
 };
 
+#include <stdlib.h>
+
+#include <iostream>
+#include <sstream>
 #include <string>
 
-#include <base/logging.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+
+namespace {
+const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
+const char kSchemaPath[] = "/chromeos/schema";
+const char kPhandleProperties[] = "phandle-properties";
+const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
+}  // namespace
 
 namespace brillo {
 
-int CrosConfig::FindIDsInMap(int node,
-                             const std::string& find_name,
-                             int find_sku_id,
-                             std::string* platform_name_out) {
+CrosConfigFdt::CrosConfigFdt() {}
+
+CrosConfigFdt::~CrosConfigFdt() {}
+
+bool CrosConfigFdt::InitModel() {
+  return InitForConfig(base::FilePath(kConfigDtbPath));
+}
+
+std::string CrosConfigFdt::GetFullPath(ConfigNode node) {
+  const void* blob = blob_.c_str();
+  char buf[256];
+  int err;
+
+  err = fdt_get_path(blob, node.GetOffset(), buf, sizeof(buf));
+  if (err) {
+    CROS_CONFIG_LOG(WARNING) << "Cannot get full path: " << fdt_strerror(err);
+    return "unknown";
+  }
+
+  return std::string(buf);
+}
+
+ConfigNode CrosConfigFdt::GetPathNode(ConfigNode base_node,
+                                      const std::string& path) {
+  const void* blob = blob_.c_str();
+  auto parts = base::SplitString(path.substr(1), "/", base::KEEP_WHITESPACE,
+                                 base::SPLIT_WANT_ALL);
+  int node = base_node.GetOffset();
+  for (auto part : parts) {
+    node = fdt_subnode_offset(blob, node, part.c_str());
+    if (node < 0) {
+      break;
+    }
+  }
+  return ConfigNode(node);
+}
+
+bool CrosConfigFdt::LookupPhandle(ConfigNode node,
+                                  const std::string& prop_name,
+                                  ConfigNode* node_out) {
+  const void* blob = blob_.c_str();
+  int len;
+  const fdt32_t* ptr = static_cast<const fdt32_t*>(
+      fdt_getprop(blob, node.GetOffset(), prop_name.c_str(), &len));
+
+  // We probably don't need all these checks since validation will ensure that
+  // the config is correct. But this is a critical tool and we want to avoid
+  // crashes in any situation.
+  *node_out = ConfigNode();
+  if (!ptr) {
+    return false;
+  }
+  if (len != sizeof(fdt32_t)) {
+    CROS_CONFIG_LOG(ERROR) << prop_name << " phandle for model " << model_
+                           << " is of size " << len << " but should be "
+                           << sizeof(fdt32_t);
+    return false;
+  }
+  int phandle = fdt32_to_cpu(*ptr);
+  int target_node = fdt_node_offset_by_phandle(blob, phandle);
+  if (target_node < 0) {
+    CROS_CONFIG_LOG(ERROR) << prop_name << "lookup for model " << model_
+                           << " failed: " << fdt_strerror(target_node);
+    return false;
+  }
+  *node_out = ConfigNode(target_node);
+  return true;
+}
+
+int CrosConfigFdt::FindIDsInMap(int node,
+                                const std::string& find_name,
+                                int find_sku_id,
+                                std::string* platform_name_out) {
   const void* blob = blob_.c_str();
   VLOG(1) << "Trying " << fdt_get_name(blob, node, NULL);
   const char* smbios_name = static_cast<const char*>(
@@ -91,10 +175,10 @@ int CrosConfig::FindIDsInMap(int node,
   return found_phandle;
 }
 
-int CrosConfig::FindIDsInAllMaps(int mapping_node,
-                                 const std::string& find_name,
-                                 int find_sku_id,
-                                 std::string* platform_name_out) {
+int CrosConfigFdt::FindIDsInAllMaps(int mapping_node,
+                                    const std::string& find_name,
+                                    int find_sku_id,
+                                    std::string* platform_name_out) {
   const void* blob = blob_.c_str();
   int subnode;
 
@@ -110,7 +194,7 @@ int CrosConfig::FindIDsInAllMaps(int mapping_node,
   return 0;
 }
 
-int CrosConfig::FollowPhandle(int phandle, int* target_out) {
+int CrosConfigFdt::FollowPhandle(int phandle, int* target_out) {
   const void* blob = blob_.c_str();
 
   // Follow the phandle to the target
@@ -149,7 +233,7 @@ int CrosConfig::FollowPhandle(int phandle, int* target_out) {
   return model_node;
 }
 
-bool CrosConfig::SelectModelConfigByIDs(
+bool CrosConfigFdt::SelectModelConfigByIDs(
     const std::string& find_name,
     int find_sku_id,
     const std::string& find_whitelabel_name) {
@@ -218,6 +302,62 @@ bool CrosConfig::SelectModelConfigByIDs(
     }
   }
 
+  return true;
+}
+
+const char* CrosConfigFdt::GetProp(const ConfigNode& node,
+                                   std::string name,
+                                   int* len_out) {
+  const void* blob = blob_.c_str();
+  return static_cast<const char*>(
+      fdt_getprop(blob, node.GetOffset(), name.c_str(), len_out));
+}
+
+bool CrosConfigFdt::ReadConfigFile(const base::FilePath& filepath) {
+  if (!base::ReadFileToString(filepath, &blob_)) {
+    CROS_CONFIG_LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
+    return false;
+  }
+  const void* blob = blob_.c_str();
+  int ret = fdt_check_header(blob);
+  if (ret) {
+    CROS_CONFIG_LOG(ERROR) << "Config file " << filepath.MaybeAsASCII()
+                           << " is invalid: " << fdt_strerror(ret);
+    return false;
+  }
+
+  int target_dirs_offset = fdt_path_offset(blob, kTargetDirsPath);
+  if (target_dirs_offset >= 0) {
+    for (int poffset = fdt_first_property_offset(blob, target_dirs_offset);
+         poffset >= 0; poffset = fdt_next_property_offset(blob, poffset)) {
+      int len;
+      const struct fdt_property* prop =
+          fdt_get_property_by_offset(blob, poffset, &len);
+      const char* name = fdt_string(blob, fdt32_to_cpu(prop->nameoff));
+      target_dirs_[name] = prop->data;
+    }
+  } else if (target_dirs_offset < 0) {
+    CROS_CONFIG_LOG(WARNING) << "Cannot find " << kTargetDirsPath
+                             << " node: " << fdt_strerror(target_dirs_offset);
+  }
+  int schema_offset = fdt_path_offset(blob, kSchemaPath);
+  if (schema_offset >= 0) {
+    int len;
+    const char* prop =
+        GetProp(ConfigNode(schema_offset), kPhandleProperties, &len);
+    if (prop) {
+      const char* end = prop + len;
+      for (const char* ptr = prop; ptr < end; ptr += strlen(ptr) + 1) {
+        phandle_props_.push_back(ptr);
+      }
+    } else {
+      CROS_CONFIG_LOG(WARNING) << "Cannot find property " << kPhandleProperties
+                               << " node: " << fdt_strerror(len);
+    }
+  } else if (schema_offset < 0) {
+    CROS_CONFIG_LOG(WARNING) << "Cannot find " << kSchemaPath
+                             << " node: " << fdt_strerror(schema_offset);
+  }
   return true;
 }
 

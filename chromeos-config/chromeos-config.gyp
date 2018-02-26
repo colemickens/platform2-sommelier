@@ -15,10 +15,10 @@
       'type': 'shared_library',
       'sources': [
         'libcros_config/cros_config.cc',
-        'libcros_config/cros_config_common.cc',
+        'libcros_config/cros_config_fdt.cc',
+        'libcros_config/cros_config_impl.cc',
         'libcros_config/fake_cros_config.cc',
         'libcros_config/identity.cc',
-        'libcros_config/lookup.cc',
       ],
       'conditions': [
         ['USE_json == 1', {
