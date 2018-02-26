@@ -136,6 +136,8 @@ ignore all other flags).
   namespace. This spans container invocations since it is stateless.  The
   `exec`/`suid` flags are added in the intermediate mount namespace, as well as
   recursively changing its propagation flags to be `MS_SLAVE`.
+* `/config/sdcardfs`: Bind-mount of `/sys/kernel/config/sdcardfs` subdirectory of a
+  normal `configfs` created by `esdfs`.
 * `/dev`: This is a `tmpfs` mounted in the intermediate mount namespace with
   `android-root` as owner. This is needed to get the `dev`/`exec` mount flags.
 * `/dev/pts`: Pseudo TTS devpts file system with namespace support so that it is
