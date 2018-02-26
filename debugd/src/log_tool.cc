@@ -228,6 +228,7 @@ const Log kCommandLogs[] = {
   { "vmlog.1.PREVIOUS", "/bin/cat /var/log/vmlog/vmlog.1.PREVIOUS" },
   { "vmlog.LATEST", "/bin/cat /var/log/vmlog/vmlog.LATEST" },
   { "vmlog.PREVIOUS", "/bin/cat /var/log/vmlog/vmlog.PREVIOUS" },
+  { "vmstat", "/bin/cat /proc/vmstat" },
   { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
   { "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log" },
   { "zram compressed data size",
