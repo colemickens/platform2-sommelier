@@ -172,13 +172,11 @@
 	"hostname": "android",
 	"mounts": [
 		{
-			"_comment": "TODO(yusukes): Swap dev for nodev and adjust auto-test",
 			"destination": "/",
 			"type": "bind",
 			"source": "rootfs/root",
 			"options": [
 				"rslave",
-				"dev",
 				"suid",
 				"exec"
 			],
