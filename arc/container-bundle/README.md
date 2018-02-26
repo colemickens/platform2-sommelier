@@ -14,6 +14,93 @@ to describe how the container is set up. This file describes the mount
 structure, namespaces, device nodes that are to be created, cgroups
 configuration, and capabilities that are inherited.
 
+## Namespaces
+
+Android is running using all of the available Linux
+[`namespaces(7)`](http://man7.org/linux/man-pages/man7/namespaces.7.html) to
+increase isolation from the rest of the system:
+
+* [`cgroup_namespaces(7)`](http://man7.org/linux/man-pages/man7/cgroup_namespaces.7.html)
+* IPC (for System V IPC)
+* [`mount_namespaces(7)`](http://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
+* [`network_namespaces(7)`](http://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+* [`pid_namespaces(7)`](http://man7.org/linux/man-pages/man7/pid_namespaces.7.html)
+* [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html)
+* UTS (for hostname and domain name)
+
+Running all of Android's userspace in namespaces also increases compatibility
+since we can provide it with an environment that is closer to what it expects to
+find under normal circumstances.
+
+`run_oci` starts in the init namespace (which is shared with most of Chrome OS),
+running as real root with all capabilities. The mount namespace associated with
+that is referred to as the **init mount namespace**. Any mount performed in the
+init mount namespace will span user sessions and are performed before `run_oci`
+starts, so they do not figure in `config.json`.
+
+First, `run_oci` creates a mount namespace (while still being associated with
+init's user namespace) that is known as the **intermediate mount namespace**.
+Due to the fact that when it is running in this namespace it still has all of
+root's capabilities in the init namespace, it can perform privileged operations,
+such as performing remounts (e.g. calling `mount(2)` with `MS_REMOUNT` and
+without `MS_BIND`), and requesting to mount a
+[`tmpfs(5)`](http://man7.org/linux/man-pages/man5/tmpfs.5.html) into Android's
+`/dev` with the `dev` and `exec` flags.  This intermediate mount namespace is
+also used to avoid leaking mounts into the init mount namespace, and will be
+automatically cleaned up when the last process in the namespace exits. This
+process is typically Android's init, but if the container fails to start, it can
+also be `run_oci` itself.
+
+Still within the intermediate mount namespace, the container process is created
+by calling the [`clone(2)`](http://man7.org/linux/man-pages/man2/clone.2.html)
+system call with the `CLONE_NEWPID` and `CLONE_NEWUSER` flags. Given that mount
+namespaces have an owner user namespace, the only way that we can transition
+into both is to perform both simultaneously. Since Linux 3.9, `CLONE_NEWUSER`
+implies `CLONE_FS`, so this also has the side effect of making this new process
+no longer share its root directory
+([`chroot(2)`](http://man7.org/linux/man-pages/man2/chroot.2.html)) with any
+other process.
+
+Once in the container user namespace, the container process enters the rest of
+the namespaces using
+[`unshare(2)`](http://man7.org/linux/man-pages/man2/unshare.2.html) system call
+with the appropriate flag for each namespace. After it performs this with the
+`CLONE_NEWNS` flag, it enters the a mount namespace which is referred to as the
+**container mount namespace**. This is where the vast majority of the mounts
+happen. Since this is associated with the container user namespace and the
+processes here no longer run as root in the init user namespace, some operations
+are no longer allowed by the kernel, even though the capabilities might be set.
+Some examples are remounts that modify the `exec`, `suid`, `dev` flags.
+
+Once `run_oci` finishes setting up the container process and calls
+[`exit(2)`](http://man7.org/linux/man-pages/man2/exit.2.html) to daemonize the
+container process tree, there are no longer any processes in the system that
+have a direct reference to the intermediate mount namespace, so it is no longer
+accessible from anywhere. This means that there is no way to obtain a file
+descriptor that can be passed to
+[`setns(2)`](http://man7.org/linux/man-pages/man2/setns.2.html) in order to
+enter it. The namespace itself is still alive since it is the parent of the
+container mount namespace.
+
+### User namespace
+
+The user namespace is assigned 2,000,000 uids distributed in the following way:
+
+| init namespace uid range | container namespace uid range |
+|--------------------------|-------------------------------|
+| 655360 - 660359          | 0 - 4999                      |
+| 600 - 649                | 5000 - 5049                   |
+| 660410 - 2655360         | 5050 - 2000000                |
+
+The second range maps Chrome OS daemon uids (600-649), into one of Android's
+[OEM-specific
+AIDs](https://source.android.com/devices/tech/config/filesystem#defining-an-oem-specific-aid)
+ranges.
+
+### Network namespace
+
+TODO
+
 ## Mounts
 
 There are several ways in which resources are mounted inside the container:
@@ -24,38 +111,17 @@ There are several ways in which resources are mounted inside the container:
   and can span [`chroot(2)`](http://man7.org/linux/man-pages/man2/chroot.2.html)
   and [`pivot_root(2)`](http://man7.org/linux/man-pages/man2/pivot_root.2.html).
 * Shared mounts: these mounts use the `MS_SHARED` flags for
-  [`mount(2)`](http://man7.org/linux/man-pages/man2/mount.2.html) in the parent
-  mount namespace and `MS_SLAVE` in the child mount namespace, which causes any
-  mount changes under that mount point to propagate to other shared subtrees.
-
-Mounts can also happen in several
-[`mount_namespaces(7)`](http://man7.org/linux/man-pages/man7/mount_namespaces.7.html):
-
-* The init mount namespace: The `system.raw.img` is
-  mounted in the init namespace. The mount that is performed here can span
-  user sessions (e.g. for the system image). All of the mounts that are
-  performed in the init mount namespace are performed before the container
-  starts, and do not figure in (but can be consumed by) `config.json`.
-* The intermediate mount namespace: This mount namespace is associated with the
-  init
-  [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html),
-  so it has all of `root`'s capabilities. This child of the init mount namespace
-  is only accessible while `run_oci` is running since after it exits there are
-  no live processes that have a direct reference to this namespace. This is also
-  the only mount namespace in which remounts (passing the `MS_REMOUNT` without
-  passing the `MS_BIND` flag to `mount(2)`) can occur in a way that they don't
-  leak into the init namespace, since `/` is recursively remounted as
-  `MS_SLAVE`. These mounts are performed by passing the
-  `performInIntermediateNamespace` flag in `config.json`.
-* The container mount namespace: This namespace is where the vast majority of
-  the mounts happen. This child of the intermediate mount namespace is
-  associated with the container user namespace, so some operations are no longer
-  allowed to be performed here, such as remounts that modify the `exec`, `suid`,
-  `dev` flags. These mounts are performed by adding a regular mount to
-  `config.json`, or as part of the hooks.
+  [`mount(2)`](http://man7.org/linux/man-pages/man2/mount.2.html) in the init
+  mount namespace and `MS_SLAVE` in the container mount namespace, which causes
+  any mount changes under that mount point to propagate to other shared
+  subtrees.
 
 All mounts are performed in the `/opt/google/container/android/rootfs/root`
-subtree.
+subtree. Given that `run_oci` does not modify the init mount namespace, any
+mounts that span user sessions (such as the `system.raw.img` loop mount) should
+have already been performed before `run_oci` starts. This is typically handled
+by
+[`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/).
 
 The flags to the `mounts` section are the ones understood by
 [`mount(8)`](http://man7.org/linux/man-pages/man8/mount.8.html). Note that one
@@ -67,7 +133,8 @@ ignore all other flags).
 
 * `/`: This is mounted by `/etc/init/arc-system-mount.conf` in
   the init namespace, and span container invocations since it is stateless.
-  The `exec`/`suid` flags are added in the intermediate mount namespace.
+  The `exec`/`suid` flags are added in the intermediate mount namespace, as well
+  as recursively changing its propagation flags to be `MS_SLAVE`.
 * `/dev`: This is a `tmpfs` mounted in the intermediate mount namespace with
   `android-root` as owner. This is needed to get the `dev`/`exec` mount flags.
 * `/dev/pts`: Pseudo TTS devpts file system with namespace support so that it is
@@ -172,10 +239,6 @@ the container that it cannot perform certain operations:
 By default, processes running inside the container are not allowed to access any
 device files. They can only access the ones that are explcitly allowed in the
 `config.json`'s `linux` > `resources` > `devices` section.
-
-## Namespaces
-
-TODO
 
 ## Boot process
 
