@@ -101,12 +101,18 @@ ConfigNode CrosConfig::GetPathNode(const ConfigNode& base_node,
   return ConfigNode(node);
 }
 
+const char *CrosConfig::GetProp(const ConfigNode& node, std::string name,
+                                int* len_out) {
+  const void* blob = blob_.c_str();
+  return static_cast<const char*>(
+      fdt_getprop(blob, node.GetOffset(), name.c_str(), len_out));
+}
+
 bool CrosConfig::GetString(const ConfigNode& base_node,
-                           const std::string& path, const std::string& prop,
+                           const std::string& path,
+                           const std::string& prop,
                            std::string* val_out,
                            std::vector<std::string>* log_msgs_out) {
-  const void* blob = blob_.c_str();
-
   ConfigNode subnode = GetPathNode(base_node, path);
   ConfigNode wl_subnode;
   if (whitelabel_node_.IsValid()) {
@@ -125,11 +131,9 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
   }
 
   int len = 0;
-  const char* ptr = static_cast<const char*>(
-      fdt_getprop(blob, subnode.GetOffset(), prop.c_str(), &len));
+  const char* ptr = GetProp(subnode, prop, &len);
   if (!ptr && wl_subnode.IsValid()) {
-    ptr = static_cast<const char*>(
-        fdt_getprop(blob, wl_subnode.GetOffset(), prop.c_str(), &len));
+    ptr = GetProp(wl_subnode, prop, &len);
     CROS_CONFIG_LOG(INFO) << "The property " << prop
                           << " does not exist. Falling back to "
                           << "whitelabel property";
@@ -139,8 +143,7 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
     for (int i = 0; i < phandle_props_.size(); i++) {
       LookupPhandle(subnode, phandle_props_[i], &target_node);
       if (target_node.IsValid()) {
-        ptr = static_cast<const char*>(
-            fdt_getprop(blob, target_node.GetOffset(), prop.c_str(), &len));
+        ptr = GetProp(target_node, prop, &len);
         if (ptr) {
           CROS_CONFIG_LOG(INFO)
               << "Followed " << phandle_props_[i] << " phandle";
@@ -256,8 +259,8 @@ bool CrosConfig::LookupPhandle(const ConfigNode& node,
                                ConfigNode* node_out) {
   const void* blob = blob_.c_str();
   int len;
-  const fdt32_t* ptr = static_cast<const fdt32_t*>(
-      fdt_getprop(blob, node.GetOffset(), prop_name.c_str(), &len));
+  const fdt32_t* ptr = reinterpret_cast<const fdt32_t*>(
+      GetProp(node, prop_name, &len));
 
   // We probably don't need all these checks since validation will ensure that
   // the config is correct. But this is a critical tool and we want to avoid
@@ -334,8 +337,8 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   int schema_offset = fdt_path_offset(blob, kSchemaPath);
   if (schema_offset >= 0) {
     int len;
-    const char* prop = static_cast<const char*>(
-        fdt_getprop(blob, schema_offset, kPhandleProperties, &len));
+    const char* prop = GetProp(ConfigNode(schema_offset), kPhandleProperties,
+                               &len);
     if (prop) {
       const char* end = prop + len;
       for (const char* ptr = prop; ptr < end; ptr += strlen(ptr) + 1) {

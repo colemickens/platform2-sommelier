@@ -147,6 +147,13 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  std::string* val_out,
                  std::vector<std::string>* log_msgs_out);
 
+  // Read a property from a node
+  // @node: Node to read from
+  // @name: Property name to reset
+  // @len_out: Length of property read, if valid
+  // @return pointer to property value, or NULL if not found
+  const char *GetProp(const ConfigNode& node, std::string name, int* len_out);
+
   // Look up a phandle in a node.
   // Looks up a phandle with the given property name in the given node.
   // @node: Node to look in.
