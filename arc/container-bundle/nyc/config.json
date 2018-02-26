@@ -93,12 +93,11 @@
 			]
 		},
 		{
-			"_comment": "TODO(yusukes): 0755 might just work",
 			"destination": "/dev/socket",
 			"type": "tmpfs",
 			"source": "tmpfs",
 			"options": [
-				"mode=1777",
+				"mode=755",
 				"nosuid",
 				"nodev",
 				"noexec"
