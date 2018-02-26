@@ -183,7 +183,37 @@ TODO
 
 ### Hooks
 
-TODO
+The hooks used by `run_oci` follow the [Open Container Initiative spec for
+POSIX-platform
+Hooks](https://github.com/opencontainers/runtime-spec/blob/master/config.md#posix-platform-hooks),
+with a Chrome OS-specific extension that allows a hook to be installed after all
+the mounts have been processed, but prior to calling
+[`chroot(2)`](http://man7.org/linux/man-pages/man2/chroot.2.html).
+
+All the hooks are run by calling
+[`fork(2)`](http://man7.org/linux/man-pages/man2/fork.2.html)+
+[`execve(2)`](http://man7.org/linux/man-pages/man2/execve.2.html) from the
+`run_oci` process (which is the parent of the container process), and within the
+intermediate mount namespace.
+
+In order to avoid paying the price of creating several processes and switching
+back and forth between namespaces (which added several milliseconds to the boot
+time when done naïvely), we have consolidated all of the hook execution to a
+single pre-chroot hook that invokes
+[`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/)
+with the `--pre-chroot` flag. This performs several operations:
+
+* Set up
+  [`binfmt_misc`](https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html)
+  to perform ARM binary translation on Intel devices.
+* Restores the SELinux context of several of the files and directories that are
+  created by `run_oci`, since these are not handled by either the build system,
+  or the first invocation of `arc-setup` that occurs before `run_oci` is
+  invoked.
+* Touches `/dev/.coldboot_done`, which is used by Android as a signal that it
+  has reached a certain point during the boot sequence. This is normally done by
+  Android's `init` during its first stage, but we do not use it and boot Android
+  directly into `init`'s second stage.
 
 ## References
 
