@@ -82,6 +82,19 @@ class FingerWebSocket(WebSocket):
   def closed(self, code, reason=''):
     self.abort_request = True
     cherrypy.log("Websocket closed with code %d / %s" % (code, reason))
+    if not self.worker:
+      cherrypy.log("Worker thread wasn't running.")
+      return
+    cherrypy.log("Stopping worker thread.")
+    # Wake up the thread so it can exit.
+    self.available_req.acquire()
+    self.available_req.notify()
+    self.available_req.release()
+    self.worker.join(10.0)
+    if self.worker.isAlive():
+      cherrypy.log("Failed to stop worker thread.")
+    else:
+      cherrypy.log("Successfully stopped worker thread.")
 
   def received_message(self, m):
     if m.is_binary:
@@ -166,7 +179,7 @@ class FingerWebSocket(WebSocket):
   def finger_worker(self):
     while not self.client_terminated:
       self.available_req.acquire()
-      while not self.current_req:
+      while not self.current_req and not self.abort_request:
         self.available_req.wait()
       self.finger_process(self.current_req)
       self.current_req = None
