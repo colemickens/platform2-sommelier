@@ -9,9 +9,13 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
+#include <vector>
 
 #include <base/macros.h>
+
+#include <vboot/tlcl.h>
 
 #include <brillo/secure_blob.h>
 
@@ -27,8 +31,10 @@ const uint32_t kEncStatefulSize = 40;
 #else
 const uint32_t kLockboxIndex = 0x20000004;
 const uint32_t kEncStatefulIndex = 0x20000005;
-const uint32_t kEncStatefulSize = 0;
+const uint32_t kEncStatefulSize = 72;
 #endif
+
+const uint32_t kPCRBootMode = 0;
 
 class Tpm;
 
@@ -65,12 +71,26 @@ class NvramSpace {
   // Attempt to define the space with the given attributes and size.
   result_code Define(uint32_t attributes, uint32_t size);
 
+  // Check whether the space is bound to the specified PCR selection.
+  result_code CheckPCRBinding(uint32_t pcr_selection, bool* match);
+
  private:
+  // Reads space definition parameters from the TPM.
+  result_code GetSpaceInfo();
+
+  // Get the binding policy for the current PCR values of the given PCR
+  // selection.
+  result_code GetPCRBindingPolicy(uint32_t pcr_selection,
+                                  std::vector<uint8_t>* policy);
+
   Tpm* tpm_;
   uint32_t index_;
 
   // Cached copy of NVRAM space attributes.
   uint32_t attributes_;
+
+  // Cached copy of the auth policy.
+  std::vector<uint8_t> auth_policy_;
 
   // Cached copy of the data as read from the space.
   brillo::SecureBlob contents_;
@@ -93,11 +113,22 @@ class Tpm {
 
   result_code GetRandomBytes(uint8_t* buffer, int wanted);
 
+  // Returns the PCR value for PCR |index|, possibly from the cache.
+  result_code ReadPCR(uint32_t index, std::vector<uint8_t>* value);
+
   // Returns the initialized lockbox NVRAM space.
   NvramSpace* GetLockboxSpace();
 
   // Get the initialized encrypted stateful space.
   NvramSpace* GetEncStatefulSpace();
+
+  // Set a flag in the TPM to indicate that the system key has been
+  // re-initialized after the last TPM clear. The TPM automatically clears the
+  // flag as a side effect of the TPM clear operation.
+  result_code SetSystemKeyInitializedFlag();
+
+  // Check the system key initialized flag.
+  result_code HasSystemKeyInitializedFlag(bool* flag_value);
 
  private:
   bool available_ = false;
@@ -105,6 +136,11 @@ class Tpm {
 
   bool ownership_checked_ = false;
   bool owned_ = false;
+
+  bool initialized_flag_checked_ = false;
+  bool initialized_flag_ = false;
+
+  std::map<uint32_t, std::vector<uint8_t>> pcr_values_;
 
   std::unique_ptr<NvramSpace> lockbox_space_;
   std::unique_ptr<NvramSpace> encstateful_space_;

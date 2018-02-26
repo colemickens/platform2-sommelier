@@ -7,6 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
+#include <utility>
+
+#include <openssl/rsa.h>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -14,26 +19,39 @@
 
 #include <openssl/rand.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
+
+namespace {
+
+#if !USE_TPM2
+
+// A delegation family label identifying the delegation family we create as a
+// flag that persists until the next TPM clear, at which point it gets cleared
+// automatically. This is by the system key handling logic to determine whether
+// a fresh system key has been generated after the last TPM clear.
+uint8_t kSystemKeyInitializedDummyDelegationFamilyLabel = 0xff;
+
+// Maximum TPM delegation table size.
+const uint32_t kDelegationTableSize = 8;
+
+#endif  // !USE_TPM2
+
+// Initial auth policy buffer size that's expected to be large enough across TPM
+// 1.2 and TPM 2.0 hardware. The code uses this for retrieving auth policies.
+// Note that if the buffer is too small, it retries with the size indicated by
+// the failing function.
+const size_t kInitialAuthPolicySize = 128;
+
+}  // namespace
 
 NvramSpace::NvramSpace(Tpm* tpm, uint32_t index)
   : tpm_(tpm), index_(index) {}
 
 result_code NvramSpace::GetAttributes(uint32_t* attributes) {
-  if (attributes_ != 0) {
-    *attributes = attributes_;
-    return RESULT_SUCCESS;
-  }
-
-  if (!tpm_->available()) {
-    return RESULT_FAIL_FATAL;
-  }
-
-  uint32_t result = TlclGetPermissions(index_, &attributes_);
-  if (result != TPM_SUCCESS) {
-    LOG(ERROR) << "Failed to read NVRAM space attributes for index" << index_
-               << ": " << result;
-    return RESULT_FAIL_FATAL;
+  result_code rc = GetSpaceInfo();
+  if (rc != RESULT_SUCCESS) {
+    return rc;
   }
 
   *attributes = attributes_;
@@ -149,6 +167,104 @@ result_code NvramSpace::Define(uint32_t attributes, uint32_t size) {
   return RESULT_SUCCESS;
 }
 
+result_code NvramSpace::CheckPCRBinding(uint32_t pcr_selection, bool* match) {
+  *match = false;
+
+  std::vector<uint8_t> policy;
+  result_code rc = GetSpaceInfo();
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  rc = GetPCRBindingPolicy(pcr_selection, &policy);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  *match = auth_policy_ == policy;
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::GetSpaceInfo() {
+  if (attributes_ != 0) {
+    return RESULT_SUCCESS;
+  }
+
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t auth_policy_size = kInitialAuthPolicySize;
+  auth_policy_.resize(auth_policy_size);
+  uint32_t size;
+  uint32_t result = TlclGetSpaceInfo(index_, &attributes_, &size,
+                                     auth_policy_.data(), &auth_policy_size);
+  if (result == TPM_E_BUFFER_SIZE && auth_policy_size > 0) {
+    auth_policy_.resize(auth_policy_size);
+    result = TlclGetSpaceInfo(index_, &attributes_, &size, auth_policy_.data(),
+                              &auth_policy_size);
+  }
+  if (result != TPM_SUCCESS) {
+    attributes_ = 0;
+    auth_policy_.clear();
+    LOG(ERROR) << "Failed to read NVRAM space info for index " << index_ << ": "
+               << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  CHECK_LE(auth_policy_size, auth_policy_.size());
+  auth_policy_.resize(auth_policy_size);
+
+  return RESULT_SUCCESS;
+}
+
+result_code NvramSpace::GetPCRBindingPolicy(uint32_t pcr_selection,
+                                            std::vector<uint8_t>* policy) {
+  if (!tpm_->available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  if (pcr_selection == 0) {
+    policy->clear();
+    return RESULT_SUCCESS;
+  }
+
+  int value_index = 0;
+  uint8_t pcr_values[32][TPM_PCR_DIGEST] = {};
+  for (int index = 0; index < 32; ++index) {
+    if (((1 << index) & pcr_selection) != 0) {
+      std::vector<uint8_t> pcr_value;
+      result_code rc = tpm_->ReadPCR(index, &pcr_value);
+      if (rc != RESULT_SUCCESS) {
+        return rc;
+      }
+      CHECK_EQ(TPM_PCR_DIGEST, pcr_value.size());
+      memcpy(pcr_values[value_index++], pcr_value.data(), TPM_PCR_DIGEST);
+    }
+  }
+
+  uint32_t auth_policy_size = kInitialAuthPolicySize;
+  policy->resize(auth_policy_size);
+  uint32_t result = TlclInitNvAuthPolicy(pcr_selection, pcr_values,
+                                         policy->data(), &auth_policy_size);
+  if (result == TPM_E_BUFFER_SIZE && auth_policy_size > 0) {
+    policy->resize(auth_policy_size);
+    result = TlclInitNvAuthPolicy(pcr_selection, pcr_values, policy->data(),
+                                  &auth_policy_size);
+  }
+
+  if (result != TPM_SUCCESS) {
+    policy->clear();
+    LOG(ERROR) << "Failed to get NV policy " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  CHECK_LE(auth_policy_size, policy->size());
+  policy->resize(auth_policy_size);
+
+  return RESULT_SUCCESS;
+}
+
 Tpm::Tpm() {
 #if USE_TPM2
   is_tpm2_ = true;
@@ -222,6 +338,32 @@ result_code Tpm::GetRandomBytes(uint8_t* buffer, int wanted) {
   return RESULT_FAIL_FATAL;
 }
 
+result_code Tpm::ReadPCR(uint32_t index, std::vector<uint8_t>* value) {
+  // See whether the PCR is available in the cache. Note that we currently
+  // assume PCR values remain constant during the lifetime of the process, so we
+  // only ever read once.
+  auto entry = pcr_values_.find(index);
+  if (entry != pcr_values_.end()) {
+    *value = entry->second;
+    return RESULT_SUCCESS;
+  }
+
+  if (!available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  std::vector<uint8_t> temp_value(TPM_PCR_DIGEST);
+  uint32_t result = TlclPCRRead(index, temp_value.data(), temp_value.size());
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "TPM PCR " << index << " read failed: " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  pcr_values_[index] = temp_value;
+  *value = std::move(temp_value);
+  return RESULT_SUCCESS;
+}
+
 NvramSpace* Tpm::GetLockboxSpace() {
   if (lockbox_space_) {
     return lockbox_space_.get();
@@ -267,3 +409,87 @@ NvramSpace* Tpm::GetEncStatefulSpace() {
 
   return encstateful_space_.get();
 }
+
+#if USE_TPM2
+
+result_code Tpm::SetSystemKeyInitializedFlag() {
+  return RESULT_FAIL_FATAL;
+}
+
+result_code Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
+  return RESULT_FAIL_FATAL;
+}
+
+#else
+
+result_code Tpm::SetSystemKeyInitializedFlag() {
+  bool flag_value = false;
+  result_code rc = HasSystemKeyInitializedFlag(&flag_value);
+  if (rc != TPM_SUCCESS) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  if (flag_value) {
+    return RESULT_SUCCESS;
+  }
+
+  uint32_t result = TlclCreateDelegationFamily(
+      kSystemKeyInitializedDummyDelegationFamilyLabel);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to create dummy delegation family: " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  initialized_flag_ = true;
+  initialized_flag_checked_ = true;
+
+  return RESULT_SUCCESS;
+}
+
+result_code Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
+  if (!available()) {
+    return RESULT_FAIL_FATAL;
+  }
+
+  if (initialized_flag_checked_) {
+    *flag_value = initialized_flag_;
+    return RESULT_SUCCESS;
+  }
+
+  // The dummy delegation family is only relevant for unowned TPMs. Pretend the
+  // flag is present if the TPM is owned.
+  bool owned = false;
+  result_code rc = IsOwned(&owned);
+  if (rc != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to determine ownership.";
+    return rc;
+  }
+  if (owned) {
+    initialized_flag_checked_ = true;
+    initialized_flag_ = true;
+    *flag_value = initialized_flag_;
+    return RESULT_SUCCESS;
+  }
+
+  TPM_FAMILY_TABLE_ENTRY table[kDelegationTableSize];
+  uint32_t table_size = kDelegationTableSize;
+  uint32_t result = TlclReadDelegationFamilyTable(table, &table_size);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to read delegation family table: " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  for (uint32_t i = 0; i < table_size; ++i) {
+    if (table[i].familyLabel ==
+        kSystemKeyInitializedDummyDelegationFamilyLabel) {
+      initialized_flag_ = true;
+      break;
+    }
+  }
+
+  initialized_flag_checked_ = true;
+  *flag_value = initialized_flag_;
+  return RESULT_SUCCESS;
+}
+
+#endif

@@ -18,6 +18,7 @@ class TlclStub {
  public:
   struct NvramSpaceData {
     uint32_t attributes = 0;
+    std::vector<uint8_t> policy;
     std::vector<uint8_t> contents;
     bool write_locked = false;
     bool read_locked = false;
@@ -32,6 +33,9 @@ class TlclStub {
   // Put the TPM into owned state with the specified owner auth secret.
   void SetOwned(const std::vector<uint8_t>& owner_auth);
 
+  // Configure a PCR to contain the specified value.
+  void SetPCRValue(uint32_t index, const uint8_t value[TPM_PCR_DIGEST]);
+
   // This is used to obtain the current stub instance for servicing Tlcl calls.
   // Do not call directly in tests, but construct your own TlclStub instance
   // which will then be returned by Get().
@@ -44,10 +48,23 @@ class TlclStub {
 
   uint32_t DefineSpace(uint32_t index, uint32_t perm, uint32_t size);
   uint32_t GetPermissions(uint32_t index, uint32_t* permissions);
+  uint32_t GetSpaceInfo(uint32_t index,
+                        uint32_t* permissions,
+                        uint32_t* size,
+                        void* auth_policy,
+                        uint32_t* auth_policy_size);
   uint32_t Write(uint32_t index, const void* data, uint32_t length);
   uint32_t Read(uint32_t index, void* data, uint32_t length);
   uint32_t WriteLock(uint32_t index);
   uint32_t ReadLock(uint32_t index);
+
+  uint32_t PCRRead(uint32_t index, void *data, uint32_t length);
+
+#if !USE_TPM2
+  uint32_t CreateDelegationFamily(uint8_t family_label);
+  uint32_t ReadDelegationFamilyTable(TPM_FAMILY_TABLE_ENTRY* table,
+                                     uint32_t* table_size);
+#endif  // !USE_TPM2
 
  private:
   bool is_owned() const { return !owner_auth_.empty(); }
@@ -57,6 +74,12 @@ class TlclStub {
 
   std::vector<uint8_t> owner_auth_;
   std::map<uint32_t, NvramSpaceData> nvram_spaces_;
+  std::map<uint32_t, uint8_t[TPM_PCR_DIGEST]> pcr_values_;
+
+#if !USE_TPM2
+  uint32_t delegation_family_id_ = 0;
+  std::vector<TPM_FAMILY_TABLE_ENTRY> delegation_family_table_;
+#endif  // !USE_TPM2
 
   // The static instance pointer return by Get(). Points at the most recently
   // constructed TlclStub instance.

@@ -202,6 +202,9 @@
           'vboot_host',
         ],
       },
+      'defines': [
+        'CHROMEOS_ENVIRONMENT=1',
+      ],
       'conditions': [
         ['USE_tpm2 == 1', {
           'defines': [
