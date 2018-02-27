@@ -794,20 +794,6 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
         if (status != OK)
             request->setError();
 
-        // Make sure all buffers returned at the end
-        CameraStream *s = nullptr;
-        std::shared_ptr<CameraBuffer> buffer = nullptr;
-        const std::vector<camera3_stream_buffer>* outBufs =
-            request->getOutputBuffers();
-        for (camera3_stream_buffer outputBuffer : *outBufs) {
-            s = reinterpret_cast<CameraStream *>(outputBuffer.stream->priv);
-            buffer = request->findBuffer(s, false);
-            if (!buffer || !buffer->isRegistered())
-                continue;
-
-            buffer->getOwner()->captureDone(buffer, request);
-        }
-
         //HACK: return metadata after updated it
         LOG2("%s: request %d done", __func__, request->getId());
         ICaptureEventListener::CaptureMessage outMsg;

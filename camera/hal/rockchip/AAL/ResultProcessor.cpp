@@ -276,20 +276,8 @@ status_t ResultProcessor::handleMetadataDone(Message &msg)
         return BAD_VALUE;
     }
 
-    /**
-     * Currently the metadataDone() is the last step, so return any pending
-     * buffers and report request error here
-     */
-    if (request->getError()) {
-        if (!reqState->pendingBuffers.empty())
-            returnPendingBuffers(reqState);
-
-        /**
-         * Note: the android will remove request in the first result after
-         * request error recieved, which would be this metadata.
-         */
-        returnRequestError(request->getId());
-    }
+    if (!reqState->pendingBuffers.empty())
+        returnPendingBuffers(reqState);
 
     if (msg.data.meta.resultIndex >= 0) {
         /**
@@ -487,7 +475,7 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
             result.output_buffers = &buf;
         }
 
-        mCallbackOps->process_capture_result(mCallbackOps, &result);
+        processCaptureResult(reqState, &result);
         pendingBuf->getOwner()->decOutBuffersInHal();
         reqState->buffersReturned += 1;
         LOGR(" <Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
@@ -534,7 +522,7 @@ void ResultProcessor::returnPendingPartials(RequestState_t* reqState)
     result.result = settings->getAndLock();
     result.num_output_buffers = 0;
 
-    mCallbackOps->process_capture_result(mCallbackOps, &result);
+    processCaptureResult(reqState, &result);
 
     settings->unlock(result.result);
 
@@ -570,7 +558,7 @@ status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex
     result.result = resultMetadata ? resultMetadata->getAndLock() : nullptr;
     result.num_output_buffers = 0;
 
-    mCallbackOps->process_capture_result(mCallbackOps, &result);
+    processCaptureResult(reqState, &result);
 
     if (resultMetadata)
         resultMetadata->unlock(result.result);
@@ -605,6 +593,21 @@ status_t ResultProcessor::getRequestsInTransit(RequestState_t** reqState, int in
     return state;
 }
 
+void ResultProcessor::processCaptureResult(RequestState_t* reqState, camera3_capture_result* result)
+{
+    int numMetaLeft = mPartialResultCount - reqState->partialResultReturned;
+    int numBufLeft = reqState->buffersToReturn - reqState->buffersReturned;
+
+    // Report request error when it's the last result
+    if (numMetaLeft + numBufLeft == 1) {
+        Camera3Request* request = reqState->request;
+        if (request->getError())
+            returnRequestError(request->getId());
+    }
+
+    mCallbackOps->process_capture_result(mCallbackOps, result);
+}
+
 /**
  * Request is fully processed
  * send the request object back to RequestThread for recycling
@@ -626,6 +629,11 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
     return status;
 }
 
+/**
+ * The android camera framework will remove the request when receiving the
+ * first result after request error. So the request error should be reported
+ * right before sending the last result.
+ */
 void ResultProcessor::returnRequestError(int reqId)
 {
     LOGR("%s for <Request : %d", __FUNCTION__, reqId);

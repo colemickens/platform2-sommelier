@@ -178,6 +178,7 @@ private:  /* methods */
     void returnRequestError(int reqId);
     status_t returnStoredPartials(void);
     status_t returnResult(RequestState_t* reqState, int returnIndex);
+    void processCaptureResult(RequestState_t* reqState, camera3_capture_result* result);
     status_t getRequestsInTransit(RequestState_t** reqState, int index);
 
 private:  /* members */

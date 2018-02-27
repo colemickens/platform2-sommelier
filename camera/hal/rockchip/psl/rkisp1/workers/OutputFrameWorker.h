@@ -124,6 +124,7 @@ private:
     status_t allocListenerProcessBuffers();
     virtual void messageThreadLoop(void);
     status_t handleMessageProcess(Message & msg);
+    void returnBuffers(bool returnListenerBuffers);
 
 private:
     std::vector<std::shared_ptr<CameraBuffer>> mOutputBuffers;

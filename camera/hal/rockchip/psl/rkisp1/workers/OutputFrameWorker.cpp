@@ -81,12 +81,12 @@ OutputFrameWorker::handleMessageProcess(Message & msg)
     if (status != OK) {
         LOGE("@%s, process for listener %p failed! [%d]!", __FUNCTION__,
              msg.frame->stream, status);
-        return status;
+        msg.frame->request->setError();
     }
+
     CameraStream *stream = msg.frame->listenBuffer->getOwner();
     stream->captureDone(msg.frame->listenBuffer, msg.frame->request);
-
-    return NO_ERROR;
+    return status;
 }
 
 void
@@ -236,8 +236,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         status = prepareBuffer(buffer);
         if (status != NO_ERROR) {
             LOGE("prepare buffer error!");
-            buffer->getOwner()->captureDone(buffer, request);
-            return status;
+            goto exit;
         }
 
         // If output format is something else than
@@ -247,7 +246,8 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
                 buffer->format() != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
             buffer->format() != HAL_PIXEL_FORMAT_BLOB)  {
             LOGE("Bad format %d", buffer->format());
-            return BAD_TYPE;
+            status = BAD_TYPE;
+            goto exit;
         }
 
         mOutputBuffers[mIndex] = buffer;
@@ -291,7 +291,8 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             break;
         default:
             LOGE("%s unsupported memory type.", __FUNCTION__);
-            return BAD_VALUE;
+            status = BAD_VALUE;
+            goto exit;
         }
         mWorkingBuffers[mIndex] = buffer;
     } else {
@@ -301,7 +302,11 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     LOG2("%s:%d:instance(%p), requestId(%d), index(%d)", __func__, __LINE__, this, request->getId(), mIndex);
     mIndex = (mIndex + 1) % mPipelineDepth;
 
-    return (status < 0) ? status : OK;
+exit:
+    if (status < 0)
+        returnBuffers(true);
+
+    return status < 0 ? status : OK;
 }
 
 status_t OutputFrameWorker::run()
@@ -343,7 +348,11 @@ status_t OutputFrameWorker::run()
     notifyListeners(&outMsg);
 
     LOG2("%s:%d:instance(%p), frame_id(%d), requestId(%d), index(%d)", __func__, __LINE__, this, outBuf.vbuffer.sequence(), request->getId(), index);
-    return (status < 0) ? status : OK;
+
+    if (status < 0)
+        returnBuffers(true);
+
+    return status < 0 ? status : OK;
 }
 
 status_t OutputFrameWorker::postRun()
@@ -378,7 +387,9 @@ status_t OutputFrameWorker::postRun()
         stream = listenerBuf->getOwner();
         if (NO_ERROR != prepareBuffer(listenerBuf)) {
             LOGE("prepare listener buffer error!");
-            goto exit;
+            listenerBuf->getOwner()->captureDone(listenerBuf, request);
+            status = UNKNOWN_ERROR;
+            continue;
         }
         if (mStreamToSWProcessMap[listener]->needPostProcess()) {
             Message msg;
@@ -400,7 +411,8 @@ status_t OutputFrameWorker::postRun()
             stream->captureDone(listenerBuf, request);
         }
     }
-
+    if (status != OK)
+        goto exit;
 
     // All done
     if (mOutputBuffer == nullptr)
@@ -438,6 +450,9 @@ exit:
     mMsg = nullptr;
     mOutputBuffer = nullptr;
 
+    if (status != OK)
+        returnBuffers(false);
+
     return status;
 }
 
@@ -446,6 +461,33 @@ bool OutputFrameWorker::isHalUsingRequestBuffer()
     LOG2("%s, mNeedPostProcess %d, mListeners.size() %zu",
           __FUNCTION__, mNeedPostProcess, mListeners.size());
     return (mNeedPostProcess || mListeners.size() > 0);
+}
+
+void OutputFrameWorker::returnBuffers(bool returnListenerBuffers)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    if (!mMsg || !mMsg->cbMetadataMsg.request)
+        return;
+
+    Camera3Request* request = mMsg->cbMetadataMsg.request;
+    std::shared_ptr<CameraBuffer> buffer;
+
+    buffer = findBuffer(request, mStream);
+    if (buffer.get() && buffer->isRegistered())
+        buffer->getOwner()->captureDone(buffer, request);
+
+    if (!returnListenerBuffers)
+        return;
+
+    for (size_t i = 0; i < mListeners.size(); i++) {
+        camera3_stream_t* listener = mListeners[i];
+        buffer = findBuffer(request, listener);
+        if (buffer.get() == nullptr || !buffer->isRegistered())
+            continue;
+
+        buffer->getOwner()->captureDone(buffer, request);
+    }
 }
 
 status_t
