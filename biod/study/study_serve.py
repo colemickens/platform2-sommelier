@@ -218,7 +218,7 @@ class Root(object):
 if __name__ == '__main__':
   # Get study parameters from the command-line
   parser = argparse.ArgumentParser()
-  parser.add_argument("-f", "--finger_count", type=int, default=3,
+  parser.add_argument("-f", "--finger_count", type=int, default=2,
                       help="Number of fingers acquired per user")
   parser.add_argument("-e", "--enrollment_count", type=int, default=20,
                       help="Number of enrollment images per finger")
