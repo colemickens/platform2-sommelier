@@ -99,10 +99,10 @@ class StubTpm : public Tpm {
                           SecureBlob* certified_key_info,
                           SecureBlob* certified_key_proof) override
     { return false; }
-  bool CreateDelegate(const SecureBlob& identity_key_blob,
-                      SecureBlob* delegate_blob,
-                      SecureBlob* delegate_secret) override
-    { return false; }
+  bool CreateDelegate(SecureBlob* delegate_blob,
+                      SecureBlob* delegate_secret) override {
+    return false;
+  }
   bool ActivateIdentity(const SecureBlob& delegate_blob,
                         const SecureBlob& delegate_secret,
                         const SecureBlob& identity_key_blob,

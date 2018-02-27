@@ -163,8 +163,7 @@ class Tpm2Impl : public Tpm {
                           brillo::SecureBlob* certified_key_blob,
                           brillo::SecureBlob* certified_key_info,
                           brillo::SecureBlob* certified_key_proof) override;
-  bool CreateDelegate(const brillo::SecureBlob& identity_key_blob,
-                      brillo::SecureBlob* delegate_blob,
+  bool CreateDelegate(brillo::SecureBlob* delegate_blob,
                       brillo::SecureBlob* delegate_secret) override;
   bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
                         const brillo::SecureBlob& delegate_secret,

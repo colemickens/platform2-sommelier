@@ -2125,8 +2125,7 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
   return true;
 }
 
-bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
-                             SecureBlob* delegate_blob,
+bool TpmImpl::CreateDelegate(SecureBlob* delegate_blob,
                              SecureBlob* delegate_secret) {
   CHECK(delegate_blob && delegate_secret);
 
@@ -2138,27 +2137,6 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
     return false;
   }
 
-  // Load the Storage Root Key.
-  TSS_RESULT result;
-  ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "CreateDelegate: Failed to load SRK.";
-    return false;
-  }
-
-  // Load the AIK (which is wrapped by the SRK).
-  ScopedTssKey identity_key(context_handle);
-  result = Tspi_Context_LoadKeyByBlob(
-      context_handle,
-      srk_handle,
-      identity_key_blob.size(),
-      const_cast<BYTE*>(identity_key_blob.data()),
-      identity_key.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to load AIK.";
-    return false;
-  }
-
   // Generate a delegate secret.
   if (!GetRandomData(kDelegateSecretSize, delegate_secret)) {
     return false;
@@ -2166,6 +2144,7 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
 
   // Create an owner delegation policy.
   ScopedTssPolicy policy(context_handle);
+  TSS_RESULT result;
   result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
                                      TSS_POLICY_USAGE, policy.ptr());
   if (TPM_ERROR(result)) {

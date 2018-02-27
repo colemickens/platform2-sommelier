@@ -452,12 +452,10 @@ class Tpm {
   // Creates a TPM owner delegate for future use.
   //
   // Parameters
-  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret that will be required to perform
   //                     privileged operations in the future.
-  virtual bool CreateDelegate(const brillo::SecureBlob& identity_key_blob,
-                              brillo::SecureBlob* delegate_blob,
+  virtual bool CreateDelegate(brillo::SecureBlob* delegate_blob,
                               brillo::SecureBlob* delegate_secret) = 0;
 
   // Activates an AIK by using the EK to decrypt the AIK credential.
