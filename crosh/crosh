@@ -1634,6 +1634,27 @@ cmd_ccd_pass() (
   "${EXEC_ccd_pass}" -t -P
 )
 
+EXEC_verify_ro='/usr/share/cros/cr50-verify-ro.sh'
+HELP_verify_ro="
+  Verify AP and EC RO firmware on a Chrome OS device connected over SuzyQ
+  cable, if supported by the device.
+"
+USAGE_verify_ro=''
+cmd_verify_ro() (
+  local cr50_image="/opt/google/cr50/firmware/cr50.bin.prod"
+  local ro_db="/opt/google/cr50/ro_db/verify_ro.db"
+
+  if [ $# -ne 0 ]; then
+    help "too many arguments"
+    return 1
+  fi
+  if [ ! -f "${cr50_image}" -o ! -f "${ro_db}" ]; then
+    echo "This device can not be used for RO verification"
+    return 1
+  fi
+  "${EXEC_verify_ro}" "${cr50_image}" "${ro_db}"
+)
+
 USAGE_c='<container name> [args]'
 HELP_c='
   Run a program inside a container
